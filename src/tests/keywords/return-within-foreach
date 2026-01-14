@@ -9,8 +9,8 @@ control += {
 }
 
 group {
-	foreach control.NAS-Port {
-		if ("%{Foreach-Variable-0}" == '2') {
+	foreach thing (control.NAS-Port[*]) {
+		if (thing == 2) {
 			accept
 			success
 			return

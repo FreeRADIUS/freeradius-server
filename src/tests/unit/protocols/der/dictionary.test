@@ -2,7 +2,7 @@
 # Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
-DEFINE	Certificate-Extensions				x509_extensions ref=@.OID-Tree
+DEFINE	Certificate-Extensions				x509_extensions
 
 DEFINE Test-GeneralNames				group sequence_of=choice,ref=@.GeneralName
 
@@ -59,18 +59,14 @@ DEFINE		Test-Bitstring				bitstring
 END Seq-Bitstring-Octets
 
 DEFINE	Bitstring-Struct				struct der_type=bitstring
-BEGIN Bitstring-Struct
 MEMBER		foo					bit[8]
 MEMBER		bar					bit[4]
 MEMBER		foo-bar					bit[4]
-END Bitstring-Struct
 
 DEFINE	Bitstring-Struct-7				struct der_type=bitstring
-BEGIN Bitstring-Struct-7
 MEMBER		foo					bit[2]
 MEMBER		bar					bit[1]
 MEMBER		foo-bar					bit[4]
-END Bitstring-Struct-7
 
 DEFINE	Octetstring					octetstring
 
@@ -182,3 +178,6 @@ BEGIN Test-Choice
 ATTRIBUTE option0					0 integer class=private
 ATTRIBUTE option1					1 integer class=private
 END Test-Choice
+
+#DEFINE	Test-Attr					attribute
+#VALUE	Test-Attr	Test-TLV			@.Test-TLV

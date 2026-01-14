@@ -57,6 +57,32 @@ extern "C" {
 #  define REQUEST_MAGIC (0xdeadbeef)
 #endif
 
+/*
+ *	Stack pool +
+ *	Stack Frames +
+ *	packets +
+ *	extra
+ */
+#define REQUEST_POOL_HEADERS	( \
+					1 + \
+					UNLANG_STACK_MAX + \
+					2 + \
+					10 \
+				)
+
+/*
+ *	Stack memory +
+ *	pair lists and root +
+ *	packets +
+ *	extra
+ */
+#define REQUEST_POOL_SIZE	( \
+					(UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) + \
+					(sizeof(fr_pair_t) * 5) + \
+					(sizeof(fr_packet_t) * 2) + \
+					128 \
+				)
+
 typedef enum {
 	REQUEST_ACTIVE = 1,		//!< Request is active (running or runnable)
 	REQUEST_STOP_PROCESSING,	//!< Request has been signalled to stop
@@ -183,7 +209,8 @@ struct request_s {
 
 	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
 						//!< and responses.
-	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
+	fr_dict_t const		*proto_dict;   	//!< Dictionary of the protocol that this request belongs to.
+	fr_dict_t const		*local_dict;	//!< dictionary for local variables
 
 	fr_pair_t		*pair_root;	//!< Root attribute which contains the
 						///< other list attributes as children.
@@ -203,8 +230,8 @@ struct request_s {
 	 *
 	 */
 	struct {
-		uint8_t			detachable : 1;		//!< This request may be detached from its parent..
-		uint8_t			dynamic_client : 1;	//!< this is a dynamic client request
+		unsigned int   		detachable : 1;		//!< This request may be detached from its parent..
+		unsigned int		dynamic_client : 1;	//!< this is a dynamic client request
 	} flags;
 
 	/** Logging information
@@ -233,8 +260,9 @@ struct request_s {
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
-	fr_heap_index_t		runnable_id;	//!< entry in the heap of runnable packets
-	fr_heap_index_t		time_order_id;	//!< entry in the heap of time ordered packets
+
+	fr_timer_t		*timeout;	//!< Timer event for this request.  This tracks when we need to
+						///< forcefully terminate a request.
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
@@ -245,7 +273,12 @@ struct request_s {
 	int			alloc_line;	//!< Line the request was allocated on.
 
 	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
-	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
+
+	uint32_t		priority;	//!< higher == higher priority
+	uint32_t		sequence;	//!< higher == higher priority, too
+
+	fr_heap_index_t		runnable;	//!< entry in the heap of runnable packets
+
 };				/* request_t typedef */
 
 /** Optional arguments for initialising requests
@@ -285,28 +318,14 @@ typedef struct {
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
-/** Allocate a new external request
- *
- * Use for requests produced by listeners
- *
- * @param[in] _ctx	Talloc ctx to bind the request to.
- * @param[in] _args	Optional arguments that control how the request is initialised.
- */
-#define		request_alloc_external(_ctx, _args) \
-		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_EXTERNAL, (_args))
+#define		request_init(_ctx, _type, _args) \
+		_request_init(__FILE__, __LINE__, _ctx, _type, _args)
 
-/** Allocate a new internal request
- *
- * Use for requests produced by modules and unlang
- *
- * @param[in] _ctx	Talloc ctx to bind the request to.
- * @param[in] _args	Optional arguments that control how the request is initialised.
- */
-#define		request_alloc_internal(_ctx, _args) \
-		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_INTERNAL, (_args))
+int		_request_init(char const *file, int line,
+			      request_t *request, request_type_t type,
+			      request_init_args_t const *args);
 
-request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
-				request_type_t type, request_init_args_t const *args);
+int		request_slab_deinit(request_t *request);
 
 /** Allocate a new external request outside of the request pool
  *
@@ -339,6 +358,15 @@ void		request_log_prepend(request_t *request, fr_log_t *log, fr_log_lvl_t lvl);
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, request_t const *request);	/* only for special debug builds */
 #endif
+
+static inline bool request_attr_is_list(fr_dict_attr_t const *da)
+{
+	return (da == request_attr_request) ||
+		(da == request_attr_reply) ||
+		(da == request_attr_control) ||
+		(da == request_attr_state) ||
+		(da == request_attr_local);
+}
 
 #ifdef __cplusplus
 }

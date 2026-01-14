@@ -1,7 +1,7 @@
 octets cbor
 string foo
 
-cbor = %cbor.encode(User-Name)
+cbor = %cbor.encode('User-Name')
 
 #
 #  9f		array of indefinite length
@@ -28,9 +28,17 @@ if (User-Name) {
 #
 #  @todo - change this to be configurable :(
 #
-%cbor.decode(%{cbor})
+%cbor.decode(cbor)
 
 if (User-Name != "bob") {
+	test_fail
+}
+
+#
+#  The cursor as an attribute reference, and not as a string.
+#
+cbor := %cbor.encode(User-Name)
+if (cbor != 0x9fa10163626f62ff) {
 	test_fail
 }
 

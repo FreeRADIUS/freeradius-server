@@ -20,7 +20,7 @@ VENDOR		Cambium				17713
 
 BEGIN-VENDOR	Cambium
 
-ATTRIBUTE	Auth-Role				1	integer
+ATTRIBUTE	Auth-Role				1	uint32
 
 VALUE	Auth-Role			Invalid			0
 VALUE	Auth-Role			Read-Only		1
@@ -28,53 +28,53 @@ VALUE	Auth-Role			System-Admin		2
 VALUE	Auth-Role			Security-Officer	3
 VALUE	Auth-Role			Deliberately-Bad	4
 
-ATTRIBUTE	ePMP-Data-VLAN-Id			21	integer
-ATTRIBUTE	ePMP-Management-VLAN-Id			22	integer
+ATTRIBUTE	ePMP-Data-VLAN-Id			21	uint32
+ATTRIBUTE	ePMP-Management-VLAN-Id			22	uint32
 
-ATTRIBUTE	ePMP-Max-Burst-Uplink-Rate		26	integer
-ATTRIBUTE	ePMP-Max-Burst-Downlink-Rate		27	integer
+ATTRIBUTE	ePMP-Max-Burst-Uplink-Rate		26	uint32
+ATTRIBUTE	ePMP-Max-Burst-Downlink-Rate		27	uint32
 
-ATTRIBUTE	ePMP-UserLevel				50	integer
+ATTRIBUTE	ePMP-UserLevel				50	uint32
 
 VALUE	ePMP-UserLevel			Install			2
 VALUE	ePMP-UserLevel			Admin			3
 VALUE	ePMP-UserLevel			User			4
 VALUE	ePMP-UserLevel			Read-Only		5
 
-ATTRIBUTE	ePMP-SM-Priority			51	integer
+ATTRIBUTE	ePMP-SM-Priority			51	uint32
 
 VALUE	ePMP-SM-Priority		Normal			0
 VALUE	ePMP-SM-Priority		High			1
 VALUE	ePMP-SM-Priority		Low			2
 
-ATTRIBUTE	ePMP-VLAN-Membersip-Set			52	integer
-ATTRIBUTE	ePMP-Management-VLAN-Priority		53	integer
-ATTRIBUTE	ePMP-Data-VLAN-Priority			54	integer
-ATTRIBUTE	ePMP-Separate-Management-VLAN-Id	55	integer
-ATTRIBUTE	ePMP-Separate-Management-VLAN-Priority	56	integer
-ATTRIBUTE	ePMP-Multicast-VLAN-Id			57	integer
-ATTRIBUTE	ePMP-VLAN-Mapping			58	integer
+ATTRIBUTE	ePMP-VLAN-Membersip-Set			52	uint32
+ATTRIBUTE	ePMP-Management-VLAN-Priority		53	uint32
+ATTRIBUTE	ePMP-Data-VLAN-Priority			54	uint32
+ATTRIBUTE	ePMP-Separate-Management-VLAN-Id	55	uint32
+ATTRIBUTE	ePMP-Separate-Management-VLAN-Priority	56	uint32
+ATTRIBUTE	ePMP-Multicast-VLAN-Id			57	uint32
+ATTRIBUTE	ePMP-VLAN-Mapping			58	uint32
 
-ATTRIBUTE	Traffic-Quota-Limit-Up			151	integer
-ATTRIBUTE	Traffic-Quota-Limit-Down		152	integer
-ATTRIBUTE	Traffic-Quota-Limit-Up-Gigwords		153	integer
-ATTRIBUTE	Traffic-Quota-Limit-Down-Gigwords	154	integer
-ATTRIBUTE	Traffic-Quota-Limit-Total		155	integer
-ATTRIBUTE	Traffic-Quota-Limit-Total-Gigwords	156	integer
+ATTRIBUTE	Traffic-Quota-Limit-Up			151	uint32
+ATTRIBUTE	Traffic-Quota-Limit-Down		152	uint32
+ATTRIBUTE	Traffic-Quota-Limit-Up-Gigwords		153	uint32
+ATTRIBUTE	Traffic-Quota-Limit-Down-Gigwords	154	uint32
+ATTRIBUTE	Traffic-Quota-Limit-Total		155	uint32
+ATTRIBUTE	Traffic-Quota-Limit-Total-Gigwords	156	uint32
 ATTRIBUTE	VLAN-Pool-Id				157	string
 
 ATTRIBUTE	Authorize-Classes			158	tlv
 ATTRIBUTE	Name					.1	string
-ATTRIBUTE	Bytes-Left				.2	integer64
+ATTRIBUTE	Bytes-Left				.2	uint64
 
 ATTRIBUTE	Traffic-Classes-Acct			159	tlv
 ATTRIBUTE	Name					.1	string
-ATTRIBUTE	Input-Octets				.2	integer
-ATTRIBUTE	Output-Octets				.3	integer
-ATTRIBUTE	Input-Packets				.4	integer
-ATTRIBUTE	Output-Packets				.5	integer
+ATTRIBUTE	Input-Octets				.2	uint32
+ATTRIBUTE	Output-Octets				.3	uint32
+ATTRIBUTE	Input-Packets				.4	uint32
+ATTRIBUTE	Output-Packets				.5	uint32
 
-ATTRIBUTE	Walled-Garden-State			160	integer
+ATTRIBUTE	Walled-Garden-State			160	uint32
 
 END-VENDOR	Cambium
 ALIAS		Cambium					Vendor-Specific.Cambium

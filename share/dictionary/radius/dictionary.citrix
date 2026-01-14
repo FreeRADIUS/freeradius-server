@@ -14,8 +14,8 @@ VENDOR		Citrix				66
 
 BEGIN-VENDOR	Citrix
 
-ATTRIBUTE	UID					10	integer
-ATTRIBUTE	GID					11	integer
+ATTRIBUTE	UID					10	uint32
+ATTRIBUTE	GID					11	uint32
 ATTRIBUTE	Home					12	string
 ATTRIBUTE	Shell					13	string
 ATTRIBUTE	Group-Names				14	string

@@ -1,0 +1,21 @@
+#
+#  PRE: subrequest try timeout
+#
+try {
+	subrequest ::Access-Request {
+		timeout 100ms {
+			subrequest ::Access-Request {
+				%time.advance(500ms)	# Smoke test, see if things explode
+				outer.control.User-Name := 'bob'
+				success
+			}
+		}
+	}
+}
+catch timeout {
+	if (control.User-Name == 'bob') {
+		test_fail
+	} else {
+		success
+	}
+}

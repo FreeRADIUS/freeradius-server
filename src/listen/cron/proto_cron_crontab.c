@@ -27,8 +27,9 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/util/skip.h>
+#include <freeradius-devel/server/cf_util.h>
 
-#include "lib/server/cf_util.h"
 #include "proto_cron.h"
 
 extern fr_app_io_t proto_cron_crontab;
@@ -43,7 +44,7 @@ typedef struct {
 
 	proto_cron_crontab_t const      *inst;
 
-	fr_event_timer_t const		*ev;			//!< for writing statistics
+	fr_timer_t			*ev;			//!< for writing statistics
 
 	fr_listen_t			*parent;		//!< master IO handler
 
@@ -85,7 +86,7 @@ struct proto_cron_tab_s {
 static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t crontab_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_crontab_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_crontab_t, filename) },
 
 	{ FR_CONF_OFFSET_FLAGS("timespec", CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_crontab_t, spec),
 	  		.func = time_parse },
@@ -435,13 +436,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	fr_io_address_t const  	*address = track->address;
 
 	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = inst->dict;
-
-	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
 	if (inst->code) request->packet->code = inst->code;
@@ -519,7 +513,7 @@ done:
  *	Called when tm.tm_sec == 0.  If it isn't zero, then it means
  *	that the timer is late, and we treat it as if tm.tm_sec == 0.
  */
-static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void do_cron(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	proto_cron_crontab_thread_t	*thread = uctx;
 	struct tm tm;
@@ -633,8 +627,8 @@ use_time:
 		      cf_section_name2(thread->inst->parent->server_cs), buffer, end - start);
 	}
 
-	if (fr_event_timer_at(thread, el, &thread->ev, fr_time_add(now, fr_time_delta_from_sec(end - start)),
-			      do_cron, thread) < 0) {
+	if (fr_timer_at(thread, tl, &thread->ev, fr_time_add(now, fr_time_delta_from_sec(end - start)),
+			false, do_cron, thread) < 0) {
 		fr_assert(0);
 	}
 
@@ -669,7 +663,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	thread->inst = inst;
 	thread->bootstrap = true;
 
-	do_cron(el, fr_time(), thread);
+	do_cron(el->tl, fr_time(), thread);
 }
 
 static char const *mod_name(fr_listen_t *li)
@@ -722,7 +716,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
+	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done, true) < 0) {
 		cf_log_perr(conf, "Failed reading %s", inst->filename);
 		fclose(fp);
 		return -1;

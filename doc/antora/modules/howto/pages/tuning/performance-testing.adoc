@@ -1,4 +1,4 @@
-= RADIUS Test Procedures
+= Performance Testing
 
 == Introduction
 
@@ -37,7 +37,7 @@ and passwords
 Output from the script will include several files:
         passwd : A standard passwd file you can append to /etc/passwd
         shadow : A standard shadow file you can append to /etc/shadow
-passwd.nocrypt : A file with *unencrypted* users & passes in form "user:pass"
+passwd.nocrypt : A file with *unencrypted* users and passes in form "user:pass"
    radius.test : File you'll use as input for radclient
   radius.users : A standard radius 'users' file
 
@@ -50,9 +50,12 @@ authentication you can test:
   o  Others
 ```
 
-NOTE: Before moving on, you will probably want to add `/dev/null` to
+[NOTE]
+====
+Before moving on, you will probably want to add `/dev/null` to
 /etc/shells _temporarily_ so that default system authentication will
 work. REMEMBER TO TAKE IT OUT!
+====
 
 == Test procedures
 
@@ -92,17 +95,22 @@ DEFAULT Auth-Type:=System
 [arabic, start=5]
 . Run radclient with `radius.test` as the input file.
 
-NOTE: First you need to setup a secret for your local machine in the
-`clients` file and use that secret below
+[NOTE]
+====
+First you need to setup a secret for your local machine in the
+`clients` file and use that secret below. Enter the command all on one line.
+====
 
 ```
 # time /usr/local/bin/radclient -q -s -f radius.test <yourhostname> auth <secret>
 ```
 
-NOTE: The above is to be put all on one line.
 
-NOTE: Some systems do not have the `time` command, so you may need to
-break out the stopwatch instead :)
+[NOTE]
+====
+Some systems do not have the `time` command, so you may need to
+break out the stopwatch instead.
+====
 
 Take note of the output of `radclient`. If there were lots of
 failures, something is wrong. All authentications should succeed.
@@ -184,10 +192,7 @@ best base to start from, which is key to an efficient server.
 
 == Results
 
-I’d really rather not post results because they will vary tremendously
-with other system-specific configuration. This is exactly the reason you
-should run tests of this nature, to find what’s best for _your_ system.
-Good luck!
+The testing results vary tremendouslywith other system-specific configurations. This is exactly the reason you should run tests of this nature, to find what’s best for _your_ system. Good luck!
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

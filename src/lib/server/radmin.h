@@ -38,7 +38,7 @@ extern "C" {
  */
 #define FR_RADMIN_PORT 18120
 
-int fr_radmin_start(main_config_t *config, bool cli);
+int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3]);
 void fr_radmin_stop(void);
 
 int fr_radmin_register(TALLOC_CTX *talloc_ctx, char const *name, void *ctx, fr_cmd_table_t *table);

@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/trie.h>
 
@@ -2649,9 +2649,9 @@ void *fr_trie_find(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return NULL;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
 
 	return fr_trie_lookup_by_key(ft, key, keylen);
 }
@@ -2675,9 +2675,9 @@ void *fr_trie_match(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return NULL;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
 
 	return fr_trie_match_by_key(ft, key, keylen);
 }
@@ -3429,7 +3429,7 @@ static fr_trie_command_t commands[] = {
 	{ "verify",	command_verify,	0, 0, false },
 	{ "lineno",	command_lineno, 1, 1, false },
 	{ "clear",	command_clear,	0, 0, false },
-	{ NULL, NULL, 0, 0}
+	{ .name = NULL }
 };
 
 #define MAX_ARGC (16)

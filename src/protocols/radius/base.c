@@ -39,6 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
@@ -47,7 +48,8 @@ extern fr_dict_autoload_t libfreeradius_radius_dict[];
 fr_dict_autoload_t libfreeradius_radius_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_packet_type;
@@ -72,13 +74,15 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
 	{ .out = &attr_nas_filter_rule, .name = "NAS-Filter-Rule", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
+#define FR_DEBUG_STRERROR_PRINTF		if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF_PUSH		if (fr_debug_lvl) fr_strerror_printf_push
 
 fr_table_num_sorted_t const fr_radius_require_ma_table[] = {
 	{ L("auto"),		FR_RADIUS_REQUIRE_MA_AUTO		},
@@ -169,7 +173,7 @@ char const *fr_radius_packet_name[FR_RADIUS_CODE_MAX] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  */
-static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
@@ -301,8 +305,8 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zd bytes", data_len);
 invalid:
-		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
-					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
+		FR_DEBUG_STRERROR_PRINTF_PUSH("Invalid data from %s",
+					      inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
 		(void) udp_recv_discard(sockfd);
 
 		return 0;
@@ -419,6 +423,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 		case FR_RADIUS_CODE_DISCONNECT_NAK:
 		case FR_RADIUS_CODE_COA_ACK:
 		case FR_RADIUS_CODE_COA_NAK:
+		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			if (!vector) goto need_original;
 			memcpy(packet + 4, vector, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
@@ -530,7 +535,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("packet is too short (received %zu < minimum 20)",
+		FR_DEBUG_STRERROR_PRINTF("Packet is too short (received %zu < minimum 20)",
 					 packet_len);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
 		goto finish;
@@ -550,16 +555,38 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if ((packet[0] == 0) ||
 	    (packet[0] >= FR_RADIUS_CODE_MAX)) {
-		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", packet[0]);
+		FR_DEBUG_STRERROR_PRINTF("Unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
 	}
 
-	/*
-	 *	Message-Authenticator is required in Status-Server
-	 *	packets, otherwise they can be trivially forged.
-	 */
-	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_message_authenticator = true;
+	switch (packet[0]) {
+		/*
+		 *	Message-Authenticator is required in Status-Server
+		 *	packets, otherwise they can be trivially forged.
+		 */
+	case FR_RADIUS_CODE_STATUS_SERVER:
+		require_message_authenticator = true;
+		break;
+
+		/*
+		 *	Message-Authenticator may or may not be
+		 *	required for Access-* packets.
+		 */
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
+		break;
+
+		/*
+		 *	Message-Authenticator is not required for all other packets.
+		 */
+	default:
+		require_message_authenticator = false;
+		break;
+	}
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -573,7 +600,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("length in header is too small (length %zu < minimum 20)",
+		FR_DEBUG_STRERROR_PRINTF("Length in header is too small (length %zu < minimum 20)",
 					 totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
 		goto finish;
@@ -603,7 +630,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	i.e. No response to the NAS.
 	 */
 	if (totallen > packet_len) {
-		FR_DEBUG_STRERROR_PRINTF("packet is truncated (received %zu <  packet header length of %zu)",
+		FR_DEBUG_STRERROR_PRINTF("Packet is truncated (received %zu <  packet header length of %zu)",
 					 packet_len, totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
 		goto finish;
@@ -641,7 +668,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute header.
 		 */
 		if ((end - attr) < 2) {
-			FR_DEBUG_STRERROR_PRINTF("attribute header overflows the packet");
+			FR_DEBUG_STRERROR_PRINTF("Attribute header overflows the packet");
 			failure = DECODE_FAIL_HEADER_OVERFLOW;
 			goto finish;
 		}
@@ -650,7 +677,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			FR_DEBUG_STRERROR_PRINTF("invalid attribute 0 at offset %zd", attr - packet);
+			FR_DEBUG_STRERROR_PRINTF("Invalid attribute 0 at offset %zd", attr - packet);
 			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
 			goto finish;
 		}
@@ -660,7 +687,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			FR_DEBUG_STRERROR_PRINTF("attribute %u is too short at offset %zd",
+			FR_DEBUG_STRERROR_PRINTF("Attribute %u is too short at offset %zd",
 						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
 			goto finish;
@@ -671,8 +698,8 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute, it's a bad packet.
 		 */
 		if ((attr + attr[1]) > end) {
-			FR_DEBUG_STRERROR_PRINTF("attribute %u data overflows the packet starting at offset %zd",
-					   attr[0], attr - packet);
+			FR_DEBUG_STRERROR_PRINTF("Attribute %u data overflows the packet starting at offset %zd",
+						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
 			goto finish;
 		}
@@ -713,7 +740,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (attr != end) {
-		FR_DEBUG_STRERROR_PRINTF("attributes do NOT exactly fill the packet");
+		FR_DEBUG_STRERROR_PRINTF("Attributes do NOT exactly fill the packet");
 		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
 		goto finish;
 	}
@@ -743,7 +770,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_message_authenticator && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("we require Message-Authenticator attribute, but it is not in the packet");
+		FR_DEBUG_STRERROR_PRINTF("We require Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
 	}
@@ -908,14 +935,14 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	return 0;
 }
 
-void *fr_radius_next_encodable(fr_dlist_head_t *list, void *current, void *uctx);
+void *fr_radius_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx);
 
-void *fr_radius_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
+void *fr_radius_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t	*c = current;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
-	while ((c = fr_dlist_next(list, c))) {
+	while ((c = fr_dlist_next(cursor->dlist, c))) {
 		PAIR_VERIFY(c);
 		if ((c->da->dict == dict) &&
 		    (!c->da->flags.internal || ((c->da->attr > FR_TAG_BASE) && (c->da->attr < (FR_TAG_BASE + 0x20))))) {
@@ -927,35 +954,12 @@ void *fr_radius_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 }
 
 
-static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
-	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = true,
-	// can be in Access-Accept
-	[ FR_RADIUS_CODE_ACCESS_REJECT ] = true,
-	[ FR_RADIUS_CODE_ACCESS_CHALLENGE ] = true,
-
-	[ FR_RADIUS_CODE_ACCOUNTING_REQUEST ] = true,
-	[ FR_RADIUS_CODE_ACCOUNTING_RESPONSE ] = true,
-
-	[ FR_RADIUS_CODE_STATUS_SERVER ] = true,
-
-	[ FR_RADIUS_CODE_COA_ACK ] = true,
-	[ FR_RADIUS_CODE_COA_NAK ] = true,
-
-	[ FR_RADIUS_CODE_DISCONNECT_REQUEST ] = true,
-	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = true,
-	[ FR_RADIUS_CODE_DISCONNECT_NAK ] = true,
-
-	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = true,
-};
-
 ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encode_ctx_t *packet_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const		*vp;
 	fr_dcursor_t		cursor;
 	fr_dbuff_t		work_dbuff, length_dbuff;
-
-	packet_ctx->disallow_tunnel_passwords = disallow_tunnel_passwords[packet_ctx->code];
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
@@ -986,15 +990,15 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 		}
 		break;
 
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
-	case FR_RADIUS_CODE_COA_ACK:
-	case FR_RADIUS_CODE_COA_NAK:
 	case FR_RADIUS_CODE_DISCONNECT_ACK:
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (!packet_ctx->request_authenticator) {
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
@@ -1029,15 +1033,32 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 *	header for insecure transport protocols.
 	 */
 	if (!packet_ctx->common->secure_transport) switch (packet_ctx->code) {
-	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+#ifdef NAS_VIOLATES_RFC
+		/*
+		 *	Allow ridiculous behavior for vendors who violate the RFCs.
+		 *
+		 *	But only if there's no EAP-Message in the packet.
+		 */
+		if (packet_ctx->allow_vulnerable_clients && !fr_pair_find_by_da(vps, NULL, attr_eap_message)) {
+			break;
+		}
+		FALL_THROUGH;
+#endif
+
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_AUTHENTICATOR, 0x12,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 		packet_ctx->seen_message_authenticator = true;
+		break;
+
+	default:
+		break;
 	}
 
 	/*
@@ -1133,8 +1154,9 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *
 		 *	Otherwise the reply code must be associated with the request code we sent.
 		 */
-		if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER) &&
-		    (allowed_replies[code] != decode_ctx->request_code)) {
+		if ((allowed_replies[code] != decode_ctx->request_code) &&
+		    (code != FR_RADIUS_CODE_PROTOCOL_ERROR) &&
+		    (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER)) {
 			fr_strerror_printf("%s packet received invalid reply code %s",
 					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
 			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
@@ -1229,11 +1251,14 @@ int fr_radius_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_radius_global_free(void)
 {
+	if (!instantiated) return;
+
 	if (--instance_count != 0) return;
 
 	fr_dict_autofree(libfreeradius_radius_dict);

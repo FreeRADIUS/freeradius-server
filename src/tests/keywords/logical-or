@@ -18,9 +18,18 @@ if !((test_integer2 == 1) || (test_integer1 == 1)) {
 #
 #  Neither of these exists, so the resulting string should be empty
 #
-Filter-Id := "%{NAS-Port-Id || NAS-Port-Id}"
+Filter-Id := "%{NAS-Port-Id || NAS-Identifier}"
 
-if !(Filter-Id == '') {
+if (Filter-Id != '') {
+	test_fail
+}
+
+#
+#  The first one doesn't exist, but the second one does.
+#
+Filter-Id := "%{NAS-Port-Id || User-Name}"
+
+if (Filter-Id != User-Name) {
 	test_fail
 }
 

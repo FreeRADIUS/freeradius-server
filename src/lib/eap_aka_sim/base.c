@@ -53,7 +53,7 @@ fr_dict_autoload_t libfreeradius_aka_sim_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_eap_aka_sim, .base_dir = "eap/aka-sim", .proto = "eap-aka-sim" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_eap_aka_sim_ak;
@@ -179,7 +179,7 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_sim_op, .name = "SIM-OP", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_opc, .name = "SIM-OPc", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_sqn, .name = "SIM-SQN", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_value_box_t const	*enum_eap_type_sim;
@@ -196,7 +196,7 @@ fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[] = {
 
 	{ .out = &enum_kdf_prime_with_ck_prime_ik_prime, .name = "Prime-With-CK-Prime-IK-Prime", .attr = &attr_eap_aka_sim_kdf },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** SIM AT on-the-wire format attribute sizes

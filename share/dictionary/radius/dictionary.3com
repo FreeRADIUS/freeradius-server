@@ -18,7 +18,7 @@ VENDOR		3com				43
 #
 BEGIN-VENDOR	3com
 
-ATTRIBUTE	User-Access-Level			1	integer
+ATTRIBUTE	User-Access-Level			1	uint32
 
 #	Read-only access to basic network tools (ping, etc)
 VALUE	User-Access-Level		Visitor			0
@@ -49,7 +49,7 @@ ATTRIBUTE	End-Date				7	string
 #	URL where the user is redirected after WebAAA
 ATTRIBUTE	URL					8	string
 
-ATTRIBUTE	Connect_Id				26	integer
+ATTRIBUTE	Connect_Id				26	uint32
 ATTRIBUTE	NAS-Startup-Timestamp			59	date
 ATTRIBUTE	Ip-Host-Addr				60	string
 ATTRIBUTE	Product-ID				255	string

@@ -7,10 +7,8 @@ control += {
 }
 
 if (User-Name) {
-	foreach control.Filter-Id {
-		if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-			control.Calling-Station-Id := "%{1}"
-		}
+	foreach thing (control.Filter-Id[*]) {
+		control.Calling-Station-Id := thing
 	}
 }
 
@@ -20,10 +18,8 @@ if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {
 
 control -= Calling-Station-Id[*]
 
-foreach control.Filter-Id {
-	if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-		control.Calling-Station-Id := "%{1}"
-	}
+foreach thing (control.Filter-Id) {
+	control.Calling-Station-Id := thing
 }
 
 if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {

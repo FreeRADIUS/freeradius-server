@@ -42,7 +42,7 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 #include <freeradius-devel/server/tmpl.h>
 
 #include <freeradius-devel/util/dict.h>
-
+#include <freeradius-devel/io/worker.h>
 
 /** Main server configuration
  *
@@ -58,15 +58,13 @@ struct main_config_s {
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
-	fr_time_delta_t	max_request_time;		//!< How long a request can be processed for before
-							//!< timing out.
+	fr_worker_config_t	worker;			//!< Worker thread configuration.
 
 	bool		drop_requests;			//!< Administratively disable request processing.
 	bool		suppress_secrets;		//!< suppress secrets (or not)
 
 	char const	*log_dir;
 	char const	*local_state_dir;
-	char const	*chroot_dir;
 
 	bool		reverse_lookups;
 	bool		hostname_lookups;
@@ -93,10 +91,6 @@ struct main_config_s {
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
-
-	uint32_t	max_requests;			//!< maximum number of requests outstanding
-
 	bool		write_pid;			//!< write the PID file
 
 #ifdef HAVE_SETUID
@@ -107,6 +101,9 @@ struct main_config_s {
 	gid_t		gid;				//!< GID we should run as.
 	bool		gid_is_set;
 #endif
+
+	char const	*chdir;				//!< where to chdir() to when we start.
+	bool		chdir_is_set;
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
@@ -159,10 +156,6 @@ struct main_config_s {
 	/*
 	 *	Migration tools
 	 */
-	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
-	bool		forbid_update;			//!< forbid "update" sections
-	bool		require_enum_prefix;		//!< require "::" for enum parsing.  They're always printed with this
-	bool		call_env_forbid_ampersand;	//!< for help with migration
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

@@ -24,8 +24,8 @@ MEMBER		hardware-address-length			uint8
 MEMBER		protocol-address-length			uint8
 MEMBER		packet-type				uint16
 
-VALUE	packet-type			Request			1
-VALUE	packet-type			Reply			2
+VALUE	packet-type			ARP-Request		1
+VALUE	packet-type			ARP-Reply		2
 VALUE	packet-type			Reverse-Request		3
 VALUE	packet-type			Reverse-Reply		4
 VALUE	packet-type			DRARP-Request		5

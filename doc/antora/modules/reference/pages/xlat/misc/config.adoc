@@ -1,0 +1,23 @@
+= Server Configuration
+
+== %config(<key>)
+
+Refers to a variable in the configuration file. See the documentation
+on configuration file references.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+"Server installed in %config('prefix')"
+"Module rlm_exec.shell_escape = %config('modules.exec.shell_escape')"
+----
+
+.Output
+
+```
+Server installed in /opt/freeradius
+Module rlm_exec.shell_escape = yes
+```

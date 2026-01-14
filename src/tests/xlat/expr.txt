@@ -1,5 +1,23 @@
-#  this is "foo" + PRINTABLE version of the packet authentication vector
-xlat_expr "foo%bin(000000)"
+#
+#  1 argument
+#
+#
+#  @todo - this offset is way wrong
+#
+xlat_expr %file.exists()
+match ERROR offset 13 'Missing required arg 1'
+
+#
+#  Only one argument
+#
+xlat_expr %file.exists("foo", "bar")
+match ERROR offset 19 'Too many arguments, expected 1, got 2'
+
+
+#-- we don't have a cast to string, and we don't have a tmpl where the cast
+# can be stored...
+# add a cast, and update the cast function to print (type)....
+xlat_expr (string) "foo%bin('000000')"
 match foo\000\000\000
 
 xlat_expr 1 && 2
@@ -67,8 +85,12 @@ xlat_expr (uint8) 1 << 8
 match 256
 
 # Cannot perform any operations for destination type ether
+#
+#  Except the error is printed out via RPEDEBUG, and is thus unavailable
+#  to the unit tests
+#
 xlat_expr 00:01:02:03:04:05 ^ 11:22:33:44:55:66
-match ERROR expanding xlat: Invalid operation on data types - 'ether' ^ 'ether'
+match ERROR expanding xlat: no error provided
 
 #
 #  NAS-IP-Address doesn't exist.
@@ -90,12 +112,12 @@ match 0x666f6f7f000001
 #  This just casts the octets to 'string', without
 #  any escaping.
 #
-xlat_expr "foo" + (string)%bin(0x0001020304)
+xlat_expr "foo" + (string)%bin('0x0001020304')
 match foo\000\001\002\003\004
 
 
 # string + octets gets promoted to octets
-xlat_expr "foo" + %bin(0x0001020304)
+xlat_expr "foo" + %bin('0x0001020304')
 match 0x666f6f0001020304
 
 # no escaping!
@@ -127,20 +149,20 @@ match bob
 #
 #  We're not hashing the string value of the attribute reference
 #
-xlat_expr (octets) %md5('&User-Name')
+xlat_expr (octets) %hash.md5('&User-Name')
 match 0x14d23a6ed8e7d19fcb3a38dc86c1fc0b
 
 #
 #  We're hashing the string contained by the User-Name
 #
-xlat_expr (octets) %md5('bob')
+xlat_expr (octets) %hash.md5('bob')
 match 0x9f9d51bc70ef21ca5c14f307980a29d8
 
 #
 #  And if we take it from the &User-Name ref, we get the same thing
 #  as hashing the bare string.
 #
-xlat_expr (octets) %md5(%{User-Name})
+xlat_expr (octets) %hash.md5(%{User-Name})
 match 0x9f9d51bc70ef21ca5c14f307980a29d8
 
 xlat_expr &Service-Type

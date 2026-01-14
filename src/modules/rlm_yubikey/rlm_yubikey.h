@@ -38,19 +38,19 @@
  *	be used as the instance handle.
  */
 typedef struct {
-	char const		*name;
-	fr_dict_enum_value_t	*auth_type;		//!< Our Auth-Type.
-	unsigned int		id_len;			//!< The length of the Public ID portion of the OTP string.
-	bool			split;			//!< Split password string into components.
-	bool			decrypt;		//!< Decrypt the OTP string using the yubikey library.
-	bool			validate;		//!< Validate the OTP string using the ykclient library.
-	char const		**uris;			//!< Yubicloud URLs to validate the token against.
+	char const			*name;
+	fr_dict_enum_value_t const	*auth_type;		//!< Our Auth-Type.
+	unsigned int			id_len;			//!< The length of the Public ID portion of the OTP string.
+	bool				split;			//!< Split password string into components.
+	bool				decrypt;		//!< Decrypt the OTP string using the yubikey library.
+	bool				validate;		//!< Validate the OTP string using the ykclient library.
+	char const			**uris;			//!< Yubicloud URLs to validate the token against.
 
 #ifdef HAVE_YKCLIENT
-	unsigned int		client_id;		//!< Validation API client ID.
-	char const		*api_key;		//!< Validation API signing key.
-	ykclient_t		*ykc;			//!< ykclient configuration.
-	fr_pool_t		*pool;			//!< Connection pool instance.
+	unsigned int			client_id;		//!< Validation API client ID.
+	char const			*api_key;		//!< Validation API signing key.
+	ykclient_t			*ykc;			//!< ykclient configuration.
+	fr_pool_t			*pool;			//!< Connection pool instance.
 #endif
 } rlm_yubikey_t;
 
@@ -58,7 +58,7 @@ typedef struct {
 /*
  *	decrypt.c - Decryption functions
  */
-unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+unlang_action_t rlm_yubikey_decrypt(unlang_result_t *p_result, module_ctx_t const *mctx,
 				    request_t *request, char const *passcode);
 
 /*
@@ -68,7 +68,7 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst);
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst);
 
-unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+unlang_action_t rlm_yubikey_validate(unlang_result_t *p_result, module_ctx_t const *mctx,
 				     request_t *request, char const *passcode);
 
 extern HIDDEN fr_dict_attr_t const *attr_auth_type;

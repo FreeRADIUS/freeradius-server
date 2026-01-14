@@ -8,7 +8,7 @@ string takeoverresult
 $INCLUDE cluster_reset.inc
 
 #  Hashes to Redis cluster node master 1
-if (!(%redis(SET, b, 'boom') == 'OK')) {
+if (!(%redis('SET', 'b', 'boom') == 'OK')) {
 	test_fail
 }
 
@@ -16,13 +16,13 @@ if (!(%redis(SET, b, 'boom') == 'OK')) {
 %delay(0.5)
 
 #  Note the current master
-redismaster := %redis.node(b, 0)
+redismaster := %redis.node('b', 0)
 
 #  Note the current replica
-redisreplica := %redis.node(b, 1)
+redisreplica := %redis.node('b', 1)
 
 #  Cause one of the redis cluster nodes to SEGV
-if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {
+if (%redis("@%redis.node('b', 0)", 'DEBUG', 'SEGFAULT')) {
 	test_fail
 }
 
@@ -31,7 +31,7 @@ if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {
 #  which sometimes happens when running tests with sanitizers, due to
 #  slowness introduced by the sanitizers.
 try {
-	takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
+	takeoverresult = %redis("@%{redisreplica}", 'CLUSTER', 'FAILOVER', 'TAKEOVER')
 }
 catch fail {
 	takeoverresult = 'OK'
@@ -41,28 +41,28 @@ if (takeoverresult != 'OK') {
 }
 
 #  Allow time for the takeover to propagate to other nodes
-foreach control.Filter-Id {
+foreach i (%range(20)) {
 	# Keep remapping the cluster
 	%redis.remap(%{redisreplica})
 
-	if (%redis.node(b, 0) == redisreplica) {
+	if (%redis.node('b', 0) == redisreplica) {
 		break
 	}
 	%delay(0.5)
 }
 
-if (!(%redis(GET, b) == 'boom')) {
+if (!(%redis('GET', 'b') == 'boom')) {
 	test_fail
 }
 
 #  Kill that one too
-if (%redis(@%redis.node(b), DEBUG, SEGFAULT)) {
+if (%redis("@%redis.node('b')", 'DEBUG', 'SEGFAULT')) {
 	test_fail
 }
 
 # No alternatives...
 %delay(0.5)
-if (%redis(GET, b) == 'boom') {
+if (%redis('GET', 'b') == 'boom') {
 	test_fail
 }
 

@@ -72,12 +72,11 @@ size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
  *	- other #sql_rcode_t constants on error.
  *
  * @param p_result	Result of current module call.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		query context containing query to execute.
  * @return an unlang_action_t.
  */
-unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+unlang_action_t rlm_sql_fetch_row(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_t const	*inst = query_ctx->inst;
@@ -85,7 +84,7 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	if (!query_ctx->tconn) {
 		ROPTIONAL(RERROR, ERROR, "Invalid connection");
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -93,20 +92,20 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	 *	may require the original connection to free up queries or
 	 *	result sets associated with that connection.
 	 */
-	(inst->driver->sql_fetch_row)(p_result, NULL, request, query_ctx);
+	(inst->driver->sql_fetch_row)(p_result, request, query_ctx);
 	switch (query_ctx->rcode) {
 	case RLM_SQL_OK:
 		fr_assert(query_ctx->row != NULL);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case RLM_SQL_NO_MORE_ROWS:
 		fr_assert(query_ctx->row == NULL);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	default:
 		ROPTIONAL(RERROR, ERROR, "Error fetching row");
 		rlm_sql_print_error(inst, request, query_ctx, false);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
@@ -199,8 +198,8 @@ fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, reque
 
 /** Yield processing after submitting a trunk request.
  */
-static unlang_action_t sql_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-				       UNUSED request_t *request, UNUSED void *uctx)
+static unlang_action_t sql_trunk_query_start(UNUSED unlang_result_t *p_result,
+					     UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_YIELD;
 }
@@ -212,6 +211,15 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 
 	if (!query_ctx->treq) return;
+
+	/*
+	 *	A reapable trunk request has already completed.
+	 */
+	if (unlikely(query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
+		trunk_request_signal_complete(query_ctx->treq);
+		query_ctx->treq = NULL;
+		return;
+	}
 
 	/*
 	 *	The query_ctx needs to be parented by the treq so that it still exists
@@ -227,12 +235,11 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 /** Submit an SQL query using a trunk connection.
  *
  * @param p_result	Result of current module call.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		query context containing query to execute.
  * @return an unlang_action_t.
  */
-unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	trunk_enqueue_t	status;
@@ -242,7 +249,7 @@ unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority,
 	/* There's no query to run, return an error */
 	if (query_ctx->query_str[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -263,42 +270,42 @@ unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority,
 		 *	on queueing.  If the query fails then the trunk request will be failed
 		 *	in which case the query_ctx will no longer have a trunk request.
 		 */
-		if (!query_ctx->treq) RETURN_MODULE_FAIL;
+		if (!query_ctx->treq) RETURN_UNLANG_FAIL;
 
 		/*
 		 *	Synchronous drivers will have processed the query and set the
 		 *	state of the trunk request to reapable - so in that case don't
 		 *	yield (in sql_trunk_query_start)
 		 */
-		if (unlang_function_push(request,
-					 query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
-					 	NULL : sql_trunk_query_start,
-					 query_ctx->type == SQL_QUERY_SELECT ?
-					 	query_ctx->inst->driver->sql_select_query_resume :
-						query_ctx->inst->driver->sql_query_resume,
-					 sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_MODULE_FAIL;
-		*p_result = RLM_MODULE_OK;
+		if (unlang_function_push_with_result(/* allow the caller of rlm_sql_trunk_query to get at the rcode */p_result,
+						     request,
+						     query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
+							NULL : sql_trunk_query_start,
+						     query_ctx->type == SQL_QUERY_SELECT ?
+							query_ctx->inst->driver->sql_select_query_resume :
+							query_ctx->inst->driver->sql_query_resume,
+						     sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_UNLANG_FAIL;
+		p_result->rcode = RLM_MODULE_OK;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	default:
 		REDEBUG("Unable to enqueue SQL query");
 		query_ctx->status = SQL_QUERY_FAILED;
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
 /** Process the results of an SQL query to produce a map list.
  *
  */
-static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t sql_get_map_list_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_sql_map_ctx_t	*map_ctx = talloc_get_type_abort(uctx, fr_sql_map_ctx_t);
 	tmpl_rules_t		lhs_rules = (tmpl_rules_t) {
 		.attr = {
-			.dict_def = request->dict,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+			.dict_def = request->local_dict,
 			.list_def = map_ctx->list,
 			.list_presence = TMPL_ATTR_LIST_ALLOW
 		}
@@ -309,19 +316,21 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 	map_t		*parent = NULL;
 	rlm_sql_t const	*inst = map_ctx->inst;
 
-	rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
 	rhs_rules.attr.list_def = request_attr_request;
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) {
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		RETURN_UNLANG_FAIL;
+	}
 
-	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(p_result, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		map_t *map;
 
 		row = query_ctx->row;
 		if (!row[2] || !row[3] || !row[4]) {
 			RPERROR("SQL query returned NULL values");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3],
 				     &lhs_rules, &rhs_rules,
@@ -330,7 +339,7 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 			REDEBUG("    %s", row[2]);
 			REDEBUG("    %s", row[4]);
 			REDEBUG("    %s", row[3]);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (!map->parent) map_list_insert_tail(map_ctx->out, map);
 
@@ -338,24 +347,37 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 	}
 	talloc_free(query_ctx);
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Submit the query to get any user / group check or reply pairs
  *
  */
-unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
+unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
 {
 	rlm_sql_t const	*inst = map_ctx->inst;
 
 	fr_assert(request);
+	fr_assert(map_ctx->query);
 
 	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
-	if (unlang_function_push(request, NULL, sql_get_map_list_resume, NULL, 0, UNLANG_SUB_FRAME, map_ctx) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     NULL,
+					     sql_get_map_list_resume,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME,
+					    map_ctx) < 0) return UNLANG_ACTION_FAIL;
 
-	return unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, map_ctx->query_ctx);
+	return unlang_function_push_with_result(/* discard, sql_get_map_list_resume uses query_ctx->rcode */ NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						map_ctx->query_ctx);
 }
 
 /*
@@ -367,7 +389,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *
 	size_t len;
 	bool failed = false;	/* Write the log message outside of the critical region */
 
-	fd = exfile_open(inst->ef, filename, 0640, NULL);
+	fd = exfile_open(inst->ef, filename, 0640, 0, NULL);
 	if (fd < 0) {
 		ERROR("Couldn't open logfile '%s': %s", filename, fr_syserror(errno));
 

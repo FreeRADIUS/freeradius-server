@@ -103,7 +103,9 @@ typedef struct {
 	fr_pair_t	*transaction_id;
 	fr_pair_list_t	client_id;
 	fr_pair_list_t	server_id;
-} process_dhcpv6_client_fields_t;
+	unlang_result_t	result;
+	void		*uctx;
+} process_dhcpv6_rctx_t;
 
 /** Records fields from the original relay-request so we have a known good copy
  */
@@ -121,7 +123,7 @@ extern fr_dict_autoload_t process_dhcpv6_dict[];
 fr_dict_autoload_t process_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_client_id;
@@ -151,7 +153,7 @@ fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
 	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const *enum_status_code_success;
@@ -165,7 +167,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 	{ .out = &enum_status_code_unspec_fail, .name = "UnspecFail", .attr = &attr_status_code_value },
 	{ .out = &enum_status_code_not_on_link, .name = "NotOnLink", .attr = &attr_status_code_value },
 	{ .out = &enum_status_code_no_binding, .name = "NoBinding", .attr = &attr_status_code_value },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #define FR_DHCPV6_PROCESS_CODE_VALID(_x) (FR_DHCPV6_PACKET_CODE_VALID(_x) || (_x == FR_DHCPV6_DO_NOT_RESPOND))
@@ -175,6 +177,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DHCPV6_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_DHCPV6_PROCESS_CODE_VALID
 #define PROCESS_INST			process_dhcpv6_t
+#define PROCESS_RCTX			process_dhcpv6_rctx_t
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_DHCPV6_REPLY
 
 /*
@@ -325,24 +328,22 @@ static void dhcpv6_packet_debug(request_t *request, fr_packet_t const *packet, f
  *
  */
 static inline CC_HINT(always_inline)
-process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, bool expect_server_id)
+int dhcpv6_client_fields_store(request_t *request, process_dhcpv6_rctx_t *rctx, bool expect_server_id)
 {
 	fr_pair_t			*transaction_id;
-	process_dhcpv6_client_fields_t	*rctx;
 
 	transaction_id = fr_pair_find_by_da(&request->request_pairs, NULL, attr_transaction_id);
 	if (!transaction_id) {
 		REDEBUG("Missing Transaction-ID");
-		return NULL;
+		return -1;
 	}
 
 	if (transaction_id->vp_length != DHCPV6_TRANSACTION_ID_LEN) {
 		REDEBUG("Invalid Transaction-ID, expected len %u, got len %zu",
 			DHCPV6_TRANSACTION_ID_LEN, transaction_id->vp_length);
-		return NULL;
+		return -1;
 	}
 
-	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
 
 	fr_pair_list_init(&rctx->client_id);
@@ -358,7 +359,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		REDEBUG("Error copying Client-ID");
 	error:
 		talloc_free(rctx);
-		return NULL;
+		return -1;
 
 	case 0:
 		REDEBUG("Missing Client-ID");
@@ -389,7 +390,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		break;
 	}
 
-	return rctx;
+	return 0;
 }
 
 /** Validate a solicit/rebind/confirm message
@@ -403,17 +404,16 @@ RECV(for_any_server)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_client_fields_t	*rctx = NULL;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
 	PROCESS_TRACE;
 
-	rctx = dhcpv6_client_fields_store(request, false);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, false) < 0) RETURN_UNLANG_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->resume,
+	return unlang_module_yield_to_section(RESULT_P, request,
+					      cs, state->default_rcode, state->resume,
 					      NULL, 0, rctx);
 }
 
@@ -438,17 +438,16 @@ RECV(for_this_server)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_client_fields_t	*rctx;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
 	PROCESS_TRACE;
 
-	rctx = dhcpv6_client_fields_store(request, true);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, true) < 0) RETURN_UNLANG_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->resume,
+	return unlang_module_yield_to_section(RESULT_P, request,
+					      cs, state->default_rcode, state->resume,
 					      NULL, 0, rctx);
 }
 
@@ -521,13 +520,19 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 	 *	Don't override the user status
 	 *      code.
 	 */
-	if (pair_update_reply(&vp, attr_status_code_value) == 0) fr_value_box_copy(vp, &vp->data, vb);
+	if (pair_update_reply(&vp, attr_status_code_value) == 0) {
+		if (unlikely(fr_value_box_copy(vp, &vp->data, vb) < 0)) {
+			RPERROR("Failed copying status code value");
+			pair_delete_reply(vp);
+			return;
+		}
+	}
 
 	/*
 	 *	Move the module failure messages upwards
 	 *	if requested to by the user.
 	 */
-	if (inst->move_failure_message_to_parent && request->parent && (request->parent->dict == request->dict)) {
+	if (inst->move_failure_message_to_parent && request->parent && (request->parent->proto_dict == request->proto_dict)) {
 		fr_pair_t const *prev = NULL;
 
 		while ((failure_message = fr_pair_find_by_da(&request->request_pairs,
@@ -581,7 +586,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 RESUME(send_to_client)
 {
 	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
-	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_client_fields_t);
+	process_dhcpv6_rctx_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 	fr_process_state_t const	*state;
 
 
@@ -591,12 +596,12 @@ RESUME(send_to_client)
 	 *	Don't bother adding VPs if we're not going
 	 *	be responding to the client.
 	 */
-	if (state->packet_type[*p_result] == FR_DHCPV6_DO_NOT_RESPOND) return CALL_RESUME(send_generic);
+	if (state->packet_type[RESULT_RCODE] == FR_DHCPV6_DO_NOT_RESPOND) return CALL_RESUME(send_generic);
 
 	/*
 	 *	Add a status code if we have one
 	 */
-	status_code_add(inst, request, state->status_codes[*p_result]);
+	status_code_add(inst, request, state->status_codes[RESULT_RCODE]);
 
 	/*
 	 *	If we have a status code entry then we'll
@@ -605,7 +610,7 @@ RESUME(send_to_client)
 	 */
 	if (unlikely(restore_field(request, &fields->transaction_id) < 0)) {
 	fail:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
 	if (unlikely(restore_field_list(request, &fields->client_id) < 0)) goto fail;
@@ -665,15 +670,17 @@ RECV(from_relay)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_relay_fields_t	*rctx = NULL;
+	process_dhcpv6_relay_fields_t	*relay_fields = NULL;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
-	rctx = dhcpv6_relay_fields_store(request);
-	if (!rctx) RETURN_MODULE_INVALID;
+	relay_fields = dhcpv6_relay_fields_store(request);
+	if (!relay_fields) RETURN_UNLANG_INVALID;
+	rctx->uctx = relay_fields;
 
 	UPDATE_STATE_CS(packet);
 
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->resume,
+	return unlang_module_yield_to_section(RESULT_P, request,
+					      cs, state->default_rcode, state->resume,
 					      NULL, 0, rctx);
 }
 
@@ -683,7 +690,8 @@ RECV(from_relay)
 RESUME(send_to_relay)
 {
 	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
-	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_relay_fields_t);
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
+	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(rctx->uctx, process_dhcpv6_relay_fields_t);
 	fr_process_state_t const	*state;
 
 	UPDATE_STATE(reply);
@@ -691,14 +699,14 @@ RESUME(send_to_relay)
 	/*
 	 *	Add a status code if we have one
 	 */
-	status_code_add(inst, request, state->status_codes[*p_result]);
+	status_code_add(inst, request, state->status_codes[RESULT_RCODE]);
 
 	/*
 	 *	Restore relay fields
 	 */
 	if (unlikely(restore_field(request, &fields->hop_count) < 0)) {
 	fail:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
 	if (unlikely(restore_field(request, &fields->link_address) < 0)) goto fail;
@@ -713,7 +721,7 @@ RESUME(send_to_relay)
 /** Main dispatch function
  *
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -724,13 +732,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "dhcpv6";
 	request->module = NULL;
-	fr_assert(request->dict == dict_dhcpv6);
+	fr_assert(request->proto_dict == dict_dhcpv6);
 
 	UPDATE_STATE(packet);
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dhcpv6_packet_debug(request, request->packet, &request->request_pairs, true);
@@ -769,7 +777,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			/* RLM_MODULE_NOOP	- No response */
@@ -783,7 +792,7 @@ static fr_process_state_t const process_state[] = {
 			/* RLM_MODULE_DISALLOW	- No response */
 			/* RLM_MODULE_NOTFOUND	- No response */
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_solicit),
 	},
 
@@ -805,7 +814,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -819,7 +829,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_request),
 	},
 
@@ -842,7 +852,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 
 		/*
@@ -869,7 +880,7 @@ static fr_process_state_t const process_state[] = {
 			/* RLM_MODULE_DISALLOW	- No response */
 			/* RLM_MODULE_NOTFOUND	- No response */
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_confirm),
 	},
 
@@ -894,7 +905,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 
    		/*
@@ -914,7 +926,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_no_binding
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_renew),
 	},
 
@@ -939,7 +951,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -953,7 +966,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_rebind),
 	},
 	/*
@@ -975,7 +988,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -989,7 +1003,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_information_request),
 	},
 	/*
@@ -1011,7 +1025,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -1025,7 +1040,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_release),
 	},
@@ -1050,7 +1065,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -1064,7 +1080,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_decline),
 	},
 	/*
@@ -1089,7 +1106,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_RELAY_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_RELAY_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_RELAY_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_RELAY_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
@@ -1103,7 +1121,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, recv_relay_forward),
 	},
 	/*
@@ -1120,7 +1138,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_success,
@@ -1134,7 +1153,8 @@ static fr_process_state_t const process_state[] = {
 			/* RLM_MODULE_DISALLOW	- No response */
 			/* RLM_MODULE_NOTFOUND	- No response */
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.section_offset = offsetof(process_dhcpv6_sections_t, send_advertise),
 	},
 	/*
@@ -1161,7 +1181,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_success,
@@ -1175,7 +1196,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.section_offset = offsetof(process_dhcpv6_sections_t, send_reply),
 	},
 	/*
@@ -1196,7 +1218,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_RELAY_REPLY,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_RELAY_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_RELAY_REPLY
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_RELAY_REPLY,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
 			[RLM_MODULE_NOOP]	= &enum_status_code_success,
@@ -1210,7 +1233,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
 			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.section_offset = offsetof(process_dhcpv6_sections_t, send_relay_reply),
 	},
 
@@ -1227,9 +1251,11 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.section_offset = offsetof(process_dhcpv6_sections_t, do_not_respond),
 	}
 };
@@ -1240,11 +1266,13 @@ fr_process_module_t process_dhcpv6 = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "dhcpv6",
 		.config		= dhcpv6_process_config,
-		.inst_size	= sizeof(process_dhcpv6_t),
+		MODULE_INST(process_dhcpv6_t),
+		MODULE_RCTX(process_dhcpv6_rctx_t),
 
 		.instantiate	= mod_instantiate
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_dhcpv6
+	.dict		= &dict_dhcpv6,
+	.packet_type	= &attr_packet_type
 };

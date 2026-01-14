@@ -200,8 +200,8 @@ e.g:
 [source, unlang]
 ----
 ldap
-if ((ok || updated) && &User-Password) {
-	&control.Auth-Type := ::ldap
+if ((ok || updated) && User-Password) {
+	control.Auth-Type := ::ldap
 }
 ----
 ====
@@ -466,8 +466,8 @@ specified by 'default' or in the user or group objects.
 
 default:: The default profile. This may be a DN or an attribute reference.
 
-NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
-to specify the default profile, set this to `&control.User-Profile`.
+NOTE: To get old v2.2.x style behaviour, or to use the `User-Profile` attribute
+to specify the default profile, set this to `control.User-Profile`.
 
 
 
@@ -501,6 +501,22 @@ sorting order will be reversed for that attribute.
 
   * If `sort_by` is set, and the server does not support sorting
 or the attributes do not have an ORDERING rule, the search will fail.
+
+
+
+check_attribute:: The LDAP attribute containing conditions which
+will be evaluated to determine whether a profile should be applied.
+
+
+
+fallthrough_attribute:: The LDAP attribute containing a condition
+which will be evaluated to determine whether more profiles should
+be applied after this one.
+
+
+
+fallthrough_def:: If the attribute referenced in fallthrough_attribute
+is not in the reply, what should be the default behaviour
 
 
 
@@ -781,9 +797,39 @@ binds which there can be on a single thread.
 
 
 
+## Policy Over-rides
+
+The following policy ensures that every call to the `ldap` module
+will time out within a short period of time.
+
+The policy name here should be the same as the module name.
+Reusing the same name means that this policy will be used instead
+of the module.
+
+
+
 ## Expansions
 
-The rlm_ldap provides the below xlat's functions.
+The `rlm_ldap` module provides the following xlat functions.
+
+### %ldap(...)
+
+Retrieve a value from an LDAP directory using an LDAP uri.
+
+If the LDAP uri starts `ldap:///`, i.e. no host is specified, then
+the server configured for the module will be used.
+
+.Example
+
+[source,unlang]
+----
+reply.Reply-Message := "Welcome %ldap("ldap:///ou=people,dc=example,dc=com?displayName?sub?(uid=%{User-Name})")"
+----
+
+.Output
+```
+"Welcome Example User"
+```
 
 ### %ldap.uri.escape(...)
 
@@ -796,8 +842,8 @@ in LDAP URIs and DNs, and will not be escaped or modified.
 
 [source,unlang]
 ----
-&my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-&reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
+my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 ----
 
 .Output
@@ -818,7 +864,7 @@ usually prohibited.
 
 [source,unlang]
 ----
-&my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 ----
 
 ### %ldap.uri.unescape(...)
@@ -831,14 +877,39 @@ Unescape a string for use in an LDAP filter or DN.
 
 [source,unlang]
 ----
-&my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-&reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
+my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 ----
 
 .Output
 
 ```
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+```
+
+### %ldap.uri.attr_option(...)
+
+Add an option to all attribute referenced in an LDAP URI.
+
+This is for the corner case where a URI is provided by a third party system
+and needs amending before being used. e.g. a CRL distribution point extracted
+from a certificate may need the "binary" option appending to the attribute
+being requested.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+my-uri := "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList?base?objectClass=cRLDistributionPoint"
+reply.Reply-Message := %ldap.uri.attr_option(my-uri, 'binary')
+----
+
+.Output
+
+```
+"ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList;binary?base?objectClass=cRLDistributionPoint"
 ```
 
 ### %ldap.group(...)
@@ -856,11 +927,31 @@ to convert to the required format.
 .Example
 
 [source,unlang]
----
+----
 if (%ldap.group('cn=group1,ou=Groups,dc=example,dc=org')) {
   ...
 }
----
+----
+
+
+### %ldap.profile(...)
+
+Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
+updates as configured in the module `update` section.  This can be useful when
+additional profiles need to be applied to a subscriber beyond those directly
+associated with their LDAP entry.
+
+The object can be expressed either as an LDAP URI or a DN.
+
+.Return: _bool_
+
+.Example
+
+[source,unlang]
+----
+my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
+%ldap.profile(my_profile)
+----
 
 
 == Default Configuration
@@ -881,29 +972,29 @@ ldap {
 	}
 #	valuepair_attribute = 'radiusAttribute'
 	update {
-		&control.Password.With-Header	+= 'userPassword'
-#		&control.Password.NT		:= 'ntPassword'
-#		&reply.Reply-Message		:= 'radiusReplyMessage'
-#		&reply.Tunnel-Type		:= 'radiusTunnelType'
-#		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		&reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
-		&control			+= 'radiusControlAttribute'
-		&request			+= 'radiusRequestAttribute'
-		&reply				+= 'radiusReplyAttribute'
+		control.Password.With-Header	+= 'userPassword'
+#		control.Password.NT		:= 'ntPassword'
+#		reply.Reply-Message		:= 'radiusReplyMessage'
+#		reply.Tunnel-Type		:= 'radiusTunnelType'
+#		reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+		control			+= 'radiusControlAttribute'
+		request			+= 'radiusRequestAttribute'
+		reply				+= 'radiusReplyAttribute'
 	}
 #	edir = no
 #	edir_autz = no
 	user {
 		base_dn = "${..base_dn}"
-		filter = "(uid=%{&Stripped-User-Name || &User-Name})"
-#		filter = "(&(objectClass=user)(sAMAccountName=%{&Stripped-User-Name || &User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
+		filter = "(uid=%{Stripped-User-Name || User-Name})"
+#		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 		sasl {
 #			mech = 'PLAIN'
-#			authname = &User-Name
-#			proxy = &User-Name
+#			authname = User-Name
+#			proxy = User-Name
 #			realm = 'example.org'
 		}
-#		password_attribute = &User-Password
+#		password_attribute = User-Password
 #		scope = 'sub'
 #		sort_by = '-uid'
 #		access_attribute = 'dialupAccess'
@@ -917,7 +1008,7 @@ ldap {
 		filter = '(objectClass=posixGroup)'
 #		scope = 'sub'
 #		name_attribute = cn
-#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{&Stripped-User-Name || &User-Name}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{Stripped-User-Name || User-Name}))"
 		membership_attribute = 'memberOf'
 #		cacheable_name = 'no'
 #		cacheable_dn = 'no'
@@ -933,6 +1024,9 @@ ldap {
 #		attribute = 'radiusProfileDn'
 #		attribute_suspend = 'radiusProfileDn'
 #		sort_by = 'radiusProfilePriority'
+#		check_attribute = 'radiusProfileCondition'
+#		fallthrough_attribute = 'radiusProfileFallthrough'
+#		fallthrough_default = yes
 	}
 	accounting {
 		start {
@@ -1005,6 +1099,11 @@ ldap {
 		max = 1000
 	}
 }
+#@policy ldap {
+#	timeout 1s {
+#		ldap
+#	}
+#}
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

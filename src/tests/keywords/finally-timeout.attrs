@@ -1,0 +1,6 @@
+Packet-Type = Access-Request
+
+# Should probably be Do-Not-Respond
+Result-Status == success
+Packet-Type == 0
+Reply-Message == bye-from-timeout-fin

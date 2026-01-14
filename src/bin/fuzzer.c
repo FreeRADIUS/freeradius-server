@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/strerror.h>
@@ -42,10 +43,13 @@ static bool			init = false;
 static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
 static fr_dict_protocol_t	*dl_proto;
+static TALLOC_CTX		*autofree = NULL;
+static bool			do_encode = false;
 
 static fr_dict_t		*dict = NULL;
 
 extern fr_test_point_proto_decode_t XX_PROTOCOL_XX_tp_decode_proto;
+extern fr_test_point_proto_encode_t XX_PROTOCOL_XX_tp_encode_proto;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -61,6 +65,8 @@ static void exitHandler(void)
 		dl->handle = NULL;
 	}
 	talloc_free(dl_loader);
+
+	talloc_free(autofree);
 
 	/*
 	 *	Ensure our atexit handlers run before any other
@@ -92,6 +98,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const		*proto    	= getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
+	char const		*panic_action	= getenv("PANIC_ACTION");
 	char const		*p;
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	char			*dict_dir_to_free = NULL;
@@ -100,7 +107,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
-	if (debug_lvl_str) fr_debug_lvl = atoi(debug_lvl_str);
+	if (debug_lvl_str) {
+		fr_debug_lvl = atoi(debug_lvl_str);
+
+		if (fr_debug_lvl) fr_time_start();
+	}
 
 	/*
 	 *	Setup atexit handlers to free any thread local
@@ -231,6 +242,12 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	dl_proto = fuzzer_dict_init(RTLD_DEFAULT, proto);
 
+	autofree = talloc_autofree_context();
+	if (fr_fault_setup(autofree, panic_action, (*argv)[0]) < 0) {
+		fr_perror("Failed initializing fault handler");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	init = true;
 
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
@@ -241,25 +258,53 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	return 1;
 }
 
+static uint8_t encoded_data[65536];
+
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
 	TALLOC_CTX *   ctx = talloc_init_const("fuzzer");
 	fr_pair_list_t vps;
 	void *decode_ctx = NULL;
-	fr_test_point_proto_decode_t *tp = &XX_PROTOCOL_XX_tp_decode_proto;
+	void *encode_ctx = NULL;
+	fr_test_point_proto_decode_t *tp_decode = &XX_PROTOCOL_XX_tp_decode_proto;
+	fr_test_point_proto_encode_t *tp_encode = &XX_PROTOCOL_XX_tp_encode_proto;
 
 	fr_pair_list_init(&vps);
 	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL, dict) < 0)) {
+	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, NULL) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point decode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	tp->func(ctx, &vps, buf, len, decode_ctx);
-	if (fr_debug_lvl > 3) fr_pair_list_debug(&vps);
+	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, NULL) < 0)) {
+		fr_perror("fuzzer: Failed initializing test point encode_ctx");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	if (fr_debug_lvl > 3) {
+		FR_PROTO_TRACE("Fuzzer input");
+
+		FR_PROTO_HEX_DUMP(buf, len, "");
+	}
+
+	/*
+	 *	Decode the input, and print the resulting data if we
+	 *	decoded it successfully.
+	 *
+	 *	If we have successfully decoded the data, then encode
+	 *	it again, too.
+	 */
+	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) > 0) {
+		PAIR_LIST_VERIFY_WITH_CTX(ctx, &vps);
+
+		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
+
+		if (do_encode) (void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+	}
 
 	talloc_free(decode_ctx);
+	talloc_free(encode_ctx);
 	talloc_free(ctx);
 
 	/*

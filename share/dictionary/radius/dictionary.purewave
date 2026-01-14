@@ -11,11 +11,11 @@ VENDOR		Purewave			21074
 
 BEGIN-VENDOR	Purewave
 
-ATTRIBUTE	Client-Profile				1	integer
+ATTRIBUTE	Client-Profile				1	uint32
 
-ATTRIBUTE	CS-Type					2	integer
-ATTRIBUTE	Max-Downlink-Rate			3	integer
-ATTRIBUTE	Max-Uplink-Rate				4	integer
+ATTRIBUTE	CS-Type					2	uint32
+ATTRIBUTE	Max-Downlink-Rate			3	uint32
+ATTRIBUTE	Max-Uplink-Rate				4	uint32
 
 # the following two attributes are needed when cs-Type is IPV4_CS
 #
@@ -28,7 +28,7 @@ ATTRIBUTE	IP-Netmask				6	ipaddr
 # Range		0-1
 # Default value	1
 #
-ATTRIBUTE	Service-Enable				7	integer
+ATTRIBUTE	Service-Enable				7	uint32
 
 VALUE	CS-Type				ETHERNET_CS		1
 VALUE	CS-Type				IPV4_CS			0

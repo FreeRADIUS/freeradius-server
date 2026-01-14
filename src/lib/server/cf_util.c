@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
@@ -501,17 +500,17 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 
 /** Return the next child of the CONF_ITEM
  *
- * @param[in] ci	to return children from.
+ * @param[in] parent	to return children from.
  * @param[in] curr	child to start searching from.
  * @return
  *	- The next #CONF_ITEM that's a child of cs.
  *	- NULL if no more #CONF_ITEM.
  */
-CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *curr)
+CONF_ITEM *_cf_item_next(CONF_ITEM const *parent, CONF_ITEM const *curr)
 {
-	if (!ci) return NULL;
+	if (!parent) return NULL;
 
-	return fr_dlist_next(&ci->children, curr);
+	return fr_dlist_next(&parent->children, curr);
 }
 
 /** Return the next child of cs
@@ -1232,18 +1231,6 @@ fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
 	if (!cs) return T_INVALID;
 
 	return cs->name2_quote;
-}
-
-/** Set the quoting of the name2 identifier
- *
- * @param[in] cs	containing name2.
- * @param[in] token	the quote token
- */
-void cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token)
-{
-	if (!cs) return;
-
-	cs->name2_quote = token;
 }
 
 /** Return the quoting for one of the variadic arguments
@@ -1985,7 +1972,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 	/*
 	 *	Trim the final ", "
 	 */
-	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 3));
+	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 2));
 
 	cf_log_err(cp, "Invalid value \"%s\". Expected one of %s", cf_pair_value(cp), list);
 
@@ -2348,7 +2335,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
 
 		if (ci->type != CONF_ITEM_SECTION) {
-			in_ident2 = false;
+			in_ident2 = NULL;
 		} else {
 			in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
 		}

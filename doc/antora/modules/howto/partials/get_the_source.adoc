@@ -1,0 +1,5 @@
+Download the latest version of the FreeRADIUS source from one of these sites:
+
+*  https://www.freeradius.org/releases/[the FreeRADIUS web site]; or
+* from https://github.com/FreeRADIUS/freeradius-server/[GitHub].
+* from https://hub.docker.com/r/freeradius/freeradius-server/[Docker Hub].

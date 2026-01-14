@@ -35,6 +35,8 @@ RCSID("$Id$")
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_OFF(unreachable-code-return)
+DIAG_OFF(unreachable-code-break)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 #ifdef INADDR_ANY
@@ -55,11 +57,19 @@ extern char **environ;
 #endif
 
 typedef struct {
-	bool	request;	//!< Should the request list be replaced after module call
-	bool	reply;		//!< Should the reply list be replaced after module call
-	bool	control;	//!< Should the control list be replaced after module call
-	bool	session;	//!< Should the session list be replaced after module call
-} rlm_perl_replace_t;
+	char const	*function_name;	//!< Name of the function being called
+	char		*name1;		//!< Section name1 where this is called
+	char		*name2;		//!< Section name2 where this is called
+	fr_rb_node_t	node;		//!< Node in tree of function calls.
+} perl_func_def_t;
+
+typedef struct {
+	perl_func_def_t	*func;
+} perl_call_env_t;
+
+typedef struct {
+	pthread_mutex_t	mutex;
+} rlm_perl_mutable_t;
 
 /*
  *	Define a structure for our module configuration.
@@ -72,18 +82,14 @@ typedef struct {
 	/* Name of the perl module */
 	char const	*module;
 
-	/* Name of the functions for each module method */
-	char const	*func_authorize;
-	char const	*func_authenticate;
-	char const	*func_accounting;
-	char const	*func_preacct;
-	char const	*func_detach;
-	char const	*func_post_auth;
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
+	char const	*func_detach;		//!< Function to run when mod_detach is run.
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
-	rlm_perl_replace_t	replace;
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
+	rlm_perl_mutable_t	*mutable;
 
 } rlm_perl_t;
 
@@ -91,38 +97,53 @@ typedef struct {
 	PerlInterpreter		*perl;	//!< Thread specific perl interpreter.
 } rlm_perl_thread_t;
 
-static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
-
-static const conf_parser_t replace_config[] = {
-	{ FR_CONF_OFFSET("request", rlm_perl_replace_t, request) },
-	{ FR_CONF_OFFSET("reply", rlm_perl_replace_t, reply) },
-	{ FR_CONF_OFFSET("control", rlm_perl_replace_t, control) },
-	{ FR_CONF_OFFSET("session", rlm_perl_replace_t, session) },
-	CONF_PARSER_TERMINATOR
+/*
+ *	C structure associated with tied hashes and arrays
+ */
+typedef struct fr_perl_pair_s fr_perl_pair_t;
+struct fr_perl_pair_s {
+	fr_dict_attr_t const	*da;		//!< Dictionary attribute associated with hash / array.
+	fr_pair_t		*vp;		//!< Real pair associated with the hash / array, if it exists.
+	unsigned int		idx;		//!< Instance number.
+	fr_perl_pair_t		*parent;	//!< Parent attribute data.
+	fr_dcursor_t		cursor;		//!< Cursor used for iterating over the keys of a tied hash.
 };
+
+/*
+ *	Dummy Magic Virtual Table used to ensure we retrieve the correct magic data
+ */
+static MGVTBL rlm_perl_vtbl = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), rlm_perl_t, func_##_x), \
-			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
-
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
-	RLM_PERL_CONF(authorize),
-	RLM_PERL_CONF(authenticate),
-	RLM_PERL_CONF(post_auth),
-	RLM_PERL_CONF(accounting),
-	RLM_PERL_CONF(preacct),
-	RLM_PERL_CONF(detach),
+	{ FR_CONF_OFFSET("func_detach", rlm_perl_t, func_detach), .data = NULL, .dflt = "detach", .quote = T_INVALID },
 
 	{ FR_CONF_OFFSET("perl_flags", rlm_perl_t, perl_flags) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("replace", 0, rlm_perl_t, replace, replace_config) },
-
 	CONF_PARSER_TERMINATOR
 };
+
+/** How to compare two Perl function calls
+ *
+ */
+static int8_t perl_func_def_cmp(void const *one, void const *two)
+{
+	perl_func_def_t const *a = one, *b = two;
+	int ret;
+
+	ret = strcmp(a->name1, b->name1);
+	if (ret != 0) return CMP(ret, 0);
+	if (!a->name2 && !b->name2) return 0;
+	if (!a->name2 || !b->name2) return a->name2 ? 1 : -1;
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
+}
 
 /*
  * man perlembed
@@ -193,10 +214,10 @@ static void rlm_perl_close_handles(void **handles)
 
 /*
  *	This is wrapper for fr_log
- *	Now users can call radiusd::log(level,msg) which is the same
+ *	Now users can call freeradius::log(level,msg) which is the same
  *	as calling fr_log from C code.
  */
-static XS(XS_radiusd_log)
+static XS(XS_freeradius_log)
 {
 	dXSARGS;
 	if (items !=2)
@@ -220,11 +241,11 @@ static XS(XS_radiusd_log)
 /*
  *	This is a wrapper for xlat_aeval
  *	Now users are able to get data that is accessible only via xlat
- *	e.g. %client(...)
- *	Call syntax is radiusd::xlat(string), string will be handled the
- *	same way it is described in EXPANSIONS section of man unlang
+ *	e.g. %request.client(...)
+ *	Call syntax is freeradius::xlat(string), string will be handled as
+ *	a double-quoted string in the configuration files.
  */
-static XS(XS_radiusd_xlat)
+static XS(XS_freeradius_xlat)
 {
 	dXSARGS;
 	char *in_str;
@@ -249,6 +270,737 @@ static XS(XS_radiusd_xlat)
 	XSRETURN(1);
 }
 
+/** Helper function for turning hash keys into dictionary attributes
+ *
+ */
+static inline fr_dict_attr_t const *perl_attr_lookup(fr_perl_pair_t *pair_data, char const *attr)
+{
+	fr_dict_attr_t const *da = fr_dict_attr_by_name(NULL, pair_data->da, attr);
+
+	/*
+	 *	Allow fallback to internal attributes if the parent is a group or dictionary root.
+	 */
+	if (!da && (fr_type_is_group(pair_data->da->type) || pair_data->da->flags.is_root)) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr);
+	}
+
+	if (!da) croak("Unknown or invalid attribute name \"%s\"", attr);
+
+	return da;
+}
+
+/** Convenience macro for fetching C data associated with tied hash / array and validating stack size
+ *
+ */
+#define GET_PAIR_MAGIC(count) MAGIC *mg = mg_findext(ST(0), PERL_MAGIC_ext, &rlm_perl_vtbl); \
+	fr_perl_pair_t *pair_data; \
+	if (unlikely(items < count)) { \
+		croak("Expected %d stack entries, got %d", count, items); \
+		XSRETURN_UNDEF; \
+	} \
+	if (!mg) { \
+		croak("Failed to find Perl magic value"); \
+		XSRETURN_UNDEF; \
+	} \
+	pair_data = (fr_perl_pair_t *)mg->mg_ptr;
+
+/** Functions to implement subroutines required for a tied hash
+ *
+ * All structural components of attributes are represented by tied hashes
+ */
+
+/** Called when fetching hash values
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the hash key being requested
+ *
+ * When a numeric key is requested, we treat that as in instruction to find
+ * a specific instance of the key of the parent.
+ *
+ * Whilst this is a bit odd, the alternative would be for every attribute to
+ * be returned as an array so you would end up with crazy syntax like
+ *   p{'request'}{'Vendor-Specific'}[0]{'Cisco'}[0]{'AVPair}[0]
+ */
+static XS(XS_pairlist_FETCH)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp = NULL;
+	STRLEN			len, i = 0;
+	int			idx = 0;
+
+	GET_PAIR_MAGIC(2)
+
+	attr = (char *) SvPV(ST(1), len);
+
+	/*
+	 *	Check if our key is entirely numeric.
+	 */
+	while (i < len) {
+		if (!isdigit(attr[i])) break;
+		i++;
+	}
+	if (i == len) {
+		idx = SvIV(ST(1));
+		da = pair_data->da;
+		if (pair_data->parent->vp) vp = fr_pair_find_by_da_idx(&pair_data->parent->vp->vp_group, da, idx);
+	} else {
+		da = perl_attr_lookup(pair_data, attr);
+		if (!da) XSRETURN_UNDEF;
+		if (pair_data->vp) vp = fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da);
+	}
+
+	switch(da->type) {
+	/*
+	 *	Leaf attributes are returned as an array with magic
+	 */
+	case FR_TYPE_LEAF:
+	{
+		AV		*pair_av;
+		SV		*pair_tie;
+		HV		*frpair_stash;
+		fr_perl_pair_t	child_pair_data;
+
+		frpair_stash = gv_stashpv("freeradiuspairs", GV_ADD);
+		pair_av = newAV();
+		pair_tie = newRV_noinc((SV *)newAV());
+		sv_bless(pair_tie, frpair_stash);
+		sv_magic(MUTABLE_SV(pair_av), MUTABLE_SV((GV *)pair_tie), PERL_MAGIC_tied, NULL, 0);
+		SvREFCNT_dec(pair_tie);
+
+		child_pair_data = (fr_perl_pair_t) {
+			.vp = vp,
+			.da = da,
+			.parent = pair_data
+		};
+		sv_magicext((SV *)pair_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&child_pair_data, sizeof(child_pair_data));
+		ST(0) = sv_2mortal(newRV((SV *)pair_av));
+	}
+		break;
+
+	/*
+	 *	Structural attributes are returned as a hash with magic
+	 */
+	case FR_TYPE_STRUCTURAL:
+	{
+		HV		*struct_hv;
+		SV		*struct_tie;
+		HV		*frpair_stash;
+		fr_perl_pair_t	child_pair_data;
+
+		frpair_stash = gv_stashpv("freeradiuspairlist", GV_ADD);
+		struct_hv = newHV();
+		struct_tie = newRV_noinc((SV *)newHV());
+		sv_bless(struct_tie, frpair_stash);
+		hv_magic(struct_hv, (GV *)struct_tie, PERL_MAGIC_tied);
+		SvREFCNT_dec(struct_tie);
+
+		child_pair_data = (fr_perl_pair_t) {
+			.vp = vp,
+			.da = da,
+			.parent = pair_data,
+			.idx = idx
+		};
+		sv_magicext((SV *)struct_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&child_pair_data, sizeof(child_pair_data));
+		ST(0) = sv_2mortal(newRV((SV *)struct_hv));
+	}
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	XSRETURN(1);
+}
+
+/** Called when a hash value is set / updated
+ *
+ * This is not allowed - only leaf node arrays can have values set
+ */
+static XS(XS_pairlist_STORE)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+
+	GET_PAIR_MAGIC(3)
+
+	attr = (char *) SvPV(ST(1), PL_na);
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN(0);
+
+	if (fr_type_is_leaf(da->type)) {
+		croak("Cannot set value of array of \"%s\" values.  Use array index to set a specific instance.", da->name);
+	} else {
+		croak("Cannot set values of structural object %s", da->name);
+	}
+	XSRETURN(0);
+}
+
+/** Called to test the existence of a key in a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the key to check for
+ */
+static XS(XS_pairlist_EXISTS)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	STRLEN			len, i = 0;
+
+	GET_PAIR_MAGIC(2)
+
+	attr = (char *) SvPV(ST(1), len);
+	while (i < len) {
+		if (!isdigit(attr[i])) break;
+		i++;
+	}
+
+	/*
+	 *	Numeric key - check for an instance of the attribute
+	 */
+	if (i == len) {
+		unsigned int	idx = SvIV(ST(1));
+		if (pair_data->parent->vp) {
+			if (fr_pair_find_by_da_idx(&pair_data->parent->vp->vp_group, pair_data->da, idx)) XSRETURN_YES;
+		}
+		XSRETURN_NO;
+	}
+
+	if (!pair_data->vp) XSRETURN_NO;
+
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN_NO;
+
+	if(fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da)) XSRETURN_YES;
+
+	XSRETURN_NO;
+}
+
+/** Called when functions like keys() want the first key in a tied hash
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairlist_FIRSTKEY)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+
+	GET_PAIR_MAGIC(1)
+	if (!pair_data->vp) XSRETURN_EMPTY;
+
+	vp = fr_pair_dcursor_init(&pair_data->cursor, &pair_data->vp->vp_group);
+	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
+	XSRETURN(1);
+}
+
+/** Called by functions like keys() which iterate over the keys in a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the previous key
+ */
+static XS(XS_pairlist_NEXTKEY)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+
+	GET_PAIR_MAGIC(2)
+	if (!pair_data->vp) XSRETURN_EMPTY;
+
+	vp = fr_dcursor_next(&pair_data->cursor);
+	if (!vp) XSRETURN_EMPTY;
+
+	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
+	XSRETURN(1);
+}
+
+/** Called to delete a key from a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the key being deleted
+ */
+static XS(XS_pairlist_DELETE)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
+
+	GET_PAIR_MAGIC(2)
+	attr = SvPV(ST(1), PL_na);
+
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN(0);
+	if (!pair_data->vp) XSRETURN(0);
+
+	vp = fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da);
+
+	if (vp) fr_pair_delete(&pair_data->vp->vp_group, vp);
+
+	XSRETURN(0);
+}
+
+/** Functions to implement subroutines required for a tied array
+ *
+ * Leaf attributes are represented by tied arrays to allow multiple instances.
+ */
+
+static int perl_value_marshal(fr_pair_t *vp, SV **value)
+{
+	switch(vp->vp_type) {
+	case FR_TYPE_STRING:
+		*value = sv_2mortal(newSVpvn(vp->vp_strvalue, vp->vp_length));
+		break;
+
+	case FR_TYPE_OCTETS:
+		*value = sv_2mortal(newSVpvn((char const *)vp->vp_octets, vp->vp_length));
+		break;
+
+#define PERLUINT(_size)	case FR_TYPE_UINT ## _size: \
+		*value = sv_2mortal(newSVuv(vp->vp_uint ## _size)); \
+		break;
+	PERLUINT(8)
+	PERLUINT(16)
+	PERLUINT(32)
+	PERLUINT(64)
+
+#define PERLINT(_size)	case FR_TYPE_INT ## _size: \
+		*value = sv_2mortal(newSViv(vp->vp_int ## _size)); \
+		break;
+	PERLINT(8)
+	PERLINT(16)
+	PERLINT(32)
+	PERLINT(64)
+
+
+	case FR_TYPE_SIZE:
+		*value = sv_2mortal(newSVuv(vp->vp_size));
+		break;
+
+	case FR_TYPE_BOOL:
+		*value = sv_2mortal(newSVuv(vp->vp_bool));
+		break;
+
+	case FR_TYPE_FLOAT32:
+		*value = sv_2mortal(newSVnv(vp->vp_float32));
+		break;
+
+	case FR_TYPE_FLOAT64:
+		*value = sv_2mortal(newSVnv(vp->vp_float64));
+		break;
+
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
+	{
+		char	buff[128];
+		ssize_t	slen;
+
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, sizeof(buff)), vp, T_BARE_WORD);
+		if (slen < 0) {
+			croak("Cannot convert %s to Perl type, insufficient buffer space",
+				fr_type_to_str(vp->vp_type));
+			return -1;
+		}
+
+		*value = sv_2mortal(newSVpv(buff, slen));
+	}
+		break;
+
+	/* Only leaf nodes should be able to call this */
+	case FR_TYPE_NON_LEAF:
+		croak("Cannot convert %s to Perl type", fr_type_to_str(vp->vp_type));
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Called to retrieve the value of an array entry
+ *
+ * In our case, retrieve the value of a specific instance of a leaf attribute
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the index to retrieve
+ *
+ * The magic data will hold the DA of the attribute.
+ */
+static XS(XS_pairs_FETCH)
+{
+	dXSARGS;
+	unsigned int		idx = SvUV(ST(1));
+	fr_pair_t		*vp = NULL;
+	fr_perl_pair_t		*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN_UNDEF;
+
+	if (idx == 0) vp = pair_data->vp;
+	if (!vp) vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (!vp) XSRETURN_UNDEF;
+
+	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);
+	XSRETURN(1);
+}
+
+/** Build parent structural pairs needed when a leaf node is set
+ *
+ */
+static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
+{
+	fr_perl_pair_t	*parent = pair_data->parent;
+	if (!parent->vp) {
+		/*
+		 *	When building parent with idx > 0, it's "parent" is the
+		 *	first instance of the attribute - so if that's not there
+		 *	we don't have any.
+		 */
+		if (pair_data->idx > 0) {
+		none_exist:
+			croak("Attempt to set instance %d when none exist", pair_data->idx);
+			return -1;
+		}
+		if (fr_perl_pair_parent_build(parent) < 0) return -1;
+	}
+
+	if (pair_data->idx > 0) {
+		unsigned int count;
+
+		if (!parent->parent->vp) goto none_exist;
+		count = fr_pair_count_by_da(&parent->parent->vp->vp_group, pair_data->da);
+		if (count < pair_data->idx) {
+			croak("Attempt to set instance %d when only %d exist", pair_data->idx, count);
+			return -1;
+		}
+		parent = parent->parent;
+	}
+
+	if (fr_pair_append_by_da(parent->vp, &pair_data->vp, &parent->vp->vp_group, pair_data->da) < 0) return -1;
+	return 0;
+}
+
+/** Convert a Perl SV to a pair value.
+ *
+ */
+static int perl_value_unmarshal(fr_pair_t *vp, SV *value)
+{
+	fr_value_box_t	vb;
+
+	switch (SvTYPE(value)) {
+	case SVt_IV:
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = SvIV(value);
+		break;
+
+	case SVt_NV:
+		fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+		vb.vb_float64 = SvNV(value);
+		break;
+
+	case SVt_PV:
+	case SVt_PVLV:
+	{
+		char	*val;
+		STRLEN	len;
+		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, true);
+		val = SvPV(value, len);
+		fr_value_box_bstrndup_shallow(&vb, NULL, val, len, true);
+	}
+		break;
+
+	default:
+		croak("Unsupported Perl data type");
+		return -1;
+	}
+
+	fr_pair_value_clear(vp);
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
+		croak("Failed casting Perl value to %s", fr_type_to_str(vp->vp_type));
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Called when an array value is set / updated
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the index being updated
+ *  - the value being assigned
+ */
+static XS(XS_pairs_STORE)
+{
+	dXSARGS;
+	unsigned int		idx = SvUV(ST(1));
+	fr_pair_t		*vp;
+	fr_perl_pair_t		*parent;
+
+	GET_PAIR_MAGIC(3)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+
+	if (!parent->vp) {
+		/*
+		 *	Trying to set something other than the first instance when
+		 *	the parent doesn't exist is invalid.
+		 */
+		if (idx > 0) {
+			croak("Attempting to set instance %d when none exist", idx);
+			XSRETURN(0);
+		}
+
+		if(fr_perl_pair_parent_build(parent) < 0) XSRETURN(0);
+	}
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (!vp) {
+		if (idx > 0) {
+			unsigned int count = fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da);
+			if (count < idx) {
+				croak("Attempt to set instance %d when only %d exist", idx, count);
+				XSRETURN(0);
+			}
+		}
+		fr_pair_append_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da);
+	}
+
+	perl_value_unmarshal(vp, ST(2));
+
+	XSRETURN(0);
+}
+
+/** Called when an array entry's existence is tested
+ *
+ */
+static XS(XS_pairs_EXISTS)
+{
+	dXSARGS;
+	unsigned int	idx = SvUV(ST(1));
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN_NO;
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (vp) XSRETURN_YES;
+	XSRETURN_NO;
+}
+
+/** Called when an array entry is deleted
+ *
+ */
+static XS(XS_pairs_DELETE)
+{
+	dXSARGS;
+	unsigned int	idx = SvUV(ST(1));
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN(0);
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (vp) fr_pair_delete(&parent->vp->vp_group, vp);
+	XSRETURN(0);
+}
+
+/** Called when Perl wants the size of a tied array
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairs_FETCHSIZE)
+{
+	dXSARGS;
+	GET_PAIR_MAGIC(1)
+
+	if (!pair_data->parent->vp) XSRETURN_UV(0);
+	XSRETURN_UV(fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da));
+}
+
+/** Called when attempting to set the size of an array
+ *
+ * We don't allow expanding the array this way, but will allow deleting pairs
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the requested size of the array
+ */
+static XS(XS_pairs_STORESIZE)
+{
+	dXSARGS;
+	unsigned int	count, req_size = SvUV(ST(1));
+	fr_pair_t	*vp, *prev;
+	fr_perl_pair_t	*parent;
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) {
+		if (req_size > 0) {
+			croak("Unable to set attribute instance count");
+		}
+		XSRETURN(0);
+	}
+
+	count = fr_pair_count_by_da(&parent->vp->vp_group, pair_data->da);
+	if (req_size > count) {
+		croak("Increasing attribute instance count not supported");
+		XSRETURN(0);
+	}
+
+	/*
+	 *	As req_size is 1 based and the attribute instance count is
+	 *	0 based, searching for instance `req_size` will give the first
+	 *	pair to delete.
+	 */
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, req_size);
+	while (vp) {
+		prev = fr_pair_list_prev(&parent->vp->vp_group, vp);
+		fr_pair_delete(&parent->vp->vp_group, vp);
+		vp = fr_pair_find_by_da(&parent->vp->vp_group, prev, pair_data->da);
+	}
+	XSRETURN(0);
+}
+
+/** Called when values are pushed on a tied array
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - one or more values being pushed onto the array
+ */
+static XS(XS_pairs_PUSH)
+{
+	dXSARGS;
+	int		i = 1;
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+	if (!parent->vp) {
+		if (fr_perl_pair_parent_build(parent) < 0) XSRETURN(0);
+	}
+
+	while (i < items) {
+		fr_pair_append_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da);
+		if (perl_value_unmarshal(vp, ST(i++)) < 0) break;
+	}
+
+	XSRETURN(0);
+}
+
+/** Called when values are popped off a tied array
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairs_POP)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(1)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN(0);
+
+	vp = fr_pair_find_last_by_da(&parent->vp->vp_group, NULL, pair_data->da);
+	if (!vp) XSRETURN(0);
+
+	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);
+
+	fr_pair_remove(&parent->vp->vp_group, vp);
+	XSRETURN(1);
+}
+
+/** Called when values are "shifted" off a tied array
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairs_SHIFT)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(1)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN(0);
+
+	vp = fr_pair_find_by_da(&parent->vp->vp_group, NULL, pair_data->da);
+	if (!vp) XSRETURN(0);
+
+	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);
+
+	fr_pair_remove(&parent->vp->vp_group, vp);
+	XSRETURN(1);
+}
+
+/** Called when values are "unshifted" onto a tied array
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - one or more values being shifted onto the array
+ */
+static XS(XS_pairs_UNSHIFT)
+{
+	dXSARGS;
+	int		i = 1;
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+	if (!parent->vp) {
+		if (fr_perl_pair_parent_build(parent) < 0) XSRETURN(0);
+	}
+
+	while (i < items) {
+		if (unlikely(fr_pair_prepend_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da) < 0)) {
+			croak("Failed adding attribute %s", pair_data->da->name);
+			break;
+		}
+		if (perl_value_unmarshal(vp, ST(i++)) < 0) break;
+	}
+
+	XSRETURN(0);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -256,8 +1008,34 @@ static void xs_init(pTHX)
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
-	newXS("radiusd::log",XS_radiusd_log, "rlm_perl");
-	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
+	newXS("freeradius::log",XS_freeradius_log, "rlm_perl");
+	newXS("freeradius::xlat",XS_freeradius_xlat, "rlm_perl");
+
+	/*
+	 *	The freeradiuspairlist package implements functions required
+	 *	for a tied hash handling structural attributes.
+	 */
+	newXS("freeradiuspairlist::FETCH", XS_pairlist_FETCH, "rlm_perl");
+	newXS("freeradiuspairlist::STORE", XS_pairlist_STORE, "rlm_perl");
+	newXS("freeradiuspairlist::EXISTS", XS_pairlist_EXISTS, "rlm_perl");
+	newXS("freeradiuspairlist::FIRSTKEY", XS_pairlist_FIRSTKEY, "rlm_perl");
+	newXS("freeradiuspairlist::NEXTKEY", XS_pairlist_NEXTKEY, "rlm_perl");
+	newXS("freeradiuspairlist::DELETE", XS_pairlist_DELETE, "rlm_perl");
+
+	/*
+	 *	The freeradiuspairs package implements functions required
+	 *	for a tied array handling leaf attributes.
+	 */
+	newXS("freeradiuspairs::FETCH", XS_pairs_FETCH, "rlm_perl");
+	newXS("freeradiuspairs::STORE", XS_pairs_STORE, "rlm_perl");
+	newXS("freeradiuspairs::EXISTS", XS_pairs_EXISTS, "rlm_perl");
+	newXS("freeradiuspairs::DELETE", XS_pairs_DELETE, "rlm_perl");
+	newXS("freeradiuspairs::FETCHSIZE", XS_pairs_FETCHSIZE, "rlm_perl");
+	newXS("freeradiuspairs::STORESIZE", XS_pairs_STORESIZE, "rlm_perl");
+	newXS("freeradiuspairs::PUSH", XS_pairs_PUSH, "rlm_perl");
+	newXS("freeradiuspairs::POP", XS_pairs_POP, "rlm_perl");
+	newXS("freeradiuspairs::SHIFT", XS_pairs_SHIFT, "rlm_perl");
+	newXS("freeradiuspairs::UNSHIFT", XS_pairs_UNSHIFT, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
@@ -340,25 +1118,25 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	case SVt_IV:
 	/*	Integer or Reference */
 		if (SvROK(sv)) {
-			DEBUG3("Reference returned");
+			RDEBUG3("Reference returned");
 			if (perl_sv_to_vblist(ctx, list, request, SvRV(sv)) < 0) return -1;
 			break;
 		}
-		DEBUG3("Integer returned");
+		RDEBUG3("Integer returned");
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT32, NULL));
 		vb->vb_int32 = SvIV(sv);
 		break;
 
 	case SVt_NV:
 	/*	Float */
-		DEBUG3("Float returned");
+		RDEBUG3("Float returned");
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_FLOAT64, NULL));
 		vb->vb_float64 = SvNV(sv);
 		break;
 
 	case SVt_PV:
 	/*	String */
-		DEBUG3("String returned");
+		RDEBUG3("String returned");
 		tmp = SvPVutf8(sv, len);
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_bstrndup(vb, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
@@ -372,7 +1150,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	/*	Array */
 	{
 		SV	**av_sv;
-		DEBUG3("Array returned");
+		RDEBUG3("Array returned");
 		av = (AV*)sv;
 		sv_len = av_len(av);
 		for (i = 0; i <= sv_len; i++) {
@@ -388,7 +1166,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	/*	Hash */
 	{
 		SV	*hv_sv;
-		DEBUG3("Hash returned");
+		RDEBUG3("Hash returned");
 		hv = (HV*)sv;
 		for (i = hv_iterinit(hv); i > 0; i--) {
 			hv_sv = hv_iternextsv(hv, &tmp, &sv_len);
@@ -466,23 +1244,52 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	{
+		ssize_t slen;
+		fr_sbuff_t *sbuff;
+
 		dSP;
 		ENTER;SAVETMPS;
 
 		PUSHMARK(SP);
 
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&sbuff, 256, 16384);
+
 		fr_value_box_list_foreach(in, arg) {
+
 			fr_assert(arg->type == FR_TYPE_GROUP);
 			if (fr_value_box_list_empty(&arg->vb_group)) continue;
 
 			if (fr_value_box_list_num_elements(&arg->vb_group) == 1) {
 				child = fr_value_box_list_head(&arg->vb_group);
-				/*
-				 *	Single child value - add as scalar
-				 */
-				if (child->vb_length == 0) continue;
-				DEBUG3("Passing single value %pV", child);
-				sv = newSVpvn(child->vb_strvalue, child->vb_length);
+
+				switch (child->type) {
+				case FR_TYPE_STRING:
+					if (child->vb_length == 0) continue;
+
+					RDEBUG3("Passing single value %pV", child);
+					sv = newSVpvn(child->vb_strvalue, child->vb_length);
+					break;
+
+				case FR_TYPE_GROUP:
+					RDEBUG3("Ignoring nested group");
+					continue;
+
+				default:
+					/*
+					 *	@todo - turn over integers as strings.
+					 */
+					slen = fr_value_box_print(sbuff, child, NULL);
+					if (slen <= 0) {
+						RPEDEBUG("Failed printing sbuff");
+						continue;
+					}
+
+					RDEBUG3("Passing single value %pV", child);
+					sv = newSVpvn(fr_sbuff_start(sbuff), fr_sbuff_used(sbuff));
+					fr_sbuff_set_to_start(sbuff);
+					break;
+				}
+
 				if (child->tainted) SvTAINT(sv);
 				XPUSHs(sv_2mortal(sv));
 				continue;
@@ -493,7 +1300,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 */
 			av = newAV();
 			perl_vblist_to_av(av, &arg->vb_group);
-			DEBUG3("Passing list as array %pM", &arg->vb_group);
+			RDEBUG3("Passing list as array %pM", &arg->vb_group);
 			sv = newRV_inc((SV *)av);
 			XPUSHs(sv_2mortal(sv));
 		}
@@ -599,233 +1406,29 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
-			   const char *hash_name, bool dbg_print);
-
-static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t *vp,
-				     int *i, const char *hash_name, bool dbg_print)
-{
-
-	SV *sv;
-
-	if (dbg_print) RDEBUG2("$%s{'%s'}[%i] = %pP", hash_name, vp->da->name, *i, vp);
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
-		break;
-
-	case FR_TYPE_OCTETS:
-		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
-		break;
-
-	case FR_TYPE_STRUCTURAL:
-	{
-		HV		*hv;
-		hv = newHV();
-		perl_store_vps(request, &vp->vp_group, hv, vp->da->name, false);
-		sv = newRV_noinc((SV *)hv);
-	}
-		break;
-
-	default:
-	{
-		char	buffer[1024];
-		ssize_t	slen;
-
-		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
-		if (slen < 0) return;
-
-		sv = newSVpvn(buffer, (size_t)slen);
-	}
-		break;
-	}
-
-	if (!sv) return;
-	SvTAINT(sv);
-	av_push(av, sv);
-	(*i)++;
-}
-
-/*
- *  	get the vps and put them in perl hash
- *  	If one VP have multiple values it is added as array_ref
- *  	Example for this is Vendor-Specific.Cisco.AVPair that holds multiple values.
- *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
- */
-static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
-			   const char *hash_name, bool dbg_print)
-{
-	fr_pair_t *vp;
-	fr_dcursor_t cursor;
-
-	hv_undef(rad_hv);
-
-	RINDENT();
-	fr_pair_list_sort(vps, fr_pair_cmp_by_da);
-	for (vp = fr_pair_dcursor_init(&cursor, vps);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		fr_pair_t *next;
-		char const *name;
-		name = vp->da->name;
-
-		/*
-		 *	We've sorted by type, then tag, so attributes of the
-		 *	same type/tag should follow on from each other.
-		 */
-		if ((next = fr_dcursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
-			int i = 0;
-			AV *av;
-
-			av = newAV();
-			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, dbg_print);
-			do {
-				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, dbg_print);
-				fr_dcursor_next(&cursor);
-			} while ((next = fr_dcursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
-			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
-
-			continue;
-		}
-
-		/*
-		 *	It's a normal single valued attribute
-		 */
-		if (dbg_print) RDEBUG2("$%s{'%s'} = %pP'", hash_name, vp->da->name, vp);
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
-			break;
-
-		case FR_TYPE_OCTETS:
-			(void)hv_store(rad_hv, name, strlen(name),
-				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
-			break;
-
-		case FR_TYPE_STRUCTURAL:
-		{
-			HV *hv;
-			hv = newHV();
-			perl_store_vps(request, &vp->vp_group, hv, vp->da->name, false);
-			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)hv), 0);
-		}
-			break;
-
-		default:
-		{
-			char buffer[1024];
-			ssize_t slen;
-
-			slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
-			(void)hv_store(rad_hv, name, strlen(name),
-				       newSVpvn(buffer, (size_t)(slen)), 0);
-		}
-			break;
-		}
-	}
-	REXDENT();
-}
-
-static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_list_t *vps, const char *list_name,
-			  fr_dict_attr_t const *parent, bool dbg_print);
-
-/*
- *
- *     Verify that a Perl SV is a string and save it in FreeRadius
- *     Value Pair Format
+/** Create a Perl tied hash representing a pair list
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, char *key, SV *sv,
-		      const char *list_name, fr_dict_attr_t const *parent, bool dbg_print)
+static void perl_pair_list_tie(HV *parent, HV *frpair_stash, char const *name, fr_pair_t *vp, fr_dict_attr_t const *da)
 {
-	char		*val;
-	fr_pair_t      *vp;
-	STRLEN		len;
-	fr_dict_attr_t const *da;
+	HV		*list_hv;
+	SV		*list_tie;
+	fr_perl_pair_t	pair_data;
 
-	if (!SvOK(sv)) return -1;
+	list_hv = newHV();
+	list_tie = newRV_noinc((SV *)newHV());
+	sv_bless(list_tie, frpair_stash);
+	hv_magic(list_hv, (GV *)list_tie, PERL_MAGIC_tied);
+	SvREFCNT_dec(list_tie);
 
-	val = SvPV(sv, len);
+	pair_data = (fr_perl_pair_t) {
+		.vp = vp,
+		.da = da
+	};
 
-	da = fr_dict_attr_by_name(NULL, parent, key);
-	if (!da) {
-		REDEBUG("Ignoring unknown attribute '%s'", key);
-		return -1;
-	}
-	fr_assert(da != NULL);
+	sv_magicext((SV *)list_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&pair_data, sizeof(pair_data));
 
-	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) {
-	fail:
-		talloc_free(vp);
-		RPEDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
-		return -1;
-	}
-
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		fr_pair_value_bstrndup(vp, val, len, true);
-		break;
-
-	case FR_TYPE_OCTETS:
-		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
-		break;
-
-	case FR_TYPE_STRUCTURAL:
-	{
-		HV	*hv;
-		if (!SvROK(sv) || (SvTYPE(SvRV(sv)) != SVt_PVHV)) {
-			RPEDEBUG("%s should be retuned as a hash", vp->da->name);
-			goto fail;
-		}
-		hv = (HV *)SvRV(sv);
-		if (get_hv_content(vp, request, hv, &vp->vp_group, list_name, da, false) < 0) goto fail;
-		if (vp->vp_type == FR_TYPE_STRUCT) fr_pair_list_sort(&vp->vp_group, fr_pair_cmp_by_da);
-	}
-		break;
-
-	default:
-		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) goto fail;
-	}
-	fr_pair_append(vps, vp);
-
-	PAIR_VERIFY(vp);
-
-	if (dbg_print) RDEBUG2("%s.%pP", list_name, vp);
-	return 0;
-}
-
-/*
- *     Gets the content from hashes
- */
-static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_list_t *vps,
-			  const char *list_name, fr_dict_attr_t const *parent, bool dbg_print)
-{
-	SV		*res_sv, **av_sv;
-	AV		*av;
-	char		*key;
-	I32		key_len, len, i, j;
-	int		ret = 0;
-
-	for (i = hv_iterinit(my_hv); i > 0; i--) {
-		res_sv = hv_iternextsv(my_hv,&key,&key_len);
-		if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
-			av = (AV*)SvRV(res_sv);
-			len = av_len(av);
-			for (j = 0; j <= len; j++) {
-				av_sv = av_fetch(av, j, 0);
-				if (pairadd_sv(ctx, request, vps, key, *av_sv, list_name, parent, dbg_print) < 0) continue;
-				ret++;
-			}
-		} else {
-			if (pairadd_sv(ctx, request, vps, key, res_sv, list_name, parent, dbg_print) < 0) continue;
-			ret++;
-		}
-	}
-
-	if (!fr_pair_list_empty(vps)) PAIR_LIST_VERIFY(vps);
-
-	return ret;
+	(void)hv_store(parent, name, strlen(name), newRV_inc((SV *)list_hv), 0);
 }
 
 /*
@@ -833,25 +1436,21 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-			       PerlInterpreter *interp, char const *function_name)
+static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
-	fr_pair_list_t		vps;
+	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
+	PerlInterpreter		*interp = ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl;
 	int			ret=0, count;
 	STRLEN			n_a;
 
-	HV			*rad_reply_hv;
-	HV			*rad_config_hv;
-	HV			*rad_request_hv;
-	HV			*rad_state_hv;
+	HV			*frpair_stash;
+	HV			*fr_packet;
 
 	/*
-	 *	Radius has told us to call this function, but none
-	 *	is defined.
+	 *	call_env parsing will have established the function name to call.
 	 */
-	if (!function_name) RETURN_MODULE_FAIL;
+	fr_assert(func->func->function_name);
 
 	{
 		dTHXa(interp);
@@ -864,15 +1463,20 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		ENTER;
 		SAVETMPS;
 
-		rad_reply_hv = get_hv("RAD_REPLY", 1);
-		rad_config_hv = get_hv("RAD_CONFIG", 1);
-		rad_request_hv = get_hv("RAD_REQUEST", 1);
-		rad_state_hv = get_hv("RAD_STATE", 1);
+		/* Get the stash for the freeradiuspairlist package */
+		frpair_stash = gv_stashpv("freeradiuspairlist", GV_ADD);
 
-		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", true);
-		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", true);
-		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", true);
-		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", true);
+		/* New hash to hold the pair list roots and pass to the Perl subroutine */
+		fr_packet = newHV();
+
+		perl_pair_list_tie(fr_packet, frpair_stash, "request",
+				   fr_pair_list_parent(&request->request_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "reply",
+				   fr_pair_list_parent(&request->reply_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "control",
+				   fr_pair_list_parent(&request->control_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "session-state",
+				   fr_pair_list_parent(&request->session_state_pairs), fr_dict_root(request->proto_dict));
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
@@ -880,15 +1484,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		rlm_perl_request = request;
 
 		PUSHMARK(SP);
-		/*
-		 * This way %RAD_xx can be pushed onto stack as sub parameters.
-		 * XPUSHs( newRV_noinc((SV *)rad_request_hv) );
-		 * XPUSHs( newRV_noinc((SV *)rad_reply_hv) );
-		 * XPUSHs( newRV_noinc((SV *)rad_config_hv) );
-		 * PUTBACK;
-		 */
+		XPUSHs( sv_2mortal(newRV((SV *)fr_packet)) );
+		PUTBACK;
 
-		count = call_pv(function_name, G_SCALAR | G_EVAL | G_NOARGS);
+		count = call_pv(func->func->function_name, G_SCALAR | G_EVAL );
 
 		rlm_perl_request = NULL;
 
@@ -896,7 +1495,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 
 		if (SvTRUE(ERRSV)) {
 			REDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
-			        inst->module, function_name, SvPV(ERRSV,n_a));
+			        inst->module, func->func->function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
 			ret = RLM_MODULE_FAIL;
 		} else if (count == 1) {
@@ -906,58 +1505,13 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 			}
 		}
 
-
 		PUTBACK;
 		FREETMPS;
 		LEAVE;
-
-		fr_pair_list_init(&vps);
-		if (inst->replace.request &&
-		    (get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "request",
-		    		    fr_dict_root(request->dict), true)) > 0) {
-			fr_pair_list_free(&request->request_pairs);
-			fr_pair_list_append(&request->request_pairs, &vps);
-		}
-
-		if (inst->replace.reply &&
-		    (get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "reply",
-		    		    fr_dict_root(request->dict), true)) > 0) {
-			fr_pair_list_free(&request->reply_pairs);
-			fr_pair_list_append(&request->reply_pairs, &vps);
-		}
-
-		if (inst->replace.control &&
-		    (get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "control",
-		    		    fr_dict_root(request->dict), true)) > 0) {
-			fr_pair_list_free(&request->control_pairs);
-			fr_pair_list_append(&request->control_pairs, &vps);
-		}
-
-		if (inst->replace.session &&
-		    (get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "session-state",
-		    		    fr_dict_root(request->dict), true)) > 0) {
-			fr_pair_list_free(&request->session_state_pairs);
-			fr_pair_list_append(&request->session_state_pairs, &vps);
-		}
 	}
 
-	RETURN_MODULE_RCODE(ret);
+	RETURN_UNLANG_RCODE(ret);
 }
-
-#define RLM_PERL_FUNC(_x) \
-static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
-{ \
-	rlm_perl_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t); \
-	return do_perl(p_result, mctx, request, \
-		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
-		       inst->func_##_x); \
-}
-
-RLM_PERL_FUNC(authorize)
-RLM_PERL_FUNC(authenticate)
-RLM_PERL_FUNC(post_auth)
-RLM_PERL_FUNC(preacct)
-RLM_PERL_FUNC(accounting)
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(shadow)
@@ -998,7 +1552,15 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	PERL_SET_CONTEXT(inst->perl);
 
+	/*
+	 *	Ensure only one thread is cloning an interpreter at a time
+	 *	Whilst the documentation of perl_clone() does not say anything
+	 *	about this, seg faults have been seen if multiple threads clone
+	 *	the same inst->perl at the same time.
+	 */
+	pthread_mutex_lock(&inst->mutable->mutex);
 	interp = perl_clone(inst->perl, clone_flags);
+	pthread_mutex_unlock(&inst->mutable->mutex);
 	{
 		dTHXa(interp);			/* Sets the current thread's interpreter */
 	}
@@ -1025,6 +1587,24 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Check if a given Perl subroutine exists
+ *
+ */
+static bool perl_func_exists(char const *func)
+{
+	char	*eval_str;
+	SV	*val;
+
+	/*
+	 *	Perl's "can" method checks if the object contains a subroutine of the given name.
+	 *	We expect referenced subroutines to be in the "main" namespace.
+	 */
+	eval_str = talloc_asprintf(NULL, "(main->can('%s') ? 1 : 0)", func);
+	val = eval_pv(eval_str, TRUE);
+	talloc_free(eval_str);
+	return SvIV(val) ? true : false;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -1041,7 +1621,12 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	perl_func_def_t		*func = NULL;
+	fr_rb_iter_inorder_t	iter;
+	CONF_PAIR		*cp;
+	char			*pair_name;
+
 	CONF_SECTION	*conf = mctx->mi->conf;
 	AV		*end_AV;
 
@@ -1108,7 +1693,58 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->perl_parsed = true;
 	perl_run(inst->perl);
 
+	/*
+	 *	The call_env parser has found all the places the module is called
+	 *	Check for config options which set the subroutine name, falling back to
+	 *	automatic subroutine names based on section name.
+	 */
+	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, perl_func_def_t, node, perl_func_def_cmp, NULL);
+	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
+	while (func) {
+		/*
+		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
+		 */
+		if (func->name2) {
+			pair_name = talloc_asprintf(func, "func_%s_%s", func->name1, func->name2);
+			cp = cf_pair_find(mctx->mi->conf, pair_name);
+			talloc_free(pair_name);
+			if (cp) goto found_func;
+		}
+		pair_name = talloc_asprintf(func, "func_%s", func->name1);
+		cp = cf_pair_find(conf, pair_name);
+		talloc_free(pair_name);
+	found_func:
+		if (cp){
+			func->function_name = cf_pair_value(cp);
+			if (!perl_func_exists(func->function_name)) {
+				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
+				return -1;
+			}
+		/*
+		 *	If no pair was found, then use <name1>_<name2> or <name1> as the function to call.
+		 */
+		} else if (func->name2) {
+			func->function_name = talloc_asprintf(func, "%s_%s", func->name1, func->name2);
+			if (!perl_func_exists(func->function_name)) {
+				talloc_const_free(func->function_name);
+				goto name1_only;
+			}
+		} else {
+		name1_only:
+			func->function_name = func->name1;
+			if (!perl_func_exists(func->function_name)) {
+				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
+				return -1;
+			}
+		}
+
+		func = fr_rb_iter_next_inorder(&iter);
+	}
+
 	PL_endav = end_AV;
+
+	inst->mutable = talloc(NULL, rlm_perl_mutable_t);
+	pthread_mutex_init(&inst->mutable->mutex, NULL);
 
 	return 0;
 }
@@ -1148,6 +1784,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	}
 
 	rlm_perl_interp_free(inst->perl);
+	talloc_free(inst->mutable);
 
 	return ret;
 }
@@ -1211,6 +1848,79 @@ static void mod_unload(void)
 }
 
 /*
+ *	Restrict automatic Perl function names to lowercase characters, numbers and underscore
+ *	meaning that a module call in `recv Access-Request` will look for `recv_access_request`
+ */
+static void perl_func_name_safe(char *name) {
+	char	*p;
+	size_t	i;
+
+	p = name;
+	for (i = 0; i < talloc_array_length(name); i++) {
+		*p = tolower(*p);
+		if (!strchr("abcdefghijklmnopqrstuvwxyz1234567890", *p)) *p = '_';
+		p++;
+	}
+}
+
+static int perl_func_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+			   UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_perl_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_perl_t);
+	call_env_parsed_t	*parsed;
+	perl_func_def_t		*func;
+	void			*found;
+
+	if (!inst->funcs_init) {
+		fr_rb_inline_init(&inst->funcs, perl_func_def_t, node, perl_func_def_cmp, NULL);
+		inst->funcs_init = true;
+	}
+
+	MEM(parsed = call_env_parsed_add(ctx, out,
+					 &(call_env_parser_t){
+						.name = "func",
+						.flags = CALL_ENV_FLAG_PARSE_ONLY,
+						.pair = {
+							.parsed = {
+								.offset = rule->pair.offset,
+								.type = CALL_ENV_PARSE_TYPE_VOID
+							}
+						}
+					}));
+
+	MEM(func = talloc_zero(inst, perl_func_def_t));
+	func->name1 = talloc_strdup(func, cec->asked->name1);
+	perl_func_name_safe(func->name1);
+	if (cec->asked->name2) {
+		func->name2 = talloc_strdup(func, cec->asked->name2);
+		perl_func_name_safe(func->name2);
+	}
+	if (fr_rb_find_or_insert(&found, &inst->funcs, func) < 0) {
+		talloc_free(func);
+		return -1;
+	}
+
+	/*
+	*	If the function call is already in the tree, use that entry.
+	*/
+	if (found) {
+		talloc_free(func);
+		call_env_parsed_set_data(parsed, found);
+	} else {
+		call_env_parsed_set_data(parsed, func);
+	}
+	return 0;
+}
+
+static const call_env_method_t perl_method_env = {
+	FR_CALL_ENV_METHOD_OUT(perl_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, perl_func_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -1239,17 +1949,7 @@ module_rlm_t rlm_perl = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			/*
-			 *	Hack to support old configurations
-			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting	},
-			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_perl, .method_env = &perl_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}

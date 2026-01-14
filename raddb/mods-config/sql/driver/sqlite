@@ -8,10 +8,15 @@
 #
 sqlite {
 	# Path to the sqlite database
-	filename = "${db_dir}/sqlite-${...:instance}.db"
+	filename = "${db_dir}/sqlite-${..:instance}.db"
 
 	# If the file above does not exist and bootstrap is set
 	# a new database file will be created, and the SQL statements
 	# contained within the bootstrap file will be executed.
 #	bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
+
+	# When a query is run against a locked database, SQLite can
+	# wait for up to this time for the lock to be released rather
+	# than failing immediately.
+	busy_timeout = 0.25s
 }

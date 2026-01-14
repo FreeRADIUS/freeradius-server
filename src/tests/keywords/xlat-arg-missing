@@ -1,0 +1,3 @@
+bool foo
+
+foo := %file.exists() # ERROR

@@ -137,8 +137,9 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
  * @param[in] reply to print.
  * @param[in] request The current request.
  * @param[in] idx Response number.
+ * @param[in] status code from processing last reply.
  */
-void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx, fr_redis_rcode_t status)
 {
 	size_t i = 0;
 
@@ -146,7 +147,11 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:
-		ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
+		if (status == REDIS_RCODE_MOVE) {
+			ROPTIONAL(RWARN, WARN, "(%i) warn    : %s", idx, reply->str);
+		} else {
+			ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
+		}
 		break;
 
 	case REDIS_REPLY_STATUS:
@@ -169,7 +174,7 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
 			if (request) RINDENT();
-			fr_redis_reply_print(lvl, reply->element[i], request, i);
+			fr_redis_reply_print(lvl, reply->element[i], request, i, status);
 			if (request) REXDENT();
 		}
 		break;
@@ -335,10 +340,10 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 				fr_value_box_list_talloc_free(&out->vb_group);
 				return -1;
 			}
-			fr_value_box_list_insert_tail(&out->vb_group, vb);
 
 			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
 							FR_TYPE_VOID, NULL, box_error, shallow) < 0) goto array_error;
+			fr_value_box_list_insert_tail(&out->vb_group, vb);
 		}
 	}
 	}
@@ -390,8 +395,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str,
 				   &(tmpl_rules_t){
 				   	.attr = {
-					   	.prefix = TMPL_ATTR_REF_PREFIX_NO,
-					   	.dict_def = request->dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request
 				   	}
 				   });
@@ -469,7 +473,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_data(map->rhs));
 
-	slen = tmpl_print(&key_buf_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+	slen = tmpl_print(&key_buf_sbuff, map->lhs, NULL);
 	if (slen < 0) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", (size_t)(slen * -1));

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -15,14 +15,14 @@ VENDOR		Ciena				1271
 
 BEGIN-VENDOR	Ciena
 
-ATTRIBUTE	CN4200-Priv-Level			1	integer
+ATTRIBUTE	CN4200-Priv-Level			1	uint32
 
 VALUE	CN4200-Priv-Level		limited			1
 VALUE	CN4200-Priv-Level		admin			2
 VALUE	CN4200-Priv-Level		super-user		3
 VALUE	CN4200-Priv-Level		diag			4
 
-ATTRIBUTE	CES-Priv-Level				10	integer
+ATTRIBUTE	CES-Priv-Level				10	uint32
 
 VALUE	CES-Priv-Level			limited			1
 VALUE	CES-Priv-Level			admin			2
@@ -32,11 +32,40 @@ VALUE	CES-Priv-Level			diag			4
 ATTRIBUTE	CES-NACM-Groups				11	string
 
 ATTRIBUTE	BP-Role					220	string
-ATTRIBUTE	NCS-Role				240	integer
+ATTRIBUTE	OC-mgmt-Role				230	string
+ATTRIBUTE	OC-P1-Role				231	string
+ATTRIBUTE	OC-P2-Role				232	string
+ATTRIBUTE	OC-P3-Role				233	string
+ATTRIBUTE	OC-P4-Role				234	string
+ATTRIBUTE	OC-P5-Role				235	string
+ATTRIBUTE	OC-P6-Role				236	string
+ATTRIBUTE	OC-P7-Role				237	string
+ATTRIBUTE	OC-P8-Role				238	string
+ATTRIBUTE	OC-P9-Role				239	string
+ATTRIBUTE	NCS-Role				240	uint32
+
+VALUE	NCS-Role			security		1
+VALUE	NCS-Role			admin			2
+VALUE	NCS-Role			general			3
+
 ATTRIBUTE	OC-Role					250	string
 ATTRIBUTE	CS-Client-IP				253	ipaddr
-ATTRIBUTE	CS-Acc-Level				254	integer
-ATTRIBUTE	CS-Priv-Level				255	integer
+ATTRIBUTE	CS-Acc-Level				254	uint32
+
+VALUE	CS-Acc-Level			multi			1
+VALUE	CS-Acc-Level			craft			2
+VALUE	CS-Acc-Level			shell			3
+VALUE	CS-Acc-Level			ems			4
+
+ATTRIBUTE	CS-Priv-Level				255	uint32
+
+VALUE	CS-Priv-Level			read-only		1
+VALUE	CS-Priv-Level			read-write		2
+VALUE	CS-Priv-Level			laser-read-write	3
+VALUE	CS-Priv-Level			admin			4
+VALUE	CS-Priv-Level			debug			5
+VALUE	CS-Priv-Level			ne-config		8
+VALUE	CS-Priv-Level			ne-admin		9
 
 END-VENDOR	Ciena
 ALIAS		Ciena					Vendor-Specific.Ciena

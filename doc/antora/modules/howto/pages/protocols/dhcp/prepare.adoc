@@ -1,9 +1,9 @@
-== Preparation
+= Preparation
 
 It is necessary to consider the requirements for the installation in order to
 devise an efficient and manageable set up.
 
-=== Understand the network topology
+== Understand the network topology
 
 When multiple networks (VLANs) are in use consideration must be given to how
 the correct "pool" (IP address ranges) from which to allocate addresses is
@@ -16,11 +16,11 @@ requests or determined by dynamic lookup, should be well defined and
 understood.
 
 Other DHCP servers may implement implicit assumptions about the requirement of
-your network topology and silently define particular behaviours, such as the
+your network topology and silently define particular behaviors, such as the
 selection of IP address pool for a request based on a relay address. Some of
-these behaviours must be specifed explicitly when using FreeRADIUS.
+these behaviors must be specifed explicitly when using FreeRADIUS.
 
-=== Choose a database backend
+== Choose a database backend
 
 FreeRADIUS stores its leases in an SQL database, so one of the key decisions to
 make is which database to use.
@@ -53,7 +53,7 @@ familiarity and your need for commercial support.
 FreeRADIUS ships with a default database schema and set of queries for each
 supported database.  These are sufficient for most DHCP deployments but can be
 reviewed and modified as required to suit a particular situation, for example
-to customise the IP allocation policy such as by disabling address
+to customize the IP allocation policy such as by disabling address
 "stickiness".
 
 Now xref:protocols/dhcp/enable.adoc[enable the DHCP service].

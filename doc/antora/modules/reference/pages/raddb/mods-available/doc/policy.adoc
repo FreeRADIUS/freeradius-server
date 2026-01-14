@@ -1,0 +1,8 @@
+= Policy Modules
+
+These modules are used to implement different policies to manage data
+transmission, storage, server configs and behaviors.
+
+The available Policy modules are:
+
+include::partial$policy_table.adoc[]

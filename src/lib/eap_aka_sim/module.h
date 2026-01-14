@@ -27,6 +27,7 @@
 RCSIDH(lib_eap_aka_sim_module_h, "$Id$")
 
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/eap/types.h>
 
 #include <freeradius-devel/tls/openssl_user_macros.h>
@@ -37,7 +38,7 @@ extern "C" {
 #endif
 
 typedef struct {
-	CONF_SECTION    		*virtual_server;		//!< Virtual server.
+	virtual_server_t    		*virtual_server;		//!< Virtual server.
 
 	/** Whether we should include a bid-down prevention attribute by default
 	 *
@@ -75,11 +76,13 @@ typedef struct {
 							///< before validating.
 	size_t			response_hmac_extra_len;
 
+	unlang_result_t		virtual_server_result;
+
 	fr_aka_sim_checkcode_t	*checkcode_state;	//!< Digest of all identity packets we've seen.
 	fr_aka_sim_ctx_t	ctx;
 } eap_aka_sim_mod_session_t;
 
-unlang_action_t		eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+unlang_action_t		eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 #ifdef __cplusplus
 }

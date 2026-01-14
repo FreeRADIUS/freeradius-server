@@ -12,14 +12,19 @@
 
 ATTRIBUTE	Virtual-Subnet-Selection		68	struct
 MEMBER		Type					uint8 key
+MEMBER		Information				union key=Type
+
+BEGIN Virtual-Subnet-Selection.Information
+
+ATTRIBUTE	NVT-Ascii-VPN				0	struct
+MEMBER		Identifier				string
+
+ATTRIBUTE	VPN					1	struct
+MEMBER		ID					octets[7]
+
+END Virtual-Subnet-Selection.Information
+
 #
 #  Not a struct, because there must not be any data after the key
 #
-VALUE	Type				Global-VPN		255
-
-STRUCT	NVT-Ascii-VPN				Type		0
-MEMBER		Identifier				string
-
-STRUCT	VPN				Type			1
-MEMBER		ID					octets[7]
-
+VALUE  Type                            Global-VPN              255

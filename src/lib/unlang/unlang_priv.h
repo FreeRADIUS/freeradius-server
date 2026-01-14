@@ -28,8 +28,11 @@
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/map.h>
 #include <freeradius-devel/io/listen.h>
 
 #ifdef __cplusplus
@@ -53,15 +56,17 @@ typedef enum {
 	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
-	UNLANG_TYPE_UPDATE,			//!< Update block.
 	UNLANG_TYPE_SWITCH,			//!< Switch section.
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
 	UNLANG_TYPE_FOREACH,			//!< Foreach section.
-	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
+	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH or #UNLANG_TYPE_CASE).
+	UNLANG_TYPE_CONTINUE,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
 	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
+	UNLANG_TYPE_CHILD_REQUEST,		//!< a frame at the top of a child's request stack used to signal the
+						///< parent when the child is complete.
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
 	UNLANG_TYPE_CALLER,			//!< conditionally check parent dictionary type
@@ -70,6 +75,7 @@ typedef enum {
 	UNLANG_TYPE_TRANSACTION,       		//!< transactions for editing lists
 	UNLANG_TYPE_TRY,       			//!< try / catch blocks
 	UNLANG_TYPE_CATCH,       		//!< catch a previous try
+	UNLANG_TYPE_FINALLY,			//!< run at the end of a virtual server.
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
@@ -95,8 +101,24 @@ typedef enum {
 #define UNLANG_DETACHABLE	(true)
 #define UNLANG_NORMAL_CHILD	(false)
 
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	UNLANG_FRAME_FLAG_NONE			= 0x00,			//!< No flags.
+	UNLANG_FRAME_FLAG_REPEAT		= 0x01,			//!< Repeat the frame on the way up the stack.
+	UNLANG_FRAME_FLAG_TOP_FRAME		= 0x02,			//!< are we the top frame of the stack?
+									///< If true, causes the interpreter to stop
+									///< interpreting and return, control then passes
+									///< to whatever called the interpreter.
+	UNLANG_FRAME_FLAG_YIELDED		= 0x04,			//!< frame has yielded
+	UNLANG_FRAME_FLAG_UNWIND		= 0x08,			//!< This frame should be unwound without evaluation.
+} unlang_frame_flag_t;
+DIAG_ON(attributes)
+
 typedef struct unlang_s unlang_t;
 typedef struct unlang_stack_frame_s unlang_stack_frame_t;
+
+FR_DLIST_TYPES(unlang_list)
+FR_DLIST_TYPEDEFS(unlang_list, unlang_list_t, unlang_entry_t)
 
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
@@ -111,7 +133,8 @@ typedef struct unlang_stack_frame_s unlang_stack_frame_t;
  */
 struct unlang_s {
 	unlang_t		*parent;	//!< Previous node.
-	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_EXECUTE_NEXT et al).
+	unlang_list_t		*list;		//!< so we have fewer run-time dereferences
+	unlang_entry_t		entry;		//!< next / prev entries
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
@@ -121,16 +144,8 @@ struct unlang_s {
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
 
-/** Describes how to allocate an #unlang_group_t with additional memory keyword specific data
- *
- */
-typedef struct {
-	unlang_type_t		type;		//!< Keyword.
-	size_t			len;		//!< Total length of the unlang_group_t + specialisation struct.
-	unsigned		pool_headers;	//!< How much additional space to allocate for chunk headers.
-	size_t			pool_len;	//!< How much additional space to allocate for extensions.
-	char const		*type_name;	//!< Talloc type name.
-} unlang_ext_t;
+FR_DLIST_FUNCS(unlang_list, unlang_t, entry)
+#define unlang_list_foreach(_list_head, _iter) fr_dlist_foreach(unlang_list_dlist_head(_list_head), unlang_t, _iter)
 
 typedef struct {
 	fr_dict_t		*dict;		//!< our dictionary
@@ -144,11 +159,9 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	unlang_t		*children;	//!< Children beneath this group.  The body of an if
-						//!< section for example.
-	unlang_t		**tail;		//!< pointer to the tail which gets updated
+
 	CONF_SECTION		*cs;
-	int			num_children;
+	unlang_list_t		children;
 
 	unlang_variable_t	*variables;	//!< rarely used, so we don't usually need it
 } unlang_group_t;
@@ -170,7 +183,7 @@ typedef struct {
  *
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_process_t)(rlm_rcode_t *p_result, request_t *request,
+typedef unlang_action_t (*unlang_process_t)(unlang_result_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame);
 
 /** Function to call if the request was signalled
@@ -196,13 +209,119 @@ typedef void (*unlang_dump_t)(request_t *request, unlang_stack_frame_t *frame);
 
 typedef int (*unlang_thread_instantiate_t)(unlang_t const *instruction, void *thread_inst);
 
+typedef struct {
+	virtual_server_t const		*vs;			//!< Virtual server we're compiling in the context of.
+								///< This shouldn't change during the compilation of
+								///< a single unlang section.
+	char const			*section_name1;
+	char const			*section_name2;
+	unlang_mod_actions_t		actions;
+	tmpl_rules_t const		*rules;
+} unlang_compile_ctx_t;
+
+typedef unlang_t *(*unlang_compile_t)(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci);
+
+#define UNLANG_IGNORE ((unlang_t *) -1)
+
+unlang_t *unlang_compile_empty(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
+
+unlang_t *unlang_compile_section(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
+
+unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx);
+
+unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_type_t type);
+
+int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
+				 fr_dict_attr_t const *ref);
+
+bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name);
+
+/*
+ *	@todo - These functions should be made private once all of they keywords have been moved to foo(args) syntax.
+ */
+bool pass2_fixup_tmpl(UNUSED TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict);
+bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent);
+bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules);
+bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules);
+
+/*
+ *	When we switch to a new unlang ctx, we use the new component
+ *	name and number, but we use the CURRENT actions.
+ */
+static inline CC_HINT(always_inline)
+void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t const *src)
+{
+#ifndef NDEBUG
+	int i;
+#endif
+
+	*dst = *src;
+
+#ifndef NDEBUG
+	/*
+	 *	Ensure that none of the actions are RETRY.  The actions { ... } section is applied to the
+	 *	instruction, and not to the unlang_compile_ctx_t
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		fr_assert(dst->actions.actions[i] != MOD_ACTION_RETRY);
+		fr_assert(MOD_ACTION_VALID(dst->actions.actions[i]));
+	}
+#endif
+}
+
+
+#ifndef NDEBUG
+static inline CC_HINT(always_inline) int unlang_attr_rules_verify(tmpl_attr_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
+	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
+	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->attr.allow_foreign must be false")) return -1;
+
+	return 0;
+}
+
+static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+	return unlang_attr_rules_verify(&rules->attr);
+}
+
+#define RULES_VERIFY(_rules) do { if (unlang_rules_verify(_rules) < 0) return NULL; } while (0)
+#else
+#define RULES_VERIFY(_rules)
+#endif
+
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	UNLANG_OP_FLAG_NONE			= 0x00,			//!< No flags.
+	UNLANG_OP_FLAG_DEBUG_BRACES		= 0x01,			//!< Print debug braces.
+	UNLANG_OP_FLAG_RCODE_SET		= 0x02,			//!< Set request->rcode to the result of this operation.
+	UNLANG_OP_FLAG_NO_FORCE_UNWIND		= 0x04,			//!< Must not be cancelled.
+									///< @Note Slightly confusingly, a cancellation signal
+									///< can still be delivered to a frame that is not
+									///< cancellable, but the frame won't be automatically
+									///< unwound.  This lets the frame know that cancellation
+									///< is desired, but can be ignored.
+	UNLANG_OP_FLAG_BREAK_POINT		= 0x08,			//!< Break point.
+	UNLANG_OP_FLAG_RETURN_POINT		= 0x10,			//!< Return point.
+	UNLANG_OP_FLAG_CONTINUE_POINT		= 0x20,			//!< Continue point.
+
+	UNLANG_OP_FLAG_SINGLE_WORD		= 0x1000,		//!< the operation is parsed and compiled as a single word
+	UNLANG_OP_FLAG_INTERNAL			= 0x2000,		//!< it's not a real keyword
+
+} unlang_op_flag_t;
+DIAG_ON(attributes)
+
 /** An unlang operation
  *
  * These are like the opcodes in other interpreters.  Each operation, when executed
  * will return an #unlang_action_t, which determines what the interpreter does next.
  */
 typedef struct {
-	char const		*name;				//!< Name of the operation.
+	char const		*name;				//!< Name of the keyword
+	unlang_type_t		type;				//!< enum value for the keyword
+
+	unlang_compile_t	compile;			//!< compile the keyword
 
 	unlang_process_t	interpret;     			//!< Function to interpret the keyword
 
@@ -210,15 +329,18 @@ typedef struct {
 
 	unlang_dump_t		dump;				//!< Dump additional information about the frame state.
 
+	size_t			unlang_size;			//!< Total length of the unlang_t + specialisation struct.
+	char const		*unlang_name;			//!< Talloc type name for the unlang_t
+
+	unsigned		pool_headers;			//!< How much additional space to allocate for chunk headers.
+	size_t			pool_len;			//!< How much additional space to allocate for chunks
+
+
 	unlang_thread_instantiate_t thread_instantiate;		//!< per-thread instantiation function
 	size_t			thread_inst_size;
 	char const		*thread_inst_type;
 
-
-	bool			debug_braces;			//!< Whether the operation needs to print braces
-								///< in debug mode.
-
-	bool			rcode_set;			//!< Set request->rcode to the result of this operation.
+	unlang_op_flag_t	flag;				//!< Interpreter flags for this operation.
 
 	size_t			frame_state_size;       	//!< size of instance data in the stack frame
 
@@ -254,15 +376,14 @@ void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #define		unlang_frame_perf_cleanup(_x)
 #endif
 
-void	unlang_frame_signal(request_t *request, fr_signal_t action, int limit);
+void	unlang_stack_signal(request_t *request, fr_signal_t action, int limit);
 
 typedef struct {
 	request_t		*request;
 	int			depth;				//!< of this retry structure
 	fr_retry_state_t	state;
-	fr_time_t		timeout;
 	uint32_t       		count;
-	fr_event_timer_t const	*ev;
+	fr_timer_t		*ev;
 } unlang_retry_t;
 
 /** Our interpreter stack, as distinct from the C stack
@@ -295,14 +416,39 @@ struct unlang_stack_frame_s {
 	 */
 	void			*state;
 
+	unlang_result_t		section_result;			//!< The aggregate result of executing all siblings
+								///< in this section.  This will be merged with the
+								///< higher stack frame's rcode when the frame is popped.
+								///< If the rcode is set to RLM_MODULE_NOT_SET when
+								///< the frame is popped, then the rcode of the frame
+								///< does not modify the rcode of the frame above it.
+
+	unlang_result_t		scratch_result;			//!< The result of executing the current instruction.
+								///< This will be set to RLM_MODULE_NOT_SET, and
+								///< MOD_ACTION_NOT_SET when a new instruction is set
+								///< for the frame.  If p_result does not point to this
+								///< field, the rcode and priority returned will be
+								///< left as NOT_SET and will be ignored.
+								///< This values here will persist between yields.
+
+	unlang_result_t		*p_result;			//!< Where to write the result of executing the current
+								///< instruction.  Will either point to `scratch_result`,
+								///< OR if the parent does not want its rcode to be updated
+								///< by a child it pushed for evaluation, it will point to
+								///< memory in the parent's frame state, so that the parent
+								///< can manually process the rcode.
+
 	unlang_retry_t		*retry;				//!< if the frame is being retried.
 
-	rlm_rcode_t 		result;				//!< The result from executing the instruction.
-	int			priority;			//!< Result priority.  When we pop this stack frame
-								///< this priority will be compared with the one of the
-								///< frame lower in the stack to determine if the
-								///< result stored in the lower stack frame should
-	uint8_t			uflags;				//!< Unwind markers
+
+	rindent_t		indent;				//!< Indent level of the request when the frame was
+								///< created.  This is used to restore the indent
+								///< level when the stack is being forcefully unwound.
+
+	unlang_frame_flag_t	flag;				//!< Flags that mark up the frame for various things
+								///< such as being the point where break, return or
+								///< continue stop, or for forced unwinding.
+
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
 #endif
@@ -314,8 +460,7 @@ struct unlang_stack_frame_s {
 typedef struct {
 	unlang_interpret_t	*intp;				//!< Interpreter that the request is currently
 								///< associated with.
-	int			priority;			//!< Current priority.
-	rlm_rcode_t		result;				//!< The current stack rcode.
+
 	int			depth;				//!< Current depth we're executing at.
 	uint8_t			unwind;				//!< Unwind to this frame if it exists.
 								///< This is used for break and return.
@@ -325,63 +470,141 @@ typedef struct {
 /** Different operations the interpreter can execute
  */
 extern unlang_op_t unlang_ops[];
+extern fr_hash_table_t *unlang_op_table;
 
 #define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
 
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
 
-#define UNWIND_FLAG_NONE		0x00			//!< No flags.
-#define UNWIND_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
-#define UNWIND_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
-								///< If true, causes the interpreter to stop
-								///< interpreting and return, control then passes
-								///< to whatever called the interpreter.
-#define UNWIND_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
-#define UNWIND_FLAG_RETURN_POINT	0x08      		//!< 'return' stops here.
-#define UNWIND_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
-#define UNWIND_FLAG_YIELDED		0x20			//!< frame has yielded
+static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
+static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline void yielded_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_YIELDED; }
+static inline void unwind_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_UNWIND; }
 
-static inline void repeatable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_REPEAT; }
-static inline void top_frame_set(unlang_stack_frame_t *frame) 		{ frame->uflags |= UNWIND_FLAG_TOP_FRAME; }
-static inline void break_point_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_BREAK_POINT; }
-static inline void return_point_set(unlang_stack_frame_t *frame)	{ frame->uflags |= UNWIND_FLAG_RETURN_POINT; }
-static inline void yielded_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_YIELDED; }
+static inline void repeatable_clear(unlang_stack_frame_t *frame)		{ frame->flag &= ~UNLANG_FRAME_FLAG_REPEAT; }
+static inline void top_frame_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline void yielded_clear(unlang_stack_frame_t *frame) 			{ frame->flag &= ~UNLANG_FRAME_FLAG_YIELDED; }
+static inline void unwind_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_UNWIND; }
 
-static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_REPEAT; }
-static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FLAG_TOP_FRAME; }
-static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_BREAK_POINT; }
-static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RETURN_POINT; }
-static inline void yielded_clear(unlang_stack_frame_t *frame) 		{ frame->uflags &= ~UNWIND_FLAG_YIELDED; }
+static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_REPEAT; }
+static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
+static inline bool is_unwinding(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_UNWIND; }
+static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->p_result == &frame->section_result); }
 
-static inline bool is_repeatable(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_REPEAT; }
-static inline bool is_top_frame(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
-static inline bool is_break_point(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
-static inline bool is_return_point(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
-static inline bool is_yielded(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_YIELDED; }
+static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
+static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
+#define has_debug_braces(_thing) \
+		   _Generic((_thing), \
+			unlang_t *: _instruction_has_debug_braces((unlang_t const *)(_thing)), \
+			unlang_t const *: _instruction_has_debug_braces((unlang_t const *)(_thing)), \
+			unlang_stack_frame_t *: _frame_has_debug_braces((unlang_stack_frame_t const *)(_thing)), \
+			unlang_stack_frame_t const *: _frame_has_debug_braces((unlang_stack_frame_t const *)(_thing)) \
+		   )
+static inline bool is_rcode_set(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RCODE_SET; }
+static inline bool is_cancellable(unlang_stack_frame_t const *frame)		{ return !(unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_NO_FORCE_UNWIND); }
+static inline bool is_break_point(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT; }
+static inline bool is_return_point(unlang_stack_frame_t const *frame) 		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT; }
+static inline bool is_continue_point(unlang_stack_frame_t const *frame) 	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT; }
 
-static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
+/** @name Debug functions
+ *
+ * @{
+ */
+void stack_dump(request_t *request);
+void stack_dump_with_actions(request_t *request);
+/** @} */
+
+/** Find the first frame with a given flag
+ *
+ * @return
+ *	- 0 if no frame has the flag.
+ *	- The index of the first frame with the flag.
+ */
+static inline unsigned int unlang_frame_by_flag(unlang_stack_t *stack, unlang_frame_flag_t flag)
 {
-	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
-	return UNLANG_ACTION_UNWIND;
-}
-static inline unlang_action_t unwind_to_return(unlang_stack_t *stack)
-{
-	stack->unwind = UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME;
-	return UNLANG_ACTION_UNWIND;
-}
-static inline unlang_action_t unwind_all(unlang_stack_t *stack)
-{
-	stack->unwind = UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR;
-	return UNLANG_ACTION_UNWIND;
+	unsigned int	i;
+
+	for (i = stack->depth; i > 0; i--) {
+		unlang_stack_frame_t *frame = &stack->frame[i];
+
+		if (frame->flag & flag) return i;
+	}
+	return 0;
 }
 
-static inline bool is_stack_unwinding_to_top_frame(unlang_stack_t *stack)	{ return stack->unwind & UNWIND_FLAG_TOP_FRAME; }
-static inline bool is_stack_unwinding_to_break(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_BREAK_POINT; }
-static inline bool is_stack_unwinding_to_return(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_RETURN_POINT; }
-static inline void stack_unwind_top_frame_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_TOP_FRAME; }
-static inline void stack_unwind_break_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_BREAK_POINT; }
-static inline void stack_unwind_return_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_RETURN_POINT; }
+/** Find the first frame with a given flag
+ *
+ * @return
+ *	- 0 if no frame has the flag.
+ *	- The index of the first frame with the flag.
+ */
+static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang_op_flag_t flag)
+{
+	unsigned int	i;
+
+	for (i = stack->depth; i > 0; i--) {
+		unlang_stack_frame_t *frame = &stack->frame[i];
+
+		if (unlang_ops[frame->instruction->type].flag & flag) return i;
+	}
+	return 0;
+}
+
+/** Mark up frames as cancelled so they're immediately popped by the interpreter
+ *
+ * @note We used to do this asynchronously, but now we may need to execute timeout sections
+ *       which means it's not enough to pop and cleanup the stack, we need continue executing
+ *	the request.
+ *
+ * @param[in] stack	The current stack.
+ * @param[in] to_depth	mark all frames below this depth as cancelled.
+ */
+static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned int to_depth)
+{
+	unlang_stack_frame_t	*frame;
+	unsigned int i, depth = stack->depth;	/* must be signed to avoid underflow */
+
+	if (!fr_cond_assert(to_depth >= 1)) return UNLANG_ACTION_FAIL;
+
+	for (i = depth; i >= to_depth; i--) {
+		frame = &stack->frame[i];
+		if (!is_cancellable(frame)) continue;
+		unwind_set(frame);
+	}
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Mark the entire stack as cancelled
+ *
+ * This cancels all frames up to the next "break" frame.
+ *
+ * @param[out] depth_p		Depth of the break || return || continue point.
+ * @param[in] stack		The current stack.
+ * @param[in] flag		Flag to search for.  One of:
+ *				- UNLANG_OP_FLAG_BREAK_POINT
+ *				- UNLANG_OP_FLAG_RETURN_POINT
+ *				- UNLANG_OP_FLAG_CONTINUE_POINT
+ * @return UNLANG_ACTION_CALCULATE_RESULT
+ */
+static inline unlang_action_t unwind_to_op_flag(unsigned int *depth_p, unlang_stack_t *stack, unlang_op_flag_t flag)
+{
+	unsigned int depth;
+
+	depth = unlang_frame_by_op_flag(stack, flag);
+	if (depth == 0) {
+		if (depth_p) *depth_p = stack->depth + 1;	/* Don't cancel any frames! */
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	unwind_to_depth(stack, depth + 1);	/* cancel UP TO the break point */
+
+	if (depth_p) *depth_p = depth;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
 
 static inline unlang_stack_frame_t *frame_current(request_t *request)
 {
@@ -397,6 +620,15 @@ static inline int stack_depth_current(request_t *request)
 	return stack->depth;
 }
 
+/** Initialise memory and instruction for a frame when a new instruction is to be evaluated
+ *
+ * @note We don't change frame->p_result here, we only reset the scratch values.  This is because
+ *	 Whatever pushed the frame onto the stack generally wants the aggregate result of
+ *	 the complete section, not just the first instruction.
+ *
+ * @param[in] stack	the current request stack.
+ * @param[in] frame	frame to initialise
+ */
 static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
 	unlang_t const	*instruction = frame->instruction;
@@ -407,6 +639,11 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_type ? op->frame_state_type : __location__;
+
+	/*
+	 *	Reset for each instruction
+	 */
+	frame->scratch_result = UNLANG_RESULT_NOT_SET;
 
 	frame->process = op->interpret;
 	frame->signal = op->signal;
@@ -452,7 +689,8 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	/*
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
-	frame->uflags &= UNWIND_FLAG_TOP_FRAME;
+	frame->flag &= UNLANG_FRAME_FLAG_TOP_FRAME;
+	TALLOC_FREE(frame->retry);
 	if (frame->state) {
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);
@@ -467,10 +705,16 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
 
-	if (!frame->instruction) return;
+	if (!frame->instruction) return;	/* No siblings, need to pop instead */
 
-	frame->next = frame->instruction->next;
+	frame->next = unlang_list_next(frame->instruction->list, frame->instruction);
 
+	/*
+	 *	We _may_ want to take a new frame->p_result value in future but
+	 *	for now default to the scratch result.  Generally the thing
+	 *	advancing the frame is within this library, and doesn't
+	 *	need custom behaviour for rcodes.
+	 */
 	frame_state_init(stack, frame);
 }
 
@@ -483,9 +727,21 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame;
 
-	fr_assert(stack->depth > 1);
+	fr_assert(stack->depth >= 1);
 
 	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Signal the frame to get it back into a consistent state
+	 *	as we won't be calling the resume function.
+	 *
+	 *	If the frame was cancelled, the signal function will
+	 *	have already been called.
+	 */
+	if (!is_unwinding(frame) && is_repeatable(frame)) {
+		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
+		repeatable_clear(frame);
+	}
 
 	/*
 	 *	We clean up the retries when we pop the frame, not
@@ -496,20 +752,16 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	 */
 	TALLOC_FREE(frame->retry);
 
+	/*
+	 *	Ensure log indent is at the same level as it was when
+	 *	the frame was pushed.  This is important when we're
+	 *	unwinding the stack and forcefully cancelling calls.
+	 */
+	request->log.indent = frame->indent;
+
 	frame_cleanup(frame);
 
-	frame = &stack->frame[--stack->depth];
-
-	/*
-	 *	Signal the frame to get it back into a consistent state
-	 *	as we won't be calling the resume function.
-	 */
-	if (stack->unwind && is_repeatable(frame) &&
-	    ((is_stack_unwinding_to_break(stack) && !is_break_point(frame)) ||
-	     (is_stack_unwinding_to_return(stack) && !is_return_point(frame)))) {
-		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
-		repeatable_clear(frame);
-	}
+	stack->depth--;
 }
 
 /** Mark the current stack frame up for repeat, and set a new process function
@@ -519,6 +771,38 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 {
 	repeatable_set(frame);
 	frame->process = process;
+}
+
+static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t const *unlang)
+{
+	/*
+	 *	We're skipping the remaining siblings, stop the
+	 *	interpreter from continuing and have it pop
+	 *	this frame, running cleanups normally.
+	 *
+	 *	We don't explicitly cleanup here, otherwise we
+	 *	end up doing it twice and bad things happen.
+	 */
+	if (!unlang) {
+		frame->next = NULL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Clean up this frame now, so that stats, etc. will be
+	 *	processed using the correct frame.
+	 */
+	frame_cleanup(frame);
+
+	/*
+	 *	frame_next() will call cleanup *before* resetting the frame->instruction.
+	 *	but since the instruction is NULL, no duplicate cleanups will happen.
+	 *
+	 *	frame_next() will then set frame->instruction = frame->next, and everything will be OK.
+	 */
+	frame->instruction = NULL;
+	frame->next = unlang;
+	return UNLANG_ACTION_EXECUTE_NEXT;
 }
 
 /** @name Conversion functions for converting #unlang_t to its specialisations
@@ -540,6 +824,25 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t const *p)
 	return UNCONST(unlang_t *, p);
 }
 
+static inline CC_HINT(always_inline) unlang_list_t *unlang_list(unlang_t *unlang)
+{
+	return &unlang_generic_to_group(unlang)->children;
+}
+
+static inline CC_HINT(always_inline) void unlang_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang->type = type;
+	unlang->parent = parent;
+	if (parent) unlang->list = unlang_list(parent);
+	unlang_list_entry_init(unlang);
+}
+
+static inline CC_HINT(always_inline) void unlang_group_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang_type_init(unlang, parent, type);
+	unlang_list_init(&((unlang_group_t *) unlang)->children);
+}
+
 static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t const *p)
 {
 	fr_assert(p->type == UNLANG_TYPE_TMPL);
@@ -556,11 +859,11 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t const *p)
  *
  * @{
  */
-int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
-				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
+int		unlang_interpret_push(unlang_result_t *p_result, request_t *request, unlang_t const *instruction,
+				      unlang_frame_conf_t const *conf, bool do_next_sibling)
 				      CC_HINT(warn_unused_result);
 
-unlang_action_t	unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, request_t *request,
 					       rlm_rcode_t default_rcode, bool do_next_sibling)
 					       CC_HINT(warn_unused_result);
 
@@ -587,7 +890,7 @@ request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *names
  *
  * @{
  */
-void		unlang_register(int type, unlang_op_t *op);
+void		unlang_register(unlang_op_t *op) CC_HINT(nonnull);
 
 void		unlang_call_init(void);
 
@@ -595,7 +898,9 @@ void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
 
-void		unlang_foreach_init(TALLOC_CTX *ctx);
+void		unlang_finally_init(void);
+
+void		unlang_foreach_init(void);
 
 void		unlang_function_init(void);
 
@@ -612,8 +917,6 @@ void		unlang_return_init(void);
 void		unlang_parallel_init(void);
 
 int		unlang_subrequest_op_init(void);
-
-void		unlang_subrequest_op_free(void);
 
 void		unlang_detach_init(void);
 

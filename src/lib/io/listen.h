@@ -27,6 +27,7 @@ struct fr_listen {
 
 	int			fd;			//!< file descriptor for this socket - set by open
 	char const		*name;			//!< printable name for this socket - set by open
+	fr_dict_t const		*dict;			//!< dictionary for this listener
 
 	fr_app_io_t const	*app_io;		//!< I/O path functions.
 	void const    		*app_io_instance;	//!< I/O path configuration context.
@@ -48,6 +49,9 @@ struct fr_listen {
 							///< populated when event_list_set callback is run which doesn't
 							///< happen if the short cut is taken.
 
+	bool			read_hexdump;		//!< Do we debug hexdump packets as they're read.
+	bool			write_hexdump;		//!< Do we debug hexdump packets as they're written.
+
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer
 };
@@ -67,9 +71,6 @@ struct fr_async_s {
 	void			*packet_ctx;
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
-	uint32_t		priority;	//!< higher == higher priority
-
-	uint32_t		sequence;	//!< higher == higher priority, too
 };
 
 int fr_io_listen_free(fr_listen_t *li);

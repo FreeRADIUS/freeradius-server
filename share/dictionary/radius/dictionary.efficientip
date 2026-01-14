@@ -14,9 +14,9 @@ VENDOR		EfficientIP			2440
 
 BEGIN-VENDOR	EfficientIP
 
-ATTRIBUTE	Version					1	integer
-ATTRIBUTE	Service-Class				2	integer
-ATTRIBUTE	Identity-Type				3	integer
+ATTRIBUTE	Version					1	uint32
+ATTRIBUTE	Service-Class				2	uint32
+ATTRIBUTE	Identity-Type				3	uint32
 ATTRIBUTE	First-Name				16	string
 ATTRIBUTE	Last-Name				17	string
 ATTRIBUTE	Pseudonym				18	string

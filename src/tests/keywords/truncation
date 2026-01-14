@@ -85,7 +85,7 @@ if !("0x%hex(%{test_octets})" =~ /^0x([0-9a-f]+)$/) {
 	test_fail
 }
 
-result_string := "%{1}"
+result_string := "%regex.match(1)"
 
 if (!(%length(%{result_string}) == 8166)) {
 	test_fail

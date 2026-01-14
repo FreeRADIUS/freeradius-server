@@ -1,0 +1,5 @@
+User-Name := "foo"
+
+catch fail {	# ERROR
+      ok
+}

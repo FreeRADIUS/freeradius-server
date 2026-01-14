@@ -148,7 +148,7 @@ You can get the values for the various commands/domains either via the CLI or by
                      DOMAIN-SECURITY DOMAIN-POLICY DOMAIN-PHYSICAL
                      DOMAIN-NETWORK DOMAIN-LAYER2 DOMAIN-ADMIN DNS DHCP-SERVER
                      DEBUG CONFIG CHASSIS BRIDGE AVLAN ALL AIP AAA 802.1Q <cr>
-     (AAA & Configuration Mgr Command Set)
+     (AAA and Configuration Mgr Command Set)
 
 
     -> show aaa priv hexa ssh

@@ -1,0 +1,25 @@
+= %str.rpad(<string>, <val>, <char>)
+
+Right-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+string test
+
+test := "123"
+
+reply.Reply-Message := "Maximum should be %str.rpad(test, 11, '0')"
+----
+
+.Output
+
+```
+Maximum should be 12300000000
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

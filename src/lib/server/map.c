@@ -32,22 +32,16 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/unlang/interpret.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <ctype.h>
-
-extern bool tmpl_require_enum_prefix;
 
 static fr_table_num_sorted_t const cond_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -207,9 +201,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			/*
 			 *	If we parsed an attribute on the LHS, and the RHS looks like an enumerated
 			 *	value, then set the enumv.
-			 *
-			 *	@todo tmpl_require_enum_prefix - maybe just _always_ set enumv, because the
-			 *	caller shouldn't have set it?
 			 */
 			if (!rhs_rules->enumv && tmpl_is_attr(map->lhs) &&
 			    (value[0] == ':') && value[1] == ':') {
@@ -319,9 +310,26 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	}
 
 	/*
-	 *	If we know that the assignment is forbidden, then fail early.
+	 *	If we can resolve the RHS in the context of the LHS,
+	 *	and are allowed to do so, then do that now.
+	 *
+	 *	The "map" keyword uses the RHS not as the value which
+	 *	is assigned to the LHS.  Instead, it is a pointer to
+	 *	the value.  As such, we cannot immediately resolve the
+	 *	RHS in the context of the LHS.
+	 *
+	 *	The edit code allows string assignments to lists, and
+	 *	will interpret the string as a sequence of edit
+	 *	operations.  So we skip casting strings to lists.
+	 *
+	 *	@todo - that could arguably be done immediately here,
+	 *	and the RHS could be parsed and created as a child
+	 *	map.  That would allow for more compile-time sanity
+	 *	checks.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs) &&
+	    (!input_rhs_rules || !input_rhs_rules->attr.disallow_rhs_resolve) &&
+	    fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type)) {
 		fr_type_t cast_type;
 
 		if ((map->op != T_OP_RSHIFT_EQ) && (map->op != T_OP_LSHIFT_EQ)) {
@@ -462,6 +470,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
 	map_t				*parent;
+	fr_dict_attr_t const		*enumv;
 	tmpl_rules_t			our_rhs_rules;
 
 	if (parent_p) {
@@ -489,52 +498,59 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		our_lhs_rules = *lhs_rules;
 
 		/*
-		 *	Allow for ".foo" to refer to the current
-		 *	parents list.  Allow for "..foo" to refer to
-		 *	the grandparent list.
+		 *	Bare words on the LHS are always attributes.
+		 *
+		 *	It doesn't make sense to allow "5 = 4".  Or, "5 = NAS-Port".
+		 *
+		 *	The conditions do allow "5 == NAS-Port", but
+		 *	they use a different parser for that.
 		 */
-		if (our_lhs_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES) {
-			/*
-			 *	Absolute references are from the root.
-			 */
-			if (!fr_sbuff_next_if_char(&our_in, '.')) {
-				parent = NULL;
-				goto lhs_root;
-			}
 
-			/*
-			 *	Relative references must have a parent.
-			 */
-			if (!parent) {
-				fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
-				goto error;
-			}
+		/*
+		 *	Absolute references are from the root.
+		 */
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			parent = NULL;
 
-			/*
-			 *	Multiple '.' means "go to our parents parent".
-			 */
-			while (fr_sbuff_next_if_char(&our_in, '.')) {
-				if (!parent) {
-					fr_strerror_const("Too many '.' in relative reference");
-					goto error;
-				}
-				parent = parent->parent;
-			}
-
-			if (!parent) goto lhs_root;
-
-			/*
-			 *	Start looking in the correct parent, not in whatever we were handed.
-			 */
-			fr_assert(tmpl_is_attr(parent->lhs));
-			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
-
+		lhs_root:
 			slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 						      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 			break;
 		}
 
-	lhs_root:
+		/*
+		 *	Allow for ".foo" to refer to the current
+		 *	parents list.  Allow for "..foo" to refer to
+		 *	the grandparent list.
+		 */
+
+		/*
+		 *	Relative references must have a parent.
+		 */
+		if (!parent) {
+			fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+			goto error;
+		}
+
+		/*
+		 *	Multiple '.' means "go to our parents parent".
+		 */
+		while (fr_sbuff_next_if_char(&our_in, '.')) {
+			if (!parent) {
+				fr_strerror_const("Too many '.' in relative reference");
+				goto error;
+			}
+			parent = parent->parent;
+		}
+
+		if (!parent) goto lhs_root;
+
+		/*
+		 *	Start looking in the correct parent, not in whatever we were handed.
+		 */
+		fr_assert(tmpl_is_attr(parent->lhs));
+		our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 					      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 		break;
@@ -549,6 +565,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		talloc_free(map);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
+	fr_assert(tmpl_is_attr(map->lhs));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 	fr_sbuff_marker(&m_op, &our_in);
@@ -595,7 +612,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	 *	only be an attribute, etc.  Not trivial, so we'll just
 	 *	skip all that for now.
 	 */
-	if (tmpl_is_attr(map->lhs)) switch (tmpl_attr_tail_da(map->lhs)->type) {
+	switch (tmpl_attr_tail_da(map->lhs)->type) {
 		case FR_TYPE_STRUCTURAL:
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 				fr_sbuff_set(&our_in, &m_op);
@@ -670,21 +687,16 @@ parse_rhs:
 		goto check_for_child;
 	}
 
-	/*
-	 *	If the LHS is an attribute, we can parse enum names from the RHS.
-	 */
-	if (tmpl_is_attr(map->lhs)) {
-		fr_dict_attr_t const *enumv = tmpl_attr_tail_da(map->lhs);
+	enumv = tmpl_attr_tail_da(map->lhs);
 
-		/*
-		 *	LHS is a structural type.  The RHS is either empty (create empty LHS), or it's a string
-		 *	containing a list of attributes to create.
-		 */
-		if (fr_type_is_leaf(enumv->type)) {
-			our_rhs_rules = *rhs_rules;
-			our_rhs_rules.enumv = enumv;
-			rhs_rules = &our_rhs_rules;
-		}
+	/*
+	 *	LHS is a structural type.  The RHS is either empty (create empty LHS), or it's a string
+	 *	containing a list of attributes to create.
+	 */
+	if (fr_type_is_leaf(enumv->type)) {
+		our_rhs_rules = *rhs_rules;
+		our_rhs_rules.enumv = enumv;
+		rhs_rules = &our_rhs_rules;
 	}
 
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
@@ -709,7 +721,7 @@ parse_rhs:
 			 *	It MUST be the given data type, and it MAY be an enum name.
 			 */
 			slen = fr_value_box_from_substr(map, vb, rhs_rules->enumv->type, rhs_rules->enumv,
-							&our_in, p_rules, false);
+							&our_in, p_rules);
 			if (slen < 0) goto error;
 
 			if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
@@ -851,37 +863,41 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 *	Check the "update" section for destination lists.
 	 */
 	if (update) {
-		fr_slen_t slen;
-		char const *p;
+		char const *name2 = cf_section_name2(cs);
 
-		p = cf_section_name2(cs);
-		if (!p) goto do_children;
+		if (name2) {
+			fr_dict_attr_t const *list_def = NULL;
+			fr_sbuff_t sbuff = FR_SBUFF_IN(name2, strlen(name2));
 
-		if (our_lhs_rules.attr.list_presence == TMPL_ATTR_LIST_FORBID) {
-			cf_log_err(ci, "Invalid \"update\" section - list references are not allowed here");
-			return -1;
-		}
+			/*
+			 *	There's a name, but it's not one we recognize.  Or, it's one we recognize but
+			 *	there are things after it, we forbid it.
+			 *
+			 *	This code is ONLY used for "update" sections in modules.  None of those
+			 *	examples use a destination list.  If we allow any destination list (including
+			 *	parent, outer, etc.) then we allow the possibility of changing protocols,
+			 *	which is bad.
+			 *
+			 *	This limitation also means that the module "update" lists can't automatically
+			 *	edit other structural attributes, such as "reply.foo".  But that seems a small
+			 *	price to pay.
+			 *
+			 *	The admin can still specify outer / parent / etc. on the individual entries in
+			 *	an "update" section, but we'll let that go for now.
+			 *
+			 *	@todo - We should arguably forbid parent/outer list references in an "update"
+			 *	section.
+			 */
+			if ((tmpl_attr_list_from_substr(&list_def, &sbuff) <= 0) ||
+			    !fr_sbuff_eof(&sbuff)) {
+				cf_log_err(ci, "Invalid destination list specifier for 'update' - must be one of 'request', 'reply', 'control', or 'state'");
+				return -1;
+			}
 
-		MEM(tmp_ctx = talloc_init_const("tmp"));
-
-		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN(p, strlen(p)));
-		if (slen < 0) {
-			cf_log_err(ci, "Invalid reference - %s", fr_strerror());
-			talloc_free(tmp_ctx);
-			return -1;
-		}
-		p += slen;
-
-		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN(p, strlen(p)));
-		if (slen == 0) {
-			cf_log_err(ci, "Unknown list reference \"%s\"", p);
-			talloc_free(tmp_ctx);
-			return -1;
+			our_lhs_rules.attr.list_def = list_def;
 		}
 	}
 
-do_children:
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
@@ -969,7 +985,6 @@ do_children:
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			child_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
 			child_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
 
 			/*
@@ -996,23 +1011,48 @@ do_children:
 				}
 			}
 
-			/*
-			 *	This prints out any relevant error
-			 *	messages.  We MAY want to print out
-			 *	additional ones, but that might get
-			 *	complex and confusing.
-			 *
-			 *	We call out internal _map_afrom_cs()
-			 *	function, in order to pass in the
-			 *	correct parent map.
-			 */
-			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
-					 &child_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
-				map_list_talloc_free(&child_list);
-				talloc_free(map);
-				goto error;
+			if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
+				/*
+				 *	This prints out any relevant error
+				 *	messages.  We MAY want to print out
+				 *	additional ones, but that might get
+				 *	complex and confusing.
+				 *
+				 *	We call out internal _map_afrom_cs()
+				 *	function, in order to pass in the
+				 *	correct parent map.
+				 */
+				if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
+						  &child_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
+				fail:
+					map_list_talloc_free(&child_list);
+					talloc_free(map);
+					goto error;
+				}
+				map_list_move(&map->child, &child_list);
+			} else {
+				fr_assert(fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type));
+
+				/*
+				 *	foo := { a, b, c }
+				 *
+				 *	@todo - maybe lhs_rules?  But definitely not child_lhs_rules.
+				 *
+				 *	@todo - this code is taken from compile_edit_section(), we might want
+				 *	to just move that code here, for fewer special cases.
+				 */
+				if (map_list_afrom_cs(map, &child_list, cf_item_to_section(ci), rhs_rules, NULL, NULL, max) < 0) {
+					goto fail;
+				}
+
+				if ((map->op != T_OP_SET) && !map_list_num_elements(&child_list)) {
+					cf_log_err(cs, "Cannot use operator '%s' for assigning empty list to '%s' data type.",
+						   fr_tokens[map->op], fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type));
+					goto fail;
+				}
+
+				map_list_move(&map->child, &child_list);
 			}
-			map_list_move(&map->child, &child_list);
 
 			MAP_VERIFY(map);
 			goto next;
@@ -1029,18 +1069,18 @@ do_children:
 		/*
 		 *	Over-ride RHS rules for
 		 *
-		 *	&reply += {
-		 *		&User-Name = &User-Name
+		 *	reply += {
+		 *		User-Name = User-Name
 		 *	}
 		 *
 		 *	Which looks stupid.  Instead we require
 		 *
-		 *	&reply += {
-		 *		&User-Name = &request.User-Name
+		 *	reply += {
+		 *		User-Name = request.User-Name
 		 *	}
 		 *
 		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
-		 *	to allow relative attribute references via "&.foo", when updating structures.
+		 *	to allow relative attribute references via ".foo", when updating structures.
 		 */
 		our_rhs_rules = rhs_rules;
 		if (edit && (rhs_rules->attr.list_def != child_lhs_rules.attr.list_def)) {
@@ -1207,21 +1247,12 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 
 	default:
 		/*
-		 *	Don't bother trying things which we know aren't attributes.
+		 *	Let the tmpl code determine if it's an attribute reference or else is a raw value.
 		 */
-		if ((t_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_YES) && (*attr != '&')) {
-			slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
-			if (slen <= 0) goto marker;
-			break;
-		}
-
-		/*
-		 *	Else parse it as an attribute reference.
-		 */
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, t_rules);
+		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
 		if (slen <= 0) goto marker;
 
-		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+		if (tmpl_is_attr(map->lhs) && (tmpl_attr_unknown_add(map->lhs) < 0)) {
 			fr_strerror_printf("Failed defining attribute %s", map->lhs->name);
 			goto error;
 		}
@@ -1283,6 +1314,7 @@ static int _map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, C
 		fr_assert(cp != NULL);
 
 		if (map_value_afrom_cp(parent_ctx, &map, parent, cp, t_rules) < 0) {
+			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s'", cf_pair_attr(cp));
 			goto error;
 		}
@@ -1357,7 +1389,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	map = map_alloc(ctx, NULL);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
-				 &FR_SBUFF_IN(lhs, strlen(lhs)),
+				 &FR_SBUFF_IN_STR(lhs),
 				 lhs_quote,
 				 NULL,
 				 lhs_rules);
@@ -1452,7 +1484,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
-	tmpl_print(&buffer_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
+	tmpl_print(&buffer_sbuff, map->lhs, NULL);
 	tmpl_set_name(map->lhs, T_BARE_WORD, fr_sbuff_start(&buffer_sbuff), -1);
 
 	/*
@@ -1471,7 +1503,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 		break;
 	}
 
-	fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data);
+	if (unlikely(fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data) < 0)) {
+		talloc_free(map);
+		return -1;
+	}
 
 	*out = map;
 
@@ -1495,12 +1530,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map)
 {
 	int result;
-	char *expanded = NULL;
-	char answer[1024];
+	fr_pair_t *vp;
 	fr_pair_list_t *input_pairs = NULL;
-	fr_pair_list_t output_pairs;
+	char answer[1024];
 
-	fr_pair_list_init(&output_pairs);
 	fr_pair_list_free(out);
 
 	MAP_VERIFY(map);
@@ -1509,6 +1542,11 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	fr_assert(tmpl_is_exec(map->rhs));
 	fr_assert(tmpl_is_attr(map->lhs));
 
+	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
+		REDEBUG("Cannot assign `exec` output to structural attribute %s", map->lhs->name);
+		return -1;
+	}
+
 	/*
 	 *	We always put the request pairs into the environment
 	 */
@@ -1516,41 +1554,32 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 	/*
 	 *	Automagically switch output type depending on our destination
-	 *	If dst is a list, then we create attributes from the output of the program
+	 *	@todo - If dst is a list, then we create attributes from the output of the program
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
 	result = radius_exec_program_legacy(answer, sizeof(answer),
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
-	talloc_free(expanded);
 	if (result != 0) {
 		REDEBUG("Exec failed with code (%i)", result);
-		fr_pair_list_free(&output_pairs);
 		return -1;
 	}
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	{
-		fr_pair_t *vp;
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		vp->op = map->op;
-		if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
-			RPEDEBUG("Failed parsing exec output");
-			talloc_free(&vp);
-			return -2;
-		}
-		fr_pair_append(out, vp);
-
-		return 0;
+	/*
+	 *	@todo - we completely ignore the operator here :( Arguably the caller should be calling ONLY
+	 *	the legacy pair move functions with the results of this function.
+	 */
+	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
+	vp->op = map->op;
+	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
+		RPEDEBUG("Failed parsing exec output");
+		talloc_free(&vp);
+		return -2;
 	}
+	fr_pair_append(out, vp);
 
-	default:
-		fr_assert(0);
-		return -1;
-	}
+	return 0;
 }
 
 /** Convert a map to a #fr_pair_t
@@ -1580,21 +1609,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
 
 	fr_assert(tmpl_is_attr(map->lhs));
-
-	/*
-	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
-	 */
-	if (map->op == T_OP_CMP_FALSE) return 0;
-
-	/*
-	 *	Hoist this early, too.
-	 */
-	if (map->op == T_OP_CMP_TRUE) {
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		n->op = map->op;
-		fr_pair_append(out, n);
-		return 0;
-	}
 
 	/*
 	 *	If there's no RHS, then it MUST be an attribute, and
@@ -1789,8 +1803,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (tmpl_attr_tail_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
-			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
+			if (unlikely(fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0)) {
 				rcode = -1;
+				talloc_free(n);
 				goto error;
 			}
 
@@ -1880,6 +1895,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
 
+	/*
+	 *	This function is called only when creating attributes.  It cannot be called for conditions.
+	 */
+	if (fr_comparison_op[map->op]) {
+		REDEBUG("Invalid operator in %s %s ...", map->lhs->name, fr_tokens[map->op]);
+		return -1;
+	}
+
 	tmp_ctx = talloc_pool(request, 1024);
 
 	/*
@@ -1915,9 +1938,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
-				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });
 		if (slen <= 0) {
@@ -1979,18 +2001,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
-	if (!tmpl_is_null(map->rhs)) {
-		rcode = func(parent, &src_list, request, map, ctx);
-		if (rcode < 0) {
-			fr_assert(fr_pair_list_empty(&src_list));
-			goto finish;
-		}
-		if (fr_pair_list_empty(&src_list)) {
-			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
-			goto finish;
-		}
-	} else {
-		if (RDEBUG_ENABLED) map_debug_log(request, map, NULL);
+	rcode = func(parent, &src_list, request, map, ctx);
+	if (rcode < 0) {
+		fr_assert(fr_pair_list_empty(&src_list));
+		goto finish;
+	}
+	if (fr_pair_list_empty(&src_list)) {
+		RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
+		goto finish;
 	}
 
 	/*
@@ -2115,7 +2133,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(&dst);
+					talloc_free(dst);
 					found = true;
 				}
 			}
@@ -2136,7 +2154,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(&dst);
+					talloc_free(dst);
 					found = true;
 				}
 			}
@@ -2385,7 +2403,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
 					   fr_type_to_str(tmpl_rules_cast(map->lhs)));
 	}
-	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->lhs, TMPL_ATTR_REF_PREFIX_YES);
+	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->lhs);
 
 	/*
 	 *	Print separators and operator
@@ -2419,7 +2437,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	/*
 	 *	Print the RHS.
 	 */
-	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->rhs, TMPL_ATTR_REF_PREFIX_YES);
+	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->rhs);
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
@@ -2436,7 +2454,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	fr_assert(vp || tmpl_is_null(map->rhs));
+	fr_assert(vp);
 
 	switch (map->rhs->type) {
 	/*
@@ -2474,19 +2492,15 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		 *	the quoting based on the data type.
 		 */
 		fr_pair_aprint_value_quoted(request, &value, vp, quote);
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
+		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, NULL);
 		rhs = talloc_typed_asprintf(request, "%s -> %s", buffer, value);
 	}
-		break;
-
-	case TMPL_TYPE_NULL:
-		rhs = talloc_typed_strdup(request, "ANY");
 		break;
 	}
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
+		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, NULL);
 		RDEBUG2("%s %s %s", buffer, fr_table_str_by_value(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 
@@ -2612,7 +2626,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		fr_assert(tmpl_is_attr(parent->lhs));
 		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
-		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN(lhs, strlen(lhs)),
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN_STR(lhs),
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 	} else {
 		/*
@@ -2681,7 +2695,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	It MUST be the given data type.
 		 */
 		slen = fr_value_box_from_str(map, vb, my_rules.enumv->type, my_rules.enumv,
-					     rhs, strlen(rhs), NULL, false);
+					     rhs, strlen(rhs), NULL);
 		if (slen <= 0) goto error;
 
 		if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
@@ -2740,7 +2754,6 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	No enums here.
 		 */
-		fr_assert(my_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_NO);
 		fr_assert(my_rules.attr.list_def == request_attr_request);
 
 	parse_as_attr:
@@ -2772,13 +2785,10 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	Parse it as the given data type.
 		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN_STR(rhs),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) {
-			if (tmpl_require_enum_prefix) goto parse_as_attr;
-
-			REDEBUG3("Failed parsing right-hand side as generic data type.");
-			goto fail_rhs;
+			goto parse_as_attr;
 		}
 
 		/*

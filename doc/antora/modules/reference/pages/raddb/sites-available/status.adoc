@@ -38,7 +38,7 @@
 ```
 server status {
 	namespace = radius
-	listen {
+	listen statusserver {
 		transport = udp
 		udp {
 			ipaddr = 127.0.0.1

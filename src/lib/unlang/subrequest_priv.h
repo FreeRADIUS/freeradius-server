@@ -45,18 +45,6 @@ typedef struct {
 							///< if the packet-type is static.
 } unlang_subrequest_t;
 
-/** Parameters for initialising the subrequest (parent's frame state)
- *
- */
-typedef struct {
-	rlm_rcode_t			*p_result;			//!< Where to store the result.
-	request_t			*child;				//!< Pre-allocated child request.
-	bool				free_child;			//!< Whether we should free the child after
-									///< it completes.
-	bool				detachable;			//!< Whether the request can be detached.
-	unlang_subrequest_session_t	session;			//!< Session configuration.
-} unlang_frame_state_subrequest_t;
-
 /** Cast a group structure to the subrequest keyword extension
  *
  */
@@ -72,6 +60,9 @@ static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *su
 {
 	return (unlang_group_t *)subrequest;
 }
+
+unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
+					    unlang_stack_frame_t *frame);
 
 int unlang_subrequest_detach_child(request_t *request);
 

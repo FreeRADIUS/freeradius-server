@@ -167,7 +167,7 @@ not have a `Fall-Through`, should come next.  Any `DEFAULT` entries
 should usually come last.  This ordering means that it will be easier
 to debug policies, and understand how the file works.
 
-== Check and Reply Item Iormat
+== Check and Reply Item Format
 
 Each check item or reply item must follow the same format, which is shown in the examples above.  The format is an attribute name, followed by an operator, and then a value.
 
@@ -210,7 +210,7 @@ Care should be taken when using `+=` with structural attributes.  Unlike the xre
 
 The solution instead is to use `:=` when referring to structural attributes by name, or instead using the name of a leaf attribute (e.g. `Vendor-Specific.Cisco.AVPair`), and then using `+=` on the leaf.
 
-In most situations, the simplest approach for structural data types is to just create the leaf attributes.  e.g. `&foo.bar.baz := 5`.  If any parent attribute is missing, it will be automatically created.  That is, operations on leaf types will just "do the right thing" most of the time, so there is no need to explicitly refer to a structural data type by name.
+In most situations, the simplest approach for structural data types is to just create the leaf attributes.  e.g. `foo.bar.baz := 5`.  If any parent attribute is missing, it will be automatically created.  That is, operations on leaf types will just "do the right thing" most of the time, so there is no need to explicitly refer to a structural data type by name.
 
 There are some situations where it is useful to refer to structural attributes by name, as given in the examples below.
 
@@ -219,10 +219,10 @@ Structural attributes can be copied from another attribute.  Both source and des
 .Copying a Structural Attribute by Name
 ----
 bob	Password.Cleartext := "hello"
-	Vendor-Specific.Cisco := &control.Vendor-Specific.Cisco
+	Vendor-Specific.Cisco := control.Vendor-Specific.Cisco
 ----
 
-This example copies the `Vendor-Specific.Cisco` group from the `&control` list.  If the attribute does not exist in the control list, nothing is done.
+This example copies the `Vendor-Specific.Cisco` group from the `control` list.  If the attribute does not exist in the control list, nothing is done.
 
 Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] functionality.  Note that the string should not contain brackets such as `"{ AVPair = 'hello' }"`.
 
@@ -328,9 +328,9 @@ If the value does not pass the filter comparison, its value is replaced with the
 
 === Item Values
 
-The values for items can be a simple value such as `192.0.2.1`, an xref:reference:xlat/index.adoc[xlat] string to expand such as `"Hello %{User-Name}"`, or an xref:reference:unlang/attr.adoc[attribute reference] such as `&request.Filter-Id`.
+The values for items can be a simple value such as `192.0.2.1`, an xref:reference:xlat/index.adoc[xlat] string to expand such as `"Hello %{User-Name}"`, or an xref:reference:unlang/attr.adoc[attribute reference] such as `request.Filter-Id`.
 
-The attribute references should have an `&` prefix, to more clearly separate them from enumeration values such as `Service-Type := Framed-User`.
+The attribute references don't require an `&` prefix, to more clearly separate them from enumeration values such as `Service-Type := Framed-User`.
 
 References can be to an attribute which has a different data type than the attribute named on the left-hand side of the check item or reply item.  In which case the values will be automatically cast to the correct type, as documented in the xref:reference:unlang/condition/cmp.adoc[conditional comparison] and xref:reference:unlang/edit.adoc[edit] pages.
 
@@ -343,7 +343,7 @@ References can be to an attribute which has a different data type than the attri
 #
 bob	NAS-IP-Address == 192.0.2.1, Password.Cleartext := "hello"
 	Reply-Message := "Hello %{User-Name}",
-	Framed-IP-Address := &request.Framed-IP-Address
+	Framed-IP-Address := request.Framed-IP-Address
 ----
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

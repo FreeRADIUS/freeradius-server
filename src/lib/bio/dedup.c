@@ -128,7 +128,7 @@ struct fr_bio_dedup_s {
 
 	fr_bio_dedup_config_t	config;
 
-	fr_event_timer_t const	*ev;
+	fr_timer_t		*ev;
 
 	/*
 	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
@@ -159,7 +159,7 @@ struct fr_bio_dedup_s {
 	FR_DLIST_HEAD(fr_bio_dedup_list) free;	//!< free list
 };
 
-static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
+static void fr_bio_dedup_timer(UNUSED fr_timer_list_t *el, fr_time_t now, void *uctx);
 static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, ssize_t rcode);
 static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, fr_bio_dedup_release_reason_t reason);
@@ -226,7 +226,7 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 	case FR_BIO_DEDUP_STATE_ACTIVE:
 		/*
 		 *	If we're not writing to the socket, just insert the packet into the pending list.
-		 */	
+		 */
 		if (my->bio.write != fr_bio_dedup_write) {
 			(void) fr_bio_dedup_list_remove(&my->active, item);
 			fr_bio_dedup_list_insert_tail(&my->pending, item);
@@ -364,7 +364,7 @@ static int fr_bio_dedup_timer_reset(fr_bio_dedup_t *my)
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
-	if (fr_event_timer_at(my, my->el, &my->ev, first->expires, fr_bio_dedup_timer, my) < 0) return -1;
+	if (fr_timer_at(my, my->el->tl, &my->ev, first->expires, false, fr_bio_dedup_timer, my) < 0) return -1;
 
 	my->first = first;
 	return 0;
@@ -761,7 +761,7 @@ static ssize_t fr_bio_dedup_blocked_data(fr_bio_dedup_t *my, uint8_t const *buff
  *
  *  @todo - expire items from the pending list, too
  */
-static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void fr_bio_dedup_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_bio_dedup_t *my = talloc_get_type_abort(uctx, fr_bio_dedup_t);
 	fr_bio_dedup_entry_t *item;
@@ -811,7 +811,7 @@ static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
-	
+
 	/*
 	 *	The caller is trying to flush partial data.  But we don't have any partial data, so just call
 	 *	the next bio to flush it.
@@ -1006,10 +1006,11 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 /**  Remove the dedup cache
  *
  */
-static int fr_bio_dedup_destructor(fr_bio_dedup_t *my)
+static int fr_bio_dedup_shutdown(fr_bio_t *bio)
 {
 	fr_rb_iter_inorder_t iter;
 	fr_bio_dedup_entry_t *item;
+	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
 
 	talloc_const_free(my->ev);
 
@@ -1090,7 +1091,9 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor(my, fr_bio_dedup_destructor);
+	my->priv_cb.shutdown = fr_bio_dedup_shutdown;
+
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 
 	return (fr_bio_t *) my;
 }

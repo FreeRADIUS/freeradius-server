@@ -62,7 +62,7 @@ inputs:
     default: 127.0.0.1
 
   use_docker:
-    desription: True if running in a Docker container
+    description: True if running in a Docker container
     default: false
 
 

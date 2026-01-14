@@ -1,0 +1,21 @@
+#
+#  PRE: retry-module test
+#
+
+#
+#  Run the "test" module, using its native retry functionality
+#
+
+#
+#  The timeouts here are LONGER than the "timeout" section.
+#
+timeout 0.2s {
+	test.retry {
+		retry {
+			initial_rtx_time = 0.1s
+			max_rtx_duration = 3s
+			max_rtx_count = 10
+			max_rtx_duration = 5
+		}
+	}
+}

@@ -1,0 +1,35 @@
+string result0
+string result1
+string result2
+string result3
+integer index
+
+map list %str.split('one two three', ' ') {
+	result0 := 0
+	result1 := 1
+	result2 := 2
+	result3 := 3
+}
+
+if ((result0 != 'one') || (result1 != 'two') || (result2 != 'three') || result3) {
+	test_fail
+}
+
+index := 1
+map list %str.split('foo baa baz', ' ') {
+	result1 := index
+}
+
+if (result1 != 'baa') {
+	test_fail
+}
+
+map list %str.split('local main other', ' ') {
+	control.IP-Pool.Name := 1
+}
+
+if (control.IP-Pool.Name != 'main') {
+	test_fail
+}
+
+success

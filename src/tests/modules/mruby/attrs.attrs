@@ -1,0 +1,17 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "secret"
+Called-Station-Id = "aa:bb:cc:dd:ee:ff"
+Framed-IPv6-Prefix = "11:22:33:44:55:66:77:88/128"
+Vendor-Specific.Cisco.AVPair = "cisco=madness"
+Vendor-Specific.3GPP2.DNS-Server.Primary-IP-Address = 8.8.8.8
+Vendor-Specific.Cisco.AVPair = "is=crazy"
+NAS-Port = 5
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

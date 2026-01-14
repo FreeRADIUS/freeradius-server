@@ -30,21 +30,18 @@ RCSID("$Id$")
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/radius/defs.h>
 
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 /*
  *	Run a virtual server auth and postauth
  *
  */
-unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
+unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request)
 {
 	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", cf_section_name2(unlang_call_current(request)));
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
@@ -55,7 +52,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 	 *	Except that the caller expects this function to be run
 	 *	_synchronously_, and all of that needs to be fixed.
 	 */
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 
 #if 0
 	{
@@ -163,7 +160,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 
 	if (!request->async) {
 #ifdef STATIC_ANALYZER
-		if (!request->parent) RETURN_MODULE_FAIL;
+		if (!request->parent) RETURN_UNLANG_FAIL;
 #endif
 		fr_assert(request->parent != NULL);
 
@@ -181,14 +178,14 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 
 	if (!request->reply->code ||
 	    (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT)) {
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
 	if (request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE) {
-		RETURN_MODULE_HANDLED;
+		RETURN_UNLANG_HANDLED;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 #endif
 }
 

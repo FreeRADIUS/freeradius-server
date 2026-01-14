@@ -27,11 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/server/password.h>
-#include <freeradius-devel/server/packet.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/dict.h>
 
 /** Initialize src/lib/server/
  *
@@ -50,11 +45,6 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	 *	Initialize the dictionary attributes needed by the tmpl code.
 	 */
 	if (tmpl_global_init() < 0) return -1;
-
-	/*
-	 *	Initialise the trigger rate limiting tree
-	 */
-	if (trigger_exec_init(cs) < 0) return -1;
 
 	/*
 	 *	Set up dictionaries and attributes for password comparisons
@@ -104,6 +94,15 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	default:
 		break;
 	}
+
+	/*
+	 *	Initialise the trigger rate limiting tree.
+	 *
+	 *	This must be done after the modules have been bootstrapped, so that
+	 *	any xlat functions/dictionary attributes have been registered and
+	 *	before the modules actually want to use triggers or open connections.
+	 */
+	if (trigger_init(cs) < 0) return -1;
 
 	/*
 	 *	And then load the virtual servers.

@@ -16,9 +16,9 @@ BEGIN-VENDOR	ALU-AAA
 
 ATTRIBUTE	Access-Rule				1	string
 ATTRIBUTE	AV-Pair					2	string
-ATTRIBUTE	GSM-Triplets-Needed			3	integer
+ATTRIBUTE	GSM-Triplets-Needed			3	uint32
 ATTRIBUTE	GSM-Triplet				4	octets
-ATTRIBUTE	AKA-Quintets-Needed			5	integer
+ATTRIBUTE	AKA-Quintets-Needed			5	uint32
 ATTRIBUTE	AKA-Quintet				6	octets
 ATTRIBUTE	AKA-RAND				7	octets
 ATTRIBUTE	AKA-AUTS				8	octets
@@ -27,7 +27,7 @@ ATTRIBUTE	Lawful-Intercept-Status			10	byte
 ATTRIBUTE	DF-CC-Address				11	ipaddr
 ATTRIBUTE	DF-CC-Port				12	short
 ATTRIBUTE	Client-Program				13	string
-ATTRIBUTE	Client-Error-Action			14	integer
+ATTRIBUTE	Client-Error-Action			14	uint32
 ATTRIBUTE	Client-OS				15	string
 ATTRIBUTE	Client-Version				16	string
 ATTRIBUTE	Nonce					17	octets
@@ -37,10 +37,10 @@ ATTRIBUTE	String-0				100	string
 ATTRIBUTE	String-1				101	string
 ATTRIBUTE	String-2				102	string
 ATTRIBUTE	String-3				103	string
-ATTRIBUTE	Integer-0				104	integer
-ATTRIBUTE	Integer-1				105	integer
-ATTRIBUTE	Integer-2				106	integer
-ATTRIBUTE	Integer-3				107	integer
+ATTRIBUTE	Integer-0				104	uint32
+ATTRIBUTE	Integer-1				105	uint32
+ATTRIBUTE	Integer-2				106	uint32
+ATTRIBUTE	Integer-3				107	uint32
 ATTRIBUTE	Address-0				108	combo-ip
 ATTRIBUTE	Address-1				109	combo-ip
 ATTRIBUTE	Address-2				110	combo-ip
@@ -69,13 +69,13 @@ ATTRIBUTE	Original-Receipt-Time			199	octets
 ATTRIBUTE	Reply-Message				201	string
 ATTRIBUTE	Called-Station-Id			202	string
 ATTRIBUTE	NAS-IP-Address				203	ipaddr
-ATTRIBUTE	NAS-Port				204	integer
+ATTRIBUTE	NAS-Port				204	uint32
 ATTRIBUTE	Old-State				205	string
 ATTRIBUTE	New-State				206	string
 ATTRIBUTE	Event					207	string
 ATTRIBUTE	Old-Timestamp				208	date
 ATTRIBUTE	New-Timestamp				209	date
-ATTRIBUTE	Delta-Session				210	integer
+ATTRIBUTE	Delta-Session				210	uint32
 ATTRIBUTE	Civic-Location				211	octets
 ATTRIBUTE	Geospatial-Location			212	octets
 

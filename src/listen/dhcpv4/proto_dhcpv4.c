@@ -54,6 +54,7 @@ static const conf_parser_t priority_config[] = {
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_dhcpv4_t, io.cleanup_delay), .dflt = "5.0" } ,
 	{ FR_CONF_OFFSET("idle_timeout", proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_dhcpv4_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_dhcpv4_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_dhcpv4_t, io.max_connections), .dflt = "1024" } ,
@@ -70,6 +71,12 @@ static conf_parser_t const limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const log_config[] = {
+	{ FR_CONF_OFFSET("ignored_clients", proto_dhcpv4_t, io.log_ignored_clients), .dflt = "yes" } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
 /** How to parse a DHCPV4 listen section
  *
  */
@@ -78,6 +85,7 @@ static conf_parser_t const proto_dhcpv4_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv4_t, io.submodule),
 	  .func = transport_parse },
 
+	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
@@ -89,7 +97,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t proto_dhcpv4_dict[];
 fr_dict_autoload_t proto_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
@@ -99,7 +107,7 @@ extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -116,10 +124,10 @@ fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	proto_dhcpv4_t		*inst = talloc_get_type_abort(parent, proto_dhcpv4_t);
-	fr_dict_enum_value_t		*dv;
-	CONF_PAIR		*cp;
-	char const		*value;
+	proto_dhcpv4_t				*inst = talloc_get_type_abort(parent, proto_dhcpv4_t);
+	fr_dict_enum_value_t const		*dv;
+	CONF_PAIR				*cp;
+	char const				*value;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
@@ -162,13 +170,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_io_address_t const *address = track->address;
 	fr_client_t const *client;
 	fr_packet_t *packet = request->packet;
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_dhcpv4;
 
 	RHEXDUMP3(data, data_len, "proto_dhcpv4 decode packet");
 

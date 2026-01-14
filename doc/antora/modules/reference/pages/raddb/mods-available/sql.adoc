@@ -274,11 +274,11 @@ The module loops over all groups, and places the group name into the "group_attr
 The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
 to select entries which match that particular group.
 
-After all groups in SQL have been run, the module looks for `&control.User-Profile`, and runs
+After all groups in SQL have been run, the module looks for `control.User-Profile`, and runs
 those profiles for "authorize_group_check_query" and "authorize_group_check_query".  i.e. a user
 profile is essentially a group.
 
-These group queries can also update `&control.User-Profile`, which lets you have a group
+These group queries can also update `control.User-Profile`, which lets you have a group
 create a "fall through" to a DEFAULT group.  However, these groups are _not_ cross-checked against
 each other.  So it is possible to create loops, which is highly not recommended.
 
@@ -301,9 +301,25 @@ group attribute is `SQL1-Group`.
 cache_groups:: whether or not we cache the list of SQL groups
 
 The groups are cached in the `control` list.  So any comparisons must be done as
-`&control.SQL-Group = ...`
+`control.SQL-Group = ...`
 
 Default is `no`.
+
+
+
+query_number_attribute:: An attribute to write the successful query number to.
+
+When calling the `sql` module in a section such as `accounting` where there are a list of queries to
+try, and success is determined by a query modifying one or more records, this option can be used to
+record which query succeeded.
+
+The attribute named here will be populated in the `control` list with the number of the query
+which succeeded.
+
+If, as is the case with the default Interim-Update queries, the first query is an `UPDATE` and the
+second is an `INSERT`, this can be used to determine if calling the module resulted in a new record
+being written or an existing one being updated. I.e. if the `UPDATE` succeeds, the attribute will be
+populated with 1, whereas if the `INSERT` succeeds, the attribute will be populated with 2.
 
 
 
@@ -337,7 +353,7 @@ sql {
 	groupreply_table = "radgroupreply"
 	usergroup_table = "radusergroup"
 #	read_groups = yes
-#	read_profile = yes
+#	read_profiles = yes
 #	logfile = ${logdir}/sqllog.sql
 #	query_timeout = 5
 	pool {
@@ -356,6 +372,7 @@ sql {
 	}
 	group_attribute = "${.:instance}-Group"
 #	cache_groups = no
+#	query_number_attribute = 'Query-Number'
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
 ```

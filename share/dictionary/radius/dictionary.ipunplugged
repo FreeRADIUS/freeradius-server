@@ -17,11 +17,11 @@ VENDOR		ipUnplugged			5925
 
 BEGIN-VENDOR	ipUnplugged
 
-ATTRIBUTE	MIP-Spi					51	integer
+ATTRIBUTE	MIP-Spi					51	uint32
 ATTRIBUTE	MIP-Key					52	string
-ATTRIBUTE	MIP-Alg-Type				53	integer
-ATTRIBUTE	MIP-Alg-Mode				54	integer
-ATTRIBUTE	MIP-Replay-Prot				55	integer
+ATTRIBUTE	MIP-Alg-Type				53	uint32
+ATTRIBUTE	MIP-Alg-Mode				54	uint32
+ATTRIBUTE	MIP-Replay-Prot				55	uint32
 ATTRIBUTE	IKE-Remote-Addr				61	ipaddr
 ATTRIBUTE	IKE-Local-Addr				62	ipaddr
 ATTRIBUTE	IKE-Auth				63	string

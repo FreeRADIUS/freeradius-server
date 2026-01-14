@@ -43,23 +43,42 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 	if (packet_size < MIN_PACKET_SIZE) return NULL;
 
+	/*
+	 *	This is needed for UBSAN on MacOS, that doesn't
+	 *	allow misaligned accesses.  Because the packet
+	 *	structure is flat, we don't need to deref the
+	 *	packet pointer at any point, we just need to
+	 *	calculate the offsets relative to the pointer
+	 *	value and use those... Whatever actually deals
+	 *	with the option is just expecting a uint8_t *.
+	 */
+#define ALIGNED_ACCESS(packet, field) \
+		(uint8_t const *)packet + offsetof(dhcp_packet_t, field)
+
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
-	data = &packet->options[where];
 
+	/*
+	 *	Alignment fix.  We can't just deref a pointer
+	 */
+	data = ALIGNED_ACCESS(packet, options);
 	while (where < size) {
-		if (data[0] == 0) return NULL; /* padding */
+		if (data[0] == 0) { /* padding */
+			where++;
+			data++;
+			continue;
+		}
 
 		if (data[0] == 255) { /* end of options */
 			if ((field == DHCP_OPTION_FIELD) && (overload & DHCP_FILE_FIELD)) {
-				data = packet->file;
+				data = ALIGNED_ACCESS(packet, file);
 				where = 0;
 				size = sizeof(packet->file);
 				field = DHCP_FILE_FIELD;
 				continue;
 
 			} else if ((field == DHCP_FILE_FIELD || field == DHCP_OPTION_FIELD) && (overload & DHCP_SNAME_FIELD)) {
-				data = packet->sname;
+				data = ALIGNED_ACCESS(packet, sname);
 				where = 0;
 				size = sizeof(packet->sname);
 				field = DHCP_SNAME_FIELD;
@@ -119,6 +138,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	packet_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	if (!packet_ctx) return -1;
 	packet_ctx->tmp_ctx = talloc(packet_ctx, uint8_t);
+	packet_ctx->root = fr_dict_root(dict_dhcpv4);
 
 	/*
 	 *	Decode the header.
@@ -199,7 +219,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			fail:
 				fr_pair_list_free(&tmp);
 				talloc_free(packet_ctx);
-				return len;
+				return -1;
 			}
 			p += len;
 		}

@@ -59,7 +59,7 @@ cache cache_eap {
 	#
 	#  key:: Cache key.
 	#
-	key = "%{&control.State || &reply.State || &State}"
+	key = "%{control.State || reply.State || State}"
 
 	#
 	#  ttl:: TTL for cache entries.
@@ -67,10 +67,10 @@ cache cache_eap {
 	ttl = 15
 
 	#
-	#  update <section> { ... }::
+	#  update { ... }::
 	#
-	update reply {
-		&reply += &reply
-		&control.State := &request.State
+	update {
+		reply += reply
+		control.State := request.State
 	}
 }

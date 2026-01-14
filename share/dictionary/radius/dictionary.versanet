@@ -29,7 +29,7 @@ VENDOR		Versanet			2180
 
 BEGIN-VENDOR	Versanet
 
-ATTRIBUTE	Termination-Cause			1	integer
+ATTRIBUTE	Termination-Cause			1	uint32
 
 VALUE	Termination-Cause		Normal-Hangup-No-Error-Occurred 0
 VALUE	Termination-Cause		Call-Waiting-Caused-Disconnect 3

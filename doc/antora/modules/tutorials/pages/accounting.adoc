@@ -1,5 +1,16 @@
 = Accounting Requests
 
+include::ROOT:partial$v3_warning.adoc[]
+
+[NOTE]
+======================================================================
+The `radlast` and `radwho` programs are no longer included with the
+server in v4.
+
+The `radutmp` module is no longer included with the server.
+We recommend using sqlite instead of flat-text databases.
+======================================================================
+
 *Goal*: To send the server accounting requests and to have the server
 log the accounting requests.
 
@@ -11,16 +22,7 @@ log the accounting requests.
 
 *Modules:* detail
 
-[NOTE]
-======================================================================
-This documentation is out of date for v4, and needs to be fixed.
 
-The `radlast` and `radwho` programs are no longer included with the
-server.
-
-The `radutmp` module is no longer included with the server.
-We recommend using sqlite instead of flat-text databases.
-======================================================================
 
 
 In addition to authorization and authentication, one of the primary roles of a

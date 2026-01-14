@@ -1,5 +1,7 @@
 = EAP-TTLS: Tunneled authentication
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to use the EAP-TTLS authentication
 protocol and to send and receive test packets.
 

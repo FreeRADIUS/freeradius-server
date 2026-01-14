@@ -47,7 +47,9 @@
 #  in the comments.
 #
 #  The `unlang` policy language can be used to create complex
-#  if / else policies.  See `man unlang` for details.
+#  if / else policies.  For more information, see
+#
+#  https://www.freeradius.org/documentation/freeradius-server/RADIUSD_DOC_VERSION/
 #
 #  NOTE: The paths used for installed server files. They are set
 #  automatically at install time and will not normally need to be
@@ -167,47 +169,97 @@ pidfile = ${run_dir}/${name}.pid
 #
 
 #
-#  max_request_time:: The maximum time (in seconds) to handle a request.
+# request:: Configuration for request handling.
 #
-#  Requests which take more time than this to process may be killed, and
-#  a REJECT message is returned.
+# These items control how requests are allocated and processed.
 #
-#  WARNING: If you notice that requests take a long time to be handled,
-#  then this MAY INDICATE a bug in the server, in one of the modules
-#  used to handle a request, OR in your local configuration.
+# NOTE: Most of these configuration items are per-worker.  To get the
+# true number of requests you need to multiply the value by the number
+# of workers (or the number of cores).
 #
-#  This problem is most often seen when using an SQL database.  If it takes
-#  more than a second or two to receive an answer from the SQL database,
-#  then it probably means that you haven't indexed the database.  See your
-#  SQL server documentation for more information.
-#
-#  Useful range of values: `5` to `120`
-#
-max_request_time = 30
+request {
+	#
+	#  max:: The maximum number of requests which the server
+	#  keeps track of.  This should be at least `256` multiplied by the
+	#  number of clients.  e.g. With `4` clients, this number should be
+	#  `1024`.
+	#
+	#  If this number is too low, then when the server becomes busy,
+	#  it will not respond to any new requests, until the 'cleanup_delay'
+	#  time has passed, and it has removed the old requests.
+	#
+	#  If this number is set too high, then the server will use a bit more
+	#  memory for no real benefit.
+	#
+	#  If you aren't sure what it should be set to, it's better to set it
+	#  too high than too low.  Setting it to `1000` per client is probably
+	#  the highest it should be.
+	#
+	#  Unlike v3, this setting is per worker thread, and is not global to
+	#  the server.
+	#
+	#  Useful range of values: `256` to `infinity`
+	#
+	max = 16384
 
-#
-#  max_requests:: The maximum number of requests which the server
-#  keeps track of.  This should be at least `256` multiplied by the
-#  number of clients.  e.g. With `4` clients, this number should be
-#  `1024`.
-#
-#  If this number is too low, then when the server becomes busy,
-#  it will not respond to any new requests, until the 'cleanup_delay'
-#  time has passed, and it has removed the old requests.
-#
-#  If this number is set too high, then the server will use a bit more
-#  memory for no real benefit.
-#
-#  If you aren't sure what it should be set to, it's better to set it
-#  too high than too low.  Setting it to `1000` per client is probably
-#  the highest it should be.
-#
-#  Unlike v3, this setting is per worker thread, and is not global to
-#  the server.
-#
-#  Useful range of values: `256` to `infinity`
-#
-max_requests = 16384
+	#
+	#  timeout:: The maximum time (in seconds) to handle a request.
+	#
+	#  Requests which take more time than this to process may be killed, and
+	#  a REJECT message is returned.
+	#
+	#  WARNING: If you notice that requests take a long time to be handled,
+	#  then this MAY INDICATE a bug in the server, in one of the modules
+	#  used to handle a request, OR in your local configuration.
+	#
+	#  This problem is most often seen when using an SQL database.  If it takes
+	#  more than a second or two to receive an answer from the SQL database,
+	#  then it probably means that you haven't indexed the database.  See your
+	#  SQL server documentation for more information.
+	#
+	#  Useful range of values: `5` to `120`
+	#
+	timeout = 30
+
+	#
+	#  Instead of requests being freed at the end of processing, they can be
+	#  returned to a list of requests to reuse.
+	#
+	#  As with `request.max` reuse values apply on a per-worker basis, so the
+	#  true number of cached requests is `request.reuse.max * <num workers>`.
+	#
+	reuse {
+		#
+		#  min:: The minimum number of requests to keep in the reuse list.
+		#
+		min = 10
+
+		#
+		#  max:: The maximum number of reusable requests.
+		#
+		#  Any requests being processed by a worker beyond
+		#  this number will cause a temporary request to be allocated.
+		#  This is less efficient than the block allocation so
+		#  `max` should be set to reflect the number of outstanding
+		#  requests expected at peak load.
+		#
+		#  FIXME: Should likely default to request.max
+		#
+#		max = 100
+
+		#
+		#  cleanup_interval:: How often to free un-used requests.
+		#
+		#  Every `cleanup_interval` a cleanup routine runs which
+		#  will free any blocks of handles which are not in use,
+		#  ensuring that at least `min` handles are kept.
+		#
+		#  This ensures that the server's memory usage does not remain
+		#  permanently bloated after a load spike.
+		#
+		cleanup_interval = 30s
+	}
+}
 
 #
 #  reverse_lookups:: Log the names of clients or just their IP addresses
@@ -317,10 +369,10 @@ log {
 	#	...
 	#
 	#  Note that secret values are tracked across string
-	#  expansions, string modifications, concatenations, etc.!
-	#  i.e. if a User-Password is placed into a Reply-Message,
-	#  then the value of the Reply-Message is also marked
-	#  "secret".
+	#  expansions, string modifications, concatenations, etc.
+	#  i.e. if a `User-Password` is placed into a `Reply-Message`,
+	#  then the value of the `Reply-Message` will also be marked
+	#  as "secret".
 	#
 	#  This configuration is disabled by default.  It is extremely
 	#  important for administrators to be able to debug user
@@ -454,37 +506,6 @@ templates {
 #
 security {
 	#
-	#  chroot: directory where the server does "chroot".
-	#
-	#  The chroot is done very early in the process of starting
-	#  the server.  After the chroot has been performed it
-	#  switches to the `user` listed below (which MUST be
-	#  specified).  If `group` is specified, it switches to that
-	#  group, too.  Any other groups listed for the specified
-	#  `user` in `/etc/group` are also added as part of this
-	#  process.
-	#
-	#  The current working directory (chdir / cd) is left
-	#  *outside* of the `chroot` until all of the modules have been
-	#  initialized.  This allows the `raddb` directory to be left
-	#  outside of the `chroot`.  Once the modules have been
-	#  initialized, it does a `chdir` to `${logdir}`.  This means
-	#  that it should be impossible to break out of the chroot.
-	#
-	#  If you are worried about security issues related to this
-	#  use of chdir, then simply ensure that the `raddb` directory
-	#  is inside of the chroot, and be sure to do `cd raddb`
-	#  BEFORE starting the server.
-	#
-	#  If the server is statically linked, then the only files
-	#  that have to exist in the chroot are `${run_dir}` and
-	#  `${logdir}`.  If you do the `cd raddb` as discussed above,
-	#  then the `raddb` directory has to be inside of the `chroot`
-	#  directory, too.
-	#
-#	chroot = /path/to/chroot/directory
-
-	#
 	#  user::
 	#  group::
 	#
@@ -520,6 +541,17 @@ security {
 #	group = radius
 
 	#
+	#  After the server has changed to the final user/group, it
+	#  can also set the current working directory.  While not
+	#  necessary, changing the working directory means that the
+	#  server does not have any dangling paths.
+	#
+	#  The directory here should either be "/", or ${confdir}
+	#
+#	chdir = ${confdir}
+
+
+	#
 	#  allow_core_dumps:: Core dumps are a bad thing.
 	#
 	#  This should only be set to `yes` if you're debugging
@@ -527,7 +559,7 @@ security {
 	#
 	#  allowed values: {no, yes}
 	#
-	allow_core_dumps = no
+	allow_core_dumps = @allow_core_dumps@
 
 	#
 	#  max_attributes:: The maximum number of attributes
@@ -546,13 +578,6 @@ security {
 	max_attributes = 200
 
 @openssl_version_check_config@
-
-	#
-	#  openssl_fips_mode:: Enable OpenSSL FIPS mode.
-	#
-	#  This disables non-FIPS compliant digests and algorithms
-	#
-#	openssl_fips_mode = no
 }
 
 #
@@ -651,28 +676,6 @@ global {
 #  Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
 #
 migrate {
-	#
-	#  rewrite_update:: Rewrite old `update` sections to use the new
-	#  "edit" code.
-	#
-	#  When this flag is set to `true`, the server will read the
-	#  `update` section, and swap the internal implementation to
-	#  use the new code.  The configuration file can still contain
-	#  the `update` keyword.
-	#
-	#  Not all `update` sections can be automatically converted.
-	#  If the conversion process does not work, then the server
-	#  will produce an error instead of doing the wrong thing.
-	#
-	rewrite_update = false
-
-	#
-	#  forbid_update:: Forbid the use of the `update` keyword.
-	#
-	#  This flag allows us to remove the last bits of the v2
-	#  configuration from the server.
-	#
-	forbid_update = false
 }
 
 #

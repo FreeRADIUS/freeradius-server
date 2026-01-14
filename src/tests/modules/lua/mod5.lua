@@ -1,3 +1,3 @@
-function authorize()
+function recv()
 	return "noop"
 end

@@ -2,13 +2,13 @@ name: build-freeradius
 
 inputs:
   use_sanitizers:
-    desription: Enable sanitizers if true
+    description: Enable sanitizers if true
     default: false
   cc:
-    desription: Which CC to use
+    description: Which CC to use
     default: gcc
   test_type:
-    desription: What test is being run
+    description: What test is being run
     default: gcc
   platform:
     description: Platform the build is on
@@ -76,7 +76,7 @@ runs:
           json-c \
           libidn \
           libmemcached \
-          llvm@14 \
+          llvm@18 \
           luajit \
           mariadb \
           make \

@@ -1,0 +1,12 @@
+00:11:22
+	Reply-Message := 'Vendor 1'
+
+01:11:22
+	Reply-Message := 'Vendor 2'
+
+00:11:23
+	Reply-Message := 'Vendor 3'
+
+00:12
+	Reply-Message := 'Vendor 4'
+

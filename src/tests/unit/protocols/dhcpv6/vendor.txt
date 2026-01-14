@@ -17,7 +17,7 @@ match 00 11 00 2a 00 00 19 7f 00 01 00 0a 4c 41 42 4f 4c 54 32 2d 6e 61 00 02 00
 decode-pair -
 match Vendor-Opts = { Nokia-SR = { WAN-Pool = "LABOLT2-na", PFX-Pool = "LABOLT2-pd", PFX-Len = 63, Reserved-NA-Len = 64 } }
 
-encode-pair Vendor-Opts.Nokia-SR = { WAN-Pool = "LABOLT2-na" }, Vendor-Opts.Nokia-SR = { PFX-Pool = "LABOLT2-pd" }, Vendor-Opts.Nokia-SR = { PFX-Len = 63 }, Vendor-Opts.Nokia-SR = { Reserved-NA-Len = 64 }
+encode-pair Vendor-Opts.Nokia-SR := { WAN-Pool = "LABOLT2-na" }, Vendor-Opts.Nokia-SR := { PFX-Pool = "LABOLT2-pd" }, Vendor-Opts.Nokia-SR := { PFX-Len = 63 }, Vendor-Opts.Nokia-SR := { Reserved-NA-Len = 64 }
 match 00 11 00 12 00 00 19 7f 00 01 00 0a 4c 41 42 4f 4c 54 32 2d 6e 61 00 11 00 12 00 00 19 7f 00 02 00 0a 4c 41 42 4f 4c 54 32 2d 70 64 00 11 00 09 00 00 19 7f 00 03 00 01 3f 00 11 00 09 00 00 19 7f 00 04 00 01 40
 
 decode-pair -

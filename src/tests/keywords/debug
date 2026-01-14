@@ -12,12 +12,12 @@ if (!(%debug(3) == 4)) {
 }
 
 # Call with NULL arg, should report current level
-if (!(%debug(%{dummy_string}) == 3)) {
+if (!(%debug(dummy_string) == 3)) {
 	test_fail
 }
 
 # ...and again
-if (!(%debug(%{dummy_string}) == 3)) {
+if (!(%debug(dummy_string) == 3)) {
 	test_fail
 }
 

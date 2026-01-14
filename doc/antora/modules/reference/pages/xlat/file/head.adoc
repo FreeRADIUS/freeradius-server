@@ -1,0 +1,20 @@
+= Head
+
+The `head` function returns the first line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
+
+[#syntax]
+== Syntax
+
+`%file.head(_string_)`
+
+.Return: _string_
+
+.Returning the first line of a file
+====
+[source,unlang]
+----
+string line
+
+line := %file.head("/var/log/radius.log")
+----
+====

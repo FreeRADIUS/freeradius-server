@@ -1,5 +1,7 @@
 # Startup text
 
+include::ROOT:partial$v3_warning.adoc[]
+
 We start the server with *`-X`*.  This option gives us the best combination of useful output, and readable output.  Adding more `-x` gives *more complex output*,  not *more useful output*.
 
     $ radiusd -X 2>&1 | tee debugfile
@@ -20,7 +22,7 @@ Next, it prints out messages relating to debuggers (e.g. gdb).  These messages a
 
     Getting debug state failed: ptrace capability not set.  If debugger detection is required run as root or: setcap cap_sys_ptrace+ep <path_to_radiusd>
 
-## Reading the configuration files
+## Read the configuration files
 
 The next block of messages is about the configuration files.  The server prints out the name of each configuration file it loads.
 
@@ -101,7 +103,7 @@ Next, some policies are loaded.  These policies are ones which the server uses (
     including configuration file /etc/raddb/sites-enabled/inner-tunnel
 ====
 
-## Server Configuration
+## Server configuration
 
 Once all of the configuration files are loaded, the server prints out the configuration it is parsing.  Note that it *only prints out what it is using*.  I.e. you can put `foo = bar` into `radiusd.conf`, and the server will load it, but will not print it out in the debug output.
 
@@ -360,7 +362,7 @@ The `sql` module is in the default configuration, even if the `sql` module is no
 It can be ignored, or, in a production environment where you don't use `sql`, you can just remove references to `sql` from the virtual servers.
 [%collapsible]
 ====
-    Ignoring "sql" (see raddb/mods-available/README.rst)
+    Ignoring "sql"
      # Loading post-proxy {...}
      # Loading post-auth {...}
     } # server default
@@ -376,7 +378,7 @@ In some situations, it tells you where the configuration can be simplified.
      # Skipping contents of 'if' as it is always 'false' -- /etc/raddb/sites-enabled/inner-tunnel:335
     } # server inner-tunnel
 
-## Listen Sections
+## Listen sections
 
 After loading all of the virtual servers, it then opens the various network sockets used to read and write packets.
 

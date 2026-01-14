@@ -30,9 +30,6 @@ static void test_init(void);
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/dict_test.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request.h>
@@ -79,7 +76,7 @@ static request_t *request_fake_alloc(void)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc_external(autofree, NULL);
+	request = request_local_alloc_external(autofree, (&(request_init_args_t){ .namespace = test_dict }));
 
 	request->packet = fr_packet_alloc(request, false);
 	TEST_CHECK(request->packet != NULL);
@@ -373,5 +370,5 @@ TEST_LIST = {
 	{ "pair_delete_control",       test_pair_delete_control },
 	{ "pair_delete_session_state", test_pair_delete_session_state },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

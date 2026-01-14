@@ -13,78 +13,78 @@ empty_string := ''
 #
 
 # Global substitution
-if (!(%subst(%{test_string1}, 'a', 'b') == 'bbb')) {
+if (!(%str.subst(test_string1, 'a', 'b') == 'bbb')) {
 	test_fail
 }
 
 # No match
-if (!(%subst(%{test_string1}, 'c', 'b') == 'aaa')) {
+if (!(%str.subst(test_string1, 'c', 'b') == 'aaa')) {
 	test_fail
 }
 
 # Line ending rewrite
-if (!(%subst(%{test_string2}, "\n", "\r") == "\r\r\r")) {
+if (!(%str.subst(test_string2, "\n", "\r") == "\r\r\r")) {
 	test_fail
 }
 
 # Removal
-if (!(%subst(%{test_string1}, 'a', '') == "")) {
+if (!(%str.subst(test_string1, 'a', '') == "")) {
 	test_fail
 }
 
 # Removal of last word only
-if (!(%subst(%{test_string3}, 'dog', '') == "the quick brown fox jumped over the lazy ")) {
+if (!(%str.subst(test_string3, 'dog', '') == "the quick brown fox jumped over the lazy ")) {
 	test_fail
 }
 
 # Removal of first and subsequent word
-if (!(%subst(%{test_string3}, 'the', '') == " quick brown fox jumped over  lazy dog")) {
+if (!(%str.subst(test_string3, 'the', '') == " quick brown fox jumped over  lazy dog")) {
 	test_fail
 }
 
 # Removal of middle word
-if (!(%subst(%{test_string3}, 'jumped', '') == "the quick brown fox  over the lazy dog")) {
+if (!(%str.subst(test_string3, 'jumped', '') == "the quick brown fox  over the lazy dog")) {
 	test_fail
 }
 
 # Replacement of last word only
-if (!(%subst(%{test_string3}, 'dog', 'cat') == "the quick brown fox jumped over the lazy cat")) {
+if (!(%str.subst(test_string3, 'dog', 'cat') == "the quick brown fox jumped over the lazy cat")) {
 	test_fail
 }
 
 # Replacement of first and subsequent word
-if (!(%subst(%{test_string3}, 'the', 'cat') == "cat quick brown fox jumped over cat lazy dog")) {
+if (!(%str.subst(test_string3, 'the', 'cat') == "cat quick brown fox jumped over cat lazy dog")) {
 	test_fail
 }
 
 # Replacement of middle word
-if (!(%subst(%{test_string3}, 'jumped', 'cat') == "the quick brown fox cat over the lazy dog")) {
+if (!(%str.subst(test_string3, 'jumped', 'cat') == "the quick brown fox cat over the lazy dog")) {
 	test_fail
 }
 
 if ("${feature.regex-pcre2}" == 'yes') {
 # Basic substitutions
-if (!(%subst(%{test_string1}, /a/, 'b') == 'baa')) {
+if (!(%str.subst(test_string1, '/a/', 'b') == 'baa')) {
 	test_fail
 }
 
 # Global substitution
-if (!(%subst(%{test_string1}, /a/g, 'b') == 'bbb')) {
+if (!(%str.subst(test_string1, '/a/g', 'b') == 'bbb')) {
 	test_fail
 }
 
 # No match
-if (!(%subst(%{test_string1}, /z/, 'b') == 'aaa')) {
+if (!(%str.subst(test_string1, '/z/', 'b') == 'aaa')) {
 	test_fail
 }
 
 # Basic substitutions - Dynamic
-if (!(%subst(%{test_string1}, /a%{empty_string}/, 'b') == 'baa')) {
+if (!(%str.subst(test_string1, "/a%{empty_string}/", 'b') == 'baa')) {
 	test_fail
 }
 
 # Global substitution - Dynamic
-if (!(%subst(%{test_string1}, /a%{empty_string}/g, 'b') == 'bbb')) {
+if (!(%str.subst(test_string1, "/a%{empty_string}/g", 'b') == 'bbb')) {
 	test_fail
 }
 
@@ -93,35 +93,35 @@ if (!(%subst(%{test_string1}, /a%{empty_string}/g, 'b') == 'bbb')) {
 #
 
 # Check that newlines really are newlines
-if (!(%length(%{test_string2}) == 3)) {
+if (!(%length(test_string2) == 3)) {
 	test_fail
 }
 
 # Strip out just the first newline
-if (!(%subst(%{test_string2}, /^./s, '') == "\n\n")) {
+if (!(%str.subst(test_string2, '/^./s', '') == "\n\n")) {
 	test_fail
 }
 
-if (!(%subst(%{test_string2}, /\n/, '') == "\n\n")) {
+if (!(%str.subst(test_string2, '/\n/', '') == "\n\n")) {
 	test_fail
 }
 
 # Strip out all the newlines
-if (!(%subst(%{test_string2}, /\n/g, '') == '')) {
+if (!(%str.subst(test_string2, '/\n/g', '') == '')) {
 	test_fail
 }
 
 # Line ending switch
-if (!(%subst(%{test_string2}, /\n/g, "\r") == "\r\r\r")) {
+if (!(%str.subst(test_string2, '/\n/g', "\r") == "\r\r\r")) {
 	test_fail
 }
 
 # Capture groups
-if (!(%subst(%{test_string3}, '/^the (.*) brown (.*) jumped.*/', "$1,$2") == "quick,fox")) {
+if (!(%str.subst(test_string3, '/^the (.*) brown (.*) jumped.*/', "$1,$2") == "quick,fox")) {
 	test_fail
 }
 
-if (!(%subst(%{test_string3}, "/^%{empty_string}the (.*) brown (.*) jumped.*/", "$1,$2") == "quick,fox")) {
+if (!(%str.subst(test_string3, "/^%{empty_string}the (.*) brown (.*) jumped.*/", "$1,$2") == "quick,fox")) {
 	test_fail
 }
 

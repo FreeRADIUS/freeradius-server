@@ -1,0 +1,17 @@
+{ .out = &attr_auth_serv, .name = "mib-2.radiusAuthServ", .type = FR_TYPE_TLV, .dict = &dict_radius },
+{ .out = &attr_auth_serv_ident, .name = ".radiusAuthServIdent", .type = FR_TYPE_STRING, .dict = &dict_radius },
+{ .out = &attr_auth_serv_up_time, .name = ".radiusAuthServUpTime", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
+{ .out = &attr_auth_serv_reset_time, .name = ".radiusAuthServResetTime", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
+{ .out = &attr_auth_serv_config_reset, .name = ".radiusAuthServConfigReset", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_access_requests, .name = ".radiusAuthServTotalAccessRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_invalid_requests, .name = ".radiusAuthServTotalInvalidRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_dup_access_requests, .name = ".radiusAuthServTotalDupAccessRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_access_accepts, .name = ".radiusAuthServTotalAccessAccepts", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_access_rejects, .name = ".radiusAuthServTotalAccessRejects", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_access_challenges, .name = ".radiusAuthServTotalAccessChallenges", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_malformed_access_requests, .name = ".radiusAuthServTotalMalformedAccessRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_bad_authenticators, .name = ".radiusAuthServTotalBadAuthenticators", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_packets_dropped, .name = ".radiusAuthServTotalPacketsDropped", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_auth_serv_total_unknown_types, .name = ".radiusAuthServTotalUnknownTypes", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+

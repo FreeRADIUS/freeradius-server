@@ -1,0 +1,37 @@
+= Tools
+
+FreeRADIUS comes with a set of useful tools that assist you in
+monitoring and collecting statistics for your system.  While there are
+many third-party tools that offer similar functionality, the reliable
+and proven tools included with FreeRADIUS are the ones we recommend using.
+
+Each tool has a specific purpose and is designed to work seamlessly
+together. These tools include:
+
+== xref:optimization/tools/radclient.adoc[radclient]
+
+Radclient enables you to set up mock clients to perform basic
+authentication testing.  It takes an input file which defines which
+attributes and values are included in the packet.
+
+== xref:optimization/tools/radmin.adoc[radmin]
+
+Radmin is an administration tool designed to administer and interact
+with a running FreeRADIUS server. It enables administrators to monitor
+statistics, view configurations, and make changes without the need to
+restart the server. Radmin connects to the control socket of a running
+server, providing a command-line interface to manage it.
+
+== xref:optimization/tools/radsniff.adoc[radsniff]
+
+Radsniff allows you to inspect and process any type of RADIUS packet
+that's on the network. This tool can be used in conjunction with
+`radclient`.
+
+== xref:optimization/tools/raduat.adoc[raduat]
+
+Raduat is uses `radclient` to send packets to the server, and then
+validate the responses from the server.  It should be used as part of
+a test suite to ensure that changes to the server configuration do not
+affect the flow of requests and responses, or even the content of the
+responses.

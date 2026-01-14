@@ -1,14 +1,12 @@
 = The update Statement
 
-The `update` statement is deprecated.  It may work, but it will be
-removed in a future release.  The `update` statement does not support
-the data types of `group` and `struct`.
+The `update` statement is not supported.
 
 All new configuration should use the new xref:unlang/edit.adoc[edit]
 syntax.  It is more flexible and more powerful than `update` sections.
 
-This page exists only document how the old-style `update` sections can
-be converted to the new syntax.
+This page documents how the old-style `update` sections can be
+converted to the new syntax.
 
 The most important conceptual change is that the
 xref:unlang/edit.adoc[edit] syntax separates list assignments from
@@ -30,51 +28,17 @@ There are a larger number of operators using for both the old `update`
 section and the xref:unlang/edit.adoc[edit] syntax.  We explain in
 detail how the configuration can be converted from one form to another.
 
-=== Appending to a list: +=
-
-The following example creates four attributes, and appends them to the
-`request` list.
-
-[source,unlang]
-----
-update request {
-	&User-Name += "foo"
-	&Filter-Id += "bar"
-	&NAS-IP-Address += 127.0.0.1
-	&NAS-Port += 5
-}
-----
-
-This example should be converted to the following syntax:
-
-[source,unlang]
-----
-&request += {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
-	&NAS-IP-Address = 127.0.0.1
-	&NAS-Por = 5
-}
-----
-
-This configuration can be interpreted as "edit the `&request` list,
-but appending (`+=`) another list to it.  The list being appended
-contains four attributes".
-
-Note that the operators on the right-hand side list are all `=`.  The
-`=` operator is used here because we are simply _creating_ the
-right-hand side list, not _modifying_ it.
-
 === Over-writing attributes in a list: :=
 
 The following example over-writes the values for two attributes in the
-`request` list.
+`reply` list.
 
 [source,unlang]
+.Old Syntax
 ----
-update request {
-	&User-Name := "foo"
-	&Filter-Id := "bar"
+update reply {
+	User-Name := "foo"
+	Filter-Id := "bar"
 }
 ----
 
@@ -82,33 +46,101 @@ The simplest conversion here is to keep the `:=` operator, and to just
 assign the attributes in place, with a list qualifier.
 
 [source,unlang]
+.New Syntax
 ----
-&request.User-Name := "foo"
-&request.Filter-Id := "bar"
+reply.User-Name := "foo"
+reply.Filter-Id := "bar"
 ----
 
-Note that the following conversion is _not_ correct, as it will
+Note that the following assignment is _not_ correct, as it will
 overwrite the _entire_ request list.  Once the overwrite has been
-done, the `request` list will contain only the two attributes being
+done, the `reply` list will contain only the two attributes being
 assigned to it.
 
 [source,unlang]
+.New Syntax
 ----
-&request := {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+reply := {
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
-=== Conditionally Over-writing attributes in a list: =
 
-The following example conditionally over-writes the values for two attributes in the
-`request` list.
+=== Appending to a list: +=
+
+The following example creates four attributes, and appends them to the
+`reply` list.
+
+[source,unlang]
+.Old Syntax
+----
+update reply {
+	User-Name += "foo"
+	Filter-Id += "bar"
+	NAS-IP-Address += 127.0.0.1
+	NAS-Port += 5
+}
+----
+
+This example should be converted to the following syntax:
+
+[source,unlang]
+.New Syntax
+----
+request += {
+	User-Name = "foo"
+	Filter-Id = "bar"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Por = 5
+}
+----
+
+This configuration can be interpreted as "edit the `reply` list,
+but appending (`+=`) another list to it.  The list being appended
+contains four attributes".
+
+Note that the operators on the right-hand side list are all `=`.  The
+`=` operator is used here because we are simply _creating_ the
+right-hand side list, not _modifying_ it.
+
+=== Adding many of the same Attribute
+
+A common pattern is to use `:=` and `+=` in order to remove all
+previous values of an attribute, and then to add new values:
 
 [source,unlang]
 ----
-update request {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+.Old Syntax
+update reply {
+	Filter-Id := "bar"
+	Filter-Id += "foo"
+	Filter-Id += "baz"
+}
+----
+
+The server now supports setting multiple values to a leaf attribute,
+via a list assignment.  The above `update` section can then be
+converted to a one-line edit statement:
+
+[source,unlang]
+----
+.New Syntax
+reply.Filter-Id := { "bar", "boo", "baz" }
+----
+
+This functionality makes it much easier to write complex assignments.
+
+=== Conditionally Over-writing attributes in a list: =
+
+The following example conditionally over-writes the values for two attributes in the
+`reply` list.
+
+[source,unlang]
+----
+.Old Syntax
+update reply {
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
 
@@ -117,18 +149,20 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
-&request.User-Name = "foo"
-&request.Filter-Id = "bar"
+.New Syntax
+reply.User-Name = "foo"
+reply.Filter-Id = "bar"
 ----
 
 === Removing Attributes from a list: !*
 
-The following example removes all `&User-Name` attributes from the `request` list.
+The following example removes all `User-Name` attributes from the `reply` list.
 
 [source,unlang]
 ----
-update request {
-	&User-Name !* ANY
+.Old Syntax
+update reply {
+	User-Name !* ANY
 }
 ----
 
@@ -136,7 +170,8 @@ The conversion is to use the `-=` operator:
 
 [source,unlang]
 ----
-&request -= &User-Name
+.New Syntax
+reply -= User-Name
 ----
 
 == More Complex Conversions
@@ -169,12 +204,12 @@ a significant amount of confusion when people first tried to use
 FreeRADIUS.
 
 In addition, using `+=` to manipulate lists meant that it was
-impossible to use that operator for adding values.  The follow-on
+impossible to use that operator for adding values to attribute.  The follow-on
 effect was that math had to be done using the `%{expr:...}` expansion,
 which was confusing and difficult to document.  Changing the syntax
 allowed the separation of list assignments from value modifications,
 which meant that xref:unlang/expression.adoc[expressions] became
 became simpler.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -81,8 +81,9 @@ ATTRIBUTE	Net					60	tlv
 ATTRIBUTE	Src					.1	tlv
 ATTRIBUTE	IP					.1.1	combo-ip
 ATTRIBUTE	Port					.1.2	uint16
-ATTRIBUTE	Dst					.2	tlv clone=.Src
+ATTRIBUTE	Dst					.2	auto clone=.Src
 ATTRIBUTE	Timestamp				.3	date
+ATTRIBUTE	Interface				.4	string
 
 #
 #
@@ -187,6 +188,11 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Called-Station-SSID			1139	string
 
+ATTRIBUTE	Called-Station-MAC			1140	octets
+ATTRIBUTE	Pre-Shared-Key				1141	string
+ATTRIBUTE	Pairwise-Master-Key			1142	octets
+ATTRIBUTE	PSK-Identity				1143	string
+
 ATTRIBUTE	Acct-Input-Octets64			1148	uint64
 ATTRIBUTE	Acct-Output-Octets64			1149	uint64
 
@@ -247,7 +253,6 @@ VALUE	Listen-Socket-Type		coa			8
 
 ATTRIBUTE	Outer-Realm-Name			1251	string
 ATTRIBUTE	Inner-Realm-Name			1252	string
-ATTRIBUTE	Request-Lifetime			1253	integer
 ATTRIBUTE	Proto					1254	tlv
 
 #
@@ -386,8 +391,11 @@ ATTRIBUTE	b					.2	uint32
 ATTRIBUTE	c					.3	string
 ATTRIBUTE	d					.4	ipaddr
 
+ATTRIBUTE	Tmp-Flat-Group				1811	group	flat
+
+
 #
-#  1810 - 1879 - unused
+#  1812 - 1879 - unused
 #
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
@@ -439,7 +447,10 @@ ATTRIBUTE	X509v3-Extended-Key-Usage		14	string
 ATTRIBUTE	X509v3-Subject-Key-Identifier		15	string
 ATTRIBUTE	X509v3-Authority-Key-Identifier		16	string
 ATTRIBUTE	X509v3-Basic-Constraints		17	string
+ATTRIBUTE	X509v3-CRL-Distribution-Points		18	string
 END		TLS-Certificate
+
+ATTRIBUTE	TLS-Certificate-Chain-Depth		1902	uint32
 
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Session-Certificate-File		1934	string
@@ -515,8 +526,110 @@ ATTRIBUTE	Cast-Time-Res-Milli-Sec			1958	time_delta	precision=milliseconds
 ATTRIBUTE	Cast-Time-Res-Micro-Sec			1959	time_delta	precision=microseconds
 ATTRIBUTE	Cast-Time-Res-Nano-Sec			1960	time_delta	precision=nanoseconds
 
+ATTRIBUTE	TLS-Client-Hello			1961	tlv
+ATTRIBUTE	TLS-Version				.1	uint16
+VALUE	TLS-Version		TLS1.0				0x0301
+VALUE	TLS-Version		TLS1.1				0x0302
+VALUE	TLS-Version		TLS1.2				0x0303
+VALUE	TLS-Version		TLS1.3				0x0304
+
+ATTRIBUTE	Cipher					.2	string
+
+ATTRIBUTE	Signature-Algorithm			.3	uint16
+VALUE	Signature-Algorithm	rsa_pkcs1_sha1			0x0201
+VALUE	Signature-Algorithm	dsa_sha1			0x0202
+VALUE	Signature-Algorithm	ecdsa_sha1			0x0203
+VALUE	Signature-Algorithm	rsa_pkcs1_sha224		0x0301
+VALUE	Signature-Algorithm	dsa_sha224			0x0302
+VALUE	Signature-Algorithm	ecdsa_sha224			0x0303
+VALUE	Signature-Algorithm	rsa_pkcs1_sha256		0x0401
+VALUE	Signature-Algorithm	dsa_sha256			0x0402
+VALUE	Signature-Algorithm	ecdsa_secp256r1_sha256		0x0403
+VALUE	Signature-Algorithm	rsa_pkcs1_sha384		0x0501
+VALUE	Signature-Algorithm	dsa_sha384			0x0502
+VALUE	Signature-Algorithm	ecdsa_secp384r1_sha384		0x0503
+VALUE	Signature-Algorithm	rsa_pkcs1_sha512		0x0601
+VALUE	Signature-Algorithm	dsa_sha512			0x0602
+VALUE	Signature-Algorithm	ecdsa_secp521r1_sha512		0x0603
+VALUE	Signature-Algorithm	rsa_pss_rsae_sha256		0x0804
+VALUE	Signature-Algorithm	rsa_pss_rsae_sha384		0x0805
+VALUE	Signature-Algorithm	rsa_pss_rsae_sha512		0x0806
+VALUE	Signature-Algorithm	ed25519				0x0807
+VALUE	Signature-Algorithm	ed448				0x0808
+VALUE	Signature-Algorithm	rsa_pss_pss_sha256		0x0809
+VALUE	Signature-Algorithm	rsa_pss_pss_sha384		0x080a
+VALUE	Signature-Algorithm	rsa_pss_pss_sha512 		0x080b
+VALUE	Signature-Algorithm	ecdsa_brainpoolP256r1_sha256	0x081a
+VALUE	Signature-Algorithm	ecdsa_brainpoolP384r1_sha384	0x081b
+VALUE	Signature-Algorithm	ecdsa_brainpoolP512r1_sha512	0x081c
+VALUE	Signature-Algorithm	gost2012_256_intrinsic		0x0840
+VALUE	Signature-Algorithm	gost2012_512_intrinsic		0x0841
+VALUE	Signature-Algorithm	gost2001_gost94			0xeded
+VALUE	Signature-Algorithm	gost2012_256_gost2012		0xeeee
+VALUE	Signature-Algorithm	gost2012_512_gost2012		0xefef
+
+ATTRIBUTE	Supported-Group				.4	uint16
+VALUE	Supported-Group		sect163k1			1
+VALUE	Supported-Group		sect163r1			2
+VALUE	Supported-Group		sect163r2			3
+VALUE	Supported-Group		sect193r1			4
+VALUE	Supported-Group		sect193r2			5
+VALUE	Supported-Group		sect233k1			6
+VALUE	Supported-Group		sect233r1			7
+VALUE	Supported-Group		sect239k1			8
+VALUE	Supported-Group		sect283k1			9
+VALUE	Supported-Group		sect283r1			10
+VALUE	Supported-Group		sect409k1			11
+VALUE	Supported-Group		sect409r1			12
+VALUE	Supported-Group		sect571k1			13
+VALUE	Supported-Group		sect571r1			14
+VALUE	Supported-Group		secp160k1			15
+VALUE	Supported-Group		secp160r1			16
+VALUE	Supported-Group		secp160r2			17
+VALUE	Supported-Group		secp192k1			18
+VALUE	Supported-Group		secp192r1			19
+VALUE	Supported-Group		secp224k1			20
+VALUE	Supported-Group		secp224r1			21
+VALUE	Supported-Group		secp256k1			22
+VALUE	Supported-Group		secp256r1			23
+VALUE	Supported-Group		secp384r1			24
+VALUE	Supported-Group		secp521r1			25
+VALUE	Supported-Group		brainpoolP256r1			26
+VALUE	Supported-Group		brainpoolP384r1			27
+VALUE	Supported-Group		brainpoolP512r1			28
+VALUE	Supported-Group		ecdh_x25519			29
+VALUE	Supported-Group		ecdh_x448			30
+VALUE	Supported-Group		brainpoolP256r1tls13		31
+VALUE	Supported-Group		brainpoolP384r1tls13		32
+VALUE	Supported-Group		brainpoolP512r1tls13		33
+VALUE	Supported-Group		GC256A				34
+VALUE	Supported-Group		GC256B				35
+VALUE	Supported-Group		GC256C				36
+VALUE	Supported-Group		GC256D				37
+VALUE	Supported-Group		GC512A				38
+VALUE	Supported-Group		GC512B				39
+VALUE	Supported-Group		GC512C				40
+VALUE	Supported-Group		ffdhe2048			256
+VALUE	Supported-Group		ffdhe3072			257
+VALUE	Supported-Group		ffdhe4096			258
+VALUE	Supported-Group		ffdhe6144			259
+VALUE	Supported-Group		ffdhe8192			260
+VALUE	Supported-Group		X25519Kyber768Draft00		25497
+VALUE	Supported-Group		SecP256r1Kyber768Draft00	25498
+VALUE	Supported-Group		arbitrary_explicit_prime_curves	0xFF01
+VALUE	Supported-Group		arbitrary_explicit_char2_curves	0xFF02
+
+ATTRIBUTE	EC-Point-Format				.5	uint8
+VALUE	EC-Point-Format		uncompressed			0
+VALUE	EC-Point-Format		ansiX962_compressed_prime	1
+Value	EC-Point-Format		ansiX962_compressed_char2	2
+
+ATTRIBUTE	PSK-Key-Mode				.6	uint8
+VALUE	PSK-Key-Mode		psk_ke				0
+VALUE	PSK-Key-Mode		psk_ke_dhe			1
+
 #
-#	Range:	1961-2199
+#	Range:	1962-2199
 #		Free
 #
 
@@ -533,10 +646,13 @@ ATTRIBUTE	Radclient-CoA-Filter			2203	string
 #	Range:  2220-2259
 #		 Attributes used as trigger arguments
 #
-ATTRIBUTE	Connection-Pool-Server			2220	string
-ATTRIBUTE	Connection-Pool-Port			2221	short
+ATTRIBUTE	Trigger-Name				2220	string
+ATTRIBUTE	Connection-Pool-Server			2221	string
+ATTRIBUTE	Connection-Pool-Port			2222	short
 ATTRIBUTE	Exfile-Name				2223	string
 ATTRIBUTE	LDAP-Sync-Base-DN			2224	string
+ATTRIBUTE	Module-Name				2225	string
+ATTRIBUTE	Module-Instance				2226	string
 
 #
 #	Range:	2261-2299

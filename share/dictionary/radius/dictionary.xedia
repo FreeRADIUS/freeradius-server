@@ -17,11 +17,11 @@ BEGIN-VENDOR	Xedia
 ATTRIBUTE	DNS-Server				1	ipaddr
 ATTRIBUTE	NetBios-Server				2	ipaddr
 ATTRIBUTE	Address-Pool				3	string
-ATTRIBUTE	PPP-Echo-Interval			4	integer
-ATTRIBUTE	SSH-Privileges				5	integer
+ATTRIBUTE	PPP-Echo-Interval			4	uint32
+ATTRIBUTE	SSH-Privileges				5	uint32
 ATTRIBUTE	Client-Access-Network			6	string
-ATTRIBUTE	Client-Firewall-Setting			7	integer
-ATTRIBUTE	Save-Password				8	integer
+ATTRIBUTE	Client-Firewall-Setting			7	uint32
+ATTRIBUTE	Save-Password				8	uint32
 
 END-VENDOR	Xedia
 ALIAS		Xedia					Vendor-Specific.Xedia

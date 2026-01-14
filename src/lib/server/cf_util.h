@@ -89,11 +89,11 @@ void		_cf_item_insert_after(CONF_ITEM *parent, CONF_ITEM *prev, CONF_ITEM *child
 #define		cf_item_remove(_parent, _child) _cf_item_remove(CF_TO_ITEM(_parent), CF_TO_ITEM(_child))
 CONF_ITEM	*_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child);
 
-#define		cf_item_next(_ci, _curr) _cf_item_next(CF_TO_ITEM(_ci), _curr)
-CONF_ITEM	*_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *curr);
+#define		cf_item_next(_parent, _curr) _cf_item_next(CF_TO_ITEM(_parent), _curr)
+CONF_ITEM	*_cf_item_next(CONF_ITEM const *parent, CONF_ITEM const *curr);
 
-#define		cf_item_prev(_ci, _curr) _cf_item_prev(CF_TO_ITEM(_ci), _curr)
-CONF_ITEM	*_cf_item_prev(CONF_ITEM const *ci, CONF_ITEM const *prev);
+#define		cf_item_prev(_parent, _curr) _cf_item_prev(CF_TO_ITEM(_parent), _curr)
+CONF_ITEM	*_cf_item_prev(CONF_ITEM const *parent, CONF_ITEM const *prev);
 
 #define		cf_root(_cf) _cf_root(CF_TO_ITEM(_cf))
 CONF_SECTION	*_cf_root(CONF_ITEM const *ci);
@@ -189,9 +189,6 @@ char const	*cf_section_name(CONF_SECTION const *cs);
 char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
 fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
 fr_token_t	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
-
-// only for rewrite_update
-void		cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token);
 
 #define cf_section_free_children(_x) cf_item_free_children(cf_section_to_item(_x))
 

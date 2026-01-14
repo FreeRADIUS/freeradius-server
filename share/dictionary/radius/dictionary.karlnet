@@ -20,7 +20,7 @@ BEGIN-VENDOR	KarlNet
 ATTRIBUTE	TurboCell-Name				151	string
 
 # Sets the remote client's Data Transmit Rate
-ATTRIBUTE	TurboCell-TxRate			152	integer
+ATTRIBUTE	TurboCell-TxRate			152	uint32
 
 #---------------------------------------------------------------------------
 # "VALUE"       ATTRIBUTE-NAME               SETTING-NAME    SETTING-VALUE
@@ -2069,12 +2069,12 @@ VALUE	TurboCell-TxRate		TxRate-131840k		2046
 VALUE	TurboCell-TxRate		TxRate-131968k		2047
 
 # Sets the remote client's Operating State
-ATTRIBUTE	TurboCell-OpState			153	integer
+ATTRIBUTE	TurboCell-OpState			153	uint32
 VALUE	TurboCell-OpState		Up			0
 VALUE	TurboCell-OpState		Down			1
 
 # Sets the remote client's Operating Mode
-ATTRIBUTE	TurboCell-OpMode			154	integer
+ATTRIBUTE	TurboCell-OpMode			154	uint32
 VALUE	TurboCell-OpMode		Peer-to-Peer		0
 VALUE	TurboCell-OpMode		Base			1
 VALUE	TurboCell-OpMode		Base-Polling		2

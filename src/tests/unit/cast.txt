@@ -1,0 +1,77 @@
+cast ipaddr 127.0.0.1 -> uint32
+match 2130706433
+
+cast ipaddr 127.0.0.1 -> octets
+match 0x7f000001
+
+cast float64 0.5 -> time_delta
+match 0.5
+
+cast float64 -0.5 -> time_delta
+match -0.5
+
+cast float64 6.25 -> time_delta
+match 6.25
+
+cast float64 1024 -> uint8
+match Source value for cast would overflow destination type
+
+#
+#  Input can be qualified with a resolution.  Output is seconds by default.
+#
+cast time_delta 6.25s -> time_delta
+match 6.25
+
+cast time_delta 1w -> time_delta
+match 604800
+
+cast time_delta 6.25ms -> time_delta
+match 0.00625
+
+cast time_delta 6.25us -> time_delta
+match 0.00000625
+
+cast time_delta 8d -> time_delta
+match 691200
+
+#
+#  This is 8/7 of a week, or 8 days
+#
+cast time_delta 1.14285714w -> time_delta
+match 691199.998272
+
+#
+#  Attribute tests
+#
+proto-dictionary radius
+tmpl-rules allow_unresolved=no allow_unknown=no
+
+cast attribute ::Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+#
+#  Specifying the same protocol is fine.
+#
+cast attribute @RADIUS.Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast attribute ::@RADIUS.Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+#
+#  Can't change protocols.
+#
+cast attribute @DHCPv4.Message-Type
+match Type 'attribute' cannot reference a different protocol
+
+cast string "::26.9.1" -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast string "26.9.1" -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast string "26.12345.1" -> attribute
+match ::Vendor-Specific.12345.1
+
+count
+match 40

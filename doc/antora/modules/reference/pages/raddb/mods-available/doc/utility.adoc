@@ -1,0 +1,6 @@
+= Utility Modules
+
+The utility modules implement a wide range of functionality which
+cannot be placed into one of the other categories.
+
+include::partial$utility_table.adoc[]

@@ -15,9 +15,9 @@ referencing:
 - _variant 3_ - Group objects contain membership attributes referencing user objects by DN.
 - _variant 4_ - Group objects contain membership attributes referencing user objects by name.
 
-== Configuring group lookups
+== Configure group lookups
 
-=== Editing mods-available/ldap to configure _variant 1_ group checks
+=== Edit mods-available/ldap to configure _variant 1_ group checks
 
 [source,config]
 ----
@@ -42,7 +42,7 @@ ldap {
 <3> Attribute within the group object containing its name.
 <4> Attribute within the user object referencing groups by their DNs.
 
-=== Editing mods-available/ldap to configure _variant 2_ group checks
+=== Edit mods-available/ldap to configure _variant 2_ group checks
 
 [source,config]
 ----
@@ -67,7 +67,7 @@ ldap {
 <3> Attribute within the group object containing its name.
 <4> Attribute within the user object referencing groups by their name.
 
-=== Editing mods-available/ldap to configure _variant 3_ group checks
+=== Edit mods-available/ldap to configure _variant 3_ group checks
 
 [source,config]
 ----
@@ -92,7 +92,7 @@ ldap {
 <3> Attribute within the group object containing its name.
 <4> Attribute within the group object referencing users by their DN.
 
-=== Editing mods-available/ldap to configure _variant 4_ group checks
+=== Edit mods-available/ldap to configure _variant 4_ group checks
 
 [source,config]
 ----
@@ -144,7 +144,7 @@ appropriately.
 [source,unlang]
 ----
 if (%ldap.group("cn=foo,ou=groups,dc=example,dc=com") == true) {
-	&reply.Reply-Message := "Welcome member of group 'foo'"
+	reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
 
@@ -153,7 +153,7 @@ if (%ldap.group("cn=foo,ou=groups,dc=example,dc=com") == true) {
 [source,unlang]
 ----
 if (%ldap.group("foo") == true) {
-	&reply.Reply-Message := "Welcome member of group 'foo'"
+	reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
 

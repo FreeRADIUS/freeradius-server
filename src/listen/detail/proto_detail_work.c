@@ -60,7 +60,7 @@ typedef struct {
 	size_t				packet_len;		//!< for retransmissions
 
 	fr_retry_t			retry;			//!< our retry timers
-	fr_event_timer_t const		*ev;			//!< retransmission timer
+	fr_timer_t			*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
 
@@ -98,7 +98,7 @@ extern fr_dict_autoload_t proto_detail_work_dict[];
 fr_dict_autoload_t proto_detail_work_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_transmit_counter;
@@ -106,7 +106,7 @@ static fr_dict_attr_t const *attr_packet_transmit_counter;
 extern fr_dict_attr_autoload_t proto_detail_work_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
 	{ .out = &attr_packet_transmit_counter, .name = "Packet-Transmit-Counter", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -539,7 +539,7 @@ done:
 }
 
 
-static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void work_retransmit(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_detail_entry_t		*track = talloc_get_type_abort(uctx, fr_detail_entry_t);
 	proto_detail_work_thread_t     	*thread = track->parent;
@@ -608,8 +608,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %.6fs",
 		      thread->name, track->id, fr_time_delta_unwrap(track->retry.rt) / (double)NSEC);
 
-		if (fr_event_timer_at(thread, thread->el, &track->ev,
-				      track->retry.next, work_retransmit, track) < 0) {
+		if (fr_timer_at(thread, thread->el->tl, &track->ev,
+				 track->retry.next, false, work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
@@ -665,7 +665,8 @@ free_track:
 	 */
 	if (thread->closing && !thread->outstanding) {
 		MPRINT("WRITE ASKED TO CLOSE");
-		return 0;
+		errno = ECONNRESET;
+		return -1;
 	}
 
 	MPRINT("WRITE RETURN B %ld", buffer_len);

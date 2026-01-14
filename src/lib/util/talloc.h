@@ -181,6 +181,11 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 		talloc(_ctx, _type)
 #endif
 
+void		*_talloc_realloc_zero(const void *ctx, void *ptr, size_t elem_size, unsigned count, const char *name);
+
+#define talloc_realloc_zero(_ctx, _ptr, _type, _count) \
+    (_type *)_talloc_realloc_zero((_ctx), (_ptr), sizeof(_type), _count, #_type)
+
 /** @hidecallergraph */
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
@@ -227,49 +232,6 @@ static inline int talloc_const_free(void const *ptr)
 
 	return talloc_free(UNCONST(void *, ptr));
 }
-
-/** Free a list of talloced structures containing a next field
- *
- * @param[in] _head	of list to free.  Will set memory it points to to be NULL.
- */
-#define	talloc_list_free(_head) _talloc_list_free((void **)_head, offsetof(__typeof__(**(_head)), next))
-
-static inline void _talloc_list_free(void **head, size_t offset)
-{
-	void *v = *head, *n;
-
-	while (v) {
-		n = *((void **)(((uint8_t *)(v)) + offset));
-		talloc_free(v);
-		v = n;
-	}
-	*head = NULL;
-}
-
-/** Verify a list of talloced structures are the correct type and are still valid
- *
- * @param[in] _head	of list to check.
- * @param[in] _type	of talloced chunk we expect.
- */
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-#  define talloc_list_get_type_abort(_head, _type) (_type *)_talloc_list_get_type_abort(_head, offsetof(__typeof__(*(_head)), next), #_type, __location__)
-static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char const *type, char const *location)
-{
-	void *v = head, *n;
-
-	if (!v) _talloc_get_type_abort(v, type, location);	/* Behave like the normal talloc_get_type_abort function */
-
-	while (v) {
-		n = *((void **)(((uint8_t *)(v)) + offset));
-		_talloc_get_type_abort(v, type, location);
-		v = n;
-	}
-
-	return head;
-}
-#else
-#  define talloc_list_get_type_abort(_head, _type) (_type *)(_head)
-#endif
 
 /*
  *	talloc portability issues.  'const' is not part of the talloc

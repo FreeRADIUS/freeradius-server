@@ -1,0 +1,13 @@
+DEFINE	Test-Attr	attribute	internal
+
+#
+#  Add in attributes to the RADIUS dictionary.
+#
+VENDOR		FreeRADIUS			11344
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-4.Vendor-Specific
+
+ATTRIBUTE	Long-Name				1	integer
+
+END-Vendor FreeRADIUS
+
+ALIAS		Long-Name			Extended-Attribute-4.Vendor-Specific.FreeRADIUS.Long-Name

@@ -38,7 +38,7 @@ through different modules and will give different results.
 .Example
 [source,unlang]
 ----
-redundant-load-balance &User-Name {
+redundant-load-balance User-Name {
     sql1
     sql2
     sql3
@@ -79,7 +79,7 @@ in a xref:xlat/index.adoc[dynamic expansion]:
 .Example of Redundant-Load-Balance SQL module
 [source,unlang]
 ----
-&Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
+Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 }
 ----
 

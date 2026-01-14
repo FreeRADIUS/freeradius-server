@@ -1,0 +1,132 @@
+= Lua
+== Introduction
+
+FreeRADIUS can call Lua scripts where there is need to utilize third party libraries
+which are only available in Lua, or to execute particularly complex policy.
+
+For optimal performance FreeRADIUS needs to be built against LuaJIT 2.1.
+As a fallback, Lua 5.2 can be used.
+
+== Module Configuration
+
+Each `rlm_lua` module xref:reference:raddb/mods-available/lua.adoc[instance]
+should set a `filename` option which is the Lua file from which functions
+will be loaded.
+
+An `instantiate` and `detach` function can be defined to run code during server
+start up and shutdown.
+
+When `rlm_lua` is called in a processing section, by default the function
+called is based on the section name. e.g. if the call is made in `recv Access-Request`
+then, `recv_access_request` will be called if it exists, otherwise `recv` will
+be called.
+
+In order to override the function being called, configuration options such as
+`func_recv_access_request` or `func_recv` can be used. e.g.
+
+```
+func_recv_access_request = authorize
+```
+
+could be used to use function names which mirror FreeRADIUS v3 processing sections.
+
+If `rlm_lua` is called with a suffix, e.g.
+
+```
+lua.my_function
+```
+
+then, by default `my_function` will be called.  As with other calls the function can
+be specified with `func_my_function`.
+
+== Lua function behaviour
+
+When a Lua function is called, a global table `fr` is available which contains
+the following keys:
+
+  * `request` - a table giving access to the pairs in the `request` list
+  * `control` - a table giving access to the `control` list
+  * `reply` - a table giving access to the `reply` list
+  * `session-state` - a table giving access to the `session-state` list.
+  * `log` - a table of functions which can be used to write FreeRADIUS log messages.
+  * `rcode` - a table of FreeRADIUS rcodes to use as function return values.
+
+=== Attribute access and setting
+
+Attributes can be accessed as follows:
+
+  * `fr.request["User-Name"]` will return a table representing all the instances
+    of `User-Name` in the `request` list.
+  * `fr.request["User-Name"][1]` will return the value of the first instance of
+    `User-Name` in the `request` list.
+
+**Note**: in `unlang` attribute instances start at zero, whereas Lua arrays typically
+start at 1 - so `User-Name[0]` in unlang becomes `fr.request["User-Name"][1]` in Lua.
+
+Nested attributes are accessed using syntax of the form:
+
+  * `fr.request["Vendor-Specific"]["Cisco"]["AVPair"][1]` - the value of
+    `Vendor-Specific.Cisco.AVPair`.
+  * `fr.request["Vendor-Specific"]["3GPP2"]["Remote-IP"][2]["Address"][1]` - the value
+    of `Vendor-Specific.3GPP2.Remote-IP[1].Address`.
+
+Attribute lists and structural attributes have a `pairs` field which can be used to
+return an itterative list of the names and values of the child pairs.
+
+```
+for k, v in fr.request.pairs() do
+  print(k, v)
+end
+```
+
+When the attribute returned by `pairs()` is structural, the value returned will be
+an array of child attribute names.
+
+Leaf attributes have a `pairs` field which can be used to return the values of all
+the instances of the attribute, e.g.
+
+```
+for v in fr.request["Vendor-Specific"]["Cisco"]["AVPair"].pairs() do
+  print(v)
+end
+```
+
+Setting attributes can be done by setting the value of the specific instance e.g.
+
+```
+fr.reply["Vendor-Specific"]["Cisco"]["AVPair"][1] = "foo=baa"
+```
+
+If the pair does not exist then it will be created.  Note that you cannot create
+gaps in the instances of an attriute, e.g. if there is a single instance of
+attribute `foo` in the reply list, you can add an additional one by setting
+`fr.reply["foo"][2]` but setting `fr.reply["foo"][3]` is not valid.
+
+=== Log messages
+
+FreeRADIUS log messages can be created using functions in the `fr.log` table e.g.
+
+```
+fr.log.debug("Log message from Lua")
+```
+
+The functions provided are:
+
+  * `debug`
+  * `info`
+  * `warn`
+  * `error`
+
+which will produce log messages sent to the configured FreeRADIUS destination at the
+corresponding log level.
+
+=== Function return values
+
+Functions should return a FreeRADIUS rcode using values from the `fr.rcode` table e.g.
+
+```
+return fr.rcode.ok
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

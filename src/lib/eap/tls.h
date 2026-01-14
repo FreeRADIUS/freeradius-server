@@ -113,7 +113,7 @@ typedef enum {
 
 typedef struct {
 	uint8_t		flags;
-	uint8_t		data[1];
+	uint8_t		data[];
 } eap_tls_data_t;
 
 /** Tracks the state of an EAP-TLS session
@@ -201,4 +201,4 @@ eap_tls_session_t	*eap_tls_session_init(request_t *request, eap_session_t *eap_s
 					      SSL_CTX *ssl_ctx, bool client_cert) CC_HINT(nonnull);
 
 
-fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);
+fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs) CC_HINT(nonnull);

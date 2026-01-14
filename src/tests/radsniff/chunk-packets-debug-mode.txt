@@ -14,10 +14,10 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
         User-Name = "testuser"
         NAS-IP-Address = 127.0.0.1
         NAS-Port = 123
-        Service-Type = Framed-User
+        Service-Type = ::Framed-User
         Called-Station-Id = "scald_pega_pilha"
         Calling-Station-Id = "btc100k"
-        Acct-Status-Type = Start
+        Acct-Status-Type = ::Start
         Acct-Session-Id = "0123456789"
         Message-Authenticator = 0xd1851d10de31ceb79bbb5141d62b39ba
         NAS-Port-Id = "0"
@@ -27,7 +27,7 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
 	Authenticator-Field = 0x113000da9020f10c71b6c248d4dda6bf
         User-Name = "scald_left_lemos"
         NAS-IP-Address = 127.0.0.1
-        Service-Type = Framed-User
+        Service-Type = ::Framed-User
         Acct-Session-Id = "0123456789"
         Message-Authenticator = 0x62a3e9f511e8bde563bd88ee44673fd5
         NAS-Port-Id = "0"
@@ -46,10 +46,10 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
         User-Name = "testuser"
         NAS-IP-Address = 127.0.0.1
         NAS-Port = 123
-        Service-Type = Framed-User
+        Service-Type = ::Framed-User
         Called-Station-Id = "scald_pega_pilha"
         Calling-Station-Id = "btc100k"
-        Acct-Status-Type = Start
+        Acct-Status-Type = ::Start
         Acct-Session-Id = "0123456789"
         Message-Authenticator = 0x14aa9ea36bfae4e448437a2345d87c6a
         NAS-Port-Id = "0"

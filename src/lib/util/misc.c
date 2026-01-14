@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <string.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
@@ -302,6 +303,38 @@ int fr_blocking(UNUSED int fd)
 }
 #endif
 
+#ifdef FD_CLOEXEC
+/** Set FD_CLOEXEC on a socket
+ * @param fd to set FD_CLOEXEC flag on.
+ * @return
+ *	- Flags set on the fd.
+ *	- -1 on failure.
+ */
+int fr_cloexec(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failed getting fd flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags |= FD_CLOEXEC;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failed setting fd flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+#else
+int fr_cloexec(UNUSED int fd)
+{
+	return 0;
+}
+#endif
+
 /** Convert UTF8 string to UCS2 encoding
  *
  * @note Borrowed from src/crypto/ms_funcs.c of wpa_supplicant project (http://hostap.epitest.fi/wpa_supplicant/)
@@ -477,4 +510,51 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 	for (i = 0; i < length; i++) result |= a[i] ^ b[i];
 
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
+}
+
+/** Get the filename from a path
+ *
+ * @param path to get filename from.
+ * @return
+ *	- pointer to the filename in the path.
+ *	- pointer to the path if no '/' is found.
+ */
+char const *fr_filename(char const *path)
+{
+	char const *p = strrchr(path, '/');
+
+	if (p) return p + 1;
+
+	return path;
+}
+
+/** Trim a common prefix from a filename
+ *
+ * @param path to get filename from.
+ * @param common prefix to trim from the path.
+ * @return
+ *	- pointer to the position on the path where the common prefix match ended.
+ */
+char const *fr_filename_common_trim(char const *path, char const *common)
+{
+	char const *p_p, *p_c, *p_pn, *p_cn;
+
+	if (!path) return NULL;
+	if (!common) return NULL;
+
+	p_p = path;
+	p_c = common;
+
+	while ((p_pn = strchr(p_p, '/')) != NULL) {
+		p_cn = strchr(p_c, '/');
+		if (!p_cn) p_cn = p_c + strlen(p_c);
+
+		if ((p_pn - p_p) != (p_cn - p_c)) break;	/* path component not the same len */
+		if (strncmp(p_p, p_c, p_pn - p_p) != 0) break;  /* path component not the same */
+
+		p_p = p_pn + 1;
+		p_c = p_cn + 1;
+	}
+
+	return p_p;
 }

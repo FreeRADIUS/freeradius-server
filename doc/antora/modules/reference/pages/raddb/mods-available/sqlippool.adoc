@@ -77,7 +77,7 @@ For DHCPv4 the owner will likely be specified by:
   * `%{Client-Hardware-Address}` which binds the lease to the
   mac address of the user's device.
 
-  * `%{&Client-Identifier || &Client-Hardware-Address}`
+  * `%{Client-Identifier || Client-Hardware-Address}`
   which binds the lease to either the custom identifier set by the
   DHCP client, or if this is absent, the mac address of the user's
   device.
@@ -109,7 +109,7 @@ requested_address:: The IP address being renewed or released.
 For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
 
 For DHCPv4 the requested_address will almost always be
-`%{&Requested-IP-Address || &Client-IP-Address}`.
+`%{Requested-IP-Address || Client-IP-Address}`.
 
 
 
@@ -141,13 +141,13 @@ sqlippool {
 	ippool_table = "fr_ippool"
 	lease_duration = 3600
 	offer_duration = 60
-	pool_name = &control.IP-Pool.Name
-	allocated_address_attr = &reply.Framed-IP-Address
+	pool_name = control.IP-Pool.Name
+	allocated_address_attr = reply.Framed-IP-Address
 	owner = "%{Calling-Station-ID}"
-#	owner = "%{&Client-Identifier || &Client-Hardware-Address}"
+#	owner = "%{Client-Identifier || Client-Hardware-Address}"
 	requested_address = "%{Framed-IP-Address}"
-#	requested_address = "%{&Requested-IP-Address || &Client-IP-Address}"
-	gateway = "%{&NAS-Identifier || &NAS-IP-Address}"
+#	requested_address = "%{Requested-IP-Address || Client-IP-Address}"
+	gateway = "%{NAS-Identifier || NAS-IP-Address}"
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }
 ```

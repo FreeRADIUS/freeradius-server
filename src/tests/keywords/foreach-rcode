@@ -1,0 +1,17 @@
+NAS-Port := {1, 2, 3, 4 }
+
+noop
+
+foreach thing (NAS-Port) {
+	if (thing == 4) {
+		updated
+	} else {
+		ok
+	}
+}
+
+if (!updated) {
+	test_fail
+}
+
+success

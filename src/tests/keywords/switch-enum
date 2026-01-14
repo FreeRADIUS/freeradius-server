@@ -1,0 +1,15 @@
+Service-Type := ::Framed-User
+
+switch Service-Type {
+	case ::Framed-User {
+		success
+	}
+
+	case ::Authenticate-Only {
+		test_fail
+	}
+
+	default {
+		test_fail
+	}
+}

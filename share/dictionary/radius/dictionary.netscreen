@@ -13,7 +13,7 @@ VENDOR		Netscreen			3224
 
 BEGIN-VENDOR	Netscreen
 
-ATTRIBUTE	Admin-Privilege				1	integer
+ATTRIBUTE	Admin-Privilege				1	uint32
 ATTRIBUTE	VSYS-Name				2	string
 ATTRIBUTE	User-Group				3	string
 ATTRIBUTE	Primary-DNS				4	ipaddr

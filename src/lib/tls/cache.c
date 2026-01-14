@@ -261,7 +261,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	 */
 	while (fr_dbuff_remaining(&dbuff) > 0) {
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &tmp,
-					    	  fr_dict_root(request->dict), &dbuff, NULL) < 0) {
+						  fr_dict_root(request->proto_dict), &dbuff, NULL) < 0) {
 			SESSION_ID(sess_id, sess);
 
 			fr_pair_list_free(&tmp);
@@ -275,7 +275,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 
 		RDEBUG2("Session-ID %pV - Restoring session-state[*]", &sess_id);
 		RINDENT();
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "session-state.");
 		REXDENT();
 	}
 
@@ -348,8 +348,7 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 
 /** Process the result of `load session { ... }`
  */
-static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					     request_t *request, void *uctx)
+static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -458,8 +457,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 /** Process the result of `store session { ... }`
  */
-static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_store_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -594,8 +592,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 /** Process the result of `clear session { ... }`
  */
-static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_clear_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -745,6 +742,15 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
+
+	/*
+	 *	If the session is TLS 1.3, then resumption will be handled by a
+	 *	session ticket.  However, if this callback is defined, it still
+	 *	gets called.
+	 *	To avoid unnecessary entries in the stateful cache just return.
+	 */
+	if (tls_session->info.version == TLS1_3_VERSION) return 0;
+
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 

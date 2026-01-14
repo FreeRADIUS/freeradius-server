@@ -1,0 +1,19 @@
+# PROTOCOL: dhcpv4
+
+#
+#  This works
+#
+reply.Domain-Name-Server = { 127.0.0.1, 127.0.0.2 }
+
+reply := {
+	#
+	#  Lists of leaf values should be OK.
+	#
+	Domain-Name-Server = { 127.0.0.1, 127.0.0.2 }
+	Subnet-Mask = 255.255.255.0
+	Router-Address = 192.0.2.1
+	IP-Address-Lease-Time = 7200
+	Server-Identifier = control.Server-Identifier
+}
+
+success

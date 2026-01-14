@@ -120,7 +120,7 @@ done:
 /*
  *	Make many things easier
  */
-#define return_slen return slen - fr_dbuff_used(&work_dbuff)
+#define return_slen return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff))
 
 /*
  *	Octets is length + data
@@ -325,7 +325,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 		}
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v4.s_addr, 4);
+		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ipv4addr, 4);
 		if (slen <= 0) return_slen;
 
 		if (vb->vb_ip.scope_id == 0) break;
@@ -351,7 +351,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return_slen;
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr, 16);
+		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ipv6addr, 16);
 		if (slen <= 0) return_slen;
 
 		if (vb->vb_ip.scope_id == 0) break;
@@ -378,7 +378,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return_slen;
 
-		p = (uint8_t const *) &vb->vb_ip.addr.v4.s_addr;
+		p = (uint8_t const *) &vb->vb_ipv4addr;
 		end = p + 3;
 
 		/*
@@ -414,7 +414,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return_slen;
 
-		p = (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr;
+		p = (uint8_t const *) &vb->vb_ipv6addr;
 		end = p + 15;
 
 		/*
@@ -643,9 +643,9 @@ static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Get the IP address.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
-					 sizeof(vb->vb_ip.addr.v4.s_addr),
-					 sizeof(vb->vb_ip.addr.v4.s_addr), &work_dbuff);
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ipv4addr,
+					 sizeof(vb->vb_ipv4addr),
+					 sizeof(vb->vb_ipv4addr), &work_dbuff);
 	if (slen <= 0) return_slen;
 
 	if (!count) return fr_dbuff_set(dbuff, &work_dbuff);
@@ -699,9 +699,9 @@ static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Get the IP address.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
-					 sizeof(vb->vb_ip.addr.v6.s6_addr),
-					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ipv6addr,
+					 sizeof(vb->vb_ipv6addr),
+					 sizeof(vb->vb_ipv6addr), dbuff);
 
 	if (slen <= 0) return_slen;
 
@@ -736,7 +736,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
-	uint8_t buffer[sizeof(vb->vb_ip.addr.v4.s_addr)];
+	uint8_t buffer[sizeof(vb->vb_ipv4addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -765,7 +765,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr, buffer, sizeof(vb->vb_ip.addr.v4.s_addr));
+	memcpy((uint8_t *) &vb->vb_ipv4addr, buffer, sizeof(vb->vb_ipv4addr));
 	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -777,7 +777,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
-	uint8_t buffer[sizeof(vb->vb_ip.addr.v6.s6_addr)];
+	uint8_t buffer[sizeof(vb->vb_ipv6addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -806,7 +806,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr, buffer, sizeof(vb->vb_ip.addr.v6.s6_addr));
+	memcpy((uint8_t *) &vb->vb_ipv6addr, buffer, sizeof(vb->vb_ipv6addr));
 	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -942,6 +942,7 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		slen = cbor_decode_int64(&fraction, &work_dbuff, FR_TYPE_TIME_DELTA);
 		if (slen < 0) return_slen;
 
+		if ((fraction < 0) || (fraction > scale)) fraction = 0;
 	} else {
 		scale = NSEC;
 		fraction = 0;
@@ -954,13 +955,15 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		vb->vb_time_delta = fr_time_delta_min();
 
 	} else {
-		/*
-		 *	We don't worry too much about positive seconds and negative nanoseconds.
-		 *
-		 *	We also don't worry too much about overflow / underflow here.
-		 */
-		fraction += seconds * scale;
-		vb->vb_time_delta = fr_time_delta_wrap(fraction);
+		seconds *= scale;
+
+		if (seconds < 0) {
+			seconds -= fraction;
+		} else {
+			seconds += fraction;
+		}
+
+		vb->vb_time_delta = fr_time_delta_wrap(seconds);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -999,7 +1002,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	if (type == FR_TYPE_NULL) {
 		type = cbor_guess_type(&work_dbuff, false);
-		if (type == FR_TYPE_NULL) return 0;
+		if (type == FR_TYPE_NULL) {
+			fr_strerror_const("Unable to determine data type from cbor");
+			return -1;
+		}
 	}
 
 	fr_value_box_init(vb, type, enumv, tainted);
@@ -1013,7 +1019,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	if (((info >= 28) && (info <= 30)) ||
 	    ((info == 31) && ((major == 0) || (major == 1) || (major == 6)))) {
 		fr_strerror_const("Invalid cbor data - input is not 'well formed'");
-		return 0;
+		return -1;
 	}
 
 	switch (major) {
@@ -1028,7 +1034,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		if (info == 31) {
 		no_chunks:
 			fr_strerror_const("Chunked strings are not supported");
-			return 0;
+			return -1;
 		}
 
 
@@ -1326,8 +1332,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) return_slen;
 
-		fr_assert(type != FR_TYPE_NULL);
-
 		/*
 		 *	No tag defined for this data type, that's on us.
 		 */
@@ -1413,7 +1417,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			 *	We have to decode at least one value.
 			 */
 			slen = fr_cbor_decode_value_box(child, child, &work_dbuff, FR_TYPE_NULL, NULL, tainted);
-			if (slen <= 0) return_slen;
+			if (slen <= 0) {
+				talloc_free(child);
+				return_slen;
+			}
 
 			fr_value_box_list_insert_tail(&vb->vb_group, child);
 		}
@@ -1635,8 +1642,8 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 	return FR_TYPE_NULL;
 }
 
-ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
-			    fr_dict_attr_t const *parent, bool tainted)
+static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
+				fr_dict_attr_t const *parent, bool tainted, int depth)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	uint8_t header, major, info;
@@ -1675,12 +1682,23 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		return_slen;
 	}
 
+	/*
+	 *	If the nesting is too deep, decode as raw octets.  We have to do this manually in CBOR,
+	 *	because the other protocols create a da_stack which limits the depth.
+	 */
+	if (depth >= FR_DICT_MAX_TLV_STACK) goto raw;
+
 	da = fr_dict_attr_child_by_num(parent, value);
 	if (!da) {
 		fr_type_t type;
 
 		type = cbor_guess_type(&work_dbuff, true);
 		if (type == FR_TYPE_NULL) return -fr_dbuff_used(&work_dbuff);
+
+		if (depth >= FR_DICT_MAX_TLV_STACK) {
+		raw:
+			type = FR_TYPE_OCTETS;
+		}
 
 		/*
 		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
@@ -1689,12 +1707,11 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		 *	data types.
 		 */
 		da = fr_dict_attr_unknown_typed_afrom_num(ctx, parent, value, type);
-		if (!da) goto oom;
+		if (!da) return -fr_dbuff_used(&work_dbuff);
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-	oom:
 		fr_strerror_const("Out of memory");
 		return -fr_dbuff_used(&work_dbuff);
 	}
@@ -1704,13 +1721,15 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	 */
 	if (fr_type_is_leaf(da->type)) {
 		slen = fr_cbor_decode_value_box(vp, &vp->data, &work_dbuff, da->type, da, tainted);
-		if (slen <= 0) {
+		if (slen < 0) {
 			talloc_free(vp);
 			return_slen;
 		}
 
 		goto done;
 	}
+
+	fr_assert(fr_type_is_structural(da->type));
 
 	switch (da->type) {
 		/*
@@ -1806,7 +1825,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 			break;
 		}
 
-		slen = fr_cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted);
+		slen = cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted, depth + 1);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return_slen;
@@ -1818,6 +1837,12 @@ done:
 
 	fr_pair_append(out, vp);
 	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
+			    fr_dict_attr_t const *parent, bool tainted)
+{
+	return cbor_decode_pair(ctx, out, dbuff, parent, tainted, 0);
 }
 
 /*

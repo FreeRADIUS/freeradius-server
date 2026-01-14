@@ -1,0 +1,24 @@
+= %str.upper( ... )
+
+Returns the uppercase version of the input.
+
+The uppercase operation is done using the current locale.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+User-Name := "bob"
+reply.Reply-Message := "uppercase of %{User-Name} is " + %str.upper(User-Name)
+----
+
+.Output
+
+```
+uppercase of bob is BOB
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -55,14 +55,6 @@ typedef struct {
 #ifndef NDEBUG
 	int				unlang_indent;		//!< Record what this was when we entered the module.
 #endif
-
-	/** @name rcode output
-	 * @{
- 	 */
-	rlm_rcode_t			*p_result;		//!< Where to store the result.
-	rlm_rcode_t			rcode;			//!< the result, only for unlang_module_resume_final.
-	bool				rcode_set;		//!< Overwrite the current rcode for the section with
-								///< the module rcode.
 	/** @} */
 
 	/** @name Resumption and signalling
@@ -84,7 +76,7 @@ typedef struct {
 	module_instance_t const		*mi;			//!< Module instance to pass to callbacks.
 	request_t			*request;
 
-	fr_event_timer_t const		*ev;			//!< retry timer just for this module.
+	fr_timer_t			*ev;			//!< retry timer just for this module.
 	fr_retry_t			retry;			//!< retry timers, etc.
 
 	/** @} */

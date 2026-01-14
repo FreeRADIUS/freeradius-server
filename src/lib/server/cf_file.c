@@ -30,8 +30,11 @@
  */
 RCSID("$Id$")
 
+#include <sys/errno.h>
+
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
@@ -40,12 +43,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/syserror.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>
@@ -59,7 +59,6 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
-#include <ctype.h>
 #include <fcntl.h>
 
 #include <freeradius-devel/server/main_config.h>
@@ -79,6 +78,24 @@ static fr_table_num_sorted_t const conf_property_name[] = {
 	{ L("name"),	CONF_PROPERTY_NAME	}
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
+
+static fr_table_num_sorted_t const server_unlang_section[] = {
+	{ L("accounting"),	true },
+	{ L("add"),		true },
+	{ L("authenticate"),	true },
+	{ L("clear"),		true },
+	{ L("deny"),		true },
+	{ L("error"),		true },
+	{ L("establish"),	true },
+	{ L("finally"),		true },
+	{ L("load"),		true },
+	{ L("new"),		true },
+	{ L("recv"),		true },
+	{ L("send"),		true },
+	{ L("store"),		true },
+	{ L("verify"),		true },
+};
+static size_t server_unlang_section_len = NUM_ELEMENTS(server_unlang_section);
 
 typedef enum {
 	CF_STACK_FILE = 0,
@@ -120,6 +137,7 @@ typedef struct {
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
+	CONF_SECTION   	*at_reference;		//!< was this thing an @foo ?
 
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
@@ -160,8 +178,6 @@ static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, 
 }
 
 #define RULES_VERIFY(_cs, _rules) if (cf_tmpl_rules_verify(_cs, _rules) < 0) return NULL
-
-static ssize_t fr_skip_xlat(char const *start, char const *end);
 
 /*
  *	Expand the variables in an input string.
@@ -282,7 +298,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			ci = cf_reference_item(parent_cs, outer_cs, name);
 			if (!ci) {
 				if (soft_fail) *soft_fail = true;
-				ERROR("%s[%d]: Reference \"${%s}\" not found", cf, lineno, name);
+				PERROR("%s[%d]: Failed finding reference \"${%s}\"", cf, lineno, name);
 				return NULL;
 			}
 
@@ -642,24 +658,259 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	return 0;
 }
 
+/** Set the euid/egid used when performing file checks
+ *
+ * Sets the euid, and egid used when cf_file_check is called to check
+ * permissions on conf items of type #CONF_FLAG_FILE_READABLE
+ *
+ * @note This is probably only useful for the freeradius daemon itself.
+ *
+ * @param uid to set, (uid_t)-1 to use current euid.
+ * @param gid to set, (gid_t)-1 to use current egid.
+ */
+void cf_file_check_set_uid_gid(uid_t uid, gid_t gid)
+{
+	if (uid != 0) conf_check_uid = uid;
+	if (gid != 0) conf_check_gid = gid;
+}
+
+/** Perform an operation with the effect/group set to conf_check_gid and conf_check_uid
+ *
+ * @param filename		CONF_PAIR for the file being checked
+ * @param cb			callback function to perform the check
+ * @param uctx			user context for the callback
+ * @return
+ *	- CF_FILE_OTHER_ERROR if there was a problem modifying permissions
+ *	- The return value from the callback
+ */
+cf_file_check_err_t cf_file_check_effective(char const *filename,
+					    cf_file_check_err_t (*cb)(char const *filename, void *uctx), void *uctx)
+{
+	int ret;
+
+	uid_t euid = (uid_t)-1;
+	gid_t egid = (gid_t)-1;
+
+	if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
+		if (setegid(conf_check_gid) < 0) {
+			fr_strerror_printf("Failed setting effective group ID (%d) for file check: %s",
+					   (int) conf_check_gid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
+		if (seteuid(conf_check_uid) < 0) {
+			fr_strerror_printf("Failed setting effective user ID (%d) for file check: %s",
+					   (int) conf_check_uid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	ret = cb(filename, uctx);
+	if (conf_check_uid != euid) {
+		if (seteuid(euid) < 0) {
+			fr_strerror_printf("Failed restoring effective user ID (%d) after file check: %s",
+					   (int) euid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	if (conf_check_gid != egid) {
+		if (setegid(egid) < 0) {
+			fr_strerror_printf("Failed restoring effective group ID (%d) after file check: %s",
+					   (int) egid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+
+	return ret;
+}
+
+/** Check if we can connect to a unix socket
+ *
+ * @param[in] filename		CONF_PAIR for the unix socket path
+ * @param[in] uctx		user context, not used
+ * @return
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_NO_UNIX_SOCKET if the file exists but is not a socket.
+ *	- CF_FILE_OTHER_ERROR any other error.
+ */
+cf_file_check_err_t cf_file_check_unix_connect(char const *filename, UNUSED void *uctx)
+{
+	int fd;
+	cf_file_check_err_t ret = CF_FILE_OK;
+
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+
+	fr_strerror_clear();
+
+	if (talloc_strlen(filename) >= sizeof(addr.sun_path)) {
+		fr_strerror_printf("Socket path \"%s\" to long", filename);
+		return CF_FILE_OTHER_ERROR;
+	}
+
+	strlcpy(addr.sun_path, filename, sizeof(addr.sun_path));
+
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		fr_strerror_printf("Failed checking permissions for \"%s\": %s",
+				   filename, fr_syserror(errno));
+		return CF_FILE_OTHER_ERROR;
+	}
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+		fr_strerror_printf("Failed setting non-blocking mode for socket %s: %s",
+				   filename, fr_syserror(errno));
+		close(fd);
+		return CF_FILE_OTHER_ERROR;
+	}
+
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		switch (errno) {
+		case EINPROGRESS:	/* This is fine */
+			break;
+
+		case ENOENT:
+			fr_strerror_printf("Socket path \"%s\" does not exist", filename);
+			ret = CF_FILE_NO_EXIST;
+			break;
+
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("Socket path \"%s\" exists but is not accessible", filename);
+			ret = CF_FILE_NO_PERMISSION;
+			break;
+
+		case ENOTSOCK:
+			fr_strerror_printf("File \"%s\" is not a socket", filename);
+			ret = CF_FILE_NO_UNIX_SOCKET;
+			break;
+
+		default:
+			fr_strerror_printf("Failed connecting to socket %s: %s", filename, fr_syserror(errno));
+			ret = CF_FILE_OTHER_ERROR;
+			break;
+		}
+	}
+
+	close(fd);
+
+	return ret;
+}
+
+/** Check if file exists, and is a socket
+ *
+ * @param[in] filename		CONF_PAIR for the unix socket path
+ * @param[in] uctx		user context, not used
+ * @return
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_NO_UNIX_SOCKET if the file exists but is not a socket.
+ *	- CF_FILE_OTHER_ERROR any other error.
+ */
+cf_file_check_err_t cf_file_check_unix_perm(char const *filename, UNUSED void *uctx)
+{
+	struct stat buf;
+
+	fr_strerror_clear();
+
+	if (stat(filename, &buf) < 0) {
+		switch (errno) {
+		case ENOENT:
+			fr_strerror_printf("Socket path \"%s\" does not exist", filename);
+			return CF_FILE_NO_EXIST;
+
+		case EPERM:
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("Socket path \"%s\" exists but is not accessible: %s",
+				    filename, fr_syserror(errno));
+			return CF_FILE_NO_PERMISSION;
+
+		default:
+			fr_strerror_printf("Unable to stat socket \"%s\": %s", filename, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+
+	if (!S_ISSOCK(buf.st_mode)) {
+		fr_strerror_printf("File \"%s\" is not a socket", filename);
+		return CF_FILE_NO_UNIX_SOCKET;
+	}
+
+	return CF_FILE_OK;
+}
+
+/** Callback for cf_file_check to open a file and check permissions.
+ *
+ * This is used to check if a file exists, and is readable by the
+ * unprivileged user/group.
+ *
+ * @param filename	currently being processed.
+ * @param uctx		user context, which is a pointer to cf_file_t
+ * @return
+ *	- CF_FILE_OK if the file exists and is readable.
+ *	- CF_FILE_NO_EXIST if the file does not exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_OTHER_ERROR if there was any other error.
+ */
+cf_file_check_err_t cf_file_check_open_read(char const *filename, void *uctx)
+{
+	int fd;
+	cf_file_t *file = uctx;
+
+	fr_strerror_clear();
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+	error:
+		if (fd >= 0) close(fd);
+
+		switch (errno) {
+		case ENOENT:
+			fr_strerror_printf("File \"%s\" does not exist", filename);
+			return CF_FILE_NO_EXIST;
+
+		case EPERM:
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("File \"%s\" exists but is not accessible: %s",
+						filename, fr_syserror(errno));
+			return CF_FILE_NO_PERMISSION;
+
+		default:
+			fr_strerror_printf("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+
+		}
+	}
+
+	if (file && fstat(fd, &file->buf) < 0) goto error;
+
+	close(fd);
+	return CF_FILE_OK;
+}
+
 /** Do some checks on the file as an "input" file.  i.e. one read by a module.
  *
  * @note Must be called with super user privileges.
  *
  * @param cp		currently being processed.
- * @param check_perms	If true - will return false if file is world readable,
+ * @param check_perms	If true - will return error if file is world readable,
  *			or not readable by the unprivileged user/group.
  * @return
- *	- true if permissions are OK, or the file exists.
- *	- false if the file does not exist or the permissions are incorrect.
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_OTHER_ERROR any other error.
  */
-bool cf_file_check(CONF_PAIR *cp, bool check_perms)
+cf_file_check_err_t cf_file_check(CONF_PAIR *cp, bool check_perms)
 {
-	cf_file_t	*file;
-	CONF_SECTION	*top;
-	fr_rb_tree_t	*tree;
-	char const 	*filename = cf_pair_value(cp);
-	int		fd = -1;
+	cf_file_t		*file;
+	CONF_SECTION		*top;
+	fr_rb_tree_t		*tree;
+	char const 		*filename = cf_pair_value(cp);
+	cf_file_check_err_t	ret;
 
 	top = cf_root(cp);
 	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
@@ -673,16 +924,14 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
-		perm_error:
 			fr_perm_file_error(errno);	/* Write error and euid/egid to error buff */
 			cf_log_perr(cp, "Unable to open file \"%s\"", filename);
 		error:
-			if (fd >= 0) close(fd);
 			talloc_free(file);
-			return false;
+			return CF_FILE_OTHER_ERROR;
 		}
 		talloc_free(file);
-		return true;
+		return CF_FILE_OK;
 	}
 
 	/*
@@ -690,52 +939,17 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 	 *	to check that the file can be read with the
 	 *	euid/egid.
 	 */
-	{
-		uid_t euid = (uid_t)-1;
-		gid_t egid = (gid_t)-1;
-
-		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
-			if (setegid(conf_check_gid) < 0) {
-				cf_log_perr(cp, "Failed setting effective group ID (%d) for file check: %s",
-					    (int) conf_check_gid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
-			if (seteuid(conf_check_uid) < 0) {
-				cf_log_perr(cp, "Failed setting effective user ID (%d) for file check: %s",
-					    (int) conf_check_uid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		fd = open(filename, O_RDONLY);
-		if (conf_check_uid != euid) {
-			if (seteuid(euid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective user ID (%d) after file check: %s",
-					    (int) euid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		if (conf_check_gid != egid) {
-			if (setegid(egid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective group ID (%d) after file check: %s",
-					    (int) egid, fr_syserror(errno));
-				goto error;
-			}
-		}
+	ret = cf_file_check_effective(filename, cf_file_check_open_read, file);
+	if (ret < 0) {
+		cf_log_perr(cp, "Permissions check failed");
+		goto error;
 	}
-
-	if (fd < 0) goto perm_error;
-	if (fstat(fd, &file->buf) < 0) goto perm_error;
-
-	close(fd);
-
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
 		cf_log_perr(cp, "Configuration file %s is globally writable.  "
 		            "Refusing to start due to insecure configuration.", filename);
 		talloc_free(file);
-		return false;
+		return CF_FILE_OTHER_ERROR;
 	}
 #endif
 
@@ -744,7 +958,7 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 	 */
 	if (!fr_rb_insert(tree, file)) talloc_free(file);
 
-	return true;
+	return CF_FILE_OK;
 }
 
 /*
@@ -1095,6 +1309,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		 */
 		while ((dp = readdir(dir)) != NULL) {
 			char const *p;
+			size_t len;
 
 			if (dp->d_name[0] == '.') continue;
 
@@ -1110,6 +1325,19 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 				break;
 			}
 			if (*p != '\0') continue;
+
+			/*
+			 *	Ignore config files generated by deb / rpm packaging updates.
+			 */
+			len = strlen(dp->d_name);
+			if ((len > 10) && (strncmp(&dp->d_name[len - 10], ".dpkg-dist", 10) == 0)) {
+			pkg_file:
+				WARN("Ignoring packaging system produced file %s%s", frame->directory, dp->d_name);
+			 	continue;
+			}
+			if ((len > 9) && (strncmp(&dp->d_name[len - 9], ".dpkg-old", 9) == 0)) goto pkg_file;
+			if ((len > 7) && (strncmp(&dp->d_name[len - 7], ".rpmnew", 9) == 0)) goto pkg_file;
+			if ((len > 8) && (strncmp(&dp->d_name[len - 8], ".rpmsave", 10) == 0)) goto pkg_file;
 
 			snprintf(stack->buff[1], stack->bufsize, "%s%s",
 				 frame->directory, dp->d_name);
@@ -1188,8 +1416,8 @@ static int process_template(cf_stack_t *stack)
 
 	ci = cf_reference_item(parent_cs, templatecs, stack->buff[2]);
 	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-		ERROR("%s[%d]: No such template \"%s\" in the 'templates' section.",
-		      frame->filename, frame->lineno, stack->buff[2]);
+		PERROR("%s[%d]: Failed finding item \"%s\" in the 'templates' section.",
+		       frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
 
@@ -1200,140 +1428,6 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-
-/**  Skip an xlat expression.
- *
- *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
- *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
- *  But it also rejects all malformed expressions.
- *
- *  It's used as a quick hack because the full parser isn't always available.
- *
- *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @return
- *	>0 length of the string which was parsed
- *	<=0 on error
- */
-static ssize_t fr_skip_xlat(char const *start, char const *end)
-{
-	int	depth = 1;		/* caller skips '{' */
-	ssize_t slen;
-	char	quote, end_quote;
-	char const *p = start;
-
-	/*
-	 *	At least %{1}
-	 */
-	if (end && ((start + 4) > end)) {
-		fr_strerror_const("Invalid expansion");
-		return 0;
-	}
-
-	if ((*p != '%') && (*p != '$')) {
-		fr_strerror_const("Unexpected character in expansion");
-		return -(p - start);
-	}
-
-	p++;
-	if ((*p != '{') && (*p != '(')) {
-		char const *q = p;
-
-		/*
-		 *	New xlat syntax: %foo(...)
-		 */
-		while (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-')) {
-			q++;
-		}
-		if (*q == '(') {
-			p = q;
-			goto do_quote;
-		}
-
-		fr_strerror_const("Invalid character after '%'");
-		return -(p - start);
-	}
-
-do_quote:
-	quote = *(p++);
-	if (quote == '{') {
-		end_quote = '}';
-	} else {
-		end_quote = ')';
-	}
-
-	while ((end && (p < end)) || (*p >= ' ')) {
-		if (*p == quote) {
-			p++;
-			depth++;
-			continue;
-		}
-
-		if (*p == end_quote) {
-			p++;
-			depth--;
-			if (!depth) return p - start;
-
-			continue;
-		}
-
-		/*
-		 *	Nested expansion.
-		 */
-		if ((p[0] == '$') || (p[0] == '%')) {
-			if (end && (p + 2) >= end) break;
-
-			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
-				slen = fr_skip_xlat(p, end);
-
-			check:
-				if (slen <= 0) return -(p - start) + slen;
-
-				p += slen;
-				continue;
-			}
-
-			/*
-			 *	Bare $ or %, just leave it alone.
-			 */
-			p++;
-			continue;
-		}
-
-		/*
-		 *	A quoted string.
-		 */
-		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			slen = fr_skip_string(p, end);
-			goto check;
-		}
-
-		/*
-		 *	@todo - bare '(' is a condition or nested
-		 *	expression.  The brackets need to balance
-		 *	here, too.
-		 */
-
-		if (*p != '\\') {
-			p++;
-			continue;
-		}
-
-		if (end && ((p + 2) >= end)) break;
-
-		/*
-		 *	Escapes here are only one-character escapes.
-		 */
-		if (p[1] < ' ') break;
-		p += 2;
-	}
-
-	/*
-	 *	Unexpected end of xlat
-	 */
-	fr_strerror_const("Unexpected end of expansion");
-	return -(p - start);
-}
 
 static const bool terminal_end_section[UINT8_MAX + 1] = {
 	['{'] = true,
@@ -1350,171 +1444,6 @@ static const bool terminal_end_line[UINT8_MAX + 1] = {
 	[';'] = true,
 	['}'] = true,
 };
-
-/**  Skip a conditional expression.
- *
- *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
- *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
- *  But it also rejects all malformed expressions.
- *
- *  It's used as a quick hack because the full parser isn't always available.
- *
- *  @param[in] start	start of the condition.
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @param[in] terminal	terminal character(s)
- *  @param[out] eol	did the parse error happen at eol?
- *  @return
- *	>0 length of the string which was parsed.  *eol is false.
- *	<=0 on error, *eol may be set.
- */
-static ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1], bool *eol)
-{
-	char const *p = start;
-	bool was_regex = false;
-	int depth = 0;
-	ssize_t slen;
-
-	if (eol) *eol = false;
-
-	/*
-	 *	Keep parsing the condition until we hit EOS or EOL.
-	 */
-	while ((end && (p < end)) || *p) {
-		if (isspace((uint8_t) *p)) {
-			p++;
-			continue;
-		}
-
-		/*
-		 *	In the configuration files, conditions end with ") {" or just "{"
-		 */
-		if ((depth == 0) && terminal[(uint8_t) *p]) {
-			return p - start;
-		}
-
-		/*
-		 *	"recurse" to get more conditions.
-		 */
-		if (*p == '(') {
-			p++;
-			depth++;
-			was_regex = false;
-			continue;
-		}
-
-		if (*p == ')') {
-			if (!depth) {
-				fr_strerror_const("Too many ')'");
-				return -(p - start);
-			}
-
-			p++;
-			depth--;
-			was_regex = false;
-			continue;
-		}
-
-		/*
-		 *	Parse xlats.  They cannot span EOL.
-		 */
-		if ((*p == '$') || (*p == '%')) {
-			if (end && ((p + 2) >= end)) {
-				fr_strerror_const("Expansions cannot extend across end of line");
-				return -(p - start);
-			}
-
-			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
-				slen = fr_skip_xlat(p, end);
-
-			check:
-				if (slen <= 0) return -(p - start) + slen;
-
-				p += slen;
-				continue;
-			}
-
-			/*
-			 *	Bare $ or %, just leave it alone.
-			 */
-			p++;
-			was_regex = false;
-			continue;
-		}
-
-		/*
-		 *	Parse quoted strings.  They cannot span EOL.
-		 */
-		if ((*p == '"') || (*p == '\'') || (*p == '`') || (was_regex && (*p == '/'))) {
-			was_regex = false;
-
-			slen = fr_skip_string((char const *) p, end);
-			goto check;
-		}
-
-		/*
-		 *	192.168/16 is a netmask.  So we only
-		 *	allow regex after a regex operator.
-		 *
-		 *	This isn't perfect, but is good enough
-		 *	for most purposes.
-		 */
-		if ((p[0] == '=') || (p[0] == '!')) {
-			if (end && ((p + 2) >= end)) {
-				fr_strerror_const("Operators cannot extend across end of line");
-				return -(p - start);
-			}
-
-			if (p[1] == '~') {
-				was_regex = true;
-				p += 2;
-				continue;
-			}
-
-			/*
-			 *	Some other '==' or '!=', just leave it alone.
-			 */
-			p++;
-			was_regex = false;
-			continue;
-		}
-
-		/*
-		 *	Any control characters (other than \t) cause an error.
-		 */
-		if (*p < ' ') break;
-
-		was_regex = false;
-
-		/*
-		 *	Normal characters just get skipped.
-		 */
-		if (*p != '\\') {
-			p++;
-			continue;
-		}
-
-		/*
-		 *	Backslashes at EOL are ignored.
-		 */
-		if (end && ((p + 2) >= end)) break;
-
-		/*
-		 *	Escapes here are only one-character escapes.
-		 */
-		if (p[1] < ' ') break;
-		p += 2;
-	}
-
-	/*
-	 *	We've fallen off of the end of a string.  It may be OK?
-	 */
-	if (eol) *eol = (depth > 0);
-
-	if (terminal[(uint8_t) *p]) return p - start;
-
-	fr_strerror_const("Unexpected end of condition");
-	return -(p - start);
-}
 
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
@@ -1543,7 +1472,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			.list_def = request_attr_request,
 			.allow_unresolved = true,
 			.allow_unknown = true
-		}
+		},
+		.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 	};
 
 	/*
@@ -2293,13 +2223,109 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	return rule->on_read(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
+/*
+ *	switch (cast) foo {
+ */
+static CONF_ITEM *process_switch(cf_stack_t *stack)
+{
+	size_t		match_len;
+	fr_type_t	type = FR_TYPE_NULL;
+	fr_token_t	name2_quote = T_BARE_WORD;
+	CONF_SECTION	*css;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+
+	fr_skip_whitespace(ptr);
+	if (*ptr == '(') {
+		char const *start;
+
+		ptr++;
+		start = ptr;
+
+		while (isalpha(*ptr)) ptr++;
+
+		if (*ptr != ')') {
+			ERROR("%s[%d]: Missing ')' in cast",
+			      frame->filename, frame->lineno);
+			return NULL;
+		}
+
+		type = fr_table_value_by_longest_prefix(&match_len, fr_type_table,
+							start, ptr - start, FR_TYPE_MAX);
+		if (type == FR_TYPE_MAX) {
+			ERROR("%s[%d]: Unknown data type '%.*s' in cast",
+			      frame->filename, frame->lineno, (int) (ptr - start), start);
+			return NULL;
+		}
+
+		if (!fr_type_is_leaf(type)) {
+			ERROR("%s[%d]: Invalid data type '%.*s' in cast",
+			      frame->filename, frame->lineno, (int) (ptr - start), start);
+			return NULL;
+		}
+
+		ptr++;
+		fr_skip_whitespace(ptr);
+	}
+
+	/*
+	 *	Get the argument to the switch statement
+	 */
+	if (cf_get_token(parent, &ptr, &name2_quote, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	css = cf_section_alloc(parent, parent, "switch", NULL);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = name2_quote;
+	css->unlang = CF_UNLANG_ALLOW;
+	css->allow_locals = true;
+
+	fr_skip_whitespace(ptr);
+
+	if (*ptr != '{') {
+		(void) parse_error(stack, ptr, "Expected '{' in 'switch'");
+		return NULL;
+	}
+
+	css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+
+	/*
+	 *	Add in the extra argument.
+	 */
+	if (type != FR_TYPE_NULL) {
+		css->argc = 1;
+		css->argv = talloc_array(css, char const *, css->argc);
+		css->argv_quote = talloc_array(css, fr_token_t, css->argc);
+
+		css->argv[0] = fr_type_to_str(type);
+		css->argv_quote[0] = T_BARE_WORD;
+	}
+
+	ptr++;
+	stack->ptr = ptr;
+
+	return cf_section_to_item(css);
+}
+
+
 static fr_table_ptr_sorted_t unlang_keywords[] = {
 	{ L("catch"),		(void *) process_catch },
 	{ L("elsif"),		(void *) process_if },
 	{ L("foreach"),		(void *) process_foreach },
 	{ L("if"),		(void *) process_if },
 	{ L("map"),		(void *) process_map },
-	{ L("subrequest"),	(void *) process_subrequest }
+	{ L("subrequest"),	(void *) process_subrequest },
+	{ L("switch"),		(void *) process_switch }
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
@@ -2329,20 +2355,40 @@ static int parse_input(cf_stack_t *stack)
 
 	/*
 	 *	Catch end of a subsection.
+	 *
+	 *	frame->current is the new thing we just created.
+	 *	frame->parent is the parent of the current frame
+	 *	frame->at_reference is the original frame->current, before the @reference
+	 *	parent is the parent we started with when we started this section.
 	 */
 	if (*ptr == '}') {
 		/*
-		 *	We're already at the parent section
-		 *	which loaded this file.  We cannot go
-		 *	back up another level.
+		 *	No pushed braces means that we're already in
+		 *      the parent section which loaded this file.  We
+		 *      cannot go back up another level.
 		 *
-		 *	This limitation means that we cannot
-		 *	put half of a CONF_SECTION in one
-		 *	file, and then the second half in
-		 *	another file.  That's fine.
+		 *      This limitation means that we cannot put half
+		 *      of a CONF_SECTION in one file, and then the
+		 *      second half in another file.  That's fine.
 		 */
-		if (parent == frame->parent) {
+		if (frame->braces == 0) {
 			return parse_error(stack, ptr, "Too many closing braces");
+		}
+
+		/*
+		 *	Reset the current and parent to the original
+		 *	section, before we were parsing the
+		 *	@reference.
+		 */
+		if (frame->at_reference) {
+			frame->current = frame->parent = frame->at_reference;
+			frame->at_reference = NULL;
+
+		} else {
+			/*
+			 *	Go back up one section, because we can.
+			 */
+			frame->current = frame->parent = cf_item_to_section(frame->current->item.parent);
 		}
 
 		fr_assert(frame->braces > 0);
@@ -2355,8 +2401,6 @@ static int parse_input(cf_stack_t *stack)
 		 *	sub-sections, etc.
 		 */
 		if (!cf_template_merge(parent, parent->template)) return -1;
-
-		frame->current = cf_item_to_section(parent->item.parent);
 
 		ptr++;
 		stack->ptr = ptr;
@@ -2612,6 +2656,16 @@ check_for_eol:
 
 	case CF_UNLANG_ALLOW:
 		/*
+		 *	'case ::foo' is allowed.  For generality, we just expect that the second argument to
+		 *	'case' is not an operator.
+		 */
+		if ((strcmp(buff[1], "case") == 0) ||
+		    (strcmp(buff[1], "limit") == 0) ||
+		    (strcmp(buff[1], "timeout") == 0)) {
+			break;
+		}
+
+		/*
 		 *	It's not a string, bare word, or attribute reference.  It must be an operator.
 		 */
 		if (!((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
@@ -2638,8 +2692,108 @@ check_for_eol:
 alloc_section:
 	parent->allow_locals = false;
 
-	css = cf_section_alloc(parent, parent, buff[1], value);
+	/*
+	 *	@policy foo { ...}
+	 *
+	 *	Means "add foo to the policy section".  And if
+	 *	policy{} doesn't exist, create it, and then mark up
+	 *	policy{} with a flag "we need to merge it", so that
+	 *	when we read the actual policy{}, we merge the
+	 *	contents together, instead of creating a second
+	 *	policy{}.
+	 *
+	 *	@todo - allow for '.' in @.ref  Or at least test it. :(
+	 *
+	 *	@todo - allow for two section names @ref foo bar {...}
+	 *
+	 *	@todo - maybe we can use this to overload things in
+	 *	virtual servers, and in modules?
+	 */
+	if (buff[1][0] == '@') {
+		CONF_ITEM *ci;
+		CONF_SECTION *root;
+		char const *name = &buff[1][1];
+
+		if (!value) {
+			ERROR("%s[%d]: Missing section name for reference", frame->filename, frame->lineno);
+			return -1;
+		}
+
+		root = cf_root(parent);
+
+		ci = cf_reference_item(root, parent, name);
+		if (!ci) {
+			if (name[1] == '.') {
+				PERROR("%s[%d]: Failed finding reference \"%s\"", frame->filename, frame->lineno, name);
+				return -1;
+			}
+
+			css = cf_section_alloc(root, root, name, NULL);
+			if (!css) goto oom;
+
+			cf_filename_set(css, frame->filename);
+			cf_lineno_set(css, frame->lineno);
+			css->name2_quote = name2_token;
+			css->unlang = CF_UNLANG_NONE;
+			css->allow_locals = false;
+			css->at_reference = true;
+			parent = css;
+
+			/*
+			 *	Copy this code from below. :(
+			 */
+			if (cf_item_to_section(parent->item.parent) == root) {
+				if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
+				if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+				if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
+				if (strcmp(css->name1, "templates") == 0) css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
+			}
+
+		} else {
+			if (!cf_item_is_section(ci)) {
+				ERROR("%s[%d]: Reference \"%s\" is not a section", frame->filename, frame->lineno, name);
+				return -1;
+			}
+
+			/*
+			 *	Set the new parent and ensure we're
+			 *	not creating a duplicate section.
+			 */
+			parent = cf_item_to_section(ci);
+			css = cf_section_find(parent, value, NULL);
+			if (css) {
+				ERROR("%s[%d]: Reference \"%s\" already contains a \"%s\" section at %s[%d]",
+				      frame->filename, frame->lineno, name, value,
+				      css->item.filename, css->item.lineno);
+				return -1;
+			}
+		}
+
+		/*
+		 *	We're processing a section.  The @reference is
+		 *	OUTSIDE of this section.
+		 */
+		fr_assert(frame->current == frame->parent);
+		frame->at_reference = frame->parent;
+		name2_token = T_BARE_WORD;
+
+		css = cf_section_alloc(parent, parent, value, NULL);
+	} else {
+		/*
+		 *	Check if there's already an auto-created
+		 *	section of this name.  If so, just use that
+		 *	section instead of allocating a new one.
+		 */
+		css = cf_section_find(parent, buff[1], value);
+		if (css && css->at_reference) {
+			css->at_reference = false;
+		} else {
+			css = cf_section_alloc(parent, parent, buff[1], value);
+		}
+	}
+
 	if (!css) {
+	oom:
 		ERROR("%s[%d]: Failed allocating memory for section",
 		      frame->filename, frame->lineno);
 		return -1;
@@ -2690,19 +2844,7 @@ alloc_section:
 		 */
 	case CF_UNLANG_SERVER:
 		// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
-		if ((strcmp(css->name1, "accounting") == 0) ||
-		    (strcmp(css->name1, "add") == 0) ||
-		    (strcmp(css->name1, "authenticate") == 0) ||
-		    (strcmp(css->name1, "clear") == 0) ||
-		    (strcmp(css->name1, "deny") == 0) ||
-		    (strcmp(css->name1, "error") == 0) ||
-		    (strcmp(css->name1, "load") == 0) ||
-		    (strcmp(css->name1, "new") == 0) ||
-		    (strcmp(css->name1, "recv") == 0) ||
-		    (strcmp(css->name1, "send") == 0) ||
-		    (strcmp(css->name1, "store") == 0) ||
-		    (strcmp(css->name1, "establish") == 0) ||
-		    (strcmp(css->name1, "verify") == 0)) {
+		if (fr_table_value_by_str(server_unlang_section, css->name1, false)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
 			break;
@@ -3484,22 +3626,6 @@ void cf_file_free(CONF_SECTION *cs)
 	talloc_free(cs);
 }
 
-/** Set the euid/egid used when performing file checks
- *
- * Sets the euid, and egid used when cf_file_check is called to check
- * permissions on conf items of type #CONF_FLAG_FILE_INPUT
- *
- * @note This is probably only useful for the freeradius daemon itself.
- *
- * @param uid to set, (uid_t)-1 to use current euid.
- * @param gid to set, (gid_t)-1 to use current egid.
- */
-void cf_file_check_user(uid_t uid, gid_t gid)
-{
-	if (uid != 0) conf_check_uid = uid;
-	if (gid != 0) conf_check_gid = gid;
-}
-
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 
 static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, fr_token_t t)
@@ -3623,10 +3749,18 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	CONF_PAIR		*cp;
 	CONF_SECTION		*next;
 	CONF_SECTION const	*cs = outer_cs;
-	char			name[8192];
-	char			*p;
+	char			name[8192], *p;
+	char const		*name2;
 
-	if (!ptr || (!parent_cs && !outer_cs)) return NULL;
+	if (!ptr || (!parent_cs && !outer_cs)) {
+		fr_strerror_const("Invalid argument");
+		return NULL;
+	}
+
+	if (!*ptr) {
+		fr_strerror_const("Empty string is invalid");
+		return NULL;
+	}
 
 	strlcpy(name, ptr, sizeof(name));
 
@@ -3641,7 +3775,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		/*
 		 *	Just '.' means the current section
 		 */
-		if (*p == '\0') return cf_section_to_item(cs);
+		if (*p == '\0') return cf_section_to_item(cs); /* const issues */
 
 		/*
 		 *	..foo means "foo from the section
@@ -3654,95 +3788,187 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 			 *	.. means the section
 			 *	enclosing this section
 			 */
-			if (!*++p) return cf_section_to_item(cs);
+			if (!*++p) return cf_section_to_item(cs); /* const issues */
 		}
 
 		/*
-		 *	"foo.bar.baz" means "from the root"
+		 *	"foo.bar.baz" means "from the given root"
 		 */
 	} else if (strchr(p, '.') != NULL) {
-		if (!parent_cs) return NULL;
+		if (!parent_cs) {
+		missing_parent:
+			fr_strerror_const("Missing parent configuration section");
+			return NULL;
+		}
 		cs = parent_cs;
-	}
-
-	while (*p) {
-		char *q, *r;
-
-		r = strchr(p, '[');
-		q = strchr(p, '.');
-		if (!r && !q) break;
-
-		if (r && q > r) q = NULL;
-		if (q && q < r) r = NULL;
 
 		/*
-		 *	Split off name2.
+		 *	"foo" could be from the current section, either as a
+		 *	section or as a pair.
+		 *
+		 *	If that isn't found, search from the given root.
 		 */
-		if (r) {
-			q = strchr(r + 1, ']');
-			if (!q) return NULL; /* parse error */
+	} else {
+		next = cf_section_find(cs, p, NULL);
+		if (!next && cs->template) next = cf_section_find(cs->template, p, NULL);
+		if (next) return &(next->item);
 
+		cp = cf_pair_find(cs, p);
+		if (!cp && cs->template) cp = cf_pair_find(cs->template, p);
+		if (cp) return &(cp->item);
+
+		if (!parent_cs) goto missing_parent;
+		cs = parent_cs;
+	}
+
+	/*
+	 *	Chop the string into pieces, and look up the pieces.
+	 */
+	while (*p) {
+		char *n1, *n2, *q;
+
+		n1 = p;
+		n2 = NULL;
+		q = p;
+
+		fr_assert(*q);
+
+		/*
+		 *	Look for a terminating '.' or '[', to get name1 and possibly name2.
+		 */
+		while (*q != '\0') {
 			/*
-			 *	Points to foo[bar]xx: parse error,
-			 *	it should be foo[bar] or foo[bar].baz
+			 *	foo.bar -> return "foo"
 			 */
-			if (q[1] && q[1] != '.') return NULL;
-
-			*r = '\0';
-			*q = '\0';
-			next = cf_section_find(cs, p, r + 1);
-			if (!next && cs->template) next = cf_section_find(cs->template, p, r + 1);
-			*r = '[';
-			*q = ']';
-
-			/*
-			 *	Points to a named instance of a section.
-			 */
-			if (!q[1]) {
-				if (!next) return NULL;
-				return &(next->item);
+			if (*q == '.') {
+				*q++ = '\0'; /* leave 'q' after the '.' */
+				break;
 			}
 
-			q++;	/* ensure we skip the ']' and '.' */
+			/*
+			 *	name1 is anything up to '[' or EOS.
+			 */
+			if (*q != '[') {
+				q++;
+				continue;
+			}
 
-		} else {
-			*q = '\0';
-			next = cf_section_find(cs, p, NULL);
-			if (!next && cs->template) next = cf_section_find(cs->template, p, NULL);
-			*q = '.';
+			/*
+			 *	Found "name1[", look for "name2]" or "name2]."
+			 */
+			*q++ = '\0';
+			n2 = q;
+
+			while (*q != '\0') {
+				if (*q == '[') {
+					fr_strerror_const("Invalid reference, '[' cannot be used inside of a '[...]' block");
+					return NULL;
+				}
+
+				if (*q != ']') {
+					q++;
+					continue;
+				}
+
+				/*
+				 *	We've found the trailing ']'
+				 */
+				*q++ = '\0';
+
+				/*
+				 *	"name2]"
+				 */
+				if (!*q) break;
+
+				/*
+				 *	Must be "name2]."
+				 */
+				if (*q++ == '.') break;
+
+				fr_strerror_const("Invalid reference, ']' is not followed by '.'");
+				return NULL;
+			}
+
+			if (n2) break;
+
+			/*
+			 *	"name1[name2", but not "name1[name2]"
+			 */
+			fr_strerror_printf("Invalid reference after '%s', missing close ']'", n2);
+			return NULL;
+		}
+		p = q;		/* get it ready for the next round */
+
+		/*
+		 *	End of the string.  The thing could be a section with
+		 *	two names, a section with one name, or a pair.
+		 *
+		 *	And if we don't find the thing we're looking for here,
+		 *	check the template section.
+		 */
+		if (!*p) {
+			/*
+			 *	Two names, must be a section.
+			 */
+			if (n2) {
+				next = cf_section_find(cs, n1, n2);
+				if (!next && cs->template) next = cf_section_find(cs->template, n1, n2);
+				if (next) return &(next->item);
+
+			fail:
+				name2 = cf_section_name2(cs);
+				fr_strerror_printf("Parent section %s%s%s { ... } does not contain a %s %s { ... } configuration section",
+						   cf_section_name1(cs),
+						   name2 ? " " : "", name2 ? name2 : "",
+						   n1, n2);
+				return NULL;
+			}
+
+			/*
+			 *	One name, the final thing can be a section or a pair.
+			 */
+			next = cf_section_find(cs, n1, NULL);
+			if (!next && cs->template) next = cf_section_find(cs->template, n1, NULL);
+
+			if (next) return &(next->item);
+
+			cp = cf_pair_find(cs, n1);
+			if (!cp && cs->template) cp = cf_pair_find(cs->template, n1);
+			if (cp) return &(cp->item);
+
+			name2 = cf_section_name2(cs);
+			fr_strerror_printf("Parent section %s%s%s  { ... } does not contain a %s configuration item",
+					   cf_section_name1(cs),
+					   name2 ? " " : "", name2 ? name2 : "",
+					   n1);
+			return NULL;
 		}
 
-		if (!next) break; /* it MAY be a pair in this section! */
+		/*
+		 *	There's more to the string.  The thing we're looking
+		 *	for MUST be a configuration section.
+		 */
+		next = cf_section_find(cs, n1, n2);
+		if (!next && cs->template) next = cf_section_find(cs->template, n1, n2);
+		if (next) {
+			cs = next;
+			continue;
+		}
 
-		cs = next;
-		p = q + 1;
+		if (n2) goto fail;
+
+		name2 = cf_section_name2(cs);
+		fr_strerror_printf("Parent section %s%s%s { ... } does not contain a %s { ... } configuration section",
+				   cf_section_name1(cs),
+				   name2 ? " " : "", name2 ? name2 : "",
+				   n1);
+		return NULL;
 	}
-
-	if (!*p) return NULL;
-
-retry:
-	/*
-	 *	Find it in the current referenced
-	 *	section.
-	 */
-	cp = cf_pair_find(cs, p);
-	if (!cp && cs->template) cp = cf_pair_find(cs->template, p);
-	if (cp) {
-		cp->referenced = true;	/* conf pairs which are referenced count as used */
-		return &(cp->item);
-	}
-
-	next = cf_section_find(cs, p, NULL);
-	if (next) return &(next->item);
 
 	/*
-	 *	"foo" is "in the current section, OR in main".
+	 *	We've fallen off of the end of the string.  This should not have happened!
 	 */
-	if ((p == name) && (parent_cs != NULL) && (cs != parent_cs)) {
-		cs = parent_cs;
-		goto retry;
-	}
-
+	fr_strerror_const("Cannot parse reference");
 	return NULL;
 }
 

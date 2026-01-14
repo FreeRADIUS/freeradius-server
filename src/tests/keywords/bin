@@ -43,7 +43,7 @@ request += {
 	NAS-Identifier = '0x030405'
 }
 
-Class := %bin(%{NAS-Identifier[*]})
+Class := %bin(NAS-Identifier[*])
 
 if (Class[#] != 2) {
 	test_fail

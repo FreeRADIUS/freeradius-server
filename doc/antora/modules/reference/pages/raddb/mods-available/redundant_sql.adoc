@@ -10,10 +10,10 @@ The `redundant_sql` module handles SQL expansions in a redundant manner.
 This configuration can be thought of as a `virtual` module.
 
 e.g. If you have two redundant SQL servers, and you want to use
-them in the authorize and accounting sections, you could place a
+them in the recv and accounting sections, you could place a
 `redundant` block in each section, containing the exact same text.
 Or, you could uncomment the following lines, and list
-`redundant_sql` in the authorize and accounting sections.
+`redundant_sql` in the recv and accounting sections.
 
 The `virtual` module defined here can also be used with dynamic
 expansions, under a few conditions:
@@ -30,7 +30,7 @@ name of the `virtual` module.  In the example below,
 it will be `redundant_sql`.  You can then use this expansion
 just like any other:
 
-	&reply.Filter-Id := "%redundant_sql( ... )"
+	reply.Filter-Id := "%redundant_sql( ... )"
 
 In this example, the expansion is done via module `sql1`, and if
 that expansion fails, using module `sql2`.

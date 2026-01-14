@@ -22,7 +22,7 @@ This file exists for two purposes:
    of migrating from version 3 to version 4.  We recommend
    removing these attributes, and using local variables instead.
 
-2) Including alias dictionaries  in order to simplify the
+2) Including alias dictionaries in order to simplify the
    process of migrating from version 3 to version 4.  We
    recommend using the new names where possible.
 
@@ -94,15 +94,15 @@ much simpler.
 
 For v4, all of the attributes have been renamed from v3.  This
 change was necessary in order to support new functionality.  The
-unfortunate side effect of this change is that all of the names
-used by v3 in tje SQL, LDAP, and "files" module are incompatible
-with v4.
+unfortunate side effect of this change is that all of the attribute
+names used by v3 in the SQL, LDAP, and "files" module are
+incompatible with v4.
 
 The problem with v3 was that names were all in flat lists, so that
-User-Name appeared in the same to Cisco-AVPAir.  This organization
-was simple enough to work for 25 years, but its time has come.  The
-new names are hierarchical, which means they are organized into a
-tree-like structure.
+User-Name appeared in the same list as Cisco-AVPAir.  This
+organization was simple enough to work for 25 years, but its time
+has come.  The new names are hierarchical, which means they are
+organized into a tree-like structure.
 
 For v4, the Cisco-AVPair attribute is now called "AVPair".  It
 lives inside of the "Cisco" namespace, which in turn lives inside
@@ -113,19 +113,19 @@ These changes have been made for many hundreds of dictionary files,
 and many thousands of Vendor-Specific attributes.
 
 In the interest of compatibility, is possible to use the old names
-with v4.  There are limitations, but it will generally work.  The
-main reason for enabling the old names is to try out v4 with a
+with v4.  There are some limitations, but it will generally work.
+The main reason for enabling the old names is to try out v4 with a
 database that is also used by v3.  This lets you test that v4
-works, without going through a complex "upgrade everything"
-process.
+works, without going through a complex process to upgrade
+everything.
 
-The old v3 names are in "alias" dictionaries, in the `${dictdir}`
+The old v3 names are in "v3" dictionaries, in the `${dictdir}`
 directory.  To find out where this directory is on your local
 system, run "radiusd -h" or "radclient -h".  Then look for the "-D"
 command-line option, and it will tell you where the dictionary
 files are located.
 
-The v3 names are in `${dictdir}/radius/alias/VENDOR.txt` where
+The v3 names are in `${dictdir}/radius/v3/VENDOR.txt` where
 _VENDOR_ is the name taken from the v3 `dictionary.VENDOR`.
 
 You will need to edit the text below to add a `$INCLUDE` line for
@@ -156,6 +156,13 @@ This dictionary includes v3-compatible names like "Cleartext-Password",
 or "NT-Password".
 
 
+
+Any local dictionaries can be added in the `dictionary.d` subdirectory.
+
+The server will load all files in that directory, but will skip
+editor backup files, and others which are known to not be real files.
+
+
 == Default Configuration
 
 ```
@@ -167,6 +174,7 @@ or "NT-Password".
 #$INCLUDE ${dictdir}/radius/v3/dictionary.aruba
 #END-PROTOCOL RADIUS
 #$INCLUDE ${dictdir}/freeradius/v3/dictionary.freeradius.internal
+$INCLUDE- dictionary.d/
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -1,4 +1,4 @@
-function authorize()
+function recv()
 	if not type(fr) == "table" then
 		print("error: the 'fr' should be a table")
 		return "fail"

@@ -1,0 +1,19 @@
+The following optional packages may also be needed for certain FreeRADIUS utilities or modules (e.g. particular databases).
+
+freeradius-krb5 (Kerberos 5 support: rlm_krb5)
+freeradius-ldap (LDAP support: rlm_ldap)
+freeradius-redis (Redis database support: rlm_redis)
+freeradius-rest (HTTP REST support: rlm_rest)
+freeradius-utils (Many useful utilities such as radtest and radclient)
+SQL Database drivers:
+
+freeradius-freetds (Microsoft SQL Server support: rlm_sql_freetds)
+freeradius-mysql (MariaDB / MySQL support: rlm_sql_mysql)
+freeradius-postgresql (PostgreSQL: rlm_sql_postgresql)
+freeradius-sqlite (SQlite support: rlm_sql_sqlite)
+freeradius-unixODBC (SQL ODBC support: rlm_sql_unixODBC)
+Languages:
+
+freeradius-perl (Perl support: rlm_perl)
+freeradius-perl-util (Perl rlm_sqlippool_tool utility)
+freeradius-python (Python 2 and 3: rlm_python, rlm_python3)

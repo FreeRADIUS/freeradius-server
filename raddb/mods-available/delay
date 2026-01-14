@@ -69,6 +69,24 @@ delay {
 	#  The default is `no`, which means that.
 	#
 #	relative = no
+
+	#
+	#  rcode:: Which rcode the delay module should return when it resumes
+	#  this can be useful for detecting whether a `timeout { ... }` section
+	#  expired, whilst the delay module was waiting.
+	#
+	#  The default is `notset`, which means that the delay module will be
+	#  transparent and not alter the section rcode.
+	#
+	#  [NOTE]
+	#  ====
+	#  The default section `rcode` in many places is `fail`.  Care should be
+	#  taken to set the `rcode` for the section a delay module appears in, if
+	#  this configuration item is not set, and no other modules are present
+	#  in the section.
+	#  ====
+	#
+#	rcode = 'notset'
 }
 
 #
@@ -92,6 +110,6 @@ delay {
 #  received.
 #
 delay delay_reject {
-	delay = "%{&reply.FreeRADIUS-Response-Delay || 1}"
+	delay = "%{reply.FreeRADIUS-Response-Delay || 1}"
 	relative = yes
 }

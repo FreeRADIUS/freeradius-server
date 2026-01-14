@@ -1,7 +1,7 @@
 dn: cn=freeradius-dhcpv6,cn=schema,cn=config
 objectClass: olcSchemaConfig
 cn: freeradius-dhcpv6
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.4.2.1.1 NAME 'dhcpv6Attribute' DESC 'DHCPv6 attribute in format [<list>.]<attr> <op> <value>' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.4.2.1.1 NAME 'dhcpv6Attribute' DESC 'DHCPv6 attribute in format [<list>.]<attr> <op> <value>' EQUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.4.1.1.1 NAME 'dhcpv6GatewayIdentifier' DESC 'Gateway Identifier' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.4.1.1.2 NAME 'dhcpv6GatewayAddr' DESC 'Gateway IP address' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.4.1.1.3 NAME 'dhcpv6PoolNameNA' DESC 'DHCPv6 IP NA pool name' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )

@@ -196,7 +196,7 @@ static const call_env_method_t redis_ippool_alloc_method_env = {
 				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("allocated_address_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, allocated_address_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("range_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, range_attr),
-					       .pair.dflt = "&reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
+					       .pair.dflt = "reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("expiry_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, redis_ippool_alloc_call_env_t, expiry_attr) },
 		CALL_ENV_TERMINATOR
 	}
@@ -211,10 +211,10 @@ static const call_env_method_t redis_ippool_update_method_env = {
 				     .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, CALL_ENV_FLAG_REQUIRED,  redis_ippool_update_call_env_t, lease_time) },
 		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_ADDR, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_update_call_env_t, requested_address),
-				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+				     .pair.dflt = "%{Requested-IP-Address || Net.Src.IP}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("allocated_address_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_update_call_env_t, allocated_address_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("range_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_update_call_env_t, range_attr),
-					       .pair.dflt = "&reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
+					       .pair.dflt = "reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("expiry_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, redis_ippool_update_call_env_t, expiry_attr) },
 		CALL_ENV_TERMINATOR
 	}
@@ -228,7 +228,7 @@ static const call_env_method_t redis_ippool_release_method_env = {
 		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_release_call_env_t, gateway_id),
 				     .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_ADDR, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_release_call_env_t, requested_address),
-				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+				     .pair.dflt = "%{Requested-IP-Address || Net.Src.IP}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -627,7 +627,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_r
 						     conn);
 		if (status == REDIS_RCODE_SUCCESS) {
 			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {
-				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i, status);
 			}
 
 			if (replies[3]->type != REDIS_REPLY_ARRAY) {
@@ -1091,14 +1091,14 @@ finish:
 	if (env->pool_name.vb_length > IPPOOL_MAX_KEY_PREFIX_SIZE) { \
 		REDEBUG("Pool name too long.  Expected %u bytes, got %ld bytes", \
 			IPPOOL_MAX_KEY_PREFIX_SIZE, env->pool_name.vb_length); \
-		RETURN_MODULE_FAIL; \
+		RETURN_UNLANG_FAIL; \
 	} \
 	if (env->pool_name.vb_length == 0) { \
 		RDEBUG2("Empty pool name.  Doing nothing"); \
-		RETURN_MODULE_NOOP; \
+		RETURN_UNLANG_NOOP; \
 	}
 
-static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
 	redis_ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_alloc_call_env_t);
@@ -1117,18 +1117,18 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	switch (redis_ippool_allocate(inst, request, env, lease_time)) {
 	case IPPOOL_RCODE_SUCCESS:
 		RDEBUG2("IP address lease allocated");
-		RETURN_MODULE_UPDATED;
+		RETURN_UNLANG_UPDATED;
 
 	case IPPOOL_RCODE_POOL_EMPTY:
 		RWDEBUG("Pool contains no free addresses");
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
 	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
@@ -1159,11 +1159,14 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 				.rhs = &ip_rhs
 			};
 
-			fr_value_box_copy(NULL, &ip_rhs.data.literal, &env->requested_address);
+			if (unlikely(fr_value_box_copy(NULL, &ip_rhs.data.literal, &env->requested_address) < 0)) {
+				RPEDEBUG("Failed copying IP address to reply attribute");
+				RETURN_UNLANG_FAIL;
+			}
 
-			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
+			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_UNLANG_FAIL;
 		}
-		RETURN_MODULE_UPDATED;
+		RETURN_UNLANG_UPDATED;
 
 	/*
 	 *	It's useful to be able to identify the 'not found' case
@@ -1173,24 +1176,24 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	case IPPOOL_RCODE_NOT_FOUND:
 		REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
 			&env->requested_address);
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	case IPPOOL_RCODE_EXPIRED:
 		REDEBUG("Requested IP address' \"%pV\" lease already expired at time of renewal",
 			&env->requested_address);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	case IPPOOL_RCODE_DEVICE_MISMATCH:
 		REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
 			&env->requested_address);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_release(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
 	redis_ippool_release_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_release_call_env_t);
@@ -1202,7 +1205,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	switch (redis_ippool_release(inst, request, &env->pool_name, &env->requested_address.datum.ip, &env->owner)) {
 	case IPPOOL_RCODE_SUCCESS:
 		RDEBUG2("IP address \"%pV\" released", &env->requested_address);
-		RETURN_MODULE_UPDATED;
+		RETURN_UNLANG_UPDATED;
 
 	/*
 	 *	It's useful to be able to identify the 'not found' case
@@ -1212,23 +1215,23 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	case IPPOOL_RCODE_NOT_FOUND:
 		REDEBUG("Requested IP address \"%pV\" is not a member of the specified pool",
 			&env->requested_address);
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	case IPPOOL_RCODE_DEVICE_MISMATCH:
 		REDEBUG("Requested IP address' \"%pV\" lease allocated to another device",
 			&env->requested_address);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
 							 request_t *request)
 {
 	RDEBUG2("Bulk release not yet implemented");
-	RETURN_MODULE_NOOP;
+	RETURN_UNLANG_NOOP;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -1240,7 +1243,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	fr_assert(subcs);
 
-	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {

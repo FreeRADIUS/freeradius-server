@@ -47,6 +47,13 @@ typedef struct {
 		bool		expect_password;		//!< Allow the user to forcefully decide if a password should be
 								///< expected.  Controls whether warnings are issued.
 		bool		expect_password_is_set;		//!< Whether an expect password value was provided.
+
+		char const	*dn_attr_str;			//!< Sets the attribute we use when creating and retrieving
+								//!< cached group memberships.
+
+		fr_dict_attr_t const *da;			//!< The DA associated with this specific instance of the
+								//!< rlm_ldap module for caching user DNs between autz and
+								///< auth phases.
 	} user;
 
 	/*
@@ -72,7 +79,7 @@ typedef struct {
 								//!< resolution necessary to determine the DNs of those groups,
 								//!< then right them to the control list (LDAP-GroupDN).
 
-		char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
+		char const	*cache_attr_str;		//!< Sets the attribute we use when creating and retrieving
 								//!< cached group memberships.
 
 		fr_dict_attr_t const	*cache_da;		//!< The DA associated with this specific instance of the
@@ -127,6 +134,9 @@ typedef struct {
 	trunk_conf_t	bind_trunk_conf;		//!< Trunk configuration for trunk used for bind auths
 
 	module_instance_t const *mi;			//!< Module instance data for thread lookups.
+
+	fr_pair_list_t	*trigger_args;			//!< Pairs passed to trigger request for standard trunk.
+	fr_pair_list_t	*bind_trigger_args;		//!< Pairs passed to trigger request for bind trunk.
 } rlm_ldap_t;
 
 /** Call environment used in LDAP authorization
@@ -202,6 +212,7 @@ typedef struct {
 	char			*profile_value;
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
+	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
 } ldap_autz_ctx_t;
 
 /** State list for xlat evaluation of LDAP group membership
@@ -227,13 +238,13 @@ typedef struct {
 	fr_ldap_thread_trunk_t		*ttrunk;
 	fr_ldap_query_t			*query;
 	ldap_group_xlat_status_t	status;
+	unlang_result_t			result;
 	bool				found;
 } ldap_group_xlat_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_password;
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
-extern HIDDEN fr_dict_attr_t const *attr_ldap_userdn;
 extern HIDDEN fr_dict_attr_t const *attr_nt_password;
 extern HIDDEN fr_dict_attr_t const *attr_password_with_header;
 
@@ -243,18 +254,20 @@ extern HIDDEN fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
-static inline char const *rlm_find_user_dn_cached(request_t *request)
+static inline char const *rlm_find_user_dn_cached(rlm_ldap_t const *inst, request_t *request)
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ldap_userdn);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, inst->user.da);
 	if (!vp) return NULL;
 
 	RDEBUG2("Using user DN from request \"%pV\"", &vp->data);
 	return vp->vp_strvalue;
 }
 
-unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
+unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
+					 unlang_result_t *p_result,
+					 rlm_ldap_t const *inst, request_t *request,
 					 fr_value_box_t *base, fr_value_box_t *filter_box,
 					 fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
 					 fr_ldap_query_t **query_out);
@@ -266,18 +279,18 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 /*
  *	groups.c - Group membership functions.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
 					   char const *attr);
 
-unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
+unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
-unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, request_t *request,
 					       ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check);
 
 unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,

@@ -1,0 +1,25 @@
+= %str.lower( ... )
+
+Returns the lowercase version of the input.
+
+The lowercase operation is done using the current locale.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+User-Name := "BOB"
+
+reply.Reply-Message := "lowercase of %{User-Name} is %str.lower(User-Name)"
+----
+
+.Output
+
+```
+lowercase of BOB is bob
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

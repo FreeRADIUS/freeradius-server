@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/skip.h>
 
 /*
  *	Registration hooks for radmin.
@@ -101,12 +101,20 @@ static fr_cmd_t *fr_command_find(fr_cmd_t **head, char const *name, fr_cmd_t ***
 {
 	fr_cmd_t *cmd, **where = head;
 
-	if (!head || !name) return NULL;
+	if (!head || !name) {
+		if (insert) *insert = head;
+		return NULL;
+	}
 
 	if (!*head) {
 		if (insert) *insert = head;
 		return NULL;
 	}
+
+	/*
+	 *	Ensure if we exit int he loop insert is initialised
+	 */
+	if (insert) *insert = NULL;
 
 	for (cmd = *head; cmd != NULL; cmd = cmd->next) {
 		int status;
@@ -1599,7 +1607,7 @@ static void fr_command_debug_internal(FILE *fp, fr_cmd_t *head, int depth)
 	}
 }
 
-void fr_command_debug(FILE *fp, fr_cmd_t *head)
+void fr_cmd_debug(FILE *fp, fr_cmd_t *head)
 {
 	fr_command_debug_internal(fp, head, 0);
 }
@@ -1839,7 +1847,7 @@ redo:
 	if (fr_value_box_from_str(ctx, box, type,
 				  NULL,
 				  name, strlen(name),
-				  fr_value_unescape_by_char[(uint8_t)quote], true) < 0) {
+				  fr_value_unescape_by_char[(uint8_t)quote]) < 0) {
 		fr_strerror_printf_push("Failed parsing argument '%s'", name);
 		return -1;
 	}
@@ -1974,7 +1982,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 			ret = fr_value_box_from_str(info->box[argc], info->box[argc],
 						    type, NULL,
 						    word + offset, len - (offset << 1),
-						    fr_value_unescape_by_char[(uint8_t)quote], false);
+						    fr_value_unescape_by_char[(uint8_t)quote]);
 			if (ret < 0) return -1;
 
 			/*
@@ -2593,7 +2601,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 			ret = fr_value_box_from_str(info->box[info->argc], info->box[info->argc],
 						    type, NULL,
 						    word + offset, len - (offset << 1),
-						    fr_value_unescape_by_char[(uint8_t)quote], false);
+						    fr_value_unescape_by_char[(uint8_t)quote]);
 			if (ret < 0) return -1;
 			info->argc++;
 			*word_p = word = p;

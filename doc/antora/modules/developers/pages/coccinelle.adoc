@@ -70,7 +70,7 @@ diff --git a/src/lib/eap_aka_sim/module.c b/src/lib/eap_aka_sim/module.c
 index 6fff875fb3..d172db865a 100644
 --- a/src/lib/eap_aka_sim/module.c
 +++ b/src/lib/eap_aka_sim/module.c
-@@ -340,7 +340,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
+@@ -340,7 +340,7 @@ unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t const *m
                         goto done;
                 }
 

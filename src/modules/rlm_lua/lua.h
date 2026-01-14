@@ -51,12 +51,10 @@ typedef struct {
 	const char	*func_instantiate;	//!< Name of function to run on instantiation.
 	const char	*func_detach;		//!< Name of function to run on detach.
 
-	const char	*func_authorize;	//!< Name of function to run on authorization.
-	const char	*func_authenticate;	//!< Name of function to run on authentication.
-	const char	*func_preacct;		//!< Name of function to run on preacct.
-	const char	*func_accounting;	//!< Name of function to run on accounting.
-	const char	*func_post_auth;	//!< Name of function to run after authentication.
 	const char	*func_xlat;		//!< Name of function to be called for string expansions.
+
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
 } rlm_lua_t;
 
 typedef struct {
@@ -65,9 +63,10 @@ typedef struct {
 
 /* lua.c */
 int		fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx);
-unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname);
+unlang_action_t fr_lua_run(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname);
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
+int		fr_lua_check_func(module_inst_ctx_t const *mctx, lua_State *L, char const *name);
 
 /* util.c */
 void		fr_lua_util_jit_log_debug(char const *msg);

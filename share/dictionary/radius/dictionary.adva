@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -17,7 +17,7 @@ VENDOR		Adva				2544
 
 BEGIN-VENDOR	Adva
 
-ATTRIBUTE	User-Level				100	integer
+ATTRIBUTE	User-Level				100	uint32
 
 VALUE	User-Level			Super			5
 VALUE	User-Level			Admin			4
@@ -26,8 +26,11 @@ VALUE	User-Level			Operate_Control		2
 VALUE	User-Level			Reserved		1
 VALUE	User-Level			Retrieve		0
 
-ATTRIBUTE	UUM-User-Level				102	integer
+ATTRIBUTE	UUM-User-Level				102	uint32
 
+VALUE	UUM-User-Level			Sudoadmin		8
+VALUE	UUM-User-Level			Ftponly			7
+VALUE	UUM-User-Level			Crypto			6
 VALUE	UUM-User-Level			Root			5
 VALUE	UUM-User-Level			Admin			4
 VALUE	UUM-User-Level			Provision		3

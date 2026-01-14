@@ -8,15 +8,15 @@ attributes.
 .Syntax
 [source,unlang]
 ----
-&attribute := <expression>
-&attribute = <expression>
-&attribute += <expression>
-&attribute -= <expression>
+attribute := <expression>
+attribute = <expression>
+attribute += <expression>
+attribute -= <expression>
 ...
 
-&list1 := &list2
-&list1 += { &attribute = value, ... }
-&list1 += " attribute = value, ... "
+list1 := list2
+list1 += { attribute = value, ... }
+list1 += " attribute = value, ... "
 ...
 ----
 
@@ -60,16 +60,14 @@ You _cannot_ convert an `update` section to the new syntax simply by
 removing the `update` keyword.
 ====
 
-== Atomic "Transactions" and Errors
+== Assignment Failures
 
-The edit process is atomic, in that either all of the attributes are
-modified, or none of them are modified.  If the edit fails for any
-reason, then all of the results are discarded, and the edit does not
-affect any attributes.
+If the right side of an edit fails, then the assignment does nothing,
+and the variable named on the left hand side is not updated.
 
-Note also that the server tracks overflows, underflows, and division
-by zero.  These issues are caught, and cause the problematic
-calculation to fail.
+For mathematical expressions, the server tracks overflows, underflows,
+and division by zero.  These issues are caught, and cause the
+problematic calculation to fail.
 
 For example, if an attribute is of type `uint8`, then it can only
 contain 8-bit integers.  Any attempt to overflow the value to more
@@ -86,18 +84,19 @@ and do not result in any changes.
 
 === Grouping Edits
 
-Multiple attributes may be grouped into a set by using the xref:unlang/transaction.adoc[transaction]
-keyword.  When changes are done in a `transaction`, then either all of the
-changes are applied, or none of them are applied.  This functionality
-is best used to conditionally apply attribute changes, generally when
-retrieving data from a database.
+Multiple attributes may be grouped into a set by using the
+xref:unlang/transaction.adoc[transaction] keyword.  When changes are
+done in a `transaction`, then either all of the changes are applied,
+or none of them are applied.  This functionality is best used to
+conditionally apply attribute changes, generally when retrieving data
+from a database.
 
 == List Editing
 
 .Syntax
 [source,unlang]
 ----
-&<list> <op> <rhs>
+<list> <op> <rhs>
 ----
 
 List editing can be done for the usual xref:reference:unlang/list.adoc[lists] such as `request`,
@@ -166,7 +165,7 @@ assigning the empty list to the destination.
 ====
 [source,unlang]
 ----
-&reply := {}
+reply := {}
 ----
 ====
 
@@ -197,8 +196,8 @@ given.
 ====
 [source,unlang]
 ----
-&reply += {
-	&Filter-Id = "foo"
+reply += {
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -212,7 +211,7 @@ appended to the list.
 ====
 [source,unlang]
 ----
-&reply += &request.User-Name
+reply += request.User-Name
 ----
 ====
 
@@ -227,8 +226,8 @@ overriding the contents of a list.
 ====
 [source,unlang]
 ----
-&reply := {
-	&Filter-Id = "foo"
+reply := {
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -244,7 +243,7 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= &Filter-Id
+reply -= Filter-Id
 ----
 ====
 
@@ -252,7 +251,7 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= &Filter-Id[*]
+reply -= Filter-Id[*]
 ----
 ====
 
@@ -260,8 +259,8 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= {
-    &Filter-Id == "bar"
+reply -= {
+    Filter-Id == "bar"
 }
 ----
 ====
@@ -295,7 +294,7 @@ copies all of the `request` list contents to the `reply` list.
 ====
 [source,unlang]
 ----
-&reply := &request
+reply := request
 ----
 ====
 
@@ -303,7 +302,7 @@ copies all of the `request` list contents to the `reply` list.
 ====
 [source,unlang]
 ----
-&reply += &request
+reply += request
 ----
 ====
 
@@ -315,13 +314,13 @@ lists into a database, and then reading them back when a request is
 processed.
 
 Note that the pairs in the string _cannot_ have list qualifiers.  That
-is, `&reply += "request.foo ..."` is not allowed.
+is, `reply += "request.foo ..."` is not allowed.
 
 .Assigning attributes taken from a string
 ====
 [source,unlang]
 ----
-&reply += "Filter-Id = 'foo'"
+reply += "Filter-Id = 'foo'"
 ----
 ====
 
@@ -332,7 +331,7 @@ The above example has the same result as the earlier example of adding
 ====
 [source,unlang]
 ----
-&reply += "sql("SELECT pairs FROM pair_table WHERE username = '%{User-Name}'")
+reply += "sql("SELECT pairs FROM pair_table WHERE username = '%{User-Name}'")
 ----
 ====
 
@@ -345,7 +344,7 @@ strings, such as `Filter-Id = "foo"`.
 .Syntax
 [source,unlang]
 ----
-&<attribute> <op> <rhs>
+<attribute> <op> <rhs>
 ----
 
 Attribute editing can be done for any

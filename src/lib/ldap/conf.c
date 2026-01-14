@@ -41,13 +41,13 @@ conf_parser_t const fr_ldap_tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_ldap_config_t, tls_ca_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, fr_ldap_config_t, tls_ca_path) },
 
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE, fr_ldap_config_t, tls_certificate_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE, fr_ldap_config_t, tls_private_key_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes

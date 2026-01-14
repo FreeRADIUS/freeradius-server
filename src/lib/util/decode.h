@@ -68,6 +68,9 @@ ssize_t fr_pair_dns_labels_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					fr_dict_attr_t const *parent, uint8_t const *start,
 					uint8_t const *data, size_t const data_len, fr_dns_labels_t *lb, bool exact);
 
+ssize_t fr_pair_decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+			     uint8_t const *data, size_t const data_len, UNUSED void *decode_ctx) CC_HINT(nonnull(1,2,3,4));
+
 #ifdef __cplusplus
 }
 #endif

@@ -164,11 +164,8 @@ static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 	case FR_TYPE_FLOAT64:
 		return FR_HTRIE_RB;
 
-	case FR_TYPE_VOID:
-	case FR_TYPE_NULL:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_MAX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NON_LEAF:
 		break;
 	}
 

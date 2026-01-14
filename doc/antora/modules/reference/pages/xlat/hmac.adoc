@@ -1,0 +1,70 @@
+= HMAC
+
+The following functions perform HMAC calculations.
+
+All of the hash functions take a key, along with arbitrary data, and turn binary data as `octet`s.
+
+== %hmac.md5(<shared_key>, <string>)
+
+Generate `HMAC-MD5` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+string test1
+string test2
+octets output
+
+test1 := "mykey"
+test2 := "Caipirinha"
+output := %hmac.md5(test1, test2)
+
+reply += {
+    Reply-Message = "The HMAC-MD5 of %{test1}%{test2} in octets is %{output}"
+    Reply-Message = "The HMAC-MD5 of %{test1}%{test2} in hex is %hex(output)"
+}
+----
+
+.Output
+
+```
+The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\376\341\203
+The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+== %hmac.sha1(<shared_key>, <string>)
+
+Generate `HMAC-SHA1` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+string test1
+string test2
+octets output
+
+test1 := "mykey"
+test2 := "Caipirinha"
+output := %hmac.sha1(test1, test2)
+
+reply += {
+    Reply-Message = "The HMAC-SHA1 of %{test1}%{test2} in octets is %{output}"
+    Reply-Message = "The HMAC-SHA1 of %{test1}%{test2} in hex is %hex(output)"
+}
+----
+
+.Output
+
+```
+The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\372ʙ>R\"\341\351O)
+The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

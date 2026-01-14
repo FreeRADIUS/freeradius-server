@@ -111,6 +111,11 @@ typedef union {
 		size_t		length;						//!< Only these types are variable length.
 	};
 
+	struct {
+		void			* _CONST cursor;		//!< cursors
+		char const		* _CONST name;			//!< name of the current cursor
+	};
+
 	/*
 	*	Fixed length values
 	*/
@@ -143,6 +148,8 @@ typedef union {
 	size_t					size;			//!< System specific file/memory size.
 	fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
 
+	fr_dict_attr_t const			*da;			//!< dictionary reference
+
 	fr_value_box_list_t			children;		//!< for groups
 } fr_value_box_datum_t;
 
@@ -153,6 +160,17 @@ typedef union {
  * the function performing the escaping then it should not be re-escaped.
  */
 typedef uintptr_t fr_value_box_safe_for_t;
+
+/*
+ *	The default value of "completely unsafe" is zero.  That way any initialization routines will default
+ *	to marking the data as unsafe.
+ *
+ *	The only data which should be marked as being completely safe is data taken from the configuration
+ *	files which are managed by the administrator.  Data create by end users (e.g. passwords) should always
+ *	be marked as unsafe.
+ */
+#define FR_VALUE_BOX_SAFE_FOR_NONE ((uintptr_t) 0)
+#define FR_VALUE_BOX_SAFE_FOR_ANY (~((uintptr_t) 0))
 
 /** Union containing all data types supported by the server
  *
@@ -242,8 +260,11 @@ typedef enum {
 #define vb_octets				datum.octets
 #define vb_void					datum.ptr
 #define vb_group				datum.children
+#define vb_attr					datum.da
 
 #define vb_ip					datum.ip
+#define vb_ipv4addr    				datum.ip.addr.v4.s_addr
+#define vb_ipv6addr    				datum.ip.addr.v6.s6_addr
 
 #define vb_ifid					datum.ifid.addr
 #define vb_ether				datum.ether.addr
@@ -270,6 +291,9 @@ typedef enum {
 #define vb_time_delta				datum.time_delta
 
 #define vb_length				datum.length
+
+#define vb_cursor				datum.cursor
+#define vb_cursor_name				datum.name
 /** @} */
 
 /** @name Argument boxing macros
@@ -648,13 +672,17 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
   *	- 0 on success.
   *	- -1 on failure.
   */
-typedef int (*fr_value_box_escape_t)(fr_value_box_t *vb, void *uctx);
+typedef int (*fr_value_box_escape_func_t)(fr_value_box_t *vb, void *uctx);
 
-int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape,
-				 fr_value_box_safe_for_t escaped, void *uctx)
+typedef struct {
+	fr_value_box_escape_func_t	func;
+	fr_value_box_safe_for_t		safe_for;
+	bool				always_escape;
+} fr_value_box_escape_t;
+
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const *escape, void *uctx)
 				 CC_HINT(nonnull(1,2));
-int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape,
-				      fr_value_box_safe_for_t escaped, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t const *escape, void *uctx)
 				      CC_HINT(nonnull(1,2));
 /** @} */
 
@@ -693,7 +721,7 @@ void		fr_value_box_clear(fr_value_box_t *data)
 		CC_HINT(nonnull(1));
 
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					  const fr_value_box_t *src)
@@ -1026,14 +1054,26 @@ ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_dbuff_t *dbuff, size_t len, bool tainted)
 		CC_HINT(nonnull(2,5));
 
+ssize_t		fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+						 int prefix_len, uint8_t const *data, size_t data_len, bool fixed, bool tainted)
+		CC_HINT(nonnull(1,5));
+
+ssize_t		fr_value_box_from_memory(TALLOC_CTX *ctx,
+					 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					 void const *src, size_t len)
+		CC_HINT(nonnull(2,5));
+
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src)
-		CC_HINT(nonnull(2,5));
+		CC_HINT(warn_unused_result,nonnull(2,5));
 
 int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
-		CC_HINT(nonnull(1));
+		CC_HINT(warn_unused_result,nonnull(1));
+
+uint64_t       	fr_value_box_as_uint64(fr_value_box_t const *src)
+		CC_HINT(warn_unused_result,nonnull);
 
 bool		fr_value_box_is_truthy(fr_value_box_t const *box)
 		CC_HINT(nonnull(1));
@@ -1052,9 +1092,14 @@ void		_fr_value_box_mark_safe_for(fr_value_box_t *box, fr_value_box_safe_for_t s
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
-#define		fr_value_box_is_safe_for(_box, _safe_for) (_box->safe_for == (fr_value_box_safe_for_t)_safe_for)
+#define		fr_value_box_is_safe_for(_box, _safe_for) ((_box->safe_for == (fr_value_box_safe_for_t)_safe_for) || (_box->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY))
+#define		fr_value_box_is_safe_for_only(_box, _safe_for) (_box->safe_for == (fr_value_box_safe_for_t)_safe_for)
 
 void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
+
+void		fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
+void		fr_value_box_safety_copy_changed(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
+void		fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
 
 static inline CC_HINT(nonnull, always_inline)
 bool fr_value_box_is_secret(fr_value_box_t const *box)
@@ -1081,6 +1126,32 @@ void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 {
 	box->secret = secret;
 }
+
+/** Decide if we need an enum prefix.
+ *
+ *  We don't print the prefix in fr_value_box_print(), even though that function is the inverse of
+ *  fr_value_box_from_str().  If we always add the prefix there, then lots of code needs to be updated to
+ *  suppress printing the prefix.  e.g. When using %{Service-Type} in a filename, or %{Acct-Status-Type} in an
+ *  SQL query, etc.
+ *
+ *  Instead, the various unlang / debug routines add the prefix manually.  This way ends up being less
+ *  complicated, and has fewer cornrer cases than the "right" way of doing it.
+ *
+ *  Note that we don't return the enum name for booleans.  Those are printed as "true / false", or "yes / no"
+ *  without the "::" prefix.
+ */
+static inline CC_HINT(nonnull, always_inline)
+char const *fr_value_box_enum_name(fr_value_box_t const *box)
+{
+	if (fr_type_is_leaf(box->type) && (box->type != FR_TYPE_STRING) &&
+	    box->enumv && box->enumv->flags.has_value &&
+	    ((box->type != FR_TYPE_BOOL) || da_is_bit_field(box->enumv))) {
+		return fr_dict_enum_name_by_value(box->enumv, box);
+	}
+
+	return NULL;
+}
+
 
 /** @name Assign and manipulate binary-unsafe C strings
  *
@@ -1140,11 +1211,6 @@ int		fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, f
 						    char const *src, bool tainted)
 		CC_HINT(nonnull(2,4));
 
-int		fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
-		CC_HINT(nonnull(2,3));
-
-int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
-		CC_HINT(nonnull(2,3));
 /** @} */
 
 /** @name Assign and manipulate octets strings
@@ -1178,16 +1244,18 @@ void		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, f
 						   uint8_t const *src, bool tainted)
 		CC_HINT(nonnull(2,4));
 
-int		fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst,
-				       uint8_t const *src, size_t len, bool tainted)
-		CC_HINT(nonnull(2,3));
-
-int		fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
-		CC_HINT(nonnull(2,3));
 /** @} */
 
 void		fr_value_box_increment(fr_value_box_t *vb)
 		CC_HINT(nonnull);
+
+
+
+void		fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
+
+#define		fr_value_box_get_cursor(_dst) talloc_get_type_abort((_dst)->vb_cursor, fr_dcursor_t)
+
+void		fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da);
 
 /** @name Parsing
  *
@@ -1195,13 +1263,13 @@ void		fr_value_box_increment(fr_value_box_t *vb)
  */
 ssize_t		fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
+					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules)
 		CC_HINT(nonnull(2,5));
 
 ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *in, size_t inlen,
-				      fr_sbuff_unescape_rules_t const *erules, bool tainted)
+				      fr_sbuff_unescape_rules_t const *erules)
 		CC_HINT(nonnull(2,5));
 /** @} */
 
@@ -1209,15 +1277,15 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t 	fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   	  fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
-		CC_HINT(nonnull(3,4));
+		CC_HINT(nonnull(2,3));
 
-ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t		fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 						   uint8_t const *sep, size_t sep_len,
 						   fr_value_box_list_action_t proc_action, bool flatten)
-		CC_HINT(nonnull(3,4));
+		CC_HINT(nonnull(2,3));
 
 int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
@@ -1302,8 +1370,8 @@ void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t c
  *
  * @{
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head);
-void fr_value_box_debug(fr_value_box_t const *vb);
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head);
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb);
 /** @} */
 
 #undef _CONST

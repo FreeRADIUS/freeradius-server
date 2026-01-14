@@ -30,9 +30,8 @@
 #  Please read "man radiusd" before editing this file.  See the
 #  section titled DEBUGGING.  It outlines a method where you can
 #  quickly obtain the configuration you want, without running into
-#  trouble.  See also "man unlang", which documents the format of this
-#  file.  And finally, the debug output can be complex. Please read
-#  https://wiki.freeradius.org/radiusd-X to understand that output.
+#  trouble. And finally, the debug output can be complex. Please read
+#  https://wiki.freeradius.org/radiusd-X[debugging] to understand that output.
 #
 #  The best way to configure the server for your local system is to
 #  *carefully* edit this file.  Most attempts to make large edits to
@@ -48,7 +47,7 @@
 #  documentation.  If you need the functionality of that module, then:
 #
 #  * configure the module in `mods-available/`
-#  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
+#  * enable the module in `mods-enabled/`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
 #  * uncomment the references to it in this file.
 #
 #  In most cases, those small changes will result in the server being
@@ -359,11 +358,17 @@ server default {
 
 			#
 			#  idle_timeout:: Time after which idle
-			#  connections or dynamic clients are deleted.
+			#  connections are deleted.
 			#
 			#  Useful range of values: 5 to 600
 			#
 			idle_timeout = 60.0
+
+			#
+			#  dynamic_timeout:: Time after which idle
+			#  dynamic clients are deleted.
+			#
+			dynamic_timeout = 600.0
 
 			#
 			#  nak_lifetime:: Time for which blocked
@@ -807,18 +812,6 @@ recv Access-Request {
 	digest
 
 	#
-	#  The `wimax` module fixes up various WiMAX-specific stupidities.
-	#
-	#  The WiMAX specification says that the `Calling-Station-Id`
-	#  is 6 octets of the MAC.  This definition conflicts with RFC
-	#  3580, and all common RADIUS practices. Uncommenting the
-	#  `wimax` module here allows the module to change the
-	#  `Calling-Station-Id` attribute to the normal format as
-	#  specified in RFC 3580 Section 3.21.
-	#
-#	wimax
-
-	#
 	#  The `eap` module takes care of all EAP authentication,
 	#  including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
 	#
@@ -1009,7 +1002,7 @@ authenticate digest {
 }
 
 #
-#  ## PAM (Pluggable Authentication Modules) Authentication
+#  ### PAM (Pluggable Authentication Modules) Authentication
 #
 #  Authenticate with PAM (Pluggable Authentication Modules).
 #
@@ -1043,7 +1036,7 @@ authenticate ldap {
 }
 
 #
-#  EAP Authentication
+#  ### EAP Authentication
 #
 #  For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 #
@@ -1076,6 +1069,10 @@ authenticate eap {
 #
 #  Proxying will be done by setting `Auth-Type := example.com`, and
 #  defining the home servers in `mods-available/radius`.
+#
+#  If you need to edit the request and/or the reply, you should use
+#  the `subrequest` keyword.  See the `subrequest` documentation
+#  for more information.
 #
 
 #authenticate example.com {
@@ -1132,7 +1129,7 @@ send Access-Accept {
 	#  Service-Type = ::Authorize-Only.
 	#
 #	if (!reply.State) {
-#		reply.State := "0x%randstr(16h)"
+#		reply.State := "0x%str.rand(16h)"
 #	}
 
 	#
@@ -1182,34 +1179,6 @@ send Access-Accept {
 	#  user's object in LDAP after a successful login.
 	#
 #	ldap
-
-	#
-	#  Calculate the various WiMAX keys. In order for this to
-	#  work, you will need to define the WiMAX NAI, usually
-	#  via:
-	#
-#	request.WiMAX-MN-NAI = "%{User-Name}"
-
-	#  If you want various keys to be calculated, you will
-	#  need to update the reply with "template" values. The
-	#  module will see this, and replace the template values
-	#  with the correct ones taken from the cryptographic
-	#  calculations, e.g.
-	#
-#	reply += {
-#		Vendor-Specific.WiMAX = {
-#			FA-RK-Key = 0x00
-#			MSK = reply.EAP-MSK
-#		}
-#	}
-
-	#  You may want to delete the `MS-MPPE-*-Keys` from the
-	#  reply, as some WiMAX clients behave badly when those
-	#  attributes are included. See the configuration entry
-	#  `delete_mppe_keys` in `mods-available/wimax` for
-	#  more information.
-	#
-#	wimax
 
 	#
 	#  If there is a client certificate (EAP-TLS, and very
@@ -1331,7 +1300,7 @@ send Access-Reject {
 
 ######################################################################
 #
-#  Accounting
+#  ## Accounting
 #
 #
 #  This section deals with receiving Accounting requests and
@@ -1339,6 +1308,8 @@ send Access-Reject {
 #
 ######################################################################
 
+#
+#  ### Receive Accounting-Request packets
 #
 #  An Accounting-Request packet has been received. Decide which
 #  accounting type to use.
@@ -1350,6 +1321,20 @@ recv Accounting-Request {
 	#  counter, Acct-[Input|Output]-Octets64.
 	#
 #	acct_counters64
+
+	#
+	#  Session start times are *implied* in RADIUS.  The NAS never
+	#  sends a "start time".  Instead, it sends a start packet,
+	#  *possibly* with an Acct-Delay-Time, or an Event-Timestamp.
+	#  The server is supposed to conclude that the start time was
+	#  "Acct-Delay-Time" seconds in the past.
+	#
+	#  If there's no Event-Timestamp, then we create one, using
+	#  Acct-Delay-Time as an offset if it exists.
+	#
+	if (!Event-Timestamp) {
+		Event-Timestamp := %time.request() - %{Acct-Delay-Time || 0}
+	}
 
 	#
 	#  Ensure that we have a semi-unique identifier for every
@@ -1375,7 +1360,9 @@ recv Accounting-Request {
 #
 
 #
-#  Session start
+#  ## Sections for Acct-Status-Type
+#
+#  ### Session start
 #
 accounting Start {
 	#
@@ -1396,7 +1383,7 @@ accounting Start {
 }
 
 #
-#  Session stop
+#  ### Session stop
 #
 accounting Stop {
 	#
@@ -1426,7 +1413,7 @@ accounting Stop {
 }
 
 #
-#  Session is still alive
+#  ### Session is still alive
 #
 accounting Interim-Update {
 	#
@@ -1441,7 +1428,7 @@ accounting Interim-Update {
 }
 
 #
-#  The NAS has just booted up.
+#  ### The NAS has just booted up.
 #
 accounting Accounting-On {
 	#
@@ -1456,7 +1443,7 @@ accounting Accounting-On {
 }
 
 #
-#  The NAS is about to go down
+#  ### The NAS is about to shut down
 #
 accounting Accounting-Off {
 	#
@@ -1471,7 +1458,7 @@ accounting Accounting-Off {
 }
 
 #
-#  Session failed to do something
+#  ### The user session failed in some way
 #
 accounting Failed {
 
@@ -1491,7 +1478,7 @@ accounting Failed {
 #
 
 #
-#  Send Accounting-Response.
+#  ### Send Accounting-Response.
 #
 #  Log the accounting data before replying. If logging fails then
 #  the reply will not be sent, which means the NAS will send the
@@ -1529,4 +1516,40 @@ send Accounting-Response {
 	#
 	attr_filter.accounting_response
 }
+
+#
+#  ## Timeouts
+#
+#  A virtual server can have a `catch timeout` section.  The format and
+#  contents are the same as the normal `catch timeout`.
+#
+#  This section limits the total processing time for a request.  The
+#  values given here should be less than `request.timeout`.
+#
+#  When a request reaches `request.timeout`, it is forcibly stopped.
+#  No further processing takes place.
+#
+#  When a request reaches the time specified in this `timeout` section,
+#  all normal processing is stopped.  The `timeout` section is then run.
+#
+#  This configuration allows the server to take action when a request
+#  is taking too long.  For example, it could write a failure message
+#  to a log file.
+#
+#  The `timeout` section can contain any `unlang` keyword, including
+#  `call`, and other `timeout` sections.  If you need to have a
+#  "timeout for the timeout", then just add anoither `timeout` section
+#  inside of this one.
+#
+#  Note that `request.timeout` still applies.  So the timeout value
+#  given here should be less than the value given by
+#  `request.timeout`.
+#
+#
+
+#	catch timeout {
+#		do_logging_here
+#		...
+#	}
+
 }

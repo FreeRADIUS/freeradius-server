@@ -25,14 +25,15 @@
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/unlang/interpret.h>
+
+typedef struct eap_session_s eap_session_t;
 
 #include "compose.h"
 #include "types.h"
 
 #define REQUEST_DATA_EAP_SESSION	 (1)
 #define REQUEST_DATA_EAP_SESSION_PROXIED (2)
-
-typedef struct eap_session_s eap_session_t;
 
 /** Tracks the progress of a single session of any EAP method
  *
@@ -43,7 +44,7 @@ struct eap_session_s {
 	uint8_t		*child_state;			//!< State value returned by tunneled EAP method.
 
 	request_t	*subrequest;			//!< Current subrequest being executed.
-	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
+	unlang_result_t	submodule_result;		//!< Result of last submodule call.
 
 	void const	*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.

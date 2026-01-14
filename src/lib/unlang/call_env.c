@@ -28,14 +28,14 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/section.h>
 #include <freeradius-devel/server/main_config.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/util/token.h>
 
 #include <talloc.h>
 #include "call_env.h"
@@ -64,14 +64,10 @@ FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
 /** Parse the result of call_env tmpl expansion
  */
 static inline CC_HINT(always_inline)
-call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out,
-			          void **tmpl_out, call_env_parsed_t const *env,
+call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out, call_env_parsed_t const *env,
 				  fr_value_box_list_t *tmpl_expanded)
 {
 	fr_value_box_t	*vb;
-
-	if (tmpl_out) *tmpl_out = UNCONST(tmpl_t *, env->data.tmpl);
-	if (call_env_parse_only(env->rule->flags)) return CALL_ENV_SUCCESS;
 
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
@@ -86,6 +82,7 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
 	 *	Concatenate multiple boxes if needed
 	 */
 	if ((call_env_concat(env->rule->flags) || call_env_attribute(env->rule->flags)) &&
+	    (env->rule->pair.cast_type != FR_TYPE_VOID) &&
 	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, env->rule->pair.cast_type,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
 		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
@@ -123,24 +120,26 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
  */
 typedef struct {
 	call_env_result_t			*result;		//!< Where to write the return code of callenv expansion.
+	unlang_result_t				expansion_result;	//!< The result of calling the call env expansions functions.
 	call_env_t const			*call_env;		//!< Call env being expanded.
 	call_env_parsed_t const			*last_expanded;		//!< The last expanded tmpl.
 	fr_value_box_list_t			tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
 	void					**data;			//!< Final destination structure for value boxes.
 } call_env_rctx_t;
 
-static unlang_action_t call_env_expand_repeat(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
+static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, request_t *request, void *uctx);
 
 /** Start the expansion of a call environment tmpl.
  *
  */
-static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	call_env_rctx_t	*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	TALLOC_CTX	*ctx;
 	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
+again:
 	while ((call_env_rctx->last_expanded = call_env_parsed_next(&call_env_rctx->call_env->parsed, call_env_rctx->last_expanded))) {
 		env = call_env_rctx->last_expanded;
 		fr_assert(env != NULL);
@@ -230,28 +229,62 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 		ctx = *out;
 	}
 
-	if (unlang_tmpl_push(ctx, &call_env_rctx->tmpl_expanded, request, call_env_rctx->last_expanded->data.tmpl,
-			     NULL) < 0) return UNLANG_ACTION_FAIL;
+	/*
+	 *	If the tmpl is already data, we can just copy the data to the right place.
+	 */
+	if (tmpl_is_data(call_env_rctx->last_expanded->data.tmpl)) {
+		fr_value_box_t		*vb;
+		call_env_result_t	result;
+		void 			*box_out;
+
+		MEM(vb = fr_value_box_acopy(ctx, &call_env_rctx->last_expanded->data.tmpl->data.literal));
+		fr_value_box_list_insert_tail(&call_env_rctx->tmpl_expanded, vb);
+
+		box_out = ((uint8_t*)(*call_env_rctx->data)) + env->rule->pair.offset;
+
+		if (call_env_multi(env->rule->flags)) {
+			void *array = *(void **)box_out;
+			box_out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
+		}
+
+		/* coverity[var_deref_model] */
+		result = call_env_result(*call_env_rctx->data, request, box_out, env, &call_env_rctx->tmpl_expanded);
+		if (result != CALL_ENV_SUCCESS) {
+			if (call_env_rctx->result) *call_env_rctx->result = result;
+			return UNLANG_ACTION_FAIL;
+		}
+		goto again;
+	}
+
+	if (unlang_tmpl_push(ctx, &call_env_rctx->expansion_result, &call_env_rctx->tmpl_expanded, request,
+			     call_env_rctx->last_expanded->data.tmpl,
+			     NULL, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Extract expanded call environment tmpl and store in env_data
  *
- * If there are more tmpls to expand, push the next expansion.
+ * If there are more call environments to evaluate, push the next one.
  */
-static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
+static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	void			*out = NULL, *tmpl_out = NULL;
+	void			*out = NULL;
 	call_env_rctx_t		*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	call_env_parsed_t	const *env;
 	call_env_result_t	result;
 
+	/*
+	 *	Something went wrong expanding the call env
+	 *	return fail.
+	 *
+	 *	The module should not be executed.
+	 */
+	if (call_env_rctx->expansion_result.rcode == RLM_MODULE_FAIL) return UNLANG_ACTION_FAIL;
+
 	env = call_env_rctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	if (call_env_parse_only(env->rule->flags)) goto parse_only;
 	/*
 	 *	Find the location of the output
 	 */
@@ -266,11 +299,8 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
-parse_only:
-	if (env->rule->pair.parsed.offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->pair.parsed.offset;
-
 	/* coverity[var_deref_model] */
-	result = call_env_result(*call_env_rctx->data, request, out, tmpl_out, env, &call_env_rctx->tmpl_expanded);
+	result = call_env_result(*call_env_rctx->data, request, out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
 		if (call_env_rctx->result) *call_env_rctx->result = result;
 		return UNLANG_ACTION_FAIL;
@@ -281,8 +311,13 @@ parse_only:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
-				    call_env_rctx);
+	return unlang_function_push_with_result(&call_env_rctx->expansion_result,
+						request,
+						call_env_expand_start,
+						call_env_expand_repeat,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						call_env_rctx);
 }
 
 /** Initialise the expansion of a call environment
@@ -307,8 +342,13 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 	call_env_rctx->call_env = call_env;
 	fr_value_box_list_init(&call_env_rctx->tmpl_expanded);
 
-	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
-				    call_env_rctx);
+	return unlang_function_push_with_result(&call_env_rctx->expansion_result,
+						request,
+						call_env_expand_start,
+						call_env_expand_repeat,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						call_env_rctx);
 }
 
 /** Allocates a new call env parsed struct
@@ -388,18 +428,6 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
 	 */
 	if (call_env_attribute(rule->flags) ||
 	    ((quote == T_BARE_WORD) && call_env_bare_word_attribute(rule->flags))) {
-		/*
-		 *	For migration checks!
-		 */
-		if (check_config && main_config_migrate_option_get("call_env_forbid_ampersand")) {
-			char const *p = cf_pair_value(to_parse);
-
-			if (*p == '&') {
-				cf_log_err(to_parse, "Please remove '&' from the attribute name");
-				return -1;
-			}
-		}
-
 		if (tmpl_afrom_attr_str(ctx, NULL, &parsed_tmpl, cf_pair_value(to_parse), t_rules) <= 0) {
 			return -1;
 		}
@@ -435,7 +463,7 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  *	- 0 on success;
  *	- <0 on failure;
  */
-static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
+int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
 			  CONF_SECTION const *cs,
 			  call_env_ctx_t const *cec, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
@@ -468,7 +496,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				CALL_ENV_DEBUG(cs, "%s: Calling subsection callback %p", name, rule_p->section.func);
 
 				if (rule_p->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), cec, rule_p) < 0) {
-					cf_log_perr(cs, "Failed parsing configuration section %s", rule_p->name);
+					cf_log_perr(cs, "Failed parsing configuration section %s",
+						    rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
 					talloc_free(call_env_parsed);
 					return -1;
 				}
@@ -485,7 +514,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
 					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env", name, rule_p->section.func);
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule_p) < 0) {
-						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule_p->name);
+						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s",
+							   rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
 						return -1;
 					}
 				}
@@ -493,7 +523,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			}
 
 			if (call_env_parse(ctx, parsed, name, t_rules, subcs, cec, rule_p->section.subcs) < 0) {
-				CALL_ENV_DEBUG(cs, "%s: Recursive call failed", name, rule_p->name);
+				CALL_ENV_DEBUG(cs, "%s: Recursive call failed", name);
 				return -1;
 			}
 			goto next;

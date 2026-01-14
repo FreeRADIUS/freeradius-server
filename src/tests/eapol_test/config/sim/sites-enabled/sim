@@ -2,10 +2,10 @@ server eap-sim {
 	namespace = eap-sim
 
 	recv Identity-Response {
-#		%debug_attr(&session-state.)
-		if (!&session-state.Stripped-User-Name) {
-			&reply.Any-ID-Req := yes
-			&session-state.Stripped-User-Name := yes
+#		%pairs.debug(session-state.)
+		if (!session-state.Stripped-User-Name) {
+			reply.Any-ID-Req := yes
+			session-state.Stripped-User-Name := yes
 		}
 		ok
 	}
@@ -15,19 +15,19 @@ server eap-sim {
 	}
 
 	send Challenge-Request {
-                &control.SIM-Ki  := 0x465b5ce8b199b49faa5f0a2ee238a6bc
-                &control.SIM-Opc := 0xcd63cb71954a9f4e48a5994e37a02baf
-                &control.SIM-SQN := 3
+                control.SIM-Ki  := 0x465b5ce8b199b49faa5f0a2ee238a6bc
+                control.SIM-Opc := 0xcd63cb71954a9f4e48a5994e37a02baf
+                control.SIM-SQN := 3
 
-		&reply.Encr-Data.Next-Reauth-Id := ""
-		&reply.Encr-Data.Next-Pseudonym := ""
+		reply.Encr-Data.Next-Reauth-Id := ""
+		reply.Encr-Data.Next-Pseudonym := ""
 
 		ok
 	}
 
 	send Reauthentication-Request {
-		&reply.Encr-Data.Next-Reauth-Id := ""
-		&reply.Encr-Data.Next-Pseudonym := ""
+		reply.Encr-Data.Next-Reauth-Id := ""
+		reply.Encr-Data.Next-Pseudonym := ""
 
 		ok
 	}

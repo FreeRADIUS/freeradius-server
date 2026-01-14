@@ -26,76 +26,76 @@ ATTRIBUTE	Annex-Host-Allow			32	string
 ATTRIBUTE	Annex-Product-Name			33	string
 ATTRIBUTE	Annex-SW-Version			34	string
 ATTRIBUTE	Annex-Local-IP-Address			35	ipaddr
-ATTRIBUTE	Annex-Callback-Portlist			36	integer
-ATTRIBUTE	Annex-Sec-Profile-Index			37	integer
-ATTRIBUTE	Annex-Tunnel-Authen-Type		38	integer
-ATTRIBUTE	Annex-Tunnel-Authen-Mode		39	integer
+ATTRIBUTE	Annex-Callback-Portlist			36	uint32
+ATTRIBUTE	Annex-Sec-Profile-Index			37	uint32
+ATTRIBUTE	Annex-Tunnel-Authen-Type		38	uint32
+ATTRIBUTE	Annex-Tunnel-Authen-Mode		39	uint32
 ATTRIBUTE	Annex-Authen-Servers			40	string
 ATTRIBUTE	Annex-Acct-Servers			41	string
-ATTRIBUTE	Annex-User-Server-Location		42	integer
+ATTRIBUTE	Annex-User-Server-Location		42	uint32
 ATTRIBUTE	Annex-Local-Username			43	string
-ATTRIBUTE	Annex-System-Disc-Reason		44	integer
-ATTRIBUTE	Annex-Modem-Disc-Reason			45	integer
-ATTRIBUTE	Annex-Disconnect-Reason			46	integer
-ATTRIBUTE	Annex-Addr-Resolution-Protocol		47	integer
+ATTRIBUTE	Annex-System-Disc-Reason		44	uint32
+ATTRIBUTE	Annex-Modem-Disc-Reason			45	uint32
+ATTRIBUTE	Annex-Disconnect-Reason			46	uint32
+ATTRIBUTE	Annex-Addr-Resolution-Protocol		47	uint32
 ATTRIBUTE	Annex-Addr-Resolution-Servers		48	string
 ATTRIBUTE	Annex-Domain-Name			49	string
-ATTRIBUTE	Annex-Transmit-Speed			50	integer
-ATTRIBUTE	Annex-Receive-Speed			51	integer
+ATTRIBUTE	Annex-Transmit-Speed			50	uint32
+ATTRIBUTE	Annex-Receive-Speed			51	uint32
 ATTRIBUTE	Annex-Input-Filter			52	string
 ATTRIBUTE	Annex-Output-Filter			53	string
 ATTRIBUTE	Annex-Primary-DNS-Server		54	ipaddr
 ATTRIBUTE	Annex-Secondary-DNS-Server		55	ipaddr
 ATTRIBUTE	Annex-Primary-NBNS-Server		56	ipaddr
 ATTRIBUTE	Annex-Secondary-NBNS-Server		57	ipaddr
-ATTRIBUTE	Annex-Syslog-Tap			58	integer
-ATTRIBUTE	Annex-Keypress-Timeout			59	integer
-ATTRIBUTE	Annex-Unauthenticated-Time		60	integer
-ATTRIBUTE	Annex-Re-CHAP-Timeout			61	integer
-ATTRIBUTE	Annex-MRRU				62	integer
+ATTRIBUTE	Annex-Syslog-Tap			58	uint32
+ATTRIBUTE	Annex-Keypress-Timeout			59	uint32
+ATTRIBUTE	Annex-Unauthenticated-Time		60	uint32
+ATTRIBUTE	Annex-Re-CHAP-Timeout			61	uint32
+ATTRIBUTE	Annex-MRRU				62	uint32
 ATTRIBUTE	Annex-EDO				63	string
 # Annex R18.0 software
-ATTRIBUTE	Annex-PPP-Trace-Level			64	integer
-ATTRIBUTE	Annex-Pre-Input-Octets			65	integer
-ATTRIBUTE	Annex-Pre-Output-Octets			66	integer
-ATTRIBUTE	Annex-Pre-Input-Packets			67	integer
-ATTRIBUTE	Annex-Pre-Output-Packets		68	integer
-ATTRIBUTE	Annex-Connect-Progress			69	integer
-ATTRIBUTE	Annex-Multicast-Rate-Limit		73	integer
-ATTRIBUTE	Annex-Maximum-Call-Duration		74	integer
-ATTRIBUTE	Annex-Multilink-Id			75	integer
-ATTRIBUTE	Annex-Num-In-Multilink			76	integer
+ATTRIBUTE	Annex-PPP-Trace-Level			64	uint32
+ATTRIBUTE	Annex-Pre-Input-Octets			65	uint32
+ATTRIBUTE	Annex-Pre-Output-Octets			66	uint32
+ATTRIBUTE	Annex-Pre-Input-Packets			67	uint32
+ATTRIBUTE	Annex-Pre-Output-Packets		68	uint32
+ATTRIBUTE	Annex-Connect-Progress			69	uint32
+ATTRIBUTE	Annex-Multicast-Rate-Limit		73	uint32
+ATTRIBUTE	Annex-Maximum-Call-Duration		74	uint32
+ATTRIBUTE	Annex-Multilink-Id			75	uint32
+ATTRIBUTE	Annex-Num-In-Multilink			76	uint32
 ATTRIBUTE	Annex-Secondary-Srv-Endpoint		79	string
-ATTRIBUTE	Annex-Gwy-Selection-Mode		80	integer
-ATTRIBUTE	Annex-Logical-Channel-Number		81	integer
-ATTRIBUTE	Annex-Wan-Number			82	integer
-ATTRIBUTE	Annex-Port				83	integer
-ATTRIBUTE	Annex-Pool-Id				85	integer
+ATTRIBUTE	Annex-Gwy-Selection-Mode		80	uint32
+ATTRIBUTE	Annex-Logical-Channel-Number		81	uint32
+ATTRIBUTE	Annex-Wan-Number			82	uint32
+ATTRIBUTE	Annex-Port				83	uint32
+ATTRIBUTE	Annex-Pool-Id				85	uint32
 ATTRIBUTE	Annex-Compression-Protocol		86	string
-ATTRIBUTE	Annex-Transmitted-Packets		87	integer
-ATTRIBUTE	Annex-Retransmitted-Packets		88	integer
-ATTRIBUTE	Annex-Signal-to-Noise-Ratio		89	integer
-ATTRIBUTE	Annex-Retrain-Requests-Sent		90	integer
-ATTRIBUTE	Annex-Retrain-Requests-Rcvd		91	integer
-ATTRIBUTE	Annex-Rate-Reneg-Req-Sent		92	integer
-ATTRIBUTE	Annex-Rate-Reneg-Req-Rcvd		93	integer
-ATTRIBUTE	Annex-Begin-Receive-Line-Level		94	integer
-ATTRIBUTE	Annex-End-Receive-Line-Level		95	integer
+ATTRIBUTE	Annex-Transmitted-Packets		87	uint32
+ATTRIBUTE	Annex-Retransmitted-Packets		88	uint32
+ATTRIBUTE	Annex-Signal-to-Noise-Ratio		89	uint32
+ATTRIBUTE	Annex-Retrain-Requests-Sent		90	uint32
+ATTRIBUTE	Annex-Retrain-Requests-Rcvd		91	uint32
+ATTRIBUTE	Annex-Rate-Reneg-Req-Sent		92	uint32
+ATTRIBUTE	Annex-Rate-Reneg-Req-Rcvd		93	uint32
+ATTRIBUTE	Annex-Begin-Receive-Line-Level		94	uint32
+ATTRIBUTE	Annex-End-Receive-Line-Level		95	uint32
 ATTRIBUTE	Annex-Begin-Modulation			96	string
 ATTRIBUTE	Annex-Error-Correction-Prot		97	string
 ATTRIBUTE	Annex-End-Modulation			98	string
 
 # Bay Router Specific Attributes
 #
-ATTRIBUTE	Annex-User-Level			100	integer
-ATTRIBUTE	Annex-Audit-Level			101	integer
+ATTRIBUTE	Annex-User-Level			100	uint32
+ATTRIBUTE	Annex-Audit-Level			101	uint32
 
 # Contivity
 ATTRIBUTE	CES-Group				102	string
 
 # Passport 8000 Series Specific Attributes
 #
-ATTRIBUTE	Passport-Access-Priority		192	integer
+ATTRIBUTE	Passport-Access-Priority		192	uint32
 
 VALUE	Passport-Access-Priority	None-Access		0
 VALUE	Passport-Access-Priority	Read-Only-Access	1
@@ -106,7 +106,7 @@ VALUE	Passport-Access-Priority	Read-Write-Access	5
 VALUE	Passport-Access-Priority	Read-Write-All-Access	6
 
 ATTRIBUTE	Annex-Cli-Commands			193	string
-ATTRIBUTE	Annex-Command-Access			194	integer
+ATTRIBUTE	Annex-Command-Access			194	uint32
 
 VALUE	Annex-Command-Access		False			0
 VALUE	Annex-Command-Access		True			1

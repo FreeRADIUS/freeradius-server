@@ -51,4 +51,5 @@ if (rcode == 0) return rcode;
 
 #undef flag_blocked
 #define flag_blocked write_blocked
+#define FR_FD_BIO_EMSGSIZE (1)
 #include "fd_errno.h"

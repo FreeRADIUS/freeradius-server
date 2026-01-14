@@ -54,7 +54,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 	${Q}sleep .1
 	${Q}if [ ! -e $(OUT_DIR)/$(OUT).out ] ; then	\
 		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
-		cat $(OUT_DIR)/radiusd.log					\
+		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET) - expected output file not produced";	\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;		\
 		exit 1;								\
@@ -62,7 +62,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 	${Q}mv $(OUT_DIR)/$(OUT).out $(FOUND)
 	${Q}if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then	\
 		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
-		cat $(OUT_DIR)/radiusd.log					\
+		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET)";				\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;		\
 		exit 1;								\

@@ -25,6 +25,7 @@
 #define LOG_PREFIX "proto_dhcpv4_udp"
 
 #include <netdb.h>
+#include <freeradius-devel/arp/arp.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
@@ -32,9 +33,18 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/protocol/dhcpv4/freeradius.internal.h>
+#include <freeradius-devel/util/pcap.h>
 #include "proto_dhcpv4.h"
 
 extern fr_app_io_t proto_dhcpv4_udp;
+
+#ifdef HAVE_LIBPCAP
+typedef struct {
+	fr_rb_node_t			node;			//!< in tree of handles.
+	char const			*interface;		//!< name for the handle.
+	fr_pcap_t			*pcap;			//!< pcap handle.
+} proto_dhcpv4_pcap_t;
+#endif
 
 typedef struct {
 	char const			*name;			//!< socket name
@@ -43,6 +53,10 @@ typedef struct {
 	fr_io_address_t			*connection;		//!< for connected sockets.
 
 	fr_stats_t			stats;			//!< statistics for this socket
+
+#ifdef HAVE_LIBPCAP
+	fr_rb_tree_t			pcaps;			//!< Tree of available pcap handles
+#endif
 }  proto_dhcpv4_udp_thread_t;
 
 typedef struct {
@@ -69,12 +83,16 @@ typedef struct {
 								//!< buffer value.
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	fr_client_list_t			*clients;		//!< local clients
+	fr_client_list_t		*clients;		//!< local clients
 	fr_client_t			*default_client;	//!< default 0/0 client
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
+
+#ifdef HAVE_LIBPCAP
+	bool				use_pcap;		//!< use libpcap for unicast replies to broadcast requests.
+#endif
 } proto_dhcpv4_udp_t;
 
 
@@ -107,6 +125,9 @@ static const conf_parser_t udp_listen_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", proto_dhcpv4_udp_t, max_packet_size), .dflt = "4096" } ,
        	{ FR_CONF_OFFSET("max_attributes", proto_dhcpv4_udp_t, max_attributes), .dflt = STRINGIFY(DHCPV4_MAX_ATTRIBUTES) } ,
 
+#ifdef HAVE_LIBPCAP
+	{ FR_CONF_OFFSET_FLAGS("use_pcap", CONF_FLAG_HIDDEN, proto_dhcpv4_udp_t, use_pcap) },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -115,7 +136,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t proto_dhcpv4_udp_dict[];
 fr_dict_autoload_t proto_dhcpv4_udp_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
@@ -125,8 +146,63 @@ extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
+
+#ifdef HAVE_LIBPCAP
+static int8_t dhcpv4_pcap_cmp(void const *a, void const *b)
+{
+	proto_dhcpv4_pcap_t const *one = a, *two = b;
+	return CMP(strcmp(one->interface, two->interface), 0);
+}
+
+static proto_dhcpv4_pcap_t *dhcpv4_pcap_find(proto_dhcpv4_udp_thread_t *thread, char const *interface)
+{
+	proto_dhcpv4_pcap_t	find, *pcap;
+
+	find = (proto_dhcpv4_pcap_t) {
+		.interface = interface
+	};
+
+	pcap = fr_rb_find(&thread->pcaps, &find);
+	if (pcap) return pcap;
+
+	MEM(pcap = talloc_zero(thread, proto_dhcpv4_pcap_t));
+
+	pcap->pcap = fr_pcap_init(pcap, interface, PCAP_INTERFACE_OUT);
+
+	if (!pcap->pcap) {
+		ERROR("Failed creating pcap for interface %s", interface);
+		return NULL;
+	}
+
+	if (fr_pcap_open(pcap->pcap) < 0) {
+		ERROR("Failed opening pcap on interface %s", interface);
+	error:
+		talloc_free(pcap);
+		return NULL;
+	}
+
+	/*
+	 *	Use a filter which will match nothing - so we don't capture any packets
+	 */
+	if (fr_pcap_apply_filter(pcap->pcap, "tcp and udp") < 0) {
+		ERROR("Failed adding filter to pcap on interface %s", interface);
+		goto error;
+	}
+
+	pcap->interface = pcap->pcap->name;
+	fr_rb_insert(&thread->pcaps, pcap);
+
+	return pcap;
+}
+
+static void dhcpv4_pcap_free(proto_dhcpv4_udp_thread_t *thread, proto_dhcpv4_pcap_t *pcap)
+{
+	fr_rb_remove(&thread->pcaps, pcap);
+	talloc_free(pcap);
+}
+#endif
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
 			 size_t *leftover)
@@ -410,6 +486,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 *	are broadcast.
 			 */
 		case FR_DHCP_OFFER:
+		{
+			char if_name[IFNAMSIZ];
+#ifdef HAVE_LIBPCAP
+		offer:
+#endif
+			if_name[0] = '\0';
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+			if (!inst->interface && socket.inet.ifindex) fr_ifname_from_ifindex(if_name, socket.inet.ifindex);
+#endif
 			/*
 			 *	If the packet was unicast from the
 			 *	client, unicast it back without
@@ -425,7 +510,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				DEBUG("Reply will be unicast to YIADDR.");
 
 #ifdef SIOCSARP
-			} else if (inst->broadcast && inst->interface) {
+			} else if (inst->broadcast &&
+#ifdef HAVE_LIBPCAP
+				   !inst->use_pcap &&
+#endif
+				   (inst->interface || if_name[0])) {
 				uint8_t macaddr[6];
 				uint8_t ipaddr[4];
 
@@ -442,25 +531,83 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 *	local ARP table and then
 				 *	unicast the reply.
 				 */
-				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) == 0) {
+				if (fr_arp_entry_add(thread->sockfd, inst->interface ? inst->interface : if_name, ipaddr, macaddr) == 0) {
 					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
 					memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 				} else {
 					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
 					socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				}
+#endif
+#ifdef __FreeBSD__
+			} else if (inst->broadcast &&
+#ifdef HAVE_LIBPCAP
+				   !inst->use_pcap &&
+#endif
+				   (inst->interface || if_name[0])) {
+				uint8_t macaddr[6];
+				uint8_t ipaddr[4];
 
+				memcpy(&ipaddr, &packet->yiaddr, 4);
+				memcpy(&macaddr, &packet->chaddr, 6);
+
+				/*
+				 *	FreeBSD version of above using netlink API
+				 */
+				if (fr_bsd_arp_entry_add(socket.inet.ifindex, ipaddr, macaddr) == 0) {
+					DEBUG("Reply will be unicast to YADDR, done ARP table updates.");
+					memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				} else {
+					DEBUG("Failed adding ARP table entry.  Reply will be broadcast.");
+					socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				}
+#endif
+#ifdef HAVE_LIBPCAP
+			} else if (inst->use_pcap && inst->broadcast && (inst->interface || if_name[0])) {
+				proto_dhcpv4_pcap_t	*pcap;
+				uint8_t			macaddr[6];
+				fr_packet_t		tosend;
+
+				pcap = dhcpv4_pcap_find(thread, inst->interface ? inst->interface : if_name);
+				if (!pcap) return -1;
+
+				DEBUG("Reply will be unicast to YIADDR.");
+				memcpy(&macaddr, &packet->chaddr, 6);
+				memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				tosend = (fr_packet_t) {
+					.socket = socket,
+					.data = buffer,
+					.data_len = buffer_len
+				};
+
+				DEBUG("Sending %s XID %08x from %pV:%d to %pV:%d", dhcp_message_types[code[2]], packet->xid,
+				      fr_box_ipaddr(socket.inet.src_ipaddr), socket.inet.src_port,
+				      fr_box_ipaddr(socket.inet.dst_ipaddr), socket.inet.dst_port);
+				if (fr_dhcpv4_pcap_send(pcap->pcap, macaddr, &tosend) < 0) {
+					ERROR("Failed sending packet");
+					dhcpv4_pcap_free(thread, pcap);
+					return -1;
+				}
+
+				return buffer_len;
 #endif
 			} else {
 				DEBUG("Reply will be broadcast as we do not create raw UDP sockets.");
 				socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
+		}
 			break;
 
 			/*
 			 *	ACKs are unicast to YIADDR
 			 */
 		case FR_DHCP_ACK:
+#ifdef HAVE_LIBPCAP
+			/*
+			 *	Are we replying on a system using pcap - if so use the same logic as OFFER
+			 */
+			if (inst->use_pcap) goto offer;
+#endif
 			DEBUG("Reply will be unicast to YIADDR.");
 			memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 			break;
@@ -571,6 +718,7 @@ static int mod_open(fr_listen_t *li)
 		PERROR("Failed binding socket");
 		goto error;
 	}
+	if (inst->interface) li->app_io_addr->inet.src_ipaddr.scope_id = ipaddr.scope_id;
 
 	thread->sockfd = sockfd;
 
@@ -581,9 +729,27 @@ static int mod_open(fr_listen_t *li)
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 
+#ifdef HAVE_LIBPCAP
+	fr_rb_inline_init(&thread->pcaps, proto_dhcpv4_pcap_t, node, dhcpv4_pcap_cmp, NULL);
+#endif
 	return 0;
 }
 
+#ifdef HAVE_LIBPCAP
+static int mod_close(fr_listen_t *li)
+{
+	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
+	void				**pcap_to_free;
+	int				i;
+
+	if (fr_rb_flatten_inorder(NULL, &pcap_to_free, &thread->pcaps) < 0) return -1;
+
+	for (i = talloc_array_length(pcap_to_free) - 1; i >= 0; i--) talloc_free(pcap_to_free[i]);
+	talloc_free(pcap_to_free);
+
+	return 0;
+}
+#endif
 
 /** Set the file descriptor for this socket.
  *
@@ -747,7 +913,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->port = ntohl(s->s_port);
 	}
 
-#ifdef SIOCSARP
+#if defined(SIOCSARP) || defined(__FreeBSD__)
 	/*
 	 *	If we're listening for broadcast requests, we MUST
 	 */
@@ -755,6 +921,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_warn(conf, "You SHOULD set 'interface' if you have set 'broadcast = yes'.");
 		cf_log_warn(conf, "All replies will be broadcast, as ARP updates require 'interface' to be set.");
 	}
+#elif defined HAVE_LIBPCAP
+	INFO("libpcap will be used for unicast replies to broadcast requests.");
+	inst->use_pcap = true;
 #endif
 
 	/*
@@ -844,6 +1013,9 @@ fr_app_io_t proto_dhcpv4_udp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
+#ifdef HAVE_LIBPCAP
+	.close			= mod_close,
+#endif
 	.fd_set			= mod_fd_set,
 	.track_create  		= mod_track_create,
 	.track_compare		= mod_track_compare,

@@ -73,7 +73,7 @@ extern fr_dict_autoload_t proto_ldap_sync_ldap_dict[];
 fr_dict_autoload_t proto_ldap_sync_ldap_dict[] = {
 	{ .out = &dict_ldap_sync, .proto = "ldap" },
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_ldap_sync_packet_id;
@@ -95,7 +95,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_ldap_dict_attr[] = {
 	{ .out = &attr_ldap_sync_root_dn, .name = "LDAP-Sync.Directory-Root-DN", .type = FR_TYPE_STRING, .dict = &dict_ldap_sync },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_base_dn, .name = "LDAP-Sync-Base-DN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern global_lib_autoinst_t const *proto_ldap_sync_ldap_lib[];
@@ -163,7 +163,7 @@ static int sync_state_free(sync_state_t *sync)
 
 	DEBUG3("Abandoning sync base dn \"%s\", filter \"%s\"", sync->config->base_dn, sync->config->filter);
 
-	trigger_exec(NULL, sync->config->cs, "ldap_sync.stop", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), sync->config->cs, NULL, "modules.ldap_sync.stop", true, &sync->trigger_args);
 
 	if (!sync->conn->handle) return 0;	/* Handled already closed? */
 
@@ -252,7 +252,7 @@ int ldap_sync_cookie_store(sync_state_t *sync, bool refresh)
  * A cookie at the head says that all the previous changes have been
  * completed, so the cookie can be sent.
  */
-void ldap_sync_cookie_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+void ldap_sync_cookie_event(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	sync_state_t		*sync = talloc_get_type_abort(uctx, sync_state_t);
 	sync_packet_ctx_t	*sync_packet_ctx;
@@ -269,7 +269,8 @@ void ldap_sync_cookie_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uct
 	ldap_sync_cookie_send(sync_packet_ctx);
 
 finish:
-	(void) fr_event_timer_in(sync, el, &sync->cookie_ev, sync->inst->cookie_interval, ldap_sync_cookie_event, sync);
+	(void) fr_timer_in(sync, tl, &sync->cookie_ev, sync->inst->cookie_interval,
+			   false, ldap_sync_cookie_event, sync);
 }
 
 /** Enqueue a new cookie store packet
@@ -371,7 +372,7 @@ static int ldap_sync_entry_send_network(sync_packet_ctx_t *sync_packet_ctx)
  * Looks at the head of the list of pending sync packets for unsent
  * change packets and sends any up to the first cookie.
  */
-static void ldap_sync_retry_event(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void ldap_sync_retry_event(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	sync_state_t		*sync = talloc_get_type_abort(uctx, sync_state_t);
 	sync_packet_ctx_t	*sync_packet_ctx = NULL;
@@ -391,8 +392,8 @@ static void ldap_sync_retry_event(fr_event_list_t *el, UNUSED fr_time_t now, voi
 	 *	packets - reschedule a retry event.
 	 */
 	if (sync_packet_ctx) {
-		(void) fr_event_timer_in(sync, el, &sync->retry_ev, sync->inst->retry_interval,
-					 ldap_sync_retry_event, sync);
+		(void) fr_timer_in(sync, tl, &sync->retry_ev, sync->inst->retry_interval,
+				   false, ldap_sync_retry_event, sync);
 	}
 }
 
@@ -492,7 +493,7 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 
 				if (pair_append_by_tmpl_parent(sync_packet_ctx, &vp, pairs, map->lhs, true) < 0) break;
 				if (fr_value_box_from_str(vp, &vp->data, vp->vp_type, NULL, values[i]->bv_val,
-							  values[i]->bv_len, NULL, true) < 0) {
+							  values[i]->bv_len, NULL) < 0) {
 					fr_pair_remove(pairs, vp);
 					talloc_free(vp);
 				}
@@ -513,8 +514,8 @@ int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH
 	 *	Send the packet and if it fails to send add a retry event
 	 */
 	if ((ldap_sync_entry_send_network(sync_packet_ctx) < 0) &&
-	    (fr_event_timer_in(sync, sync->conn->conn->el, &sync->retry_ev,
-			       sync->inst->retry_interval, ldap_sync_retry_event, sync) < 0)) {
+	    (fr_timer_in(sync, sync->conn->conn->el->tl, &sync->retry_ev,
+			 sync->inst->retry_interval, false, ldap_sync_retry_event, sync) < 0)) {
 		PERROR("Inserting LDAP sync retry timer failed");
 	}
 
@@ -532,11 +533,11 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
  * Performs complete re-initialization of a connection.  Called during socket_open
  * to create the initial connection and again any time we need to reopen the connection.
  *
- * @param[in] el	the event list managing listen event.
+ * @param[in] tl	the event list managing listen event.
  * @param[in] now	current time.
  * @param[in] user_ctx	Listener.
  */
-static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *user_ctx)
+static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now, void *user_ctx)
 {
 	fr_listen_t			*listen = talloc_get_type_abort(user_ctx, fr_listen_t);
 	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(listen->thread_instance, proto_ldap_sync_ldap_thread_t);
@@ -553,9 +554,9 @@ static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED fr_tim
 		PERROR("Failed (re)initialising connection, will retry in %pV seconds",
 		       fr_box_time_delta(inst->handle_config.reconnection_delay));
 
-		if (fr_event_timer_in(thread, thread->el, &thread->conn_retry_ev,
-				      inst->handle_config.reconnection_delay,
-				      proto_ldap_connection_init, listen) < 0) {
+		if (fr_timer_in(thread, tl, &thread->conn_retry_ev,
+				inst->handle_config.reconnection_delay,
+				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
 	}
@@ -852,7 +853,8 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 /** Timer event to retry running "load Cookie" on failures
  *
  */
-static void proto_ldap_cookie_load_retry(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx) {
+static void proto_ldap_cookie_load_retry(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
 	proto_ldap_cookie_load_retry_ctx  *retry_ctx = talloc_get_type_abort(uctx, proto_ldap_cookie_load_retry_ctx);
 
 	DEBUG2("Retrying \"load Cookie\" for sync no %ld", retry_ctx->sync_no);
@@ -860,10 +862,10 @@ static void proto_ldap_cookie_load_retry(fr_event_list_t *el, UNUSED fr_time_t n
 					retry_ctx->thread) < 0) {
 		ERROR("Failed retrying \"load Cookie\".  Will try again in %pV seconds",
 		      fr_box_time_delta(retry_ctx->inst->handle_config.reconnection_delay));
-		(void) fr_event_timer_in(retry_ctx->thread->conn->h, el,
-					 &retry_ctx->inst->parent->sync_config[retry_ctx->sync_no]->ev,
-					 retry_ctx->inst->handle_config.reconnection_delay,
-					 proto_ldap_cookie_load_retry, retry_ctx);
+		(void) fr_timer_in(retry_ctx->thread->conn->h, tl,
+				   &retry_ctx->inst->parent->sync_config[retry_ctx->sync_no]->ev,
+				   retry_ctx->inst->handle_config.reconnection_delay,
+				   false, proto_ldap_cookie_load_retry, retry_ctx);
 		return;
 	}
 	talloc_free(retry_ctx);
@@ -973,9 +975,9 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 			.sync_no = packet_id,
 		};
 
-		(void) fr_event_timer_in(thread->conn->h, thread->el, &inst->parent->sync_config[packet_id]->ev,
-					 inst->handle_config.reconnection_delay,
-					 proto_ldap_cookie_load_retry, retry_ctx);
+		(void) fr_timer_in(thread->conn->h, thread->el->tl, &inst->parent->sync_config[packet_id]->ev,
+				   inst->handle_config.reconnection_delay,
+				   false, proto_ldap_cookie_load_retry, retry_ctx);
 	}
 		break;
 
@@ -1101,7 +1103,10 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	 *	use normal network event listeners.
 	 */
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-	fr_network_listen_add(thread->nr, thread->li);
+	if (unlikely(fr_network_listen_add(thread->nr, thread->li) < 0)) {
+		PERROR("Failed adding listener");
+		goto error; /* retry? */
+	}
 
 	DEBUG2("Starting sync(s)");
 
@@ -1163,9 +1168,9 @@ static void _proto_ldap_socket_closed(UNUSED connection_t *conn, connection_stat
 	if (prev == CONNECTION_STATE_CONNECTED) {
 		ERROR("LDAP connection closed.  Scheduling restart in %pVs",
 		       fr_box_time_delta(inst->handle_config.reconnection_delay));
-		if (fr_event_timer_in(thread, thread->el, &thread->conn_retry_ev,
-				      inst->handle_config.reconnection_delay,
-				      proto_ldap_connection_init, listen) < 0) {
+		if (fr_timer_in(thread, thread->el->tl, &thread->conn_retry_ev,
+				inst->handle_config.reconnection_delay,
+				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
 	}
@@ -1191,9 +1196,9 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 
 	if (ldap_conn->fd < 0) {
 	connection_failed:
-		if (fr_event_timer_in(thread, thread->el, &thread->conn_retry_ev,
-				      inst->handle_config.reconnection_delay,
-				      proto_ldap_connection_init, listen) < 0) {
+		if (fr_timer_in(thread, thread->el->tl, &thread->conn_retry_ev,
+				inst->handle_config.reconnection_delay,
+				false, proto_ldap_connection_init, listen) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
 		return;
@@ -1272,7 +1277,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	/*
 	 *	Initialise the connection
 	 */
-	proto_ldap_connection_init(el, fr_event_list_time(el), li);
+	proto_ldap_connection_init(el->tl, fr_event_list_time(el), li);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

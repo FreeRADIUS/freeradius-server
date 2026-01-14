@@ -13,15 +13,14 @@ server load {
 	namespace = radius
 
 	#
-	#  Use `listen load { ... }` in any virtual server to do load
-	#  testing against that server.
+	#  This is the load testing listener.
 	#
 	listen load {
 		#
 		#  The main module is the proto module, even though we're
 		#  operating in the RADIUS namespace.
 		#
-		proto = load
+		handler = load
 
 		#
 		#  This is a valid Packet-Type for the current `namespace`
@@ -84,7 +83,7 @@ server load {
 			#  - blocked - 1 = true, 0 = false.   We're refusing
 			#    to enqueue more packets until we get responses
 			#    to the outstanding requests.
-			csv = ${confdir}/stats.csv
+			csv = ${logdir}/stats.csv
 
 			#
 			#  How many packets/s to start with.

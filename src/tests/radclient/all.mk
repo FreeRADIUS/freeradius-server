@@ -43,7 +43,7 @@ $(foreach x,$(FILES),$(eval $(call RADCLIENT_TEST, $x)))
 #
 #	Run the radclient commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/local/libfreeradius-radius.la | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/local/rlm_radius.la | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<)$(E))
 	$(eval TYPE     := $(shell echo $(TARGET) | cut -f1 -d '_'))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))

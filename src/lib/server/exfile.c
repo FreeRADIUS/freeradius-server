@@ -33,8 +33,22 @@
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
+
+typedef enum {
+	EXFILE_TRIGGER_OPEN = 0,
+	EXFILE_TRIGGER_CLOSE,
+	EXFILE_TRIGGER_RESERVE,
+	EXFILE_TRIGGER_RELEASE,
+	EXFILE_TRIGGER_MAX
+} exfile_trigger_t;
+
+static const char * exfile_trigger_names[EXFILE_TRIGGER_MAX] = {
+	"open",
+	"close",
+	"reserve",
+	"release"
+};
 
 typedef struct {
 	int			fd;			//!< File descriptor associated with an entry.
@@ -56,6 +70,8 @@ struct exfile_s {
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
 	fr_pair_list_t		trigger_args;		//!< Arguments to pass to trigger.
+	bool			trigger_undef[EXFILE_TRIGGER_MAX];	//!< Is the trigger undefined
+	CONF_PAIR		*trigger_cp[EXFILE_TRIGGER_MAX];	//!< Cache of trigger CONF_PAIRs
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -65,18 +81,20 @@ struct exfile_s {
  *
  * @param[in] ef to send trigger for.
  * @param[in] entry for the file that the event occurred on.
- * @param[in] name_suffix trigger name suffix.
+ * @param[in] ex_trigger to fire.
  */
-static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, exfile_trigger_t ex_trigger)
 {
 	char			name[128];
 	fr_pair_t		*vp;
 	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
 
+	if (ef->trigger_undef[ex_trigger]) return;
+
 	fr_pair_list_init(&args);
 	fr_assert(ef != NULL);
-	fr_assert(name_suffix != NULL);
+	fr_assert(ex_trigger < EXFILE_TRIGGER_MAX);
 
 	if (!ef->trigger_prefix) return;
 
@@ -91,8 +109,10 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 	fr_pair_list_prepend_by_da_len(NULL, vp, &args, da, entry->filename,
 				       talloc_array_length(entry->filename) - 1, false);
 
-	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
+	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, exfile_trigger_names[ex_trigger]);
+	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args) == -1) {
+		ef->trigger_undef[ex_trigger] = true;
+	}
 
 	fr_pair_list_free(&args);
 }
@@ -108,7 +128,7 @@ static void exfile_cleanup_entry(exfile_t *ef, exfile_entry_t *entry)
 	/*
 	 *	Issue close trigger *after* we've closed the fd
 	 */
-	exfile_trigger_exec(ef, entry, "close");
+	exfile_trigger(ef, entry, EXFILE_TRIGGER_CLOSE);
 
 	/*
 	 *	Trigger still needs access to filename to populate Exfile-Name
@@ -212,11 +232,11 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  *	Try to open the file. It it doesn't exist, try to
  *	create it's parent directories.
  */
-static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
+static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions, int flags)
 {
 	int fd;
 
-	fd = open(filename, O_RDWR | O_CREAT, permissions);
+	fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 	if (fd < 0) {
 		mode_t dirperm;
 		char *p, *dir;
@@ -251,7 +271,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		}
 		talloc_free(dir);
 
-		fd = open(filename, O_RDWR | O_CREAT, permissions);
+		fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 		if (fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			return -1;
@@ -266,7 +286,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  * to influence whether and which __coverity*__() functions are called. We therefore create a
  * separate function for the locking case which we *can* model.
  */
-static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -379,10 +399,10 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 	ef->entries[i].fd = -1;
 
 reopen:
-	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions, flags);
 	if (ef->entries[i].fd < 0) goto error;
 
-	exfile_trigger_exec(ef, &ef->entries[i], "open");
+	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_OPEN);
 
 try_lock:
 	/*
@@ -412,7 +432,7 @@ try_lock:
 		}
 
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
+		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 		if (ef->entries[i].fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			goto error;
@@ -484,7 +504,7 @@ try_lock:
 	 */
 	ef->entries[i].last_used = now;
 
-	exfile_trigger_exec(ef, &ef->entries[i], "reserve");
+	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RESERVE);
 
 	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
@@ -498,17 +518,18 @@ try_lock:
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
+ * @param flags flags to pass to open.
  * @param offset Optional pointer to store offset in when seeking the end of file.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
 	if (!ef || !filename) return -1;
 
 	if (!ef->locking) {
-		int found = exfile_open_mkdir(ef, filename, permissions);
+		int found = exfile_open_mkdir(ef, filename, permissions, flags);
 		off_t real_offset;
 
 		if (found < 0) return -1;
@@ -517,7 +538,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *o
 		return found;
 	}
 
-	return exfile_open_lock(ef, filename, permissions, offset);
+	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
 /*
@@ -537,7 +558,7 @@ static int exfile_close_lock(exfile_t *ef, int fd)
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
 		pthread_mutex_unlock(&(ef->mutex));
 
-		exfile_trigger_exec(ef, &ef->entries[i], "release");
+		exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RELEASE);
 		return 0;
 	}
 

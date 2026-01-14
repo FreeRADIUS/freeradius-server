@@ -22,6 +22,7 @@ CREATE TABLE radacct (
 	nasportid		VARCHAR(32),
 	nasporttype		VARCHAR(32),
 	acctstarttime		TIMESTAMP WITH TIME ZONE,
+	acctupdatetime		TIMESTAMP WITH TIME ZONE,
 	acctstoptime		TIMESTAMP WITH TIME ZONE,
 	acctsessiontime		NUMERIC(19),
 	acctauthentic		VARCHAR(32),
@@ -39,7 +40,6 @@ CREATE TABLE radacct (
 	framedipv6prefix	VARCHAR(45),
 	framedinterfaceid	VARCHAR(44),
 	delegatedipv6prefix	VARCHAR(45),
-	acctstartdelay		NUMERIC(12),
 	class 			VARCHAR(64)
 );
 
@@ -76,6 +76,7 @@ CREATE TABLE radcheck (
 	op		VARCHAR(2) NOT NULL,
 	value		VARCHAR(40)
 );
+CREATE INDEX radcheck_idx1 ON radcheck(username);
 CREATE SEQUENCE radcheck_seq START WITH 1 INCREMENT BY 1;
 
 -- Trigger to emulate a serial # on the primary key
@@ -99,6 +100,7 @@ CREATE TABLE radgroupcheck (
 	op		CHAR(2) NOT NULL,
 	value		VARCHAR(40)
 );
+CREATE INDEX radgroupcheck_idx1 ON radgroupcheck(groupname);
 CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
 
 -- Trigger to emulate a serial # on the primary key
@@ -117,11 +119,12 @@ CREATE OR REPLACE TRIGGER radgroupcheck_serialnumber
 --
 CREATE TABLE radgroupreply (
 	id		INT PRIMARY KEY,
-	GroupName	VARCHAR(20) UNIQUE NOT NULL,
-	Attribute	VARCHAR(64),
+	groupname	VARCHAR(20) UNIQUE NOT NULL,
+	attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
-	Value		VARCHAR(40)
+	value		VARCHAR(40)
 );
+CREATE INDEX radgroupreply_idx1 ON radgroupreply(groupname);
 CREATE SEQUENCE radgroupreply_seq START WITH 1 INCREMENT BY 1;
 
 -- Trigger to emulate a serial # on the primary key
@@ -140,12 +143,12 @@ CREATE OR REPLACE TRIGGER radgroupreply_serialnumber
 --
 CREATE TABLE radreply (
 	id		INT PRIMARY KEY,
-	UserName	VARCHAR(30) NOT NULL,
-	Attribute	VARCHAR(64),
+	username	VARCHAR(30) NOT NULL,
+	attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
-	Value		VARCHAR(40)
+	value		VARCHAR(40)
 );
-CREATE INDEX radreply_idx1 ON radreply(UserName);
+CREATE INDEX radreply_idx1 ON radreply(username);
 CREATE SEQUENCE radreply_seq START WITH 1 INCREMENT BY 1;
 
 --
@@ -166,11 +169,11 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
 --
 CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
-	UserName	VARCHAR(30) NOT NULL,
-	GroupName	VARCHAR(30),
-	Priority	INT
+	username	VARCHAR(30) NOT NULL,
+	groupname	VARCHAR(30),
+	priority	INT
 );
-CREATE INDEX radusergroup_idx1 ON radusergroup(UserName);
+CREATE INDEX radusergroup_idx1 ON radusergroup(username);
 CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
 
 --
@@ -188,12 +191,12 @@ CREATE OR REPLACE TRIGGER radusergroup_serialnumber
 
 
 CREATE TABLE radpostauth (
-	  id            INT PRIMARY KEY,
-	  UserName      VARCHAR(64) NOT NULL,
-	  Pass          VARCHAR(64),
-	  Reply         VARCHAR(64),
-	  AuthDate 	TIMESTAMP(6) WITH TIME ZONE,
-	  Class         VARCHAR(64)
+	id		INT PRIMARY KEY,
+	username	VARCHAR(64) NOT NULL,
+	pass		VARCHAR(64),
+	reply		VARCHAR(64),
+	authdate	TIMESTAMP(6) WITH TIME ZONE,
+	class		VARCHAR(64)
 );
 
 CREATE SEQUENCE radpostauth_seq START WITH 1 INCREMENT BY 1;

@@ -6,17 +6,48 @@
 
 The module `exec` is used for executing external programs.
 
-This module provides an `xlat`.  To use it, put `exec` into
-the `instantiate` section.  You can then do dynamic translation of
-attributes like:
+== Don't use this module.
 
-  Attribute-Name = %exec(/path/to/program,args, ...)
+We provide this module for the _extremely rare_ case when it is
+useful.  The main utility of the module is for testing, and for
+doing some unusual things which aren't possible via any other
+method.
 
-The output of `exec` is interpreted as the data type of the attribute.
+It can be appealing to just ignore `unlang`, and run `%exec()`
+everywhere.  This kind of configuration can be written quickly,
+means that you don't need to spend any time understanding the
+server configuration.  This process is generally more effort than
+it is worth.
 
-The output of `exec` can even be pairs, such as `User-Name = foo`.
-Those pairs can be assigned to a list.  If the program fails, it
-will output nothing.
+The biggest problem with `exec` is that it is slow.  Very, very,
+very, slow.  We have tested the server at 80K Access-Requests per
+second (to OpenLDAP) on low-end hardware.  This is fast enough to
+run a major ISP.
+
+In contrast, when each Access-Request causes an `exec` script to be
+run, the rate of access-Request can drop by a factor of 100 or
+more.  It is not unusual for the server to max out at a few hundred
+authentications per second when running multiple scripts per packet.
+
+The server has sufficient functionality that it is essentially
+never necessary to `exec` and external script.  Please use the
+built-in functionality of the server; it is hundreds of times
+faster than running a script, and it is designed to process
+packets.  An external script is worse, by nearly all possible
+standards of measurement.
+
+== %exec() function
+
+This module also provides a dynamic expansion function.  You can
+then run a script like this:
+
+  Attribute-Name = %exec('/path/to/program', 'args', ...)
+
+The output of `exec` is parsed and assigned to the attribute.
+
+Depending on the module configuration, the output of `%exec()` can
+even be pairs, such as `User-Name = foo`.  Those pairs can be
+assigned to a list.  If the program fails, it will output nothing.
 
 Note that when the assignment is to a list, the `exec` call _must_ be
 inside of a double-quoted string.
@@ -69,42 +100,62 @@ wait:: Wait for the program to finish.
 If we do NOT wait, then the program is "fire and
 forget", and any output attributes from it are ignored.
 
+If we are looking for the program to output
+attributes, and want to add those attributes to the
+request, then we MUST wait for the program to
+finish, and therefore set `wait=yes`
+
 
 
 program:: The name of the program to execute, and it's
 arguments, when called as a module.
 
-Dynamic translation is done on this field, so things like
-the following example will work.
+The string is dynamically expanded, so it can contain
+attribute references, etc.  However, quoting of programs
+and arguments is complex.  The program name and arguments
+are parsed by the server as a single string.  But that
+string is parsed by the shell into multiple arguments,
+which are then passed to the program.
 
-See the `echo` module for examples of how to use the module "in line".
+We recommend not using the `exec` module, and instead using
+the `%exec(...)` function.  That function will generally be
+easier to use and understand.
+
+Where this module is used, the `program` string below
+should use triple quotes.  These allow the text inside of
+the string to contain double-quote characters without
+needing to escape them.  This doesn't affect the output
+string, but it does make the configuration easier to read.
+
+If the program is expected to take quoted strings as
+arguments, then the quotes have to be done carefully.  See
+the `echo` module for more information, and for a worked
+example/
+
+The summary of all of the above is that it's usually easier
+to run one shell script with no arguments.  That shell
+script can then print the attribute names, operators, and
+values.
 
 
 
 input_pairs:: The attributes which are placed into the
 environment variables for the program.
 
-Allowed values are:
-
-[options="header,autowidth"]
-|===
-| Pairs          | Description
-| &request       | attributes from the request
-| &config        | attributes from the configuration items list
-| &reply         | attributes from the reply
-| &session-state | attributes that persist over multiple request/response rounds.
-|===
+The `input_pairs` can be any "group" style attribute.
+Usually it is the top-level list such as `request`,
+`reply`, etc.
 
 
 
 output_pairs::: Where to place the output attributes (if any) from
 the executed program.
 
-The values allowed, and the restrictions as to availability, are the
-same as for the `input_pairs`.
+The values allowed are the same as for the `input_pairs`.
 
 This configuration item is used only when the `program`
-configuration item is set, and when `wait = yes` is set.
+configuration item is set, and when `wait = yes` is also
+set.  Otherwise it is ignored.
 
 
 
@@ -124,9 +175,15 @@ from the main radiusd process no escaping is applied.
 
 
 
-env_inherit:: Inherit the environment of the current radiusd process.
+env_inherit:: Pass the server environment variables to the called program
+
+For security, the server environment variables are not passed to the
+program being executed.  Setting this flag to `yes` will pass the
+server environment variables to the program.
 
 Any `input_pairs` will be merged with these environmental variables.
+
+The default is `no`.
 
 
 
@@ -146,11 +203,11 @@ responsiveness.
 ```
 exec {
 	wait = yes
-#	program = "/bin/true %{User-Name}"
-	input_pairs = &request
-#	output_pairs = &reply
+#	program = """/bin/true "%{User-Name}" """
+	input_pairs = request
+#	output_pairs = reply
 	shell_escape = yes
-#	env_inherit = no
+	env_inherit = no
 	timeout = 10
 }
 ```

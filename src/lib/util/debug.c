@@ -21,6 +21,7 @@
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include <freeradius-devel/util/backtrace.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/strerror.h>
@@ -34,14 +35,6 @@
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
-#endif
-
-/*
- *	runtime backtrace functions are not POSIX but are included in
- *	glibc, OSX >= 10.5 and various BSDs
- */
-#ifdef HAVE_EXECINFO
-#  include <execinfo.h>
 #endif
 
 #ifdef HAVE_SYS_PRCTL_H
@@ -70,36 +63,13 @@
 #include <sys/sysctl.h>
 #endif
 
-#ifdef HAVE_EXECINFO
-#  ifndef MAX_BT_FRAMES
-#    define MAX_BT_FRAMES 128
-#  endif
-#  ifndef MAX_BT_CBUFF
-#    define MAX_BT_CBUFF  1048576			//!< Should be a power of 2
-#  endif
-
-static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
-
-typedef struct {
-	void 		*obj;				//!< Memory address of the block of allocated memory.
-	void		*frames[MAX_BT_FRAMES];		//!< Backtrace frame data
-	int		count;				//!< Number of frames stored
-} fr_bt_info_t;
-
-struct fr_bt_marker {
-	void 		*obj;				//!< Pointer to the parent object, this is our needle
-							//!< when we iterate over the contents of the circular buffer.
-	fr_fring_t 	*fring;				//!< Where we temporarily store the backtraces
-};
-#endif
-
 static char panic_action[512];				//!< The command to execute when panicking.
 static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panicking, before the
 							//!< panic_action.
 
 static bool dump_core;					//!< Whether we should drop a core on fatal signals.
 
-static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
+int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 fr_debug_state_t fr_debug_state = DEBUGGER_STATE_UNKNOWN;	//!< Whether we're attached to by a debugger.
 
@@ -580,124 +550,6 @@ void fr_debug_break(bool always)
 	}
 }
 
-#ifdef HAVE_EXECINFO
-/** Print backtrace entry for a given object
- *
- * @param fring to search in.
- * @param obj pointer to original object
- */
-void backtrace_print(fr_fring_t *fring, void *obj)
-{
-	fr_bt_info_t *p;
-	bool found = false;
-
-	while ((p = fr_fring_next(fring))) {
-		if ((p->obj == obj) || !obj) {
-			found = true;
-
-			fprintf(stderr, "Stacktrace for: %p\n", p->obj);
-			backtrace_symbols_fd(p->frames, p->count, STDERR_FILENO);
-		}
-	}
-
-	if (!found) {
-		fprintf(stderr, "No backtrace available for %p", obj);
-	}
-}
-
-/** Generate a backtrace for an object
- *
- * If this is the first entry being inserted
- */
-int fr_backtrace_do(fr_bt_marker_t *marker)
-{
-	fr_bt_info_t *bt;
-
-	if (!fr_cond_assert(marker->obj) || !fr_cond_assert(marker->fring)) return -1;
-
-	bt = talloc_zero(NULL, fr_bt_info_t);
-	if (!bt) return -1;
-
-	bt->obj = marker->obj;
-	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
-
-	fr_fring_overwrite(marker->fring, bt);
-
-	return 0;
-}
-
-/** Inserts a backtrace marker into the provided context
- *
- * Allows for maximum laziness and will initialise a circular buffer if one has not already been created.
- *
- * Code augmentation should look something like:
-@verbatim
-	// Create a static fringer pointer, the first call to backtrace_attach will initialise it
-	static fr_fring_t *my_obj_bt;
-
-	my_obj_t *alloc_my_obj(TALLOC_CTX *ctx) {
-		my_obj_t *this;
-
-		this = talloc(ctx, my_obj_t);
-
-		// Attach backtrace marker to object
-		backtrace_attach(&my_obj_bt, this);
-
-		return this;
-	}
-@endverbatim
- *
- * Then, later when a double free occurs:
-@verbatim
-	(gdb) call backtrace_print(&my_obj_bt, <pointer to double freed memory>)
-@endverbatim
- *
- * which should print a limited backtrace to stderr. Note, this backtrace will not include any argument
- * values, but should at least show the code path taken.
- *
- * @param fring this should be a pointer to a static *fr_fring_buffer.
- * @param obj we want to generate a backtrace for.
- */
-fr_bt_marker_t *fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj)
-{
-	fr_bt_marker_t *marker;
-
-	if (*fring == NULL) {
-		pthread_mutex_lock(&fr_debug_init);
-		/* Check again now we hold the mutex - eww*/
-		if (*fring == NULL) *fring = fr_fring_alloc(NULL, MAX_BT_CBUFF, true);
-		pthread_mutex_unlock(&fr_debug_init);
-	}
-
-	marker = talloc(obj, fr_bt_marker_t);
-	if (!marker) {
-		return NULL;
-	}
-
-	marker->obj = (void *) obj;
-	marker->fring = *fring;
-
-	fprintf(stderr, "Backtrace attached to %s %p\n", talloc_get_name(obj), obj);
-	/*
-	 *	Generate the backtrace for memory allocation
-	 */
-	fr_backtrace_do(marker);
-	talloc_set_destructor(marker, fr_backtrace_do);
-
-	return marker;
-}
-#else
-void backtrace_print(UNUSED fr_fring_t *fring, UNUSED void *obj)
-{
-	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
-}
-fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_fring_t **fring, UNUSED TALLOC_CTX *obj)
-{
-	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
-	abort();
-}
-#endif /* ifdef HAVE_EXECINFO */
-
 static int _panic_on_free(UNUSED char *foo)
 {
 	fr_fault(SIGABRT);
@@ -939,35 +791,6 @@ static int fr_fault_check_permissions(void)
 	return 0;
 }
 
-/** Split out so it can be sprinkled throughout the server and called via a debugger
- *
- */
-void fr_fault_backtrace(void)
-{
-
-	/*
-	 *	Produce a simple backtrace - They're very basic but at least give us an
-	 *	idea of the area of the code we hit the issue in.
-	 *
-	 *	See below in fr_fault_setup() and
-	 *	https://sourceware.org/bugzilla/show_bug.cgi?id=16159
-	 *	for why we only print backtraces in debug builds if we're using GLIBC.
-	 */
-#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
-	if (fr_fault_log_fd >= 0) {
-		size_t frame_count;
-		void *stack[MAX_BT_FRAMES];
-
-		frame_count = backtrace(stack, MAX_BT_FRAMES);
-
-		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
-
-		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
-	}
-#endif
-	return;
-}
-
 /** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
  *
  * @param sig caught
@@ -1006,7 +829,7 @@ NEVER_RETURNS void fr_fault(int sig)
 	 */
 	if (panic_cb && (panic_cb(sig) < 0)) goto finish;
 
-	fr_fault_backtrace();
+	fr_backtrace();
 
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
@@ -1101,16 +924,7 @@ static void _fr_talloc_fault_simple(char const *reason)
 {
 	FR_FAULT_LOG("talloc abort: %s\n", reason);
 
-#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
-	if (fr_fault_log_fd >= 0) {
-		size_t frame_count;
-		void *stack[MAX_BT_FRAMES];
-
-		frame_count = backtrace(stack, MAX_BT_FRAMES);
-		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
-		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
-	}
-#endif
+	fr_backtrace();
 	abort();
 }
 
@@ -1193,7 +1007,6 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 
 	return 0;
 }
-
 
 static int _disable_null_tracking(UNUSED bool *p)
 {
@@ -1356,23 +1169,7 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		mallopt(M_CHECK_ACTION, 3);
 #  endif
 #endif
-
-#if defined(HAVE_EXECINFO) && defined(__GNUC__) && !defined(NDEBUG)
-	       /*
-		*  We need to pre-load lgcc_s, else we can get into a deadlock
-		*  in fr_fault, as backtrace() attempts to dlopen it.
-		*
-		*  Apparently there's a performance impact of loading lgcc_s,
-		*  so only do it if this is a debug build.
-		*
-		*  See: https://sourceware.org/bugzilla/show_bug.cgi?id=16159
-		*/
-		{
-			void *stack[10];
-
-			backtrace(stack, 10);
-		}
-#endif
+		fr_backtrace_init(program);
 	}
 	setup = true;
 
@@ -1541,44 +1338,3 @@ NEVER_RETURNS void _fr_exit(UNUSED char const *file, UNUSED int line, int status
 	exit(status);
 }
 #endif
-
-/*
- *	Sign a structure, but skip _signature at "offset".
- */
-static uint32_t fr_hash_struct(void const *ptr, size_t size, size_t offset)
-{
-	uint32_t hash;
-
-	/*
-	 *	Hash entry is at the end of the structure, that's
-	 *	best...
-	 */
-	if ((size + 4) == offset) {
-		return fr_hash(ptr, size);
-	}
-
-	hash = fr_hash(ptr, offset);
-	return fr_hash_update(((uint8_t const *) ptr) + offset + 4, size - (offset + 4), hash);
-}
-
-void fr_sign_struct(void *ptr, size_t size, size_t offset)
-{
-	*(uint32_t *) (((uint8_t *) ptr) + offset) = fr_hash_struct(ptr, size, offset);
-}
-
-void fr_verify_struct(void const *ptr, size_t size, size_t offset)
-{
-	uint32_t hash;
-
-	hash = fr_hash_struct(ptr, size, offset);
-
-	(void) fr_cond_assert(hash == *(uint32_t const *) (((uint8_t const *) ptr) + offset));
-}
-
-void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature)
-{
-	uint32_t hash;
-
-	hash = fr_hash(ptr, len);
-	(void) fr_cond_assert(hash == *signature);
-}

@@ -10,13 +10,13 @@ test_string := "ABCDEF_1"
 #
 control.User-Name := { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g" }
 
-foreach control.User-Name {
-	if ("%{test_string}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
-		test_string := "%{1}"
+foreach thing (control.User-Name) {
+	if (test_string =~ /([A-Z0-9\-]*)_%{thing}/) {
+		test_string := %regex.match(1)
 		success
 		break
 	}
-	elsif ("%{Foreach-Variable-0}" == '1') {
+	elsif (thing == '1') {
 		test_fail
 		break
 	}

@@ -153,7 +153,7 @@ static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_confi
 	/*
 	 *	Servers re-use ports by default.  And clients, too, if they ask nicely.
 	 */
-	if (cfg->server || cfg->reuse_port) {
+	if (cfg->reuse_port) {
 		int on = 1;
 
 		/*
@@ -166,6 +166,56 @@ static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_confi
 		}
 	}
 #endif
+
+	/*
+	 *	IPv4 fragments packets.  IPv6 does not.
+	 *
+	 *	Many systems set the "don't fragment" bit by default for IPv4.  This setting means that "too
+	 *	large" packets are silently discarded in the network.
+	 *
+	 *	Many local networks support UDP fragmentation, so we just send packets and hope for the best.
+	 *	In order to support local networks, we disable the "don't fragment" bit.
+	 *
+	 *	The wider Internet does not support UDP fragmentation.  This means that fragmented packets are
+	 *	silently discarded.
+	 *
+	 *	@todo - add more code to properly handle EMSGSIZE for PMTUD.  We can then also do
+	 *	getsockopt(fd,IP_MTU,&integer) to get the current path MTU.  It can only be used after the
+	 *	socket has been connected.  It should also be called after an EMSGSIZE error is returned.
+	 *
+	 *	getsockopt(fd,IP_MTU,&integer) can also be used for unconnected sockets, if we also set
+	 *	IP_RECVERR.  In which case the errors are put into an error queue.  This is only for Linux.
+	 */
+	if ((sock->af == AF_INET) && cfg->exceed_mtu) {
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+		/*
+		 *	Disable PMTU discovery.  On Linux, this also makes sure that the "don't
+		 *	fragment" flag is zero.
+		 */
+		{
+			int flag = IP_PMTUDISC_DONT;
+
+			if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
+				fr_strerror_printf("Failed setting IP_MTU_DISCOVER: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+
+#if defined(IP_DONTFRAG)
+		/*
+		 *	Ensure that the "don't fragment" flag is zero.
+		 */
+		{
+			int off = 0;
+
+			if (setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &off, sizeof(off)) < 0) {
+				fr_strerror_printf("Failed setting IP_DONTFRAG: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+	}
 
 	return fr_bio_fd_common_datagram(fd, sock, cfg);
 }
@@ -190,33 +240,6 @@ static int fr_bio_fd_server_tcp(int fd, UNUSED fr_socket_t const *sock)
  */
 static int fr_bio_fd_server_ipv4(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
 {
-	int flag;
-
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-	/*
-	 *	Disable PMTU discovery.  On Linux, this also makes sure that the "don't
-	 *	fragment" flag is zero.
-	 */
-	flag = IP_PMTUDISC_DONT;
-
-	if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
-		fr_strerror_printf("Failed setting IP_MTU_DISCOVER: %s", fr_syserror(errno));
-		return -1;
-	}
-#endif
-
-#if defined(IP_DONTFRAG)
-	/*
-	 *	Ensure that the "don't fragment" flag is zero.
-	 */
-	flag = 0;
-
-	if (setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
-		fr_strerror_printf("Failed setting IP_DONTFRAG: %s", fr_syserror(errno));
-		return -1;
-	}
-#endif
-
 	/*
 	 *	And set up any UDP / TCP specific information.
 	 */
@@ -463,26 +486,33 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	return 0;
 }
 
-static void fr_bio_fd_unix_shutdown(fr_bio_t *bio)
+static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	/*
-	 *	The bio must be open in order to shut it down.
+	 *	This is called after fr_bio_fd_close() - which marks the bio state as closed
 	 *
 	 *	Unix domain sockets are deleted when the bio is closed.
 	 *
 	 *	Unix domain sockets are never in the "connecting" state, because connect() always returns
 	 *	immediately.
 	 */
-	fr_assert(my->info.state == FR_BIO_FD_STATE_OPEN);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CLOSED);
 
 	/*
 	 *	Run the user shutdown before we run ours.
 	 */
-	if (my->user_shutdown) my->user_shutdown(bio);
+	if (my->user_shutdown) {
+		int rcode;
 
-	(void) unlink(my->info.socket.unix.path);
+		rcode = my->user_shutdown(bio);
+		if (rcode < 0) return rcode;
+	}
+
+	if (unlink(my->info.socket.unix.path) < 0) return fr_bio_error(GENERIC);
+
+	return 0;
 }
 
 /** Bind to a Unix domain socket.
@@ -673,7 +703,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 		break;
 	}
 
-	fr_strerror_printf("Failed setting IP_BOUND_IF: %s", fr_syserror(errno));
+	if (rcode < 0) fr_strerror_printf("Failed setting IP_BOUND_IF: %s", fr_syserror(errno));
 	return rcode;
 }
 #else
@@ -688,7 +718,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
  *	cmsg_level = IPPROTO_IP
  *	cmsg_type = IP_RECVIF
  */
-static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_config_t const *cfg)
 {
 	if (!my->info.socket.inet.ifindex) return 0;
 
@@ -754,7 +784,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		 *	We've picked a random port in what is hopefully a large range.  If that works, we're
 		 *	done.
 		 */
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
 
 		/*
 		 *	Hunt & peck.  Which is horrible.
@@ -774,10 +804,14 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 			sin->sin_port = htons(my->info.cfg->src_port_start + current);
 
-			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
 		}
 
-		fr_strerror_const("There are no open ports between 'src_port_start' and 'src_port_end'");
+		/*
+		 *	The error is a good hint at _why_ we failed to bind.
+		 *	We expect errno to be EADDRINUSE, anything else is a surprise.
+		 */
+		fr_strerror_printf("Failed binding port between 'src_port_start' and 'src_port_end': %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -788,7 +822,10 @@ done:
 	return fr_bio_fd_socket_name(my);
 }
 
-static void fr_bio_fd_name(fr_bio_fd_t *my)
+/**  Set the name of an FD BIO
+ *
+ */
+void fr_bio_fd_name(fr_bio_fd_t *my)
 {
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 
@@ -820,7 +857,6 @@ static void fr_bio_fd_name(fr_bio_fd_t *my)
 		break;
 
 	case FR_BIO_FD_CONNECTED:
-	case FR_BIO_FD_ACCEPTED:
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
@@ -862,8 +898,6 @@ static void fr_bio_fd_name(fr_bio_fd_t *my)
 		break;
 
 	case FR_BIO_FD_LISTEN:
-		fr_assert(cfg->socket_type == SOCK_STREAM);
-
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
@@ -950,11 +984,6 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 			return -1;
 		}
 		break;
-
-	case FR_BIO_FD_ACCEPTED:
-		fr_assert(cfg->src_ipaddr.af != AF_UNSPEC);
-		fr_assert(cfg->dst_ipaddr.af != AF_UNSPEC);
-		break;
 	}
 
 	return 0;
@@ -1021,16 +1050,31 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				fr_strerror_const("Source and destination IP addresses are not from the same IP address family");
 				return -1;
 			}
+
+#ifdef SO_REUSEPORT
+			/*
+			 *	Connected UDP sockets really only matter when writing packets.  They allow the
+			 *	system to use write() instead of sendto().
+			 *
+			 *	However for reading packets, the kernel does NOT check the source IP.
+			 *	Instead, it just delivers any packet with the correct dst IP/port.  Even
+			 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
+			 *	to a _random_ socket.
+			 *
+			 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
+			 */
+			if (cfg->reuse_port && (cfg->socket_type == SOCK_DGRAM) &&
+			    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
+				fr_strerror_const("Cannot set 'reuse_port' for connected UDP sockets with wildcard IP");
+				return -1;
+			}
+#endif
+
 			break;
 
 		case FR_BIO_FD_UNCONNECTED:
 		case FR_BIO_FD_LISTEN:
 			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
-			break;
-
-		case FR_BIO_FD_ACCEPTED:
-			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
-			fr_assert(my->info.socket.inet.dst_ipaddr.af != AF_UNSPEC);
 			break;
 		}
 
@@ -1049,19 +1093,10 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			}
 		}
 
-		/*
-		 *	It's already opened, so we don't need to do that.
-		 */
-		if (cfg->type == FR_BIO_FD_ACCEPTED) {
-			fd = my->info.socket.fd;
-			fr_assert(fd >= 0);
-
-		} else {
-			fd = socket(my->info.socket.af, my->info.socket.type, protocol);
-			if (fd < 0) {
-				fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-				return -1;
-			}
+		fd = socket(my->info.socket.af, my->info.socket.type, protocol);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+			return fr_bio_error(GENERIC);
 		}
 
 	} else if (cfg->path) {
@@ -1072,7 +1107,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		fd = socket(my->info.socket.af, my->info.socket.type, 0);
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening domain socket %s: %s", cfg->path, fr_syserror(errno));
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 
 	} else {
@@ -1123,7 +1158,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		}
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 	}
 
@@ -1131,7 +1166,8 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 *	Set it to be non-blocking if required.
 	 */
 	if (cfg->async && (fr_nonblock(fd) < 0)) {
-		fr_strerror_printf("Failed opening setting O_NONBLOCK: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed setting O_NONBLOCK: %s", fr_syserror(errno));
+		rcode = fr_bio_error(GENERIC);
 
 	fail:
 		my->info.socket = (fr_socket_t) {
@@ -1140,7 +1176,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
 		my->info.cfg = NULL;
 		close(fd);
-		return -1;
+		return rcode;
 	}
 
 #ifdef FD_CLOEXEC
@@ -1150,7 +1186,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	rcode = fcntl(fd, F_GETFD);
 	if (rcode >= 0) {
 		if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed opening setting FD_CLOEXE: %s", fr_syserror(errno));
+			fr_strerror_printf("Failed  setting FD_CLOEXEC: %s", fr_syserror(errno));
 			goto fail;
 		}
 	}
@@ -1191,11 +1227,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
-			if (fr_bio_fd_common_udp(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
 		case AF_LOCAL:
-			if (fr_bio_fd_common_datagram(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
 		case AF_FILE_BIO:
@@ -1207,9 +1243,9 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			goto fail;
 		}
 
-		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+		if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 
-		if (fr_bio_fd_init_common(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_common(my)) < 0) goto fail;
 		break;
 
 		/*
@@ -1217,8 +1253,15 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
-			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg); /* we don't use SO_REUSEPORT for clients */
-			if (rcode < 0) goto fail;
+			switch (my->info.socket.af) {
+			case AF_INET:
+			case AF_INET6:
+				if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			default:
+				if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			}
 
 		} else if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
 			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);
@@ -1227,7 +1270,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		switch (my->info.socket.af) {
 		case AF_LOCAL:
-			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_FILE_BIO:
@@ -1235,66 +1278,50 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		case AF_INET:
 		case AF_INET6:
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		default:
 			return -1;
 		}
 
-		if (fr_bio_fd_init_connected(my) < 0) goto fail;
-		break;
-
-	case FR_BIO_FD_ACCEPTED:
-#ifdef SO_NOSIGPIPE
-		/*
-		 *	Although the server ignore SIGPIPE, some operating systems like BSD and OSX ignore the
-		 *	ignoring.
-		 *
-		 *	Fortunately, those operating systems usually support SO_NOSIGPIPE.  We set that to prevent
-		 *	them raising the signal in the first place.
-		 */
-		{
-			int on = 1;
-
-			setsockopt(my->info.socket.fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
-		}
-#endif
-
-		my->info.type = FR_BIO_FD_CONNECTED;
-
-                if (fr_bio_fd_init_common(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_connected(my)) < 0) goto fail;
 		break;
 
 		/*
 		 *	Server socket which listens for new stream connections
 		 */
 	case FR_BIO_FD_LISTEN:
-		fr_assert(my->info.socket.type == SOCK_STREAM);
+		if ((my->info.socket.type == SOCK_DGRAM) && !cfg->reuse_port) {
+			fr_strerror_const("reuseport must be set for datagram sockets");
+			rcode = -1;
+			goto fail;
+		}
 
 		switch (my->info.socket.af) {
 		case AF_INET:
-			if (fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg)) < 0) goto fail;
 
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_INET6:
-			if (fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg)) < 0) goto fail;
 
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_LOCAL:
-			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
 		default:
 			fr_strerror_const("Unsupported address family for accept() socket");
+			rcode = -1;
 			goto fail;
 		}
 
-		if (fr_bio_fd_init_listen(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_listen(my)) < 0) goto fail;
 		break;
 	}
 

@@ -1,6 +1,6 @@
 # The Keyword test Framework
 
-See `update` and `default-input.attrs` for examples.
+See `*.attrs` for inputs and outputs.
 
 In short, the test framework assumes Access-Request with PAP
 authentication.  The password is hard-coded into the configuration,

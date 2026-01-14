@@ -1,4 +1,4 @@
-== Configure access restrictions for pools
+= Configure Access Restrictions for Pools
 
 We can combine what we have learned in the preceeding sections to provide pools
 whose access is restricted in some way, for example to a particular class.
@@ -41,14 +41,16 @@ These define a subnet containing a single pool that is restricted to members of
 the "printers" class. (The definition for this class is omitted.)
 
 In FreeRADIUS, to filter access to this pool entries such as the following
-should included in the `<raddb>/mods-config/files/dhcp` configuration file:
+should included in the `<raddb>/mods-config/files/dhcp_subnet` configuration file:
 
 [source,config]
 ----
-network DHCP-Network-Subnet < 10.99.99.0/24, \
-           DHCP-Group-Name == "printers", Pool-Name := "printers-pool"
-       DHCP-Router-Address := 10.99.99.1
+10.99.99.0/24 Group-Name == "printers", IP-Pool.Name := "printers-pool"
+       Router-Address := 10.99.99.1
 ----
 
-Note that any number of additional filters can be added to the initial "check"
+[NOTE]
+====
+Any number of additional filters can be added to the initial "check"
 line to restrict matches to the network block.
+====

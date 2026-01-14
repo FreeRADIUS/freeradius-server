@@ -34,11 +34,17 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/map.h>
 
 #include <sys/stat.h>
 
@@ -52,6 +58,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 
 typedef struct {
 	fr_dict_attr_t const *group_da;
+	fr_dict_attr_t const *query_number_da;
 } rlm_sql_boot_t;
 
 static const conf_parser_t module_config[] = {
@@ -67,6 +74,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("cache_groups", rlm_sql_config_t, cache_groups) },
 	{ FR_CONF_OFFSET("read_profiles", rlm_sql_config_t, read_profiles), .dflt = "yes" },
 	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
+	{ FR_CONF_OFFSET("query_number_attribute", rlm_sql_config_t, query_number_attribute) },
 
 	{ FR_CONF_OFFSET("safe_characters", rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
@@ -90,7 +98,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_sql_dict[];
 fr_dict_autoload_t rlm_sql_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_fall_through;
@@ -104,7 +112,7 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_sql_user_name, .name = "SQL-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -131,9 +139,12 @@ static const call_env_method_t xlat_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_xlat_call_env_t, filename),
 		  .pair.escape = {
-			.func = rad_filename_box_make_safe,
-			.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
-			.mode = TMPL_ESCAPE_PRE_CONCAT
+			  .box_escape = {
+				  .func = rad_filename_box_make_safe,
+				  .safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+				  .always_escape = false,
+			  },
+			  .mode = TMPL_ESCAPE_PRE_CONCAT
 		  },
 		  .pair.literals_safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
 		},
@@ -196,15 +207,6 @@ typedef struct {
 	sql_group_ctx_t		*group_ctx;	//!< Context used for retrieving user group membership.
 } sql_autz_ctx_t;
 
-/** Context for SQL maps
- *
- */
-typedef struct {
-	rlm_sql_t const		*inst;
-	map_list_t const	*maps;
-	fr_sql_query_t		*query_ctx;
-} sql_map_ctx_t;
-
 typedef struct {
 	fr_value_box_t		user;		//!< Expansion of sql_user_name.
 	fr_value_box_t		filename;	//!< File name to write SQL logs to.
@@ -214,7 +216,7 @@ typedef struct {
 static const call_env_method_t accounting_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("accounting", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -224,7 +226,7 @@ static const call_env_method_t accounting_method_env = {
 static const call_env_method_t send_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("send", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -252,7 +254,7 @@ typedef struct {
 static const call_env_method_t group_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_group_xlat_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_group_xlat_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query) },
 		CALL_ENV_TERMINATOR
 	}
@@ -264,7 +266,7 @@ int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, con
 	module_instance_t	*mi;
 	int ret;
 
-	if (unlikely(ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule) < 0)) return ret;
+	if (unlikely((ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule)) < 0)) return ret;
 
 	mi = talloc_get_type_abort(*((void **)out), module_instance_t);
 	inst->driver = (rlm_sql_driver_t const *)mi->exported; /* Public symbol exported by the submodule */
@@ -347,13 +349,38 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
-	fr_value_box_entry_t		entry;
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 
 	/*
 	 *	If it's already safe, don't do anything.
 	 */
 	if (fr_value_box_is_safe_for(vb, inst->driver)) return 0;
+
+	/*
+	 *	Don't print "::" for enum names.  Instead we convert
+	 *	the box to a string which contains the enum name, and
+	 *	then see if we need to escape it.
+	 */
+	if (vb->enumv && vb->enumv->flags.has_value) {
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(vb->enumv, vb);
+		if (name) {
+			int rcode;
+
+			/*
+			 *	Store list pointers to restore later - fr_value_box_cast clears them
+			 */
+			fr_value_box_entry_t entry = vb->entry;
+
+			rcode = fr_value_box_strdup(vb, vb, NULL, name, false);
+			vb->entry = entry;
+
+			if (rcode < 0) return rcode;
+
+			goto check_escape_arg;
+		}
+	}
 
 	/*
 	 *	No need to escape types with inherently safe data
@@ -369,6 +396,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 		break;
 	}
 
+check_escape_arg:
 	if (inst->sql_escape_arg) {
 		arg = inst->sql_escape_arg;
 	} else if (thread->sql_escape_arg) {
@@ -396,13 +424,8 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, arg);
 	if (len < 0) goto error;
 
-	/*
-	 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
-	 */
-	entry = vb->entry;
 	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_clear_value(vb);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
 
 	/*
 	 *	Different databases have slightly different ideas as
@@ -411,7 +434,6 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	 *	cross-contaminate "safe" values across databases.
 	 */
 	fr_value_box_mark_safe_for(vb, inst->driver);
-	vb->entry = entry;
 
 	return 0;
 }
@@ -474,7 +496,7 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
 	if (numaffected < 1) {
 		RDEBUG2("SQL query affected no rows");
-		goto finish;
+		numaffected = 0;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -494,7 +516,7 @@ static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	rlm_sql_t const		*inst = query_ctx->inst;
 	fr_value_box_t		*vb;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
-	rlm_rcode_t		p_result;
+	unlang_result_t		p_result;
 	rlm_sql_row_t		row;
 	bool			fetched = false;
 
@@ -510,7 +532,7 @@ static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	}
 
 	do {
-		inst->fetch_row(&p_result, NULL, request, query_ctx);
+		inst->fetch_row(&p_result, request, query_ctx);
 		row = query_ctx->row;
 		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
@@ -563,7 +585,6 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*p;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
-	rlm_rcode_t		p_result;
 	unlang_action_t		query_ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
@@ -588,7 +609,9 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
 		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
-		query_ret = inst->query(&p_result, NULL, request, query_ctx);
+
+		/* Modify current frame's rcode directly */
+		query_ret = inst->query(unlang_interpret_result(request), request, query_ctx);
 		if (query_ret == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
 		return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
@@ -598,8 +621,13 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
-	if (unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
 
+	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */ NULL,
+					     request,
+					     inst->select,
+					     NULL,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME, query_ctx) == UNLANG_ACTION_FAIL) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -628,8 +656,12 @@ static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
-	if (unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
-
+	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */NULL,
+					     request,
+					     inst->select,
+					     NULL,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -649,7 +681,6 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
-	rlm_rcode_t		p_result;
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
@@ -659,7 +690,8 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
 	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
-	if (inst->query(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
+	/* Write out the result directly to this frame's rcode */
+	if (inst->query(unlang_interpret_result(request), request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
 	return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
 }
@@ -681,7 +713,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	char const	*value = uctx;
 
-	vp = fr_pair_afrom_da_nested(ctx, out, tmpl_attr_tail_da(map->lhs));
+	vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs));
 	if (!vp) return -1;
 
 	/*
@@ -691,8 +723,10 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
 			 fr_box_strvalue_buffer(value), vp->da->name);
+		talloc_free(vp);
 		return -1;
 	}
+	fr_pair_append(out, vp);
 
 	return 0;
 }
@@ -716,18 +750,21 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED 
 
 /** Process the results of an SQL map query
  *
- * @param[out] p_result	Result of applying the map.
- * @param[in] priority	Unused.
- * @param[in] request	Current request.
- * @param[in] uctx	Map context.
- * @return One of UNLANG_ACTION_*
+ * @param p_result	Result of map expansion:
+ *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
+ *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
+ *			- #RLM_MODULE_FAIL if a fault occurred.
+ * @param mpctx		Map context, containing the module instance.
+ * @param request	The current request.
+ * @param query		string to execute.
+ * @param maps		Head of the map list.
+ * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
+				      UNUSED fr_value_box_list_t *query, map_list_t const *maps)
 {
-	sql_map_ctx_t		*map_ctx = talloc_get_type_abort(uctx, sql_map_ctx_t);
-	fr_sql_query_t		*query_ctx = map_ctx->query_ctx;
-	map_list_t const	*maps = map_ctx->maps;
-	rlm_sql_t const		*inst = map_ctx->inst;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(mpctx->rctx, fr_sql_query_t);
+	rlm_sql_t const		*inst = mpctx->moi;
 	map_t const		*map;
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
@@ -790,7 +827,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		 *	Expand the RHS to get the name of the SQL field
 		 */
 		if (tmpl_expand(&map_rhs, map_rhs_buff, sizeof(map_rhs_buff),
-				request, map->rhs, NULL, NULL) < 0) {
+				request, map->rhs) < 0) {
 			RPERROR("Failed getting field name");
 			goto error;
 		}
@@ -819,7 +856,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
 	 */
-	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(p_result, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		row = query_ctx->row;
 		rows++;
@@ -844,9 +881,9 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 
 finish:
 	talloc_free(fields);
-	talloc_free(map_ctx);
+	talloc_free(query_ctx);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Executes a SELECT query and maps the result to server attributes
@@ -855,20 +892,19 @@ finish:
  *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if a fault occurred.
- * @param mod_inst #rlm_sql_t instance.
- * @param proc_inst Instance data for this specific mod_proc call (unused).
- * @param request The current request.
- * @param query string to execute.
- * @param maps Head of the map list.
+ * @param mpctx		Map context, containing the module instance.
+ * @param request	The current request.
+ * @param query		string to execute.
+ * @param maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
-				    fr_value_box_list_t *query, map_list_t const *maps)
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
+				    fr_value_box_list_t *query, UNUSED map_list_t const *maps)
 {
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(mod_inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mpctx->moi, rlm_sql_t);
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 	fr_value_box_t		*query_head = fr_value_box_list_head(query);
-	sql_map_ctx_t		*map_ctx;
+	fr_sql_query_t		*query_ctx = NULL;
 	fr_value_box_t		*vb = NULL;
 	rlm_sql_escape_uctx_t	*escape_uctx = NULL;
 
@@ -876,7 +912,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	if (!query_head) {
 		REDEBUG("Query cannot be (null)");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	while ((vb = fr_value_box_list_next(query, vb))) {
@@ -890,22 +926,20 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 					      FR_VALUE_BOX_LIST_FREE, true,
 					      SIZE_MAX) < 0) {
 		RPEDEBUG("Failed concatenating input string");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	MEM(map_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), sql_map_ctx_t));
-	*map_ctx = (sql_map_ctx_t) {
-		.inst = inst,
-		.maps = maps,
-	};
+	query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
+				       thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT);
 
-	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx, inst, request,
-						    thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT));
-
-	if (unlang_function_push(request, NULL, mod_map_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) RETURN_MODULE_FAIL;
-
-	return unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, map_ctx->query_ctx);
+	if (unlang_map_yield(request, mod_map_resume, NULL, 0, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
+	return unlang_function_push_with_result(/* discard, mod_map_resume just uses query_ctx->rcode */ NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						query_ctx);
 }
 
 /** xlat escape function for drivers which do not provide their own
@@ -1054,7 +1088,7 @@ struct rlm_sql_grouplist_s {
 	rlm_sql_grouplist_t	*next;
 };
 
-static unlang_action_t sql_get_grouplist_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t sql_get_grouplist_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	sql_group_ctx_t		*group_ctx = talloc_get_type_abort(uctx, sql_group_ctx_t);
 	fr_sql_query_t		*query_ctx = group_ctx->query_ctx;
@@ -1064,11 +1098,12 @@ static unlang_action_t sql_get_grouplist_resume(rlm_rcode_t *p_result, UNUSED in
 
 	if (query_ctx->rcode != RLM_SQL_OK) {
 	error:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		talloc_free(query_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(p_result, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 		(query_ctx->rcode == RLM_SQL_OK)) {
 		row = query_ctx->row;
 		if (!row[0]){
@@ -1090,10 +1125,10 @@ static unlang_action_t sql_get_grouplist_resume(rlm_rcode_t *p_result, UNUSED in
 	}
 
 	talloc_free(query_ctx);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t sql_get_grouplist(sql_group_ctx_t *group_ctx, trunk_t *trunk, request_t *request)
+static unlang_action_t sql_get_grouplist(unlang_result_t *p_result, sql_group_ctx_t *group_ctx, trunk_t *trunk, request_t *request)
 {
 	rlm_sql_t const		*inst = group_ctx->inst;
 
@@ -1104,9 +1139,20 @@ static unlang_action_t sql_get_grouplist(sql_group_ctx_t *group_ctx, trunk_t *tr
 	MEM(group_ctx->query_ctx = fr_sql_query_alloc(group_ctx, inst, request, trunk,
 						      group_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
-	if (unlang_function_push(request, NULL, sql_get_grouplist_resume, NULL, 0, UNLANG_SUB_FRAME, group_ctx) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* sql_get_grouplist_resume translates the query_ctx->rocde into a module rcode */p_result,
+					     request,
+				 NULL,
+				 sql_get_grouplist_resume,
+				 NULL,
+				 0, UNLANG_SUB_FRAME,
+				 group_ctx) < 0) return UNLANG_ACTION_FAIL;
 
-	return unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, group_ctx->query_ctx);
+	return unlang_function_push_with_result(/* discard, sql_get_grouplist_resume translates rcodes */NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME, group_ctx->query_ctx);
 }
 
 typedef struct {
@@ -1168,8 +1214,9 @@ static xlat_action_t sql_group_xlat_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 
 	if (unlang_xlat_yield(request, sql_group_xlat_query_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
-	if (sql_get_grouplist(xlat_ctx->group_ctx, thread->trunk, request) != UNLANG_ACTION_PUSHED_CHILD)
-			return XLAT_ACTION_FAIL;
+	if (sql_get_grouplist(NULL, xlat_ctx->group_ctx, thread->trunk, request) != UNLANG_ACTION_PUSHED_CHILD) {
+		return XLAT_ACTION_FAIL;
+	}
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -1204,7 +1251,7 @@ static xlat_action_t sql_group_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	fr_value_box_list_init(&xlat_ctx->query);
 
 	if (unlang_xlat_yield(request, sql_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
-	if (unlang_tmpl_push(xlat_ctx, &xlat_ctx->query, request, call_env->membership_query, NULL) < 0) return XLAT_ACTION_FAIL;
+	if (unlang_tmpl_push(xlat_ctx, NULL, &xlat_ctx->query, request, call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -1280,14 +1327,13 @@ static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
  * Before each query is run, &request.SQL-Group is populated with the value of the group being evaluated.
  *
  * @param p_result	Result of current authorization.
- * @param priority	Unused.
- * @param request	Current request.
- * @param uctx		Current authorization context.
+ * @param mctx		Current request.
+ * @param request	Current authorization context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, sql_autz_ctx_t);
+	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(mctx->rctx, sql_autz_ctx_t);
 	sql_autz_call_env_t	*call_env = autz_ctx->call_env;
 	sql_group_ctx_t		*group_ctx = autz_ctx->group_ctx;
 	fr_sql_map_ctx_t	*map_ctx = autz_ctx->map_ctx;
@@ -1296,7 +1342,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 	sql_fall_through_t	do_fall_through = FALL_THROUGH_DEFAULT;
 	fr_pair_t		*vp;
 
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -1306,14 +1352,15 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_GROUP_MEMB:
-		if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
+		if (!query) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		MEM(autz_ctx->group_ctx = talloc(autz_ctx, sql_group_ctx_t));
 		*autz_ctx->group_ctx = (sql_group_ctx_t) {
 			.inst = inst,
 			.query = query,
 		};
 
-		if (sql_get_grouplist(autz_ctx->group_ctx, autz_ctx->trunk, request) == UNLANG_ACTION_PUSHED_CHILD) {
+		if (sql_get_grouplist(p_result, autz_ctx->group_ctx, autz_ctx->trunk, request) == UNLANG_ACTION_PUSHED_CHILD) {
 			autz_ctx->status = SQL_AUTZ_GROUP_MEMB_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1355,9 +1402,9 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 		}
 
 		if (call_env->group_check_query) {
-			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->group_check_query, NULL) < 0) RETURN_MODULE_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->group_check_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -1367,6 +1414,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	case SQL_AUTZ_GROUP_CHECK:
 	case SQL_AUTZ_PROFILE_CHECK:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1375,8 +1423,8 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 			.query = query,
 		};
 
-		if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
-		if (sql_get_map_list(request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_CHECK_RESUME : SQL_AUTZ_PROFILE_CHECK_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1409,9 +1457,9 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 		if (call_env->group_reply_query) {
 		group_reply_push:
-			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->group_reply_query, NULL) < 0) RETURN_MODULE_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->group_reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY : SQL_AUTZ_PROFILE_REPLY;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1422,6 +1470,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	case SQL_AUTZ_GROUP_REPLY:
 	case SQL_AUTZ_PROFILE_REPLY:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1431,8 +1480,8 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 			.expand_rhs = true,
 		};
 
-		if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
-		if (sql_get_map_list(request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
+		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD) {
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY_RESUME : SQL_AUTZ_PROFILE_REPLY_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1466,7 +1515,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 		if (radius_legacy_map_list_apply(request, &autz_ctx->reply_tmp, NULL) < 0) {
 			RPEDEBUG("Failed applying reply item");
 			REXDENT();
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		REXDENT();
 		map_list_talloc_free(&autz_ctx->reply_tmp);
@@ -1503,22 +1552,21 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 		}
 	}
 
-	if (!autz_ctx->user_found) RETURN_MODULE_NOTFOUND;
+	if (!autz_ctx->user_found) RETURN_UNLANG_NOTFOUND;
 
-	RETURN_MODULE_RCODE(autz_ctx->rcode);
+	RETURN_UNLANG_RCODE(autz_ctx->rcode);
 }
 
 /** Resume function called after authorization check / reply tmpl expansion
  *
  * @param p_result	Result of current authorization.
- * @param priority	Unused.
+ * @param mctx		Module call ctx.
  * @param request	Current request.
- * @param uctx		Current authorization context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, sql_autz_ctx_t);
+	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(mctx->rctx, sql_autz_ctx_t);
 	sql_autz_call_env_t	*call_env = autz_ctx->call_env;
 	rlm_sql_t const		*inst = autz_ctx->inst;
 	fr_value_box_t		*query = fr_value_box_list_pop_head(&autz_ctx->query);
@@ -1528,7 +1576,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 	/*
 	 *	If a previous async call returned one of the "failure" results just return.
 	 */
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -1538,6 +1586,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_CHECK:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1546,8 +1595,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 			.query = query,
 		};
 
-		if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) RETURN_MODULE_FAIL;
-		if (sql_get_map_list(request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
 			autz_ctx->status = SQL_AUTZ_CHECK_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1573,12 +1622,13 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 
 		if (!call_env->reply_query) goto skip_reply;
 
-		if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) RETURN_MODULE_FAIL;
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) RETURN_MODULE_FAIL;
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 		autz_ctx->status = SQL_AUTZ_REPLY;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case SQL_AUTZ_REPLY:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1588,8 +1638,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 			.expand_rhs = true,
 		};
 
-		if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) RETURN_MODULE_FAIL;
-		if (sql_get_map_list(request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
+		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+		if (sql_get_map_list(p_result, request, map_ctx, autz_ctx->trunk) == UNLANG_ACTION_PUSHED_CHILD){
 			autz_ctx->status = SQL_AUTZ_REPLY_RESUME;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1613,7 +1663,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 			if (radius_legacy_map_list_apply(request, &autz_ctx->reply_tmp, NULL) < 0) {
 				RPEDEBUG("Failed applying item");
 				REXDENT();
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 			REXDENT();
 
@@ -1635,9 +1685,9 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 				break;
 			}
 
-			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->membership_query, NULL) < 0) RETURN_MODULE_FAIL;
+			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1656,23 +1706,23 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 
 			MEM(pair_update_request(&autz_ctx->sql_group, inst->group_da) >= 0);
 			autz_ctx->status = SQL_AUTZ_PROFILE_START;
-			return mod_autz_group_resume(p_result, priority, request, autz_ctx);
+			return mod_autz_group_resume(p_result, mctx, request);
 		}
 		break;
 
 	default:
-		fr_assert(0);
+		fr_assert_msg(0, "Invalid status %d in mod_authorize_resume", autz_ctx->status);
 	}
 
-	if (!autz_ctx->user_found) RETURN_MODULE_NOTFOUND;
-	RETURN_MODULE_RCODE(autz_ctx->rcode);
+	if (!autz_ctx->user_found) RETURN_UNLANG_NOTFOUND;
+	RETURN_UNLANG_RCODE(autz_ctx->rcode);
 }
 
 /** Start of module authorize method
  *
  * Pushes the tmpl relating to the first required query for evaluation
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
@@ -1684,7 +1734,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!call_env->check_query && !call_env->reply_query && !(inst->config.read_groups && call_env->membership_query)) {
 		RWDEBUG("No authorization checks configured, returning noop");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -1705,12 +1755,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	MEM(autz_ctx->map_ctx = talloc_zero(autz_ctx, fr_sql_map_ctx_t));
 	talloc_set_destructor(autz_ctx, sql_autz_ctx_free);
 
-	if (unlang_function_push(request, NULL,
-				 (call_env->check_query || call_env->reply_query) ? mod_authorize_resume : mod_autz_group_resume,
-				 NULL, 0, UNLANG_SUB_FRAME, autz_ctx) < 0) {
+	if (unlang_module_yield(request,
+				(call_env->check_query || call_env->reply_query) ? mod_authorize_resume : mod_autz_group_resume,
+				NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) {
 	error:
 		talloc_free(autz_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	fr_value_box_list_init(&autz_ctx->query);
@@ -1719,13 +1769,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (call_env->check_query) {
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->check_query, NULL) < 0) goto error;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->check_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		autz_ctx->status = SQL_AUTZ_CHECK;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	if (call_env->reply_query) {
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) goto error;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->reply_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		autz_ctx->status = SQL_AUTZ_REPLY;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
@@ -1733,7 +1783,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Neither check nor reply queries were set, so we must be doing group stuff
 	 */
-	if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->membership_query, NULL) < 0) goto error;
+	if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 	autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -1750,24 +1800,22 @@ static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 	return 0;
 }
 
-static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
+static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Resume function called after executing an SQL query in a redundant list of queries.
  *
  * @param p_result	Result of current module call.
- * @param priority	Unused.
+ * @param mctx		Current module ctx.
  * @param request	Current request.
- * @param uctx		Current redundant sql context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(mctx->rctx, sql_redundant_ctx_t);
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
 	fr_sql_query_t			*query_ctx = redundant_ctx->query_ctx;
 	int				numaffected = 0;
-	tmpl_t				*next_query;
 
 	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
 
@@ -1788,13 +1836,15 @@ static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNU
 	 *	so we do not need to call fr_pool_connection_release.
 	 */
 	case RLM_SQL_RECONNECT:
-		RETURN_MODULE_FAIL;
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Query was invalid, this is a terminal error.
 	 */
 	case RLM_SQL_QUERY_INVALID:
-		RETURN_MODULE_INVALID;
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		RETURN_UNLANG_INVALID;
 
 	/*
 	 *	Driver found an error (like a unique key constraint violation)
@@ -1815,17 +1865,24 @@ static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNU
 	TALLOC_FREE(query_ctx);
 	RDEBUG2("%i record(s) updated", numaffected);
 
-	if (numaffected > 0) RETURN_MODULE_OK;	/* A query succeeded, were done! */
+	if (numaffected > 0) {
+		if (inst->query_number_da) {
+			fr_pair_t	*vp;
+			if (unlikely(pair_update_control(&vp, inst->query_number_da) < 0)) RETURN_UNLANG_FAIL;
+			vp->vp_uint32 = redundant_ctx->query_no + 1;
+			RDEBUG2("control.%pP", vp);
+		}
+		RETURN_UNLANG_OK;	/* A query succeeded, were done! */
+	}
 next:
 	/*
 	 *	Look to see if there are any more queries to expand
 	 */
 	talloc_free(query_ctx);
 	redundant_ctx->query_no++;
-	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_MODULE_NOOP;
-	next_query = *(tmpl_t **)((uint8_t *)call_env->query + sizeof(void *) * redundant_ctx->query_no);
-	if (unlang_function_repeat_set(request, mod_sql_redundant_resume) < 0) RETURN_MODULE_FAIL;
-	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, next_query, NULL) < 0) RETURN_MODULE_FAIL;
+	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_UNLANG_NOOP;
+	if (unlang_module_yield(request, mod_sql_redundant_resume, NULL, 0, redundant_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
+	if (unlang_tmpl_push(redundant_ctx, NULL, &redundant_ctx->query, request, call_env->query[redundant_ctx->query_no], NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 
 	RDEBUG2("Trying next query...");
 
@@ -1836,19 +1893,18 @@ next:
 /** Resume function called after expansion of next query in a redundant list of queries
  *
  * @param p_result	Result of current module call.
- * @param priority	Unused.
+ * @param mctx		Current module ctx.
  * @param request	Current request.
- * @param uctx		Current redundant sql context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(mctx->rctx, sql_redundant_ctx_t);
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
 
 	redundant_ctx->query_vb = fr_value_box_list_pop_head(&redundant_ctx->query);
-	if (!redundant_ctx->query_vb) RETURN_MODULE_FAIL;
+	if (!redundant_ctx->query_vb) RETURN_UNLANG_FAIL;
 
 	if ((call_env->filename.type == FR_TYPE_STRING) && (call_env->filename.vb_length > 0)) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, redundant_ctx->query_vb->vb_strvalue);
@@ -1857,9 +1913,14 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	MEM(redundant_ctx->query_ctx = fr_sql_query_alloc(redundant_ctx, inst, request, redundant_ctx->trunk,
 							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
 
-	if (unlang_function_repeat_set(request, mod_sql_redundant_query_resume) < 0) RETURN_MODULE_FAIL;
-
-	return unlang_function_push(request, inst->query, NULL, NULL, 0, UNLANG_SUB_FRAME, redundant_ctx->query_ctx);
+	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, 0, redundant_ctx);
+	return unlang_function_push_with_result(/* discard, mod_sql_redundant_query_resume uses query_ctx->rcode*/ NULL,
+						request,
+						inst->query,
+						NULL,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						redundant_ctx->query_ctx);
 }
 
 /**  Generic module call for failing between a bunch of queries.
@@ -1867,7 +1928,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
  * Used for `accounting` and `send` module calls
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
@@ -1879,7 +1940,7 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 	 */
 	if (!call_env->query) {
 		RWARN("No query configured");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	MEM(redundant_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), sql_redundant_ctx_t));
@@ -1894,13 +1955,10 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 
 	sql_set_user(inst, request, &call_env->user);
 
-	if (unlang_function_push(request, NULL, mod_sql_redundant_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, redundant_ctx) < 0) RETURN_MODULE_FAIL;
-
 	fr_value_box_list_init(&redundant_ctx->query);
-	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, *call_env->query, NULL) < 0) RETURN_MODULE_FAIL;
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_module_yield_to_tmpl(request, &redundant_ctx->query, request, *call_env->query,
+					   NULL, mod_sql_redundant_resume, NULL, 0, redundant_ctx);
 }
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
@@ -1957,10 +2015,13 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	 *	Use filename safety escape functions
 	 */
 	our_rules = *t_rules;
-	our_rules.escape.func = rad_filename_box_make_safe;
-	our_rules.escape.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = rad_filename_box_make_safe,
+		.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		.always_escape = false,
+	};
 	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	MEM(parsed_env = call_env_parsed_add(ctx, out,
 					     &(call_env_parser_t){ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, filename)}));
@@ -2026,12 +2087,15 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	 */
 	our_rules = *t_rules;
 	our_rules.escape = (tmpl_escape_t) {
-		.func = sql_box_escape,
+		.box_escape = (fr_value_box_escape_t) {
+			.func = sql_box_escape,
+			.safe_for = SQL_SAFE_FOR,
+			.always_escape = false,
+		},
 		.uctx = { .func = { .uctx = inst, .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC },
-		.safe_for = SQL_SAFE_FOR,
 		.mode = TMPL_ESCAPE_PRE_CONCAT,
 	};
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	while ((to_parse = cf_pair_find_next(subcs, to_parse, "query"))) {
 		MEM(parsed_env = call_env_parsed_add(ctx, out,
@@ -2091,6 +2155,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	point in making rlm_sql_boot_t available everywhere.
 	 */
 	inst->group_da = boot->group_da;
+	inst->query_number_da = boot->query_number_da;
 
 	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
 	inst->mi = mctx->mi;		/* For looking up thread instance data */
@@ -2141,9 +2206,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->sql_escape_func = sql_escape_func;
 		inst->sql_escape_arg = inst;
 	}
-	inst->box_escape_func = sql_box_escape;
+	inst->box_escape = (fr_value_box_escape_t) {
+		.func = sql_box_escape,
+		.safe_for = SQL_SAFE_FOR,
+		.always_escape = false,
+	};
 
-	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, false, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
@@ -2168,7 +2237,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	return 0;
+	if (!inst->config.trunk_conf.conn_triggers) return 0;
+
+	MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+	return module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
+					&(module_trigger_args_t) {
+						.module = inst->mi->module->name,
+						.name = inst->name,
+						.server = inst->config.sql_server,
+						.port = inst->config.sql_port
+					});
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
@@ -2236,6 +2314,35 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
 		xlat_func_args_set(xlat, sql_xlat_arg);
+	}
+
+	/*
+	 *	If we need to record which query from a redundant set succeeds, find / create the attribute to use.
+	 */
+	if (inst->config.query_number_attribute) {
+		boot->query_number_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius),
+							     inst->config.query_number_attribute);
+		if (!boot->query_number_da) {
+			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+			    inst->config.query_number_attribute, FR_TYPE_UINT32, NULL) < 0) {
+				ERROR("Failed defining query number attribute \"%s\"", inst->config.query_number_attribute);
+				return -1;
+			}
+
+			boot->query_number_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
+										     inst->config.query_number_attribute,
+										     false, false);
+			if (!boot->query_number_da) {
+				ERROR("Failed resolving query number attribute \"%s\"", inst->config.query_number_attribute);
+				return -1;
+			}
+		} else {
+			if (boot->query_number_da->type != FR_TYPE_UINT32) {
+				ERROR("Query number attribute \"%s\" is type \"%s\", needs to be uint32",
+				      inst->config.query_number_attribute, fr_type_to_str(boot->query_number_da->type));
+				return -1;
+			}
+		}
 	}
 
 	/*
@@ -2317,29 +2424,29 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
 	if (inst->driver->sql_escape_arg_alloc) {
-		t->sql_escape_arg = inst->driver->sql_escape_arg_alloc(t, mctx->el, inst);
-		if (!t->sql_escape_arg) return -1;
+		thread->sql_escape_arg = inst->driver->sql_escape_arg_alloc(thread, mctx->el, inst);
+		if (!thread->sql_escape_arg) return -1;
 	}
 
-	t->inst = inst;
+	thread->inst = inst;
 
-	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
-				  &inst->config.trunk_conf, inst->name, t, false);
-	if (!t->trunk) return -1;
+	thread->trunk = trunk_alloc(thread, mctx->el, &inst->driver->trunk_io_funcs,
+			       &inst->config.trunk_conf, inst->name, thread, false, inst->trigger_args);
+	if (!thread->trunk) return -1;
 
 	return 0;
 }
 
 static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
-	if (inst->driver->sql_escape_arg_free) inst->driver->sql_escape_arg_free(t->sql_escape_arg);
+	if (inst->driver->sql_escape_arg_free) inst->driver->sql_escape_arg_free(thread->sql_escape_arg);
 
 	return 0;
 }
@@ -2348,8 +2455,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *
  * Needed as the escape function needs to reference the correct SQL driver
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			      call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sql_t);
 	tmpl_t			*parsed_tmpl;
@@ -2360,9 +2467,12 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 *	Set the sql module instance data as the uctx for escaping
 	 *	and use the same "safe_for" as the sql module.
 	 */
-	our_rules.escape.func = sql_box_escape;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = sql_box_escape,
+		.safe_for = SQL_SAFE_FOR,
+		.always_escape = false,
+	};
 	our_rules.escape.uctx.func.uctx = inst;
-	our_rules.escape.safe_for = SQL_SAFE_FOR;
 	our_rules.literals_safe_for = SQL_SAFE_FOR;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
@@ -2376,12 +2486,12 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 #define QUERY_ESCAPE .pair.escape = { \
 	.mode = TMPL_ESCAPE_PRE_CONCAT, \
 	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
-}, .pair.func = call_env_parse
+}, .pair.func = sql_call_env_parse
 
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_autz_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query), QUERY_ESCAPE },

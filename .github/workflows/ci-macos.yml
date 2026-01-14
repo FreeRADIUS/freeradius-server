@@ -46,7 +46,7 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-14,     NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-15,     NAME: macos-clang         }
 
     env: ${{ matrix.env }}
 
@@ -93,7 +93,7 @@ jobs:
           libidn \
           libmemcached \
           libyubikey \
-          llvm@14 \
+          llvm@18 \
           luajit \
           mariadb \
           make \
@@ -119,7 +119,7 @@ jobs:
     #
     - name: Set path for clang
       run: |
-        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV
 
     #
     #  Ensure Python 3.10 is used
@@ -129,41 +129,21 @@ jobs:
         echo "PATH=`brew --prefix python@3.10`/bin/:$PATH" >> $GITHUB_ENV
 
     #
+    #  Ensure Homebrew installed OpenSSL is used
+    #
+    - name: Set path for OpenSSL
+      run: |
+        echo "PATH=`brew --prefix openssl`/bin/:$PATH" >> $GITHUB_ENV
+
+    #
     #  Build using some alternative libraries
     #
     #    PCRE 2       -> PCRE 1
     #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
-
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v4
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
-
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=. --debug
-        make -j `nproc`
-        make install_sw
-
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
         sudo ldconfig
         sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
         sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
@@ -177,7 +157,6 @@ jobs:
         krb5-config --all || :
         pcre-config --libs-posix --version 2>/dev/null || :
         pcre2-config --libs-posix --version 2>/dev/null || :
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         openssl version
 
     - name: Configure
@@ -194,9 +173,6 @@ jobs:
         build_paths=""
         if [ "`uname`" = "Darwin" ]; then
             build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include --with-rlm-python-config-bin=`brew --prefix python@3.10`/bin/python3.10-config"
-        elif [ -d /opt/openssl ]; then
-            export PATH=/opt/openssl/bin:$PATH
-            build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
         fi
         CFLAGS="${BUILD_CFLAGS}" ./configure -C \
             --enable-developer \
@@ -215,7 +191,6 @@ jobs:
 
     - name: Make
       run: |
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         make -j `nproc`
 
     - name: "Clang Static Analyzer: Store assets on failure"

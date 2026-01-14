@@ -1,0 +1,34 @@
+= unlang(5)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:manvolnum: 5
+
+== NAME
+
+unlang - Unlang Policy Language
+
+== DESCRIPTION
+
+The server supports a simple processing language called "Unlang",
+which is short for "un-language". The original intention of using an
+"un-language" was to avoid creating yet another programming language.
+Instead, the `unlang` syntax allows for simple _if / then / else_
+checks, and attribute editing.  It does not support recursion,
+functions, infinite loops, or a host of other normal language
+features.
+
+include::../unlang/keywords.adoc[]
+
+== SEE ALSO
+
+radiusd(8) radiusd.conf(5)
+
+== AUTHOR
+
+The FreeRADIUS Server Project (https://freeradius.org)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -11,13 +11,13 @@ Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or i
 .Expression in a Condition
 [source,unlang]
 ----
-(&NAS-Port == 1 + 2)
+(NAS-Port == 1 + 2)
 ----
 
 .Expression in an assignment
 [source,unlang]
 ----
-&NAS-Port = 1 + 2
+NAS-Port = 1 + 2
 ----
 
 == Operators in an Expression
@@ -62,7 +62,7 @@ supported.  For example:
 
 [source,unlang]
 ----
-&NAS-Port = 5 + (&User-Name == "bob")
+NAS-Port = 5 + (User-Name == "bob")
 ----
 
 This expression will return `6` if the users name is `bob`, and `5` otherwise.
@@ -76,10 +76,10 @@ You can just put math in-place, as with the following example:
 
 [source,unlang]
 ----
-&Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
+Filter-Id = "Adding %{NAS-Port} + 4 = %{NAS-Port + 4}"
 ----
 
-The old ``%{expr:...}` syntax will return an error in v4.  That functiuonality is no longer supported.
+The old ``%{expr:...}` syntax will return an error in v4.  That functionality is no longer supported.
 
 == Data Types
 
@@ -93,19 +93,19 @@ data types.  (And incidentally, `-` is the inverse of `+`!)
 
 [source,unlang]
 ----
-&Reply-Message := "foo" + "bar"
+Reply-Message := "foo" + "bar"
 ----
 
-Will result in `&Reply-Message == "foobar"`.
+Will result in `Reply-Message == "foobar"`.
 
 The suffix can then be "subtracted" off, with:
 
 [source,unlang]
 ----
-&Reply-Message -= "bar"
+Reply-Message -= "bar"
 ----
 
-Will result in `&Reply-Message == "foo"` !.
+Will result in `Reply-Message == "foo"` !.
 
 Other data types will generally yield results which make sense.  For
 example:
@@ -116,7 +116,7 @@ example:
 * `ipv4addr` types can be subtracted, and will return a number which is the number of IPs between the two values,
 * two `date` values can be subtracted, and will return a `time_delta`,
 * operations on integers are upgraded to the next largest integer size when necessary,
-* the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `&Foo := (&User-Password || "help")` will return the contents of `&User-Name` if it exists, otherwise it will return the string `help`.
+* the logical operators `&` and `||` return the value which caused them to succeed, e.g. `Foo := (User-Password || "help")` will return the contents of `User-Name` if it exists, otherwise it will return the string `help`.
 
 In most cases, the data types are derived from the attribute
 dictionaries.  However, it is sometimes necessary to force the fields
@@ -130,7 +130,7 @@ syntax.  The old syntax of `<type>` is not accepted.
 
 [source,unlang]
 ----
-&NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
+NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
 ----
 
 == Errors
@@ -144,7 +144,7 @@ A `null` result can be removed via the `||` operator.  For example:
 
 [source,unlang]
 ----
-&NAS-Port-Id = (5 - "foo") || 6
+NAS-Port-Id = (5 - "foo") || 6
 ----
 
 Will return `6`, as the left side expression of the `||` operator evaluates to `null`.

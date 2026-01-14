@@ -18,112 +18,112 @@
 --
 
 CREATE TABLE [radacct] (
-	[RadAcctId] [numeric](21, 0) IDENTITY (1, 1) NOT NULL,
-	[AcctSessionId] [varchar] (64) NOT NULL,
-	[AcctUniqueId] [varchar] (32) NOT NULL,
-	[UserName] [varchar] (64) NOT NULL,
-	[GroupName] [varchar] (64) NOT NULL,
-	[Realm] [varchar] (64) NOT NULL,
-	[NASIPAddress] [varchar] (15) NOT NULL,
-	[NASPortId] [varchar] (15) NULL,
-	[NASPortType] [varchar] (32) NULL,
-	[AcctStartTime] [datetime] NOT NULL,
-	[AcctUpdateTime] [datetime] NOT NULL,
-	[AcctStopTime] [datetime] NOT NULL,
-	[AcctInterval] [bigint] NULL,
-	[AcctSessionTime] [bigint] NULL,
-	[AcctAuthentic] [varchar] (32) NULL,
-	[ConnectInfo_start] [varchar] (32) NULL,
-	[ConnectInfo_stop] [varchar] (32) NULL,
-	[AcctInputOctets] [bigint] NULL,
-	[AcctOutputOctets] [bigint] NULL,
-	[CalledStationId] [varchar] (30) NOT NULL,
-	[CallingStationId] [varchar] (30) NOT NULL,
-	[AcctTerminateCause] [varchar] (32) NOT NULL,
-	[ServiceType] [varchar] (32) NULL,
-	[FramedProtocol] [varchar] (32) NULL,
-	[FramedIPAddress] [varchar] (15) NOT NULL,
-	[FramedIPv6Address] [varchar] (45) NOT NULL,
-	[FramedIPv6Prefix] [varchar] (45) NOT NULL,
-	[FramedInterfaceId] [varchar] (44) NOT NULL,
-	[DelegatedIPv6Prefix] [varchar] (45) NOT NULL,
-	[Class] [varchar] (64) NULL
+	[radacctid] [numeric](21, 0) IDENTITY (1, 1) NOT NULL,
+	[acctsessionid] [varchar] (64) NOT NULL,
+	[acctuniqueid] [varchar] (32) NOT NULL,
+	[username] [varchar] (64) NOT NULL,
+	[groupname] [varchar] (64) NOT NULL,
+	[realm] [varchar] (64) NOT NULL,
+	[nasipaddress] [varchar] (15) NOT NULL,
+	[nasportid] [varchar] (15) NULL,
+	[nasporttype] [varchar] (32) NULL,
+	[acctstarttime] [datetime] NOT NULL,
+	[acctupdatetime] [datetime] NOT NULL,
+	[acctstoptime] [datetime] NOT NULL,
+	[acctinterval] [bigint] NULL,
+	[acctsessiontime] [bigint] NULL,
+	[acctauthentic] [varchar] (32) NULL,
+	[connectinfo_start] [varchar] (32) NULL,
+	[connectinfo_stop] [varchar] (32) NULL,
+	[acctinputoctets] [bigint] NULL,
+	[acctoutputoctets] [bigint] NULL,
+	[calledstationid] [varchar] (30) NOT NULL,
+	[callingstationid] [varchar] (30) NOT NULL,
+	[acctterminatecause] [varchar] (32) NOT NULL,
+	[servicetype] [varchar] (32) NULL,
+	[framedprotocol] [varchar] (32) NULL,
+	[framedipaddress] [varchar] (15) NOT NULL,
+	[framedipv6address] [varchar] (45) NOT NULL,
+	[framedipv6prefix] [varchar] (45) NOT NULL,
+	[framedinterfaceid] [varchar] (44) NOT NULL,
+	[delegatedipv6prefix] [varchar] (45) NOT NULL,
+	[class] [varchar] (64) NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radacct] WITH NOCHECK ADD
-	CONSTRAINT [DF_radacct_GroupName] DEFAULT ('') FOR [GroupName],
-	CONSTRAINT [DF_radacct_AcctSessionId] DEFAULT ('') FOR [AcctSessionId],
-	CONSTRAINT [DF_radacct_AcctUniqueId] DEFAULT ('') FOR [AcctUniqueId],
-	CONSTRAINT [DF_radacct_UserName] DEFAULT ('') FOR [UserName],
-	CONSTRAINT [DF_radacct_Realm] DEFAULT ('') FOR [Realm],
-	CONSTRAINT [DF_radacct_NASIPAddress] DEFAULT ('') FOR [NASIPAddress],
-	CONSTRAINT [DF_radacct_NASPortId] DEFAULT (null) FOR [NASPortId],
-	CONSTRAINT [DF_radacct_NASPortType] DEFAULT (null) FOR [NASPortType],
-	CONSTRAINT [DF_radacct_AcctStartTime] DEFAULT ('1900-01-01 00:00:00') FOR [AcctStartTime],
-	CONSTRAINT [DF_radacct_AcctUpdateTime] DEFAULT ('1900-01-01 00:00:00') FOR [AcctUpdateTime],
-	CONSTRAINT [DF_radacct_AcctStopTime] DEFAULT ('1900-01-01 00:00:00') FOR [AcctStopTime],
-	CONSTRAINT [DF_radacct_AcctSessionTime] DEFAULT (null) FOR [AcctSessionTime],
-	CONSTRAINT [DF_radacct_AcctAuthentic] DEFAULT (null) FOR [AcctAuthentic],
-	CONSTRAINT [DF_radacct_ConnectInfo_start] DEFAULT (null) FOR [ConnectInfo_start],
-	CONSTRAINT [DF_radacct_ConnectInfo_stop] DEFAULT (null) FOR [ConnectInfo_stop],
-	CONSTRAINT [DF_radacct_AcctInputOctets] DEFAULT (null) FOR [AcctInputOctets],
-	CONSTRAINT [DF_radacct_AcctOutputOctets] DEFAULT (null) FOR [AcctOutputOctets],
-	CONSTRAINT [DF_radacct_CalledStationId] DEFAULT ('') FOR [CalledStationId],
-	CONSTRAINT [DF_radacct_CallingStationId] DEFAULT ('') FOR [CallingStationId],
-	CONSTRAINT [DF_radacct_AcctTerminateCause] DEFAULT ('') FOR [AcctTerminateCause],
-	CONSTRAINT [DF_radacct_ServiceType] DEFAULT (null) FOR [ServiceType],
-	CONSTRAINT [DF_radacct_FramedProtocol] DEFAULT (null) FOR [FramedProtocol],
-	CONSTRAINT [DF_radacct_FramedIPAddress] DEFAULT ('') FOR [FramedIPAddress],
-	CONSTRAINT [DF_radacct_FramedIPv6Address] DEFAULT ('') FOR [FramedIPv6Address],
-	CONSTRAINT [DF_radacct_FramedIPv6Prefix] DEFAULT ('') FOR [FramedIPv6Prefix],
-	CONSTRAINT [DF_radacct_FramedInterfaceId] DEFAULT ('') FOR [FramedInterfaceId],
-	CONSTRAINT [DF_radacct_DelegatedIPv6Prefix] DEFAULT ('') FOR [DelegatedIPv6Prefix],
-	CONSTRAINT [DF_radacct_Class] DEFAULT (null) FOR [Class],
+	CONSTRAINT [DF_radacct_groupname] DEFAULT ('') FOR [groupname],
+	CONSTRAINT [DF_radacct_acctsessionid] DEFAULT ('') FOR [acctsessionid],
+	CONSTRAINT [DF_radacct_acctuniqueid] DEFAULT ('') FOR [acctnniqueid],
+	CONSTRAINT [DF_radacct_username] DEFAULT ('') FOR [username],
+	CONSTRAINT [DF_radacct_realm] DEFAULT ('') FOR [realm],
+	CONSTRAINT [DF_radacct_nasipaddress] DEFAULT ('') FOR [nasipaddress],
+	CONSTRAINT [DF_radacct_nasportid] DEFAULT (null) FOR [nasportid],
+	CONSTRAINT [DF_radacct_nasporttype] DEFAULT (null) FOR [nasporttype],
+	CONSTRAINT [DF_radacct_acctstarttime] DEFAULT ('1900-01-01 00:00:00') FOR [acctstarttime],
+	CONSTRAINT [DF_radacct_acctupdatetime] DEFAULT ('1900-01-01 00:00:00') FOR [acctupdatetime],
+	CONSTRAINT [DF_radacct_acctstoptime] DEFAULT ('1900-01-01 00:00:00') FOR [acctstoptime],
+	CONSTRAINT [DF_radacct_acctsessiontime] DEFAULT (null) FOR [acctsessiontime],
+	CONSTRAINT [DF_radacct_acctauthentic] DEFAULT (null) FOR [acctauthentic],
+	CONSTRAINT [DF_radacct_connectinfo_start] DEFAULT (null) FOR [connectinfo_start],
+	CONSTRAINT [DF_radacct_connectinfo_stop] DEFAULT (null) FOR [connectinfo_stop],
+	CONSTRAINT [DF_radacct_acctinputoctets] DEFAULT (null) FOR [acctinputoctets],
+	CONSTRAINT [DF_radacct_acctoutputoctets] DEFAULT (null) FOR [acctoutputoctets],
+	CONSTRAINT [DF_radacct_calledstationid] DEFAULT ('') FOR [calledstationid],
+	CONSTRAINT [DF_radacct_callingstationid] DEFAULT ('') FOR [callingstationid],
+	CONSTRAINT [DF_radacct_acctterminatecause] DEFAULT ('') FOR [acctterminatecause],
+	CONSTRAINT [DF_radacct_servicetype] DEFAULT (null) FOR [servicetype],
+	CONSTRAINT [DF_radacct_framedprotocol] DEFAULT (null) FOR [framedprotocol],
+	CONSTRAINT [DF_radacct_framedipaddress] DEFAULT ('') FOR [framedipaddress],
+	CONSTRAINT [DF_radacct_framedipv6address] DEFAULT ('') FOR [framedipv6address],
+	CONSTRAINT [DF_radacct_framedipv6prefix] DEFAULT ('') FOR [framedipv6prefix],
+	CONSTRAINT [DF_radacct_framedinterfaceid] DEFAULT ('') FOR [framedinterfaceid],
+	CONSTRAINT [DF_radacct_delegatedipv6prefix] DEFAULT ('') FOR [delegatedipv6prefix],
+	CONSTRAINT [DF_radacct_class] DEFAULT (null) FOR [class],
 	CONSTRAINT [PK_radacct] PRIMARY KEY NONCLUSTERED
 	(
-		[RadAcctId]
+		[radacctid]
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [UserName] ON [radacct]([UserName]) ON [PRIMARY]
+CREATE INDEX [username] ON [radacct]([username]) ON [PRIMARY]
 GO
 
-CREATE INDEX [FramedIPAddress] ON [radacct]([FramedIPAddress]) ON [PRIMARY]
+CREATE INDEX [framedipaddress] ON [radacct]([framedipaddress]) ON [PRIMARY]
 GO
 
-CREATE INDEX [FramedIPv6Address] ON [radacct]([FramedIPv6Address]) ON [PRIMARY]
+CREATE INDEX [framedipv6address] ON [radacct]([framedipv6address]) ON [PRIMARY]
 GO
 
-CREATE INDEX [FramedIPv6Prefix] ON [radacct]([FramedIPv6Prefix]) ON [PRIMARY]
+CREATE INDEX [framedipv6prefix] ON [radacct]([framedipv6prefix]) ON [PRIMARY]
 GO
 
-CREATE INDEX [FramedInterfaceId] ON [radacct]([FramedInterfaceId]) ON [PRIMARY]
+CREATE INDEX [framedinterfaceid] ON [radacct]([framedinterfaceid]) ON [PRIMARY]
 GO
 
-CREATE INDEX [DelegatedIPv6Prefix] ON [radacct]([DelegatedIPv6Prefix]) ON [PRIMARY]
+CREATE INDEX [delegatedipv6prefix] ON [radacct]([delegatedipv6prefix]) ON [PRIMARY]
 GO
 
-CREATE INDEX [AcctSessionId] ON [radacct]([AcctSessionId]) ON [PRIMARY]
+CREATE INDEX [acctsessionid] ON [radacct]([acctsessionid]) ON [PRIMARY]
 GO
 
-CREATE UNIQUE INDEX [AcctUniqueId] ON [radacct]([AcctUniqueId]) ON [PRIMARY]
+CREATE UNIQUE INDEX [acctuniqueid] ON [radacct]([acctuniqueid]) ON [PRIMARY]
 GO
 
-CREATE INDEX [AcctStartTime] ON [radacct]([AcctStartTime]) ON [PRIMARY]
+CREATE INDEX [acctstarttime] ON [radacct]([acctstarttime]) ON [PRIMARY]
 GO
 
-CREATE INDEX [AcctStopTime] ON [radacct]([AcctStopTime]) ON [PRIMARY]
+CREATE INDEX [acctstoptime] ON [radacct]([acctstoptime]) ON [PRIMARY]
 GO
 
-CREATE INDEX [NASIPAddress] ON [radacct]([NASIPAddress]) ON [PRIMARY]
+CREATE INDEX [nasipaddress] ON [radacct]([nasipaddress]) ON [PRIMARY]
 GO
 
-CREATE INDEX [Class] ON [radacct]([Class]) ON [PRIMARY]
+CREATE INDEX [class] ON [radacct]([class]) ON [PRIMARY]
 GO
 
 -- For use by onoff
-CREATE INDEX [RadacctBulkClose] ON [radacct]([NASIPAddress],[AcctStartTime]) WHERE [AcctStopTime] IS NULL ON [PRIMARY]
+CREATE INDEX [radacctbulkclose] ON [radacct]([nasipaddress],[acctstarttime]) WHERE [acctstoptime] IS NULL ON [PRIMARY]
 GO
 
 
@@ -138,17 +138,17 @@ GO
 
 CREATE TABLE [radcheck] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[UserName] [varchar] (64) NOT NULL ,
-	[Attribute] [varchar] (32) NOT NULL ,
-	[Value] [varchar] (253) NOT NULL ,
+	[username] [varchar] (64) NOT NULL ,
+	[attribute] [varchar] (32) NOT NULL ,
+	[value] [varchar] (253) NOT NULL ,
 	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radcheck] WITH NOCHECK ADD
-	CONSTRAINT [DF_radcheck_UserName] DEFAULT ('') FOR [UserName],
-	CONSTRAINT [DF_radcheck_Attribute] DEFAULT ('') FOR [Attribute],
-	CONSTRAINT [DF_radcheck_Value] DEFAULT ('') FOR [Value],
+	CONSTRAINT [DF_radcheck_username] DEFAULT ('') FOR [username],
+	CONSTRAINT [DF_radcheck_attribute] DEFAULT ('') FOR [attribute],
+	CONSTRAINT [DF_radcheck_value] DEFAULT ('') FOR [value],
 	CONSTRAINT [DF_radcheck_op] DEFAULT (null) FOR [op],
 	CONSTRAINT [PK_radcheck] PRIMARY KEY NONCLUSTERED
 	(
@@ -156,7 +156,7 @@ ALTER TABLE [radcheck] WITH NOCHECK ADD
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [UserName] ON [radcheck]([UserName]) ON [PRIMARY]
+CREATE INDEX [username] ON [radcheck]([username]) ON [PRIMARY]
 GO
 
 
@@ -166,17 +166,17 @@ GO
 
 CREATE TABLE [radgroupcheck] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[GroupName] [varchar] (64) NOT NULL ,
-	[Attribute] [varchar] (32) NOT NULL ,
-	[Value] [varchar] (253) NOT NULL ,
+	[groupname] [varchar] (64) NOT NULL ,
+	[attribute] [varchar] (32) NOT NULL ,
+	[value] [varchar] (253) NOT NULL ,
 	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radgroupcheck] WITH NOCHECK ADD
-	CONSTRAINT [DF_radgroupcheck_GroupName] DEFAULT ('') FOR [GroupName],
-	CONSTRAINT [DF_radgroupcheck_Attribute] DEFAULT ('') FOR [Attribute],
-	CONSTRAINT [DF_radgroupcheck_Value] DEFAULT ('') FOR [Value],
+	CONSTRAINT [DF_radgroupcheck_groupname] DEFAULT ('') FOR [groupname],
+	CONSTRAINT [DF_radgroupcheck_attribute] DEFAULT ('') FOR [attribute],
+	CONSTRAINT [DF_radgroupcheck_value] DEFAULT ('') FOR [value],
 	CONSTRAINT [DF_radgroupcheck_op] DEFAULT (null) FOR [op],
 	CONSTRAINT [PK_radgroupcheck] PRIMARY KEY NONCLUSTERED
 	(
@@ -184,7 +184,7 @@ ALTER TABLE [radgroupcheck] WITH NOCHECK ADD
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [GroupName] ON [radgroupcheck]([GroupName]) ON [PRIMARY]
+CREATE INDEX [groupname] ON [radgroupcheck]([groupname]) ON [PRIMARY]
 GO
 
 
@@ -194,18 +194,18 @@ GO
 
 CREATE TABLE [radgroupreply] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[GroupName] [varchar] (64) NOT NULL ,
-	[Attribute] [varchar] (32) NOT NULL ,
-	[Value] [varchar] (253) NOT NULL ,
+	[groupname] [varchar] (64) NOT NULL ,
+	[attribute] [varchar] (32) NOT NULL ,
+	[value] [varchar] (253) NOT NULL ,
 	[op] [varchar] (2) NULL ,
 	[prio] [int] NOT NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radgroupreply] WITH NOCHECK ADD
-	CONSTRAINT [DF_radgroupreply_GroupName] DEFAULT ('') FOR [GroupName],
-	CONSTRAINT [DF_radgroupreply_Attribute] DEFAULT ('') FOR [Attribute],
-	CONSTRAINT [DF_radgroupreply_Value] DEFAULT ('') FOR [Value],
+	CONSTRAINT [DF_radgroupreply_groupname] DEFAULT ('') FOR [groupname],
+	CONSTRAINT [DF_radgroupreply_attribute] DEFAULT ('') FOR [attribute],
+	CONSTRAINT [DF_radgroupreply_value] DEFAULT ('') FOR [value],
 	CONSTRAINT [DF_radgroupreply_op] DEFAULT (null) FOR [op],
 	CONSTRAINT [DF_radgroupreply_prio] DEFAULT (0) FOR [prio],
 	CONSTRAINT [PK_radgroupreply] PRIMARY KEY NONCLUSTERED
@@ -214,7 +214,7 @@ ALTER TABLE [radgroupreply] WITH NOCHECK ADD
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [GroupName] ON [radgroupreply]([GroupName]) ON [PRIMARY]
+CREATE INDEX [groupname] ON [radgroupreply]([groupname]) ON [PRIMARY]
 GO
 
 
@@ -224,17 +224,17 @@ GO
 
 CREATE TABLE [radreply] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[UserName] [varchar] (64) NOT NULL ,
-	[Attribute] [varchar] (32) NOT NULL ,
-	[Value] [varchar] (253) NOT NULL ,
+	[username] [varchar] (64) NOT NULL ,
+	[attribute] [varchar] (32) NOT NULL ,
+	[value] [varchar] (253) NOT NULL ,
 	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radreply] WITH NOCHECK ADD
-	CONSTRAINT [DF_radreply_UserName] DEFAULT ('') FOR [UserName],
-	CONSTRAINT [DF_radreply_Attribute] DEFAULT ('') FOR [Attribute],
-	CONSTRAINT [DF_radreply_Value] DEFAULT ('') FOR [Value],
+	CONSTRAINT [DF_radreply_username] DEFAULT ('') FOR [username],
+	CONSTRAINT [DF_radreply_attribute] DEFAULT ('') FOR [attribute],
+	CONSTRAINT [DF_radreply_value] DEFAULT ('') FOR [value],
 	CONSTRAINT [DF_radreply_op] DEFAULT (null) FOR [op],
 	CONSTRAINT [PK_radreply] PRIMARY KEY NONCLUSTERED
 	(
@@ -242,7 +242,7 @@ ALTER TABLE [radreply] WITH NOCHECK ADD
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [UserName] ON [radreply]([UserName]) ON [PRIMARY]
+CREATE INDEX [username] ON [radreply]([username]) ON [PRIMARY]
 GO
 
 
@@ -252,22 +252,22 @@ GO
 
 CREATE TABLE [radusergroup] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[UserName] [varchar] (64) NOT NULL ,
-	[GroupName] [varchar] (64) NULL ,
-	[Priority] [int] NULL
+	[username] [varchar] (64) NOT NULL ,
+	[groupName] [varchar] (64) NULL ,
+	[priority] [int] NULL
 ) ON [PRIMARY]
 GO
 
 ALTER TABLE [radusergroup] WITH NOCHECK ADD
-	CONSTRAINT [DF_radusergroup_UserName] DEFAULT ('') FOR [UserName],
-	CONSTRAINT [DF_radusergroup_GroupName] DEFAULT ('') FOR [GroupName],
+	CONSTRAINT [DF_radusergroup_username] DEFAULT ('') FOR [username],
+	CONSTRAINT [DF_radusergroup_groupname] DEFAULT ('') FOR [groupname],
 	CONSTRAINT [PK_radusergroup] PRIMARY KEY NONCLUSTERED
 	(
 		[id]
 	) ON [PRIMARY]
 GO
 
-CREATE INDEX [UserName] ON [radusergroup]([UserName]) ON [PRIMARY]
+CREATE INDEX [username] ON [radusergroup]([username]) ON [PRIMARY]
 GO
 
 
@@ -277,7 +277,7 @@ GO
 
 CREATE TABLE [radpostauth] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
-	[userName] [varchar] (64) NOT NULL ,
+	[username] [varchar] (64) NOT NULL ,
 	[pass] [varchar] (64) NOT NULL ,
 	[reply] [varchar] (32) NOT NULL ,
 	[authdate] [datetime] NOT NULL,
@@ -286,7 +286,7 @@ CREATE TABLE [radpostauth] (
 GO
 
 ALTER TABLE [radpostauth] WITH NOCHECK ADD
-	CONSTRAINT [DF_radpostauth_userName] DEFAULT ('') FOR [userName],
+	CONSTRAINT [DF_radpostauth_username] DEFAULT ('') FOR [username],
 	CONSTRAINT [DF_radpostauth_pass] DEFAULT ('') FOR [pass],
 	CONSTRAINT [DF_radpostauth_reply] DEFAULT ('') FOR [reply],
 	CONSTRAINT [DF_radpostauth_authdate] DEFAULT (getdate()) FOR [authdate],

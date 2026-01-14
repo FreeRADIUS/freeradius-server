@@ -1,0 +1,7 @@
+= Protocol Modules
+
+The protocol modules implement protocol-specific functionality.
+
+The available protocol modules are:
+
+include::partial$protocol_table.adoc[]

@@ -3,37 +3,49 @@
 # Simple test wrapper around radclient to allow automated UATs
 #
 # Author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
-# Copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+# Copyright 2014-2015,2025-2026 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
 # Copyright 2015 The FreeRADIUS Project
 
 # A POSIX variable
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
 # Environmental variables
-: ${TESTDIR=$(dirname $0)"/tests"}
+: ${TESTDIR=$(dirname "$0")"/tests"}
 : ${RADCLIENT='radclient'}
 : ${FILTER_SUFFIX='_expected'}
 # What we send back in response to a CoA request
 : ${COA_REPLY_SUFFIX='_coa_reply'}
 # What we expect from a CoA request
 : ${COA_FILTER_SUFFIX='_coa_expected'}
-PATH="$(dirname $0)/bin:${PATH}"
+# File to run before running tests
+: ${PRE_FILE='pre'}
+# File to run after running tests
+: ${POST_FILE='post'}
+
+PATH="$(dirname "$0")/bin:${PATH}"
 
 # Initialize our own variables
 verbose=0
 cluster=
 role=
 type=
+skip_tests_not_found=0
+host_split_chars='.'
 parallel=40
 retries=3
 timeout=2
-target='127.0.0.1'
+target_host="$(hostname -f)"
 secret='testing123'
+
+# Initialise now for scoping
+test_path=
+packets=
+filters=
 
 # Some very basic logging functions
 function ERROR
 {
-    echo "$@" 1>&2;
+    echo "$@" 1>&2
 }
 
 function INFO
@@ -48,29 +60,90 @@ function DEBUG
     fi
 }
 
-function show_help
+#
+# Escape characters for use inside a sed bracket expression
+#
+function char_class_escape
 {
-    echo $(basename $0)" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
+    local s="$1"
+    s=${s//\\/\\\\}   # backslash
+    s=${s//]/\\]}     # closing bracket
+    s=${s//-/\\-}     # dash
+    s=${s//^/\\^}     # caret
+    s=${s//./\\.}     # dot (explicitly required)
+    echo "$s"
+}
+
+#
+#  Execute the post file after tests have completed, or the script exits
+#
+#  $1: if set to 1, then if the post file fails, exit with the return code.
+#      if set to 0, ignore the failure
+#
+function post_run
+{
+    rm -f -- "$packets" "$filters" >/dev/null 2>&1
+
+    if [ -n "${test_path}" ] && [ -f "${test_path}/${POST_FILE}" ]; then
+        file_path="${test_path}/${POST_FILE}"
+
+        DEBUG "Executing post-file: ${file_path}"
+        "${file_path}"
+        ret=$?
+        if [ ${1-0} -eq 1 ] && [ $ret -ne 0 ]; then
+            ERROR "Post-file failed with ${ret}"
+            exit ${ret}
+        fi
+    fi
+}
+
+#
+#  Execute the "pre" file to setup any pre-requisites for the tests for
+#  this particular cluster/role or set of tests.
+#
+function pre_run
+{
+    trap post_run EXIT INT TERM
+
+    if [ -f "${test_path}/${PRE_FILE}" ]; then
+        file_path="${test_path}/${PRE_FILE}"
+
+        DEBUG "Executing pre-file: ${file_path}"
+        "${filte_path}"
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            ERROR "Pre-file failed with ${ret}"
+            exit ${ret}
+        fi
+    fi
+}
+
+function usage
+{
+    echo $(basename "$0")" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
     echo "  -h                        Display this help message."
-    echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to 127.0.0.1)"
+    echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to ${target_host})"
     echo "  -v                        Verbose mode."
-    echo "  -p <number>               Run tests in parallel (defaults to 20)."
+    echo "  -p <number>               Run tests in parallel (defaults to ${parallel})."
+    echo "  -d <chars>                Characters to split FQDN on for cluster and type matching (defaults to '.')."
     echo "  -s <secret>               Shared secret."
-    if [ ! -z "$role_types" ]; then
+    if [ ${#role_types[@]} -gt 0 ]; then
         echo "  -c <cluster>              Specify cluster type one of ($cluster_types)."
-        echo "  -r <type>                 Specify server role one of ($role_types)."
+        echo "  -r <type>                 Specify server role one of (${role_types[@]})."
+        echo "  -S                        Skip host if we can't find a matching cluster or role".
         echo
         echo "Note: Test path globs are relative to ${TESTDIR}/<cluster>/<type>/"
     fi
 
     echo
     echo "For role based test file layout create test files under ${TESTDIR}/<cluster>/<type>"
-    echo "Where <cluster> and <type> are substrings found in the FQDN of <host>."
+    echo "Where <cluster> and <type> are substrings (exploded with -d) found in the FQDN of <host>."
     echo "For simplified test layout create test files under ${TESTDIR}"
     echo
     echo "The directory containing the tests should contains pairs of request files and filter files."
     echo "The request file name must contain 'test<num><num><num>."
     echo "The filter name must match the test name but with a '${FILTER_SUFFIX}' suffix."
+    echo
     echo "For example:"
     echo "  ${TESTDIR}/test000_my_first_test"
     echo "  ${TESTDIR}/test000_my_first_test${FILTER_SUFFIX}"
@@ -95,7 +168,7 @@ function show_help
     echo "The directory containing the tests may have multiple subdirectories to group the tests."
 }
 
-RADCLIENT=$(which "$RADCLIENT")
+RADCLIENT="$(command -v -- "$RADCLIENT" || true)"
 if [ ! -x "$RADCLIENT" ]; then
     ERROR "Can't find radclient binary, modify your \$PATH or set RADCLIENT"
     exit 64
@@ -103,38 +176,29 @@ fi
 
 if [ ! -d "$TESTDIR" ]; then
     ERROR "Test dir $TESTDIR does not exist, create it or specify it with TESTDIR=<dir>"
-    show_help
+    usage
     exit 64
 fi
 
 # Definitions (build these dynamically by looking at the files under tests)
-cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d)
-cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
+cluster_types=($(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;))
 
-role_types=
-for i in $cluster_dirs; do
-    for j in $(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d); do
-        role=$(basename "$j")
-        if [ "$role_types" == '' ]; then
-            role_types="$role"
-        else
-            role_types+="\n$role"
-        fi
-    done
+role_types=()
+for i in "${cluster_types[@]}"; do
+    role_types+=($(find "$TESTDIR/${i}/" -mindepth 1 -maxdepth 1 -type d  -exec basename {} \;))
 done
 
-if [ -z "$role_types" ]; then
+if [ ${#role_types[@]} -eq 0 ]; then
     DEBUG "Using simple test file layout"
 else
     DEBUG "Using role based test file layout"
-    role_types=$(echo -e "$role_types" | sort | uniq)   # Remove duplicates
-    role_types=$(echo $role_types | sed 's/\s/ /g')     # Change \n back to spaces
+    role_types=($(echo "${role_types[@]}" | sort -u))
 fi
 
-while getopts "h?H:vc:r:s:p:" opt; do
+while getopts "h?H:vd:c:r:s:Sp:" opt; do
     case "$opt" in
     h|\?)
-        show_help
+        usage
         exit 0
         ;;
 
@@ -142,16 +206,20 @@ while getopts "h?H:vc:r:s:p:" opt; do
         verbose=1
         ;;
 
+    d)
+        host_split_chars="$OPTARG"
+        ;;
+
     c)
         found=0
-        for i in $cluster_types; do
+        for i in "${cluster_types[@]}"; do
             if [ "$i" == "$OPTARG" ]; then
                 found=1
             fi
         done
         if [ $found -ne 1 ]; then
             ERROR "'$OPTARG' is not a valid cluster type"
-            show_help
+            usage
             exit 64
         fi
         cluster="$OPTARG"
@@ -159,14 +227,14 @@ while getopts "h?H:vc:r:s:p:" opt; do
 
     r)
         found=0
-        for i in $role_types; do
+        for i in "${role_types[@]}"; do
             if [ "$i" == "$OPTARG" ]; then
                 found=1
             fi
         done
         if [ $found -ne 1 ]; then
             ERROR "'$OPTARG' is not a valid role type"
-            show_help
+            usage
             exit 64
         fi
         role="$OPTARG"
@@ -176,17 +244,21 @@ while getopts "h?H:vc:r:s:p:" opt; do
         secret="$OPTARG"
         ;;
 
+    S)
+        skip_tests_not_found=1
+        ;;
+
     p)
-        if ! echo "$OPTARG" | grep -E '^[0-9]+$' > /dev/null; then
+        if ! echo "$OPTARG" | grep -qE '^[0-9]+$'; then
             ERROR "Non integer argument '$OPTARG' specified for -p"
-            show_help
+            usage
             exit 64
         fi
         parallel=$OPTARG
         ;;
 
     H)
-        target="$OPTARG"
+        target_host="$OPTARG"
         ;;
 
     esac
@@ -195,31 +267,40 @@ done
 shift $((OPTIND-1))
 
 [ "$1" = "--" ] && shift
-test_files=$@
+test_globs=("$@")
 
 #
 #  Match keywords from the hostname to clusters or roles
 #
-if [ ! -z "$role_types" ]; then
-    this_host=$(hostname -f)
-    for tok in $(echo "$this_host" | sed 's/\./ /g'); do
-        for key in ${cluster_types}; do
-            if echo "$tok" | grep "$key" > /dev/null && [ "$cluster" = '' ]; then cluster="$key"; fi
-        done
-        for key in ${role_types}; do
-            if echo "$tok" | grep "$key" > /dev/null && [ "$role" = '' ]; then role="$key"; fi
-        done
+if [ ${#role_types[@]} -gt 0 ]; then
+    for tok in ${target_host//[$(char_class_escape "$host_split_chars")]/ }; do
+        if [ -z "${cluster}" ]; then
+            for key in "${cluster_types[@]}"; do
+                grep -qF -- "${key}" <<<"${tok}" && cluster="${key}" && break
+            done
+        fi
+        if [ -z "${role}" ]; then
+            for key in "${role_types[@]}"; do
+                grep -qF -- "${key}" <<<"${tok}" && role="${key}" && break
+            done
+        fi
+        [ -n "${cluster}" ] && [ -n "${role}" ] && break
     done
 
-    if [ "$cluster" == '' ]; then
-        ERROR "Couldn't determine the cluster $this_host belongs to";
-        show_help
+    if [ $skip_tests_not_found -eq 1 ] && [ -z "$cluster" ] || [ -z "$role" ] ; then
+        DEBUG "Skipping tests for host $target_host: couldn't determine cluster or role"
+        exit 0
+    fi
+
+    if [ -z "$cluster" ]; then
+        ERROR "Couldn't determine the cluster $target_host belongs to";
+        usage
         exit 64;
     fi
 
-    if [ "$role" == '' ]; then
-        ERROR "Couldn't determine the role $this_host performs";
-        show_help
+    if [ -z "$role" ]; then
+        ERROR "Couldn't determine the role $target_host performs";
+        usage
         exit 64;
     fi
 
@@ -231,37 +312,46 @@ else
     test_path="${TESTDIR}"
 fi
 
-if [ "$test_files" != '' ]; then
-    tmp=
-    for glob in $test_files; do
+# Allow test files with spaces in them, and only split on newlines
+old_ifs=$IFS
+IFS=$'\n'
+set -f  # Disable globbing
+test_files=()
+if [ ${#test_globs[@]} -gt 0 ]; then
+    for glob in $test_globs; do
         # Filter out response files (makes wildcards easier), and expand the globs
         for file in $(find "${test_path}" -depth -path "*${glob}" \
             -and -not -path "*${FILTER_SUFFIX}" \
             -and -not -path "*${COA_REPLY_SUFFIX}" \
             -and -not -path "*${COA_FILTER_SUFFIX}" \
+            -and -not -path "${PRE_FILE}" \
+            -and -not -path "${POST_FILE}" \
             -and '(' -type f -or -type l ')'); do
-            tmp+="${file} "
+            test_files+=("$file")
         done
     done
-    test_files="${tmp}"
 else
     # Lexicographical, depth-first
-    test_files=$(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' \
+    test_files=($(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' \
                 -and -not -path "*${FILTER_SUFFIX}" \
                 -and -not -path "*${COA_REPLY_SUFFIX}" \
                 -and -not -path "*${COA_FILTER_SUFFIX}" \
-                -and '(' -type f -or -type l ')')
-    if [ "$test_files" == '' ]; then
+                -and -not -path "${PRE_FILE}" \
+                -and -not -path "${POST_FILE}" \
+                -and '(' -type f -or -type l ')'))
+    if [ "${#test_files[@]}" -eq 0 ]; then
         ERROR "No test files found in $test_path"
         exit 64;
     fi
-    INFO "Executing"$(echo "$test_files" | wc -l)" test(s) from ${test_path}"
+    INFO "Executing ${#test_files[@]} test(s) from ${test_path}"
 fi
+IFS=$old_ifs
+set +f  # Re-enable globbing
 
 #
 #  Check if we got any test files
 #
-if [ "$test_files" == '' ]; then
+if [ "${#test_files[@]}" -eq 0 ]; then
     ERROR "No test files to process"
     exit 1
 fi
@@ -274,7 +364,7 @@ if [ $verbose -eq 0 ]; then
     INFO "Use -v to see full list"
 else
     INFO "Executing specified tests:"
-    for i in $test_files; do
+    for i in "${test_files[@]}"; do
         DEBUG "$i"
     done
 fi
@@ -283,15 +373,20 @@ fi
 #  Figure out which tests we can munge into a single file which we can
 #  use to parallelise testing
 #
-base=$(basename $0)
+base=$(basename "$0")
 packets=$(mktemp -t "${base}XXX") || exit 1
 filters=$(mktemp -t "${base}XXX") || exit 1
+
+#
+#  Run any pre-test setup, and setup cleanup handlers
+#
+pre_run
 
 args=
 file_args=
 serial_file_args=
-for i in $test_files; do
-    if [ ! -f "$i" -a ! -L "$i" ]; then
+for i in "${test_files[@]}"; do
+    if [ ! -f "$i" ] && [ ! -L "$i" ]; then
         INFO "Skipping $i: not file"
         continue
     fi
@@ -303,7 +398,7 @@ for i in $test_files; do
 
     expected="${i}${FILTER_SUFFIX}"
     # We need pairs of requests and responses in the bulk format
-    if [ ! -f "$expected" -a ! -L "$expected" ]; then
+    if [ ! -f "$expected" ] && [ ! -L "$expected" ]; then
         DEBUG "$i cannot be parallelised: Can't find 'expected' file"
         file_args+=" -f \"$i\""
         continue
@@ -319,12 +414,12 @@ for i in $test_files; do
     # If there's a coa_reply file, then we need to serialise the test
     # because there's no bulk test format that includes coa_reply
     coa_reply="${i}${COA_REPLY_SUFFIX}"
-    if [ -f "$coa_reply" -o -L "$coa_reply" ]; then
+    if [ -f "$coa_reply" ] || [ -L "$coa_reply" ]; then
         DEBUG "$i cannot be parallelised: Found CoA Reply"
 
         # We also have a filter
         coa_filter="${i}${COA_FILTER_SUFFIX}"
-        if [ -f "$coa_filter" -o -L "$coa_filter" ]; then
+        if [ -f "$coa_filter" ] || [ -L "$coa_filter" ]; then
             serial_file_args+=" -f \"${i}:${expected}:${coa_reply}:${coa_filter}\""
         else
             serial_file_args+=" -f \"${i}:${expected}:${coa_reply}\""
@@ -333,7 +428,7 @@ for i in $test_files; do
     fi
 
     # If the test file is marked as serial only, then we need to serialise the test
-    if head -n 1 "$i" | grep -i -E '^#\s*serial' > /dev/null; then
+    if head -n 1 "$i" | grep -qiE '^#\s*serial'; then
         DEBUG "$i marked as serial only"
         serial_file_args+=" -f \"${i}:${expected}\""
         continue
@@ -346,7 +441,7 @@ for i in $test_files; do
     # and can later be specified with -v -- <test> to drill down.
     echo "Radclient-Test-Name := \""$(echo "$i" | sed -e "s@${test_path}/\?@@")"\"" >> "$packets"
     echo >> "$packets"
-    printf '%s\n' "$(cat "${i}_expected")" >> "$filters"
+    printf '%s\n' "$(cat "${expected}")" >> "$filters"
     echo >> "$filters"
 done
 
@@ -365,7 +460,7 @@ if [ ! -z "$file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p \"$parallel\""
-	args+=" \"$target\""
+	args+=" \"$target_host\""
 	args+=" auto"
 	args+=" \"$secret\""
 
@@ -374,8 +469,8 @@ if [ ! -z "$file_args" ]; then
 	INFO "(Parallelised tests)"
 	INFO ""
 
-	rm -f "$packets" 2>&1 > /dev/null
-	rm -f "$filters" 2>&1 > /dev/null
+	rm -f "$packets" >/dev/null 2>&1
+	rm -f "$filters" >/dev/null 2>&1
 
 	if [ $ret -ne 0 ]; then
     		ERROR "One or more tests failed (radclient exited with $ret)"
@@ -394,7 +489,7 @@ if [ ! -z "$serial_file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p 1"
-	args+=" \"$target\""
+	args+=" \"$target_host\""
 	args+=" auto"
 	args+=" \"$secret\""
 

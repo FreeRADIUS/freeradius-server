@@ -138,7 +138,7 @@ struct proto_detail_work_thread_s {
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
 
-	fr_event_timer_t const		*ev;			//!< for detail file timers.
+	fr_timer_t			*ev;			//!< for detail file timers.
 
 	pthread_mutex_t			worker_mutex;		//!< for the workers
 	int				num_workers;		//!< number of workers

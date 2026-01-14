@@ -82,7 +82,7 @@ extern fr_dict_autoload_t proto_detail_dict[];
 fr_dict_autoload_t proto_detail_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
@@ -90,7 +90,6 @@ static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_packet_original_timestamp;
 static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_protocol;
 
 extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
@@ -99,9 +98,8 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_original_timestamp, .name = "Packet-Original-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ip_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -223,11 +221,10 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_pair_list_t		tmp_list;
 	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
-	fr_pair_parse_t root, relative;
+	fr_pair_parse_t		root, relative;
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
-	request->dict = inst->dict;
 	request->packet->code = inst->code;
 
 	/*
@@ -266,6 +263,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	Parse each individual line.
 	 */
 	while (p < end) {
+		fr_slen_t slen;
+
 		/*
 		 *	Each record begins with a zero byte.  If the
 		 *	next byte is also zero, that's the end of
@@ -280,7 +279,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 */
 		if ((*p != '\0') && (*p != '\t')) {
 			REDEBUG("Malformed line %d", lineno);
-		error:
 			fr_dcursor_free_list(&cursor);
 			return -1;
 		}
@@ -320,11 +318,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		}
 
 		/*
-		 *	Ensure temporary list is empty before each use
-		 */
-		fr_pair_list_free(&tmp_list);
-
-		/*
 		 *	Reinitialize every time.
 		 *
 		 *	@todo - maybe we want to keep "relative' around between lines?
@@ -355,18 +348,26 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 */
 		root = (fr_pair_parse_t) {
 			.ctx = request->request_ctx,
-			.da = fr_dict_root(request->dict),
+			.da = fr_dict_root(request->proto_dict),
 			.list = &tmp_list,
+			.dict = request->proto_dict,
+			.internal = fr_dict_internal(),
+			.allow_zeros = true,
 		};
 		relative = (fr_pair_parse_t) { };
 
-		if ((fr_pair_list_afrom_substr(&root, &relative,
-					       &FR_SBUFF_IN((char const *) p, (data + data_len) - p)) > 0) && !fr_pair_list_empty(&tmp_list)) {
-			vp = fr_pair_list_head(&tmp_list);
-			fr_pair_list_append(&request->request_pairs, &tmp_list);
-		} else {
+		slen = fr_pair_list_afrom_substr(&root, &relative,
+						 &FR_SBUFF_IN((char const *) p, (data + data_len) - p));
+		if (slen < 0) {
+			RPEDEBUG("Failed reading line");
 			vp = NULL;
-			RWDEBUG("Ignoring line %d - :%s", lineno, p);
+
+		} else if ((slen == 0) || fr_pair_list_empty(&tmp_list)) {
+			vp = NULL;
+			RWDEBUG("Ignoring line %d - %s", lineno, p);
+
+		} else {
+			vp = fr_pair_list_head(&tmp_list);
 		}
 
 		/*
@@ -381,12 +382,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 				request->packet->socket.inet.src_port = vp->vp_uint16;
 			} else if (vp->da == attr_packet_dst_port) {
 				request->packet->socket.inet.dst_port = vp->vp_uint16;
-			} else if (vp->da == attr_protocol) {
-				request->dict = fr_dict_by_protocol_num(vp->vp_uint32);
-				if (!request->dict) {
-					REDEBUG("Invalid protocol: %pP", vp);
-					goto error;
-				}
 			}
 		}
 
@@ -394,6 +389,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		lineno++;
 		while ((p < end) && (*p)) p++;
 	}
+
+	fr_pair_list_append(&request->request_pairs, &tmp_list);
 
 	/*
 	 *	Let the app_io take care of populating additional fields in the request

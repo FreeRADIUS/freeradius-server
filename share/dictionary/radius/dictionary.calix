@@ -16,6 +16,10 @@ BEGIN-VENDOR	Calix
 
 ATTRIBUTE	Role					1	string
 
+# The current session Role is returned in this attribute in accounting
+ATTRIBUTE	Applied-Role				50	string
+ATTRIBUTE	Walled-Garden-URL		51  string
+
 #
 #  CMS attributes
 #
@@ -24,17 +28,17 @@ ATTRIBUTE	Role					1	string
 ATTRIBUTE	CMS-User-Group				220	string
 
 # Attribute for alarm filter – optional, default 1 (alarm enabled)
-ATTRIBUTE	CMS-Alarm-Filter			221	integer
+ATTRIBUTE	CMS-Alarm-Filter			221	uint32
 VALUE	CMS-Alarm-Filter		Disabled		0
 VALUE	CMS-Alarm-Filter		Enabled			1
 
 # Attribute for event filter – optional, default 0 (event disabled)
-ATTRIBUTE	CMS-Event-Filter			222	integer
+ATTRIBUTE	CMS-Event-Filter			222	uint32
 VALUE	CMS-Event-Filter		Disabled		0
 VALUE	CMS-Event-Filter		Enabled			1
 
 # Attribute for threshold event filter – optional, default 0 (disabled)
-ATTRIBUTE	CMS-Threshold-Event-Filter		223	integer
+ATTRIBUTE	CMS-Threshold-Event-Filter		223	uint32
 VALUE	CMS-Threshold-Event-Filter	Disabled		0
 VALUE	CMS-Threshold-Event-Filter	Enabled			1
 

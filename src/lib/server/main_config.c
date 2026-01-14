@@ -27,36 +27,25 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
-#include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <sys/stat.h>
-#include <pwd.h>
-#include <grp.h>
 
-#include <unistd.h>
-#include <sys/types.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
@@ -163,7 +152,6 @@ static const conf_parser_t resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
 	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
@@ -187,20 +175,7 @@ static const conf_parser_t thread_config[] = {
 /*
  *	Migration configuration.
  */
-extern bool tmpl_require_enum_prefix;
-
 static const conf_parser_t migrate_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
-	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-
-	/*
-	 *	Do not add tmpl_require_enum_prefix here, as it is
-	 *	parsed too late to affect anything.  It must be passed
-	 *	as a command-line option via
-	 *
-	 *		-S v3_enum_names=yes
-	 */
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -214,6 +189,19 @@ static const conf_parser_t interpret_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 #endif
+
+static const conf_parser_t request_reuse_config[] = {
+	FR_SLAB_CONFIG_CONF_PARSER
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t request_config[] = {
+	{ FR_CONF_OFFSET("max", main_config_t, worker.max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("timeout", main_config_t, worker.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, worker.reuse.child_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, main_config_t, worker.reuse, request_reuse_config) },
+	CONF_PARSER_TERMINATOR
+};
 
 static const conf_parser_t server_config[] = {
 	/*
@@ -232,11 +220,11 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET("panic_action", main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
 	{ FR_CONF_OFFSET("hostname_lookups", main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
-	{ FR_CONF_OFFSET("max_request_time", main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET_FLAGS("debug_level", CONF_FLAG_HIDDEN, main_config_t, debug_level), .dflt = "0" },
-	{ FR_CONF_OFFSET("max_requests", main_config_t, max_requests), .dflt = "0" },
+
+	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) request_config },
 
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -249,6 +237,9 @@ static const conf_parser_t server_config[] = {
 #ifndef NDEBUG
 	{ FR_CONF_POINTER("interpret", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) interpret_config, .name2 = CF_IDENT_ANY },
 #endif
+
+	{ FR_CONF_DEPRECATED("max_requests", main_config_t, worker.max_requests) },
+	{ FR_CONF_DEPRECATED("max_request_time", main_config_t, worker.max_request_time) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -273,7 +264,6 @@ static const conf_parser_t security_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, 0, main_config_t, uid), .func = cf_parse_uid },
 	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, main_config_t, gid), .func = cf_parse_gid },
 #endif
-	{ FR_CONF_OFFSET("chroot", main_config_t, chroot_dir) },
 	{ FR_CONF_OFFSET("allow_core_dumps", main_config_t, allow_core_dumps), .dflt = "no" },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -283,6 +273,8 @@ static const conf_parser_t security_config[] = {
 #ifdef WITH_TLS
 	{ FR_CONF_OFFSET_IS_SET("openssl_fips_mode", FR_TYPE_BOOL, 0, main_config_t, openssl_fips_mode), .dflt = "no" },
 #endif
+
+	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -343,8 +335,8 @@ static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, >=, (size_t)(2 * 1024));
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
+	FR_SIZE_BOUND_CHECK("request.talloc_pool_size", value, >=, (size_t)(2 * 1024));
+	FR_SIZE_BOUND_CHECK("request.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
 
 	memcpy(out, &value, sizeof(value));
 
@@ -361,8 +353,8 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, >=, fr_time_delta_from_sec(5));
-	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("request.timeout", value, >=, fr_time_delta_from_sec(5));
+	FR_TIME_DELTA_BOUND_CHECK("request.timeout", value, <=, fr_time_delta_from_sec(120));
 
 	memcpy(out, &value, sizeof(value));
 
@@ -583,7 +575,7 @@ static xlat_action_t xlat_config(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	ci = cf_reference_item(main_config->root_cs, main_config->root_cs, in_head->vb_strvalue);
 	if (!ci || !cf_item_is_pair(ci)) {
-		REDEBUG("Config item \"%pV\" does not exist", in_head);
+		RPEDEBUG("Failed finding configuration item '%s'", in_head->vb_strvalue);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -616,8 +608,6 @@ static int mkdir_chown(int fd, char const *path, void *uctx)
 	return ret;
 }
 /*
- *  Do chroot, if requested.
- *
  *  Switch UID and GID to what is specified in the config file
  */
 static int switch_users(main_config_t *config, CONF_SECTION *cs)
@@ -641,7 +631,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		return -1;
 	}
 
-	DEBUG("Parsing security rules to bootstrap UID / GID / chroot / etc.");
+	DEBUG("Parsing security rules to bootstrap UID / GID / etc.");
 	if (cf_section_parse(config, config, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
 			config->name);
@@ -649,11 +639,11 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Don't do chroot/setuid/setgid if we're in debugging
+	 *	Don't do setuid/setgid if we're in debugging
 	 *	as non-root.
 	 */
 	if (DEBUG_ENABLED && (getuid() != 0)) {
-		WARN("Ignoring configured UID / GID / chroot as we're running in debug mode");
+		WARN("Ignoring configured UID / GID as we're running in debug mode");
 		return 0;
 	}
 #ifdef HAVE_GRP_H
@@ -705,35 +695,8 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
+	cf_file_check_set_uid_gid(config->server_uid ? config->server_uid : (uid_t)-1,
 			   config->server_gid ? config->server_gid : (gid_t)-1);
-
-	/*
-	 *	Do chroot BEFORE changing UIDs.
-	 */
-	if (config->chroot_dir) {
-		if (chroot(config->chroot_dir) < 0) {
-			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				config->name, config->chroot_dir, fr_syserror(errno));
-			return -1;
-		}
-
-		/*
-		 *	Note that we leave chdir alone.  It may be
-		 *	OUTSIDE of the root.  This allows us to read
-		 *	the configuration from "-d ./etc/raddb", with
-		 *	the chroot as "./chroot/" for example.  After
-		 *	the server has been loaded, it does a "cd
-		 *	${logdir}" below, so that core files (if any)
-		 *	go to a logging directory.
-		 *
-		 *	This also allows the configuration of the
-		 *	server to be outside of the chroot.  If the
-		 *	server is statically linked, then the only
-		 *	things needed inside of the chroot are the
-		 *	logging directories.
-		 */
-	}
 
 #ifdef HAVE_GRP_H
 	/*
@@ -1077,13 +1040,6 @@ int main_config_init(main_config_t *config)
 #endif
 	INFO("Starting - reading configuration files ...");
 
-	/*
-	 *	About sizeof(request_t) + sizeof(fr_packet_t) * 2 + sizeof(fr_pair_t) * 400
-	 *
-	 *	Which should be enough for many configurations.
-	 */
-	config->talloc_pool_size = 8 * 1024; /* default */
-
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
 
@@ -1401,16 +1357,6 @@ int main_config_init(main_config_t *config)
 	xlat_func_args_set(xlat, xlat_config_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
-	/*
-	 *	Ensure cwd is inside the chroot.
-	 */
-	if (config->chroot_dir) {
-		if (chdir(config->log_dir) < 0) {
-			ERROR("Failed to 'chdir %s' after chroot: %s", config->log_dir, fr_syserror(errno));
-			goto failure;
-		}
-	}
-
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 
 	/* Clear any unprocessed configuration errors */
@@ -1496,12 +1442,8 @@ void main_config_hup(main_config_t *config)
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }
 
+#if 0
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("call_env_forbid_ampersand"), offsetof(main_config_t, call_env_forbid_ampersand) },
-	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
-	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
-	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
-	{ L("v3_enum_names"),		 offsetof(main_config_t, require_enum_prefix) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1534,12 +1476,10 @@ int main_config_parse_option(char const *value)
 
 	fr_value_box_init(&box, FR_TYPE_BOOL, NULL, false);
 	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL,
-				  p, strlen(p), NULL, false) < 0) {
+				  p, strlen(p), NULL) < 0) {
 		fr_perror("Invalid boolean \"%s\"", p);
 		fr_exit(1);
 	}
-
-	if (out == &main_config->require_enum_prefix) tmpl_require_enum_prefix = box.vb_bool;
 
 	*out = box.vb_bool;
 
@@ -1555,10 +1495,9 @@ bool main_config_migrate_option_get(char const *name)
 
 	if (!main_config) return false;
 
-	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
-
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;
 
 	return *(bool *) (((uintptr_t) main_config) + offset);
 }
+#endif

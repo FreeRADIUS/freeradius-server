@@ -1104,69 +1104,6 @@ static void test_fr_pair_value_bstrdup_buffer_shallow(void)
 	talloc_free(copy_test_string);
 }
 
-static void test_fr_pair_value_bstrn_append(void)
-{
-	fr_pair_t *vp;
-	char      *copy_test_string;
-
-	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, NULL, fr_dict_attr_test_string)) != NULL);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
- 	copy_test_string = talloc_strdup(vp, test_string);
-	talloc_set_type(copy_test_string, char);
-
-	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_bstrndup()");
-	TEST_CHECK(fr_pair_value_bstrndup(vp, test_string, test_string_len, false) == 0);
-
-	TEST_CASE("Append the 'copy_test_string' value using fr_pair_value_bstrn_append()");
-	TEST_CHECK(fr_pair_value_bstrn_append(vp, copy_test_string, test_string_len, true) == 0);
-
-	// awful hack, just verify the first part of buffer and then the second part. yep, just appended twice.
-	TEST_CASE("Check 1. part (vp->vp_string == test_string)");
-	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, test_string_len) == 0);
-
-	TEST_CASE("Check 2. part ((vp->vp_string+test_string_len) == test_string)");
-	TEST_CHECK(vp && strncmp(vp->vp_strvalue+test_string_len, test_string, test_string_len) == 0);
-
-	talloc_free(copy_test_string);
-}
-
-static void test_fr_pair_value_bstr_append_buffer(void)
-{
-	fr_pair_t *vp;
-	char      *copy_test_string;
-
-	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, NULL, fr_dict_attr_test_string)) != NULL);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
- 	copy_test_string = talloc_strdup(vp, test_string);
-	talloc_set_type(copy_test_string, char);
-
-	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_bstrndup()");
-	TEST_CHECK(fr_pair_value_bstrndup(vp, test_string, test_string_len, false) == 0);
-
-	TEST_CASE("Append the 'copy_test_string' value using fr_pair_value_bstr_append_buffer()");
-	TEST_CHECK(fr_pair_value_bstr_append_buffer(vp, copy_test_string, true) == 0);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
-	// awful hack, just verify the first part of buffer and then the second part. yep, just appended twice.
-	TEST_CASE("Check 1. part (vp->vp_string == test_string)");
-	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, test_string_len) == 0);
-
-	TEST_CASE("Check 2. part ((vp->vp_string+test_string_len) == test_string)");
-	TEST_CHECK(vp && strncmp(vp->vp_strvalue+test_string_len, test_string, test_string_len) == 0);
-
-	talloc_free(copy_test_string);
-}
-
 static void test_fr_pair_value_mem_alloc(void)
 {
 	fr_pair_t *vp;
@@ -1315,60 +1252,6 @@ static void test_fr_pair_value_memdup_buffer_shallow(void)
 	talloc_free(copy_test_octets);
 }
 
-static void test_fr_pair_value_mem_append(void)
-{
-	fr_pair_t *vp;
-
-	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, NULL, fr_dict_attr_test_octets)) != NULL);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
-	TEST_CASE("Copy content of 'test_octets' to attribute value using fr_pair_value_memdup()");
-	TEST_CHECK(fr_pair_value_memdup(vp, test_octets, NUM_ELEMENTS(test_octets), false) == 0);
-
-	TEST_CASE("Append the 'test_octets' value using fr_pair_value_mem_append()");
-	TEST_CHECK(fr_pair_value_mem_append(vp, test_octets, NUM_ELEMENTS(test_octets), true) == 0);
-
-	// awful hack, just verify the first part of buffer and then the second part. yep, just appended twice.
-	TEST_CASE("Check 1. part (vp->vp_octets == test_octets)");
-	TEST_CHECK(vp && memcmp(vp->vp_octets, test_octets, NUM_ELEMENTS(test_octets)) == 0);
-
-	TEST_CASE("Check 2. part ((vp->vp_string+NUM_ELEMENTS(test_octets)) == test_octets)");
-	TEST_CHECK(vp && memcmp(vp->vp_octets+NUM_ELEMENTS(test_octets), test_octets, NUM_ELEMENTS(test_octets)) == 0);
-}
-
-static void test_fr_pair_value_mem_append_buffer(void)
-{
-	fr_pair_t *vp;
-	uint8_t   *copy_test_octets;
-
-	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, NULL, fr_dict_attr_test_octets)) != NULL);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
-	copy_test_octets = talloc_memdup(vp, test_octets, NUM_ELEMENTS(test_octets));
-	talloc_set_type(copy_test_octets, uint8_t);
-
-	TEST_CASE("Copy content of 'copy_test_octets' to attribute value using fr_pair_value_memdup()");
-	TEST_CHECK(fr_pair_value_memdup(vp, copy_test_octets, NUM_ELEMENTS(test_octets), false) == 0);
-
-	TEST_CASE("Append the 'copy_test_octets' value using fr_pair_value_mem_append_buffer()");
-	TEST_CHECK(fr_pair_value_mem_append_buffer(vp, copy_test_octets, true) == 0);
-
-	// awful hack, just verify the first part of buffer and then the second part. yep, just appended twice.
-	TEST_CASE("Check 1. part (vp->vp_octets == test_octets)");
-	TEST_CHECK(vp && memcmp(vp->vp_octets, test_octets, NUM_ELEMENTS(test_octets)) == 0);
-
-	TEST_CASE("Check 2. part ((vp->vp_string+NUM_ELEMENTS(test_octets)) == test_octets)");
-	TEST_CHECK(vp && memcmp(vp->vp_octets+NUM_ELEMENTS(test_octets), test_octets, NUM_ELEMENTS(test_octets)) == 0);
-
-	talloc_free(copy_test_octets);
-}
-
 static void test_fr_pair_value_enum(void)
 {
 	fr_pair_t   *vp;
@@ -1472,8 +1355,6 @@ TEST_LIST = {
 	{ "fr_pair_value_bstrdup_buffer",         test_fr_pair_value_bstrdup_buffer },
 	{ "fr_pair_value_bstrndup_shallow",       test_fr_pair_value_bstrndup_shallow },
 	{ "fr_pair_value_bstrdup_buffer_shallow", test_fr_pair_value_bstrdup_buffer_shallow },
-	{ "fr_pair_value_bstrn_append",           test_fr_pair_value_bstrn_append },
-	{ "fr_pair_value_bstr_append_buffer",     test_fr_pair_value_bstr_append_buffer },
 
 	/* Assign and manipulate octets strings */
 	{ "fr_pair_value_mem_alloc",              test_fr_pair_value_mem_alloc },
@@ -1482,12 +1363,10 @@ TEST_LIST = {
 	{ "fr_pair_value_memdup_buffer",          test_fr_pair_value_memdup_buffer },
 	{ "fr_pair_value_memdup_shallow",         test_fr_pair_value_memdup_shallow },
 	{ "fr_pair_value_memdup_buffer_shallow",  test_fr_pair_value_memdup_buffer_shallow },
-	{ "fr_pair_value_mem_append",             test_fr_pair_value_mem_append },
-	{ "fr_pair_value_mem_append_buffer",      test_fr_pair_value_mem_append_buffer },
-
+	
 	/* Enum functions */
 	{ "fr_pair_value_enum",                   test_fr_pair_value_enum },
 	{ "fr_pair_value_enum_box",               test_fr_pair_value_enum_box },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

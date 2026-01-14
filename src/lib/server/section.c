@@ -25,7 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/section.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #define IDENT_ANY_CMP(_a, _b) \
 	(((_a) == CF_IDENT_ANY) < ((_b) == CF_IDENT_ANY)) - (((_a) == CF_IDENT_ANY) > ((_b) == CF_IDENT_ANY))

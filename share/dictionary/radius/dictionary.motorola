@@ -18,41 +18,41 @@ VENDOR		Motorola			161
 BEGIN-VENDOR	Motorola
 
 # Low Priority uplink CIR
-ATTRIBUTE	Canopy-LPULCIR				1	integer
+ATTRIBUTE	Canopy-LPULCIR				1	uint32
 # Low Priority downlink CIR
-ATTRIBUTE	Canopy-LPDLCIR				2	integer
+ATTRIBUTE	Canopy-LPDLCIR				2	uint32
 # High Priority uplink CIR
-ATTRIBUTE	Canopy-HPULCIR				3	integer
+ATTRIBUTE	Canopy-HPULCIR				3	uint32
 # High Priority downlink CIR
-ATTRIBUTE	Canopy-HPDLCIR				4	integer
+ATTRIBUTE	Canopy-HPDLCIR				4	uint32
 # High Priority Enable
-ATTRIBUTE	Canopy-HPENABLE				5	integer
+ATTRIBUTE	Canopy-HPENABLE				5	uint32
 # Uplink Bit Rate/Sustained Uplink Rate
-ATTRIBUTE	Canopy-ULBR				6	integer
+ATTRIBUTE	Canopy-ULBR				6	uint32
 # Uplink Bit Limit/Uplink Burst Allocation
-ATTRIBUTE	Canopy-ULBL				7	integer
+ATTRIBUTE	Canopy-ULBL				7	uint32
 # Downlink Bit Rate/Sustained Downlink Rate
-ATTRIBUTE	Canopy-DLBR				8	integer
+ATTRIBUTE	Canopy-DLBR				8	uint32
 # Downlink Bit Limit/Downlink Burst Allocation
-ATTRIBUTE	Canopy-DLBL				9	integer
+ATTRIBUTE	Canopy-DLBL				9	uint32
 # VLAN Learning Enable
-ATTRIBUTE	Canopy-VLLEARNEN			14	integer
+ATTRIBUTE	Canopy-VLLEARNEN			14	uint32
 # VLAN Frames Types allowed - all/Tag/Untagged
-ATTRIBUTE	Canopy-VLFRAMES				15	integer
+ATTRIBUTE	Canopy-VLFRAMES				15	uint32
 # VLAN Membership  (1-4094)
-ATTRIBUTE	Canopy-VLIDSET				16	integer
+ATTRIBUTE	Canopy-VLIDSET				16	uint32
 # VLAN Age Timeout
-ATTRIBUTE	Canopy-VLAGETO				20	integer
+ATTRIBUTE	Canopy-VLAGETO				20	uint32
 # VLAN Ingress VLAN ID
-ATTRIBUTE	Canopy-VLIGVID				21	integer
+ATTRIBUTE	Canopy-VLIGVID				21	uint32
 # VLAN Management VLAN ID
-ATTRIBUTE	Canopy-VLMGVID				22	integer
+ATTRIBUTE	Canopy-VLMGVID				22	uint32
 # VLAN SM Management Passthrough Enable
-ATTRIBUTE	Canopy-VLSMMGPASS			23	integer
+ATTRIBUTE	Canopy-VLSMMGPASS			23	uint32
 # Broadcast Traffic Maximum Information Rate
-ATTRIBUTE	Canopy-BCASTMIR				24	integer
+ATTRIBUTE	Canopy-BCASTMIR				24	uint32
 # Userlevel permission for the User logging in remotely
-ATTRIBUTE	Canopy-UserLevel			50	integer
+ATTRIBUTE	Canopy-UserLevel			50	uint32
 
 VALUE	Canopy-HPENABLE			Disable			0
 VALUE	Canopy-HPENABLE			Enable			1

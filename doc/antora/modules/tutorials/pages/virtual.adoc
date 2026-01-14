@@ -1,5 +1,7 @@
 = Virtual Servers
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To understand how to create and use a new virtual server.
 
 *Time:* 20-30 minutes
@@ -33,7 +35,7 @@ listen {
 }
 
 authorize {
-    &control.Clearext-Password := "hello"
+    control.Clearext-Password := "hello"
     pap
 }
 

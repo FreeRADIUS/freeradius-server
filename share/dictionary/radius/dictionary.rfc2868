@@ -8,8 +8,8 @@
 #
 #	$Id$
 #
-ATTRIBUTE	Tunnel-Type				64	integer	has_tag
-ATTRIBUTE	Tunnel-Medium-Type			65	integer	has_tag
+ATTRIBUTE	Tunnel-Type				64	uint32	has_tag
+ATTRIBUTE	Tunnel-Medium-Type			65	uint32	has_tag
 ATTRIBUTE	Tunnel-Client-Endpoint			66	string	has_tag
 ATTRIBUTE	Tunnel-Server-Endpoint			67	string	has_tag
 
@@ -17,7 +17,7 @@ ATTRIBUTE	Tunnel-Password				69	string	has_tag,encrypt=Tunnel-Password
 
 ATTRIBUTE	Tunnel-Private-Group-Id			81	string	has_tag
 ATTRIBUTE	Tunnel-Assignment-Id			82	string	has_tag
-ATTRIBUTE	Tunnel-Preference			83	integer	has_tag
+ATTRIBUTE	Tunnel-Preference			83	uint32	has_tag
 
 ATTRIBUTE	Tunnel-Client-Auth-Id			90	string	has_tag
 ATTRIBUTE	Tunnel-Server-Auth-Id			91	string	has_tag

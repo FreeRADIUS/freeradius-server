@@ -10,21 +10,21 @@
 VENDOR		Airespace			14179
 
 BEGIN-VENDOR	Airespace
-ATTRIBUTE	Wlan-Id					1	integer
-ATTRIBUTE	QOS-Level				2	integer
-ATTRIBUTE	DSCP					3	integer
-ATTRIBUTE	8021p-Tag				4	integer
+ATTRIBUTE	Wlan-Id					1	uint32
+ATTRIBUTE	QOS-Level				2	uint32
+ATTRIBUTE	DSCP					3	uint32
+ATTRIBUTE	8021p-Tag				4	uint32
 ATTRIBUTE	Interface-Name				5	string
 ATTRIBUTE	ACL-Name				6	string
-ATTRIBUTE	Data-Bandwidth-Average-Contract		7	integer
-ATTRIBUTE	Real-Time-Bandwidth-Average-Contract	8	integer
-ATTRIBUTE	Data-Bandwidth-Burst-Contract		9	integer
-ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract	10	integer
+ATTRIBUTE	Data-Bandwidth-Average-Contract		7	uint32
+ATTRIBUTE	Real-Time-Bandwidth-Average-Contract	8	uint32
+ATTRIBUTE	Data-Bandwidth-Burst-Contract		9	uint32
+ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract	10	uint32
 ATTRIBUTE	Guest-Role-Name				11	string
-ATTRIBUTE	Data-Bandwidth-Average-Contract-Upstream 13	integer
-ATTRIBUTE	Real-Time-Bandwidth-Average-Contract-Upstream 14	integer
-ATTRIBUTE	Data-Bandwidth-Burst-Contract-Upstream	15	integer
-ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract-Upstream 16	integer
+ATTRIBUTE	Data-Bandwidth-Average-Contract-Upstream 13	uint32
+ATTRIBUTE	Real-Time-Bandwidth-Average-Contract-Upstream 14	uint32
+ATTRIBUTE	Data-Bandwidth-Burst-Contract-Upstream	15	uint32
+ATTRIBUTE	Real-Time-Bandwidth-Burst-Contract-Upstream 16	uint32
 
 VALUE	QOS-Level			Bronze			3
 VALUE	QOS-Level			Silver			0

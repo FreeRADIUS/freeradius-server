@@ -6,8 +6,8 @@
 #
 Filter-Id := { "1", "2", "3", "4", "5" }
 
-foreach Filter-Id {
-	if ("%{Foreach-Variable-0}" == "3") {
+foreach thing (Filter-Id) {
+	if (thing == "3") {
 		success
 
 		#
@@ -23,7 +23,7 @@ foreach Filter-Id {
 		return
 	}
 
-	if ("%{Foreach-Variable-0}" == "4") {
+	if (thing == "4") {
 		test_fail
 	}
 }

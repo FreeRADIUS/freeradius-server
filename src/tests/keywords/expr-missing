@@ -12,7 +12,7 @@ string sc
 a = 1
 c = a - b
 
-if !(c == a) {
+if (c != a) {
 	test_fail
 }
 
@@ -22,7 +22,7 @@ sc = sa + sb
 #
 #  sb is missing, so its default value is the empty string
 #
-if !(sc == sa) {
+if (sc != sa) {
 	test_fail
 }
 success

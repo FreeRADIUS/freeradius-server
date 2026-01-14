@@ -1,0 +1,19 @@
+= Miscellanous functions
+
+In addition to storing attribute references, the server has a number
+of built-in expansions.  These expansions act largely as functions
+which operate on inputs, and produce an output.
+
+.Builtin Functions
+[options="headers, autowidth]
+|===
+| *Function*				            | *Description*
+| xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
+| xref:xlat/misc/length.adoc[length]	            | Get the length of data
+| xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
+| xref:xlat/misc/rand.adoc[rand]	            | random integers
+| xref:xlat/misc/uuid.adoc[UUID]                    | Generation of UUIDs
+|===
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

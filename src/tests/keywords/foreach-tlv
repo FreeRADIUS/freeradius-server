@@ -8,17 +8,17 @@
 string out
 
 Tmp-TLV-0 := {
-	a = 1
-	b = 2
-	c = "foo"
+	a = 1,
+	b = 2,
+	c = "foo",
 	d = 127.0.0.1
 }
 
 request += {
 	Tmp-TLV-0 = {
-		a = 2112
-		b = 6809
-		c = "bar"
+		a = 2112,
+		b = 6809,
+		c = "bar",
 		d = 192.0.2.1
 	}
 }

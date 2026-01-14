@@ -62,7 +62,7 @@ static fr_dict_t const *dict_bfd;
 extern fr_dict_autoload_t proto_bfd_dict[];
 fr_dict_autoload_t proto_bfd_dict[] = {
 	{ .out = &dict_bfd, .proto = "bfd" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -80,7 +80,7 @@ fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ .out = &attr_your_discriminator, .name = "Packet.your-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 
 	{ .out = &attr_additional_data, .name = "Additional-Data", .type = FR_TYPE_GROUP, .dict = &dict_bfd},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
@@ -149,13 +149,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_pair_t		*vp, *reply, *my, *your;
 	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) data;
 	bfd_packet_t const     	*bfd = (bfd_packet_t const *) wrapper->packet;
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_bfd;
 
 	client = address->radclient;
 

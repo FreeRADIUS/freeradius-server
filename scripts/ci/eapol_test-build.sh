@@ -36,7 +36,7 @@
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_REPO:="http://w1.fi/hostap.git"}
+: ${HOSTAPD_REPO:="http://git.w1.fi/hostap.git"}
 : ${HOSTAPD_GIT_TAG:="hostap_2_11"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
@@ -101,8 +101,10 @@ sed -i -e 's/-Werror//' "${WPA_SUPPLICANT_DIR}/Makefile"
 
 # There is currently a code path incorrectly identified as a use-after-free by GCC on sid
 # Make that just a warning rather than a compilation failure
-if ! [ -z `lsb_release -d | grep sid` ]; then
-    export CFLAGS="-MMD -O2 -Wall -Wno-error=use-after-free -g"
+if which lsb_release > /dev/null 2>&1; then
+    if ! [ -z `lsb_release -d | grep sid` ]; then
+        export CFLAGS="-MMD -O2 -Wall -Wno-error=use-after-free -g"
+    fi
 fi
 
 if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then

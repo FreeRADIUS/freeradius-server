@@ -12,8 +12,10 @@ Encode a string using Base64.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Caipirinha"
-&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %base64.encode(%{control.Tmp-String-0})"
+string test
+
+test := "Caipirinha"
+reply.Reply-Message := "The base64 of %{test} is %base64.encode(test)"
 ----
 
 .Output
@@ -32,8 +34,10 @@ Decode a string previously encoded using Base64.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
-&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %base64.decode(%{control.Tmp-String-0})"
+string test
+
+test := "Q2FpcGlyaW5oYQ=="
+reply.Reply-Message := "The base64.decode of %{test} is %base64.decode(test)"
 ----
 
 .Output
@@ -52,8 +56,10 @@ Convert string to binary.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "10"
-&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %bin(%{control.Tmp-String-0})"
+string test
+
+test := "10"
+reply.Reply-Message := "The %{test} in binary is %bin(test)"
 ----
 
 .Output
@@ -72,8 +78,10 @@ Convert to hex.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "12345"
-&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{control.Tmp-String-0})"
+string test
+
+test := "12345"
+reply.Reply-Message := "The value of %{test} in hex is %hex(test)"
 ----
 
 .Output
@@ -82,7 +90,7 @@ Convert to hex.
 The value of 12345 in hex is 3132333435
 ```
 
-== %urlquote( ... )
+== %url.quote( ... )
 
 Quote URL special characters.
 
@@ -92,9 +100,11 @@ Quote URL special characters.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "http://example.org/"
-&reply += {
-	&Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
+string test
+
+test := "http://example.org/"
+reply += {
+	Reply-Message = "The urlquote of %{test} is %url.quote(test)"
 }
 ----
 
@@ -104,7 +114,7 @@ Quote URL special characters.
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
 
-== %urlunquote( ... )
+== %url.unquote( ... )
 
 Unquote URL special characters.
 
@@ -114,9 +124,11 @@ Unquote URL special characters.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
-&reply += {
-	&Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
+string test
+
+test := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+reply += {
+	Reply-Message = "The urlunquote of %{test} is %url.unquote(test)"
 }
 ----
 

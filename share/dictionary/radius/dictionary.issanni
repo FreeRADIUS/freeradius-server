@@ -29,13 +29,13 @@ ATTRIBUTE	Sec-DNS					10	ipaddr
 ATTRIBUTE	Pri-NBNS				11	ipaddr
 ATTRIBUTE	Sec-NBNS				12	ipaddr
 ATTRIBUTE	Traffic-Class				13	string
-ATTRIBUTE	Tunnel-Type				14	integer
+ATTRIBUTE	Tunnel-Type				14	uint32
 
 VALUE	Tunnel-Type			IP-IP			1
 VALUE	Tunnel-Type			ESP			2
 VALUE	Tunnel-Type			L2TP			3
 
-ATTRIBUTE	NAT-Type				15	integer
+ATTRIBUTE	NAT-Type				15	uint32
 ATTRIBUTE	QOS-Class				16	string
 ATTRIBUTE	Interface-Name				17	string
 

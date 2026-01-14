@@ -3,7 +3,7 @@
 #
 #	{} == {} --> true
 #
-if !(%test.fail() == %test.fail()) {
+if (%test.fail() != %test.fail()) {
 	test_fail
 }
 

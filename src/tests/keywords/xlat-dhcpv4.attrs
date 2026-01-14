@@ -1,4 +1,6 @@
 Packet-Type = Discover
+Vendor-Specific-Options = 0x011568747470733a2f2f312e322e332e343a373534372f020474657374
 
 Result-Status == success
 Packet-Type == Offer
+Relay-Agent-Information == { Circuit-Id == 0xabcdef, Remote-Id == 0x010203040506 }

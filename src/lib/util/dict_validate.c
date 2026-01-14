@@ -40,7 +40,6 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	uint32_t shift_array, shift_has_value;
 	uint32_t shift_subtype, shift_extra;
 	uint32_t shift_counter;
-	fr_dict_attr_t const *v;
 	fr_dict_t		*dict = da->dict;
 	fr_dict_attr_t const	*parent = da->parent;
 	char const		*name = da->name;
@@ -98,6 +97,19 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
+	if (flags->local && (flags->is_unknown || flags->is_raw)) {
+		fr_strerror_const("Local variables cannot be 'raw' or unknown");
+		return false;
+	}
+
+	/*
+	 *	"flat" attributes can only go into a group.
+	 */
+	if ((flags->allow_flat) && (type != FR_TYPE_GROUP)) {
+		fr_strerror_printf("Cannot set the 'flat' flag for data type %s", fr_type_to_str(type));
+		return false;
+	}
+
 	/*
 	 *	Only some data types can be in arrays, because we need
 	 *	to be able to decode the various array members.
@@ -118,6 +130,10 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
 		case FR_TYPE_TIME_DELTA:
+			break;
+
+		case FR_TYPE_ATTR:
+			flags->is_known_width = 1;
 			break;
 
 		case FR_TYPE_STRING:
@@ -163,12 +179,46 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	}
 
 	/*
+	 *	Sanity check aliases.
+	 */
+	if (flags->is_alias) {
+		fr_dict_attr_ext_ref_t *ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+		if (!ext) {
+			fr_strerror_const("ALIAS is missing extension");
+			return false;
+		}
+
+		if (!ext->ref) {
+			fr_strerror_const("ALIAS is missing ref");
+			return false;
+		}
+
+		if (da->parent->type == FR_TYPE_STRUCT) {
+			fr_strerror_const("ALIAS cannot be added to a data type 'struct'");
+			return false;
+		}
+
+		fr_assert(!da->flags.is_unknown);
+		fr_assert(!da->flags.is_raw);
+		fr_assert(!da->flags.array);
+		fr_assert(!da->flags.is_known_width);
+		fr_assert(!da->flags.has_value);
+		fr_assert(!da->flags.counter);
+		fr_assert(!da->flags.secret);
+		fr_assert(!da->flags.unsafe);
+		fr_assert(!da->flags.is_ref_target);
+		fr_assert(!da->flags.local);
+		fr_assert(!da->flags.has_fixup);
+	}
+
+	/*
 	 *	The "extra" flag is a grab-bag of stuff, depending on
 	 *	the data type.
 	 */
 	if (flags->extra) {
-		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD) &&
-		    (flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+		if (!fr_dict_attr_is_key_field(da) && !da_is_length_field(da) && !da_is_bit_field(da)) {
 			fr_strerror_const("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
@@ -210,7 +260,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			if (flags->array) {
 				ALLOW_FLAG(array);
 
-				if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) goto invalid_extra;
+				if (!da_is_length_field(da)) {
+					goto invalid_extra;
+				}
+
+			} else if (da_is_length_field(da)) {
+				/* this is allowed */
+
 			} else if (flags->subtype) {
 			invalid_extra:
 				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
@@ -222,7 +278,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			break;
 
 		case FR_TYPE_STRUCT:
-			if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+			if (!da_is_length_field(da)) {
 				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
 				return false;
 			}
@@ -244,7 +300,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			return false;
 		}
 
-		if (((flags->subtype == FLAG_LENGTH_UINT8) || (flags->subtype == FLAG_LENGTH_UINT16)) &&
+		if (da_is_length_field(da) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
 					   fr_type_to_str(type));
@@ -260,11 +316,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	 *	other types.
 	 */
 	if (!flags->extra || (flags->subtype != FLAG_BIT_FIELD)) switch (type) {
+	case FR_TYPE_INT8:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_BOOL:
 		flags->length = 1;
 		break;
 
+	case FR_TYPE_INT16:
 	case FR_TYPE_UINT16:
 		flags->length = 2;
 		break;
@@ -281,12 +339,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_UINT32:
 	case FR_TYPE_INT32:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_FLOAT32:
 		flags->length = 4;
 		break;
 
+	case FR_TYPE_INT64:
 	case FR_TYPE_UINT64:
 	case FR_TYPE_FLOAT64:
 		flags->length = 8;
@@ -324,6 +383,8 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		break;
 
 	case FR_TYPE_VENDOR:
+		if (dict->string_based) break;
+
 		if (parent->type != FR_TYPE_VSA) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' "
 					   "instead of '%s'",
@@ -331,71 +392,21 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			return false;
 		}
 
-		if (flags->length) {
-			if ((flags->length != 1) &&
-			    (flags->length != 2) &&
-			    (flags->length != 4)) {
-				fr_strerror_const("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
-				return false;
-			}
-
-			break;
-		}
-
-		/*
-		 *	Set the length / type_size of vendor
-		 *	attributes from the vendor definition.
-		 */
-		flags->type_size = 1;
-		flags->length = 1;
-		if (attr > 0) {
-			fr_dict_vendor_t const *dv;
-
-			dv = fr_dict_vendor_by_num(dict, attr);
-			if (dv) {
-				flags->type_size = dv->type;
-				flags->length = dv->length;
-			}
+		if ((flags->length != 1) &&
+		    (flags->length != 2) &&
+		    (flags->length != 4)) {
+			fr_strerror_const("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
+			return false;
 		}
 		break;
 
 	case FR_TYPE_TLV:
-		if (flags->length) {
-			if ((flags->length != 1) &&
-			    (flags->length != 2) &&
-			    (flags->length != 4)) {
-				fr_strerror_const("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
-				return false;
-			}
-
-			break;
-		}
-
-		/*
-		 *	Find an appropriate parent to copy the
-		 *	TLV-specific fields from.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				break;
-			}
-		}
-
-		/*
-		 *	root is always FR_TYPE_TLV, so we're OK.
-		 */
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_type_to_str(type));
+		if ((flags->length != 1) &&
+		    (flags->length != 2) &&
+		    (flags->length != 4)) {
+			fr_strerror_const("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
 			return false;
 		}
-
-		/*
-		 *	Over-ride whatever was there before, so we
-		 *	don't have multiple formats of VSAs.
-		 */
-		flags->type_size = v->flags.type_size;
-		flags->length = v->flags.length;
 		break;
 
 		/*
@@ -424,12 +435,37 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		}
 		break;
 
+	case FR_TYPE_UNION:
+		if (parent->type != FR_TYPE_STRUCT) {
+			fr_strerror_printf("Attributes of type 'union' must have a parent of type 'struct', not of type '%s'",
+					   fr_type_to_str(parent->type));
+			return false;
+		}
+
+		/*
+		 *	If the UNION is missing a key extension, then the children of the UNION cannot find
+		 *	the key field in the parent STRUCT.
+		 */
+		if (!fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_KEY)) {
+			fr_strerror_const("Attribute of type 'union' is missing 'key=...'");
+			return false;
+		}
+		break;
+
 	case FR_TYPE_NULL:
+	case FR_TYPE_INTERNAL:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_type_to_str(type));
 		return false;
 
-	default:
+		/*
+		 *	These types are encoded differently in each protocol.
+		 */
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_STRING:
+	case FR_TYPE_VSA:
+	case FR_TYPE_GROUP:
 		break;
 	}
 
@@ -443,14 +479,14 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			 */
 		} else if (!flags->extra) {
 			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-				fr_strerror_const("The 'format=' flag can only be used with attributes of type 'tlv'");
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv', and not type '%s'", fr_type_to_str(type));
 				return false;
 			}
 
 			if ((flags->type_size != 1) &&
 			    (flags->type_size != 2) &&
 			    (flags->type_size != 4)) {
-				fr_strerror_const("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4, not %i", flags->type_size);
 				return false;
 			}
 		}
@@ -478,7 +514,12 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 
-		if (parent->flags.is_known_width && !flags->is_known_width && !flags->length) {
+		/*
+		 *	If our parent is known width, then the children have to be known width, UNLESS
+		 *	either this child or its parent has a "length" prefix.
+		 */
+		if (parent->flags.is_known_width && !flags->is_known_width && !flags->length &&
+		    !da_is_length_field(da) && !da_is_length_field(parent)) {
 			fr_strerror_const("Variable-sized fields cannot be used within a 'struct' which is 'array'");
 			return false;
 		}
@@ -540,7 +581,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			 *	key fields.  Yes, this is O(N^2), but
 			 *	the structs are small.
 			 */
-			if (flags->extra && (flags->subtype == FLAG_KEY_FIELD)) {
+			if (fr_dict_attr_is_key_field(da)) {
 				for (i = 1; i < attr; i++) {
 					sibling = fr_dict_attr_child_by_num(parent, i);
 					if (!sibling) {
@@ -571,15 +612,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	case FR_TYPE_VENDOR:
 		break;
 
-		/*
-		 *	"key" fields inside of a STRUCT can have
-		 *	children, even if they are integer data type.
-		 */
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-		if (fr_dict_attr_is_key_field(parent)) break;
-		FALL_THROUGH;
+	case FR_TYPE_UNION:
+		if (!((da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_TLV) || fr_type_is_leaf(da->type))) {
+			fr_strerror_printf("Attributes of type '%s' cannot be children of the 'union' type",
+					   fr_type_to_str(type));
+			return false;
+		}
+		break;
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",

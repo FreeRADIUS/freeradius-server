@@ -67,10 +67,9 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			tmpl_rules_t	lhs_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->local_dict,
 					.request_def = tmpl_request(map->lhs),
 					.list_def = tmpl_list(map->lhs),
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				},
 				.xlat = {
 					.runtime_el = unlang_interpret_event_list(request),
@@ -80,7 +79,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			tmpl_rules_t rhs_rules = {
 				.attr = {
-					.dict_def = request->dict
+					.dict_def = request->local_dict
 				},
 				.xlat = {
 					.runtime_el = lhs_rules.xlat.runtime_el,
@@ -225,12 +224,19 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_DATA_UNRESOLVED:
+	case TMPL_TYPE_DATA:
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_tail_unresolved(map->rhs));
 		return -1;
+
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		if (tmpl_resolve(map->rhs, NULL) < 0) {
+			cf_log_err(map->ci, "Invalid data %s", map->rhs->name);
+			return -1;
+		}
+		break;
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
@@ -281,7 +287,7 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
 
 	while ((map = map_list_next(maps, map))) {
-		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
+		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs) < 0) {
 			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 			TALLOC_FREE(our_ctx);
 			return -1;
@@ -342,9 +348,8 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 		int		count, i;
 		tmpl_rules_t const parse_rules = {
 			.attr = {
-				.dict_def = request->dict,
+				.dict_def = request->local_dict,
 				.list_def = request_attr_request,
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 			},
 			.xlat = {
 				.runtime_el = unlang_interpret_event_list(request),
@@ -454,9 +459,8 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 
 			tmpl_rules_t const parse_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->local_dict,
 					.list_def = request_attr_request,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				},
 				.xlat = {
 					.runtime_el = unlang_interpret_event_list(request),

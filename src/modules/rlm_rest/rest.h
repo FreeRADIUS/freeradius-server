@@ -63,6 +63,7 @@ typedef enum {
 	REST_HTTP_BODY_YAML,
 	REST_HTTP_BODY_HTML,
 	REST_HTTP_BODY_PLAIN,
+	REST_HTTP_BODY_CRL,
 	REST_HTTP_BODY_NUM_ENTRIES
 } http_body_type_t;
 
@@ -127,6 +128,7 @@ typedef struct {
 	char const			*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t		force_to;	//!< Override the Content-Type header in the response
 							//!< to force decoding as a particular type.
+	bool				accept_all;	//!< Accept all content types.
 
 	size_t				max_body_in;	//!< Maximum size of incoming data.
 } rlm_rest_section_response_t;
@@ -146,6 +148,15 @@ typedef struct {
 } rlm_rest_section_t;
 
 /*
+ *	Structure for call_env found module calls
+ */
+typedef struct {
+	rlm_rest_section_t		section;	//!< Parsed section config
+	CONF_SECTION			*cs;		//!< Conf section found for this call
+	fr_rb_node_t			node;		//!< In tree of calls
+} rlm_rest_section_conf_t;
+
+/*
  *	Structure for module configuration
  */
 typedef struct {
@@ -160,10 +171,9 @@ typedef struct {
 	fr_curl_conn_config_t	conn_config;	//!< Configuration of slab allocated connection handles.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
-	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
-	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
-	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
-	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
+
+ 	fr_rb_tree_t		sections;	//!< Tree of sections with module call found by call_env parsing
+ 	bool			sections_init;	//!< Has the tree been initialised.
 
 #ifndef NDEBUG
 	bool			fail_header_decode;	//!< Force header decoding to fail for debugging purposes.
@@ -269,6 +279,7 @@ typedef struct {
 } rlm_rest_xlat_rctx_t;
 
 typedef struct {
+	rlm_rest_section_conf_t		*section;	//!< Section config.
 	struct {
 		fr_value_box_t		*uri;		//!< URI to send HTTP request to.
 		fr_value_box_list_t	*header;	//!< Headers to place in the request

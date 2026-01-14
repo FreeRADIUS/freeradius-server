@@ -17,10 +17,10 @@ ATTRIBUTE	Gateway-Manufacturer-OUI		4	octets
 ATTRIBUTE	Gateway-Serial-Number			5	octets
 ATTRIBUTE	Gateway-Product-Class			6	octets
 
-ATTRIBUTE	ACS-URL					11	octets
-ATTRIBUTE	Provisioning-Code			12	octets
-ATTRIBUTE	CWMP-Retry-Minimum-Interval		13	octets
-ATTRIBUTE	CWMP-Retry-Interval-Multiplier		14	octets
+ATTRIBUTE	ACS-URL					11	string
+ATTRIBUTE	Provisioning-Code			12	string
+ATTRIBUTE	CWMP-Retry-Minimum-Interval		13	string
+ATTRIBUTE	CWMP-Retry-Interval-Multiplier		14	string
 
 ATTRIBUTE	Tunnel-Type				21	octets
 ATTRIBUTE	Server-Endpoint				22	octets

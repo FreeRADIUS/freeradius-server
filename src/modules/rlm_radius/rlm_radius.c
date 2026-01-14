@@ -140,12 +140,6 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
-
-	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
-
-	{ FR_CONF_OFFSET_FLAGS("originate", CONF_FLAG_DEPRECATED, rlm_radius_t, originate) },
-
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
 
@@ -181,7 +175,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_radius_dict[];
 fr_dict_autoload_t rlm_radius_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_chap_challenge;
@@ -216,7 +210,7 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ .out = &attr_response_length, .name = "Extended-Attribute-1.Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius},
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #include "bio.c"
@@ -252,9 +246,6 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	mode = fr_table_value_by_str(mode_names, name, RLM_RADIUS_MODE_INVALID);
 
-	/*
-	 *	Commented out until we upgrade the old configurations.
-	 */
 	if (mode == RLM_RADIUS_MODE_INVALID) {
 		cf_log_err(ci, "Invalid mode name \"%s\"", name);
 		return -1;
@@ -497,8 +488,8 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				.namespace = fr_dict_root(dict_radius),
 				.list_def = request_attr_request,
 				.list_presence = TMPL_ATTR_LIST_FORBID,
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
-			}
+			},
+			.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 		};
 
 		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, status_check_verify, parent, 128);
@@ -584,7 +575,7 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 /** Send packets outbound.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
@@ -595,13 +586,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((request->packet->code >= FR_RADIUS_CODE_MAX) ||
 	    !fr_time_delta_ispos(inst->retry[request->packet->code].irt)) { /* can't be zero */
 		REDEBUG("Invalid packet code %u", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -611,13 +602,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
 	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
 		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	client = client_from_request(request);
 	if (client && client->dynamic && !client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -628,8 +619,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	the request...
 	 */
 	rcode = mod_enqueue(&u, &retry_config, inst, thread->ctx.trunk, request);
-	if (rcode == 0) RETURN_MODULE_NOOP;
-	if (rcode < 0) RETURN_MODULE_FAIL;
+	if (rcode == 0) RETURN_UNLANG_NOOP;
+	if (rcode < 0) RETURN_UNLANG_FAIL;
 
 	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
 }
@@ -644,45 +635,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->name = mctx->mi->name;
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
-	/*
-	 *	Allow explicit setting of mode.
-	 */
-	if (inst->mode != RLM_RADIUS_MODE_INVALID) goto check_others;
-
-	/*
-	 *	If not set, try to insinuate it from context.
-	 */
-	if (inst->replicate) {
-		if (inst->originate) {
-			cf_log_err(conf, "Cannot set 'replicate=true' and 'originate=true' at the same time.");
-			return -1;
-		}
-
-		if (inst->synchronous) {
-			cf_log_warn(conf, "Ignoring 'synchronous=true' due to 'replicate=true'");
-		}
-
-		inst->mode = RLM_RADIUS_MODE_REPLICATE;
-		goto check_others;
-	}
-
-	/*
-	 *	Argubly we should be allowed to do synchronous proxying _and_ originating client packets.
-	 *
-	 *	However, the previous code didn't really do that consistently.
-	 */
-	if (inst->synchronous && inst->originate) {
-		cf_log_err(conf, "Cannot set 'synchronous=true' and 'originate=true'");
-		return -1;
-	}
-
-	if (inst->synchronous) {
-		inst->mode = RLM_RADIUS_MODE_PROXY;
-	} else {
-		inst->mode = RLM_RADIUS_MODE_CLIENT;
-	}
-
-check_others:
 	/*
 	 *	Replication is write-only, and append by default.
 	 */
@@ -737,20 +689,25 @@ check_others:
 		}
 
 		/*
+		 *	Encorce limits per trunk, due to the 8-bit ID space.
+		 */
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+
+		/*
+		 *	This only applies for XLAT_PROXY, but what the heck.
+		 */
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
+
+		/*
 		 *	No src_port range, we don't need to check any other settings.
 		 */
 		if (!inst->fd_config.src_port_start && !inst->fd_config.src_port_end) break;
 
 		if (inst->fd_config.path) {
 			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' for outgoing Unix sockets");
-			return -1;
-		}
-
-		/*
-		 *	We can only have one method of allocating source ports.
-		 */
-		if (inst->fd_config.src_port) {
-			cf_log_err(conf, "Cannot set 'src_port' and 'src_port_start' or 'src_port_end'");
 			return -1;
 		}
 
@@ -774,17 +731,20 @@ check_others:
 		}
 
 		/*
-		 *	Encorce limits per trunk, due to the 8-bit ID space.
+		 *	The source port range is split by worker - so there needs to be sufficient for at least
+		 *	one per worker.
 		 */
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+		if ((inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1) < (int) main_config->max_workers) {
+			cf_log_perr(conf, "src_port_start / end range is not enough for %u worker threads",
+				    main_config->max_workers);
+			return -1;
+		}
 
 		/*
-		 *	This only applies for XLAT_PROXY, but what the heck.
+		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
+		 *	bind multiple sockets to the same port before we connect() them.
 		 */
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
+		inst->fd_config.reuse_port = 1;
 		break;
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
@@ -795,6 +755,15 @@ check_others:
 			cf_log_err(conf, "Cannot set 'filename' or 'path' when using 'mode=unconnected-replicate'");
 			return -1;
 		}
+
+		/*
+		 *	Unconnected replicate has to use UDP.
+		 */
+		if (inst->fd_config.socket_type != SOCK_DGRAM) {
+			cf_log_err(conf, "Cannot use TCP sockets with 'mode=unconnected-replicate'");
+			return -1;
+		}
+
 		FALL_THROUGH;
 
 	case RLM_RADIUS_MODE_REPLICATE:
@@ -914,6 +883,29 @@ check_others:
 	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
 	inst->trunk_conf.req_pool_size = 1024 + sizeof(fr_pair_t) + 20;
 
+	if (inst->trunk_conf.conn_triggers) {
+		module_trigger_args_t	args;
+		char			*server = NULL;
+
+		args = (module_trigger_args_t) {
+			.module = mctx->mi->module->name,
+			.name = inst->name
+		};
+
+		/*
+		 *	Only client and proxy mode have fixed destinations
+		 */
+		if ((inst->mode == RLM_RADIUS_MODE_CLIENT) || (inst->mode == RLM_RADIUS_MODE_PROXY)) {
+			fr_value_box_aprint(inst, &server, fr_box_ipaddr(inst->fd_config.dst_ipaddr), NULL);
+			args.server = server;
+			args.port = inst->fd_config.dst_port;
+		}
+
+		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
+					      cf_section_find(conf, "pool", NULL), &args) < 0) return -1;
+	}
+
 	/*
 	 *	Only check the async timers when we're acting as a client.
 	 */
@@ -930,10 +922,10 @@ check_others:
 		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc, >=, 1);
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(15));
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(90));
 	}
 
 	/*
@@ -941,7 +933,7 @@ check_others:
 	 *	have mrt=mrc=mrd = 0, which means "retransmit
 	 *	forever".  We allow that, with the restriction that
 	 *	the server core will automatically free the request at
-	 *	max_request_time.
+	 *	request.timeout.
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_ACCOUNTING_REQUEST]) {
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));
@@ -951,7 +943,7 @@ check_others:
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd, >=, fr_time_delta_from_sec(0));
 #endif
 
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(5));
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
@@ -966,7 +958,7 @@ check_others:
 		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, >=, 1);
 		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(5));
 		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_RADIUS_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
@@ -981,7 +973,7 @@ check_others:
 		FR_INTEGER_BOUND_CHECK("CoA-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrc, >=, 1);
 		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_COA_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_COA_REQUEST].irt, <=, fr_time_delta_from_sec(5));
 		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrt, <=, fr_time_delta_from_sec(60));
 		FR_INTEGER_BOUND_CHECK("CoA-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_COA_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
@@ -996,7 +988,7 @@ check_others:
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].irt, <=, fr_time_delta_from_sec(5));
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
@@ -1067,6 +1059,7 @@ module_rlm_t rlm_radius = {
 		.name		= "radius",
 		.inst_size	= sizeof(rlm_radius_t),
 		.config		= module_config,
+		.dict		= &dict_radius,
 
 		.onload		= mod_load,
 		.unload		= mod_unload,

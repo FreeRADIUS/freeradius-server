@@ -34,16 +34,19 @@ RCSIDH(lib_bio_fd_privh, "$Id$")
  */
 typedef struct fr_bio_fd_s {
 	FR_BIO_COMMON;
-	fr_bio_callback_t  user_shutdown;	//!< user shutdown
+	fr_bio_io_t  user_shutdown;				//!< user shutdown
 
 	fr_bio_fd_info_t  info;
 
+	struct sockaddr_storage		remote_sockaddr;	//!< for connected UDP sockets.
+	socklen_t			remote_sockaddr_len;
+
 	struct {
-		fr_bio_callback_t  success;    	//!< for fr_bio_fd_connect()
-		fr_bio_callback_t  error;	//!< for fr_bio_fd_connect()
-		fr_bio_callback_t  timeout;	//!< for fr_bio_fd_connect()
-		fr_event_list_t	   *el;		//!< for fr_bio_fd_connect()
-		fr_event_timer_t const *ev;	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	success;    	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	error;	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	timeout;	//!< for fr_bio_fd_connect()
+		fr_event_list_t	  	*el;		//!< for fr_bio_fd_connect()
+		fr_timer_t		*ev;	//!< for fr_bio_fd_connect()
 	} connect;
 
 	int		max_tries;		//!< how many times we retry on EINTR
@@ -67,3 +70,5 @@ int	fr_bio_fd_init_connected(fr_bio_fd_t *my);
 int	fr_bio_fd_init_listen(fr_bio_fd_t *my);
 
 int	fr_bio_fd_socket_name(fr_bio_fd_t *my);
+
+void	fr_bio_fd_name(fr_bio_fd_t *my);

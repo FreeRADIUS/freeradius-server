@@ -72,7 +72,7 @@ static fr_dict_t const *dict_dns;
 extern fr_dict_autoload_t proto_dns_dict[];
 fr_dict_autoload_t proto_dns_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -80,7 +80,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t proto_dns_dict_attr[];
 fr_dict_attr_autoload_t proto_dns_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dns},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -97,10 +97,10 @@ fr_dict_attr_autoload_t proto_dns_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	proto_dns_t		*inst = talloc_get_type_abort(parent, proto_dns_t);
-	fr_dict_enum_value_t		*dv;
-	CONF_PAIR		*cp;
-	char const		*value;
+	proto_dns_t			*inst = talloc_get_type_abort(parent, proto_dns_t);
+	fr_dict_enum_value_t const	*dv;
+	CONF_PAIR			*cp;
+	char const			*value;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
@@ -144,13 +144,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_client_t const		*client;
 	fr_dns_packet_t	const	*packet = (fr_dns_packet_t const *) data;
 	fr_dns_ctx_t		packet_ctx;
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_dns;
 
 	RHEXDUMP3(data, data_len, "proto_dns decode packet");
 

@@ -1,6 +1,0 @@
-#
-#  PRE: update unknown
-#
-update control {
-	This-Does-Not-Exist = 1		# ERROR
-}

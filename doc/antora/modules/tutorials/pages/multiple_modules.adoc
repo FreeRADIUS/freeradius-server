@@ -1,5 +1,7 @@
 = Multiple instances of a module
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to have multiple instances of a module.
 
 *Time:* 10-20 minutes
@@ -23,7 +25,7 @@ for each date. The following information should be added to the
 
 --------------------------------------------------------------------
 detail byname {
-	filename = ${radacctdir}/byname/%{&User-Name || 'none'}
+	filename = ${radacctdir}/byname/%{User-Name || 'none'}
 	permissions = 0600
 }
 

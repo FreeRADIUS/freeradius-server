@@ -51,7 +51,7 @@ static conf_parser_t const proto_cron_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("when", CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
 	  		.func = time_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
 
 	{ FR_CONF_OFFSET("priority", proto_cron_t, priority) },
 
@@ -64,7 +64,7 @@ static fr_dict_t const *dict_cron;
 extern fr_dict_autoload_t proto_cron_dict[];
 fr_dict_autoload_t proto_cron_dict[] = {
 	{ .out = &dict_cron, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -421,7 +421,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->vps, fp, &done) < 0) {
+	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->vps, fp, &done, true) < 0) {
 		fclose(fp);
 		cf_log_err(conf, "Failed reading %s - %s", inst->filename, fr_strerror());
 		return -1;

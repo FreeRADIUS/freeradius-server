@@ -1,0 +1,27 @@
+Testing authentication is simple. Edit the `users` file (in v3 this has
+been moved to `raddb/mods-config/files/authorize`), and add the
+following line of text at the top of the file, before anything else:
+
+    testing Cleartext-Password := "password"
+
+Start the server in debugging mode (`radiusd -X`), and run `radtest`
+from another terminal window:
+
+    $ radtest testing password 127.0.0.1 0 testing123
+
+You *should* see the server respond with an `Access-Accept`. If it
+doesn't, the debug log will show why. In version 2, you can paste the
+output into the [debug form](http://networkradius.com/freeradius-debugging/),
+and a colorized HTML version will be produced. In version 3, the
+output will already be colorized in the terminal. Look for red or
+yellow text, and read the relevant messages. They should describe
+exactly what went wrong, and how to fix the problem.
+
+If you do see an `Access-Accept`, then *congratulations*, the following
+authentication methods now work for the `testing` user:
+
+    PAP, CHAP, MS-CHAPv1, MS-CHAPv2, PEAP, EAP-TTLS, EAP-GTC, EAP-MD5.
+
+The next step is to add more users, and to configure databases. Those
+steps are outside of the scope of this short web page, but the general
+method to use is important, and is outlined in the next section.

@@ -8,12 +8,12 @@ control.IP-Pool.Name := 'test_static'
 #
 #  Add a dynamic IP addresses
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Add a static IP assigned to the calling station in the request
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:ff, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-A', '192.168.0.10/32', '-O', 'aa:bb:cc:dd:ee:ff', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Check allocation
@@ -49,7 +49,7 @@ redis_ippool.renew {
 #
 #  Verify no expiry has been set on device
 #
-if (%redis(TTL, {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}) != '-1') {
+if (%redis('TTL', "{%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}") != '-1') {
 	test_fail
 }
 
@@ -73,19 +73,19 @@ if (!(updated)) {
 #
 #  Verify the association with the device remains
 #
-if (%redis(EXISTS, {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}) == '0') {
+if (%redis('EXISTS', "{%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}") == '0') {
 	test_fail
 }
 
 #
 #  Verify the hash information is retained
 #
-if (%redis(EXISTS, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}) == '0') {
+if (%redis('EXISTS', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}") == '0') {
 	test_fail
 }
 
 # Check the ZSCORE
-if (%redis(ZSCORE, {%{control.IP-Pool.Name}%}:pool, %{reply.Framed-IP-Address}) <= %l) {
+if (%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") <= %l) {
 	test_fail
 }
 

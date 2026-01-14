@@ -1,5 +1,5 @@
 import freeradius
 
 
-def authorize(p):
+def recv(p):
     return freeradius.RLM_MODULE_OK

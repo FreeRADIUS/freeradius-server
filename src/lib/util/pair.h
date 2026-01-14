@@ -104,6 +104,11 @@ struct value_pair_s {
 	struct {
 		fr_token_t		op;			//!< Operator to use when moving or inserting
 	};
+
+#ifdef WITH_VERIFY_PTR
+	char const		*filename;			//!< Where the pair was defined
+	int			line;				//!< Line number where the attribute was defined.
+#endif
 };
 
 #define vp_strvalue		data.vb_strvalue
@@ -131,6 +136,8 @@ struct value_pair_s {
 #define vp_float32		data.vb_float32
 #define vp_float64		data.vb_float64
 
+#define vp_attr			data.vb_attr
+
 #define vp_date			data.vb_date
 #define vp_time_delta		data.vb_time_delta
 
@@ -151,14 +158,20 @@ struct value_pair_s {
  *
  */
 #ifdef WITH_VERIFY_PTR
-void		fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_pair_t const *vp) CC_HINT(nonnull(4));
+void		fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent,
+			       fr_pair_list_t const *list, fr_pair_t const *vp, bool verify_values) CC_HINT(nonnull(5));
 
 void		fr_pair_list_verify(char const *file, int line,
-				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
+				    TALLOC_CTX const *expected, fr_pair_list_t const *list, bool verify_values) CC_HINT(nonnull(4));
 
-#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, _x)
-#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, _l, _x)
-#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
+#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, NULL, _x, true)
+#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, NULL, _l, _x, true)
+#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x, true)
+#  define PAIR_LIST_VERIFY_WITH_CTX(_c, _x)	fr_pair_list_verify(__FILE__, __LINE__, _c, _x, true)
+#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x)  fr_pair_verify(__FILE__, __LINE__, (_p)->da, &(_p)->vp_group, _x, true)
+#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x)  fr_pair_verify(__FILE__, __LINE__, _p, NULL, _x, true)
+
+#define PAIR_ALLOCED(_x) do { (_x)->filename = __FILE__; (_x)->line = __LINE__; } while (0)
 #else
 DIAG_OFF(nonnull-compare)
 /** Wrapper function to defeat nonnull checks
@@ -192,6 +205,11 @@ DIAG_ON(nonnull-compare)
 #  define PAIR_VERIFY_WITH_LIST(_l, _x)	fr_pair_list_nonnull_assert(_l); \
 					fr_pair_nonnull_assert(_x)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
+#  define PAIR_LIST_VERIFY_WITH_CTX(_c, _x)	fr_pair_list_nonnull_assert(_x)
+#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x) fr_pair_list_nonnull_assert(_p); \
+					  fr_pair_list_nonnull_assert(_x)
+#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x) fr_pair_list_nonnull_assert(_x)
+#  define PAIR_ALLOCED(_x)		fr_pair_nonnull_assert(_x)
 #endif
 
 
@@ -455,7 +473,7 @@ fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 
 fr_pair_t	*fr_pair_afrom_da_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3));
 
-fr_pair_t	*fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, int start) CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3));
+fr_pair_t	*fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, unsigned int start) CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3));
 
 fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp) CC_HINT(nonnull(2)) CC_HINT(warn_unused_result);
 
@@ -554,8 +572,6 @@ fr_pair_t	*fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] _cursor	to initialise.
@@ -578,8 +594,6 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] _cursor	to initialise.
@@ -596,8 +610,6 @@ fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 				       bool is_const) CC_HINT(nonnull);
 
 /** Initializes a child dcursor from a parent cursor, with an iteration function.
- *
- * Filters can be applied later with fr_dcursor_filter_set.
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
@@ -791,9 +803,6 @@ int		fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, 
 
 int		fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool tainted) CC_HINT(nonnull);
 
-int		fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool tainted) CC_HINT(nonnull(1));
-
-int		fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainted) CC_HINT(nonnull);
  /** @} */
 
 /** @name Assign and manipulate octets strings
@@ -812,9 +821,6 @@ int		fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len,
 
 int		fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool tainted) CC_HINT(nonnull);
 
-int		fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool tainted) CC_HINT(nonnull(1));
-
-int		fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted) CC_HINT(nonnull);
  /** @} */
 
 /** @name Enum functions
@@ -858,8 +864,10 @@ static inline fr_slen_t CC_HINT(nonnull(2,4))
 void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
 				  fr_pair_list_t const *list, char const *file, int line) CC_HINT(nonnull(1,4));
 
-void		fr_pair_list_debug(fr_pair_list_t const *list) CC_HINT(nonnull);
-void		fr_pair_debug(fr_pair_t const *pair) CC_HINT(nonnull);
+void		fr_pair_list_debug(FILE *fp, fr_pair_list_t const *list) CC_HINT(nonnull);
+void		_fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list)
+				    CC_HINT(nonnull(1, 4));
+void		fr_pair_debug(FILE *fp, fr_pair_t const *pair) CC_HINT(nonnull);
 
 /** @} */
 

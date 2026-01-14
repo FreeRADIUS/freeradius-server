@@ -45,7 +45,7 @@ typedef struct {
 	fr_event_list_t			*el;			//!< event list
 	fr_network_t			*nr;			//!< network side of things
 
-	struct sockaddr_storage		remote_sockaddr;		//!< cached for laziness
+	struct sockaddr_storage		remote_sockaddr;	//!< cached for laziness
 	socklen_t			remote_salen;
 
 	struct sockaddr_storage		local_sockaddr;		//!< cached for laziness
@@ -54,11 +54,11 @@ typedef struct {
 	/*
 	 *	Internal state management
 	 */
-	fr_event_timer_t const	*ev_timeout;			//!< when we time out for not receiving a packet
-	fr_event_timer_t const	*ev_packet;			//!< for when we next send a packet
-	fr_time_t	last_recv;				//!< last received packet
-	fr_time_t	next_recv;				//!< when we next expect to receive a packet
-	fr_time_t	last_sent;				//!< the last time we sent a packet
+	fr_timer_t			*timeout_ev;		//!< when we time out for not receiving a packet
+	fr_timer_t			*packet_ev;		//!< for when we next send a packet
+	fr_time_t			last_recv;		//!< last received packet
+	fr_time_t			next_recv;		//!< when we next expect to receive a packet
+	fr_time_t			last_sent;		//!< the last time we sent a packet
 
 	bfd_session_state_t session_state;			//!< our view of the session state
 	bfd_session_state_t remote_session_state;		//!< their view of the session state

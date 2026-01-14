@@ -32,10 +32,7 @@ typedef struct connection_s connection_t;
 #include <freeradius-devel/server/trigger.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/log.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
@@ -107,7 +104,7 @@ struct connection_s {
 	connection_shutdown_t shutdown;		//!< Signal the connection handle to start shutting down.
 	connection_failed_t	failed;			//!< Callback for 'failed' notification.
 
-	fr_event_timer_t const	*ev;			//!< State transition timer.
+	fr_timer_t		*ev;			//!< State transition timer.
 
 	fr_time_delta_t		connection_timeout;	//!< How long to wait in the
 							//!< #CONNECTION_STATE_CONNECTING state.
@@ -124,13 +121,15 @@ struct connection_s {
 							///< the connection.
 
 	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
+
+	CONF_SECTION		*trigger_cs;		//!< Where to search locally for triggers.
+	fr_pair_list_t		*trigger_args;		//!< Arguments to pass to the trigger functions.
+	bool			triggers;		//!< Do we run triggers.
 };
 
 #define CONN_TRIGGER(_state) do { \
-	if (conn->pub.triggers) { \
-		trigger_exec(unlang_interpret_get_thread_default(), \
-			     NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, NULL); \
-	} \
+	if (conn->triggers) trigger(unlang_interpret_get_thread_default(), \
+		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
 } while (0)
 
 #define STATE_TRANSITION(_new) \
@@ -620,11 +619,11 @@ uint64_t connection_get_num_timed_out(connection_t const *conn)
 
 /** The requisite period of time has passed, try and re-open the connection
  *
- * @param[in] el	the time event occurred on.
+ * @param[in] tl	containing the timer event.
  * @param[in] now	The current time.
  * @param[in] uctx	The #connection_t the fd is associated with.
  */
-static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _reconnect_delay_done(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
@@ -658,7 +657,7 @@ static void connection_state_enter_closed(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CLOSED);
 
-	fr_event_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	/*
 	 *	If there's a close callback, call it, so that the
@@ -689,11 +688,11 @@ static void connection_state_enter_closed(connection_t *conn)
  *
  * Connection wasn't opened within the configured period of time
  *
- * @param[in] el	the time event occurred on.
+ * @param[in] tl	timer list the event belonged to.
  * @param[in] now	The current time.
  * @param[in] uctx	The #connection_t the fd is associated with.
  */
-static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _connection_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
@@ -745,8 +744,8 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	 *	timeout period.
 	 */
 	if (fr_time_delta_ispos(conn->connection_timeout)) {
-		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-				      conn->connection_timeout, _connection_timeout, conn) < 0) {
+		if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+				conn->connection_timeout, false, _connection_timeout, conn) < 0) {
 			/*
 			 *	Can happen when the event loop is exiting
 			 */
@@ -777,7 +776,7 @@ static void connection_state_enter_failed(connection_t *conn)
 	/*
 	 *	Explicit error occurred, delete the connection timer
 	 */
-	fr_event_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	/*
 	 *	Record what state the connection is currently in
@@ -856,8 +855,8 @@ static void connection_state_enter_failed(connection_t *conn)
 	case CONNECTION_STATE_SHUTDOWN:			/* Failed during shutdown */
 		if (fr_time_delta_ispos(conn->reconnection_delay)) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
-			if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
+			if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+					conn->reconnection_delay, false, _reconnect_delay_done, conn) < 0) {
 				/*
 				 *	Can happen when the event loop is exiting
 				 */
@@ -927,7 +926,7 @@ static void connection_state_enter_halted(connection_t *conn)
 		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	}
 
-	fr_event_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
@@ -955,7 +954,7 @@ static void connection_state_enter_connected(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CONNECTED);
 
-	fr_event_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn, conn->open);
@@ -1014,8 +1013,8 @@ static void connection_state_enter_connecting(connection_t *conn)
 	 *	set, then add the timer.
 	 */
 	if (fr_time_delta_ispos(conn->connection_timeout)) {
-		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-				      conn->connection_timeout, _connection_timeout, conn) < 0) {
+		if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+				conn->connection_timeout, false, _connection_timeout, conn) < 0) {
 			PERROR("Failed setting connection_timeout event, failing connection");
 
 			/*
@@ -1456,8 +1455,7 @@ static int _connection_free(connection_t *conn)
 	/*
 	 *	Explicitly cancel any pending events
 	 */
-	fr_event_timer_delete(&conn->ev);
-
+	FR_TIMER_DELETE_RETURN(&conn->ev);
 	/*
 	 *	Don't allow the connection to be
 	 *	arbitrarily freed by a callback.
@@ -1513,10 +1511,10 @@ static int _connection_free(connection_t *conn)
  *	- NULL on failure.
  */
 connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-				     connection_funcs_t const *funcs,
-				     connection_conf_t const *conf,
-				     char const *log_prefix,
-				     void const *uctx)
+			       connection_funcs_t const *funcs,
+			       connection_conf_t const *conf,
+			       char const *log_prefix,
+			       void const *uctx)
 {
 	size_t i;
 	connection_t *conn;
@@ -1543,6 +1541,9 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
 		.is_closed = true,		/* Starts closed */
+		.triggers = conf->triggers,
+		.trigger_args = conf->trigger_args,
+		.trigger_cs = conf->trigger_cs,
 		.pub.name = talloc_asprintf(conn, "%s - [%" PRIu64 "]", log_prefix, id)
 	};
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
@@ -1559,7 +1560,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Pre-allocate a on_halt watcher for deferred signal processing
 	 */
 	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
-						       _deferred_signal_connection_on_halted, true, NULL);
+						    _deferred_signal_connection_on_halted, true, NULL);
 	connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;

@@ -102,7 +102,7 @@ first run `%sql1(...)`, then if that fails, run `%sql2(...)`, etc.
 .Example of Redundant SQL module
 [source,unlang]
 ----
-&Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
+Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 ----
 
 The one caveat here is that the arguments passed to the underlying

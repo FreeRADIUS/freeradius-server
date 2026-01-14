@@ -14,7 +14,7 @@ VENDOR		Meinberg			5597
 
 BEGIN-VENDOR	Meinberg
 
-ATTRIBUTE	Management-Privilege-Level		1	integer
+ATTRIBUTE	Management-Privilege-Level		1	uint32
 
 END-VENDOR     Meinberg
 ALIAS		Meinberg				Vendor-Specific.Meinberg

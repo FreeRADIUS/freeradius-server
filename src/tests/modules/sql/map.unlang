@@ -267,7 +267,7 @@ groupfield := 'name'
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	control.User-Name	= userfield
 	control.Filter-Id	= "group%{groupfield}"
-	control.NAS-Port	= `/bin/echo priority`
+	control.NAS-Port	= %exec('/bin/echo', 'priority')
 }
 
 if (!updated) {
@@ -316,6 +316,15 @@ if (control.Filter-Id) {
 	test_fail
 }
 if !(control.NAS-IP-Address == 10.11.12.13) {
+	test_fail
+}
+
+# Check using nested path on the LHS
+map sql "SELECT * FROM radusergroup WHERE priority = 0" {
+	control.IP-Pool.Name := 'username'
+}
+
+if (control.IP-Pool.Name != 'bob') {
 	test_fail
 }
 

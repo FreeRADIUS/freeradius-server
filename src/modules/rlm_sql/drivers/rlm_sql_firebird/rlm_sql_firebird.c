@@ -202,7 +202,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 /** Returns an individual row.
  *
  */
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
@@ -214,14 +214,14 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		res = fb_fetch(conn);
 		if (res == 100) {
 			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
 
 		if (res) {
 			ERROR("Fetch problem: %s", conn->error);
 
 			query_ctx->rcode = RLM_SQL_ERROR;
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	} else {
 		conn->statement_type = 0;
@@ -231,7 +231,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->rcode = fb_store_row(conn);
 	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->row = conn->row;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** End the query, such as freeing memory or result.

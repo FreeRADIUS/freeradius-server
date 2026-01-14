@@ -1,5 +1,5 @@
-*.pem
-*.key
+*.pem*
+*.key*
 *.crt
 *.csr
 *.p12

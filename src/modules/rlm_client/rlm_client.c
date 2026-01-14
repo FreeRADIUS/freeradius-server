@@ -23,10 +23,10 @@
  * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/server/cf_util.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>
@@ -69,7 +69,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			talloc_free(attr);
@@ -108,15 +108,14 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
  *				- #RLM_MODULE_NOOP no rows were returned.
  *				- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *				- #RLM_MODULE_FAIL if an error occurred.
- * @param[in] mod_inst		NULL.
- * @param[in] proc_inst		NULL.
+ * @param[in] mpctx		NULL
  * @param[in] request		The current request.
  * @param[in] client_override	If NULL, use the current client, else use the client matching
  *				the ip given.
  * @param[in] maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t map_proc_client(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				       request_t *request, fr_value_box_list_t *client_override, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -138,7 +137,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
 			REDEBUG("Failed concatenating input data");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		client_str = client_override_head->vb_strvalue;
 
@@ -173,7 +172,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 		client = client_from_request(request);
 		if (!client) {
 			REDEBUG("No client associated with this request");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 	uctx.cs = client->cs;
@@ -213,7 +212,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 	REXDENT();
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static xlat_arg_parser_t const xlat_client_args[] = {
@@ -226,7 +225,7 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  *
  * Example:
 @verbatim
-%client(foo, [<ipaddr>])
+%request.client(foo, [<ipaddr>])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -288,7 +287,7 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /*
  *	Find the client definition.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t		length;
 	char const	*value;
@@ -303,31 +302,31 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	if ((request->packet->socket.inet.src_port != 0) || (!fr_pair_list_empty(&request->request_pairs)) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	client = client_from_request(request);
 	if (!client || !client->cs) {
 		REDEBUG("Unknown client definition");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	cp = cf_pair_find(client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	value = cf_pair_value(cp);
 	if (!value) {
 		REDEBUG("No value given for the directory entry in the client");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	length = strlen(value);
 	if (length > (sizeof(buffer) - 256)) {
 		REDEBUG("Directory name too long");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	memcpy(buffer, value, length + 1);
@@ -336,10 +335,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	if (!client->server) RETURN_MODULE_FAIL;
+	if (!client->server) RETURN_UNLANG_FAIL;
 
 	client = client_read(buffer, client->server_cs, true);
-	if (!client) RETURN_MODULE_FAIL;
+	if (!client) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
@@ -347,7 +346,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	request->client = client;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static int mod_load(void)
@@ -357,7 +356,10 @@ static int mod_load(void)
 	if (unlikely((xlat = xlat_func_register(NULL, "client", xlat_client, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_client_args);
 
-	map_proc_register(NULL, NULL, "client", map_proc_client, NULL, 0, 0);
+	if (unlikely((xlat = xlat_func_register(NULL, "request.client", xlat_client, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, xlat_client_args);
+
+	map_proc_register(NULL, NULL, "client", map_proc_client, NULL, 0, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 	return 0;
 }

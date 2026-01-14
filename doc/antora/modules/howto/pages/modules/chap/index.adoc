@@ -1,20 +1,20 @@
 :module_name:
 
-= Configuring the CHAP module
+= CHAP
 
-The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap]
+When configuring the CHAP module, see the xref:reference:raddb/mods-available/chap.adoc[mods-available/chap]
 configuration file describes the configuration parameters accepted by
 the CHAP module, and what they do.  This document explains how to
 perform testing with the CHAP module.
 
 include::howto:partial$pre_test.adoc[]
 
-== Editing mods-available/chap
+== Edit mods-available/chap
 
 The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap] module
 contains no configuration items, and does not need to be edited.
 
-== Enabling mods-available/chap
+== Enable mods-available/chap
 
 The `chap` module is enabled by creating a soft link from the
 `mods-enabled/` directory to the `mods-available/` directory.
@@ -27,11 +27,11 @@ cd raddb/mods-enabled && ln -s ../mods-available/chap
 The default installation will automatically enable the `chap` module.
 In most circumstances, no additional work is required.
 
-== Testing the Server
+== Test the server
 
 include::howto:partial$post_test.adoc[]
 
-== Testing CHAP Authentication
+== Test CHAP authentication
 
 Once the server is started in debugging mode, CHAP authentication can
 be performed via the following command:
@@ -49,9 +49,12 @@ The `radclient` program is smart enough to see that the
 CHAP calculations in order to put the correct `CHAP-Password` value
 into the packet.
 
-NOTE: The server must be configured with a known user and a "known
+[NOTE]
+====
+The server must be configured with a known user and a "known
 good" password before any CHAP tests are performed.  In this case, we
 assume that the server knows about a user `bob` with password `hello`.
+====
 
 The output of `radclient` should look like the following.  Some of the
 numbers may be different, but the general format should be the same.
@@ -77,11 +80,11 @@ containing `ERROR` or `WARNING`, or the `chap` module name.
 (0)    User-Name = "bob"
 (0)    CHAP-Password = 0x3549a4e40fc76e876499badf736712c951
 ...
-(0)    chap - Creating &CHAP-Challenge from request authenticator
-(0)    chap - Setting &control.Auth-Type = chap
+(0)    chap - Creating CHAP-Challenge from request authenticator
+(0)    chap - Setting control.Auth-Type = chap
 (0)    chap (ok)
 ...
-(0)  Found "known good" password in &control.Password.Cleartext
+(0)  Found "known good" password in control.Password.Cleartext
 (0)  Running 'authenticate chap' from file ./raddb/sites-enabled/default
 (0)  authenticate chap {
 (0)    chap - Comparing with "known good" Password.Cleartext
@@ -119,7 +122,7 @@ etc.  The `chap` module only needs to know that it handles CHAP, and
 that it has been given a `Password.Cleartext` in order to authenticate
 the user.  The source of that `Password.Cleartext` is unimportant.
 
-== Disabling CHAP
+== Disable CHAP
 
 The local system requirements may be that CHAP authentication is
 forbidden.  In that case, the `chap` module should be removed from the

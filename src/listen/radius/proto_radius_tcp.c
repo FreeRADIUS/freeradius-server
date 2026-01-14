@@ -60,13 +60,15 @@ typedef struct {
 
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
-	bool				dedup_authenticator;	//!< dedup using the request authenticator
 
-	fr_client_list_t			*clients;		//!< local clients
+	fr_client_list_t		*clients;		//!< local clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
+
+	bool				read_hexdump;		//!< Do we debug hexdump read packets.
+	bool				write_hexdump;		//!< Do we debug hexdump write packets.
 } proto_radius_tcp_t;
 
 
@@ -90,11 +92,13 @@ static const conf_parser_t tcp_listen_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_radius_tcp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", proto_radius_tcp_t, dynamic_clients) } ,
-	{ FR_CONF_OFFSET("accept_conflicting_packets", proto_radius_tcp_t, dedup_authenticator) } ,
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_radius_tcp_t, max_packet_size), .dflt = "4096" } ,
        	{ FR_CONF_OFFSET("max_attributes", proto_radius_tcp_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
+
+	{ FR_CONF_OFFSET("read_hexdump", proto_radius_tcp_t, read_hexdump) },
+	{ FR_CONF_OFFSET("write_hexdump", proto_radius_tcp_t, write_hexdump) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -392,22 +396,12 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_track_compare(void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
+static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
 			     void const *one, void const *two)
 {
 	int ret;
-	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
-
 	uint8_t const *a = one;
 	uint8_t const *b = two;
-
-	/*
-	 *	Do a better job of deduping input packet.
-	 */
-	if (inst->dedup_authenticator) {
-		ret = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
-		if (ret != 0) return ret;
-	}
 
 	/*
 	 *	The tree is ordered by IDs, which are (hopefully)
@@ -428,6 +422,13 @@ static char const *mod_name(fr_listen_t *li)
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 
 	return thread->name;
+}
+
+static void mod_hexdump_set(fr_listen_t *li, void *data)
+{
+	proto_radius_tcp_t	*inst = talloc_get_type_abort(data, proto_radius_tcp_t);
+	li->read_hexdump = inst->read_hexdump;
+	li->write_hexdump = inst->write_hexdump;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -679,4 +680,5 @@ fr_app_io_t proto_radius_tcp = {
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
 	.get_name		= mod_name,
+	.hexdump_set		= mod_hexdump_set,
 };

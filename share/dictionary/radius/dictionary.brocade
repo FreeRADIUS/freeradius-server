@@ -19,7 +19,7 @@ ATTRIBUTE	AVPairs4				5	string
 # Optional, specifies Admin Domain or Virtual Fabric List
 
 ATTRIBUTE	Passwd-ExpiryDate			6	string # Format: MM/DD/YYYY
-ATTRIBUTE	Passwd-WarnPeriod			7	string # Format: integer in days
+ATTRIBUTE	Passwd-WarnPeriod			7	string # Format: uint32 in days
 
 ATTRIBUTE	Cmd					8	string
 

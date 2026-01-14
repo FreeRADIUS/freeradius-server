@@ -31,11 +31,11 @@ krb5 {
 	#
 	#  If this is just a user name, then the default Kerberos realm will
 	#  automatically be added.
-#	username = &User-Name
+#	username = User-Name
 
 	#
 	#  password:: The password to use in user authentication
-#	password = &User-Password
+#	password = User-Password
 
 	#
 	#  .Reusable Handles

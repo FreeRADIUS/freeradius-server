@@ -51,8 +51,8 @@ test: \
 		test.unit	\
 		test.keywords	\
 		test.xlat	\
-		test.map	\
 		test.modules	\
+		test.process	\
 		test.radiusd-c	\
 		test.radclient	\
 		test.detail	\
@@ -95,7 +95,7 @@ export ASAN_OPTIONS=malloc_context_size=50 detect_leaks=1 symbolize=1
 export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0
 endif
 
-SUBMAKEFILES := rbmonkey.mk $(subst src/tests/,,$(wildcard src/tests/*/all.mk))
+SUBMAKEFILES := rbmonkey.mk $(subst src/tests/,,$(wildcard src/tests/*/all.mk)) depends.mk
 endif
 
 .PHONY: $(BUILD_DIR)/tests

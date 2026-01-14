@@ -27,7 +27,7 @@ string.
 
 format:: The default format string. May be an attribute reference.
 
-e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+e.g. `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`, or `xlat`, `literal` or `exec`.
 
 
 
@@ -58,7 +58,7 @@ Reference the `Packet-Type` (`link:https://freeradius.org/rfc/rfc2865.html#Acces
 `reference` is commented out, the `format` entry above is
 used instead.
 
-May be an attribute reference, e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+May be an attribute reference, e.g. `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`, or `xlat`, `literal` or `exec`.
 
 
 
@@ -67,7 +67,7 @@ messages { ... }::
 The messages defined here are chosen from the `reference`
 expansion, above.
 
-Pairs may be attributes attribute reference `&User-Name` , `xlat`, `literal` or `exec`.
+Pairs may be attributes attribute reference `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` , `xlat`, `literal` or `exec`.
 
 
 
@@ -379,7 +379,7 @@ amended if these logs need to be sent to a different destination.
 linelog {
 #	delimiter = "\n"
 	format = "This is a log message for %{User-Name}"
-	reference = "messages.%{&reply.Packet-Type || 'default'}"
+	reference = "messages.%{reply.Packet-Type || 'default'}"
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 		Access-Accept = "Sent accept: %{User-Name}"
@@ -433,14 +433,14 @@ linelog log_accounting {
 		filename = ${logdir}/linelog-accounting
 		permissions = 0600
 	}
-	reference = "Accounting-Request.%{&Acct-Status-Type || 'unknown'}"
+	reference = "Accounting-Request.%{Acct-Status-Type || 'unknown'}"
 	Accounting-Request {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
 		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
 		Interim-Update = ""
-		Accounting-On = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just came online"
-		Accounting-Off = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just went offline"
-		unknown = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+		Accounting-On = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) just came online"
+		Accounting-Off = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) just went offline"
+		unknown = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }
 linelog log_auth_access_accept {

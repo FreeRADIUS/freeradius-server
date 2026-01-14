@@ -108,7 +108,7 @@
 #  table.
 #
 #  The SQL templates assume that the pool name will be in a field called
-#  "pool_name" and the IP address in a field named "framedipaddress",
+#  "pool_name" and the IP address in a field named "address",
 #  matching the default schema for ippools and DHCP ippools as shipped with
 #  FreeRADIUS.
 #
@@ -117,13 +117,13 @@
 #  --------
 #
 #    rlm_sqlippool_tool -p main_pool -s 192.0.2.3 -e 192.0.2.249 \
-#            -d postgresql -t radippool
+#            -d postgresql -t fr_ippool
 #
 #      Will create a pool from a full populated IPv4 range, i.e. all IPs in the
 #      range available for allocation, with SQL output suitable for PostgreSQL
 #
 #    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 10000 \
-#            -d mysql -t radippool
+#            -d mysql -t fr_ippool
 #
 #      Will create a pool from a sparsely populated IPv4 range for a /16
 #      network (maximum of 65.536 addresses), populating the range with 10,000
@@ -132,28 +132,28 @@
 #      the capacity of the range with:
 #
 #    rlm_sqlippool_tool -p main_pool -s 10.66.0.0 -e 10.66.255.255 -c 20000 \
-#            -d mysql -t radippool
+#            -d mysql -t fr_ippool
 #
 #      This generates the same initial set of 10,000 addresses as the previous
 #      example but will create 20,000 addresses overall, unless the random seed
 #      has been amended since the initial run.
 #
 #    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
-#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff -d mssql -t radippool
+#            -e 2001:db8:1:2:ffff:ffff:ffff:ffff -d mssql -t fr_ippool
 #
 #      Will create a pool from the IPv6 range 2001:db8:1:2::/64, initially
 #      populating the range with 65536 (by default) addresses.
 #
 #    rlm_sqlippool_tool -p main_pool -s 2001:db8:1:2:: \
 #            -e 2001:db8:1:2:ffff:ffff:ffff:ffff \
-#            -c 10000 -x existing_ips.txt -d mysql -t radippool
+#            -c 10000 -x existing_ips.txt -d mysql -t fr_ippool
 #
 #      Will create a pool using the same range as the previous example, but
 #      this time the range will be populated with 10,000 addresses.  The range
 #      will be populated using lines extracted from the `existing_ips.txt` file
 #      that represent IPs which fall within range.
 #
-#    rlm_sqlippool_tool -y pool_defs.yml -d postgresql -t radippool \
+#    rlm_sqlippool_tool -y pool_defs.yml -d postgresql -t fr_ippool \
 #            -x existing_ips.txt
 #
 #      Will create one of more pools using the definitions found in the
@@ -291,7 +291,7 @@ if ($opts->{yaml})  {
 	goto done;
 
 }
-	    
+
 
 if ((!($opts->{pool_name})) || (!($opts->{range_start})) || (!($opts->{range_end}))) {
 	usage();
@@ -750,21 +750,21 @@ sub load_templates {
 		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
   id                    int(11) unsigned NOT NULL auto_increment,
   pool_name             varchar(30) NOT NULL,
-  framedipaddress       varchar(15) NOT NULL,
+  address               varchar(15) NOT NULL,
   PRIMARY KEY (id),
-  KEY pool_name_framedipaddress (pool_name,framedipaddress)
+  KEY pool_name_address (pool_name,address)
 );'
 	    ];
-	$queries->{'mysql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'mysql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,address) VALUES (?, ?)';
 	$queries->{'mysql'}->{post} = [
 		'START TRANSACTION;',
 		'DELETE r FROM '.$tablename.' r
-  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,address)
       WHERE t.id IS NULL;',
-		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+		'INSERT INTO '.$tablename.' (pool_name,address)
+  SELECT pool_name,address FROM '.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+    WHERE r.pool_name=t.pool_name AND r.address=t.address
   );',
 		'COMMIT;'
 	    ];
@@ -773,7 +773,7 @@ sub load_templates {
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
-[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,address) VALUES" IF loop.index % batchsize == 0 %]
 [%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
 ('[% r.pool_name %]','[% i %]');
 [%-     ELSE %]
@@ -791,21 +791,21 @@ END_mysql
 		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
 		'CREATE TEMPORARY TABLE '.$tablename.'_temp (
   pool_name               varchar(64) NOT NULL,
-  FramedIPAddress         INET NOT NULL
+  address                 INET NOT NULL
 );',
-		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp USING btree (pool_name,FramedIPAddress);'
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp USING btree (pool_name,address);'
 	    ];
-	$queries->{'postgresql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'postgresql'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,address) VALUES (?, ?)';
 	$queries->{'postgresql'}->{post} = [
 		'START TRANSACTION;',
 		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS (
   SELECT FROM '.$tablename.'_temp t
-  WHERE t.pool_name = r.pool_name AND t.framedipaddress = r.framedipaddress
+  WHERE t.pool_name = r.pool_name AND t.address = r.address
 );',
-		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+		'INSERT INTO '.$tablename.' (pool_name,address)
+  SELECT pool_name,address FROM '.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+    WHERE r.pool_name=t.pool_name AND r.address=t.address
   );',
 		'COMMIT;'
 	    ];
@@ -814,7 +814,7 @@ END_mysql
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
-[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,address) VALUES" IF loop.index % batchsize == 0 %]
 [%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
 ('[% r.pool_name %]','[% i %]');
 [%-     ELSE %]
@@ -830,19 +830,19 @@ END_postgresql
 	$queries->{'oracle'}->{pre} = [
 		'CREATE TABLE '.$tablename.'_temp (
   pool_name               VARCHAR(30) NOT NULL,
-  FramedIPAddress         VARCHAR(15) NOT NULL
+  address                 VARCHAR(15) NOT NULL
 )',
-		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress)'
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,address)'
 	    ];
-	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,FramedIPAddress) VALUES (?, ?)';
+	$queries->{'oracle'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,address) VALUES (?, ?)';
 	$queries->{'oracle'}->{post} = [
 		'DELETE FROM '.$tablename.' r WHERE NOT EXISTS
 		(SELECT * FROM '.$tablename.'_temp t WHERE
-		r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress)',
-		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+		r.pool_name = t.pool_name AND r.address = t.address)',
+		'INSERT INTO '.$tablename.' (pool_name,address)
+  SELECT pool_name,address FROM '.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+    WHERE r.pool_name=t.pool_name AND r.address=t.address
   )',
 		'DROP TABLE '.$tablename.'_temp',
 		'COMMIT'
@@ -853,7 +853,7 @@ END_postgresql
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
-[%- "\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES " %]('[% r.pool_name %]','[% i %]');
+[%- "\nINSERT INTO ${tablename}_temp (pool_name,address) VALUES " %]('[% r.pool_name %]','[% i %]');
 [%-   END %]
 [%- END %]
 END_oracle
@@ -866,21 +866,21 @@ END_oracle
 		'DROP TABLE IF EXISTS '.$tablename.'_temp;',
 		'CREATE TABLE '.$tablename.'_temp (
   pool_name             varchar(30) NOT NULL,
-  framedipaddress       varchar(15) NOT NULL
+  address               varchar(15) NOT NULL
 );',
-		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,FramedIPAddress);'
+		'CREATE INDEX '.$tablename.'_temp_idx ON '.$tablename.'_temp (pool_name,address);'
 	    ];
-	$queries->{'sqlite'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,framedipaddress) VALUES (?, ?)';
+	$queries->{'sqlite'}->{insert} = 'INSERT INTO '.$tablename.'_temp (pool_name,address) VALUES (?, ?)';
 	$queries->{'sqlite'}->{post} = [
 		'BEGIN TRANSACTION;',
 		'DELETE FROM '.$tablename.' WHERE rowid IN (
   SELECT r.rowid FROM '.$tablename.' r
-  LEFT JOIN '.$tablename.'_temp t USING (pool_name,framedipaddress)
+  LEFT JOIN '.$tablename.'_temp t USING (pool_name,address)
       WHERE t.rowid IS NULL);',
-		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM '.$tablename.'_temp t WHERE NOT EXISTS (
+		'INSERT INTO '.$tablename.' (pool_name,address)
+  SELECT pool_name,address FROM '.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+    WHERE r.pool_name=t.pool_name AND r.address=t.address
   );',
 		'COMMIT;',
 		'DROP TABLE '.$tablename.'_temp;'
@@ -891,7 +891,7 @@ END_oracle
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
-[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%- "\n\nINSERT INTO ${tablename}_temp (pool_name,address) VALUES" IF loop.index % batchsize == 0 %]
 [%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
 ('[% r.pool_name %]','[% i %]');
 [%-     ELSE %]
@@ -910,21 +910,21 @@ END_sqlite
 		'CREATE TABLE #'.$tablename.'_temp (
   id                    int identity(1, 1) NOT NULL,
   pool_name             varchar(30) NOT NULL,
-  framedipaddress       varchar(15) NOT NULL,
+  address               varchar(15) NOT NULL,
   PRIMARY KEY (id),
 );',
-		'CREATE INDEX pool_name_framedipaddress ON #'.$tablename.'_temp(pool_name, framedipaddress);'
+		'CREATE INDEX pool_name_address ON #'.$tablename.'_temp(pool_name, address);'
 	    ];
-	$queries->{'mssql'}->{insert} = 'INSERT INTO #'.$tablename.'_temp (pool_name, framedipaddress) VALUES (?, ?)';
+	$queries->{'mssql'}->{insert} = 'INSERT INTO #'.$tablename.'_temp (pool_name, address) VALUES (?, ?)';
 	$queries->{'mssql'}->{post} = [
 		'BEGIN TRAN;',
 		'DELETE r FROM '.$tablename.' r
-  LEFT JOIN #'.$tablename.'_temp t ON r.pool_name = t.pool_name AND r.framedipaddress = t.framedipaddress
+  LEFT JOIN #'.$tablename.'_temp t ON r.pool_name = t.pool_name AND r.address = t.address
       WHERE t.id IS NULL;',
-		'INSERT INTO '.$tablename.' (pool_name,framedipaddress)
-  SELECT pool_name,framedipaddress FROM #'.$tablename.'_temp t WHERE NOT EXISTS (
+		'INSERT INTO '.$tablename.' (pool_name,address)
+  SELECT pool_name,address FROM #'.$tablename.'_temp t WHERE NOT EXISTS (
     SELECT * FROM '.$tablename.' r
-    WHERE r.pool_name=t.pool_name AND r.framedipaddress=t.framedipaddress
+    WHERE r.pool_name=t.pool_name AND r.address=t.address
 		);',
 		'COMMIT TRAN;'
 	    ];
@@ -934,7 +934,7 @@ END_sqlite
 -- Populate the temporary table
 [%- FOREACH r IN ranges %]
 [%-   FOREACH i IN r.ips %]
-[%- "\n\nINSERT INTO #${tablename}_temp (pool_name,framedipaddress) VALUES" IF loop.index % batchsize == 0 %]
+[%- "\n\nINSERT INTO #${tablename}_temp (pool_name,address) VALUES" IF loop.index % batchsize == 0 %]
 [%-     IF (loop.index+1) % batchsize == 0 OR loop.last %]
 ('[% r.pool_name %]','[% i %]');
 GO

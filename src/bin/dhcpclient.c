@@ -55,7 +55,7 @@ static fr_time_delta_t	timeout;
 
 static int sockfd;
 #ifdef HAVE_LIBPCAP
-static fr_pcap_t	*pcap;
+static fr_pcap_t	*pcap = NULL;
 #endif
 
 static char *iface = NULL;
@@ -83,7 +83,7 @@ extern fr_dict_autoload_t dhcpclient_dict[];
 fr_dict_autoload_t dhcpclient_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -97,7 +97,7 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_dhcp_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_your_ip_address, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_table_num_sorted_t const request_types[] = {
@@ -159,7 +159,7 @@ static int request_init(fr_packet_t **out, fr_pair_list_t *packet_vps, char cons
 	/*
 	 *	Read the VP's.
 	 */
-	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone, true) < 0) {
 		fr_perror("dhcpclient");
 		fr_packet_free(&packet);
 		if (fp != stdin) fclose(fp);
@@ -259,14 +259,21 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 		if (retval > 0 && FD_ISSET(lsockfd, &read_fd)) {
 			/* There is something to read on our socket */
 
-#ifdef HAVE_LINUX_IF_PACKET_H
-			reply = fr_dhcpv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
-#else
-#  ifdef HAVE_LIBPCAP
-			reply = fr_dhcpv4_pcap_recv(pcap);
+#ifdef HAVE_LIBPCAP
+			if (pcap) {
+				reply = fr_dhcpv4_pcap_recv(pcap);
+#  ifdef HAVE_LINUX_IF_PACKET_H
+			} else
 #  else
-#    error Need <if/packet.h> or <pcap.h>
+			}
 #  endif
+#endif
+#ifdef HAVE_LINUX_IF_PACKET_H
+			{
+				reply = fr_dhcpv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
+			}
+#elif !defined(HAVE_LIBPCAP)
+#    error Need <if/packet.h> or <pcap.h>
 #endif
 		} else {
 			our_timeout = fr_time_delta_wrap(0);

@@ -1,0 +1,23 @@
+= File Handling Functions
+
+The file handling functions perform operations on files.
+
+The filenames can be taken from untrusted sources, in which cases special characters such as '`/`' and '`$`' are escaped.  Any special character is replaced with an underscore, followed by the hex value of the character.  Valid UTF-8 characters are allowed.
+
+For example, the "unsafe" string `user@freeradius.org/..` will turn into the filename `user@freeradius.org_2f..`.  This operation renders the filename "safe" for operations on the local file system.  It is not possible for unsafe data to create unexpected files, or to perform directory traversal attacks.
+
+.File Handling Functions
+[options="headers, autowidth]
+|===
+| *Function*				                | *Description*
+| xref:xlat/file/cat.adoc[cat]				| Returns the contents of a file.
+| xref:reference:xlat/file/escape.adoc[escape]		| Returns an escaped or safe version of the input string.
+| xref:xlat/file/exists.adoc[exists]		        | Checks to see if a file exists on the filesystem.
+| xref:xlat/file/head.adoc[head]	                | Returns the first line of the file.
+| xref:xlat/file/rm.adoc[rm]	                	| Removes a file from the filesystem.
+| xref:xlat/file/size.adoc[size]		        | Returns the size of a file.
+| xref:xlat/file/tail.adoc[tail]		        | Return the last line of a file or the last number(n) of lines of a file.
+|===
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

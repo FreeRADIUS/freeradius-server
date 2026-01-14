@@ -39,12 +39,11 @@ RCSID("$Id$")
 /** Encode EAP session data from attributes
  *
  */
-static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
-	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
-										eap_aka_sim_mod_session_t);
+	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_mod_session_t);
 	fr_pair_t			*subtype_vp;
 
 	static eap_code_t		rcode_to_eap_code[RLM_MODULE_NUMCODES] = {
@@ -59,7 +58,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 						[RLM_MODULE_UPDATED]	= FR_EAP_CODE_FAILURE
 					};
 	eap_code_t			code;
-	rlm_rcode_t			rcode = unlang_interpret_stack_result(request);
+	rlm_rcode_t			rcode = mod_session->virtual_server_result.rcode;
 	fr_aka_sim_ctx_t		encode_ctx;
 	uint8_t	const			*request_hmac_extra = NULL;
 	size_t				request_hmac_extra_len = 0;
@@ -259,7 +258,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 
 	RDEBUG2("Encoding attributes");
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
-	if (fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx) <= 0) RETURN_MODULE_FAIL;
+	if (fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx) <= 0) RETURN_UNLANG_FAIL;
 
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
@@ -292,7 +291,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 /** Decode EAP session data into attribute
  *
  */
-unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+unlang_action_t eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
@@ -306,7 +305,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 	switch (eap_session->this_round->response->type.num) {
 	default:
 		REDEBUG2("Unsupported EAP type (%u)", eap_session->this_round->response->type.num);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 
 	case FR_EAP_METHOD_IDENTITY:
 	case FR_EAP_METHOD_NAK:	/* Peer NAK'd our original suggestion */
@@ -421,7 +420,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 			if (slen <= 0) {
 				RPEDEBUG("AT_MAC calculation failed");
 				pair_delete_control(vp);
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 		}
 			break;
@@ -440,9 +439,9 @@ done:
 	 */
 	(void)unlang_module_yield(request, mod_encode, NULL, 0, NULL);
 
-	if (virtual_server_push(request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (virtual_server_push(&mod_session->virtual_server_result, request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		unlang_interpet_frame_discard(request);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;

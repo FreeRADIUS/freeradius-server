@@ -32,7 +32,7 @@
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -971,6 +971,13 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	record_init(&tls_session->clean_out);
 
 	/*
+	 *	Prevent spurious errors on the thread local error
+	 *	stack causing SSL_get_error() to return SSL_ERROR_SSL
+	 *	instead of what of the SSL_ERROR_WANT_* values.
+	 */
+	ERR_clear_error();
+
+	/*
 	 *      Read (and decrypt) the tunneled data from the
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
@@ -1056,6 +1063,11 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 	 *	contain the data to send to the client.
 	 */
 	if (tls_session->clean_in.used > 0) {
+		/*
+		 *	Ensure spurious errors aren't printed
+		 */
+		ERR_clear_error();
+
 		if (RDEBUG_ENABLED3) {
 			RHEXDUMP3(tls_session->clean_in.data, tls_session->clean_in.used,
 				 "TLS application data to encrypt (%zu bytes)", tls_session->clean_in.used);
@@ -1135,8 +1147,7 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
  *
  * As this is just a logging session, it's result doesn't affect the parent.
  */
-static unlang_action_t tls_establish_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						    UNUSED request_t *request, UNUSED void *uctx)
+static unlang_action_t tls_establish_session_result(UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -1156,6 +1167,8 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	request_t	*child;
 	fr_pair_t	*vp;
 	unlang_action_t	ua;
+	uint8_t const	*session_id;
+	unsigned int	len;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -1165,6 +1178,12 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
+
+	session_id = SSL_SESSION_get_id(tls_session->session, &len);
+	if (session_id && (len > 0)) {
+		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
+		fr_pair_value_memdup(vp, session_id, len, false);
+	}
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -1182,8 +1201,7 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 /** Finish off a handshake round, possibly adding attributes to the request
  *
  */
-static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-							      request_t *request, void *uctx)
+static unlang_action_t tls_session_async_handshake_done_round(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			ret;
@@ -1371,21 +1389,37 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED
  *
  * This function may be called multiple times, once after every asynchronous request.
  *
- * @param[in,out] p_result	UNUSED.
- * @param[out] priority		UNUSED
  * @param[in] request		The current request.
  * @param[in] uctx		#fr_tls_session_t to continue.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
-static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, int *priority,
-							request_t *request, void *uctx)
+static unlang_action_t tls_session_async_handshake_cont(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			err;
 
 	RDEBUG3("(re-)entered state %s", __FUNCTION__);
+
+	/*
+	 *	Clear OpenSSL's thread local error stack.
+	 *
+	 *	Why do we need to do this here?  Although SSL_get_error
+	 *	takes an `SSL *`, which would make you _think_ it was
+	 *	operating on the error stack for that SSL, it will also
+	 *	return SSL_ERROR_SSL if there are any errors in the stack.
+	 *
+	 *	When operating normally SSL_read() can return < 0, to
+	 *	indicate it wants more data, or that we need to perform
+	 *	asynchronous processing.
+	 *
+	 *	If spurious errors have been left on the thread local
+	 *	stack they MUST be cleared before we can call SSL_get_error
+	 *	otherwise stale errors mask the async notifications
+	 *	and cause random handshake failures.
+	 */
+	ERR_clear_error();
 
 	/*
 	 *	Magic/More magic? Although SSL_read is normally
@@ -1529,7 +1563,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		 */
 		if (fr_tls_log_io_error(request,
 					err, "SSL_read (%s)", __FUNCTION__) < 0) goto error;
-		return tls_session_async_handshake_done_round(p_result, priority, request, uctx);
+		return tls_session_async_handshake_done_round(request, uctx);
 	}
 }
 
@@ -1542,16 +1576,13 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  * #tls_session_async_handshake_read is split out because we may need to call
  * it multiple times, once after every async action.
  *
- * @param[in,out] p_result	UNUSED.
- * @param[out] priority		UNUSED
  * @param[in] request		The current request.
  * @param[in] uctx		#fr_tls_session_t to continue.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
-static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *priority,
-						   request_t *request, void *uctx)
+static unlang_action_t tls_session_async_handshake(request_t *request, void *uctx)
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int ret;
@@ -1596,7 +1627,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 		record_init(&tls_session->dirty_in);
 	}
 
-	return tls_session_async_handshake_cont(p_result, priority, request, uctx);	/* Must unbind request, possibly asynchronously */
+	return tls_session_async_handshake_cont(request, uctx);	/* Must unbind request, possibly asynchronously */
 }
 
 /** Push a handshake call onto the stack
@@ -1633,8 +1664,29 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 static int _fr_tls_session_free(fr_tls_session_t *session)
 {
 	if (session->ssl) {
+		/*
+		 *  The OpenSSL docs state:
+		 *
+		 *	SSL_shutdown() can be modified to only set the
+		 *	connection to "shutdown" state but not actually
+		 *	send the "close notify" alert messages, see
+		 *	SSL_CTX_set_quiet_shutdown(3). When "quiet shutdown"
+		 *	is enabled, SSL_shutdown() will always succeed and
+		 *	return 1.
+		 *
+		 *  This is only partially correct.  This call does mean
+		 *  we don't notify the other party, but the SSL_shutdown
+		 *  call can still fail if the handshake hasn't begun, leaving
+		 *  spurious errors on the thread local error stack.
+		 */
 		SSL_set_quiet_shutdown(session->ssl, 1);
-		SSL_shutdown(session->ssl);
+
+		/*
+		 *  Don't leave spurious errors raised by SSL_shutdown on
+		 *  the error stack.
+		 */
+		if (SSL_shutdown(session->ssl) != 1) ERR_clear_error();
+
 		SSL_free(session->ssl);
 		session->ssl = NULL;
 	}
@@ -1911,6 +1963,10 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
+	if (conf->client_hello_parse) {
+		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
+	}
+
 	tls_session->mtu = conf->fragment_size;
 	if (dynamic_mtu > 100 && dynamic_mtu < tls_session->mtu) {
 		RDEBUG2("Setting fragment_len to %zu from dynamic_mtu", dynamic_mtu);
@@ -1927,7 +1983,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	return tls_session;
 }
 
-static unlang_action_t tls_new_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, UNUSED void *uctx)
+static unlang_action_t tls_new_session_result(request_t *request, UNUSED void *uctx)
 {
 	request_t	*parent = request->parent;
 
@@ -1951,17 +2007,16 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
 
-	if (unlang_subrequest_child_push(NULL, child,
-					&(unlang_subrequest_session_t){
-						.enable = true,
-						.unique_ptr = child->parent
-					},
-					true, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_subrequest_child_push(NULL, child, child->parent, true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
-	if (unlang_function_push(child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(child,
+				 NULL,
+				 tls_new_session_result,
+				 NULL, 0,
+				 UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
 
-	if (unlang_call_push(child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
 	return UNLANG_ACTION_PUSHED_CHILD;

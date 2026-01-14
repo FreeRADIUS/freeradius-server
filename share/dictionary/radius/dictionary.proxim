@@ -13,84 +13,84 @@ VENDOR		Proxim				841
 BEGIN-VENDOR	Proxim
 
 # SU Management VLAN and Ethernet 1 VLAN parameters
-ATTRIBUTE	E1-VLAN-MODE				4	integer
+ATTRIBUTE	E1-VLAN-MODE				4	uint32
 ATTRIBUTE	SU-VLAN-NAME				5	string
 
-ATTRIBUTE	E1-Access-VLAN-ID			6	integer
-ATTRIBUTE	E1-Access-VLAN-Pri			7	integer
+ATTRIBUTE	E1-Access-VLAN-ID			6	uint32
+ATTRIBUTE	E1-Access-VLAN-Pri			7	uint32
 
-ATTRIBUTE	Mgmt-VLAN-ID				8	integer
-ATTRIBUTE	Mgmt-VLAN-Pri				9	integer
+ATTRIBUTE	Mgmt-VLAN-ID				8	uint32
+ATTRIBUTE	Mgmt-VLAN-Pri				9	uint32
 
-ATTRIBUTE	E1-TrunkID-01				10	integer
-ATTRIBUTE	E1-TrunkID-02				11	integer
-ATTRIBUTE	E1-TrunkID-03				12	integer
-ATTRIBUTE	E1-TrunkID-04				13	integer
-ATTRIBUTE	E1-TrunkID-05				14	integer
-ATTRIBUTE	E1-TrunkID-06				15	integer
-ATTRIBUTE	E1-TrunkID-07				16	integer
-ATTRIBUTE	E1-TrunkID-08				17	integer
-ATTRIBUTE	E1-TrunkID-09				18	integer
-ATTRIBUTE	E1-TrunkID-10				19	integer
-ATTRIBUTE	E1-TrunkID-11				20	integer
-ATTRIBUTE	E1-TrunkID-12				21	integer
-ATTRIBUTE	E1-TrunkID-13				22	integer
-ATTRIBUTE	E1-TrunkID-14				23	integer
-ATTRIBUTE	E1-TrunkID-15				24	integer
-ATTRIBUTE	E1-TrunkID-16				25	integer
+ATTRIBUTE	E1-TrunkID-01				10	uint32
+ATTRIBUTE	E1-TrunkID-02				11	uint32
+ATTRIBUTE	E1-TrunkID-03				12	uint32
+ATTRIBUTE	E1-TrunkID-04				13	uint32
+ATTRIBUTE	E1-TrunkID-05				14	uint32
+ATTRIBUTE	E1-TrunkID-06				15	uint32
+ATTRIBUTE	E1-TrunkID-07				16	uint32
+ATTRIBUTE	E1-TrunkID-08				17	uint32
+ATTRIBUTE	E1-TrunkID-09				18	uint32
+ATTRIBUTE	E1-TrunkID-10				19	uint32
+ATTRIBUTE	E1-TrunkID-11				20	uint32
+ATTRIBUTE	E1-TrunkID-12				21	uint32
+ATTRIBUTE	E1-TrunkID-13				22	uint32
+ATTRIBUTE	E1-TrunkID-14				23	uint32
+ATTRIBUTE	E1-TrunkID-15				24	uint32
+ATTRIBUTE	E1-TrunkID-16				25	uint32
 
-ATTRIBUTE	SU-VLAN-Table-Status			26	integer
+ATTRIBUTE	SU-VLAN-Table-Status			26	uint32
 
-ATTRIBUTE	Service-VLAN-ID				32	integer
-ATTRIBUTE	Service-VLAN-Pri			33	integer
+ATTRIBUTE	Service-VLAN-ID				32	uint32
+ATTRIBUTE	Service-VLAN-Pri			33	uint32
 
 # QoS Attributes
-ATTRIBUTE	QoS-Class-Index				34	integer
-ATTRIBUTE	QoS-Class-SU-Status			35	integer
+ATTRIBUTE	QoS-Class-Index				34	uint32
+ATTRIBUTE	QoS-Class-SU-Status			35	uint32
 
 # The attributes listed above are applicable to Tsunami MP/QB 8XXX
 # series and MP.11/QB.11 series products. While, the attributes listed
 # below are applicable to Tsunami MP/QB 8XXX series products only.
 
 # SU  Ethernet 2 VLAN parameters
-ATTRIBUTE	E2-VLAN-MODE				40	integer
+ATTRIBUTE	E2-VLAN-MODE				40	uint32
 
-ATTRIBUTE	E2-Access-VLAN-ID			41	integer
-ATTRIBUTE	E2-Access-VLAN-Pri			42	integer
+ATTRIBUTE	E2-Access-VLAN-ID			41	uint32
+ATTRIBUTE	E2-Access-VLAN-Pri			42	uint32
 
-ATTRIBUTE	E2-TrunkID-01				43	integer
-ATTRIBUTE	E2-TrunkID-02				44	integer
-ATTRIBUTE	E2-TrunkID-03				45	integer
-ATTRIBUTE	E2-TrunkID-04				46	integer
-ATTRIBUTE	E2-TrunkID-05				47	integer
-ATTRIBUTE	E2-TrunkID-06				48	integer
-ATTRIBUTE	E2-TrunkID-07				49	integer
-ATTRIBUTE	E2-TrunkID-08				50	integer
-ATTRIBUTE	E2-TrunkID-09				51	integer
-ATTRIBUTE	E2-TrunkID-10				52	integer
-ATTRIBUTE	E2-TrunkID-11				53	integer
-ATTRIBUTE	E2-TrunkID-12				54	integer
-ATTRIBUTE	E2-TrunkID-13				55	integer
-ATTRIBUTE	E2-TrunkID-14				56	integer
-ATTRIBUTE	E2-TrunkID-15				57	integer
-ATTRIBUTE	E2-TrunkID-16				58	integer
+ATTRIBUTE	E2-TrunkID-01				43	uint32
+ATTRIBUTE	E2-TrunkID-02				44	uint32
+ATTRIBUTE	E2-TrunkID-03				45	uint32
+ATTRIBUTE	E2-TrunkID-04				46	uint32
+ATTRIBUTE	E2-TrunkID-05				47	uint32
+ATTRIBUTE	E2-TrunkID-06				48	uint32
+ATTRIBUTE	E2-TrunkID-07				49	uint32
+ATTRIBUTE	E2-TrunkID-08				50	uint32
+ATTRIBUTE	E2-TrunkID-09				51	uint32
+ATTRIBUTE	E2-TrunkID-10				52	uint32
+ATTRIBUTE	E2-TrunkID-11				53	uint32
+ATTRIBUTE	E2-TrunkID-12				54	uint32
+ATTRIBUTE	E2-TrunkID-13				55	uint32
+ATTRIBUTE	E2-TrunkID-14				56	uint32
+ATTRIBUTE	E2-TrunkID-15				57	uint32
+ATTRIBUTE	E2-TrunkID-16				58	uint32
 
 # QinQ VLAN Attributes
-ATTRIBUTE	QinQ-Status				59	integer
-ATTRIBUTE	Service-VLAN-TPID			60	integer
+ATTRIBUTE	QinQ-Status				59	uint32
+ATTRIBUTE	Service-VLAN-TPID			60	uint32
 
 # Trunk mode Port VLAN ID
-ATTRIBUTE	E1-Port-VLAN-ID				61	integer
-ATTRIBUTE	E1-Port-VLAN-Pri			62	integer
-ATTRIBUTE	E1-Allow-Untag				63	integer
+ATTRIBUTE	E1-Port-VLAN-ID				61	uint32
+ATTRIBUTE	E1-Port-VLAN-Pri			62	uint32
+ATTRIBUTE	E1-Allow-Untag				63	uint32
 
-ATTRIBUTE	E2-Port-VLAN-ID				64	integer
-ATTRIBUTE	E2-Port-VLAN-Pri			65	integer
-ATTRIBUTE	E2-Allow-Untag				66	integer
+ATTRIBUTE	E2-Port-VLAN-ID				64	uint32
+ATTRIBUTE	E2-Port-VLAN-Pri			65	uint32
+ATTRIBUTE	E2-Allow-Untag				66	uint32
 
 # Access Mode Allow untagged traffic
-ATTRIBUTE	E1-SU-Allow-Untag-Mgmt			68	integer
-ATTRIBUTE	E2-SU-Allow-Untag-Mgmt			69	integer
+ATTRIBUTE	E1-SU-Allow-Untag-Mgmt			68	uint32
+ATTRIBUTE	E2-SU-Allow-Untag-Mgmt			69	uint32
 
 END-VENDOR 	Proxim
 ALIAS		Proxim					Vendor-Specific.Proxim

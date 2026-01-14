@@ -27,14 +27,12 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/cap.h>
 
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <ifaddrs.h>
 
 /** Resolve a named service to a port
@@ -233,6 +231,9 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 	fr_ipaddr_t			my_ipaddr;
 	struct sockaddr_storage		salocal;
 	socklen_t			salen;
+#ifdef HAVE_NET_IF_H
+	unsigned int scope_id = 0;
+#endif
 
 	/*
 	 *	Clear the thread local error stack as we may
@@ -267,8 +268,6 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 	 */
 	if (ifname) {
 #ifdef HAVE_NET_IF_H
-		unsigned int scope_id;
-
 		scope_id = if_nametoindex(ifname);
 		if (!scope_id) {
 			fr_strerror_printf_push("Failed finding interface %s: %s", ifname, fr_syserror(errno));
@@ -454,6 +453,13 @@ int fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint
 	}
 
 	if (fr_ipaddr_from_sockaddr(&my_ipaddr, &my_port, &salocal, salen) < 0) return -1;
+
+#ifdef HAVE_NET_IF_H
+	/*
+	 * fr_ipaddr_from_sockaddr clears scope_id for IPv4
+	 */
+	if (ifname && scope_id && (my_ipaddr.af == AF_INET)) my_ipaddr.scope_id = scope_id;
+#endif
 	*src_port = my_port;
 	*src_ipaddr = my_ipaddr;
 

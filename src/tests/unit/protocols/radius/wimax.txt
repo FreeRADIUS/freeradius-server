@@ -287,13 +287,13 @@ decode-pair -
 match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0" } } }
 
 #
-#  two VSAs in "flat" form, create two VSAs.
+#  two VSAs in "flat" form using ":=" creates two VSAs.
 #
-encode-pair Vendor-Specific.WiMAX.Capability = { Release = "1.0" }, Vendor-Specific.WiMAX.Capability = { Accounting-Capabilities = No-Accounting }
+encode-pair Vendor-Specific.WiMAX.Capability := { Release = "1.0" }, Vendor-Specific.WiMAX.Capability := { Accounting-Capabilities = No-Accounting }
 match 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 00 02 03 00
 
 #
-#  Two VSAs in "nested" form create one VSA.
+#  Two VSAs in "nested" form creates one VSA.
 #
 encode-pair Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = No-Accounting }
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 00

@@ -1,25 +1,40 @@
 #
 #  PRE: if
 #
-string test_string1
-string test_string2
+string domain
+string escaped
+string from_user
 
 #
 #  Strings which are expanded in a regex have regex special
 #  characters escaped.  Because the input strings are unsafe.
 #
-test_string1 := "example.com"
-test_string2 := "exampleXcom"
+domain := "example.com"
+escaped := %regex.escape(domain)
+from_user := "exampleXcom"
 
-if ("exampleXcom" =~ /%{test_string1}/) {
+if (domain == escaped) {
 	test_fail
 }
 
-if ("exampleXcom" !~ /%regex.safe(%{test_string1})/) {
+#
+#  We require an explicit '.' in the from_user srring.
+#
+if ("exampleXcom" =~ /%{escaped}/) {
 	test_fail
 }
 
-if (test_string2 =~ /%{test_string1}/) {
+#
+#  interpret the '.' as a regex match, but marking the text as safe.
+#
+if ("exampleXcom" !~ /%regex.safe(domain)/) {
+	test_fail
+}
+
+#
+#  The text from the user should match, too.
+#
+if (from_user =~ /%{escaped}/) {
 	test_fail
 }
 

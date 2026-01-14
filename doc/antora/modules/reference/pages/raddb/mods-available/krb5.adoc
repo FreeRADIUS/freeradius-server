@@ -81,8 +81,8 @@ krb5
 krb5 {
 	keytab = /path/to/keytab
 	service_principal = name_of_principle
-#	username = &User-Name
-#	password = &User-Password
+#	username = User-Name
+#	password = User-Password
 	reuse {
 #		min = 10
 #		max = 100

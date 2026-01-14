@@ -33,12 +33,14 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/version.h>
 
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/radius/radius.h>
@@ -70,7 +72,7 @@ extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_protocol, .proto = "radius" }, /* hacked in-place with '-p protocol' */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -81,7 +83,7 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
 	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -122,6 +124,8 @@ static void pair_mutable(fr_pair_t *vp)
 		return;
 	}
 
+	fr_assert(fr_type_is_structural(vp->vp_type));
+
 	fr_pair_list_foreach(&vp->vp_group, child) {
 		pair_mutable(child);
 	}
@@ -134,7 +138,7 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc_internal(ctx, NULL);
+	request = request_local_alloc_internal(ctx, NULL);
 	if (!request->packet) request->packet = fr_packet_alloc(request, false);
 	if (!request->reply) request->reply = fr_packet_alloc(request, false);
 
@@ -190,35 +194,28 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 
 	static int	number = 0;
 
+	if (!dict_protocol) {
+		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+		return NULL;
+	}
+
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc_external(ctx, NULL);
+	request = request_local_alloc_external(ctx, (&(request_init_args_t){ .namespace = dict_protocol }));
 
-	/*
-	 *	FIXME - Should be less RADIUS centric, but everything
-	 *	else assumes RADIUS at the moment so we can fix this later.
-	 */
-	request->dict = dict_protocol;
-	if (!request->dict) {
-		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+	request->packet = fr_packet_alloc(request, false);
+	if (!request->packet) {
+	oom:
+		fr_strerror_const("No memory");
 	error:
 		talloc_free(request);
 		return NULL;
 	}
-
-	request->packet = fr_packet_alloc(request, false);
-	if (!request->packet) {
-		fr_strerror_const("No memory");
-		goto error;
-	}
 	request->packet->timestamp = fr_time();
 
 	request->reply = fr_packet_alloc(request, false);
-	if (!request->reply) {
-		fr_strerror_const("No memory");
-		goto error;
-	}
+	if (!request->reply) goto oom;
 
 	request->client = client;
 	request->number = number++;
@@ -228,7 +225,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone, true) < 0) {
 		goto error;
 	}
 
@@ -356,7 +353,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
@@ -364,7 +361,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 
 static void print_packet(FILE *fp, fr_packet_t *packet, fr_pair_list_t *list)
 {
-	fr_dict_enum_value_t *dv;
+	fr_dict_enum_value_t const *dv;
 	fr_log_t log;
 
 	(void) fr_log_init_fp(&log, fp);
@@ -486,7 +483,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 								};
 
 
-			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules, 0);
+			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
 				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
@@ -540,7 +537,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 							});
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
+				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen - 1, fr_strerror());
 				continue;
 			}
 
@@ -595,18 +592,18 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 	return 0;
 }
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				    UNUSED request_t *request, UNUSED fr_value_box_list_t *src,
 				    UNUSED map_list_t const *maps)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static request_t *request_clone(request_t *old, int number, CONF_SECTION *server_cs)
 {
 	request_t *request;
 
-	request = request_alloc_internal(NULL, NULL);
+	request = request_local_alloc_internal(NULL, (&(request_init_args_t){ .namespace = old->proto_dict }));
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_packet_alloc(request, false);
@@ -618,18 +615,80 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	request->number = number;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->dict = old->dict;
 
 	return request;
 }
 
-static void cancel_request(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx)
 {
 	request_t	*request = talloc_get_type_abort(uctx, request_t);
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	request->rcode = RLM_MODULE_TIMEOUT;
+}
+
+static fr_time_delta_t time_offset = fr_time_delta_wrap(0);
+
+/** Sythentic time source for tests
+ *
+ * This allows us to artificially advance time for tests.
+ */
+static fr_time_t _synthetic_time_source(void)
+{
+	return fr_time_add_delta_time(time_offset, fr_time());
+}
+static xlat_arg_parser_t const xlat_func_time_advance_args[] = {
+	{ .required = true, .type = FR_TYPE_TIME_DELTA, .single = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static fr_timer_t *time_advance_timer = NULL;
+
+static void time_advance_resume(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	request_t *request = talloc_get_type_abort(uctx, request_t);
+	unlang_interpret_mark_runnable(request);
+}
+
+static xlat_action_t xlat_func_time_advance_resume(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						   UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t *vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = time_offset;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *delta;
+
+	XLAT_ARGS(in, &delta);
+
+	/*
+	 *	This ensures we take a pass through the timer list
+	 *	otherwise the time advances can be ignored.
+	 */
+	if (unlikely(fr_timer_in(NULL, unlang_interpret_event_list(request)->tl, &time_advance_timer, fr_time_delta_wrap(0), true, time_advance_resume, request) < 0)) {
+		RPERROR("Failed to add timer");
+		return XLAT_ACTION_FAIL;
+	}
+
+	RDEBUG("Time was %pV", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())));
+
+	time_offset = fr_time_delta_add(time_offset, delta->vb_time_delta);
+
+	RDEBUG("Time now %pV (offset +%pV)", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())), fr_box_time_delta(time_offset));
+
+	unlang_xlat_yield(request, xlat_func_time_advance_resume, NULL, 0, NULL);
+
+	return XLAT_ACTION_YIELD;
 }
 
 /**
@@ -651,11 +710,12 @@ int main(int argc, char *argv[])
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
-	fr_event_timer_t const	*cancel_timer = NULL;
 	fr_client_t		*client = NULL;
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
 	char const 		*receipt_file = NULL;
+
+	xlat_t			*time_advance = NULL;
 
 	TALLOC_CTX		*autofree;
 	TALLOC_CTX		*thread_ctx;
@@ -777,11 +837,13 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'S': /* Migration support */
+#if 0
 				if (main_config_parse_option(optarg) < 0) {
 					fprintf(stderr, "%s: Unknown configuration option '%s'\n",
 						config->name, optarg);
 					fr_exit_now(EXIT_FAILURE);
 				}
+#endif
 				break;
 
 			case 'X':
@@ -884,6 +946,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Needed for the triggers.  Which are always run-time expansions.
+	 */
+	if (main_loop_init() < 0) {
+		PERROR("Failed initialising main event loop");
+		EXIT_WITH_FAILURE;
+	}
+	/*
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
 	 */
@@ -891,6 +960,10 @@ int main(int argc, char *argv[])
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
+
+	time_advance = xlat_func_register(NULL, "time.advance", xlat_func_time_advance, FR_TYPE_VOID);
+	if (!time_advance) EXIT_WITH_FAILURE;
+	xlat_func_args_set(time_advance, xlat_func_time_advance_args);
 
 	/*
 	 *	Ensure that we load the correct virtual server for the
@@ -946,10 +1019,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy event list
+	 *	Get the main event list.
 	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
+	el = main_loop_event_list();
 	fr_assert(el != NULL);
+	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
 	/*
 	 *	Simulate thread specific instantiation
@@ -1052,7 +1126,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone, true) < 0) {
 			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
@@ -1072,7 +1146,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
+		fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
 
 	} else {
@@ -1105,7 +1179,7 @@ int main(int argc, char *argv[])
 			}
 #endif
 
-			fr_event_timer_in(request, el, &cancel_timer, config->max_request_time, cancel_request, request);
+			fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 
@@ -1145,11 +1219,12 @@ int main(int argc, char *argv[])
 		MEM(pair_update_reply(&vp, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
-
 		if (!fr_pair_validate(failed, &filter_vps, &request->reply_pairs)) {
 			fr_pair_validate_debug(failed);
+
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : "-", filter_file);
+			fr_fprintf_pair_list(stderr, &filter_vps);
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1191,10 +1266,7 @@ cleanup:
 	 */
 	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 
-	/*
-	 *	Free the event list.
-	 */
-	talloc_free(el);
+	main_loop_free();
 
 	/*
 	 *	Ensure all thread local memory is cleaned up

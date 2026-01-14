@@ -1,0 +1,24 @@
+#
+#  PRE: switch
+#
+
+switch User-Name {
+	case "bob" {
+		if (User-Password == "hello") {
+			success
+			break
+		}
+
+		test_fail
+	}
+
+	case "doug" {
+		Filter-Id := "doug"
+		test_fail
+	}
+
+	default {
+		Filter-Id := "default"
+		test_fail
+	}
+}

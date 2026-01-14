@@ -5,13 +5,13 @@ string test_string
 string dummy_string
 
 test_string	:= "AbCdE"
-test_string	:= %tolower(%{test_string})
+test_string	:= %str.lower(test_string)
 
 if !(test_string == "abcde") {
 	test_fail
 }
 
-test_string	:= %tolower(AAbbCCdd)
+test_string	:= %str.lower('AAbbCCdd')
 if !(test_string == "aabbccdd") {
 	test_fail
 }
@@ -19,7 +19,7 @@ if !(test_string == "aabbccdd") {
 #
 #  Doesn't exist
 #
-test_string	:= "%tolower(%{dummy_string})"
+test_string	:= "%str.lower(dummy_string)"
 if !(test_string == "") {
 	test_fail
 }

@@ -35,7 +35,7 @@ csv etc_group {
 	delimiter = ":"
 	header = no
 
-	key = &User-Name
+	key = User-Name
 
 	#
 	#  The field names are just place-holders.
@@ -55,6 +55,6 @@ csv etc_group {
 	#  here in the right-hand side of the `update` section.
 	#
 	update request {
-	       &ETC-Group-Name := 'group'
+	       ETC-Group-Name := 'group'
 	}
 }

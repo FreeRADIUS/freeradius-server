@@ -465,7 +465,7 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	 */
 	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr_dns_packet);
 	if (!vp) {
-		fr_pair_list_debug(vps);
+		fr_pair_list_log(&default_log, 0, vps);
 
 		fr_strerror_const("attribute list does not include DNS packet header");
 		return -1;
@@ -486,30 +486,31 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	 *	Encode questions
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_question, packet_ctx, packet + 4);
-	if (slen < 0) return slen - (fr_dbuff_current(&work_dbuff) - packet);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode answers
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_rr, packet_ctx, packet + 6);
-	if (slen < 0) return slen - (fr_dbuff_current(&work_dbuff) - packet);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode NS records
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_ns, packet_ctx, packet + 8);
-	if (slen < 0) return slen - (fr_dbuff_current(&work_dbuff) - packet);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode additional records
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_ar, packet_ctx, packet + 10);
-	if (slen < 0) return slen - (fr_dbuff_current(&work_dbuff) - packet);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_dns_ctx_t	*test_ctx;
 

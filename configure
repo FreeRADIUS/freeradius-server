@@ -665,6 +665,7 @@ OPENSSL_LIBS
 CPP
 LIBREADLINE_PREFIX
 LIBREADLINE
+WITH_BACKTRACE
 KQUEUE_LDFLAGS
 KQUEUE_LIBS
 TALLOC_LDFLAGS
@@ -719,6 +720,7 @@ build_vendor
 build_cpu
 build
 RADIUSD_VERSION_COMMIT
+allow_core_dumps
 ANTORA
 GRAPHVIZ_DOT
 DOXYGEN
@@ -727,6 +729,7 @@ PANDOC_ENGINE
 PANDOC
 ASCIIDOCTOR
 GIT
+RADIUSD_DOC_VERSION
 RADIUSD_VERSION_INCRM
 RADIUSD_VERSION_MINOR
 RADIUSD_VERSION_MAJOR
@@ -828,6 +831,7 @@ with_systemd_include_dir
 with_talloc_lib_dir
 with_talloc_include_dir
 with_regex
+with_libbacktrace
 with_libcap
 enable_year2038
 '
@@ -1564,6 +1568,7 @@ Optional Packages:
                           available(default=yes)
   --with-pcap          use pcap library for the RADIUS sniffer. (default=yes)
   --with-collectdclient  use collectd client. (default=yes)
+  --with-libbacktrace          use libbacktrace to print backtraces with line numbers. (default=yes)
   --with-libcap          use libcap for debugger checks. (default=yes)
 
 Some influential environment variables:
@@ -2849,6 +2854,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 RADIUSD_VERSION_MAJOR=`./version.sh major`
 RADIUSD_VERSION_MINOR=`./version.sh minor`
 RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
+RADIUSD_DOC_VERSION=`grep version doc/antora/antora.yml | sed "s/version: '//;s/'//"`
 
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
 	RADIUSD_VERSION_INCRM=`./version.sh incrm`
@@ -2874,6 +2880,11 @@ printf "%s\n" "#define RADIUSD_VERSION_MINOR ${RADIUSD_VERSION_MINOR}" >>confdef
 
 
 printf "%s\n" "#define RADIUSD_VERSION_INCRM ${RADIUSD_VERSION_INCRM}" >>confdefs.h
+
+
+printf "%s\n" "#define RADIUSD_DOC_VERSION ${RADIUSD_DOC_VERSION}" >>confdefs.h
+
+
 
 
 
@@ -3306,7 +3317,11 @@ fi
 if test "x$developer" = "xyes"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Enabling developer build implicitly, disable with --disable-developer" >&5
 printf "%s\n" "$as_me: Enabling developer build implicitly, disable with --disable-developer" >&6;}
+  allow_core_dumps="yes"
+else
+  allow_core_dumps="no"
 fi
+
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 printf %s "checking build commit... " >&6; }
@@ -4927,16 +4942,73 @@ printf "%s\n" "$ax_cv_cc_unwindlib_arg" >&6; }
   clang_path="$CC"
 
 
-    LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
-
   if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
-    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+        LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
   fi
 else
   clang_path=""
 
 fi
 
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag to enable C23 support" >&5
+printf %s "checking for the compiler flag to enable C23 support... " >&6; }
+if test ${ax_cv_cc_std_c23_flag+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+    ax_cv_cc_std_c23_flag=
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -std=c23"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+        struct foo {
+          union {
+            int a;
+            int b;
+          };
+        } bar;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_cc_std_c23_flag="-std=c23"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    CFLAGS="$CFLAGS_SAVED"
+   ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_std_c23_flag" >&5
+printf "%s\n" "$ax_cv_cc_std_c23_flag" >&6; }
+
+if test "x$ax_cv_cc_std_c23_flag" != x; then
+  CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
+else
 
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag to enable C11 support" >&5
 printf %s "checking for the compiler flag to enable C11 support... " >&6; }
@@ -5020,10 +5092,11 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_std_c11_flag" >&5
 printf "%s\n" "$ax_cv_cc_std_c11_flag" >&6; }
 
-if test "x$ax_cv_cc_std_c11_flag" != x; then
-  CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
-else
-  as_fn_error $? "FreeRADIUS requires a C11 compiler" "$LINENO" 5
+  if test "x$ax_cv_cc_std_c11_flag" != x; then
+    CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+  else
+    as_fn_error $? "FreeRADIUS requires a C11 compiler" "$LINENO" 5
+  fi
 fi
 
 if test "x$GCC" = "xyes"; then
@@ -5884,6 +5957,8 @@ then :
     ;;
   *)
     fuzzer=yes
+    CFLAGS="$CFLAGS -g3"
+    ;;
   esac
 
 fi
@@ -7118,115 +7193,6 @@ fi
 done
 
 if test "x$HAVE_THREADS" != "xno"; then
-                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc" >&5
-printf %s "checking for pthread_create in -lc... " >&6; }
-if test ${ac_cv_lib_c_pthread_create+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e) ac_check_lib_save_LIBS=$LIBS
-LIBS="-lc  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.
-   The 'extern "C"' is for builds by C++ compilers;
-   although this is not generally supported in C code supporting it here
-   has little cost and some practical benefit (sr 110532).  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char pthread_create (void);
-int
-main (void)
-{
-return pthread_create ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_c_pthread_create=yes
-else case e in #(
-  e) ac_cv_lib_c_pthread_create=no ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS ;;
-esac
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_c_pthread_create" >&5
-printf "%s\n" "$ac_cv_lib_c_pthread_create" >&6; }
-if test "x$ac_cv_lib_c_pthread_create" = xyes
-then :
-
-      HAVE_THREADS="yes"
-      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-pthread\"" >&5
-printf %s "checking for the compiler flag \"-pthread\"... " >&6; }
-if test ${ax_cv_cc_pthread_flag+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e)
-
-    CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -pthread"
-
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main (void)
-{
-return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  ax_cv_cc_pthread_flag="yes"
-else case e in #(
-  e) ax_cv_cc_pthread_flag="no" ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-
-    CFLAGS="$CFLAGS_SAVED"
-   ;;
-esac
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
-printf "%s\n" "$ax_cv_cc_pthread_flag" >&6; }
-
-      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
-        CFLAGS="$CFLAGS -pthread"
-      fi
-
-
-fi
-
-fi
-if test "x$HAVE_THREADS" != "xno"; then
                 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
 printf %s "checking for pthread_create in -lpthread... " >&6; }
 if test ${ac_cv_lib_pthread_pthread_create+y}
@@ -7522,7 +7488,7 @@ then :
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 else case e in #(
-  e) as_fn_error $? "-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz" "$LINENO" 5
+  e) as_fn_error $? "-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or https://www.freeradius.org/ftp/pub/radius/contrib/libsem.tar.gz" "$LINENO" 5
  ;;
 esac
 fi
@@ -9047,6 +9013,44 @@ printf "%s\n" "$as_me: WARNING: collectdclient library not found. Use --with-col
     COLLECTDC_LDFLAGS="${smart_ldflags}"
   fi
     LIBS="${old_LIBS}"
+fi
+
+
+# Check whether --with-libbacktrace was given.
+if test ${with_libbacktrace+y}
+then :
+  withval=$with_libbacktrace;  case "$withval" in
+  no)
+    WITH_BACKTRACE=no
+    ;;
+  yes)
+    if ! test -f src/lib/backtrace/configure && ! git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
+      as_fn_error $? "--with-libbacktrace=yes requires the backtrace submodule to be checked out.  Please run 'git submodule update --init src/lib/backtrace'." "$LINENO" 5
+    fi
+    WITH_BACKTRACE=yes
+    ;;
+    *)
+    if test -f src/lib/backtrace/configure; then
+      WITH_BACKTRACE=yes
+    else
+      WITH_BACKTRACE=no
+    fi
+  esac
+
+fi
+
+
+if test "x$WITH_BACKTRACE" = xyes; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: building with libbacktrace, this will be statically linked" >&5
+printf "%s\n" "$as_me: building with libbacktrace, this will be statically linked" >&6;}
+
+printf "%s\n" "#define HAVE_BACKTRACE 1" >>confdefs.h
+
+  WITH_BACKTRACE=$WITH_BACKTRACE
+
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: building without libbacktrace" >&5
+printf "%s\n" "$as_me: building without libbacktrace" >&6;}
 fi
 
 WITH_LIBCAP=yes
@@ -13738,58 +13742,55 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
     devcflags="$devcflags \
-	-W \
-	-Weverything \
-	-Wformat=2 \
-	-Wno-date-time \
-	-Wno-disabled-macro-expansion \
-	-Wno-format-pedantic \
-	-Wno-missing-field-initializers \
-    	-Wno-cast-align \
-    	-Wno-conversion \
-    	-Wno-covered-switch-default \
-    	-Wno-documentation-unknown-command \
-    	-Wno-extended-offsetof \
-    	-Wno-gnu-empty-initializer \
-    	-Wno-gnu-statement-expression \
-    	-Wno-gnu-zero-variadic-macro-arguments \
-    	-Wno-packed \
-    	-Wno-padded \
-    	-Wno-poison-system-directories \
-    	-Wno-reserved-id-macro \
-    	-Wno-shorten-64-to-32 \
-    	-Wno-sign-conversion \
-    	-Wno-switch-enum \
-	-Wno-unreachable-code-generic-assoc \
-    	-Wno-vla \
-        $verify_ptr"
-  else
-    if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags \
-      	-W \
-      	-Wall \
-      	-Wcast-align \
-      	-Wcast-qual \
-      	-Wformat-nonliteral \
-      	-Wformat-security \
-      	-Wformat-y2k \
-      	-Wformat=2 \
-      	-Wmissing-declarations \
-      	-Wmissing-prototypes \
-      	-Wnested-externs \
-      	-Wno-cast-align \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wno-missing-field-initializers \
-      	-Wpointer-arith \
-      	-Wredundant-decls \
-      	-Wshadow \
-      	-Wstrict-prototypes \
-      	-Wundef \
-      	-Wwrite-strings \
-	$verify_ptr"
-      INSTALLSTRIP=""
-    fi
+      -W \
+      -Weverything \
+      -Wformat=2 \
+      -Wno-date-time \
+      -Wno-disabled-macro-expansion \
+      -Wno-format-pedantic \
+      -Wno-cast-align \
+      -Wno-conversion \
+      -Wno-covered-switch-default \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-documentation-unknown-command \
+      -Wno-extended-offsetof \
+      -Wno-gnu-empty-initializer \
+      -Wno-gnu-statement-expression \
+      -Wno-gnu-zero-variadic-macro-arguments \
+      -Wno-packed \
+      -Wno-padded \
+      -Wno-poison-system-directories \
+      -Wno-reserved-id-macro \
+      -Wno-shorten-64-to-32 \
+      -Wno-sign-conversion \
+      -Wno-switch-enum \
+      -Wno-unreachable-code-generic-assoc \
+      -Wno-vla \
+      $verify_ptr"
+  elif test "x$GCC" = "xyes"; then
+    devcflags="$devcflags \
+      -W \
+      -Wall \
+      -Wcast-align \
+      -Wcast-qual \
+      -Wformat-nonliteral \
+      -Wformat-security \
+      -Wformat-y2k \
+      -Wformat=2 \
+      -Wmissing-declarations \
+      -Wmissing-prototypes \
+      -Wnested-externs \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-format-extra-args \
+      -Wno-format-zero-length \
+      -Wpointer-arith \
+      -Wredundant-decls \
+      -Wshadow \
+      -Wstrict-prototypes \
+      -Wundef \
+      -Wwrite-strings \
+      $verify_ptr"
+    INSTALLSTRIP=""
   fi
 
 
@@ -15341,426 +15342,6 @@ printf "%s\n" "#define HAVE_REGEX_PCRE2 1" >>confdefs.h
 printf "%s\n" "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
 
      fi
-  fi
-
-        if test "x$REGEX" != "xyes"; then
-
-
-ac_safe=`echo "pcre.h" | sed 'y%./+-%__pm%'`
-
-if test "x" = "x"; then
-  sm_pkg=`echo "${ac_safe}" | sed 's/.h//;s/^lib//'`
-else
-  sm_pkg=""
-fi
-
-old_CPPFLAGS="$CPPFLAGS"
-smart_include_dir="/usr/local/include /opt/include /usr/local/${sm_pkg}/include /opt/homebrew/include /opt/homebrew/opt/${sm_pkg}/include"
-
-_smart_try_dir=
-_smart_include_dir=
-
-for _prefix in $smart_prefix ""; do
-for _dir in $smart_try_dir; do
-  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
-done
-
-for _dir in $smart_include_dir; do
-  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
-done
-done
-
-if test "x$_smart_try_dir" != "x"; then
-for try in $_smart_try_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre.h in $try" >&5
-printf %s "checking for pcre.h in $try... " >&6; }
-  CPPFLAGS="-isystem $try $old_CPPFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-		                        #include <pcre.h>
-
-int
-main (void)
-{
-
-                                        int a = 1;
-
-
-  ;
-  return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-		      smart_include="-isystem $try"
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		      break
-
-else case e in #(
-  e)
-		      smart_include=
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-		     ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-done
-CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_include" = "x"; then
-for _prefix in $smart_prefix; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcre.h" >&5
-printf %s "checking for ${_prefix}/pcre.h... " >&6; }
-
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-		                        #include <pcre.h>
-
-int
-main (void)
-{
-
-                                        int a = 1;
-
-
-  ;
-  return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-		      smart_include="-isystem ${_prefix}/"
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		      break
-
-else case e in #(
-  e)
-		      smart_include=
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-		     ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-done
-fi
-
-if test "x$smart_include" = "x"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre.h" >&5
-printf %s "checking for pcre.h... " >&6; }
-
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-		                        #include <pcre.h>
-
-int
-main (void)
-{
-
-                                        int a = 1;
-
-
-  ;
-  return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-		      smart_include=" "
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		      break
-
-else case e in #(
-  e)
-		      smart_include=
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-		     ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-if test "x$smart_include" = "x"; then
-for try in $_smart_include_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre.h in $try" >&5
-printf %s "checking for pcre.h in $try... " >&6; }
-  CPPFLAGS="-isystem $try $old_CPPFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-		                        #include <pcre.h>
-
-int
-main (void)
-{
-
-                                        int a = 1;
-
-
-  ;
-  return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-		      smart_include="-isystem $try"
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		      break
-
-else case e in #(
-  e)
-		      smart_include=
-		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-		     ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-done
-CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_include" != "x"; then
-eval "ac_cv_header_$ac_safe=yes"
-CPPFLAGS="$smart_include $old_CPPFLAGS"
-SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
-fi
-
-smart_prefix=
-
-    if test "x$ac_cv_header_pcre_h" = "xyes"; then
-      smart_try_dir=$pcre_lib_dir
-
-
-sm_lib_safe=`echo "pcre" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "pcre_compile" | sed 'y%./+-%__p_%'`
-
-if test "x" = "x"; then
-  sm_pkg="${sm_lib_safe}"
-else
-  sm_pkg=""
-fi
-
-old_LIBS="$LIBS"
-old_CPPFLAGS="$CPPFLAGS"
-smart_lib=
-smart_ldflags=
-smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
-
-if test "x$smart_try_dir" != "x"; then
-for try in $smart_try_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre_compile in -lpcre in $try" >&5
-printf %s "checking for pcre_compile in -lpcre in $try... " >&6; }
-  LIBS="-lpcre $old_LIBS"
-  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char pcre_compile();
-int
-main (void)
-{
-pcre_compile()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-
-		   smart_lib="-lpcre"
-		   smart_ldflags="-L$try -Wl,-rpath,$try"
-		   smart_ld_found="$try"
-		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		   break
-
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; } ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-done
-LIBS="$old_LIBS"
-CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_lib" = "x"; then
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre_compile in -lpcre" >&5
-printf %s "checking for pcre_compile in -lpcre... " >&6; }
-LIBS="-lpcre $old_LIBS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char pcre_compile();
-int
-main (void)
-{
-pcre_compile()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-
-	           smart_lib="-lpcre"
-	           smart_ld_found=""
-	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; } ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS="$old_LIBS"
-fi
-
-if test "x$smart_lib" = "x"; then
-for try in $smart_lib_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre_compile in -lpcre in $try" >&5
-printf %s "checking for pcre_compile in -lpcre in $try... " >&6; }
-  LIBS="-lpcre $old_LIBS"
-  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char pcre_compile();
-int
-main (void)
-{
-pcre_compile()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-
-		   smart_lib="-lpcre"
-		   smart_ldflags="-L$try -Wl,-rpath,$try"
-		   smart_ld_found="$try"
-		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-		   break
-
-else case e in #(
-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; } ;;
-esac
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-done
-LIBS="$old_LIBS"
-CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_lib" != "x"; then
-eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-LIBS="$smart_ldflags $smart_lib $old_LIBS"
-SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
-SMART_LD_FOUND="$smart_ld_found"
-fi
-
-      if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking libpcre library and header version consistency" >&5
-printf %s "checking libpcre library and header version consistency... " >&6; }
-          if test "$cross_compiling" = yes
-then :
-
-               { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: cross-compiling (assuming yes)" >&5
-printf "%s\n" "cross-compiling (assuming yes)" >&6; }
-
-
-else case e in #(
-  e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-                #include <stdio.h>
-                #include <pcre.h>
-                #include <stdlib.h>
-                #define XSTRINGIFY(x) #x
-                #define STRINGIFY(x) XSTRINGIFY(x)
-
-int
-main (void)
-{
-
-                char const *p = pcre_version();
-                char *q;
-                unsigned long ver;
-
-                printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
-
-                ver = strtoul(p, &q, 10);
-                if (*q != '.') return 1;
-                if (ver != PCRE_MAJOR) return 65;
-                p = ++q;
-
-                ver = strtoul(p, &q, 10);
-                if (ver != PCRE_MINOR) return 1;
-
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_run "$LINENO"
-then :
-
-               { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-               REGEX=yes
-
-printf "%s\n" "#define HAVE_REGEX_PCRE 1" >>confdefs.h
-
-
-printf "%s\n" "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
-
-
-else case e in #(
-  e)
-               { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-               { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in '$ac_pwd':" >&5
-printf "%s\n" "$as_me: error: in '$ac_pwd':" >&2;}
-as_fn_error $? "libpcre library version does not match header version
-See 'config.log' for more details" "$LINENO" 5; }
-             ;;
-esac
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
-esac
-fi
-
-      fi
-    fi
   fi
 fi
 

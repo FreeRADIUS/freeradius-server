@@ -27,33 +27,38 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
-#include <freeradius-devel/util/dict.h>
 
-static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
+static int xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
 	fr_value_box_t *box;
 	xlat_exp_t *node;
 
 	while ((box = fr_value_box_list_pop_head(list)) != NULL) {
 		MEM(node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0));
-		fr_value_box_copy(node, &node->data, box);
+		if (unlikely(fr_value_box_copy(node, &node->data, box) < 0)) {
+			talloc_free(node);
+			return -1;
+		}
 
 		if (node->data.type == FR_TYPE_STRING) {
 			node->quote = T_DOUBLE_QUOTED_STRING;
-			xlat_exp_set_name_buffer_shallow(node, node->data.vb_strvalue);
+			xlat_exp_set_name_buffer(node, node->data.vb_strvalue); /* later changes can free strvalue */
 		} else {
 			char *name;
 
 			node->quote = T_BARE_WORD;
 			MEM(fr_value_box_aprint(node, &name, box, NULL) >= 0);
-			xlat_exp_set_name_buffer_shallow(node, name);
+			xlat_exp_set_name_shallow(node, name);
 		}
 		talloc_free(box);
 
 		xlat_exp_insert_tail(head, node);
 	}
+
+	return 0;
 }
 
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote);
@@ -66,7 +71,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote)
 {
 	int rcode;
-	bool success;
+	unlang_result_t result = UNLANG_RESULT_NOT_SET;
 	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
 	xlat_exp_t *node, *next;
@@ -79,21 +84,23 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 	if (head->flags.needs_resolving) return -1;
 
 	our_flags = head->flags;
-	our_flags.pure = true;					/* we flip this if the children are not pure */
+	our_flags.constant = our_flags.pure = true;		/* we flip these if the children are not pure */
 
 	for (node = fr_dlist_head(&head->dlist);
-	     next = fr_dlist_next(&head->dlist, node), node != NULL;
+	     (void) (next = fr_dlist_next(&head->dlist, node)), node != NULL;
 	     node = next) {
 		if (!node->flags.can_purify) continue;
 
 		switch (node->type) {
 		case XLAT_TMPL:
+			if (tmpl_is_attr(node->vpt)) break;
+
 			/*
 			 *	Optimize it by replacing the xlat -> tmpl -> xlat with just an xlat.
 			 *
 			 *	That way we avoid a bounce through the tmpl code at run-time.
 			 */
-			if (tmpl_is_xlat(node->vpt)) {
+			if (tmpl_contains_xlat(node->vpt)) {
 				xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
 
 				rcode = xlat_purify_list_internal(xlat, request, node->vpt->quote);
@@ -102,54 +109,46 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 				node->flags = xlat->flags;
 
 				/*
-				 *	@todo - for casts, check if the xlat is pure and/or contains just
-				 *	data.  If so, cast the data.
+				 *	We can't do any more optimizations, stop processing it.
 				 */
+				if (!node->flags.constant) break;
 
 				/*
-				 *	If there's a cast, then keep it.  The xlat_exp_t doesn't contain a
-				 *	cast type, so we have to leave it in the tmpl_t.
+				 *	@todo - fix this!
 				 */
 				if (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL) break;
 
 				/*
-				 *	We're in a string, or we will be in a string.  Don't do any more
-				 *	optimizations.
+				 *	We have a quoted string which is constant.  Convert it to a value-box.
 				 *
-				 *	@todo - maybe add a cast here, but the expression evaluator will take
-				 *	care of that.
+				 *	Don't change node->fmt though, for some vague reason of "knowing where
+				 *	it came from".
 				 */
-				if ((quote != T_BARE_WORD) || (node->vpt->quote != T_BARE_WORD)) break;
+				if ((node->vpt->quote != T_BARE_WORD) || (quote != T_BARE_WORD)) {
+					fr_sbuff_t *sbuff;
+					ssize_t slen;
 
-				/*
-				 *	If there's only one item here, we can just replace this node with the
-				 *	one item.
-				 */
-				if (fr_dlist_num_elements(&xlat->dlist) == 1) {
-					xlat_exp_t *child, *prev;
+					FR_SBUFF_TALLOC_THREAD_LOCAL(&sbuff, 256, SIZE_MAX);
 
-					prev = fr_dlist_remove(&head->dlist, node);
-					child = fr_dlist_head(&xlat->dlist);
+					slen = xlat_print(sbuff, xlat, NULL);
+					if (slen < 0) return -1;
 
-					(void) talloc_steal(child, node->vpt->name);
-					(void) talloc_steal(head, child);
+					xlat_exp_set_type(node, XLAT_BOX); /* frees node->group, and therefore xlat */
+					fr_value_box_init(&node->data, FR_TYPE_STRING, NULL, false);
 
-					(void) fr_dlist_remove(&xlat->dlist, child);
-					fr_dlist_insert_after(&head->dlist, prev, child);
-					talloc_free(node); /* and vpt and xlat */
-					node = child;
+					if (fr_value_box_bstrndup(node, &node->data, NULL,
+								  fr_sbuff_start(sbuff), fr_sbuff_used(sbuff), false) < 0) return -1;
 					break;
 				}
 
 				/*
-				 *	There are multiple items in the child.  We need to keep the group
-				 *	wrapper, which ensures that the entire sub-expression results in one
-				 *	output value.
+				 *	The tmpl is constant, but not quoted.  Keep the group wrapper, which
+				 *	ensures that the entire sub-expression results in one output value.
 				 */
-				xlat_exp_set_type(node, XLAT_GROUP);
 				(void) talloc_steal(node, node->vpt->name);
 				(void) talloc_steal(node, xlat);
-				talloc_free(node->vpt);
+				xlat_exp_set_type(node, XLAT_GROUP); /* frees node->vpt, and xlat if we didn't steal it */
+				talloc_free(node->group);
 				node->group = xlat;
 				break;
 			}
@@ -162,16 +161,72 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 
 		case XLAT_INVALID:
 		case XLAT_FUNC_UNRESOLVED:
-		case XLAT_VIRTUAL:
-		case XLAT_VIRTUAL_UNRESOLVED:
 			fr_assert(0);
 			return -1;
 
-		case XLAT_GROUP:
+		case XLAT_GROUP: {
+			bool xlat = node->flags.xlat;
+
 			rcode = xlat_purify_list_internal(node->group, request, quote);
 			if (rcode < 0) return rcode;
 
 			node->flags = node->group->flags;
+			node->flags.xlat = xlat;
+
+			/*
+			 *	If the group is constant, hoist it.
+			 *
+			 *	The group wrapper isn't actually used for anything, and is added only to wrap
+			 *	%{...}.  But we should likely double-check that there are no unexpected side
+			 *	effects with things like %{foo.[*]}.  Are there any differences between
+			 *	returning _one_ value-box which contains a list, or returning a _list_ of
+			 *	value-boxes?
+			 *
+			 *	i.e. are these two situations identical?
+			 *
+			 *		foo = bar.[*]
+			 *		foo = %{bar.[*]}
+			 *
+			 *	If "foo" is a leaf type, then perhaps the first one is "create multiple copies of
+			 *	'foo', one for each value.  And the second is likely illegal.
+			 *
+			 *	if "foo" is a structural type, then the first one could assign multiple
+			 *	structures to 'foo', just like the leaf example above.  But only if the things
+			 *	returned from 'bar.[*]' are structures of the same type as 'foo'.  The second
+			 *	example is then assigning _one_ structure to 'foo'.
+			 *
+			 *	The caveat here is that the data returned from 'bar.[*]' must be of the
+			 *	correct types for the structure members.  So it's likely to work only for
+			 *	groups.  If we want to copy one structure to another, we just assign them:
+			 *
+			 *		foo = bar
+			 *
+			 *	If we hoist the contents of %{bar.[*]}, then for a leaf type, the two
+			 *	situations become identical.  For a structural type, we change the meaning so
+			 *	that the two situations become identical.
+			 *
+			 *	And then none of this matters is we're in a quoted string, because the results
+			 *	will be concatenated anyways.
+			 */
+			if (node->flags.constant && node->flags.xlat &&
+			    ((quote != T_BARE_WORD) || (fr_dlist_num_elements(&node->group->dlist) == 1))) {
+				xlat_exp_t *child, *to_free;
+
+				fr_dlist_remove(&head->dlist, node);
+				to_free = node;
+
+				while ((child = fr_dlist_pop_head(&to_free->group->dlist)) != NULL) {
+					(void) talloc_steal(head, child);
+
+					fr_dlist_insert_before(&head->dlist, next, child);
+					child->flags.can_purify = false;
+					xlat_flags_merge(&our_flags, &child->flags);
+
+					node = child;
+				}
+				talloc_free(to_free);
+			}
+		}
 			break;
 
 		case XLAT_FUNC:
@@ -181,21 +236,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 			if (!node->flags.pure) {
 				if (node->call.func->purify) {
-					fr_dict_t const *dict = request->dict;
-
-					/*
-					 *	Swap in the node specific dictionary.
-					 *
-					 *	The previous code stored the dictionary in the xlat_exp_head_t,
-					 *	and whilst this wasn't wrong, it was duplicative.
-					 *
-					 *	This allows future code to create inline definitions of local
-					 *	attributes, and have them work correctly, as more deeply nested
-					 *	expressions would swap in the correct dictionary.
-					 */
-					request->dict = node->call.dict;
 					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
-					request->dict = dict;
 				} else {
 					if (xlat_purify_list_internal(node->call.args, request, T_BARE_WORD) < 0) return -1;
 				}
@@ -219,8 +260,8 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 			fr_assert(node->flags.pure);
 			fr_value_box_list_init(&list);
-			success = false;
-			if (unlang_xlat_push_node(head, &success, &list, request, node) < 0) {
+			result.rcode = RLM_MODULE_NOT_SET;
+			if (unlang_xlat_push_node(head, &result, &list, request, node) < 0) {
 				return -1;
 			}
 
@@ -229,7 +270,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 
 			(void) unlang_interpret_synchronous(NULL, request);
-			if (!success) return -1;
+			if (!XLAT_RESULT_SUCCESS(&result)) return -1;
 
 			/*
 			 *	The function call becomes a GROUP of boxes
@@ -237,7 +278,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			xlat_instance_unregister_func(node);
 			xlat_exp_set_type(node, XLAT_GROUP);	/* Frees the argument list */
 
-			xlat_value_list_to_xlat(node->group, &list);
+			if (xlat_value_list_to_xlat(node->group, &list) < 0) return -1;
 			node->flags = node->group->flags;
 			break;
 		}
@@ -271,7 +312,7 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	if (!head->flags.can_purify) return 0;
 
-	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = fr_dict_internal() }));
+	request = request_local_alloc_internal(NULL, NULL);
 	if (!request) return -1;
 
 	if (intp) unlang_interpret_set(request, intp);
@@ -490,8 +531,11 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
 
 	MEM(fr_value_box_aprint(node, &name, &box, NULL) >= 0);
-	xlat_exp_set_name_buffer_shallow(node, name);
-	fr_value_box_copy(node, &node->data, &box);
+	xlat_exp_set_name_shallow(node, name);
+	if (unlikely(fr_value_box_copy(node, &node->data, &box) < 0)) {
+		talloc_free(node);
+		return -1;
+	}
 
 	*out = node;
 

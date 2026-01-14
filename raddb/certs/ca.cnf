@@ -10,6 +10,7 @@ new_certs_dir		= $dir
 certificate		= $dir/ca.pem
 serial			= $dir/serial
 crl			= $dir/crl.pem
+crlnumber		= $dir/crlnumber
 private_key		= $dir/ca.key
 RANDFILE		= $dir/.rand
 name_opt		= ca_default

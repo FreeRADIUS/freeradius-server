@@ -61,17 +61,17 @@ typedef struct {
 	uint16_t		count;		//!< Number of results to return
 	fr_value_box_list_t	list;		//!< Where to put the parsed results
 	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
-	fr_event_timer_t const	*ev;		//!< Event for timeout
+	fr_timer_t	*ev;		//!< Event for timeout
 } unbound_request_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
 	{ FR_CONF_OFFSET("timeout", rlm_unbound_t, timeout), .dflt = "3000" },
-	{ FR_CONF_OFFSET_FLAGS("resolvconf", CONF_FLAG_FILE_INPUT, rlm_unbound_t, resolvconf) },
-	{ FR_CONF_OFFSET_FLAGS("hosts", CONF_FLAG_FILE_INPUT, rlm_unbound_t, hosts) },
+	{ FR_CONF_OFFSET_FLAGS("resolvconf", CONF_FLAG_FILE_READABLE, rlm_unbound_t, resolvconf) },
+	{ FR_CONF_OFFSET_FLAGS("hosts", CONF_FLAG_FILE_READABLE, rlm_unbound_t, hosts) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -115,7 +115,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 	 *	Request has completed remove timeout event and set
 	 *	async_id to 0 so ub_cancel() is not called when ur is freed
 	 */
-	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
+	FR_TIMER_DISARM(ur->ev);
 	ur->async_id = 0;
 
 	/*
@@ -256,7 +256,7 @@ resume:
 /**	Callback from our timeout event to cancel a request
  *
  */
-static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void xlat_unbound_timeout(UNUSED fr_timer_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	unbound_request_t	*ur = talloc_get_type_abort(uctx, unbound_request_t);
 	request_t		*request = ur->request;
@@ -274,7 +274,7 @@ static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, UNUS
 {
 	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
 
-	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
+	FR_TIMER_DISARM(ur->ev);
 
 	RDEBUG2("Forcefully cancelling pending unbound request");
 }
@@ -408,8 +408,8 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return xlat_unbound_resume(ctx, out, &our_xctx, request, in);
 	}
 
-	if (fr_event_timer_in(ur, ur->t->ev_b->el, &ur->ev, fr_time_delta_from_msec(inst->timeout),
-			      xlat_unbound_timeout, ur) < 0) {
+	if (fr_timer_in(ur, ur->t->ev_b->el->tl, &ur->ev, fr_time_delta_from_msec(inst->timeout),
+			false, xlat_unbound_timeout, ur) < 0) {
 		REDEBUG("Unable to attach unbound timeout_envent");
 		ub_cancel(t->ev_b->ub, ur->async_id);
 		return XLAT_ACTION_FAIL;

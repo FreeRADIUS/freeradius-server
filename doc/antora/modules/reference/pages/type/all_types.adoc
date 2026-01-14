@@ -59,6 +59,7 @@ statements.
 | group		| generic grouping
 | struct	| structure which contains fixed-width fields
 | tlv		| type-length-value which contains other attributes
+| union         | Selects a child based on the value of a `key` field.
 | vendor	| Encapsulation of a vendor within data type `vsa`
 | vsa		| Encapsulation of vendor-specific attributes
 |=====
@@ -67,14 +68,6 @@ Each structural data type serves a different purpose.  Each structural
 data type can contain child attributes.  The different structural
 types have different behaviors about what kind of children they can
 contain, and how the data type is sent in a packet over the network.
-
-struct:: A `struct` contains fixed-sized data types, in a pre-defined order.
-+
-The `struct` can only contain a fixed and pre-defined list of child
-attributes.  These attributes are the fields, or members, of the structure.
-+
-The `struct` always encodes all of its children.  If a child is
-missing, then the relevant field is filled with zeros.
 
 group: A `group` contains an arbitrary collection of children, in any order.
 +
@@ -90,6 +83,14 @@ information.
 The `group` only encodes the child attributes which have been created
 and stored within the `group`.  The order of children does not matter.
 
+struct:: A `struct` contains fixed-sized data types, in a pre-defined order.
++
+The `struct` can only contain a fixed and pre-defined list of child
+attributes.  These attributes are the fields, or members, of the structure.
++
+The `struct` always encodes all of its children.  If a child is
+missing, then the relevant field is filled with zeros.
+
 tlv:: A `tlv` defines a hierarchy of children, which can only be contained in the `tlv`.
 +
 The `tlv` can only contain child attributes which have been defined as
@@ -97,6 +98,16 @@ children of the `tlv.`
 +
 The `tlv` only encodes the child attributes which have been created
 and stored within the `tlv`.  The order of children does not matter.
+
+union: A `union` contains one out of set of children.
++
+The `union` can contains any child attributes, so long as they are
+within the same protocol namespace.  See the
+dictionary/attribute.adoc[ATTRIBUTE] documentation for more
+information.
++
+The `union` only encodes one child attribute which has been defined
+within the `union`.
 
 vendor:: A `vendor` is a group which has a limited subset of children:
 attributes which have been defined by that vendor.
@@ -121,5 +132,5 @@ matter.
 A `vsa` data type can only be a contain children of the `vendor` data type.
 
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS

@@ -52,6 +52,7 @@ struct xlat_ctx_s {
 	module_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
 	void				*env_data;		//!< Expanded call env data.
 	void				*rctx;			//!< Resume context.
+	xlat_exp_t const 		*ex;			//!< Tokenized expression
 };
 
 /** An xlat instantiation ctx
@@ -60,7 +61,7 @@ struct xlat_ctx_s {
  */
 struct xlat_inst_ctx_s {
 	void				*inst;			//!< xlat instance data to populate.
-	xlat_exp_t 			*ex;			//!< Tokenized expression to use in expansion.
+	xlat_exp_t	     		*ex;			//!< Tokenized expression to use in expansion.
 	module_inst_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
 	void				*uctx;			//!< Passed to the registration function.
 };
@@ -86,11 +87,12 @@ struct xlat_thread_inst_ctx_s {
  *
  * @param[in] _inst	Instance data of the module being called.
  * @param[in] _thread 	Instance data of the thread being called.
+ * @param[in] _ex 	xlat expression
  * @param[in] _mctx	Module ctx.
  * @param[in] _env_data	Expanded call env.
  * @param[in] _rctx	resume ctx data.
  */
-#define XLAT_CTX(_inst, _thread, _mctx, _env_data, _rctx) &(xlat_ctx_t){ .inst = _inst, .thread = _thread, \
+#define XLAT_CTX(_inst, _thread, _ex, _mctx, _env_data, _rctx) &(xlat_ctx_t){ .inst = _inst, .thread = _thread, .ex = _ex, \
 							    .mctx = _mctx, .env_data = _env_data, .rctx = _rctx }
 
 /** Wrapper to create a xlat_inst_ctx_t as a compound literal
@@ -114,7 +116,7 @@ struct xlat_thread_inst_ctx_s {
  *
  * @param[in] _inst	Instance data of the module being called.
  * @param[in] _thread	Instance data of the thread being called.
- * @param[in] _ex 	xlat expression to be evaluated by the instantiation function.
+ * @param[in] _ex 	xlat expression
  * @param[in] _mctx	The module_inst_ctx_t from the parent module (if any).
  * @param[in] _el	To register any I/O handlers or timers against.
  * @param[in] _uctx	passed when the instantiation function was registered.

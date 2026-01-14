@@ -27,7 +27,7 @@ ATTRIBUTE	BW-ISO-Country-Code			14	string
 ATTRIBUTE	BW-e164-Country-Code			15	string
 ATTRIBUTE	BW-State-Name				16	string
 ATTRIBUTE	BW-City-Name				17	string
-ATTRIBUTE	BW-Area-Code				18	integer
+ATTRIBUTE	BW-Area-Code				18	uint32
 ATTRIBUTE	CL-Brand				19	string
 ATTRIBUTE	CL-Software-Version			20	string
 ATTRIBUTE	CL-Reg-Number				21	string

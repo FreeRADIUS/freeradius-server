@@ -147,20 +147,20 @@ server coa {
 		#
 		#  Split the string and split into pieces.
 		#
-		if ("%explode(control.user-session, '|')") {
+		if ("%str.split(control.user-session, '|')") {
 
-			foreach control.user-session {
+			foreach session (control.user-session) {
 				#
 				#  Send an update for each session we find.
 				#
-				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
+				if (session =~ /([^#]*)#(.*)/) {
 					#  NAS-IP-Address
-					control.NAS-IP-Address := "%{1}"
+					control.NAS-IP-Address := %regex.match(1)
 
 					#  Acct-Session-Id
-					control.Acct-Session-Id := "%{2}"
+					control.Acct-Session-Id := %regex.match(2)
 
-					subrequest CoA-Request {
+					subrequest ::CoA-Request {
 						#
 						#  The subrequest begins empty, so initially copy all attributes
 						#  from the incoming request.
@@ -175,7 +175,7 @@ server coa {
 						#
 						#  Some NASs want these, others don't
 						#
-						request.Event-Timestamp := "%l"
+						request.Event-Timestamp := %time.request()
 						request.Message-Authenticator := 0x00
 
 						#

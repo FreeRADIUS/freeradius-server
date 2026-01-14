@@ -53,15 +53,17 @@ typedef struct {
 	bool			env_inherit;
 	fr_time_delta_t		timeout;
 	bool			timeout_is_set;
+	bool			xlat_read_binary;
 } rlm_exec_t;
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait", rlm_exec_t, wait), .dflt = "yes" },
-	{ FR_CONF_OFFSET("input_pairs", rlm_exec_t, input_list) },
-	{ FR_CONF_OFFSET("output_pairs", rlm_exec_t, output_list) },
+	{ FR_CONF_OFFSET_FLAGS("input_pairs", CONF_FLAG_ATTRIBUTE, rlm_exec_t, input_list) },
+	{ FR_CONF_OFFSET_FLAGS("output_pairs", CONF_FLAG_ATTRIBUTE, rlm_exec_t, output_list) },
 	{ FR_CONF_OFFSET("shell_escape", rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("env_inherit", rlm_exec_t, env_inherit), .dflt = "no" },
 	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_exec_t, timeout) },
+	{ FR_CONF_OFFSET("xlat_read_binary", rlm_exec_t, xlat_read_binary) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -81,6 +83,7 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 						   xlat_ctx_t const *xctx,
 						   request_t *request, UNUSED fr_value_box_list_t *in)
 {
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_exec_t);
 	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
 
@@ -100,16 +103,18 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	/*
-	 *	Remove any trailing line endings and trim buffer
-	 */
-	fr_sbuff_trim(&exec->stdout_buff, sbuff_char_line_endings);
-	fr_sbuff_trim_talloc(&exec->stdout_buff, SIZE_MAX);
+	if (!inst->xlat_read_binary) {
+		/*
+		 *	Remove any trailing line endings and trim buffer
+		 */
+		fr_sbuff_trim(&exec->stdout_buff, sbuff_char_line_endings);
+		fr_sbuff_trim_talloc(&exec->stdout_buff, SIZE_MAX);
+	}
 
 	/*
 	 *	Use the buffer for the output vb
 	 */
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&exec->stdout_buff), true);
+	fr_value_box_bstrndup_shallow(vb, NULL, fr_sbuff_buff(&exec->stdout_buff), fr_sbuff_used(&exec->stdout_buff), true);
 
 	fr_dcursor_append(out, vb);
 
@@ -237,7 +242,7 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 /** Resume a request after xlat expansion.
  *
  */
-static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+static unlang_action_t mod_exec_oneshot_nowait_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
 						      request_t *request)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_exec_t);
@@ -250,16 +255,16 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 	if (inst->input_list) {
 		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
 		if (!env_pairs) {
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 	}
 
 	if (unlikely(fr_exec_oneshot_nowait(request, args, env_pairs, inst->shell_escape, inst->env_inherit) < 0)) {
 		RPEDEBUG("Failed executing program");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static fr_sbuff_parse_rules_t const rhs_term = {
@@ -279,7 +284,7 @@ static fr_sbuff_parse_rules_t const rhs_term = {
 /** Process the exit code and output of a short lived process
  *
  */
-static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_exec_oneshot_wait_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			status;
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_exec_t);
@@ -300,8 +305,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 			fr_sbuff_t	in = FR_SBUFF_IN(box->vb_strvalue, box->vb_length);
 			tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
 				.attr = {
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+					.dict_def = request->local_dict,
 					.list_def = tmpl_list(inst->output_list),
 					.list_presence = TMPL_ATTR_LIST_ALLOW,
 
@@ -317,7 +321,6 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 			};
 			tmpl_rules_t	rhs_rules = lhs_rules;
 
-			rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
 			rhs_rules.attr.list_def = request_attr_request;
 			rhs_rules.at_runtime = true;
 			rhs_rules.xlat.runtime_el = unlang_interpret_event_list(request);
@@ -369,20 +372,20 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 	status = m->status;
 	if (status < 0) {
 		REDEBUG("Program exited with signal %d", -status);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
 	 *	The status rcodes aren't quite the same as the rcode
 	 *	enumeration.
 	 */
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Dispatch one request using a short lived process
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_exec_ctx_t		*m;
 	fr_pair_list_t		*env_pairs = NULL;
@@ -392,7 +395,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 
 	if (!env_data->program) {
 		RDEBUG("This module requires 'program' to be set.");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -422,12 +425,12 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 	 */
 	if (inst->input_list) {
 		env_pairs = tmpl_list_head(request, tmpl_list(inst->input_list));
-		if (!env_pairs) RETURN_MODULE_INVALID;
+		if (!env_pairs) RETURN_UNLANG_INVALID;
 	}
 
 	if (inst->output_list) {
 		if (!tmpl_list_head(request, tmpl_list(inst->output_list))) {
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 	}
 
@@ -470,9 +473,9 @@ static int mob_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Pick the shorter one
 		 */
-		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
+		inst->timeout = fr_time_delta_gt(main_config->worker.max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
 						 fr_time_delta_from_sec(EXEC_TIMEOUT):
-						 main_config->max_request_time;
+						 main_config->worker.max_request_time;
 	}
 	else {
 		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
@@ -483,9 +486,9 @@ static int mob_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Blocking a request longer than max_request_time isn't going to help anyone.
 		 */
-		if (fr_time_delta_gt(inst->timeout, main_config->max_request_time)) {
+		if (fr_time_delta_gt(inst->timeout, main_config->worker.max_request_time)) {
 			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
-				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
+				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->worker.max_request_time));
 			return -1;
 		}
 	}

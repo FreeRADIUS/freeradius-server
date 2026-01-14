@@ -23,9 +23,67 @@
  */
 RCSIDH(math_h, "$Id$")
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+static inline uint64_t fr_roundup_pow2_uint64(uint64_t v)
+{
+#ifdef HAVE_BUILTIN_CLZLL
+	if (v <= 1) return 1;
+	return 1ULL << (64 - __builtin_clzll(v - 1));
+#else
+	if (v == 0) return 1;
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v |= v >> 32;
+	v++;
+	return v;
+#endif
+}
+
+static inline int64_t fr_roundup_pow2_int64(int64_t v)
+{
+	uint64_t uv;
+
+	if (v <= 1) return 1;
+
+#ifdef HAVE_BUILTIN_CLZLL
+	uv = (uint64_t)(v - 1);
+
+	{
+    		int shift = 64 - __builtin_clzll(uv);
+
+		if (shift >= 63) {
+			// would exceed INT64_MAX
+			return 0;
+		}
+		return (int64_t)(1ULL << shift);
+	}
+#else
+	uv = (uint64_t)v;
+	uv--;
+
+	uv |= uv >> 1;
+	uv |= uv >> 2;
+	uv |= uv >> 4;
+	uv |= uv >> 8;
+	uv |= uv >> 16;
+	uv |= uv >> 32;
+	uv++;
+
+	if (uv > (uint64_t)INT64_MAX) {
+		return 0;
+	}
+	return (int64_t)uv;
+#endif
+}
 
 /** Find the highest order high bit in an unsigned 64 bit integer
  *

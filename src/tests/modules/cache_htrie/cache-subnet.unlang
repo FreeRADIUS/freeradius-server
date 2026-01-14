@@ -1,0 +1,52 @@
+# Verify that subnet lookups in a htrie cache work as expected
+
+subrequest @dhcpv4::Discover {
+	control.IP-Pool.Name = 'main'
+	Network-Subnet := 192.168.1.10/24
+
+	cache_subnet.store
+	if (!updated) {
+		reject
+	}
+
+	control.IP-Pool.Name := 'secondary'
+	Network-Subnet := 10.0.1.23/16
+
+	cache_subnet.store
+	if (!updated) {
+		reject
+	}
+
+	control = {}
+
+	Network-Subnet := 172.16.0.10
+	cache_subnet.load
+	if (!notfound) {
+		reject
+	}
+
+	Network-Subnet := 192.168.1.50/32
+	cache_subnet.load
+	if (!updated) {
+		reject
+	}
+
+	if (control.IP-Pool.Name != 'main') {
+		reject
+	}
+
+	Network-Subnet := 10.0.2.50/32
+	cache_subnet.load
+	if (!updated) {
+		reject
+	}
+
+	if (control.IP-Pool.Name != 'secondary') {
+		reject
+	}
+
+}
+
+if (updated) {
+	control.Auth-Type := ::Accept
+}

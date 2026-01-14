@@ -14,14 +14,14 @@ VENDOR		Foundry				1991
 
 BEGIN-VENDOR	Foundry
 
-ATTRIBUTE	Privilege-Level				1	integer
+ATTRIBUTE	Privilege-Level				1	uint32
 ATTRIBUTE	Command-String				2	string
-ATTRIBUTE	Command-Exception-Flag			3	integer
-ATTRIBUTE	INM-Privilege				4	integer
+ATTRIBUTE	Command-Exception-Flag			3	uint32
+ATTRIBUTE	INM-Privilege				4	uint32
 ATTRIBUTE	Access-List				5	string
-ATTRIBUTE	MAC-Authent-needs-802dot1x		6	integer
-ATTRIBUTE	802dot1x-Valid-Lookup			7	integer
-ATTRIBUTE	MAC-Based-Vlan-QoS			8	integer
+ATTRIBUTE	MAC-Authent-needs-802dot1x		6	uint32
+ATTRIBUTE	802dot1x-Valid-Lookup			7	uint32
+ATTRIBUTE	MAC-Based-Vlan-QoS			8	uint32
 ATTRIBUTE	INM-Role-Aor-List			9	string
 ATTRIBUTE	SI-Context-Role				10	string
 # COA-Command appears to stomp on SI-Context-Role (different departments)

@@ -220,7 +220,7 @@ static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 
 	DEBUG4("redis handle %p - Timeout in %pV seconds", h, fr_box_time_delta(timeout));
 
-	if (fr_event_timer_in(h, conn->el, &h->timer,
+	if (fr_timer_in(h, conn->el, &h->timer,
 			      timeout, _redis_io_service_timer_expired, conn) < 0) {
 		PERROR("redis timeout %p - Failed adding timeout", h);
 	}

@@ -11,7 +11,7 @@
 #
 DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value
 END RelativeDistinguishedName
 
 DEFINE	GeneralName					choice

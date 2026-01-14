@@ -98,6 +98,10 @@ typedef struct {
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
 
+	char const		*query_number_attribute;	//!< Name of the attribute to populate with the
+								///< query number which succeeded when running a
+								///< series of redundant queries.
+
 	trunk_conf_t		trunk_conf;			//!< Configuration for trunk connections.
 } rlm_sql_config_t;
 
@@ -198,13 +202,13 @@ typedef struct {
 
 	int		flags;
 
-	unlang_function_t	sql_query_resume;		//!< Callback run after an SQL trunk query is run.
-	unlang_function_t	sql_select_query_resume;	//!< Callback run after an SQL select trunk query is run.
+	unlang_function_with_result_t	sql_query_resume;		//!< Callback run after an SQL trunk query is run.
+	unlang_function_with_result_t	sql_select_query_resume;	//!< Callback run after an SQL select trunk query is run.
 
 	int		(*sql_num_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 	int		(*sql_affected_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 
-	unlang_function_t	sql_fetch_row;
+	unlang_function_with_result_t	sql_fetch_row;
 	sql_rcode_t	(*sql_fields)(char const **out[], fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 	sql_rcode_t	(*sql_free_result)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 
@@ -221,32 +225,37 @@ typedef struct {
 } rlm_sql_driver_t;
 
 struct sql_inst {
-	rlm_sql_config_t	config; /* HACK */
+	rlm_sql_config_t		config; /* HACK */
 
-	fr_dict_attr_t const	*sql_user;		//!< Cached pointer to SQL-User-Name
+	fr_dict_attr_t const		*sql_user;		//!< Cached pointer to SQL-User-Name
 							//!< dictionary attribute.
-	exfile_t		*ef;
+	exfile_t			*ef;
 
-	module_instance_t	*driver_submodule;	//!< Driver's submodule.
-	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
+	module_instance_t		*driver_submodule;	//!< Driver's submodule.
+	rlm_sql_driver_t const		*driver;		//!< Driver's exported interface.
 
-	xlat_escape_legacy_t	sql_escape_func;
-	fr_value_box_escape_t	box_escape_func;
-	void			*sql_escape_arg;	//!< Instance specific argument to be passed to escape function.
-	unlang_function_t	query;
-	unlang_function_t	select;
-	unlang_function_t	fetch_row;
-	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+	xlat_escape_legacy_t		sql_escape_func;
+	fr_value_box_escape_t		box_escape;
+	void				*sql_escape_arg;	//!< Instance specific argument to be passed to escape function.
 
-	char const		*name;			//!< Module instance name.
-	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
-	module_instance_t const	*mi;			//!< Module instance data for thread lookups.
+	unlang_function_with_result_t	query;
+	unlang_function_with_result_t	select;
+	unlang_function_with_result_t	fetch_row;
+
+	fr_sql_query_t			*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+
+	char const			*name;			//!< Module instance name.
+	fr_dict_attr_t const		*group_da;		//!< Group dictionary attribute.
+	fr_dict_attr_t const		*query_number_da;	//!< Query number attribute.
+	module_instance_t const		*mi;			//!< Module instance data for thread lookups.
+
+	fr_pair_list_t			*trigger_args;		//!< Pairs passed to trigger request.
 };
 
-unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);
+unlang_action_t	sql_get_map_list(unlang_result_t *p_result, request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
-unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
-unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
+unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *request, void *uctx);
+unlang_action_t rlm_sql_fetch_row(unlang_result_t *p_result, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 

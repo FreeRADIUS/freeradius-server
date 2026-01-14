@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dcursor.h>
 
 #define CHECK_FREESPACE(_have, _need) \
 do { \
@@ -62,7 +63,7 @@ void fr_proto_print_hex_data(char const *file, int line, uint8_t const *data, si
 
 void fr_proto_print_hex_marker(char const *file, int line, uint8_t const *data, size_t data_len, ssize_t slen, char const *fmt, ...);
 
-void *fr_proto_next_encodable(fr_dlist_head_t *list, void *current, void *uctx);
+void *fr_proto_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx);
 
 void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da_stack_t *da_stack, unsigned int depth);
 

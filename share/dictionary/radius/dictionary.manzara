@@ -7,14 +7,14 @@ VENDOR		Manzara				19382
 
 BEGIN-VENDOR	Manzara
 
-ATTRIBUTE	User-UID				1	integer
-ATTRIBUTE	User-GID				2	integer
+ATTRIBUTE	User-UID				1	uint32
+ATTRIBUTE	User-GID				2	uint32
 ATTRIBUTE	User-Home				3	string
 ATTRIBUTE	User-Shell				4	string
 ATTRIBUTE	PPP-Addr-String				5	string
 ATTRIBUTE	Full-Login-String			6	string
-ATTRIBUTE	Tariff-Units				7	integer
-ATTRIBUTE	Tariff-Type				8	integer
+ATTRIBUTE	Tariff-Units				7	uint32
+ATTRIBUTE	Tariff-Type				8	uint32
 ATTRIBUTE	ECP-Session-Key				9	octets
 ATTRIBUTE	Map-Name				10	string
 ATTRIBUTE	Map-Key					11	string

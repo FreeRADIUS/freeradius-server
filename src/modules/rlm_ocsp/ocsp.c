@@ -533,9 +533,9 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 	start = fr_time();
 	do {
 		rc = OCSP_sendreq_nbio(&resp, ctx);
-		if (conf->timeout) {
-			if (conf->timeout > (fr_time() - start)) break;
-		}
+    if (conf->timeout && (fr_time() - start) >= conf->timeout) {
+        break;
+    }
 	} while ((rc == -1) && BIO_should_retry(conn));
 
 	if (conf->timeout && (rc == -1) && BIO_should_retry(conn)) {

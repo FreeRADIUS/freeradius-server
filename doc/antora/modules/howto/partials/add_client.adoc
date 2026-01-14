@@ -1,0 +1,32 @@
+When we discuss clients, we mean clients of the RADIUS server, e.g.
+wireless access point, network switch or other form of NAS. NOT the
+network clients - such as laptops, tablets etc - they do not talk
+directly to the RADIUS server.
+
+The above test runs `radtest` from localhost. It is useful to add a new
+client, which can be done by editing the `clients.conf` file. Add the
+following content:
+
+    client new {
+        ipaddr = 192.0.2.1
+        secret = testing123
+    }
+
+You should change the IP address `192.0.2.1` to be the address of the
+client which will be sending `Access-Request` packets.
+
+The client should also be configured to talk to the RADIUS server, by
+using the IP address of the machine running the RADIUS server. The
+client must use the same secret as configured above in the `client`
+section.
+
+Then restart the server in debugging mode, and run a simple test using
+the `testing` user. You should see an `Access-Accept` in the server
+output
+
+***
+
+*The following steps outline the best known method for configuring the
+server. Following them lets you create complex configurations with a
+minimum of effort. Failure to follow them leads to days of frustration
+and wasted effort.*

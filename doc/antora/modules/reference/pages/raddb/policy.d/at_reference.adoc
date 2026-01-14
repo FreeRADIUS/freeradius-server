@@ -1,0 +1,137 @@
+= @policy Statements
+
+The `@policy` syntax is used to simplify the location and management
+of policies.  It allows for module-specific policies to be placed in a
+module configuration file.
+
+[NOTE]
+====
+There is no functional difference between an `@policy`, and a policy
+located in the `policy.d/` directory.  The only difference is their
+location in the file system.
+====
+
+The `@policy` functionality is used when it is necessary to "wrap" a
+module in a policy not just once, but every time the module is called.
+
+== Module Method Overrides
+
+Thge `@policy` syntax be used in conjunction with the
+xref:raddb/policy.d/method.adoc[method override] syntax to
+override a module, but only when it is called from a specific
+processing section.
+
+The combination of the `@policy`, `unlang` and
+xref:raddb/policy.d/method.adoc[override] allows for
+extremely complex policies to be created in a very simple manner.
+
+== Worked Example
+
+An example of this functionality is with the following set of
+requirements:
+
+* There is an `sql` module configured, which writes accounting data to
+  an SQL database,
+
+* The `sql` module is used in multiple virtual servers,
+
+* The SQL database is supposed to be fast, and we wish to enforce a
+  xref:unlang/timeout.adoc[timeout] when the `sql` module is called.
+
+One possible configuration is to use the
+xref:unlang/timeout.adoc[timeout] keyword to "wrap" each call to the
+`sql` module, as in the following configuration file example:
+
+.Timeout in a Virtual Server
+[source,unlang]
+----
+server one {
+    ...
+    recv Accounting-Request {
+        ...
+        timeout 1s {
+            sql
+        }
+        ...
+    }
+    ...
+}
+----
+
+This configuration can then be repeated for each virtual server.
+While this works, it can be awkward and hard to read.  Even worse, any
+change to the timeout value requires changing that value in multiple
+places.  It is easy to miss making one change, which means that the
+various configurations behave differently.
+
+It is better instead to use the `@policy` syntax along with the
+xref:raddb/policy.d/method.adoc[method override] syntax, to
+"wrap" the `sql` module in a xref:unlang/timeout.adoc[timeout]
+section.  Even better, this `@policy` can be listed in the `sql`
+module configuration file, and does not need to be in the `policy.d/`
+directory.
+
+The following example shows how this configuration can be made.  The
+following example can be placed into the `sql` module configuration
+file.  It first contains the `sql` module configuration.  It is then
+followed by an `@policy`, which overrides the `sql` module
+functionality, to ensure that every call to `sql` has a one second
+timeout.
+
+.Timeout in a Module Configuration file
+[source,unlang]
+----
+sql {
+    dialect = "mysql"
+    server = localhost
+    ...
+}
+
+@policy sql {
+    timeout 1s {
+        sql
+    }
+}
+----
+
+Any virtual server which needs to use the `sql` module can then just
+refer to `sql`.  It does not need to use a
+xref:unlang/timeout.adoc[timeout] in the virtual server.
+
+.Virtual Server With a Policy-Based Timeout
+[source,unlang]
+----
+server one {
+    ...
+    recv Accounting-Request {
+        ...
+        sql
+        ...
+    }
+    ...
+}
+----
+
+== Pros and Cons
+
+Like any set of functionality, there are trade-offs when using it.
+The benefit of the `@policy` syntax is that it allows both
+module-specific policy overrides, and ensures that those overrides are
+associated with the module configuration instead of being in some
+other file.
+
+The downside to this syntax is that when you see that a virtual server
+calls the `sql` module, it may not be clear that there are additional
+things going on.  However, it is easy to double-check what's
+happening:
+
+* look in `mods-enabled/sql` to see if there is an `@policy` override
+
+* run the server in xref:ROOT:debugging/radiusd_X.adoc[debug mode],
+  and see what happens when that part of the virtual server is
+  reached.
+
+In general, the benefits of this solution outweigh the downsides.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

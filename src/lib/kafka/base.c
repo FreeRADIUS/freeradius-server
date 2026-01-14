@@ -165,7 +165,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 		fr_sbuff_t 	value_elem = FR_SBUFF_IN(tmp, sizeof(tmp));
 		size_t		size;
 
-		if (fr_size_from_str(&size, &FR_SBUFF_IN(value, strlen(value))) < 0) {
+		if (fr_size_from_str(&size, &FR_SBUFF_IN_STR(value)) < 0) {
 			cf_log_perr(cs, "Failed parsing default \"%s\"", value);
 			return -1;
 		}
@@ -576,7 +576,7 @@ static conf_parser_t const kafka_sasl_kerberos_config[] = {
 	/*
 	 *	keytab
 	 */
-	{ FR_CONF_FUNC("keytab", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("keytab", FR_TYPE_STRING, CONF_FLAG_FILE_READABLE, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.kinit.keytab", .empty_default = true }},
 
 	/*
@@ -645,27 +645,27 @@ static conf_parser_t const kafka_tls_config[] = {
 	 *	Sets the full path to a CA certificate (used to validate
 	 *	the certificate the server presents).
 	 */
-	{ FR_CONF_FUNC("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_READABLE, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.ca.location", .empty_default = true }},
 
 	/*
 	 *	Location of the CRL file.
 	 */
-	{ FR_CONF_FUNC("crl_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("crl_file", FR_TYPE_STRING, CONF_FLAG_FILE_READABLE, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.crl.location", .empty_default = true }},
 
 	/*
 	 *	Sets the path to the public certificate file we present
 	 *	to the servers.
 	 */
-	{ FR_CONF_FUNC("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_READABLE, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.certificate.location", .empty_default = true }},
 
 	/*
 	 *	Sets the path to the private key for our public
 	 *	certificate.
 	 */
-	{ FR_CONF_FUNC("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_READABLE, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.key.location", .empty_default = true }},
 
 	/*

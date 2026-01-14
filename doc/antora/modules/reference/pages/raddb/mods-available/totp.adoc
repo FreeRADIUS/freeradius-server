@@ -65,12 +65,20 @@ lookback_interval:: Time delta between steps.
 Cannot be larger than `time_step`
 
 
+
+time_offset:: A time offset to use from the current time.
+
+Some tokens get severely out of sync with local time.  It is
+possible to offset the definition of "now" for one token by setting
+this to an attribute containing the offset.
+
+
 == Default Configuration
 
 ```
-#	`&control.TOTP.Secret`
-#	`&control.TOTP.Key`
-#	`&request.TOTP.From-User`
+#	`control.TOTP.Secret`
+#	`control.TOTP.Key`
+#	`request.TOTP.From-User`
 #	https://linux.die.net/man/1/qrencode
 totp {
 	time_step = 30
@@ -78,6 +86,7 @@ totp {
 	lookback_steps = 1
 	lookforward_steps = 0
 	lookback_interval = 30
+#	time_offset = 0
 }
 ```
 

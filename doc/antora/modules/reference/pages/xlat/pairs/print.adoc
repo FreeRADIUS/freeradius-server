@@ -1,0 +1,28 @@
+= %pairs.print(<list>.[*])
+
+Print attributes with name and value.
+
+.Return: _string_
+
+Note that there is no "parse string into pairs" function.  Instead,
+you can simply assign the string to a structural attribute (`group`,
+`tlv`, etc.) and the string will be parsed as assigning a value to a
+given attribute.  e.g. `reply += "User-Name := 'hello'"`.
+
+.Example
+
+[source,unlang]
+----
+control.Tmp-String-0 := { "This is a string", "This is another one" }
+
+reply.Reply-Message := "Serialize output: %pairs.print(control.[*])"
+----
+
+.Output
+
+```
+Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

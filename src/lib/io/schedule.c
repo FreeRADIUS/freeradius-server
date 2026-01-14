@@ -115,7 +115,7 @@ typedef struct {
 	fr_schedule_child_status_t status;	//!< status of the worker
 	fr_network_t	*nr;			//!< the receive data structure
 
-	fr_event_timer_t const *ev;		//!< timer for stats_interval
+	fr_timer_t 	*ev;		//!< timer for stats_interval
 } fr_schedule_network_t;
 
 
@@ -219,7 +219,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	}
 
 
-	sw->worker = fr_worker_create(ctx, sw->el, worker_name, sc->log, sc->lvl, &sc->config->worker);
+	sw->worker = fr_worker_alloc(ctx, sw->el, worker_name, sc->log, sc->lvl, &sc->config->worker);
 	if (!sw->worker) {
 		PERROR("%s - Failed creating worker", worker_name);
 		goto fail;
@@ -251,7 +251,10 @@ static void *fr_schedule_worker_thread(void *arg)
 	for (sn = fr_dlist_head(&sc->networks);
 	     sn != NULL;
 	     sn = fr_dlist_next(&sc->networks, sn)) {
-		(void) fr_network_worker_add(sn->nr, sw->worker);
+		if (unlikely(fr_network_worker_add(sn->nr, sw->worker) < 0)) {
+			PERROR("%s - Failed adding worker to network %u", worker_name, sn->id);
+			goto fail;	/* FIXME - Should maybe try to undo partial adds? */
+		}
 	}
 
 	DEBUG3("%s - Started", worker_name);
@@ -298,13 +301,13 @@ fail:
 }
 
 
-static void stats_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void stats_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_schedule_network_t		*sn = talloc_get_type_abort(uctx, fr_schedule_network_t);
 
 	fr_network_stats_log(sn->nr, sn->sc->log);
 
-	(void) fr_event_timer_at(sn, el, &sn->ev, fr_time_add(now, sn->sc->config->stats_interval), stats_timer, sn);
+	(void) fr_timer_at(sn, tl, &sn->ev, fr_time_add(now, sn->sc->config->stats_interval), false, stats_timer, sn);
 }
 
 /** Initialize and run the network thread.
@@ -383,7 +386,7 @@ static void *fr_schedule_network_thread(void *arg)
 	 *	Print out statistics for this network IO handler.
 	 */
 	if (fr_time_delta_ispos(sc->config->stats_interval)) {
-		(void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->config->stats_interval, stats_timer, sn);
+		(void) fr_timer_in(sn, el->tl, &sn->ev, sn->sc->config->stats_interval, false, stats_timer, sn);
 	}
 	/*
 	 *	Call the main event processing loop of the network
@@ -498,10 +501,12 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
+		sc->single_worker = fr_worker_alloc(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
-			fr_network_destroy(sc->single_network);
+			if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+				PERROR("Failed destroying network");
+			}
 			goto pre_instantiate_st_fail;
 		}
 
@@ -517,7 +522,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
 				PERROR("Worker thread instantiation failed");
 			destroy_both:
-				fr_network_destroy(sc->single_network);
+				if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+					PERROR("Failed destroying network");
+				}
 				fr_worker_destroy(sc->single_worker);
 				goto pre_instantiate_st_fail;
 			}
@@ -778,7 +785,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	Destroy the network side first.  It tells the
 		 *	workers to close.
 		 */
-		fr_network_destroy(sc->single_network);
+		if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+			ERROR("Failed destroying network");
+		}
 		fr_worker_destroy(sc->single_worker);
 		goto done;
 	}
@@ -789,7 +798,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	for (sn = fr_dlist_head(&sc->networks);
 	     sn != NULL;
 	     sn = fr_dlist_next(&sc->networks, sn)) {
-		fr_network_exit(sn->nr);
+		if (fr_network_exit(sn->nr) < 0) {
+			PERROR("Failed signaling network %i to exit", sn->id);
+		}
 	}
 
 	/*

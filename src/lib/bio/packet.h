@@ -69,7 +69,7 @@ typedef void (*fr_bio_packet_callback_t)(fr_bio_packet_t *bio);
 
 typedef struct {
 	fr_bio_packet_callback_t	connected;
-	fr_bio_packet_callback_t	shutdown;
+	fr_bio_packet_io_t		shutdown;
 	fr_bio_packet_callback_t	eof;
 	fr_bio_packet_callback_t	failed;
 
@@ -91,7 +91,7 @@ struct fr_bio_packet_s {
 
 	fr_bio_packet_cb_funcs_t cb;
 
-	fr_event_timer_t const	*ev;		//!< connection timeout
+	fr_timer_t		*ev;		//!< connection timeout
 
 	bool			connected;
 	bool			write_blocked;

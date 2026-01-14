@@ -31,12 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <pthread.h>
-#include <ctype.h>
-#include <unistd.h>
 
 #define DL_INIT_CHECK fr_assert(dl_module_loader)
 
@@ -483,11 +480,6 @@ finish:
 char const *dl_module_search_path(void)
 {
 	return dl_search_path(dl_module_loader->dl_loader);
-}
-
-dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
-{
-	return dl_module_l->dl_loader;
 }
 
 /** Wrapper to log errors

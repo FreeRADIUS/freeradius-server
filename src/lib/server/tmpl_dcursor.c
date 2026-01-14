@@ -30,9 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
 
 static inline CC_HINT(always_inline)
@@ -45,19 +42,19 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
  *
  * A dcursor iterator function for matching attributes
  *
- * @param[in] list	being traversed.
+ * @param[in] cursor	being traversed.
  * @param[in] curr	item in the list to start tests from.
  * @param[in] uctx	Context for evaluation - in this instance a #tmpl_dcursor_nested_t
  * @return
  *	- the next matching attribute
  *	- NULL if none found
  */
-static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_child_next(fr_dcursor_t *cursor, void *curr, void *uctx)
 {
 	tmpl_dcursor_nested_t	*ns = uctx;
 	fr_pair_t		*vp = curr;
 
-	while ((vp = fr_dlist_next(list, vp))) {
+	while ((vp = fr_dlist_next(cursor->dlist, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
 	}
 
@@ -69,11 +66,13 @@ static inline CC_HINT(always_inline) void tmpl_cursor_nested_push(tmpl_dcursor_c
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
-static inline CC_HINT(always_inline) void tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
+static inline CC_HINT(always_inline) tmpl_dcursor_nested_t *tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
 
 	if (ns != &cc->leaf) talloc_free(ns);
+
+	return ns;
 }
 
 /** Initialise the evaluation context for traversing a group attribute
@@ -110,6 +109,16 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 		fr_assert_msg(0, "Invalid attr reference type");
 	}
 	tmpl_cursor_nested_push(cc, ns);
+}
+
+static inline CC_HINT(always_inline) void tmpl_cursor_reset(tmpl_dcursor_ctx_t *cc)
+{
+	while (tmpl_cursor_nested_pop(cc));	/* Pop all the nested cursors */
+
+	/*
+	 *	Reinitialise the lowest frame in the cursor stack
+	 */
+	_tmpl_cursor_pair_init(cc->rel_list_ctx, cc->rel_list, tmpl_attr_list_head(&cc->vpt->data.attribute.ar), cc);
 }
 
 /** Evaluates, then, sometimes, pops evaluation contexts from the tmpl stack
@@ -153,7 +162,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		/*
 		 *	Can't cast it, we're done.
 		 */
-		if (tmpl_expand(&ref, NULL, 0, cc->request, ar->ar_tmpl, NULL, NULL) < 0) {
+		if (tmpl_expand(&ref, NULL, 0, cc->request, ar->ar_tmpl) < 0) {
 			vp = NULL;
 			pop = true;
 			goto done;
@@ -188,15 +197,17 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 
 		num = box.vb_uint8;
 
-	} else if (!ar_filter_is_num(ar)) {
+	} else if (ar_filter_is_cond(ar)) {
 		request_t *request = cc->request;
 
-		RDEBUG("Attribute filter is unsupported");
+		RDEBUG("Conditions in array references are unsupported");
 		vp = NULL;
 		pop = true;
 		goto done;
 
 	} else {
+		fr_assert(ar_filter_is_num(ar));
+
 		num = ar->ar_num;
 	}
 
@@ -272,12 +283,19 @@ done:
 	return vp;
 }
 
-static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_next(UNUSED fr_dcursor_t *cursor, void *curr, void *uctx)
 {
 	tmpl_dcursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
 
 	fr_pair_t		*vp;
+
+	/*
+	 *	No curr means reset back to the initial state
+	 *	i.e. we're at the end of the cursor, so next
+	 *	means start from the beginning.
+	 */
+	if (!curr) tmpl_cursor_reset(cc);
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
@@ -321,38 +339,6 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
 
 	return NULL;
 }
-
-#ifdef TMPL_DCURSOR_MOD
-static int tmpl_dcursor_insert(UNUSED fr_dlist_head_t *list, void *to_insert, void *uctx)
-{
-	tmpl_dcursor_ctx_t *cc = uctx;
-	tmpl_dcursor_nested_t *ns = fr_dlist_tail(&cc->nested);
-
-	if (!ns) return 0;
-
-	fr_dcursor_insert(&ns->cursor, to_insert);
-	return 0;
-}
-
-static int tmpl_dcursor_remove(UNUSED fr_dlist_head_t *list, void *to_remove, void *uctx)
-{
-	tmpl_dcursor_ctx_t *cc = uctx;
-	tmpl_dcursor_nested_t *ns = fr_dlist_tail(&cc->nested);
-	void *current;
-
-	if (!ns) return 0;
-
-	current = fr_dcursor_current(&ns->cursor);
-	if (current == to_remove) {
-		fr_dcursor_remove(&ns->cursor);
-	} else {
-		fr_dcursor_set_current(&ns->cursor, to_remove);
-		fr_dcursor_remove(&ns->cursor);
-		fr_dcursor_set_current(&ns->cursor, current);
-	}
-	return 0;
-}
-#endif
 
 /** Initialise a #fr_dcursor_t at the specified point in a pair tree
  *
@@ -398,7 +384,8 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = &list->vp_group,
+		.rel_list_ctx = list,
+		.rel_list = &list->vp_group,
 		.build = build,
 		.uctx = uctx
 	};
@@ -409,7 +396,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_pair_init(cc->rel_list_ctx, cc->rel_list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
@@ -420,11 +407,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	/*
 	 *	Get the first entry from the tmpl
 	 */
-#ifndef TMPL_DCURSOR_MOD
-	vp = fr_pair_dcursor_iter_init(cursor, cc->list, _tmpl_cursor_next, cc);
-#else
-	vp = fr_dcursor_iter_mod_init(cursor, fr_pair_list_to_dlist(cc->list), _tmpl_cursor_next, NULL, cc, tmpl_dcursor_insert, tmpl_dcursor_remove, cc);
-#endif
+	vp = fr_pair_dcursor_iter_init(cursor, cc->rel_list, _tmpl_cursor_next, cc);
 	if (!vp) {
 		if (err) {
 			*err = -1;
@@ -506,6 +489,62 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 	TALLOC_FREE(cc->pool);
 }
 
+/** Initialize a #tmpl_dcursor_t into a #fr_value_box_t
+ *
+ *  The #tmpl_dcursor_ctx_t and #tmpl_dcursor_t are associated with the
+ *  input value-box, and will be freed when the value-box is freed.
+ *
+ * @param[out] err		May be NULL if no error code is required.
+ *				Will be set to:
+ *				- 0 on success.
+ *				- -1 if no matching #fr_pair_t could be found.
+ *				- -2 if list could not be found (doesn't exist in current #request_t).
+ *				- -3 if context could not be found (no parent #request_t available).
+ * @param[in] ctx		Where the cursor will be allocated from
+ * @param[in] vb		Where the #tmpl_dursor_t is stored.
+ * @param[in] request		the current request.
+ * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
+ * @return
+ *	- First #fr_pair_t specified by the #tmpl_t.
+ *	- NULL if no matching #fr_pair_t found, and NULL on error.
+ *
+ * @see tmpl_cursor_next
+ */
+fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt)
+{
+	tmpl_dcursor_ctx_t *cc;
+	fr_dcursor_t *cursor;
+	fr_pair_t *vp;
+
+	MEM(cc = talloc(ctx, tmpl_dcursor_ctx_t));
+	MEM(cursor = talloc(ctx, fr_dcursor_t));
+
+	/*
+	 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
+	 *	these, only the last two are actually errors.
+	 *
+	 *	"no matching pair" is a valid answer, and can be passed to the function.
+	 */
+	vp = tmpl_dcursor_init(err, cc, cc, cursor, request, vpt);
+	if (!vp) {
+		if (!err) return NULL;
+
+		if (*err == -1) {
+			RWDEBUG("Cursor %s returned no attributes", vpt->name);
+			goto set_cursor;
+		} else {
+			RPEDEBUG("Failed initializing cursor");
+		}
+
+		return NULL;
+	}
+
+set_cursor:
+	fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+	return vp;
+}
+
+
 /** Simple pair building callback for use with tmpl_dcursors
  *
  * Which always appends the new pair to the tail of the list
@@ -524,7 +563,10 @@ fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_d
 {
 	fr_pair_t *vp;
 	vp = fr_pair_afrom_da(parent, da);
-	if (vp) fr_dcursor_append(cursor, vp);
+	if (vp) {
+		PAIR_ALLOCED(vp);
+		fr_dcursor_append(cursor, vp);
+	}
 	return vp;
 }
 
@@ -618,14 +660,14 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = list_head
+		.rel_list = list_head
 	};
 	fr_dlist_init(&cc.nested, tmpl_dcursor_nested_t, entry);
 
 	/*
 	 *	Prime the stack!
 	 */
-	_tmpl_cursor_pair_init(list_ctx, cc.list, tmpl_attr_list_head(&vpt->data.attribute.ar), &cc);
+	_tmpl_cursor_pair_init(list_ctx, cc.rel_list, tmpl_attr_list_head(&vpt->data.attribute.ar), &cc);
 
 	/*
 	 *	- Continue until there are no evaluation contexts
@@ -720,6 +762,7 @@ int tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *existing, fr_dlist_head_t
 				if (!fr_type_is_structural(ar->ar_da->type)) continue;
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, ar->ar_da));	/* Copies unknowns */
+				PAIR_ALLOCED(vp);
 				fr_pair_append(list, vp);
 				list = &vp->vp_group;
 				list_ctx = vp;		/* New allocations occur under the VP */
@@ -742,7 +785,7 @@ int tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *existing, fr_dlist_head_t
 	return 0;
 }
 
-void tmpl_extents_debug(fr_dlist_head_t *head)
+void tmpl_extents_debug(FILE *fp, fr_dlist_head_t *head)
 {
 	tmpl_attr_extent_t const *extent = NULL;
 	fr_pair_t *vp = NULL;
@@ -754,25 +797,25 @@ void tmpl_extents_debug(fr_dlist_head_t *head)
 	     	char const *ctx_name;
 
 	     	if (ar) {
-			FR_FAULT_LOG("extent-interior-attr");
-			tmpl_attr_ref_debug(extent->ar, 0);
+			fprintf(fp, "extent-interior-attr\n");
+			tmpl_attr_ref_debug(fp, extent->ar, 0);
 		} else {
-			FR_FAULT_LOG("extent-leaf");
+			fprintf(fp, "extent-leaf\n");
 		}
 
 		ctx_name = talloc_get_name(extent->list_ctx);
 		if (strcmp(ctx_name, "fr_pair_t") == 0) {
-			FR_FAULT_LOG("list_ctx     : %p (%s, %s)", extent->list_ctx, ctx_name,
+			fprintf(fp, "list_ctx     : %p (%s, %s)\n", extent->list_ctx, ctx_name,
 				     ((fr_pair_t *)extent->list_ctx)->da->name);
 		} else {
-			FR_FAULT_LOG("list_ctx     : %p (%s)", extent->list_ctx, ctx_name);
+			fprintf(fp, "list_ctx     : %p (%s)\n", extent->list_ctx, ctx_name);
 		}
-		FR_FAULT_LOG("list         : %p", extent->list);
+		fprintf(fp, "list         : %p", extent->list);
 		if (fr_pair_list_empty(extent->list)) {
-			FR_FAULT_LOG("list (first) : none (%p)", extent->list);
+			fprintf(fp, "list (first) : none (%p)\n", extent->list);
 		} else {
 			vp = fr_pair_list_head(extent->list);
-			FR_FAULT_LOG("list (first) : %s (%p)", vp->da->name, extent->list);
+			fprintf(fp, "list (first) : %s (%p)\n", vp->da->name, extent->list);
 		}
 	}
 
@@ -789,7 +832,7 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 	 *	Print all the request references
 	 */
 	while ((rr = tmpl_request_list_next(&cc->vpt->data.attribute.rr, rr))) {
-		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(tmpl_request_ref_table, rr->request, "current"));
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 

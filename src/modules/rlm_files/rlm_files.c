@@ -39,6 +39,7 @@ RCSID("$Id$")
 typedef struct {
 	char const	*filename;
 	bool		v3_compat;
+	fr_htrie_type_t	htype;
 } rlm_files_t;
 
 /**  Structure produced by custom call_env parser
@@ -63,7 +64,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_fall_through;
@@ -74,12 +75,14 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_next_shortest_prefix, .name = "Next-Shortest-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
+	{ FR_CONF_OFFSET("lookup_type", rlm_files_t, htype), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -102,8 +105,8 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
-			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict, bool v3_compat)
+static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
+			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -115,18 +118,22 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	fr_value_box_t		*box;
 	map_t			*reply_head;
 
-	if (!filename) {
+	if (!inst->filename) {
 		*ptree = NULL;
 		return 0;
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict, filename, &users, v3_compat);
+	rcode = pairlist_read(ctx, dict, inst->filename, &users, inst->v3_compat);
 	if (rcode < 0) {
 		return -1;
 	}
 
-	htype = fr_htrie_hint(data_type);
+	if (inst->htype == FR_HTRIE_AUTO) {
+		htype = fr_htrie_hint(data_type);
+	} else {
+		htype = inst->htype;
+	}
 
 	/*
 	 *	Walk through the 'users' file list
@@ -350,7 +357,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 		 *	Has to be of the correct data type.
 		 */
 		if (fr_value_box_from_str(box, box, data_type, key_enum,
-					  entry->name, strlen(entry->name), NULL, false) < 0) {
+					  entry->name, strlen(entry->name), NULL) < 0) {
 			ERROR("%s[%d] Failed parsing key %s - %s",
 			      entry->filename, entry->lineno, entry->name, fr_strerror());
 			goto error;
@@ -366,14 +373,17 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 			user_list->name = entry->name;
 			user_list->box = fr_value_box_alloc(user_list, data_type, NULL);
 
-			(void) fr_value_box_copy(user_list, user_list->box, box);
+			if (unlikely(fr_value_box_copy(user_list, user_list->box, box) < 0)) {
+				PERROR("%s[%d] Failed copying key %s",
+				       entry->filename, entry->lineno, entry->name);
+			}
 
 			/*
 			 *	Insert the new list header.
 			 */
 			if (!fr_htrie_insert(tree, user_list)) {
-				ERROR("%s[%d] Failed inserting key %s - %s",
-				      entry->filename, entry->lineno, entry->name, fr_strerror());
+				PERROR("%s[%d] Failed inserting key %s",
+				       entry->filename, entry->lineno, entry->name);
 				goto error;
 
 			error:
@@ -398,14 +408,14 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 /** Lookup the expanded key value in files data.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_env_t		*env = talloc_get_type_abort(uctx, rlm_files_env_t);
+	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false, trie = false;
 	PAIR_LIST_LIST		my_list;
-	uint8_t			key_buffer[16], *key;
+	uint8_t			key_buffer[16], *key = NULL;
 	size_t			keylen = 0;
 	fr_edit_list_t		*el, *child;
 	fr_htrie_t		*tree = env->data->htrie;
@@ -414,10 +424,12 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, 
 
 	if (!key_vb) {
 		RERROR("Missing key value");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	if (!tree && !default_list) RETURN_MODULE_NOOP;
+	if (!tree && !default_list) {
+		RETURN_UNLANG_NOOP;
+	}
 
 	RDEBUG2("%s - Looking for key \"%pV\"", env->name, key_vb);
 
@@ -520,7 +532,7 @@ redo:
 					RPWARN("Failed parsing map for check item %s, skipping it", map->lhs->name);
 				fail:
 					fr_edit_list_abort(child);
-					RETURN_MODULE_FAIL;
+					RETURN_UNLANG_FAIL;
 				}
 
 				if (!rcode) {
@@ -614,11 +626,12 @@ redo:
 	 */
 	if (!found) {
 		fr_edit_list_abort(child);
-		RETURN_MODULE_NOOP; /* on to the next module */
+		RETURN_UNLANG_NOOP;
 	}
 
 	fr_edit_list_commit(child);
-	RETURN_MODULE_OK;
+
+	RETURN_UNLANG_OK;
 }
 
 /** Initiate a files data lookup
@@ -629,30 +642,22 @@ redo:
  * First we push the tmpl onto the stack for evaluation, then the lookup
  * is done in mod_files_resume.
  */
-static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_files(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	fr_value_box_list_init(&env->values);
 	env->name = mctx->mi->name;
 
-	/*
-	 *	Set mod_files_resume as the repeat function
-	 */
-	if (unlang_function_push(request, NULL, mod_files_resume, NULL, 0, UNLANG_SUB_FRAME, env) < 0) RETURN_MODULE_FAIL;
-
-	/*
-	 *	Push evaluation of the key tmpl onto the stack
-	 */
-	if (unlang_tmpl_push(env, &env->values, request, env->data->key_tmpl, NULL) < 0) RETURN_MODULE_FAIL;
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_module_yield_to_tmpl(env, &env->values, request, env->data->key_tmpl,
+					   NULL, mod_files_resume, NULL, 0, NULL);
 }
 
 /** Custom call_env parser for loading files data
  *
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_files_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_files_t);
 	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
@@ -679,8 +684,8 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 		key_enum = tmpl_attr_tail_da(files_data->key_tmpl);
 	}
 
-	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
-			     keytype, key_enum, t_rules->attr.dict_def, inst->v3_compat) < 0) goto error;
+	if (getrecv_filename(files_data, inst, &files_data->htrie, &files_data->def,
+			     keytype, key_enum, t_rules->attr.dict_def) < 0) goto error;
 
 	*(void **)out = files_data;
 	return 0;
@@ -690,8 +695,8 @@ static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_files_env_t),
 	.env = (call_env_parser_t[]){
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, rlm_files_env_t, data),
-				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
-				     .pair.func = call_env_parse },
+				     .pair.dflt = "%{Stripped-User-Name || User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
+				     .pair.func = files_call_env_parse },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("match_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, rlm_files_env_t, match_attr) },
 		CALL_ENV_TERMINATOR
 	},

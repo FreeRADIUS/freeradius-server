@@ -72,51 +72,6 @@ typedef struct {
 } regex_t;
 /*
  *######################################
- *#      STRUCTURES FOR LIBPCRE        #
- *######################################
- */
-#  elif defined(HAVE_REGEX_PCRE)
-#    include <pcre.h>
-/*
- *  Versions older then 8.20 didn't have the JIT functionality
- *  so, gracefully degrade.
- */
-#    ifndef PCRE_STUDY_JIT_COMPILE
-#      define PCRE_STUDY_JIT_COMPILE 0
-#    endif
-/*
- *  libpcre defines its matches as an array of ints which is a
- *  multiple of three.
- */
-typedef struct {
-	int a;
-	int b;
-	int c;
-} regmatch_t;
-
-/** Emulates the functionality of the pcre2_match_data struct
- *
- */
-typedef struct {
-	regmatch_t		*match_data;	//!< Slots for matches.
-	size_t			allocd;		//!< Number of slots allocated for match data.
-	size_t			used;		//!< Number of slots filled with match data.
-	char const		*subject;	//!< A local copy of the subject.
-} fr_regmatch_t;
-
-/** Bundles compiled regular expression structures together
- *
- */
-typedef struct {
-	pcre			*compiled;	//!< Compiled regular expression.
-	pcre_extra		*extra;		//!< Result of studying a regular expression.
-	uint32_t		subcaptures;	//!< Number of subcaptures contained within the expression.
-
-	bool			precompiled;	//!< Whether this regex was precompiled, or compiled for one off evaluation.
-	bool			jitd;		//!< Whether JIT data is available.
-} regex_t;
-/*
- *######################################
  *#    STRUCTURES FOR POSIX-REGEX      #
  *######################################
  */
@@ -158,16 +113,18 @@ typedef struct {
  * then the library will produce an error.
  */
 typedef struct {
-	uint8_t	global:1;			//!< g - Perform global matching or substitution.
-	uint8_t ignore_case:1;			//!< i - Perform case insensitive matching.
-	uint8_t	multiline:1;			//!< m - Multiline search.
-	uint8_t dot_all:1;			//!< s - Singleline - '.' matches everything, including newlines.
-	uint8_t unicode:1;			//!< u - Use unicode properties for character with code points
+	unsigned int	global : 1;	       	//!< g - Perform global matching or substitution.
+	unsigned int	ignore_case : 1;	//!< i - Perform case insensitive matching.
+	unsigned int	multiline : 1;		//!< m - Multiline search.
+	unsigned int	dot_all : 1;		//!< s - Singleline - '.' matches everything, including newlines.
+	unsigned int	unicode : 1;		//!< u - Use unicode properties for character with code points
 						///< greater than 127.
-	uint8_t extended:1;			//!< x - Permit whitespace and comments.
+	unsigned int	extended : 1;		//!< x - Permit whitespace and comments.
 } fr_regex_flags_t;
 
 #define REGEX_FLAG_BUFF_SIZE	7
+
+extern const fr_sbuff_escape_rules_t regex_escape_rules;
 
 /** Unique safefor value to prevent escaping for regexes
  */

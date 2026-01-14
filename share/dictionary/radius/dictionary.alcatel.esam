@@ -16,11 +16,11 @@ VENDOR		Alcatel-ESAM			637	format=2,1
 
 BEGIN-VENDOR	Alcatel-ESAM
 ATTRIBUTE	VRF-Name				0x0700	string
-ATTRIBUTE	Vlan-Id					0x0701	integer
+ATTRIBUTE	Vlan-Id					0x0701	uint32
 ATTRIBUTE	QOS-Profile-Name			0x0702	string
 ATTRIBUTE	QOS-Params				0x0703	string
 
-ATTRIBUTE	Termination-Cause			0x0704	integer
+ATTRIBUTE	Termination-Cause			0x0704	uint32
 
 #
 #	Integer Translations
@@ -48,42 +48,42 @@ VALUE	Termination-Cause		Missing-Attributes	14
 
 #	VSAs for Operator Authentication
 
-ATTRIBUTE	A-AL-Maintenance			0x0600	integer
-ATTRIBUTE	A-AL-Provisioning			0x0601	integer
-ATTRIBUTE	A-AL-TL1-Security			0x0602	integer
-ATTRIBUTE	A-AL-Test				0x0603	integer
+ATTRIBUTE	A-AL-Maintenance			0x0600	uint32
+ATTRIBUTE	A-AL-Provisioning			0x0601	uint32
+ATTRIBUTE	A-AL-TL1-Security			0x0602	uint32
+ATTRIBUTE	A-AL-Test				0x0603	uint32
 
-ATTRIBUTE	A-AL-AAA				0x0709	integer
-ATTRIBUTE	A-AL-ATM				0x070A	integer
-ATTRIBUTE	A-AL-Alarm				0x070B	integer
-ATTRIBUTE	A-AL-DHCP				0x070C	integer
+ATTRIBUTE	A-AL-AAA				0x0709	uint32
+ATTRIBUTE	A-AL-ATM				0x070A	uint32
+ATTRIBUTE	A-AL-Alarm				0x070B	uint32
+ATTRIBUTE	A-AL-DHCP				0x070C	uint32
 
-ATTRIBUTE	A-AL-EQP				0x070D	integer
-ATTRIBUTE	A-AL-IGMP				0x070E	integer
-ATTRIBUTE	A-AL-CPEProxy				0x070F	integer
-ATTRIBUTE	A-AL-IP					0x0710	integer
+ATTRIBUTE	A-AL-EQP				0x070D	uint32
+ATTRIBUTE	A-AL-IGMP				0x070E	uint32
+ATTRIBUTE	A-AL-CPEProxy				0x070F	uint32
+ATTRIBUTE	A-AL-IP					0x0710	uint32
 
-ATTRIBUTE	A-AL-PPPoE				0x0711	integer
-ATTRIBUTE	A-AL-QoS				0x0712	integer
-ATTRIBUTE	A-AL-SWMgt				0x0713	integer
-ATTRIBUTE	A-AL-Transport				0x0714	integer
+ATTRIBUTE	A-AL-PPPoE				0x0711	uint32
+ATTRIBUTE	A-AL-QoS				0x0712	uint32
+ATTRIBUTE	A-AL-SWMgt				0x0713	uint32
+ATTRIBUTE	A-AL-Transport				0x0714	uint32
 
-ATTRIBUTE	A-AL-VLAN				0x0715	integer
-ATTRIBUTE	A-AL-XDSL				0x0716	integer
-ATTRIBUTE	A-AL-Security				0x0717	integer
-ATTRIBUTE	A-AL-Cluster				0x0718	integer
+ATTRIBUTE	A-AL-VLAN				0x0715	uint32
+ATTRIBUTE	A-AL-XDSL				0x0716	uint32
+ATTRIBUTE	A-AL-Security				0x0717	uint32
+ATTRIBUTE	A-AL-Cluster				0x0718	uint32
 
 ATTRIBUTE	A-AL-Prompt				0x0719	string
-ATTRIBUTE	A-AL-Pwd-Timeout			0x071A	integer
+ATTRIBUTE	A-AL-Pwd-Timeout			0x071A	uint32
 ATTRIBUTE	A-AL-Description			0x071B	string
-ATTRIBUTE	A-AL-SLOT-NUMBERING			0x071C	integer
+ATTRIBUTE	A-AL-SLOT-NUMBERING			0x071C	uint32
 
 ####FTTU TL1 values###############################################
-ATTRIBUTE	A-AL-MAINTENANCE-BACKWARD		0x0705	integer
-ATTRIBUTE	A-AL-PROVISIONING-BACKWARD		0x0706	integer
+ATTRIBUTE	A-AL-MAINTENANCE-BACKWARD		0x0705	uint32
+ATTRIBUTE	A-AL-PROVISIONING-BACKWARD		0x0706	uint32
 
-ATTRIBUTE	A-AL-TL1-SECURITY-BACKWARD		0x0707	integer
-ATTRIBUTE	A-AL-TEST-BACKWARD			0x0708	integer
+ATTRIBUTE	A-AL-TL1-SECURITY-BACKWARD		0x0707	uint32
+ATTRIBUTE	A-AL-TEST-BACKWARD			0x0708	uint32
 ###################################################################
 
 #       A-AL-Maintenance Values

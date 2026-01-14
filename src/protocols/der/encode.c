@@ -36,13 +36,10 @@ RCSID("$Id$")
 
 #include "der.h"
 
+extern fr_dict_attr_t const *attr_oid_tree;
+
 typedef struct {
-	fr_dbuff_marker_t encoding_start;	//!< This is the start of the encoding. It is NOT the same as the start of the
-						//!< encoded value. It includes the tag, length, and value.
 	uint8_t *tmp_ctx;	 		//!< Temporary context for encoding.
-						//!< encoded value. It is the position of the tag.
-	size_t encoding_length;			//!< This is the length of the entire encoding. It is NOT the same as the length
-						//!< of the encoded value. It includes the tag, length, and value.
 } fr_der_encode_ctx_t;
 
 /** Function signature for DER encode functions
@@ -78,11 +75,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 static inline CC_HINT(always_inline) ssize_t
 	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_t tag_num, fr_der_tag_class_t tag_class,
 			  fr_der_tag_constructed_t constructed) CC_HINT(nonnull);
-static ssize_t encode_value(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			    void *encode_ctx);
-static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			   void *encode_ctx);
-static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx) CC_HINT(nonnull);
+static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Compare two pairs by their tag number.
  *
@@ -96,6 +89,12 @@ static inline CC_HINT(always_inline) int8_t fr_der_pair_cmp_by_da_tag(void const
 	fr_pair_t const *my_b = b;
 
 	return CMP_PREFER_SMALLER(fr_der_flag_der_type(my_a->da), fr_der_flag_der_type(my_b->da));
+}
+
+static ssize_t encode_pair(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth, fr_dcursor_t *cursor,
+			   void *encode_ctx)
+{
+	return encode_value(dbuff, cursor, encode_ctx);
 }
 
 static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
@@ -279,8 +278,6 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		slen = fr_struct_to_network(&work_dbuff, &da_stack, depth, cursor, encode_ctx, NULL, NULL);
 		if (slen < 0) {
 			fr_strerror_printf("Failed to encode struct: %s", fr_strerror());
-		error:
-			fr_dbuff_marker_release(&unused_bits_marker);
 			return slen;
 		}
 
@@ -297,18 +294,17 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 
 			if (fr_dbuff_out(&byte, &work_dbuff) < 0) {
 				fr_strerror_const("Failed to read byte");
-				slen = -1;
-				goto error;
+				return -1;
 			}
 
 			if (byte != 0) break;
 
-				/*
-				 *	Trim this byte from the buff
-				 */
-				fr_dbuff_set_end(&work_dbuff, fr_dbuff_current(&work_dbuff) - sizeof(byte));
-				fr_dbuff_set(&work_dbuff, fr_dbuff_current(&work_dbuff) - (sizeof(byte) * 2));
-				slen--;
+			/*
+			 *	Trim this byte from the buff
+			 */
+			fr_dbuff_set_end(&work_dbuff, fr_dbuff_current(&work_dbuff) - sizeof(byte));
+			fr_dbuff_set(&work_dbuff, fr_dbuff_current(&work_dbuff) - (sizeof(byte) * 2));
+			slen--;
 		}
 
 		/*
@@ -316,8 +312,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		 */
 		if (fr_dbuff_out(&last_byte, &work_dbuff) < 0) {
 			fr_strerror_const("Failed to read last byte");
-			slen = -1;
-			goto error;
+			return -1;
 		}
 
 		while ((last_byte != 0) && ((last_byte & 0x01) == 0)) {
@@ -329,14 +324,13 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		 *	Write the unused bits
 		 */
 		fr_dbuff_set(&our_dbuff, fr_dbuff_current(&unused_bits_marker));
-		fr_dbuff_marker_release(&unused_bits_marker);
 		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &unused_bits, 1);
 
 		/*
 		 *	Copy the work dbuff to the output dbuff
 		 */
 		fr_dbuff_set(&work_dbuff, &our_dbuff);
-		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &work_dbuff, slen);
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &work_dbuff, (size_t)slen);
 
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
@@ -596,14 +590,11 @@ static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 	return 0;
 }
 
-static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
+static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, uint64_t *component, int *count)
 {
-	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
-	bool	first = true;
-	uint8_t	first_component;
-	unsigned long long oid;
-	char const *start = oid_str;
-	char	 *end = NULL;
+	fr_dbuff_t	our_dbuff;
+	int		i;
+	uint64_t	oid;
 
 	/*
 	 *	The first subidentifier is the encoding of the first two object identifier components, encoded as:
@@ -611,69 +602,49 @@ static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
 	 *	where X is the first number and Y is the second number.
 	 *	The first number is 0, 1, or 2.
 	 */
+	if (*count == 0) {
+		if (!((value == 0) || (value == 1) || (value == 2))) {
+			fr_strerror_printf("Invalid value %" PRIu64 " for initial component", value);
+			return -1;
+		}
 
-	oid = strtoull(start, &end, 10);
-	if (!((oid == 0) || (oid == 1) || (oid == 2)) ||
-	    !end || (*end != '.')) {
-	invalid_oid:
-		fr_strerror_const("Invalid OID");
-		return -1;
+		*component = value;
+		(*count)++;
+		return 0;
 	}
 
-	first_component = oid;
+	if (*count == 1) {
+		if ((*component < 2) && (value > 40)) {
+			fr_strerror_printf("Invalid value %" PRIu64 " for second component", value);
+			return -1;
+		}
+
+		oid = *component * 40 + value;
+	} else {
+		oid = value;
+	}
+
+	our_dbuff = FR_DBUFF(dbuff);
 
 	/*
-	 *	Loop until we're done the string.
+	 *	Encode the number as 7-bit chunks.  Just brute-force over all bits, as doing that ends
+	 *	up being fast enough.
+	 *
+	 *	i.e. if we did anything else to count bits, it would end up with pretty much the same
+	 *	code.
 	 */
-	while (*end) {
-		int i;
+	for (i = 63; i >= 0; i -= 7) {
+		uint8_t more, part;
 
-		/*
-		 *	The previous round MUST have ended with '.'
-		 */
-		start = end + 1;
-		if (!*start) goto invalid_oid; /* OID=1 or OID=1.2. is not allowed */
+		part = (oid >> i) & 0x7f;
+		if (!part) continue;
 
-		/*
-		 *	Parse the component.
-		 */
-		oid = strtoull(start, &end, 10);
-		if (oid == ULLONG_MAX) goto invalid_oid;
-		if (*end && (*end != '.')) goto invalid_oid;
+		more = ((uint8_t) (i > 0)) << 7;
 
-		/*
-		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
-		 */
-		if (first) {
-			if (first_component < 2) {
-				if (oid >= 40) goto invalid_oid;
-
-			} else {
-				if (oid > (((unsigned long long) 1) << 60)) goto invalid_oid; /* avoid overflow */
-			}
-
-			first = false;
-			oid += first_component * 40;
-		}
-
-		/*
-		 *	Encode the number as 7-bit chunks.  Just brute-force over all bits, as doing that ends
-		 *	up being fast enough.
-		 *
-		 *	i.e. if we did anything else to count bits, it would end up with pretty much the same
-		 *	code.
-		 */
-		for (i = 63; i >= 0; i -= 7) {
-			uint8_t more, part;
-
-			part = (oid >> i) & 0x7f;
-			if (!part) continue;
-
-			more = ((uint8_t) (i > 0)) << 7;
-
-			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
-		}
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
 	}
+
+	(*count)++;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
@@ -682,11 +653,17 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 {
 	fr_dbuff_t	our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const *vp;
-	ssize_t		slen = 0;
+	uint64_t	component;
+	int		i, count = 0;
+	fr_da_stack_t	da_stack;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 	fr_assert(!vp->da->flags.is_raw);
+	fr_assert(vp->vp_type == FR_TYPE_ATTR);
+
+	fr_proto_da_stack_build(&da_stack, vp->vp_attr);
+	FR_PROTO_STACK_PRINT(&da_stack, da_stack.depth);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -711,10 +688,22 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	 *		reached by X = 0 and X = 1. 8.19.5 The numerical value of the ith subidentifier, (2 <= i <= N) is
 	 *		that of the (i + 1)th object identifier component.
 	 */
-	slen = fr_der_encode_oid_to_str(&our_dbuff, vp->vp_strvalue);
-	if (slen < 0) {
-		fr_strerror_printf("Failed to encode OID: %s", fr_strerror());
-		return slen;
+
+	/*
+	 *	Parse each OID component.
+	 */
+	for (i = 0; i < da_stack.depth; i++) {
+		ssize_t slen;
+
+		if ((i == 0) && (da_stack.da[0] == attr_oid_tree)) continue; /* don't encode this */
+
+		slen = fr_der_encode_oid_from_value(&our_dbuff, da_stack.da[i]->attr, &component, &count);
+		if (slen < 0) return -1;
+	}
+
+	if (count <= 2) {
+		fr_strerror_printf("Invalid OID '%s' - too short", vp->vp_strvalue);
+		return -1;
 	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -754,33 +743,30 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 }
 
 typedef struct {
-	fr_dbuff_marker_t item_ptr;	//!< Pointer to the start of the encoded item (beginning of the tag)
-	size_t	 item_len;		//!< Length of the encoded item (tag + length + value)
+	uint8_t	*data;		//!< Pointer to the start of the encoded item (beginning of the tag)
+	size_t	 len;		//!< Length of the encoded item (tag + length + value)
 } fr_der_encode_set_of_ptr_pairs_t;
 
 /*
  *	Lexicographically sort the set of pairs
  */
-static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *a, void const *b)
+static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *one, void const *two)
 {
-	fr_der_encode_set_of_ptr_pairs_t const *my_a = a;
-	fr_der_encode_set_of_ptr_pairs_t const *my_b = b;
+	fr_der_encode_set_of_ptr_pairs_t const *a = one;
+	fr_der_encode_set_of_ptr_pairs_t const *b = two;
 
-	if (my_a->item_len > my_b->item_len) {
-		return memcmp(fr_dbuff_current(&my_a->item_ptr), fr_dbuff_current(&my_b->item_ptr), my_a->item_len);
+	if (a->len >= b->len) {
+		return memcmp(a->data, b->data, a->len);
 	}
 
-	return memcmp(fr_dbuff_current(&my_a->item_ptr), fr_dbuff_current(&my_b->item_ptr), my_b->item_len);
+	return memcmp(a->data, b->data, b->len);
 }
 
 static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	      our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t	     *vp;
-	fr_da_stack_t	      da_stack;
-	fr_dcursor_t	      child_cursor;
-	ssize_t		      slen  = 0;
-	unsigned int	      depth = 0;
+	ssize_t		      slen;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -820,81 +806,81 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 		/*
 		 *	Set-of items will all have the same tag, so we need to sort them lexicographically
 		 */
+		size_t				  i, count;
 		fr_dbuff_t			  work_dbuff;
 		fr_der_encode_set_of_ptr_pairs_t *ptr_pairs;
 		uint8_t				 *buff;
-		size_t				  i = 0, count;
+		fr_da_stack_t	      		  da_stack;
+		fr_dcursor_t	      		  child_cursor;
 
-		buff = talloc_array(encode_ctx->tmp_ctx, uint8_t, fr_dbuff_remaining(&our_dbuff));
-
-		fr_dbuff_init(&work_dbuff, buff, fr_dbuff_remaining(&our_dbuff));
-
-		fr_proto_da_stack_build(&da_stack, vp->da);
-
-		FR_PROTO_STACK_PRINT(&da_stack, depth);
-
-		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
-
+		/*
+		 *	This can happen, but is possible.
+		 */
 		count = fr_pair_list_num_elements(&vp->children);
+		if (unlikely(!count)) return 0;
 
-		ptr_pairs = talloc_array(encode_ctx->tmp_ctx, fr_der_encode_set_of_ptr_pairs_t, count);
+		/*
+		 *	Sets can be nested, so we have to use local buffers when sorting.
+		 */
+		buff = talloc_array(encode_ctx->tmp_ctx, uint8_t, fr_dbuff_remaining(&our_dbuff));
+		fr_assert(buff != NULL);
+
+		ptr_pairs = talloc_array(buff, fr_der_encode_set_of_ptr_pairs_t, count);
 		if (unlikely(ptr_pairs == NULL)) {
 			fr_strerror_const("Failed to allocate memory for set of pointers");
 			talloc_free(buff);
 			return -1;
 		}
 
-		for (i = 0; i < count; i++) {
-			ssize_t len_count;
+		/*
+		 *	Now that we have our intermediate buffers, initialize the buffers and start encoding.
+		 */
+		fr_dbuff_init(&work_dbuff, buff, fr_dbuff_remaining(&our_dbuff));
 
-			if (unlikely(fr_dcursor_current(&child_cursor) == NULL)) {
-				fr_strerror_const("No pair to encode set of");
-				slen = -1;
+		fr_proto_da_stack_build(&da_stack, vp->da);
 
-			free_and_return:
-				talloc_free(ptr_pairs);
+		FR_PROTO_STACK_PRINT(&da_stack, vp->da->depth - 1);
+
+		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
+
+		for (i = 0; fr_dcursor_current(&child_cursor) != NULL; i++) {
+			ptr_pairs[i].data = fr_dbuff_current(&work_dbuff);
+
+			slen = encode_value(&work_dbuff, &child_cursor, encode_ctx);
+			if (unlikely(slen < 0)) {
+				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
 				talloc_free(buff);
 				return slen;
 			}
 
-			len_count = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
-
-			if (unlikely(len_count < 0)) {
-				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-				slen = -1;
-				goto free_and_return;
-			}
-
-			ptr_pairs[i].item_ptr  = encode_ctx->encoding_start;
-			ptr_pairs[i].item_len  = encode_ctx->encoding_length;
-
-			slen += len_count;
+			ptr_pairs[i].len = slen;
 		}
 
-		if (unlikely(fr_dcursor_current(&child_cursor) != NULL)) {
-			fr_strerror_const("Failed to encode all pairs");
-			slen = -1;
-			goto free_and_return;
-		}
+		fr_assert(i <= count);
+		count = i;
 
-		qsort(ptr_pairs, count, sizeof(fr_der_encode_set_of_ptr_pairs_t), fr_der_encode_set_of_cmp);
+		/*
+		 *	If there's a "min" for this set, then we can't do anything about it.
+		 */
+		if (unlikely(!count)) goto done;
 
+		/*
+		 *	If there's only one child, we don't need to sort it.
+		 */
+		if (count > 1) qsort(ptr_pairs, count, sizeof(fr_der_encode_set_of_ptr_pairs_t), fr_der_encode_set_of_cmp);
+
+		/*
+		 *	The data in work_dbuff is always less than the data in the our_dbuff, so we don't need
+		 *	to check the return value here.
+		 */
 		for (i = 0; i < count; i++) {
-			fr_dbuff_set(&work_dbuff, &ptr_pairs[i].item_ptr);
-
-			FR_PROTO_TRACE("Copying %zu bytes from %p to %p", ptr_pairs[i].item_len,
-					&ptr_pairs[i].item_ptr, fr_dbuff_current(dbuff));
-
-			if (fr_dbuff_in_memcpy(&our_dbuff, fr_dbuff_current(&work_dbuff), ptr_pairs[i].item_len) <=
-				0) {
-				fr_strerror_const("Failed to copy set of value");
-				slen = -1;
-				goto free_and_return;
-			}
+			(void) fr_dbuff_in_memcpy(&our_dbuff, ptr_pairs[i].data, ptr_pairs[i].len);
 		}
 
-		slen = fr_dbuff_set(dbuff, &our_dbuff);
-		goto free_and_return;
+	done:
+		talloc_free(buff);
+
+		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
 	/*
@@ -961,7 +947,7 @@ static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, U
 	/*
 	 *	Remove the century from the year
 	 */
-	fr_sbuff_shift(&time_sbuff, 2);
+	fr_sbuff_shift(&time_sbuff, 2, false);
 
 	/*
 	 *	Trim the time string of any unwanted characters
@@ -1109,22 +1095,18 @@ static ssize_t fr_der_encode_choice(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 	fr_da_stack_t	      da_stack;
 	fr_dcursor_t	      child_cursor;
 	ssize_t		 slen = 0;
-	unsigned int 	depth = 0;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 	fr_assert(!vp->da->flags.is_raw);
 
-	depth = vp->da->depth - 1;
-
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
-	FR_PROTO_STACK_PRINT(&da_stack, depth);
+	FR_PROTO_STACK_PRINT(&da_stack, vp->da->depth - 1);
 
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
-					 encode_pair);
+	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, vp->da->depth - 1, &child_cursor, encode_ctx, encode_pair);
 	if (slen < 0) return -1;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1191,9 +1173,9 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_dcursor_copy(&parent_cursor, &root_cursor);
 
 	while (fr_dcursor_current(&parent_cursor)) {
-		fr_sbuff_t	  oid_sbuff;
+		uint64_t	  component;
+		int		  count;
 		fr_dbuff_marker_t length_start, inner_seq_len_start;
-		char		  oid_buff[1024] = { 0 };
 		fr_pair_t	  *child;
 
 		/*
@@ -1209,8 +1191,20 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			break;
 		}
 
-		oid_sbuff   = FR_SBUFF_OUT(oid_buff, sizeof(oid_buff));
-		oid_buff[0] = '\0';
+		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
+		if (slen < 0) return slen;
+
+		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+
+		/*
+		 *	Encode the OID portion of the extension
+		 */
+		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
+		if (slen < 0) return slen;
+
+		fr_dbuff_marker(&length_start, &our_dbuff);
+		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
 		 *	Walk through the children until we find either an attribute marked as an extension, or one with
@@ -1220,6 +1214,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	extension.
 		 */
 		fr_dcursor_copy(&child_cursor, &parent_cursor);
+		count = 0;
 
 		while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
 			PAIR_VERIFY(child);
@@ -1237,40 +1232,24 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 				goto next;
 			}
 
-			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+			/*
+			 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
+			 *	types which are marked up as needing OID leaf encoding.
+			 */
+			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
 				FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
-
-				if (child->da->flags.is_raw) {
-					/*
-					 *	This was an unknown oid
-					 */
-					if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-						fr_strerror_const("Failed to copy OID to buffer");
-						slen = -1;
-					error:
-						fr_dbuff_marker_release(&outer_seq_len_start);
-						return slen;
-					}
-					break;
-				}
 
 				fr_dcursor_copy(&child_cursor, &parent_cursor);
 				break;
 			}
 
-			if (oid_buff[0] == '\0') {
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
-					fr_strerror_const("Failed to copy OID to buffer");
-					slen = -1;
-					goto error;
-				}
+			slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
+			if (unlikely(slen < 0)) return -1;
 
-				goto next;
-			}
-
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-				goto error;
-			}
+			/*
+			 *	We've encoded a leaf data type, or a raw one.  Stop encoding it.
+			 */
+			if (!fr_type_is_structural(child->vp_type)) break;
 
 			/*
 			 *	Unless this was the last child (marked as an extension), there should only be one child
@@ -1279,73 +1258,26 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 		next:
-			FR_PROTO_TRACE("OID: %s", oid_buff);
+			if (fr_der_flag_leaf(child->da)) break;
 
-			if (fr_der_flag_is_oid_leaf(child->da)) break;
 			fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
-		}
-
-		fr_sbuff_terminate(&oid_sbuff);
-		FR_PROTO_TRACE("OID: %s", oid_buff);
-
-		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
-		if (slen < 0) goto error;
-
-		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-		/*
-		 *	Encode the OID portion of the extension
-		 */
-		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
-
-		fr_dbuff_marker(&length_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-		slen = fr_der_encode_oid_to_str(&our_dbuff, oid_buff);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&length_start);
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
 		}
 
 		/*
 		 *	Encode the length of the OID
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
-		fr_dbuff_marker_release(&length_start);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) return slen;
 
+		/*
+		 *	Encode the critical flag
+		 */
 		if (is_critical) {
 			/*
-			 *	Encode the critical flag
+			 *	Universal+Boolean flag is always 0x01. Length of a boolean is always 0x01.
+			 *	True is always 0xff.
 			 */
-			slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_BOOLEAN, FR_DER_CLASS_UNIVERSAL,
-						 FR_DER_TAG_PRIMITIVE);
-			if (slen < 0) {
-				fr_dbuff_marker_release(&inner_seq_len_start);
-				goto error;
-			}
-
-			fr_dbuff_marker(&length_start, &our_dbuff);
-			FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t)(0xff));
-
-			slen = fr_der_encode_len(&our_dbuff, &length_start);
-			fr_dbuff_marker_release(&length_start);
-			if (slen < 0) {
-				fr_dbuff_marker_release(&inner_seq_len_start);
-				goto error;
-			}
-
+			FR_DBUFF_IN_BYTES_RETURN(&our_dbuff, (uint8_t) 0x01, (uint8_t) 0x01, (uint8_t)(0xff));
 			is_critical--;
 		}
 
@@ -1353,49 +1285,28 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the value portion of the extension
 		 */
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OCTETSTRING, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) return slen;
 
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
-		 *	Encode the data either as raw garbage, or as an OID pair.
+		 *	Encode the data
 		 */
-		child = fr_dcursor_current(&child_cursor);
-		fr_assert(child != NULL);
-
-		if (child->da->flags.is_raw) {
-			slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
-		} else {
-			slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
-		}
-		if (slen < 0) {
-			fr_dbuff_marker_release(&length_start);
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
+		if (slen < 0) return slen;
 
 		/*
 		 *	Encode the length of the value
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
-		fr_dbuff_marker_release(&length_start);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) return slen;
 
 		/*
 		 *	Encode the length of the extension (OID + Value portions)
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &inner_seq_len_start);
-		fr_dbuff_marker_release(&inner_seq_len_start);
-		if (slen < 0) {
-			goto error;
-		}
+		if (slen < 0) return -1;
 
 		if (is_critical) {
 			fr_dcursor_next(&parent_cursor);
@@ -1415,7 +1326,6 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	 *	Encode the length of the extensions
 	 */
 	slen = fr_der_encode_len(&our_dbuff, &outer_seq_len_start);
-	fr_dbuff_marker_release(&outer_seq_len_start);
 	if (slen < 0) return slen;
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&our_dbuff), slen, "Encoded X509 extensions");
@@ -1426,12 +1336,12 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	  our_dbuff = FR_DBUFF(dbuff);
-	fr_sbuff_t	  oid_sbuff;
 	fr_dbuff_marker_t length_start;
 	fr_dcursor_t	  child_cursor, parent_cursor = *cursor;
 	fr_pair_t const	  *vp, *child;
-	char		  oid_buff[1024] = { 0 };
 	ssize_t		  slen	 = 0;
+	uint64_t	  component;
+	int		  count;
 
 	vp = fr_dcursor_current(&parent_cursor);
 	PAIR_VERIFY(vp);
@@ -1449,8 +1359,11 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	 *	Note: The value may be a constructed or primitive type
 	 */
 
-	oid_sbuff   = FR_SBUFF_OUT(oid_buff, sizeof(oid_buff));
-	oid_buff[0] = '\0';
+	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
+	if (slen < 0) return slen;
+
+	fr_dbuff_marker(&length_start, &our_dbuff);
+	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 	/*
 	 *	Walk through the children until we find either an attribute marked as an oid leaf, or one with
@@ -1460,40 +1373,34 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	 *	pair.
 	 */
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, &parent_cursor);
+	count = 0;
+
 	while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
 		PAIR_VERIFY(child);
 
-		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+		/*
+		 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
+		 *	types which are marked up as needing OID leaf encoding.
+		 */
+		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
 			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
-
-			if (child->da->flags.is_raw) {
-				/*
-				 *	This was an unknown oid
-				 */
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-					fr_strerror_const("Failed to copy OID to buffer");
-					return slen;
-				}
-				break;
-			}
 
 			fr_dcursor_copy(&child_cursor, &parent_cursor);
 			break;
 		}
 
-		if (oid_buff[0] == '\0') {
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
-				fr_strerror_const("Failed to copy OID to buffer");
-				return -1;
-			}
+		slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
+		if (unlikely(slen < 0)) return -1;
 
-			goto next;
-		}
+		/*
+		 *	We've encoded a leaf data type, or a raw one.  Stop encoding it.
+		 */
+		if (!fr_type_is_structural(child->vp_type)) break;
 
-		if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-			fr_strerror_const("Failed to copy OID to buffer");
-			return -1;
-		}
+		/*
+		 *	Some structural types can be marked as a leaf for the purposes of OID encoding.
+		 */
+		if (fr_der_flag_leaf(child->da)) break;
 
 		/*
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child
@@ -1501,48 +1408,19 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		 */
 		if (fr_pair_list_num_elements(&child->children) > 1) break;
 
-	next:
-		FR_PROTO_TRACE("OID: %s", oid_buff);
-		if (fr_der_flag_is_oid_leaf(child->da)) break;
 		fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
-	}
-
-	fr_sbuff_terminate(&oid_sbuff);
-	FR_PROTO_TRACE("OID: %s", oid_buff);
-
-	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-	if (slen < 0) return slen;
-
-	fr_dbuff_marker(&length_start, &our_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-	/*
-	 *	Encode the OID portion of the pair
-	 */
-	slen = fr_der_encode_oid_to_str(&our_dbuff, oid_buff);
-	if (slen < 0) {
-		fr_dbuff_marker_release(&length_start);
-		return slen;
 	}
 
 	/*
 	 *	Encode the length of the OID
 	 */
 	slen = fr_der_encode_len(&our_dbuff, &length_start);
-	fr_dbuff_marker_release(&length_start);
 	if (slen < 0) return slen;
 
 	/*
-	 *	Encode the data either as raw garbage, or as an OID pair.
+	 *	And then encode the actual data.
 	 */
-	child = fr_dcursor_current(&child_cursor);
-	fr_assert(child);
-
-	if (child->da->flags.is_raw) {
-		slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
-	} else {
-		slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
-	}
+	slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
 	if (slen < 0) return slen;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1734,18 +1612,16 @@ static inline CC_HINT(always_inline) ssize_t
  *
  * @return		The number of bytes written to the buffer
  */
-static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
-			    fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const	    *vp;
-	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_marker_t    marker, encoding_start;
+	fr_dbuff_t	     our_dbuff;
+	fr_dbuff_marker_t    marker;
 	fr_der_tag_encode_t const *func;
 	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
-	size_t		     encoding_length;
 	fr_der_attr_flags_t const *flags;
 
 	if (unlikely(cursor == NULL)) {
@@ -1765,6 +1641,21 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 
 	flags = fr_der_attr_flags(vp->da);
 	fr_assert(flags != NULL);
+
+	/*
+	 *	Raw things get encoded as-is, so that we can encode the correct tag and class.
+	 */
+	if (unlikely(vp->da->flags.is_raw)) {
+		fr_assert(vp->vp_type == FR_TYPE_OCTETS);
+
+		slen = fr_der_encode_octetstring(dbuff, cursor, encode_ctx);
+		if (slen < 0) return 0;
+
+		fr_dcursor_next(cursor);
+		return slen;
+	}
+
+	our_dbuff = FR_DBUFF(dbuff);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1853,16 +1744,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 */
 	if (flags->is_option) tag = flags->option;
 
-	fr_dbuff_marker(&encoding_start, &our_dbuff);
-
 	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, func->constructed);
-	if (slen < 0) {
-	error:
-		fr_dbuff_marker_release(&encoding_start);
-		return slen;
-	}
-
-	encoding_length = slen;
+	if (slen < 0) return slen;
 
 	/*
 	 *	Mark and reserve space in the buffer for the length field
@@ -1872,47 +1755,20 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 
 	if (flags->is_extensions) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
-
-	} else if (vp->da->flags.is_raw) {
-		slen = fr_der_encode_octetstring(&our_dbuff, cursor, uctx);
-
 	} else {
+
 		slen = func->encode(&our_dbuff, cursor, uctx);
 	}
-	if (slen < 0) {
-		fr_dbuff_marker_release(&marker);
-		goto error;
-	}
-
-	encoding_length += slen;
+	if (slen < 0) return slen;
 
 	/*
 	*	Encode the length of the value
 	*/
 	slen = fr_der_encode_len(&our_dbuff, &marker);
-	if (slen < 0) {
-		fr_dbuff_marker_release(&marker);
-		goto error;
-	}
-
-	fr_dbuff_marker_release(&marker);
-
-	uctx->encoding_start = encoding_start;
-	uctx->encoding_length = encoding_length + slen;
+	if (slen < 0) return slen;
 
 	fr_dcursor_next(cursor);
 	return fr_dbuff_set(dbuff, &our_dbuff);
-}
-
-static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			   void *encode_ctx)
-{
-	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
-}
-
-static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
-{
-	return encode_pair(dbuff, NULL, 0, cursor, encode_ctx);
 }
 
 static ssize_t fr_der_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len,
@@ -1926,7 +1782,7 @@ static ssize_t fr_der_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 
 	fr_pair_dcursor_init(&cursor, vps);
 
-	slen = der_encode_pair(&dbuff, &cursor, encode_ctx);
+	slen = encode_value(&dbuff, &cursor, encode_ctx);
 
 	if (slen < 0) {
 		fr_strerror_printf("Failed to encode data: %s", fr_strerror());
@@ -1939,7 +1795,8 @@ static ssize_t fr_der_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 /*
  *	Test points
  */
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_der_encode_ctx_t *test_ctx;
 
@@ -1947,7 +1804,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	if (!test_ctx) return -1;
 
 	test_ctx->tmp_ctx	     = talloc(test_ctx, uint8_t);
-	test_ctx->encoding_length    = 0;
 
 	*out = test_ctx;
 
@@ -1957,7 +1813,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 extern fr_test_point_pair_encode_t der_tp_encode_pair;
 fr_test_point_pair_encode_t	   der_tp_encode_pair = {
 	       .test_ctx = encode_test_ctx,
-	       .func	 = der_encode_pair,
+	       .func	 = encode_value,
 };
 
 extern fr_test_point_proto_encode_t der_tp_encode_proto;

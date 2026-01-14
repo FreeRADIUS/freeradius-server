@@ -64,7 +64,7 @@ struct rlm_tacacs_s {
 /** Enqueue a request_t to an IO submodule
  *
  */
-typedef unlang_action_t (*rlm_tacacs_io_enqueue_t)(rlm_rcode_t *p_result, void **rctx, void *instance, void *thread, request_t *request);
+typedef unlang_action_t (*rlm_tacacs_io_enqueue_t)(unlang_result_t *p_result, void **rctx, void *instance, void *thread, request_t *request);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *

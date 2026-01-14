@@ -38,7 +38,7 @@ xlat_expr "foo/bar/" + %file.escape(%taint('..baz'))
 match foo/bar/_x2e_x2ebaz
 
 #
-#  Can't do expressions as function arguments
+#  Can now do expressions as function arguments
 #
 xlat_expr %file.escape('foo/bar' + "/baz")
-match ERROR offset 34 'Unexpected text after argument 1'
+match foo/bar/baz

@@ -503,7 +503,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
 							     talloc_array_length(replies), conn);
 			for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
-										     replies[i], NULL, i);
+										     replies[i], NULL, i, status);
 		}
 		if (s_ret != REDIS_RCODE_SUCCESS) {
 			fr_redis_pipeline_free(replies, reply_cnt);
@@ -989,6 +989,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 		char const		*p;
 		size_t			len;
 		char			cursor[19] = "0";
+		fr_redis_rcode_t	status;
 
 		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &master[i], false) < 0) {
 			ERROR("Failed retrieving pool for node");
@@ -1011,8 +1012,9 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				fr_pool_connection_release(pool, NULL, conn);
 				goto error;
 			}
-			fr_redis_reply_print(L_DBG_LVL_3, reply, NULL, 0);
-			if (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS) {
+			status = fr_redis_command_status(conn, reply);
+			fr_redis_reply_print(L_DBG_LVL_3, reply, NULL, 0, status);
+			if (status != REDIS_RCODE_SUCCESS) {
 				PERROR("Error retrieving keys %s", cursor);
 
 			reply_error:
@@ -1192,7 +1194,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
 						     talloc_array_length(replies), conn);
 		for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
-									     replies[i], NULL, i);
+									     replies[i], NULL, i, status);
 	}
 	if (s_ret != REDIS_RCODE_SUCCESS) {
 	error:
@@ -1264,7 +1266,11 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf, false,
+	/*
+	 *  Triggers won't work from the tool
+	 */
+	this->conf.triggers = false;
+	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf,
 					       "rlm_redis_ippool_tool", NULL, NULL);
 	if (!this->cluster) {
 		talloc_free(this);
@@ -1608,7 +1614,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
 		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
+					     &FR_SBUFF_IN_STR(argv[1]), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		pool_arg = (uint8_t *)out.buff;
 	}
@@ -1619,7 +1625,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
 		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
+					     &FR_SBUFF_IN_STR(argv[2]), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		range_arg = (uint8_t *)out.buff;
 	}

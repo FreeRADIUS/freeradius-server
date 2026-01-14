@@ -29,23 +29,49 @@ timeout 1ms {
 }
 ----
 
-In general, the best way to use `timeout` is in conjunction with a
-`redundant` block.  In the following example, the configuration allows
-the `proxy` module to run for `4` seconds.  If the `proxy` module
-takes more than `4` seconds to return, _or_ if the `proxy` module
-fails, the `detail` module is called.
+== Timeout with catch
+
+In the following example, the configuration allows the `sql` module to
+run for `4` seconds.  If the `sql` module takes more than `4` seconds
+to return, _or_ if the `sql` module fails, then the `detail` module is
+called.
+
+.Example using catch
+[source,unlang]
+----
+try {
+    timeout 4s {
+        sql
+    }
+}
+catch timeout {
+    detail
+}
+----
+
+== Timeout with redundant
+
+The `timeout` can also be used inside of a
+xref:unlang/redundant.adoc[redundant] block.  This example has
+_almost_ the same behavior as above.  The difference here is that the
+`detail` file here is run on when _either_ the `sql` module fails, or
+the timeout is reached.
+
+Whether you choose to use a xref:unlang/redundant.adoc[redundant] or a
+xref:unlang/catch.adoc[catch] block after the `timeout` depends on
+your local requirements.
 
 .Example using redundant
 [source,unlang]
 ----
 redundant
     timeout 4s {
-        proxy
+        sql
     }
 
     detail
 }
 ----
 
-// Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

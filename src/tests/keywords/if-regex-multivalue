@@ -1,12 +1,12 @@
 #
-# PRE: update if
+# PRE: if
 #
 
 Vendor-Specific.Cisco.AVPair := { 'foo=bar', 'bar=baz', 'baz=foo' }
 
 
 if (Vendor-Specific.Cisco.AVPair[1] =~ /bar=(.*)/) {
-	if (!("%{1}" == 'baz')) {
+	if (!("%regex.match(1)" == 'baz')) {
 		test_fail
 	}
 }
@@ -15,7 +15,7 @@ else {
 }
 
 if (Vendor-Specific.Cisco.AVPair[*] =~ /bar=(.*)/) {
-	if (!("%{1}" == 'baz')) {
+	if (!("%regex.match(1)" == 'baz')) {
 		test_fail
 	}
 }

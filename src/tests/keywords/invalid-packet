@@ -1,0 +1,7 @@
+uint32 Invalid-Packet
+
+Invalid-Packet := 1
+
+if (Invalid-Packet) {
+	success
+}

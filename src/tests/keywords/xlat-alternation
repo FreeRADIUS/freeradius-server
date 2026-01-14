@@ -10,7 +10,7 @@ NAS-Identifier := "bar"
 #  First choice
 #
 result_string := "%{Filter-Id || NAS-Identifier}"
-if (!(result_string == 'foo')) {
+if (result_string != 'foo') {
 	test_fail
 }
 
@@ -19,7 +19,7 @@ if (!(result_string == 'foo')) {
 #
 request -= Filter-Id[*]
 result_string := "%{Filter-Id || NAS-Identifier}"
-if (!(result_string == 'bar')) {
+if (result_string != 'bar') {
 	test_fail
 }
 
@@ -27,7 +27,7 @@ if (!(result_string == 'bar')) {
 #  Multiple things in an alternation
 #
 result_string := %{%{Filter-Id} || "%{NAS-Identifier} foo"}
-if (!(result_string == 'bar foo')) {
+if (result_string != 'bar foo') {
 	test_fail
 }
 
@@ -35,7 +35,7 @@ if (!(result_string == 'bar foo')) {
 #  Alternation is empty
 #
 result_string := "%{Filter-Id || ''}"
-if (!(result_string == '')) {
+if (result_string != '') {
 	test_fail
 }
 
@@ -48,7 +48,7 @@ request -= NAS-Identifier[*]
 #  Both sides are failing, so the assignment returns a NULL string
 #
 result_string := "%{Filter-Id || NAS-Identifier}"
-if (!(result_string == "")) {
+if (result_string !='') {
 	test_fail
 }
 

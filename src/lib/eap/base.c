@@ -76,14 +76,14 @@ RCSID("$Id$")
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
-fr_dict_t const *dict_tls;
+static fr_dict_t const *dict_tls;
 
 extern fr_dict_autoload_t eap_base_dict[];
 fr_dict_autoload_t eap_base_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_tls, .proto = "tls" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_chbind_response_code;
@@ -126,7 +126,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_tls_min_version, .name = "Min-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
 	{ .out = &attr_tls_max_version, .name = "Max-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t const *eap)
@@ -309,7 +309,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Sanity check the length before doing anything.
 	 */
-	if (vp->vp_length < 4) {
+	if (vp->vp_length < EAP_HEADER_LEN) {
 		fr_strerror_const("EAP packet is too short");
 		return NULL;
 	}
@@ -324,7 +324,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Take out even more weird things.
 	 */
-	if (len < 4) {
+	if (len < EAP_HEADER_LEN) {
 		fr_strerror_const("EAP packet has invalid length (less than 4 bytes)");
 		return NULL;
 	}
@@ -400,7 +400,7 @@ void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *
  *
  * Storing the value of the State attribute in readiness for the next round.
  */
-static unlang_action_t eap_virtual_server_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t eap_virtual_server_resume(UNUSED unlang_result_t *p_result,
 						 request_t *request, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
@@ -419,18 +419,19 @@ static unlang_action_t eap_virtual_server_resume(UNUSED rlm_rcode_t *p_result, U
  *
  * @param[in] request		the current (real) request.
  * @param[in] eap_session	representing the outer eap method.
- * @param[in] server_cs		The virtual server to send the request to.
+ * @param[in] virtual_server	The virtual server to send the request to.
  * @return
  * 	- UNLANG_ACTION_PUSHED_CHILD on success
  *	- UNLANG_ACTION_FAIL on error
  */
-unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_session, CONF_SECTION *server_cs)
+unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_session, virtual_server_t *virtual_server)
 {
 	fr_pair_t	*vp;
 
 	fr_assert(request->parent);
+	fr_assert(virtual_server);
 
-	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name(server_cs));
+	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(virtual_server_cs(virtual_server)));
 
 	/*
 	 *	Re-present the previously stored child's session state if there is one
@@ -441,10 +442,15 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 				  attr_packet_type) < 0) return UNLANG_ACTION_FAIL;
 	vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_REQUEST;
 
-	if (unlang_function_push(request, NULL, eap_virtual_server_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* transparent */ unlang_interpret_result(request),
+					     request,
+					     NULL,
+					     eap_virtual_server_resume,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME,
+					     eap_session) < 0) return UNLANG_ACTION_FAIL;
 
-	if (unlang_call_push(request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_call_push(NULL, request, virtual_server_cs(virtual_server), UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

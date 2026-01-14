@@ -10,29 +10,39 @@ The `perl` module processes attributes through a Perl interpreter.
   * Please see http://www.perl.org/docs.html for more information about the
 Perl language.
 
-NOTE: Uncomment any `func_*` configuration items below which are
-included in your module. If the module is called for a section which
-does not have a function defined, it will return `noop`.
+NOTE: As of FreeRADIUS v4, the Perl subroutine names called when the `perl`
+module is called are automatically derived from the section in which
+they are called.
 
-WARNING: The Perl module does _not_ as yet support nested attributes,
-or even flat attributes which have parents.  e.g. Vendor-Specific.Cisco.AVPair.
-We hope to fix that soon.
+e.g. if `perl` is called in `recv Access-Request`, firstly a subroutine
+`recv_access_request` will be looked for.  If that does not exist, then
+a subroutine `recv` will be looked for.
 
+This can be overridden by setting `func_recv_access_request` or `func_recv`
+to point to a different subroutine name.
 
+In addition the option `func_detach` can be used to set a subroutine to call
+during shutdown.
 
-## Configuration Settings
+Each subroutine called during a packet processing section is passed a
+hash ref which represents the packet.
 
-The following hashes are given to the module and
-filled with value-pairs (Attribute names and values)
+The hash contains 4 keys `request`, `reply`, `control` and `session-state`
+which allow access to the pairs in those FreeRADIUS pair lists.
 
-[options="header,autowidth"]
+Nested attributes are represented by nested hashes, while leaf attributes
+are represented by arrays, allowing access to individual instances of the
+attribute.
+
+For example, if the perl subroutine starts with `my $p = shift()`, then
+attributes in the request can be accessed using syntax of the form:
+
+[options-"header,autowidth"]
 |===
-| Value                    | Description
-| %RAD_CONFIG              | Config items (was %RAD_CHECK).
-| %RAD_REQUEST             | Attributes from the request.
-| %RAD_REPLY               | Attributes for the reply.
-| %RAD_REQUEST_PROXY       | Attributes from the proxied request.
-| %RAD_REQUEST_PROXY_REPLY | Attributes from the proxy reply.
+| Perl syntax                         | FreeRADIUS attribute
+| %p->{'request'}{'foo'}[0]           | request.foo
+| %p->{'request'}{'baa'}{'baz'}[1]    | request.baa.baz[1]
+| %p->{'request'}{'baa'}{2}{'baz'}[0] | request.baa[2].baz
 |===
 
 The interface between FreeRADIUS and Perl is mostly strings.
@@ -43,13 +53,27 @@ They are not escaped or interpreted.
 Attributes of type `octets` are copied to Perl as-is.
 They are not escaped or interpreted.
 
+Numeric attributes are passed as the appropriate Perl numeric type.
+
 All other attributes are printed, and passed to Perl as a string value.
 
 IP addresses are sent as strings, e.g. "192.0.2.25", and not as a 4-byte
 binary value.  The same applies to other attribute data types.
 
+Attributes can be set by assigning values to the array entries of leaf
+nodes.  E.g.
+
+$p->{'reply'}{'foo'}[0] = 'baa'
+
+In addition, the Perl array functions `push`, `pop`, `shift` and `unshift`
+can be used to add or remove instances of attributes.
+
 The return codes from functions in the `perl_script` are passed directly back
 to the server.  These codes are defined in `mods-config/example.pl`
+
+
+
+## Configuration Settings
 
 
 filename:: Module to load functions from.
@@ -76,16 +100,14 @@ FreeRADIUS server.
 
 
 
-List of functions in the module to call. Uncomment and change if you
-want to use function names other than the defaults.
+func_detach:: Subroutine to call during server shutdown
 
 
 
-Control which attribute lists are replaced following calls to
-the module.
-The default is to not replace attribute lists.  Only enable
-replacement where it is specifically required.
+Sample subroutine name overrides
 
+These options cause the old FreeRADIUS v3 default subroutine
+names to be used
 
 
 config { ... }::
@@ -109,20 +131,10 @@ $RAD_PERLCONF{'sub-config'}->{'name'}
 perl {
 	filename = ${modconfdir}/${.:instance}/example.pl
 	perl_flags = "-T"
-#	func_authenticate = authenticate
-#	func_authorize = authorize
-#	func_preacct = preacct
-#	func_accounting = accounting
-#	func_pre_proxy = pre_proxy
-#	func_post_proxy = post_proxy
-#	func_post_auth = post_auth
 #	func_detach = detach
-	replace {
-#		request = no
-#		reply = no
-#		control = no
-#		session = no
-	}
+#	func_recv_access_request = authorize
+#	func_recv_accounting_request = preacct
+#	func_send = postauth
 #	config {
 #		name = "value"
 #		sub-config {

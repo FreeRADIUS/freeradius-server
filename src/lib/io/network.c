@@ -238,6 +238,18 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 	fr_ring_buffer_t *rb;
 
 	/*
+	 *	Associate the protocol dictionary with the listener, so that the decode functions can check /
+	 *	use it.
+	 *
+	 *	A virtual server may start off with a "dictionary" block, and therefore define a local
+	 *	dictionary.  So the "root" dictionary of a virtual server may not be a protocol dict.
+	 */
+	fr_assert(li->server_cs != NULL);
+	li->dict = fr_dict_proto_dict(virtual_server_dict_by_cs(li->server_cs));
+
+	fr_assert(li->dict != NULL);
+
+	/*
 	 *	Skip a bunch of work if we're already in the network thread.
 	 */
 	if (is_network_thread(nr) && !li->needs_full_setup) {
@@ -588,7 +600,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 				/*
 				 *	Close the hole...
 				 */
-				memcpy(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
+				memmove(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
 				break;
 			}
 		}
@@ -943,6 +955,7 @@ next_message:
 	s->cd = NULL;
 
 	DEBUG3("Read %zd byte(s) from FD %u", data_size, sockfd);
+	if (s->listen->read_hexdump) HEXDUMP2(cd->m.data, data_size, "%s read ", s->listen->name);
 	nr->stats.in++;
 	s->stats.in++;
 
@@ -1166,15 +1179,19 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		int rcode;
 
 		fr_assert(li == cd->listen);
+		if (li->write_hexdump) HEXDUMP2(cd->m.data, cd->m.data_size, "%s writing ", li->name);
 		rcode = li->app_io->write(li, cd->packet_ctx,
 					  cd->reply.request_time,
 					  cd->m.data, cd->m.data_size, s->written);
 
 		/*
-		 *	As a special case, allow write() to return
-		 *	"0", which means "close the socket".
+		 *	Write of 0 bytes means an OS bug, and we just discard this packet.
 		 */
-		if (rcode == 0) goto dead;
+		if (rcode == 0) {
+			RATE_LIMIT_GLOBAL(ERROR, "Discarding packet due to write returning zero for socket %s",
+					  s->listen->name);
+			goto discard;
+		}
 
 		/*
 		 *	Or we have a write error.
@@ -1213,6 +1230,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
+			PERROR("Failed writing to socket %s", s->listen->name);
+
 			/*
 			 *	As a special hack, check for something
 			 *	that will never be returned from a
@@ -1220,9 +1239,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 *	signals to us that we have to close
 			 *	the socket, but NOT complain about it.
 			 */
-			if (errno == ECONNREFUSED) goto dead;
+			if ((errno == ECONNREFUSED) || (errno == ECONNRESET)) goto dead;
 
-			PERROR("Failed writing to socket %s", s->listen->name);
 			if (li->app_io->error) li->app_io->error(li);
 
 		dead:
@@ -1239,6 +1257,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			goto save_pending;
 		}
 
+	discard:
 		s->written = 0;
 
 		/*
@@ -1790,7 +1809,10 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 	 *	exits.
 	 */
 	DEBUG2("Signalled to exit");
-	fr_network_destroy(nr);
+
+	if (unlikely(fr_network_destroy(nr) < 0)) {
+		PERROR("Failed stopping network");
+	}
 }
 
 /** The main network worker function.

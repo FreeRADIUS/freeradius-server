@@ -38,10 +38,14 @@ typedef enum {
 	UNLANG_ACTION_EXECUTE_NEXT,    		//!< Execute the next #unlang_t.
 	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
 						//!< execute it instead of continuing.
-	UNLANG_ACTION_UNWIND,			//!< Break out of the current group.
 	UNLANG_ACTION_YIELD,			//!< Temporarily pause execution until an event occurs.
-	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
 } unlang_action_t;
+
+#define RETURN_UNLANG_ACTION_FATAL \
+{ \
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL); \
+	return UNLANG_ACTION_FAIL; \
+}
 
 #ifdef __cplusplus
 }

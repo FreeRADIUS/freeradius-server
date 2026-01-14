@@ -28,44 +28,49 @@ RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/process.h>
-#include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/section.h>
+#include <freeradius-devel/server/process_types.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/finally.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
+
 typedef struct {
-	module_instance_t		*proto_mi;		//!< The proto_* module for a listen section.
-	fr_app_t const			*proto_module;		//!< Public interface to the proto_mi.
-								///< cached for convenience.
-} fr_virtual_listen_t;
+	module_instance_t		*proto_mi;			//!< The proto_* module for a listen section.
+	fr_app_t const			*proto_module;			//!< Public interface to the proto_mi.
+									///< cached for convenience.
+} virtual_server_listen_t;
 
 struct virtual_server_s {
-	CONF_SECTION			*server_cs;		//!< The server section.
-	fr_virtual_listen_t		**listeners;		//!< Listeners in this virtual server.
+	CONF_SECTION			*server_cs;			//!< The server section.
+	virtual_server_listen_t		**listeners;			//!< Listeners in this virtual server.
 
-	module_instance_t		*process_mi;		//!< The process_* module for a virtual server.
-								///< Contains the dictionary used by the virtual
-								///< server and the entry point for the state machine.
-	fr_process_module_t const	*process_module;	//!< Public interface to the process_mi.
-								///< cached for convenience.
+	module_instance_t		*process_mi;			//!< The process_* module for a virtual server.
+									///< Contains the dictionary used by the virtual
+									///< server and the entry point for the state machine.
+	fr_process_module_t const	*process_module;		//!< Public interface to the process_mi.
+									///< cached for convenience.
 
-	fr_rb_tree_t			*sections;		//!< List of sections that need to be compiled.
+	fr_rb_tree_t			*sections;			//!< List of sections that need to be compiled.
 
-	fr_log_t			*log;			//!< log destination
-	char const			*log_name;		//!< name of log destination
+	fr_log_t			*log;				//!< log destination
+	char const			*log_name;			//!< name of log destination
+
+	void				**finally_by_packet_type;	//!< Finalise instruction by packet type.
+	void				*finally_default;		//!< Default finally instruction.
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -75,14 +80,14 @@ static fr_dict_attr_t const *attr_auth_type;
 extern fr_dict_autoload_t virtual_server_dict_autoload[];
 fr_dict_autoload_t virtual_server_dict_autoload[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[];
 fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** List of process modules we've loaded
@@ -146,7 +151,7 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("listen", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
 			 virtual_server_t, listeners),
 			 .name2 = CF_IDENT_ANY,
-			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
+			 .subcs_size = sizeof(virtual_server_listen_t), .subcs_type = "virtual_server_listen_t",
 			 .func = listen_parse },
 
 	{ FR_CONF_OFFSET("log", virtual_server_t, log_name), },
@@ -378,16 +383,16 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	fr_virtual_listen_t	*listener = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
+	virtual_server_listen_t	*listener = talloc_get_type_abort(out, virtual_server_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listener_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 
 	CONF_PAIR		*cp;
-	char const		*protocol, *transport, *name2;
-	char			*inst_name;
+	char const		*module, *name2, *p;
+	fr_sbuff_t		*agg;
 
 	module_instance_t	*mi;
 
@@ -402,83 +407,112 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	}
 
 	/*
-	 *	Module name comes from the 'proto' pair if the
-	 *	listen section has one else it comes from the
-	 *	namespace of the virtual server.
+	 *	The module we load comes from the 'handler' or 'proto' configuration.  This configuration item
+	 *	allows us to have multi-protocol listen module, such as "detail".
 	 *
-	 *	The following results in proto_radius being loaded:
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen {
-	 *
-	 *		}
-	 *	}
-	 *
-	 *	The following results in proto_load being loaded:
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen {
-	 *			proto = load
-	 *
-	 *		}
-	 *	}
-	 *
-	 *	In this way the server behaves reasonably out
-	 *	of the box, but allows foreign or generic listeners
-	 *	to be included in the server.
-	 *
+	 *	If there isn't a multi-protocol listen module, then load the one for this namespace, such as
+	 *	"radius".
 	 */
-	cp = cf_pair_find(listener_cs, "proto");
+	cp = cf_pair_find(listener_cs, "handler");
+	if (!cp) cp = cf_pair_find(listener_cs, "proto");
 	if (cp) {
-		protocol = cf_pair_value(cp);
-		if (!protocol) {
+		module = cf_pair_value(cp);
+		if (!module) {
 			cf_log_err(cp, "Missing value");
 			return -1;
 		}
 	} else {
-		protocol = cf_pair_value(namespace);
+		module = cf_pair_value(namespace);
 	}
+
+	/*
+	 *	The proto modules go into a global tree, so we qualify their name (second name) with the name
+	 *	of the virtual server, followed by the transport, followed by any transport-specific
+	 *	configuration.
+	 */
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, MODULE_INSTANCE_LEN_MAX);
 
 	name2 = cf_section_name2(listener_cs);
 
 	/*
-	 *	As with almost everything else, the listeners are
-	 *	modules.  Create a unique name for them.
+	 *	A 'listen foo' in this virtual server helps it to be unique.  We load the "radius" module,
+	 *	instance "default.foo".  This naming scheme is a little counter-intuitive, but it is required
+	 *	due to the listen module list being global, and loading the leading module name e.g. "radius".
+	 *
+	 *	Since the virtual server names are unique, we don't have to qualify the listen section names
+	 *	by anything else.
 	 */
-	cp = cf_pair_find(listener_cs, "transport");
-	if (cp && cf_pair_value(cp)) {
-		transport = cf_pair_value(cp);
-	} else {
-		transport = "generic";
+	if (name2) {
+		/*
+		 *	We do some duplicate checks here, because that gives better errors than if we use the
+		 *	mangled names below.
+		 */
+		if (module_instance_name_valid(name2) < 0) {
+			cf_log_perr(listener_cs, "Invalid name in 'listen %s'", name2);
+			return -1;
+		}
+
+		/*
+		 *	Load "radius", instance "default.foo".
+		 */
+		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+		FR_SBUFF_IN_STRCPY_RETURN(agg, name2);
 	}
 
 	/*
-	 *	Instance names are default.radius.udp.foo, or default.radius.udp
+	 *	Further qualify the name by transport and port.  This helps it to be more unique.
 	 */
-	if (name2) {
-		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s.%s", cf_section_name2(server_cs),
-						protocol, transport, name2));
-	} else {
-		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s", cf_section_name2(server_cs),
-						protocol, transport));
-	}
-
-	if (module_instance_name_valid(inst_name) < 0) {
-	error:
-		cf_log_err(listener_cs, "Failed loading listen section.");
+	cp = cf_pair_find(listener_cs, "transport");
+	if (!cp || ((p = cf_pair_value(cp)) == NULL)) {
+		cf_log_err(listener_cs, "Invalid 'listen' section - No 'transport = ...' definition was found.");
 		return -1;
 	}
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, protocol, inst_name, 0);
-	talloc_free(inst_name);
-	if (!mi) goto error;
+	FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+	FR_SBUFF_IN_STRCPY_RETURN(agg, p);
 
-	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) goto error;
+	cp = cf_pair_find(listener_cs, "port");
+	if (cp && ((p = cf_pair_value(cp)) != NULL)) {
+		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+		FR_SBUFF_IN_STRCPY_RETURN(agg, p);
+	}
+
+	if (module_instance_name_valid(fr_sbuff_start(agg)) < 0) {
+		cf_log_perr(listener_cs, "Failed loading listen section.");
+		return -1;
+	}
+
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, module, fr_sbuff_start(agg), 0);
+	if (!mi) {
+		cf_log_perr(listener_cs, "Failed creating listen section");
+		return -1;
+	}
+
+	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) {
+		cf_log_perr(listener_cs, "Failed parsing listen section");
+		return -1;
+	}
 
 	listener->proto_mi = mi;
 	listener->proto_module = (fr_app_t const *)listener->proto_mi->module->exported;
 	cf_data_add(listener_cs, mi, "proto_module", false);
+
+	/*
+	 *	The listener doesn't have to contain a 'type = foo' configuration.  But if it does, there MUST
+	 *	also be a 'recv foo' section.
+	 */
+	for (cp = cf_pair_find(listener_cs, "type");
+	     cp != NULL;
+	     cp = cf_pair_find_next(listener_cs, cp, "type")) {
+		char const *type = cf_pair_value(cp);
+
+		if (!type) continue;
+
+		if (!cf_section_find(server_cs, "recv", type)) {
+			cf_log_err(cp, "Listener has 'type = %s', but there is no 'recv %s { ... }' section defined.",
+				   type, type);
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -647,7 +681,7 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 /*
  *	If we pushed a log destination, we need to pop it/
  */
-static unlang_action_t server_remove_log_destination(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t server_remove_log_destination(UNUSED unlang_result_t *p_result,
 						     request_t *request, void *uctx)
 {
 	virtual_server_t *server = uctx;
@@ -664,20 +698,62 @@ static void server_signal_remove_log_destination(request_t *request, UNUSED fr_s
 	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
 }
 
+/** Push a finally section onto the stack
+ *
+ * The finally instruction cannot be cancelled and will always execute as the stack is unwound.
+ *
+ * @param[in] request		request to push the finally section onto.
+ * @param[in] vs		virtual server to push the finally section for.
+ * @param[in,out] top_frame	mutate the top frame value to indicate that future
+ *				pushes should be subframes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline) int virtual_server_push_finally(request_t *request, virtual_server_t const *vs, bool *top_frame)
+{
+	/*
+	 *	Don't bother finding the packet type unless there
+	 *	are finally sections registered.
+	 */
+	if (vs->finally_by_packet_type) {
+		fr_pair_t	*vp = fr_pair_find_by_da(&request->request_pairs, NULL,
+							 *(vs->process_module->packet_type));
+		fr_value_box_t	key;
+		void		*instruction;
+
+		if (!vp) goto check_default;	/* No packet type found, still allow default finally section */
+
+		if (fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data) < 0) return -1;
+
+		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type) ||
+		    !(instruction = vs->finally_by_packet_type[key.vb_uint16])) goto check_default;
+
+		if (unlikely(unlang_finally_push_instruction(request, instruction,
+							     fr_time_delta_from_sec(5), *top_frame) < 0)) return -1;
+
+		*top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
+
+		return 0;
+	}
+
+check_default:
+	if (vs->finally_default) {
+		if (unlikely(unlang_finally_push_instruction(request, vs->finally_default,
+							     fr_time_delta_from_sec(5), *top_frame) < 0)) return -1;
+
+		*top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
+	}
+
+	return 0;
+}
+
 /** Set the request processing function.
  *
  *	Short-term hack
  */
-unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, virtual_server_t const *vs, bool top_frame)
 {
-	virtual_server_t *server;
-
-	server = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
-	if (!server) {
-		cf_log_err(server_cs, "server_cs does not contain virtual server data");
-		return UNLANG_ACTION_FAIL;
-	}
-
 	/*
 	 *	Add a log destination specific to this virtual server.
 	 *
@@ -691,31 +767,35 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	 *	However, if we're being reached from a "call" frame in the middle of the stack, then
 	 *	we do have to pop the log destination when we return.
 	 */
-	if (server->log) {
-		request_log_prepend(request, server->log, fr_debug_lvl);
+	if (vs->log) {
+		request_log_prepend(request, vs->log, fr_debug_lvl);
 
 		if (unlang_interpret_stack_depth(request) > 1) {
 			unlang_action_t action;
 
-			action = unlang_function_push(request, NULL, /* don't call it immediately */
-						      server_remove_log_destination, /* but when we pop the frame */
-						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
-						      top_frame, server);
+			action = unlang_function_push_with_result(unlang_interpret_result(request),	/* transparent */
+								  request,
+								  NULL, 				/* don't call it immediately */
+								  server_remove_log_destination, 	/* but when we pop the frame */
+								  server_signal_remove_log_destination, ~(FR_SIGNAL_CANCEL),
+								  top_frame,
+								  UNCONST(void *, vs));
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
-			/*
-			 *	The pushed function may be a top frame, but the virtual server
-			 *	we're about to push is now definitely a sub frame.
-			 */
-			top_frame = UNLANG_SUB_FRAME;
+			top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
 		}
 	}
 
 	/*
+	 *	Push an uncancellable finally instruction to the stack.
+	 */
+	if (virtual_server_push_finally(request, vs, &top_frame) < 0) return UNLANG_ACTION_FAIL;
+
+	/*
 	 *	Bootstrap the stack with a module instance.
 	 */
-	if (unlang_module_push(&request->rcode, request, server->process_mi,
-			       server->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_module_push(p_result, request, vs->process_mi,
+			       vs->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -832,7 +912,7 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
  */
 fr_listen_t *listen_find_any(fr_listen_t *li)
 {
-	if (!listen_addr_root) return false;
+	if (!listen_addr_root) return NULL;
 
 	return fr_rb_find(listen_addr_root, li);
 }
@@ -861,6 +941,22 @@ bool listen_record(fr_listen_t *li)
 CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
 {
 	return vs->server_cs;
+}
+
+/** Resolve a CONF_SECTION to a virtual server
+ *
+ */
+virtual_server_t const *virtual_server_from_cs(CONF_SECTION *server_cs)
+{
+	virtual_server_t *vs;
+
+	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
+	if (!vs) {
+		cf_log_err(server_cs, "server_cs does not contain virtual server data");
+		return NULL;
+	}
+
+	return vs;
 }
 
 /** Return virtual server matching the specified name
@@ -919,6 +1015,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	virtual_server_t const *vs;
+	virtual_server_cf_parse_uctx_t const *uctx = rule->uctx;
 
 	vs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
 	if (!vs) {
@@ -926,7 +1023,162 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		return -1;
 	}
 
-	*((CONF_SECTION **)out) = vs->server_cs;
+	/*
+	 *	Validation checks
+	 */
+	if (uctx) {
+		/*
+		 *	Check the module name
+		 *
+		 *	FIXME: ...at some point in the distance future.  Names
+		 *	are icky, we should compare based on dl_module_t, but
+		 *	ordering issues make this difficult currently.
+		 */
+		if (uctx->process_module_name) {
+			/* catch users doing stupid things */
+			if (strcmp(uctx->process_module_name, vs->process_mi->module->name) != 0) {
+				cf_log_err(ci, "virtual server \"%s\" must be of type \"%s\", "
+					   "got type \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   uctx->process_module_name, vs->process_mi->module->name);
+				return -1;
+			}
+		}
+
+		/*
+		 *	It's theoretically possible for the same module to be used
+		 *	with multiple namespaces, so we need this check too.
+		 */
+		if (uctx->required_dict) {
+			fr_dict_t *required_dict = *uctx->required_dict;
+
+			if (!fr_cond_assert_msg(required_dict != NULL,
+						"dict not resolved before virtual server reference")) {
+				goto done;
+			}
+
+			if (required_dict != *vs->process_module->dict) {
+				cf_log_err(ci, "virtual server \"%s\" must use namespace \"%s\", "
+					   "got namespace \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   fr_dict_root(required_dict)->name,
+					   fr_dict_root(*vs->process_module->dict)->name);
+				return -1;
+			}
+		}
+	}
+
+done:
+	*((virtual_server_t const **)out) = vs;
+
+	return 0;
+}
+
+static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections(virtual_server_t *vs, tmpl_rules_t const *rules, int *found)
+{
+	static unlang_mod_actions_t const mod_actions_finally = {
+		.actions = {
+			[RLM_MODULE_REJECT]	= MOD_PRIORITY(3),
+			[RLM_MODULE_FAIL]	= MOD_PRIORITY(1),
+			[RLM_MODULE_OK]		= MOD_PRIORITY(4),
+			[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
+			[RLM_MODULE_INVALID]	= MOD_PRIORITY(2),
+			[RLM_MODULE_DISALLOW]	= MOD_PRIORITY(5),
+			[RLM_MODULE_NOTFOUND]	= MOD_PRIORITY(6),
+			[RLM_MODULE_NOOP]	= MOD_PRIORITY(8),
+			[RLM_MODULE_UPDATED]	= MOD_PRIORITY(7)
+		},
+		.retry = RETRY_INIT,
+	};
+
+	fr_dict_attr_t const	*da = NULL;
+	fr_dict_attr_t const 	**da_p = vs->process_module->packet_type;
+	CONF_SECTION		*subcs;
+
+	if (da_p) {
+		da = *da_p;
+		fr_assert_msg(da != NULL, "Packet-Type attr not resolved");
+	}
+
+	/*
+	 *	Iterate over all the finally sections, trying to resolve
+	 *	the name2 to packet types.
+	 */
+	for (subcs = cf_section_find(vs->server_cs, "finally", CF_IDENT_ANY);
+	     subcs;
+	     subcs = cf_section_find_next(vs->server_cs, subcs, "finally", CF_IDENT_ANY)) {
+		char const			*packet_type = cf_section_name2(subcs);
+		fr_dict_enum_value_t const	*ev;
+		fr_value_box_t			key;
+		int				ret;
+		void				*instruction;
+
+		if (!cf_section_name2(subcs)) {
+			if (vs->finally_default) {
+				cf_log_err(subcs, "Duplicate 'finally { ... }' section");
+				return -1;
+			}
+
+			ret = unlang_compile(vs, subcs, &mod_actions_finally, rules, &instruction);
+			if (ret < 0) return -1;
+
+			vs->finally_default = instruction;
+			(*found)++;
+
+			continue;
+		}
+
+		/*
+		 *	FIXME: This would allow response packet types too
+		 *	We don't have anything that lists request/response
+		 *	types, so we can't check that here.
+		 */
+		ev = fr_dict_enum_by_name(da, packet_type, talloc_strlen(packet_type));
+		if (!ev) {
+			cf_log_err(subcs, "Invalid 'finally %s { ... }' section, "
+					"does not match any Packet-Type value", packet_type);
+			return -1;
+		}
+
+		/*
+		 *	This is... unlikely, as protocols usually use small
+		 *	packet types.
+		 */
+		if (!fr_type_is_integer_except_bool(ev->value->type)) {
+		forbid:
+			if (da) {
+				cf_log_err(subcs, "'finally %s { ... }' section, "
+					"not supported for this protocol.  %s is a %s", packet_type,
+					da->name, fr_type_to_str(ev->value->type));
+			} else {
+
+				cf_log_err(subcs, "'finally %s { ... }' section, "
+					"not supported for this protocol", packet_type);
+			}
+			return -1;
+		}
+
+		if (fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, ev->value) < 0) {
+			goto forbid;
+		}
+
+		if (key.vb_uint16 > talloc_array_length(vs->finally_by_packet_type)) {
+			MEM(vs->finally_by_packet_type = talloc_realloc_zero(vs, vs->finally_by_packet_type,
+									     void *, key.vb_uint16 + 1));
+		}
+
+		if (vs->finally_by_packet_type[key.vb_uint16]) {
+			cf_log_err(subcs, "Duplicate 'finally %s { ... }' section", packet_type);
+			return -1;
+		}
+
+		ret = unlang_compile(vs, subcs, &mod_actions_finally, rules, &instruction);
+		if (ret < 0) return -1;
+
+		vs->finally_by_packet_type[key.vb_uint16] = instruction;
+
+		(*found)++;
+	}
 
 	return 0;
 }
@@ -943,7 +1195,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  * @param[in] vs	to to compile sections for.
  * @param[in] rules	to apply for pass1.
  */
-int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules)
+static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t const *rules)
 {
 	virtual_server_compile_t const	*list = vs->process_module->compile_list;
 	void				*instance = vs->process_mi->data;
@@ -1088,6 +1340,30 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 		}
 	}
 
+	/*
+	 *	Compile finally sections, these are special
+	 *	sections and always execute before the request
+	 *	exits from the virtual server.
+	 */
+	if (unlikely(virtual_server_compile_finally_sections(vs, rules, &found) < 0)) {
+		cf_log_err(server, "Failed to compile finally sections");
+		return -1;
+	}
+
+	/*
+	 *	Didn't find any processing sections.  Note that we don't count "finally" sections here.  They
+	 *	are only run after the packet has been processed through the normal sections.  A virtual
+	 *	server with only a "finally" section doesn't make sense.
+	 *
+	 *	i.e. if people want to accept packets without responding, they need a "recv foo" section which
+	 *	contains a "do_not_respond" policy.
+	 */
+	if (!found) {
+		cf_log_err(server, "No processing sections are defined for this virtual server");
+		cf_log_err(server, "The server WILL NOT be able to process packets until the configuration is fixed");
+		return -1;
+	}
+
 	return found;
 }
 
@@ -1189,7 +1465,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
-		fr_dict_enum_value_t	*dv;
+		fr_dict_enum_value_t const	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
@@ -1259,7 +1535,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		ssize_t slen, len;
 		char const *attr, *value;
 		CONF_PAIR *cp;
-		fr_dict_enum_value_t *dv;
+		fr_dict_enum_value_t const *dv;
 		fr_value_box_t box;
 
 		if (cf_item_is_section(ci)) {
@@ -1297,7 +1573,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		/*
 		 *	@todo - unescape for double quoted strings.  Whoops.
 		 */
-		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL, false);
+		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL);
 		if (slen < 0) {
 			cf_log_err(cp, "Failed parsing value - %s", fr_strerror());
 			return -1;
@@ -1462,6 +1738,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 int virtual_servers_open(fr_schedule_t *sc)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	int opened = 0;
 
 	fr_assert(virtual_servers);
 
@@ -1469,18 +1746,21 @@ int virtual_servers_open(fr_schedule_t *sc)
 	fr_strerror_clear();
 
 	for (i = 0; i < server_cnt; i++) {
-		fr_virtual_listen_t	**listeners;
+		virtual_server_listen_t	**listeners;
 		size_t			j, listener_cnt;
 
 		listeners = virtual_servers[i]->listeners;
 		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {
-			fr_virtual_listen_t *listener = listeners[j];
+			int ret;
+			virtual_server_listen_t *listener = listeners[j];
 
 			fr_assert(listener != NULL);
 			fr_assert(listener->proto_mi != NULL);
 			fr_assert(listener->proto_module != NULL);
+
+			fr_assert(listener->proto_module->open != NULL);
 
 			/*
 			 *	The socket is opened with app_instance,
@@ -1493,26 +1773,23 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
 			 *	to create the fr_listen_t structure.
 			 */
-			if (listener->proto_module->open) {
-				int ret;
 
-				/*
-				 *	Sometimes the open function needs to modify instance
-				 *	data, so we need to temporarily remove the protection.
-				 */
-				module_instance_data_unprotect(listener->proto_mi);
-				ret = listener->proto_module->open(listener->proto_mi->data, sc,
-							           listener->proto_mi->conf);
-				module_instance_data_protect(listener->proto_mi);
-			   	if (unlikely(ret < 0)) {
-					cf_log_err(listener->proto_mi->conf,
-						   "Opening %s I/O interface failed",
-						   listener->proto_module->common.name);
-
-					return -1;
-				}
-
+			/*
+			 *	Sometimes the open function needs to modify instance
+			 *	data, so we need to temporarily remove the protection.
+			 */
+			module_instance_data_unprotect(listener->proto_mi);
+			ret = listener->proto_module->open(listener->proto_mi->data, sc,
+							   listener->proto_mi->conf);
+			module_instance_data_protect(listener->proto_mi);
+			if (unlikely(ret < 0)) {
+				cf_log_err(listener->proto_mi->conf,
+					   "Failed opening listener %s",
+					   listener->proto_module->common.name);
+				return -1;
 			}
+
+			opened++;
 
 			/*
 			 *	Socket information is printed out by
@@ -1520,6 +1797,12 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 */
 			DEBUG3("Opened listener for %s", listener->proto_module->common.name);
 		}
+	}
+
+	if (!opened) {
+		ERROR("There are no 'listen' sections defined.");
+		ERROR("Refusing to start, as the server will never process any packets.");
+		return -1;
 	}
 
 	return 0;
@@ -1619,6 +1902,8 @@ int virtual_servers_instantiate(void)
 					.dict_def = dict,
 					.list_def = request_attr_request,
 				},
+
+				.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 			};
 
 			fr_assert(parse_rules.attr.dict_def != NULL);

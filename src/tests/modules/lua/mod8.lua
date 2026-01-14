@@ -1,4 +1,4 @@
-function authorize()
+function recv()
 	print("#mod8.lua: init")
 
 	-- fr {}

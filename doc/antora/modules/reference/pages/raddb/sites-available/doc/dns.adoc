@@ -1,0 +1,7 @@
+= DNS
+
+Domain Name Service (DNS) provides mappings of names to IP addresses.
+The DNS functionality can receive and respond to the commonly used DNS
+resource records.
+
+DNS records can be looked up in any database.

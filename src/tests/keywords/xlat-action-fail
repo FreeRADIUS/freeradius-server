@@ -1,7 +1,7 @@
 #
 #  A failed xlat is false.
 #
-if (!%debug(foobar)) {
+if (!%debug('foobar')) { # ERROR
 	success
 
 } else {

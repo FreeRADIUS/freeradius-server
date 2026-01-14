@@ -1,4 +1,4 @@
-=== Determine the IP pool plan
+= Determine the IP Pool Plan
 
 Except for cases where all IP allocation is performed using a mapping from the
 device MAC address to a fixed IP address, the DHCP configuration will involve
@@ -6,7 +6,7 @@ the use of one or more IP address pools.
 
 FreeRADIUS stores all the IP addresses in its pools in whichever database has
 been chosen. An instance of the `sqlippools` module is used to manage all pools
-within a single table (normally `dhcpippool`). Each row of this table
+within a single table (normally `fr_ippool`). Each row of this table
 corresponds to an IP address that is a member of some pool. The pools are
 distinguished by name, so the table has a column (`pool_name`) that denotes
 this.
@@ -46,7 +46,7 @@ more granularity that their Layer 2 network, such as by considering device
 attributes ("class" membership in ISC parlance) or Option 82 circuit data.
 
 
-=== Populate the IP Pools
+== Populate the IP Pools
 
 By this stage you should have derived a list of pools, the IP address ranges
 contained therein, and the means of selecting the pool to use based on the
@@ -74,7 +74,7 @@ using the name `local`, this could be prepared with:
 
 [source,shell]
 ----
-rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t dhcpippool -d postgresql
+rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t fr_ippool -d postgresql
 ----
 
 If the SQL module of FreeRADIUS is already configured then this can
@@ -83,7 +83,7 @@ parameters to connect to the database and populate the pool:
 
 [source,shell]
 ----
-rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t dhcpippool -f /etc/raddb
+rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t fr_ippool -f /etc/raddb
 ----
 
 For installations that require multiple pools, `rlm_sqlippool_tool` can
@@ -108,5 +108,5 @@ FreeRADIUS database, using the mac as the identifier:
 
 [source,shell]
 ----
-rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t dhcpippool -k mac -f /usr/local/etc/raddb
+rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t fr_ippool -k mac -f /etc/raddb
 ----

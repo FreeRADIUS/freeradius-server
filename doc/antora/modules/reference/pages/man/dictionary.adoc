@@ -1,0 +1,24 @@
+= dictionary(5)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:manvolnum: 5
+
+== NAME
+
+dictionary - FreeRADIUS dictionary file
+
+include::../dictionary/index.adoc[]
+
+== SEE ALSO
+
+radiusd(8) radiusd.conf(5)
+
+== AUTHOR
+
+The FreeRADIUS Server Project (https://freeradius.org)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -28,31 +28,53 @@ RCSIDH(event_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/timer.h>
+
+/*
+ *	Allow public and private versions of the same structures
+ */
+#ifndef _EVENT_LIST_PRIVATE
+typedef struct fr_event_list_pub_s fr_event_list_t;
+#endif
+
+/** Public event list structure
+ *
+ * Make the event timer list available, but nothing else.
+ *
+ * This allows us to access these values without the cost of a function call.
+ */
+struct fr_event_list_pub_s {
+	fr_timer_list_t *tl;			//!< The timer list associated with this event loop.
+};
+
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/time.h>
+
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <sys/event.h>
 
+
+#ifdef WITH_EVENT_DEBUG
+#  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");
+#  ifndef EVENT_REPORT_FREQ
+#    define EVENT_REPORT_FREQ	5
+#  endif
+#else
+#  define EVENT_DEBUG(...)
+#endif
+
 /** An opaque file descriptor handle
  */
 typedef struct fr_event_fd fr_event_fd_t;
-
-/** An opaque event list handle
- */
-typedef struct fr_event_list fr_event_list_t;
-
-/** An opaque timer handle
- */
-typedef struct fr_event_timer fr_event_timer_t;
 
 /** An opaque PID status handle
  */
 typedef struct fr_event_pid fr_event_pid_t;
 
-/** An opaquer user event handle
+/** An opaque user event handle
  */
 typedef struct fr_event_user_s fr_event_user_t;
 
@@ -109,14 +131,6 @@ typedef struct {
  */
 #define FR_EVENT_RESUME(_s, _f)		{ .offset = offsetof(_s, _f), .op = FR_EVENT_OP_RESUME }
 
-/** Called when a timer event fires
- *
- * @param[in] now	The current time.
- * @param[in] el	Event list the timer event was inserted into.
- * @param[in] uctx	User ctx passed to #fr_event_timer_in or #fr_event_timer_at.
- */
-typedef	void (*fr_event_timer_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);
-
 /** Called after each event loop cycle
  *
  * Called before calling kqueue to put the thread in a sleeping state.
@@ -162,11 +176,13 @@ typedef void (*fr_event_pid_cb_t)(fr_event_list_t *el, pid_t pid, int status, vo
  */
 typedef void (*fr_event_user_cb_t)(fr_event_list_t *el, void *uctx);
 
-/** Alternative time source, useful for testing
+/** Called when a post event fires
  *
- * @return the current time in nanoseconds past the epoch.
+ * @param[in] el	Event list the post event was inserted into.
+ * @param[in] now	The current time.
+ * @param[in] uctx	User ctx passed to #fr_timer_in or #fr_timer_at.
  */
-typedef fr_time_t (*fr_event_time_source_t)(void);
+typedef	void (*fr_event_post_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 /** Callbacks for the #FR_EVENT_FILTER_IO filter
  */
@@ -244,20 +260,6 @@ int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uintptr_
 int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour);
 #endif
 
-int		_fr_event_timer_at(NDEBUG_LOCATION_ARGS
-				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				   fr_time_t when, fr_event_timer_cb_t callback, void const *uctx);
-#define		fr_event_timer_at(...) _fr_event_timer_at(NDEBUG_LOCATION_EXP __VA_ARGS__)
-
-int		_fr_event_timer_in(NDEBUG_LOCATION_ARGS
-				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				   fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx);
-#define		fr_event_timer_in(...) _fr_event_timer_in(NDEBUG_LOCATION_EXP __VA_ARGS__)
-
-int		fr_event_timer_delete(fr_event_timer_t const **ev);
-
-fr_time_t	fr_event_timer_when(fr_event_timer_t const *ev) CC_HINT(nonnull);
-
 int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
 				   pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
@@ -272,23 +274,21 @@ int		_fr_event_pid_reap(NDEBUG_LOCATION_ARGS
 
 unsigned int	fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t timeout, int signal);
 
-int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
-
 int 		_fr_event_user_insert(NDEBUG_LOCATION_ARGS
 				      TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_user_t **ev_p,
 				      bool trigger, fr_event_user_cb_t callback, void *uctx);
-#define		fr_event_user_insert(_ctx, _ev_p, _el, _trigger, _callback, _uctx) \
-			_fr_event_user_insert(NDEBUG_LOCATION_EXP _ctx, _ev_p, _el, _trigger, _callback, _uctx)
+#define		fr_event_user_insert(_ctx, _el, _ev_p, _trigger, _callback, _uctx) \
+			_fr_event_user_insert(NDEBUG_LOCATION_EXP _ctx, _el, _ev_p, _trigger, _callback, _uctx)
 
-int		fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev);
+int		fr_event_user_trigger(fr_event_user_t *ev);
 
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_cb_t user, void *uctx) CC_HINT(nonnull(1,2));
 
 int		fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
-int		fr_event_post_insert(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
-int		fr_event_post_delete(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_post_delete(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
 int		fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait);
 void		fr_event_service(fr_event_list_t *el);
@@ -298,16 +298,8 @@ bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
-void		fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func);
 
 bool		fr_event_list_empty(fr_event_list_t *el);
-
-#ifdef WITH_EVENT_DEBUG
-void		fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx);
-#  ifndef NDEBUG
-void		fr_event_timer_dump(fr_event_list_t *el);
-#  endif
-#endif
 
 #ifdef __cplusplus
 }

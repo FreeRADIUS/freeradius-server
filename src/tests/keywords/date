@@ -11,7 +11,7 @@ date test_date
 test_integer := 1506101100
 
 # Convert to string representation
-result_string1 := %date(%{test_integer})
+result_string1 := %date(test_integer)
 
 # Some systems report GMT some UTC...
 if (!(result_string1 == "Fri 22 Sep 17:25:00 GMT 2017")) && (!(result_string1 == "Fri 22 Sep 17:25:00 UTC 2017")) {
@@ -19,7 +19,7 @@ if (!(result_string1 == "Fri 22 Sep 17:25:00 GMT 2017")) && (!(result_string1 ==
 }
 
 # Convert string to integer
-result_integer := %date(%{result_string1})
+result_integer := %date(result_string1)
 
 
 if (!(result_integer == test_integer)) {
@@ -27,7 +27,7 @@ if (!(result_integer == test_integer)) {
 }
 
 # Compare two methods of reading request timestamp in local timezone
-result_string1 := %localdate(request)
+result_string1 := %localdate('request')
 result_string2 := %S
 
 if (!(result_string1 == result_string2)) {
@@ -37,7 +37,7 @@ if (!(result_string1 == result_string2)) {
 # Convert different string format
 result_string1 := "2017-09-22 17:25:00"
 
-result_integer := %sqldate(%{result_string1})
+result_integer := %sqldate(result_string1)
 
 if (!(result_integer == test_integer)) {
 	test_fail
@@ -45,7 +45,7 @@ if (!(result_integer == test_integer)) {
 
 # Use a date attribute
 test_date := 1659985459
-result_string1 := %sqldate(%{test_date})
+result_string1 := %sqldate(test_date)
 
 if !(result_string1 == '2022-08-08 19:04:19') {
 	test_fail
@@ -53,7 +53,7 @@ if !(result_string1 == '2022-08-08 19:04:19') {
 
 # Invalid format
 result_string1 := '201-32-22 17:25:00'
-result_string2 := %sqldate(%{result_string1})
+result_string2 := %sqldate(result_string1)
 
 # This shouldn't exist, as the RHS above is NULL, and therefore the assignment will fail
 if (result_string2) {
@@ -66,7 +66,7 @@ if (!(Module-Failure-Message == "Failed to parse time string \"201-32-22 17:25:0
 
 # Invalid type
 NAS-IP-Address := "192.168.1.1"
-result_string2 := %date(%{NAS-IP-Address})
+result_string2 := %date(NAS-IP-Address)
 
 if (result_string2) {
 	test_fail

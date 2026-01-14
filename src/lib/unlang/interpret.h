@@ -30,6 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/action.h>
 
 #define UNLANG_TOP_FRAME (true)
@@ -88,6 +89,12 @@ typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
  */
 typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx);
 
+/** Re-priotise the request in the runnable queue
+ *
+ * The new priority will be available in request->async->priority.
+ */
+typedef void (*unlang_request_prioritise_t)(request_t *request, void *uctx);
+
 /** External functions provided by the owner of the interpret
  *
  * These functions allow the event loop to signal the caller when a given
@@ -113,21 +120,47 @@ typedef struct {
 	unlang_request_done_t		done_detached;	//!< Function called when a detached request completes.
 
 	unlang_request_init_t		detach;		//!< Function called when a request is detached.
-	unlang_request_stop_t		stop;		//!< function called when a request is signalled to stop.
 	unlang_request_yield_t		yield;		//!< Function called when a request yields.
 	unlang_request_resume_t		resume;		//!< Function called when a request is resumed.
 	unlang_request_runnable_t	mark_runnable;	//!< Function called when a request needs to be
 							///< added back to the runnable queue.
 	unlang_request_scheduled_t	scheduled;	//!< Function to check if a request is already
 							///< scheduled.
+	unlang_request_prioritise_t	prioritise;	//!< Function to re-priotise a request in the
+							///< runnable queue.
 } unlang_request_func_t;
 
-int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
-					      	      rlm_rcode_t default_action, bool top_frame)
+typedef struct {
+	rlm_rcode_t 			rcode;			//!< The current rcode, from executing the instruction
+								///< or merging the result from a frame.
+	unlang_mod_action_t		priority;		//!< The priority or action for that rcode.
+} unlang_result_t;
+
+#define UNLANG_RESULT_NOT_SET ((unlang_result_t) { .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET })
+#define UNLANG_RESULT_RCODE(_x) ((unlang_result_t) { .rcode = (_x), .priority = MOD_ACTION_NOT_SET })
+
+/** Configuration structure to make it easier to pass configuration options to initialise the frame with
+ */
+typedef struct {
+	bool				top_frame;		//!< Is this the top frame?
+	unlang_result_t			default_result;		//!< The default result for the frame.
+								///< This needs to be specified separately
+								///< from p_result, because we may be passing
+								///< in NULL for p_result.
+} unlang_frame_conf_t;
+
+#define FRAME_CONF(_default_rcode, _top_frame)		\
+	&(unlang_frame_conf_t){				\
+		.top_frame = (_top_frame),		\
+		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
+	}
+
+int			unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
+						      CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 						      CC_HINT(warn_unused_result);
 
-int			unlang_interpret_push_instruction(request_t *request, void *instruction,
-						  	  rlm_rcode_t default_rcode, bool top_frame)
+int			unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *request,
+							  void *instruction, unlang_frame_conf_t const *conf)
 						  	  CC_HINT(warn_unused_result);
 
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,
@@ -145,6 +178,8 @@ void			unlang_interpret_set_thread_default(unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get_thread_default(void);
 
+int			unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout) CC_HINT(nonnull);
+
 rlm_rcode_t		unlang_interpret(request_t *request, bool running) CC_HINT(hot);
 
 rlm_rcode_t		unlang_interpret_synchronous(fr_event_list_t *el, request_t *request);
@@ -159,6 +194,10 @@ bool			unlang_request_is_done(request_t const *request);
 
 void			unlang_interpret_request_done(request_t *request);
 
+void			unlang_interpret_request_cancel_retry(request_t *request);
+
+void			unlang_interpret_request_prioritise(request_t *request, uint32_t priority);
+
 void			unlang_interpret_mark_runnable(request_t *request);
 
 bool			unlang_interpret_is_resumable(request_t *request);
@@ -167,9 +206,11 @@ void			unlang_interpret_signal(request_t *request, fr_signal_t action);
 
 int			unlang_interpret_stack_depth(request_t *request);
 
-rlm_rcode_t		unlang_interpret_stack_result(request_t *request);
+rlm_rcode_t		unlang_interpret_rcode(request_t *request);
 
-void			unlang_interpret_stack_result_set(request_t *request, rlm_rcode_t code);
+unlang_mod_action_t	unlang_interpret_priority(request_t *request);
+
+unlang_result_t		*unlang_interpret_result(request_t *request);
 
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 

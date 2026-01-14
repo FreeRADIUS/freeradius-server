@@ -1,0 +1,41 @@
+#
+#  Test sqlippool does not overwrite existing values in the target attribute.
+#
+integer count
+control.IP-Pool.Name := 'no_overwrite'
+
+#
+#  Add a dynamic IP addresses
+#
+%sql("DELETE FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}'")
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) VALUES ('%{control.IP-Pool.Name}', '192.168.0.99', datetime('now', '-00:20'))")
+
+#
+#  Manually set the Framed-IP-Address
+#
+reply.Framed-IP-Address := 10.1.0.10
+
+#
+#  Check sqlippool does nothing
+#
+sqlippool.allocate
+if (!noop) {
+	test_fail
+}
+
+if !(reply.Framed-IP-Address == 10.1.0.10) {
+	test_fail
+}
+
+#
+#  Check that the address has not been allocated
+#
+count = %sql("SELECT COUNT(*) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND expiry_time < datetime('now', '-00:01')")
+
+if (count != 1) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

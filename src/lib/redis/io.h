@@ -68,7 +68,7 @@ typedef struct {
 	bool			write_set;		//!< We're listening for writes.
 	bool			ignore_disconnect_cb;	//!< Ensure that redisAsyncFree doesn't cause
 							///< a callback loop.
-	fr_event_timer_t const	*timer;			//!< Connection timer.
+	fr_timer_t		*timer_ev;		//!< Connection timer.
 
 
 	redisAsyncContext	*ac;			//!< Async handle for hiredis.

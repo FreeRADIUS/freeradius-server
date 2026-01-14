@@ -31,6 +31,10 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/skip.h>
+#include <freeradius-devel/util/value.h>
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
@@ -58,7 +62,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_winbind_dict[];
 fr_dict_autoload_t rlm_winbind_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -68,7 +72,7 @@ extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
 fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -86,6 +90,7 @@ typedef struct {
  * @param request	The current request
  * @param name		Group name to be searched
  * @param env		Group check xlat call_env
+ * @param t		Winbind thread structure
  *
  * @return
  *	- 0 user is in group
@@ -238,6 +243,10 @@ error:
 	return rcode;
 }
 
+static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
+	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Check if the user is a member of a particular winbind group
  *
@@ -267,6 +276,71 @@ static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const winbind_ping_xlat_arg[] = {
+	{ .required = false, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Ping a specific domain
+ *
+ * Sends a noop style message to AD to check if winbind and AD are responsive.
+@verbatim
+%winbind.ping([<domain>])
+@endverbatim
+ */
+static xlat_action_t winbind_ping_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
+{
+	rlm_winbind_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_winbind_thread_t);
+	fr_value_box_t const	*domain = fr_value_box_list_head(in);
+	winbind_ctx_t		*wbctx;
+	char			*dc = NULL;
+ 	struct wbcAuthErrorInfo	*err_info = NULL;
+	wbcErr			err;
+	fr_value_box_t		*out_vb;
+	fr_time_t		then, now;
+
+	wbctx = winbind_slab_reserve(t->slab);
+	if (!wbctx) {
+		RERROR("Ping failed - Unable to get winbind context");
+		return XLAT_ACTION_FAIL;
+	}
+
+	then = fr_time();
+	/*
+	 *	Yes, this is a synchronous call, no, we can't set an explicit timeout
+	 */
+	err = wbcCtxPingDc2(wbctx->ctx, domain ? domain->vb_strvalue : NULL, &err_info, &dc);
+	now = fr_time();
+
+	MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (WBC_ERROR_IS_OK(err)) {
+		RDEBUG2("Ping succeeded to DC %s after %pVms", dc,
+			fr_box_time_delta_msec(fr_time_sub(now, then)));
+
+		MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, "ok", false) == 0);
+	} else {
+		char const *err_str = wbcErrorString(err);
+
+		RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
+		       fr_box_time_delta_msec(fr_time_sub(now, then)),
+		       err_info->display_string ? " - " : "",
+		       err_info->display_string ? err_info->display_string : "");
+
+		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+	}
+
+	if (dc) wbcFreeMemory(dc);
+	if (err_info) wbcFreeMemory(err_info);
+	winbind_slab_release(wbctx);
+
+	fr_dcursor_append(out, out_vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 /*
  *	Free winbind context
@@ -290,12 +364,6 @@ static int winbind_ctx_alloc(winbind_ctx_t *wbctx, UNUSED void *uctx)
 	talloc_set_destructor(wbctx, _mod_ctx_free);
 	return 0;
 }
-
-static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 
 /** Instantiate this module
  *
@@ -330,7 +398,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_winbind_t);
 	winbind_autz_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_autz_call_env_t);
@@ -340,18 +408,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (!vp) {
 		REDEBUG2("No %s found in the request; not doing winbind authentication.",
 			 tmpl_attr_tail_da(env->password)->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
@@ -361,7 +429,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	winbind_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_auth_call_env_t);
 	rlm_winbind_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_winbind_thread_t);
@@ -371,7 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -390,10 +458,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (do_auth_wbclient_pap(request, env, t) == 0) {
 		RDEBUG2("User authenticated successfully using winbind");
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
-	RETURN_MODULE_REJECT;
+	RETURN_UNLANG_REJECT;
 }
 
 static const call_env_method_t winbind_autz_method_env = {
@@ -450,7 +518,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 		}
 
 		tmpl_afrom_substr(ctx, &parsed_tmpl,
-			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
+			          &FR_SBUFF_IN_STR(wb_info->netbios_domain),
 			          T_SINGLE_QUOTED_STRING, NULL, t_rules);
 		if (!parsed_tmpl) {
 			cf_log_perr(ci, "Bad domain");
@@ -474,8 +542,8 @@ static const call_env_method_t winbind_auth_method_env = {
 		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, winbind_auth_call_env_t, username) },
 		{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, winbind_auth_call_env_t, domain),
 			.pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING, .pair.func = domain_call_env_parse },
-		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET, winbind_auth_call_env_t, password),
-			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, winbind_auth_call_env_t, password),
+			.pair.dflt = "User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -520,6 +588,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat_func_args_set(xlat, winbind_group_xlat_arg);
 	xlat_func_call_env_set(xlat, &winbind_group_xlat_call_env);
+
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "ping", winbind_ping_xlat, FR_TYPE_STRING);
+	if (!xlat) {
+		cf_log_err(conf, "Failed registering ping expansion");
+		return -1;
+	}
+	xlat_func_args_set(xlat, winbind_ping_xlat_arg);
 
 	return 0;
 }

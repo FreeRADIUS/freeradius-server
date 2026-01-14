@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 typedef struct {
 	uint16_t	code;
@@ -44,7 +45,7 @@ static _Thread_local uint8_t		fr_dns_marker[65536];
 extern fr_dict_autoload_t dns_dict[];
 fr_dict_autoload_t dns_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 //fr_dict_attr_t const *attr_dns_packet_type;
@@ -62,7 +63,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	{ .out = &attr_dns_rr, .name = "Resource-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_ns, .name = "Name-Server", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_ar, .name = "Additional-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
  char const *fr_dns_packet_names[FR_DNS_CODE_MAX] = {
@@ -428,26 +429,32 @@ int fr_dns_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_dns_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(dns_dict);
+	instantiated = false;
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	/*
-	 *	"arrays" of string/octets are encoded as a 16-bit
-	 *	length, followed by the actual data.
-	 */
-	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
-		da->flags.is_known_width = true;
+	if (da->flags.array) {
+		fr_strerror_const("The 'array' flag cannot be used with DNS");
+		return false;
+	}
+
+	if (da->type == FR_TYPE_ATTR) {
+		fr_strerror_const("The 'attribute' data type cannot be used with DNS");
+		return false;
 	}
 
 	if (fr_dns_flag_dns_label_any(da)) {
@@ -456,6 +463,15 @@ static bool attr_valid(fr_dict_attr_t *da)
 			return false;
 		}
 		da->flags.is_known_width = true;	/* Lie so we don't trip up the main validation checks */
+	}
+
+	switch (da->type) {
+	case FR_TYPE_IP:
+		da->flags.is_known_width = true;
+		break;
+
+	default:
+		break;
 	}
 
 	return true;

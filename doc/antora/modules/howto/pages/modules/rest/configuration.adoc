@@ -2,7 +2,7 @@
 
 include::howto:partial$pre_test.adoc[]
 
-== Editing mods-available/rest
+== Edit mods-available/rest
 
 [source,config]
 ----
@@ -15,7 +15,7 @@ rest {
 <1> A common URL prefix for all REST API endpoints called by this module instance.
     Connect URI is used to reduce repetition in the config.
 
-== Enabling mods-available/rest
+== Enable mods-available/rest
 
 The `rest` module is enabled by creating a soft link from the
 `mods-enabled/` directory to the `mods-available/` directory.
@@ -110,8 +110,8 @@ snooping.
 server default {
 	...
 	recv Access-Request {
-		if (&User-Password) {
-			&control.Auth-Type := rest
+		if (User-Password) {
+			control.Auth-Type := rest
 		}
 	}
 

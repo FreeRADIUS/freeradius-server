@@ -522,7 +522,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 */
 				if (reply->type != REDIS_REPLY_STRING) {
 					REDEBUG("Unexpected reply type after loading function");
-					fr_redis_reply_print(L_DBG_LVL_OFF, reply, request, 0);
+					fr_redis_reply_print(L_DBG_LVL_OFF, reply, request, 0, status);
 					goto script_load_failed;
 				}
 
@@ -552,7 +552,14 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		action = XLAT_ACTION_FAIL;
 		goto finish;
 	}
-	fr_dcursor_append(out, vb_out);
+
+	if (vb_out->type == FR_TYPE_GROUP) {
+		fr_value_box_t	*child_vb = NULL;
+		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) fr_dcursor_append(out, child_vb);
+		talloc_free(vb_out);
+	} else {
+		fr_dcursor_append(out, vb_out);
+	}
 
 finish:
 	fr_redis_reply_free(&reply);
@@ -708,8 +715,6 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	RDEBUG2("REDIS command arguments");
-	RINDENT();
 	fr_value_box_list_foreach(in, vb) {
 		if (argc == NUM_ELEMENTS(argv)) {
 			REDEBUG("Too many arguments (%i)", argc);
@@ -721,7 +726,6 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		arg_len[argc] = vb->vb_length;
 		argc++;
 	}
-	REXDENT();
 
 	/*
 	 *	If we've got multiple arguments, the second one is usually the key.
@@ -767,7 +771,14 @@ reply_parse:
 		action = XLAT_ACTION_FAIL;
 		goto finish;
 	}
-	fr_dcursor_append(out, vb_out);
+
+	if (vb_out->type == FR_TYPE_GROUP) {
+		fr_value_box_t	*child_vb = NULL;
+		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) fr_dcursor_append(out, child_vb);
+		talloc_free(vb_out);
+	} else {
+		fr_dcursor_append(out, vb_out);
+	}
 
 finish:
 	fr_redis_reply_free(&reply);
@@ -781,7 +792,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_socket_t *nodes;
 	int ret, i;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	/*

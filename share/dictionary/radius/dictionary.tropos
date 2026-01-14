@@ -13,29 +13,29 @@ VENDOR		Tropos				14529
 
 BEGIN-VENDOR	Tropos
 
-ATTRIBUTE	Unicast-Cipher				1	integer
-ATTRIBUTE	Layer2-Input-Octets			2	integer
-ATTRIBUTE	Layer2-Output-Octets			3	integer
-ATTRIBUTE	Layer2-Input-Frames			4	integer
-ATTRIBUTE	Layer2-Output-Frames			5	integer
-ATTRIBUTE	Layer2-Input-Drops			6	integer
+ATTRIBUTE	Unicast-Cipher				1	uint32
+ATTRIBUTE	Layer2-Input-Octets			2	uint32
+ATTRIBUTE	Layer2-Output-Octets			3	uint32
+ATTRIBUTE	Layer2-Input-Frames			4	uint32
+ATTRIBUTE	Layer2-Output-Frames			5	uint32
+ATTRIBUTE	Layer2-Input-Drops			6	uint32
 ATTRIBUTE	Noise-Floor				7	ifid
 ATTRIBUTE	Noise-Upper-Bound			8	ifid
 ATTRIBUTE	Release					9	string
 ATTRIBUTE	Secondary-IP				11	octets
-ATTRIBUTE	Terminate-Cause				12	integer
-ATTRIBUTE	Average-RSSI				13	integer
+ATTRIBUTE	Terminate-Cause				12	uint32
+ATTRIBUTE	Average-RSSI				13	uint32
 ATTRIBUTE	Channel					15	ifid
-ATTRIBUTE	Retries-Sent				16	integer
-ATTRIBUTE	Retry-Bits				17	integer
+ATTRIBUTE	Retries-Sent				16	uint32
+ATTRIBUTE	Retry-Bits				17	uint32
 ATTRIBUTE	Rates-Sent				18	octets
 ATTRIBUTE	Rates-Received				19	octets
-ATTRIBUTE	Routed-Time				21	integer
-ATTRIBUTE	Routless-Since				22	integer
+ATTRIBUTE	Routed-Time				21	uint32
+ATTRIBUTE	Routless-Since				22	uint32
 ATTRIBUTE	Capability-Info				23	octets
-ATTRIBUTE	Input-Cap				24	integer
-ATTRIBUTE	Output-Cap				25	integer
-ATTRIBUTE	Class-Mult				26	integer
+ATTRIBUTE	Input-Cap				24	uint32
+ATTRIBUTE	Output-Cap				25	uint32
+ATTRIBUTE	Class-Mult				26	uint32
 ATTRIBUTE	Cell-Name				27	string
 ATTRIBUTE	Cell-Location				28	string
 ATTRIBUTE	Serial-Number				29	string

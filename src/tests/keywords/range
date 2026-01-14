@@ -1,0 +1,10 @@
+octets foo
+
+foreach i (%range(4)) {
+	foo += (octets) i
+}
+
+if (foo != 0x0000000000000000000000000000000100000000000000020000000000000003) {
+	test_fail
+}
+success

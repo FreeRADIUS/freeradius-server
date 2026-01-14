@@ -29,8 +29,8 @@ ATTRIBUTE	Asterisk-Last-Data			109	string
 ATTRIBUTE	Asterisk-Start-Time			110	string
 ATTRIBUTE	Asterisk-Answer-Time			111	string
 ATTRIBUTE	Asterisk-End-Time			112	string
-ATTRIBUTE	Asterisk-Duration			113	integer
-ATTRIBUTE	Asterisk-Bill-Sec			114	integer
+ATTRIBUTE	Asterisk-Duration			113	uint32
+ATTRIBUTE	Asterisk-Bill-Sec			114	uint32
 ATTRIBUTE	Asterisk-Disposition			115	string
 ATTRIBUTE	Asterisk-AMA-Flags			116	string
 ATTRIBUTE	Asterisk-Unique-ID			117	string

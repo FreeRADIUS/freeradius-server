@@ -17,8 +17,8 @@
 #
 #  Lower 12 bits is the IEEE-802.1Q VLAN VID.
 #
-ATTRIBUTE	Egress-VLANID				56	integer
-ATTRIBUTE	Ingress-Filters				57	integer
+ATTRIBUTE	Egress-VLANID				56	uint32
+ATTRIBUTE	Ingress-Filters				57	uint32
 
 #
 #  First byte == '1' (0x31) means that the frames are tagged.

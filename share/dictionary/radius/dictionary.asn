@@ -23,23 +23,23 @@ ATTRIBUTE	IP-Pool-Name				1	string
 ### 2-99: free ###
 
 ## limits
-ATTRIBUTE	Kbps-Down				100	integer
-ATTRIBUTE	Kbps-Down-Localmedia			112	integer
-ATTRIBUTE	Kbps-Up					101	integer
-ATTRIBUTE	Pps-Down				102	integer
-ATTRIBUTE	Pps-Up					103	integer
-ATTRIBUTE	TCP-Connlimit				104	integer
+ATTRIBUTE	Kbps-Down				100	uint32
+ATTRIBUTE	Kbps-Down-Localmedia			112	uint32
+ATTRIBUTE	Kbps-Up					101	uint32
+ATTRIBUTE	Pps-Down				102	uint32
+ATTRIBUTE	Pps-Up					103	uint32
+ATTRIBUTE	TCP-Connlimit				104	uint32
 
 ## firewall
-ATTRIBUTE	Firewall-Available			110	integer
+ATTRIBUTE	Firewall-Available			110	uint32
 VALUE	Firewall-Available		Yes			1
 VALUE	Firewall-Available		No			2
 
-ATTRIBUTE	Firewall-State				105	integer
+ATTRIBUTE	Firewall-State				105	uint32
 VALUE	Firewall-State			Enabled			1
 VALUE	Firewall-State			Disabled		2
 
-ATTRIBUTE	Firewall-Block-Ping			107	integer
+ATTRIBUTE	Firewall-Block-Ping			107	uint32
 VALUE	Firewall-Block-Ping		Enabled			1
 VALUE	Firewall-Block-Ping		Disabled		2
 
@@ -47,23 +47,23 @@ VALUE	Firewall-Block-Ping		Disabled		2
 ATTRIBUTE	Firewall-Open				106	string
 
 ## QoS
-ATTRIBUTE	QoS-Available				111	integer
+ATTRIBUTE	QoS-Available				111	uint32
 VALUE	QoS-Available			Yes			1
 VALUE	QoS-Available			No			2
 
-ATTRIBUTE	QoS-State				108	integer
+ATTRIBUTE	QoS-State				108	uint32
 VALUE	QoS-State			Enabled			1
 VALUE	QoS-State			Disabled		2
 
 # IP redirection, with optional randomness
 #  "<tcp/udp/sctp> src/dst [<dsthost[/mask]>:]<port1,port2,...> <host>:<port> [<random%>]"
 # where src/dst decides whether to match source or destination ports
-#       random is an integer number from 1 to 99, or null - no randomness
+#       random is an uint32 number from 1 to 99, or null - no randomness
 ATTRIBUTE	IP-Redirect				109	string
 
 ## web filtering
 # decides whether to deny or to allow only the specified web topics
-ATTRIBUTE	Webfilter-Mode				113	integer
+ATTRIBUTE	Webfilter-Mode				113	uint32
 VALUE	Webfilter-Mode			Deny			1
 VALUE	Webfilter-Mode			Allow			2
 

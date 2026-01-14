@@ -45,7 +45,7 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason);
 static ssize_t radius_client_retry(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size);
 
-static void fr_radius_client_bio_connect_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
+static void fr_radius_client_bio_connect_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx);
 
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
@@ -60,16 +60,6 @@ fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_co
 
 	return fr_radius_client_tcp_bio_alloc(ctx, cfg, fd_cfg);
 }
-
-static int _radius_client_fd_bio_free(fr_radius_client_fd_bio_t *my)
-{
-	if (fr_bio_shutdown(my->common.bio) < 0) return -1;
-
-	if (fr_bio_free(my->common.bio) < 0) return -1;
-
-	return 0;
-}
-
 
 fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t read_size, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
@@ -153,8 +143,6 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	fr_bio_packet_init(&my->common);
 
-	talloc_set_destructor(my, _radius_client_fd_bio_free);
-
 	/*
 	 *	Set up the connected status.
 	 */
@@ -166,7 +154,8 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	if ((my->info.fd_info->type == FR_BIO_FD_CONNECTED) && !my->info.connected &&
 	    fr_time_delta_ispos(cfg->connection_timeout) && cfg->retry_cfg.el) {
-		if (fr_event_timer_in(my, cfg->el, &my->common.ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
+		if (fr_timer_in(my, cfg->el->tl, &my->common.ev, cfg->connection_timeout, false,
+				fr_radius_client_bio_connect_timer, my) < 0) {
 			talloc_free(my);
 			return NULL;
 		}
@@ -688,11 +677,11 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 /** We failed to connect in the given timeout, the connection is dead.
  *
  */
-static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
-	fr_assert(!my->retry || (my->info.retry_info->el == el));
+	fr_assert(!my->retry || (my->info.retry_info->el->tl == tl));
 
 	if (my->common.cb.failed) my->common.cb.failed(&my->common);
 }

@@ -40,8 +40,11 @@ match Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64
 #
 #  trailing bytes outside of the prefix exist, but are not zero
 #
+#  This violates RFC 8044, but we don't care.  We just mash the extra
+#  bytes to zeroes.
+#
 decode-pair 61 14 00 40 20 01 0d b8 0a 0b 12 f0 00 00 00 00 00 00 00 01
-match raw.Framed-IPv6-Prefix = 0x004020010db80a0b12f00000000000000001
+match Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64
 
 #
 #  1.

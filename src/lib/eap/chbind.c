@@ -170,7 +170,7 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
 	fr_radius_packet_code_t		code;
-	rlm_rcode_t	rcode;
+	unlang_result_t	result;
 	request_t	*fake = NULL;
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
@@ -185,7 +185,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 		   (chbind->response == NULL));
 
 	/* Set-up the fake request */
-	fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
+	fake = request_local_alloc_internal(request, &(request_init_args_t){ .parent = request });
 	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	(void) fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
@@ -240,8 +240,8 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 //	fake->server_cs = virtual_server_find("channel_bindings");
 	fake->packet->code = FR_RADIUS_CODE_ACCESS_REQUEST;
 
-	rad_virtual_server(&rcode, fake);
-	switch (rcode) {
+	rad_virtual_server(&result, fake);
+	switch (result.rcode) {
 		/* If the virtual server succeeded, build a reply */
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:

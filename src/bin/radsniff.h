@@ -97,14 +97,6 @@ typedef struct {
 	uint64_t type[FR_RADIUS_CODE_MAX+ 1];
 } rs_counters_t;
 
-typedef struct CC_HINT(__packed__) {
-	uint8_t		code;
-	uint8_t		id;
-	uint8_t		length[2];
-	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t		data[];
-} radius_packet_t;
-
 /** Stats for a single interval
  *
  * And interval is defined as the time between a call to the stats output function.
@@ -183,18 +175,18 @@ typedef struct {
  */
 typedef struct {
 	uint64_t		id;			//!< Monotonically increasing packet counter.
-	fr_event_timer_t const	*event;			//!< Event created when we received the original request.
+	fr_timer_t		*event;			//!< Event created when we received the original request.
 
 	bool			logged;			//!< Whether any messages regarding this request were logged.
 
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	fr_packet_t	*packet;		//!< The original packet.
+	fr_packet_t		*packet;		//!< The original packet.
 	fr_pair_list_t		packet_vps;
-	fr_packet_t	*expect;		//!< Request/response.
+	fr_packet_t		*expect;		//!< Request/response.
 	fr_pair_list_t		expect_vps;
-	fr_packet_t	*linked;		//!< The subsequent response or forwarded request the packet
+	fr_packet_t		*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
 	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
 

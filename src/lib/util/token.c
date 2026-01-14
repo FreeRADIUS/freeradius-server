@@ -24,11 +24,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/misc.h>
+#include <stdio.h>
+
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>
 
-#include <ctype.h>
 
 fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("=~"), 	T_OP_REG_EQ	}, /* order is important! */
@@ -512,90 +513,3 @@ char const *fr_token_name(int token)
 {
 	return fr_table_str_by_value(fr_tokens_table, token, "<INVALID>");
 }
-
-
-/**  Skip a quoted string.
- *
- *  @param[in] start	start of the string, pointing to the quotation character
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @return
- *	>0 length of the string which was parsed
- *	<=0 on error
- */
-ssize_t fr_skip_string(char const *start, char const *end)
-{
-	char const *p = start;
-	char quote;
-
-	quote = *(p++);
-
-	while ((end && (p < end)) || *p) {
-		/*
-		 *	Stop at the quotation character
-		 */
-		if (*p == quote) {
-			p++;
-			return p - start;
-		}
-
-		/*
-		 *	Not an escape character: it's OK.
-		 */
-		if (*p != '\\') {
-			p++;
-			continue;
-		}
-
-		if (end && ((p + 2) >= end)) {
-		fail:
-			fr_strerror_const("Unexpected escape at end of string");
-			return -(p - start);
-		}
-
-		/*
-		 *	Escape at EOL is not allowed.
-		 */
-		if (p[1] < ' ') goto fail;
-
-		/*
-		 *	\r or \n, etc.
-		 */
-		if (!isdigit((uint8_t) p[1])) {
-			p += 2;
-			continue;
-		}
-
-		/*
-		 *	Double-quoted strings use \000
-		 *	Regexes use \0
-		 */
-		if (quote == '/') {
-			p++;
-			continue;
-		}
-
-		if (end && ((p + 4) >= end)) goto fail;
-
-		/*
-		 *	Allow for \1f in single quoted strings
-		 */
-		if ((quote == '\'') && isxdigit((uint8_t) p[1]) && isxdigit((uint8_t) p[2])) {
-			p += 3;
-			continue;
-		}
-
-		if (!isdigit((uint8_t) p[2]) || !isdigit((uint8_t) p[3])) {
-			fr_strerror_const("Invalid octal escape");
-			return -(p - start);
-		}
-
-		p += 4;
-	}
-
-	/*
-	 *	Unexpected end of string.
-	 */
-	fr_strerror_const("Unexpected end of string");
-	return -(p - start);
-}
-

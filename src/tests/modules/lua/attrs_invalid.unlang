@@ -1,0 +1,40 @@
+lua_attrs_invalid.set_simple {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+lua_attrs_invalid.set_pair {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+lua_attrs_invalid.set_nested_1 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+lua_attrs_invalid.set_nested_2 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+lua_attrs_invalid.set_nested_3 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+lua_attrs_invalid.set_nested_4 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+test_pass

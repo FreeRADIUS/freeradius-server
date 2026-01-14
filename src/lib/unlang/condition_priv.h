@@ -33,6 +33,7 @@ typedef struct {
 	xlat_exp_head_t	*head;
 	bool		is_truthy;
 	bool		value;
+	bool		has_else;
 } unlang_cond_t;
 
 /** Cast a group structure to the cond keyword extension

@@ -49,7 +49,7 @@ typedef struct {
 
 /*
  *	@todo - MULTI_PROTOCOL - make this protocol agnostic.
- *	Perhaps keep stats in a hash table by (request->dict, request->code) ?
+ *	Perhaps keep stats in a hash table by (request->proto_dict, request->code) ?
  */
 
 typedef struct {
@@ -95,19 +95,21 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_stats_dict[];
 fr_dict_autoload_t rlm_stats_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_freeradius_stats4_ipv4_address;
 static fr_dict_attr_t const *attr_freeradius_stats4_ipv6_address;
 static fr_dict_attr_t const *attr_freeradius_stats4_type;
+static fr_dict_attr_t const *attr_freeradius_stats4_packet_counters;
 
 extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
 fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
-	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
+	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_packet_counters, .name = "Vendor-Specific.FreeRADIUS.Stats4.Packet-Counters", .type = FR_TYPE_TLV, .dict = &dict_radius },
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_t *t,
@@ -163,10 +165,90 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 }
 
 
+static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
+	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
+	int			i, src_code, dst_code;
+	rlm_stats_data_t	*stats;
+	rlm_stats_data_t	mydata;
+
+	if (request->proto_dict != dict_radius) {
+		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
+		RETURN_UNLANG_NOOP;
+	}
+
+	src_code = request->packet->code;
+	if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
+
+	dst_code = request->reply->code;
+	if (dst_code >= FR_RADIUS_CODE_MAX) dst_code = 0;
+
+	pthread_mutex_lock(&t->mutex);
+	t->stats[src_code]++;
+	t->stats[dst_code]++;
+
+	/*
+	 *	Update source statistics
+	 */
+	mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
+	stats = fr_rb_find(t->src, &mydata);
+	if (!stats) {
+		MEM(stats = talloc_zero(t, rlm_stats_data_t));
+
+		stats->ipaddr = request->packet->socket.inet.src_ipaddr;
+		stats->created = request->async->recv_time;
+
+		(void) fr_rb_insert(t->src, stats);
+	}
+
+	stats->last_packet = request->async->recv_time;
+	stats->stats[src_code]++;
+	stats->stats[dst_code]++;
+
+	/*
+	 *	Update destination statistics
+	 */
+	mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
+	stats = fr_rb_find(t->dst, &mydata);
+	if (!stats) {
+		MEM(stats = talloc_zero(t, rlm_stats_data_t));
+
+		stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
+		stats->created = request->async->recv_time;
+
+		(void) fr_rb_insert(t->dst, stats);
+	}
+
+	stats->last_packet = request->async->recv_time;
+	stats->stats[src_code]++;
+	stats->stats[dst_code]++;
+	pthread_mutex_unlock(&t->mutex);
+
+	/*
+	 *	@todo - periodically clean up old entries.
+	 */
+
+	if (fr_time_gt(fr_time_add(t->last_global_update, fr_time_delta_wrap(NSEC)), request->async->recv_time)) {
+		RETURN_UNLANG_UPDATED;
+	}
+
+	t->last_global_update = request->async->recv_time;
+
+	pthread_mutex_lock(&inst->mutable->mutex);
+	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
+		inst->mutable->stats[i] += t->stats[i];
+		t->stats[i] = 0;
+	}
+	pthread_mutex_unlock(&inst->mutable->mutex);
+
+	RETURN_UNLANG_UPDATED;
+}
+
 /*
  *	Do the statistics
  */
-static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
@@ -176,99 +258,23 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 	fr_pair_t *vp;
 	rlm_stats_data_t mydata;
-	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
 
-	/*
-	 *	Increment counters only in "send foo" sections.
-	 *
-	 *	i.e. only when we have a reply to send.
-	 *
-	 *	FIXME - Nothing sets request_state anymore
-	 */
-#if 0
-	if (request->request_state == REQUEST_SEND) {
-		int src_code, dst_code;
-		rlm_stats_data_t *stats;
-
-		src_code = request->packet->code;
-		if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
-
-		dst_code = request->reply->code;
-		if (dst_code >= FR_RADIUS_CODE_MAX) dst_code = 0;
-
-		pthread_mutex_lock(&t->mutex);
-		t->stats[src_code]++;
-		t->stats[dst_code]++;
-
-		/*
-		 *	Update source statistics
-		 */
-		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
-		stats = fr_rb_find(t->src, &mydata);
-		if (!stats) {
-			MEM(stats = talloc_zero(t, rlm_stats_data_t));
-
-			stats->ipaddr = request->packet->socket.inet.src_ipaddr;
-			stats->created = request->async->recv_time;
-
-			(void) fr_rb_insert(t->src, stats);
-		}
-
-		stats->last_packet = request->async->recv_time;
-		stats->stats[src_code]++;
-		stats->stats[dst_code]++;
-
-		/*
-		 *	Update destination statistics
-		 */
-		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
-		stats = fr_rb_find(t->dst, &mydata);
-		if (!stats) {
-			MEM(stats = talloc_zero(t, rlm_stats_data_t));
-
-			stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
-			stats->created = request->async->recv_time;
-
-			(void) fr_rb_insert(t->dst, stats);
-		}
-
-		stats->last_packet = request->async->recv_time;
-		stats->stats[src_code]++;
-		stats->stats[dst_code]++;
-		pthread_mutex_unlock(&t->mutex);
-
-		/*
-		 *	@todo - periodically clean up old entries.
-		 */
-
-		if ((t->last_global_update + NSEC) > request->async->recv_time) {
-			RETURN_MODULE_UPDATED;
-		}
-
-		t->last_global_update = request->async->recv_time;
-
-		pthread_mutex_lock(&inst->mutable->mutex);
-		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
-			inst->mutable->stats[i] += t->stats[i];
-			t->stats[i] = 0;
-		}
-		pthread_mutex_unlock(&inst->mutable->mutex);
-
-		RETURN_MODULE_UPDATED;
+	if (request->proto_dict != dict_radius) {
+		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
+		RETURN_UNLANG_NOOP;
 	}
-#endif
 
 	/*
 	 *	Ignore "authenticate" and anything other than Status-Server
 	 */
 	if ((request->packet->code != FR_RADIUS_CODE_STATUS_SERVER)) {
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_type);
 	if (!vp) {
-		stats_type = FR_STATS4_TYPE_VALUE_GLOBAL;
+		stats_type = FR_TYPE_VALUE_GLOBAL;
 	} else {
 		stats_type = vp->vp_uint32;
 	}
@@ -280,7 +286,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	vp->vp_uint32 = stats_type;
 
 	switch (stats_type) {
-	case FR_STATS4_TYPE_VALUE_GLOBAL:			/* global */
+	case FR_TYPE_VALUE_GLOBAL:			/* global */
 		/*
 		 *	Merge our stats with the global stats, and then copy
 		 *	the global stats to a thread-local variable.
@@ -297,19 +303,19 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		vp = NULL;
 		break;
 
-	case FR_STATS4_TYPE_VALUE_CLIENT:			/* src */
+	case FR_TYPE_VALUE_CLIENT:			/* src */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
-		if (!vp) RETURN_MODULE_NOOP;
+		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
 		break;
 
-	case FR_STATS4_TYPE_VALUE_LISTENER:			/* dst */
+	case FR_TYPE_VALUE_LISTENER:			/* dst */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
-		if (!vp) RETURN_MODULE_NOOP;
+		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, dst), &mydata);
@@ -317,7 +323,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 	default:
 		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (vp ) {
@@ -327,28 +333,19 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		}
 	}
 
-	/*
-	 *	@todo - do this only for RADIUS
-	 *	key off of packet ID, and Stats4-Packet-Counters TLV.
-	 */
-	strcpy(buffer, "FreeRADIUS-Stats4-");
-
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 		fr_dict_attr_t const *da;
 
 		if (!local_stats[i]) continue;
 
-		strlcpy(buffer + 18, fr_radius_packet_name[i], sizeof(buffer) - 18);
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), buffer);
+		da = fr_dict_attr_by_name(NULL, attr_freeradius_stats4_packet_counters, fr_radius_packet_name[i]);
 		if (!da) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
+		MEM(vp = fr_pair_afrom_da_nested(request->reply_ctx, &request->reply_pairs, da));
 		vp->vp_uint64 = local_stats[i];
-
-		fr_pair_append(&request->reply_pairs, vp);
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
@@ -460,7 +457,8 @@ module_rlm_t rlm_stats = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_stats },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_stats_inc },
+			{ .section = SECTION_NAME("recv", "Status-Server"), .method = mod_stats_read },
 			MODULE_BINDING_TERMINATOR
 		}
 	}

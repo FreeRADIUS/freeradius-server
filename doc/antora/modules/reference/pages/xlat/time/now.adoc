@@ -1,0 +1,8 @@
+= %time.now()
+
+Return the current time.  This time should be used for actions which
+involve the file system, or for actions which happen after the request
+has been received.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

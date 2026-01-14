@@ -39,7 +39,7 @@ typedef struct fr_io_client_s fr_io_client_t;
 
 typedef struct fr_io_track_s {
 	fr_rb_node_t			node;		//!< rbtree node in the tracking tree.
-	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
+	fr_timer_t			*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
 	fr_time_t			expires;	//!< when this packet expires
 	int				packets;     	//!< number of packets using this entry
@@ -80,11 +80,18 @@ typedef struct {
 	uint32_t			max_pending_packets;		//!< maximum number of pending packets
 
 	fr_time_delta_t			cleanup_delay;			//!< for Access-Request packets
-	fr_time_delta_t			idle_timeout;			//!< for dynamic clients
+	fr_time_delta_t			idle_timeout;			//!< for connected clients
+	fr_time_delta_t			dynamic_timeout;		//!< for dynamic clients
 	fr_time_delta_t			nak_lifetime;			//!< lifetime of NAKed clients
 	fr_time_delta_t			check_interval;			//!< polling for closed sockets
 
 	bool				dynamic_clients;		//!< do we have dynamic clients.
+	bool				log_ignored_clients;		//!< Whether we emit log messages when we ignore
+									///< a client because it's unknown, or outside
+									///< of the allowed networks.  This is here for
+									///< people who expose their RADIUS servers to
+									///< the internet, and don't want their logs filling
+									///< up with random connection attempts.
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 

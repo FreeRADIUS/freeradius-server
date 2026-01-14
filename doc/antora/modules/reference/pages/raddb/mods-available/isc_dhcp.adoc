@@ -6,16 +6,14 @@
 
 The `isc_dhcp` module reads ISC DHCP configuration files.
 
-When the module is listed in the `recv Discover` section, as
-"isc_dhcp.authorize" (sorry), it will look up the client by
-`client-identifier`, or failing that, `hardware ethernet`.  If
-found, the module will apply a `fixed-address` option to assign an
-IP address.
+When the module is listed in the `recv Discover` section, it will
+look up the client by `client-identifier`, or failing that, by
+`hardware ethernet`.  If found, the module will apply a
+`fixed-address` option to assign an IP address.
 
 Leases are *not* handled by this module.  Instead, you should use
-an "ip pool" module in the `send Offer" section.  Then after
-an IP address has been allocated, list `isc_dhcp` (without the
-`authorize`).
+the `sqlippool` module in the `send Offer` section.  After an IP
+address has been allocated, list `isc_dhcp`.
 
 The module will then apply any matching options to the packet.
 
@@ -50,7 +48,8 @@ FreeRADIUS will at least start, instead of complaining
 about everything.
 
 If `pedantic = true`, then the module will fail with an
-error when it sees a command it knows it can't implement.
+error when it sees a command it does not support.
+
 The module will also issue warnings for commands which are
 ignored (e.g. OMAPI ones, "listen on port X", and similar).
 The module will also issue warnings for commands which
@@ -60,6 +59,83 @@ If a command does not produce any errors or warnings, it is
 implemented and supported.
 
 The default is `pedantic = false`
+
+
+
+## Configuration Keywords
+
+The following tables list the ISC DHCP configuration file keywords
+which are either supported, not yet implemented, or are ignored.
+
+### Supported Keywords
+
+The following keywords are have the same meaning and behavior as ISC DHCP.
+
+[options="header,autowidth"]
+|===
+| Keyword 				| Meaning
+| filename STRING			| read the file
+| fixed-address IPADDR,		| match the ip address
+| group SECTION			| nested group
+| hardware ethernet ETHER		| match the ethernet address
+| host STRING SECTION		| host declaration
+| include STRING			| include another file
+| next-server IPADDR 		| set next server
+| option STRING STRING,		| set option by name and value
+| server-identifier IPADDR 		| set server identifier
+| server-name STRING 		| set server name
+| subnet IPADDR netmask IPADDR SECTION | match subnet
+|===
+
+## Remaining Keywords
+
+All other keywords are not supported.
+
+## Ignored Keywords
+
+The following keywords control ISC DHCP behavior such as network
+IP/port, LDAP access, etc.  These keywords are ignored even when
+the module is configured with `pedantic = true`
+
+[options="header,autowidth"]
+|===
+| Keyword
+| dhcpv6-lease-file-name STRING
+| dhcpv6-pid-file-name STRING
+| ldap-base-dn STRING
+| ldap-debug-file STRING
+| ldap-dhcp-server-cn STRING
+| ldap-gssapi-keytab STRING
+| ldap-gssapi-principal STRING
+| ldap-init-retry STRING
+| ldap-method STRING
+| ldap-password STRING
+| ldap-port STRING
+| ldap-referrals BOOL
+| ldap-server STRING
+| ldap-ssl STRING
+| ldap-tls-ca-dir STRING
+| ldap-tls-ca-file STRING
+| ldap-TLS-Certificate STRING
+| ldap-tls-ciphers STRING
+| ldap-tls-crlcheck STRING
+| ldap-tls-key STRING
+| ldap-tls-randfile STRING
+| ldap-tls-reqcert STRING
+| ldap-username STRING
+| lease-file-name STRING
+| local-address IPADDR
+| local-address6 IPADDR6
+| local-port UINT16
+| log-facility STRING
+| log-threshold-high UINT8
+| log-threshold-low UINT8
+| omapi-key STRING
+| omapi-port UINT16
+| pid-file-name STRING
+| remote-port UINT16
+|===
+
 
 
 == Default Configuration

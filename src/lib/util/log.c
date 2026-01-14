@@ -25,11 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 #ifdef HAVE_FEATURES_H
@@ -190,13 +187,13 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 		return;
 	}
 
-	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
-	fr_sbuff_marker(&m_start, &sbuff);
-	fr_sbuff_marker(&m_end, &sbuff);
-
 #ifndef NDEBUG
 	memset(buffer, 0x42, sizeof(buffer));
 #endif
+
+	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
+	fr_sbuff_marker(&m_start, &sbuff);
+	fr_sbuff_marker(&m_end, &sbuff);
 
 	for (;;) {
 		ssize_t		slen;
@@ -236,7 +233,7 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 		/*
 		 *	Clear out the existing data
 		 */
-		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start), false);
 	}
 }
 
@@ -349,7 +346,6 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 	char const	*fmt_colour = "";
 	char const	*fmt_location = "";
 	char		fmt_time[50];
-	char const	*fmt_facility = "";
 	char const	*fmt_type = "";
 	char		*fmt_msg;
 
@@ -428,14 +424,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 	 */
 	if (log->dst != L_DST_SYSLOG) {
 		/*
-		 *	Only print the 'facility' if we're not colourising the log messages
-		 *	and this isn't syslog.
-		 */
-		if (!log->colourise && log->print_level) fmt_facility = fr_table_str_by_value(fr_log_levels, type, ": ");
-
-		/*
-		 *	Add an additional prefix to highlight that this is a bad message
-		 *	the user should pay attention to.
+		 *	We always print "WARN" and "ERROR" prefixes.
 		 */
 		switch (type) {
 		case L_DBG_WARN:
@@ -444,6 +433,13 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 			break;
 
 		default:
+			/*
+			 *	Otherwise, print the other info levels only if we're asked to print the level,
+			 *	and we're not colourizing the output.  If we're colourizing the output, then
+			 *	the colors indicate the debug level (info, warning, error), and we don't need
+			 *	any prefix.
+			 */
+			if (log->print_level && !log->colourise) fmt_type = fr_table_str_by_value(fr_log_levels, type, ": ");
 			break;
 		}
 	}
@@ -541,7 +537,6 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 					 "%s"	/* location */
 					 "%s"	/* time */
 					 "%s"	/* time sep */
-					 "%s"	/* facility */
 					 "%s"	/* message type */
 					 "%s"	/* message */
 					 "%s"	/* colourise reset */
@@ -550,7 +545,6 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 					 fmt_location,
 				 	 fmt_time,
 				 	 fmt_time[0] ? ": " : "",
-				 	 fmt_facility,
 				 	 fmt_type,
 				 	 fmt_msg,
 				 	 colourise ? VTC_RESET : "");

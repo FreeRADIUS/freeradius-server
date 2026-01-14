@@ -1,6 +1,0 @@
-#
-#	This should be an xlat, not a direct assignment
-#
-update request {
-	&NAS-Port := &Filter-Id[#]	# ERROR
-}

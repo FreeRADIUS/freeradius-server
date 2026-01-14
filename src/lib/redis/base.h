@@ -128,6 +128,8 @@ typedef struct {
 	fr_time_delta_t		reconnection_delay;
 
 	char const		*log_prefix;
+
+	bool			triggers;	//!< Do we run triggers.
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
@@ -140,7 +142,8 @@ typedef struct {
 	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET, fr_redis_conf_t, password) }, \
 	{ FR_CONF_OFFSET("max_nodes", fr_redis_conf_t, max_nodes), .dflt = "20" }, \
 	{ FR_CONF_OFFSET("max_alt", fr_redis_conf_t, max_alt), .dflt = "3" }, \
-	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }
+	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }, \
+	{ FR_CONF_OFFSET("triggers", fr_redis_conf_t, triggers) }
 
 void		fr_redis_version_print(void);
 
@@ -149,7 +152,8 @@ void		fr_redis_version_print(void);
  */
 fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply);
 
-void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx);
+void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx,
+					     fr_redis_rcode_t status);
 
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
 						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,

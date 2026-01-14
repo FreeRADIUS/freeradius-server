@@ -7,22 +7,49 @@ break
 ----
 
 The `break` statement is used to exit an enclosing
-xref:unlang/foreach.adoc[foreach] loop.  The `break` statement only be used
-inside of a xref:unlang/foreach.adoc[foreach] loop.
+xref:unlang/foreach.adoc[foreach] loop or a
+xref:unlang/case.adoc[case] statement.  The `break` statement cannot
+be used in any other location.
 
-.Example
+In this example, a `break` is used to exit a
+xref:unlang/foreach.adoc[foreach] loop when a particular condition
+matches.
+
+.Example of break within foreach
 [source,unlang]
 ----
-foreach &Class {
-    if (&Foreach-Variable-0 == 0xabcdef) {
+foreach i (Class) {
+    if (i == 0xabcdef) {
         break
     }
 
-    &reply += {
-        Reply-Message = "Contains %{Foreach-Variable-0}"
+    reply += {
+        Reply-Message = "Contains %{i}"
     }
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+In the next example, a `break` is used to exit a
+xref:unlang/case.adoc[case] statement, which then also exits the
+parent xref:unlang/switch.adoc[switch] statement
+
+.Example of break within case / switch
+[source,unlang]
+----
+switch User-Name {
+    case 'bob' {
+        if (NAS-IP-Address == 192.0.2.1) {
+            break
+        }
+        
+        reject
+    }
+
+    default {
+        ok
+    }
+}
+----
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

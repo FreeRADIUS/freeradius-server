@@ -31,7 +31,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/calc.h>
-#include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
@@ -442,6 +441,8 @@ static int CC_HINT(nonnull) radius_legacy_map_apply_structural(request_t *reques
 			.ctx = vp,
 				.da = vp->da,
 				.list = &vp->vp_group,
+				.dict = vp->da->dict,
+				.internal = fr_dict_internal(),
 				.allow_compare = false,
 				.tainted = box->tainted,
 		};
@@ -563,6 +564,8 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 			if (fr_type_is_leaf(vp->vp_type)) {
 				if (fr_edit_list_save_pair_value(el, vp) < 0) return -1;
 			} else {
+				fr_assert(fr_type_is_structural(vp->vp_type));
+
 				if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
 			}
 			break;
@@ -571,10 +574,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 		/*
 		 *	We don't delete the main lists, we just modify their contents.
 		 */
-		if ((da == request_attr_request) ||
-		    (da == request_attr_reply) ||
-		    (da == request_attr_control) ||
-		    (da == request_attr_state)) {
+		if (request_attr_is_list(da)) {
 			fr_assert(vp != NULL);
 
 			if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
@@ -594,7 +594,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 
 		/*
 		 *	Delete all existing attributes.  Note that we re-initialize the cursor every time,
-		 *	because creating "&foo := baz" means deleting ALL existing "foo".  But we can't use
+		 *	because creating "foo := baz" means deleting ALL existing "foo".  But we can't use
 		 *	the tmpl as a cursor, because the tmpl containst NUM_UNSPEC, and the cursor needs
 		 *	NUM_ALL.  So we have to delete all existing attributes, and then add a new one.
 		 */
@@ -727,6 +727,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 			return -1;
 		}
 
+		if (vp->da->flags.unsafe) fr_value_box_mark_unsafe(&vp->data);
 		TALLOC_FREE(to_free);
 		return 0;
 	}

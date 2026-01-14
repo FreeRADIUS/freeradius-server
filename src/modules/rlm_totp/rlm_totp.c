@@ -37,19 +37,21 @@ typedef struct {
 	fr_value_box_t		secret;
 	fr_value_box_t		key;
 	fr_value_box_t		user_password;
+	fr_value_box_t		time_offset;
 } rlm_totp_call_env_t;
 
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_totp_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, secret),
-				     .pair.dflt = "&control.TOTP.Secret", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_totp_call_env_t, secret),
+				     .pair.dflt = "control.TOTP.Secret", .pair.dflt_quote = T_BARE_WORD },
 
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, key),
-				     .pair.dflt = "&control.TOTP.key", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_totp_call_env_t, key),
+				     .pair.dflt = "control.TOTP.key", .pair.dflt_quote = T_BARE_WORD },
 
-		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, user_password),
-				     .pair.dflt = "&request.TOTP.From-User", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_totp_call_env_t, user_password),
+				     .pair.dflt = "request.TOTP.From-User", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("time_offset", FR_TYPE_INT32, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_totp_call_env_t, time_offset) },
 
 		CALL_ENV_TERMINATOR
 	}
@@ -73,28 +75,30 @@ static const conf_parser_t module_config[] = {
 /*
  *  Do the authentication
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
 	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_totp_t);
 	fr_value_box_t		*user_password = &env_data->user_password;
 	fr_value_box_t		*secret = &env_data->secret;
 	fr_value_box_t		*key = &env_data->key;
+	fr_value_box_t		*time_offset = &env_data->time_offset;
 
 	uint8_t const		*our_key;
 	size_t			our_keylen;
 	uint8_t			buffer[80];	/* multiple of 5*8 characters */
+	time_t			now;
 
-	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
+	if (fr_type_is_null(user_password->type)) RETURN_UNLANG_NOOP;
 
 	if (user_password->vb_length == 0) {
 		RWARN("TOTP.From-User is empty");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
 		RWARN("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -107,27 +111,33 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		ssize_t len;
 
-		if (fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
+		if (fr_type_is_null(secret->type)) RETURN_UNLANG_NOOP;
 
 		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
 			RERROR("TOTP.Secret cannot be decoded");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		our_key = buffer;
 		our_keylen = len;
 	}
 
-	switch (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, user_password->vb_strvalue)) {
+	now = fr_time_to_sec(request->packet->timestamp);
+	if (time_offset->type == FR_TYPE_INT32) {
+		RDEBUG2("Using time offset of %pVs", time_offset);
+		now += time_offset->vb_int32;
+	}
+
+	switch (fr_totp_cmp(&inst->totp, request, now, our_key, our_keylen, user_password->vb_strvalue)) {
 	case 0:
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case -2:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	default:
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 }
 

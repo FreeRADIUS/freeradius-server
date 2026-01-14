@@ -1,0 +1,11 @@
+= Buffer Handling
+
+FreeRADIUS v4 offers an improved buffer management system. It includes new APIs to handle data and string buffers. These changes boost performance, enhance security, and help developers work more effectively.
+
+== xref:dbuff.adoc[dbuff (Data Buffers)]
+
+The dbuff API handles data. It simplifies memory management and minimises common problems, like buffer overflows and underflows. It allows developers to focus on protocol tasks and rely on the API to manage the buffers.
+
+== xref:sbuff.adoc[sbuff (String Buffers)]
+
+This API is used for managing strings. A sbuff structure manages metrics such as start and end pointers for specific items.

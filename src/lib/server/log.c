@@ -200,7 +200,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t log_dict[];
 fr_dict_autoload_t log_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_module_failure_message;
@@ -208,7 +208,7 @@ static fr_dict_attr_t const *attr_module_failure_message;
 extern fr_dict_attr_autoload_t log_dict_attr[];
 fr_dict_attr_autoload_t log_dict_attr[] = {
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -268,9 +268,7 @@ inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 {
 	if (!request->log.dst) return false;
 
-	if (lvl <= request->log.lvl) return true;
-
-	return false;
+	return (request->log.lvl >= lvl);
 }
 
 /** Cleanup the memory pool used by vlog_request
@@ -619,7 +617,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 	va_start(ap, fmt);
 	for (dst = request->log.dst; dst; dst = dst->next) {
-		if (lvl > dst->lvl) continue;
+		if ((lvl > request->log.lvl) && (lvl > dst->lvl)) continue;
 
 		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
 	}
@@ -783,6 +781,7 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 {
 	fr_dict_attr_t const	*parent_da = NULL;
 	fr_sbuff_t		*oid_buff;
+	char const		*name;
 
 	if (!request->log.dst) return;
 
@@ -811,7 +810,22 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
 			&vp->data);
 		break;
+
 	default:
+		fr_assert(fr_type_is_leaf(vp->vp_type));
+
+		/*
+		 *	Manually add enum prefix when printing.
+		 */
+		if ((name = fr_value_box_enum_name(&vp->data)) != NULL) {
+			RDEBUGX(lvl, "%s%pV = ::%s", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+				name);
+			break;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_INTERNAL:
 		RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
 			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
 			&vp->data);
@@ -862,7 +876,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	fr_pair_list_foreach(vps, vp) {
 		PAIR_VERIFY(vp);
 
-		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
+		if (!fr_dict_attr_common_parent(fr_dict_root(request->proto_dict), vp->da, true)) continue;
 
 		log_request_pair(lvl, request, parent, vp, prefix);
 	}
@@ -1029,7 +1043,7 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		/*
 		 *	Clear out the existing data
 		 */
-		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start), false);
 	}
 }
 

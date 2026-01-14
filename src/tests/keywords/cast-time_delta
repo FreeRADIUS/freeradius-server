@@ -18,7 +18,21 @@ if (%cast("weeks", 7d) != 1) {
 	test_fail
 }
 
-if (%cast("weeks", 8d) != 1.864) {
+#
+#  Change of scale doesn't affect the numbers.  Internally, the
+#  time_deltas are stored as nanoseconds since epoch.  The scale only
+#  matters for parsing and printing.
+#
+if 7d != 1w {
+	test_fail
+}
+
+#
+#  8/7 is about 1.142....  But since the integers are 64-bit,
+#  they have a lot more precision than the floating point numbers.
+#  As a result, we look for approximate equality.
+#
+if ((%cast("weeks", 8d) - 1.14285714w) >= 1s) {
 	test_fail
 }
 
@@ -39,7 +53,7 @@ if (diff != 60s) {
 #
 #  Cast the time delta to milliseconds
 #
-num = %cast("ms", %{diff})
+num = %cast("ms", diff)
 
 #
 #  This results in 60, because the conversion to fr_value_box_cast() doesn't pass dst->enumv?

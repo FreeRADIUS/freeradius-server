@@ -24,9 +24,10 @@
  * @param[out] out	Where the decoder context should be written.
  * @param[in] ctx	to allocate the test point context in.
  * @param[in] dict	the default dictionary context for the test point
+ * @param[in] root_da	Optional root DA for the encoder/decoder ctx.
  * @return proto or pair encoder or decoder ctx.
  */
-typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx, fr_dict_t const *dict);
+typedef int (*fr_test_point_ctx_alloc_t)(void **out, TALLOC_CTX *ctx, fr_dict_t const *dict, fr_dict_attr_t const *root_da);
 
 /** A generic interface for decoding packets to fr_pair_ts
  *

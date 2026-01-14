@@ -192,13 +192,14 @@ static xlat_action_t json_jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out
 }
 
 static xlat_arg_parser_t const json_encode_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_STRING, .required = true },
+	{ .single = true, .type = FR_TYPE_STRING, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Convert given attributes to a JSON document
  *
- * Usage is `%json.encode(attr tmpl list)`
+ * Usage is `%json.encode('attr', 'list[*]', '!negation)`
  *
  * @ingroup xlat_functions
  */
@@ -216,20 +217,18 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
-	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-
-	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
-	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 	/*
 	 * Iterate through the list of attribute templates in the xlat. For each
 	 * one we either add it to the list of attributes for the JSON document
 	 * or, if prefixed with '!', remove from the JSON list.
 	 */
-	while (fr_sbuff_extend(&sbuff)) {
+	fr_value_box_list_foreach(in, ref) {
+		sbuff = FR_SBUFF_IN(ref->vb_strvalue, ref->vb_length);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 		negate = false;
 
 		/* Check if we should be removing attributes */
@@ -243,7 +242,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					      	.attr = {
 							.list_def = request_attr_request,
 							.allow_wildcard = true,
-					      		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 					      	}
 					      });
 		if (slen <= 0) {
@@ -289,9 +288,6 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		TALLOC_FREE(vpt);
-
-		/* Jump forward to next attr */
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 	}
 
 	/*
@@ -444,20 +440,19 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if a fault occurred.
- * @param mod_inst	unused.
- * @param proc_inst	cached jpath sequences.
+ * @param mpctx		Call context for the map processor, containing the jpath cache.
  * @param request	The current request.
  * @param json		JSON string to parse.
  * @param maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
 
-	rlm_json_jpath_cache_t		*cache = proc_inst;
+	rlm_json_jpath_cache_t const	*cache = mpctx->mpi;
 	map_t const			*map = NULL;
 
 	rlm_json_jpath_to_eval_t	to_eval;
@@ -467,7 +462,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mo
 
 	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(request,
@@ -475,13 +470,13 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mo
 					      FR_VALUE_BOX_LIST_FREE, true,
 					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	json_str = json_head->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("JSON map input length must be > 0");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	tok = json_tokener_new();
@@ -548,7 +543,7 @@ finish:
 	json_object_put(to_eval.root);
 	json_tokener_free(tok);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -580,7 +575,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, json_encode_xlat_arg);
 
 	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,
-			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), 0) < 0) return -1;
+			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), FR_VALUE_BOX_SAFE_FOR_ANY) < 0) return -1;
 	return 0;
 }
 

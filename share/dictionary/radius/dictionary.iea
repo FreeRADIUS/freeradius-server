@@ -12,17 +12,17 @@ BEGIN-VENDOR	IEA-Software
 
 # AirMarshal Attributes [1-30]
 ATTRIBUTE	AM-Interrupt-HTMLFile			1	string
-ATTRIBUTE	AM-Interrupt-Interval			2	integer
-ATTRIBUTE	AM-Interrupt-Timeout			3	integer
+ATTRIBUTE	AM-Interrupt-Interval			2	uint32
+ATTRIBUTE	AM-Interrupt-Timeout			3	uint32
 ATTRIBUTE	AM-Status-HTMLFile			4	string
-ATTRIBUTE	AM-HTTP-Proxy-Port			5	integer
+ATTRIBUTE	AM-HTTP-Proxy-Port			5	uint32
 ATTRIBUTE	AM-ACK-HTMLFile				6	string
 ATTRIBUTE	AM-NAK-HTMLFile				7	string
 ATTRIBUTE	AM-Bandwidth-Pool			8	string
-ATTRIBUTE	AM-Bandwidth-Pool-Max-Up		9	integer
-ATTRIBUTE	AM-Bandwidth-Pool-Max-Down		10	integer
-ATTRIBUTE	AM-Mirroring				11	integer
-ATTRIBUTE	AM-Disconnect-Access			12	integer
+ATTRIBUTE	AM-Bandwidth-Pool-Max-Up		9	uint32
+ATTRIBUTE	AM-Bandwidth-Pool-Max-Down		10	uint32
+ATTRIBUTE	AM-Mirroring				11	uint32
+ATTRIBUTE	AM-Disconnect-Access			12	uint32
 
 VALUE	AM-Mirroring			Disabled		0
 VALUE	AM-Mirroring			Full-Packet-Local-PCAP	1

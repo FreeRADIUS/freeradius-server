@@ -12,8 +12,8 @@
 ATTRIBUTE	Allowed-Called-Station-Id		174	string
 ATTRIBUTE	EAP-Peer-Id				175	octets
 ATTRIBUTE	EAP-Server-Id				176	octets
-ATTRIBUTE	Mobility-Domain-Id			177	integer
-ATTRIBUTE	Preauth-Timeout				178	integer
+ATTRIBUTE	Mobility-Domain-Id			177	uint32
+ATTRIBUTE	Preauth-Timeout				178	uint32
 ATTRIBUTE	Network-Id-Name				179	octets
 
 # TLVs in the format defined in Figure 11-8 of Section 11.12 of
@@ -43,7 +43,7 @@ ATTRIBUTE	WLAN-Venue-Name				184	string
 
 # two least significant octets contain the Reason Code values defined
 # in Table 8-36 of Section 8.4.1.7 of the above IEEE document.
-ATTRIBUTE	WLAN-Reason-Code			185	integer
+ATTRIBUTE	WLAN-Reason-Code			185	uint32
 
 # The next four attributes are binary packed.  The first 3 octets is
 # the OUI.  The last octet is the Suite Type.

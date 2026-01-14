@@ -1,0 +1,385 @@
+= Configuration
+
+As with any FreeRADIUS configuration, you are strongly recommended to
+start with the default configuration for `sqlippools`, as it is known
+to work.
+
+Change the configuration, one thing at a time, testing after each
+step, until you have successfully implemented your intended policy.
+We also recommend using a revision control system such as `git`.  When
+configuration changes are tracked, it becomes trivial to fix issues by
+checking out a "known working" version of the configuration.  The
+alternative is to try to track changes manually, or to manually
+recreate what is believed to be a "working" configuration.
+
+This guide provides essential step by step instructions for
+configuring the `sqlippool` module.  These instructions begin with a
+"default" configuration.  The actions described here are
+straightforward, and will arrive at a working configuration.
+
+However, the reasons for setting particular module configuration items
+are complex, and require an understanding of the NAS and wider access
+network.  We therefore discuss these reasons in a separate section, so
+that the guide is simpler to follow.
+
+[TIP]
+====
+If at any time you break your system then see the
+xref:ROOT:debugging/radiusd_X.adoc[debugging] section for more help. If anything goes wrong, it should be trivial to revert
+any recent changes.  Then, consider what went wrong by examining the
+debug output.  If the issues are still clear, then ask a question on
+the
+https://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
+mailing list.  Please also read the
+https://wiki.freeradius.org/list-help[list help] instructions, for
+what information we need in order to help you.  This information is
+typically an explanation of what you are trying to achieve, what
+exactly isn't working and provide the full debugging output for a
+relevant test run.
+====
+
+
+== 1. Enable the module and call it during request processing
+
+Firstly enable the module by creating its symlink.
+
+[source,shell]
+----
+cd /etc/raddb/mods-enabled
+ln -s ../mods-available/sqlippool
+----
+
+Ensure that the module is invoked during authentication and accounting request
+processing by uncommenting any lines containing `sqlippool` in the send
+`Access-Accept` and each of the `accounting` sections of the `default` site.
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+       sqlippool
+...
+}
+
+...
+
+accounting Start {
+...
+	sqlippool
+...
+}
+
+accounting Stop {
+...
+	sqlippool
+...
+}
+
+accounting Interim-Update {
+...
+	sqlippool
+...
+}
+
+accounting Accounting-On {
+...
+	sqlippool
+...
+}
+
+accounting Accounting-Off {
+...
+	sqlippool
+...
+}
+----
+
+In the event that `sqlippool` is unable to allocate an IP address you may want
+to record the reason for the failure in a `Reply-Message` attribute of an
+`Access-Reject` response.
+
+.Recording the allocation failure reason in `Reply-Message`
+=============================================
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+        group {
+                sqlippool {
+                        updated = return
+                        noop = return
+                }
+                # On failure for any reason, reject
+                reply += {
+			Reply-Message = Module-Failure-Message
+		}
+                reject
+        }
+...
+}
+
+----
+=============================================
+
+You must now configure the module configuration items in
+`[raddb]/mods-enabled/sqlippool` as described below.
+
+
+== 2. Configure a database server
+
+The performance requirements for a system with a many IP allocations
+is likely to determine your choice of database software and
+architecture.
+
+Read and understand the considerations for how to xref:modules/sqlippool/recommendations.adoc#database-performance[choose a database server].
+
+Consider how these relate to your solution, then select an appropriate
+backend database for the SQL IP Pools. If a database server is already
+deployed in your environment, then any solution must fit within the
+existing limitations.  High load IP address allocation can severely
+stress an SQL database.  Depending on many factors, performance can
+very from dozens of IP allocations per second to thousands of
+allocations per second.
+
+The `sqlippools` module requires a connection to the database to be
+provided, using an instance of the `sql` module. Configure this as
+described in xref:modules/sql/index.adoc[the SQL module guide].
+
+Set the `sql_module_instance` configuration item to the name of the `sql`
+instance that you have configured and set the `dialect` configuration item to
+the same as that of the `sql` module. This determines which version of the
+`queries.conf` file is used.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        sql_module_instance = "sql"
+        dialect = "mysql"
+...
+}
+----
+
+
+[WARNING]
+====
+If the SQL IP Pools database is a multi-master cluster (such as
+Galera) then you will have multiple instances of the `sql` module, one per
+node. For redundancy, you should configure a `sqlipool` instance corresponding
+to each `sql` instance for each master node in your cluster. However, you *must
+not* use a load-balancing policy such as `load-balance` or
+`redundant-load-balance` to spread SQL IP Pool load between cluster nodes for
+the xref:modules/sqlippool/recommendations.adoc#database-clusters[reasons explained here]. Do not ignore this advice unless you are certain that you have understood the implications. Instead you should use the basic `redundant` policy which will direct all queries to the first available instance and then be careful to ensure that you do not run out of connections or that the module might routinely fail in a way that directs IP allocation queries to multiple database instances simultaneously during normal operation.
+====
+
+Load the SQL IP Pool schema into the database. Methods vary between databases,
+but a typical example would be:
+
+.[raddb]/mods-enabled/sqlippool
+[source,shell]
+----
+mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/schema.sql
+----
+
+[NOTE]
+====
+The above command assumes that passwordless login has been configured via
+the user’s `~/.my.cnf` file, or otherwise.
+====
+
+For performance reasons, if you are using a database that supports `SELECT ...
+FOR UPDATE SKIP LOCKED` then you should edit the
+`[raddb]/mods-config/sql/ippools/<dialect>/queries.conf` file corresponding to
+your database dialect to select the `SKIP LOCKED` variant of the
+`alloc_find` query. This will allow the database to remain responsive under
+concurrent load.
+
+
+== 3. Configure a unique device identifier
+
+Read and understand the considerations xref:modules/sqlippool/recommendations.adoc#device-identifier[choose a device identifier].
+
+Set the `owner` configuration item to the chosen unique device identifier attribute or combination of attributes.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        owner = "%{NAS-Port-Id}:%{Calling-Station-Id}"
+...
+}
+----
+
+
+== 4. Configure the lease duration
+
+Read and understand the considerations to xref:modules/sqlippool/recommendations.adoc#lease-duration[choose a lease duration].
+
+Set the `lease_duration` configuration item to the chosen lease duration in seconds.
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        lease_duration = 3600
+...
+}
+----
+
+[WARNING]
+====
+Remember to enable Interim-Updates on the NAS and configure the update
+interval with respect to the chosen `lease_duration`, typically to less than
+half the lease duration.
+====
+
+In some access networks there may be circumstances where the device and NAS do
+not always finish establishing a connection after FreeRADIUS has issued an IP
+address and sent it in an `Access-Accept`, i.e. the session never really
+starts and FreeRADIUS does not receive an `Accounting Start` request. This may
+be due to a network fault, the device or NAS rejecting the data sent in the
+`Access-Accept` response, or some additional policy implemented elsewhere. In
+the default configuration, when a successfully authenticated session does not
+become fully established the IP address will have been allocated for the full
+`lease_duration` despite the device not having actually connected. It will remain
+like this since there will be no `Accounting Stop` request generated for a
+session that does not become fully established.
+
+[#short-initial-lease]
+TIP: This waste of an address may be undesirable if the capacity of the pool is
+a concern, especially if sticky IPs are not enabled and a device that is
+repeatedly failing to establish a connection is able to continue to consume IP
+addresses. With some consideration, this initial lease could be amended to a
+short, fixed interval rather than the full lease duration. Replace
+`lease_duration` with a fixed value in seconds in the `alloc_update` query
+in `queries.conf` or in the stored procedure in `procedure.sql`, whichever is
+in use. This fixed interval should be greater than the maximum time it could
+take for an Accounting Start to be received for successful connections.
+
+FreeRADIUS errs on the side of caution and initially allocates IP
+addresses during authentication for the full lease duration for two reasons:
+(1) We do not actually know how long it takes for a session to become
+established and for the Accounting Start request to actually be sent by the
+NAS. (2) We do not know that Accounting Start requests will always be reliably
+generated by the NAS even when a device has established a connection.  These
+should be considered if you decide to amend the default policy.
+
+
+== 5. Configure the IP address attribute
+
+Set the `attribute_name` configuration item to whatever RADIUS attribute is
+required by the NAS.
+
+[TIP]
+====
+Consult your NAS documentation to determine what attribute is used to
+indicate the assigned IP address *and* any additional attributes that are
+required for the RADIUS reply, e.g. `Framed-IP-Netmask`.
+====
+
+for example:
+
+.[raddb]/mods-enabled/sqlippool
+[source,config]
+----
+sqlippool {
+...
+        allocated_address_attr = reply.Framed-IP-Address
+...
+}
+----
+
+[TIP]
+====
+If your NAS is allocating IPv6 prefixes to devices on the basis of a
+Framed-IPv6-Prefix RADIUS attribute then you can put the IPv6 prefixes into the
+`fr_ippool` table and set `allocated_address_attr = reply.Framed-IPv6-Prefix`.
+====
+
+=== 6. Populate the pool
+
+Populate the pool either manually using a text editor or database tool, or via a script.
+
+See xref:modules/sqlippool/populating.adoc[Generate IPs for the
+pools] for instructions on how to create lists of IPs for a pool.  And
+then xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
+
+
+.Example shell command for populating the `fr_ippool` table
+=============================================
+ for i in `seq 10 250`; do
+     echo "INSERT INTO fr_ippool (          \
+               pool_name,                   \
+               address,                     \
+               owner,                       \
+               gateway,                     \
+               expiry_time                  \
+           ) VALUES (                       \
+               'internet',                  \
+               '192.0.2.$i',                \
+               '0',                         \
+               '',                          \
+               CURRENT_TIMESTAMP            \
+           );"
+ done | mysql radius
+
+=============================================
+
+[CAUTION]
+====
+If at any time you should accidentally remove an IP address from the
+pool that is in use then to avoid issuing duplicate IP addresses you must
+either wait for the existing session to expire (or terminate it manually. e.g.
+CoA/Disconnect) or reintroduce the IP address with a future expiry date beyond
+which any existing session will have closed (or at least beyond the accounting
+interval).
+====
+
+=== 7. Enable a pool user
+
+For a request to acquire an address from the pool you must set a `IP-Pool.Name`
+check attribute, either directly in the virtual server configuration or via a
+data source such as `sql` (for example using the `radcheck` table).
+
+.Example of setting a IP-Pool.Name attribute using the `radcheck` table
+=============================================
+
+[source,shell]
+----
+echo "INSERT INTO radcheck (username,attribute,op,value)   \
+      VALUES ('bob','IP-Pool.Name',':=','internet');"         \
+     | mysql radius
+----
+
+=============================================
+
+
+.Example of setting a IP-Pool.Name attribute using in the server config
+=============================================
+
+.[raddb]/sites-enabled/default
+[source,config]
+----
+send Access-Accept {
+...
+        control.IP-Pool.Name := 'internet'
+        sqlippool
+...
+}
+----
+
+=============================================
+
+[NOTE]
+====
+Recall that if `sqlippool` is invoked without a `IP-Pool.Name` check
+attribute then no action is taken. Also recall that if `sqlippool` is invoked
+while the attribute configured in the `attribute_name` configuration item
+(e.g. `Framed-IP-Address`) already exists then no action is taken.
+====

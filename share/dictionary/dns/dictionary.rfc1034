@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2024 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -7,7 +7,7 @@
 #  contains a series of uint16_t offsets into the packet.
 #  these offsets contain valid targets for compressed pointers.
 #
-ATTRIBUTE	Header					1	struct
+DEFINE	Header						struct
 MEMBER		ID					uint16
 MEMBER		Query					bit[1]
 MEMBER		Opcode					bit[4]
@@ -45,7 +45,7 @@ VALUE	Rcode				DSO-Type-Not-Implemented 11
 VALUE	Rcode				Bad-Signature		16
 VALUE	Rcode				Bad-Key			17
 VALUE	Rcode				Bad-Time		18
-VALUE	Rcode			        Bad-Mode		19
+VALUE	Rcode				Bad-Mode		19
 VALUE	Rcode				Bad-name		20
 VALUE	Rcode				Bad-Algorithm		21
 VALUE	Rcode				Bad-Truncation		22
@@ -56,7 +56,7 @@ MEMBER		Answer-Count				uint16
 MEMBER		Name-Server-Count			uint16
 MEMBER		Additional-Records-Count		uint16
 
-ATTRIBUTE	Question				2	struct
+DEFINE	Question					struct
 MEMBER		Name					string	dns_label
 MEMBER		Type					uint16  # from packet.type
 MEMBER		Class					uint16
@@ -67,27 +67,29 @@ VALUE	Class				Hesiod			4
 VALUE	Class				None			254
 VALUE	Class				Any			255
 
-ATTRIBUTE	Resource-Record				3	struct
+DEFINE	Resource-Record					struct
 MEMBER		Name					string	dns_label
 MEMBER		Type					uint16	key
 MEMBER		Class					uint16 enum=@.Question.Class
 MEMBER		TTL					time_delta
+MEMBER		RDATA					union	key=Type
 
 ######################################################################
 #
 #  Now we have resource records
 #
 ######################################################################
-STRUCT	A				Type			1	length=uint16
+BEGIN Resource-Record.RDATA
+ATTRIBUTE	A					1	struct length=uint16
 MEMBER		IP					ipaddr
 
-STRUCT	NS				Type			2	length=uint16
+ATTRIBUTE	NS					2	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	CNAME				Type			5	length=uint16
+ATTRIBUTE	CNAME					5	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	SOA				Type			6	length=uint16
+ATTRIBUTE	SOA					6	struct length=uint16
 MEMBER		Master-Name				string	dns_label
 MEMBER		Responsible-Name			string	dns_label
 MEMBER		Serial					uint32
@@ -96,20 +98,20 @@ MEMBER		Retry					time_delta
 MEMBER		Expire					time_delta
 MEMBER		Minimum					time_delta
 
-STRUCT	PTR				Type			12	length=uint16
+ATTRIBUTE	PTR					12	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	MX				Type			15	length=uint16
+ATTRIBUTE	MX					15	struct length=uint16
 MEMBER		Preference				uint32
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	TXT				Type			16	length=uint16
+ATTRIBUTE	TXT					16	struct length=uint16
 MEMBER		Data					string
 
-STRUCT	AAAA				Type			28	length=uint16
+ATTRIBUTE	AAAA					28	struct length=uint16
 MEMBER		IP					ipv6addr
 
-STRUCT	DHCID				type			49	length=uint16
+ATTRIBUTE	DHCID					49	struct length=uint16
 MEMBER		Identifier-Type-Code			uint16
 MEMBER		Digest-Type-Code			uint8
 MEMBER		Digest					octets
@@ -128,7 +130,7 @@ VALUE	Digest-Type-Code		SHA-256			1
 #  4 octets TTL - extended Rcode and flags
 #  2 octets RDLEN
 #  RRDATA of 16 bits code, 16 bits length of data, data
-STRUCT	Opt				Type			41	length=uint16
+ATTRIBUTE	Opt					41	struct length=uint16
 MEMBER		Options					tlv
 
 ATTRIBUTE	LLQ					.1	struct
@@ -164,8 +166,10 @@ ATTRIBUTE	EDNS0-Tcp-Keepalive			.11	uint16 # time_delta in units of 100 millisec
 
 ATTRIBUTE	Padding					.12	octets
 
+END Resource-Record.RDATA
+
 #  Name server RR
-ATTRIBUTE	Name-Server				4	struct	clone=@.Resource-Record
+DEFINE	Name-Server					struct	clone=@.Resource-Record
 
 #  additional "glue" RR, or OPT RR for peer signalling
-ATTRIBUTE	Additional-Record			5	struct	clone=@.Resource-Record
+DEFINE	Additional-Record				struct	clone=@.Resource-Record

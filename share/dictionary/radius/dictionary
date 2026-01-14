@@ -66,6 +66,7 @@ $INCLUDE dictionary.rfc7499
 $INCLUDE dictionary.rfc7930
 $INCLUDE dictionary.rfc8045
 $INCLUDE dictionary.rfc8559
+$INCLUDE dictionary.rfc8658
 $INCLUDE dictionary.rfc9445
 
 #
@@ -84,7 +85,6 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.acme
 $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
-$INCLUDE dictionary.adva
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alcatel-lucent.aaa
@@ -92,16 +92,20 @@ $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.apc
 $INCLUDE dictionary.aptilo
+$INCLUDE dictionary.aptis
 $INCLUDE dictionary.arbor
 $INCLUDE dictionary.arista
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
+$INCLUDE dictionary.asn
+$INCLUDE dictionary.audiocodes
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.bluecoat
 $INCLUDE dictionary.boingo
+$INCLUDE dictionary.bristol
 $INCLUDE dictionary.broadsoft
 $INCLUDE dictionary.brocade
 $INCLUDE dictionary.bskyb
@@ -131,6 +135,7 @@ $INCLUDE dictionary.ckey
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
 $INCLUDE dictionary.colubris
+$INCLUDE dictionary.columbia_university
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.covaro
 $INCLUDE dictionary.dante
@@ -154,9 +159,9 @@ $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.freeradius.evs5
-$INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
+$INCLUDE dictionary.garderos
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
 $INCLUDE dictionary.hillstone
@@ -166,6 +171,7 @@ $INCLUDE dictionary.huawei
 $INCLUDE dictionary.iea
 $INCLUDE dictionary.iec
 $INCLUDE dictionary.infinera
+$INCLUDE dictionary.infoblox
 $INCLUDE dictionary.infonet
 $INCLUDE dictionary.ingate
 $INCLUDE dictionary.ipunplugged
@@ -244,6 +250,8 @@ $INCLUDE dictionary.shiva
 $INCLUDE dictionary.siemens
 $INCLUDE dictionary.slipstream
 $INCLUDE dictionary.smartsharesystems
+$INCLUDE dictionary.sofaware
+$INCLUDE dictionary.softbank
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
@@ -251,6 +259,7 @@ $INCLUDE dictionary.surfnet
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.telkom
 $INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
@@ -266,6 +275,7 @@ $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.vasexperts
+$INCLUDE dictionary.verizon
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.walabi
 $INCLUDE dictionary.waverider
@@ -280,5 +290,11 @@ $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
+
+#
+#  Internal attributes used by the server.
+#
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.stats
 
 END-PROTOCOL RADIUS

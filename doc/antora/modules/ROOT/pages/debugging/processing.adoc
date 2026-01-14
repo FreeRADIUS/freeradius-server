@@ -1,4 +1,6 @@
-# Packet Processing
+# Processing Packets
+
+include::ROOT:partial$v3_warning.adoc[]
 
 Each line (or most of them) of the packet processing output starts with a request number, e.g. `(0)`.  This number lets you track debug messages which are all for one packet.  Messages from different packets may be inter-mingled, due to threading or proxying.  Prefixing the messages with a number allows the messages to be easily differentiated.
 
@@ -38,7 +40,7 @@ Each module prints out what it is doing, and why.  For example, the `suffix` mod
     (0) suffix: No such realm "NULL"
 ====
 
-The server core then prints out the "return code" of the module.  See `man unlang` for a deeper explanation of return codes.
+The server core then prints out the xref:reference:unlang/return_codes.adoc[return code] of the module.
 
     (0)     [suffix] = noop
     (0)     [files] = noop
@@ -71,8 +73,8 @@ Here, the `attr_filter` module is removing attributes which are forbidden from a
     (0)     [attr_filter.access_reject] = updated
     (0)     [eap] = noop
     (0)     policy remove_reply_message_if_eap {
-    (0)       if (&reply:EAP-Message && &reply:Reply-Message) {
-    (0)       if (&reply:EAP-Message && &reply:Reply-Message)  -> FALSE
+    (0)       if (reply:EAP-Message && reply:Reply-Message) {
+    (0)       if (reply:EAP-Message && reply:Reply-Message)  -> FALSE
     (0)       else {
     (0)         [noop] = noop
     (0)       } # else = noop
@@ -222,7 +224,7 @@ It now runs the normal `post-auth` section
     (2)     if (0)  -> FALSE
     (2)   } # post-auth = noop
     (2) Finished internally proxied request.
-    (2) Clearing existing &reply: attributes
+    (2) Clearing existing reply: attributes
 ====
 
 Because this is a proxied request, it now runs the `post-proxy` section of the `default` virtual server.
@@ -258,8 +260,8 @@ It then runs the `post-auth` section from the `default` virtual server.
     (2)       } # update = noop
     (2)       [exec] = noop
     (2)       policy remove_reply_message_if_eap {
-    (2)         if (&reply:EAP-Message && &reply:Reply-Message) {
-    (2)         if (&reply:EAP-Message && &reply:Reply-Message)  -> FALSE
+    (2)         if (reply:EAP-Message && reply:Reply-Message) {
+    (2)         if (reply:EAP-Message && reply:Reply-Message)  -> FALSE
     (2)         else {
     (2)           [noop] = noop
     (2)         } # else = noop

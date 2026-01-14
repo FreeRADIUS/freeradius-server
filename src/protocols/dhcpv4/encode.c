@@ -84,6 +84,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	switch (da_stack->da[depth]->type) {
+	case FR_TYPE_ATTR:
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) vp->vp_attr->attr);
+		break;
+
 	case FR_TYPE_IPV6_PREFIX:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
@@ -671,7 +675,10 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		ssize_t len;
 		fr_dcursor_t vsa_cursor;
 
-		if (vp->vp_type != FR_TYPE_VENDOR) continue;
+		if (vp->vp_type != FR_TYPE_VENDOR) {
+			(void) fr_dcursor_next(&vendor_cursor);
+			continue;
+		}
 
 		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
 
@@ -690,7 +697,9 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			 */
 			fr_proto_da_stack_build(da_stack, vp->da);
 			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
-			if (len <= 0) return len;
+			if (len < 0) return len;
+
+			if (len == 0) (void) fr_dcursor_next(&vsa_cursor);
 		}
 
 		(void) fr_dcursor_next(&vendor_cursor);
@@ -726,21 +735,14 @@ done:
 ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t		*vp;
-	unsigned int		depth = 0;
+	fr_dhcpv4_ctx_t		*enc_ctx = encode_ctx;
+	unsigned int		depth = enc_ctx->root->depth;
 	fr_da_stack_t		da_stack;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return -1;
-
-	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
-	if (vp->da->attr > 255) {
-		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-	next:
-		(void)fr_dcursor_next(cursor);
-		return 0;
-	}
 
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
@@ -758,9 +760,17 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 		len = encode_tlv(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
-	default:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_LEAF:
 		len = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
+
+	default:
+		fr_strerror_printf("DHCP option %s has unsupported data type '%s'",
+				   da_stack.da[depth]->name, fr_type_to_str(da_stack.da[depth]->type));
+
+		return -1;
 	}
 
 	if (len <= 0) return len;
@@ -803,13 +813,14 @@ static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   fr_dict_attr_t const *root_da)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	if (!test_ctx) return -1;
-	test_ctx->root = fr_dict_root(dict_dhcpv4);
+	test_ctx->root = root_da ? root_da : fr_dict_root(dict_dhcpv4);
 
 	*out = test_ctx;
 

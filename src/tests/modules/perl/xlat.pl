@@ -23,7 +23,7 @@ use constant {
 # Just do something simple with all parameters provided and return to the caller
 sub xlat {
 
-	radiusd::log(L_DBG, 'From xlat '.join(' ', @_));
+	freeradius::log(L_DBG, 'From xlat '.join(' ', @_));
 
 	for (my $i = 0; $i <= $#_; $i++) {
 		$_[$i] = join('|', split(',', $_[$i]));

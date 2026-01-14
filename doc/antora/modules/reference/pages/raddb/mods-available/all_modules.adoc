@@ -1,134 +1,28 @@
-== Authentication Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/chap.adoc[chap]	| Performs Challenge Handshake Authentication Protocol (CHAP) authentication, as described by RFC 2865.
-| xref:raddb/mods-available/digest.adoc[digest]	| The digest module performs HTTP digest authentication, usually for a SIP server. See draft-sterman-aaa-sip-00.txt for
-details. The module does not support RFC 5090.
-| xref:raddb/mods-available/eap.adoc[eap]	| Implements the base protocol for EAP (Extensible Authentication Protocol).
-| xref:raddb/mods-available/imap.adoc[imap]	| Allows users to be authenticated against an IMAP server.
-| xref:raddb/mods-available/krb5.adoc[krb5]	| Implements kerberos authentication, using the result of decrypting the TGT as an indication that the provided
-password was correct.
-| xref:raddb/mods-available/ldap.adoc[ldap]	| Allows LDAP directory entries to be retrieved, modified, inserted and deleted.
-| xref:raddb/mods-available/mschap.adoc[mschap]	| Supports MS-CHAP and MS-CHAPv2 authentication. It also enforces the SMB-Account-Ctrl attribute.
-| xref:raddb/mods-available/opendirectory.adoc[opendirectory]	| Integrates with an Apple OpenDirectory service on the same host as FreeRADIUS to allow OpenDirectory users to
-authenticate.
-| xref:raddb/mods-available/pam.adoc[pam]	| Performs password checking via the Pluggable Authentication Module (PAM) framework.
-| xref:raddb/mods-available/pap.adoc[pap]	| Accepts a large number of formats for the "known good" (reference) password, such as crypt hashes, md5 hashes,
-and etc. The module takes the User-Password and performs the necessary transformations of the user submitted password
-to match the copy of the password the server has retrieved.
-| xref:raddb/mods-available/wimax.adoc[wimax]	| Implements WiMAX authentication over RADIUS.
-| xref:raddb/mods-available/winbind.adoc[winbind]	| The module also allows for direct connection to Samba winbindd (version 4.2.1 or above), which communicates with
-Active-Directory to retrieve group information and the user's NT-Password.
-| xref:raddb/mods-available/yubikey.adoc[yubikey]	| Supports authentication of yubikey tokens where the PSK is known to FreeRADIUS, and integrates with the Yubico
-cloud-based authentication service.
-|=====
+= Summary of All Modules
 
-== Authorization Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/smtp.adoc[smtp]	| Allows users to submit smtp formatted, mime-encoded emails to a server
-Supports User-Name User-Password authentication
-Supports file attachments, size limited by the MTA.
-|=====
+include::partial$authentication_table.adoc[]
 
-== Datastore Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/cache.adoc[cache]	| Stores attributes and/or lists and adds them back to a subsequent request or to the current request on a later execution
-of the module.
-| xref:raddb/mods-available/client.adoc[client]	| Reads client definitions from flat files.
-| xref:raddb/mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
-| xref:raddb/mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
-| xref:raddb/mods-available/redis.adoc[redis]	| Provides connectivity to single and clustered instances of Redis. This module exposes a string expansion that may be
-used to execute queries against Redis.
-| xref:raddb/mods-available/redis_ippool.adoc[redis_ippool]	| Implements a fast and scalable IP allocation system using Redis. Supports both IPv4 and IPv6 address and prefix
-allocation, and implements pre-allocation for use with DHCPv4.
-| xref:raddb/mods-available/rediswho.adoc[rediswho]	| Records which users are currently logged into the service. The file is used mainly for Simultaneous-Use checking to see
-who has current sessions.
-| xref:raddb/mods-available/sql.adoc[sql]	| Provides an abstraction over multiple SQL backends, via database specific drivers.
-| xref:raddb/mods-available/sqlippool.adoc[sqlippool]	| SQL based IP allocation module.
-| xref:raddb/mods-available/unix.adoc[unix]	| Retrieves a user's encrypted password from the local system and places it into the ``control.Password.Crypt`` attribute.
-The password is retrieved via the ``getpwent()`` and ``getspwent()`` system calls.
-|=====
+include::partial$datastore_table.adoc[]
 
-== IO Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/detail.adoc[detail]	| Writes attributes from a request list to a flat file in 'detail' format.
-| xref:raddb/mods-available/dhcpv4.adoc[dhcpv4]	| Implements DHCPv4 (Dynamic Host Configuration Protocol for IPv4) client and relay.
-| xref:raddb/mods-available/files.adoc[files]	| Implements a traditional Livingston-style users file.
-| xref:raddb/mods-available/icmp.adoc[icmp]	| Sends an ICMP "echo request" message to a particular IP address.
-| xref:raddb/mods-available/linelog.adoc[linelog]	| Creates log entries from attributes, string expansions, or static strings, and writes them to a variety of backends,
-including syslog, flat files, and raw UDP/TCP sockets.
-| xref:raddb/mods-available/logtee.adoc[logtee]	| Tee's request logging at runtime, sending it to additional log destinations.
-| xref:raddb/mods-available/radius.adoc[radius]	| Allows Access-Requests, Accounting-Requests, CoA-Requests and Disconnect-Messages to be sent during request processing.
-| xref:raddb/mods-available/rest.adoc[rest]	| Sends HTTP requests to remote servers and decodes the responses.
-| xref:raddb/mods-available/unbound.adoc[unbound]	| Performs queries against a DNS service to allow FQDNs to be resolved during request processing.
-|=====
+include::partial$formatconvert_table.adoc[]
 
-== Language Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/exec.adoc[exec]	| Executes an external script, passing in FreeRADIUS attributes as environmental variables or as arguments.
-| xref:raddb/mods-available/lua.adoc[lua]	| Allows the server to call embedded lua scripts.
-| xref:raddb/mods-available/mruby.adoc[mruby]	| Allows the server to call a persistent, embedded mRuby script.
-| xref:raddb/mods-available/perl.adoc[perl]	| Allows the server to call a persistent, embedded Perl script.
-| xref:raddb/mods-available/python.adoc[python]	| Allows the server to call a persistent, embedded Python script.
-|=====
+include::partial$language_table.adoc[]
 
-== Miscellaneous Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/cache_eap.adoc[cache_eap]	| Cache EAP
-| xref:raddb/mods-available/cache_tls.adoc[cache_tls]	| Cache TLS Session
-| xref:raddb/mods-available/cipher.adoc[cipher]	| Cipher
-| xref:raddb/mods-available/cui.adoc[cui]	| CUI
-| xref:raddb/mods-available/detail.example.com.adoc[detail.example.com]	| Detail (Sample)
-| xref:raddb/mods-available/detail.log.adoc[detail.log]	| Detail (Log Sample)
-| xref:raddb/mods-available/eap_inner.adoc[eap_inner]	| EAP/Inner
-| xref:raddb/mods-available/echo.adoc[echo]	| Echo
-| xref:raddb/mods-available/etc_group.adoc[etc_group]	| etc_group
-| xref:raddb/mods-available/isc_dhcp.adoc[isc_dhcp]	| isc_dhcp
-| xref:raddb/mods-available/mac2ip.adoc[mac2ip]	| Mac2IP
-| xref:raddb/mods-available/mac2vlan.adoc[mac2vlan]	| Mac2Vlan
-| xref:raddb/mods-available/ntlm_auth.adoc[ntlm_auth]	| NTLM Auth
-| xref:raddb/mods-available/redundant_sql.adoc[redundant_sql]	| redundant_sql
-| xref:raddb/mods-available/smbpasswd.adoc[smbpasswd]	| SMBPasswd
-| xref:raddb/mods-available/stats.adoc[stats]	| Stats
-| xref:raddb/mods-available/totp.adoc[totp]	|
-|=====
+include::partial$logging_table.adoc[]
 
-== Policy Modules
-[options="header"]
-[cols="20%,80%"]
-|=====
-| Module | Description
-| xref:raddb/mods-available/always.adoc[always]	| Returns a pre-configured result code such as 'ok', 'noop', 'reject' etc...
-| xref:raddb/mods-available/attr_filter.adoc[attr_filter]	| Filters attributes in a request. Can delete attributes or permit them to have only certain values.
-| xref:raddb/mods-available/cipher.adoc[cipher]	| Cipher
-| xref:raddb/mods-available/date.adoc[date]	| Converts date strings between user configurable formats.
-| xref:raddb/mods-available/delay.adoc[delay]	| Introduces an artificial non-blocking delay when processing a request.
-| xref:raddb/mods-available/escape.adoc[escape]	| Escapes and unescapes strings using the MIME escape format
-| xref:raddb/mods-available/idn.adoc[idn]	| Converts internationalized domain names to ASCII.
-| xref:raddb/mods-available/json.adoc[json]	| Parses JSON strings into an in memory format using the json-c library.
-| xref:raddb/mods-available/sometimes.adoc[sometimes]	| Is a hashing and distribution protocol, that will sometimes return one code or another depending on the input value
-configured.
-| xref:raddb/mods-available/sqlcounter.adoc[sqlcounter]	| Records statistics for users such as data transfer and session time, and prevent further logins when limits are reached.
-| xref:raddb/mods-available/unpack.adoc[unpack]	| Unpacks binary data from octets type attributes into individual attributes.
-| xref:raddb/mods-available/utf8.adoc[utf8]	| Checks all attributes of type string in the current request, to ensure that they only contain valid UTF8 sequences.
-|=====
+include::partial$policy_table.adoc[]
+
+include::partial$protocol_table.adoc[]
+
+include::partial$utility_table.adoc[]
+
+
+
+
+
+
+
+
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

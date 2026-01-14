@@ -1,0 +1,16 @@
+#
+#  PRE: call timeout
+#
+call default-fin { }
+
+if Tmp-String-0 != 'bye-from-default-fin' {
+	test_fail
+}
+
+call packet-fin { }
+
+if Tmp-String-0 != 'bye-from-packet-fin' {
+	test_fail
+}
+
+success

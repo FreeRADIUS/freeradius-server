@@ -453,7 +453,7 @@ error:
 /** Callback for closing idle LDAP trunk
  *
  */
-static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _ldap_trunk_idle_timeout(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
 
@@ -465,8 +465,8 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 		/*
 		 *	There are still pending queries - insert a new event
 		 */
-		(void) fr_event_timer_in(ttrunk, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
-					 _ldap_trunk_idle_timeout, ttrunk);
+		(void) fr_timer_in(ttrunk, tl, &ttrunk->ev, ttrunk->t->config->idle_timeout,
+				   false, _ldap_trunk_idle_timeout, ttrunk);
 	}
 }
 
@@ -703,8 +703,8 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 	/*
 	 *  Reset the idle timeout event
 	 */
-	(void) fr_event_timer_in(ttrunk, el, &ttrunk->ev,
-				 ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
+	(void) fr_timer_in(ttrunk, el->tl, &ttrunk->ev,
+			   ttrunk->t->config->idle_timeout, false, _ldap_trunk_idle_timeout, ttrunk);
 
 	do {
 		/*
@@ -864,8 +864,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 		/*
 		 *	Remove the timeout event
 		 */
-		if (query->ev) fr_event_timer_delete(&query->ev);
-
+		FR_TIMER_DELETE(&query->ev);
 		query->result = result;
 
 		/*
@@ -957,7 +956,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					      .request_fail = ldap_request_fail,
 					},
 				      thread->trunk_conf,
-				      "rlm_ldap", found, false);
+				      "rlm_ldap", found, false, thread->trigger_args);
 
 	if (!found->trunk) {
 	error:
@@ -971,8 +970,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	/*
 	 *  Insert event to close trunk if it becomes idle
 	 */
-	if (!fr_cond_assert_msg(fr_event_timer_in(found, thread->el, &found->ev, thread->config->idle_timeout,
-						  _ldap_trunk_idle_timeout, found) == 0, "cannot insert trunk idle event")) goto error;
+	if (!fr_cond_assert_msg(fr_timer_in(found, thread->el->tl, &found->ev, thread->config->idle_timeout,
+					    false, _ldap_trunk_idle_timeout, found) == 0, "cannot insert trunk idle event")) goto error;
 
 	/*
 	 *	Attempt to discover what type directory we are talking to
@@ -1314,7 +1313,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 					      .request_fail = ldap_trunk_bind_auth_fail,
 					},
 				       thread->bind_trunk_conf,
-				       "rlm_ldap bind auth", ttrunk, false);
+				       "rlm_ldap bind auth", ttrunk, false, thread->bind_trigger_args);
 
 	if (!ttrunk->trunk) {
 		ERROR("Unable to create LDAP connection");

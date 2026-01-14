@@ -38,7 +38,7 @@ fr_dict_t const *dict_tftp;
 extern fr_dict_autoload_t libfreeradius_tftp[];
 fr_dict_autoload_t libfreeradius_tftp[] = {
 	{ .out = &dict_tftp, .proto = "tftp" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_tftp_block;
@@ -65,7 +65,7 @@ fr_dict_attr_autoload_t libfreeradius_tftp_dict_attr[] = {
 
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tftp },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 char const *fr_tftp_codes[FR_TFTP_MAX_CODE] = {

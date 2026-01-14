@@ -133,6 +133,8 @@ typedef struct {
 	linelog_net_t		udp;			//!< UDP server.
 
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
+
+	bool			triggers;		//!< Do we do triggers.
 } rlm_linelog_t;
 
 typedef struct {
@@ -155,21 +157,21 @@ static const conf_parser_t syslog_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_SOCKET, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t udp_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t tcp_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -177,6 +179,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("destination", CONF_FLAG_REQUIRED, rlm_linelog_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", rlm_linelog_t, delimiter), .dflt = "\n" },
+
+	{ FR_CONF_OFFSET("triggers", rlm_linelog_t, triggers) },
 
 	/*
 	 *	Log destinations
@@ -209,12 +213,18 @@ typedef struct {
 	fr_value_box_t		*filename;		//!< File name, if output is to a file.
 } linelog_call_env_t;
 
+#define LINELOG_BOX_ESCAPE { \
+			  .func = linelog_escape_func, \
+			  .safe_for = (fr_value_box_safe_for_t) linelog_escape_func, \
+			  .always_escape = false, \
+		  }
+
 static const call_env_method_t linelog_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
-		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
+		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -228,7 +238,7 @@ static const call_env_method_t linelog_method_env = {
 static const call_env_method_t linelog_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -395,9 +405,11 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 			*p = '/';
 		}
 
-		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
+		fd = exfile_open(inst->file.ef, path, inst->file.permissions, 0, &offset);
 		if (fd < 0) {
 			RERROR("Failed to open %pV: %s", call_env->filename, fr_syserror(errno));
+
+			/* coverity[missing_unlock] */
 			return -1;
 		}
 
@@ -614,7 +626,7 @@ typedef struct {
 	bool			with_delim;	//!< Whether to add a delimiter
 } rlm_linelog_rctx_t;
 
-static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
@@ -626,7 +638,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 	vector_len = fr_value_box_list_num_elements(&rctx->expanded);
 	if (vector_len == 0) {
 		RDEBUG2("No data to write");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -640,7 +652,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 		default:
 			if (unlikely(fr_value_box_cast_in_place(rctx, vb, FR_TYPE_STRING, vb->enumv) < 0)) {
 				REDEBUG("Failed casting value to string");
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 			FALL_THROUGH;
 
@@ -667,7 +679,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 		}
 	}
 
-	RETURN_MODULE_RCODE(linelog_write(inst, call_env, request, vector, vector_len, rctx->with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK);
+	RETURN_UNLANG_RCODE(linelog_write(inst, call_env, request, vector, vector_len, rctx->with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK);
 }
 
 /** Write a linelog message
@@ -681,7 +693,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
  * @param[in] mctx	module calling context.
  * @param[in] request	The current request.
  */
-static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
@@ -697,7 +709,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 
 	if (!call_env->log_src && !call_env->log_ref) {
 		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	buff[0] = '.';	/* force to be in current section (by default) */
@@ -723,18 +735,18 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 */
 		if (buff[2] == '.') {
 			REDEBUG("Invalid path \"%s\"", p);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		ci = cf_reference_item(NULL, inst->cs, p);
 		if (!ci) {
-			RDEBUG2("Path \"%s\" doesn't exist", p);
+			RPDEBUG2("Failed finding reference '%s'", p);
 			goto default_msg;
 		}
 
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Path \"%s\" resolves to a section (should be a pair)", p);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		cp = cf_item_to_pair(ci);
@@ -759,24 +771,24 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 &(tmpl_rules_t){
 					 	.attr = {
 							.list_def = request_attr_request,
-					 		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 					 		.allow_unknown = true,
 					 		.allow_unresolved = false,
-							.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 					 	},
 						.xlat = {
 							.runtime_el = unlang_interpret_event_list(request),
 						},
-					 	.at_runtime = true
+						.at_runtime = true,
+						.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 					 });
 		if (!vpt) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (tmpl_resolve(vpt, NULL) < 0) {
 			RPERROR("Runtime resolution of tmpl failed");
 			talloc_free(vpt);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		vpt_p = vpt;
 	} else {
@@ -786,7 +798,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 */
 		if (!call_env->log_src) {
 			RDEBUG2("No default message configured");
-			RETURN_MODULE_NOOP;
+			RETURN_UNLANG_NOOP;
 		}
 		/*
 		 *	Use the pre-parsed format template
@@ -860,7 +872,7 @@ build_vector:
 		talloc_free(vpt);
 		talloc_free(vector);
 
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	/*
@@ -896,11 +908,14 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	if (fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID) != LINELOG_DST_FILE) return 0;
 
 	our_rules = *t_rules;
-	our_rules.escape.func = (inst->file.escape) ? rad_filename_box_escape : rad_filename_box_make_safe;
-	our_rules.escape.safe_for = (inst->file.escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
-						     (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = (inst->file.escape) ? rad_filename_box_escape : rad_filename_box_make_safe,
+		.safe_for = (inst->file.escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
+						     (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		.always_escape = false,
+	};
 	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	if (tmpl_afrom_substr(ctx, &parsed,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
@@ -951,7 +966,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 		if (!cf_pair_find(cs, "filename")) goto no_filename;
 
-		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true,
+						       inst->triggers, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;

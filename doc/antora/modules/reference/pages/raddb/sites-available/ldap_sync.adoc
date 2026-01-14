@@ -434,7 +434,7 @@ server settings as ldap_sync.
 ```
 
 ```
-#			csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
+#			csn := %str.concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
 #			reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #		}
 	}

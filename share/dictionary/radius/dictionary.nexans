@@ -15,8 +15,8 @@ VENDOR		Nexans				266
 
 BEGIN-VENDOR	Nexans
 
-ATTRIBUTE	Port-Default-VLAN-ID			1	integer
-ATTRIBUTE	Port-Voice-VLAN-ID			2	integer
+ATTRIBUTE	Port-Default-VLAN-ID			1	uint32
+ATTRIBUTE	Port-Voice-VLAN-ID			2	uint32
 
 END-VENDOR      Nexans
 ALIAS		Nexans					Vendor-Specific.Nexans

@@ -1,0 +1,19 @@
+= Language Modules
+
+Language modules allow an administrator to use different languages within the server.
+
+If the policies require basic if / then / else checks, or they require
+simple attribute editing, we recommend using the
+xref:unlang/index.adoc[Unlang Policy Language].  It is good enough for
+nearly all common use-cases, and it is much faster than any of the
+language modules.
+
+The _only_ reason to use one of these language modules is when you
+need to connect to an external API, and the API connector is a library
+which is only available as a language-specific library.  In every
+other case, xref:unlang/index.adoc[Unlang] will be simpler, and
+faster.
+
+The available Language modules are:
+
+include::partial$language_table.adoc[]

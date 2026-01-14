@@ -1,5 +1,7 @@
 = Proxy Fail-over
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure a "backup" home server that is used when the
 "primary" home server fails.
 

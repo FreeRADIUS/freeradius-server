@@ -8,7 +8,7 @@ control.IP-Pool.Name := 'test_release'
 #
 #  Add IP addresses
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Check allocation
@@ -39,31 +39,31 @@ if (!(updated)) {
 #
 #  Verify the association with the device has been removed
 #
-if (!(%redis(EXISTS, {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}) == '0')) {
+if (!(%redis('EXISTS', "{%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}") == '0')) {
 	test_fail
 }
 
 #
 #  Verify the hash information is retained
 #
-if (!(%redis(HGET, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, device) == '00:11:22:33:44:55')) {
+if (!(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'device') == '00:11:22:33:44:55')) {
 	test_fail
 }
 
-if (!(%redis(HGET, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, gateway) == '127.0.0.1')) {
+if (!(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'gateway') == '127.0.0.1')) {
 	test_fail
 }
 
-if (!(%redis(HGET, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, range) == '192.168.0.0')) {
+if (!(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'range') == '192.168.0.0')) {
 	test_fail
 }
 
 # Check the ZSCORE - releasing an address sets the ZSCORE to now - 1
-if (%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) > %c) {
+if (%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", %{reply.Framed-IP-Address}) > %c) {
 	test_fail
 }
 
-if ((%c - %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) > 10)) {
+if ((%c - %redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", %{reply.Framed-IP-Address}) > 10)) {
 	test_fail
 }
 

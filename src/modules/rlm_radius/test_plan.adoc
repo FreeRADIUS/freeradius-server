@@ -168,7 +168,7 @@ When sending datagrams on macOS no native `sendmmsg` function exists, so we expe
 
 Platforms:: Any
 
-Note:: You may need to increase `max_request_time` in radius.conf for this test.
+Note:: You may need to increase `request.timeout` in radius.conf for this test.
 
 This test verifies behaviour when no status_check is configured.
 
@@ -218,7 +218,7 @@ to it.
 
 Platforms:: Any
 
-Note:: You may need to increase `max_request_time` in radius.conf for this test.
+Note:: You may need to increase `request.timeout` in radius.conf for this test.
 
 This test verifies the behaviour when a `Status-Server` packet is configured for status checks.
 
@@ -283,7 +283,7 @@ Immediate entry into zombie state is likely incorrect and will probably change.
 
 Platforms:: Any
 
-Note:: You may need to increase `max_request_time` in radius.conf for this test.
+Note:: You may need to increase `request.timeout` in radius.conf for this test.
 
 See description for previous test.
 
@@ -493,4 +493,3 @@ Platforms:: Any
 * Send <<PAP Access-Request>>s at a high rate for 30 minutes.
 ** Record memory usage every 5 minutes.
 ** Ensure memory usage stabilises within 15 minutes and does not continue to increase.
-

@@ -81,7 +81,7 @@ typedef struct { \
 		FR_DLIST_HEAD(_name ## _slab)		reserved; \
 		FR_DLIST_HEAD(_name ## _slab)		avail; \
 		fr_event_list_t				*el; \
-		fr_event_timer_t const			*ev; \
+		fr_timer_t				*ev; \
 		fr_slab_config_t			config; \
 		unsigned int				in_use; \
 		unsigned int				high_water_mark; \
@@ -129,7 +129,7 @@ DIAG_OFF(unused-function) \
 	 * up to half of the element count between the high water mark \
 	 * and the current number in use. \
 	 */ \
-	 static void _ ## _name ## _slab_cleanup(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx) \
+	 static void _ ## _name ## _slab_cleanup(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx) \
 	 { \
 	 	_name ## _slab_list_t	*slab_list = talloc_get_type_abort(uctx, _name ## _slab_list_t); \
 		_name ## _slab_t		*slab = NULL, *next_slab = NULL; \
@@ -153,8 +153,8 @@ DIAG_OFF(unused-function) \
 		} \
 		slab_list->high_water_mark -= cleared; \
 	finish: \
-		(void) fr_event_timer_in(slab_list, el, &slab_list->ev, slab_list->config.interval, \
-					 _ ## _name ## _slab_cleanup, slab_list); \
+		(void) fr_timer_in(slab_list, tl, &slab_list->ev, slab_list->config.interval, false, \
+				   _ ## _name ## _slab_cleanup, slab_list); \
 	 } \
 \
 	/** Allocate a slab list to manage slabs of allocated memory \
@@ -195,7 +195,7 @@ DIAG_OFF(unused-function) \
 		_name ## _slab_init(&slab->reserved); \
 		_name ## _slab_init(&slab->avail); \
 		if (el) { \
-			if (unlikely(fr_event_timer_in(slab, el, &slab->ev, config->interval, _ ## _name ## _slab_cleanup, slab) < 0)) { \
+			if (unlikely(fr_timer_in(slab, el->tl, &slab->ev, config->interval, false, _ ## _name ## _slab_cleanup, slab) < 0)) { \
 				talloc_free(slab); \
 				return NULL; \
 			}; \

@@ -1,4 +1,4 @@
-function authorize()
+function recv()
 	for k, v in fr.request.pairs() do
 		if k == "User-Name" and v == "caipirinha" then
 			return fr.rcode.ok

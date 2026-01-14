@@ -19,10 +19,10 @@ access any attributes in the parent.
 [source,unlang]
 ----
 subrequest Disconnect-Request {
-    &User-Name := &parent.request.User-Name
-    &NAS-IP-Address := &parent.request.NAS-IP-Address
-    &NAS-Port := &parent.request.NAS-Port
-    &Acct-Session-Id := &parent.request.Acct-Session-Id
+    User-Name := parent.request.User-Name
+    NAS-IP-Address := parent.request.NAS-IP-Address
+    NAS-Port := parent.request.NAS-Port
+    Acct-Session-Id := parent.request.Acct-Session-Id
 
     detach
     radius
@@ -36,26 +36,14 @@ of the parent request.  The default configuration has
 `max_request_time = 30`, so child requests will be cancelled 30
 seconds after the parent request was received.
 
-When it is necessary to have the child request execute for longer, the
-`Request-Lifetime` attribute can be set.  This attribute sets the
-lifetime of the child request after it has been detached.  This
-setting allows child requests to last longer than `max_request_time`
-seconds from when the parent request was received.
-
-The `Request-Lifetime` attribute sets the lifetime in seconds.  The
-minimum lifetime is five (5) seconds.  The maximum lifetime is 3600
-seconds.  Only integer seconds can be set.
-
 .Example
 [source,unlang]
 ----
 subrequest Disconnect-Request {
-    &User-Name := &parent.request.User-Name
-    &NAS-IP-Address := &parent.request.NAS-IP-Address
-    &NAS-Port := &parent.request.NAS-Port
-    &Acct-Session-Id := &parent.request.Acct-Session-Id
-
-    &control.Request-Lifetime := 60
+    User-Name := parent.request.User-Name
+    NAS-IP-Address := parent.request.NAS-IP-Address
+    NAS-Port := parent.request.NAS-Port
+    Acct-Session-Id := parent.request.Acct-Session-Id
 
     detach
     radius

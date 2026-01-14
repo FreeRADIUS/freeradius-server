@@ -1,0 +1,105 @@
+= Proxy Extensions
+
+Proxying in version 4 has been extended with new functionality. The biggest one is that proxying is a module radius, as discussed in the proxy page.
+
+This page describes new functionality which was previously impossible in FreeRADIUS, but which is now trivial in version 4.
+
+These examples assume the following (sample) module configuration. These modules should be put into the mods-enabled/ directory, named as remoteradius and remoteradius2. You should also edit the ipaddr and secret fields for your site. We also assume that you have read the proxy page to understand the new proxy configuration.
+```
+radius remoteradius1 {
+    transport = udp
+    type = Access-Request
+    type = Accounting-Request
+    udp {
+        ipaddr = 192.168.0.1
+        port = 1812
+        secret = aS3cr3T
+    }
+}
+```
+And the second module:
+```
+radius remoteradius2 {
+    transport = udp
+    type = Access-Request
+    type = Accounting-Request
+    udp {
+        ipaddr = 192.168.0.2
+        port = 1812
+        secret = aS3cr3T
+    }
+}
+```
+
+== Proxying to multiple destinations
+
+In version 3, you could only proxy to one destination. In version 4, proxying to multiple destinations is as simple as adding the following configuration:
+```
+recv Accounting-Request {
+    ...
+    remoteradius1
+    remoteradius2
+    ...
+}
+```
+When the server receives an Accounting-Request packet, it will be proxied first to remoteradius1, and then if that succeeds, it will be proxied to remoteradius2.
+
+It is possible to list any number of radius modules here. You can proxy to one, two, three, or ten different destinations.
+
+== Parallel proxying to multiple destinations
+
+The main issue with proxying to multiple destinations is that the proxying is sequential. That is, it proxies to the first destination, waits for a response, and only then proxies to the second destination. That process can be slow.
+
+The solution is to proxy the packets in parallel. Version 4 has a simple parallel command in unlang, which can do this:
+```
+recv Accounting-Request {
+    ...
+    parallel {
+        remoteradius1
+        remoteradius2
+    }
+    ...
+}
+```
+
+In this configuration, the packet is proxied first to remoteradius1, and then immediately another packet is proxied to remoteradius2. The parallel section then waits for all responses to come in, before continuing with the request.
+
+The result is that instead of the proxy delay being the sum of the delays from the home servers, proxying is as slow as the slowest response time.
+
+== Parallel Proxying with short-circuit
+
+Sometimes even the above configuration is insufficient. It would be useful to be able to tell the server try proxying to two destinations, and continue processing as soon as one response is received.
+
+This configuration is again simple, using module fail-over, and the return keyword:
+```
+recv Accounting-Request {
+    ...
+    parallel {
+        remoteradius1 {
+            ok = return
+        }
+        remoteradius2 {
+            ok = return
+        }
+    }
+    ...
+}
+```
+
+The ok = return change tells the parallel section to stop processing the other modules as soon as one of them receives a response, and returns ok.
+
+Any subsequent response from the other remote RADIUS server is silently ignored.
+
+== Replication to multiple destinations
+
+We call "replication" the act of proxying a packet, where the server does not wait for a response. The radius module configuration can be updated to add replicate = yes. Once that is done, the following configuration will send packets first to remoteradius1, and then immediately send a packet to remoteradius2. Both modules will always succeed.
+```
+recv Accounting-Request {
+    ...
+    remoteradius1
+    remoteradius2
+    ...
+}
+```
+
+Because the server does not wait for a response to any of the replicated packets, a parallel section is not necessary here.

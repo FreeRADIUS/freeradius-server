@@ -30,7 +30,7 @@ else {
 if (true) {
 	ok
 }
-elsif ("%foo(bar)") {	# no pass2
+elsif ("%foo('bar')") {	# no pass2
 	no-such-module
 }
 else {

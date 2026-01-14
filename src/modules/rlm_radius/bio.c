@@ -37,12 +37,11 @@
 //#include "rlm_radius.h"
 #include "track.h"
 
-/*
- * Macro to simplify checking packets before calling decode(), so that
- * it gets a known valid length and no longer calls fr_radius_ok() itself.
- */
-#define check(_handle, _len_p) fr_radius_ok((_handle)->buffer, (size_t *)(_len_p), \
-					    (_handle)->ctx.inst->max_attributes, false, NULL)
+typedef enum {
+	LIMIT_PORTS_NONE = 0,			//!< Source port not restricted
+	LIMIT_PORTS_STATIC,			//!< Limited source ports for static home servers
+	LIMIT_PORTS_DYNAMIC			//!< Limited source ports for dynamic home servers
+} bio_limit_ports_t;
 
 typedef struct {
 	char const		*module_name;	//!< the module that opened the connection
@@ -51,7 +50,8 @@ typedef struct {
 	trunk_t			*trunk;	       	//!< trunk handler
 	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
-	fr_radius_ctx_t		radius_ctx;
+	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
+	bio_limit_ports_t	limit_source_ports;	//!< What type of port limit is in use.
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -62,6 +62,9 @@ typedef struct {
 		uint32_t id;			//!< for replication
 		fr_rb_expire_t	expires;       	//!< for proxying / client sending
 	} bio;
+
+	int			num_ports;
+	connection_t		**connections;
 } bio_thread_t;
 
 typedef struct bio_request_s bio_request_t;
@@ -75,8 +78,7 @@ typedef struct {
 	int			fd;			//!< File descriptor.
 
 	struct {
-		fr_bio_t		*read;     	//!< what we use for input
-		fr_bio_t		*write;    	//!< what we use for output
+		fr_bio_t		*main;     	//!< what we use for IO
 		fr_bio_t		*fd;		//!< raw FD
 		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
 	} bio;
@@ -99,7 +101,7 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
-	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
+	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
 
 	bool			status_checking;       	//!< whether we're doing status checks
 	bio_request_t		*status_u;		//!< for sending status check packets
@@ -132,7 +134,7 @@ struct bio_request_s {
 	size_t			partial;		//!< partially sent data
 
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
-	fr_event_timer_t const	*ev;			//!< timer for retransmissions
+	fr_timer_t	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
@@ -140,7 +142,11 @@ typedef struct {
 	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
 
 	fr_rb_expire_node_t	expire;
+
+	int			num_ports;
+	connection_t		*connections[];	//!< for tracking outbound connections
 } home_server_t;
+
 
 /** Turn a reply code into a module rcode;
  *
@@ -210,7 +216,7 @@ static void bio_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 static void bio_request_reset(bio_request_t *u)
 {
 	TALLOC_FREE(u->packet);
-	fr_pair_list_init(&u->extra);	/* Freed with packet */
+	fr_pair_list_free(&u->extra);
 
 	/*
 	 *	Can have packet put no u->rr
@@ -218,7 +224,7 @@ static void bio_request_reset(bio_request_t *u)
 	 */
 	if (u->rr) radius_track_entry_release(&u->rr);
 
-	fr_assert(!u->ev);
+	fr_assert(!fr_timer_armed(u->ev));
 }
 
 /** Reset a status_check packet, ready to reuse
@@ -232,7 +238,7 @@ static void status_check_reset(bio_handle_t *h, bio_request_t *u)
 	u->num_replies = 0;	/* Reset */
 	u->retry.start = fr_time_wrap(0);
 
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+	FR_TIMER_DISARM(u->ev);
 
 	bio_request_reset(u);
 }
@@ -250,7 +256,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 
 	fr_assert(!h->status_u && !h->status_request);
 
-	MEM(request = request_local_alloc_external(h, NULL));
+	MEM(request = request_local_alloc_external(h, (&(request_init_args_t){ .namespace = dict_radius })));
 	MEM(u = talloc_zero(request, bio_request_t));
 	talloc_set_destructor(u, _bio_request_free);
 
@@ -316,7 +322,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	request->packet->code = u->code;
 
 	DEBUG3("%s - Status check packet type will be %s", h->ctx.module_name, fr_radius_packet_name[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
+	log_request_proto_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 }
 
 /** Connection errored
@@ -350,7 +356,7 @@ static void conn_init_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
  *
  * Setup retries, or fail the connection.
  */
-static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void conn_init_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h;
@@ -384,7 +390,7 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 
 	case FR_RETRY_CONTINUE:
-		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL,
+		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL,
 				       conn_init_error, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
@@ -398,12 +404,12 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 /** Perform the next step of init and negotiation.
  *
  */
-static void conn_init_next(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void conn_init_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
@@ -424,7 +430,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	uint8_t			code = 0;
 
 	fr_pair_list_init(&reply);
-	slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+	slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 	if (slen == 0) {
 		/*
 		 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -461,19 +467,13 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 *	the response timer take care of progressing the
 	 *	connection attempt.
 	 */
-	if (slen < RADIUS_HEADER_LENGTH) {
-		ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-		      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
-		return;
-	}
+	fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
 	if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
 		      h->ctx.module_name, u->id, h->buffer[1]);
 		return;
 	}
-
-	if (!check(h, &slen)) return;
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
@@ -507,7 +507,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_next, conn) < 0) {
+		if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_next, conn) < 0) {
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
@@ -558,7 +558,10 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	DEBUG3("Encoded packet");
 	HEXDUMP3(u->packet, u->packet_len, NULL);
 
-	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
+	fr_assert(u->packet != NULL);
+	fr_assert(u->packet_len >= RADIUS_HEADER_LENGTH);
+
+	slen = fr_bio_write(h->bio.main, NULL, u->packet, u->packet_len);
 
 	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
 
@@ -593,7 +596,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	      h->ctx.module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
 	      fr_box_time_delta(u->retry.rt));
 
-	if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_timeout, conn) < 0) {
+	if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_timeout, conn) < 0) {
 		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
@@ -613,7 +616,7 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	fr_assert(h->fd >= 0);
 
-	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
+	if (h->status_u) FR_TIMER_DELETE_RETURN(&h->status_u->ev);
 
 	/*
 	 *	The connection code will take care of deleting the FD from the event loop.
@@ -673,15 +676,28 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
-#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->ctx.inst->received_message_authenticator)
+#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || *(_h)->ctx.inst->received_message_authenticator)
 
 	/*
 	 *	See if we need to discard the packet.
+	 *
+	 *	@todo - rate limit these messages, and find a way to associate them with a request, or even
+	 *	the logging destination of the module.
 	 */
 	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
+
+		if (failure == DECODE_FAIL_MA_MISSING) {
+			if (h->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
+				ERROR("We are configured with 'require_message_authenticator = true'");
+			} else {
+				ERROR("We previously received a packet from this client which included a Message-Authenticator attribute");
+			}
+		}
+
+		if (h->ctx.fd_config.socket_type == SOCK_DGRAM) return FR_BIO_VERIFY_DISCARD;
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
@@ -710,6 +726,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	int			fd;
 	bio_handle_t		*h;
 	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
+	connection_t		**to_save = NULL;
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->ctx = *ctx;
@@ -721,6 +738,69 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->buflen = h->max_packet_size;
 
 	MEM(h->tt = radius_track_alloc(h));
+
+	/*
+	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
+	 *	source port for each home server, so that we only can select the right unused source port for
+	 *	this home server.
+	 */
+	switch (ctx->limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	/*
+	 *	Dynamic home servers store source port usage in the home_server_t
+	 */
+	case LIMIT_PORTS_DYNAMIC:
+	{
+		int i;
+		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
+
+		for (i = 0; i < home->num_ports; i++) {
+			if (!home->connections[i]) {
+				to_save = &home->connections[i];
+
+				/*
+				 *	Set the source port, but also leave the src_port_start and
+				 *	src_port_end alone.
+				 */
+				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
+				break;
+			}
+		}
+
+		if (!to_save) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
+			goto fail;
+		}
+	}
+		break;
+
+	/*
+	 *	Static home servers store source port usage in bio_thread_t
+	 */
+	case LIMIT_PORTS_STATIC:
+	{
+		int i;
+		bio_thread_t *thread = talloc_get_type_abort(ctx, bio_thread_t);
+
+		for (i = 0; i < thread->num_ports; i++) {
+			if (!thread->connections[i]) {
+				to_save = &thread->connections[i];
+				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
+				break;
+			}
+		}
+
+		if (!to_save) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
+			goto fail;
+		}
+	}
+		break;
+	}
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
@@ -737,11 +817,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	fr_assert(fd >= 0);
 
 	/*
-	 *	We normally read and write to the FD BIO.
-	 */
-	h->bio.read = h->bio.write = h->bio.fd;
-
-	/*
 	 *	Create a memory BIO for stream sockets.  We want to return only complete packets, and not
 	 *	partial packets.
 	 *
@@ -749,25 +824,24 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
 	 *	UDP sockets?
 	 */
-	if (h->ctx.fd_config.socket_type == SOCK_STREAM) {
-		h->bio.mem = fr_bio_mem_alloc(h, 8192, 0, h->bio.fd);
-		if (!h->bio.mem) {
-			PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
-			goto fail;
-		}
-
-		if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, false) < 0) {
-			PERROR("%s - Failed setting validation callback - ", h->ctx.module_name);
-			goto fail;
-		}
-
-		/*
-		 *	For stream sockets, we read into the memory buffer, and then return only one packet at
-		 *	a time.
-		 */
-		h->bio.read = h->bio.mem;
-		h->bio.mem->uctx = h;
+	h->bio.mem = fr_bio_mem_alloc(h, (h->ctx.fd_config.socket_type == SOCK_DGRAM) ? 0 : h->ctx.inst->max_packet_size * 4,
+				      0, h->bio.fd);
+	if (!h->bio.mem) {
+		PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
+		goto fail;
 	}
+
+	if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, (h->ctx.fd_config.socket_type == SOCK_DGRAM)) < 0) {
+		PERROR("%s - Failed setting validation callback - ", h->ctx.module_name);
+		goto fail;
+	}
+
+	/*
+	 *	Set the BIO read function to be the memory BIO, which will then call the packet verification
+	 *	routine.
+	 */
+	h->bio.main = h->bio.mem;
+	h->bio.mem->uctx = h;
 
 	h->fd = fd;
 
@@ -826,13 +900,15 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	*h_out = h;
 
+	if (to_save) *to_save = conn;
+
 	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
+static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 {
 	bio_handle_t *h = talloc_get_type_abort(handle, bio_handle_t);
 
@@ -846,6 +922,49 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, bio_tracking_entry_log);
 #endif
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
+	}
+
+	/*
+	 *	We have opened a limited number of outbound source ports.  This means that when we close a
+	 *	port, we have to mark it unused.
+	 */
+	switch (h->ctx.limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	case LIMIT_PORTS_DYNAMIC:
+	{
+		int offset;
+		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
+
+		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+
+		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(offset < home->num_ports);
+
+		fr_assert(home->connections[offset] == h->conn);
+
+		home->connections[offset] = NULL;
+	}
+		break;
+
+	case LIMIT_PORTS_STATIC:
+	{
+		int offset;
+		bio_thread_t *thread = talloc_get_type_abort(uctx, bio_thread_t);
+
+		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+
+		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(offset < thread->num_ports);
+
+		fr_assert(thread->connections[offset] == h->conn);
+
+		thread->connections[offset] = NULL;
+	}
+		break;
 	}
 
 	DEBUG4("Freeing handle %p", handle);
@@ -874,12 +993,12 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 		/*
 		 *	Reset the Status-Server checks.
 		 */
-		if (h->status_u && h->status_u->ev) (void) fr_event_timer_delete(&h->status_u->ev);
-	}
+		if (h->status_u) FR_TIMER_DISARM(h->status_u->ev);
 		break;
 
 	default:
 		break;
+	}
 	}
 
 	return CONNECTION_STATE_INIT;
@@ -922,7 +1041,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
-	while ((slen = fr_bio_read(h->bio.read, NULL, buffer, sizeof(buffer))) > 0);
+	while ((slen = fr_bio_read(h->bio.main, NULL, buffer, sizeof(buffer))) > 0);
 
 	if (slen < 0) {
 		switch (errno) {
@@ -956,7 +1075,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -1116,8 +1235,8 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    (inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
 	    !*(inst->received_message_authenticator) &&
-	    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) &&
-	    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+	    fr_pair_find_by_da(reply, NULL, attr_message_authenticator) &&
+	    !fr_pair_find_by_da(reply, NULL, attr_eap_message)) {
 		RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
 		*(inst->received_message_authenticator) = true;
 	}
@@ -1225,7 +1344,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	if (encode_ctx.add_proxy_state) {
 		fr_pair_t	*vp;
 
-		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
+		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 		packet_len += 2 + sizeof(inst->common_ctx.proxy_state);
@@ -1241,7 +1360,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 */
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		goto error;
 	}
 
@@ -1252,7 +1371,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 /** Revive a connection after "revive_interval"
  *
  */
-static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1264,7 +1383,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 /** Mark a connection dead after "zombie_interval"
  *
  */
-static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1290,8 +1409,9 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Revive the connection after a time.
 	 */
-	if (fr_event_timer_at(h, el, &h->zombie_ev,
-			      fr_time_add(now, h->ctx.inst->revive_interval), revive_timeout, tconn) < 0) {
+	if (fr_timer_at(h, tl, &h->zombie_ev,
+			fr_time_add(now, h->ctx.inst->revive_interval), false,
+			revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
@@ -1334,7 +1454,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
 	 */
-	if (h->status_checking || h->zombie_ev) return true;
+	if (h->status_checking || fr_timer_armed(h->zombie_ev)) return true;
 
 	if (fr_time_eq(now, fr_time_wrap(0))) now = fr_time();
 
@@ -1370,8 +1490,8 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
-		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
-				      zombie_timeout, tconn) < 0) {
+		if (fr_timer_at(h, el->tl, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
+				false, zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
@@ -1426,13 +1546,23 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 
 static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_retry_t const *retry)
 {
-	trunk_request_t		*treq = talloc_get_type_abort(u->treq, trunk_request_t);
-	trunk_connection_t	*tconn = treq->tconn;
-	fr_time_t		now = retry->updated;
+	trunk_request_t		*treq;
+	trunk_connection_t	*tconn;
+	fr_time_t		now;
+
+	if (!u->treq) {
+		RDEBUG("Packet was cancelled by the connection handler - ignoring retry");
+		return;
+	}
+
+	treq = talloc_get_type_abort(u->treq, trunk_request_t);
 
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 	fr_assert(treq->preq == u);
+
+	tconn = treq->tconn;
+	now = retry->updated;
 
 	switch (retry->state) {
 	case FR_RETRY_CONTINUE:
@@ -1525,10 +1655,11 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	size_t			packet_len;
 	ssize_t			slen;
 
-	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
-		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL));
-
 	u = treq->preq;
+
+	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
+		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL) ||
+		  ((u->retry.count > 0) && (treq->state == TRUNK_REQUEST_STATE_SENT)));
 
 	fr_assert(!u->status_check);
 
@@ -1594,14 +1725,17 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	/*
 	 *	@todo - When logging Message-Authenticator, don't print its' value.
 	 */
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
-	if (!fr_pair_list_empty(&u->extra)) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
+	log_request_proto_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
+	if (!fr_pair_list_empty(&u->extra)) log_request_proto_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
 
 	packet = u->packet;
 	packet_len = u->packet_len;
 
 do_write:
-	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
+	fr_assert(packet != NULL);
+	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
+
+	slen = fr_bio_write(h->bio.main, NULL, packet, packet_len);
 
 	/*
 	 *	Can't write anything, requeue it on a different socket.
@@ -1715,7 +1849,10 @@ do_write:
 	/*
 	 *	If we only send one datagram packet, then don't bother saving it.
 	 */
-	if (u->retry.config && u->retry.config->mrc == 1) return;
+	if (u->retry.config && u->retry.config->mrc == 1) {
+		u->packet = NULL;
+		return;
+	}
 
 	MEM(u->packet = talloc_memdup(u, u->packet, u->packet_len));
 }
@@ -1764,37 +1901,37 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		 */
 		if (attr[0] != attr_extended_attribute_1->attr) continue;
 
-			/*
-			 *	ATTR + LEN + EXT-Attr + uint32
-			 */
-			if (attr[1] != 7) continue;
+		/*
+		 *	ATTR + LEN + EXT-Attr + uint32
+		 */
+		if (attr[1] != 7) continue;
 
-			/*
-			 *	See if there's an Original-Packet-Code.
-			 */
-			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
+		/*
+		 *	See if there's an Original-Packet-Code.
+		 */
+		if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
 
-			/*
-			 *	Has to be an 8-bit number.
-			 */
-			if ((attr[3] != 0) ||
-			    (attr[4] != 0) ||
-			    (attr[5] != 0)) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	Has to be an 8-bit number.
+		 */
+		if ((attr[3] != 0) ||
+		    (attr[4] != 0) ||
+		    (attr[5] != 0)) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 
-			/*
-			 *	The value has to match.  We don't
-			 *	currently multiplex different codes
-			 *	with the same IDs on connections.  So
-			 *	this check is just for RFC compliance,
-			 *	and for sanity.
-			 */
-			if (attr[6] != u->code) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	The value has to match.  We don't
+		 *	currently multiplex different codes
+		 *	with the same IDs on connections.  So
+		 *	this check is just for RFC compliance,
+		 *	and for sanity.
+		 */
+		if (attr[6] != u->code) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 	}
 
 	/*
@@ -1838,7 +1975,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 /** Handle retries for a status check
  *
  */
-static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1877,7 +2014,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, h->ctx.el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
+		if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_next, treq->tconn) < 0) {
 			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 		}
 		return;
@@ -1928,7 +2065,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
 			/*
 			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -1949,11 +2086,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 			return;
 		}
 
-		if (slen < RADIUS_HEADER_LENGTH) {
-			ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-			      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
-			continue;
-		}
+		fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
 		/*
 		 *	Note that we don't care about packet codes.  All
@@ -1973,14 +2106,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		fr_assert(u == treq->preq);
 
 		/*
-		 *	Validate and decode the incoming packet
+		 *	Decode the incoming packet.
 		 */
-
-		if (!check(h, &slen)) {
-			RWARN("Ignoring malformed packet");
-			continue;
-		}
-
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
 		if (reason != DECODE_FAIL_NONE) continue;
 
@@ -2017,6 +2144,20 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		switch (code) {
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, h);
+
+			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+			if (!vp) {
+				RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
+			} else {
+				fr_pair_delete_by_da(&request->reply_pairs, attr_original_packet_code);
+			}
+
+			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_error_cause);
+			if (!vp) {
+				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause));
+				vp->vp_uint32 = FR_ERROR_CAUSE_VALUE_PROXY_PROCESSING_ERROR;
+				fr_pair_append(&request->reply_pairs, vp);
+			}
 			break;
 
 		default:
@@ -2061,6 +2202,143 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 	}
 }
 
+/*
+ *	This is the same as request_mux(), except that we immediately mark the request as complete.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+static void request_replicate_mux(UNUSED fr_event_list_t *el,
+				  trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+{
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
+	trunk_request_t		*treq;
+
+	if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
+
+	/*
+	 *	No more requests to send
+	 */
+	if (!treq) return;
+
+	mod_write(treq->request, treq, h);
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+{
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
+
+	DEBUG3("%s - Reading data for connection %s", h->ctx.module_name, h->ctx.fd_info->name);
+
+	while (true) {
+		ssize_t			slen;
+
+		trunk_request_t	*treq;
+		request_t		*request;
+		bio_request_t		*u;
+		radius_track_entry_t	*rr;
+		fr_radius_decode_fail_t	reason;
+		uint8_t			code = 0;
+		fr_pair_list_t		reply;
+
+		fr_time_t		now;
+
+		fr_pair_list_init(&reply);
+
+		/*
+		 *	Drain the socket of all packets.  If we're busy, this
+		 *	saves a round through the event loop.  If we're not
+		 *	busy, a few extra system calls don't matter.
+		 */
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
+		if (slen == 0) {
+			/*
+			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
+			 */
+			if (h->ctx.fd_info->eof) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			return;
+		}
+
+		/*
+		 *	We're done reading, return.
+		 */
+		if (slen == fr_bio_error(IO_WOULD_BLOCK)) return;
+
+		if (slen < 0) {
+			ERROR("%s - Failed reading response from socket: %s",
+			      h->ctx.module_name, fr_syserror(errno));
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			return;
+		}
+
+		fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
+
+		/*
+		 *	We only pay attention to Protocol-Error replies.
+		 *
+		 *	All other packets are discarded.
+		 */
+		if (h->buffer[0] != FR_RADIUS_CODE_PROTOCOL_ERROR) {
+			continue;
+		}
+
+		/*
+		 *	Note that we don't care about packet codes.  All
+		 *	packet codes share the same ID space.
+		 */
+		rr = radius_track_entry_find(h->tt, h->buffer[1], NULL);
+		if (!rr) {
+			WARN("%s - Ignoring reply with ID %i that arrived too late",
+			     h->ctx.module_name, h->buffer[1]);
+			continue;
+		}
+
+		treq = talloc_get_type_abort(rr->uctx, trunk_request_t);
+		request = treq->request;
+		fr_assert(request != NULL);
+		u = talloc_get_type_abort(treq->rctx, bio_request_t);
+		fr_assert(u == treq->preq);
+
+		/*
+		 *	Decode the incoming packet
+		 */
+		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
+		if (reason != DECODE_FAIL_NONE) continue;
+
+		/*
+		 *	Only valid packets are processed
+		 *	Otherwise an attacker could perform
+		 *	a DoS attack against the proxying servers
+		 *	by sending fake responses for upstream
+		 *	servers.
+		 */
+		h->last_reply = now = fr_time();
+
+		/*
+		 *	Status-Server can have any reply code, we don't care
+		 *	what it is.  So long as it's signed properly, we
+		 *	accept it.  This flexibility is because we don't
+		 *	expose Status-Server to the admins.  It's only used by
+		 *	this module for internal signalling.
+		 */
+		if (u == h->status_u) {
+			fr_pair_list_free(&reply);	/* Probably want to pass this to status_check_reply? */
+			status_check_reply(treq, now);
+			trunk_request_signal_complete(treq);
+			continue;
+		}
+
+		/*
+		 *	Handle any state changes, etc. needed by receiving a
+		 *	Protocol-Error reply packet.
+		 *
+		 *	Protocol-Error is also permitted as a reply to any
+		 *	packet.
+		 */
+		protocol_error_reply(u, h);
+	}
+}
+
+
 /** Remove the request from any tracking structures
  *
  * Frees encoded packets if the request is being moved to a new connection
@@ -2084,7 +2362,7 @@ static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
 		 *	queued for sendmmsg but never actually
 		 *	sent.
 		 */
-		if (u->ev) (void) fr_event_timer_delete(&u->ev);
+		FR_TIMER_DISARM(u->ev);
 	}
 
 	/*
@@ -2102,8 +2380,8 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	bio_request_t		*u = preq_to_reset;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (u->ev) (void)fr_event_timer_delete(&u->ev);
-	if (u->packet) bio_request_reset(u);
+	FR_TIMER_DISARM(u->ev);
+	bio_request_reset(u);
 
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
 
@@ -2159,14 +2437,14 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	bio_request_t	*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	rlm_rcode_t	rcode = u->rcode;
 
 	talloc_free(u);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action);
@@ -2241,9 +2519,9 @@ static int _bio_request_free(bio_request_t *u)
 	}
 #endif
 
-	fr_assert_msg(!u->ev, "bio_request_t freed with active timer");
+	fr_assert_msg(!fr_timer_armed(u->ev), "bio_request_t freed with active timer");
 
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+	FR_TIMER_DELETE_RETURN(&u->ev);
 
 	fr_assert(u->rr == NULL);
 
@@ -2280,7 +2558,7 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	 *	Can't use compound literal - const issues.
 	 */
 	u->code = request->packet->code;
-	u->priority = request->async->priority;
+	u->priority = request->priority;
 	u->recv_time = request->async->recv_time;
 	fr_pair_list_init(&u->extra);
 
@@ -2337,9 +2615,9 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 	case RLM_RADIUS_MODE_PROXY:
 		if (!request->parent) {
-			u->proxied = (request->client->cs != NULL);
+			u->proxied = (request->client && request->client->cs != NULL);
 
-		} else if (!fr_dict_compatible(request->parent->dict, request->dict)) {
+		} else if (!fr_dict_compatible(request->parent->proto_dict, request->proto_dict)) {
 			u->proxied = false;
 
 		} else {
@@ -2402,6 +2680,18 @@ static const trunk_io_funcs_t	io_funcs = {
 	.request_cancel = request_cancel,
 };
 
+static const trunk_io_funcs_t	io_replicate_funcs = {
+	.connection_alloc = thread_conn_alloc,
+	.connection_notify = thread_conn_notify,
+	.request_prioritise = request_prioritise,
+	.request_mux = request_replicate_mux,
+	.request_demux = request_replicate_demux,
+	.request_conn_release = request_conn_release,
+	.request_complete = request_complete,
+	.request_fail = request_fail,
+	.request_cancel = request_cancel,
+};
+
 /** Instantiate thread data for the submodule.
  *
  */
@@ -2422,18 +2712,42 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		FALL_THROUGH;
 
 	default:
+		/*
+		 *	Assign each thread a portion of the available source port range.
+		 */
+		if (thread->ctx.fd_config.src_port_start) {
+			uint16_t	range = inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1;
+			thread->num_ports = range / main_config->max_workers;
+			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (thread->num_ports * fr_schedule_worker_id());
+			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (thread->num_ports * (fr_schedule_worker_id() +1)) - 1;
+			if (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY) {
+				thread->connections = talloc_zero_array(thread, connection_t *, thread->num_ports);
+				thread->ctx.limit_source_ports = LIMIT_PORTS_STATIC;
+			}
+		}
+
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-					    &inst->trunk_conf, inst->name, thread, false);
+					    &inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
 	case RLM_RADIUS_MODE_REPLICATE:
+		/*
+		 *	We can replicate over TCP, but that uses trunks.
+		 */
+		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
+
+		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
+						&inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
+		if (!thread->ctx.trunk) return -1;
+		return 0;
+
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
 		break;
 	}
 
 	/*
-	 *	If we have a port range, allocate the source IP based
+	 *	If we have a port range, allocate the source port based
 	 *	on the range start, plus the thread ID.  This means
 	 *	that we can avoid "hunt and peck" attempts to open up
 	 *	the source port.
@@ -2443,12 +2757,12 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Allocate the unconnected replication socket.
+	 *	Allocate an unconnected socket for replication.
 	 */
 	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.fd_config, 0);
 	if (!thread->bio.fd) {
 		PERROR("%s - failed opening socket", inst->name);
-		return CONNECTION_STATE_FAILED;
+		return -1;
 	}
 
 	thread->bio.fd->uctx = thread;
@@ -2534,7 +2848,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Sign it.
 	 */
 	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2652,21 +2966,27 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		});
 	if (!home) {
-		MEM(home = talloc(thread, home_server_t));
+		/*
+		 *	Track which connections are made to this home server from which open ports.
+		 */
+		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * thread->num_ports));
+		talloc_set_type(home, home_server_t);
 
 		*home = (home_server_t) {
 			.ctx = (bio_handle_ctx_t) {
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
+				.limit_source_ports = (thread->num_ports > 0) ? LIMIT_PORTS_DYNAMIC : LIMIT_PORTS_NONE,
 			},
+			.num_ports = thread->num_ports,
 		};
 
 		/*
-		 *	Copy the home server configuration from the root configuration.  Then update it with
+		 *	Copy the home server configuration from the thread configuration.  Then update it with
 		 *	the needs of the home server.
 		 */
-		home->ctx.fd_config = inst->fd_config;
+		home->ctx.fd_config = thread->ctx.fd_config;
 		home->ctx.fd_config.type = FR_BIO_FD_CONNECTED;
 		home->ctx.fd_config.dst_ipaddr = ipaddr->vb_ip;
 		home->ctx.fd_config.dst_port = port->vb_uint32;
@@ -2681,7 +3001,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		 *	Allocate the trunk and start it up.
 		 */
 		home->ctx.trunk = trunk_alloc(home, unlang_interpret_event_list(request), &io_funcs,
-					      &inst->trunk_conf, inst->name, home, false);
+					      &inst->trunk_conf, inst->name, home, false, inst->trigger_args);
 		if (!home->ctx.trunk) {
 		fail:
 			talloc_free(home);

@@ -8,7 +8,7 @@
 #
 #	$Id$
 #
-ATTRIBUTE	Error-Cause				101	integer
+ATTRIBUTE	Error-Cause				101	uint32
 
 #	Service Types
 

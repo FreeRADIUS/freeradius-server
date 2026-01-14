@@ -111,11 +111,16 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	if (vp->da != da) {
-		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
+		fr_strerror_printf("%s: Top of stack %s does not match encoding attribute %s",
+				   __FUNCTION__, da->name, vp->da->name);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	switch (vp->vp_type) {
+	case FR_TYPE_ATTR:
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) vp->vp_attr->attr);
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
@@ -745,7 +750,8 @@ ssize_t	fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 }
 
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_dhcpv6_encode_ctx_t	*test_ctx;
 

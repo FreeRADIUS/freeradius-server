@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/version.h>
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/dependency.h>
@@ -193,14 +192,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "regex-pcre",
-#ifdef HAVE_REGEX_PCRE
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "regex-pcre2",
 #ifdef HAVE_REGEX_PCRE2
 				true
@@ -224,7 +215,7 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 
 	dependency_feature_add(cs, "regex-binsafe",
-#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE2)
 				true
 #else
 				false
@@ -358,8 +349,6 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 #  ifdef HAVE_REGEX_PCRE2
 	snprintf(buffer, sizeof(buffer), "%i.%i (%s) - retrieved at build time", PCRE2_MAJOR, PCRE2_MINOR, STRINGIFY(PCRE2_DATE));
 	dependency_version_number_add(cs, "pcre2", buffer);
-#  elif defined(HAVE_REGEX_PCRE)
-	dependency_version_number_add(cs, "pcre", pcre_version());
 #  endif
 #endif
 
@@ -455,12 +444,16 @@ void dependency_version_print(void)
 #endif
 		DEBUG2("  ");
 	}
-	INFO("Copyright 1999-2024 The FreeRADIUS server project and contributors");
+	INFO("Copyright 1999-2025 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
 	INFO("GNU General Public License");
 	INFO("For more information about these matters, see the file named COPYRIGHT");
+	INFO("");
+	INFO("FreeRADIUS is developed, maintained, and supported by InkBridge Networks.");
+	INFO("For commercial support, please email sales@inkbridgenetworks.com");
+	INFO("https://inkbridgenetworks.com/");
 
 	fflush(NULL);
 }

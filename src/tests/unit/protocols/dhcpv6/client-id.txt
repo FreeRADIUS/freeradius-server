@@ -1,0 +1,25 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+pair Client-ID.UUID.Value = 0xabcdef
+match Client-ID = { UUID = { Value = 0xabcdef } }
+
+encode-pair Client-ID.UUID.Value = 0xabcdef
+match 00 01 00 12 00 04 ab cd ef 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+#
+#  The value is padded to 16 octets.
+#
+decode-pair -
+match Client-ID = { DUID = ::UUID, UUID = { Value = 0xabcdef00000000000000000000000000 } }
+
+count
+match 9

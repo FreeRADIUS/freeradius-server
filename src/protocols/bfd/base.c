@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/udp.h>
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_bfd;
@@ -44,7 +45,7 @@ extern fr_dict_autoload_t libfreeradius_bfd_dict[];
 fr_dict_autoload_t libfreeradius_bfd_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_bfd, .proto = "bfd" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_packet_type;
@@ -57,7 +58,7 @@ fr_dict_attr_autoload_t libfreeradius_bfd_dict_attr[] = {
 	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd },
 	{ .out = &attr_bfd_additional_data, .name = "Additional-Data", .type = FR_TYPE_GROUP, .dict = &dict_bfd },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 char const *fr_bfd_packet_names[FR_BFD_CODE_MAX] = {
@@ -238,16 +239,20 @@ int fr_bfd_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;	
+
 	return 0;
 }
 
 void fr_bfd_global_free(void)
 {
-	fr_assert(instance_count > 0);
+	if (!instantiated) return;
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_bfd_dict);
+
+	instantiated = false;
 }
 
 extern fr_dict_protocol_t libfreeradius_bfd_dict_protocol;

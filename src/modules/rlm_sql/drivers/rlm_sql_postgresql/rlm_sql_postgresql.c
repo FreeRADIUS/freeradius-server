@@ -232,8 +232,6 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	rlm_sql_postgres_conn_t		*c = talloc_get_type_abort(uctx, rlm_sql_postgres_conn_t);
 	PostgresPollingStatusType	status;
 
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
 	status = PQconnectPoll(c->db);
 
 	/*
@@ -247,6 +245,7 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 		DEBUG2("Connected to database '%s' on '%s' server version %i, protocol version %i, backend PID %i ",
 		       PQdb(c->db), PQhost(c->db), PQserverVersion(c->db), PQprotocolVersion(c->db),
 		       PQbackendPID(c->db));
+		fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 		PQsetnonblocking(c->db, 1);
 		connection_signal_connected(c->conn);
 		return;
@@ -269,6 +268,43 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 		goto error;
 
 	}
+}
+
+static void _sql_connect_query_run(connection_t *conn, UNUSED connection_state_t prev,
+				   UNUSED connection_state_t state, void *uctx)
+{
+	rlm_sql_t const			*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_postgresql_t		*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_postgresql_t);
+	rlm_sql_postgres_conn_t		*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_postgres_conn_t);
+	int				err;
+	PGresult			*result, *tmp_result;
+	ExecStatusType			status;
+	sql_rcode_t			rcode;
+
+	DEBUG2("Executing \"%s\"", sql->config.connect_query);
+
+	err = PQsendQuery(sql_conn->db, sql->config.connect_query);
+	if (!err) {
+	fail:
+		ERROR("Failed running \"open_query\": %s", PQerrorMessage(sql_conn->db));
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		return;
+	}
+
+	result = PQgetResult(sql_conn->db);
+	if (!result) goto fail;
+
+	/*
+	 *  Clear up any additional results returned
+	 */
+	while ((tmp_result = PQgetResult(sql_conn->db))) PQclear(tmp_result);
+
+	status = PQresultStatus(result);
+
+	rcode = sql_classify_error(inst, status, result);
+	PQclear(result);
+
+	if (rcode != RLM_SQL_OK) goto fail;
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -323,6 +359,9 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	DEBUG2("Connecting to database '%s' on '%s', fd %d", PQdb(c->db), PQhost(c->db), c->fd);
 
 	*h = c;
+
+	if (sql->config.connect_query) connection_add_watch_post(conn, CONNECTION_STATE_CONNECTED,
+								 _sql_connect_query_run, true, sql);
 
 	return CONNECTION_STATE_CONNECTING;
 }
@@ -556,7 +595,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			records, i, len;
@@ -565,7 +604,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->row = NULL;
 
 	query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-	if (conn->cur_row >= PQntuples(conn->result)) RETURN_MODULE_OK;
+	if (conn->cur_row >= PQntuples(conn->result)) RETURN_UNLANG_OK;
 
 	free_result_row(conn);
 
@@ -586,7 +625,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		query_ctx->rcode = RLM_SQL_OK;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

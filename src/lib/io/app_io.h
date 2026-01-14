@@ -68,6 +68,7 @@ typedef struct {
 	fr_io_network_get_t		network_get;	//!< get dynamic network information
 	fr_io_client_find_t		client_find;	//!< find radclient
 	fr_io_name_t			get_name;	//!< get the socket name
+	fr_io_hexdump_set_t		hexdump_set;	//!< set the hexdump options
 
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;

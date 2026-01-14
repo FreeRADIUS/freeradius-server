@@ -1,6 +1,15 @@
 #
-#  PRE: acct_0_start
+#  The SQL tests are independent - so we fake a "Start" before running the I-U
 #
+%sql("${delete_from_radacct} '00000001'")
+
+sql.accounting.start
+if !(ok) {
+	test_fail
+}
+
+Acct-Session-Time = 30
+
 sql.accounting.interim-update
 if !(ok) {
 	test_fail
@@ -12,6 +21,10 @@ if (%sql("SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'") != "1"
 
 if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'") != "30") {
 	test_pass
+}
+
+if (control.Query-Number != 1) {
+	test_fail
 }
 
 test_pass

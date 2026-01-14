@@ -33,10 +33,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
 
-#include <time.h>
 
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
@@ -258,7 +256,7 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
  * @param[in] pool	to send trigger for.
  * @param[in] event	trigger name suffix.
  */
-static inline void fr_pool_trigger_exec(fr_pool_t *pool, char const *event)
+static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
 {
 	char	name[128];
 
@@ -268,7 +266,7 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, char const *event)
 	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger_exec(unlang_interpret_get_thread_default(), pool->cs, name, true, &pool->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), pool->cs, NULL, name, true, &pool->trigger_args);
 }
 
 /** Find a connection handle in the connection list
@@ -456,7 +454,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 		 *	Must be done inside the mutex, reconnect callback
 		 *	may modify args.
 		 */
-		fr_pool_trigger_exec(pool, "fail");
+		fr_pool_trigger(pool, "fail");
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
 
@@ -526,7 +524,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_pool_trigger_exec(pool, "open");
+	fr_pool_trigger(pool, "open");
 
 	pthread_cond_broadcast(&pool->done_spawn);
 	if (unlock) pthread_mutex_unlock(&pool->mutex);
@@ -569,7 +567,7 @@ static void connection_close_internal(fr_pool_t *pool, fr_pool_connection_t *thi
 		fr_heap_extract(&pool->heap, this);
 	}
 
-	fr_pool_trigger_exec(pool, "close");
+	fr_pool_trigger(pool, "close");
 
 	connection_unlink(pool, this);
 
@@ -881,7 +879,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
 			 */
-			fr_pool_trigger_exec(pool, "none");
+			fr_pool_trigger(pool, "none");
 		}
 
 		return NULL;
@@ -1139,7 +1137,7 @@ int fr_pool_start(fr_pool_t *pool)
 		}
 	}
 
-	fr_pool_trigger_exec(pool, "start");
+	fr_pool_trigger(pool, "start");
 
 	return 0;
 }
@@ -1293,7 +1291,7 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_pool_trigger_exec(pool, "reconnect");
+	fr_pool_trigger(pool, "reconnect");
 
 	/*
 	 *	Allow new spawn attempts, and wakeup any threads
@@ -1355,7 +1353,7 @@ void fr_pool_free(fr_pool_t *pool)
 		connection_close_internal(pool, this);
 	}
 
-	fr_pool_trigger_exec(pool, "stop");
+	fr_pool_trigger(pool, "stop");
 
 	fr_assert(pool->head == NULL);
 	fr_assert(pool->tail == NULL);
@@ -1468,8 +1466,8 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 */
 	connection_check(pool, request);
 
-	if (trigger_min) fr_pool_trigger_exec(pool, "min");
-	if (trigger_max) fr_pool_trigger_exec(pool, "max");
+	if (trigger_min) fr_pool_trigger(pool, "min");
+	if (trigger_max) fr_pool_trigger(pool, "max");
 }
 
 /** Reconnect a suspected inviable connection

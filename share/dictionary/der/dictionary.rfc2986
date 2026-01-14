@@ -17,7 +17,7 @@ DEFINE	certificationRequestInfo			sequence
 BEGIN certificationRequestInfo
 DEFINE	version						integer
 
-DEFINE	subject						sequence
+DEFINE	subject						sequence  sequence_of=set
 BEGIN subject
 DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END subject
@@ -33,7 +33,7 @@ BEGIN Attributes
 DEFINE	Attribute					sequence
 BEGIN Attribute
 DEFINE	OID						oid
-DEFINE	Extensions					set set_of=oid_and_value,ref=@.OID-Tree,is_extensions
+DEFINE	Extensions					set set_of=oid_and_value,is_extensions
 END Attribute
 END Attributes
 

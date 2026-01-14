@@ -28,12 +28,22 @@
 
 #include <freeradius-devel/bio/mem.h>
 
+typedef enum {
+	FR_BIO_MEM_INVALID = 0,
+	FR_BIO_MEM_SOURCE,	/* the application writes to it, something else reads */
+	FR_BIO_MEM_SINK,	/* something else writes to it, the application reads */
+	FR_BIO_MEM_VERIFY,	/* verification only, with no buffers */
+	FR_BIO_MEM_BUFFER,	/* we manage local buffers */
+} fr_bio_mem_type_t;
+
 /** The memory buffer bio
  *
  *  It is used to buffer reads / writes to a streaming socket.
  */
 typedef struct fr_bio_mem_s {
 	FR_BIO_COMMON;
+
+	fr_bio_mem_type_t	type;	//!< source, sink, etc.
 
 	fr_bio_verify_t	verify;		//!< verify data to see if we have a packet.
 	void		*verify_ctx;	//!< verify context
@@ -164,7 +174,7 @@ static ssize_t fr_bio_mem_read(fr_bio_t *bio, void *packet_ctx, void *buffer, si
 /** Return data only if we have a complete packet.
  *
  */
-static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
 	size_t used, room, want;
@@ -181,10 +191,7 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 		 *	See if there are valid packets in the buffer.
 		 */
 		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) {
-			rcode = fr_bio_error(VERIFY);
-			goto fail;
-		}
+		if (rcode < 0) return fr_bio_error(VERIFY);
 
 		/*
 		 *	There's at least one valid packet, return it.
@@ -224,14 +231,13 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 
 		/*
 		 *	We've tried to make room and failed.  Which means that the buffer is full, AND there
-		 *	still isn't a complete packet in the buffer.  This is therefore a fatal error.  The
+		 *	still isn't a complete packet in the buffer.  This is therefore an error.  The
 		 *	application has not supplied us with enough read_buffer space to store a complete
 		 *	packet.
+		 *
+		 *	@todo - allow the application to increase the size of the buffer.
 		 */
-		if (!room) {
-			rcode = fr_bio_error(BUFFER_FULL);
-			goto fail;
-		}
+		if (!room) return fr_bio_error(BUFFER_FULL);
 	}
 
 	/*
@@ -242,6 +248,11 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 	fr_assert(p != NULL);	/* otherwise room would be zero */
 
 	rcode = next->read(next, packet_ctx, p, room);
+
+	/*
+	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 */
+	if (rcode == 0) return 0;
 
 	/*
 	 *	The next bio returned some data.  See if it's a valid packet.
@@ -256,10 +267,7 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 		 *	See if there are valid packets in the buffer.
 		 */
 		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) {
-			rcode = fr_bio_error(VERIFY);
-			goto fail;
-		}
+		if (rcode < 0) return fr_bio_error(VERIFY);
 
 		/*
 		 *	There's at least one valid packet, return it.
@@ -274,18 +282,10 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 	}
 
 	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
+	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
+	 *	the BIO chain.
 	 */
-	if (rcode == 0) return 0;
-
-	/*
-	 *	The next bio returned an error either when our buffer was empty, or else it had only a partial
-	 *	packet in it.  We can no longer read full packets from this BIO, and we can't read from the
-	 *	next one, either.  So shut down the BIO completely.
-	 */
-fail:
-	bio->read = fr_bio_fail_read;
-	bio->write = fr_bio_fail_write;
 	return rcode;
 }
 
@@ -305,6 +305,15 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 	fr_assert(next != NULL);
 
 	rcode = next->read(next, packet_ctx, buffer, size);
+
+	/*
+	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 */
+	if (rcode == 0) return 0;
+
+	/*
+	 *	We have some data.
+	 */
 	if (rcode > 0) {
 		size_t want = rcode;
 
@@ -341,23 +350,15 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 			break;
 		}
 
-		rcode = fr_bio_error(VERIFY);
-		goto fail;
+		(void) fr_bio_shutdown(bio);
+		return fr_bio_error(VERIFY);
 	}
 
 	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
+	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
+	 *	the BIO chain.
 	 */
-	if (rcode == 0) return 0;
-
-	/*
-	 *	The next bio returned an error.  Whatever it is, it's fatal.  We can read from the memory
-	 *	buffer until it's empty, but we can no longer write to the memory buffer.  Any data written to
-	 *	the buffer is lost.
-	 */
-fail:
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
 	return rcode;
 }
 
@@ -675,16 +676,11 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 		}
 	}
 
+	/*
+	 *	A fatal error.  Shut down the entire BIO chain.
+	 */
+	(void) fr_bio_shutdown(bio);
 	return -1;
-}
-
-/*
- *	The application can read from the BIO until EOF, but cannot write to it.
- */
-static void fr_bio_mem_shutdown(fr_bio_t *bio)
-{
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
 }
 
 /** Allocate a memory buffer bio for either reading or writing.
@@ -728,46 +724,70 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 {
 	fr_bio_mem_t *my;
 
-	/*
-	 *	The caller has to state that the API is caching data both ways.
-	 */
-	if (!read_size) {
-		fr_strerror_const("Read size must be non-zero");
-		return NULL;
-	}
-
 	my = talloc_zero(ctx, fr_bio_mem_t);
 	if (!my) return NULL;
 
-	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
-	oom:
-		fr_strerror_const("Out of memory");
-		return NULL;
-	}
-	my->bio.read = fr_bio_mem_read;
-
-	if (write_size) {
-		if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) goto oom;
-
-		my->bio.write = fr_bio_mem_write_next;
-	} else {
+	/*
+	 *	We can do 0-sized buffers for read, and the application should then set the verify function.
+	 */
+	if (!read_size) {
+		my->type = FR_BIO_MEM_VERIFY;
+		my->bio.read = fr_bio_null_read; /* can't read anything until the verify routine is put in place */
 		my->bio.write = fr_bio_next_write;
+
+		if (write_size > 0) {
+			talloc_free(my);
+			fr_strerror_const("Invalid write size.  If read size is zero, then write size must also be zero");
+			return NULL;
+		}
+
+	} else {
+		/*
+		 *	We have a read buffer, and potentially a write buffer.
+		 */
+		my->type = FR_BIO_MEM_BUFFER;
+
+		if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
+		oom:
+			fr_strerror_const("Out of memory");
+			return NULL;
+		}
+		my->bio.read = fr_bio_mem_read;
+
+		if (write_size) {
+			if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) goto oom;
+
+			/*
+			 *     Default to passing writes straight through, but buffer them locally if the
+			 *     write blocks.
+			 *
+			 *	We also only need to resume writes if we're buffering data.
+			 */
+			my->bio.write = fr_bio_mem_write_next;
+			my->priv_cb.write_resume = fr_bio_mem_write_resume;
+
+		} else {
+			my->bio.write = fr_bio_next_write;
+		}
+
+		/*
+		 *	EOF and shutdown are needed if there's a read buffer, but not when the memory bio is
+		 *	just doing packet verification/
+		 */
+		my->priv_cb.eof = fr_bio_mem_eof;
 	}
-	my->priv_cb.eof = fr_bio_mem_eof;
-	my->priv_cb.write_resume = fr_bio_mem_write_resume;
-	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
 
 /** Allocate a memory buffer which sources data from the callers application into the bio system.
  *
- *  The caller writes data to the buffer, but never reads from it.  This bio will call the "next" bio to sink
- *  the data.
+ *  The caller writes data to the buffer, but never reads from it.  This bio will call the "next" bio to write
+ *  the data. somewhere.
  */
 fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *next)
 {
@@ -786,13 +806,13 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 		return NULL;
 	}
 
+	my->type = FR_BIO_MEM_SOURCE;
 	my->bio.read = fr_bio_null_read; /* reading FROM this bio is not possible */
 	my->bio.write = fr_bio_mem_write_next;
 
 	/*
 	 *	@todo - have write pause / write resume callbacks?
 	 */
-	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -859,10 +879,11 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 		return NULL;
 	}
 
+	my->type = FR_BIO_MEM_SINK;
 	my->bio.read = fr_bio_mem_read_buffer;
 	my->bio.write = fr_bio_mem_write_read_buffer; /* the upstream will write to our read buffer */
 
-	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
@@ -872,6 +893,7 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
  *
  *  @param bio		the binary IO handler
  *  @param verify	the verification function
+ *  @param verify_ctx	to pass to the verification function
  *  @param datagram	whether or not this bio is a datagram one.
  *  @return
  *	- <0 on error
@@ -881,16 +903,36 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, void *verify_ct
 {
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
-	if (my->bio.read != fr_bio_mem_read) {
-		fr_strerror_const("Cannot add verify to a memory sink bio");
+	switch (my->type) {
+	case FR_BIO_MEM_INVALID:
+		fr_assert(0);
+		return -1;
+
+	case FR_BIO_MEM_SOURCE:
+	case FR_BIO_MEM_SINK:
+		fr_strerror_const("Cannot add verify to this memory BIO");
 		return fr_bio_error(GENERIC);
+
+	case FR_BIO_MEM_VERIFY:
+		fr_assert(my->bio.write == fr_bio_next_write);
+		if (!datagram) {
+			fr_strerror_const("Invalid memory BIO - we need a read buffer for verifying packets from a stream socket");
+			return -1;
+		}
+		FALL_THROUGH;
+
+	case FR_BIO_MEM_BUFFER:
+		break;
 	}
 
 	my->verify = verify;
 	my->verify_ctx = verify_ctx;
 
 	/*
-	 *	If we are writing datagrams, then we cannot buffer individual datagrams.  We must write
+	 *	For reading datagrams, we just verify the packet in place.  This works both when we have local
+	 *	buffers, and when we are verifying packets in the application-supplied buffer.
+	 *
+	 *	For writing datagrams, then we cannot buffer individual datagrams.  We must write
 	 *	either all of the datagram out, or none of it.
 	 */
 	if (datagram) {
@@ -905,7 +947,7 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, void *verify_ct
 			my->write_buffer = (fr_bio_buf_t) {};
 		}
 	} else {
-		my->bio.read = fr_bio_mem_read_verify;
+		my->bio.read = fr_bio_mem_read_verify_stream;
 		/* don't touch the write function or the write buffer. */
 	}
 
@@ -930,6 +972,8 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 
 	if (bio->write != fr_bio_mem_write_buffer) return 1;
 
+	fr_assert(my->type == FR_BIO_MEM_BUFFER);
+
 	/*
 	 *	Flush the buffer, and then reset the write routine if we were successful.
 	 */
@@ -938,6 +982,9 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 
 	if (fr_bio_buf_used(&my->write_buffer) > 0) return 0;
 
+	/*
+	 *	Check for an application hook to check if we can resume writes.
+	 */
 	if (!my->cb.write_resume) return 1;
 
 	return my->cb.write_resume(bio);

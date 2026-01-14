@@ -52,7 +52,7 @@ typedef struct {
 	fr_stats_t			stats;			//!< statistics for this socket
 
 	int				fd;			//!< for CSV files
-	fr_event_timer_t const		*ev;			//!< for writing statistics
+	fr_timer_t			*ev;			//!< for writing statistics
 
 	fr_listen_t			*parent;		//!< master IO handler
 } proto_load_step_thread_t;
@@ -79,7 +79,7 @@ struct proto_load_step_s {
 
 
 static const conf_parser_t load_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
 	{ FR_CONF_OFFSET("csv", proto_load_step_t, csv) },
 
 	{ FR_CONF_OFFSET("max_attributes", proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
@@ -235,13 +235,13 @@ static int mod_generate(fr_time_t now, void *uctx)
 }
 
 
-static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void write_stats(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	proto_load_step_thread_t	*thread = uctx;
 	size_t len;
 	char buffer[1024];
 
-	(void) fr_event_timer_in(thread, el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
+	(void) fr_timer_in(thread, tl, &thread->ev, fr_time_delta_from_sec(1), false, write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, now, buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -258,13 +258,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	proto_load_step_t const	*inst = talloc_get_type_abort_const(instance, proto_load_step_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = inst->dict;
 
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
@@ -322,7 +315,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		return;
 	}
 
-	(void) fr_event_timer_in(thread, thread->el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
+	(void) fr_timer_in(thread, thread->el->tl, &thread->ev, fr_time_delta_from_sec(1), false, write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, fr_time(), buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -374,7 +367,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
+		if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done, true) < 0) {
 			cf_log_perr(conf, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;
@@ -396,7 +389,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("step", inst->load.step, <, 100000);
 
 	if (inst->load.max_pps > 0) FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, >, inst->load.start_pps);
-	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 100000);
+	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 400000);
 
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, <, fr_time_delta_from_sec(10000));

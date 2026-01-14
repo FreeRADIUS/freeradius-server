@@ -1,7 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/syserror.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 
 #define TRUNK_TESTS 1
@@ -373,7 +372,7 @@ static trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_con
 	 */
 	if (with_cancel_mux) io_funcs.request_cancel_mux = test_cancel_mux;
 
-	return trunk_alloc(ctx, el, &io_funcs, conf, "test_socket_pair", uctx, false);
+	return trunk_alloc(ctx, el, &io_funcs, conf, "test_socket_pair", uctx, false, NULL);
 }
 
 static void test_socket_pair_alloc_then_free(void)
@@ -396,9 +395,9 @@ static void test_socket_pair_alloc_then_free(void)
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
-	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
+	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false, NULL);
 	TEST_CHECK(trunk != NULL);
 	if (!trunk) return;
 
@@ -438,9 +437,9 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 
 	if (!el) return;
 
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
-	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
+	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false, NULL);
 	TEST_CHECK(trunk != NULL);
 	if (!trunk) return;
 
@@ -526,10 +525,10 @@ static void test_socket_pair_alloc_then_connect_timeout(void)
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 
-	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
+	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false, NULL);
 	TEST_CHECK(trunk != NULL);
 	if (!trunk) return;
 
@@ -607,9 +606,9 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
-	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false);
+	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false, NULL);
 	TEST_CHECK(trunk != NULL);
 	if (!trunk) return;
 
@@ -675,7 +674,7 @@ static void test_enqueue_basic(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 
@@ -775,7 +774,7 @@ static void test_enqueue_cancellation_points(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	trunk = test_setup_trunk(ctx, el, &conf, false, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
@@ -1022,7 +1021,7 @@ static void test_partial_to_complete_states(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
@@ -1103,7 +1102,7 @@ static void test_requeue_on_reconnect(void)
 	fr_talloc_fault_setup();
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(ctx, test_proto_request_t);
@@ -1385,7 +1384,7 @@ static void test_connection_start_on_enqueue(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
@@ -1446,7 +1445,7 @@ static void test_connection_rebalance_requests(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
 	preq = talloc_zero(NULL, test_proto_request_t);
@@ -1519,7 +1518,7 @@ static void test_connection_levels_max(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
@@ -1681,7 +1680,7 @@ static void test_connection_levels_alternating_edges(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
@@ -1845,7 +1844,7 @@ static void test_enqueue_and_io_speed(void)
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	/* Need to provide a timer starting value above zero */
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
@@ -1969,5 +1968,5 @@ TEST_LIST = {
 	 *	Performance tests
 	 */
 	{ "Speed Test - Enqueue, and I/O",		test_enqueue_and_io_speed },
-	{ NULL }
+	TEST_TERMINATOR
 };

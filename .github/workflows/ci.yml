@@ -62,16 +62,16 @@ jobs:
 
         #  runs_on - where GitHub will spin up the runner, either
         #            "self-hosted", or the name of a GitHub VM image
-        #            e.g. ubuntu-20.04 or ubuntu-latest
+        #            e.g. ubuntu-24.04 or ubuntu-latest
         #            see: https://github.com/actions/runner-images
         #  code    - the name/version of the OS (for step evaluations below)
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
             docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
             name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
-            code: "ubuntu2004"
+            code: "ubuntu2404"
             imageos: "ubuntu24"
 
         env:
@@ -84,7 +84,7 @@ jobs:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
           - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -g3",     LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 

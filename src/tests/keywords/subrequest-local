@@ -1,0 +1,19 @@
+#
+#  PRE: subrequest
+#
+subrequest ::Access-Request {
+	string name
+
+	name = "bob"
+
+	parent.control.User-Name := name
+	success
+}
+
+if (!control.User-Name) {
+	test_fail
+}
+
+if (!(control.User-Name == 'bob')) {
+	test_fail
+}

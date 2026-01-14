@@ -59,8 +59,8 @@ We STRONGLY RECOMMEND that you set an idle timeout.
 			private_key_file = ${certdir}/server.pem
 
 ```
-If Private key & Certificate are located in
-the same file, then private_key_file &
+If Private key and Certificate are located in
+the same file, then the private_key_file and
 certificate_file must contain the same file
 name.
 
@@ -93,13 +93,18 @@ this configuration item.
 
 ```
 
-For DH cipher suites to work, you have to
-run OpenSSL to create the DH file first:
+You can create the DH parameters by running the
+following command:
 
-	openssl dhparam -out certs/dh 1024
+	openssl dhparam -out certs/dh 2048
+
+The DH parameters will usually be ignored in FIPS mode.
+
+If this file isn't specified, then OpenSSL will
+automatically set the correct DH parameters.
 
 ```
-			dh_file = ${certdir}/dh
+#			dh_file = ${certdir}/dh
 
 ```
 
@@ -138,7 +143,7 @@ include_length = yes
 Check the Certificate Revocation List
 
 1) Copy CA certificates and CRLs to same directory.
-2) Execute 'c_rehash <CA certs&CRLs Directory>'.
+2) Execute `c_rehash /path/to/cert/directory`.
   'c_rehash' is OpenSSL's command.
 3) uncomment the line below.
 5) Restart radiusd

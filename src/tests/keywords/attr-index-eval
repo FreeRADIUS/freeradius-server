@@ -8,20 +8,20 @@ index := 1
 #
 #  Dynamically create an attribute reference
 #
-ref = "&Filter-Id[" + (string) index + "]"
+ref = "Filter-Id[" + (string) index + "]"
 
 #
-# Evaluate the attribute as an unlang expression.
+# Evaluate the contents of the attribute as an unlang expression.
 #
-foo = %eval(%{ref})
+foo = %eval(ref)
 
 if (foo != "b") {
 	test_fail
 }
 
-ref = "1 + 2"
+ref := "1 + 2"
 
-foo = %eval(%{ref})
+foo := %eval(ref)
 
 if (foo != 3) {
 	test_fail

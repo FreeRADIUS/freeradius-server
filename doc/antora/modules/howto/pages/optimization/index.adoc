@@ -1,0 +1,45 @@
+= Optimisation
+
+Once the FreeRADIUS server is successfully installed, optimizing your eco-system, particularly your FreeRADIUS server, becomes a top priority. A well-tuned server is critical for ensuring high performance, robust security, and reliability. These factors are especially important in environments with many users or high authentication traffic. This process involves tuning various components such as datastore performance, network connections, and server resources.
+
+It can be challenging to identify issues or what component needs adjusting. To start, you need to gather statistics through monitoring to identify the bottlenecks in your system. This important activity allows you to determine the most critical areas for improvement.
+
+== Why optimise?
+
+A poorly optimized FreeRADIUS server can lead to slow authentication times, timeouts, and even system instability. Enhance your FreeRADIUS server’s performance, reliability, and resource efficiency to enhance the user experience while maintaining a secure environment.
+
+=== Performance
+
+Optimization ensures fast authentication and accounting processes, preventing delays and timeouts. A well-optimized FreeRADIUS server can handle a large number of simultaneous users and authentication requests without performance degradation.
+
+=== Reliability
+
+Optimizing resources and configurations helps maintain a stable and robust RADIUS server, reducing the risk of crashes or outages. Optimizing FreeRADIUS helps ensure consistent and reliable network access, minimizing disruptions.
+
+=== Resource efficiency
+
+Optimizing resource usage (CPU, memory, disk I/O) allows you to run FreeRADIUS effectively even on limited hardware. If FreeRADIUS is integrated with a datastore, implementing well-structured querires prevents bottlenecks.
+
+== Sections in this guide
+
+=== xref:optimization/auditing.adoc[Auditing]
+
+Auditing provides valuable insights into user behavior, policy enforcement, and potential security risks. Auditing is the basis of robust network security and management processes.
+
+=== xref:optimization/monitoring/index.adoc[Monitoring]
+
+Monitoring the FreeRADUS server and network components includes observing the AAA processes and how the overall system is operating. Several logging options help the administrator generate statistics to determine where issues are occurring such as slow connectivity or authentications.
+
+FreeRADIUS is packaged with a xref:optimization/monitoring/statistics.adoc[virtual statistics server] that enables you to select what you want to watch or help find a problem.
+
+=== xref:tuning/performance-testing.adoc[Performance Testing]
+
+Performance testing helps you figure out what the maximum loads can be without affecting operations. As your network grows, a non-optimized server may struggle to handle the increased authentication and accounting loads, especially during peak hours.
+
+=== xref:optimization/tools/index.adoc[Tools]
+
+FreeRADIUS is packaged with some useful tools such as radsniff and radclient that are used in testing, monitoring, and gathering statistics. These tools give you a top-level view of the health of your server, clients, and processess.
+
+=== xref:tuning/tuning_guide.adoc[Tuning Guide]
+
+Tuning the FreeRADIUS server and relevant components ensures optimal performance across the network.

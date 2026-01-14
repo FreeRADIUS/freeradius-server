@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps);
 
 /*
@@ -79,7 +79,7 @@ struct rlm_csv_entry_s {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
 	{ FR_CONF_OFFSET_FLAGS("delimiter", CONF_FLAG_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", rlm_csv_t, header) },
@@ -232,7 +232,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	e->key = fr_value_box_alloc_null(e);
 	if (!e->key) goto fail;
 
-	if (fr_value_box_from_str(e->key, e->key, type, NULL, p, strlen(p), NULL, false) < 0) {
+	if (fr_value_box_from_str(e->key, e->key, type, NULL, p, strlen(p), NULL) < 0) {
 		cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 			   fr_strerror());
 	fail:
@@ -319,7 +319,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			if (!e->key) goto fail;
 
 			if (fr_value_box_from_str(e->key, e->key, type, NULL,
-						  p, strlen(p), NULL, false) < 0) {
+						  p, strlen(p), NULL) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
 			fail:
@@ -342,7 +342,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			fr_type_t type = inst->field_types[i];
 
 			if (fr_value_box_from_str(e, &box, type, NULL,
-						  p, strlen(p), NULL, false) < 0) {
+						  p, strlen(p), NULL) < 0) {
 				cf_log_err(conf, "Failed parsing field '%s' in file %s line %d - %s", inst->field_names[i],
 					   inst->filename, lineno, fr_strerror());
 				goto fail;
@@ -737,7 +737,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	And register the `map csv <key> { ... }` function.
 	 */
-	map_proc_register(inst, inst, mctx->mi->name, mod_map_proc, csv_maps_verify, 0, 0);
+	map_proc_register(inst, inst, mctx->mi->name, mod_map_proc, csv_maps_verify, 0, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 	return 0;
 }
@@ -857,7 +857,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 		}
 
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			talloc_free(attr);
@@ -968,22 +968,21 @@ finish:
  *			- #RLM_MODULE_NOOP no rows were returned.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if an error occurred.
- * @param[in] mod_inst	#rlm_csv_t.
- * @param[in] proc_inst	mapping map entries to field numbers.
+ * @param[in] mpctx	#map_ctx_t, which contains the module and map instances.
  * @param[in,out]	request The current request.
  * @param[in] key	key to look for
  * @param[in] maps	Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps)
 {
-	rlm_csv_t const		*inst = talloc_get_type_abort_const(mod_inst, rlm_csv_t);
+	rlm_csv_t const		*inst = talloc_get_type_abort_const(mpctx->moi, rlm_csv_t);
 	fr_value_box_t		*key_head = fr_value_box_list_head(key);
 
 	if (!key_head) {
 		REDEBUG("CSV key cannot be (null)");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((inst->key_data_type == FR_TYPE_OCTETS) || (inst->key_data_type == FR_TYPE_STRING)) {
@@ -992,31 +991,31 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
 			REDEBUG("Failed parsing key");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 
-	RETURN_MODULE_RCODE(mod_map_apply(inst, request, key_head, maps));
+	RETURN_UNLANG_RCODE(mod_map_apply(inst, request, key_head, maps));
 }
 
 
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_csv_t);
 	rlm_rcode_t rcode;
 	ssize_t slen;
 	fr_value_box_t *key;
 
-	if (map_list_empty(&inst->map) || !inst->key) RETURN_MODULE_NOOP;
+	if (map_list_empty(&inst->map) || !inst->key) RETURN_UNLANG_NOOP;
 
 	/*
 	 *	Expand the key to whatever it is.  For attributes,
 	 *	this usually just means copying the value box.
 	 */
-	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key, NULL, NULL);
+	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key);
 	if (slen < 0) {
-		DEBUG("Failed expanding key '%s'", inst->key->name);
-		RETURN_MODULE_FAIL;
+		REDEBUG("Failed expanding key '%s'", inst->key->name);
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -1026,15 +1025,20 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	if (key->type != inst->key_data_type) {
 		fr_value_box_t tmp;
 
-		fr_value_box_copy(request, &tmp, key);
+		if (unlikely(fr_value_box_copy(request, &tmp, key) < 0)) {
+			talloc_free(key);
+			REDEBUG("Failed copying %pV to data type '%s'",
+				&key, fr_type_to_str(inst->key_data_type));
+			RETURN_UNLANG_FAIL;
+		}
 
 		slen = fr_value_box_cast(request, key, inst->key_data_type, NULL, &tmp);
 		fr_value_box_clear(&tmp);
 		if (slen < 0) {
 			talloc_free(key);
-			DEBUG("Failed casting %pV to data type '%s'",
-			      &key, fr_type_to_str(inst->key_data_type));
-			RETURN_MODULE_FAIL;
+			REDEBUG("Failed casting %pV to data type '%s'",
+				&key, fr_type_to_str(inst->key_data_type));
+			RETURN_UNLANG_FAIL;
 		}
 	}
 
@@ -1044,7 +1048,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	REXDENT();
 
 	talloc_free(key);
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 extern module_rlm_t rlm_csv;

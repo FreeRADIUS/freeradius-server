@@ -98,7 +98,10 @@ if !(((1 << 2) | 1) == 5) {	# needs extra () to resolve precedence
 
 if ("%{ test_date}" <= 0) {
 	test_fail
+} else {
+  # nothing!  Previous expansion has failed, so it MUST have an "else"
 }
+
 if (test_date <= 0) {
 	test_fail
 }

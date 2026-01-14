@@ -12,27 +12,27 @@ VENDOR		Extreme				1916
 
 BEGIN-VENDOR	Extreme
 
-ATTRIBUTE	CLI-Authorization			201	integer
+ATTRIBUTE	CLI-Authorization			201	uint32
 ATTRIBUTE	Shell-Command				202	string
 ATTRIBUTE	Netlogin-Vlan				203	string
 ATTRIBUTE	Netlogin-Url				204	string
 ATTRIBUTE	Netlogin-Url-Desc			205	string
-ATTRIBUTE	Netlogin-Only				206	integer
+ATTRIBUTE	Netlogin-Only				206	uint32
 ATTRIBUTE	User-Location				208	string
-ATTRIBUTE	Netlogin-Vlan-Tag			209	integer
+ATTRIBUTE	Netlogin-Vlan-Tag			209	uint32
 ATTRIBUTE	Netlogin-Extended-Vlan			211	string
 ATTRIBUTE	Security-Profile			212	string
 ATTRIBUTE	VM-Name					213	string
 ATTRIBUTE	VM-VPP-Name				214	string
 ATTRIBUTE	VM-IP-Addr				215	ipaddr
-ATTRIBUTE	VM-VLAN-ID				216	integer
+ATTRIBUTE	VM-VLAN-ID				216	uint32
 ATTRIBUTE	VM-VR-Name				217	string
 ATTRIBUTE	Netlogin-VR-Name		    218		string
-ATTRIBUTE	NSI-Type				230		integer		has_tag
+ATTRIBUTE	NSI-Type				230		uint32		has_tag
 ATTRIBUTE	NSI-ID					231		string		has_tag
 ATTRIBUTE	Policy-ACL				232		string
 ATTRIBUTE	Email-Address			233		string
-ATTRIBUTE	Dynamic-MHSA			250		integer
+ATTRIBUTE	Dynamic-MHSA			250		uint32
 ATTRIBUTE	Dynamic-ACL				251		string
 ATTRIBUTE	Dynamic-Config			252		string
 ATTRIBUTE	Dynamic-Client-Assignments          253		string

@@ -67,7 +67,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		char	*value;
 		ssize_t	slen;
 
-		slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+		slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), map->lhs, NULL);
 		if (slen < 0) {
 			fr_strerror_printf("Serialized attribute too long.  Must be < " STRINGIFY(sizeof(attr)) " "
 					   "bytes, needed %zu additional bytes", (size_t)(slen * -1));
@@ -115,7 +115,6 @@ int cache_deserialize(request_t *request, rlm_cache_entry_t *c, fr_dict_t const 
 			.attr = {
 				.dict_def = dict,
 				.list_def = request_attr_request,
-				.prefix = TMPL_ATTR_REF_PREFIX_NO
 			},
 			.xlat = {
 				.runtime_el = unlang_interpret_event_list(request),

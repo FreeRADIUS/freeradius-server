@@ -51,34 +51,35 @@ Local variables _cannot_ be deleted.  When the current scope exits, the local va
 .Example
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     uint32 len
 
-    &len := %length(%{User-Name})
+    len := %length(%{User-Name})
 
-    &Reply-Message := "Length of %{User-Name} is %{len}"
+    Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
 
 In v3 the default dictionaries included a series of `Tmp-*`
-attributes.  These are no longer necessary, and should not be used.
+attributes.  These attributes are no longer necessary, and should not
+be used.  Local variables should be used instead.
 
 .Local variables exist on only if they have been created
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     # declare "len" as ALLOWED to be used
     uint32 len
 
     # this test ALWAYS fails, as "len" has not been assigned a value
-    if (&len) {
+    if (len) {
        ...
     }
 
     #  "len" is created, and can now be used
-    &len := %length(%{User-Name})
+    len := %length(%{User-Name})
 
-    &Reply-Message := "Length of %{User-Name} is %{len}"
+    Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
 

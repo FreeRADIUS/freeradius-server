@@ -38,6 +38,18 @@ RCSID("$Id$")
 
 #include <net/if_arp.h>
 
+#ifdef __FreeBSD__
+#include <net/ethernet.h>
+#include <net/if_dl.h>
+#include <netlink/netlink.h>
+#include <netlink/netlink_route.h>
+#include <netlink/netlink_snl.h>
+#include <netlink/netlink_snl_route.h>
+#include <sys/param.h>
+#include <sys/linker.h>
+#include <sys/module.h>
+#endif
+
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_arp;
@@ -45,7 +57,7 @@ fr_dict_t const *dict_arp;
 extern fr_dict_autoload_t libfreeradius_arp_dict[];
 fr_dict_autoload_t libfreeradius_arp_dict[] = {
 	{ .out = &dict_arp, .proto = "arp" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_arp_packet;
@@ -53,7 +65,7 @@ fr_dict_attr_t const *attr_arp_packet;
 extern fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
 	{ .out = &attr_arp_packet, .name = "arp", .type = FR_TYPE_STRUCT, .dict = &dict_arp },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 
@@ -139,6 +151,82 @@ int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
 }
 #endif
 
+#ifdef __FreeBSD__
+/** Use FreeBSD netlink API to add ARP entries
+ */
+int fr_bsd_arp_entry_add(uint32_t ifindex, uint8_t ipaddr[static 4], uint8_t macaddr[static 6])
+{
+	struct sockaddr_in	sin;
+	struct sockaddr_dl	sdl;
+	struct snl_state	state;
+	struct snl_writer	nw;
+	struct nlmsghdr		*msghdr;
+	struct ndmsg		*msg;
+	struct snl_errmsg_data	errmsg = {};
+
+	if (ifindex == 0) {
+		fr_strerror_const("Missing interface index");
+		return -1;
+	}
+
+	sin.sin_family = AF_INET;
+	memcpy(&sin.sin_addr.s_addr, ipaddr, 4);
+
+	sdl = (struct sockaddr_dl){
+		.sdl_len = sizeof(sdl),
+		.sdl_family = AF_LINK,
+		.sdl_alen = ETHER_ADDR_LEN
+	};
+	memcpy(LLADDR(&sdl), macaddr, ETHER_ADDR_LEN);
+
+	if (!snl_init(&state, NETLINK_ROUTE)) {
+		if (modfind("netlink") == -1 && errno == ENOENT) {
+			if (kldload("netlink") == -1) {
+				fr_strerror_const("netlink is not loaded and load attempt failed");
+				return -1;
+			}
+		} else {
+		open_error:
+			fr_strerror_const("Unable to open netlink socket");
+		}
+		if (!snl_init(&state, NETLINK_ROUTE)) goto open_error;
+	}
+
+	snl_init_writer(&state, &nw);
+	msghdr = snl_create_msg_request(&nw, RTM_NEWNEIGH);
+	msghdr->nlmsg_flags |= NLM_F_CREATE | NLM_F_REPLACE;
+
+	msg = snl_reserve_msg_object(&nw, struct ndmsg);
+	if (!msg) {
+		fr_strerror_const("Failed reserving message");
+	error:
+		snl_free(&state);
+		return -1;
+	}
+	msg->ndm_family = AF_INET;
+	msg->ndm_ifindex = ifindex;
+	msg->ndm_state = NUD_PERMANENT;
+	msg->ndm_flags = NTF_STICKY;
+
+	snl_add_msg_attr_ip(&nw, NDA_DST, (struct sockaddr *)&sin);
+	snl_add_msg_attr(&nw, NDA_LLADDR, sdl.sdl_alen, LLADDR(&sdl));
+
+	if (!(msghdr = snl_finalize_msg(&nw)) || !snl_send_message(&state, msghdr)) {
+		fr_strerror_const("Failed sending netlink message.");
+		goto error;
+	}
+
+	snl_read_reply_code(&state, msghdr->nlmsg_seq, &errmsg);
+	if (errmsg.error != 0) {
+		fr_strerror_printf("Failed adding ARP table entry: %s (%s)", strerror(errmsg.error), errmsg.error_str);
+		goto error;
+	}
+
+	snl_free(&state);
+
+	return 0;
+}
+#endif
 
 /** Encode VPS into a raw ARP packet.
  *
@@ -305,7 +393,8 @@ typedef struct {
 	bool		tmp;
 } fr_arp_ctx_t;
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_arp_ctx_t *test_ctx;
 

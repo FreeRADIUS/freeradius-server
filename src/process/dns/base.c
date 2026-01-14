@@ -22,9 +22,9 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "lib/server/rcode.h"
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -40,7 +40,7 @@ static fr_dict_t const *dict_dns;
 extern fr_dict_autoload_t process_dns_dict[];
 fr_dict_autoload_t process_dns_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -60,7 +60,7 @@ fr_dict_attr_autoload_t process_dns_dict_attr[] = {
 	{ .out = &attr_response_bit, .name = "Header.Query", .type = FR_TYPE_BOOL, .dict = &dict_dns},
 	{ .out = &attr_rcode, .name = "Header.Rcode", .type = FR_TYPE_UINT8, .dict = &dict_dns},
 	{ .out = &attr_authoritative_bit, .name = "Header.Authoritative", .type = FR_TYPE_BOOL, .dict = &dict_dns},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const *enum_rcode_no_error;
@@ -76,7 +76,7 @@ fr_dict_enum_autoload_t process_dns_dict_enum[] = {
 	{ .out = &enum_rcode_server_failure, .name = "Server-Failure", .attr = &attr_rcode },		/* fail */
 	{ .out = &enum_rcode_name_error, .name = "Name-Error", .attr = &attr_rcode },			/* notfound */
 	{ .out = &enum_rcode_refused, .name = "Refused", .attr = &attr_rcode },				/* reject */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -349,7 +349,10 @@ void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const *
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(request->reply_ctx, rcode, attr_rcode)) >= 0);
 	if (ret == 0) {
-		fr_value_box_copy(*rcode, &(*rcode)->data, vb);
+		if (unlikely(fr_value_box_copy(*rcode, &(*rcode)->data, vb) < 0)) {
+			RPEDEBUG("Failed copying rcode value");
+			return;
+		}
 		(*rcode)->data.enumv = (*rcode)->da;	/* Hack, boxes should have their enumv field populated */
 	}
 }
@@ -364,7 +367,7 @@ RECV(request)
 	PROCESS_TRACE;
 
 	rctx = dns_fields_store(request);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (!rctx) RETURN_UNLANG_INVALID;
 
 	return CALL_RECV_RCTX(generic, rctx);
 }
@@ -390,15 +393,15 @@ RESUME(recv_request)
 	 *	Don't bother adding VPs if we're not going
 	 *	be responding to the client.
 	 */
-	if (state->packet_type[*p_result] == FR_DNS_DO_NOT_RESPOND) return CALL_RESUME(recv_generic);
+	if (state->packet_type[RESULT_RCODE] == FR_DNS_DO_NOT_RESPOND) return CALL_RESUME(recv_generic);
 
 	/*
 	 *	Add an rcode based on the result of the `recv { ... }` section
 	 */
-	dns_rcode_add(&rcode, request, state->dns_rcode[*p_result]);
+	dns_rcode_add(&rcode, request, state->dns_rcode[RESULT_RCODE]);
 
 #ifdef __clang_analyzer__
-	if (!rcode) return UNLANG_ACTION_FAIL;
+	if (!rcode) RETURN_UNLANG_FAIL;
 #endif
 
 	/*
@@ -408,7 +411,7 @@ RESUME(recv_request)
 	 */
 	if ((rcode->vp_uint8 < NUM_ELEMENTS(inst->sections.rcode)) &&
 	    (inst->sections.rcode[rcode->vp_uint8])) {
-		return unlang_module_yield_to_section(p_result, request,
+		return unlang_module_yield_to_section(RESULT_P, request,
 						      inst->sections.rcode[rcode->vp_uint8],
 						      RLM_MODULE_NOOP,
 						      /*
@@ -441,7 +444,7 @@ RESUME(send_response)
 	 *	Don't bother adding VPs if we're not going
 	 *	be responding to the client.
 	 */
-	if (state->packet_type[*p_result] == FR_DNS_DO_NOT_RESPOND) return CALL_RESUME(send_generic);
+	if (state->packet_type[RESULT_RCODE] == FR_DNS_DO_NOT_RESPOND) return CALL_RESUME(send_generic);
 
 	/*
 	 *	Add fields from the request back in,
@@ -469,7 +472,7 @@ RESUME(send_response)
 
 /** Entry point into the state machine
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -480,13 +483,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "dns";
 	request->module = NULL;
-	fr_assert(request->dict == dict_dns);
+	fr_assert(request->proto_dict == dict_dns);
 
 	UPDATE_STATE(packet);
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dns_packet_debug(request, request->packet, &request->request_pairs, true);
@@ -511,7 +514,7 @@ static fr_process_state_t const process_state[] = {
 	[ FR_DNS_QUERY ] = {
 		DNS_RCODE_COMMON,
 		.default_reply = FR_DNS_QUERY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_request,
 		.resume = resume_recv_request,
 		.section_offset = PROCESS_CONF_OFFSET(query),
@@ -519,7 +522,7 @@ static fr_process_state_t const process_state[] = {
 	[ FR_DNS_INVERSE_QUERY ] = {
 		DNS_RCODE_COMMON,
 		.default_reply = FR_DNS_INVERSE_QUERY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_request,
 		.resume = resume_recv_request,
 		.section_offset = PROCESS_CONF_OFFSET(inverse_query),
@@ -527,7 +530,7 @@ static fr_process_state_t const process_state[] = {
 	[ FR_DNS_STATUS ] = {
 		DNS_RCODE_COMMON,
 		.default_reply = FR_DNS_STATUS_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_request,
 		.resume = resume_recv_request,
 		.section_offset = PROCESS_CONF_OFFSET(status),
@@ -535,7 +538,7 @@ static fr_process_state_t const process_state[] = {
 	[ FR_DNS_UPDATE ] = {
 		DNS_RCODE_COMMON,
 		.default_reply = FR_DNS_UPDATE_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_request,
 		.resume = resume_recv_request,
 		.section_offset = PROCESS_CONF_OFFSET(update),
@@ -543,14 +546,15 @@ static fr_process_state_t const process_state[] = {
 	[ FR_DNS_STATEFUL_OPERATION ] = {
 		DNS_RCODE_COMMON,
 		.default_reply = FR_DNS_STATEFUL_OPERATION_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_request,
 		.resume = resume_recv_request,
 		.section_offset = PROCESS_CONF_OFFSET(stateful_operation),
 	},
 	[ FR_DNS_QUERY_RESPONSE ] = {
 		.default_reply = FR_DNS_QUERY,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(query_response),
@@ -558,7 +562,8 @@ static fr_process_state_t const process_state[] = {
 
 	[ FR_DNS_INVERSE_QUERY_RESPONSE ] = {
 		.default_reply = FR_DNS_QUERY,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(inverse_query_response),
@@ -566,7 +571,8 @@ static fr_process_state_t const process_state[] = {
 
 	[ FR_DNS_STATUS_RESPONSE ] = {
 		.default_reply = FR_DNS_STATUS,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(status_response),
@@ -574,7 +580,8 @@ static fr_process_state_t const process_state[] = {
 
 	[ FR_DNS_UPDATE_RESPONSE ] = {
 		.default_reply = FR_DNS_UPDATE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(update_response),
@@ -582,7 +589,8 @@ static fr_process_state_t const process_state[] = {
 
 	[ FR_DNS_STATEFUL_OPERATION_RESPONSE ] = {
 		.default_reply = FR_DNS_STATEFUL_OPERATION,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(stateful_operation_response),
@@ -599,8 +607,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DNS_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DNS_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DNS_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =	FR_DNS_DO_NOT_RESPOND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_response,
 		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
@@ -612,9 +622,11 @@ fr_process_module_t process_dns = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "dns",
-		.inst_size	= sizeof(process_dns_t)
+		MODULE_INST(process_dns_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_dns,
+	.packet_type	= &attr_packet_type
 };

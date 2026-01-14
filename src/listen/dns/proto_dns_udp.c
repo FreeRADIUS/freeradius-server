@@ -102,7 +102,7 @@ static fr_dict_t const *dict_dns;
 extern fr_dict_autoload_t proto_dns_udp_dict[];
 fr_dict_autoload_t proto_dns_udp_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -111,7 +111,7 @@ extern fr_dict_attr_autoload_t proto_dns_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dns_udp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dns},
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,

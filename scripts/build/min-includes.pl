@@ -25,7 +25,7 @@
 #
 ######################################################################
 #
-#  Copyright (C) 2021 Alan DeKok <aland@freeradius.org>
+#  Copyright (C) 2021 Network RADIUS SAS (legal@networkradius.com)
 #
 #  $Id$
 #

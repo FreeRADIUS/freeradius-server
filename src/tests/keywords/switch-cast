@@ -1,0 +1,24 @@
+#
+# PRE: switch
+#
+string foo
+
+foo = "127.0.0.1"
+
+switch (ipaddr) "%{foo}" {
+	case 127.0.0.1 {
+		success
+	}
+
+	case 192.0.2.1 {
+		Filter-Id := "nope"
+		test_fail
+	}
+
+	default {
+		Filter-Id := "default"
+		test_fail
+	}
+}
+
+

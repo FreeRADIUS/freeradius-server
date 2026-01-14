@@ -29,18 +29,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/radmin.h>
-#include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <talloc.h>
 #include <sys/mman.h>
 
 static void module_thread_detach(module_thread_instance_t *ti);

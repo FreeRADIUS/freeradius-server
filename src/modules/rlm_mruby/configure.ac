@@ -87,9 +87,9 @@ fi
 old_LIBS=$LIBS
 LIBS="$LIBS -lmruby -lm"
 smart_try_dir="$mruby_lib_dir /usr/lib"
-FR_SMART_CHECK_LIB(mruby, mrb_run)
+FR_SMART_CHECK_LIB(mruby, mrb_open)
 LIBS=$old_LIBS
-if test "x$ac_cv_lib_mruby_mrb_run" = "xyes"; then
+if test "x$ac_cv_lib_mruby_mrb_open" = "xyes"; then
 	mod_ldflags="${SMART_LIBS}"
 else
 	AC_MSG_WARN([mruby libraries not found. Use --with-mruby-lib-dir=<path>.])

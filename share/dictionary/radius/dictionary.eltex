@@ -12,7 +12,7 @@ BEGIN-VENDOR	Eltex
 
 ATTRIBUTE	AVPair					1	string
 
-ATTRIBUTE	Disconnect-Code-Local			11	integer
+ATTRIBUTE	Disconnect-Code-Local			11	uint32
 
 VALUE	Disconnect-Code-Local		User-Answer		1
 VALUE	Disconnect-Code-Local		Incomplete-Number	2

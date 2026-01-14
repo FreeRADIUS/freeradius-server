@@ -1,0 +1,6 @@
+Sent Access-Request Id 123 from 0.0.0.0:1246 to 127.0.0.1:12351 length 45 
+        User-Name = "proxy_detach"
+        User-Password = "hello"
+Received Access-Accept Id 123 from 127.0.0.1:12351 to 0.0.0.0:1246 via lo length 64 
+        Reply-Message = "Detached subrequest sent"
+(0) src/tests/radclient/auth_proxy_detach.txt response code 2

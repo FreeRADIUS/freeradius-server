@@ -24,12 +24,13 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/pair.h>
 
 #include "call_priv.h"
 
-static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, request_t *request,
 					  unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -48,7 +49,7 @@ static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_children(UNUSED unlang_result_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame)
 {
 	frame_repeat(frame, unlang_call_resume);
@@ -57,11 +58,11 @@ static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *re
 	 *      Push the contents of the call { } section onto the stack.
 	 *      This gets executed after the server returns.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request_t *request,
 					      unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g;
@@ -90,8 +91,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 			REDEBUG("No such value '%u' of attribute 'Packet-Type' for server %s",
 				request->packet->code, cf_section_name2(gext->server_cs));
 		error:
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		type_enum = fr_dict_enum_by_value(packet_type_vp->da, &packet_type_vp->data);
 		if (!type_enum) goto bad_packet_type;
@@ -129,13 +129,13 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
 	 *	DIE DIE DIE.
 	 */
-	if (!g->children) {
+	if (unlang_list_empty(&g->children)) {
 		frame_repeat(frame, unlang_call_resume);
 	} else {
 		frame_repeat(frame, unlang_call_children);
 	}
 
-	if (virtual_server_push(request, gext->server_cs, UNLANG_SUB_FRAME) < 0) goto error;
+	if (virtual_server_push(NULL, request, virtual_server_from_cs(gext->server_cs), UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -144,7 +144,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
  *
  * This should be used instead of virtual_server_push in the majority of the code
  */
-unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_call_t			*c;
@@ -181,20 +181,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 				.name = name,
 				.debug_name = name,
 				.ci = CF_TO_ITEM(server_cs),
-				.actions = {
-					.actions = {
-						[RLM_MODULE_REJECT]	= 0,
-						[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-						[RLM_MODULE_OK]		= 0,
-						[RLM_MODULE_HANDLED]	= 0,
-						[RLM_MODULE_INVALID]	= 0,
-						[RLM_MODULE_DISALLOW]	= 0,
-						[RLM_MODULE_NOTFOUND]	= 0,
-						[RLM_MODULE_NOOP]	= 0,
-						[RLM_MODULE_UPDATED]	= 0
-					},
-					.retry = RETRY_INIT,
-				},
+				.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 			},
 
 			.cs = server_cs,
@@ -203,11 +190,13 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 		.attr_packet_type = attr_packet_type
 	};
 
+	unlang_group_type_init(&c->group.self, NULL, UNLANG_TYPE_CALL);
+
 	/*
 	 *	Push a new call frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_call_to_generic(c),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+	if (unlang_interpret_push(p_result, request, unlang_call_to_generic(c),
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		talloc_free(c);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -246,13 +235,92 @@ CONF_SECTION *unlang_call_current(request_t *request)
 	return NULL;
 }
 
+static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION			*cs = cf_item_to_section(ci);
+	virtual_server_t const		*vs;
+	unlang_t			*c;
+
+	unlang_group_t			*g;
+	unlang_call_t			*gext;
+
+	fr_token_t			type;
+	char const     			*server;
+	CONF_SECTION			*server_cs;
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*attr_packet_type;
+
+	server = cf_section_name2(cs);
+	if (!server) {
+		cf_log_err(cs, "You MUST specify a server name for 'call <server> { ... }'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(call));
+		return NULL;
+	}
+
+	type = cf_section_name2_quote(cs);
+	if (type != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'call' cannot be a quoted string or a dynamic value");
+		goto print_url;
+	}
+
+	vs = virtual_server_find(server);
+	if (!vs) {
+		cf_log_err(cs, "Unknown virtual server '%s'", server);
+		return NULL;
+	}
+
+	server_cs = virtual_server_cs(vs);
+
+	/*
+	 *	The dictionaries are not compatible, forbid it.
+	 */
+	dict = virtual_server_dict_by_name(server);
+	if (!dict) {
+		cf_log_err(cs, "Cannot call virtual server '%s', failed retrieving its namespace",
+			   server);
+		return NULL;
+	}
+	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
+	    unlang_ctx->rules->attr.dict_def && !fr_dict_compatible(unlang_ctx->rules->attr.dict_def, dict)) {
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' from namespaces '%s' - they have incompatible protocols",
+			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
+		return NULL;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	if (!attr_packet_type) {
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' - it has no Packet-Type attribute",
+			   server, fr_dict_root(dict)->name);
+		return NULL;
+	}
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
+	if (!c) return NULL;
+
+	/*
+	 *	Set the virtual server name, which tells unlang_call()
+	 *	which virtual server to call.
+	 */
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_call(g);
+	gext->server_cs = server_cs;
+	gext->attr_packet_type = attr_packet_type;
+
+	return c;
+}
+
 void unlang_call_init(void)
 {
-	unlang_register(UNLANG_TYPE_CALL,
-			   &(unlang_op_t){
-				.name			= "call",
-				.interpret		= unlang_call_frame_init,
-				.rcode_set 		= true,
-				.debug_braces		= true,
-			   });
+	unlang_register(&(unlang_op_t){
+			.name		= "call",
+			.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
+			.type		= UNLANG_TYPE_CALL,
+
+			.compile	= unlang_compile_call,
+			.interpret	= unlang_call_frame_init,
+
+			.unlang_size	= sizeof(unlang_call_t),
+			.unlang_name	= "unlang_call_t",
+		});
 }

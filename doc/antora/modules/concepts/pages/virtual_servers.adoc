@@ -42,18 +42,18 @@ listen {
     type = auth
     virtual_server = one
 }
-    
+
 listen {
     ipaddr = 192.0.2.2
     port = 1812
     type = auth
     virtual_server = two
 }
-    
+
 server one {
     ...
 }
-    
+
 server two {
     ...
 }
@@ -84,7 +84,7 @@ listen {
     # no server section is defined here
     clients = disambiguate
 }
-    
+
 clients disambiguate {
     client one {
         ipaddr = 192.0.2.4

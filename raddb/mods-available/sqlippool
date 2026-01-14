@@ -47,7 +47,7 @@ sqlippool {
 	#
 	#  pool_name: The attribute which contains the pool name.
 	#
-	pool_name = &control.IP-Pool.Name
+	pool_name = control.IP-Pool.Name
 
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
@@ -58,7 +58,7 @@ sqlippool {
 	#
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
-	allocated_address_attr = &reply.Framed-IP-Address
+	allocated_address_attr = reply.Framed-IP-Address
 
 	#
 	#  owner:: Expansion which identifies the owner of the lease.
@@ -88,7 +88,7 @@ sqlippool {
 	#  * `%{Client-Hardware-Address}` which binds the lease to the
 	#    mac address of the user's device.
 	#
-	#  * `%{&Client-Identifier || &Client-Hardware-Address}`
+	#  * `%{Client-Identifier || Client-Hardware-Address}`
 	#    which binds the lease to either the custom identifier set by the
 	#    DHCP client, or if this is absent, the mac address of the user's
 	#    device.
@@ -114,7 +114,7 @@ sqlippool {
 
 #       owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}"
 
-#	owner = "%{&Client-Identifier || &Client-Hardware-Address}"
+#	owner = "%{Client-Identifier || Client-Hardware-Address}"
 
 	#
 	#  requested_address:: The IP address being renewed or released.
@@ -122,11 +122,11 @@ sqlippool {
 	#  For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
 	#
 	#  For DHCPv4 the requested_address will almost always be
-	#  `%{&Requested-IP-Address || &Client-IP-Address}`.
+	#  `%{Requested-IP-Address || Client-IP-Address}`.
 	#
 	requested_address = "%{Framed-IP-Address}"
 
-#	requested_address = "%{&Requested-IP-Address || &Client-IP-Address}"
+#	requested_address = "%{Requested-IP-Address || Client-IP-Address}"
 
 	#
 	#  gateway:: The device controlling access to the network or relaying
@@ -140,7 +140,7 @@ sqlippool {
 	#  For DHCPv4, this device is recorded so that we can respond correctly
 	#  to lease queries.
 	#
-	gateway = "%{&NAS-Identifier || &NAS-IP-Address}"
+	gateway = "%{NAS-Identifier || NAS-IP-Address}"
 
 #       gateway = "%{Gateway-IP-Address}"
 

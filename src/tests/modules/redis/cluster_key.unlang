@@ -14,26 +14,26 @@ $INCLUDE cluster_reset.inc
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-testdata1 := "1-%randstr('aaaaaaaa')"
-testdata2 := "2-%randstr('aaaaaaaa')"
-testdata3 := "3-%randstr('aaaaaaaa')"
+testdata1 := "1-%str.rand('aaaaaaaa')"
+testdata2 := "2-%str.rand('aaaaaaaa')"
+testdata3 := "3-%str.rand('aaaaaaaa')"
 
 #  Hashes to Redis cluster node master 1 (1)
-if (%redis(SET, b, %{testdata1}) == 'OK') {
+if (%redis('SET', 'b', %{testdata1}) == 'OK') {
 	test_pass
 } else {
 	test_fail
 }
 
 #  Hashes to Redis cluster node master 3 (2)
-if (%redis(SET, c, %{testdata2}) == 'OK') {
+if (%redis('SET', 'c', %{testdata2}) == 'OK') {
 	test_pass
 } else {
 	test_fail
 }
 
 #  Hashes to Redis cluster node master 2 (3)
-if (%redis(SET, d, %{testdata3}) == 'OK') {
+if (%redis('SET', 'd', %{testdata3}) == 'OK') {
 	test_pass
 } else {
 	test_fail
@@ -42,19 +42,19 @@ if (%redis(SET, d, %{testdata3}) == 'OK') {
 #
 #  Now check they are where we expect
 #
-if (%redis(@%redis.node(b, 0), GET, b) == %{testdata1}) {
+if (%redis("@%redis.node('b', 0)", 'GET', 'b') == %{testdata1}) {
 	test_pass
 } else {
 	test_fail
 }
 
-if (%redis(@%redis.node(c, 0), GET, c) == %{testdata2}) {
+if (%redis("@%redis.node('c', 0)", 'GET', 'c') == %{testdata2}) {
 	test_pass
 } else {
 	test_fail
 }
 
-if (%redis(@%redis.node(d, 0), GET, d) == %{testdata3}) {
+if (%redis("@%redis.node('d', 0)", 'GET', 'd') == %{testdata3}) {
 	test_pass
 } else {
 	test_fail

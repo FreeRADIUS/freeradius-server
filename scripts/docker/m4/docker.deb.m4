@@ -1,5 +1,5 @@
 ARG from=DOCKER_IMAGE
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -37,8 +37,11 @@ RUN git clean -fdxx \
 
 #
 #  Install build dependencies
+#  Debian sid fails if debian/control doesn't exist due to an issue
+#  in one of the included make files, so we create a blank file.
 #
 RUN if [ -e ./debian/control.in ]; then \
+        touch -t 202001010000 debian/control; \
         debian/rules debian/control; \
     fi; \
     echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control

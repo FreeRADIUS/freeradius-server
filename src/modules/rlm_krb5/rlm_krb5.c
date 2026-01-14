@@ -317,7 +317,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
 /*
  *	Validate user/pass (Heimdal)
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	krb5_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, krb5_auth_call_env_t);
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
@@ -334,7 +334,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -348,7 +348,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = krb5_slab_reserve(t->slab);
-	if (!conn) RETURN_MODULE_FAIL;
+	if (!conn) RETURN_UNLANG_FAIL;
 #  else
 	conn = inst->conn;
 #  endif
@@ -396,7 +396,7 @@ cleanup:
 #  ifdef KRB5_IS_THREAD_SAFE
 	krb5_slab_release(conn);
 #  endif
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 #else  /* HEIMDAL_KRB5 */
@@ -404,7 +404,7 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	krb5_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, krb5_auth_call_env_t);
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
@@ -424,7 +424,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -438,7 +438,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 #  ifdef KRB5_IS_THREAD_SAFE
 	conn = krb5_slab_reserve(t->slab);
-	if (!conn) RETURN_MODULE_FAIL;
+	if (!conn) RETURN_UNLANG_FAIL;
 #  else
 	conn = inst->conn;
 #  endif
@@ -477,7 +477,7 @@ cleanup:
 #  ifdef KRB5_IS_THREAD_SAFE
 	krb5_slab_release(conn);
 #  endif
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 #endif /* MIT_KRB5 */
@@ -485,10 +485,10 @@ cleanup:
 static const call_env_method_t krb5_auth_call_env = {
 	FR_CALL_ENV_METHOD_OUT(krb5_auth_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, krb5_auth_call_env_t, username),
-			.pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_REQUIRED, krb5_auth_call_env_t, password),
-			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, krb5_auth_call_env_t, username),
+			.pair.dflt = "User-Name", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_REQUIRED| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, krb5_auth_call_env_t, password),
+			.pair.dflt = "User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };

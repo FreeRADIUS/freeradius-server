@@ -1,8 +1,8 @@
-= Extensible Authentication Protocol (EAP)
+= EAP
 
-== Introduction
+include::ROOT:partial$v3_warning.adoc[]
 
-Extensible Authentication Protocol(EAP), `RFC 3748`, is an authentication
+The Extensible Authentication Protocol (EAP), `RFC 3748`, is an authentication
 framework and data link layer protocol that allows network access points
 to support multiple authentication methods. Each EAP Type indicates a
 specific authentication mechanism. The `802.1X` standard authenticates
@@ -82,7 +82,7 @@ The Implementation of EAP over RADIUS is based on the following RFCs
 The following IEEE standards are also relevant:
 * https://standards.ieee.org/ieee/802.1X/7345/:"IEEE 802.1X" - Port-Based Network Access Control
 
-== EAP Code Organization
+== EAP code organization
 
 EAP is implemented as a module in freeradius and the code is placed in
 src/modules/rlm_eap. All `EAP-Types` are organized as subdirectories in
@@ -131,10 +131,13 @@ modules {
 }
 ----
 
-NOTE: You cannot have empty eap stanza. At least one EAP-Type sub-stanza
+[NOTE]
+====
+You cannot have empty eap stanza. At least one EAP-Type sub-stanza
 should be defined as above, otherwise the server will not know what type
 of eap authentication mechanism to be used and the server will exit with
 error.
+====
 
 All the various options and their associated default values for each
 `EAP-Type` are documented in the sample radiusd.conf that is provided
@@ -179,7 +182,7 @@ The attributes are:
 
 NOTE: `EAP-SIM` will send WEP attributes to the resquestor.
 
-== EAP Sub-Types
+== EAP sub-types
 
 === LEAP
 
@@ -245,7 +248,10 @@ Even though Microsoft (along with RSA and Cisco) co-invented the PEAP standard, 
 
 Although there is no in-built support for PEAP-GTC in MS Windows, it is supported by the Cisco CCX extensions program.  CCX compatability is enabled by default on many vendor-provided 802.11A/B/G clients.
 
-Note: The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market.  Even with its late start, Microsoft’s and Cisco’s size allowed them to quickly overtake EAP-TTLS in the market.  Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1.  PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.  From Cisco’s perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.  Since Microsoft only supports PEAPv0 and doesn’t support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator.  Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.  However, Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don’t support.  PEAP-EAP-TLS does require a client-side digital certificate located on the client’s hard drive or a more secure smartcard.  PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS.  Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.  Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know.  PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
+[NOTE]
+====
+The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market.  Even with its late start, Microsoft’s and Cisco’s size allowed them to quickly overtake EAP-TTLS in the market.  Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1.  PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.  From Cisco’s perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.  Since Microsoft only supports PEAPv0 and doesn’t support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator.  Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.  However, Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don’t support.  PEAP-EAP-TLS does require a client-side digital certificate located on the client’s hard drive or a more secure smartcard.  PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS.  Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.  Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know.  PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
+====
 
 This version of PEAP is defined through the IETF internet draft "draft-josefsson-pppext-eap-tls-eap-05 http://www.watersprings.org/pub/id/draft-josefsson-pppext-eap-tls-eap-05.txt."  Note that this is an expired draft.
 
@@ -253,7 +259,7 @@ This version of PEAP is defined through the IETF internet draft "draft-josefsson
 
 _EAP-FAST (Flexible Authentication via Secure Tunneling)_ is a method designed by Cisco Systems to fix the weaknesses of LEAP. Use of server certificates is optional in EAP-FAST. EAP-FAST uses a Protected Access Credential (PAC). The PAC can be provisioned manually or dynamically in Phase 0 of EAP-FAST. EAP-FAST has three phases. Phase 0 is an optional phase. In Phase 1 the client and the AAA server uses the PAC to establish TLS tunnel. In Phase 2, the client sends user information across the tunnel.
 
-Although Cisco advertises EAP-FAST as being much more secure than LEAP, it can still suffer from a poor implementation.  EAP-MD5 & LEAP suffered from a weak user password, EAP-FAST can give up usernames and passwords in situations where Automatic PAC provisioning is enabled on the RADIUS server and the Wireless Client.
+Although Cisco advertises EAP-FAST as being much more secure than LEAP, it can still suffer from a poor implementation. EAP-MD5 and LEAP suffered from a weak user password, EAP-FAST can give up usernames and passwords in situations where Automatic PAC provisioning is enabled on the RADIUS server and the Wireless Client.
 
 EAP-FAST is defined in IETF RFC 4851. Note that this is an Informational RFC.
 
@@ -265,7 +271,7 @@ EAP-FAST is defined in IETF RFC 4851. Note that this is an Informational RFC.
 
 *EAP for UMTS Authentication and Key Agreement* is used for authentication and session key distribution using the Universal Mobile Telecommunications System (UMTS) UMTS Subscriber Identity Module (USIM).  EAP AKA is defined in RFC 4187.
 
-== EAP Clients
+== EAP clients
 
 The main EAP client is https://w1.fi/wpa_supplicant/
 
@@ -275,7 +281,7 @@ An Open Source audit tool is available at:
 
 https://github.com/ANSSI-FR/audit-radius
 
-== FAQ & Examples
+== FAQ and examples
 
 How do i use it?
 
@@ -327,7 +333,7 @@ In radiusd.conf
     ...
   }
 
-  # ldap gets the Configured password.
+  # ldap gets the configured password.
   # eap sets the authenticate type as EAP
   recv Access-Request {
     ...

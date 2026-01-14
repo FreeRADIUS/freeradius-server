@@ -44,6 +44,7 @@ static const conf_parser_t priority_config[] = {
 
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", proto_vmps_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_vmps_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_vmps_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_vmps_t, io.max_connections), .dflt = "1024" } ,
@@ -76,7 +77,7 @@ static fr_dict_t const *dict_vmps;
 extern fr_dict_autoload_t proto_vmps_dict[];
 fr_dict_autoload_t proto_vmps_dict[] = {
 	{ .out = &dict_vmps, .proto = "vmps" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -84,7 +85,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t proto_vmps_dict_attr[];
 fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -101,10 +102,10 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
-	fr_dict_enum_value_t		*dv;
-	CONF_PAIR		*cp;
-	char const		*value;
+	proto_vmps_t				*inst = talloc_get_type_abort(parent, proto_vmps_t);
+	fr_dict_enum_value_t const		*dv;
+	CONF_PAIR				*cp;
+	char const				*value;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
@@ -151,13 +152,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_assert(data[0] < FR_VMPS_CODE_MAX);
 
 	RHEXDUMP3(data, data_len, "proto_vmps decode packet");
-
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_vmps;
 
 	client = address->radclient;
 

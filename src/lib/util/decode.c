@@ -88,6 +88,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (!da->parent) return -1; /* stupid static analyzers */
 #endif
 
+	FR_PROTO_TRACE("Creating Raw attribute %s", da->name);
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_raw_from_network");
 
 	/*
@@ -159,9 +160,17 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_tlvs_from_network");
 
-	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
-				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
+	switch (parent->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_STRUCT:
+		break;
+
+	default:
+		fr_strerror_printf("Internal sanity check failed, attribute \"%s\" has unexpected data type '%s'",
+				   parent->name, fr_type_to_str(parent->type));
+		return PAIR_DECODE_FATAL_ERROR;
+	}
 
 	/*
 	 *	Do a quick sanity check to see if the TLVs are at all OK.
@@ -320,4 +329,41 @@ ssize_t fr_pair_dns_labels_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	fr_pair_list_append(out, &tmp);
 	return labels_len;
+}
+
+/** Generic decode value.
+ *
+ */
+ssize_t fr_pair_decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+			     uint8_t const *data, size_t const data_len, UNUSED void *decode_ctx)
+{
+	fr_pair_t *vp;
+	ssize_t slen;
+
+	if (!fr_type_is_leaf(parent->type)) {
+		FR_PROTO_TRACE("Cannot use generic decoder for data type %s", fr_type_to_str(parent->type));
+		fr_strerror_printf("Cannot decode data type %s", fr_type_to_str(parent->type));
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (!vp) return PAIR_DECODE_OOM;
+
+	/*
+	 *	No protocol-specific data types here.
+	 *
+	 *	If we can't decode this field, then the entire
+	 *	structure is treated as a raw blob.
+	 */
+	slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+					  &FR_DBUFF_TMP(data, data_len), data_len, true);
+	if (slen <= 0) {
+		FR_PROTO_TRACE("failed decoding child VP %s", vp->da->name);
+		talloc_free(vp);
+		return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
+	}
+
+	fr_pair_append(out, vp);
+
+	return slen;
 }

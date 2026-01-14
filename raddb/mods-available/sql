@@ -179,7 +179,7 @@ sql {
 	#  If set to `no`, we do not process the user profiles unless `Fall-Through = yes` in the reply list.
 	#
 	#  Default is `yes`.
-#	read_profile = yes
+#	read_profiles = yes
 
 	#
 	#  logfile:: Write SQL queries to a logfile.
@@ -315,11 +315,11 @@ sql {
 	#  The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
 	#  to select entries which match that particular group.
 	#
-	#  After all groups in SQL have been run, the module looks for `&control.User-Profile`, and runs
+	#  After all groups in SQL have been run, the module looks for `control.User-Profile`, and runs
 	#  those profiles for "authorize_group_check_query" and "authorize_group_check_query".  i.e. a user
 	#  profile is essentially a group.
 	#
-	#  These group queries can also update `&control.User-Profile`, which lets you have a group
+	#  These group queries can also update `control.User-Profile`, which lets you have a group
 	#  create a "fall through" to a DEFAULT group.  However, these groups are _not_ cross-checked against
 	#  each other.  So it is possible to create loops, which is highly not recommended.
 	#
@@ -343,11 +343,28 @@ sql {
 	#  cache_groups:: whether or not we cache the list of SQL groups
 	#
 	#  The groups are cached in the `control` list.  So any comparisons must be done as
-	#  `&control.SQL-Group = ...`
+	#  `control.SQL-Group = ...`
 	#
 	#  Default is `no`.
 	#
 #	cache_groups = no
+
+	#
+	#  query_number_attribute:: An attribute to write the successful query number to.
+	#
+	#  When calling the `sql` module in a section such as `accounting` where there are a list of queries to
+	#  try, and success is determined by a query modifying one or more records, this option can be used to
+	#  record which query succeeded.
+	#
+	#  The attribute named here will be populated in the `control` list with the number of the query
+	#  which succeeded.
+	#
+	#  If, as is the case with the default Interim-Update queries, the first query is an `UPDATE` and the
+	#  second is an `INSERT`, this can be used to determine if calling the module resulted in a new record
+	#  being written or an existing one being updated. I.e. if the `UPDATE` succeeds, the attribute will be
+	#  populated with 1, whereas if the `INSERT` succeeds, the attribute will be populated with 2.
+	#
+#	query_number_attribute = 'Query-Number'
 
 	#
 	#  .Read database-specific queries.

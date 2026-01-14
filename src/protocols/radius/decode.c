@@ -388,6 +388,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_pair_list_t *list,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
+	PAIR_ALLOCED(vp);
 
 	if (fr_pair_value_mem_alloc(vp, &p, total, true) != 0) {
 		talloc_free(vp);
@@ -570,6 +571,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				talloc_free(buffer);
 				return -1;
 			}
+			PAIR_ALLOCED(vp);
 
 			if (fr_pair_value_bstrndup(vp, (char const *) decode, len, true) != 0) {
 				talloc_free(buffer);
@@ -607,6 +609,7 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 redo:
 	FR_PROTO_HEX_DUMP(p, end - p, "decode_digest_attributes");
@@ -667,6 +670,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *  Record where we were in the list when this function was called
@@ -1590,6 +1594,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			group = fr_pair_afrom_da(packet_ctx->tag_root_ctx, group_da);
 			if (unlikely(!group)) goto tag_alloc_error;
+			PAIR_ALLOCED(group);
 
 			packet_ctx->tags[tag]->parent = group;
 
@@ -1813,6 +1818,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return -1;
+		PAIR_ALLOCED(vp);
 
 		ret = proto->decode(vp, &vp->vp_group, p, attr_len);
 		if (ret < 0) goto raw;
@@ -1842,10 +1848,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da_nested(packet_ctx->tags[tag]->parent, &packet_ctx->tags[tag]->parent->vp_group, parent);
 	}
 	if (!vp) return -1;
+	PAIR_ALLOCED(vp);
 
 	switch (parent->type) {
 	/*
-	 *  Magic RADIUS format IPv4 prefix
+	 *  RFC8044 IPv4 prefix
 	 *
 	 *  0                   1                   2                   3
 	 *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1855,22 +1862,20 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *      ... Prefix                 |
 	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 *
-	 * RFC does not require non-masked bits to be zero.
+	 *  The bits outside of the prefix mask MUST be zero.
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 		if (data_len != 6) goto raw;
 		if (p[0] != 0) goto raw;
-		if ((p[1] & 0x3f) > 32) goto raw;
 
-		vp->vp_ip.af = AF_INET;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[1] & 0x3f;
-		memcpy((uint8_t *)&vp->vp_ipv4addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&vp->vp_ip, p[1] & 0x3f);
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     p[1], p + 2, 4, true, true) < 0) {
+			goto raw;
+		}
 		break;
 
 	/*
-	 *  Magic RADIUS format IPv6 prefix
+	 *  RFC8044 IPv6 prefix
 	 *
 	 *   0                   1                   2                   3
 	 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1886,36 +1891,19 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *                               Prefix                             |
 	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 *
-	 *  RFC says non-masked bits MUST be zero.
+	 *  The bits outside of the prefix mask MUST be zero.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 	{
 		if (data_len > 18) goto raw;
 		if (data_len < 2) goto raw;
 		if (p[0] != 0) goto raw;	/* First byte is always 0 */
-		if (p[1] > 128) goto raw;
 
-		/*
-		 *	Convert prefix bits to bytes to check that
-		 *	we have sufficient data.
-		 *
-		 *	If Prefix has more data than Prefix-Length
-		 *	indicates, we just ignore the rest.
-		 */
-		if (fr_bytes_from_bits(p[1]) > (data_len - 2)) goto raw;
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     p[1], p + 2, data_len - 2, false, true) < 0) {
+			goto raw;
+		}
 
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[1];
-
-		memcpy((uint8_t *)&vp->vp_ipv6addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&vp->vp_ip, p[1]);
-
-		/*
-		 *	Check the prefix data is the same before
-		 *	and after casting (it should be).
-		 */
-		if (memcmp(p + 2, (uint8_t *)&vp->vp_ipv6addr, data_len - 2) != 0) goto raw;
 	}
 		break;
 
@@ -2032,9 +2020,17 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
+		PAIR_ALLOCED(vp);
+
+		/*
+		 *	Ensure that it has a value.
+		 */
+		if (fr_pair_value_memdup(vp, (uint8_t const *) "", 0, false) < 0) {
+			talloc_free(vp);
+			return -1;
+		}
 
 		fr_pair_append(out, vp);
-		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
 
 		return 2;
 	}
@@ -2142,7 +2138,8 @@ static int _test_ctx_free(fr_radius_decode_ctx_t *ctx)
        return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	static uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH] = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -2207,6 +2204,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_strerror_const("Failed creating Packet-Type");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
+
 	vp->vp_uint32 = data[0];
 	fr_pair_append(out, vp);
 
@@ -2215,6 +2214,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_strerror_const("Failed creating Packet-Authentication-Vector");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
+
 	(void) fr_pair_value_memdup(vp, data + 4, 16, true);
 	fr_pair_append(out, vp);
 

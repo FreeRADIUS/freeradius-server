@@ -37,6 +37,9 @@
  *
  * This function will setup a TLS subrequest to run a virtual server section.
  *
+ * @note FIXME - The result of these callback sections are ignored... We may
+ *       want to change this in the future.
+ *
  * @param[out] child		to run as a subrequest of the parent.
  * @param[in] resume		Function to call after the virtual server
  *      			finishes processing the request. uctx will
@@ -48,7 +51,7 @@
  *      - 0 on success.
  *	- -1 on failure.
  */
-unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
+unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t resume,
 				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session,
 #ifdef NDEBUG
 				 UNUSED
@@ -62,10 +65,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	and a result processing frame in the child.
 	 */
 	if (unlang_subrequest_child_push(NULL, child,
-					 &(unlang_subrequest_session_t){
-						.enable = true,
-						.unique_ptr = tls_session
-					 },
+					 tls_session,
 					 true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -74,8 +74,12 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	Setup a function to execute after the
 	 *	subrequest completes.
 	 */
-	if (unlang_function_push(child, NULL, resume,
-				 NULL, 0, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(child,
+				 NULL,
+				 resume,
+				 NULL,
+				 0, UNLANG_SUB_FRAME,
+				 tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Now the child and parent stacks are both
@@ -83,7 +87,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	call into the subrequest to run the section
 	 *	specified by Packet-Type.
 	 */
-	if (unlang_call_push(child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_call_push(NULL, child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		request_detach(child);
 		return UNLANG_ACTION_FAIL;
 	}

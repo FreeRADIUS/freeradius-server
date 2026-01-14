@@ -97,7 +97,7 @@ extern fr_dict_autoload_t radsniff_dict[];
 fr_dict_autoload_t radsniff_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -105,7 +105,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t radsniff_dict_attr[];
 fr_dict_attr_autoload_t radsniff_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static NEVER_RETURNS void usage(int status);
@@ -841,7 +841,7 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 /** Process stats for a single interval
  *
  */
-static void rs_stats_process(fr_event_list_t *el, fr_time_t now_t, void *ctx)
+static void rs_stats_process(fr_timer_list_t *tl, fr_time_t now_t, void *ctx)
 {
 	size_t		i;
 	size_t		rs_codes_len = (NUM_ELEMENTS(rs_useful_codes));
@@ -903,13 +903,14 @@ clear:
 	}
 
 	{
-		static fr_event_timer_t const *event;
+		static fr_timer_t *event;
 
 		now.tv_sec += conf->stats.interval;
 		now.tv_usec = 0;
 
-		if (fr_event_timer_at(NULL, el, &event,
-				      fr_time_from_timeval(&now), rs_stats_process, ctx) < 0) {
+		if (fr_timer_at(NULL, tl, &event,
+				fr_time_from_timeval(&now),
+				false, rs_stats_process, ctx) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -939,7 +940,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 				      fr_pcap_t *in, struct timeval *now, bool live)
 {
-	static fr_event_timer_t	const *event;
+	static fr_timer_t	*event;
 	static rs_update_t	update;
 
 	memset(&update, 0, sizeof(update));
@@ -978,8 +979,9 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_timer_at(NULL, events, (void *) &event,
-			      fr_time_from_timeval(now), rs_stats_process, &update) < 0) {
+	if (fr_timer_at(NULL, events->tl, (void *) &event,
+			fr_time_from_timeval(now),
+			false, rs_stats_process, &update) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
@@ -1043,12 +1045,8 @@ static int _request_free(rs_request_t *request)
 		RS_ASSERT(ret);
 	}
 
-	if (request->event) {
-		ret = fr_event_timer_delete(&request->event);
-		if (ret < 0) {
-			fr_perror("Failed deleting timer");
-			RS_ASSERT(0 == 1);
-		}
+	if (fr_timer_armed(request->event)) {
+		FR_TIMER_DELETE(&request->event);
 	}
 
 	fr_packet_free(&request->packet);
@@ -1129,11 +1127,10 @@ static void rs_packet_cleanup(rs_request_t *request)
 	talloc_free(request);
 }
 
-static void _rs_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+static void _rs_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 
-	request->event = NULL;
 	rs_packet_cleanup(request);
 }
 
@@ -1332,7 +1329,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
-	len = (p - data) + sizeof(udp_header_t) + sizeof(radius_packet_t);	/* length value */
+	len = (p - data) + sizeof(udp_header_t) + RADIUS_HEADER_LENGTH;	/* length value */
 	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
@@ -1409,17 +1406,21 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	if (ip) {
 		packet->socket.inet.src_ipaddr.af = AF_INET;
 		packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
+		packet->socket.inet.src_ipaddr.prefix = 32;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET;
 		packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
+		packet->socket.inet.dst_ipaddr.prefix = 32;
 	} else {
 		packet->socket.inet.src_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
 		       sizeof(packet->socket.inet.src_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.src_ipaddr.prefix = 128;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
 		       sizeof(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.dst_ipaddr.prefix = 128;
 	}
 
 	packet->socket.inet.src_port = ntohs(udp->src);
@@ -1528,7 +1529,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 */
 				fr_pair_list_free(&original->link_vps);
 				fr_packet_free(&original->linked);
-				fr_event_timer_delete(&original->event);
+				FR_TIMER_DELETE(&original->event);
 			/*
 			 *	...nope it's the first response to a request.
 			 */
@@ -1544,8 +1545,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->linked = talloc_steal(original, packet);
 			fr_pair_list_append(&original->link_vps, &decoded);		/* Move the vps over */
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (fr_event_timer_at(NULL, event->list, &original->event,
-					      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
+			if (fr_timer_at(original, event->list->tl, &original->event,
+					fr_time_from_timeval(&original->when),
+					false, _rs_event, original) < 0) {
 				REDEBUG("Failed inserting new event");
 				/*
 				 *	Delete the original request/event, it's no longer valid
@@ -1752,7 +1754,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_pair_list_append(&original->expect_vps, &search.expect_vps);
 
 			/* Disarm the timer for the cleanup event for the original request */
-			fr_event_timer_delete(&original->event);
+			FR_TIMER_DELETE(&original->event);
 		/*
 		 *	...nope it's a new request.
 		 */
@@ -1813,8 +1815,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		original->packet->timestamp = fr_time_from_timeval(&header->ts);
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-		if (fr_event_timer_at(NULL, event->list, &original->event,
-				      fr_time_from_timeval(&original->when), _rs_event, original) < 0) {
+		if (fr_timer_at(original, event->list->tl, &original->event,
+				fr_time_from_timeval(&original->when),
+				false, _rs_event, original) < 0) {
 			REDEBUG("Failed inserting new event");
 
 			talloc_free(original);
@@ -1988,7 +1991,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 
 			do {
 				now = fr_time_from_timeval(&header->ts);
-			} while (fr_event_timer_run(el, &now) == 1);
+			} while (fr_timer_list_run(el->tl, &now) == 1);
 			count++;
 
 			rs_packet_process(count, event, header, data);
@@ -2102,11 +2105,14 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 		.ctx = conf,
 		.da = fr_dict_root(dict_radius),
 		.list = out,
+		.dict = dict_radius,
+		.internal = fr_dict_internal(),
 		.allow_compare = true,
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
-	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(filter, strlen(filter))) <= 0) {
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(filter)) <= 0) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}
@@ -2172,9 +2178,9 @@ static void _unmark_link(void *request)
 /** Exit the event loop after a given timeout.
  *
  */
-static void timeout_event(fr_event_list_t *el, UNUSED fr_time_t now_t, UNUSED void *ctx)
+static void timeout_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now_t, void *ctx)
 {
-	fr_event_loop_exit(el, 1);
+	fr_event_loop_exit(talloc_get_type_abort(ctx, fr_event_list_t), 1);
 }
 
 
@@ -2182,9 +2188,9 @@ static void timeout_event(fr_event_list_t *el, UNUSED fr_time_t now_t, UNUSED vo
 /** Re-open the collectd socket
  *
  */
-static void rs_collectd_reopen(fr_event_list_t *el, fr_time_t now, UNUSED void *ctx)
+static void rs_collectd_reopen(fr_timer_list_t *tl, fr_time_t now, UNUSED void *ctx)
 {
-	static fr_event_timer_t const *event;
+	static fr_timer_t *event;
 
 	if (rs_stats_collectd_open(conf) == 0) {
 		DEBUG2("Stats output socket (re)opened");
@@ -2193,9 +2199,9 @@ static void rs_collectd_reopen(fr_event_list_t *el, fr_time_t now, UNUSED void *
 
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
-	if (fr_event_timer_at(NULL, el, &event,
-			      fr_time_add(now, fr_time_delta_from_msec(RS_SOCKET_REOPEN_DELAY)),
-			      rs_collectd_reopen, el) < 0) {
+	if (fr_timer_at(NULL, tl, &event,
+		        fr_time_add(now, fr_time_delta_from_msec(RS_SOCKET_REOPEN_DELAY)),
+		        false, rs_collectd_reopen, NULL) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}
@@ -2241,7 +2247,7 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 	switch (sig) {
 #ifdef HAVE_COLLECTDC_H
 	case SIGPIPE:
-		rs_collectd_reopen(list, fr_time(), list);
+		rs_collectd_reopen(list->tl, fr_time(), list);
 		break;
 #else
 	case SIGPIPE:
@@ -2328,7 +2334,7 @@ int main(int argc, char *argv[])
 
 	int			c;
 	unsigned int		timeout = 0;
-	fr_event_timer_t const	*timeout_ev = NULL;
+	fr_timer_t		*timeout_ev = NULL;
 	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	TALLOC_CTX		*autofree;
@@ -3112,8 +3118,8 @@ int main(int argc, char *argv[])
 		}
 
 		if (timeout) {
-			if (fr_event_timer_in(NULL, events, &timeout_ev, fr_time_delta_from_sec(timeout),
-					      timeout_event, NULL) < 0) {
+			if (fr_timer_in(NULL, events->tl, &timeout_ev, fr_time_delta_from_sec(timeout),
+					false, timeout_event, events) < 0) {
 				ERROR("Failed inserting timeout event");
 			}
 		}

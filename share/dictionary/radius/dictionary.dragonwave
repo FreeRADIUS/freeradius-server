@@ -19,7 +19,7 @@ VENDOR		DragonWave			7262
 BEGIN-VENDOR	DragonWave
 
 # Used to determine the user login privilege level.
-ATTRIBUTE	Privilege-Level				1	integer
+ATTRIBUTE	Privilege-Level				1	uint32
 
 #        Read-only access.
 

@@ -10,3 +10,6 @@
 [submodule "src/modules/rlm_sigtran/libosmo-abis"]
 	path = src/modules/rlm_sigtran/libosmo-abis
 	url = https://github.com/osmocom/libosmo-abis.git
+[submodule "src/lib/backtrace"]
+	path = src/lib/backtrace
+	url = git@github.com:ianlancetaylor/libbacktrace.git

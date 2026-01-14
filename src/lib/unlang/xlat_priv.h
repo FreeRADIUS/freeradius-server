@@ -65,6 +65,8 @@ typedef struct xlat_s {
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
+	bool			deprecated;		//!< this function was deprecated
+	char const		*replaced_with;		//!< this function was replaced with something else
 	fr_token_t		token;			//!< for expressions
 
 	module_inst_ctx_t	*mctx;			//!< Original module instantiation ctx if this
@@ -89,7 +91,6 @@ typedef struct xlat_s {
 
 	xlat_flags_t		flags;			//!< various flags
 
-	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
 	call_env_method_t const	*call_env_method;	//!< Optional tmpl expansions performed before calling the
@@ -108,13 +109,11 @@ typedef enum {
 	XLAT_ONE_LETTER		= 0x0002,		//!< Special "one-letter" expansion
 	XLAT_FUNC		= 0x0004,		//!< xlat module
 	XLAT_FUNC_UNRESOLVED	= 0x0008,		//!< func needs resolution during pass2.
-	XLAT_VIRTUAL		= 0x0010,		//!< virtual attribute
-	XLAT_VIRTUAL_UNRESOLVED = 0x0020,		//!< virtual attribute needs resolution during pass2.
-	XLAT_TMPL		= 0x0040,		//!< xlat attribute
+	XLAT_TMPL		= 0x0010,		//!< xlat attribute
 #ifdef HAVE_REGEX
-	XLAT_REGEX		= 0x0080,		//!< regex reference %{1}, etc.
+	XLAT_REGEX		= 0x0020,		//!< regex reference %{1}, etc.
 #endif
-	XLAT_GROUP		= 0x0200		//!< encapsulated string of xlats
+	XLAT_GROUP		= 0x0100		//!< encapsulated string of xlats
 } xlat_type_t;
 
 /** An xlat function call
@@ -140,8 +139,6 @@ typedef struct {
 
 	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
 							///< into the instance tree.
-	xlat_input_type_t	input_type;		//!< The input type used inferred from the
-							///< bracketing style.
 } xlat_call_t;
 
 /** An xlat expansion node
@@ -163,7 +160,10 @@ struct xlat_exp_s {
 #endif
 
 	union {
-		xlat_exp_head_t	*group;		//!< children of a group
+		struct {
+			xlat_exp_head_t	*group;		//!< children of a group
+			unsigned int   	hoist : 1;	//!< it's a group, but we need to hoist the results
+		};
 
 		/** An tmpl_t reference
 		 *
@@ -188,7 +188,10 @@ struct xlat_exp_s {
 struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
-	bool			instantiated;	//!< temporary flag until we fix more things
+	unsigned int		instantiated : 1;  //!< temporary flag until we fix more things
+	unsigned int		is_argv : 1;	//!< this thing holds function arguments
+	unsigned int		cursor : 1;	//!< otherwise it's too hard to pass xlat_arg_parser_t to the evaluation function.
+	unsigned int		is_attr : 1;	//!< the argument is an attribute reference
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
@@ -280,8 +283,12 @@ xlat_exp_t	*_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 #define		xlat_exp_alloc(_ctx, _type, _in, _inlen) _xlat_exp_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _in, _inlen)
 
 void		xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len) CC_HINT(nonnull);
-void		xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
+void		xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 void		xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
+
+void		xlat_exp_set_vpt(xlat_exp_t *node, tmpl_t *vpt) CC_HINT(nonnull);
+void		xlat_exp_set_func(xlat_exp_t *node, xlat_t const *func, fr_dict_t const *dict) CC_HINT(nonnull(1,2));
+void		xlat_exp_finalize_func(xlat_exp_t *node) CC_HINT(nonnull);
 
 /*
  *	xlat_func.c
@@ -301,6 +308,8 @@ fr_dict_attr_t const *xlat_time_res_attr(char const *res);
  *	xlat_tokenize.c
  */
 extern bool const xlat_func_chars[UINT8_MAX + 1];
+
+int		xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m_s) CC_HINT(nonnull);
 
 void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 			    request_t *request, void *rctx, fr_signal_t action);
@@ -326,7 +335,7 @@ void		xlat_eval_free(void);
 
 void		unlang_xlat_init(void);
 
-int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int		unlang_xlat_push_node(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				      request_t *request, xlat_exp_t *node);
 
 int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
@@ -340,11 +349,11 @@ int		xlat_register_expressions(void);
 /*
  *	xlat_tokenize.c
  */
-int		xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
-					tmpl_rules_t const *t_rules);
-
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
 				fr_sbuff_escape_rules_t const *e_rules, char c);
+
+fr_slen_t	xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_token_t quote,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

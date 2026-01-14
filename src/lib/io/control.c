@@ -91,23 +91,17 @@ struct fr_control_s {
 static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
-	ssize_t i, num;
 	fr_time_t now;
 	char read_buffer[256];
 	uint8_t	data[256];
+	size_t message_size;
+	uint32_t id = 0;
 
-	num = read(fd, read_buffer, sizeof(read_buffer));
-	if (num <= 0) return;
+	if (read(fd, read_buffer, sizeof(read_buffer)) <= 0) return;
 
 	now = fr_time();
 
-	for (i = 0; i < num; i++) {
-		uint32_t id = 0;
-		size_t message_size;
-
-		message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data));
-		if (!message_size) return;
-
+	while((message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data)))) {
 		if (id >= FR_CONTROL_MAX_TYPES) continue;
 
 		if (!c->type[id].callback) continue;
@@ -304,18 +298,13 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	MPRINT("CONTROL push aq %p\n", c->aq);
 
 	/*
-	 *	Get a message.  If we can't get one, do garbage
-	 *	collection.  Get another, and if that fails, we're
-	 *	done.
+	 *	Get a message.  The alloc call attempts garbage collection
+	 *	if there is not enough free space.
 	 */
 	m = fr_control_message_alloc(c, rb, id, data, data_size);
 	if (!m) {
-		(void) fr_control_gc(c, rb);
-		m = fr_control_message_alloc(c, rb, id, data, data_size);
-		if (!m) {
-			fr_strerror_const("Failed allocating after GC");
-			return -2;
-		}
+		fr_strerror_const_push("Failed allocating after GC");
+		return -2;
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
@@ -342,6 +331,8 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
+	ssize_t	ret;
+	int	delay = 0;
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
@@ -353,10 +344,19 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-	while (write(c->pipe[1], ".", 1) == 0) {
+again:
+	while ((ret = write(c->pipe[1], ".", 1)) == 0) {
 		/* nothing */
 	}
-
+	if ((ret < 0) && ((errno == EAGAIN))
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+	    || (errno == EWOULDBLOCK)
+#endif
+	) {
+		delay += 10;
+		usleep(delay);
+		goto again;
+	}
 	return 0;
 }
 

@@ -31,14 +31,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
 
-static request_init_args_t	default_args;
-
 static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t request_dict[];
 fr_dict_autoload_t request_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *request_attr_root;
@@ -56,14 +54,8 @@ fr_dict_attr_autoload_t request_dict_attr[] = {
 	{ .out = &request_attr_control, .name = "control", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_state, .name = "session-state", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_local, .name = "local-variables", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
-
-/** The thread local free list
- *
- * Any entries remaining in the list will be freed when the thread is joined
- */
-static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
 
 #ifndef NDEBUG
 static int _state_ctx_free(fr_pair_t *state)
@@ -198,7 +190,10 @@ static inline CC_HINT(always_inline) int request_detachable_init(request_t *chil
 static inline CC_HINT(always_inline) int request_child_init(request_t *child, request_t *parent)
 {
 	child->number = parent->child_number++;
-	if (!child->dict) child->dict = parent->dict;
+	if (!child->proto_dict) {
+		child->proto_dict = parent->proto_dict;
+		child->local_dict = parent->proto_dict;
+	}
 
 	if ((parent->seq_start == 0) || (parent->number == parent->seq_start)) {
 		child->name = talloc_typed_asprintf(child, "%s.%" PRIu64, parent->name, child->number);
@@ -239,25 +234,42 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
  * @param[in] type		of request to initialise.
  * @param[in] args		Other optional arguments.
  */
-static inline CC_HINT(always_inline) int request_init(char const *file, int line,
-						      request_t *request, request_type_t type,
-						      request_init_args_t const *args)
+int _request_init(char const *file, int line,
+		  request_t *request, request_type_t type,
+		  request_init_args_t const *args)
 {
+	fr_dict_t const *dict;
 
 	/*
 	 *	Sanity checks for different requests types
 	 */
 	switch (type) {
 	case REQUEST_TYPE_EXTERNAL:
+		fr_assert(args);
+
 		if (!fr_cond_assert_msg(!args->parent, "External requests must NOT have a parent")) return -1;
+
+		fr_assert(args->namespace);
+
+		dict = args->namespace;
 		break;
 
 	case REQUEST_TYPE_INTERNAL:
+		if (!args || !args->namespace) {
+			dict = fr_dict_internal();
+		} else {
+			dict = args->namespace;
+		}
 		break;
 
 	case REQUEST_TYPE_DETACHED:
 		fr_assert_fail("Detached requests should start as type == REQUEST_TYPE_INTERNAL, "
 			       "args->detachable and be detached later");
+		return -1;
+
+	/* Quiet GCC */
+	default:
+		fr_assert_fail("Invalid request type");
 		return -1;
 	}
 
@@ -267,10 +279,11 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 #endif
 		.type = type,
 		.master_state = REQUEST_ACTIVE,
-		.dict = args->namespace,
+		.proto_dict = fr_dict_proto_dict(dict),
+		.local_dict = dict,
 		.component = "<pre-core>",
 		.flags = {
-			.detachable = args->detachable
+			.detachable = args && args->detachable,
 		},
 		.alloc_file = file,
 		.alloc_line = line
@@ -306,7 +319,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		 *	the any uninitialised lists and
 		 *	create them locally.
 		 */
-		memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
+		if (args) memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
 
 #define list_init(_ctx, _list) \
 	do { \
@@ -337,7 +350,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 	 *	fields if this is going to be a
 	 *	child request.
 	 */
-	if (args->parent) {
+	if (args && args->parent) {
 		if (request_child_init(request, args->parent) < 0) return -1;
 
 		if (args->detachable) {
@@ -349,114 +362,56 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 	} else {
 		request_log_init_orphan(request);
 	}
+
+	/*
+	 *	This is only used by src/lib/io/worker.c
+	 */
+	fr_dlist_entry_init(&request->listen_entry);
+
 	return 0;
 }
 
-/** Callback for freeing a request struct
+/** Callback for slabs to deinitialise the request
  *
- * @param[in] request		to free or return to the free list.
+ * Does not need to be called for local requests.
+ *
+ * @param[in] request		deinitialise
  * @return
- *	- 0 in the request was freed.
- *	- -1 if the request was inserted into the free list.
+ *	- 0 in the request was deinitialised.
+ *	- -1 if the request is in an unexpected state.
  */
-static int _request_free(request_t *request)
+int request_slab_deinit(request_t *request)
 {
-	fr_assert_msg(!fr_heap_entry_inserted(request->time_order_id),
-		      "alloced %s:%i: %s still in the time_order heap ID %i",
+	fr_assert_msg(!fr_timer_armed(request->timeout),
+		      "alloced %s:%i: %s still in the  timeout sublist",
 		      request->alloc_file,
 		      request->alloc_line,
-		      request->name ? request->name : "(null)", request->time_order_id);
-	fr_assert_msg(!fr_heap_entry_inserted(request->runnable_id),
+		      request->name ? request->name : "(null)");
+	fr_assert_msg(!fr_heap_entry_inserted(request->runnable),
 		      "alloced %s:%i: %s still in the runnable heap ID %i",
 		      request->alloc_file,
 		      request->alloc_line,
-		      request->name ? request->name : "(null)", request->runnable_id);
+		      request->name ? request->name : "(null)", request->runnable);
 
-	RDEBUG3("Request freed (%p)", request);
+	RDEBUG3("Request deinitialising (%p)", request);
 
-	/*
-	 *	Reinsert into the free list if it's not already
-	 *	in the free list.
-	 *
-	 *	If it *IS* already in the free list, then free it.
-	 */
-	if (unlikely(fr_dlist_entry_in_list(&request->free_entry))) {
-		fr_dlist_entry_unlink(&request->free_entry);	/* Don't trust the list head to be available */
-		goto really_free;
-	}
-
-	/*
-	 *	We keep a buffer of <active> + N requests per
-	 *	thread, to avoid spurious allocations.
-	 */
-	if (fr_dlist_num_elements(request_free_list) <= 256) {
-		fr_dlist_head_t		*free_list;
-
-		if (request->session_state_ctx) {
-			fr_assert(talloc_parent(request->session_state_ctx) != request);	/* Should never be directly parented */
-			TALLOC_FREE(request->session_state_ctx);				/* Not parented from the request */
-		}
-		free_list = request_free_list;
-
-		/*
-		 *	Reinitialise the request
-		 */
-		talloc_free_children(request);
-
-		memset(request, 0, sizeof(*request));
-		request->component = "free_list";
-#ifndef NDEBUG
-		/*
-		 *	So we don't trip heap asserts
-		 *	if the request is freed out of
-		 *	the free list.
-		 */
-		request->time_order_id = FR_HEAP_INDEX_INVALID;
-		request->runnable_id = FR_HEAP_INDEX_INVALID;
-#endif
-
-		/*
-		 *	Reinsert into the free list
-		 */
-		fr_dlist_insert_head(free_list, request);
-		request_free_list = free_list;
-
-		return -1;	/* Prevent free */
- 	}
-
-
-	/*
-	 *	Ensure anything that might reference the request is
-	 *	freed before it is.
-	 */
-	talloc_free_children(request);
-
-really_free:
 	/*
 	 *	state_ctx is parented separately.
 	 */
 	if (request->session_state_ctx) TALLOC_FREE(request->session_state_ctx);
 
+	/*
+	 *	Zero out everything.
+	 */
+	memset(request, 0, sizeof(*request));
+
 #ifndef NDEBUG
+	request->component = "free_list";
+	request->runnable = FR_HEAP_INDEX_INVALID;
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
 
 	return 0;
-}
-
-/** Free any free requests when the thread is joined
- *
- */
-static int _request_free_list_free_on_exit(void *arg)
-{
-	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
-	request_t		*request;
-
-	/*
-	 *	See the destructor for why this works
-	 */
-	while ((request = fr_dlist_head(list))) if (talloc_free(request) < 0) return -1;
-	return talloc_free(list);
 }
 
 static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *ctx)
@@ -473,96 +428,17 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
 	 *	and would have to be freed.
 	 */
 	MEM(request = talloc_pooled_object(ctx, request_t,
-					   1 + 					/* Stack pool */
-					   UNLANG_STACK_MAX + 			/* Stack Frames */
-					   2 + 					/* packets */
-					   10,					/* extra */
-					   (UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
-					   (sizeof(fr_pair_t) * 5) +		/* pair lists and root*/
-					   (sizeof(fr_packet_t) * 2) +	/* packets */
-					   128					/* extra */
-					   ));
+					   REQUEST_POOL_HEADERS,
+					   REQUEST_POOL_SIZE));
 	fr_assert(ctx != request);
-
-	return request;
-}
-
-/** Create a new request_t data structure
- *
- * @param[in] file	where the request was allocated.
- * @param[in] line	where the request was allocated.
- * @param[in] ctx	to bind the request to.
- * @param[in] type	what type of request to alloc.
- * @param[in] args	Optional arguments.
- * @return
- *	- A request on success.
- *	- NULL on error.
- */
-request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
-			  request_type_t type, request_init_args_t const *args)
-{
-	request_t		*request;
-	fr_dlist_head_t		*free_list;
-
-	if (!args) args = &default_args;
-
-	/*
-	 *	Setup the free list, or return the free
-	 *	list for this thread.
-	 */
-	if (unlikely(!request_free_list)) {
-		MEM(free_list = talloc(NULL, fr_dlist_head_t));
-		fr_dlist_init(free_list, request_t, free_entry);
-		fr_atexit_thread_local(request_free_list, _request_free_list_free_on_exit, free_list);
-	} else {
-		free_list = request_free_list;
-	}
-
-	request = fr_dlist_head(free_list);
-	if (!request) {
-		/*
-		 *	Must be allocated with in the NULL ctx
-		 *	as chunk is returned to the free list.
-		 */
-		request = request_alloc_pool(NULL);
-		talloc_set_destructor(request, _request_free);
-	} else {
-		/*
-		 *	Remove from the free list, as we're
-		 *	about to use it!
-		 */
-		fr_dlist_remove(free_list, request);
-	}
-
-	if (request_init(file, line, request, type, args) < 0) {
-		talloc_free(request);
-		return NULL;
-	}
-
-	/*
-	 *	Initialise entry in free list
-	 */
-	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
-
-	/*
-	 *	This is only used by src/lib/io/worker.c
-	 */
-	fr_dlist_entry_init(&request->listen_entry);
-
-	/*
-	 *	Bind lifetime to a parent.
-	 *
-	 *	If the parent is freed the destructor
-	 *	will fire, and return the request
-	 *	to a "top level" free list.
-	 */
-	if (ctx) talloc_link_ctx(ctx, request);
 
 	return request;
 }
 
 static int _request_local_free(request_t *request)
 {
+	RDEBUG4("Local request freed (%p)", request);
+
 	/*
 	 *	Ensure anything that might reference the request is
 	 *	freed before it is.
@@ -610,10 +486,8 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
 {
 	request_t *request;
 
-	if (!args) args = &default_args;
-
 	request = request_alloc_pool(ctx);
-	if (request_init(file, line, request, type, args) < 0) return NULL;
+	if (_request_init(file, line, request, type, args) < 0) return NULL;
 
 	talloc_set_destructor(request, _request_local_free);
 
@@ -789,16 +663,12 @@ void request_verify(char const *file, int line, request_t const *request)
 
 	fr_assert(request->magic == REQUEST_MAGIC);
 
-	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(request_t),
-			    "CONSISTENCY CHECK FAILED %s[%i]: expected request_t size of %zu bytes, got %zu bytes",
-			    file, line, sizeof(request_t), talloc_get_size(request));
-
 	(void)talloc_get_type_abort(request->request_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs);
+	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs, true);
 	(void)talloc_get_type_abort(request->reply_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs);
+	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs, true);
 	(void)talloc_get_type_abort(request->control_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
+	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs, true);
 	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
 
 #ifndef NDEBUG
@@ -811,8 +681,11 @@ void request_verify(char const *file, int line, request_t const *request)
 	}
 #endif
 
-	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
-	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs);
+	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs, true);
+	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs, true);
+
+	fr_assert(request->proto_dict != NULL);
+	fr_assert(request->local_dict != NULL);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, &request->request_pairs, "request");

@@ -19,7 +19,7 @@ if (!("%{Framed-IP-Address[*]}" == '192.0.2.1192.0.2.2')) {
 request += {
 	NAS-IP-Address = Framed-IP-Address[1]
 	NAS-IP-Address = Framed-IP-Address[0]
-	Filter-Id = "%concat(%{Framed-IP-Address[*]}, ',')"
+	Filter-Id = "%str.concat(%{Framed-IP-Address[*]}, ',')"
 	NAS-Port = %{Framed-IP-Address[#]}
 }
 

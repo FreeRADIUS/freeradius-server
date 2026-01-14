@@ -57,6 +57,7 @@ typedef struct {
 	uint64_t accepted;			//!< Requests to which we received a accept
 	uint64_t rejected;			//!< Requests to which we received a reject
 	uint64_t lost;				//!< Requests to which we received no response
+	uint64_t error;				//!< Requests which received a Protocol-Error response
 	uint64_t passed;			//!< Requests which passed a filter
 	uint64_t failed;			//!< Requests which failed a filter
 } rc_stats_t;

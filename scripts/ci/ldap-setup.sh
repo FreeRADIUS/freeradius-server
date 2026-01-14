@@ -33,6 +33,9 @@ debug () {
 # Allow setup script to work with homebrew too
 export PATH="/usr/local/opt/openldap/libexec:/opt/homebrew/opt/openldap/libexec:/opt/symas/lib:$PATH"
 
+if ! which slapd; then
+    error "Can't find slapd"
+fi
 suffix=$(echo "${0##*/}" | sed -E 's/^ldap(.*)-setup.sh$/\1/')
 
 # Kill any old processes

@@ -26,7 +26,7 @@
 #  an Operator-Name attribute
 #
 operator-name.authorize {
-	if ("%client(Operator-Name)") {
-		request.Operator-Name = "%client(Operator-Name)"
+	if ("%client('Operator-Name')") {
+		request.Operator-Name = "%client('Operator-Name')"
 	}
 }

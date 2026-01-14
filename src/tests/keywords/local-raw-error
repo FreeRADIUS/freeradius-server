@@ -1,0 +1,4 @@
+uint32 foo
+octets bar
+
+bar := raw.foo	# ERROR

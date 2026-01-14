@@ -44,11 +44,6 @@ typedef enum {
 	XLAT_ACTION_FAIL			//!< An xlat function failed.
 } xlat_action_t;
 
-typedef enum {
-	XLAT_INPUT_UNPROCESSED,			//!< No input argument processing
-	XLAT_INPUT_ARGS				//!< Ingests a number of arguments
-} xlat_input_type_t;
-
 typedef struct xlat_inst_s xlat_inst_t;
 typedef struct xlat_thread_inst_s xlat_thread_inst_t;
 
@@ -68,6 +63,7 @@ typedef ssize_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t ou
 
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_ctx.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 /** Instance data for an xlat expansion node
  *
@@ -110,14 +106,16 @@ typedef struct xlat_s xlat_t;
  *
  */
 typedef struct {
-	bool			needs_resolving;//!< Needs pass2 resolution.
-	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
-	bool			impure_func;	//!< xlat contains an impure function
-	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
+	unsigned int   		needs_resolving : 1;	//!< Needs pass2 resolution.
+	unsigned int		pure : 1;		//!< has no external side effects, true for BOX, LITERAL, and some functions
+	unsigned int		impure_func : 1;	//!< xlat contains an impure function
+	unsigned int		can_purify : 1;		//!< if the xlat has a pure function with pure arguments.
 
-	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
-	bool			xlat;		//!< it's an xlat wrapper
+	unsigned int		constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
+	unsigned int		xlat : 1;		//!< it's an xlat wrapper
 } xlat_flags_t;
+
+#define XLAT_FLAGS_INIT ((xlat_flags_t) { .pure = true, .can_purify = true, .constant = true, })
 
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
@@ -145,19 +143,23 @@ typedef enum {
  *
  */
 typedef struct {
-	bool				required;	//!< Argument must be present, and non-empty.
-	bool				concat;		//!< Concat boxes together.
-	bool				single;		//!< Argument must only contain a single box
+	unsigned int			required : 1;	//!< Argument must be present, and non-empty.
+	unsigned int			concat : 1;    	//!< Concat boxes together.
+	unsigned int			single : 1;    	//!< Argument must only contain a single box
+	unsigned int			allow_wildcard : 1; //!< For parsing the cursor
+	unsigned int			will_escape : 1;   //!< the function will do escaping and concatenation.
+	unsigned int			always_escape : 1;  //!< Pass all arguments to escape function not just
+							    ///< tainted ones.
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.
-	bool				always_escape;	//!< Pass all arguments to escape function not just
-							///< tainted ones.
 	fr_type_t			type;		//!< Type to cast argument to.
 	xlat_escape_func_t		func;		//!< Function to handle tainted values.
 	fr_value_box_safe_for_t		safe_for;	//!< Escaped value to set for boxes processed by
 							///< this escape function.
 	void				*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
+
+#define XLAT_ARG_PARSER_CURSOR { .required = true, .single = true, .allow_wildcard = true, .type = FR_TYPE_PAIR_CURSOR, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY }
 
 typedef struct {
 	tmpl_res_rules_t const	*tr_rules;	//!< tmpl resolution rules.
@@ -396,24 +398,20 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 				    xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
 				    CC_HINT(nonnull (2, 3, 4));
 
-int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
-					 xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx);
-
-int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
+int		xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
 
 fr_slen_t	xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-				   xlat_t const *xlat,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr);
+				   xlat_arg_parser_t const *xlat_args, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   bool spaces) CC_HINT(nonnull(1,2,3,6));
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_value_box_safe_for_t literals_safe_for);
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 fr_slen_t	xlat_print(fr_sbuff_t *in, xlat_exp_head_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 
@@ -423,7 +421,7 @@ static inline fr_slen_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_head_t
 
 bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
 
-fr_slen_t	xlat_validate_function_args(xlat_exp_t *node);
+int		xlat_validate_function_args(xlat_exp_t *node);
 
 void		xlat_debug(xlat_exp_t const *node);
 
@@ -443,14 +441,15 @@ void		xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt);
 xlat_action_t	xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
 				 request_t *request, fr_value_box_list_t *args);
+
 /*
  *	xlat_tokenize.c
  */
 tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
-int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, tmpl_t **vpt_p);
-
 bool		xlat_impure_func(xlat_exp_head_t const *head) CC_HINT(nonnull);
+
+fr_type_t	xlat_data_type(xlat_exp_head_t const *head);
 
 /*
  *	xlat_alloc.c
@@ -501,7 +500,9 @@ int		xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token
 int		unlang_xlat_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					void const *rctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+#define XLAT_RESULT_SUCCESS(_p_result) ((_p_result)->rcode == RLM_MODULE_OK)
+
+int		unlang_xlat_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_head_t const *head, bool top_frame)
 				 CC_HINT(warn_unused_result);
 
@@ -526,7 +527,6 @@ xlat_action_t	unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
  */
 int		xlat_protocols_register(void);
 int		xlat_global_init(void);
-void		xlat_global_free(void);
 
 #ifdef __cplusplus
 }

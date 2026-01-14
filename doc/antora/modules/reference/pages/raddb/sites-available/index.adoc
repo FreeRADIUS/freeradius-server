@@ -1,6 +1,6 @@
 == Virtual Servers
 
-FreeRADIUS 4.0 supports virtual servers. This is probably the single
+FreeRADIUS v4 supports virtual servers. This is probably the single
 largest change that is NOT backwards compatible with 1.x.
 
 The virtual servers do NOT have to be set up with the `sites-available`
@@ -41,9 +41,9 @@ above.
 
 You can create another virtual server by:
 
-* defining a new "server foo \{…}" section in `radiusd.conf`
-* Putting the normal "authorize", etc. sections inside of it
-* Adding a "listen" section _inside_ of the "server" section.
+* Define a new "server foo \{…}" section in `radiusd.conf`
+* Put the normal "authorize", etc. sections inside of it
+* Add a "listen" section _inside_ of the "server" section.
 
 e.g.
 
@@ -354,7 +354,6 @@ server.
 * xref:raddb/sites-available/status.adoc[status]
 * xref:raddb/sites-available/tacacs.adoc[tacacs]
 * xref:raddb/sites-available/tls.adoc[tls]
-* xref:raddb/sites-available/tls-cache.adoc[tls cache]
 * xref:raddb/sites-available/virtual.example.com.adoc[virtual example com]
 * xref:raddb/sites-available/vmps.adoc[vmps]
 

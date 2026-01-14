@@ -105,8 +105,8 @@ static int bfd_stop_poll(bfd_session_t *session)
 	 *	re-set the timers.
 	 */
 	if (!session->remote_demand_mode) {
-		fr_assert(session->ev_timeout != NULL);
-		fr_assert(session->ev_packet != NULL);
+		fr_assert(session->timeout_ev != NULL);
+		fr_assert(session->packet_ev != NULL);
 
 		bfd_stop_control(session);
 		bfd_start_control(session);
@@ -747,7 +747,7 @@ static void bfd_send_init(bfd_session_t *session, bfd_packet_t *bfd)
 /*
  *	Send one BFD packet.
  */
-static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+static void bfd_send_packet(UNUSED fr_timer_list_t *el, UNUSED fr_time_t now, void *ctx)
 {
 	bfd_session_t *session = ctx;
 	bfd_packet_t bfd;
@@ -770,7 +770,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 /*
  *	Send one BFD packet.
  */
-static void bfd_unlang_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+static void bfd_unlang_send_packet(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	bfd_session_t *session = ctx;
 	bfd_packet_t *bfd;
@@ -797,7 +797,10 @@ static void bfd_unlang_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t 
 					 &session->client.src_ipaddr, session->port);
 	if (!track) return;
 
-	(void) fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper, (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time());
+	if (unlikely(fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper,
+					      (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time()) < 0)) {
+		PERROR("Failed sending packet to worker");
+	};
 }
 
 /*
@@ -807,14 +810,12 @@ static void bfd_start_packets(bfd_session_t *session)
 {
 	uint64_t	interval, base;
 	uint64_t	jitter;
-	fr_event_timer_cb_t cb;
-
-	if (session->ev_packet) return;
+	fr_timer_cb_t cb;
 
 	/*
 	 *	Reset the timers.
 	 */
-	fr_event_timer_delete(&session->ev_packet);
+	FR_TIMER_DISARM(session->packet_ev);
 
 	if (fr_time_delta_cmp(session->desired_min_tx_interval, session->remote_min_rx_interval) >= 0) {
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
@@ -857,9 +858,9 @@ static void bfd_start_packets(bfd_session_t *session)
 		cb = bfd_send_packet;
 	}
 
-	if (fr_event_timer_in(session, session->el, &session->ev_packet,
-			      fr_time_delta_wrap(interval),
-			      cb, session) < 0) {
+	if (fr_timer_in(session, session->el->tl, &session->packet_ev,
+			fr_time_delta_wrap(interval),
+			false, cb, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
 	}
 }
@@ -937,7 +938,7 @@ static void bfd_set_desired_min_tx_interval(bfd_session_t *session, fr_time_delt
 /*
  *	We failed to see a packet.
  */
-static void bfd_detection_timeout(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
+static void bfd_detection_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *ctx)
 {
 	bfd_session_t *session = ctx;
 
@@ -987,8 +988,6 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 	uint64_t delay;
 	fr_time_delta_t delta;
 
-	fr_event_timer_delete(&session->ev_timeout);
-
 	delay = fr_time_delta_unwrap(session->detection_time);
 	delay *= session->detect_multi;
 
@@ -997,8 +996,8 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 
 	timeout = fr_time_add(when, delta);
 
-	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
-			      timeout, bfd_detection_timeout, session) < 0) {
+	if (fr_timer_at(session, session->el->tl, &session->timeout_ev,
+			timeout, false, bfd_detection_timeout, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
 	}
 }
@@ -1009,8 +1008,8 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
  */
 static int bfd_stop_control(bfd_session_t *session)
 {
-	fr_event_timer_delete(&session->ev_timeout);
-	fr_event_timer_delete(&session->ev_packet);
+	FR_TIMER_DISARM(session->timeout_ev);
+	FR_TIMER_DISARM(session->packet_ev);
 	return 1;
 }
 

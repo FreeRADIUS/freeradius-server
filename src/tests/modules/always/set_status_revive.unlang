@@ -7,7 +7,7 @@ db_status {
 }
 if (!fail) {
 	reply += {
-		Reply-Message = "Failure in test at line %interpreter(...line)"
+		Reply-Message = "Failure in test at line %interpreter('...line')"
 	}
 }
 

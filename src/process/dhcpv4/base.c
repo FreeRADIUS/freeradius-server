@@ -36,19 +36,21 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t process_dhcpv4_dict[];
 fr_dict_autoload_t process_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
 static fr_dict_attr_t const *attr_yiaddr;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_dhcp_option_82;
 
 extern fr_dict_attr_autoload_t process_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t process_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_yiaddr, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
-	{ NULL }
+	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -130,7 +132,7 @@ typedef struct {
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_DHCP_ACK
 #include <freeradius-devel/server/process.h>
 
-RESUME(check_yiaddr)
+RESUME(check_offer_ack_options)
 {
 	fr_pair_t *vp;
 
@@ -138,6 +140,20 @@ RESUME(check_yiaddr)
 	if (!vp) {
 		REDEBUG("%s packet does not have YIADDR.  The client will not receive an IP address.",
 			dhcp_message_types[request->reply->code]);
+	}
+
+	/*
+	 *	RFC3046 says:
+	 *	DHCP servers claiming to support the Relay Agent Information option
+	 *	SHALL echo the entire contents of the Relay Agent Information option
+	 *	in all replies.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_dhcp_option_82);
+	if (vp) {
+		fr_pair_t 	*reply_vp;
+		int		ret;
+		MEM((ret = pair_update_reply(&reply_vp, attr_dhcp_option_82)) >= 0);
+		if (ret == 0) MEM(fr_pair_list_copy(reply_vp, &reply_vp->vp_group, &vp->vp_group));
 	}
 
 	return CALL_RESUME(send_generic);
@@ -155,8 +171,9 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
@@ -165,7 +182,7 @@ static fr_process_state_t const process_state[] = {
 	[FR_DHCP_OFFER] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_OFFER,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_OFFER,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_OFFER,
 
 			[RLM_MODULE_REJECT] =  	FR_DHCP_DO_NOT_RESPOND,
@@ -173,11 +190,13 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
-		.resume = resume_check_yiaddr,
+		.resume = resume_check_offer_ack_options,
 		.section_offset = PROCESS_CONF_OFFSET(offer),
 	},
 
@@ -192,13 +211,15 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(request),
 	},
+
 	[FR_DHCP_DECLINE] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_DO_NOT_RESPOND,
@@ -210,8 +231,9 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
@@ -221,7 +243,7 @@ static fr_process_state_t const process_state[] = {
 	[FR_DHCP_ACK] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_ACK,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_ACK,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_ACK,
 
 			[RLM_MODULE_REJECT] =  	FR_DHCP_NAK,
@@ -229,17 +251,19 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
-		.resume = resume_check_yiaddr,
+		.resume = resume_check_offer_ack_options,
 		.section_offset = PROCESS_CONF_OFFSET(ack),
 	},
 	[FR_DHCP_NAK] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_NAK,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_NAK,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_NAK,
 
 			[RLM_MODULE_REJECT] =  	FR_DHCP_NAK,
@@ -247,8 +271,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
@@ -266,8 +292,9 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
@@ -285,8 +312,9 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
@@ -304,8 +332,9 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_LEASE_UNASSIGNED,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
@@ -315,7 +344,7 @@ static fr_process_state_t const process_state[] = {
 	[FR_DHCP_LEASE_UNASSIGNED] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_LEASE_UNASSIGNED,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_LEASE_UNASSIGNED,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_UNASSIGNED,
 
 			[RLM_MODULE_REJECT] =	FR_DHCP_DO_NOT_RESPOND,
@@ -323,8 +352,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_LEASE_UNASSIGNED,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
@@ -334,7 +365,7 @@ static fr_process_state_t const process_state[] = {
 	[FR_DHCP_LEASE_UNKNOWN] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_LEASE_UNKNOWN,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_LEASE_UNKNOWN,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_UNKNOWN,
 
 			[RLM_MODULE_REJECT] =	FR_DHCP_LEASE_UNKNOWN,
@@ -342,8 +373,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_NOTFOUND,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
@@ -353,7 +386,7 @@ static fr_process_state_t const process_state[] = {
 	[FR_DHCP_LEASE_ACTIVE] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_LEASE_ACTIVE,
-			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_DHCP_LEASE_ACTIVE,
 			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_ACTIVE,
 
 			[RLM_MODULE_REJECT] =	FR_DHCP_DO_NOT_RESPOND,
@@ -361,8 +394,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
@@ -380,8 +415,10 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_DISALLOW,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
@@ -389,7 +426,7 @@ static fr_process_state_t const process_state[] = {
 	},
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -400,13 +437,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "dhcpv4";
 	request->module = NULL;
-	fr_assert(request->dict == dict_dhcpv4);
+	fr_assert(request->proto_dict == dict_dhcpv4);
 
 	UPDATE_STATE(packet);
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dhcpv4_packet_debug(request, request->packet, &request->request_pairs, true);
@@ -520,9 +557,11 @@ fr_process_module_t process_dhcpv4 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "dhcpv4",
-		.inst_size	= sizeof(process_dhcpv4_t)
+		MODULE_INST(process_dhcpv4_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_dhcpv4
+	.dict		= &dict_dhcpv4,
+	.packet_type	= &attr_packet_type
 };

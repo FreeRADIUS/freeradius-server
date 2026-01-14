@@ -5,7 +5,7 @@
 #
 Filter-Id := "request.Tmp-Group-0.User-Name = 'testing123'"
 
-if (!("%map(%{Filter-Id})" == 1)) {
+if !%map(Filter-Id) {
 	test_fail
 }
 

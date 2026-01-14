@@ -1,0 +1,19 @@
+string foo
+
+#
+#  Both inputs are missing.
+#
+foo := "PM_DS_%subst(%{(size)((%{Acct-Input-Octets} + %{Acct-Output-Octets}) / 2)}, 'iB', '')_DATA"
+if (foo != "PM_DS_0B_DATA") {
+	test_fail
+}
+
+#
+#  String concatenation should have the same result.
+#
+foo := "PM_DS_" + %subst(%{(size)((%{Acct-Input-Octets} + %{Acct-Output-Octets}) / 2)}, 'iB', '') + "_DATA"
+if (foo != "PM_DS_0B_DATA") {
+	test_fail
+}
+
+success

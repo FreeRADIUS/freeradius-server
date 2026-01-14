@@ -66,8 +66,8 @@ typedef struct {
 	connection_t		*conn;		//!< Generic connection structure for this connection.
 	rlm_sql_config_t const	*config;	//!< SQL instance configuration.
 	fr_sql_query_t		*query_ctx;	//!< Current request running on the connection.
-	fr_event_timer_t const	*read_ev;	//!< Timer event for polling reading this connection
-	fr_event_timer_t const	*write_ev;	//!< Timer event for polling writing this connection
+	fr_timer_t		*read_ev;	//!< Timer event for polling reading this connection
+	fr_timer_t		*write_ev;	//!< Timer event for polling writing this connection
 	uint			select_interval;	//!< How frequently this connection gets polled for select queries.
 	uint			query_interval;	//!< How frequently this connection gets polled for other queries.
 	uint			poll_count;	//!< How many polls have been done for the current query.
@@ -432,7 +432,7 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	trunk_request_signal_cancel_complete(treq);
 }
 
-static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_oracle_conn_t);
 	fr_sql_query_t		*query_ctx = c->query_ctx;
@@ -464,9 +464,9 @@ static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t
 		switch (ret) {
 		case OCI_STILL_EXECUTING:
 			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
-			if (fr_event_timer_in(c, el, &c->read_ev,
-					      fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
-					      sql_trunk_connection_read_poll, c) < 0) {
+			if (fr_timer_in(c, tl, &c->read_ev,
+					fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
+					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
 			return;
@@ -504,8 +504,8 @@ static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t
 		ret = OCIBreak(c->ctx, c->error);
 		if (ret == OCI_STILL_EXECUTING) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
-			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
-					      sql_trunk_connection_read_poll, c) < 0) {
+			if (fr_timer_in(c, tl, &c->read_ev, fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
+					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
 			return;
@@ -521,7 +521,7 @@ static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t
 	if (request) unlang_interpret_mark_runnable(request);
 }
 
-static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void sql_trunk_connection_write_poll(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
@@ -535,7 +535,7 @@ static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED f
  *	This "notify" callback sets up the appropriate polling events.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
-static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED fr_event_list_t *el,
+static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
 					trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
@@ -543,15 +543,15 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 	uint			poll_interval = (query_ctx && query_ctx->type != SQL_QUERY_SELECT) ? c->query_interval : c->select_interval;
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
-		if (c->read_ev) fr_event_timer_delete(&c->read_ev);
-		if (c->write_ev) fr_event_timer_delete(&c->write_ev);
+		FR_TIMER_DISARM(c->read_ev);
+		FR_TIMER_DISARM(c->write_ev);
 		return;
 
 	case TRUNK_CONN_EVENT_BOTH:
 	case TRUNK_CONN_EVENT_READ:
 		if (c->query_ctx) {
-			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(poll_interval),
-					      sql_trunk_connection_read_poll, c) < 0) {
+			if (fr_timer_in(c, el->tl, &c->read_ev, fr_time_delta_from_usec(poll_interval),
+					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
 		}
@@ -560,8 +560,8 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 		FALL_THROUGH;
 
 	case TRUNK_CONN_EVENT_WRITE:
-		if (fr_event_timer_in(c, el, &c->write_ev, fr_time_delta_from_usec(0),
-				      sql_trunk_connection_write_poll, tconn) < 0) {
+		if (fr_timer_in(c, el->tl, &c->write_ev, fr_time_delta_from_usec(0),
+				false, sql_trunk_connection_write_poll, tconn) < 0) {
 			ERROR("Unable to insert polling event");
 		}
 		return;
@@ -571,7 +571,7 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 SQL_QUERY_FAIL
 SQL_QUERY_RESUME
 
-static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
@@ -582,7 +582,7 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	OCIDefine		*define;
 	ub2			dtype, dsize;
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	We only need to do this once per result set, because
@@ -665,13 +665,13 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	conn->ind = ind;
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 
  error:
 	talloc_free(row);
 
 	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -727,7 +727,7 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 	return rows;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			status = OCI_STILL_EXECUTING;
@@ -737,7 +737,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		ERROR("Socket not connected");
 
 		query_ctx->rcode = RLM_SQL_RECONNECT;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	query_ctx->row = NULL;
@@ -749,22 +749,22 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		query_ctx->row = conn->row;
 
 		query_ctx->rcode = RLM_SQL_OK;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	if (status == OCI_NO_DATA) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	if (status == OCI_ERROR) {
 		ERROR("fetch failed in sql_fetch_row");
 		query_ctx->rcode = sql_check_reconnect(conn);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

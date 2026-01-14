@@ -220,7 +220,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt = i;
 
 			slen = tacacs_encode_body_arg_n(&work_dbuff, child_argc, &arg_len[i], &vp->vp_group, vp->da);
-			if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+			if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 			i += child_argc;
 			continue;
@@ -1057,7 +1057,8 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_tacacs_ctx_t *test_ctx;
 

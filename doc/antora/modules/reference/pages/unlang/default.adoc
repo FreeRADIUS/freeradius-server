@@ -18,12 +18,12 @@ xref:unlang/case.adoc[case] statement matches.
 .Example
 [source,unlang]
 ----
-switch &User-Name {
+switch User-Name {
     case "bob" {
         reject
     }
 
-    case &Filter-Id {
+    case Filter-Id {
         reject
     }
 

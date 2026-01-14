@@ -29,33 +29,19 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/section.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/unlang/compile.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 
-#include <pthread.h>
 
 /** Lookup virtual module by name
  */
@@ -107,6 +93,7 @@ void module_rlm_list_debug(void)
  * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
  * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
  * @param[in] locking		Whether	or not to lock the files.
+ * @param[in] triggers		Should triggers be enabled.
  * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
  * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
  * @return
@@ -118,10 +105,12 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 				 uint32_t max_entries,
 				 fr_time_delta_t max_idle,
 				 bool locking,
+				 bool triggers,
 				 char const *trigger_prefix,
 				 fr_pair_list_t *trigger_args)
 {
 	char		trigger_prefix_buff[128];
+	bool		prefix_set = trigger_prefix ? true : false;
 	exfile_t	*handle;
 
 	if (!trigger_prefix) {
@@ -132,7 +121,8 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
+	if (triggers) exfile_enable_triggers(handle, prefix_set ? module : cf_section_find(module, "file", NULL),
+					     trigger_prefix, trigger_args);
 
 	return handle;
 }
@@ -430,7 +420,10 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
 
 	switch (pair_update_control(&vp, type_da)) {
 	case 0:
-		fr_value_box_copy(vp, &vp->data, enumv->value);
+		if (unlikely(fr_value_box_copy(vp, &vp->data, enumv->value) < 0)) {
+			fr_strerror_printf("Failed to set control.%pP to %s", vp, enumv->name);
+			return false;
+		}
 		vp->data.enumv = vp->da;	/* So we get the correct string alias */
 		RDEBUG2("Setting control.%pP", vp);
 		return true;
@@ -592,12 +585,15 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 	module_method_binding_t const	*mmb;
 
 	fr_sbuff_marker_t		meth_start;
+	bool				softfail;
 
 	fr_slen_t			slen;
 	fr_sbuff_t 			our_name = FR_SBUFF(name);
 
 	mmc = mmc_out ? mmc_out : &mmc_tmp;
-	if (mmc_out) memset(mmc_out, 0, sizeof(*mmc_out));
+	if (mmc_out) *mmc_out = (module_method_call_t) {};
+
+	softfail = fr_sbuff_next_if_char(&our_name, '-');
 
 	/*
 	 *	Advance until the start of the dynamic selector
@@ -690,6 +686,8 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		}
 
 		if (!mmc->mi) {
+			if (softfail) return fr_sbuff_set(name, &our_name);
+
 			fr_strerror_printf("No such module '%pV'", fr_box_strvalue_len(our_name.start, slen));
 			return -1;
 		}

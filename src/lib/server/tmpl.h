@@ -133,10 +133,6 @@ typedef enum tmpl_type_e {
 	 */
 	TMPL_TYPE_UNINITIALISED 	= 0x0000,
 
-	/** Has no value.  Usually a placeholder in a binary expression that's really a unary expression
-	 */
-	TMPL_TYPE_NULL			= 0x0001,
-
 	/** Value in native boxed format
 	 */
 	TMPL_TYPE_DATA			= 0x0002,
@@ -207,7 +203,6 @@ typedef enum tmpl_type_e {
  */
 #define tmpl_is_uninitialised(vpt) 		((vpt)->type == TMPL_TYPE_UNINITIALISED)
 
-#define tmpl_is_null(vpt) 			((vpt)->type == TMPL_TYPE_NULL)
 #define tmpl_is_data(vpt) 			((vpt)->type == TMPL_TYPE_DATA)
 
 #define tmpl_is_attr(vpt) 			((vpt)->type == TMPL_TYPE_ATTR)
@@ -225,11 +220,11 @@ typedef enum tmpl_type_e {
 #define tmpl_is_xlat_unresolved(vpt) 		((vpt)->type == TMPL_TYPE_XLAT_UNRESOLVED)
 #define tmpl_is_regex_xlat_unresolved(vpt) 	((vpt)->type == TMPL_TYPE_REGEX_XLAT_UNRESOLVED)
 
-#define tmpl_needs_resolving(vpt)		((vpt)->type & TMPL_FLAG_UNRESOLVED)
-#define tmpl_contains_data(vpt)			((vpt)->type & TMPL_TYPE_DATA)
-#define tmpl_contains_attr(vpt)			((vpt)->type & TMPL_FLAG_ATTR)
-#define tmpl_contains_regex(vpt)		((vpt)->type & TMPL_FLAG_REGEX)
-#define tmpl_contains_xlat(vpt)			((vpt)->type & TMPL_FLAG_XLAT)
+#define tmpl_needs_resolving(vpt)		(((vpt)->type & TMPL_FLAG_UNRESOLVED) != 0)
+#define tmpl_contains_data(vpt)			(((vpt)->type & TMPL_TYPE_DATA) != 0)
+#define tmpl_contains_attr(vpt)			(((vpt)->type & TMPL_FLAG_ATTR) != 0)
+#define tmpl_contains_regex(vpt)		(((vpt)->type & TMPL_FLAG_REGEX) != 0)
+#define tmpl_contains_xlat(vpt)			(((vpt)->type & TMPL_FLAG_XLAT) != 0)
 
 
 extern fr_table_num_ordered_t const tmpl_type_table[];
@@ -259,15 +254,6 @@ typedef struct tmpl_s tmpl_t;
 #else
 #  define _CONST
 #endif
-
-/** Specify whether attribute references require a prefix
- *
- */
-typedef enum {
-	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
-	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
-	TMPL_ATTR_REF_PREFIX_AUTO			//!< Attribute refs may have a '&' prefix.
-} tmpl_attr_prefix_t;
 
 /** Specify whether attribute references can have a list (or parent) reference
  *
@@ -309,30 +295,33 @@ struct tmpl_attr_rules_s {
 	fr_dict_attr_t const	*list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
-	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
-							///< a prefix.
-
 	tmpl_attr_list_presence_t list_presence;	//!< Whether the attribute reference can
 							///< have a list, forbid it, or require it.
 
-	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
+	CONF_ITEM		*ci;			//!< for migration support and various warnings
+
+	unsigned int		allow_unknown : 1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	uint8_t			allow_unresolved:1;	//!< Allow attributes that look valid but were
+	unsigned int		allow_unresolved : 1;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	uint8_t			allow_wildcard:1;	//!< Allow the special case of .[*] representing
+	unsigned int		allow_wildcard : 1;	//!< Allow the special case of .[*] representing
 							///< all children of a structural attribute.
 
-	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
+	unsigned int		allow_foreign : 1;	//!< Allow arguments not found in dict_def.
 
-	uint8_t			disallow_filters:1;	//!< disallow filters.
+	unsigned int		allow_oid : 1;		//!< allow numerical OIDs.
 
-	uint8_t			xlat:1	;		//!< for %{User-Name}
+	unsigned int		disallow_filters : 1;	//!< disallow filters.
 
-	uint8_t			bare_word_enum:1;	//!< for v3 compatibility.
+	unsigned int		xlat : 1	;	//!< for %{User-Name}
+
+	unsigned int		bare_word_enum : 1;	//!< for v3 compatibility.
+
+	unsigned int		disallow_rhs_resolve : 1; //!< map RHS is NOT immediately resolved in the context of the LHS.
 };
 
 struct tmpl_xlat_rules_s {
@@ -572,8 +561,6 @@ struct tmpl_s {
 						///< and TMPL_TYPE_REGEX_UNCOMPILED.
 
 		_CONST struct {
-			bool			ref_prefix;	//!< true if the reference was prefixed
-								///< with a '&'.
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
 		} attribute;
@@ -697,11 +684,7 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 {
 	if (!ar || !ar_is_normal(ar)) return false;
 
-	return (ar->ar_da == request_attr_request) ||
-	       (ar->ar_da == request_attr_reply) ||
-	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state) ||
-	       (ar->ar_da == request_attr_local);
+	return request_attr_is_list(ar->ar_da);
 }
 
 /** Return true if the head attribute reference is a list reference
@@ -958,6 +941,9 @@ static inline bool tmpl_is_list(tmpl_t const *vpt)
 
 #define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.cast
 #define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.enumv
+
+fr_type_t tmpl_data_type(tmpl_t const *vpt) CC_HINT(nonnull);
+
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_XLAT_UNRESOLVED
@@ -1037,8 +1023,10 @@ typedef enum {
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
 	TMPL_ATTR_ERROR_INVALID_FILTER,			//!< Invalid filter
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
+	TMPL_ATTR_ERROR_INVALID_REQUEST_REF,		//!< invalid request reference
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
-	TMPL_ATTR_ERROR_BAD_CAST			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_BAD_CAST,			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_INVALID_OID			//!< OIDs are not allowed
 } tmpl_attr_error_t;
 
 /** Map ptr type to a boxed type
@@ -1063,9 +1051,9 @@ typedef enum {
  *
  * @see _tmpl_to_type
  */
-#define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt, _escape, _escape_ctx) \
+#define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt) \
 	_tmpl_to_type((void *)(_out), (uint8_t *)_buff, _buff_len, \
-		      _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
+		      _request, _vpt, FR_TYPE_FROM_PTR(_out))
 
 /** Expand a tmpl to a C type, allocing a new buffer to hold the string
  *
@@ -1082,10 +1070,10 @@ typedef enum {
  *
  * @see _tmpl_to_atype
  */
-#define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
-			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
+#define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt) \
+			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, NULL, NULL, _type)
 
-void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_list_t		*tmpl_list_head(request_t *request, fr_dict_attr_t const *list);
 
@@ -1183,11 +1171,11 @@ void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
+void			tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
+void			tmpl_attr_ref_list_debug(FILE *fp, FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 
-void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_attr_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
@@ -1249,10 +1237,6 @@ int			tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules) CC_HINT(nonnul
 
 void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
 
-int			tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p) CC_HINT(nonnull);
-
-void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
-
 int			tmpl_attr_unknown_add(tmpl_t *vpt);
 
 int			tmpl_attr_tail_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,
@@ -1272,22 +1256,22 @@ fr_slen_t		tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reque
 static inline fr_slen_t tmpl_request_ref_list_aprint(TALLOC_CTX *ctx, char **out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_request_ref_list_print, rql)
 
-fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull(1,2));
+fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
 
-static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt, ar_prefix)
+static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt)
 
 fr_slen_t		tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
+				   fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
 
 static inline fr_slen_t tmpl_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt,
-				    tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print, vpt, ar_prefix, e_rules)
+				    fr_sbuff_escape_rules_t const *e_rules)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print, vpt, e_rules)
 
-fr_slen_t		tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull);
+fr_slen_t		tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
 
-static inline fr_slen_t tmpl_aprint_quoted(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print_quoted, vpt, ar_prefix)
+static inline fr_slen_t tmpl_aprint_quoted(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print_quoted, vpt)
 /** @} */
 
 /** @name Expand the tmpl, returning one or more values
@@ -1299,7 +1283,6 @@ ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
 				      request_t *request,
 				      tmpl_t const *vpt,
-				      xlat_escape_legacy_t escape, void const *escape_ctx,
 				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 
@@ -1330,7 +1313,7 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 						   tmpl_t const *vpt) CC_HINT(nonnull);
 
-void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
+void			tmpl_extents_debug(FILE *fp, fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 

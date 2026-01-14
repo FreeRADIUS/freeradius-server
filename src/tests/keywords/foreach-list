@@ -1,7 +1,20 @@
-request -= Packet-Type[*]
+#
+#  PRE: foreach
+#
+string total
 
-foreach request.[*] {
-	reply += {
-		Called-Station-Id = "%{Foreach-Variable-0}"
-	}
+#
+#  Loop over children of a list.
+#
+#  Do NOT loop over the grandchildren.
+#
+foreach string value (request.[*]) {
+	total += value
+	total += ', '
 }
+
+if (total != "bob, hello, Access-Request, ") {
+	test_fail
+}
+
+success

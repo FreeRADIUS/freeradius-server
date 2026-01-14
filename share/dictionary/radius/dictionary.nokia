@@ -24,9 +24,9 @@ ATTRIBUTE	Service-Charging-Type			8	octets # magic format
 ATTRIBUTE	Service-Encrypted-Password		9	octets # magic format
 ATTRIBUTE	Session-Access-Method			10	octets
 ATTRIBUTE	Session-Charging-Type			11	octets
-ATTRIBUTE	OCS-ID1					12	integer
-ATTRIBUTE	OCS-ID2					13	integer
-ATTRIBUTE	TREC-Index				14	integer
+ATTRIBUTE	OCS-ID1					12	uint32
+ATTRIBUTE	OCS-ID2					13	uint32
+ATTRIBUTE	TREC-Index				14	uint32
 ATTRIBUTE	Requested-APN				15	string
 END-VENDOR	Nokia
 

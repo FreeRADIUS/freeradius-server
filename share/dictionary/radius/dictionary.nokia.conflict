@@ -25,8 +25,8 @@ ATTRIBUTE	Nokia-Primary-DNS-Server		135	ipaddr
 ATTRIBUTE	Nokia-Secondary-DNS-Server		136	ipaddr
 
 ATTRIBUTE	Nokia-IMSI				224	octets
-ATTRIBUTE	Nokia-Charging-Id			225	integer
-ATTRIBUTE	Nokia-Prepaid-Ind			226	integer
+ATTRIBUTE	Nokia-Charging-Id			225	uint32
+ATTRIBUTE	Nokia-Prepaid-Ind			226	uint32
 ATTRIBUTE	Nokia-GGSN-IP-Address			227	ipaddr
 ATTRIBUTE	Nokia-SGSN-IP-Address			228	ipaddr
 

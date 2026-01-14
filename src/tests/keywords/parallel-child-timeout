@@ -1,0 +1,30 @@
+#
+#  PRE: parallel
+#
+parallel {
+	timeout 1s {
+		%time.advance(2s)
+		parent.control.Class := 0x01
+	}
+	# Ensure a timeout in one child does not affect the other
+	group {
+		parent.control.Class := 0x02
+		ok
+	}
+}
+
+#
+#  This assignment should not have been run
+#
+if (control.Class == 0x01) {
+	test_fail
+}
+
+#
+#  But this assignment should have run.
+#
+if (control.Class != 0x02) {
+	test_fail
+}
+
+success

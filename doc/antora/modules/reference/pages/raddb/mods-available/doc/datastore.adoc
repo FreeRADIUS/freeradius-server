@@ -1,0 +1,15 @@
+= Datastore Modules
+
+Datastore modules store data.  In most cases, they are databases.  We
+use the term "datastore" to mean that some of the storage methods are
+not traditional databases, but they do still store data.
+
+For example, the xref:raddb/mods-available/files.adoc[files] module
+implements the widely-used RADIUS
+xref:raddb/mods-config/files/users.adoc[users] file format.  It is not
+a database, but it can store thousands or millions of user
+credentials.
+
+The available Datastore modules are:
+
+include::partial$datastore_table.adoc[]

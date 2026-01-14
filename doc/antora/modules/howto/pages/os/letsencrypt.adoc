@@ -1,9 +1,9 @@
-= Using LetsEncrypt certificates
+= LetsEncrypt
 
 When configuring FreeRADIUS to use EAP, the use of keys and
 certificates are essential. Unfortunately this is one of those areas
 that can be hard to get right and prone to problems.  Notably,
-certificates can expiry at very inopportune moments.  At which point
+certificates can expire at very inopportune moments.  At which point
 no one can get online.
 
 Our recommendation is always to use a private CA for both server
@@ -13,11 +13,13 @@ can put many people off of this route. In that case, using a public CA
 certificate for the server is often seen as the most convenient
 answer, even if it is not the most secure.
 
-WARNING: Never configure FreeRADIUS to use a public CA root in the
+[WARNING]
+====
+Never configure FreeRADIUS to use a public CA root in the
 `ca_file` or `ca_path` EAP module settings. This would potentially
 allow any secondary (intermediate) CA signed by that public CA to
 issue client certificates, and be authenticated by your server!
-
+====
 
 == Prerequisites
 
@@ -27,7 +29,7 @@ The instructions here depend on the following criteria:
   certificate for your RADIUS server, and are aware of the
   security considerations in doing so.
 
-- You wish to use https://letsencrypt.org/[LetsEncrypt[ for this
+- You wish to use https://letsencrypt.org/[LetsEncrypt] for this
   purpose, and want certificate renewals (usually every 2-3 months) to
   be automatic.
 
@@ -60,7 +62,7 @@ We will be setting up the following components:
 
 - Running `certbot` to issue the certificate.
 
-- Configuring FreeRADIUS to use the LetsEncrypt issued certificate
+- Configure FreeRADIUS to use the LetsEncrypt issued certificate
   and associated private key.
 
 This document is based on a Debian system (version 12 at the time
@@ -79,12 +81,12 @@ based systems, `radius` if installed from source, or some other
 user.
 
 [NOTE]
-===
+====
 You *must* have a public IP address for the server, and
 there *must* be a DNS entry (of the name of the certificate you
 will be requesting) pointing to this IP. The server *must* be
 reachable on port 80 (HTTP) from the Internet.
-===
+====
 
 Install the `certbot` utility from LetsEncrypt. On Debian it can
 be installed from the default repositories:

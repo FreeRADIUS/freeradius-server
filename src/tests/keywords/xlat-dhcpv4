@@ -6,7 +6,7 @@ octets test_octets
 test_octets := 0x520d0103abcdef0206010203040506
 
 # the protocol decoder puts the attributes into a flat namespace
-if (!(%dhcpv4.decode(%{test_octets}) == 1)) {
+if (!(%dhcpv4.decode(test_octets) == 1)) {
 	test_fail
 }
 
@@ -21,7 +21,7 @@ if !(Relay-Agent-Information.Remote-Id == 0x010203040506) {
 #
 #  Encode all of the Relay-Agent-Information suboptions
 #
-test_octets := %dhcpv4.encode(request.Relay-Agent-Information.[*])
+test_octets := %dhcpv4.encode('request.Relay-Agent-Information.[*]')
 
 if !(test_octets == 0x520d0103abcdef0206010203040506) {
 	test_fail
@@ -31,7 +31,7 @@ if !(test_octets == 0x520d0103abcdef0206010203040506) {
 #  Check decoding and encoding of VSAs
 #
 test_octets := 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e
-if !(%dhcpv4.decode(%{test_octets}) == 1) {
+if !(%dhcpv4.decode(test_octets) == 1) {
 	test_fail
 }
 
@@ -39,15 +39,44 @@ if (V-I-Vendor-Specific.CTS.Firmware-File-Name != 'hello.bin') {
 	test_fail
 }
 
-test_octets := %dhcpv4.encode(V-I-Vendor-Specific)
+test_octets := %dhcpv4.encode('V-I-Vendor-Specific')
 
 if (test_octets != 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e) {
 	test_fail
 }
 
-test_octets := %dhcpv4.encode(V-I-Vendor-Specific.CTS.[*])
+test_octets := %dhcpv4.encode('V-I-Vendor-Specific.CTS.[*]')
 if (test_octets != 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e) {
 	test_fail
 }
+
+#
+#  Check decoding and encoding with a root context
+#
+if (%dhcpv4.decode(Vendor-Specific-Options, Decoded-Option-43.Broadband-Forum) != 2) {
+	test_fail
+}
+
+if (Decoded-Option-43.Broadband-Forum.ACS-URL != 'https://1.2.3.4:7547/') {
+	test_fail
+}
+if (Decoded-Option-43.Broadband-Forum.Provisioning-Code != 'test') {
+	test_fail
+}
+
+reply.Decoded-Option-43.Broadband-Forum = {
+	ACS-URL = 'https://example.com/',
+	CWMP-Retry-Minimum-Interval = '10 seconds'
+}
+
+debug_reply
+
+test_octets := %dhcpv4.encode(reply.Decoded-Option-43.Broadband-Forum, Decoded-Option-43.Broadband-Forum)
+
+if (test_octets != 0x011468747470733a2f2F6578616d706C652e636f6D2f030a3130207365636F6e6473) {
+	test_fail
+}
+
+reply -= Decoded-Option-43
 
 success

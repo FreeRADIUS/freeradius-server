@@ -53,9 +53,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
 /** Holds a state value, and associated fr_pair_ts and data
@@ -382,6 +380,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	if (!old) {
 		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
 		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+		memset(old_state, 0, sizeof(old_state));
 	} else {
 		old_tries = old->tries;
 		memcpy(old_state, old->state, sizeof(old_state));
@@ -713,7 +712,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "session-state.");
 	}
 
 	RDEBUG3("%s - restored", state->da->name);
@@ -721,7 +720,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	Set sequence so that we can prioritize ongoing multi-packet sessions.
 	 */
-	request->async->sequence = entry->tries;
+	request->sequence = entry->tries;
 	REQUEST_VERIFY(request);
 	return 0;
 }
@@ -748,7 +747,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Saving session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "session-state.");
 
 #ifdef WITH_VERIFY_PTR
 		/*
@@ -756,7 +755,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		 *	are parented correctly, else we'll get
 		 *	memory errors when we restore.
 		 */
-		fr_pair_list_verify(__FILE__, __LINE__, request->session_state_ctx, &request->session_state_pairs);
+		fr_pair_list_verify(__FILE__, __LINE__, request->session_state_ctx, &request->session_state_pairs, true);
 #endif
 	}
 

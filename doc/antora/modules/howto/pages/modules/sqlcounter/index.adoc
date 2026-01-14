@@ -1,4 +1,4 @@
-= SQL counter module
+= SQL-Counter
 
 == Introduction
 
@@ -54,7 +54,7 @@ data, add entries to `radcheck` or `radgroupcheck` as appropriate.
 
 The attribute to set is the one referred to in the `check_name` module,
 configuration, e.g. on the sample `dailycounter` module instance the attribute
-is `&control.Max-Daily-Session`.
+is `control.Max-Daily-Session`.
 
 In the authorization policy, call the required `sqlcounter` module instance,
 having made sure that the appropriate `check_name` attribute is set.

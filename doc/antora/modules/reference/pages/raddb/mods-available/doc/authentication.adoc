@@ -1,0 +1,26 @@
+= Authentication Modules
+
+The authentication modules verify user credentials.  They can do this
+by checking them against an external system, or by implementing an
+authentication protocol such as EAP.
+
+There are many different types and methods of authentication. For
+example, RADIUS supports PAP, CHAP, or EAP.  In many cases, datastores
+such as LDAP can be used to check a users name and password.
+
+In most cases, we recommend using a
+xref:raddb/mods-available/doc/datastore.adoc[datastore]
+(i.e. database) to store user credentials.  The server can then obtain
+the credentials from the datastore, and run the authentication method
+itself.
+
+In rare cases, the datastore will not return the users credentials to
+the server.  In that case, the server must send the users name and
+password to the datastore, where it authenticates the user and returns
+a "pass" or "fail" result.  This process almost always requires the
+user to supply the server with a clear-text password.  Other
+authentication methods such as CHAP or EAP will pretty much never work.
+
+The Authentication modules available are:
+
+include::partial$authentication_table.adoc[]

@@ -1,4 +1,4 @@
-= Base configuration
+= Base Configuration
 
 The configuration step should be little more than
 xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
@@ -9,7 +9,7 @@ describes the configuration parameters accepted by the module, and what they do.
 
 include::howto:partial$pre_test.adoc[]
 
-== Editing mods-available/ldap
+== Edit mods-available/ldap
 
 As with all FreeRADIUS configuration files, please change at little as
 possible in the default configuration.  The defaults are usually close
@@ -45,8 +45,8 @@ ldap {
 		# example - base_dn = "ou=people,${..base_dn}"
 		base_dn = "<path_from_base_dn_to_user_obj_dn>,${..base_dn}"  <5>
 
-		# example = "(&(uid=%{&Stripped-User-Name || &User-Name})(objectClass=posixAccount))"
-		filter = "(&(<user_uid_attribute>=%{&Stripped-User-Name || &User-Name})(<user_filter>))"  <6>
+		# example = "(&(uid=%{Stripped-User-Name || User-Name})(objectClass=posixAccount))"
+		filter = "(&(<user_uid_attribute>=%{Stripped-User-Name || User-Name})(<user_filter>))"  <6>
 	}
 }
 ----
@@ -67,7 +67,7 @@ We do _not_ recommend immediately configuring TLS unless you are testing against
 a production server.  The best approach is to test one piece in isolation,
 before proceeding on to the next piece.
 
-== Enabling mods-available/ldap
+== Enable mods-available/ldap
 
 The `ldap` module is enabled by creating a soft link from the
 `mods-enabled/` directory to the `mods-available/` directory.
@@ -77,7 +77,7 @@ The `ldap` module is enabled by creating a soft link from the
 cd raddb/mods-enabled && ln -s ../mods-available/ldap
 ----
 
-== Calling the LDAP module
+== Call the LDAP module
 
 The LDAP module needs to be listed in different section depending on the
 function(s) it's performing.
@@ -154,7 +154,7 @@ server default {
 	recv Access-Request {
 		ldap
 		if (ok || updated) {
-			&control.Auth-Type := ldap
+			control.Auth-Type := ldap
 		}
 	}
 
@@ -168,7 +168,7 @@ server default {
 See xref:modules/ldap/authentication.adoc[LDAP authentication] for more detailed
 information on configuring LDAP authentication.
 
-== Testing the Server
+== Test the server
 
 include::howto:partial$post_test.adoc[]
 

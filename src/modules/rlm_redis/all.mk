@@ -11,6 +11,5 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	+= -I$(top_builddir)/lib/redis/redis
 TGT_PREREQS	:= libfreeradius-redis$(L)
 LOG_ID_LIB	= 41

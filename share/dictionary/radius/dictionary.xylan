@@ -14,21 +14,21 @@ VENDOR		Xylan				800
 
 BEGIN-VENDOR	Xylan
 
-ATTRIBUTE	Auth-Group				1	integer
+ATTRIBUTE	Auth-Group				1	uint32
 ATTRIBUTE	Slot-Port				2	string
 ATTRIBUTE	Time-of-Day				3	string
 ATTRIBUTE	Client-IP-Addr				4	ipaddr
 ATTRIBUTE	Group-Desc				5	string
 ATTRIBUTE	Port-Desc				6	string
-ATTRIBUTE	Profil-Numb				7	integer
+ATTRIBUTE	Profil-Numb				7	uint32
 ATTRIBUTE	Auth-Group-Protocol			8	string
 ATTRIBUTE	Asa-Access				9	string
-ATTRIBUTE	End-User-Profile			10	integer
+ATTRIBUTE	End-User-Profile			10	uint32
 ATTRIBUTE	Primary-Home-Agent			12	string
 ATTRIBUTE	Secondary-Home-Agent			13	string
 ATTRIBUTE	Home-Agent-Password			14	string
 ATTRIBUTE	Home-Network-Name			15	string
-ATTRIBUTE	Access-Priv				16	integer
+ATTRIBUTE	Access-Priv				16	uint32
 
 VALUE	Access-Priv			Read-Priv		1
 VALUE	Access-Priv			Write-Priv		2
@@ -48,6 +48,10 @@ ATTRIBUTE	Acce-Priv-F-R1				39	octets
 ATTRIBUTE	Acce-Priv-F-R2				40	octets
 ATTRIBUTE	Acce-Priv-F-W1				41	octets
 ATTRIBUTE	Acce-Priv-F-W2				42	octets
+ATTRIBUTE	Acce-Priv-F-R3			    43	octets
+ATTRIBUTE	Acce-Priv-F-R4			    44	octets
+ATTRIBUTE	Acce-Priv-F-W3			    45	octets
+ATTRIBUTE	Acce-Priv-F-W4			    46	octets
 
 ATTRIBUTE	Policy-List				100	string
 ATTRIBUTE	Redirect-Url				101	string

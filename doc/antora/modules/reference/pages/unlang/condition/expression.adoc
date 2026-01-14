@@ -5,7 +5,7 @@ It is now possible to use xref:unlang/expression.adoc[expressions] inside of xre
 .Syntax
 [source,unlang]
 ----
-if (&NAS-Port + 1 == 2 + 3) {
+if (NAS-Port + 1 == 2 + 3) {
     ...
 }
 ----

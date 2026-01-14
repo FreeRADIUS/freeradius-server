@@ -1,0 +1,25 @@
+= %str.lpad(<string>, <val>, <char>)
+
+Left-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+string test
+
+test := "123"
+
+reply.Reply-Message := "Maximum should be %str.lpad(test, 11, '0')"
+----
+
+.Output
+
+```
+Maximum should be 00000000123
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

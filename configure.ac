@@ -39,6 +39,7 @@ dnl #############################################################
 RADIUSD_VERSION_MAJOR=`./version.sh major`
 RADIUSD_VERSION_MINOR=`./version.sh minor`
 RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
+RADIUSD_DOC_VERSION=`grep version doc/antora/antora.yml | sed "s/version: '//;s/'//"`
 
 dnl #  To handle tarballs and GitHub downloads, we can also put the incremental
 dnl #  patch number in VERSION, or it gets set to FFFF.
@@ -61,11 +62,14 @@ AC_DEFINE_UNQUOTED([RADIUSD_VERSION], [${RADIUSD_VERSION}], [Version integer in 
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MAJOR], [${RADIUSD_VERSION_MAJOR}], [Version integer in format <ma>])
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MINOR], [${RADIUSD_VERSION_MINOR}], [Version integer in format <mi>])
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_INCRM], [${RADIUSD_VERSION_INCRM}], [Version integer in format <in>])
+AC_DEFINE_UNQUOTED([RADIUSD_DOC_VERSION], [${RADIUSD_DOC_VERSION}], [Version string used in the online documentation])
 
 AC_SUBST(RADIUSD_VERSION)
 AC_SUBST(RADIUSD_VERSION_MAJOR)
 AC_SUBST(RADIUSD_VERSION_MINOR)
 AC_SUBST(RADIUSD_VERSION_INCRM)
+AC_SUBST(RADIUSD_DOC_VERSION)
+
 
 dnl #############################################################
 dnl #
@@ -157,7 +161,11 @@ AC_ARG_ENABLE(developer,
 
 if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Enabling developer build implicitly, disable with --disable-developer])
+  allow_core_dumps="yes"
+else
+  allow_core_dumps="no"
 fi
+AC_SUBST(allow_core_dumps)
 
 dnl #
 dnl #  Write the current commit into Make.inc
@@ -323,21 +331,24 @@ if test "x$ax_cv_cc_clang" = "xyes"; then
   AX_CC_UNWINDLIB_ARG
   AC_SUBST(clang_path, "$CC")
 
-  dnl # Needed for builtins to function correctly (https://bugs.gentoo.org/702344)
-  LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
-
   if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
-    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+    dnl # For GCC, use --rtlib=libgcc --unwindlib=libgcc
+    LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
   fi
 else
   AC_SUBST(clang_path, "")
 fi
 
-AX_CC_STD_C11
-if test "x$ax_cv_cc_std_c11_flag" != x; then
-  CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+AX_CC_STD_C23
+if test "x$ax_cv_cc_std_c23_flag" != x; then
+  CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
+  AX_CC_STD_C11
+  if test "x$ax_cv_cc_std_c11_flag" != x; then
+    CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+  else
+    AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
+  fi
 fi
 
 dnl #
@@ -457,6 +468,8 @@ AC_ARG_ENABLE(fuzzer,
     ;;
   *)
     fuzzer=yes
+    CFLAGS="$CFLAGS -g3"
+    ;;
   esac ]
 )
 
@@ -957,7 +970,7 @@ dnl #  NetBSD has them in -lsemaphore
 dnl #
 AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt semaphore,
   [],
-  [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
+  [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or https://www.freeradius.org/ftp/pub/radius/contrib/libsem.tar.gz]])]
 )
 
 dnl #
@@ -1178,6 +1191,49 @@ if test "x$WITH_COLLECTDCLIENT" = xyes; then
   fi
   dnl Set by FR_SMART_CHECKLIB
   LIBS="${old_LIBS}"
+fi
+
+dnl #
+dnl #  extra argument: --with-libbacktrace
+dnl #
+AC_ARG_WITH(libbacktrace,
+[  --with-libbacktrace          use libbacktrace to print backtraces with line numbers. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_BACKTRACE=no
+    ;;
+  yes)
+    if ! test -f src/lib/backtrace/configure && ! git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
+      AC_MSG_ERROR([--with-libbacktrace=yes requires the backtrace submodule to be checked out.  Please run 'git submodule update --init src/lib/backtrace'.])
+    fi
+    WITH_BACKTRACE=yes
+    ;;
+  dnl # Build based on whether the submodule was checked out
+  *)
+    if test -f src/lib/backtrace/configure; then
+      WITH_BACKTRACE=yes
+    else
+      WITH_BACKTRACE=no
+    fi
+  esac ]
+)
+
+dnl #
+dnl #  Check for libbacktrace
+dnl #
+dnl #  This is a weird one because it's intended to be bundled with the code that
+dnl #  uses it and statically linked.  There's no guarantee the user checked out
+dnl #  or was able to check out the submodule though, so we still need to fail
+dnl #  gracefully.
+dnl #
+if test "x$WITH_BACKTRACE" = xyes; then
+  AC_MSG_NOTICE([building with libbacktrace, this will be statically linked])
+  AC_DEFINE(HAVE_BACKTRACE, 1,
+    [Define to 1 if you have the `backtrace' library (-lbacktrace).]
+  )
+  AC_SUBST([WITH_BACKTRACE], $WITH_BACKTRACE)
+else
+  AC_MSG_NOTICE([building without libbacktrace])
 fi
 
 dnl #
@@ -1904,58 +1960,55 @@ if test "x$developer" = "xyes"; then
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
     devcflags="$devcflags \
-	-W \
-	-Weverything \
-	-Wformat=2 \
-	-Wno-date-time \
-	-Wno-disabled-macro-expansion \
-	-Wno-format-pedantic \
-	-Wno-missing-field-initializers \
-    	-Wno-cast-align \
-    	-Wno-conversion \
-    	-Wno-covered-switch-default \
-    	-Wno-documentation-unknown-command \
-    	-Wno-extended-offsetof \
-    	-Wno-gnu-empty-initializer \
-    	-Wno-gnu-statement-expression \
-    	-Wno-gnu-zero-variadic-macro-arguments \
-    	-Wno-packed \
-    	-Wno-padded \
-    	-Wno-poison-system-directories \
-    	-Wno-reserved-id-macro \
-    	-Wno-shorten-64-to-32 \
-    	-Wno-sign-conversion \
-    	-Wno-switch-enum \
-	-Wno-unreachable-code-generic-assoc \
-    	-Wno-vla \
-        $verify_ptr"
-  else
-    if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags \
-      	-W \
-      	-Wall \
-      	-Wcast-align \
-      	-Wcast-qual \
-      	-Wformat-nonliteral \
-      	-Wformat-security \
-      	-Wformat-y2k \
-      	-Wformat=2 \
-      	-Wmissing-declarations \
-      	-Wmissing-prototypes \
-      	-Wnested-externs \
-      	-Wno-cast-align \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wno-missing-field-initializers \
-      	-Wpointer-arith \
-      	-Wredundant-decls \
-      	-Wshadow \
-      	-Wstrict-prototypes \
-      	-Wundef \
-      	-Wwrite-strings \
-	$verify_ptr"
-      INSTALLSTRIP=""
-    fi
+      -W \
+      -Weverything \
+      -Wformat=2 \
+      -Wno-date-time \
+      -Wno-disabled-macro-expansion \
+      -Wno-format-pedantic \
+      -Wno-cast-align \
+      -Wno-conversion \
+      -Wno-covered-switch-default \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-documentation-unknown-command \
+      -Wno-extended-offsetof \
+      -Wno-gnu-empty-initializer \
+      -Wno-gnu-statement-expression \
+      -Wno-gnu-zero-variadic-macro-arguments \
+      -Wno-packed \
+      -Wno-padded \
+      -Wno-poison-system-directories \
+      -Wno-reserved-id-macro \
+      -Wno-shorten-64-to-32 \
+      -Wno-sign-conversion \
+      -Wno-switch-enum \
+      -Wno-unreachable-code-generic-assoc \
+      -Wno-vla \
+      $verify_ptr"
+  elif test "x$GCC" = "xyes"; then
+    devcflags="$devcflags \
+      -W \
+      -Wall \
+      -Wcast-align \
+      -Wcast-qual \
+      -Wformat-nonliteral \
+      -Wformat-security \
+      -Wformat-y2k \
+      -Wformat=2 \
+      -Wmissing-declarations \
+      -Wmissing-prototypes \
+      -Wnested-externs \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-format-extra-args \
+      -Wno-format-zero-length \
+      -Wpointer-arith \
+      -Wredundant-decls \
+      -Wshadow \
+      -Wstrict-prototypes \
+      -Wundef \
+      -Wwrite-strings \
+      $verify_ptr"
+    INSTALLSTRIP=""
   fi
 
   dnl #
@@ -2196,7 +2249,7 @@ if test "x$WITH_REGEX" != "xno" && test "x$WITH_PCRE" != "xno"; then
   smart_try_dir=$pcre_include_dir
 
   dnl #
-  dnl #  Prefer libpcre2 over libpcre
+  dnl #  Check for libpcre2
   dnl #
   FR_SMART_CHECK_INCLUDE(pcre2.h,[#define PCRE2_CODE_UNIT_WIDTH (8)])
   if test "x$ac_cv_header_pcre2_h" = "xyes"; then
@@ -2207,59 +2260,6 @@ if test "x$WITH_REGEX" != "xno" && test "x$WITH_PCRE" != "xno"; then
        AC_DEFINE(HAVE_REGEX_PCRE2, [1], [define this if we have libpcre2])
        AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
      fi
-  fi
-
-  dnl #
-  dnl #  Fallback to libpcre
-  dnl #
-  if test "x$REGEX" != "xyes"; then
-    FR_SMART_CHECK_INCLUDE(pcre.h)
-    if test "x$ac_cv_header_pcre_h" = "xyes"; then
-      smart_try_dir=$pcre_lib_dir
-      FR_SMART_CHECK_LIB(pcre, pcre_compile)
-      if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-        AC_MSG_CHECKING([libpcre library and header version consistency])
-          AC_RUN_IFELSE(
-            [AC_LANG_PROGRAM(
-              [[
-                #include <stdio.h>
-                #include <pcre.h>
-                #include <stdlib.h>
-                #define XSTRINGIFY(x) #x
-                #define STRINGIFY(x) XSTRINGIFY(x)
-              ]],
-              [[
-                char const *p = pcre_version();
-                char *q;
-                unsigned long ver;
-
-                printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
-
-                ver = strtoul(p, &q, 10);
-                if (*q != '.') return 1;
-                if (ver != PCRE_MAJOR) return 65;
-                p = ++q;
-
-                ver = strtoul(p, &q, 10);
-                if (ver != PCRE_MINOR) return 1;
-              ]]
-            )],
-            [
-               AC_MSG_RESULT(yes)
-               REGEX=yes
-               AC_DEFINE(HAVE_REGEX_PCRE, [1], [define this if we have libpcre])
-               AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
-            ],
-            [
-               AC_MSG_RESULT(no)
-               AC_MSG_FAILURE([libpcre library version does not match header version])
-            ],
-            [
-               AC_MSG_RESULT([cross-compiling (assuming yes)])
-            ]
-          )
-      fi
-    fi
   fi
 fi
 

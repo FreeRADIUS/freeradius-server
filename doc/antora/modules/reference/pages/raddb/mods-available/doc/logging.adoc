@@ -1,0 +1,7 @@
+= Logging Modules
+
+The logging modules write data to external destinations such as files, syslog, etc.
+
+The available Logging modules are:
+
+include::partial$logging_table.adoc[]

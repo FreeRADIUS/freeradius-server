@@ -1,10 +1,9 @@
-== Building from Source
+= Build from Source
 
-We recommend xref:howto:installation/packages.adoc[installing from packages] if
-possible. Full instructions on building and installing from source
+We recommend that you xref:howto:installation/packages.adoc[install from packages] if possible. Full instructions on building and installing from source
 code follow.
 
-The required xref:howto:installation/dependencies.adoc[dependencies]
+The hard xref:howto:installation/dependencies.adoc[dependencies]
 must be installed before FreeRADIUS can be built. These dependencies
 are `libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
 management, and platform-independent event handling.
@@ -12,20 +11,14 @@ management, and platform-independent event handling.
 Per-module dependencies that enable support for external services
 such as LDAP, SQL, etc, are optional. They must be installed for
 any modules that are to be used. The FreeRADIUS `./configure` step
-will automatically detect if each module has its dependencies met
-and automatically enable support for them. If the features you
-require are not enabled you should inspect the configure script
+automatically detects if each module has its dependencies met
+and automatically enable support for them. If the required features you
+require are not enabled, inspect the configure script
 output to figure out which additional development libraries need
 to be installed.
 
-The FreeRADIUS source may be obtained from a number of locations:
-
-* Download the latest version of the FreeRADIUS source from
-  https://www.freeradius.org/releases/[the FreeRADIUS web site]; or
-* download directly from the
-  ftp://ftp.freeradius.org/pub/freeradius/[FreeRADIUS FTP site]; or
-* download from
-  https://github.com/FreeRADIUS/freeradius-server/[GitHub].
+Get the FreeRADIUS source from one of the following sites:
+include::partial$get_the_source.adoc[]
 
 The file will be named something like: `freeradius-server-4.0.0.tar.gz`.
 Later version will be `4.0.1`, or `4.1.0`, etc. PGP signatures are
@@ -51,7 +44,7 @@ make
 sudo make install
 ----
 
-=== Custom build
+== Custom build
 
 FreeRADIUS has GNU autoconf support. This means you have to run
 `./configure`, and then run `make`. To see which configuration
@@ -73,10 +66,9 @@ installed, then you *must* ensure that the new server is using the
 new configuration files and not the old configuration files, as
 this may cause undesired behavior and failure to operate correctly.
 
-The initial output from running in debugging mode (`radiusd -X`)
+The initial output from running in xref:ROOT:debugging/radiusd_X.adoc[debugging mode]
 will tell you which configuration files are being used. See
- xref:howto:installation/upgrade.adoc[Upgrading] for information about
-upgrading from older versions. There _may_ be changes in the
+ xref:howto:upgrade/index.adoc[upgrade from v3 to v4] for more information. There _may_ be changes in the
 dictionary files which are required for a new version of the
 software. These files will not be installed over your current
 configuration, so you *must* verify and install any problem files by
@@ -93,18 +85,17 @@ Please do _not_ post questions to the FreeRADIUS users list
 without first carefully reading the output of this process as it
 often contains the information needed to resolve a problem.
 
-== Upgrading To A New Minor Release
+== Upgrade to a new minor release
 
 The installation process will not over-write your existing configuration
 files. It will, however, warn you about the files it did not install.
 These will require manual integration with the existing files.
 
 It is generally not possible to reuse configurations between different
-major versions of the server. (For example - version 2 to version 3, or
+major versions of the server. For example - version 2 to version 3, or
 version 3 to version 4.
 
-For details on what has changed between the version, see the
- xref:howto:installation/upgrade.adoc[upgrade] guide.
+For details on what has changed between the version, see  xref:howto:upgrade/index.adoc[upgrade from v3 to v4].
 
 We _strongly_ recommend that new major versions be installed in a
 different location than any existing installations. Any local policies
@@ -113,24 +104,23 @@ major version. The number of differences in the new configuration mean
 that is is both simpler and safer to migrate your configurations rather
 than to try and just get the old configuration to work.
 
-== Running the server
+== Run the server
 
 If the server builds and installs, but doesn’t run correctly, then
-you should first use debugging mode (`radiusd -X`) to figure out
+you should first use xref:ROOT:debugging/radiusd_X.adoc[debugging mode] to figure out
 the problem.
 
 This is your best hope for understanding the problem. Read _all_
 of the messages which are printed to the screen, the answer to
 your problem will often be in a warning or error message.
 
-We really cannot emphasize that last sentence enough. Configuring
-a RADIUS server for complex local authentication isn’t a trivial
+Configure a RADIUS server for complex local authentication isn’t a trivial
 task. Your _best_ and _only_ method for debugging it is to read
 the debug messages, where the server will tell you exactly what
 it’s doing, and why. You should then compare its behaviour to what
 you intended, and edit the configuration files as appropriate.
 
-If you don’t use debugging mode, and ask questions on the mailing
+If you don’t use xref:ROOT:debugging/radiusd_X.adoc[debugging mode], and ask questions on the mailing
 list, then the responses will all tell you to use debugging mode.
 The server prints out a lot of information in this mode, including
 suggestions for fixes to common problems. Look especially for
@@ -151,9 +141,7 @@ radiusd -X
 ----
 
 You should see a lot of text printed on the screen as it starts up. If
-you don’t, or if you see error messages, please read the FAQ:
-
-https://wiki.freeradius.org/guide/FAQ
+you don’t, or if you see error messages, please read the xref:ROOT:faq.adoc[FAQ] and xref:ROOT:trouble-shooting/index.adoc[troubleshooting] sections.
 
 If the server says `Ready to process requests.`, then it is running
 properly. From another shell (or another window), type
@@ -189,12 +177,12 @@ changes without impacting your active production environment. You should
 make the appropriate investment in order to properly support a critical
 resource such as your authentication servers.
 
-Configuring and running the server MAY be complicated. Many modules have
+Configure and running the server MAY be complicated. Many modules have
 `man` pages. See `man rlm_pap`, or `man rlm_*` for information.
 Please read the documentation in the doc/ directory. The comments in the
 configuration files also contain a lot of documentation.
 
-If you have any additional issues, refer to the https://wiki.freeradius.org/guide/FAQ[FAQ] for more help.
+If you have any additional issues, refer to the xref:ROOT:faq.adoc[FAQ] for more help.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

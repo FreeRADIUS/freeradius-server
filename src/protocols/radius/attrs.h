@@ -40,3 +40,5 @@ extern HIDDEN fr_dict_attr_t const *attr_message_authenticator;
 extern HIDDEN fr_dict_attr_t const *attr_state;
 extern HIDDEN fr_dict_attr_t const *attr_vendor_specific;
 extern HIDDEN fr_dict_attr_t const *attr_nas_filter_rule;
+
+extern HIDDEN const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX];

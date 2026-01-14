@@ -141,7 +141,7 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	/*
 	 *	Stop any connection timeout.
 	 */
-	if (my->ev) talloc_const_free(&my->ev);
+	FR_TIMER_DELETE(&my->ev);
 
 	/*
 	 *	Tell the application that the packet BIO is now usable.
@@ -149,12 +149,17 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	my->cb.connected(my);
 }
 
-static void fr_bio_packet_shutdown(fr_bio_t *bio)
+static int fr_bio_packet_shutdown(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_packet_t *my = bio->uctx;
 
-	if (my->cb.shutdown) my->cb.shutdown(my);
-	my->cb.shutdown = NULL;
+	rcode = fr_bio_shutdown(bio);
+	if (rcode < 0) return rcode;
+
+	if (!my->cb.shutdown) return 0;
+
+	return my->cb.shutdown(my);
 }
 
 static void fr_bio_packet_eof(fr_bio_t *bio)

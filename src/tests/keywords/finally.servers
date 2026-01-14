@@ -1,0 +1,28 @@
+server default-fin {
+	namespace = radius
+
+	recv Access-Request {
+		fail
+	}
+
+	finally {
+		Tmp-String-0 := 'bye-from-default-fin'
+	}
+}
+
+server packet-fin {
+	namespace = radius
+
+	recv Access-Request {
+		fail
+	}
+
+	finally Access-Request {
+		Tmp-String-0 := 'bye-from-packet-fin'
+		ok
+	}
+
+	finally {
+		fail
+	}
+}

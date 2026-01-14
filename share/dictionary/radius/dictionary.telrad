@@ -17,9 +17,9 @@ ATTRIBUTE	Item-Identity				.1	byte
 ATTRIBUTE	Reference-VPWS-PDN-Name			.2	octets
 ATTRIBUTE	TSDF-Parameters				.3	tlv
 
-ATTRIBUTE	C-VLAN-ID				.3.1	integer
-ATTRIBUTE	C-VLAN-ID-Retag				.3.2	integer
-ATTRIBUTE	S-VLAN-ID				.3.3	integer
+ATTRIBUTE	C-VLAN-ID				.3.1	uint32
+ATTRIBUTE	C-VLAN-ID-Retag				.3.2	uint32
+ATTRIBUTE	S-VLAN-ID				.3.3	uint32
 ATTRIBUTE	Reference-QOS-Profile-Name		.3.4	string
 
 END-VENDOR      Telrad

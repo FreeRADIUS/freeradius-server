@@ -1,281 +1,331 @@
-.\"     # DS - begin display
-.de DS
-.RS
-.nf
-.sp
+'\" t
+.\"     Title: dictionary
+.\"    Author: Alan DeKok
+.\" Generator: Asciidoctor 2.0.23
+.\"      Date: 2025-05-04
+.\"    Manual: FreeRADIUS
+.\"    Source: FreeRADIUS
+.\"  Language: English
+.\"
+.TH "DICTIONARY" "5" "2025-05-04" "FreeRADIUS" "FreeRADIUS"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
 ..
-.\"     # DE - end display
-.de DE
-.fi
-.RE
-.sp
-..
-.TH dictionary 5 "18 Sep 2021"
-.SH NAME
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
 dictionary \- FreeRADIUS dictionary file
-.SH DESCRIPTION
-The local dictionary file resides in \fI/etc/raddb/dictionary\fP.  It
-references other \fIdictionary\fP files located in
-\fI/usr/local/share/freeradius/\fP.  Each dictionary file contains a
-list of protocol-specific attributes and values, which the server uses
-to map between descriptive names and on-the-wire data.  The names have
-no meaning outside of the server, and are never sent "on the wire"
-between server and clients.
-.PP
-That is, editing the dictionaries will have NO EFFECT on anything
+.SH "DICTIONARIES"
+.sp
+The \f(CRdictionary\fP files define names, numbers, and
+data types for use in the server.  In general,
+the dictionary files are defined by industry standard specifications,
+or by a vendor for their own equipment.
+.sp
+Each dictionary file contains a list of protocol\-specific attributes
+and values, which the server uses to map between descriptive names and
+on\-the\-wire data.  The names have no meaning outside of the server,
+and (with rare exception) are never sent "on the wire" between server
+and clients.
+.sp
+That is, editing the dictionaries will have \fIno effect\fP on anything
 other than the server that is reading those files.  Adding new
-attributes to the dictionaries will have NO EFFECT on clients, and
+attributes to the dictionaries will have \fIno effect\fP on clients, and
 will not make clients magically understand those attributes.  The
 dictionaries are solely for local administrator convenience, and are
 specific to each version of FreeRADIUS.
-.PP
-The dictionaries in \fI/usr/local/share\fP SHOULD NOT be edited unless
-you know exactly what you are doing.  Changing them will most likely
-break the FreeRADIUS system.
-.PP
-If you need to add new attributes, please edit the
-\fI/etc/raddb/dictionary\fP file.  It's sole purpose is to contain
-site-local definitions that are added by the local administrator.
-
-.SH FORMAT
-Every line starting with a hash sign
-.RB (' # ')
-is treated as comment and ignored.
-.PP
-Each line of the file can contain one of the following strings:
-.TP 0.5i
-.B ALIAS new-name  old-name
-Define an alias \fInew-name\fP which is equivalent to \fIold-name\fP.
-
-The ALIAS keyword is used to define additional names for compatibility
-reasons.  As there is no standard behind dictionary names, different
-products may use different names for the same attribute.  The ALIAS
-keyword allows you to add "site local" aliases, so that FreeRADIUS can
-read attributes from pre-existing configurations.
-
-These ALIASes are used when the server reads configuration files, or
-attributes from a database.  However, when the server prints attribute
-names, it always uses the ATTRIBUTE definition from the FreeRADIUS
-dictionary files/
-
-.TP 0.5i
-.B ATTRIBUTE name  oid  type [flags]
-Define an attribute name to number mapping.
-
-The \fIname\fP field is a printable field, taken from various
-specifications or vendor definitions.  It is most commonly used as a
-series of words, separated by hyphens.  e.g. "User-Name".
-Vendor-specific attributes (VSAs) are prefixed by the vendor name,
-e.g. "Vendor-Specific.Cisco.AVPair".  The names should be globally unique, as they are
-used as a key to look up the properties of the attribute.
-
-The \fIoid\fP field is taken from the relevant specification for that
-name.  In most cases, it is a decimal number, such as "256".  For
-certain attributes, a "dotted number" notation is used, e.g. "1.2".
-The "dotted number" notation is used only for certain attributes.
-
-The \fItype\fP field can be one of the standard types, as defined in
-RFC 8044:
-
-     string       UTF-8 printable text (the RFCs call this "text")
-     octets       opaque binary data (the RFCs call this "string")
-     ipaddr       IPv4 address
-     integer      32-bit unsigned integer
-     ipv4prefix   IPv4 Prefix as given in RFC 6572.
-     ipv6addr     IPv6 Address
-     ipv6prefix   IPV6 prefix, with mask
-     ifid         Interface Id (hex:hex:hex:hex)
-
-The \fItype\fP field can also be one of the following non-standard types:
-
-     bit[]	  Bit arrays, but are only allowed for MEMBERs
-     bool	  Boolean true / false value
-     combo=ip     Either IPv4 or IPv6 address, for WiMAX
-     combo=ipprefix   Either IPv4 or IPv6 prefix, for WiMAX
-     date         Seconds since January 1, 1970 (32-bits)
-     ether        Ethernet MAC address
-     group        DHCPv6 or Diameter-style grouping
-     int8         8-bit signed integer
-     int16        16-bit signed integer
-     int32        32-bit signed integer
-     int64        64-bit signed integer
-     struct       fixed-size structures
-     time_delta   a delta between two times
-     tlv          Type-Length-Value (allows nested attributes)
-     uint8        8-bit unsigned integer
-     uint16       16-bit unsigned integer
-     uint32       32-bit unsigned integer
-     uint64       64-bit unsigned integer
-
-The following values for the \fItype\fP field are accepted, but are
-deprecated.
-
-     byte         use "int8" instead
-     integer      use "uint32" instead
-     integer64    use "uint64" instead
-     signed       use "int32" instead
-     short        use "int16" instead
-
-The following values for the \fItype\fP field are defined in RFC 8044,
-but are not accepted in FreeRADIUS.  The equivalent FreeRADIUS
-definition is, however, accepted:
-
-     concat       use "concat" as a flag instead
-     enum         use "uint32" instead
-     evs          use "vsa" instead
-     extended     use "extended" as a flag instead
-     long_extended use "long_extended" as a flag instead
-     time         use "date" instead
-
-The "struct" type is a compound type.  An attribute of data type
-"struct" can have multiple sub-attributes defined, just as with TLVs.
-Each sub-attribute has to be numbered sequentially, starting at 1.
-The numbers allow tracking of individual sub-fields, but have no other
-meaning.  Each sub-field of a "struct" type MUST be a fixed-width data
-type such as "integer", "ipaddr", etc.  Variable sized types such as
-"string", "octets", or "tlv" are not allowed.  Structs may not contain
-other structs.
-
-The last (optional) field of an attribute definition are additional
-flags for that attribute, in a comma-separated list.  Previous
-versions of the server allowed these flags to include a vendor name.
-This usage is no longer allowed.
-
-The options are:
-
-     encrypt=...  set encryption type 1, 2, or 3.
-     has_tag      The attribute can have an RFC 2868 style tag
-     clone=...    copy another attribute subtree
-
-The "encrypt" flag marks the attribute as being encrypted with one of
-three possible methods.  "1" means that the attribute is encrypted
-with the method as defined in \fIRFC2865\fP for the User-Password
-attribute.  "2" means that the password is encrypted with the method
-as defined in \fIRFC2868\fP for the Tunnel-Password attribute.  "3"
-means that the attribute is encrypted as per Ascend's definitions for
-the Ascend-Send-Secret attribute.
-
-The "has_tag" flag marks the attribute as being permitted to have a
-tag, as defined in \fIRFC2868\fP.  The purpose of the tag is to allow
-grouping of attributes for tunneled users.  See \fIRFC2868\fP for
-more details.
-
-When the server receives an encoded attribute in a packet, it looks up
-that attribute by number in the dictionary, and uses the definition
-found there for printing diagnostic and log messages.  When the server
-sees an attribute name in a configuration file, it looks up that
-attribute by name in the dictionary, and uses the definition found
-there.
-
-.TP 0.5i
-.B ENUM name  type
-Define an enumerated type, which can contain VALUEs.
-
-The \fIname\fP field has the same definition as for an ATTRIBUTE.
-
-
-The \fItype\fP field has the same definition as for an attribute.
-
-The purpose of ENUM is to define a common set of VALUEs, which can be
-re-used across multiple ATTRIBUTEs.  Each ATTRIBUTE which needs to
-refer to an ENUM should set the "clone" flag, which refers to the ENUM
-name.  For example. "ATTRIBUTE foo 1 uint16 enum=name_of_enum".
-
-.TP 0.5i
-.B MEMBER name  type [flags]
-Define a member attribute of a structure.  The MEMBER definitions MUST
-follow the ATTRIBUTE entry that defines the 'struct'.  Multiple MEMBER
-definitions are allowed.
-
-The MEMBER keyword allows the dictionaries to define attributes which
-look like other attributes for all intents and purposes.  The only
-difference is that numbers do not have to be assigned to each MEMBER
-of an ATTRIBUTE of type 'struct'.
-
-The 'name' 'type' and 'flags' fields for MEMBER definitions have the
-same meaning as given above for the ATTRIBUTE definitions.
-
-.TP 0.5i
-.B FLAGS flag-name
-Set attribute flags for all subsequent attributes.  Flags can be
-unset by prefixing them with the "!" character.
-
-The only flag currently supported is "internal".
-
-.TP 0.5i
-.B VALUE attribute-name value-name number
-Define an attribute value name to number mapping, for an attribute of
-type \fIinteger\fP.  The \fIattribute-name\fP field MUST be previously
-defined by an \fIATTRIBUTE\fP entry.  The \fIvalue-name\fP field can
-be any non-space text, but is usually taken from \fIRFC2865\fP, or
-other documents..  The \fInumber\fP field is also taken from the
-relevant documents, for that name.
-
-When the server receives an encoded value in a packet, it looks up the
-value of that attribute by number in the dictionary, and uses the name
-found there for printing diagnostic and log messages.
-
-FreeRADIUS will accept a VALUE definition for any "base" data type.
-For example, you can define VALUEs for IP addresses, Ethernet
-addresses, etc.  VALUEs cannot be defined for "structural" data types
-such as struct, tlv, vsa, group, etc.
-
-.TP 0.5i
-.B VENDOR vendor-name number [format=...]
-Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP
-to \fInumber\fP.  For a list of vendor names and numbers, see
-https://www.iana.org/assignments/enterprise-numbers/enterprise-numbers.
-
-The "format=t,l" statement tells the server how many octets to use to
-encode/decode the vendor "type" and "length" fields in the attributes.
-The default is "format=1,1", which does not have to be specified.  For
-USR VSA's, the format is "format=4,0", for Lucent VSA's it's
-"format=2,1", and for Starent VSA's it's "format=2,2".
-
-The supported values for the number of type octets (i.e. the first
-digit) are 1, 2, and 4.  The support values for the number of length
-octets (i.e. the second digit) are 0, 1, and 2.  Any combination of
-those values will work.
-
-.TP 0.5i
-.B BEGIN-VENDOR vendor-name
-Define the start of a block of Vendor-Specific attributes.  All of the
-following \fIATTRIBUTE\fP  definitions are interpreted as being for the
-named vendor, until the block is closed by an "END-VENDOR" statement.
-
-This practice is preferred to placing the vendor name at the end of an
-\fIATTRIBUTE\fP  definition.
-
-For VSAs in the RFC 6929 "Extended vendor-specific" space, a format
-can be specified following the "vendor-name".  The format should be
-"parent=Extended-Vendor-Specific-1", through
-"parent=Extended-Vendor-Specific-6".  The matching "END-VENDOR" should
-just have the "vendor-name", without the format string.
-.TP 0.5i
-.B END-VENDOR vendor-name
-End a previously defined BEGIN-VENDOR block.  The "vendor-name" must match.
-.TP 0.5i
-.B $INCLUDE filename
-Include dictionary entries from the file \fIfilename\fP.  The
-\fIfilename\fP is taken as relative to the location of the file which
-is asking for the inclusion.
-.TP 0.5i
-.B BEGIN name
-This feature is supported for backwards compatibility with older
-dictionaries.  It should not be used.  The new "oid" form for defining
-the attribute number should be used instead.
-.TP 0.5i
-.B END name
-This feature is supported for backwards compatibility with older
-dictionaries.  It should not be used.  The new "oid" form for defining
-the attribute number should be used instead.
-.PP
-.SH FILES
-.I /etc/raddb/dictionary,
-.I /usr/share/freeradius/dictionary.*
+.sp
+The dictionary files in the \f(CRshare\fP directory \fIshould not be edited\fP.
+Editing those files will likely break the server.
+.sp
+Instead, you can add local dictionary definitions in the
+raddb/dictionary file.
+.SH "CONCEPTS AND BACKGROUND"
+.sp
+The dictionaries are necessary because many networking protocols do
+not send humanly\-readable names over the network.  Instead, the
+protocols send sequences of bytes to represent concepts, where each
+byte has a particular meaning.
+.sp
+At the same time, it is useful for administrators to write policies
+based on names, and not on numbers.  No one wants to write a policy of
+the form \f(CRif concept 15 has value "foo", then do ...\fP.
+.sp
+The dictionaries solve this problem by enabling the server to decode
+the magic numbers into humanly\-readable names.  The administrator can
+then write policies of the form \f(CRif the User\-Name has value "bob",
+then do something ...\fP.
+.sp
+Policies using descriptive are much simpler to create and understand
+than policies using numbers.
+.sp
+The dictionaries also enable the server to decode protocols using
+data types, and then present that decoded data
+to the administrator.  As with the other examples above, it would be
+very difficult write policies based on "raw hex" data: \f(CRif User\-Name is 0x626f62 ...\fP.
+.sp
+The dictionaries solve the data type problem by associating
+data types with a name and number.  That way the
+bytes \f(CR0x7f000001\fP can be presented to the administrator as an IPv4
+address of \f(CR127.0.0.1\fP.
+.sp
+This association is two\-way, protocols can get decoded to
+understandable names and data types, and those names and data can get
+encoded in protocols.
+.SS "Dictionaries are always local"
+.sp
+In almost all cases, the names defined in a dictionary have no meaning
+outside of the server.  The names are never sent "on the wire" between
+server and client.  Editing the dictionary names on one system will
+\fInot change\fP the names used by another system.
+.sp
+The names are also local to each implementation.  FreeRADIUS has
+chosen a set of names for itself, which are based on specifications
+and on vendor definitions.  In nearly all cases, these names are
+either the same as the external definition, or are very similar to the
+external definition.
+.sp
+In general, the only reason for us to change the names is that the
+names conflict with another name.  It is not possible to have the same
+name mean two entirely different things.
+.sp
+Vendors can submit new dictionaries to us via
+.MTO "dictionary\(atfreeradius.org" "email" ","
+or via
+.URL "https://github.com/FreeRADIUS/freeradius\-server/" "GitHub" "."
+.SS "Names are case\-insensitive"
+.sp
+When names are printed, they are printed as the name given in the
+dictionaries.  When a name is looked up in the dictionaries, the
+lookup is done in a case\-insensitive manner.
+.SS "Names are hierarchical"
+.sp
+In earlier versions of FreeRADIUS, the names were global.  The global
+names for attributes caused issue with implementations, as noted in
+\c
+.URL "https://www.rfc\-editor.org/rfc/rfc6929.html#section\-2.7.1" "RFC 6929
+Section 2.7.1" .  This limitation caused the names to be long, and have
+"vendor prefixes", such as with \f(CRCisco\-AVPair\fP.
+.sp
+The names in FreeRADIUS are now hierarchical.  In most cases, the old
+names are simply split into separate sub\-names with a period (\f(CR.\fP).
+For example, the previously mentioned \f(CRCisco\-AVPair\fP now becomes
+\f(CRCisco.AVPair.\fP, or \f(CRVendor\-Specific.Cisco.AVPair\fP.
+.sp
+If there is still a need to use the old names, the
+ALIAS keyword can help.  See
+\f(CRraddb/dictionary\fP for additional documentation.
+.SS "Names matter, not definitions"
+.sp
+Names occur in many places, such as in
+ATTRIBUTE definitions,
+DEFINE,
+MEMBER,
+STRUCT, etc.  We generally refer to all
+of these entities as being \*(Aqattributes\*(Aq, no matter how the name was
+defined.
+.SH "FILES AND LOCATION"
+.sp
+The dictionaries are placed into a \f(CRshare\fP directory, which is usually
+in a location such as \f(CR/usr/share/freeradius/\fP.  The definitions for
+each individual specification or vendor dictionary are placed in files
+with the appropriate name.  For example, \f(CRdictionary.rfc2865\fP or
+\f(CRdictionary.cisco\fP.
+.sp
+We reiterate that these dictionaries should not be edited.  These
+dictionaries ship with the server, and any new installation (or
+upgrade) will over\-write local changes.
+.sp
+Local edits should be kept to the \f(CRraddb/dictionary\fP file, which will
+not be overwritten on an upgrade.
+.SH "FILE SYNTAX"
+.sp
+The dictionary file format follows the standard RADIUS dictionary
+syntax.  In many respects, the format has had only minor changes since
+the original Livingston RADIUS server in 1993.
+.sp
+The file format is simple, and line\-oriented.  Blank lines are
+ignored.  Hash (\f(CR#\fP) characters are comments, and cause everything
+after the hash character to be ignored, up to the end of the line.
+.sp
+Every non\-blank line starts with a keyword, as given in the table
+below.  In most cases, the main keywords of interest are
+ATTRIBUTE and VALUE.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 1. Dictionary Definition Keywords
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+ALIAS
+T}:T{
+.sp
+Define a name which references an \f(CRATTRIBUTE\fP
+T}
+T{
+.sp
+ATTRIBUTE
+T}:T{
+.sp
+Define a name, number, and data type mapping
+T}
+T{
+.sp
+DEFINE
+T}:T{
+.sp
+Define a name and data type mapping
+T}
+T{
+.sp
+ENUM
+T}:T{
+.sp
+Define a named enumeration of values for use with multiple \f(CRATTRIBUTE\fPs
+T}
+T{
+.sp
+FLAGS
+T}:T{
+.sp
+Set flags for subsequent definitions
+T}
+T{
+.sp
+$INCLUDE
+T}:T{
+.sp
+Include another dictionary file
+T}
+T{
+.sp
+MEMBER
+T}:T{
+.sp
+Define a member of a \f(CRSTRUCT\fP
+T}
+T{
+.sp
+PROTOCOL
+T}:T{
+.sp
+Define a protocol like \f(CRRADIUS\fP or \f(CRDHCPv4\fP
+T}
+T{
+.sp
+STRUCT
+T}:T{
+.sp
+Define a structure which can contain \f(CRMEMBER\fPs
+T}
+T{
+.sp
+VALUE
+T}:T{
+.sp
+Define a name for a particular value of an \f(CRATTRIBUTE\fP
+T}
+T{
+.sp
+VENDOR
+T}:T{
+.sp
+Define a name and number for a vendor
+T}
+.TE
+.sp
+.sp
+The following keywords define logical nesting of attributes.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 2. Dictionary Nesting Keywords
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+BEGIN\-PROTOCOL
+T}:T{
+.sp
+Begin defining a protocol dictionary
+T}
+.T&
+lt lt.
+T{
+.sp
+END\-PROTOCOL
+T}:T{
+.sp
+End a protocol dictionary
+T}
+T{
+.sp
+BEGIN
+T}:T{
+.sp
+Begin defining children of a structural data type
+T}
+T{
+.sp
+END
+T}:T{
+.sp
+End defining children of a structural data type
+T}
+T{
+.sp
+BEGIN\-VENDOR
+T}:T{
+.sp
+Begin defining vendor\-specific attributes
+T}
+T{
+.sp
+END\-VENDOR
+T}:T{
+.sp
+End defining vendor\-specific attributes
+T}
+.TE
+.sp
 .SH "SEE ALSO"
-.BR radiusd (8),
-.BR RFC2865,
-.BR RFC2866,
-.BR RFC2868
-.BR RFC6929
+.sp
+radiusd(8) radiusd.conf(5)
+.SH "AUTHOR"
+.sp
+The FreeRADIUS Server Project (\c
+.URL "https://freeradius.org" "" ")"
+.SH "AUTHOR"
+.sp
+Alan DeKok

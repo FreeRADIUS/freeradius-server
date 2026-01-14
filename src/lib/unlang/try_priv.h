@@ -31,7 +31,17 @@ extern "C" {
 
 typedef struct {
 	unlang_group_t	group;
+
+	unlang_t	*catch[RLM_MODULE_NUMCODES];
 } unlang_try_t;
+
+/** Cast a generic structure to the try keyword extension
+ *
+ */
+static inline unlang_try_t const *unlang_generic_to_try(unlang_t const *g)
+{
+	return talloc_get_type_abort_const(g, unlang_try_t);
+}
 
 #ifdef __cplusplus
 }
