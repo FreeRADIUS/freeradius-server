@@ -98,6 +98,12 @@ messages are produced.
 
 Test the server again with a test packet, this time using a CHAP
 password. Verify that authentication also succeeds.
+[source, text]
+----
+(0)      chap - Using "known good" cleartext password Cleartext
+(0)      chap - CHAP user "bob" authenticated successfully
+(0)      chap (ok)
+----
 
 Test the server again with a CHAP password, but this time, deliberately
 use the wrong shared secret. Observe what happens and what error
