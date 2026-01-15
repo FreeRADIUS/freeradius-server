@@ -79,14 +79,32 @@ $ radiusd -X
 ----------------
 
 Send the test packet again, and after the Access-Reject is received by
-the client, "exit" the shell to close the "log.txt" file. Open the
-"log.txt" file in a text editor, and read the output. The cause of the
+the client, "exit" the shell to close the "log.txt" file.
+[source, bash]
+----------------
+exit
+----------------
+Open the "log.txt" file in a text editor, and read the output. The cause of the
 error can generally be determined from those messages.
 
-The error will usually be one of the following problems:
+The error will usually be one of a few common problems.  The following
+list contains a short description of each common error, and an example
+of the debug output with the relevant messages:
 
-* the shared secret was incorrect
+* the shared secret was incorrect, in case you will see a message similar to the follow
+[source, text]
+----
+(0)  ERROR: Failed decoding packet: invalid Message-Authenticator (shared secret is incorrect)
+----
+
 * the user was not found, or no entry matched the request.
+[source, text]
+----
+(0)    authenticate pap {
+(0)      pap - Login attempt with password
+(0)      pap - ERROR: No "known good" password found for user
+(0)      pap (fail)
+----
 
 Test the server again with a PAP password, but this time, deliberately
 use the wrong shared secret. Observe what happens and what error
