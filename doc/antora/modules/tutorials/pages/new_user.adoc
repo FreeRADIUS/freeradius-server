@@ -17,7 +17,12 @@ formatted and also contains some example entries.
 
 The comments at the top of the file should also be read.
 
-For testing purposes, add an entry at the top of the file, which will add
+For testing purposes, open the following file:
+[source, bash]
+------------
+vi mods-config/files/authorize
+------------
+Add an entry at the top of the file, which will add
 a new user "bob" with password "hello", as suggested in the `man`
 page for the file.
 
