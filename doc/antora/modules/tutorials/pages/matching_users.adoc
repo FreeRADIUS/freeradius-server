@@ -36,7 +36,10 @@ entries behaves as expected.
 
 == Exercise 1: Basic Configuration (Entry 1)
 
-The first step is to configure user "bob" with password "hello". It will configure a reply message in an appropriate attribute. This configuration entry will cause the server to continue processing the file.
+The first step is to configure user "bob" with password "hello". It
+will configure a reply message in an appropriate attribute. This
+configuration entry will cause the server to continue processing the
+file.
 
 Add the following configuration to `raddb/mods-config/files/authorize`:
 
@@ -52,7 +55,7 @@ Execute the following command to test this configuration:
 
 [source,bash]
 ----
-echo -e 'User-Name = "bob", User-Password = "hello"' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+echo -e 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
 The debug log should show the server matching the entry and preparing the reply attributes:
@@ -79,6 +82,63 @@ Received Access-Accept Id 50 from 127.0.0.1:1812 to 0.0.0.0:55490 via lo length 
         User-Name = "bob"
 ----
 
+== Exercise 2: PPP Configuration (Entry 2)
+
+The second entry will configure user "bob" and will match only when
+"bob" is asking to use PPP. The configuration entry should add the
+appropriate attributes to the reply, to allow "bob" to use PPP and to
+assign him the IP address 192.168.10.12. This entry should also cause
+the server to continue processing the file.
+
+Update `raddb/mods-config/files/authorize` with this additional entry:
+
+[source,text]
+----
+# Entry 2: "bob" for PPP only, assign IP, continue processing
+bob     Password.Cleartext := "hello"
+        Framed-Protocol := ::PPP,
+        Service-Type := ::Framed-User,
+        Framed-IP-Address := 192.168.10.12
+----
+
+Test this specific match by sending a request including `Framed-Protocol = PPP`:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Framed-Protocol = PPP' | radclient -x 127.0.0.1 auth testing123
+----
+
+The debug output will confirm the match on the specific line and the assignment of attributes:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 7 raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Framed-Protocol := ::PPP
+(0)        files - Service-Type := ::Framed-User
+(0)        files - Framed-IP-Address := 192.168.10.12
+(0)      files (ok)
+----
+
+The received packet will contain the PPP-related attributes:
+
+[source,text]
+----
+Sent Access-Request Id 152 from 0.0.0.0:38996 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Framed-Protocol = ::PPP
+Received Access-Accept Id 152 from 127.0.0.1:1812 to 0.0.0.0:38996 via lo length 61
+        Message-Authenticator = 0x9bb3b6295aff4ed43c8447d004cce0df
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
+
 == Questions
 
 1.  What is the difference between the Framed-Route and Framed-Routing
@@ -89,5 +149,5 @@ meets the requirements, but do the requirements fit the needs of the
 network?
 4.  How does this kind of simple configuration scale to many users?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
