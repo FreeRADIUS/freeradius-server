@@ -15,37 +15,65 @@ an NAS when a user logs in.
 Use the entry in the file from the exercise in
 xref:new_user.adoc[New User] for user "bob".
 
-You may create accounting packets by hand for this exercise, but we suggest that
-the follow test packets from the `exercises/packets` directory be used in this
-exercise:
 
-[source, bash]
------------------
-bob-login-one.sh
-bob-acct-start.sh
-bob-acct-stop.sh
------------------
+== Authenticate the user
 
-If you do create accounting packets by hand, then the attributes listed in the
-above scripts should be used as a guide.
+Before sending accounting packets, the user must first be authenticated. This step ensures that the server recognizes the user and permits them to access the network. We will use the `radclient` command to simulate a Network Access Server (NAS) sending an `Access-Request`.
 
-First, run the `bob-login-one.sh` script.
+You can choose between two common authentication methods: PAP or CHAP. If you are a beginner, we recommend starting with PAP.
 
-Observe that the server has replied with an authentication accept to an
-authentication request for user "bob", who has logged in on a particular NAS
-port.
+**Option A – Using PAP (Recommended)**
 
-If the server does not reply with an authentication accept, then check the
-attributes in the test packet and the file entry.
+[source,bash]
+----
+echo 'User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Service-Type = Framed-User
+Framed-Protocol = PPP' | radclient -x 127.0.0.1:1812 auth testing123
+----
 
-You should now read the `man` pages for the `radwho` and `radlast` programs. Run
-each program in turn:
+**Option B – Using CHAP**
 
-[source, bash]
----------
-$ radwho
-$ radlast
----------
+[source,bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "RPWZI373P"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Service-Type = Framed-User
+Framed-Protocol = PPP' | radclient -x 127.0.0.1:1812 auth testing123
+----
+
+Run the command for the method you prefer. If successful, you should see the following in your terminal and server logs.
+
+**Server debug output**
+
+When the server receives the packet, it will look up the user in its configuration files. You should see output similar to this:
+
+----
+(0)          files - | --> bob
+(0)      files - files - Looking for key "bob"
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+**radclient output**
+
+On the client side, `radclient` will display the response from the server:
+
+----
+Received Access-Accept Id 96 from 127.0.0.1:1812 ...
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
+
+The `Access-Accept` message confirms that the user "bob" is now authenticated.
 
 Observe that both programs do not report user "bob" as being logged in.
 
