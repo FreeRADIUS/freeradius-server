@@ -111,7 +111,43 @@ use the wrong shared secret. Observe what happens and what error
 messages are produced.
 
 Test the server again with a test packet, this time using a CHAP
-password. Verify that authentication also succeeds.
+password:
+
+[source, bash]
+------------
+echo 'User-Name = "bob", CHAP-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+------------
+
+Note that we've sent `CHAP-Password` to `radclient`, but the password
+is a clear-text value "hello"!  If you read the output of `radclient`,
+you will see output similar to the following:
+
+[source, text]
+----
+Sent Access-Request Id 1 from 0.0.0.0:59639 to 127.0.0.1:1812 length 80
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        CHAP-Password = 0xf3a4d8667a2951cbd04128f2bcfa75227c
+        Password.Cleartext = "hello"
+        CHAP-Challenge = 0x1aaf91edde002632419d9ac3ce17ad56
+Received Access-Accept Id 1 from 127.0.0.1:1812 to 0.0.0.0:59639 via lo0 length 43
+        Message-Authenticator = 0x4db4bb10b088b5954159a73f380f2243
+----
+
+You can see that `radclient` received an Access-Accept, which is good.
+You can also see that `radclient` noticed the `CHAP-Password` was
+clear-text, and it did the appropriate calculations to get the correct
+format of the `CHAP-Password`.  It also created a `CHAP-Challenge`.
+
+Look at the server debug output to double-check that authentication
+succeeded, as given in the following debug output:
+
+[source, text]
+----
+(0)      chap - Using "known good" cleartext password Cleartext
+(0)      chap - CHAP user "bob" authenticated successfully
+(0)      chap (ok)
+----
 
 Test the server again with a CHAP password, but this time, deliberately
 use the wrong shared secret. Observe what happens and what error
