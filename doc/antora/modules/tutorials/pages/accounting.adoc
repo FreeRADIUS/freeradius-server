@@ -1,29 +1,10 @@
 = Accounting Requests
 
-include::ROOT:partial$v3_warning.adoc[]
-
-[NOTE]
-======================================================================
-The `radlast` and `radwho` programs are no longer included with the
-server in v4.
-
-The `radutmp` module is no longer included with the server.
-We recommend using sqlite instead of flat-text databases.
-======================================================================
 
 *Goal*: To send the server accounting requests and to have the server
 log the accounting requests.
 
 *Time:* 20-30 minutes
-
-*Files:*
-
-- `/var/radacct/127.0.0.1/detail*`
-
-*Modules:* detail
-
-
-
 
 In addition to authorization and authentication, one of the primary roles of a
 RADIUS server is to record accounting information supplied by an NAS. In this
