@@ -34,21 +34,50 @@ entry. Do the same for the third entry. Once all entries work in
 isolation, uncomment the first two and verify that the combination of
 entries behaves as expected.
 
-Test the server with username "bob" and password "hello". Use the
-debug output of the server to see which entries in the file were
-matched. You may use `radclient` or the `bob.sh` script to send the
-packets. In that case, save the packets into a file, and use the "-f"
-parameter to radclient to tell it which file to read.
+== Exercise 1: Basic Configuration (Entry 1)
 
-Perform other authentication tests, adding the appropriate attributes to
-the request sent by the RADIUS client. Continue until you have packets
-that will match:
+The first step is to configure user "bob" with password "hello". It will configure a reply message in an appropriate attribute. This configuration entry will cause the server to continue processing the file.
 
-* entries 1 and 2, but not 3.
-* entries 1 and 3, but not 2.
-* entries 1, 2, and 3.
+Add the following configuration to `raddb/mods-config/files/authorize`:
 
-Save copies of the packets.
+[source,text]
+----
+# Entry 1: Basic "bob" with password and reply message, continue processing
+bob     Password.Cleartext := "hello"
+        Reply-Message = "Hello, bob! Basic access granted.",
+        Fall-Through = Yes
+----
+
+Execute the following command to test this configuration:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello"' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+----
+
+The debug log should show the server matching the entry and preparing the reply attributes:
+
+[source,text]
+----
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files (ok)
+----
+
+The client should receive an `Access-Accept` packet with the expected `Reply-Message`:
+
+[source,text]
+----
+Sent Access-Request Id 50 from 0.0.0.0:55490 to 127.0.0.1:1812 length 61
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 50 from 127.0.0.1:1812 to 0.0.0.0:55490 via lo length 78
+        Message-Authenticator = 0xeb6112615d97252ff1dae0d4f6eaa437
+        Reply-Message = "Hello, bob! Basic access granted."
+        User-Name = "bob"
+----
 
 == Questions
 
