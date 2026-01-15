@@ -1,31 +1,12 @@
 = Accounting Requests
 
-include::ROOT:partial$v3_warning.adoc[]
-
-[NOTE]
-======================================================================
-The `radlast` and `radwho` programs are no longer included with the
-server in v4.
-
-The `radutmp` module is no longer included with the server.
-We recommend using sqlite instead of flat-text databases.
-======================================================================
 
 *Goal*: To send the server accounting requests and to have the server
 log the accounting requests.
 
 *Time:* 20-30 minutes
 
-*Files:*
-
-- `/var/radacct/127.0.0.1/detail*`
-
-*Modules:* detail
-
-
-
-
-In addition to authorization and authentication, one of the primary roles of a
+In addition to authorisation and authentication, one of the primary roles of a
 RADIUS server is to record accounting information supplied by an NAS. In this
 exercise, you should create accounting requests to send to the server and see what
 the server does with those requests. This process simulates the actions taken by
@@ -34,89 +15,244 @@ an NAS when a user logs in.
 Use the entry in the file from the exercise in
 xref:new_user.adoc[New User] for user "bob".
 
-You may create accounting packets by hand for this exercise, but we suggest that
-the follow test packets from the `exercises/packets` directory be used in this
-exercise:
+== Authenticate the user
 
-[source, bash]
------------------
-bob-login-one.sh
-bob-acct-start.sh
-bob-acct-stop.sh
------------------
+Before sending accounting packets, the user must first be
+authenticated. This step ensures that the server recognizes the user
+and permits them to access the network. We will use the `radclient`
+command to simulate a Network Access Server (NAS) sending an
+`Access-Request`.
 
-If you do create accounting packets by hand, then the attributes listed in the
-above scripts should be used as a guide.
+You can choose between two common authentication methods: PAP or
+CHAP. If you are a beginner, we recommend starting with PAP.
 
-First, run the `bob-login-one.sh` script.
+**Option A - Using PAP (Recommended)**
 
-Observe that the server has replied with an authentication accept to an
-authentication request for user "bob", who has logged in on a particular NAS
-port.
+[source]
+----
+echo 'User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Service-Type = Framed-User
+Framed-Protocol = PPP' | radclient -x 127.0.0.1:1812 auth testing123
+----
 
-If the server does not reply with an authentication accept, then check the
-attributes in the test packet and the file entry.
+**Option B - Using CHAP**
 
-You should now read the `man` pages for the `radwho` and `radlast` programs. Run
-each program in turn:
+[source]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "RPWZI373P"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Service-Type = Framed-User
+Framed-Protocol = PPP' | radclient -x 127.0.0.1:1812 auth testing123
+----
 
-[source, bash]
----------
-$ radwho
-$ radlast
----------
+Run the command for the method you prefer. If successful, you should
+see the following in your terminal and server logs.
 
-Observe that both programs do not report user "bob" as being logged in.
+=== Server debug output
 
-Now run the `bob-acct-start.sh` script, and observe the response of the server.
-You should see output containing lines similar to the following:
+When the server receives the packet, it will look up the user in its
+configuration files. You should see output similar to this:
 
------------------------------------------------------------------------------------
-(0) Received Accounting-Request packet from host 127.0.0.1 port 57470, id=35, length=53
-(0) 	User-Name = 'bob'
-(0) 	Acct-Status-Type = Start
-(0) 	Acct-Session-Id = '01020304'
-(0) 	NAS-IP-Address = 127.0.0.1
-(0) 	NAS-Port = 501
-(0) # Executing section preacct from file /etc/raddb/sites-enabled/default
-(0)   preacct {
-(0)   [preprocess] = ok
------------------------------------------------------------------------------------
+----
+(0)          files - | --> bob
+(0)      files - files - Looking for key "bob"
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
 
-Other modules that should be referenced for "accounting" are the
-"preprocess", "suffix", "detail", and "sql" modules. We
-will work through the operation of these modules in a moment.
+=== Radclient output
 
-Now, run the `radwho` and `radlast` programs again:
+On the client side, `radclient` will display the response from the server:
 
-[source, bash]
----------
-$ radwho
-$ radlast
----------
+----
+Received Access-Accept Id 96 from 127.0.0.1:1812 ...
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
 
-Observe that both programs now see "bob" as being logged in.
+The `Access-Accept` message confirms that the user "bob" is now authenticated.
 
-To tell the server that user "bob" has logged out, run the `bob-acct-stop.sh`
-script. Observe the server output, and then run `radwho` and `radlast` again.
 
-The `radwho` program should not display any logged-in users. The `radlast`
-program should now display both the last login time and the last logout time for
-user "bob".
+== Send an Accounting-Start packet
 
-Now run the `bob-acct-stop.sh` program again. Observe how the server's output
-differs from the previous accounting stop packet.
+Once the user has been authenticated, the NAS sends an
+`Accounting-Request` packet to tell the server that the session has
+started. This packet must contain the `Acct-Status-Type = Start`
+attribute.
 
-You should now read the `man` pages for the rlm_unix, rlm_radutmp, and
-rlm_unix modules, along with their configuration entries in
-`raddb/mods-available/radutmp` and `raddb/mods-available/unix`.
+We will use `radclient` to send this packet to the server's accounting port (typically 1813).
 
-In short, the "unix" module manages the database used by the `radlast`
-command. The "radutmp" module manages a separate database, which is used by
-the `radwho` command.
+[source]
+----
+echo 'User-Name = "bob"
+Acct-Status-Type = Start
+Acct-Session-Id = "01020304"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
 
-The "detail" module simply logs every accounting request to a file in a simple
-textual format.
+=== Server debug output
+
+Observe the server's output as it processes the accounting
+request. You should see it execute the `accounting` section and then
+send a response:
+
+----
+proto_radius_udp - Received Accounting-Request ID 6 length 77 radius_udp server * port 1813
+(0)  default {
+(0)    Received Accounting-Request ID 6 from 127.0.0.1:47339 to 127.0.0.1:1813 via lo
+(0)      User-Name = "bob"
+(0)      Acct-Status-Type = ::Start
+(0)      Acct-Session-Id = "01020304"
+(0)      NAS-IP-Address = 127.0.0.1
+(0)      NAS-Port = 501
+(0)      NAS-Port-Type = ::Virtual
+(0)      Service-Type = ::Framed-User
+(0)      Framed-Protocol = ::PPP
+(0)      Framed-IP-Address = 192.168.100.55
+(0)      Net {
+......................
+(0)    } # recv Accounting-Request ((ok))
+......................
+(0)  Done request
+(0)  Sending Accounting-Response ID 6 from 0.0.0.0/0:1813 to 127.0.0.1:47339 length 20 via socket radius_udp server * port 1813
+(0)    Packet-Type = ::Accounting-Response
+(0)  Finished request
+----
+
+=== Radclient output
+
+`radclient` will show the request it sent and the response it received from the server:
+
+----
+Sent Accounting-Request Id 6 from 0.0.0.0:47339 to 127.0.0.1:1813 length 77
+        User-Name = "bob"
+        Acct-Status-Type = ::Start
+        Acct-Session-Id = "01020304"
+        NAS-IP-Address = 127.0.0.1
+        NAS-Port = 501
+        NAS-Port-Type = ::Virtual
+        Service-Type = ::Framed-User
+        Framed-Protocol = ::PPP
+        Framed-IP-Address = 192.168.100.55
+Received Accounting-Response Id 6 from 127.0.0.1:1813 to 0.0.0.0:47339 via lo length 20
+----
+
+The receipt of an `Accounting-Response` confirms that the server has
+successfully recorded the start of the session.
+
+After sending an `Accounting-Start` packet, you should verify that the
+server has actually recorded the information. The `detail` module is
+responsible for logging every accounting request into a textual file.
+
+The directory where these logs are stored is defined in
+`radiusd.conf`. The typical path structure is as follows:
+
+[source]
+----
+prefix = /usr/local
+logdir = ${localstatedir}/log/radius
+radacctdir = ${logdir}/radacct
+----
+
+For this tutorial, the detail logs for requests originating from
+`127.0.0.1` are stored in
+`/usr/local/var/log/radius/radacct/127.0.0.1/`.
+
+You can also find the exact path by looking at the server's debug logs. Look for a line that shows the expansion of the `detail` path:
+
+----
+(0)      detail - /usr/local/var/log/radius/radacct/%{Net.Src.IP}/detail-%Y-%m-%d expands to /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
+----
+
+To view the recorded accounting data, run:
+
+[source]
+----
+cat /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
+----
+
+=== Example detail log entry
+
+Verify that the entry contains the information you sent, specifically the `Acct-Status-Type`:
+
+----
+Thu Jan 15 15:27:47 2026
+	User-Name = "bob"
+	Acct-Status-Type = ::Start
+	Acct-Session-Id = "01020304"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	...
+	Packet-Type = ::Accounting-Request
+----
+
+
+== Send an Accounting-Stop packet
+
+When the user logs out or the session ends, the NAS sends an
+`Accounting-Stop` packet. This packet includes the total duration of
+the session and the amount of data transferred (measured in octets).
+
+Run the following command to simulate a session end:
+
+[source]
+----
+echo 'User-Name = "bob"
+Acct-Status-Type = Stop
+Acct-Session-Id = "01020304"
+Acct-Session-Time = 3600
+Acct-Input-Octets = 1048576
+Acct-Output-Octets = 524288
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+=== Server debug output
+
+The server will process the stop packet similarly to the start packet:
+
+----
+(0)    } # recv Accounting-Request ((ok))
+...................................
+(0)  Done request
+(0)  Sending Accounting-Response ID 51 from 0.0.0.0/0:1813 to 127.0.0.1:59747 length 20 via socket radius_udp server * port 1813
+(0)    Packet-Type = ::Accounting-Response
+(0)  Finished request
+----
+
+=== Radclient output
+
+On your terminal, `radclient` should confirm the session stop:
+
+----
+Sent Accounting-Request Id 51 from 0.0.0.0:59747 to 127.0.0.1:1813 length 77
+        User-Name = "bob"
+        Acct-Status-Type = ::Stop
+        Acct-Session-Id = "01020304"
+        Acct-Session-Time = 3600
+        Acct-Input-Octets = 1048576
+        Acct-Output-Octets = 524288
+        ...
+Received Accounting-Response Id 51 from 127.0.0.1:1813 to 0.0.0.0:59747 via lo length 20
+----
+
+The session is now officially closed in the server's records. You can
+verify this by checking the detail log again.
 
 == Questions
 
