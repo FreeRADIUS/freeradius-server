@@ -42,10 +42,20 @@ If the server was successful, look for a message similar to:
 ---------------------------------------------------------------------
 (0)  files : users: Matched entry bob at line 1
 (0)   [files] = ok
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message := Hello, %{User-Name}
+(0)          files - | %{User-Name}
+(0)          files - | --> bob
+(0)      files (ok)
 ---------------------------------------------------------------------
-
 These messages indicate which entries in the file were used to match the
 incoming request.
+To test the server, you can use the following `radclient` command:
+[source, bash]
+------------
+echo 'User-Name = "bob"
+User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+------------
 
 If the server does not see the packet, then double-check the IP address
 and port to which the client is sending the request.
