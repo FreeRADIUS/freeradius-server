@@ -6,13 +6,12 @@ that new user, and to receive a reply.
 *Time:* 15-25 minutes.
 
 *File:*
-
-- `etc/raddb/users`
+- `mods-config/files/authorize`
 
 *`man` page:* users
 
 The file is the usual place where new users may be added. The file is located
-in `etc/raddb/users`. It has a manual page; `man users`, or `man 5
+in `mods-config/files/authorize`. It has a manual page; `man users`, or `man 5
 users` will display this page. The manual page describes how the entries in the file are
 formatted and also contains some example entries.
 
