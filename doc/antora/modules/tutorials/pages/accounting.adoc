@@ -6,7 +6,7 @@ log the accounting requests.
 
 *Time:* 20-30 minutes
 
-In addition to authorization and authentication, one of the primary roles of a
+In addition to authorisation and authentication, one of the primary roles of a
 RADIUS server is to record accounting information supplied by an NAS. In this
 exercise, you should create accounting requests to send to the server and see what
 the server does with those requests. This process simulates the actions taken by
@@ -191,6 +191,57 @@ Thu Jan 15 15:27:47 2026
 	...
 	Packet-Type = ::Accounting-Request
 ----
+
+
+== Send an Accounting-Stop packet
+
+When the user logs out or the session ends, the NAS sends an `Accounting-Stop` packet. This packet includes the total duration of the session and the amount of data transferred (measured in octets).
+
+Run the following command to simulate a session end:
+
+[source]
+----
+echo 'User-Name = "bob"
+Acct-Status-Type = Stop
+Acct-Session-Id = "01020304"
+Acct-Session-Time = 3600
+Acct-Input-Octets = 1048576
+Acct-Output-Octets = 524288
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+=== Server debug output
+
+The server will process the stop packet similarly to the start packet:
+
+----
+(0)    } # recv Accounting-Request ((ok))
+...................................
+(0)  Done request
+(0)  Sending Accounting-Response ID 51 from 0.0.0.0/0:1813 to 127.0.0.1:59747 length 20 via socket radius_udp server * port 1813
+(0)    Packet-Type = ::Accounting-Response
+(0)  Finished request
+----
+
+=== Radclient output
+
+On your terminal, `radclient` should confirm the session stop:
+
+----
+Sent Accounting-Request Id 51 from 0.0.0.0:59747 to 127.0.0.1:1813 length 77
+        User-Name = "bob"
+        Acct-Status-Type = ::Stop
+        Acct-Session-Id = "01020304"
+        Acct-Session-Time = 3600
+        Acct-Input-Octets = 1048576
+        Acct-Output-Octets = 524288
+        ...
+Received Accounting-Response Id 51 from 127.0.0.1:1813 to 0.0.0.0:59747 via lo length 20
+----
+
+The session is now officially closed in the server's records. You can verify this by checking the detail log again.
 
 == Questions
 
