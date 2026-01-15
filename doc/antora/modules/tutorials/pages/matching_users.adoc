@@ -139,6 +139,65 @@ Received Access-Accept Id 152 from 127.0.0.1:1812 to 0.0.0.0:38996 via lo length
         User-Name = "bob"
 ----
 
+== Exercise 3: Default Framed User (Entry 3)
+
+The last entry will configure any user asking for "framed" service,
+and will assign them a default route of 192.168.10.1 with netmask of
+255.255.255.0.
+
+Add this final entry to `raddb/mods-config/files/authorize`:
+
+[source,text]
+----
+# Entry 3: Any framed user, assign netmask and default route
+DEFAULT Service-Type == ::Framed-User
+        Framed-IP-Netmask = 255.255.255.0,
+        Framed-Route = "192.168.10.0/24 192.168.10.1 1"
+----
+
+Verify this entry in isolation by requesting `Service-Type = Framed-User`:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Service-Type = Framed-User' | radclient -x 127.0.0.1 auth testing123
+----
+
+The server logs will show matches for both "bob" (Entry 1) and "DEFAULT" (Entry 3) due to fall-through:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files - files - Found match "DEFAULT" on line 14 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Framed-IP-Netmask = 255.255.255.0
+(0)        files - Framed-Route = 192.168.10.0/24 192.168.10.1 1
+(0)      files (ok)
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+The response will verify that the routing information is included:
+
+[source,text]
+----
+Sent Access-Request Id 87 from 0.0.0.0:38270 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Service-Type = ::Framed-User
+Received Access-Accept Id 87 from 127.0.0.1:1812 to 0.0.0.0:38270 via lo length 116
+        Message-Authenticator = 0xf402e23d4f51124a521b7dac1b374367
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-IP-Netmask = 255.255.255.0
+        Framed-Route = "192.168.10.0/24 192.168.10.1 1"
+        User-Name = "bob"
+----
+
 == Questions
 
 1.  What is the difference between the Framed-Route and Framed-Routing
