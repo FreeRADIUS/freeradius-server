@@ -127,6 +127,7 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 #if defined(__APPLE__)
 		"leak:*gmtsub*\n"
 		"leak:ImageLoaderMachO::doImageInit\n"
+		"leak:initializeNonMetaClass\n"
 		"leak:_st_tzset_basic\n"
 		"leak:attachCategories\n"
 		"leak:fork\n"
