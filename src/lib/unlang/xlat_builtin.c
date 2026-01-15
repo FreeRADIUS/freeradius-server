@@ -134,24 +134,24 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 	fr_table_num_ordered_t const	*type;
 	size_t				i;
 	ssize_t				slen;
-	char const			*name;
+	fr_sbuff_t			sbuff;
 	char				buffer[1024];
+
+	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 	/*
 	 *	Squash the names down if necessary.
 	 */
 	if (!RDEBUG_ENABLED3) {
-		slen = fr_pair_print_name(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, &vp);
-		if (slen <= 0) return;
-		name = buffer;
-
+		slen = fr_pair_print_name(&sbuff, NULL, &vp);
 	} else {
-		name = vp->da->name;
+		slen = fr_sbuff_in_sprintf(&sbuff, "%s %s ", vp->da->name, fr_tokens[vp->op]);
 	}
+	if (slen <= 0) return;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
-		RIDEBUG2("%s = {", name);
+		RIDEBUG2("%s{", buffer);
 		RINDENT();
 		xlat_debug_attr_list(request, &vp->vp_group);
 		REXDENT();
@@ -159,7 +159,8 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 		break;
 
 	default:
-		RIDEBUG2("%s = %pV", name, &vp->data);
+		if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
+		RIDEBUG2("%s", buffer);
 	}
 
 	if (!RDEBUG_ENABLED3) return;

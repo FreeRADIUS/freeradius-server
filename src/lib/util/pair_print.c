@@ -357,7 +357,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t const
 		 */
 		switch (child->vp_type) {
 		case FR_TYPE_STRUCTURAL:
-			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
+			fr_log(log, L_DBG, file, line, "%*s%*s{", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
 			_fr_pair_list_log(log, lvl + 1, child, &child->vp_group, file, line);
 			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
@@ -410,13 +410,13 @@ static void fr_pair_list_debug_sbuff(FILE *fp, int lvl, fr_pair_t const *parent,
 		 */
 		switch (child->vp_type) {
 		case FR_TYPE_STRUCTURAL:
-			fprintf(fp, "%*s%*s {\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
+			fprintf(fp, "%*s%*s{\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
 			_fr_pair_list_debug(fp, lvl + 1, child, &child->vp_group);
 			fprintf(fp, "%*s}\n", lvl * 2, "");
 			break;
 
 		default:
-			if (fr_value_box_print_quoted(sbuff, &child->data, T_DOUBLE_QUOTED_STRING)< 0) break;
+			if (fr_value_box_print_quoted(sbuff, &child->data, T_DOUBLE_QUOTED_STRING) < 0) break;
 
 			fprintf(fp, "%*s%*s\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
 		}

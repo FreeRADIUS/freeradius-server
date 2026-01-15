@@ -231,7 +231,6 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t const *vp, map_t co
 		}
 	} else {
 		size_t slen;
-		char const *name;
 		fr_sbuff_t sbuff;
 		char buffer[1024];
 
@@ -242,16 +241,14 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t const *vp, map_t co
 		 */
 		if (!RDEBUG_ENABLED3) {
 			slen = fr_pair_print_name(&sbuff, NULL, &vp);
-			if (slen <= 0) return;
-			name = buffer;
-
 		} else {
-			name = vp->da->name;
+			slen = fr_sbuff_in_sprintf(&sbuff, "%s %s ", vp->da->name, fr_tokens[vp->op]);
 		}
+		if (slen <= 0) return;
 
 		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
-                        RDEBUG2("%s = {", name);
+                        RDEBUG2("%s{", buffer);
 			RINDENT();
 			edit_debug_attr_list(request, &vp->vp_group, NULL);
 			REXDENT();
@@ -260,7 +257,7 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t const *vp, map_t co
 
 		default:
 			if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
-			RDEBUG2("%s", fr_sbuff_start(&sbuff));
+			RDEBUG2("%s", buffer);
 			break;
 		}
 	}
