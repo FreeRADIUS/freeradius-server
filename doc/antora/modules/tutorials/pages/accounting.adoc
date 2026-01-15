@@ -254,4 +254,4 @@ authentication request? Why?
 why is it produced?
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS.
+// This documentation was developed by Network RADIUS SAS
