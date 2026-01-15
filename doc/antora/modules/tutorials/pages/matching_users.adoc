@@ -198,6 +198,65 @@ Received Access-Accept Id 87 from 127.0.0.1:1812 to 0.0.0.0:38270 via lo length 
         User-Name = "bob"
 ----
 
+== Combined Tests
+
+Perform other authentication tests, adding the appropriate attributes
+to the request sent by the RADIUS client. Continue until you have
+packets that will match:
+
+* entries 1 and 2, but not 3.
+* entries 1, 2, and 3.
+
+=== Testing Entries 1 and 2
+
+To test matches for Entries 1 and 2 (while excluding Entry 3), send a
+request with `Framed-Protocol = PPP` but without explicitly requesting
+`Service-Type = Framed-user`.
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Framed-Protocol = PPP' | radclient -x 127.0.0.1 auth testing123
+----
+
+Debug Output:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files - files - Found match "bob" on line 8 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Framed-Protocol := ::PPP
+(0)        files - Service-Type := ::Framed-User
+(0)        files - Framed-IP-Address := 192.168.10.12
+(0)      files (ok)
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+Response:
+
+[source,text]
+----
+Sent Access-Request Id 245 from 0.0.0.0:34406 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Framed-Protocol = ::PPP
+Received Access-Accept Id 245 from 127.0.0.1:1812 to 0.0.0.0:34406 via lo length 96
+        Message-Authenticator = 0x4fa7862a8a360b31afcd635db61126cf
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
+
 == Questions
 
 1.  What is the difference between the Framed-Route and Framed-Routing
