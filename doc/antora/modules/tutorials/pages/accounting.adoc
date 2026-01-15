@@ -75,22 +75,72 @@ Received Access-Accept Id 96 from 127.0.0.1:1812 ...
 
 The `Access-Accept` message confirms that the user "bob" is now authenticated.
 
-Observe that both programs do not report user "bob" as being logged in.
 
-Now run the `bob-acct-start.sh` script, and observe the response of the server.
-You should see output containing lines similar to the following:
+== Send an Accounting-Start packet
 
------------------------------------------------------------------------------------
-(0) Received Accounting-Request packet from host 127.0.0.1 port 57470, id=35, length=53
-(0) 	User-Name = 'bob'
-(0) 	Acct-Status-Type = Start
-(0) 	Acct-Session-Id = '01020304'
-(0) 	NAS-IP-Address = 127.0.0.1
-(0) 	NAS-Port = 501
-(0) # Executing section preacct from file /etc/raddb/sites-enabled/default
-(0)   preacct {
-(0)   [preprocess] = ok
------------------------------------------------------------------------------------
+Once the user has been authenticated, the NAS sends an `Accounting-Request` packet to tell the server that the session has started. This packet must contain the `Acct-Status-Type = Start` attribute.
+
+We will use `radclient` to send this packet to the server's accounting port (typically 1813).
+
+[source,bash]
+----
+echo 'User-Name = "bob"
+Acct-Status-Type = Start
+Acct-Session-Id = "01020304"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+**Server debug output**
+
+Observe the server's output as it processes the accounting request. You should see it execute the `accounting` section and then send a response:
+
+----
+proto_radius_udp - Received Accounting-Request ID 6 length 77 radius_udp server * port 1813
+(0)  default {
+(0)    Received Accounting-Request ID 6 from 127.0.0.1:47339 to 127.0.0.1:1813 via lo
+(0)      User-Name = "bob"
+(0)      Acct-Status-Type = ::Start
+(0)      Acct-Session-Id = "01020304"
+(0)      NAS-IP-Address = 127.0.0.1
+(0)      NAS-Port = 501
+(0)      NAS-Port-Type = ::Virtual
+(0)      Service-Type = ::Framed-User
+(0)      Framed-Protocol = ::PPP
+(0)      Framed-IP-Address = 192.168.100.55
+(0)      Net {
+......................
+(0)    } # recv Accounting-Request ((ok))
+......................
+(0)  Done request
+(0)  Sending Accounting-Response ID 6 from 0.0.0.0/0:1813 to 127.0.0.1:47339 length 20 via socket radius_udp server * port 1813
+(0)    Packet-Type = ::Accounting-Response
+(0)  Finished request
+----
+
+**radclient output**
+
+`radclient` will show the request it sent and the response it received from the server:
+
+----
+Sent Accounting-Request Id 6 from 0.0.0.0:47339 to 127.0.0.1:1813 length 77
+        User-Name = "bob"
+        Acct-Status-Type = ::Start
+        Acct-Session-Id = "01020304"
+        NAS-IP-Address = 127.0.0.1
+        NAS-Port = 501
+        NAS-Port-Type = ::Virtual
+        Service-Type = ::Framed-User
+        Framed-Protocol = ::PPP
+        Framed-IP-Address = 192.168.100.55
+Received Accounting-Response Id 6 from 127.0.0.1:1813 to 0.0.0.0:47339 via lo length 20
+----
+
+The receipt of an `Accounting-Response` confirms that the server has successfully recorded the start of the session.
 
 Other modules that should be referenced for "accounting" are the
 "preprocess", "suffix", "detail", and "sql" modules. We
