@@ -142,11 +142,8 @@ Received Accounting-Response Id 6 from 127.0.0.1:1813 to 0.0.0.0:47339 via lo le
 
 The receipt of an `Accounting-Response` confirms that the server has successfully recorded the start of the session.
 
-Other modules that should be referenced for "accounting" are the
-"preprocess", "suffix", "detail", and "sql" modules. We
-will work through the operation of these modules in a moment.
 
-Now, run the `radwho` and `radlast` programs again:
+== Check the detail log
 
 [source]
 ---------
@@ -154,28 +151,46 @@ $ radwho
 $ radlast
 ---------
 
-Observe that both programs now see "bob" as being logged in.
+After sending an `Accounting-Start` packet, you should verify that the server has actually recorded the information. The `detail` module is responsible for logging every accounting request into a textual file.
 
-To tell the server that user "bob" has logged out, run the `bob-acct-stop.sh`
-script. Observe the server output, and then run `radwho` and `radlast` again.
+The directory where these logs are stored is defined in `raddb/radiusd.conf`. The typical path structure is as follows:
 
-The `radwho` program should not display any logged-in users. The `radlast`
-program should now display both the last login time and the last logout time for
-user "bob".
+[source]
+----
+prefix = /usr/local
+logdir = ${localstatedir}/log/radius
+radacctdir = ${logdir}/radacct
+----
 
-Now run the `bob-acct-stop.sh` program again. Observe how the server's output
-differs from the previous accounting stop packet.
+For this tutorial, the detail logs for requests originating from `127.0.0.1` are stored in `/usr/local/var/log/radius/radacct/127.0.0.1/`.
 
-You should now read the `man` pages for the rlm_unix, rlm_radutmp, and
-rlm_unix modules, along with their configuration entries in
-`raddb/mods-available/radutmp` and `raddb/mods-available/unix`.
+You can also find the exact path by looking at the server's debug logs. Look for a line that shows the expansion of the `detail` path:
 
-In short, the "unix" module manages the database used by the `radlast`
-command. The "radutmp" module manages a separate database, which is used by
-the `radwho` command.
+----
+(0)      detail - /usr/local/var/log/radius/radacct/%{Net.Src.IP}/detail-%Y-%m-%d expands to /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
+----
 
-The "detail" module simply logs every accounting request to a file in a simple
-textual format.
+To view the recorded accounting data, run:
+
+[source]
+----
+cat /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-15
+----
+
+=== Example detail log entry
+
+Verify that the entry contains the information you sent, specifically the `Acct-Status-Type`:
+
+----
+Thu Jan 15 15:27:47 2026
+	User-Name = "bob"
+	Acct-Status-Type = ::Start
+	Acct-Session-Id = "01020304"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	...
+	Packet-Type = ::Accounting-Request
+----
 
 == Questions
 
