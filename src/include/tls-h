@@ -351,6 +351,7 @@ struct fr_tls_server_conf_t {
 	CONF_SECTION	*cs;
 
 	char const	*private_key_password;
+	char const      *private_key_password_file;
 	char const	*private_key_file;
 	char const	*certificate_file;
 	char const	*random_file;
