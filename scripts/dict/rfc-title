@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+
+#
+#  Grab the URLs and titles of the RFCs that FreeRADIUS supports.
+#
+#  This script can be run occasionally, generally no more than once
+#  a month.  The dictionaries don't change more often than that.
+#
+#  Usage:
+#
+# ./scripts/dict/rfc-title share/dictionary/*/dictionary.rfc*
+#
+
+######################################################################
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+#
+#    Copyright (C) 2026 Network RADIUS SAS (legal@networkradius.com)
+#
+######################################################################
+#
+#  $Id$
+#
+
+
+require LWP::UserAgent;
+require HTML::HeadParser;
+
+my $ua = LWP::UserAgent->new;
+my @keys = $ua->ssl_opts;
+
+#
+#  We don't care about certificates.
+#
+$ua->ssl_opts(
+    SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE, 
+    verify_hostname => 0
+);
+
+while (@ARGV) {
+    my $rfc= shift;
+
+    $rfc =~ s,^.*/dictionary.,,;
+
+    next unless $rfc =~ /^rfc/;
+
+    $url = "https://datatracker.ietf.org/doc/html/$rfc";
+
+    my $response = $ua->get($url);
+
+    next unless $response->is_success;
+
+    $p = HTML::HeadParser->new;
+    $p->parse($response->content) and print "not finished";
+    $title = $p->header('Title');
+
+    $title =~ s/\r\n//g;
+    $title =~ s/(RFC \d+) - //;
+
+
+    print $url, "[$1] - ", $title, "\n";
+}
