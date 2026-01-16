@@ -181,8 +181,9 @@ static uint32_t parent_of(uint32_t key)
 }
 
 
-static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
-				  fr_hash_entry_t *head, uint32_t reversed, void const *data)
+static CC_NO_UBSAN(undefined)
+fr_hash_entry_t *list_find(fr_hash_table_t *ht,
+			   fr_hash_entry_t *head, uint32_t reversed, void const *data)
 {
 	fr_hash_entry_t *cur;
 
@@ -205,7 +206,8 @@ static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
 /*
  *	Inserts a new entry into the list, in order.
  */
-static bool list_insert(fr_hash_table_t *ht,
+static CC_NO_UBSAN(undefined)
+bool list_insert(fr_hash_table_t *ht,
 		        fr_hash_entry_t **head, fr_hash_entry_t *node)
 {
 	fr_hash_entry_t **last, *cur;
