@@ -1015,6 +1015,7 @@ fi
 %{_libdir}/freeradius/rlm_files.so
 %{_libdir}/freeradius/rlm_icmp.so
 %{_libdir}/freeradius/rlm_isc_dhcp.so
+%{_libdir}/freeradius/rlm_kv.so
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logtee.so
 %{_libdir}/freeradius/rlm_mschap.so

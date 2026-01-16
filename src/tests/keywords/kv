@@ -1,0 +1,20 @@
+#
+#  Test the internal key-value store.
+#
+%kv.write("/foo/bar", User-Name)
+
+if (%kv.read("/foo/bar") != User-Name) {
+	test_fail
+}
+
+%kv.delete("/foo/bar")
+
+if %kv.read("/foo/bar") {
+	test_fail
+}
+
+if %kv.read("no such key") {
+	test_fail
+}
+
+success
