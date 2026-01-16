@@ -57,9 +57,12 @@ the `detail` module (configured in `etc/raddb/mods-enabled/detail`)
 has a configuration entry named "filename", which by default has the
 following value:
 
-----------------------------------------------------------------
+[source, text]
+----
 filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y%m%d
-----------------------------------------------------------------
+----
+
+The `filename` setting defines where FreeRADIUS stores its accounting “detail” files and how they are named.The variable `${radacctdir}` points to the main directory where accounting files are stored,and defined in the `radiusd.conf` file.The placeholder `%{Net.Src.IP}` represents the IP address of the RADIUS client (such as a NAS or access point) sending the request, and it is used to create a separate subdirectory for each client so that each client’s logs are kept separate. The `detail-%Y-%m-%d` part specifies the naming pattern for the files using date formatting, where `%Y` represents the year (e.g., 2026), `%m` represents the month (e.g., 01), and `%d` represents the day (e.g., 16). This structure ensures that logs are organized by client and date for easier management.
 
 The configuration entry is composed of two kinds of variable expansion.
 One references the `${radacctdir}` configuration variable, which was
