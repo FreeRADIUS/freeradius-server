@@ -7,7 +7,7 @@
 *Files:*
 
 - `etc/raddb/radiusd.conf`
-- `etc/raddb/users`
+- `etc/mods-config/files/authorize`
 - `etc/raddb/mods-available/detail`
 
 *`man` page:* `radiusd.conf`
@@ -16,17 +16,36 @@
 
 There are two kinds of variables within the server. The first is within
 `radiusd.conf` and related files. These variables are referenced via the
-`$` character, which is used to define common terms (e.g. `${logdir}` so that
+`$` character, which is used to define common terms (e.g. `${logdir})` so that
 those terms do not have to be repeated multiple times in the
 configuration files. These variables are used only when the server reads
 the configuration files, and they cannot be updated or edited once the files
 have been read.
+
+Below example shows variables withing `radiusd.conf`
+
+[source, bash]
+----
+prefix = /usr/local
+exec_prefix = ${prefix}
+sysconfdir = ${prefix}/etc
+localstatedir = ${prefix}/var
+sbindir = ${exec_prefix}/sbin
+logdir = ${localstatedir}/log/radius
+raddbdir = ${sysconfdir}/raddb
+radacctdir = ${logdir}/radacct
+----
 
 The second kind of variable is a run-time variable, which is dynamically
 expanded for each request received by the server. These variables are
 referenced by the `%` character, and they may be used to pull the values of
 attributes from the request to be used by a module. These variables may
 also be used by one module to obtain information from another module.
+
+[source, text]
+----
+detail-%Y-%m-%d
+----
 
 In this exercise, we cover configuration variables and some simple
 properties of the run-time variables. Later exercises cover additional
