@@ -815,13 +815,13 @@ void *fr_rb_last(fr_rb_tree_t *tree)
 
 /** Initialise an in-order iterator
  *
- * @param[out] iter	to initialise.
  * @param[in] tree	to iterate over.
+ * @param[out] iter	to initialise.
  * @return
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree)
+void *fr_rb_iter_init_inorder(fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -833,7 +833,6 @@ void *fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree)
 	while (x->left != NIL) x = x->left;
 
 	*iter = (fr_rb_iter_inorder_t){
-		.tree = tree,
 		.node = x
 	};
 
@@ -842,12 +841,13 @@ void *fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree)
 
 /** Return the next node
  *
+ * @param[in] tree	to iterate over.
  * @param[in] iter	previously initialised with #fr_rb_iter_init_inorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter)
+void *fr_rb_iter_next_inorder(UNUSED fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -893,28 +893,29 @@ void *fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter)
  *
  * @note Only makes sense for in-order traversals.
  *
+ * @param[in] tree	to iterate over.
  * @param[in] iter	previously initialised with #fr_rb_iter_init_inorder
  */
-void fr_rb_iter_delete_inorder(fr_rb_iter_inorder_t *iter)
+void fr_rb_iter_delete_inorder(fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node;
 
 	if (unlikely(x == NIL)) return;
-	(void) fr_rb_iter_next_inorder(iter);
+	(void) fr_rb_iter_next_inorder(tree, iter);
 	iter->next = iter->node;
 	iter->node = NULL;
-	delete_internal(iter->tree, x, true);
+	delete_internal(tree, x, true);
 }
 
 /** Initialise a pre-order iterator
  *
- * @param[out] iter	to initialise.
  * @param[in] tree	to iterate over.
+ * @param[out] iter	to initialise.
  * @return
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree)
+void *fr_rb_iter_init_preorder(fr_rb_tree_t *tree, fr_rb_iter_preorder_t *iter)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -924,7 +925,6 @@ void *fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree)
 	 *	First, the root.
 	 */
 	*iter = (fr_rb_iter_preorder_t){
-		.tree = tree,
 		.node = x
 	};
 
@@ -933,12 +933,13 @@ void *fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree)
 
 /** Return the next node
  *
+ * @param[in] tree	to iterate over.
  * @param[in] iter	previously initialised with #fr_rb_iter_init_preorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *fr_rb_iter_next_preorder(fr_rb_iter_preorder_t *iter)
+void *fr_rb_iter_next_preorder(UNUSED fr_rb_tree_t *tree, fr_rb_iter_preorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -985,13 +986,13 @@ void *fr_rb_iter_next_preorder(fr_rb_iter_preorder_t *iter)
 
 /** Initialise a post-order iterator
  *
- * @param[out] iter	to initialise.
  * @param[in] tree	to iterate over.
+ * @param[out] iter	to initialise.
  * @return
  *	- The first node.
  *	- NULL if the tree is empty.
  */
-void *fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree)
+void *fr_rb_iter_init_postorder(fr_rb_tree_t *tree, fr_rb_iter_postorder_t *iter)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -1008,7 +1009,6 @@ void *fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree
 	}
 
 	*iter = (fr_rb_iter_postorder_t){
-		.tree = tree,
 		.node = x
 	};
 
@@ -1017,12 +1017,13 @@ void *fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree
 
 /** Return the next node
  *
+ * @param[in] tree	to iterate over.
  * @param[in] iter	previously initialised with #fr_rb_iter_init_postorder
  * @return
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *fr_rb_iter_next_postorder(fr_rb_iter_postorder_t *iter)
+void *fr_rb_iter_next_postorder(UNUSED fr_rb_tree_t *tree, fr_rb_iter_postorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -1075,9 +1076,9 @@ int fr_rb_flatten_##_order(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree) \
 	fr_rb_iter_##_order##_t iter; \
 	void *item, **list; \
 	if (unlikely(!(list = talloc_array(ctx, void *, num)))) return -1; \
-	for (item = fr_rb_iter_init_##_order(&iter, tree), i = 0; \
+	for (item = fr_rb_iter_init_##_order(tree, &iter), i = 0; \
 	     item; \
-	     item = fr_rb_iter_next_##_order(&iter), i++) list[i] = item; \
+	     item = fr_rb_iter_next_##_order(tree, &iter), i++) list[i] = item; \
 	*out = list; \
 	return 0; \
 }

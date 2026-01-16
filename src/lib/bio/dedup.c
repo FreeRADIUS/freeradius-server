@@ -1018,8 +1018,8 @@ static int fr_bio_dedup_shutdown(fr_bio_t *bio)
 	 *	Cancel all outgoing packets.  Don't bother updating the tree or the free list, as all of the
 	 *	entries will be deleted when the memory is freed.
 	 */
-	while ((item = fr_rb_iter_init_inorder(&iter, &my->rb)) != NULL) {
-		fr_rb_iter_delete_inorder(&iter);
+	while ((item = fr_rb_iter_init_inorder(&my->rb, &iter)) != NULL) {
+		fr_rb_iter_delete_inorder(&my->rb, &iter);
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 

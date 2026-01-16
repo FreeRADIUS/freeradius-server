@@ -221,8 +221,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, mruby_func_def_t, node, mruby_func_def_cmp, NULL);
-	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
-	while (func) {
+
+	for (func = fr_rb_iter_init_inorder(&inst->funcs, &iter);
+	     func != NULL;
+	     func = fr_rb_iter_next_inorder(&inst->funcs, &iter)) {
 		/*
 		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
 		 */
@@ -262,8 +264,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				return -1;
 			}
 		}
-
-		func = fr_rb_iter_next_inorder(&iter);
 	}
 
 	if (mrb_nil_p(mrb_check_intern_cstr(mrb, "instantiate"))) return 0;

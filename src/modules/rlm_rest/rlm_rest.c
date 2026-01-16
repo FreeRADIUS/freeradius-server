@@ -1219,11 +1219,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Parse section configs from calls found by the call_env parser.
 	 */
-	section = fr_rb_iter_init_inorder(&iter, &inst->sections);
-	while (section) {
+	for (section = fr_rb_iter_init_inorder(&inst->sections, &iter);
+	     section != NULL;
+	     section = fr_rb_iter_next_inorder(&inst->sections, &iter)) {
 		if (parse_sub_section(inst, conf, section_config, &section->section,
 				      cf_section_name(section->cs), section->cs) < 0) return -1;
-		section = fr_rb_iter_next_inorder(&iter);
 	}
 
 	inst->conn_config.reuse.num_children = 1;

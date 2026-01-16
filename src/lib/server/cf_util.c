@@ -1889,9 +1889,9 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 
 	if (!ci->ident2) return 0;
 
-	for (ci = fr_rb_iter_init_inorder(&iter, ci->ident2);
+	for (ci = fr_rb_iter_init_inorder(ci->ident2, &iter);
 	     ci;
-	     ci = fr_rb_iter_next_inorder(&iter)) {
+	     ci = fr_rb_iter_next_inorder(ci->ident2, &iter)) {
 		/*
 		 *	We're walking ident2, not all of the items will be data
 		 */

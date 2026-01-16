@@ -1696,8 +1696,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Load all the Python functions found by the call_env parser.
 	 */
-	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
-	while (func) {
+	for (func = fr_rb_iter_init_inorder(&inst->funcs, &iter);
+	     func != NULL;
+	     func = fr_rb_iter_next_inorder(&inst->funcs, &iter)) {
 		/*
 		 *	Check for mod_<name1>_<name2> or mod_<name1> config pairs.
 		 *	If neither exist, fall back to default Python module.
@@ -1732,7 +1733,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (cp) func->function_name = cf_pair_value(cp);
 
 		if (python_function_load(mctx, func) < 0) goto error;
-		func = fr_rb_iter_next_inorder(&iter);
 	}
 
 	/*
@@ -1795,10 +1795,10 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	PYTHON_FUNC_DESTROY(instantiate);
 	PYTHON_FUNC_DESTROY(detach);
 
-	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
-	while (func) {
+	for (func = fr_rb_iter_init_inorder(&inst->funcs, &iter);
+	     func != NULL;
+	     func = fr_rb_iter_next_inorder(&inst->funcs, &iter)) {
 		python_function_destroy(func);
-		func = fr_rb_iter_next_inorder(&iter);
 	}
 
 	PyEval_SaveThread();

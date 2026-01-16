@@ -71,9 +71,9 @@ static void test_fr_rb_iter_inorder(void)
 
 	qsort(sorted, n, sizeof(fr_rb_tree_test_node_t), fr_rb_qsort_cmp);
 
-	for (p = fr_rb_iter_init_inorder(&iter, t), i = 0;
+	for (p = fr_rb_iter_init_inorder(t, &iter), i = 0;
 	     p;
-	     p = fr_rb_iter_next_inorder(&iter), i++) {
+	     p = fr_rb_iter_next_inorder(t, &iter), i++) {
 		TEST_MSG("Checking sorted[%zu] s = %u vs n = %u", i, sorted[i].num, p->num);
 		TEST_CHECK(sorted[i].num == p->num);
 	}
@@ -110,9 +110,9 @@ static void test_fr_rb_iter_preorder(void)
 		fr_rb_insert(t, p);
 	}
 
-	for (p = fr_rb_iter_init_preorder(&iter, t), i = 0;
+	for (p = fr_rb_iter_init_preorder(t, &iter), i = 0;
 	     p;
-	     p = fr_rb_iter_next_preorder(&iter), i++) {
+	     p = fr_rb_iter_next_preorder(t, &iter), i++) {
 		TEST_MSG("Checking pre_output[%zu] = %u vs n = %u", i, pre_output[i], p->num);
 		TEST_CHECK(pre_output[i] == p->num);
 	}
@@ -140,9 +140,9 @@ static void test_fr_rb_iter_postorder(void)
 		fr_rb_insert(t, p);
 	}
 
-	for (p = fr_rb_iter_init_postorder(&iter, t), i = 0;
+	for (p = fr_rb_iter_init_postorder(t, &iter), i = 0;
 	     p;
-	     p = fr_rb_iter_next_postorder(&iter), i++) {
+	     p = fr_rb_iter_next_postorder(t, &iter), i++) {
 		TEST_MSG("Checking post_output[%zu] s = %u vs n = %u", i, post_output[i], p->num);
 		TEST_CHECK(post_output[i] == p->num);
 	}
@@ -191,18 +191,18 @@ static void test_fr_rb_iter_delete(void)
 	/*
 	 *	Remove the primes.
 	 */
-	for (p = fr_rb_iter_init_inorder(&iter, t);
+	for (p = fr_rb_iter_init_inorder(t, &iter);
 	     p;
-	     p = fr_rb_iter_next_inorder(&iter)) {
-		if (is_prime(p->num)) fr_rb_iter_delete_inorder(&iter);
+	     p = fr_rb_iter_next_inorder(t, &iter)) {
+		if (is_prime(p->num)) fr_rb_iter_delete_inorder(t, &iter);
 	}
 
 	/*
 	 *	Check that all the non-primes are still there.
 	 */
-	for (p = fr_rb_iter_init_inorder(&iter, t), i = 0;
+	for (p = fr_rb_iter_init_inorder(t, &iter), i = 0;
 	     p;
-	     p = fr_rb_iter_next_inorder(&iter), i++) {
+	     p = fr_rb_iter_next_inorder(t, &iter), i++) {
 		TEST_MSG("Checking non_primes[%zu] = %u vs p->num = %u", i, non_primes[i], p->num);
 		TEST_CHECK(non_primes[i] == p->num);
 	}

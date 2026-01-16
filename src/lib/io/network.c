@@ -465,9 +465,9 @@ static void fr_network_suspend(fr_network_t *nr)
 
 	if (nr->suspended) return;
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_read);
 	}
 	nr->suspended = true;
@@ -484,9 +484,9 @@ static void fr_network_unsuspend(fr_network_t *nr)
 
 	if (!nr->suspended) return;
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_read);
 	}
 	nr->suspended = false;
@@ -2083,9 +2083,9 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 
 	// @todo - note that this isn't thread-safe!
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		if (!s->listen->app_io->get_name) {
 			fprintf(fp, "%s\n", s->listen->app_io->common.name);
 		} else {

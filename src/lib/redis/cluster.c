@@ -1330,9 +1330,9 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	live->skip = skip->id;
 
 	pthread_mutex_lock(&cluster->mutex);
-	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(cluster->used_nodes, &iter);
 	     node;
-	     node = fr_rb_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(cluster->used_nodes, &iter)) {
 		fr_assert(node->pool);
 		if (live->skip == node->id) continue;	/* Skip dead nodes */
 
@@ -2158,9 +2158,9 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 
 	pthread_mutex_lock(&cluster->mutex);
 
-	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(cluster->used_nodes, &iter);
 	     node;
-	     node = fr_rb_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(cluster->used_nodes, &iter)) {
 		if ((is_master && node->is_master) || (is_slave && !node->is_master)) found[count++] = node->addr;
 	}
 
@@ -2210,9 +2210,9 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 
 	pthread_mutex_lock(&cluster->mutex);
 
-	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(cluster->used_nodes, &iter);
 	     node;
-	     node = fr_rb_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(cluster->used_nodes, &iter)) {
 		conn = fr_pool_connection_get(node->pool, NULL);
 		if (!conn) continue;
 

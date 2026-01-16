@@ -294,10 +294,10 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 		fr_rb_iter_inorder_t	iter;
 		void			*data;
 
-		for (data = fr_rb_iter_init_inorder(&iter, mutable->cache);
+		for (data = fr_rb_iter_init_inorder(mutable->cache, &iter);
 		     data;
-		     data = fr_rb_iter_next_inorder(&iter)) {
-			fr_rb_iter_delete_inorder(&iter);
+		     data = fr_rb_iter_next_inorder(mutable->cache, &iter)) {
+			fr_rb_iter_delete_inorder(mutable->cache, &iter);
 			talloc_free(data);
 		}
 	}

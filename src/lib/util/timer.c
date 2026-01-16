@@ -1531,9 +1531,9 @@ void fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
 		}
 
-		for (node = fr_rb_iter_init_inorder(&event_iter, locations[i]);
+		for (node = fr_rb_iter_init_inorder(locations[i], &event_iter);
 		     node;
-		     node = fr_rb_iter_next_inorder(&event_iter)) {
+		     node = fr_rb_iter_next_inorder(locations[i], &event_iter)) {
 			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
 			EVENT_DEBUG("                         : %u allocd at %s[%d]",

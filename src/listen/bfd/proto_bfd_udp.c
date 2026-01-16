@@ -440,9 +440,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Walk over the list of peers, associating them with this listener.
 	 */
-	for (peer = fr_rb_iter_init_inorder(&iter, inst->peers);
+	for (peer = fr_rb_iter_init_inorder(inst->peers, &iter);
 	     peer != NULL;
-	     peer = fr_rb_iter_next_inorder(&iter)) {
+	     peer = fr_rb_iter_next_inorder(inst->peers, &iter)) {
 		if (peer->client.ipaddr.af != inst->ipaddr.af) continue;
 
 		if (peer->inst) continue;
@@ -496,9 +496,9 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	/*
 	 *	Walk over the list of peers, associating them with this listener.
 	 */
-	for (peer = fr_rb_iter_init_inorder(&iter, inst->peers);
+	for (peer = fr_rb_iter_init_inorder(inst->peers, &iter);
 	     peer != NULL;
-	     peer = fr_rb_iter_next_inorder(&iter)) {
+	     peer = fr_rb_iter_next_inorder(inst->peers, &iter)) {
 		if (peer->inst != inst) continue;
 
 		peer->el = el;

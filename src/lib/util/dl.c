@@ -704,9 +704,9 @@ static int _dl_loader_free(dl_loader_t *dl_loader)
 		/*
 		 *	Yes, this is the correct call order
 		 */
-		for (data = fr_rb_iter_init_inorder(&iter, dl_loader->tree);
+		for (data = fr_rb_iter_init_inorder(dl_loader->tree, &iter);
 		     data;
-		     data = fr_rb_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(dl_loader->tree, &iter)) {
 			dl_t *dl = talloc_get_type_abort(data, dl_t);
 
 			fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));

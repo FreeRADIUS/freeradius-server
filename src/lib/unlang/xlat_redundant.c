@@ -566,12 +566,12 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 		fr_sbuff_marker(&name_start, name);
 
-		mrx = fr_rb_iter_init_inorder(&iter, mrx_tree);
-
 		/*
 		 *	Iterate over the all the xlats, registered by
 		 *	all the modules in the section.
 		 */
+		mrx = fr_rb_iter_init_inorder(mrx_tree, &iter);
+
 		while (mrx) {
 			xlat_t			*xlat;
 			xlat_func_flags_t	flags = default_flags;
@@ -621,7 +621,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 				if (!mrx->xlat->flags.pure) flags &= ~XLAT_FUNC_FLAG_PURE;
 				xlat_redundant_add_xlat(xr, mrx->xlat);
 				prev_mrx = mrx;
-			} while ((mrx = fr_rb_iter_next_inorder(&iter)) && (module_xlat_cmp(prev_mrx, mrx) == 0));
+			} while ((mrx = fr_rb_iter_next_inorder(mrx_tree, &iter)) && (module_xlat_cmp(prev_mrx, mrx) == 0));
 
 			/*
 			 *	Warn, but allow, redundant/failover expansions that are

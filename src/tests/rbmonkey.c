@@ -179,19 +179,19 @@ again:
 
 	 *
 	 */
-	for (node = fr_rb_iter_init_inorder(&iter, t);
+	for (node = fr_rb_iter_init_inorder(t, &iter);
 	     node;
-	     node = fr_rb_iter_next_inorder(&iter)) {
-		if ((node->num & mask) == (thresh.num & mask)) fr_rb_iter_delete_inorder(&iter);
+	     node = fr_rb_iter_next_inorder(t, &iter)) {
+		if ((node->num & mask) == (thresh.num & mask)) fr_rb_iter_delete_inorder(t, &iter);
 	}
 	i = rbcount(t);
 	fprintf(stderr,"After delete rbcount is %i\n", i);
 	if (i < 0) return i;
 
 	cb_stored = 0;
-	for (node = fr_rb_iter_init_inorder(&iter, t);
+	for (node = fr_rb_iter_init_inorder(t, &iter);
 	     node;
-	     node = fr_rb_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(t, &iter)) {
 		rvals[cb_stored++].num = node->num;
 	}
 

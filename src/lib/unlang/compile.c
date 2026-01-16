@@ -2290,9 +2290,9 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 	/*
 	 *	Instantiate each instruction with thread-specific data.
 	 */
-	for (instruction = fr_rb_iter_init_inorder(&iter, unlang_instruction_tree);
+	for (instruction = fr_rb_iter_init_inorder(unlang_instruction_tree, &iter);
 	     instruction;
-	     instruction = fr_rb_iter_next_inorder(&iter)) {
+	     instruction = fr_rb_iter_next_inorder(unlang_instruction_tree, &iter)) {
 		unlang_op_t *op;
 
 		unlang_thread_array[instruction->number].instruction = instruction;

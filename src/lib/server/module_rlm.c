@@ -1337,9 +1337,9 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	 *	register our redundant xlats.  But only when all of
 	 *	the items in such a section are the same.
 	 */
-	for (vm = fr_rb_iter_init_inorder(&iter, module_rlm_virtual_name_tree);
+	for (vm = fr_rb_iter_init_inorder(module_rlm_virtual_name_tree, &iter);
 	     vm;
-	     vm = fr_rb_iter_next_inorder(&iter)) {
+	     vm = fr_rb_iter_next_inorder(module_rlm_virtual_name_tree, &iter)) {
 		if (!vm->all_same) continue;
 
 		if (xlat_register_redundant(vm->cs) < 0) return -1;

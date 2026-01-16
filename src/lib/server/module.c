@@ -628,9 +628,9 @@ void module_list_debug(module_list_t const *ml)
 	 *	they would be bootstrapped or inserted
 	 *	into the tree.
 	 */
-	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
 	     inst;
-	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 		module_instance_debug(inst);
 	}
 }
@@ -1010,9 +1010,9 @@ void modules_thread_detach(module_list_t *ml)
 	 *	finding and extracting their thread specific
 	 *	data, and calling their detach methods.
 	 */
-	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
 	     inst;
-	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 	     	module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t);
 		module_thread_instance_t	*ti = module_thread(mi);
 
@@ -1165,9 +1165,9 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 		if (unlikely(ret < 0)) return ret;
 	}
 
-	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
 	     inst;
-	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 		module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t); /* Sanity check*/
 
 		if (module_thread_instantiate(ctx, mi, el) < 0) {
@@ -1279,9 +1279,9 @@ int modules_instantiate(module_list_t const *ml)
 
 	DEBUG2("#### Instantiating %s modules ####", ml->name);
 
-	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
 	     inst;
-	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 	     	module_instance_t *mi = talloc_get_type_abort(inst, module_instance_t);
 		if (module_instantiate(mi) < 0) return -1;
 	}
@@ -1370,9 +1370,9 @@ int modules_bootstrap(module_list_t const *ml)
 
 	DEBUG2("#### Bootstrapping %s modules ####", ml->name);
 
-	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	for (instance = fr_rb_iter_init_inorder(ml->name_tree, &iter);
 	     instance;
-	     instance = fr_rb_iter_next_inorder(&iter)) {
+	     instance = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 	     	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 		if (module_bootstrap(mi) < 0) return -1;
 	}
@@ -1775,8 +1775,8 @@ static int _module_list_free(module_list_t *ml)
 	 *	tree.  It can cause problems when we delete children
 	 *	without the iterator knowing about it.
 	 */
-	while ((mi = fr_rb_iter_init_inorder(&iter, ml->name_tree)) != NULL) {
-		fr_rb_iter_delete_inorder(&iter);	/* Keeps the iterator sane */
+	while ((mi = fr_rb_iter_init_inorder(ml->name_tree, &iter)) != NULL) {
+		fr_rb_iter_delete_inorder(ml->name_tree, &iter);	/* Keeps the iterator sane */
 		talloc_free(mi);
 	}
 

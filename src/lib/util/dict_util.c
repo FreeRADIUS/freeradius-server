@@ -4060,9 +4060,9 @@ static void dependent_debug(fr_dict_t *dict)
 
 	fprintf(stderr, "DEPENDENTS FOR %s\n", dict->root->name);
 
-	for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
+	for (dep = fr_rb_iter_init_inorder(dict->dependents, &iter);
 	     dep;
-	     dep = fr_rb_iter_next_inorder(&iter)) {
+	     dep = fr_rb_iter_next_inorder(dict->dependents, &iter)) {
 		fprintf(stderr, "\t<- %s (%d)\n", dep->dependent, dep->count);
 	}
 }
@@ -4143,9 +4143,9 @@ static int _dict_free(fr_dict_t *dict)
 
 		fr_strerror_printf("Refusing to free dictionary \"%s\", still has dependents", dict->root->name);
 
-		for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
+		for (dep = fr_rb_iter_init_inorder(dict->dependents, &iter);
 		     dep;
-		     dep = fr_rb_iter_next_inorder(&iter)) {
+		     dep = fr_rb_iter_next_inorder(dict->dependents, &iter)) {
 			fr_strerror_printf_push("%s (%d)", dep->dependent, dep->count);
 		}
 
@@ -4871,18 +4871,18 @@ void fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx)
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_num, &dict_iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_num, &dict_iter)) {
-		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
+		for (dep = fr_rb_iter_init_inorder(dict->dependents, &dep_iter);
 		     dep;
-		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
+		     dep = fr_rb_iter_next_inorder(dict->dependents, &dep_iter)) {
 			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
 				dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
 	if (gctx->internal) {
-		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
+		for (dep = fr_rb_iter_init_inorder(gctx->internal->dependents, &dep_iter);
 		     dep;
-		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
+		     dep = fr_rb_iter_next_inorder(gctx->internal->dependents, &dep_iter)) {
 			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
 				gctx->internal->root->name, dep->dependent, dep->count);
 		}

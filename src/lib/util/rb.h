@@ -319,53 +319,50 @@ static inline bool fr_rb_node_inline_in_tree(fr_rb_node_t const *node)
 /** Iterator structure for in-order traversal of an rbtree
  */
 typedef struct {
-	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node--set to NULL (not NIL) by fr_rb_iter_delete()
 	fr_rb_node_t	*next;			///< if non-NULL, next node cached by fr_rb_iter_delete()
 } fr_rb_iter_inorder_t;
 
-void		*fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_inorder(fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
-void		*fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_inorder(fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
-void		fr_rb_iter_delete_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
+void		fr_rb_iter_delete_inorder(fr_rb_tree_t *tree, fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
 #define fr_rb_inorder_foreach(_tree, _type, _iter) \
 { \
 	fr_rb_iter_inorder_t _state; \
-	for (_type *_iter = fr_rb_iter_init_inorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_inorder(&_state))
+	for (_type *_iter = fr_rb_iter_init_inorder(_tree, &_state); _iter; _iter = fr_rb_iter_next_inorder(_tree, &_state))
 
 /** Iterator structure for pre-order traversal of an rbtree
  */
 typedef struct {
-	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node
 } fr_rb_iter_preorder_t;
 
-void		*fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_preorder(fr_rb_tree_t *tree, fr_rb_iter_preorder_t *iter) CC_HINT(nonnull);
 
-void		*fr_rb_iter_next_preorder(fr_rb_iter_preorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_preorder(fr_rb_tree_t *tree, fr_rb_iter_preorder_t *iter) CC_HINT(nonnull);
 
 #define fr_rb_preorder_foreach(_tree, _type, _iter) \
 { \
 	fr_rb_iter_preorder_t _state; \
-	for (_type *_iter = fr_rb_iter_init_preorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_preorder(&_state))
+	for (_type *_iter = fr_rb_iter_init_preorder(_tree, &_state); _iter; _iter = fr_rb_iter_next_preorder(_tree, &_state))
 
 /** Iterator structure for post-order traversal of an rbtree
  */
 typedef struct {
-	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node
 } fr_rb_iter_postorder_t;
 
-void		*fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_postorder(fr_rb_tree_t *tree, fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
 
-void		*fr_rb_iter_next_postorder(fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_postorder(fr_rb_tree_t *tree, fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
 
 #define fr_rb_postorder_foreach(_tree, _type, _iter) \
 { \
 	fr_rb_iter_postorder_t _state; \
-	for (_type *_iter = fr_rb_iter_init_postorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_postorder(&_state))
+	for (_type *_iter = fr_rb_iter_init_postorder(_tree, &_state); _iter; _iter = fr_rb_iter_next_postorder(_tree, &_state))
 
 int		fr_rb_flatten_inorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 
