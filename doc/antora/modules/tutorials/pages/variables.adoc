@@ -149,15 +149,32 @@ In addition to being used in the configuration files, run-time variables
 may also be used to create values for reply attributes. Stop the server,
 and edit the users file to add the following entry at the top:
 
------------------------------------------------------------------------------
+[source, bash]
+----
 bob Password.Cleartext := "hello"
         Reply-Message = "Hello %{User-Name}, your NAS port is %{NAS-Port}",
         Reply-Message += "at time %T"
------------------------------------------------------------------------------
+----
 
-Start the server, and run the `bob-login-one.sh` script. Verify that the
-`Reply-Message` attributes contain the user name, NAS port, time, and a
-copy of the `Class` attribute from the reply.
+Start the server, and send the auth packet. Verify that the
+`Reply-Message` attributes contain the user name, NAS port, time from the reply
+
+[source, bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1:1813 acct testing123
+----
+[source, text]
+----
+Received Access-Accept Id 151 from 127.0.0.1:1812 to 0.0.0.0:46176 via lo length 109
+        Message-Authenticator = 0x6b0ff2f6cb09cba3683d677d300a46b9
+        Reply-Message = "Hello bob, your NAS port is 501"
+        Reply-Message = "at time 2026-01-16T08:20:14.-43"
+        User-Name = "bob"
+----
 
 == Questions
 
