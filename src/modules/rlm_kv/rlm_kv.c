@@ -117,7 +117,7 @@ static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(data = talloc_zero(NULL, rlm_kv_data_t));
+	MEM(data = talloc_zero(inst, rlm_kv_data_t));
 	if (fr_value_box_copy(data, &data->key, key) < 0) {
 		talloc_free(data);
 		return XLAT_ACTION_FAIL;
@@ -268,6 +268,12 @@ static int mod_mutable_free(rlm_kv_mutable_t *mutable)
 	return 0;
 }
 
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_kv_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_kv_t);
+
+	return talloc_free(inst->mutable);
+}
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
@@ -332,5 +338,6 @@ module_rlm_t rlm_kv = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
 	},
 };
