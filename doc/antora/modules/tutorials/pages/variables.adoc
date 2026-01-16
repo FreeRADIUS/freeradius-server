@@ -102,13 +102,52 @@ accounting Stop {
 }
 ----
 
-Now read the xref:variables.adoc[variables]
-documentation to determine the meaning of the variables used in the `filename` configuration entry.
-
-Once you are done, send the server an accounting packet (e.g.,
-`bob-acct-stop.sh`), and go look for the detail file, which will be
+Now read the
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/doc/configuration/variables.rst[variables]
+documentation file to determine the meaning of the variables used in the `filename` configuration entry.
+Once you are done, send the server an accounting packet and go look for the detail file, which will be
 dynamically created. Verify that the contents of the file are the
 accounting packet you just sent.
+
+Execute the following command to test detail file :
+
+[source, bash]
+----
+echo 'User-Name = "bob"
+Acct-Status-Type = Start
+Acct-Session-Id = "01020304"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+Use the following path to view the detail log file for the client:
+
+[source, bash]
+----
+etc/usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-16
+----
+
+The detail logs show detailed RADIUS request information and can be found in the accounting log directory.
+
+[source, text]
+----
+Fri Jan 16 06:52:27 2026
+  Module-Failure-Message = "Function \"reg_eq\" is missing required argument 1"
+  User-Name = "bob"
+  Acct-Status-Type = ::Start
+  Acct-Session-Id = "01020304"
+  NAS-IP-Address = 127.0.0.1
+  NAS-Port = 501
+  ......................
+  Packet-Type = ::Accounting-Request
+  Event-Timestamp = "2026-01-16T06:52:27Z"
+  Acct-Unique-Session-Id = "c52ad9a77a79d468c639eb9ddbad9cea"
+  Timestamp = 1768546347
+----
 
 In addition to being used in the configuration files, run-time variables
 may also be used to create values for reply attributes. Stop the server,
