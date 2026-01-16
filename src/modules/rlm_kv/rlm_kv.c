@@ -70,6 +70,7 @@ typedef struct {
 	uint32_t		max_entries;
 	fr_htrie_type_t		htype;
 	char const		*key_type;	//!< data type of the key
+	fr_type_t		type;
 	rlm_kv_mutable_t	*mutable;
 } rlm_kv_t;
 
@@ -109,6 +110,12 @@ static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *
 	rlm_kv_data_t		*data, *old = NULL;
 
 	XLAT_ARGS(args, &key, &value);
+
+	if (key->type != in->type) {
+		RWDEBUG("Invalid key data type %s - expected %s",
+			fr_type_to_str(key->type), fr_type_to_str(in->type));
+		return XLAT_ACTION_FAIL;
+	}
 
 	MEM(data = talloc_zero(NULL, rlm_kv_data_t));
 	if (fr_value_box_copy(data, &data->key, key) < 0) {
@@ -175,6 +182,12 @@ static xlat_action_t kv_read_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &key);
 
+	if (key->type != in->type) {
+		RWDEBUG("Invalid key data type %s - expected %s",
+			fr_type_to_str(key->type), fr_type_to_str(in->type));
+		return XLAT_ACTION_FAIL;
+	}
+
 	pthread_mutex_lock(&inst->mutex);
 	data = fr_htrie_find(inst->tree, key);
 	if (!data) {
@@ -217,6 +230,12 @@ static xlat_action_t kv_delete_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &key);
 
+	if (key->type != in->type) {
+		RWDEBUG("Invalid key data type %s - expected %s",
+			fr_type_to_str(key->type), fr_type_to_str(in->type));
+		return XLAT_ACTION_FAIL;
+	}
+
 	/*
 	 *	@todo - if the key is a string, allow wildcards in the
 	 *	deletion path.  In which case we need to be able to
@@ -253,18 +272,17 @@ static int mod_mutable_free(rlm_kv_mutable_t *mutable)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_kv_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_kv_t);
-	fr_type_t	type;
 	
 	/*
 	 *	Get the data type, and convert it to an htrie type.
 	 */
-	type = fr_type_from_str(inst->key_type);
-	if (type == FR_TYPE_NULL) {
+	inst->type = fr_type_from_str(inst->key_type);
+	if (inst->type == FR_TYPE_NULL) {
 		cf_log_err(mctx->mi->conf, "Unknown data type '%s'", inst->key_type);
 		return -1;
 	}
 
-	inst->htype = fr_htrie_hint(type);
+	inst->htype = fr_htrie_hint(inst->type);
 	if (inst->htype == FR_HTRIE_INVALID) {
 		cf_log_err(mctx->mi->conf, "Invalid data type '%s' for KV store", inst->key_type);
 		return -1;

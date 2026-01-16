@@ -57,6 +57,10 @@ ifeq "${1}" "mschap"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_mschap.la $(BUILD_DIR)/lib/rlm_mschap.la
 endif
 
+ifeq "${1}" "kv"
+$(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_kv.la $(BUILD_DIR)/lib/rlm_kv.la
+endif
+
 ifeq "${1}" "xlat-dhcpv4"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/libfreeradius-dhcpv4.la $(BUILD_DIR)/lib/libfreeradius-dhcpv4.la
 endif

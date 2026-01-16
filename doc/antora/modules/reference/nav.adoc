@@ -181,6 +181,7 @@
 **** xref:raddb/mods-available/files.adoc[Files]
 ***** xref:raddb/mods-config/files/users.adoc[File Format]
 **** xref:raddb/mods-available/ftp.adoc[FTP]
+**** xref:raddb/mods-available/kv.adoc[KV]
 **** xref:raddb/mods-available/ldap.adoc[LDAP]
 **** xref:raddb/mods-available/opendirectory.adoc[OpenDirectory]
 **** xref:raddb/mods-available/passwd.adoc[Passwd]

@@ -1,0 +1,103 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = KV Module
+#
+#  In-memory key-value store.
+#
+#  This module allows policies to associate "values" with "keys".  The
+#  data is store _only_ in memory, and is not persisted to disk, or to
+#  a database.  As such, all data in the key-value store is lost when
+#  the server restarts.
+#
+#  The module creates a _global_ key-value store.  That is, one which is
+#  shared across multiple threads.  This design allows a value to be set
+#  at any time, and in any thread; then examined by a later thread.
+#
+#  The caveat to the global / cross-thread store is that all access to
+#  the key-value store are protected by a mutex.  The mutex serializes
+#  access to the key-value store.  Which means that using this module
+#  can effectively force the server to become single-threaded, and
+#  therefore destroy all performance.
+#
+#  We therefore recommend that this module be used only when no
+#  alternative exists.
+#
+#  If you need to store multiple different types of data in a
+#  key-value store, then you should create multiple instances of the
+#  module.  Then, use one instance per type of data, or per use-case.
+#  This approach causes the module to use multiple mutexes (one for
+#  each instance), which reduces mutex contention and can improve
+#  performance.
+#
+#  ## Differences from the Cache module
+#
+#  The `cache` module also provides an in-memory key-value store.
+#  However, the cache module stores _attributes_, and _lists of
+#  attributes_.
+#
+#  In contrast, the `kv` module stores _values_.  e.g. ipv4addr,
+#  uint32, etc.  The use-case for the `kv` module is to store a small
+#  number of simple values that can be shared across multiple threads.
+#
+#  ## Functions
+#
+#  The `kv` module exports a number of functions to interact with the
+#  key-value store.
+#
+#  ### %kv.write(key, value)
+#
+#  Writes _value_ at _key_.  Any pre-existing value for _key_ is
+#  discarded.
+#
+#  This function returns nothing.
+#
+#  ### %kv.read(key)
+#
+#  Reads a value at _key_.  If the value exists, it is returned.
+#  Otherwise, nothing is returned.
+#
+#  ### %kv.delete(key)
+#
+#  Deletes the value found at _key_.  If a value was deleted, it is
+#  returned.  Otherwise, nothing is returned.
+#
+#  ## Configuration Settings
+#
+kv {
+	#
+	#  key_type:: Data type of the key
+	#
+	#  Should be 'string', 'octets', 'ipv4addr', etc.
+	#
+	#  The module will automatically choose a data structure based
+	#  on the data type. It will be a hash table, rbtree or
+	#  patricia trie store depending on the data type of the key.
+	#
+	#  Any `key` which is passed to the `kv` functions
+	#  (`%kv.write()`, `%kv.read()`, or `%kv.delete()`) must be
+	#  the same data type as is given in `key_type`.
+	#
+	key_type = string
+
+	#
+	#  max_entries:: Maximum entries allowed.
+	#
+	#  The value must be larger than zero.
+	#
+	#  Keys are ordered by "last access" time.  Keys which have
+	#  not been used for a while are not automatically removed.
+	#  Keys which are being continuously used will stick around
+	#  forever.
+	#
+	#  Keys are removed automatically when the "max_entries" limit
+	#  is reached.  When that limit is reached, the olded used (or
+	#  unused) key is deleted every time a new key is inserted.
+	#
+#	max_entries = 1024
+
+}
