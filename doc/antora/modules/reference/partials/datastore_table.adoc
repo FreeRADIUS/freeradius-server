@@ -11,6 +11,7 @@
 | xref:raddb/mods-available/etc_group.adoc[etc_group]	| Allow users to be assigned to one or more groups to permit different levels of access.
 | xref:raddb/mods-available/files.adoc[files]	| Implements a traditional Livingston-style users file.
 | xref:raddb/mods-config/files/users.adoc[file format] | A users file example.
+| xref:raddb/mods-available/kv.adoc[kv]	        | A simple memory-only key-value store.
 | xref:raddb/mods-available/ldap.adoc[ldap]	| Allows LDAP directory entries to be retrieved, modified, inserted and deleted.
 | xref:raddb/mods-available/opendirectory.adoc[opendirectory]	| Integrates with an Apple OpenDirectory service on the same host as FreeRADIUS to allow OpenDirectory users to authenticate.
 | xref:raddb/mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
