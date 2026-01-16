@@ -1,4 +1,4 @@
-= Using configuration and run-time variables
+= Variables
 
 *Goal:* To use run-time variable expansion.
 
@@ -84,7 +84,7 @@ been substituted and that they are still printed as variables.
 
 In the server output, look for the detail module and its filename configuration. You should see something like this:
 
-[source, text]
+[source]
 ----
 (0)      detail - /usr/local/var/log/radius/radacct/%{Net.Src.IP}/detail-%Y-%m-%d expands to /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-16
 (0)      detail (ok)
@@ -95,7 +95,7 @@ If you don't see any configuration printed for the `detail` file module
 ensure it is uncommented in the `accounting {}` section of the
 `raddb/sites-available/default` virtual server.
 
-[source, text]
+[source]
 ----
 accounting Stop {
   detail
@@ -111,7 +111,7 @@ accounting packet you just sent.
 
 Execute the following command to test detail file :
 
-[source, bash]
+[source]
 ----
 echo 'User-Name = "bob"
 Acct-Status-Type = Start
@@ -126,14 +126,14 @@ Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing12
 
 Use the following path to view the detail log file for the client:
 
-[source, bash]
+[source]
 ----
 etc/usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-16
 ----
 
 The detail logs show detailed RADIUS request information and can be found in the accounting log directory.
 
-[source, text]
+[source]
 ----
 Fri Jan 16 06:52:27 2026
   Module-Failure-Message = "Function \"reg_eq\" is missing required argument 1"
@@ -160,9 +160,25 @@ bob User-Password := "hello"
         Reply-Message += "at time %T"
 ----
 
-Start the server, and run the `bob-login-one.sh` script. Verify that the
-`Reply-Message` attributes contain the user name, NAS port, time, and a
-copy of the `Class` attribute from the reply.
+Start the server, and send the auth packet. Verify that the
+`Reply-Message` attributes contain the user name, NAS port, time from the reply
+
+[source]
+----
+echo 'User-Name = "bob"
+User-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1:1812 auth testing123
+----
+[source]
+----
+Received Access-Accept Id 151 from 127.0.0.1:1812 to 0.0.0.0:46176 via lo length 109
+        Message-Authenticator = 0x6b0ff2f6cb09cba3683d677d300a46b9
+        Reply-Message = "Hello bob, your NAS port is 501"
+        Reply-Message = "at time 2026-01-16T08:20:14.-43"
+        User-Name = "bob"
+----
 
 == Questions
 
