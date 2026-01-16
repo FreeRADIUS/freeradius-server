@@ -1315,11 +1315,11 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 
 	if (strcmp(value, "*") == 0) {
 		cf_log_info(cs, "%.*s\t%s = *", cs->depth, parse_spaces, name);
-	} else if (strspn(value, ".0123456789abdefABCDEF:%[]/") == strlen(value)) {
+	} else if (strspn(value, ".0123456789abcdefABCDEF:%[]/") == strlen(value)) {
 		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
 	} else {
 		cf_log_info(cs, "%.*s\t%s = %s IPv%s address [%s]", cs->depth, parse_spaces, name, value,
-			    (ipaddr->af == AF_INET ? "4" : " 6"), ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
+			    (ipaddr->af == AF_INET ? "4" : "6"), ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
 	}
 
 	switch (type) {
