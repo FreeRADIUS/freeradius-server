@@ -82,9 +82,25 @@ variable, but instead has substituted the value of that variable.
 Verify also that the values of the run-time variables have _not_
 been substituted and that they are still printed as variables.
 
+In the server output, look for the detail module and its filename configuration. You should see something like this:
+
+[source, text]
+----
+(0)      detail - /usr/local/var/log/radius/radacct/%{Net.Src.IP}/detail-%Y-%m-%d expands to /usr/local/var/log/radius/radacct/127.0.0.1/detail-2026-1-16
+(0)      detail (ok)
+----
+
+
 If you don't see any configuration printed for the `detail` file module
 ensure it is uncommented in the `accounting {}` section of the
 `raddb/sites-available/default` virtual server.
+
+[source, text]
+----
+accounting Stop {
+  detail
+}
+----
 
 Now read the xref:variables.adoc[variables]
 documentation to determine the meaning of the variables used in the `filename` configuration entry.
