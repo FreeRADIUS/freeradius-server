@@ -780,7 +780,6 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 		      fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
 {
 	fr_sbuff_t		*oid_buff;
-	char const		*name;
 
 	if (!request->log.dst) return;
 
@@ -802,28 +801,11 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 		RDEBUGX(lvl, "}");
 		break;
 
-	case FR_TYPE_QUOTED:
-		RDEBUGX(lvl, "%s%s\"%pV\"", prefix ? prefix : "", fr_sbuff_start(oid_buff),
-			&vp->data);
-		break;
-
 	default:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
+		if (fr_pair_print_value_quoted(oid_buff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
 
-		/*
-		 *	Manually add enum prefix when printing.
-		 */
-		if ((name = fr_value_box_enum_name(&vp->data)) != NULL) {
-			RDEBUGX(lvl, "%s::%s", prefix ? prefix : "", fr_sbuff_start(oid_buff),
-				name);
-			break;
-		}
-		FALL_THROUGH;
-
-	case FR_TYPE_INTERNAL:
-		RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
-			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-			&vp->data);
+		RDEBUGX(lvl, "%s%s", prefix ? prefix : "", fr_sbuff_start(oid_buff));
 		break;
 	}
 }
