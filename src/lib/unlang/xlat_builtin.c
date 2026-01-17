@@ -71,7 +71,9 @@ typedef struct {
 void xlat_arg_copy_out(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_value_box_list_t *in, fr_value_box_t *vb)
 {
 	fr_value_box_list_remove(in, vb);
-	talloc_steal(ctx, vb);
+	if (talloc_parent(vb) != ctx) {
+		(void) talloc_steal(ctx, vb);
+	}
 	fr_dcursor_append(out, vb);
 }
 
