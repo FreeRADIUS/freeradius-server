@@ -622,9 +622,7 @@ static xlat_action_t ldap_xlat_uri_attr_option(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	 *	No attributes, just return what was presented.
 	 */
 	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] || !*ldap_url->lud_attrs[0]) {
-		fr_value_box_list_remove(in, uri);
-		talloc_steal(ctx, uri);
-		fr_dcursor_append(out, uri);
+		xlat_arg_copy_out(ctx, out, in, uri);
 		goto done;
 	}
 

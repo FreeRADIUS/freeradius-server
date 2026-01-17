@@ -58,6 +58,23 @@ typedef struct {
 	fr_dict_t const			*dict;		//!< Restrict xlat to this namespace
 } xlat_pair_decode_uctx_t;
 
+/** Copy an argument from the input list to the output cursor.
+ *
+ *  For now we just move it.  This utility function will let us have
+ *  value-box cursors as input arguments.
+ *
+ * @param[in] ctx	talloc ctx
+ * @param[out] out	where the value-box will be stored
+ * @param[in] in	input value-box list
+ * @param[in] vb		the argument to copy
+ */
+void xlat_arg_copy_out(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_value_box_list_t *in, fr_value_box_t *vb)
+{
+	fr_value_box_list_remove(in, vb);
+	talloc_steal(ctx, vb);
+	fr_dcursor_append(out, vb);
+}
+
 /*
  *	Regular xlat functions
  */
@@ -236,13 +253,12 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
  * can be used for concatenation, casting, and marking up output boxes as
  * safe_for.
  */
-xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+xlat_action_t xlat_transparent(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx,
 			       UNUSED request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_list_foreach_safe(args, vb) {
-		fr_value_box_list_remove(args, vb);
-		fr_dcursor_append(out, vb);
+		xlat_arg_copy_out(ctx, out, args, vb);
 	}}
 
 	return XLAT_ACTION_DONE;
@@ -1857,8 +1873,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	FR_BASE64_DEC_LENGTH produces 2 for empty strings...
 	 */
 	if (in->vb_length == 0) {
-		fr_value_box_list_remove(args, in);
-		fr_dcursor_append(out, in);
+		xlat_arg_copy_out(ctx, out, args, in);
 		return XLAT_ACTION_DONE;
 	}
 
@@ -2269,7 +2284,7 @@ static xlat_arg_parser_t const xlat_func_join_args[] = {
  *
  * null boxes are not preserved.
  */
-static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_join(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
@@ -2277,8 +2292,7 @@ static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(arg->type == FR_TYPE_GROUP);
 
 		fr_value_box_list_foreach_safe(&arg->vb_group, vb) {
-			fr_value_box_list_remove(&arg->vb_group, vb);
-			fr_dcursor_append(out, vb);
+			xlat_arg_copy_out(ctx, out, &arg->vb_group, vb);
 		}}
 	}
 	return XLAT_ACTION_DONE;
@@ -3958,8 +3972,8 @@ static xlat_action_t xlat_func_time_is_dst(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
-static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       UNUSED request_t *request, fr_value_box_list_t *args, bool upper)
+static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED request_t *request, fr_value_box_list_t *args, bool upper)
 {
 	char		*p;
 	char const	*end;
@@ -3975,8 +3989,7 @@ static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p++;
 	}
 
-	fr_value_box_list_remove(args, vb);	/* Can't leave it in both lists */
-	fr_dcursor_append(out, vb);
+	xlat_arg_copy_out(ctx, out, args, vb);
 
 	return XLAT_ACTION_DONE;
 }

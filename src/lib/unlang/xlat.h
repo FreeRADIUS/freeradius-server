@@ -525,6 +525,8 @@ xlat_action_t	unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
 int		xlat_protocols_register(void);
 int		xlat_global_init(void);
 
+void		xlat_arg_copy_out(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_value_box_list_t *in, fr_value_box_t *vb);
+
 #ifdef __cplusplus
 }
 #endif
