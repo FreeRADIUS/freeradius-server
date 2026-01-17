@@ -630,15 +630,18 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 	uint32_t	i;
 
 	/*
-	 *	Return the next element in the bucket
+	 *	Return the next element in the bucket.
 	 */
-	if (iter->node != &ht->null) {
-		node = iter->node;
-		iter->node = node->next;
+	if (iter->next != &ht->null) {
+		node = iter->next;
+		iter->next = node->next;
 
 		return node->data;
 	}
 
+	/*
+	 *	We've wrapped around to bucket 0 again.  That means we're done.
+	 */
 	if (iter->bucket == 0) return NULL;
 
 	/*
@@ -657,7 +660,7 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 			continue;	/* This bucket was empty too... */
 		}
 
-		iter->node = node->next;		/* Store the next one to examine */
+		iter->next = node->next;		/* Store the next one to examine */
 		iter->bucket = i;
 		return node->data;
 	}
@@ -679,7 +682,7 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 {
 	iter->bucket = ht->num_buckets;
-	iter->node = &ht->null;
+	iter->next = &ht->null;
 
 	return fr_hash_table_iter_next(ht, iter);
 }

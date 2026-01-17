@@ -39,8 +39,8 @@ typedef	uint32_t (*fr_hash_t)(void const *);
  *
  */
 typedef struct fr_hash_iter_s {
-	uint32_t		bucket;
-	fr_hash_entry_t		*node;
+	uint32_t		bucket;		//!< the current buck that we are examining
+	fr_hash_entry_t		*next;		//!< the next node which we will return
 } fr_hash_iter_t;
 
 /*
