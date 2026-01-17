@@ -6454,11 +6454,11 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
-	}}
+	}
 
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
@@ -6554,11 +6554,11 @@ ssize_t fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *d
 	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
-	}}
+	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
@@ -6828,17 +6828,17 @@ int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_es
  */
 void fr_value_box_flatten(TALLOC_CTX *ctx, fr_value_box_list_t *list, bool steal, bool free)
 {
-	fr_value_box_list_foreach_safe(list, child) {
+	fr_value_box_list_foreach(list, child) {
 		if (!fr_type_is_structural(child->type)) continue;
 
-		fr_value_box_list_foreach_safe(&child->vb_group, grandchild) {
+		fr_value_box_list_foreach(&child->vb_group, grandchild) {
 			fr_value_box_list_remove(&child->vb_group, grandchild);
 			if (steal) talloc_steal(ctx, grandchild);
 			fr_value_box_list_insert_before(list, child, grandchild);
-		}}
+		}
 
 		if (free) talloc_free(child);
-	}}
+	}
 }
 
 /** Concatenate the string representations of a list of value boxes together

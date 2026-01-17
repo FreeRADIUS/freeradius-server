@@ -66,7 +66,7 @@ void fr_rb_expire_update(fr_rb_expire_t *expire, void *data, fr_time_t now)
 	/*
 	 *	Expire old entries.
 	 */
-	fr_dlist_foreach_safe(&expire->head, fr_rb_expire_node_t, old) {{
+	fr_dlist_foreach(&expire->head, fr_rb_expire_node_t, old) {{
 		re = (fr_rb_expire_node_t *) (((uintptr_t) old) - offsetof(fr_rb_expire_node_t, entry));
 
 		if (old->when > now) break;
@@ -74,6 +74,6 @@ void fr_rb_expire_update(fr_rb_expire_t *expire, void *data, fr_time_t now)
 		fr_dlist_remove(&expire->head, &old->entry);
 
 		fr_rb_delete(&expire->tree, re);
-	}}
+	}
 #endif
 }

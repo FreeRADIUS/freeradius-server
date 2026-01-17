@@ -86,35 +86,17 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
 
 /** Iterate over the contents of a list
  *
+ * The macro is "safe", in that the current iterator variable can be deleted.
+ *
+ * The iterators can be nested, so long as the _iter variable names are different.
+ *
  * @param[in] _list_head	to iterate over.
  * @param[in] _type		of item the list contains.
  * @param[in] _iter		Name of iteration variable.
  *				Will be declared in the scope of the loop.
  */
 #define fr_dlist_foreach(_list_head, _type, _iter) \
-	for (_type *_iter = fr_dlist_head(_list_head); _iter; _iter = fr_dlist_next(_list_head, _iter))
-
-/** Iterate over the contents of a list allowing for removals
- *
- * @note foreach block must end with double curlybrace `}}`.
- *	 We need to use another scoping section as we can't declare variables of multiple
- *	 types within the initialiser of a for loop.
- *
- * @param[in] _list_head	to iterate over.
- * @param[in] _type		of item the list contains.
- * @param[in] _iter		Name of iteration variable.
- *				Will be declared in the scope of the loop.
- */
-#define fr_dlist_foreach_safe(_list_head, _type, _iter) \
-{ \
-	_type *_iter; \
-	fr_dlist_t _tmp ## _iter; \
-	for (_iter = fr_dlist_head(_list_head), \
-	     _tmp ## _iter = fr_dlist_head(_list_head) ? *fr_dlist_item_to_entry((_list_head)->offset, fr_dlist_head(_list_head)) : (fr_dlist_t){ .prev = NULL, .next = NULL }; \
-	     _iter; \
-	     _iter = _tmp ## _iter.next && (_tmp ## _iter.next != &(_list_head)->entry) ? fr_dlist_entry_to_item((_list_head)->offset, _tmp ## _iter.next) : NULL, \
-	     _tmp ## _iter = _tmp ## _iter.next && (_tmp ## _iter.next != &(_list_head)->entry) ? *_tmp ## _iter.next : (fr_dlist_t){ .prev = NULL, .next = NULL })
-
+	for (_type *JOIN(_next,_iter), *_iter = fr_dlist_head(_list_head); JOIN(_next,_iter) = fr_dlist_next(_list_head, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
 
 /** Find the dlist pointers within a list item
  *
@@ -1260,7 +1242,6 @@ DIAG_ON(unused-function)
  *  Unfortunately as there's no way to dynamically define macro names these need to be done manually.
  *
  *  #define <name>_foreach(_list_head, _iter) fr_dlist_foreach(<name>_dlist_head(_list_head), <element_type>, _iter)
- *  #define <name>_foreach_safe(_list_head, _iter) fr_dlist_foreach_safe(<name>_dlist_head(_list_head), <element_type>, _iter)
  *  #define <name>_verify(_list_head) _<name>_verify(__FILE__, __LINE__, _list_head)
  */
 

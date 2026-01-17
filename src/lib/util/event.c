@@ -1715,7 +1715,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 
 		if (unlikely(kq < 0)) goto force;
 
-		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_reap_t, i) {
+		fr_dlist_foreach(&el->pid_to_reap, fr_event_pid_reap_t, i) {
 			if (!i->pid_ev) {
 				EVENT_DEBUG("%p - %s - Reaper already called (logic error)... - %p",
 					    el, __FUNCTION__, i);
@@ -1748,7 +1748,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 				continue;
 			}
 			waiting++;
-		}}
+		}
 
 		/*
 		 *	Keep draining process exits as they come in...

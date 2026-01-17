@@ -1297,9 +1297,9 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	 *	we now need to handle potentially
 	 *	multivalued lists.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) goto error;
-	}}
+	}
 
 	/*
 	 *	...and finally, apply the escape function

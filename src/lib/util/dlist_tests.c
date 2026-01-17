@@ -177,10 +177,10 @@ static void test_dlist_foreach_safe(void)
 	fr_dlist_insert_tail(&head, &a2);
 	fr_dlist_insert_tail(&head, &a3);
 
-	fr_dlist_foreach_safe(&head, dlist_test_item_t, i) {
+	fr_dlist_foreach(&head, dlist_test_item_t, i) {
 		fr_dlist_remove(&head, i);
 		count++;
-	}}
+	}
 
 	TEST_CHECK_RET((int)count, (int)3);
 }

@@ -61,9 +61,9 @@ typedef struct {
 
 static int _udp_queue_free(fr_udp_queue_t *uq)
 {
-	fr_dlist_foreach_safe(&uq->queue, fr_udp_queue_entry_t, entry) {
+	fr_dlist_foreach(&uq->queue, fr_udp_queue_entry_t, entry) {
 		talloc_free(entry);
-	}}
+	}
 
 	close(uq->fd);
 
@@ -188,7 +188,7 @@ static void udp_queue_writable(UNUSED fr_event_list_t *el, UNUSED int fd,
 	fr_udp_queue_t	*uq = talloc_get_type_abort(uctx, fr_udp_queue_t);
 	fr_time_t	now = fr_time();
 
-	fr_dlist_foreach_safe(&uq->queue, fr_udp_queue_entry_t, entry) {
+	fr_dlist_foreach(&uq->queue, fr_udp_queue_entry_t, entry) {
 		ssize_t rcode;
 		int retries = 0;
 
@@ -226,7 +226,7 @@ static void udp_queue_writable(UNUSED fr_event_list_t *el, UNUSED int fd,
 			if (errno != EWOULDBLOCK) return;
 #endif
 		}
-	}}
+	}
 
 	/*
 	 *	Nothing more to write, delete the IO handler so that we don't get extraneous signals.

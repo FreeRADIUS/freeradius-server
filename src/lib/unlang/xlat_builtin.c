@@ -257,9 +257,9 @@ xlat_action_t xlat_transparent(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx,
 			       UNUSED request_t *request, fr_value_box_list_t *args)
 {
-	fr_value_box_list_foreach_safe(args, vb) {
+	fr_value_box_list_foreach(args, vb) {
 		xlat_arg_copy_out(ctx, out, args, vb);
-	}}
+	}
 
 	return XLAT_ACTION_DONE;
 }
@@ -1361,7 +1361,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	vb->vb_bool = false;	/* Default fail value - changed to true on success */
 	fr_dcursor_append(out, vb);
 
-	fr_value_box_list_foreach_safe(&fmt_vb->vb_group, fmt) {
+	fr_value_box_list_foreach(&fmt_vb->vb_group, fmt) {
 		if (map_afrom_attr_str(request, &map, fmt->vb_strvalue, &attr_rules, &attr_rules) < 0) {
 			RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
 			return XLAT_ACTION_FAIL;
@@ -1398,7 +1398,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		REXDENT();
 		talloc_free(map);
 		if (ret < 0) return XLAT_ACTION_FAIL;
-	}}
+	}
 
 	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
@@ -2291,9 +2291,9 @@ static xlat_action_t xlat_func_join(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_foreach(in, arg) {
 		fr_assert(arg->type == FR_TYPE_GROUP);
 
-		fr_value_box_list_foreach_safe(&arg->vb_group, vb) {
+		fr_value_box_list_foreach(&arg->vb_group, vb) {
 			xlat_arg_copy_out(ctx, out, &arg->vb_group, vb);
-		}}
+		}
 	}
 	return XLAT_ACTION_DONE;
 }

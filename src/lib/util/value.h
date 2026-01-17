@@ -222,7 +222,6 @@ struct value_box_s {
 FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
 
 #define fr_value_box_list_foreach(_list_head, _iter)		fr_dlist_foreach(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
-#define fr_value_box_list_foreach_safe(_list_head, _iter)	fr_dlist_foreach_safe(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
 
 FR_DCURSOR_FUNCS(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** @} */
