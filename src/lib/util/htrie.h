@@ -46,6 +46,15 @@ typedef bool (*fr_htrie_delete_t)(void *ht, void const *data);
 
 typedef uint32_t (*fr_htrie_num_elements_t)(void *ht);
 
+typedef struct {
+	union {
+		fr_rb_iter_inorder_t	rb;	//!< only in order
+		fr_hash_iter_t		hash;	//!< effectively random
+	};
+} fr_htrie_iter_t;
+
+typedef void *(*fr_htrie_iter_func_t)(void *ht, void *iter);
+
 typedef enum {
 	FR_HTRIE_INVALID = 0,
 	FR_HTRIE_HASH,		//!< Data is stored in a hash.
@@ -72,6 +81,8 @@ typedef struct {
 	fr_htrie_remove_t	remove;		//!< Remove an item from the store.
 	fr_htrie_delete_t	delete;		//!< Remove (and possibly free) and item from the store.
 	fr_htrie_num_elements_t	num_elements;	//!< Number of elements currently in the store.
+	fr_htrie_iter_func_t	iter_init;	//!< Initialize an iterator
+	fr_htrie_iter_func_t	iter_next;	//!< go to the next element in an iterator
 } fr_htrie_funcs_t;
 
 /** A hash/rb/prefix trie abstraction
@@ -144,6 +155,26 @@ static inline CC_HINT(nonnull) bool fr_htrie_delete(fr_htrie_t *ht, void const *
 static inline CC_HINT(nonnull) int fr_htrie_num_elements(fr_htrie_t *ht)
 {
 	return ht->funcs.num_elements(ht->store);
+}
+
+/** Initialize an iterator
+ *
+ */
+static inline CC_HINT(nonnull) void *fr_htrie_iter_init(fr_htrie_t *ht, fr_htrie_iter_t *iter)
+{
+	fr_assert(ht->funcs.iter_init != NULL);		/* not currently defined for patricia tries */
+
+	return ht->funcs.iter_init(ht->store, iter);
+}
+
+/** Return the next element of an iterator
+ *
+ */
+static inline CC_HINT(nonnull) void *fr_htrie_iter_next(fr_htrie_t *ht, fr_htrie_iter_t *iter)
+{
+	fr_assert(ht->funcs.iter_next != NULL);		/* not currently defined for patricia tries */
+
+	return ht->funcs.iter_next(ht->store, iter);
 }
 
 static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
