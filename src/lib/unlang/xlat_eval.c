@@ -1203,6 +1203,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
+			fr_value_box_list_talloc_free_head(result);
 			return xa;
 
 		case XLAT_ACTION_PUSH_CHILD:
@@ -1218,6 +1219,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return xa;
 
 		case XLAT_ACTION_DONE:				/* Process the result */
+			fr_value_box_list_talloc_free_head(result);
 			fr_dcursor_next(out);
 
 			REXDENT();
