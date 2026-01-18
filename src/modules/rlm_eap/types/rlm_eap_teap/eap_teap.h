@@ -110,9 +110,9 @@ typedef struct teap_imck_t {
 } CC_HINT(__packed__) teap_imck_t;
 
 typedef struct {
-	bool		required;
-	bool		sent;
-	uint8_t		received;
+	bool		required;		//!< require (or not) if we send it
+	bool		sent;			//!< did we send it?
+	uint8_t		received;		//!< did we receive it?
 } teap_auth_t;
 
 typedef struct teap_tunnel_t {

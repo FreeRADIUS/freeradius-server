@@ -205,9 +205,8 @@ static void eap_teap_append_identity_type(REQUEST *request, tls_session_t *tls_s
 	fr_assert(value <= 2);
 
 	/*
-	 *	If we send this, it's required.
+	 *	We can send something, even if it isn't required.
 	 */
-	t->auths[value].required = true;
 	t->auths[value].sent = true;
 
 	eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
@@ -1097,14 +1096,28 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			goto challenge;
 		}
 
-		if (t->auths[1].required && !t->auths[1].received) {
-			REDEBUG("Phase 2: We required Identity-Type = User, but we did not see it - rejecting the session");
-			goto fail;
+		/*
+		 *	We send a method, and didn't receive it.  If
+		 *	the method is required, then complain.
+		 *	Otherwise, it's OK to send it and not get a
+		 *	response.
+		 */
+		if (t->auths[1].sent && !t->auths[1].received) {
+			if (t->auths[1].required) {
+				REDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - rejecting the session");
+				goto fail;
+			}
+
+			RWDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - ignoring optional method");
 		}
 
-		if (t->auths[2].required && !t->auths[2].received) {
-			REDEBUG("Phase 2: We required Identity-Type = Machine, but we did not see it - rejecting the session");
-			goto fail;
+		if (t->auths[2].sent && !t->auths[2].received) {
+			if (t->auths[1].required) {
+				REDEBUG("Phase 2: We sent Identity-Type = Machine, but we did not see use that method - rejecting the session");
+				goto fail;
+			}
+
+			RWDEBUG("Phase 2: We sent Identity-Type = Machine, but we did not use that method - ignoring optional method");
 		}
 
 		RDEBUG("Phase 2: All inner authentications have succeeded");
