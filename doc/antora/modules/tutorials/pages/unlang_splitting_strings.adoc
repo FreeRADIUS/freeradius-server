@@ -1,16 +1,12 @@
 = Splitting strings
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* Explore uses of regular expressions and subcapture groups
-
 *Time:* 10-20 minutes
 
-*File:*  
-
+*File:*
 - `etc/raddb/policy.d/*`
 
-*`man` page:* unlang
+*`man` page:* `unlang`
 
 *documentation page(s):*
 
@@ -18,7 +14,17 @@ include::ROOT:partial$v3_warning.adoc[]
 - xref:reference:unlang/condition/regex.adoc[Regular expressions]
 - xref:reference:unlang/update.adoc[The Update Statement]
 
-include::partial$unlang_start.adoc[]
+
+For this tutorial you should start with an empty authorization section:
+
+[source,unlang]
+----
+recv Access-Request {
+    # We'll include our policy in here
+}
+----
+
+in the virtual server you’re using to process requests.
 
 include::partial$common_control_attrs_sidebar.adoc[]
 
