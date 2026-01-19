@@ -1,49 +1,182 @@
 = Splitting strings
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* Explore uses of regular expressions and subcapture groups
-
 *Time:* 10-20 minutes
 
-*File:*  
-
+*File:*
 - `etc/raddb/policy.d/*`
 
-*`man` page:* unlang
+*`man` page:* `unlang`
 
 *documentation page(s):*
 
 - xref:reference:unlang/condition/index.adoc[Conditions]
 - xref:reference:unlang/condition/regex.adoc[Regular expressions]
-- xref:reference:unlang/update.adoc[The Update Statement]
+- xref:reference:unlang/index.adoc[Unlang]
 
-include::partial$unlang_start.adoc[]
 
-include::partial$common_control_attrs_sidebar.adoc[]
+For this tutorial you should start with an empty authorization section:
 
-Regular expressions are an extremely powerful tool in the 'unlang' policy
-language.  They provide both validation capabilities, allowing users
-to check the format of incoming attributes, and substring extraction
-(via capture groups).
+[source,unlang]
+----
+recv Access-Request {
+    # We'll include our policy in here
+}
+----
 
-If you've completed the xref:proxy.adoc[Proxy] exercise you'll have
-used the `suffix` module to split an incoming `User-Name` value into
-its components and setup the request for proxying.
+in the virtual server you’re using to process requests.
 
-Create an unlang version of "suffix" that splits an incoming `User-Name` into
-two components on the "@" separator.
+== Common control attributes
+Attributes in the control list can control the behaviour of the server.
+Commonly used control attributes are:
 
-The first component should be written to the `request.Stripped-User-Name`
-attribute and the second component should be written to the
-`control.Stripped-User-Domain` attribute.
+* `control.Auth-Type` specifies the `authenticate <name> {}` section to run
 
-Use `bob@realm1.sh` and `bob@realm2.sh` to test your new policy to ensure
-it works as expected.
+Regular expressions are an extremely powerful tool in the 'unlang' policy language.
+They provide both validation capabilities, allowing users to check the format of
+incoming attributes, and substring extraction (via capture groups).
 
-If you've completed the xref:proxy.adoc[Proxy] tutorial and have test
-realms setup, modify the policy code you have just written to proxy
-the request to the realm specified in the `User-Name` attribute.
+If you’ve completed the xref:proxy.adoc[Proxy] exercise you’ll have used the `suffix` module to
+split an incoming `User-Name` value into its components and setup the request for
+proxying.
+
+**Task:**
+Create an unlang version of "suffix" that splits an incoming `User-Name` into two
+components on the "@" separator.
+
+The first component should be written to the `request.Stripped-User-Name` attribute
+and the second component should be written to the `control.Stripped-User-Domain`
+attribute.
+
+Use `bob@realm1.com` and `bob@realm2.com` to test your new policy to ensure it works
+as expected.
+
+If you’ve completed the xref:proxy.adoc[Proxy] tutorial and have test realms setup, modify the
+policy code you have just written to proxy the request to the realm specified
+in the `User-Name` attribute.
+
+== Step 1 – Basic splitting policy
+
+[source,unlang]
+.FILE: /etc/raddb/policy.d/realm-split
+----
+realm-split {
+    # Check if User-Name exists and contains an "@" symbol
+    if (request.User-Name =~ /^([^@]+)@(.+)$/) {
+        # First capture group - username part (before @)
+        request.Stripped-User-Name := %regex.match(1)
+
+        # Second capture group - domain/realm part (after @)
+        control.Stripped-User-Domain := %regex.match(2)
+
+        # Add reply attributes to validate the split worked correctly
+        # Using Reply-Message to show both values (visible in reply)
+        reply += {
+            Reply-Message = "User: %{request.Stripped-User-Name}"
+            Reply-Message = "Domain: %{control.Stripped-User-Domain}"
+        }
+    }
+}
+----
+
+Add the above created policy into `raddb/sites-available/default`:
+
+[source,unlang]
+----
+server default {
+    recv Access-Request {
+        realm_split
+        files
+    }
+}
+----
+
+Also make sure our testing user "bob" exists in `raddb/mods-config/files/authorize`:
+
+[source,unlang]
+----
+bob     Password.Cleartext := "hello"
+----
+Then execute the following commands to test this configuration:
+
+[source]
+----
+echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected debug (relevant lines):**
+
+----
+(0)    recv Access-Request {
+(0)      policy realm-split {
+(0)        if (request.User-Name =~ /^([^@]+)@(.+)$/)  {
+(0)          | =~
+(0)              | request.User-Name
+(0)                | %{request.User-Name}
+(0)                | --> bob@realm1.com
+(0)          | ({bob@realm1.com} =~ (null))
+(0)          | --> true
+(0)          | %regex.match(1)
+(0)            | %regex.match(1)
+(0)            | regex.match
+(0)            | %regex.match({1})
+(0)            | --> bob
+(0)          request.Stripped-User-Name := "bob"
+(0)          | %regex.match(2)
+(0)            | %regex.match(2)
+(0)            | regex.match
+(0)            | %regex.match({2})
+(0)            | --> realm1.com
+(0)          control.Stripped-User-Domain := "realm1.com"
+(0)              | %{request.Stripped-User-Name}
+(0)              | --> bob
+(0)              | %{control.Stripped-User-Domain}
+(0)              | --> realm1.com
+(0)          reply += {
+(0)            Reply-Message = "User: bob"
+(0)            Reply-Message = "Domain: realm1.com"
+(0)          }
+(0)        } # if (request.User-Name =~ /^([^@]+)@(.+)$/)  (...)
+(0)      } # policy realm-split (...)
+----
+
+**Expected output:**
+
+----
+Received Access-Accept Id 246 from 127.0.0.1:1812 to 0.0.0.0:56242 via lo length 74
+        Message-Authenticator = 0x1a82a50a6973affe690efe4146e6581e
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: realm1.com"
+----
+
+If you want to test above scenario with different username "alice" you need to add that user into `mods-config/files/authorize`, after that you can test that
+user using the command below:
+
+[source]
+----
+echo 'User-Name = "alice@abc.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+
+----
+        Reply-Message = "User: alice"
+        Reply-Message = "Domain: abc.com"
+----
+
+If we want to test the above scenario with a different domain, such as `bob@realm2.com`, use the following command:
+
+[source]
+----
+echo 'User-Name = "bob@realm2.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+
+----
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: realm2.com"
+----
 
 == Questions
 
