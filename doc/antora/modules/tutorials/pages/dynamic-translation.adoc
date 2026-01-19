@@ -8,7 +8,7 @@ references.
 *Files:*
 
 - `etc/raddb/radiusd.conf`
-- `etc/raddb/users`
+- `mods-config/files/authorize`
 
 Run-time variables in the server may include more than simple references to
 attributes in packets. The server supports the ability to perform complex
