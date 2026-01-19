@@ -96,4 +96,4 @@ Triple quoted strings do _not_ support spanning multiple
 lines.  That limitation is likely to be fixed in a future release.
 
 // Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS
+// This documentation was developed by Network RADIUS SAS.

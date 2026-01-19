@@ -133,4 +133,4 @@ A `vsa` data type can only be a contain children of the `vendor` data type.
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS
+// This documentation was developed by Network RADIUS SAS.
