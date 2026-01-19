@@ -21,12 +21,13 @@ the `exec` module.
 
 `exec` module is used for executing external programs.The exec module is used to execute external programs or scripts from within FreeRADIUS. It is intended only for very rare use cases, such as testing or handling scenarios that cannot be achieved using built-in FreeRADIUS functionality.
 
+`%exec()` function provides a dynamic expansion function.The output of `exec` is parsed and assigned to the attribute.The value of the attribute will be replaced with the output of the program which is executed.
+
 Then, edit the users file to add the following entry at the
 top:
-
 -------------------------------------------------------------------------------
 bob Password.Cleartext := "hello"
-    Callback-Id = "%exec('/bin/echo', "Hello, there")
+    Callback-Id = "%exec('/bin/echo', "Hello, there")"
 -------------------------------------------------------------------------------
 
 The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
