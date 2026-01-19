@@ -17,7 +17,11 @@ exercise, we will work through a number of different examples of configuring
 inter-module calls.
 
 To start, open `raddb/mods-available/exec` and read the sample configuration for
-the `exec` module. Then, edit the users file to add the following entry at the
+the `exec` module.
+
+`exec` module is used for executing external programs.The exec module is used to execute external programs or scripts from within FreeRADIUS. It is intended only for very rare use cases, such as testing or handling scenarios that cannot be achieved using built-in FreeRADIUS functionality.
+
+Then, edit the users file to add the following entry at the
 top:
 
 -------------------------------------------------------------------------------
