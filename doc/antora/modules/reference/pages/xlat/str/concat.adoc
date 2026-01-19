@@ -13,11 +13,11 @@ expanded string.  If you need to concatenate strings together in a policy, just 
 
 [source,unlang]
 ----
-control.Tmp-String-0 := { "aaa", "bb", "c" }
+Filter-Id := { "aaa", "bb", "c" }
 
 reply += {
-    Reply-Message = %str.concat(%{control.Tmp-String-0[*]}, ', ')
-    Reply-Message = %str.concat(%{control.Tmp-String-0[*]}, ',')
+    Reply-Message = %str.concat(%{Filter-Id[*]}, ', ')
+    Reply-Message = %str.concat(%{Filter-Id[*]}, ',')
 }
 ----
 
@@ -28,5 +28,5 @@ aaa, bb, c
 aaa,bb,c
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

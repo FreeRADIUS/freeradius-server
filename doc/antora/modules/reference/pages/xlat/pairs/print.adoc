@@ -13,7 +13,7 @@ given attribute.  e.g. `reply += "User-Name := 'hello'"`.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := { "This is a string", "This is another one" }
+control.Filter-Id := { "This is a string", "This is another one" }
 
 reply.Reply-Message := "Serialize output: %pairs.print(control.[*])"
 ----
@@ -21,7 +21,7 @@ reply.Reply-Message := "Serialize output: %pairs.print(control.[*])"
 .Output
 
 ```
-Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
+Serialize output: Filter-Id = "\"This is a string\", Filter-Id = \"This is another one\""
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

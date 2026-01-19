@@ -58,12 +58,12 @@ Evaluates the string as an expansion, and returns the result.  The main differen
 [source,unlang]
 ----
 if (User-Name == "bob") {
-    request.Tmp-String-0 := "User-Name"
+    control.Filter-Id := "User-Name"
 } else {
-    request.Tmp-String-0 := "not bob!"
+    control.Filter-Id := "not bob!"
 }
 
-reply.Reply-Message := "%eval(request.Tmp-String-0}"
+reply.Reply-Message := "%eval(control.Filter-Id}"
 ----
 
 .Output when `User-Name == bob`

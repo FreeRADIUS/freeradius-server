@@ -10,11 +10,13 @@ This expansion is the inverse of xref:xlat/str/concat.adoc[str.concat].
 
 [source,unlang]
 ----
+string name
+
 User-Name := "bob.toba@domain.com"
 
-control.Tmp-String-1 := %str.split(User-Name, '@')
+name := %str.split(User-Name, '@')
 
-reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
+reply.Reply-Message := "Welcome %{name}"
 ----
 
 .Output

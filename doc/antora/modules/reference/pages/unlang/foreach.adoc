@@ -27,7 +27,7 @@ The `<key-type>` is the data type for the key or index variable.  The data type 
 
 <key-name>::
 
-The local variable where the key refereence is placed.
+The local variable where the key reference is placed.
 
 For numerical data types, the key value starts off at zero (0), and
 increases by one every round through the loop.  For `string` data
@@ -100,19 +100,19 @@ It is not possible to delete the attributes being looped over.
 .Example of modifying values
 [source,unlang]
 ----
-Tmp-Integer-0 := { 1, 3, 5, 11 }
+NAS-Port := { 1, 3, 5, 11 }
 
-foreach self (Tmp-Integer-0) {
-	self += 19
+foreach item (NAS-Port) {
+	item += 19
 }
 ----
 
-Once the loop has finished , the `Tmp-Integer-0` attribute will have
+Once the loop has finished , the `NAS-Port` attribute will have
 the following set of values.
 
 [source,unlang]
 ----
-Tmp-Integer-0 := { 20, 22, 24, 30 }
+NAS-Port := { 20, 22, 24, 30 }
 ----
 
 .Pseudocode for variable modification
@@ -145,12 +145,12 @@ the value at the beginning of each loop iteration.
 [source,unlang]
 ----
 string total
-Tmp-Integer-0 := { 1, 3, 5, 11 }
+NAS-Port := { 1, 3, 5, 11 }
 
-foreach string ref, uint32 self (Tmp-Integer-0) {
+foreach string ref, uint32 item (NAS-Port) {
 	total += ref
 	total += " = "
-	total += (string) self
+	total += (string) item
 	total += ", "
 }
 ----
@@ -158,16 +158,16 @@ foreach string ref, uint32 self (Tmp-Integer-0) {
 When the loop is finished, the `total` variable will have the following value:
 
 ----
-"Tmp-Integer-0[0] = 1, "Tmp-Integer-0[1] = 3, "Tmp-Integer-0[2] = 5, "Tmp-Integer-0[3] = 11, "
+"NAS-Port[0] = 1, "NAS-Port[1] = 3, "NAS-Port[2] = 5, "NAS-Port[3] = 11, "
 ----
 
 .Key variable with attribute index
 [source,unlang]
 ----
 string total
-Tmp-Integer-0 := { 1, 3, 5, 11 }
+NAS-Port := { 1, 3, 5, 11 }
 
-foreach uint32 index, uint32 self (Tmp-Integer-0) {
+foreach uint32 index, uint32 item (NAS-Port) {
 	...
 }
 ----
@@ -235,6 +235,5 @@ foreach thing (TLV-Thing[*]) {
 
 This example can read the child attribute `Foo`, but cannot modify it.
 
-
-// Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

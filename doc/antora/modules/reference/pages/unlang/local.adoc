@@ -54,7 +54,7 @@ Local variables _cannot_ be deleted.  When the current scope exits, the local va
 if (User-Name == "bob") {
     uint32 len
 
-    len := %length(%{User-Name})
+    len := %length(User-Name)
 
     Reply-Message := "Length of %{User-Name} is %{len}"
 }

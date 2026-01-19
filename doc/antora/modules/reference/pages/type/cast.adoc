@@ -142,12 +142,12 @@ reply.Reply-Message := control.Reply-Message[*]
 
 The following example will take an input string `"192.168.0.1"`, split
 it on the `'.'` character, and then assign it to another attribute.
-The result will be four copies of the `Tmp-Integer-0` attribute, which
+The result will be four copies of the `NAS-Port` attribute, which
 each carry one octet of the IP address.
 
 .Example Creating multiple Attributes
 ----
-Tmp-Integer-0 := %str.split("192.168.0.1", '.')
+NAS-Port := %str.split("192.168.0.1", '.')
 ----
 
 If you need to cast an entire list to a value, then the value being
