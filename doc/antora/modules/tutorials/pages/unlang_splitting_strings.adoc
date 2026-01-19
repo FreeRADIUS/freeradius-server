@@ -97,9 +97,93 @@ server default {
 
 Also make sure our testing user "bob" exists in `raddb/mods-config/files/authorize`:
 
-[source,text]
+[source,unlang]
 ----
 bob     Password.Cleartext := "hello"
+----
+Then execute the following commands to test this configuration:
+
+[source]
+----
+echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected debug (relevant lines):**
+
+----
+(0)    recv Access-Request {
+(0)      policy realm-split {
+(0)        if (request.User-Name =~ /^([^@]+)@(.+)$/)  {
+(0)          | =~
+(0)              | request.User-Name
+(0)                | %{request.User-Name}
+(0)                | --> bob@realm1.com
+(0)          | ({bob@realm1.com} =~ (null))
+(0)          | --> true
+(0)          | %regex.match(1)
+(0)            | %{\%regex.match(1)}
+(0)            | regex.match
+(0)            | %regex.match({1})
+(0)            | --> bob
+(0)          request.Stripped-User-Name := "bob"
+(0)          | %regex.match(2)
+(0)            | %{\%regex.match(2)}
+(0)            | regex.match
+(0)            | %regex.match({2})
+(0)            | --> realm1.com
+(0)          control.Stripped-User-Domain := "realm1.com"
+(0)          request.User-Name := "bob"
+(0)              | %{request.Stripped-User-Name}
+(0)              | --> bob
+(0)              | %{control.Stripped-User-Domain}
+(0)              | --> realm1.com
+(0)          reply += {
+(0)            Reply-Message = "User: bob"
+(0)            Reply-Message = "Domain: realm1.com"
+(0)          }
+(0)        } # if (request.User-Name =~ /^([^@]+)@(.+)$/)  (...)
+(0)      } # policy realm-split (...)
+----
+
+**Expected output:**
+
+----
+Received Access-Accept Id 246 from 127.0.0.1:1812 to 0.0.0.0:56242 via lo length 74
+        Message-Authenticator = 0x1a82a50a6973affe690efe4146e6581e
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: realm1.com"
+        User-Name = "bob"
+----
+
+If you want to test above scenario with different username "alice" you need to add that user into `raddb/mods-config/files/authorize`, after that you can test that
+user using the command below:
+
+[source]
+----
+echo 'User-Name = "alice@abc.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+
+----
+        Reply-Message = "User: alice"
+        Reply-Message = "Domain: abc.com"
+        User-Name = "alice"
+----
+
+If we want to test the above scenario with a different domain, such as `bob@realm2.com`, use the following command:
+
+[source]
+----
+echo 'User-Name = "bob@realm2.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+
+----
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: realm2.com"
+        User-Name = "bob"
 ----
 
 == Questions
