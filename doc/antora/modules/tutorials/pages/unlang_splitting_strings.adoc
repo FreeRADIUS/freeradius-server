@@ -26,30 +26,34 @@ recv Access-Request {
 
 in the virtual server you’re using to process requests.
 
-include::partial$common_control_attrs_sidebar.adoc[]
+== Common control attributes
+Attributes in the control list can control the behaviour of the server.
+Commonly used control attributes are:
 
-Regular expressions are an extremely powerful tool in the 'unlang' policy
-language.  They provide both validation capabilities, allowing users
-to check the format of incoming attributes, and substring extraction
-(via capture groups).
+* `control.Auth-Type` specifies the `authenticate <name> {}` section to run
 
-If you've completed the xref:proxy.adoc[Proxy] exercise you'll have
-used the `suffix` module to split an incoming `User-Name` value into
-its components and setup the request for proxying.
+Regular expressions are an extremely powerful tool in the 'unlang' policy language.
+They provide both validation capabilities, allowing users to check the format of
+incoming attributes, and substring extraction (via capture groups).
 
-Create an unlang version of "suffix" that splits an incoming `User-Name` into
-two components on the "@" separator.
+If you’ve completed the xref:proxy.adoc[Proxy] exercise you’ll have used the `suffix` module to
+split an incoming `User-Name` value into its components and setup the request for
+proxying.
 
-The first component should be written to the `request.Stripped-User-Name`
-attribute and the second component should be written to the
-`control.Stripped-User-Domain` attribute.
+**Task:**
+Create an unlang version of "suffix" that splits an incoming `User-Name` into two
+components on the "@" separator.
 
-Use `bob@realm1.sh` and `bob@realm2.sh` to test your new policy to ensure
-it works as expected.
+The first component should be written to the `request.Stripped-User-Name` attribute
+and the second component should be written to the `control.Stripped-User-Domain`
+attribute.
 
-If you've completed the xref:proxy.adoc[Proxy] tutorial and have test
-realms setup, modify the policy code you have just written to proxy
-the request to the realm specified in the `User-Name` attribute.
+Use `bob@realm1.com` and `bob@realm2.com` to test your new policy to ensure it works
+as expected.
+
+If you’ve completed the xref:proxy.adoc[Proxy] tutorial and have test realms setup, modify the
+policy code you have just written to proxy the request to the realm specified
+in the `User-Name` attribute.
 
 == Questions
 
