@@ -49,7 +49,7 @@
 #  The `unlang` policy language can be used to create complex
 #  if / else policies.  For more information, see
 #
-#  https://www.freeradius.org/documentation/freeradius-server/RADIUSD_DOC_VERSION/
+#  https://www.freeradius.org/documentation/freeradius-server/@RADIUSD_DOC_VERSION@/
 #
 #  NOTE: The paths used for installed server files. They are set
 #  automatically at install time and will not normally need to be
