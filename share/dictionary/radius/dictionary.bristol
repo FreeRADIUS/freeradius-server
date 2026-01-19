@@ -17,8 +17,8 @@ VENDOR		Bristol				4363
 #
 BEGIN-VENDOR	Bristol
 
-ATTRIBUTE	NN-Data-Rate				1	integer
-ATTRIBUTE	NN-Data-Rate-Ceiling			2	integer
+ATTRIBUTE	NN-Data-Rate				1	uint32
+ATTRIBUTE	NN-Data-Rate-Ceiling			2	uint32
 ATTRIBUTE	NN-Homenode				3	ipaddr
 ATTRIBUTE	NN-Homeservice				4	ipaddr
 ATTRIBUTE	NN-Homeservice-Name			5	string

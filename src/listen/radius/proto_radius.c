@@ -37,6 +37,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
 	{ FR_CONF_OFFSET("idle_timeout", proto_radius_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_radius_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_radius_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_radius_t, io.max_connections), .dflt = "1024" } ,
@@ -110,7 +111,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t proto_radius_dict[];
 fr_dict_autoload_t proto_radius_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -119,6 +120,9 @@ static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_error_cause;
+static fr_dict_attr_t const *attr_packet_id;
+static fr_dict_attr_t const *attr_packet_authenticator;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
@@ -128,7 +132,10 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
-	{ NULL }
+	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_packet_id, .name = "Packet.Id", .type = FR_TYPE_UINT8, .dict = &dict_radius},
+	{ .out = &attr_packet_authenticator, .name = "Packet.Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -202,6 +209,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_radius_limit_proxy_state_t	limit_proxy_state = client->limit_proxy_state_is_set ?
 							    client->limit_proxy_state:
 							    inst->limit_proxy_state;
+	fr_pair_t			*packet_vp;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -323,12 +331,13 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			client->seen_first_packet = true;
 			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
 
+			/* None of these should be errors */
 			if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-				RERROR("Packet from %pV (%pV) did not contain Message-Authenticator:",
+				RWARN("Packet from %pV (%pV) did not contain Message-Authenticator:",
 				      fr_box_ipaddr(client->ipaddr),
 				      fr_box_strvalue_buffer(client->shortname));
-				RERROR("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
-				RERROR("- Then set 'require_message_authenticator = yes' in the client definition");
+				RWARN("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+				RWARN("- Then set 'require_message_authenticator = yes' in the client definition");
 			} else {
 				RWARN("Packet from %pV (%pV) contains Message-Authenticator:",
 				      fr_box_ipaddr(client->ipaddr),
@@ -405,11 +414,23 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 */
 	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    fr_pair_find_by_da(&request->request_pairs, NULL, attr_state)) {
-		request->async->sequence = 1;
+		request->sequence = 1;
 	}
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
 		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
+	/*
+	 *	Populate Packet structure with Id and Authenticator
+	 */
+	MEM(packet_vp = fr_pair_afrom_da_nested(request->request_ctx, &request->request_pairs, attr_packet_id));
+	packet_vp->vp_uint8 = request->packet->id;
+	MEM(packet_vp = fr_pair_afrom_da_nested(request->request_ctx, &request->request_pairs, attr_packet_authenticator));
+	if (fr_value_box_memdup(packet_vp, &packet_vp->data, NULL, request->packet->data + 4,
+				RADIUS_AUTH_VECTOR_LENGTH, true) < 0) {
+		RPEDEBUG("Failed adding Authenticator pair");
 		return -1;
 	}
 
@@ -420,10 +441,52 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 {
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
+	uint32_t		error_cause;
 	ssize_t			data_len;
 	fr_client_t const	*client;
 	fr_radius_ctx_t		common_ctx = {};
 	fr_radius_encode_ctx_t  encode_ctx;
+
+	client = address->radclient;
+	fr_assert(client);
+
+	/*
+	 *	No reply was set, and the client supports Protocol-Error.  Go create one.
+	 */
+	if (unlikely((buffer_len > 1) && (request->reply->code == 0) && client->protocol_error)) {
+		switch (request->packet->code) {
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			RDEBUG2("There was no response configured - sending Access-Reject");
+			request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+			break;
+
+		case FR_RADIUS_CODE_COA_REQUEST:
+			RDEBUG2("There was no response configured - sending CoA-NAK");
+			request->reply->code = FR_RADIUS_CODE_COA_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			RDEBUG2("There was no response configured - sending Disconnect-NAK");
+			request->reply->code = FR_RADIUS_CODE_DISCONNECT_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+			/*
+			 *	Send Protocol-Error reply.
+			 *
+			 *	@todo - Session-Context-Not-Found is likely the wrong error.
+			 */
+			RDEBUG2("There was no response configured - sending Protocol-Error");
+
+			request->reply->code = FR_RADIUS_CODE_PROTOCOL_ERROR;
+			error_cause = FR_ERROR_CAUSE_VALUE_SESSION_CONTEXT_NOT_FOUND;
+			goto force_reply;
+
+		default:
+			RDEBUG2("There was no response configured - not sending reply");
+			break;
+		}
+	}
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -435,8 +498,50 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return 1;
 	}
 
-	client = address->radclient;
-	fr_assert(client);
+	/*
+	 *	Not all clients support Protocol-Error.  The admin might have forced Protocol-Error, or we
+	 *	might have received a Protocol-Error from a home server.
+	 */
+	if ((request->reply->code == FR_RADIUS_CODE_PROTOCOL_ERROR) && !client->protocol_error) {
+		fr_pair_t *vp;
+
+		switch (request->packet->code) {
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			RWDEBUG("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+				client->shortname);
+			request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+			break;
+
+		case FR_RADIUS_CODE_COA_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to CoA-NAK",
+				 request->client->shortname);
+			request->reply->code = FR_RADIUS_CODE_COA_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Disconnect-NAK",
+				 request->client->shortname);
+			request->reply->code = FR_RADIUS_CODE_DISCONNECT_NAK;
+
+		not_routable:
+			error_cause = FR_ERROR_CAUSE_VALUE_PROXY_REQUEST_NOT_ROUTABLE;
+
+		force_reply:
+			fr_pair_list_free(&request->reply_pairs);
+
+			MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause));
+			fr_pair_append(&request->reply_pairs, vp);
+			vp->vp_uint32 = error_cause;
+			break;
+
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+		default:
+			RWDEBUG2("Client %s does not support Protocol-Error - not replying to the client",
+				 request->client->shortname);
+			track->do_not_respond = true;
+			return 1;
+		}
+	}
 
 	/*
 	 *	Dynamic client stuff
@@ -500,6 +605,9 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		.request_code = request->packet->data[0],
 		.code = request->reply->code,
 		.id = request->reply->id,
+#ifdef NAS_VIOLATES_RFC
+		.allow_vulnerable_clients = client->allow_vulnerable_clients,
+#endif
 	};
 
 	data_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &encode_ctx);
@@ -527,7 +635,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	return data_len;

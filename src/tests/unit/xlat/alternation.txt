@@ -24,7 +24,7 @@ xlat %{%{User-Name} || }
 match ERROR offset 18: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{Operator-Name} || }
-matchERROR offset 22: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 22: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{%{User-Name} || 'foo'} || 'bar'}
 match %{(%{(%{User-Name} || 'foo')} || 'bar')}

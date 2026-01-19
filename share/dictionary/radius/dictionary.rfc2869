@@ -8,25 +8,25 @@
 #
 #	$Id$
 #
-ATTRIBUTE	Acct-Input-Gigawords			52	integer
-ATTRIBUTE	Acct-Output-Gigawords			53	integer
+ATTRIBUTE	Acct-Input-Gigawords			52	uint32
+ATTRIBUTE	Acct-Output-Gigawords			53	uint32
 
 ATTRIBUTE	Event-Timestamp				55	date
 
 ATTRIBUTE	ARAP-Password				70	octets[16]
 ATTRIBUTE	ARAP-Features				71	octets[14]
-ATTRIBUTE	ARAP-Zone-Access			72	integer
-ATTRIBUTE	ARAP-Security				73	integer
+ATTRIBUTE	ARAP-Zone-Access			72	uint32
+ATTRIBUTE	ARAP-Security				73	uint32
 ATTRIBUTE	ARAP-Security-Data			74	string
-ATTRIBUTE	Password-Retry				75	integer
-ATTRIBUTE	Prompt					76	integer
+ATTRIBUTE	Password-Retry				75	uint32
+ATTRIBUTE	Prompt					76	uint32
 ATTRIBUTE	Connect-Info				77	string
 ATTRIBUTE	Configuration-Token			78	string
 ATTRIBUTE	EAP-Message				79	octets concat
 ATTRIBUTE	Message-Authenticator			80	octets
 
 ATTRIBUTE	ARAP-Challenge-Response			84	octets[8]
-ATTRIBUTE	Acct-Interim-Interval			85	integer
+ATTRIBUTE	Acct-Interim-Interval			85	uint32
 # 86: RFC 2867
 ATTRIBUTE	NAS-Port-Id				87	string
 ATTRIBUTE	Framed-Pool				88	string

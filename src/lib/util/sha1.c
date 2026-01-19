@@ -40,7 +40,7 @@ void fr_sha1_transform(uint32_t state[static 5], uint8_t const buffer[static 64]
 		uint32_t l[16];
 	} CHAR64LONG16;
 	CHAR64LONG16 *block;
-	uint8_t workspace[64];
+	uint64_t workspace[8];
 
 	block = (CHAR64LONG16*)workspace;
 	memcpy(block, buffer, 64);

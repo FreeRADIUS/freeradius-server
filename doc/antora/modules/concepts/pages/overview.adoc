@@ -1,12 +1,22 @@
 = Overview
 
-The server is written in a “plug in” model. The server core does the basic RADIUS and network handling. Almost everything else is managed as a plug-in module. This design is what enables the policy language to be incredibly exible. The policy language can simply run one or more plug-in modules, in any
-order. Each plug-in module can be responsible for onelogical unit of functionality.
-For example, each of the authentication methods (PAP,CHAP, MS-CHAP, TOTP, and EAP) are individual plug-in modules. Similarly, each database connector (SQL,Redis, LDAP, etc.) are individual plug-in modules. In many cases, no code changes to the server core have to be made in order to support complex new functionality.
+A RADIUS (Remote Authentication Dial In User Service) server offers authentication, authorization, and accounting (AAA) services for network access.  A Network Access Server (NAS) sends authentication and accounting requests to a RADIUS server. The RADIUS server then verifies user credentials and returns configuration details to the NAS. The NAS either grants or denies network access to the end-user or device depending on the information it received.
+
+The key concepts of any RADIUS include:
+
+* *Centralized AAA*: RADIUS servers manage network access by verifying user credentials, granting access rights, and tracking user activity. 
+
+* *Client-Server Protocol*: RADIUS uses a client-server protocol. Network Access Servers are RADIUS clients that send requests to the RADIUS server. 
+
+* *Background Process*: RADIUS servers run as background processes or daemons on UNIX systems. 
+
+* *User Credentials:* The server stores or can access user account information and verifies authentication requests. 
+
+* *Configuration Details*: The RADIUS server sends details to the client, enabling the client to grant or deny network access. 
 
 == What is RADIUS?
 
-RADIUS, which stands for “Remote Authentication Dial In User Service”, is a network protocol that defines rules and conventions for communication between network devices for remote user authentication and accounting. Commonly used by Internet Service Providers (ISPs), cellular network
+RADIUS is a network protocol that defines rules and conventions for communication between network devices for remote user authentication and accounting. Commonly used by Internet Service Providers (ISPs), cellular network
 providers, and corporate and educational networks, the RADIUS protocol serves three primary functions:
 
 * Authenticates users or devices before allowing them access to a network.
@@ -16,82 +26,50 @@ providers, and corporate and educational networks, the RADIUS protocol serves th
 === History
 
 In 1991, Merit Network, a non-profit internet provider, required a creative way to manage dial-in access to various Points-Of-Presence (POPs) across its network. In response to this need, RADIUS was created by Livingston Enterprises.
-At the time RADIUS was created, network access systems were distributed across a wide area and were run by multiple independent organizations. Central administrators wanted to prevent problems with security and scalability, and thus did not want to distribute user names and passwords; instead, they
-wanted the remote access servers to contact a central server to authorize access to the requested system or service. In response to contact from the remote access server, the central server would return a
-“success” or “failure” message, and the remote machines would be in charge of enforcing this response for each end user.
+When RADIUS was created, network access systems were distributed across a wide area and were run by multiple independent organisations. Central administrators wanted to prevent security and scalability issues, and therefore didn't want to distribute user names and passwords. Instead, they wanted the remote access servers to contact a central server to authorize access to the requested system or service.
 
-The goal of RADIUS was, therefore, to create a central location for user authentication, wherein users from many locations could request network access.
-The simplicity, efficiency, and usability of the RADIUS system led to its widespread adoption by network equipment vendors, to the extent that currently, RADIUS is considered an industry standard and is also positioned to become an Internet Engineering Task Force (IETF) standard.
+[NOTE]
+====
+A remote access server (RAS) is often called a Network Access Server (NAS),  Network Access Client (NAC), or simply client.
+====
+
+In response to contact from the remote access server, the central server would return a “success” or “failure” message, and the remote machines would enforce this response for each end-user. This process ensures that authentication decisions are centralized, while enforcement happens at the network edge, maintaining both security and scalability in the system.
+
+The goal of RADIUS was to create a central location for user authentication, wherein users from many locations could request network access.
+The simplicity, efficiency, and usability of the RADIUS system led to its widespread adoption by network equipment vendors. RADIUS evolved into an industry and Internet Engineering Task Force (IETF) standard as outlined in https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865].
 
 === Customers
 
-A wide and varied array of businesses currently utilize the RADIUS protocol for their authentication and accounting needs. Some examples of RADIUS customers are:
+Many types of businesses and organisations use the RADIUS protocol for their authentication and accounting needs. Some examples of RADIUS customers are:
 
 * Cellular network providers with millions of users.
-* Small WISP start-up providing the local neighborhood with Internet connectivity.
-* Enterprise networks implementing Network Access Control (NAC) using 802.1x to ring fence their network.
+* Small to large ISPs to authenticate users connecting to the internet.
+* Enterprise networks implementing Network Access Control (NAC) using 802.1x or to manage access to their internal networks and VPNs.
+* Wireless networks in educational institutions and campuses.
 
 === Benefits
 
-The RADIUS client-server architecture provides an open and scalable solution that is broadly supported by a large vendor base. It can be readily modified to meet a variety of situations. Customers can modify RADIUS-based authentication servers to work with a large number of security systems on the market.
-RADIUS servers work with any communications device that supports the RADIUS client protocol. In addition, the flexibility of the RADIUS authentication mechanisms allows an organization to maintain any investment they may have made in an existing security technology: customers can modify the
-RADIUS server to run with any type of security technology. The flexible authentication mechanisms inherent in the RADIUS server facilitate its integration with existing and legacy systems when required.
+The RADIUS client-server architecture is an open and scalable solution. RADIUS supports a wide range of environments and can grow to handle increased demand. Its adoption by many vendors ensures compatibility with a variety of products and systems. Organizations configure RADIUS to work with various security systems, including legacy solutions. Any RADIUS client-protocol-supporting communications device can interact with a RADIUS server, simplifying integration.
 
-Another advantage of the RADIUS architecture is that any component of a security system that supports the RADIUS protocols can derive authentication and authorization from the central RADIUS server.
-Alternatively, the central server can integrate with a separate authentication mechanism.
-The utility of the RADIUS protocol extends beyond those systems that utilize network access devices and
-terminal servers for network access. RADIUS has been widely accepted by Internet Service Providers (ISPs)
-to provide Virtual Private Network (VPN) services. In this context, RADIUS technology allows an organization to use ISP infrastructure for communications securely.
+The RADIUS authentication mechanisms enable organizations to integrate their existing security technologies. RADIUS architecture offers authentication and authorization services to any supported security component. Additionally, the central server can integrate with a separate authentication mechanism. RADIUS extends beyond network access devices and terminal servers. ISPs integrating RADIUS leverage their infrastructure to provide Virtual Private Network (VPN) services.
 
-The distributive nature of RADIUS effectively separates the security processes (carried out on the authentication server) from the communications processes (implemented by the modem pool or the Network
-Access Server (NAS)), allowing for a single centralized information store for authorization and authentication information. This centralization can significantly lessen the administrative burden of providing
-appropriate access control for a large number of remote users. If ensuring high availability is not a priority,
-then redundancy is not required; this centralization can thus be maximized, since all RADIUS-compatible
-hardware on a LAN can derive authentication services from a single server.
+The distributive nature of RADIUS separates security processes from the communications processes. This design provides a single centralized information store for authorization and authentication information. Centralisation reduces the administrative burden of providing adequate access control for remote users.
 
-In summary, the RADIUS client server protocol contains many technological advantages for customers, including:
+[NOTE]
+====
+The authentication server manages the security processes. The network access server (NAS) handles the communication processes.
+====
 
-* An open and scalable solution
-* Broad support by a large vendor base
-* Easy modification
-* Separation of security and communication processes
-* Adaptable to most security systems
-* Workable with any communication device that supports RADIUS client protocol
+If high availability is not a priority, redundancy is not necessary. All RADIUS-compatible hardware on the network can derive authentication services from a single server.
 
-== What is FreeRADIUS?
+In summary, the RADIUS client-server protocol provides these advantages:
 
-FreeRADIUS is the most popular and the most widely deployed open source RADIUS server in the world.
-It serves as the basis for multiple commercial offerings, and it supplies the authentication, authorization, and accounting (AAA) needs of many Fortune 500 companies and Tier 1 ISPs. It is also widely used by the academic community (i.e., eduroam, the world-wide roaming access service developed for the international research and education community, utilizes FreeRADIUS software).
-FreeRADIUS was started in August 1999 by Alan DeKok and Miquel van Smoorenburg. Miquel had previously written the Cistron RADIUS server software, which had been widely adopted when the Livingston server was no longer in service. FreeRADIUS was developed using a modular design, to encourage more active community involvement.
-
-=== Features
-
-More authentication types are supported by FreeRADIUS than by any other open source server. For example, FreeRADIUS is the only open source RADIUS server to support Extensible Authentication Protocol (EAP).
-FreeRADIUS is also the only open source RADIUS server to support virtual servers. The use of virtual servers means that complex implementations are simplified and ongoing support and maintenance costs for network administrators are greatly reduced; thus, the ability of FreeRADIUS to support virtual servers
-gives it a huge advantage over the competition.
-
-=== Modularity
-
-The modular design protocol makes FreeRADIUS easy to understand. The modular interface also simplifies adding or removing modules. For example, if a feature is not needed for a particular configuration, the module is easily removed. Once the module is removed, it does not affect server performance,
-memory use, or security. This flexibility enables the server to run on platforms ranging from embedded systems to multi-core machines with gigabytes of RAM.
-
-=== Scalability
-
-A single RADIUS server can easily transition from handling one request every few seconds to handling thousands of requests per second, simply by reconfiguring a few default settings. Many large organizations (those with more than 10 million customers) are dependent on FreeRADIUS for their AAA needs.
-Often, only a single FreeRADIUS server is required to fill the needs of these large organizations.
-While many commercial severs offer different versions of their software to handle different needs, only the latest version of FreeRADIUS is needed to obtain better performance, more realms, more RADIUS clients, and many other features, with no need to purchase additional product licenses.
-
-== Features
-
-* Complete support for https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] and https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] attributes.
-* Authentication Protocol supports for:
-** EAP or protocol/EAP with EAP-MD5, EAP-SIM, EAP-TLS, EAP-TTLS.
-** EAP-PEAP or protocol/EAP-PEAP.
-** Cisco LEAP or protocol/LEAP and EAP sub-types.
-* Vendor Specific Attributes for over a hundred vendors including BinTec, Foundry, Cisco, Juniper, Lucent/Ascend, HP ProCurve, Microsoft, USR/3Com, Acc/Newbridge.
-* All known RADIUS clients.
-* Flexible configurations using attribute pairs.
-* Supports virtual servers.
+* An open and scalable solution.
+* Broad support by a large vendor base.
+* Easy modification.
+* Separation of security and communication processes.
+* Adaptable to most security systems.
+* Workable with any communication device that supports RADIUS client protocol.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

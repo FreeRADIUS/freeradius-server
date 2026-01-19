@@ -61,6 +61,8 @@
  */
 #define TEST_LIST               const struct acutest_test_ acutest_list_[]
 
+#define TEST_TERMINATOR { .name = NULL }
+
 
 /* Macros for testing whether an unit test succeeds or fails. These macros
  * can be used arbitrarily in functions implementing the unit tests.
@@ -1556,7 +1558,7 @@ acutest_cmdline_read_(const ACUTEST_CMDLINE_OPTION_* options, int argc, char** a
                             size_t len = assignment - badoptname;
                             if(len > ACUTEST_CMDLINE_AUXBUF_SIZE_)
                                 len = ACUTEST_CMDLINE_AUXBUF_SIZE_;
-                            strncpy(auxbuf, badoptname, len);
+                            memcpy(auxbuf, badoptname, len);
                             auxbuf[len] = '\0';
                             badoptname = auxbuf;
                         }

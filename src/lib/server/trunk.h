@@ -281,6 +281,12 @@ typedef struct {
 	bool			backlog_on_failed_conn;	//!< Assign requests to the backlog when there are no
 							//!< available connections and the last connection event
 							//!< was a failure, instead of failing them immediately.
+
+	bool			conn_triggers;		//!< Do we run connection related triggers?
+	CONF_SECTION		*conn_trigger_cs;	//!< Module conf section to find connection trigger section in.
+
+	bool			req_triggers;		//!< Do we run request related triggers?
+	CONF_SECTION		*req_trigger_cs;	//!< Module conf section to find request trigger section in.
 } trunk_conf_t;
 
 /** Public fields for the trunk
@@ -327,8 +333,6 @@ struct trunk_pub_s {
 
 	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.
 	/** @} */
-
-	bool _CONST		triggers;		//!< do we run the triggers?
 
 	trunk_state_t _CONST	state;			//!< Current state of the trunk.
 };
@@ -907,9 +911,10 @@ void		trunk_connection_manage_stop(trunk_t *trunk) CC_HINT(nonnull);
 
 int		trunk_connection_manage_schedule(trunk_t *trunk) CC_HINT(nonnull);
 
-trunk_t	*trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+trunk_t		*trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				trunk_io_funcs_t const *funcs, trunk_conf_t const *conf,
-				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
+				char const *log_prefix, void const *uctx, bool delay_start,
+				fr_pair_list_t *trigger_args) CC_HINT(nonnull(2, 3, 4));
 /** @} */
 
 /** @name Watchers
@@ -964,7 +969,7 @@ static void _conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 static void _conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx) \
 { \
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t); \
-	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
+	if (fd_errno) ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
 	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED); \
 } \
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/ \

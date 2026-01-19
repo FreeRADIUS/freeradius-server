@@ -1233,18 +1233,6 @@ fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
 	return cs->name2_quote;
 }
 
-/** Set the quoting of the name2 identifier
- *
- * @param[in] cs	containing name2.
- * @param[in] token	the quote token
- */
-void cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token)
-{
-	if (!cs) return;
-
-	cs->name2_quote = token;
-}
-
 /** Return the quoting for one of the variadic arguments
  *
  * @param[in] cs	containing the arguments.
@@ -1901,9 +1889,9 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 
 	if (!ci->ident2) return 0;
 
-	for (ci = fr_rb_iter_init_inorder(&iter, ci->ident2);
+	for (ci = fr_rb_iter_init_inorder(ci->ident2, &iter);
 	     ci;
-	     ci = fr_rb_iter_next_inorder(&iter)) {
+	     ci = fr_rb_iter_next_inorder(ci->ident2, &iter)) {
 		/*
 		 *	We're walking ident2, not all of the items will be data
 		 */
@@ -1984,7 +1972,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 	/*
 	 *	Trim the final ", "
 	 */
-	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 3));
+	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 2));
 
 	cf_log_err(cp, "Invalid value \"%s\". Expected one of %s", cf_pair_value(cp), list);
 
@@ -2347,7 +2335,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
 
 		if (ci->type != CONF_ITEM_SECTION) {
-			in_ident2 = false;
+			in_ident2 = NULL;
 		} else {
 			in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
 		}

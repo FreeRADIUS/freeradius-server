@@ -1,4 +1,4 @@
-= Summary of Dynamic Expansions
+= Summary of Built-in Functions
 
 
 .File Handling Functions
@@ -19,10 +19,10 @@
 [options="headers, autowidth]
 |===
 | *Function*				            | *Description*
-| xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
-| xref:xlat/misc/length.adoc[length]	            | Get the length of data
-| xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
-| xref:xlat/misc/rand.adoc[rand]	            | random integers
+| xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items.
+| xref:xlat/misc/length.adoc[length]	            | Get the length of data.
+| xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute. regular expression search on string, using pattern.
+| xref:xlat/misc/rand.adoc[rand]	            | Generate random integers.
 |===
 
 == Pair Manipulation
@@ -31,9 +31,9 @@
 [options="headers, autowidth]
 |===
 | *Function*					| *Description*
-| xref:xlat/pairs/debug.adoc[debug]  		| Print attributes to the debug output
-| xref:xlat/pairs/immutable.adoc[immutable]     | Mark attributes as immutable (cannot be changed)
-| xref:xlat/pairs/print.adoc[print]		| Print attribute name and value to string
+| xref:xlat/interpreter.adoc#debug_xlat[debug]  | Print attributes to the debug output.
+| xref:xlat/pairs/immutable.adoc[immutable]     | Mark attributes as immutable (cannot be changed).
+| xref:xlat/pairs/print.adoc[print]		| Print attribute name and value to string.
 |===
 
 == String Manipulation
@@ -42,14 +42,14 @@
 [options="header, autowidth"]
 |===
 | *Function*                                        | *Description*
-| xref:xlat/str/concat.adoc[concat]                 | Concatenate strings with delimiters
-| xref:xlat/str/split.adoc[split]                   | Split a string based on delimiters
-| xref:xlat/misc/misc.adoc#length[length]           | Returns the size of the data
-| xref:xlat/str/lpad.adoc[lpad]                     | Left pad a string
-| xref:xlat/str/rpad.adoc[rpad]                     | Right pad a string
-| xref:xlat/str/rand.adoc[rand]                     | Return a random string based on input format
-| xref:xlat/str/lower.adoc[lower]                   | Convert the input string to lowercase.
-| xref:xlat/str/upper.adoc[upper]                   | Convert the input string to uppercase
+| xref:xlat/str/concat.adoc[concat]                 | Concatenate strings with delimiters.
+| xref:xlat/str/split.adoc[split]                   | Split a string based on delimiters.
+| xref:xlat/misc/misc.adoc#length[length]           | Returns the size of the data.
+| xref:xlat/str/lpad.adoc[lpad]                     | Left pad a string.
+| xref:xlat/str/rpad.adoc[rpad]                     | Right pad a string.
+| xref:xlat/str/rand.adoc[rand]                     | Return a random string .based on input format
+| xref:xlat/str/lower.adoc[lower]                   | Convert the input string. to lowercase.
+| xref:xlat/str/upper.adoc[upper]                   | Convert the input string. to uppercase
 |===
 
 == Time Management
@@ -59,10 +59,20 @@
 [cols="30%,70%"]
 |=====
 | Function | Description
-| xref:xlat/time/character.adoc[character]          | Single character expansions
-| xref:xlat/time/generic.adoc[time]                 | Generic (too complex) time function
-| xref:xlat/time/is_dst.adoc[is_dst]                | Is the system running in DST?
-| xref:xlat/time/now.adoc[now]                      | Return the current time
-| xref:xlat/time/offset.adoc[offset]                | Return UTC offset
+| xref:xlat/time/character.adoc[character]          | Single character. expansions
+| xref:xlat/time/generic.adoc[time]                 | Generic (too complex). time function
+| xref:xlat/time/is_dst.adoc[is_dst]                | Is the system running in DST?.
+| xref:xlat/time/now.adoc[now]                      | Return the current time.
+| xref:xlat/time/offset.adoc[offset]                | Return UTC offset.
 | xref:xlat/time/request.adoc[request]              | Return the time when the request was received.
+|=====
+
+== IPv4 Handling
+.IPv4 handling
+[options="header"]
+[cols="30%,70%"]
+|=====
+| *Function*                                        | *Description*
+| xref:xlat/ipv4/broadcast.adoc[broadcast]          | Get the broadcast address from an IPv4 prefix
+| xref:xlat/ipv4/netmask.adoc[netmask]              | Get the netmask from an IPv4 prefix
 |=====

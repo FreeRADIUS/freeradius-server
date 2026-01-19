@@ -64,7 +64,7 @@ match ERROR offset 4: Invalid operator
 
 # sillyness is OK, but cleaned up.
 condition ((((((ok))))))
-match %expr.rcode('ok')
+match %interpreter.rcode('ok')
 
 #
 #  Extra braces get squashed
@@ -73,10 +73,10 @@ condition (User-Name == User-Password)
 match (User-Name == User-Password)
 
 condition (!ok)
-match !%expr.rcode('ok')
+match !%interpreter.rcode('ok')
 
 condition !(ok)
-match !%expr.rcode('ok')
+match !%interpreter.rcode('ok')
 
 condition !!ok
 match ERROR offset 1: Double operator is invalid
@@ -85,7 +85,7 @@ match ERROR offset 1: Double operator is invalid
 # @todo - peephole - do optimization to get rid of double negation?
 #
 condition !(!ok)
-match !!%expr.rcode('ok')
+match !!%interpreter.rcode('ok')
 
 #
 #  These next two are identical after normalization
@@ -113,15 +113,15 @@ condition ((User-Name == 'b') || (Filter-Id == 'd')))
 match ERROR passed in 43, returned 42
 
 condition (handled && (Packet-Type == ::Access-Challenge))
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # This is OK, without the braces
 condition handled && Packet-Type == ::Access-Challenge
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # and this, though it's not a good idea.
 condition handled &&&Packet-Type == ::Access-Challenge
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 condition reply == request
 match ERROR offset 0: Cannot use list references in condition
@@ -152,13 +152,13 @@ match ((ipaddr)Filter-Id == Framed-IP-Address)
 #  user forces incompatible types, then that's an error.
 #
 condition (ipaddr)Filter-Id == (uint) Framed-IP-Address
-match ERROR offset 22: Attribute 'uint' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 22: Attribute 'uint' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition (ipaddr)Filter-Id == (uint32) Framed-IP-Address
 match ((ipaddr)Filter-Id == (uint32)Framed-IP-Address)
 
 condition (blerg)Filter-Id == "foo"
-match ERROR offset 1: Attribute 'blerg' not found in namespace 'internal': Unresolved attributes are not allowed here
+match  ERROR offset 1: Attribute 'blerg' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Normalize things
@@ -228,10 +228,10 @@ condition Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition (integer)X == 1
-match ERROR offset 9: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 9: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition NAS-Port == X
-match ERROR offset 12: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 12: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -258,6 +258,9 @@ match true
 condition (ether) 00:11:22:33:44:55 == "%hash.md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%hash.md4(0x30303a31313a32323a33333a34343a3535)")
 
+#
+#  @todo - we have a hint on the cast.  Perhaps we want to return a different error?
+#
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 10: Unexpected text after attribute reference
 
@@ -339,8 +342,11 @@ match true
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
+#
+#  @todo - we have a hint on the cast.  Perhaps we want to return a different error?
+#
 condition (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 13: Parent type of nested attribute 0 must be of type "struct", "tlv", "vendor", "vsa" or "group", got "octets"
+match ERROR offset 8: Numerical attribute references are not allowed here
 
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -379,19 +385,19 @@ condition ('a')
 match 'a'
 
 condition (a)
-match ERROR offset 1: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 1: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Module return codes are OK
 #
 condition (ok)
-match %expr.rcode('ok')
+match %interpreter.rcode('ok')
 
 condition (handled)
-match %expr.rcode('handled')
+match %interpreter.rcode('handled')
 
 condition (fail)
-match %expr.rcode('fail')
+match %interpreter.rcode('fail')
 
 condition ("a")
 match "a"
@@ -403,7 +409,7 @@ match User-Name
 #  Forbidden data types in cast
 #
 condition ((vsa)"foo" == User-Name)
-match ERROR offset 1: Invalid data type 'vsa' in cast
+match ERROR offset 6: Invalid structural data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -473,7 +479,7 @@ match (User-Name[n] == "bob")
 #  Disallowed as it's an unknown attribute
 #
 condition Foo-Bar
-match ERROR offset 0: Attribute 'Foo-Bar' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #  Same types are optimized
 #
@@ -495,8 +501,8 @@ match (Acct-Input-Octets64 > "%{Session-Timeout}")
 #  @todo - peephole - Perhaps this isn't done because the xlat name is taken from the
 #  input, and not from the canonicalized names.
 #
-condition 26.24757.84.9.5.4 == 0x1a99
-match  (26.24757.84.9.5.4 == 0x1a99)
+condition raw.26.24757.84.9.5.4 == 0x1a99
+match  (raw.26.24757.84.9.5.4 == 0x1a99)
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
@@ -509,18 +515,18 @@ match (raw.26.24757.84.9.5.7 == 0x1a99)
 #match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
-condition 26.24757.84.9.5.15 == 0x1a99
-match (26.24757.84.9.5.15 == 0x1a99)
+condition raw.26.24757.84.9.5.15 == 0x1a99
+match (raw.26.24757.84.9.5.15 == 0x1a99)
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
 #
 condition User-Name[a] == 'bob'
-match ERROR offset 10: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 10: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition User-Name == Filter-Id[a]
-match ERROR offset 23: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 23: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
@@ -560,11 +566,11 @@ condition request.Tunnel-Password:0 == 0
 match ERROR offset 23: Unexpected text after attribute reference
 
 condition not-a-list:User-Name == not-a-list:User-Name
-match ERROR offset 0: Attribute 'not-a-list' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition not-a-packet.User-Name == not-a-packet.User-Name
-match ERROR offset 0: Attribute 'not-a-packet' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.

@@ -720,7 +720,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	Set sequence so that we can prioritize ongoing multi-packet sessions.
 	 */
-	request->async->sequence = entry->tries;
+	request->sequence = entry->tries;
 	REQUEST_VERIFY(request);
 	return 0;
 }
@@ -755,7 +755,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		 *	are parented correctly, else we'll get
 		 *	memory errors when we restore.
 		 */
-		fr_pair_list_verify(__FILE__, __LINE__, request->session_state_ctx, &request->session_state_pairs);
+		fr_pair_list_verify(__FILE__, __LINE__, request->session_state_ctx, &request->session_state_pairs, true);
 #endif
 	}
 

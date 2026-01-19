@@ -72,7 +72,7 @@ extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_protocol, .proto = "radius" }, /* hacked in-place with '-p protocol' */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -83,7 +83,7 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
 	{ .out = &attr_net, .name = "Net", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -225,7 +225,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone, true) < 0) {
 		goto error;
 	}
 
@@ -353,7 +353,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
@@ -592,11 +592,11 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 	return 0;
 }
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				    UNUSED request_t *request, UNUSED fr_value_box_list_t *src,
 				    UNUSED map_list_t const *maps)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static request_t *request_clone(request_t *old, int number, CONF_SECTION *server_cs)
@@ -615,7 +615,7 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	request->number = number;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	request->master_state = REQUEST_ACTIVE;
 
@@ -626,9 +626,10 @@ static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, vo
 {
 	request_t	*request = talloc_get_type_abort(uctx, request_t);
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
-fr_time_delta_t time_offset = fr_time_delta_wrap(0);
+static fr_time_delta_t time_offset = fr_time_delta_wrap(0);
 
 /** Sythentic time source for tests
  *
@@ -836,11 +837,13 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'S': /* Migration support */
+#if 0
 				if (main_config_parse_option(optarg) < 0) {
 					fprintf(stderr, "%s: Unknown configuration option '%s'\n",
 						config->name, optarg);
 					fr_exit_now(EXIT_FAILURE);
 				}
+#endif
 				break;
 
 			case 'X':
@@ -943,6 +946,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Needed for the triggers.  Which are always run-time expansions.
+	 */
+	if (main_loop_init() < 0) {
+		PERROR("Failed initialising main event loop");
+		EXIT_WITH_FAILURE;
+	}
+	/*
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
 	 */
@@ -1009,9 +1019,9 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy event list
+	 *	Get the main event list.
 	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
+	el = main_loop_event_list();
 	fr_assert(el != NULL);
 	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
@@ -1116,7 +1126,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone, true) < 0) {
 			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
@@ -1209,11 +1219,12 @@ int main(int argc, char *argv[])
 		MEM(pair_update_reply(&vp, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
-
 		if (!fr_pair_validate(failed, &filter_vps, &request->reply_pairs)) {
 			fr_pair_validate_debug(failed);
+
 			fr_perror("Output file %s does not match attributes in filter %s",
 				  output_file ? output_file : "-", filter_file);
+			fr_fprintf_pair_list(stderr, &filter_vps);
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1255,10 +1266,7 @@ cleanup:
 	 */
 	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 
-	/*
-	 *	Free the event list.
-	 */
-	talloc_free(el);
+	main_loop_free();
 
 	/*
 	 *	Ensure all thread local memory is cleaned up

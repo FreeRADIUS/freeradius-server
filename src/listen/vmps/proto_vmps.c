@@ -44,6 +44,7 @@ static const conf_parser_t priority_config[] = {
 
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", proto_vmps_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_vmps_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_vmps_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_vmps_t, io.max_connections), .dflt = "1024" } ,
@@ -76,7 +77,7 @@ static fr_dict_t const *dict_vmps;
 extern fr_dict_autoload_t proto_vmps_dict[];
 fr_dict_autoload_t proto_vmps_dict[] = {
 	{ .out = &dict_vmps, .proto = "vmps" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -84,7 +85,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t proto_vmps_dict_attr[];
 fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name

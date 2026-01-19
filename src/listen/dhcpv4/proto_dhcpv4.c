@@ -54,6 +54,7 @@ static const conf_parser_t priority_config[] = {
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_dhcpv4_t, io.cleanup_delay), .dflt = "5.0" } ,
 	{ FR_CONF_OFFSET("idle_timeout", proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_dhcpv4_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_dhcpv4_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_dhcpv4_t, io.max_connections), .dflt = "1024" } ,
@@ -96,7 +97,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t proto_dhcpv4_dict[];
 fr_dict_autoload_t proto_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
@@ -106,7 +107,7 @@ extern fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name

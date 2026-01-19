@@ -46,7 +46,6 @@ static fr_time_t test_time(void)
 }
 
 FR_SLAB_TYPES(test, test_element_t)
-
 FR_SLAB_FUNCS(test, test_element_t)
 
 /** Test basic allocation and reservation of elements
@@ -804,5 +803,5 @@ TEST_LIST = {
 	{ "test_realloc",	test_realloc },
 	{ "test_child_alloc",	test_child_alloc },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

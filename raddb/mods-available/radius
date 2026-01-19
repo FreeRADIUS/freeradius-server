@@ -98,7 +98,8 @@
 #                  or the reply packet is invalid.
 #  | ok          | the module received an `ack` (`Access-Accept`,
 #                  `Accounting-Response`, `CoA-ACK`, etc.)
-#  | handled     | the module received an `Access-Challenge`
+#  | updated     | the module received an `Access-Challenge`
+#  | handled     | the module received a `Protocol-Error`
 #  | fail        | there was no response to the proxied request
 #  | reject      | the module received a `nak` (`Access-Reject`, `CoA-NAK`, etc.)
 #  | noop        | the module saw its own `Proxy-State` attribute,
@@ -1045,5 +1046,59 @@ radius proxy {
 			free_delay = 10
 		}
 
+	}
+}
+
+
+#
+#  ## Policy Over-rides
+#
+#  The proxy policy overrides enables functionality similar to the
+#  version 3 pre/post-proxy sections.
+#
+
+@policy proxy {
+	#
+	#  Create a subrequest which we can edit.  When the subrequest
+	#  section is done,
+	#
+	subrequest {
+		#
+		#  Initialize the proxied packet from the request.
+		#
+		#  This is the "pre-proxy" section.
+		#
+		request := parent.request
+
+		#
+		#  Run the "radius proxy" module noted above.
+		#
+		proxy
+
+		#
+		#  Edit the reply from the home server here.
+		#
+		#  This is the "post-proxy" section.
+		#
+		#  Note that the Proxy-State attributes have already
+		#  been deleted from the reply, so you don't need to
+		#  do that here.  Those attributes are not needed by
+		#  anyone for anything, and confuse things if they're
+		#  copied to the original request.  The `radius`
+		#  module therefore deletes them, to make your life
+		#  easier.
+		#
+
+		#
+		#  Like v3, remove all pre-existing attributes in the
+		#  original reply, and replace them with the reply
+		#  from the home server.
+		#
+		#  It is also possible to copy over some, or none of
+		#  the attributes in the reply from the home server.
+		#  The configuration here is just an example, and can
+		#  be edited.
+		#
+		parent.reply := reply
 	}
 }

@@ -55,6 +55,8 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <freeradius-devel/util/dict_priv.h>
+
 #include <ctype.h>
 
 #ifdef __clangd__
@@ -272,14 +274,20 @@ static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static char		proto_name_prev[128];
-static dl_t		*dl;
+static char		proto_name_prev[128] = {};
+static dl_t		*dl = NULL;
 static dl_loader_t	*dl_loader = NULL;
 
 static fr_event_list_t	*el = NULL;
 
+static bool		allow_purify = false;
+
 static char const	*write_filename = NULL;
 static FILE		*write_fp = NULL;
+
+static char const		*receipt_file = NULL;
+static char const		*receipt_dir = NULL;
+static char const      		*fail_file = "";
 
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
@@ -371,16 +379,21 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 		if (expected_len < 100) {
 			char const *spaces = "                                                                                ";
 
-			ERROR("  got      : %.*s", (int) got_len, got);
-			ERROR("  expected : %.*s", (int) expected_len, expected);
+			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
+			ERROR("  GOT      : %.*s", (int) got_len, got);
 			ERROR("             %.*s^ differs here (%zu)", (int) (e - expected), spaces, e - expected);
+		} else if (fr_debug_lvl > 1) {
+			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
+			ERROR("  GOT      : %.*s", (int) got_len, got);
+			ERROR("Differs at : %zu", e - expected);
+
 		} else {
 			size_t glen, elen;
 
 			elen = strlen(e);
-			if (elen > 40) elen = 40;
+			if (elen > 70) elen = 70;
 			glen = strlen(g);
-			if (glen > 40) glen = 40;
+			if (glen > 70) glen = 70;
 
 			ERROR("(%zu) ... %.*s ... ", e - expected, (int) elen, e);
 			ERROR("(%zu) ... %.*s ... ", e - expected, (int) glen, g);
@@ -442,6 +455,8 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 	char		digest_str[(SHA1_DIGEST_LENGTH * 2) + 1];
 	int		file_fd;
 
+	fr_assert(data_len <= COMMAND_OUTPUT_MAX);
+
 	fr_sha1_init(&ctx);
 	fr_sha1_update(&ctx, (uint8_t const *)text, strlen(text));
 	fr_sha1_final(digest, &ctx);
@@ -463,6 +478,7 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 	}
 
 	if (flock(file_fd, LOCK_EX) < 0) {
+		close(file_fd);
 		fr_strerror_printf("Failed locking corpus seed file \"%s\": %s",
 				   digest_str, fr_syserror(errno));
 		return -1;
@@ -477,12 +493,14 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 					   digest_str, fr_syserror(errno));
 			(void)flock(file_fd, LOCK_UN);
 			unlinkat(fd_dir, digest_str, 0);
+			close(file_fd);
 			return -1;
 		}
 		data_len -= ret;
 		data += ret;
 	}
 	(void)flock(file_fd, LOCK_UN);
+	close(file_fd);
 
 	return 0;
 }
@@ -921,6 +939,7 @@ static ssize_t encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 
 static void unload_proto_library(void)
 {
+	proto_name_prev[0] = '\0';
 	TALLOC_FREE(dl);
 }
 
@@ -947,6 +966,7 @@ static ssize_t load_proto_library(char const *proto_name)
 		strlcpy(proto_name_prev, proto_name, sizeof(proto_name_prev));
 	}
 
+	fr_assert(dl != NULL);
 	return strlen(proto_name);
 }
 
@@ -1042,16 +1062,18 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	 */
 	if (fr_debug_lvl > 5) fr_dict_debug(fr_log_fp, cc->tmpl_rules.attr.dict_def);
 
+
 	RETURN_OK(0);
 }
 
-static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, char const **out, char const *in, size_t inlen)
+static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc, fr_value_box_t *box, char const **out, char const *in, size_t inlen)
 {
 	fr_type_t	type;
 	size_t		match_len;
 	ssize_t		slen;
 	char const     	*p;
 	fr_sbuff_t	sbuff;
+	fr_dict_attr_t const *enumv = NULL;
 
 	/*
 	 *	Parse data types
@@ -1066,6 +1088,12 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	fr_skip_whitespace(p);
 	*out = p;
 
+	if (type == FR_TYPE_ATTR) {
+		enumv = cc->tmpl_rules.attr.dict_def ?
+			fr_dict_root(cc->tmpl_rules.attr.dict_def) :
+			fr_dict_root(fr_dict_internal());
+	}
+
 	/*
 	 *	As a hack, allow most things to be inside
 	 *	double-quoted strings.  This is really only for dates,
@@ -1074,7 +1102,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	if (*p == '"'){
 		p++;
 		sbuff = FR_SBUFF_IN(p, strlen(p));
-		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, NULL,
+		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, enumv,
 						&sbuff,
 						&value_parse_rules_double_quoted);
 		if (slen < 0) {
@@ -1096,7 +1124,21 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	} else {
 		sbuff = FR_SBUFF_IN(p, strlen(p));
 
-		slen = fr_value_box_from_substr(box, box, type, NULL,
+		/*
+		 *	We have no other way to pass the dict to the value-box parse function.
+		 */
+		if (type == FR_TYPE_ATTR) {
+			fr_dict_t const *dict = dictionary_current(cc);
+
+			if (!dict) {
+				fr_strerror_const("proto-dictionary must be defined");
+				RETURN_PARSE_ERROR(0);
+			}
+
+			enumv = fr_dict_root(dict);
+		}
+
+		slen = fr_value_box_from_substr(box, box, type, enumv,
 						&sbuff,
 						&value_parse_rules_bareword_unquoted);
 		if (slen < 0) {
@@ -1136,7 +1178,7 @@ static void command_print(void)
 	void *walk_ctx = NULL;
 
 	printf("Command hierarchy --------");
-	fr_command_debug(stdout, command_head);
+	fr_cmd_debug(stdout, command_head);
 
 	printf("Command list --------");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {
@@ -1207,6 +1249,121 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 	RETURN_OK(0);
 }
 
+#define ATTR_COMMON \
+	fr_sbuff_t		our_in = FR_SBUFF_IN(in, inlen); \
+	fr_dict_attr_err_t	err; \
+	fr_slen_t		slen; \
+	fr_dict_attr_t const	*root; \
+	fr_dict_attr_t const	*da; \
+	root = cc->tmpl_rules.attr.dict_def ? \
+		fr_dict_root(cc->tmpl_rules.attr.dict_def) : \
+		fr_dict_root(fr_dict_internal()); \
+	slen = fr_dict_attr_by_oid_substr(&err, \
+					  &da, \
+					  root, \
+					  &our_in, NULL); \
+	if (err != FR_DICT_ATTR_OK) FR_SBUFF_ERROR_RETURN(&our_in)
+
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_children(command_result_t *result, command_file_ctx_t *cc,
+				    UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_hash_table_t *namespace;
+	fr_hash_iter_t	iter;
+	fr_dict_attr_t const *ref;
+	fr_sbuff_t out = FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX);
+	ATTR_COMMON;
+
+	namespace = dict_attr_namespace(da);
+	fr_assert(namespace != NULL);
+
+	for (da = fr_hash_table_iter_init(namespace, &iter);
+	     da != NULL;
+	     da = fr_hash_table_iter_next(namespace, &iter)) {
+		if (da->flags.is_alias) {
+			ref = fr_dict_attr_ref(da);
+			fr_assert(ref != NULL);
+
+			slen = fr_sbuff_in_sprintf(&out, "%s (ALIAS ref=", da->name);
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+			slen = fr_dict_attr_oid_print(&out, fr_dict_root(da->dict), ref, false);
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+			slen = fr_sbuff_in_strcpy(&out, "), ");
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+			continue;
+		}
+
+		slen = fr_sbuff_in_sprintf(&out, "%s (%s), ", da->name, fr_type_to_str(da->type));
+		if (slen <= 0) RETURN_OK_WITH_ERROR();
+	}
+
+	fr_sbuff_trim(&out, (bool[UINT8_MAX + 1]){ [' '] = true, [','] = true });
+
+	RETURN_OK(fr_sbuff_used(&out));
+}
+
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_flags(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_flags_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), da->dict, da->type, &da->flags);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_name(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), root, da, false);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_oid(command_result_t *result, command_file_ctx_t *cc,
+			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), root, da, true);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc,
+			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_sbuff_in_strcpy(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), fr_type_to_str(da->type));
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
 static const fr_token_t token2op[UINT8_MAX + 1] = {
 	[ '+' ] = T_ADD,
 	[ '-' ] = T_SUB,
@@ -1239,7 +1396,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	p = in;
 	end = in + inlen;
 
-	match_len = parse_typed_value(result, a, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 	if (match_len == 0) return 0; /* errors have already been updated */
 
 	p += match_len;
@@ -1262,7 +1419,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	}
 	fr_skip_whitespace(p);
 
-	match_len = parse_typed_value(result, b, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, b, &value, p, end - p);
 	if (match_len == 0) return 0;
 
 	p += match_len;
@@ -1338,7 +1495,7 @@ static size_t command_calc_nary(command_result_t *result, command_file_ctx_t *cc
 
 		a = talloc_zero(group, fr_value_box_t);
 
-		match_len = parse_typed_value(result, a, &value, p, end - p);
+		match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 		if (match_len == 0) return 0; /* errors have already been updated */
 
 		fr_value_box_list_insert_tail(&group->vb_group, a);
@@ -1380,13 +1537,14 @@ static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
 	fr_type_t type;
 	char const *p, *value, *end;
 	size_t slen;
+	fr_dict_attr_t const *enumv = NULL;
 
 	a = talloc_zero(cc->tmp_ctx, fr_value_box_t);
 
 	p = in;
 	end = in + inlen;
 
-	match_len = parse_typed_value(result, a, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 	if (match_len == 0) return 0; /* errors have already been updated */
 
 	p += match_len;
@@ -1402,7 +1560,13 @@ static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
 	if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
 	fr_value_box_init(out, type, NULL, false);
 
-	if (fr_value_box_cast(out, out, type, NULL, a) < 0) {
+	if (type == FR_TYPE_ATTR) {
+		enumv = cc->tmpl_rules.attr.dict_def ?
+			fr_dict_root(cc->tmpl_rules.attr.dict_def) :
+			fr_dict_root(fr_dict_internal());
+	}
+
+	if (fr_value_box_cast(out, out, type, enumv, a) < 0) {
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1642,7 +1806,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	p += slen;
 	fr_skip_whitespace(p);
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx, dictionary_current(cc)) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx, dictionary_current(cc), NULL) < 0)) {
 		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
@@ -1743,7 +1907,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	p += slen;
 	fr_skip_whitespace(p);
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx, dictionary_current(cc)) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx, dictionary_current(cc), NULL) < 0)) {
 		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
@@ -1976,7 +2140,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		fr_skip_whitespace(p);
 	}
 
-	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx, dictionary_current(cc)) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx, dictionary_current(cc), NULL) < 0)) {
 		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
@@ -1986,6 +2150,9 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		.ctx = cc->tmp_ctx,
 		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
+		.dict = cc->tmpl_rules.attr.namespace->dict,
+		.internal = fr_dict_internal(),
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -1995,7 +2162,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_OK_WITH_ERROR();
 	}
 
-	 PAIR_LIST_VERIFY(&head);
+	 PAIR_LIST_VERIFY_WITH_CTX(cc->tmp_ctx, &head);
 
 	/*
 	 *	Outer loop implements truncate test
@@ -2140,7 +2307,7 @@ static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc
 	}
 
 	fr_pair_list_init(&head);
-	slen = fr_pair_list_afrom_file(cc->tmp_ctx, cc->tmpl_rules.attr.dict_def, &head, fp, &done);
+	slen = fr_pair_list_afrom_file(cc->tmp_ctx, cc->tmpl_rules.attr.dict_def, &head, fp, &done, true);
 	fclose(fp);
 	if (slen < 0) {
 		RETURN_OK_WITH_ERROR();
@@ -2195,7 +2362,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	p += ((size_t)slen);
 	fr_skip_whitespace(p);
-	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx, dictionary_current(cc)) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx, dictionary_current(cc), NULL) < 0)) {
 		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
@@ -2205,6 +2372,9 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		.ctx = cc->tmp_ctx,
 		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
+		.dict = cc->tmpl_rules.attr.namespace->dict,
+		.internal = fr_dict_internal(),
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2349,6 +2519,14 @@ static size_t command_load_dictionary(command_result_t *result, command_file_ctx
 	} else {
 		name = in;
 		dir = cc->path;
+	}
+
+	/*
+	 *	When we're reading multiple files at the same time, they might all have a 'load-dictionary foo'
+	 *	command.  In which case we don't complain.
+	 */
+	if (fr_dict_filename_loaded(cc->tmpl_rules.attr.dict_def, dir, name)) {
+		RETURN_OK(0);
 	}
 
 	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.attr.dict_def), dir, name);
@@ -2542,8 +2720,9 @@ static size_t command_no(command_result_t *result, command_file_ctx_t *cc,
 /** Parse an print an attribute pair or pair list.
  *
  */
-static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
-			   char *data, UNUSED size_t data_used, char *in, size_t inlen)
+static size_t command_pair_common(command_result_t *result, command_file_ctx_t *cc,
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen,
+				  bool allow_compare)
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
@@ -2556,6 +2735,10 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 		.ctx = cc->tmp_ctx,
 		.da = fr_dict_root(dict),
 		.list = &head,
+		.dict = dict,
+		.internal = fr_dict_internal(),
+		.allow_compare = allow_compare,
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2580,6 +2763,19 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	fr_pair_list_free(&head);
 	RETURN_OK(slen);
 }
+
+static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
+			   char *data, size_t data_used, char *in, size_t inlen)
+{
+	return command_pair_common(result, cc, data, data_used, in, inlen, false);
+}
+
+static size_t command_pair_compare(command_result_t *result, command_file_ctx_t *cc,
+				   char *data, size_t data_used, char *in, size_t inlen)
+{
+	return command_pair_common(result, cc, data, data_used, in, inlen, true);
+}
+
 
 /** Dynamically load a protocol library
  *
@@ -2628,6 +2824,47 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	cc->tmpl_rules.attr.namespace = new_root;
 
 	RETURN_OK(0);
+}
+
+/** Parse an reprint a tmpl expansion
+ *
+ */
+static size_t command_tmpl(command_result_t *result, command_file_ctx_t *cc,
+				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t			slen;
+	tmpl_t			*vpt;
+	size_t			input_len = strlen(in), escaped_len;
+
+	slen = tmpl_afrom_substr(cc->tmp_ctx, &vpt, &FR_SBUFF_IN(in, input_len), T_BARE_WORD,
+				 &value_parse_rules_bareword_unquoted,
+				 &(tmpl_rules_t) {
+					 .attr = {
+						 .dict_def = dictionary_current(cc),
+						 .list_def = request_attr_request,
+						 .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+					 },
+					 .xlat = cc->tmpl_rules.xlat,
+				 });
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+
+	return_error:
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("offset %d 'Too much text'", (int) slen);
+		goto return_error;
+	}
+
+	escaped_len = tmpl_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), vpt, NULL);
+	RETURN_OK(escaped_len);
 }
 
 /** Touch a file to indicate a test completed
@@ -2775,7 +3012,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	ssize_t		slen;
 	fr_type_t	type;
 
-	match_len = parse_typed_value(result, box, &value, in, strlen(in));
+	match_len = parse_typed_value(result, cc, box, &value, in, strlen(in));
 	if (match_len == 0) {
 		talloc_free(box);
 		return 0;	/* errors have already been updated */
@@ -2803,7 +3040,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	 *	box as last time.
 	 */
 	box2 = talloc_zero(NULL, fr_value_box_t);
-	if (fr_value_box_from_str(box2, box2, type, NULL,
+	if (fr_value_box_from_str(box2, box2, type, box->enumv,
 				  data, slen,
 				  &fr_value_unescape_double) < 0) {
 		talloc_free(box2);
@@ -2899,6 +3136,11 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
+
+	if (allow_purify) {
+		fr_strerror_printf_push_head("ERROR cannot run 'xlat' when running with command-line argument '-p'");
+		RETURN_OK_WITH_ERROR();
+	}
 
 	slen = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
 			     &(tmpl_rules_t) {
@@ -3027,6 +3269,68 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 }
 
 
+/** Parse, purify, and reprint an xlat expression expansion
+ *
+ */
+static size_t command_xlat_purify_condition(command_result_t *result, command_file_ctx_t *cc,
+					    char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t			slen;
+	xlat_exp_head_t		*head = NULL;
+	size_t			input_len = strlen(in), escaped_len;
+	tmpl_rules_t		t_rules = (tmpl_rules_t) {
+						   .attr = {
+							.dict_def = dictionary_current(cc),
+							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
+							.list_def = request_attr_request,
+						   },
+						   .xlat = cc->tmpl_rules.xlat,
+						   .at_runtime = true,
+					   };
+
+	if (!el) {
+		fr_strerror_const("Flag '-p' not used.  xlat_purify is disabled");
+		goto return_error;
+	}
+	t_rules.xlat.runtime_el = el;
+
+	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+	return_error:
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, slen);
+		goto return_error;
+	}
+
+	if (fr_debug_lvl > 2) {
+		DEBUG("Before purify --------------------------------------------------");
+		xlat_debug_head(head);
+	}
+
+	if (xlat_purify(head, NULL) < 0) {
+		fr_strerror_printf_push_head("ERROR purifying node - %s", fr_strerror());
+		goto return_error;
+	}
+
+	if (fr_debug_lvl > 2) {
+		DEBUG("After purify --------------------------------------------------");
+		xlat_debug_head(head);
+	}
+
+	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
+	RETURN_OK(escaped_len);
+}
+
+
 /** Parse an reprint and xlat argv expansion
  *
  */
@@ -3041,6 +3345,11 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	size_t		len;
 	size_t		input_len = strlen(in);
 	char		buff[1024];
+
+	if (allow_purify) {
+		fr_strerror_printf_push_head("ERROR cannot run 'xlat_argv' when running with command-line argument '-p'");
+		RETURN_OK_WITH_ERROR();
+	}
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len),
 				  NULL, NULL,
@@ -3090,6 +3399,45 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_allow_unresolved,
 					.usage = "allow-unresolved yes|no",
 					.description = "Allow or disallow unresolved attributes in xlats and references"
+				}},
+	{ L("attr.children"),	&(command_entry_t){
+					.func = command_attr_children,
+					.usage = "attr.children",
+					.description = "Return the children of the named attribute",
+				}},
+	{ L("attr.flags"),	&(command_entry_t){
+					.func = command_attr_flags,
+					.usage = "attr.flags",
+					.description = "Return the flags of the named attribute",
+				}},
+	{ L("attr.name"),	&(command_entry_t){
+					.func = command_attr_name,
+					.usage = "attr.name",
+					.description = "Return the number of the named attribute",
+				}},
+#if 0
+	{ L("attr.number"),	&(command_entry_t){
+					.func = command_attr_number,
+					.usage = "attr.number",
+					.description = "Return the number of the named attribute",
+				}},
+#endif
+	{ L("attr.oid"),	&(command_entry_t){
+					.func = command_attr_oid,
+					.usage = "attr.oid",
+					.description = "Return the OID of the named attribute",
+				}},
+#if 0
+	{ L("attr.ref"),	&(command_entry_t){
+					.func = command_attr_ref,
+					.usage = "attr.ref",
+					.description = "Return the reference (if any) of the named attribute",
+				}},
+#endif
+	{ L("attr.type"),	&(command_entry_t){
+					.func = command_attr_type,
+					.usage = "attr.type",
+					.description = "Return the data type of the named attribute",
 				}},
 	{ L("calc "),		&(command_entry_t){
 					.func = command_calc,
@@ -3232,6 +3580,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "pair ... data ...",
 					.description = "Parse a list of pairs",
 				}},
+	{ L("pair-compare "),		&(command_entry_t){
+					.func = command_pair_compare,
+					.usage = "pair-compare ... data ...",
+					.description = "Parse a list of pairs, allowing comparison operators",
+				}},
 	{ L("proto "),		&(command_entry_t){
 					.func = command_proto,
 					.usage = "proto <protocol>",
@@ -3264,6 +3617,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_returned,
 					.usage = "returned",
 					.description = "Print the returned value to the data buffer"
+				}},
+
+	{ L("tmpl "),		&(command_entry_t){
+					.func = command_tmpl,
+					.usage = "parse <string>",
+					.description = "Parse then print a tmpl expansion, writing the normalised tmpl expansion to the data buffer"
 				}},
 
 	{ L("tmpl-rules "),	&(command_entry_t){
@@ -3308,6 +3667,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_xlat_purify,
 					.usage = "xlat_purify <string>",
 					.description = "Parse, purify, then print an xlat expression, writing the normalised xlat expansion to the data buffer"
+				}},
+
+	{ L("xlat_purify_cond "),	&(command_entry_t){
+					.func = command_xlat_purify_condition,
+					.usage = "xlat_purify_cond <string>",
+					.description = "Parse, purify, then print an xlat condition, writing the normalised xlat expansion to the data buffer"
 				}},
 
 };
@@ -3513,6 +3878,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
+		fr_assert(!root_dir);
+
 	} else {
 		if (root_dir && *root_dir) {
 			snprintf(path, sizeof(path), "%s/%s", root_dir, filename);
@@ -3789,6 +4156,149 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	return 0;
 }
 
+static int process_path(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config, const char *path)
+{
+	char			*p, *dir = NULL, *file;
+	int			ret = EXIT_SUCCESS;
+	fr_sbuff_t		in = FR_SBUFF_IN(path, strlen(path));
+	fr_sbuff_term_t		dir_sep = FR_SBUFF_TERMS(
+		L("/"),
+		L(":")
+		);
+	fr_sbuff_marker_t	file_start, file_end, dir_end;
+	fr_dlist_head_t		lines;
+
+	fr_sbuff_marker(&file_start, &in);
+	fr_sbuff_marker(&file_end, &in);
+	fr_sbuff_marker(&dir_end, &in);
+	fr_sbuff_set(&file_end, fr_sbuff_end(&in));
+
+	fr_dlist_init(&lines, command_line_range_t, entry);
+
+	while (fr_sbuff_extend(&in)) {
+		fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
+
+		fr_sbuff_switch(&in, '\0') {
+			case '/':
+				fr_sbuff_set(&dir_end, &in);
+				fr_sbuff_advance(&in, 1);
+				fr_sbuff_set(&file_start, &in);
+				break;
+
+				case ':':
+					fr_sbuff_set(&file_end, &in);
+					fr_sbuff_advance(&in, 1);
+					if (line_ranges_parse(ctx, &lines, &in) < 0) {
+						return EXIT_FAILURE;
+					}
+					break;
+
+					default:
+						fr_sbuff_set(&file_end, &in);
+						break;
+		}
+	}
+
+	file = talloc_bstrndup(ctx,
+			       fr_sbuff_current(&file_start), fr_sbuff_diff(&file_end, &file_start));
+	if (fr_sbuff_used(&dir_end)) dir = talloc_bstrndup(ctx,
+							   fr_sbuff_start(&in),
+							   fr_sbuff_used(&dir_end));
+
+	/*
+	 *	Do things so that GNU Make does less work.
+	 */
+	if ((receipt_dir || receipt_file) &&
+	    (strncmp(path, "src/tests/unit/", 15) == 0)) {
+		p = strchr(path + 15, '/');
+		if (!p) {
+			printf("UNIT-TEST %s\n", path + 15);
+		} else {
+			char *q = strchr(p + 1, '/');
+
+			*p = '\0';
+
+			if (!q) {
+				printf("UNIT-TEST %s - %s\n", path + 15, p + 1);
+			} else {
+				*q = '\0';
+
+				printf("UNIT-TEST %s - %s\n", p + 1, q + 1);
+				*q = '/';
+			}
+
+			*p = '/';
+		}
+	}
+
+	/*
+	 *	Rewrite this file if requested.
+	 */
+	if (write_filename) {
+		write_fp = fopen(write_filename, "w");
+		if (!write_fp) {
+			ERROR("Failed opening %s: %s", write_filename, strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	ret = process_file(exit_now, ctx, config, dir, file, &lines);
+
+	if ((ret == EXIT_SUCCESS) && receipt_dir && dir) {
+		char *touch_file, *subdir;
+
+		if (strncmp(dir, "src/", 4) == 0) {
+			subdir = dir + 4;
+		} else {
+			subdir = dir;
+		}
+
+		touch_file = talloc_asprintf(ctx, "build/%s/%s", subdir, file);
+		fr_assert(touch_file);
+
+		p = strchr(touch_file, '/');
+		fr_assert(p);
+
+		if (fr_mkdir(NULL, touch_file, (size_t) (p - touch_file), S_IRWXU, NULL, NULL) < 0) {
+			fr_perror("unit_test_attribute - failed to make directory %.*s - ",
+				  (int) (p - touch_file), touch_file);
+fail:
+			if (write_fp) fclose(write_fp);
+			return EXIT_FAILURE;
+		}
+
+		if (fr_touch(NULL, touch_file, 0644, true, 0755) <= 0) {
+			fr_perror("unit_test_attribute - failed to create receipt file %s - ",
+				  touch_file);
+			goto fail;
+		}
+
+		talloc_free(touch_file);
+	}
+
+	talloc_free(dir);
+	talloc_free(file);
+	fr_dlist_talloc_free(&lines);
+
+	if (ret != EXIT_SUCCESS) {
+		if (write_fp) {
+			fclose(write_fp);
+			write_fp = NULL;
+		}
+		fail_file = path;
+	}
+
+	if (write_fp) {
+		fclose(write_fp);
+		if (rename(write_filename, path) < 0) {
+			ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	return ret;
+}
+
 /**
  *
  * @hidecallgraph
@@ -3796,7 +4306,6 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 int main(int argc, char *argv[])
 {
 	int			c;
-	char const		*receipt_file = NULL;
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
@@ -3812,8 +4321,9 @@ int main(int argc, char *argv[])
 	bool			do_features = false;
 	bool			do_commands = false;
 	bool			do_usage = false;
-	bool			allow_purify = false;
 	xlat_t			*xlat;
+	char			*p;
+	char const		*error_str = NULL, *fail_str = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -3887,7 +4397,18 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'r':
-			receipt_file = optarg;
+			p = strrchr(optarg, '/');
+			if (!p || p[1]) {
+				receipt_file = optarg;
+
+				if ((fr_unlink(receipt_file) < 0)) {
+					fr_perror("unit_test_attribute");
+					EXIT_WITH_FAILURE;
+				}
+
+			} else {
+				receipt_dir = optarg;
+			}
 			break;
 
 		case 'p':
@@ -3916,11 +4437,6 @@ int main(int argc, char *argv[])
 	if (do_usage || do_features || do_commands) {
 		ret = EXIT_SUCCESS;
 		goto cleanup;
-	}
-
-	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
-		fr_perror("unit_test_attribute");
-		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -4021,105 +4537,77 @@ int main(int argc, char *argv[])
 	fr_hostname_lookups = fr_reverse_lookups = false;
 
 	/*
-	 *	Read tests from stdin
+	 *	Read test commands from stdin
 	 */
-	if (argc < 2) {
+	if ((argc < 2) && !receipt_dir) {
 		if (write_filename) {
-			ERROR("Can't use '-w' with stdin");
+			ERROR("Can only use '-w' with input files");
 			EXIT_WITH_FAILURE;
 		}
 
-		ret = process_file(&exit_now, autofree, &config, name, "-", NULL);
+		ret = process_file(&exit_now, autofree, &config, NULL, "-", NULL);
 
-	/*
-	 *	...or process each file in turn.
-	 */
-	} else {
+	} else if ((argc == 2) && (strcmp(argv[1], "-") == 0)) {
+			char buffer[1024];
+
+			/*
+			 *	Read the list of filenames from stdin.
+			 */
+			while (fgets(buffer, sizeof(buffer) - 1, stdin) != NULL) {
+				buffer[sizeof(buffer) - 1] = '\0';
+
+				p = buffer;
+				while (isspace((unsigned int) *p)) p++;
+
+				if (!*p || (*p == '#')) continue;
+
+				name = p;
+
+				/*
+				 *	Smash CR/LF.
+				 *
+				 *	Note that we don't care about truncated filenames.  The code below
+				 *	will complain that it can't open the file.
+				 */
+				while (*p) {
+					if (*p < ' ') {
+						*p = '\0';
+						break;
+					}
+
+					p++;
+				}
+
+				ret = process_path(&exit_now, autofree, &config, name);
+				if ((ret != EXIT_SUCCESS) || exit_now) break;
+			}
+
+	} else if (argc > 1) {
 		int i;
 
-		if (write_filename) {
-			if (argc != 2) { /* program name and file to write */
-				ERROR("Can't use '-w' with multiple filenames");
-				EXIT_WITH_FAILURE;
-			}
-
-			write_fp = fopen(write_filename, "w");
-			if (!write_fp) {
-				ERROR("Failed opening %s: %s", write_filename, strerror(errno));
-				EXIT_WITH_FAILURE;
-			}
-		}
-
 		/*
-		 *	Loop over all input files.
+		 *	Read test commands from a list of files in argv[].
 		 */
 		for (i = 1; i < argc; i++) {
-			char			*dir = NULL, *file;
-			fr_sbuff_t		in = FR_SBUFF_IN(argv[i], strlen(argv[i]));
-			fr_sbuff_term_t		dir_sep = FR_SBUFF_TERMS(
-							L("/"),
-							L(":")
-						);
-			fr_sbuff_marker_t	file_start, file_end, dir_end;
-			fr_dlist_head_t		lines;
-
-			fr_sbuff_marker(&file_start, &in);
-			fr_sbuff_marker(&file_end, &in);
-			fr_sbuff_marker(&dir_end, &in);
-			fr_sbuff_set(&file_end, fr_sbuff_end(&in));
-
-			fr_dlist_init(&lines, command_line_range_t, entry);
-
-			while (fr_sbuff_extend(&in)) {
-				fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
-
-				fr_sbuff_switch(&in, '\0') {
-				case '/':
-					fr_sbuff_set(&dir_end, &in);
-					fr_sbuff_advance(&in, 1);
-					fr_sbuff_set(&file_start, &in);
-					break;
-
-				case ':':
-					fr_sbuff_set(&file_end, &in);
-					fr_sbuff_advance(&in, 1);
-					if (line_ranges_parse(autofree, &lines, &in) < 0) EXIT_WITH_FAILURE;
-					break;
-
-				default:
-					fr_sbuff_set(&file_end, &in);
-					break;
-				}
-			}
-
-			file = talloc_bstrndup(autofree,
-					       fr_sbuff_current(&file_start), fr_sbuff_diff(&file_end, &file_start));
-			if (fr_sbuff_used(&dir_end)) dir = talloc_bstrndup(autofree,
-									   fr_sbuff_start(&in),
-									   fr_sbuff_used(&dir_end));
-
-			ret = process_file(&exit_now, autofree, &config, dir, file, &lines);
-			talloc_free(dir);
-			talloc_free(file);
-			fr_dlist_talloc_free(&lines);
-
-			if ((ret != 0) || exit_now) break;
+			ret = process_path(&exit_now, autofree, &config, argv[i]);
+			if ((ret != EXIT_SUCCESS) || exit_now) break;
 		}
-
-		if (write_fp) {
-			fclose(write_fp);
-			if (rename(write_filename, argv[1]) < 0) {
-				ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
-				EXIT_WITH_FAILURE;
-			}
-		}
-	}
+	} /* nothing to do */
 
 	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
+#undef EXIT_WITH_FAILURE
+#define EXIT_WITH_FAILURE \
+do { \
+	ret = EXIT_FAILURE; \
+	error_str = fr_strerror(); \
+	if (error_str) error_str = talloc_strdup(NULL, error_str); \
+	goto fail; \
+} while (0)
+
 	/*
 	 *	Ensure all thread local memory is cleaned up
 	 *	at the appropriate time.  This emulates what's
@@ -4137,16 +4625,17 @@ cleanup:
 	 *	returns -1 on failure.
 	 */
 	if (dl_loader && (talloc_free(dl_loader) < 0)) {
-		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
+		fail_str = "cleaning up dynamically loaded libraries";
 		EXIT_WITH_FAILURE;
 	}
+
 	if (fr_dict_free(&config.dict, __FILE__) < 0) {
-		fr_perror("unit_test_attribute");
+		fail_str = "cleaning up dictionaries";
 		EXIT_WITH_FAILURE;
 	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
-		fr_perror("unit_test_attribute");
+		fail_str = "creating receipt file";
 		EXIT_WITH_FAILURE;
 	}
 
@@ -4155,9 +4644,24 @@ cleanup:
 	 *	to make errors less confusing.
 	 */
 	if (talloc_free(autofree) < 0) {
-		fr_perror("unit_test_attribute");
+		fail_str = "cleaning up all memory";
 		EXIT_WITH_FAILURE;
 	}
+
+	if (ret != EXIT_SUCCESS) {
+	fail:
+		if (!fail_str) fail_str = "in an input file";
+		if (!error_str) error_str = "";
+
+		fprintf(stderr, "unit_test_attribute failed %s - %s\n", fail_str, error_str);
+
+		/*
+		 *	Print any command needed to run the test from the command line.
+		 */
+		p = getenv("UNIT_TEST_ATTRIBUTE");
+		if (p) printf("%s %s\n", p, fail_file);
+	}
+
 
 	/*
 	 *	Ensure our atexit handlers run before any other

@@ -1,0 +1,5 @@
+#
+#	ARGV: -s
+#
+User-Name = "chap-test",
+Chap-Password = "topsecret"

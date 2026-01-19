@@ -8,6 +8,6 @@
 #
 
 ATTRIBUTE	IPv6-6rd-Configuration			173	tlv
-ATTRIBUTE	IPv6-6rd-IPv4MaskLen			.1	integer
+ATTRIBUTE	IPv6-6rd-IPv4MaskLen			.1	uint32
 ATTRIBUTE	IPv6-6rd-Prefix				.2	ipv6prefix
 ATTRIBUTE	IPv6-6rd-BR-IPv4-Address		.3	ipaddr

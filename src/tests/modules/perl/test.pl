@@ -5,15 +5,17 @@ use warnings;
 # This the remapping of return values
 #
 use constant {
-	RLM_MODULE_REJECT   => 0, # immediately reject the request
-	RLM_MODULE_OK       => 2, # the module is OK, continue
-	RLM_MODULE_HANDLED  => 3, # the module handled the request, so stop
-	RLM_MODULE_INVALID  => 4, # the module considers the request invalid
-	RLM_MODULE_DISALLOW => 5, # reject the request (user is locked out)
-	RLM_MODULE_NOTFOUND => 6, # user not found
-	RLM_MODULE_NOOP     => 7, # module succeeded without doing anything
-	RLM_MODULE_UPDATED  => 8, # OK (pairs modified)
-	RLM_MODULE_NUMCODES => 9  # How many return codes there are
+	RLM_MODULE_REJECT   => 1, # immediately reject the request
+	RLM_MODULE_FAIL     => 2, # module failed, don't reply
+	RLM_MODULE_OK       => 3, # the module is OK, continue
+	RLM_MODULE_HANDLED  => 4, # the module handled the request, so stop
+	RLM_MODULE_INVALID  => 5, # the module considers the request invalid
+	RLM_MODULE_DISALLOW => 6, # reject the request (user is locked out)
+	RLM_MODULE_NOTFOUND => 7, # user not found
+	RLM_MODULE_NOOP     => 8, # module succeeded without doing anything
+	RLM_MODULE_UPDATED  => 9, # OK (pairs modified)
+	RLM_MODULE_TIMEOUT  => 10, # OK (pairs modified)
+	RLM_MODULE_NUMCODES => 11  # How many return codes there are
 };
 
 # Same as src/include/log.h

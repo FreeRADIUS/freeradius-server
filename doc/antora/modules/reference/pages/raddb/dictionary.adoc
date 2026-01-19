@@ -156,6 +156,13 @@ This dictionary includes v3-compatible names like "Cleartext-Password",
 or "NT-Password".
 
 
+
+Any local dictionaries can be added in the `dictionary.d` subdirectory.
+
+The server will load all files in that directory, but will skip
+editor backup files, and others which are known to not be real files.
+
+
 == Default Configuration
 
 ```
@@ -167,6 +174,7 @@ or "NT-Password".
 #$INCLUDE ${dictdir}/radius/v3/dictionary.aruba
 #END-PROTOCOL RADIUS
 #$INCLUDE ${dictdir}/freeradius/v3/dictionary.freeradius.internal
+$INCLUDE- dictionary.d/
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

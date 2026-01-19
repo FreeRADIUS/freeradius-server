@@ -29,6 +29,8 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/action.h>
 
 #define LOG_PREFIX "rlm_ldap groups"
 
@@ -103,13 +105,11 @@ static void ldap_group_userobj_cancel(UNUSED request_t *request, UNUSED fr_signa
  * and stores the DN associated with each group object.
  *
  * @param[out] p_result		The result of trying to resolve a group name to a dn.
- * @param[out] priority		Unused
  * @param[in] request		Current request.
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						void *uctx)
+static unlang_action_t ldap_group_name2dn_start(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
@@ -119,11 +119,11 @@ static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED in
 
 	if (!inst->group.obj_name_attr) {
 		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 	if (group_ctx->base_dn->type != FR_TYPE_STRING) {
 		REDEBUG("Missing group base_dn");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	RDEBUG2("Converting group name(s) to group DN(s)");
@@ -154,13 +154,11 @@ static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED in
 /** Process the results of looking up group DNs from names
  *
  * @param[out] p_result		The result of trying to resolve a group name to a dn.
- * @param[out] priority		Unused
  * @param[in] request		Current request.
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_group_name2dn_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						void *uctx)
+static unlang_action_t ldap_group_name2dn_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 	fr_ldap_query_t			*query = talloc_get_type_abort(group_ctx->query, fr_ldap_query_t);
@@ -234,7 +232,7 @@ finish:
 	*group_ctx->group_name = NULL;
 	talloc_free(group_ctx->query);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Initiate an LDAP search to turn a group DN into it's name
@@ -242,21 +240,19 @@ finish:
  * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
  * so we need to search for each DN individually.
  *
- * @param[out] p_result		The result of trying to resolve a dn to a group name.
- * @param[in] priority		unused.
+ * @param[out] p_result		The result of trying to resolve a dn to a group name..
  * @param[in] request		Current request.
  * @param[in] uctx		The group resolution context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_group_dn2name_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						void *uctx)
+static unlang_action_t ldap_group_dn2name_start(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 
 	if (!inst->group.obj_name_attr) {
 		REDEBUG("Told to resolve group DN to name but missing 'group.name_attribute' directive");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	RDEBUG2("Resolving group DN \"%s\" to group name", *group_ctx->dn);
@@ -271,13 +267,11 @@ static unlang_action_t ldap_group_dn2name_start(rlm_rcode_t *p_result, UNUSED in
  * temporary list in the group resolution context.
  *
  * @param[out] p_result		The result of trying to resolve a dn to a group name.
- * @param[in] priority		unused.
  * @param[in] request		Current request.
  * @param[in] uctx		The group resolution context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_group_dn2name_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						 void *uctx)
+static unlang_action_t ldap_group_dn2name_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 	fr_ldap_query_t			*query = talloc_get_type_abort(group_ctx->query, fr_ldap_query_t);
@@ -333,7 +327,7 @@ finish:
 	if (values) ldap_value_free_len(values);
 	talloc_free(query);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Move user object group attributes to the control list
@@ -343,7 +337,7 @@ finish:
  * @param group_ctx	Context used to evaluate group attributes
  * @return RLM_MODULE_OK
  */
-static unlang_action_t ldap_cacheable_userobj_store(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t ldap_cacheable_userobj_store(unlang_result_t *p_result, request_t *request,
 						    ldap_group_userobj_ctx_t *group_ctx)
 {
 	fr_pair_t		*vp;
@@ -366,7 +360,7 @@ static unlang_action_t ldap_cacheable_userobj_store(rlm_rcode_t *p_result, reque
 	REXDENT();
 
 	talloc_free(group_ctx);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Initiate DN to name and name to DN group lookups
@@ -375,20 +369,18 @@ static unlang_action_t ldap_cacheable_userobj_store(rlm_rcode_t *p_result, reque
  * or an unresolved lookup causes the module to fail.
  *
  * @param p_result	The result of the previous expansion.
- * @param priority	unused.
  * @param request	Current request.
  * @param uctx		The group context being processed.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_cacheable_userobj_resolve(rlm_rcode_t *p_result, UNUSED int *priority,
-						      request_t *request, void *uctx)
+static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_ctx_t);
 
 	/*
 	 *	If we've previously failed to expand, fail the group section
 	 */
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 		talloc_free(group_ctx);
@@ -403,10 +395,13 @@ static unlang_action_t ldap_cacheable_userobj_resolve(rlm_rcode_t *p_result, UNU
 	 *	filters on the DN.
 	 */
 	if (*group_ctx->dn) {
-		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_MODULE_FAIL;
-		if (unlang_function_push(request, ldap_group_dn2name_start, ldap_group_dn2name_resume,
-					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_MODULE_FAIL;
+		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
+						     ldap_group_dn2name_start,
+						     ldap_group_dn2name_resume,
+						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME,
+						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -414,10 +409,13 @@ static unlang_action_t ldap_cacheable_userobj_resolve(rlm_rcode_t *p_result, UNU
 	 *	Are there any names to resolve to DN?
 	 */
 	if (*group_ctx->group_name) {
-		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_MODULE_FAIL;
-		if (unlang_function_push(request, ldap_group_name2dn_start, ldap_group_name2dn_resume,
-					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_MODULE_FAIL;
+		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
+						     ldap_group_name2dn_start,
+						     ldap_group_name2dn_resume,
+						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME,
+						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -440,7 +438,7 @@ static unlang_action_t ldap_cacheable_userobj_resolve(rlm_rcode_t *p_result, UNU
  * @param[in] attr		membership attribute to look for in the entry.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
 					   char const *attr)
 {
 	rlm_ldap_t const		*inst = autz_ctx->inst;
@@ -463,7 +461,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	if (!values) {
 		RDEBUG2("No cacheable group memberships found in user object");
 
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 	count = ldap_count_values_len(values);
 
@@ -511,7 +509,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 				invalid:
 					ldap_value_free_len(values);
 					talloc_free(group_ctx);
-					RETURN_MODULE_INVALID;
+					RETURN_UNLANG_INVALID;
 				}
 				*name_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
 			}
@@ -548,10 +546,14 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 	 */
 	if ((name_p != group_ctx->group_name) || (dn_p != group_ctx->group_dn)) {
 		group_ctx->attrs[0] = inst->group.obj_name_attr;
-		if (unlang_function_push(request, ldap_cacheable_userobj_resolve, NULL, ldap_group_userobj_cancel,
-					 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+		if (unlang_function_push_with_result(p_result, request,
+						     ldap_cacheable_userobj_resolve,
+						     NULL,
+						     ldap_group_userobj_cancel,
+						     ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						     group_ctx) < 0) {
 			talloc_free(group_ctx);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
@@ -566,13 +568,11 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 /** Initiate an LDAP search for group membership looking at the group objects
  *
  * @param[out] p_result		Result of submitting LDAP search
- * @param[out] priority		Unused.
  * @param[in] request		Current request.
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						     void *uctx)
+static unlang_action_t ldap_cacheable_groupobj_start(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
@@ -580,7 +580,7 @@ static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUS
 
 	filter = fr_value_box_list_head(&group_ctx->expanded_filter);
 
-	if (filter->type != FR_TYPE_STRING) RETURN_MODULE_FAIL;
+	if (!filter || filter->type != FR_TYPE_STRING) RETURN_UNLANG_FAIL;
 
 	group_ctx->attrs[0] = inst->group.obj_name_attr;
 	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
@@ -606,13 +606,11 @@ static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_sign
 /** Process the results of a group object lookup.
  *
  * @param[out] p_result		Result of processing group lookup.
- * @param[out] priority		Unused.
  * @param[in] request		Current request.
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						      void *uctx)
+static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
@@ -687,7 +685,7 @@ static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNU
 finish:
 	talloc_free(group_ctx);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Convert group membership information into attributes
@@ -697,19 +695,19 @@ finish:
  * @param[in] autz_ctx		Authentication context being processed.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx)
+unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx)
 {
 	rlm_ldap_t const		*inst = autz_ctx->inst;
 	ldap_group_groupobj_ctx_t	*group_ctx;
 
 	if (!inst->group.obj_membership_filter) {
 		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	if (autz_ctx->call_env->group_base.type != FR_TYPE_STRING) {
 		REDEBUG("Missing group base_dn");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupobj_ctx_t));
@@ -718,14 +716,19 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 	group_ctx->base_dn = &autz_ctx->call_env->group_base;
 	fr_value_box_list_init(&group_ctx->expanded_filter);
 
-	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_cacheable_groupobj_resume,
-				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     ldap_cacheable_groupobj_start,
+					     ldap_cacheable_groupobj_resume,
+					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 	error:
 		talloc_free(group_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL) < 0) goto error;
+	if (unlang_tmpl_push(group_ctx, NULL, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -733,16 +736,14 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 /** Process the results of a group object lookup.
  *
  * @param[out] p_result		Result of processing group lookup.
- * @param[out] priority		Unused.
  * @param[in] request		Current request.
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_check_groupobj_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						      void *uctx)
+static unlang_action_t ldap_check_groupobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
-	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->uctx, ldap_group_xlat_ctx_t);
+	ldap_group_xlat_ctx_t		*xlat_ctx = talloc_get_type_abort(group_ctx->uctx, ldap_group_xlat_ctx_t);
 	fr_ldap_query_t			*query = group_ctx->query;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
 
@@ -772,7 +773,7 @@ static unlang_action_t ldap_check_groupobj_resume(rlm_rcode_t *p_result, UNUSED 
 	}
 
 	talloc_free(group_ctx);
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Initiate an LDAP search to determine group membership, querying group objects
@@ -783,7 +784,7 @@ static unlang_action_t ldap_check_groupobj_resume(rlm_rcode_t *p_result, UNUSED 
  * @param request	Current request.
  * @param xlat_ctx	xlat context being processed.
  */
-unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx)
 {
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
@@ -810,12 +811,12 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 				"directive");
 		invalid:
 			talloc_free(group_ctx);
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		t_rules = (tmpl_rules_t){
 			.attr = {
-				.dict_def = request->proto_dict,
+				.dict_def = request->local_dict,
 				.list_def = request_attr_request,
 			},
 			.xlat = {
@@ -842,15 +843,19 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 		group_ctx->base_dn = &xlat_ctx->env_data->group_base;
 	}
 
-	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_check_groupobj_resume,
-				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     ldap_cacheable_groupobj_start,
+					     ldap_check_groupobj_resume,
+					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 	error:
 		talloc_free(group_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, group_ctx->filter_tmpl, NULL) < 0) goto error;
+	if (unlang_tmpl_push(group_ctx, NULL, &group_ctx->expanded_filter, request, group_ctx->filter_tmpl, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -858,15 +863,15 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 /** Initiate resolving a group DN to its name
  *
  */
-static unlang_action_t ldap_dn2name_start (rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_dn2name_start(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
-	ldap_group_xlat_ctx_t	*xlat_ctx = group_ctx->xlat_ctx;
+	ldap_group_xlat_ctx_t		*xlat_ctx = group_ctx->xlat_ctx;
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 
 	if (!inst->group.obj_name_attr) {
 		REDEBUG("Told to resolve group DN to name but missing 'group.name_attribute' directive");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	RDEBUG2("Resolving group DN \"%pV\" to group name", fr_box_strvalue_buffer(group_ctx->lookup_dn));
@@ -893,7 +898,7 @@ static void ldap_dn2name_cancel(UNUSED request_t *request, UNUSED fr_signal_t ac
  * Used when the user's DN is already known but cached group membership has not been stored
  *
  */
-static unlang_action_t ldap_check_userobj_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_check_userobj_start(UNUSED unlang_result_t *p_result,
 						request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
@@ -905,12 +910,13 @@ static unlang_action_t ldap_check_userobj_start(UNUSED rlm_rcode_t *p_result, UN
 
 /** Process the results of evaluating a user object when checking group membership
  *
+ * Any information relating to the user's group memberships should be evailable in the group_ctx
+ * structure before this is called.
  */
-static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED int *priority,
-						 request_t *request, void *uctx)
+static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
-	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_group_xlat_ctx_t);
+	ldap_group_xlat_ctx_t		*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_group_xlat_ctx_t);
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 	fr_ldap_query_t			*query = xlat_ctx->query;
 	LDAPMessage			*entry;
@@ -928,13 +934,14 @@ static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED i
 		if (!entry) {
 			ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 			REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		group_ctx->values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->group.userobj_membership_attr);
 		if (!group_ctx->values) {
-			RDEBUG2("No group membership attribute(s) found in user object");
-			RETURN_MODULE_FAIL;
+			RDEBUG2("User object contains no group membership information in attribute \"%s\"",
+				inst->group.userobj_membership_attr);
+			RETURN_UNLANG_REJECT;
 		}
 
 		/*
@@ -960,23 +967,23 @@ static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED i
 		case LDAP_RESULT_BAD_DN:
 			REDEBUG("Group DN \"%pV\" did not resolve to an object",
 				fr_box_strvalue_buffer(group_ctx->lookup_dn));
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 
 		default:
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		entry = ldap_first_entry(group_ctx->query->ldap_conn->handle, group_ctx->query->result);
 		if (!entry) {
 			ldap_get_option(group_ctx->query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 			REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		values = ldap_get_values_len(group_ctx->query->ldap_conn->handle, entry, inst->group.obj_name_attr);
 		if (!values) {
 			REDEBUG("No %s attributes found in object", inst->group.obj_name_attr);
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		MEM(buff = talloc_bstrndup(group_ctx, values[0]->bv_val, values[0]->bv_len));
@@ -1062,10 +1069,16 @@ static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED i
 			if (!group_ctx->group_name) {
 				group_ctx->lookup_dn = group->vb_strvalue;
 
-				if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_MODULE_FAIL;
+				if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_UNLANG_FAIL;
 
-				return unlang_function_push(request, ldap_dn2name_start, NULL, ldap_dn2name_cancel,
-							    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx);
+				/* Need to push this for the custom cancellation function */
+				return unlang_function_push_with_result(p_result,
+									request,
+									ldap_dn2name_start,
+									NULL,
+									ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+									UNLANG_SUB_FRAME,
+									group_ctx);
 			}
 
 			if (((talloc_array_length(group_ctx->group_name) - 1) == value->bv_len) &&
@@ -1087,19 +1100,24 @@ static unlang_action_t ldap_check_userobj_resume(rlm_rcode_t *p_result, UNUSED i
 			group_ctx->lookup_dn = fr_ldap_berval_to_string(group_ctx, value);
 			group_ctx->resolving_value = true;
 
-			if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_MODULE_FAIL;
+			if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_UNLANG_FAIL;
 
-			return unlang_function_push(request, ldap_dn2name_start, NULL, ldap_dn2name_cancel,
-						    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx);
+			/* Need to push this for the custom cancellation function */
+			return unlang_function_push_with_result(p_result,
+								request,
+								ldap_dn2name_start,
+								NULL,
+								ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+								UNLANG_SUB_FRAME, group_ctx);
 		}
 
 		fr_assert(0);
 	}
-	RETURN_MODULE_NOTFOUND;
+	RETURN_UNLANG_NOTFOUND;
 
 found:
 	xlat_ctx->found = true;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Ensure retrieved LDAP values are cleared up
@@ -1117,7 +1135,7 @@ static int userobj_dyn_free(ldap_group_userobj_dyn_ctx_t *group_ctx)
  * @param[in] request		Current request.
  * @param[in] xlat_ctx		Context of the xlat being evaluated.
  */
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, request_t *request,
 					       ldap_group_xlat_ctx_t *xlat_ctx)
 {
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
@@ -1139,10 +1157,15 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t 
 	 *	can be checked.
 	 *	If not then a query is needed to retrieve the user object.
 	 */
-	if (unlang_function_push(request, xlat_ctx->query ? NULL : ldap_check_userobj_start, ldap_check_userobj_resume,
-				 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     xlat_ctx->query ? NULL : ldap_check_userobj_start,
+					     ldap_check_userobj_resume,
+					     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 		talloc_free(group_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -1155,7 +1178,7 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t 
  * @param[in] request		Current request.
  * @param[in] check		vb containing the group value (name or dn).
  */
-unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check)
 {
 	fr_pair_t	*vp;
@@ -1167,7 +1190,7 @@ unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 	 *	the caller should try a dynamic group lookup instead.
 	 */
 	vp =  fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, inst->group.cache_da);
-	if (!vp) RETURN_MODULE_INVALID;
+	if (!vp) RETURN_UNLANG_INVALID;
 
 	for (vp = fr_dcursor_current(&cursor);
 	     vp;
@@ -1175,13 +1198,13 @@ unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 		ret = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
 
-		if (ret < -1) RETURN_MODULE_FAIL;
+		if (ret < -1) RETURN_UNLANG_FAIL;
 	}
 
 	RDEBUG2("Cached membership not found");
 
-	RETURN_MODULE_NOTFOUND;
+	RETURN_UNLANG_NOTFOUND;
 }

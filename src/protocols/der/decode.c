@@ -38,12 +38,8 @@
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict_ext.h>
 
+#include "attrs.h"
 #include "der.h"
-
-typedef struct {
-	uint8_t *tmp_ctx;
-	bool	 oid_value_pairs;
-} fr_der_decode_ctx_t;
 
 #define IS_DER_TAG_CONTINUATION(_tag) (((_tag) & DER_TAG_CONTINUATION) == DER_TAG_CONTINUATION)
 #define IS_DER_TAG_CONSTRUCTED(_tag) (((_tag) & 0x20) == 0x20)
@@ -71,15 +67,13 @@ typedef struct {
  * @param[in] parent		Parent attribute.  This should be the root of the dictionary
  *				we're using to decode DER data initially, and then nested children.
  * @param[in] in		The DER encoded data.
+ * @param[in] allowed_chars	Optional array indicating which ASCII characters are allowed.
  * @param[in] decode_ctx	Any decode specific data.
  * @return
  *	- > 0 on success.  How many bytes were decoded.
  *	- 0 no bytes decoded.
  *	- < 0 on error.  May be the offset (as a negative value) where the error occurred.
  */
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				    bool const allowed_chars[], fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull(1,2,3,4,6));
 
@@ -451,14 +445,11 @@ static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_
 }
 
 typedef struct {
-	TALLOC_CTX	     *ctx; 		//!< Allocation context
-	fr_dict_attr_t const *parent_da;	//!< Parent dictionary attribute
-	fr_pair_list_t	     *parent_list; 	//!< Parent pair list
-	char		      oid_buff[1024]; 	//!< Buffer to store the OID string
-	fr_sbuff_marker_t     marker; 		//!< Marker of the current position in the OID buffer
-} fr_der_decode_oid_to_str_ctx_t; 		//!< Context for decoding an OID to a string
+	int		depth;
+	unsigned int	oid[FR_DICT_MAX_TLV_STACK];
+} fr_der_decode_oid_to_stack_ctx_t; 		//!< Context for decoding an OID to a DA
 
-/** Decode an OID to a string
+/** Decode an OID to an exploded list
  *
  * @param[in] subidentifier	The subidentifier to decode
  * @param[in] uctx		User context
@@ -467,57 +458,17 @@ typedef struct {
  *	- 1 on success
  *	- < 0 on error
  */
-static ssize_t fr_der_decode_oid_to_str(uint64_t subidentifier, void *uctx, bool is_last)
+static ssize_t fr_der_decode_oid_to_stack(uint64_t subidentifier, void *uctx, UNUSED bool is_last)
 {
-	fr_der_decode_oid_to_str_ctx_t *decode_ctx = uctx;
-	fr_sbuff_marker_t		marker	   = decode_ctx->marker;
-	fr_sbuff_t			sb	   = FR_SBUFF_OUT(decode_ctx->oid_buff, sizeof(decode_ctx->oid_buff));
+	fr_der_decode_oid_to_stack_ctx_t *decode_ctx = uctx;
 
-	FR_PROTO_TRACE("Decoding OID to string");
-	if (decode_ctx->oid_buff[0] == '\0') {
-		/*
-		 *	First subidentifier
-		 */
-		if (unlikely(fr_sbuff_in_sprintf(&sb, "%" PRIu64, subidentifier) < 0)) {
-		oom:
-			fr_strerror_const_push("Out of memory");
-			return -1;
-		}
-
-		fr_sbuff_marker(&marker, &sb);
-
-		decode_ctx->marker = marker;
-		return 1;
+	if (decode_ctx->depth > 20) {
+		fr_strerror_printf("OID has too many elements (%d > 20)", decode_ctx->depth);
+		return -1;
 	}
 
-	fr_sbuff_set(&sb, &marker);
 
-	FR_SBUFF_IN_SPRINTF_RETURN(&sb, ".%" PRIu64, subidentifier);
-	fr_sbuff_marker(&marker, &sb);
-
-	decode_ctx->marker = marker;
-
-	if (is_last) {
-		/*
-		 *	If this is the last subidentifier, we need to create a vp with the oid string, and add
-		 *	it to the parent list
-		 */
-		fr_pair_t *vp;
-
-		fr_assert(fr_type_is_string(decode_ctx->parent_da->type));
-
-		vp = fr_pair_afrom_da(decode_ctx->ctx, decode_ctx->parent_da);
-		if (unlikely(!vp)) goto oom;
-
-		if (fr_pair_value_bstrndup(vp, decode_ctx->oid_buff, fr_sbuff_used(&sb), false) < 0) {
-			talloc_free(vp);
-			goto oom;
-		}
-
-		fr_pair_append(decode_ctx->parent_list, vp);
-
-		decode_ctx->ctx = vp;
-	}
+	decode_ctx->oid[decode_ctx->depth++] = subidentifier;
 
 	return 1;
 }
@@ -618,7 +569,7 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 	fr_dbuff_t	our_in  = FR_DBUFF(in);
 	bool		first;
 	uint64_t	oid;
-	int		magnitude;
+	int		magnitude, depth;
 	size_t		len = fr_dbuff_remaining(&our_in); /* we decode the entire dbuff */
 
 	/*
@@ -645,12 +596,31 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 	 *		that of the (i + 1)th object identifier component.
 	 */
 
+	/*
+	 *	RFC 5280 says:
+	 *
+	 *	...
+	 *	This specification mandates support for OIDs that have arc elements
+	 *	with values that are less than 2^28, that is, they MUST be between 0
+	 *	and 268,435,455, inclusive.  This allows each arc element to be
+	 *	represented within a single 32-bit word.  Implementations MUST also
+	 *	support OIDs where the length of the dotted decimal (see Section 1.4
+	 *	of [RFC4512]) string representation can be up to 100 bytes
+	 *	(inclusive).  Implementations MUST be able to handle OIDs with up to
+	 *	20 elements (inclusive).
+	 *	...
+	 *
+	 *	We support up to 2^32 for attribute numbers (unsigned int), and 24 for
+	 *	nesting (FR_DICT_TLV_NEST_MAX), so we're OK here.
+	 *
+	 */
 	FR_PROTO_TRACE("Decoding OID");
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), len, "buff in OID");
 
 	first = true;
 	oid = 0;
 	magnitude = 0;
+	depth = 0;
 
 	/*
 	 *	Loop until done.
@@ -661,8 +631,8 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 		FR_DBUFF_OUT_RETURN(&byte, &our_in);
 
 		magnitude++;
-		if (magnitude > 9) {
-			fr_strerror_const_push("OID subidentifier too large (>63 bits)");
+		if (magnitude > 4) {
+			fr_strerror_const_push("OID subidentifier too large (>32 bits)");
 			return -1;
 		}
 
@@ -684,6 +654,13 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 			continue;
 		}
 
+		depth++;
+		if (depth >= FR_DICT_TLV_NEST_MAX) {
+			fr_strerror_printf_push("OID has too many elements (%d >= %d)",
+						depth, FR_DICT_TLV_NEST_MAX);
+			return -1;
+		}
+
 		/*
 		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
 		 */
@@ -702,12 +679,22 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 				oid -= 80;
 			}
 			first = false;
+			depth++; /* 2 OIDs packed into the first byte */
 
 			/*
 			 *	Note that we allow OID=1 here.  It doesn't make sense, but whatever.
 			 */
 			FR_PROTO_TRACE("decode context - first OID: %" PRIu64, first_component);
 			if (unlikely(func(first_component, uctx, (len == 0)) <= 0)) return -1;
+		}
+
+		/*
+		 *	32 bits is still larger than 28, so we do another check here.
+		 */
+		if (oid >= ((uint64_t) 1 << 28)) {
+			fr_strerror_printf("OID subidentifier '%" PRIu64 " is invalid - it must be no more than 28 bits in side",
+					   oid);
+			return -1;
 		}
 
 		FR_PROTO_TRACE("decode context - OID: %" PRIu64, oid);
@@ -1654,23 +1641,56 @@ static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					 fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	ssize_t slen;
-	fr_der_decode_oid_to_str_ctx_t uctx = {
-		.ctx	     = ctx,
-		.parent_da   = parent,
-		.parent_list = out,
-		.oid_buff = {},
-		.marker = {},
+	ssize_t		slen;
+	int		i;
+	fr_dict_attr_t const *da;
+	fr_pair_t	*vp;
+
+	fr_der_decode_oid_to_stack_ctx_t stack = {
+		.depth = 0,
 	};
+
+	fr_assert(parent->type == FR_TYPE_ATTR);
 
 	/*
 	 *	We don't use an intermediate dbuff here.  We're not
 	 *	doing anything with the dbuff, so an extra buffer
 	 *	isn't necessary.
 	 */
-	slen = fr_der_decode_oid(in, fr_der_decode_oid_to_str, &uctx);
+	slen = fr_der_decode_oid(in, fr_der_decode_oid_to_stack, &stack);
 	if (unlikely(slen <= 0)) return -1; /* OIDs of zero length are invalid */
 
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+	oom:
+		fr_strerror_const_push("Out of memory");
+		return -1;
+	}
+
+	da = attr_oid_tree;
+	for (i = 0; i < stack.depth; i++) {
+		fr_dict_attr_t const *next;
+
+		next = fr_dict_attr_child_by_num(da, stack.oid[i]);
+		if (!next) break;
+		da = next;
+	}
+
+	for (/* left over i */; i < stack.depth; i++) {
+		fr_type_t type;
+
+		type = (i < (stack.depth - 1)) ? FR_TYPE_TLV : FR_TYPE_BOOL;
+
+		da = fr_dict_attr_unknown_typed_afrom_num(vp, da, stack.oid[i], type);
+		if (!da) {
+			talloc_free(vp);
+			goto oom;
+		}
+	}
+
+	vp->vp_attr = da;
+	vp->data.enumv = attr_oid_tree;
+	fr_pair_append(out, vp);
 	return slen;
 }
 
@@ -2016,6 +2036,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
 		fr_strerror_printf_push("Failed decoding %s", vp->da->name);
@@ -2110,6 +2131,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *	Critical extensions are decoded into the Critical parent.
@@ -2124,6 +2146,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		talloc_free(vp);
 		goto oom;
 	}
+	PAIR_ALLOCED(vp2);
 
 	max = fr_der_flag_max(parent); /* Maximum number of extensions which can be used here */
 
@@ -2337,6 +2360,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_pair_value_bstr_alloc(vp, &str, len, false) < 0)) {
 		talloc_free(vp);
@@ -2366,8 +2390,8 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	return fr_dbuff_set(in, &our_in);
 }
 
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
+ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
 	fr_dbuff_t	     our_in = FR_DBUFF(in);
 	fr_der_tag_decode_t const *func;
@@ -2447,8 +2471,9 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			fr_strerror_const_push("Out of memory");
 			return -1;
 		}
+		PAIR_ALLOCED(vp);
 
-		if (fr_value_box_copy(vp, &vp->data, flags->default_value) < 0) {
+		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -2666,6 +2691,9 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
  *				we're using to decode DER data.  This only specifies structures
  *				like SEQUENCES.  OID based pairs are resolved using the global
  *				dictionary tree.
+ * @param[in] data		to decode.
+ * @param[in] data_len		Length of data.
+ * @param[in] decode_ctx	to pass to decode function.
  *
  */
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, uint8_t const *data,
@@ -2682,15 +2710,15 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
 /*
  *	Test points
  */
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_der_decode_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_der_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx	  = talloc(test_ctx, uint8_t);
-	test_ctx->oid_value_pairs = false;
+	test_ctx->tmp_ctx	  = talloc_new(test_ctx);
 
 	*out = test_ctx;
 

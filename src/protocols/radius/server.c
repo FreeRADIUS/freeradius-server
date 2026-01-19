@@ -45,16 +45,6 @@ fr_bio_packet_t *fr_radius_server_bio_alloc(TALLOC_CTX *ctx, fr_radius_server_co
 //	return fr_radius_server_tcp_bio_alloc(ctx, cfg, fd_cfg);
 }
 
-static int _radius_server_fd_bio_free(fr_radius_server_fd_bio_t *my)
-{
-	if (fr_bio_shutdown(my->common.bio) < 0) return -1;
-
-	if (fr_bio_free(my->common.bio) < 0) return -1;
-
-	return 0;
-}
-
-
 fr_radius_server_fd_bio_t *fr_radius_server_fd_bio_alloc(TALLOC_CTX *ctx, size_t read_size, fr_radius_server_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	fr_radius_server_fd_bio_t *my;
@@ -91,8 +81,6 @@ fr_radius_server_fd_bio_t *fr_radius_server_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	my->cfg = *cfg;
 
 	my->common.bio = my->mem;
-
-	talloc_set_destructor(my, _radius_server_fd_bio_free);
 
 	return my;
 }

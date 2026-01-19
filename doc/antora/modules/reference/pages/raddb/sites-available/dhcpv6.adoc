@@ -55,7 +55,7 @@ testing will not affect production systems.  This value should
 be changed to `547` for production use.
 
 ```
-	port = 547
+	port = 5470
 
 ```
 
@@ -328,7 +328,7 @@ send Advertise {
 All replies MUST include a Server-ID option
 
 ```
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 
@@ -347,7 +347,7 @@ send Offer {
 All replies MUST include a Server-ID option
 
 ```
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 
@@ -370,7 +370,7 @@ send Reply {
 All replies MUST include a Server-ID option
 
 ```
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 

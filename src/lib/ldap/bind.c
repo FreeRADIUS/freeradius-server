@@ -236,8 +236,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 /** Yield interpreter after queueing LDAP bind
  *
  */
-static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						  UNUSED request_t *request, UNUSED void *uctx)
+static unlang_action_t ldap_async_auth_bind_start(UNUSED unlang_result_t *p_result, UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_YIELD;
 }
@@ -245,7 +244,7 @@ static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, 
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
-static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_async_auth_bind_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
@@ -291,7 +290,7 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 		talloc_free(bind_auth_ctx);
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Signal an outstanding LDAP bind request to cancel
@@ -308,6 +307,14 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
 
 /** Initiate an async LDAP bind for authentication
  *
+ * @param[out] p_result		Where to write the result of the bind operation.
+ *				If this is NULL, the rcode result will be discarded.
+ *				- LDAP_PROC_SUCCES = RLM_MODULE_OK,
+ *				- LDAP_PROC_NOT_PERMITTED = RLM_MODULE_DISALLOW,
+ *				- LDAP_PROC_REJECT = RLM_MODULE_REJECT,
+ *				- LDAP_PROC_BAD_DN = RLM_MODULE_INVALID,
+ *				- LDAP_PROC_NO_RESULT = RLM_MODULE_NOTFOUND
+ *				- * = RLM_MODULE_FAIL.
  * @param[in] request		this bind relates to.
  * @param[in] thread		whose connection the bind should be performed on.
  * @param[in] bind_dn		Identity to bind with.
@@ -316,22 +323,22 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
  *	- 0 on success.
  *	- -1 on failure.
  */
-unlang_action_t fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
+unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
-	trunk_enqueue_t	ret;
+	trunk_enqueue_t		ret;
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	treq = trunk_request_alloc(ttrunk->trunk, request);
 	if (!treq) {
 		ERROR ("Failed to allocate trunk request for LDAP bind");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	MEM(bind_auth_ctx = talloc(treq, fr_ldap_bind_auth_ctx_t));
@@ -358,13 +365,14 @@ unlang_action_t fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *th
 	default:
 		ERROR("Failed to enqueue bind request");
 		trunk_request_free(&treq);
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push(request,
-				    ldap_async_auth_bind_start,
-				    ldap_async_auth_bind_results,
-				    ldap_async_auth_bind_cancel,
-				    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
-				    bind_auth_ctx);
+	return unlang_function_push_with_result(p_result,
+						request,
+						ldap_async_auth_bind_start,
+						ldap_async_auth_bind_results,
+						ldap_async_auth_bind_cancel,
+						~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						bind_auth_ctx);
 }

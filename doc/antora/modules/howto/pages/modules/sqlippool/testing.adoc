@@ -1,4 +1,4 @@
-= Testing the Basic Setup
+= Basic Setup Tests
 
 Start by creating some text files holding the test request data based on the
 actual form of the contents of packets originating from the NAS.

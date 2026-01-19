@@ -181,6 +181,8 @@ LIBFREERADIUS_SERVER	:= libfreeradius-internal.a libfreeradius-tls.a
 endif
 LIBFREERADIUS_SERVER	+= libfreeradius-server.a libfreeradius-unlang.a
 
+WITH_BACKTRACE  = @WITH_BACKTRACE@
+
 ifneq ($(WITH_OPENSSL_MD5),)
 WITH_OPENSSL_DIGEST = 1
 CFLAGS += -DWITH_OPENSSL_MD5

@@ -59,9 +59,9 @@ RCSID("$Id$")
  *
  * There should never be an instance where these fail.
  */
-static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ip.addr.v4.s_addr) == 4,
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ipv4addr) == 4,
 	      "in_addr.s_addr has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ip.addr.v6.s6_addr) == 16,
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ipv6addr) == 16,
 	      "in6_addr.s6_addr has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ifid) == 8,
 	      "vb_ifid has unexpected length");
@@ -131,11 +131,15 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INT32]				= {4, 4},
 	[FR_TYPE_INT64]				= {8, 8},
 
+	[FR_TYPE_SIZE]				= {8, 8},
+
 	[FR_TYPE_FLOAT32]			= {4, 4},
 	[FR_TYPE_FLOAT64]			= {8, 8},
 
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
+
+	[FR_TYPE_ATTR]				= {1, ~0},
 
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
@@ -177,6 +181,8 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
+	[FR_TYPE_ATTR] 				= SIZEOF_MEMBER(fr_value_box_t, vb_attr),
+
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
@@ -216,6 +222,7 @@ size_t const fr_value_box_offsets[] = {
 
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
+	[FR_TYPE_ATTR]				= offsetof(fr_value_box_t, vb_attr),
 
 	[FR_TYPE_VALUE_BOX]			= 0,
 
@@ -650,7 +657,21 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 		fr_value_box_list_init(&dst->vb_group);
 		break;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
+		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
 		break;
 	}
 
@@ -674,7 +695,9 @@ static int8_t float_cmp(double a, double b)
 	/*
 	 *	Handles the best cast scenario.
 	 */
+DIAG_OFF(float-equal)
 	if (a == b) return 0;
+DIAG_ON(float-equal)
 
 	diff = fabs(a - b);
 
@@ -721,9 +744,6 @@ static int8_t float_cmp(double a, double b)
  */
 int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
-
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
 		return -2;
@@ -829,19 +849,32 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	case FR_TYPE_IFID:
 		COMPARE(ifid);
 
-	/*
-	 *	These should be handled at some point
-	 */
-	case FR_TYPE_NON_LEAF:
-		(void)fr_cond_assert(0);	/* unknown type */
+	case FR_TYPE_NULL:	/* NULLs are not comparable */
 		return -2;
+
+	case FR_TYPE_ATTR:
+		/*
+		 *	@todo - this makes things _distinct_, but doesn't provide a _full_ order.  We
+		 *	generally don't need a full ordering for attributes.
+		 *
+		 *	The need to call fr_dict_attr_cmp() here is for comparing raw / unknown attributes
+		 *	which come from xlats.  Unknown / raw attributes which are in policies are added to
+		 *	the dictionaries when the server starts, and are thus known.
+		 */
+		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
+
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INTERNAL:
+		break;
 
 	/*
 	 *	Do NOT add a default here, as new types are added
 	 *	static analysis will warn us they're not handled
 	 */
 	}
-	return 0;
+
+	(void)fr_cond_assert(0);	/* invalud type for leaf comparison */
+	return -2;
 }
 
 /*
@@ -971,13 +1004,11 @@ extern int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_
  *	- 1 if true
  *	- 0 if false
  *	- -1 on failure.
+ *	- < -1 on failure.
  */
 int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
-
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
 	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
@@ -996,8 +1027,8 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 			FALL_THROUGH;
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
-			return fr_value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
-						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
+			return fr_value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->vb_ipv4addr,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ipv4addr);
 
 		default:
 		fail_cmp_v4:
@@ -1014,7 +1045,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 		case FR_TYPE_IPV4_ADDR:
 			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
-						     (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
+						     (uint8_t const *) &a->vb_ipv4addr,
 						     32, (uint8_t const *) &b->vb_ip.addr.v4);
 
 		case FR_TYPE_COMBO_IP_PREFIX:
@@ -1023,8 +1054,8 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
-						     (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
-						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
+						     (uint8_t const *) &a->vb_ipv4addr,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ipv4addr);
 
 		default:
 			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
@@ -1092,12 +1123,28 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 		goto cmp_prefix_v6;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_VARIABLE_SIZE:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
 	cmp:
 		compare = fr_value_box_cmp(a, b);
 		if (compare < -1) {	/* comparison error */
-			return -1;
+			return -2;
 		}
+		break;
+
+	case FR_TYPE_GROUP:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -2;
 	}
 
 	/*
@@ -1276,10 +1323,17 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
  */
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
-	default:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1294,12 +1348,18 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return -1;
 		return 0;
 
+	case FR_TYPE_NULL:
+		fr_value_box_init_null(dst);
+		return 0;
+
+	case FR_TYPE_ATTR:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	case FR_TYPE_NON_LEAF:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
@@ -1383,13 +1443,11 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 			/*
 			 *	Clamp length at maximum we're allowed to encode.
 			 */
-			if (da_is_length_field(value->enumv)) {
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (value->vb_length > 255) return 255;
+			if (da_is_length_field8(value->enumv)) {
+				if (value->vb_length > UINT8_MAX) return UINT8_MAX;
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (value->vb_length > 65535) return 65535;
-				}
+			} else if (da_is_length_field16(value->enumv)) {
+				if (value->vb_length > UINT16_MAX) return UINT16_MAX;
 			}
 		}
 		return value->vb_length;
@@ -1403,7 +1461,16 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 		FALL_THROUGH;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		return network_min_size(value->type);
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 }
 
@@ -1492,21 +1559,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 					max = value->enumv->flags.length;
 				}
 
-			} else if (da_is_length_field(value->enumv)) {
+			} else if (da_is_length_field8(value->enumv)) {
 				/*
 				 *	Truncate the output to the max allowed for this field and encode the length.
 				 */
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (max > 255) max = 255;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
+				if (max > UINT8_MAX) max = UINT8_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (max > 65536) max = 65535;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
+			} else if (da_is_length_field16(value->enumv)) {
 
-				} else {
-					return -1;
-				}
+				if (max > UINT16_MAX) max = UINT16_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
 			}
 		}
 
@@ -1526,8 +1589,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		break;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		min = network_min_size(value->type);
 		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 
 	/*
@@ -1539,8 +1611,8 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_IPV4_ADDR:
 	ipv4addr:
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
-					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
-					  sizeof(value->vb_ip.addr.v4.s_addr));
+					  (uint8_t const *)&value->vb_ipv4addr,
+					  sizeof(value->vb_ipv4addr));
 		break;
 	/*
 	 *	Needs special mangling
@@ -1549,21 +1621,21 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	ipv4prefix:
 		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
-					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
-					  sizeof(value->vb_ip.addr.v4.s_addr));
+					  (uint8_t const *)&value->vb_ipv4addr,
+					  sizeof(value->vb_ipv4addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
 	ipv6addr:
 		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ipv6addr, sizeof(value->vb_ipv6addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
 	ipv6prefix:
 		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
 		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ipv6addr, sizeof(value->vb_ipv6addr));
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1627,6 +1699,48 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		fr_value_box_hton(&tmp, value);
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, value->type), min);
+	}
+		break;
+
+	case FR_TYPE_ATTR:
+	{
+		fr_value_box_t tmp, base;
+
+		/*
+		 *	For now, we only encode at depth 1.  The protocol-specific encoders need to do
+		 *	something special for attributes at other depths.
+		 */
+		if (value->vb_attr->depth != 1) {
+			fr_strerror_printf("Unsupported depth '%u' for encoding attribute %s",
+					   value->vb_attr->depth, value->vb_attr->name);
+			return 0;
+		}
+
+		switch (value->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(&base, FR_TYPE_UINT8, NULL, false);
+			base.vb_uint8 = value->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(&base, FR_TYPE_UINT16, NULL, false);
+			base.vb_uint16 = value->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(&base, FR_TYPE_UINT32, NULL, false);
+			base.vb_uint32 = value->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for decoding attribute %s",
+					   value->vb_attr->flags.length, value->vb_attr->name);
+			return 0;
+		}
+
+		fr_value_box_hton(&tmp, &base);
+
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, tmp.type), min);
 	}
 		break;
 
@@ -1808,12 +1922,14 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	min = network_min_size(type);
 	max = network_max_size(type);
 
+	fr_assert(max > 0);
+
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
 				   "Expected length >= %zu bytes, got %zu bytes",
 				   fr_type_to_str(type),
 				   min, len);
-		return -(len);
+		return -(min);
 	}
 
 	/*
@@ -1845,27 +1961,19 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			if (enumv->flags.length) {
 				newlen = enumv->flags.length;
 
-			} else if (da_is_length_field(enumv)) {
-				/*
-				 *	Or fields with a length prefix.
-				 */
-				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					uint8_t num = 0;
+			} else if (da_is_length_field8(enumv)) {
+				uint8_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 1;
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 1;
 
-				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					uint16_t num = 0;
+			} else if (da_is_length_field16(enumv)) {
+				uint16_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 2;
-
-				} else {
-					return -1;
-				}
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 2;
 			}
 		}
 
@@ -1960,16 +2068,18 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		    (len <= network_max_size(FR_TYPE_IPV6_ADDR))) goto ipv6addr;	/* scope is optional */
 		else if ((len >= network_min_size(FR_TYPE_IPV4_ADDR)) &&
 		    	 (len <= network_max_size(FR_TYPE_IPV4_ADDR))) goto ipv4addr;
+
 		fr_strerror_const("Invalid combo ip address value");
-		return 0;
+		return -1;
 
 	case FR_TYPE_COMBO_IP_PREFIX:
 		if ((len >= network_min_size(FR_TYPE_IPV6_PREFIX)) &&
 		    (len <= network_max_size(FR_TYPE_IPV6_PREFIX))) goto ipv6prefix;	/* scope is optional */
 		else if ((len >= network_min_size(FR_TYPE_IPV4_PREFIX)) &&
 		    	 (len <= network_max_size(FR_TYPE_IPV4_PREFIX))) goto ipv4prefix;
+
 		fr_strerror_const("Invalid combo ip prefix value");
-		return 0;
+		return -1;
 
 	case FR_TYPE_BOOL:
 		{
@@ -2025,6 +2135,52 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		FR_DBUFF_OUT_RETURN(&dst->vb_float64, &work_dbuff);
 		break;
 
+	case FR_TYPE_ATTR:
+		if (!enumv) {
+			fr_strerror_const("No enumv (i.e. root) passed to fr_value_box_from_network for type 'attribute'");
+			return -1;
+		}
+
+		/*
+		 *	Decode the number, and see if we can create a
+		 *	matching attribute.
+		 */
+		{
+			unsigned int num;
+			uint8_t num8;
+			uint16_t num16;
+			uint32_t num32;
+
+			switch (enumv->flags.length) {
+			case 1:
+				FR_DBUFF_OUT_RETURN(&num8, &work_dbuff);
+				num = num8;
+				break;
+
+			case 2:
+				FR_DBUFF_OUT_RETURN(&num16, &work_dbuff);
+				num = num16;
+				break;
+
+			case 4:
+				FR_DBUFF_OUT_RETURN(&num32, &work_dbuff);
+				num = num32;
+				break;
+
+			default:
+				fr_strerror_const("Unsupported parent length");
+				return -1;
+			}
+
+			dst->vb_attr = fr_dict_attr_child_by_num(enumv, num);
+			if (!dst->vb_attr) {
+				dst->vb_attr = fr_dict_attr_unknown_raw_afrom_num(ctx, enumv, num);
+				if (!dst->vb_attr) return -1;
+			}
+
+			break;
+		}
+
 	/*
 	 *	Dates and deltas are stored internally as
 	 *	64-bit nanoseconds.  We have to convert from
@@ -2055,7 +2211,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 		if (!fr_multiply(&date, date, fr_time_multiplier_by_res[precision])) {
 			fr_strerror_const("date would overflow");
-			return 0;
+			return -1;
 		}
 
 		dst->vb_date = fr_unix_time_wrap(date);
@@ -2110,11 +2266,231 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
 				   fr_type_to_str(type));
-		break;
+		return -1;
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+typedef struct {
+	int		af;
+	int		prefix_min;
+	int		prefix_max;
+	size_t		addr_min;
+	size_t		addr_max;
+} fr_value_box_ipaddr_sizes_t;
+
+static const fr_value_box_ipaddr_sizes_t ipaddr_sizes[FR_TYPE_MAX] = {
+	[FR_TYPE_IPV4_ADDR] = {
+		AF_INET, 32, 32, 0, 4,
+	},
+
+	[FR_TYPE_IPV4_PREFIX] = {
+		AF_INET, 0, 32, 0, 4,
+	},
+
+	[FR_TYPE_IPV6_ADDR] = {
+		AF_INET6, 128, 128, 16, 16,
+	},
+
+	[FR_TYPE_IPV6_PREFIX] = {
+		AF_INET6, 0, 128, 0, 16,
+	},
+};
+
+/** Decode a #fr_value_box_t of type IP address / prefix.
+ *
+ *  This function also gets passed a prefix length, and is a bit more
+ *  forgiving that fr_value_box_from_network().
+ *
+ * @param[out] dst	value_box to write the result to.
+ * @param[in] type	to decode data to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] prefix_len for prefix types
+ * @param[in] data	Binary data to decode.
+ * @param[in] data_len	Length of data to decode.
+ * @param[in] fixed	is this a fixed size, or a variable one?
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- >= 0 The number of bytes consumed.
+ *	- <0 - an error occurred.
+ */
+ssize_t fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					 int prefix_len, uint8_t const *data, size_t data_len,
+					 bool fixed, bool tainted)
+{
+	switch (type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type '%s' passed to IP address decode function",
+				   fr_type_to_str(type));
+		return 0;
+	}
+
+	/*
+	 *	Check the allowed values for prefix length.
+	 */
+	if (prefix_len < ipaddr_sizes[type].prefix_min) {
+		fr_strerror_printf("Invalid prefix length %d, expected at least %d",
+				   prefix_len, ipaddr_sizes[type].prefix_min);
+		return -1;
+	}
+
+	if (prefix_len > ipaddr_sizes[type].prefix_max) {
+		fr_strerror_printf("Invalid prefix length '%d', expected no more than %d",
+				   prefix_len, ipaddr_sizes[type].prefix_max);
+		return -1;
+	}
+
+	/*
+	 *	It's a prefix data type.  Verify that the prefix length doesn't require more bytes than we
+	 *	have.
+	 *
+	 *	@todo - some protocols allow a larger prefix, and then set the extra bytes to zero.  <sigh>
+	 */
+	if (!ipaddr_sizes[type].addr_min) {
+		if (fr_bytes_from_bits(prefix_len) > data_len) {
+			fr_strerror_printf("Invalid prefix length '%d' - it requires %u bytes of data, and there are only %zu bytes of data",
+					   prefix_len, fr_bytes_from_bits(prefix_len), data_len);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Check how much data is in the buffer.
+	 */
+	if (data_len < ipaddr_sizes[type].addr_min) {
+		fr_strerror_printf("Invalid address length '%zu', expected at least %zu",
+				   data_len, ipaddr_sizes[type].addr_min);
+		return -1;
+	}
+
+	/*
+	 *	Do various checks for the size.
+	 */
+	if (enumv && enumv->flags.array) {
+		/*
+		 *	If this field is part of an array, then it has to be fixed size.
+		 */
+		data_len = ipaddr_sizes[type].addr_max;
+
+	} else if (fixed) {
+		/*
+		 *	If it's fixed size, it must be the maximum size.
+		 */
+		if (data_len != ipaddr_sizes[type].addr_max) {
+			fr_strerror_printf("Invalid address length '%zu', expected at exactly %zu",
+					   data_len, ipaddr_sizes[type].addr_max);
+			return -1;
+		}
+
+		/*
+		 *	There is more data in the array - limit what we read to the size of the address.
+		 */
+		data_len = ipaddr_sizes[type].addr_max;
+
+	} else if (data_len > ipaddr_sizes[type].addr_max) {
+		fr_strerror_printf("Invalid address length '%zu', expected no more than %zu",
+				   data_len, ipaddr_sizes[type].addr_max);
+		return -1;
+	}
+
+	fr_value_box_init(dst, type, enumv, tainted);
+	dst->vb_ip = (fr_ipaddr_t) {
+		.af = ipaddr_sizes[type].af,
+		.prefix = prefix_len,
+		/* automatically initialize vp_ip.addr to all zeros */
+	};
+
+	if (!data_len) return 0;
+
+	fr_assert(data_len <= sizeof(dst->vb_ip.addr));
+
+	memcpy((uint8_t *) &dst->vb_ip.addr, data, data_len);
+
+	/*
+	 *	@todo - maybe it's an error to have bits set outsize of the prefix length.
+	 */
+	fr_ipaddr_mask(&dst->vb_ip, prefix_len);
+
+	return data_len;
+}
+
+/** Decode a #fr_value_box_t from a C type in memory
+ *
+ *  We ignore arrays
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[out] dst	value_box to write the result to.
+ * @param[in] type	to decode data to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	raw pointer to the (possibly unaligned) source
+ * @param[in] len	Length of data to decode.  For fixed length types we only
+ *			decode complete values.
+ * @return
+ *	- >= 0 The number of bytes consumed.
+ *	- <0 an error occured
+ */
+ssize_t	fr_value_box_from_memory(TALLOC_CTX *ctx,
+				 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+				 void const *src, size_t len)
+{
+	switch (type) {
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+		if (len != fr_value_box_field_sizes[type]) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), fr_value_box_field_sizes[type], len);
+				return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->datum, src, len);
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+		if (len != sizeof(struct in_addr)) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), sizeof(struct in_addr), len);
+				return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->vb_ipv4addr, src, len);
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		if (len != sizeof(struct in6_addr)) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), sizeof(struct in6_addr), len);
+			return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->vb_ipv6addr, src, len);
+		break;
+
+	case FR_TYPE_STRING:
+		return fr_value_box_bstrndup(ctx, dst, enumv, src, len, false);
+
+	case FR_TYPE_OCTETS:
+		return fr_value_box_memdup(ctx, dst, enumv, src, len, false);
+
+	default:
+		fr_strerror_printf("Unsupported data type %s",
+				   fr_type_to_str(type));
+		return -1;
+	}
+
+	return len;
+}
+
 
 /** Get a key from a value box
  *
@@ -2332,8 +2708,8 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 */
 	case FR_TYPE_IPV4_ADDR:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
-					   sizeof(src->vb_ip.addr.v4.s_addr), src->tainted);
+					   (uint8_t const *)&src->vb_ipv4addr,
+					   sizeof(src->vb_ipv4addr), src->tainted);
 
 	/*
 	 *	<1 uint8 prefix> + <4 bytes address>
@@ -2343,10 +2719,10 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		uint8_t *bin;
 
 		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
-					   sizeof(src->vb_ip.addr.v4.s_addr) + 1, src->tainted) < 0) return -1;
+					   sizeof(src->vb_ipv4addr) + 1, src->tainted) < 0) return -1;
 
 		bin[0] = src->vb_ip.prefix;
-		memcpy(&bin[1], (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		memcpy(&bin[1], (uint8_t const *)&src->vb_ipv4addr, sizeof(src->vb_ipv4addr));
 	}
 		return 0;
 
@@ -2355,8 +2731,8 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
-					   sizeof(src->vb_ip.addr.v6.s6_addr), src->tainted);
+					   (uint8_t const *)src->vb_ipv6addr,
+					   sizeof(src->vb_ipv6addr), src->tainted);
 
 	/*
 	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 bytes address>
@@ -2366,10 +2742,10 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		uint8_t *bin;
 
 		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
-					   sizeof(src->vb_ip.addr.v6.s6_addr) + 2, src->tainted) < 0) return -1;
+					   sizeof(src->vb_ipv6addr) + 2, src->tainted) < 0) return -1;
 		bin[0] = src->vb_ip.scope_id;
 		bin[1] = src->vb_ip.prefix;
-		memcpy(&bin[2], src->vb_ip.addr.v6.s6_addr, sizeof(src->vb_ip.addr.v6.s6_addr));
+		memcpy(&bin[2], src->vb_ipv6addr, sizeof(src->vb_ipv6addr));
 	}
 		return 0;
 
@@ -2386,12 +2762,30 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 
-	default:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_NULL:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_COMBO_IP_ADDR: /* the types should have been realized to ipv4 / ipv6 */
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_OCTETS:	/* handled above*/
+		break;
+
+
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
 					   fr_value_box_raw(src, src->type),
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
+
+	fr_assert(0);
+	return -1;
 }
 
 #define CAST_IP_FIX_COMBO 	\
@@ -2409,6 +2803,15 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 			src_type = FR_TYPE_IPV6_PREFIX; \
 		} \
 		break
+
+
+static inline int fr_value_box_cast_unsupported(fr_type_t dst, fr_type_t src)
+{
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_type_to_str(src),
+			   fr_type_to_str(dst));
+	return -1;
+}
 
 
 /** Convert any supported type to an IPv4 address
@@ -2457,7 +2860,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	switch (src_type) {
 	case FR_TYPE_IPV6_ADDR:
-		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+		if (memcmp(src->vb_ipv6addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
 					   fr_type_to_str(src->type),
@@ -2465,7 +2868,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 			return -1;
 		}
 
-		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_ipv6addr[sizeof(v4_v6_map)],
 		       sizeof(dst->vb_ip.addr.v4));
 
 		break;
@@ -2494,20 +2897,20 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 					   src->vb_ip.prefix);
 			return -1;
 		}
-		if (memcmp(&src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
-		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		if (memcmp(&src->vb_ipv6addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_ipv6addr[sizeof(v4_v6_map)],
 		       sizeof(dst->vb_ip.addr.v4));
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
+		if (src->vb_length != sizeof(dst->vb_ipv4addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
-					   sizeof(dst->vb_ip.addr.v4.s_addr), src->vb_length);
+					   sizeof(dst->vb_ipv4addr), src->vb_length);
 			return -1;
 		}
-		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ipv4addr));
 		break;
 
 	case FR_TYPE_UINT32:
@@ -2515,15 +2918,12 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		uint32_t net;
 
 		net = ntohl(src->vb_uint32);
-		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ipv4addr));
 	}
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2584,20 +2984,20 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	 *	Copy the last four bytes, to make an IPv4prefix
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+		if (memcmp(src->vb_ipv6addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type));
 			return -1;
 		}
-		memcpy(&dst->vb_ip.addr.v4.s_addr, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ipv4addr, &src->vb_ipv6addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ipv4addr));
 		dst->vb_ip.prefix = 32;
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
+		if (memcmp(src->vb_ipv6addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
 
 		if (src->vb_ip.prefix < (sizeof(v4_v6_map) << 3)) {
 			fr_strerror_printf("Invalid cast from %s to %s. Expected prefix >= %u bits got %u bits",
@@ -2606,8 +3006,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 					   (unsigned int)(sizeof(v4_v6_map) << 3), src->vb_ip.prefix);
 			return -1;
 		}
-		memcpy(&dst->vb_ip.addr.v4.s_addr, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ipv4addr, &src->vb_ipv6addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ipv4addr));
 
 		/*
 		 *	Subtract the bits used by the v4_v6_map to get the v4 prefix bits
@@ -2616,15 +3016,15 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
+		if (src->vb_length != sizeof(dst->vb_ipv4addr) + 1) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
-					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->vb_length);
+					   sizeof(dst->vb_ipv4addr) + 1, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.prefix = src->vb_octets[0];
-		memcpy(&dst->vb_ip.addr.v4, &src->vb_octets[1], sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_octets[1], sizeof(dst->vb_ipv4addr));
 		break;
 
 	case FR_TYPE_UINT32:
@@ -2632,16 +3032,13 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		uint32_t net;
 
 		net = ntohl(src->vb_uint32);
-		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ipv4addr));
 		dst->vb_ip.prefix = 32;
 		break;
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2695,19 +3092,19 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	switch (src_type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
-		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ipv6addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		memcpy(p, (uint8_t const *)&src->vb_ipv4addr, sizeof(src->vb_ipv4addr));
 		dst->vb_ip.scope_id = 0;
 	}
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ipv6addr;
 
 		if (src->vb_ip.prefix != 32) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /32 (not /%i) prefixes may be "
@@ -2721,7 +3118,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		memcpy(p, (uint8_t const *)&src->vb_ipv4addr, sizeof(src->vb_ipv4addr));
 		dst->vb_ip.scope_id = 0;
 	}
 		break;
@@ -2738,27 +3135,24 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		FALL_THROUGH;
 
 	case FR_TYPE_IPV6_ADDR:		/* Needed for handling combo addresses */
-		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
-		       sizeof(dst->vb_ip.addr.v6.s6_addr));
+		memcpy(dst->vb_ipv6addr, src->vb_ipv6addr,
+		       sizeof(dst->vb_ipv6addr));
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->vb_length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
+		if (src->vb_length != sizeof(dst->vb_ipv6addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->vb_length);
+					   sizeof(dst->vb_ipv6addr), src->vb_length);
 			return -1;
 		}
-		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
+		memcpy(&dst->vb_ipv6addr, src->vb_octets, sizeof(dst->vb_ipv6addr));
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		break;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2808,12 +3202,12 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	switch (src_type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
-		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ipv6addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		memcpy(p, (uint8_t const *)&src->vb_ipv4addr, sizeof(src->vb_ipv4addr));
 		dst->vb_ip.prefix = 128;
 		dst->vb_ip.scope_id = 0;
 	}
@@ -2821,12 +3215,12 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ipv6addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		memcpy(p, (uint8_t const *)&src->vb_ipv4addr, sizeof(src->vb_ipv4addr));
 		dst->vb_ip.prefix = (sizeof(v4_v6_map) << 3) + src->vb_ip.prefix;
 		dst->vb_ip.scope_id = 0;
 	}
@@ -2839,29 +3233,26 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	case FR_TYPE_IPV6_ADDR:
 		dst->vb_ip.prefix = 128;
 	v6_common:
-		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
-		       sizeof(dst->vb_ip.addr.v6.s6_addr));
+		memcpy(dst->vb_ipv6addr, src->vb_ipv6addr,
+		       sizeof(dst->vb_ipv6addr));
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->vb_length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
+		if (src->vb_length != (sizeof(dst->vb_ipv6addr) + 2)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->vb_length);
+					   sizeof(dst->vb_ipv6addr) + 2, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
 		dst->vb_ip.prefix = src->vb_octets[1];
-		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
+		memcpy(&dst->vb_ipv6addr, src->vb_octets, sizeof(dst->vb_ipv6addr));
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 	return 0;
 }
@@ -2920,10 +3311,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3018,10 +3406,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3433,10 +3818,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 /** Convert any value to a floating point value
@@ -3545,10 +3927,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 
@@ -3576,7 +3955,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src != dst)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	if (fr_type_is_non_leaf(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
@@ -3606,7 +3984,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		ret = fr_value_box_copy(ctx, dst, src);
 		if (ret < 0) return ret;
 
-		dst->enumv = dst_enumv;
+		if (dst_enumv) dst->enumv = dst_enumv;
 
 		return ret;
 	}
@@ -3708,6 +4086,41 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		break;		/* use generic string/octets stuff below */
 
+#if 0
+	case FR_TYPE_ATTR:
+		/*
+		 *	Convert it to an integer of the correct length. Then, cast it in place.
+		 */
+		switch (src->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(dst, FR_TYPE_UINT8, NULL, false);
+			dst->vb_uint8 = src->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(dst, FR_TYPE_UINT16, NULL, false);
+			dst->vb_uint16 = src->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(dst, FR_TYPE_UINT32, NULL, false);
+			dst->vb_uint32 = src->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for attribute %s",
+					   src->vb_attr->flags.length, src->vb_attr->name);
+			return 0;
+		}
+
+		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
+#else
+	case FR_TYPE_ATTR:
+		if (src->type == FR_TYPE_STRING) break;
+
+		FALL_THROUGH;
+
+#endif
 	/*
 	 *	Invalid types for casting (were caught earlier)
 	 */
@@ -3831,6 +4244,32 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 
 	return 0;
 }
+
+/** Return a uint64_t from a #fr_value_box_t
+ *
+ * @param[in] vb	the value-box.  Must be an unsigned integer data type.
+ * @return		the value as uint64_t.
+ */
+uint64_t fr_value_box_as_uint64(fr_value_box_t const *vb)
+{
+#undef O
+#define O(_x, _y) case FR_TYPE_##_x: return vb->vb_##_y
+
+
+	switch (vb->type) {
+		O(BOOL, bool);
+		O(UINT8, uint8);
+		O(UINT16, uint16);
+		O(UINT32, uint32);
+		O(UINT64, uint64);
+		O(SIZE, size);
+
+	default:
+		fr_assert(0);
+		return 0;
+	}
+}
+
 
 /** Assign a #fr_value_box_t value from an #fr_ipaddr_t
  *
@@ -3962,7 +4401,10 @@ void fr_value_box_clear(fr_value_box_t *data)
 int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
 {
 	switch (src->type) {
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src);
 		fr_value_box_copy_meta(dst, src);
 		break;
@@ -4039,11 +4481,29 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	}
 		break;
 
+	case FR_TYPE_ATTR:
+		fr_value_box_copy_meta(dst, src);
+
+		/* raw also sets is_unknown */
+		if (src->vb_attr->flags.is_unknown) {
+			dst->vb_attr = fr_dict_attr_unknown_copy(ctx, src->vb_attr);
+			if (!dst->vb_attr) return -1;
+			break;
+		}
+		dst->vb_attr = src->vb_attr;
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_UNION:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
+	case FR_TYPE_MAX:
+		fr_assert(0);
 		fr_strerror_printf("Cannot copy data type '%s'", fr_type_to_str(src->type));
 		return -1;
 	}
@@ -4066,12 +4526,17 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 {
 	switch (src->type) {
 	default:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return;
 		break;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
+		fr_value_box_copy_meta(dst, src);
+		break;
+
+	case FR_TYPE_ATTR:
+		dst->vb_attr = src->vb_attr;
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}
@@ -4088,8 +4553,6 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
 	default:
 		return fr_value_box_copy(ctx, dst, src);
@@ -4737,6 +5200,40 @@ void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, 
 	dst->vb_cursor_name = name;
 }
 
+static fr_dict_attr_t const *fr_value_box_attr_enumv(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_ref_t *ext;
+
+	/*
+	 *	If the DA points to a root (e.g. OID-Tree), then use that.
+	 *
+	 *	Otherwise if it doesn't have ENUMs defined, then point it at the dict root.
+	 *
+	 *	If it does have enums, then the enumv is itself.
+	 */
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (ext) {
+		fr_assert(ext->type == FR_DICT_ATTR_REF_ROOT);
+		fr_assert(!da->flags.has_value);
+
+		 return ext->ref;
+	}
+
+	if (!da->flags.has_value) {
+		return fr_dict_root(da->dict);
+	}
+
+	return da;
+}
+
+void fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da)
+{
+	fr_value_box_init(dst, FR_TYPE_ATTR, NULL, false);
+	dst->vb_attr = da;
+
+	dst->enumv = fr_value_box_attr_enumv(da);
+}
+
 /** Increment a boxed value
  *
  * Implements safe integer overflow.
@@ -4779,6 +5276,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
 		return;
 
 	default:
+		fr_assert_fail(NULL);
 		return;
 	}
 }
@@ -4914,7 +5412,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Lookup any names before continuing
 	 */
-	if (dst_enumv && dst_enumv->flags.has_value) {
+	if (dst_enumv && dst_enumv->flags.has_value && (dst_type != FR_TYPE_ATTR)) {
 		size_t				name_len;
 		fr_dict_enum_value_t const	*enumv;
 
@@ -5380,6 +5878,98 @@ parse:
 		fr_strerror_const("Unexpected value for data type NULL");
 		return -1;
 
+	case FR_TYPE_ATTR:
+		if (!dst_enumv) {
+			fr_strerror_const("No dictionary passed for data type 'attr'");
+			return -1;
+		}
+
+		/*
+		 *	@todo - have attributes of FR_TYPE_ATTR also
+		 *	carry a ref to where their values are taken from.
+		 */
+		if (dst_enumv->type == FR_TYPE_ATTR) {
+			dst_enumv = fr_value_box_attr_enumv(dst_enumv);
+
+		} else if (dst_enumv->type != FR_TYPE_TLV) {
+			fr_strerror_printf("Can only start from data type 'tlv' for data type 'attribute', and not from %s", dst_enumv->name);
+			return -1;
+		}
+
+		fr_value_box_init(dst, dst_type, dst_enumv, false);
+
+		(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
+
+		/*
+		 *	Allow '@' references in values.
+		 */
+		if (fr_sbuff_is_char(&our_in, '@')) {
+			size_t len;
+			fr_sbuff_marker_t m;
+
+			fr_sbuff_marker(&m, &our_in);
+			fr_sbuff_advance(&our_in, 1); /* '@' is not an allowed character for dictionary names */
+
+			len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in),
+							fr_dict_attr_nested_allowed_chars, NULL);
+			fr_sbuff_set(&our_in, &m);
+			fr_sbuff_marker_release(&m);
+
+			len++;	/* account for '@' */
+
+			/*
+			 *	This function needs the '@'.
+			 */
+			if (fr_dict_protocol_reference(&dst->vb_attr, fr_dict_root(dst_enumv->dict), &FR_SBUFF_IN(fr_sbuff_current(&our_in), len)) < 0) {
+				return -1;
+			}
+
+			if (!dst->vb_attr) {
+				fr_strerror_printf("Failed to find attribute reference %.*s", (int) len, fr_sbuff_current(&our_in));
+				return -1;
+			}
+
+			fr_assert(dst->vb_attr != NULL);
+
+			if (dst->vb_attr->dict != dst_enumv->dict) {
+				fr_strerror_const("Type 'attribute' cannot reference a different protocol");
+				return -1;
+			}
+
+			fr_sbuff_advance(&our_in, len);
+			FR_SBUFF_SET_RETURN(in, &our_in);
+
+		} else {
+			fr_dict_attr_t const *da;
+
+			fr_assert(dst_enumv != NULL);
+
+			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
+			if (slen > 0) {
+				fr_assert(dst->vb_attr != NULL);
+
+				if (!fr_sbuff_next_if_char(&our_in, '.')) {
+					FR_SBUFF_SET_RETURN(in, &our_in);
+				}
+
+				/*
+				 *	The next bit MUST be an unknown attribute.
+				 */
+			}
+
+			if (!fr_sbuff_is_digit(&our_in)) {
+			invalid_attr:
+				fr_strerror_printf_push("Failed to find the attribute in %s", dst_enumv->name);
+				return -2;
+			}
+
+			slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &da, dst->vb_attr, &our_in, FR_TYPE_OCTETS);
+			if (slen <= 0) goto invalid_attr;
+
+			dst->vb_attr = da;
+			FR_SBUFF_SET_RETURN(in, &our_in);
+		}
+
 	/*
 	 *	Dealt with below
 	 */
@@ -5652,6 +6242,51 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
+	case FR_TYPE_ATTR: {
+		fr_dict_attr_t const *parent = NULL;
+		fr_sbuff_t *unescaped = NULL;
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
+
+		if (!data->enumv) {
+			fr_strerror_const("Value of type 'attribute' is missing the enum");
+			return -1;
+		}
+
+		switch (data->enumv->type) {
+		case FR_TYPE_TLV:
+			parent = data->enumv;
+			break;
+
+		case FR_TYPE_ATTR: /* will print from the root */
+			break;
+
+		default:
+			fr_assert_msg(0, "Invalid data type for 'attr' enumv");
+			break;
+		}
+
+		/*
+		 *	No escaping, just dump the name as-is.
+		 */
+		if (!e_rules) {
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, data->vb_attr, false);
+			break;
+		}
+
+		/*
+		 *	Escaping, use an intermediate buffer.  Because
+		 *	we can't pipe sbuffs together.
+		 */
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
+
+		FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, parent, data->vb_attr, false);
+
+		FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
+					  fr_sbuff_used(unescaped), e_rules);
+		}
+		break;
+
 	case FR_TYPE_NULL:
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "NULL");
 		break;
@@ -5663,6 +6298,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
+	case FR_TYPE_UNION:		/* Not a box type */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
@@ -5818,11 +6454,11 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
-	}}
+	}
 
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
@@ -5918,11 +6554,11 @@ ssize_t fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *d
 	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
-	}}
+	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
@@ -6131,6 +6767,11 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
 		return -1;
 
+	case FR_TYPE_ATTR:
+		fr_assert(0);	/* @todo - print to string, and then escape? */
+		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
+		return -1;
+
 	default:
 		break;
 	}
@@ -6187,17 +6828,17 @@ int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_es
  */
 void fr_value_box_flatten(TALLOC_CTX *ctx, fr_value_box_list_t *list, bool steal, bool free)
 {
-	fr_value_box_list_foreach_safe(list, child) {
+	fr_value_box_list_foreach(list, child) {
 		if (!fr_type_is_structural(child->type)) continue;
 
-		fr_value_box_list_foreach_safe(&child->vb_group, grandchild) {
+		fr_value_box_list_foreach(&child->vb_group, grandchild) {
 			fr_value_box_list_remove(&child->vb_group, grandchild);
 			if (steal) talloc_steal(ctx, grandchild);
 			fr_value_box_list_insert_before(list, child, grandchild);
-		}}
+		}
 
 		if (free) talloc_free(child);
-	}}
+	}
 }
 
 /** Concatenate the string representations of a list of value boxes together
@@ -6324,7 +6965,15 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
 	case FR_TYPE_OCTETS:
 		return fr_hash(vb->vb_octets, vb->vb_length);
 
-	default:
+	case FR_TYPE_ATTR:
+		return fr_hash(&vb->vb_attr, sizeof(vb->vb_attr));
+
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_NULL:
+		fr_assert(0);
 		break;
 	}
 
@@ -6431,6 +7080,14 @@ DIAG_ON(nonnull-compare)
 #endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
+		if (!vb->vb_length) {
+#if 0
+			fr_fatal_assert_msg(!vb->vb_strvalue || (talloc_array_length(vb->vb_strvalue) == 1), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
+					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+#endif
+			break;
+		}
+
 		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
 				    "was NULL", file, line);
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
@@ -6449,6 +7106,14 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_OCTETS:
+		if (!vb->vb_length) {
+#if 0
+			fr_fatal_assert_msg(!vb->vb_octets || (talloc_array_length(vb->vb_octets) == 0), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
+					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+#endif
+			break;
+		}
+
 		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
 				    "was NULL", file, line);
 		break;
@@ -6460,6 +7125,11 @@ DIAG_ON(nonnull-compare)
 
 	case FR_TYPE_GROUP:
 		fr_value_box_list_verify(file, line, &vb->vb_group);
+		break;
+
+	case FR_TYPE_ATTR:
+		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
+				    "was NULL", file, line);
 		break;
 
 	default:
@@ -6591,7 +7261,11 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	switch (in->type) {
 	case FR_TYPE_NULL:
 	case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
-		return false;
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_INTERNAL:
+		break;
 
 	case FR_TYPE_GROUP:
 		return (fr_value_box_list_num_elements(&in->vb_group) > 0);
@@ -6611,22 +7285,28 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	case FR_TYPE_IPV6_PREFIX:
 		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
 
-	default:
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_init_null(&box);
-		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
+		if (fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in) < 0) return false;
 		return box.vb_bool;
 	}
+
+	return false;
 }
 
-#define INFO_INDENT(_fmt, ...)  FR_FAULT_LOG("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+#define INFO_INDENT(_fmt, ...)  fprintf(fp, "%*s" _fmt "\n", depth * 2, " ", ## __VA_ARGS__)
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx);
-static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx);
+static void _fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head, int depth)
 {
 	int i = 0;
 
 	INFO_INDENT("{");
-	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(vb, depth + 1, i++);
+	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(fp, vb, depth + 1, i++);
 	INFO_INDENT("}");
 }
 
@@ -6634,18 +7314,18 @@ static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head)
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head)
 {
-	_fr_value_box_list_debug(head, 0);
+	_fr_value_box_list_debug(fp, head, 0);
 }
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx)
 {
 	char *value;
 	char buffer[64];
 
 	if (fr_type_is_structural(vb->type)) {
-		_fr_value_box_list_debug(&vb->vb_group, depth + 1);
+		_fr_value_box_list_debug(fp, &vb->vb_group, depth + 1);
 		return;
 	}
 
@@ -6681,7 +7361,7 @@ static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_debug(fr_value_box_t const *vb)
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb)
 {
-	_fr_value_box_debug(vb, 0, -1);
+	_fr_value_box_debug(fp, vb, 0, -1);
 }

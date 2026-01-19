@@ -197,7 +197,7 @@ This package should be used as a base for a site local package
 to configure the FreeRADIUS server.
 
 %package common
-Summary: Main utility library, protocol libraries, and dictionaries
+Summary: Main FreeRADIUS utility library, protocol libraries, and dictionaries
 
 %description common
 Provides the main utility library, protocol libraries, and the dictionaries
@@ -322,7 +322,7 @@ Internal support library for FreeRADIUS modules using hiredis, required by all m
 # END 3rd party utility library packages
 #
 %package brotli
-Summary: Brotli compression and decompression
+Summary: Brotli compression and decompression for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: brotli
@@ -330,6 +330,15 @@ BuildRequires: brotli-devel
 
 %description brotli
 This module adds brotli compression and decompression support to FreeRADIUS.
+
+%package ftp
+Summary: FTP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description ftp
+This plugin provides the ability to retrieve files from FTP URIs for the FreeRADIUS server project.
 
 %package imap
 Summary: IMAP support for FreeRADIUS
@@ -777,8 +786,8 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/lua
 %endif
 
-%if %{without rlm_ruby}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
+%if %{without rlm_mruby}
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/mruby
 %endif
 %if %{without rlm_sql_oracle}
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
@@ -971,15 +980,6 @@ fi
 %{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_vmps_udp.so
 
-# Support libraries without external deps.
-# Protocol libraries should not be included here, they should be added to the common package instead.
-%{_libdir}/freeradius/libfreeradius-control.so
-%{_libdir}/freeradius/libfreeradius-io.so
-%{_libdir}/freeradius/libfreeradius-server.so
-%{_libdir}/freeradius/libfreeradius-tls.so
-%{_libdir}/freeradius/libfreeradius-totp.so
-%{_libdir}/freeradius/libfreeradius-unlang.so
-
 # Backend modules without external deps
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
@@ -989,6 +989,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_cipher.so
 %{_libdir}/freeradius/rlm_client.so
+%{_libdir}/freeradius/rlm_crl.so
 %{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_delay.so
@@ -996,6 +997,7 @@ fi
 %{_libdir}/freeradius/rlm_dhcpv4.so
 %{_libdir}/freeradius/rlm_dict.so
 %{_libdir}/freeradius/rlm_digest.so
+%{_libdir}/freeradius/rlm_dpsk.so
 %{_libdir}/freeradius/rlm_eap.so
 %{_libdir}/freeradius/rlm_eap_aka.so
 %{_libdir}/freeradius/rlm_eap_aka_prime.so
@@ -1013,6 +1015,7 @@ fi
 %{_libdir}/freeradius/rlm_files.so
 %{_libdir}/freeradius/rlm_icmp.so
 %{_libdir}/freeradius/rlm_isc_dhcp.so
+%{_libdir}/freeradius/rlm_kv.so
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logtee.so
 %{_libdir}/freeradius/rlm_mschap.so
@@ -1054,10 +1057,19 @@ fi
 %{_libdir}/freeradius/libfreeradius-internal.so
 %{_libdir}/freeradius/libfreeradius-radius.so
 %{_libdir}/freeradius/libfreeradius-radius-bio.so
+%{_libdir}/freeradius/libfreeradius-radius-stats.so
 %{_libdir}/freeradius/libfreeradius-sim.so
 %{_libdir}/freeradius/libfreeradius-tacacs.so
 %{_libdir}/freeradius/libfreeradius-tftp.so
 %{_libdir}/freeradius/libfreeradius-vmps.so
+
+# Support libraries without external deps.
+%{_libdir}/freeradius/libfreeradius-control.so
+%{_libdir}/freeradius/libfreeradius-io.so
+%{_libdir}/freeradius/libfreeradius-server.so
+%{_libdir}/freeradius/libfreeradius-tls.so
+%{_libdir}/freeradius/libfreeradius-totp.so
+%{_libdir}/freeradius/libfreeradius-unlang.so
 
 # Utility libraries
 %{_libdir}/freeradius/libfreeradius-bio.so
@@ -1240,6 +1252,10 @@ fi
 %{_libdir}/freeradius/rlm_cache_memcached.so
 %endif
 
+%files ftp
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_ftp.so
+
 %files imap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_imap.so
@@ -1313,7 +1329,7 @@ fi
 %endif
 
 %if %{with rlm_lua}
-%files ruby
+%files lua
 %defattr(-,root,root,750)
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
 %{_libdir}/freeradius/rlm_lua.so
@@ -1322,7 +1338,7 @@ fi
 %if %{with rlm_mruby}
 %files ruby
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/mruby
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 

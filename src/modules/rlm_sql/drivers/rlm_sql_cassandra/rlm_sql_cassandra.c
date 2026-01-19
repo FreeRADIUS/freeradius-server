@@ -201,9 +201,9 @@ static conf_parser_t latency_aware_routing_config[] = {
 };
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, rlm_sql_cassandra_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE, rlm_sql_cassandra_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE, rlm_sql_cassandra_t, tls_private_key_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, rlm_sql_cassandra_t, tls_private_key_password) },
 
 	{ FR_CONF_OFFSET("verify_cert", rlm_sql_cassandra_t, tls_verify_cert_str) },
@@ -654,7 +654,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t			*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_cassandra_conn_t 	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_cassandra_conn_t);
@@ -676,17 +676,17 @@ do {\
 				  _col_name, i, cass_error_desc(_ret));\
 	TALLOC_FREE(query_ctx->row);\
 	query_ctx->rcode = RLM_SQL_ERROR;\
-	RETURN_MODULE_FAIL;\
+	RETURN_UNLANG_FAIL;\
 } while(0)
 
 	query_ctx->rcode = RLM_SQL_OK;
-	if (!result) RETURN_MODULE_OK;					/* no result */
+	if (!result) RETURN_UNLANG_OK;					/* no result */
 
 	/*
 	 *	Start of the result set, initialise the iterator.
 	 */
 	if (!conn->iterator) conn->iterator = cass_iterator_from_result(result);
-	if (!conn->iterator) RETURN_MODULE_OK;				/* no result */
+	if (!conn->iterator) RETURN_UNLANG_OK;				/* no result */
 
 	/*
 	 *	Free the previous result (also gets called on finish_query)
@@ -695,7 +695,7 @@ do {\
 
 	if (!cass_iterator_next(conn->iterator)) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;		/* no more rows */
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
@@ -784,12 +784,12 @@ do {\
 						  col_name, i);
 			talloc_free(query_ctx->row);
 			query_ctx->rcode = RLM_SQL_ERROR;
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		}
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

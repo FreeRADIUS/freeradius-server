@@ -50,7 +50,6 @@ extern fr_ext_t const fr_dict_enum_ext_def;
  * VALUE.  See dict_attr_can_have_children() for details.
  */
 typedef struct {
-	fr_hash_table_t		*child_by_name;			//!< Namespace at this level in the hierarchy.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
 } fr_dict_attr_ext_children_t;
 
@@ -58,11 +57,13 @@ DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	FR_DICT_ATTR_REF_NONE		= 0x00,			//!< No ref set.
 	FR_DICT_ATTR_REF_ALIAS		= 0x01,			//!< The attribute is an alias for another attribute.
-								///< Either a straight ALIAS, or a reference into another
-								///< dictionary.
+								///< Either a straight ALIAS, or a pointer from FR_TYPE_GROUP
+								///< into another dictionary.
 	FR_DICT_ATTR_REF_CLONE		= 0x02,			//!< The attribute is a "copy" of another attribute.
 	FR_DICT_ATTR_REF_ENUM		= 0x04,			//!< The attribute is an enumeration value.
-	FR_DICT_ATTR_REF_UNRESOLVED	= 0x10			//!< This flag is combined with the other states to indicate
+	FR_DICT_ATTR_REF_KEY		= 0x08,			//!< it is a UNION which has a ref to a key, and children.
+	FR_DICT_ATTR_REF_ROOT		= 0x10,			//!< only for FR_TYPE_ATTR, point to the default root for enums
+	FR_DICT_ATTR_REF_UNRESOLVED	= 0x8000	       	//!< This flag is combined with the other states to indicate
 								///< that the reference is unresolved.
 } fr_dict_attr_ref_type_t;
 DIAG_ON(attributes)
@@ -88,19 +89,6 @@ typedef struct {
 	fr_dict_attr_t const	*vendor;			//!< ancestor which has type #FR_TYPE_VENDOR
 } fr_dict_attr_ext_vendor_t;
 
-/** Attribute extension - Stack of dictionary attributes that describe the path back to the root of the dictionary
- *
- */
-typedef struct {
-	bool			unused;				//!< Zero length arrays are apparently GNU extensions
-								///< and we're not allowed to have structs with a
-								///< single variable array as its member.
-								///< We'll likely want to store something else here
-								///< at some point, so we just have a dummy field to
-								///< avoid changing all the code.
-	fr_dict_attr_t const	*da_stack[];			//!< Stack of dictionary attributes
-} fr_dict_attr_ext_da_stack_t;
-
 /** Attribute extension - Holds enumeration values
  *
  */
@@ -116,13 +104,6 @@ typedef struct {
 typedef struct {
 	fr_hash_table_t		*namespace;			//!< Lookup a child by name
 } fr_dict_attr_ext_namespace_t;
-
-/** Enum extension - Sub-struct or union pointer
- *
- */
-typedef struct {
-	fr_dict_attr_t const	*union_ref;			//!< The union da this value points into.
-} fr_dict_enum_ext_union_ref_t;
 
 /** @name Add extension structures to attributes
  *
@@ -155,23 +136,6 @@ static inline void *fr_dict_attr_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_
 static inline bool fr_dict_attr_has_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
 {
 	return (da->ext[ext] > 0);
-}
-
-/** Return the cached da stack (if any) associated with an attribute
- *
- * @param[in] da	to return cached da stack for.
- * @return
- *	- NULL if no da stack available.
- *	- The cached da stack on success.
- */
-static inline fr_dict_attr_t const **fr_dict_attr_da_stack(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_da_stack_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK);
-	if (!ext) return NULL;
-
-	return ext->da_stack;
 }
 
 /** Return the reference associated with a group type attribute
@@ -240,6 +204,39 @@ static inline fr_dict_attr_t const *fr_dict_vendor_da_by_da(fr_dict_attr_t const
 
 	return ext->vendor;
 }
+
+/* Retrieve an extension structure for a dictionary enum
+ *
+ * @param[in] enumv	to retrieve structure from.
+ * @param[in] ext	to retrieve.
+ * @return
+ *	- NULL if the extension wasn't found.
+ *	- A pointer to the start of the extension.
+ */
+static inline void *fr_dict_enum_ext(fr_dict_enum_value_t const *enumv, fr_dict_enum_ext_t ext)
+{
+	if (!enumv->ext[ext]) return NULL;
+
+	return fr_ext_ptr(enumv, enumv->ext[ext], fr_dict_enum_ext_def.info[ext].has_hdr);
+}
+
+/** Return the attribute reference associated with an enum
+ *
+ * @param[in] enumv	to return the reference for.
+ * @return
+ *	- NULL if no reference available.
+ *	- A pointer to the attribute being referenced.
+ */
+static inline fr_dict_attr_t const *fr_dict_enum_attr_ref(fr_dict_enum_value_t const *enumv)
+{
+	fr_dict_enum_ext_attr_ref_t const *ref;
+
+	ref = fr_dict_enum_ext(enumv, FR_DICT_ENUM_EXT_ATTR_REF);
+	if (!ref) return NULL;
+
+	return ref->da;
+}
+
 
 /** @} */
 

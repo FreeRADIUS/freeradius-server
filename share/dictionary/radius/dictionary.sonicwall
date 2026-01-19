@@ -14,7 +14,7 @@ VENDOR		SonicWall			8741
 BEGIN-VENDOR	SonicWall
 
 #  New names.
-ATTRIBUTE	User-Privilege				1	integer
+ATTRIBUTE	User-Privilege				1	uint32
 VALUE	User-Privilege			Remote-Access		1 # deprecated
 VALUE	User-Privilege			Bypass-Filters		2
 VALUE	User-Privilege			VPN-Client-Access	3 # standard

@@ -1,0 +1,60 @@
+subrequest @DHCPv6::Relay-Forward {
+	Hop-Count = 0
+	Relay-Link-Address = 2001:cafe::2
+	Relay-Peer-Address = 2001:cafe::3
+	Relay-Message = {
+		Packet-Type = ::Solicit
+		Transaction-ID = 0x1835ef
+		Client-ID = {
+			DUID = ::UUID
+			UUID = {
+				Value = 0x00000000000000000000000000000001
+			}
+		}
+		IA-NA = {
+			IAID = 4278191680
+			T1 = 0
+			T2 = 0
+		}
+		Option-Request = DNS-Servers
+		Option-Request = Domain-List
+		Option-Request = SNTP-Servers
+		Option-Request = Client-FQDN
+		Option-Request = SOL-Max-RT
+		Option-Request = INF-Max-RT
+		Elapsed-Time = 0
+		Rapid-Commit = yes
+		Client-FQDN = {
+			Reserved = 0
+			No-Server-Update = no
+			Server-Override = no
+			Server-Update = yes
+			Domain-Name = "rei"
+		}
+	}
+	Client-Link-Layer = {
+		Type = ::Ethernet
+		Ethernet = {
+			Address = 0xaabbccddeeff
+		}
+	}
+	Interface-ID = 'eth0'
+	Relay-Agent-Remote-ID = {
+		Vendor = 9
+		Value = 0x01020304
+	}
+
+	call dhcpv6 {
+		# 'Relay-Forward' expects 'Relay-Reply'
+		if (reply.Packet-Type != ::Relay-Reply) {
+			test_fail
+		}
+
+#
+#  Disabled at present pending UNION data types
+#
+#		if (!reply.Server-ID.DUID.UUID.Value) {
+#			test_fail
+#		}
+	}
+}

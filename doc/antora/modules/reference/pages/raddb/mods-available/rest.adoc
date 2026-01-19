@@ -174,16 +174,12 @@ chunk:: Max chunk-size.
 The following config items can be used in each of the sections.
 The sections themselves reflect the sections in the server.
 
-For example, if you list `rest` in the `authorize` section of a `virtual server`,
-the settings from the `authorize` section here will be used.
+For example, if you list `rest` in the `recv Access-Request` section of a `virtual server`,
+the settings from the `recv access-request` section here will be used.
 
-The following sections are supported:
-
-- `authorize { ... }`
-- `authenticate { ... }`
-- `accounting { ... }`
-- `post-auth { ... }`
-- `xlat { ... }`
+Where sections have two parts to the name, if a section which matches both names is not
+found, then one using just the first name will be looked for.  E.g. a call in `accounting Start`,
+will look for `accounting start` and fall back to `accounting`.
 
 At the top level of each section, the following config items may be listed:
 
@@ -331,7 +327,7 @@ any calls to this module's `xlat` function.
 
 
 
-### Authorize { ... }
+### recv { ... }
 
 Default action when called in `recv` sections except `recv Accounting-Request`.
 
@@ -373,7 +369,7 @@ Default action when called in `recv Accounting-Request` or `accounting` sections
 
 
 
-### Post-Auth { ... }
+### send { ... }
 
 Default action when called in `send` sections.
 
@@ -449,7 +445,7 @@ rest {
 	xlat {
 		tls = ${..tls}
 	}
-	authorize {
+	recv {
 		request {
 			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 			method = 'GET'
@@ -470,7 +466,7 @@ rest {
 		}
 		tls = ${..tls}
 	}
-	post-auth {
+	send {
 		request {
 			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
 			method = 'POST'

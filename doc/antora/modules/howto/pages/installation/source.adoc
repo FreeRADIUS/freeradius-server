@@ -1,7 +1,6 @@
-== Building from Source
+= Build from Source
 
-We recommend xref:howto:installation/packages.adoc[installing from packages] if
-possible. Full instructions on building and installing from source
+We recommend that you xref:howto:installation/packages.adoc[install from packages] if possible. Full instructions on building and installing from source
 code follow.
 
 The hard xref:howto:installation/dependencies.adoc[dependencies]
@@ -45,7 +44,7 @@ make
 sudo make install
 ----
 
-=== Custom build
+== Custom build
 
 FreeRADIUS has GNU autoconf support. This means you have to run
 `./configure`, and then run `make`. To see which configuration
@@ -69,8 +68,7 @@ this may cause undesired behavior and failure to operate correctly.
 
 The initial output from running in xref:ROOT:debugging/radiusd_X.adoc[debugging mode]
 will tell you which configuration files are being used. See
- xref:howto:installation/upgrade.adoc[upgrading] for information about
-upgrading from older versions. There _may_ be changes in the
+ xref:howto:upgrade/index.adoc[upgrade from v3 to v4] for more information. There _may_ be changes in the
 dictionary files which are required for a new version of the
 software. These files will not be installed over your current
 configuration, so you *must* verify and install any problem files by
@@ -87,7 +85,7 @@ Please do _not_ post questions to the FreeRADIUS users list
 without first carefully reading the output of this process as it
 often contains the information needed to resolve a problem.
 
-== Upgrading To A New Minor Release
+== Upgrade to a new minor release
 
 The installation process will not over-write your existing configuration
 files. It will, however, warn you about the files it did not install.
@@ -97,7 +95,7 @@ It is generally not possible to reuse configurations between different
 major versions of the server. For example - version 2 to version 3, or
 version 3 to version 4.
 
-For details on what has changed between the version, see  xref:howto:installation/upgrade.adoc[Upgrading from v3 to v4].
+For details on what has changed between the version, see  xref:howto:upgrade/index.adoc[upgrade from v3 to v4].
 
 We _strongly_ recommend that new major versions be installed in a
 different location than any existing installations. Any local policies
@@ -106,7 +104,7 @@ major version. The number of differences in the new configuration mean
 that is is both simpler and safer to migrate your configurations rather
 than to try and just get the old configuration to work.
 
-== Running the server
+== Run the server
 
 If the server builds and installs, but doesn’t run correctly, then
 you should first use xref:ROOT:debugging/radiusd_X.adoc[debugging mode] to figure out
@@ -116,7 +114,7 @@ This is your best hope for understanding the problem. Read _all_
 of the messages which are printed to the screen, the answer to
 your problem will often be in a warning or error message.
 
-Configuring a RADIUS server for complex local authentication isn’t a trivial
+Configure a RADIUS server for complex local authentication isn’t a trivial
 task. Your _best_ and _only_ method for debugging it is to read
 the debug messages, where the server will tell you exactly what
 it’s doing, and why. You should then compare its behaviour to what
@@ -179,7 +177,7 @@ changes without impacting your active production environment. You should
 make the appropriate investment in order to properly support a critical
 resource such as your authentication servers.
 
-Configuring and running the server MAY be complicated. Many modules have
+Configure and running the server MAY be complicated. Many modules have
 `man` pages. See `man rlm_pap`, or `man rlm_*` for information.
 Please read the documentation in the doc/ directory. The comments in the
 configuration files also contain a lot of documentation.

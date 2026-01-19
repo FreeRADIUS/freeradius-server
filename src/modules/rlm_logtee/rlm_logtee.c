@@ -130,7 +130,7 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_WRITABLE | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_logtee_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_logtee_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_logtee_t, file.escape), .dflt = "no" },
@@ -138,7 +138,7 @@ static const conf_parser_t file_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE, rlm_logtee_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -181,7 +181,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_logtee_dict[];
 fr_dict_autoload_t rlm_logtee_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_log_level;
@@ -193,7 +193,7 @@ fr_dict_attr_autoload_t rlm_logtee_dict_attr[] = {
 	{ .out = &attr_log_level, .name = "Log-Level", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_log_message, .name = "Log-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_log_type, .name = "Log-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void logtee_fd_idle(rlm_logtee_thread_t *t);
@@ -205,7 +205,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		      char const *fmt, va_list ap, void *uctx)
 		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
-static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static unlang_action_t mod_insert_logtee(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Connection errored
  *
@@ -214,7 +214,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 
-	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...
@@ -523,19 +523,19 @@ finish:
  * @param[in] mctx	Module calling ctx.
  * @param[in] request	request to add our log destination to.
  */
-static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_insert_logtee(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	log_dst_t	*dst, **last = NULL;
 
 	for (dst = request->log.dst; dst; dst = dst->next) {
 		if (dst->uctx == mctx->thread) {
-			RETURN_MODULE_NOOP;
+			RETURN_UNLANG_NOOP;
 		}
 
 		last = &(dst->next);
 	}
 
-	if (!last) RETURN_MODULE_NOOP;
+	if (!last) RETURN_UNLANG_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
@@ -543,7 +543,7 @@ static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t con
 
 	*last = dst;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Create thread-specific connections and buffers

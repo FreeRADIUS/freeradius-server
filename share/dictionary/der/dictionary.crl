@@ -15,7 +15,6 @@ END         nameRelativeToCRLIssuer
 END       distributionPointName
 
 ATTRIBUTE reasons					1	struct  option,optional
-BEGIN   reasons
 MEMBER		unused					bit[1]
 MEMBER		keyCompromise				bit[1]
 MEMBER		cACompromise				bit[1]
@@ -25,7 +24,6 @@ MEMBER		cessationOfOperation			bit[1]
 MEMBER		certificateHold				bit[1]
 MEMBER		privilegeWithdrawn			bit[1]
 MEMBER		aACompromise				bit[1]
-END     reasons
 
 ATTRIBUTE cRLIssuer					2	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option,optional
 

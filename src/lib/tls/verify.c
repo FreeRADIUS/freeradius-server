@@ -266,7 +266,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	and cause validation to fail.
 		 */
 		if (fr_tls_session_pairs_from_x509_cert(&container->vp_group, container,
-							request, cert) < 0) {
+							request, cert, conf->verify.der_decode) < 0) {
 			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_certificate);
 			my_ok = 0;
 			goto done;
@@ -411,17 +411,29 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 /** Process the result of `verify certificate { ... }`
  *
  */
-static unlang_action_t tls_verify_client_cert_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						     request_t *request, void *uctx)
+static unlang_action_t tls_verify_client_cert_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *next;
 
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED);
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_tls_packet_type);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		REDEBUG("Failed (re-)validating certificates");
+
+		/*
+		 *	Hoist any instances of Module-Failure-Message from the subrequest
+		 *	so they can be used for logging failures.
+		 */
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_module_failure_message);
+		while (vp && request->parent) {
+			next = fr_pair_find_by_da(&request->request_pairs, vp, attr_module_failure_message);
+			fr_pair_remove(&request->request_pairs, vp);
+			fr_pair_steal_append(request->parent->request_ctx, &request->parent->request_pairs, vp);
+			vp = next;
+		}
+
 		tls_session->validate.state = FR_TLS_VALIDATION_FAILED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}

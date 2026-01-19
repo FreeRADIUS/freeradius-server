@@ -13,9 +13,9 @@ VENDOR		pfSense				13644
 
 BEGIN-VENDOR	pfSense
 
-ATTRIBUTE	Bandwidth-Max-Up			1	integer
-ATTRIBUTE	Bandwidth-Max-Down			2	integer
-ATTRIBUTE	Max-Total-Octets			3	integer
+ATTRIBUTE	Bandwidth-Max-Up			1	uint32
+ATTRIBUTE	Bandwidth-Max-Down			2	uint32
+ATTRIBUTE	Max-Total-Octets			3	uint32
 
 END-VENDOR	pfSense
 ALIAS		pfSense					Vendor-Specific.pfSense

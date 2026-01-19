@@ -27,21 +27,22 @@ case EAGAIN:
 	}
 	return fr_bio_error(IO_WOULD_BLOCK);
 
-#ifndef NDEBUG
-case ENOTCONN:
 	/*
-	 *	We're doing a read/write to a socket which isn't connected.  This is a failure of the
-	 *	application state machine.
+	 *	We're reading / writing a connected UDP socket, and the other end has gone away.
 	 */
-	fr_assert(0);
-	break;
-#endif
+case ENOTCONN:
 
+	/*
+	 *	The other end of a socket has closed the connection.
+	 */
 case ECONNRESET:
+
+	/*
+	 *	The other end of a pipe has closed the connection.
+	 */
 case EPIPE:
 	/*
-	 *	The other end closed the connection, signal the application that it's a (maybe) clean close,
-	 *	and set EOF on the BIO.
+	 *	The connection is no longer usable, close it.
 	 */
 	fr_bio_eof(&my->bio);
 	return 0;
@@ -66,4 +67,4 @@ default:
 /*
  *	Shut down the BIO.  It's no longer useable.
  */
-fr_bio_shutdown(&my->bio);
+(void) fr_bio_shutdown(&my->bio);

@@ -388,6 +388,11 @@ ldap {
 		#  do not (e.g. mixed IPoE and PPPoE).
 		#
 #		expect_password = no
+
+		#
+		#  dn_attribute:: Where to cache the user's DN for use in authentication.
+		#
+#		dn_attribute = 'LDAP-UserDN'
 	}
 
 	#
@@ -942,9 +947,45 @@ ldap {
 }
 
 #
+#  ## Policy Over-rides
+#
+#  The following policy ensures that every call to the `ldap` module
+#  will time out within a short period of time.
+#
+#  The policy name here should be the same as the module name.
+#  Reusing the same name means that this policy will be used instead
+#  of the module.
+#
+#@policy ldap {
+#	timeout 1s {
+#		ldap
+#	}
+#}
+
+
+#
 #  ## Expansions
 #
-#  The rlm_ldap provides the below xlat's functions.
+#  The `rlm_ldap` module provides the following xlat functions.
+#
+#  ### %ldap(...)
+#
+#  Retrieve a value from an LDAP directory using an LDAP uri.
+#
+#  If the LDAP uri starts `ldap:///`, i.e. no host is specified, then
+#  the server configured for the module will be used.
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  reply.Reply-Message := "Welcome %ldap("ldap:///ou=people,dc=example,dc=com?displayName?sub?(uid=%{User-Name})")"
+#  ----
+#
+#  .Output
+#  ```
+#  "Welcome Example User"
+#  ```
 #
 #  ### %ldap.uri.escape(...)
 #
@@ -1002,6 +1043,31 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ```
 #
+#  ### %ldap.uri.attr_option(...)
+#
+#  Add an option to all attribute referenced in an LDAP URI.
+#
+#  This is for the corner case where a URI is provided by a third party system
+#  and needs amending before being used. e.g. a CRL distribution point extracted
+#  from a certificate may need the "binary" option appending to the attribute
+#  being requested.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  my-uri := "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList?base?objectClass=cRLDistributionPoint"
+#  reply.Reply-Message := %ldap.uri.attr_option(my-uri, 'binary')
+#  ----
+#
+#  .Output
+#
+#  ```
+#  "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList;binary?base?objectClass=cRLDistributionPoint"
+#  ```
+#
 #  ### %ldap.group(...)
 #
 #  Check whether the current user is a member of a the given group.  If the attribute
@@ -1017,9 +1083,28 @@ ldap {
 #  .Example
 #
 #  [source,unlang]
-#  ---
+#  ----
 #  if (%ldap.group('cn=group1,ou=Groups,dc=example,dc=org')) {
 #    ...
 #  }
-#  ---
+#  ----
 #
+#
+#  ### %ldap.profile(...)
+#
+#  Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
+#  updates as configured in the module `update` section.  This can be useful when
+#  additional profiles need to be applied to a subscriber beyond those directly
+#  associated with their LDAP entry.
+#
+#  The object can be expressed either as an LDAP URI or a DN.
+#
+#  .Return: _bool_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
+#  %ldap.profile(my_profile)
+#  ----

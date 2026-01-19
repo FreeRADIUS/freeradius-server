@@ -188,9 +188,9 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	end = data + data_len;
 
 	/*
-	 *	Note that vmps_recv() MUST ensure that the packet is
-	 *	formatted in a way we expect, and that vmps_recv() MUST
-	 *	be called before vmps_decode().
+	 *	Note that fr_vmps_ok() MUST ensure that the packet is
+	 *	formatted in a way we expect, and that fr_vmps_ok() MUST
+	 *	be called before fr_vmps_decode().
 	 */
 	while (ptr < end) {
 		if ((end - ptr) < 6) {
@@ -201,6 +201,8 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		attr = fr_nbo_to_uint16(ptr + 2);
 		attr_len = fr_nbo_to_uint16(ptr + 4);
 		ptr += 6;
+
+		if (!attr_len) continue;
 
 		/*
 		 *	fr_vmps_ok() should have checked this already,
@@ -521,7 +523,8 @@ static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_vmps_ctx_t *test_ctx;
 
@@ -562,7 +565,8 @@ static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_vmps_ctx_t *test_ctx;
 

@@ -17,37 +17,37 @@ ATTRIBUTE	CHAP-CPW-1				3	octets[70]
 ATTRIBUTE	CHAP-CPW-2				4	octets[84]
 ATTRIBUTE	CHAP-LM-Enc-PW				5	octets
 ATTRIBUTE	CHAP-NT-Enc-PW				6	octets	secret
-ATTRIBUTE	MPPE-Encryption-Policy			7	integer
+ATTRIBUTE	MPPE-Encryption-Policy			7	uint32
 
 VALUE	MPPE-Encryption-Policy		Encryption-Allowed	1
 VALUE	MPPE-Encryption-Policy		Encryption-Required	2
 
 # This is referred to as both singular and plural in the RFC.
 # Plural seems to make more sense.
-ATTRIBUTE	MPPE-Encryption-Type			8	integer
+ATTRIBUTE	MPPE-Encryption-Type			8	uint32
 ALIAS		MPPE-Encryption-Types			.MPPE-Encryption-Type
 
 VALUE	MPPE-Encryption-Types		RC4-40bit-Allowed	1
 VALUE	MPPE-Encryption-Types		RC4-128bit-Allowed	2
 VALUE	MPPE-Encryption-Types		RC4-40or128-bit-Allowed	6
 
-ATTRIBUTE	RAS-Vendor				9	integer	# content is Vendor-ID
+ATTRIBUTE	RAS-Vendor				9	uint32	# content is Vendor-ID
 ATTRIBUTE	CHAP-Domain				10	string
 ATTRIBUTE	CHAP-Challenge				11	octets	secret
 ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=User-Password
-ATTRIBUTE	BAP-Usage				13	integer
-ATTRIBUTE	Link-Utilization-Threshold		14	integer # values are 1-100
-ATTRIBUTE	Link-Drop-Time-Limit			15	integer
+ATTRIBUTE	BAP-Usage				13	uint32
+ATTRIBUTE	Link-Utilization-Threshold		14	uint32 # values are 1-100
+ATTRIBUTE	Link-Drop-Time-Limit			15	uint32
 ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=Tunnel-Password
 ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=Tunnel-Password
 ATTRIBUTE	RAS-Version				18	string
 ATTRIBUTE	Old-ARAP-Password			19	octets
 ATTRIBUTE	New-ARAP-Password			20	octets
-ATTRIBUTE	ARAP-PW-Change-Reason			21	integer
+ATTRIBUTE	ARAP-PW-Change-Reason			21	uint32
 
 ATTRIBUTE	Filter					22	octets
-ATTRIBUTE	Acct-Auth-Type				23	integer
-ATTRIBUTE	Acct-EAP-Type				24	integer
+ATTRIBUTE	Acct-Auth-Type				23	uint32
+ATTRIBUTE	Acct-EAP-Type				24	uint32
 
 ATTRIBUTE	CHAP2-Response				25	octets[50]
 ATTRIBUTE	CHAP2-Success				26	octets
@@ -67,21 +67,21 @@ ATTRIBUTE	Secondary-NBNS-Server			31	ipaddr
 ATTRIBUTE	RAS-Client-Name				34	string
 ATTRIBUTE	RAS-Client-Version			35	string
 ATTRIBUTE	Quarantine-IPFilter			36	octets
-ATTRIBUTE	Quarantine-Session-Timeout		37	integer
+ATTRIBUTE	Quarantine-Session-Timeout		37	uint32
 ATTRIBUTE	User-Security-Identity			40	string
-ATTRIBUTE	Identity-Type				41	integer
+ATTRIBUTE	Identity-Type				41	uint32
 ATTRIBUTE	Service-Class				42	string
 ATTRIBUTE	Quarantine-User-Class			44	string
-ATTRIBUTE	Quarantine-State			45	integer
-ATTRIBUTE	Quarantine-Grace-Time			46	integer
-ATTRIBUTE	Network-Access-Server-Type		47	integer
-ATTRIBUTE	AFW-Zone				48	integer
+ATTRIBUTE	Quarantine-State			45	uint32
+ATTRIBUTE	Quarantine-Grace-Time			46	uint32
+ATTRIBUTE	Network-Access-Server-Type		47	uint32
+ATTRIBUTE	AFW-Zone				48	uint32
 
 VALUE	AFW-Zone			AFW-Zone-Boundary-Policy 1
 VALUE	AFW-Zone			AFW-Zone-Unprotected-Policy 2
 VALUE	AFW-Zone			AFW-Zone-Protected-Policy 3
 
-ATTRIBUTE	AFW-Protection-Level			49	integer
+ATTRIBUTE	AFW-Protection-Level			49	uint32
 
 VALUE	AFW-Protection-Level		HECP-Response-Sign-Only	1
 VALUE	AFW-Protection-Level		HECP-Response-Sign-And-Encrypt 2
@@ -90,7 +90,7 @@ ATTRIBUTE	Machine-Name				50	string
 ATTRIBUTE	IPv6-Filter				51	octets
 ATTRIBUTE	IPv4-Remediation-Servers		52	octets
 ATTRIBUTE	IPv6-Remediation-Servers		53	octets
-ATTRIBUTE	RNAP-Not-Quarantine-Capable		54	integer
+ATTRIBUTE	RNAP-Not-Quarantine-Capable		54	uint32
 
 VALUE	RNAP-Not-Quarantine-Capable	SoH-Sent		0
 VALUE	RNAP-Not-Quarantine-Capable	SoH-Not-Sent		1
@@ -99,14 +99,14 @@ ATTRIBUTE	Quarantine-SOH				55	octets
 ATTRIBUTE	RAS-Correlation				56	octets
 
 #  Or this might be 56?
-ATTRIBUTE	Extended-Quarantine-State		57	integer
+ATTRIBUTE	Extended-Quarantine-State		57	uint32
 
 ATTRIBUTE	HCAP-User-Groups			58	string
 ATTRIBUTE	HCAP-Location-Group-Name		59	string
 ATTRIBUTE	HCAP-User-Name				60	string
 ATTRIBUTE	User-IPv4-Address			61	ipaddr
 ATTRIBUTE	User-IPv6-Address			62	ipv6addr
-ATTRIBUTE	TSG-Device-Redirection			63	integer
+ATTRIBUTE	TSG-Device-Redirection			63	uint32
 
 #
 #	Integer Translations

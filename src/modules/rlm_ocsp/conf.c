@@ -2,7 +2,9 @@
 static conf_parser_t ocsp_config[] = {
 	{ FR_CONF_OFFSET("enable", fr_tls_ocsp_conf_t, enable), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("virtual_server", fr_tls_ocsp_conf_t, cache_server) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, fr_tls_ocsp_conf_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "ocsp"} },
 
 	{ FR_CONF_OFFSET("override_cert_url", fr_tls_ocsp_conf_t, override_url), .dflt = "no" },
 	{ FR_CONF_OFFSET("url", fr_tls_ocsp_conf_t, url) },

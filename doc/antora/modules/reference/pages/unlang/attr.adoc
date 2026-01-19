@@ -7,14 +7,8 @@ Attribute-Name
 ----
 
 The `Attribute-Name` operator returns a reference to the named
-attribute.
-
-When used as an existence check in a condition, the condition
-evaluates to `true` if the attribute exists.  Otherwise, the condition
-evaluates to `false`.
-
-When used elsewhere, such as in xref:unlang/switch.adoc[switch], it returns
-the value of the named attribute.
+attribute.  Unlike version 3, it is not necessary to prefix attribute
+references with `&` character.
 
 .Examples
 [source,unlang]
@@ -152,19 +146,57 @@ TLV-One.Child-one[3].Child-Three
 reply.TLV[3].Child-Two
 ----
 
+== Raw attributes
+
+When the server decodes data from the network, that data can sometimes
+be malformed.  When this happens, the server creates a "raw"
+attribute, usually of the `octets` data type.  This process allows all
+data received be the server to be processed, and used in policies.  It
+also allows the server to receive and forward attributes which are
+unknown to the server.
+
+It is possible to create "raw" attributes in policies, simply by
+prefixing the name with the word `raw.`.  For example, the
+`Framed-IP-Address` attribute is normally an IPv4 address (type
+`ipv4addr`) which is four octets long.  However, it is possible to
+create a Framed-IP-Address which is only one octet long, via the
+following assignment:
+
+.Example
+[source,unlang]
+----
+raw.reply.Framed-IP-Address := 0x01
+----
+
+The `raw.` prefix must be listed first, before any list reference is given.
+
+It is also possible to create raw attributes from numbers.  For
+example, `Vendor-Specific.Cisco.AVPAir` is `25.9.1`:
+
+.Example
+[source,unlang]
+----
+raw.26.9.1 = 0xabcdef
+----
+
+While the server accepts these strings, it is generally a bad idea to
+use them.  Instead, you should add a xref:raddb/dictionary.adoc[local
+dictionary definition] for the attribute.
+
 == Compatibility with Older Versions of FreeRADIUS
 
-Older versions of the server did not use the `&` character to
-distinguish attribute names from other strings.  Version 4 requires
-the use of the `&` character before attribute names.
+FreeRADIUS version 3 used the `&` character for attribute references.
+However, the `&` character was sometimes not allowed, such as in the
+xref:reference:raddb/mods-config/files/users.adoc[users] file.  In
+other cases such as conditions, it was allowed by not required.  This
+behavior made the configuration more confusing.
 
-Without the `&`, the server could interpret a string as `hello-there`
-either as a literal string "hello-there", or as a reference to an
-attribute named `hello-there`.  This ambiguity made it difficult to
-parse the configuration files correctly in all cases.
+Version 4 fixes that by dropping the `&` entirely.  It is allowed for
+backwards compatibility, but if used it is ignored.  All of the
+documentation and configuration files have been updated to remove the
+`&` character.  A future version of the server will be updated to
+remove that backwards compatibility, and at some future time, using
+`&` will result in an error.
 
-Adding the leading `&` character means that attribute references are
-now easily distinguishable from literal strings.
-
-// Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

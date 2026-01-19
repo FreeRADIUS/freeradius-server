@@ -31,20 +31,25 @@ RCSID("$Id$")
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 
+#include "attrs.h"
 #include "der.h"
 
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_der;
-//fr_dict_attr_t const *attr_oid_tree;
+fr_dict_attr_t const *attr_oid_tree;
 
 extern fr_dict_autoload_t libfreeradius_der_dict[];
-fr_dict_autoload_t	  libfreeradius_der_dict[] = { { .out = &dict_der, .proto = "der" }, { NULL } };
+fr_dict_autoload_t	  libfreeradius_der_dict[] = {
+	{ .out = &dict_der, .proto = "der" },
+
+	DICT_AUTOLOAD_TERMINATOR
+};
 
 extern fr_dict_attr_autoload_t libfreeradius_der_dict_attr[];
 fr_dict_attr_autoload_t	       libfreeradius_der_dict_attr[] = {
-//	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
-	{ NULL }
+	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_table_num_sorted_t const tag_name_to_number[] = {
@@ -138,7 +143,6 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 		[FR_DER_TAG_OCTETSTRING] = true,
 	},
 	[FR_TYPE_STRING] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_OID] = true,
 		[FR_DER_TAG_UTF8_STRING] = true,
 		[FR_DER_TAG_PRINTABLE_STRING] = true,
 		[FR_DER_TAG_T61_STRING] = true,
@@ -150,6 +154,9 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 	[FR_TYPE_DATE] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_UTC_TIME] = true,
 		[FR_DER_TAG_GENERALIZED_TIME] = true,
+	},
+	[FR_TYPE_ATTR] = (bool [FR_DER_TAG_MAX]) {
+		[FR_DER_TAG_OID] = true,
 	},
 	[FR_TYPE_TLV] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_SEQUENCE] = true,
@@ -310,6 +317,27 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 	return 0;
 }
 
+static int dict_flag_set_oid_and_value(fr_dict_attr_t **da_p, fr_der_attr_flags_t *flags)
+{
+	flags->is_oid_and_value = true;
+	flags->is_sequence_of = true;
+	flags->sequence_of = FR_DER_TAG_SEQUENCE;
+
+	/*
+	 *	The dict autoload things aren't set until after we load all of the dictionary entries.  So we
+	 *	just manually set it here for laziness.
+	 */
+	if (!attr_oid_tree) {
+		attr_oid_tree = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
+		if (!attr_oid_tree) return -1;
+	}
+
+	if (fr_dict_attr_set_group(da_p, attr_oid_tree) < 0) return -1;
+
+	(*da_p)->flags.allow_flat = true;
+	return 0;
+}
+
 static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
@@ -326,10 +354,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_oid_and_value = true;
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		return fr_dict_attr_set_group(da_p);
+		return dict_flag_set_oid_and_value(da_p, flags);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -360,10 +385,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_oid_and_value = true;
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		return fr_dict_attr_set_group(da_p);
+		return dict_flag_set_oid_and_value(da_p, flags);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -395,21 +417,22 @@ static int dict_flag_is_extensions(fr_dict_attr_t **da_p, UNUSED char const *val
 	return 0;
 }
 
-static int dict_flag_is_oid_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+static int dict_flag_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
 	/*
-	 *	is_oid_leaf is perhaps better as a property of the _parent_ sequence.  It ensures that we only
-	 *	walk through the sequences children once.
+	 *	The "leaf" property means that when we're encoding a nested set of attributes, we encode the
+	 *	OIDs until we hit one which has the "leaf" property set.  We then encode the OID of this
+	 *	attribute, along with its value.
 	 */
 	if (fr_der_flag_der_type((*da_p)->parent) != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Cannot set 'is_oid_leaf' for parent %s of DER type %s",
+		fr_strerror_printf("Cannot set 'leaf' for parent %s of DER type %s",
 				   (*da_p)->parent->name, fr_der_tag_to_str(fr_der_flag_der_type((*da_p)->parent)));
 		return -1;
 	}
 
-	flags->is_oid_leaf = true;
+	flags->leaf = true;
 
 	return 0;
 }
@@ -609,7 +632,7 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("default"),		{ .func = dict_flag_default_value,.needs_value = true } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
-	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
+	{ L("leaf"),		{ .func = dict_flag_leaf } },
 	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },
 	{ L("option"),		{ .func = dict_flag_option} },
 	{ L("optional"),       	{ .func = dict_flag_optional} },
@@ -632,7 +655,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		{ L("integer"),		FR_TYPE_INT64 },
 		{ L("null"),		FR_TYPE_BOOL },
 		{ L("octetstring"),	FR_TYPE_OCTETS },
-		{ L("oid"),		FR_TYPE_STRING },
+		{ L("oid"),		FR_TYPE_ATTR },
 		{ L("printablestring"),	FR_TYPE_STRING },
 		{ L("sequence"),	FR_TYPE_TLV },
 		{ L("set"),		FR_TYPE_TLV },
@@ -686,25 +709,27 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		fr_strerror_const("Cannot use 'tlv' in DER.  Please use 'sequence'");
 		return false;
 
-	case FR_TYPE_IFID:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	default:
+	invalid_type:
 		fr_strerror_printf("Cannot use type '%s' in the DER dictionaries",
 				   fr_type_to_str(*type_p));
 		return false;
 
 		/*
-		 *	We allow integers for now.  They may be
+		 *	We allow all integer types.  They may be
 		 *	internal, or they may be inside of a struct.
 		 */
-	default:
+	case FR_TYPE_NULL:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_VARIABLE_SIZE:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_ATTR:
 		break;
 	}
 
@@ -723,6 +748,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	fr_type = fr_table_value_by_str(type_table, name, FR_TYPE_MAX);
 	if (fr_type == FR_TYPE_MAX) {
 		flags->der_type = fr_type_to_der_tag_default(*type_p);
+		if (!flags->der_type) goto invalid_type;
 		return true;
 	}
 
@@ -751,6 +777,25 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	*type_p = fr_type;
 	flags->der_type = der_type;
 
+	if (der_type == FR_DER_TAG_OID) {
+		fr_dict_attr_ext_ref_t *ext;
+
+		fr_assert(fr_type == FR_TYPE_ATTR);
+
+		fr_assert(!fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF));
+
+		ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF); /* can change da_p */
+		if (unlikely(!ext)) return -1;
+
+		if (!attr_oid_tree) {
+			attr_oid_tree = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
+			fr_assert(attr_oid_tree != NULL);
+		}
+
+		ext->type = FR_DICT_ATTR_REF_ROOT;
+		ext->ref = attr_oid_tree;
+	}
+
 	/*
 	 *	If it is a collection of x509 extensions, we will set
 	 * 	a few other flags as per RFC 5280.
@@ -762,8 +807,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		flags->option = 3;
 		flags->is_option = true;
 
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
+		if (dict_flag_set_oid_and_value(da_p, flags) < 0) return false;
 	}
 
 	/*
@@ -810,26 +854,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_attr_flags_t *parent;
-
-	/*
-	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
-	 *
-	 *	Group refs are added as unresolved refs, see dict_flag_ref(), and are resolved later
-	 *	in dict_fixup_group_apply().
-	 *
-	 *	@todo - have a function called from dict_attr_finalize() ?
-	 */
-#if 0
-	if (flags->is_oid_and_value) {
-		fr_dict_attr_t const *ref;
-
-		fr_assert(da->type == FR_TYPE_GROUP);
-
-		if (!fr_dict_attr_ref(da)) {
-			(void) dict_attr_ref_set(da, attr_oid_tree, FR_DICT_ATTR_REF_ALIAS);
-		}
-	}
-#endif
 
 	if (flags->is_choice && unlikely(!fr_type_is_tlv(da->type))) {
 		fr_strerror_printf("Attribute %s of type %s is not allowed represent a collection of choices.",
@@ -1002,6 +1026,21 @@ static bool attr_valid(fr_dict_attr_t *da)
 					   da->parent->name, fr_der_tag_to_str(parent->set_of),
 					   fr_der_tag_to_str(flags->der_type));
 			return false;
+		}
+	}
+
+	if ((da->type == FR_TYPE_GROUP) && !da->flags.allow_flat) {
+		if ((da->parent == attr_oid_tree) || da->parent->flags.allow_flat) {
+			da->flags.allow_flat = true;
+		} else {			
+			fr_dict_attr_t const *oid;
+
+			for (oid = da->parent; !oid->flags.is_root; oid = oid->parent) {
+				if (oid == attr_oid_tree) {
+					da->flags.allow_flat = true;
+					break;
+				}
+			}
 		}
 	}
 

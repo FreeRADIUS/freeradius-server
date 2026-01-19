@@ -11,6 +11,36 @@ load-dictionary dictionary.test
 fuzzer-out der
 max-buffer-size 2048
 
+#
+#  OID tests
+#
+
+pair  Test-Oid = "1.2.840.113549.1.1.11"
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.sha256WithRSAEncryption
+
+pair Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
+
+#
+#  These tests work
+#
+encode-pair Test-Oid = 2.999.3
+match 06 03 88 37 03
+
+encode-pair Test-Oid = 1.2.840.113549.1.1.1
+match 06 09 2a 86 48 86 f7 0d 01 01 01
+
+proto-dictionary-root Test-Oid
+
+decode-pair 06 09 2a 86 48 86 f7 0d 01 01 01
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
+
+decode-pair 06 03 88 37 03
+match Test-Oid = ::joint-iso-itu-t.999.3
+
+#
+#  Sequences
+#
 proto-dictionary-root Test-Seq-Of
 
 decode-pair 30 06 02 01 01 02 01 02
@@ -308,48 +338,48 @@ match Seq-Integer-Null = { Test-Integer = 1, Test-Null = no }
 proto-dictionary-root Test-Oid
 
 decode-pair 06 03 88 37 03
-match Test-Oid = "2.999.3"
+match Test-Oid = ::joint-iso-itu-t.999.3
 
 decode-pair 06 09 2a 86 48 86 f7 0d 01 01 0B
-match Test-Oid = "1.2.840.113549.1.1.11"
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.sha256WithRSAEncryption
 
 decode-pair 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
-match Test-Oid = "1.2.840.266451853.1.1.11"
+match Test-Oid = ::iso.member-body.us.266451853.1.1.11
 
 decode-pair 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match Test-Oid = "1.2.840.34357754765.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match Test-Oid = "1.2.840.4398044527501.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.34359738367.13.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.4398046511103.13.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.562949953421311.13.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.72057594037927935.13.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.9223372036854775807.13.1.1.11"
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>32 bits)
 
 decode-pair 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>32 bits)
 
 proto-dictionary-root Seq-Oid
 
 decode-pair 30 05 06 03 88 37 03
-match Seq-Oid = { Test-Oid = "2.999.3" }
+match Seq-Oid = { Test-Oid = ::joint-iso-itu-t.999.3 }
 
 #
 #  Last byte cannot end with the high bit set
@@ -358,40 +388,40 @@ decode-pair 30 05 06 03 88 37 83
 match OID subidentifier is truncated: Failed decoding Seq-Oid
 
 decode-pair 30 0b 06 09 2a 86 48 86 f7 0d 01 01 0B
-match Seq-Oid = { Test-Oid = "1.2.840.113549.1.1.11" }
+match Seq-Oid = { Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.sha256WithRSAEncryption }
 
 decode-pair 30 0C 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.266451853.1.1.11" }
+match Seq-Oid = { Test-Oid = ::iso.member-body.us.266451853.1.1.11 }
 
 decode-pair 30 0d 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.34357754765.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.4398044527501.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.34359738367.13.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 0f 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.4398046511103.13.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 10 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.562949953421311.13.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 11 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.72057594037927935.13.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 13 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 14 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 decode-pair 30 1b 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
+match OID subidentifier too large (>32 bits): Failed decoding Seq-Oid
 
 
 # Test IA5String
@@ -802,25 +832,25 @@ encode-pair Test-Oid = "1.2.840.266451853.1.1.11"
 match 06 0a 2a 86 48 ff 86 f7 0d 01 01 0b
 
 encode-pair Test-Oid = "1.2.840.34357754765.1.1.11"
-match 06 0b 2a 86 48 ff ff 86 f7 0d 01 01 0b
+match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.4398044527501.1.1.11"
-match 06 0c 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
+match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.34359738367.13.1.1.11"
-match 06 0c 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.4398046511103.13.1.1.11"
-match 06 0d 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.562949953421311.13.1.1.11"
-match 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.72057594037927935.13.1.1.11"
-match 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.9223372036854775807.13.1.1.11"
-match 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.113549.1.1.11" }
 match 30 0b 06 09 2a 86 48 86 f7 0d 01 01 0b
@@ -829,25 +859,25 @@ encode-pair Seq-Oid = { Test-Oid = "1.2.840.266451853.1.1.11" }
 match 30 0c 06 0a 2a 86 48 ff 86 f7 0d 01 01 0b
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.34357754765.1.1.11" }
-match 30 0d 06 0b 2a 86 48 ff ff 86 f7 0d 01 01 0b
+match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.4398044527501.1.1.11" }
-match 30 0e 06 0c 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
+match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.34359738367.13.1.1.11" }
-match 30 0e 06 0c 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.4398046511103.13.1.1.11" }
-match 30 0f 06 0d 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.562949953421311.13.1.1.11" }
-match 30 10 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.72057594037927935.13.1.1.11" }
-match 30 11 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
-match 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
+match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Seq-Of = { Test-First-Integer = 1, Test-First-Integer = 2 }
 match 30 06 02 01 01 02 01 02
@@ -911,10 +941,16 @@ encode-pair Test-GeneralNames = { iPAddress = 10.0.5.4 }
 match 30 06 87 04 0a 00 05 04
 
 #
-#  Ignore raw.FOO when we know the subtypes.
+#  Raw groups cannot be TLVs, they can only be octets
 #
 encode-pair raw.Test-GeneralNames = { dNSName = "foo.bar" }
-match 30 09 82 07 66 6f 6f 2e 62 61 72
+match Cannot create 'raw' attributes for data type 'group'
+
+#
+#  @todo - This shouldn't be raw data. It should be wrapped in data type 'octets'
+#
+encode-pair raw.Test-GeneralNames = 0xabcdef
+match ab cd ef
 
 proto-dictionary-root Test-GeneralNames
 
@@ -936,4 +972,4 @@ match c0 01 01 c1 01 02
 
 
 count
-match 560
+match 575

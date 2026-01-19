@@ -176,9 +176,6 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t migrate_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
-	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -276,6 +273,8 @@ static const conf_parser_t security_config[] = {
 #ifdef WITH_TLS
 	{ FR_CONF_OFFSET_IS_SET("openssl_fips_mode", FR_TYPE_BOOL, 0, main_config_t, openssl_fips_mode), .dflt = "no" },
 #endif
+
+	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -696,7 +695,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
+	cf_file_check_set_uid_gid(config->server_uid ? config->server_uid : (uid_t)-1,
 			   config->server_gid ? config->server_gid : (gid_t)-1);
 
 #ifdef HAVE_GRP_H
@@ -1443,9 +1442,8 @@ void main_config_hup(main_config_t *config)
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }
 
+#if 0
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
-	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1502,3 +1500,4 @@ bool main_config_migrate_option_get(char const *name)
 
 	return *(bool *) (((uintptr_t) main_config) + offset);
 }
+#endif

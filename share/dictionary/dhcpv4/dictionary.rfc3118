@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -18,6 +18,7 @@ MEMBER		protocol				uint8
 MEMBER		algorithm				uint8	key
 MEMBER		RDM					uint8
 MEMBER		replay-detection			uint64
+MEMBER		authentication-information		union	key=algorithm
 
 VALUE	RDM				monotonically-increasing 1
 
@@ -26,6 +27,10 @@ VALUE	protocol			delayed-authentication	1
 VALUE	protocol			dhcpv6-delayed-authentication 2
 VALUE	protocol			dhcpv6-reconfigure-key	3
 
-STRUCT	HMAC-SHA1-keyed-hash			algorithm	1
+BEGIN Authentication.authentication-information
+
+ATTRIBUTE	HMAC-SHA1-keyed-hash			1	struct
 MEMBER		key-id					uint32
 MEMBER		hash					octets[20]
+
+END Authentication.authentication-information

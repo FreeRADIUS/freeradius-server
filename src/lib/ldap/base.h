@@ -386,6 +386,8 @@ typedef struct {
 	fr_event_list_t		*el;			//!< Thread event list for callbacks / timeouts
 	fr_ldap_thread_trunk_t	*bind_trunk;		//!< LDAP trunk used for bind auths
 	fr_rb_tree_t		*binds;			//!< Tree of outstanding bind auths
+	fr_pair_list_t		*trigger_args;		//!< Passed to trigger request for normal trunks
+	fr_pair_list_t		*bind_trigger_args;	//!< Passed to trigger request for bind trunks
 } fr_ldap_thread_t;
 
 /** Thread LDAP trunk structure
@@ -840,7 +842,7 @@ int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 /*
  *	edir.c - Edirectory integrations
  */
-unlang_action_t	fr_ldap_edir_get_password(request_t *request, char const *dn,
+unlang_action_t	fr_ldap_edir_get_password(unlang_result_t *p_result, request_t *request, char const *dn,
 					  fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da);
 
 char const	*fr_ldap_edir_errstr(int code);
@@ -912,7 +914,8 @@ int		fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx,
 					    int *msgid,
 					    fr_ldap_connection_t *ldap_conn);
 
-unlang_action_t	fr_ldap_sasl_bind_auth_async(request_t *request,
+unlang_action_t	fr_ldap_sasl_bind_auth_async(unlang_result_t *p_result,
+					     request_t *request,
 					     fr_ldap_thread_t *thread,
 					     char const *mechs,
 					     char const *identity,
@@ -927,7 +930,7 @@ int		fr_ldap_bind_async(fr_ldap_connection_t *c,
 				   char const *bind_dn, char const *password,
 				   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-unlang_action_t	fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
+unlang_action_t	fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *request, fr_ldap_thread_t *thread,
 					char const *bind_dn, char const *password);
 
 /*
@@ -952,6 +955,8 @@ int		fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *serve
 int		fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION *cs);
 
 char const	*fr_ldap_url_err_to_str(int ldap_url_err);
+
+void		fr_ldap_entry_dump(LDAPMessage *entry);
 
 int		fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
 

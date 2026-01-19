@@ -1,0 +1,5 @@
+string_prefix
+
+if (ok || updated) {
+	test_pass
+}

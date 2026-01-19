@@ -40,7 +40,7 @@ ATTRIBUTE	SNMP-Config-Change			3	string
 #  the privilege level.  It MUST be sent when the device is operating
 #  in Mult-User Access mode.
 #
-ATTRIBUTE	User-Level				4	integer
+ATTRIBUTE	User-Level				4	uint32
 
 END-VENDOR	Riverstone
 ALIAS		Riverstone				Vendor-Specific.Riverstone

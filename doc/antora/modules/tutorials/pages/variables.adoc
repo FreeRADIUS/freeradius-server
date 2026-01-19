@@ -60,9 +60,9 @@ If you don't see any configuration printed for the `detail` file module
 ensure it is uncommented in the `accounting {}` section of the
 `raddb/sites-available/default` virtual server.
 
-Now read the
-https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/doc/configuration/variables.rst[variables]
-documentation file to determine the meaning of the variables used in the `filename` configuration entry.
+Now read the xref:variables.adoc[variables]
+documentation to determine the meaning of the variables used in the `filename` configuration entry.
+
 Once you are done, send the server an accounting packet (e.g.,
 `bob-acct-stop.sh`), and go look for the detail file, which will be
 dynamically created. Verify that the contents of the file are the

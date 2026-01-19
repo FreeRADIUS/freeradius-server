@@ -2,7 +2,6 @@ Sent Access-Request Id 123 from 0.0.0.0:1244 to 127.0.0.1:12351 length 72
         User-Name = "bob"
         User-Password = "hello"
         NAS-Identifier = "originate"
-        Password.Cleartext = "hello"
 Received Access-Accept Id 123 from 127.0.0.1:12360 to 0.0.0.0:1244 via lo length 63 
         Reply-Message = "Successfully originated"
 (0) src/tests/radclient/auth_originate.txt response code 2

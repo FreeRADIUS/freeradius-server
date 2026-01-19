@@ -44,7 +44,7 @@ if !(%redis('EXISTS', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}")
 }
 
 # Check the ZSCORE
-if !(%redis('ZCOUNT', "{%{control.IP-Pool.Name}%}:pool", '-inf', '+inf') == 0) {
+if !(%redis('ZCOUNT', "{%{control.IP-Pool.Name}}:pool", '-inf', '+inf') == 0) {
 	test_fail
 }
 

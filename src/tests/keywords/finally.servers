@@ -26,23 +26,3 @@ server packet-fin {
 		fail
 	}
 }
-
-server timeout-fin {
-	namespace = radius
-
-	recv Access-Request {
-		timeout 0.1 {
-			%time.advance(1s)
-		}
-		ok
-	}
-
-	finally {
-		if (timeout) {
-			Tmp-String-0 := 'bye-from-timeout-fin'
-			ok
-		} else {
-			fail
-		}
-	}
-}

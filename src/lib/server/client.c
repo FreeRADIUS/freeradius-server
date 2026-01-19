@@ -448,7 +448,16 @@ static const conf_parser_t client_config[] = {
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
 	  .dflt = "auto" },
 
+	{ FR_CONF_OFFSET("protocol_error", fr_client_t, protocol_error) },
+
 	{ FR_CONF_OFFSET("response_window", fr_client_t, response_window) },
+
+#ifdef NAS_VIOLATES_RFC
+	/*
+	 *	For vendors who violate the RFCs and go out of their way to make their systems vulnerable.
+	 */
+	{ FR_CONF_OFFSET("nas_violates_message_authenticator_rfc", fr_client_t, allow_vulnerable_clients) },
+#endif
 
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, 0, &hs_proto) },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

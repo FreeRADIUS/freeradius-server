@@ -15,60 +15,60 @@ BEGIN-VENDOR	ZTE
 
 ATTRIBUTE	Client-DNS-Pri				1	string
 ATTRIBUTE	Client-DNS-Sec				2	string
-ATTRIBUTE	Context-Name				4	integer
-ATTRIBUTE	Tunnel-Max-Sessions			21	integer
-ATTRIBUTE	Tunnel-Max-Tunnels			22	integer
-ATTRIBUTE	Tunnel-Window				24	integer
-ATTRIBUTE	Tunnel-Retransmit			25	integer
-ATTRIBUTE	Tunnel-Cmd-Timeout			26	integer
+ATTRIBUTE	Context-Name				4	uint32
+ATTRIBUTE	Tunnel-Max-Sessions			21	uint32
+ATTRIBUTE	Tunnel-Max-Tunnels			22	uint32
+ATTRIBUTE	Tunnel-Window				24	uint32
+ATTRIBUTE	Tunnel-Retransmit			25	uint32
+ATTRIBUTE	Tunnel-Cmd-Timeout			26	uint32
 ATTRIBUTE	PPPOE-URL				27	string
 ATTRIBUTE	PPPOE-MOTM				28	string
-ATTRIBUTE	Tunnel-Algorithm			31	integer
-ATTRIBUTE	Tunnel-Deadtime				32	integer
-ATTRIBUTE	Mcast-Send				33	integer
-ATTRIBUTE	Mcast-Receive				34	integer
-ATTRIBUTE	Mcast-MaxGroups				35	integer
-ATTRIBUTE	Access-Type				74	integer
+ATTRIBUTE	Tunnel-Algorithm			31	uint32
+ATTRIBUTE	Tunnel-Deadtime				32	uint32
+ATTRIBUTE	Mcast-Send				33	uint32
+ATTRIBUTE	Mcast-Receive				34	uint32
+ATTRIBUTE	Mcast-MaxGroups				35	uint32
+ATTRIBUTE	Access-Type				74	uint32
 
-ATTRIBUTE	QoS-Type				81	integer
+ATTRIBUTE	QoS-Type				81	uint32
 ATTRIBUTE	QoS-Profile-Down			82	string
-ATTRIBUTE	Rate-Ctrl-SCR-Down			83	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Down			84	integer
-ATTRIBUTE	Rate-Ctrl-PCR				86	integer
-ATTRIBUTE	TCP-Syn-Rate				88	integer
-ATTRIBUTE	Rate-Ctrl-SCR-Up			89	integer
-ATTRIBUTE	Priority-Level				90	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Up			91	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Max-Down		92	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Max-Up			93	integer
+ATTRIBUTE	Rate-Ctrl-SCR-Down			83	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Down			84	uint32
+ATTRIBUTE	Rate-Ctrl-PCR				86	uint32
+ATTRIBUTE	TCP-Syn-Rate				88	uint32
+ATTRIBUTE	Rate-Ctrl-SCR-Up			89	uint32
+ATTRIBUTE	Priority-Level				90	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Up			91	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Max-Down		92	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Max-Up			93	uint32
 ATTRIBUTE	QOS-Profile-Up				94	string
 
-ATTRIBUTE	TCP-Limit-Num				95	integer
-ATTRIBUTE	TCP-Limit-Mode				96	integer
-ATTRIBUTE	IGMP-Service-Profile-Num		97	integer
-ATTRIBUTE	PPP-Sservice-Type			101	integer
-ATTRIBUTE	SW-Privilege				104	integer
+ATTRIBUTE	TCP-Limit-Num				95	uint32
+ATTRIBUTE	TCP-Limit-Mode				96	uint32
+ATTRIBUTE	IGMP-Service-Profile-Num		97	uint32
+ATTRIBUTE	PPP-Sservice-Type			101	uint32
+ATTRIBUTE	SW-Privilege				104	uint32
 ATTRIBUTE	Access-Domain				151	string
 ATTRIBUTE	VPN-ID					190	string
 
 # 0 (lowest) - 15 (highest) privilege level
-#ATTRIBUTE	SW-Privilege			191	integer
+#ATTRIBUTE	SW-Privilege			191	uint32
 
-ATTRIBUTE	Rate-Bust-DPIR				191	integer
-ATTRIBUTE	Rate-Bust-UPIR				192	integer
+ATTRIBUTE	Rate-Bust-DPIR				191	uint32
+ATTRIBUTE	Rate-Bust-UPIR				192	uint32
 
-ATTRIBUTE	Rate-Ctrl-PBS-Down			202	integer
-ATTRIBUTE	Rate-Ctrl-PBS-Up			203	integer
-ATTRIBUTE	Rate-Ctrl-SCR-Up-v6			228	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Up-v6			229	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Max-Up-v6		230	integer
-ATTRIBUTE	Rate-Ctrl-PBS-Up-v6			231	integer
+ATTRIBUTE	Rate-Ctrl-PBS-Down			202	uint32
+ATTRIBUTE	Rate-Ctrl-PBS-Up			203	uint32
+ATTRIBUTE	Rate-Ctrl-SCR-Up-v6			228	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Up-v6			229	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Max-Up-v6		230	uint32
+ATTRIBUTE	Rate-Ctrl-PBS-Up-v6			231	uint32
 ATTRIBUTE	QoS-Profile-Up-v6			232	string
 
-ATTRIBUTE	Rate-Ctrl-SCR-Down-v6			233	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Down-v6			234	integer
-ATTRIBUTE	Rate-Ctrl-Burst-Max-Down-v6		235	integer
-ATTRIBUTE	Rate-Ctrl-PBS-Down-v6			236	integer
+ATTRIBUTE	Rate-Ctrl-SCR-Down-v6			233	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Down-v6			234	uint32
+ATTRIBUTE	Rate-Ctrl-Burst-Max-Down-v6		235	uint32
+ATTRIBUTE	Rate-Ctrl-PBS-Down-v6			236	uint32
 ATTRIBUTE	QoS-Profile-Down-v6			237	string
 
 END-VENDOR      ZTE

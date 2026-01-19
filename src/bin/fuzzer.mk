@@ -26,6 +26,23 @@ SRC_CFLAGS		:= -fsanitize=fuzzer
 TGT_LDFLAGS		:= -fsanitize=fuzzer
 TGT_LDLIBS		:= $(LIBS)
 
+#
+#  OSX and Homebrew argue about things.  Homebrew LLVM uses the gnu23
+#  C standard that Apple's default clang compiler doesn't support, and
+#  some packages may have standard library linking issues.  As a
+#  result, we add in the _homebrew_ versions of the C++ libraries
+#  which are needed by the fuzzer.
+#
+#  But we should only do this when the C compiler is the homebrew one.
+#
+ifeq "$(shell uname -s)" "Darwin"
+ifeq "$(findstring /opt/homebrew,$(shell which $(TARGET_CC)))" "/opt/homebrew"
+SRC_CFLAGS	+= -Wno-unused-command-line-argument
+LLVM_LOC	= /opt/homebrew/opt/llvm
+TGT_LDFLAGS	+= -L/opt/homebrew/lib -L/opt/homebrew/opt/gettext/lib -L$(LLVM_LOC)/lib -L/opt/homebrew/opt/libomp/lib -stdlib=libc++ -Wl,-rpath,$(LLVM_LOC)/lib -L$(LLVM_LOC)/lib/c++ -lc++
+endif
+endif
+
 FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 
 #

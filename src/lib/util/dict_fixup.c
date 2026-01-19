@@ -126,25 +126,24 @@ static inline CC_HINT(always_inline) int dict_fixup_common(fr_dlist_head_t *fixu
  *
  * @param[out] da_p		Where the attribute will be stored
  * @param[in] rel		Relative attribute to resolve from.
- * @param[in] ref		Reference string.
+ * @param[in] in		Reference string.
  * @return
  *	- <0 on error
  *	- 0 on parse OK, but *da_p is NULL;
  *	- 1 for parse OK, and *da_p is !NULL
  */
-int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *rel, char const *ref)
+int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *rel, fr_sbuff_t *in)
 {
 	fr_dict_t			*dict = fr_dict_unconst(rel->dict);
 	fr_dict_attr_t const		*da = rel;
 	ssize_t				slen;
-	fr_sbuff_t			sbuff = FR_SBUFF_IN(ref, strlen(ref));
 
 	*da_p = NULL;
 
 	/*
 	 *	Are we resolving a foreign reference?
 	 */
-	if (fr_sbuff_next_if_char(&sbuff, '@')) {
+	if (fr_sbuff_next_if_char(in, '@')) {
 		char proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 		fr_sbuff_t proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
 
@@ -153,21 +152,21 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		 *
 		 *	This is a bit clearer than "foo".
 		 */
-		if (fr_sbuff_next_if_char(&sbuff, '.')) {
-			if (fr_sbuff_is_char(&sbuff, '.')) goto above_root;
+		if (fr_sbuff_next_if_char(in, '.')) {
+			if (fr_sbuff_is_char(in, '.')) goto above_root;
 
 			da = rel->dict->root;
 			goto more;
 		}
 
-		slen = dict_by_protocol_substr(NULL, &dict, &sbuff, NULL);
+		slen = dict_by_protocol_substr(NULL, &dict, in, NULL);
 		/* Need to load it... */
 		if (slen <= 0) {
 			/* Quiet coverity */
 			fr_sbuff_terminate(&proto_name_sbuff);
 
 			/* Fixme, probably want to limit allowed chars */
-			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, &sbuff, SIZE_MAX,
+			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, in, SIZE_MAX,
 							&FR_SBUFF_TERMS(L(""), L(".")), NULL) <= 0) {
 			invalid_name:
 				fr_strerror_const("Invalid protocol name");
@@ -191,6 +190,8 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 			 *	Load the new dictionary, and mark it as loaded from our dictionary.
 			 */
 			if (fr_dict_protocol_afrom_file(&dict, proto_name, NULL, (rel->dict)->root->name) < 0) {
+				fr_strerror_printf_push("Perhaps there is a '.' missing before the attribute name in %.*s ?",
+							(int) fr_sbuff_used(in), fr_sbuff_start(in));
 				return -1;
 			}
 
@@ -203,7 +204,7 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		/*
 		 *	Didn't stop at an attribute ref... we're done
 		 */
-		if (fr_sbuff_eof(&sbuff)) {
+		if (fr_sbuff_eof(in)) {
 			*da_p = dict->root;
 			return 1;
 		}
@@ -211,18 +212,24 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		da = dict->root;
 	}
 
-	if (!fr_sbuff_next_if_char(&sbuff, '.')) {
-		fr_strerror_printf("Attribute %s has reference '%s' which does not begin with '.' or '@'",
-				   rel->name, ref);
+	/*
+	 *	ref=.foo is a ref from the current parent.
+	 *
+	 *	ref=@foo is a ref from the root of the tree.
+	 */
+
+	if (!fr_sbuff_next_if_char(in, '.')) {
+		fr_strerror_printf("Invalid reference '%s' - it should start with '@' (from the root), or '.' (from the parent)",
+				   fr_sbuff_start(in));
 		return -1;
 	}
 
 	/*
-	 *	First '.' makes it reletive, subsequent ones traverse up the tree.
+	 *	First '.' makes it relative, subsequent ones traverse up the tree.
 	 *
 	 *	No '.' means use the root.
 	 */
-	while (fr_sbuff_next_if_char(&sbuff, '.')) {
+	while (fr_sbuff_next_if_char(in, '.')) {
 		if (!da->parent) {
 		above_root:
 			fr_strerror_const("Reference attempted to navigate above dictionary root");
@@ -236,7 +243,7 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 	 *	update *da_p with a partial reference if it exists.
 	 */
 more:
-	slen = fr_dict_attr_by_oid_substr(NULL, da_p, da, &sbuff, NULL);
+	slen = fr_dict_attr_by_oid_substr(NULL, da_p, da, in, NULL);
 	if (slen < 0) return -1;
 
 	if (slen == 0) {
@@ -379,10 +386,10 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const *da;
 
-	(void) dict_protocol_reference(&da, fixup->da->parent, fixup->ref);
+	(void) fr_dict_protocol_reference(&da, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!da) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -419,6 +426,8 @@ int dict_fixup_clone_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char co
 {
 	dict_fixup_clone_t *fixup;
 
+	fr_assert(!fr_type_is_leaf(da->type));
+
 	/*
 	 *	Delay type checks until we've loaded all of the
 	 *	dictionaries.  This means that errors are produced
@@ -452,8 +461,10 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 {
 	fr_dict_attr_t		*dst = *dst_p;
 	fr_dict_t		*dict = fr_dict_unconst(dst->dict);
-	fr_dict_attr_t		*cloned;
 
+	/*
+	 *	@todo - allow this for structural attributes, so long as they don't have a child TLV.
+	 */
 	if (src->dict->proto != dst->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
 				   src->dict->proto->name, dst->dict->proto->name, dst->filename, dst->line);
@@ -461,15 +472,17 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
-	 *	The referenced DA is higher than the one we're
-	 *	creating.  Ensure it's not a parent.
+	 *	The referenced DA is higher than the one we're creating.  Ensure it's not a parent.
+	 *
+	 *	@todo - Do we want to require that aliases only go deeper in the tree?  Otherwise aliases can
+	 *	make the tree a lot more complicated.
 	 */
 	if (src->depth < dst->depth) {
 		fr_dict_attr_t const *parent;
 
 		for (parent = dst->parent; !parent->flags.is_root; parent = parent->parent) {
 			if (parent == src) {
-				fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
+				fr_strerror_printf("References MUST NOT be to a parent attribute %s at %s[%d]",
 						   parent->name, fr_cwd_strip(dst->filename), dst->line);
 				return -1;
 			}
@@ -483,111 +496,47 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
-	 *	If the attributes are of different types, then we have
-	 *	to _manually_ clone the values.  This means looping
-	 *	over the ref da, and _casting_ the values to the new
-	 *	data type.  If the cast succeeds, we add the value.
-	 *	Otherwise we don't
+	 *	Leaf attributes can be cloned.  TLV and STRUCT can be cloned.  But all other data types cannot
+	 *	be cloned.
 	 *
-	 *	We do this if the source type is a leaf node, AND the
-	 *	types are different, or the destination has no
-	 *	children.
+	 *	And while we're at it, copy the flags over.
 	 */
-	if (!fr_type_is_non_leaf(dst->type) &&
-	    ((src->type != dst->type) || !dict_attr_children(src))) {
-		int copied;
+	switch (src->type) {
+	default:
+		fr_strerror_printf("References MUST NOT refer to an attribute of data type '%s' at %s[%d]",
+				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
+		return -1;
 
-		/*
-		 *	Only TLV and STRUCT types can be the source or destination of clones.
-		 *
-		 *	Leaf types can be cloned, even if they're
-		 *	different types.  But only if they don't have
-		 *	children (i.e. key fields).
-		 */
-		if (fr_type_is_non_leaf(src->type) || fr_type_is_non_leaf(dst->type) ||
-		    dict_attr_children(src) || dict_attr_children(dst)) {
-			fr_strerror_printf("Reference MUST be to a simple data type of type '%s' at %s[%d]",
-					   fr_type_to_str(dst->type),
-					   fr_cwd_strip(dst->filename), dst->line);
+	case FR_TYPE_TLV:
+		dst->flags.type_size = src->flags.type_size;
+		dst->flags.length = src->flags.length;
+		FALL_THROUGH;
+
+	case FR_TYPE_STRUCT:
+		if (!dict_attr_children(src)) {
+			fr_strerror_printf_push("Reference %s has no children defined at %s[%d]",
+						src->name, fr_cwd_strip(dst->filename), dst->line);
 			return -1;
 		}
-
-		/*
-		 *	We copy all of the VALUEs over from the source
-		 *	da by hand, by casting them.
-		 *
-		 *	We have to do this work manually because we
-		 *	can't call dict_attr_acopy(), as that function
-		 *	copies the VALUE with the *source* data type,
-		 *	where we need the *destination* data type.
-		 */
-		copied = dict_attr_acopy_enumv(dst, src);
-		if (copied < 0) return -1;
-
-		if (!copied) {
-			fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
-					   fr_type_to_str(dst->type),
-					   fr_cwd_strip(dst->filename), dst->line);
-			return -1;
-		}
-
-		return 0;
+		break;
 	}
 
+	dst->flags.array = src->flags.array;
+	dst->flags.is_known_width = src->flags.is_known_width;
+	dst->flags.internal = src->flags.internal;
+	dst->flags.name_only = src->flags.name_only;
+
 	/*
-	 *	Can't clone KEY fields directly, you MUST clone the parent struct.
+	 *	Clone the children from the source to the dst.
+	 *
+	 *	Note that the destination may already have children!
 	 */
-	if (!fr_type_is_non_leaf(src->type) || fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(dst)) {
-		fr_strerror_printf("Invalid reference from '%s' to %s", dst->name, src->name);
+	if (dict_attr_acopy_children(dict, dst, src) < 0) {
+		fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", dst->name, src->name, fr_strerror());
 		return -1;
 	}
 
-	/*
-	 *	Copy the source attribute, but with a
-	 *	new name and a new attribute number.
-	 */
-	cloned = dict_attr_acopy(dict->pool, src, dst->name);
-	if (!cloned) {
-		fr_strerror_printf("Failed copying attribute '%s' to %s", src->name, dst->name);
-		return -1;
-	}
-
-	cloned->attr = dst->attr;
-	cloned->parent = dst->parent; /* we need to re-parent this attribute */
-	cloned->depth = cloned->parent->depth + 1;
-
-	/*
-	 *	Copy any pre-existing children over.
-	 */
-	if (dict_attr_children(dst)) {
-		if (dict_attr_acopy_children(dict, cloned, dst) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
-			return -1;
-		}
-	}
-
-	/*
-	 *	Copy children of the DA we're cloning.
-	 */
-	if (dict_attr_children(src)) {
-		if (dict_attr_acopy_children(dict, cloned, src) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
-			return -1;
-		}
-	}
-
-	if (fr_dict_attr_add_initialised(cloned) < 0) {
-		talloc_free(cloned);
-		return -1;
-	}
-
-	/*
-	 *	Free the original and pass back our new cloned attribute
-	 */
-	talloc_free(dst);
-	*dst_p = cloned;
-
-	return 0;
+	return fr_dict_attr_add_initialised(dst);
 }
 
 /** Clone one are of a tree into another
@@ -602,10 +551,10 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const	*src;
 
-	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
+	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -629,6 +578,8 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 {
 	dict_fixup_clone_t *fixup;
 
+	fr_assert(fr_type_is_leaf(da->type));
+
 	/*
 	 *	Delay type checks until we've loaded all of the
 	 *	dictionaries.  This means that errors are produced
@@ -645,7 +596,7 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 		.ref = talloc_typed_strdup(fixup, ref)
 	};
 
-	return dict_fixup_common(&fctx->clone, &fixup->common);
+	return dict_fixup_common(&fctx->clone_enum, &fixup->common);
 }
 
 /** Clone one are of a tree into another
@@ -659,18 +610,35 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
 {
 	fr_dict_attr_t const	*src;
-	int			copied;
 
-	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
+	/*
+	 *	This extension must already exist.
+	 */
+	fr_assert(fr_dict_attr_ext(fixup->da, FR_DICT_ATTR_EXT_ENUMV));
+
+	/*
+	 *	Find the referenced attribute, and validate it.
+	 */
+	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
-	if (src->dict->proto != fixup->da->dict->proto) {
-		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
-				   src->dict->proto->name, fixup->da->dict->proto->name, fixup->da->filename, fixup->da->line);
+	if (!fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV)) {
+		fr_strerror_printf_push("Reference %s has no VALUEs defined at %s[%d]",
+					fixup->ref, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		return -1;
+	}
+
+	/*
+	 *	Allow enums to be copied from any protocol, so long as the attribute is not a key, and not of
+	 *	type 'attribute'.
+	 */
+	if (fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(fixup->da) || (src->type == FR_TYPE_ATTR)) {
+		fr_strerror_printf("Cannot clone VALUEs from 'key=...' or type 'attribute' at %s[%d]",
+				   fixup->da->filename, fixup->da->line);
 		return -1;
 	}
 
@@ -680,30 +648,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 		return -1;
 	}
 
-	if (!fr_type_is_non_leaf(fixup->da->type)) {
-		fr_strerror_printf("enum copy can only be applied to leaf types, not %s", fr_type_to_str(fixup->da->type));
-		return -1;
-	}
-
-	if (src->type != fixup->da->type) {
-		fr_strerror_printf("enum copy type mismatch.  src '%s', dst '%s'",
-				   fr_type_to_str(src->type), fr_type_to_str(fixup->da->type));
-		return -1;
-	}
-
-	/*
-	 *	We copy all of the VALUEs over from the source
-	 *	da by hand, by casting them.
-	 *
-	 *	We have to do this work manually because we
-	 *	can't call dict_attr_acopy(), as that function
-	 *	copies the VALUE with the *source* data type,
-	 *	where we need the *destination* data type.
-	 */
-	copied = dict_attr_acopy_enumv(fixup->da, src);
-	if (copied < 0) return -1;
-
-	if (!copied) {
+	if (!dict_attr_ext_copy(&fixup->da, src, FR_DICT_ATTR_EXT_ENUMV)) {
 		fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
 					fr_type_to_str(fixup->da->type),
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
@@ -848,6 +793,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->enumv, dict_fixup_enumv_t, common.entry);
 	fr_dlist_talloc_init(&fctx->group, dict_fixup_group_t, common.entry);
 	fr_dlist_talloc_init(&fctx->clone, dict_fixup_clone_t, common.entry);
+	fr_dlist_talloc_init(&fctx->clone_enum, dict_fixup_clone_t, common.entry);
 	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
 	fr_dlist_talloc_init(&fctx->alias, dict_fixup_alias_t, common.entry);
 

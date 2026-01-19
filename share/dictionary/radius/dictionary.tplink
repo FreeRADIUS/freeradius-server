@@ -6,14 +6,14 @@ VENDOR		TPLink				11863
 
 BEGIN-VENDOR	TPLink
 
-ATTRIBUTE	Recv-limit				1	integer
-ATTRIBUTE	Xmit-limit				2	integer
+ATTRIBUTE	Recv-limit				1	uint32
+ATTRIBUTE	Xmit-limit				2	uint32
 ATTRIBUTE	Authentication-FindKey			3	octets
 ATTRIBUTE	Authentication-FoundKey			4	octets
 ATTRIBUTE	User-Command				5	string
 ATTRIBUTE	Site					6	string
 ATTRIBUTE	Omada					7	string
 ATTRIBUTE	Redirect-Url				8	string
-ATTRIBUTE	Portal-Access-Status			9	integer
+ATTRIBUTE	Portal-Access-Status			9	uint32
 
 END-VENDOR TPLink

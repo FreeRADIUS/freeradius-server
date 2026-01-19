@@ -12,11 +12,11 @@ VENDOR		VerizonWireless			12951
 
 BEGIN-VENDOR	VerizonWireless
 
-ATTRIBUTE	Acct-Interim-Record-Number		200	integer
-ATTRIBUTE	UE-Info-Type				201	integer
+ATTRIBUTE	Acct-Interim-Record-Number		200	uint32
+ATTRIBUTE	UE-Info-Type				201	uint32
 ATTRIBUTE	UE-Info-Value				202	string
-ATTRIBUTE	Dynamic-Address-Flag			203	integer
-ATTRIBUTE	Local-Seq-Number			204	integer
+ATTRIBUTE	Dynamic-Address-Flag			203	uint32
+ATTRIBUTE	Local-Seq-Number			204	uint32
 ATTRIBUTE	Time-First-Usage			205	date
 ATTRIBUTE	Time-Last-Usage				206	date
 ATTRIBUTE	Charging-Group-ID			207	string

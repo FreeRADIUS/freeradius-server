@@ -159,6 +159,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 #define DECODE_FIELD_UINT8(_da, _field) do { \
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto fail; \
+	PAIR_ALLOCED(vp); \
 	vp->vp_uint8 = _field; \
 	fr_pair_append(out, vp); \
 } while (0)
@@ -203,6 +204,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		if (!vendor) {
 			vendor = fr_pair_afrom_da(ctx, parent);
 			if (!vendor) return -1;
+			PAIR_ALLOCED(vendor);
 
 			append = true;
 		}
@@ -255,6 +257,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		if (da) {
 			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) goto oom;
+			PAIR_ALLOCED(vp);
 
 			dst = out;
 			goto decode;
@@ -270,6 +273,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 
 			vp = fr_pair_afrom_da(vendor, da);
 			if (!vp) goto oom;
+			PAIR_ALLOCED(vp);
 
 			dst = &vendor->vp_group;
 
@@ -338,6 +342,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 				}
 				return -1;
 			}
+			PAIR_ALLOCED(vp);
 
 			value = p;
 			arg_end = p + argv[i];
@@ -385,6 +390,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 		fr_strerror_const("Out of Memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	if (field_len) {
 		if (da->type == FR_TYPE_STRING) {
@@ -723,6 +729,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) goto fail;
+				PAIR_ALLOCED(vp);
 
 				fr_pair_append(out, vp);
 
@@ -736,6 +743,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 				 */
 				vp = fr_pair_afrom_da(ctx, challenge);
 				if (!vp) goto fail;
+				PAIR_ALLOCED(vp);
 
 				fr_pair_append(out, vp);
 
@@ -1076,7 +1084,7 @@ static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint
 	fr_assert(!dv || (dv->type == FR_TYPE_VENDOR));
 
 	return fr_tacacs_decode(ctx, out, dv, data, data_len, NULL,
-				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), false);
+				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), NULL);
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
@@ -1088,7 +1096,8 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_tacacs_ctx_t *test_ctx;
 

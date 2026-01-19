@@ -14,7 +14,7 @@ VENDOR		RCNTEC				46235
 BEGIN-VENDOR	RCNTEC
 
 ATTRIBUTE	RPCM-Group				1	string
-ATTRIBUTE	RPCM-Session-Expire			2	integer
+ATTRIBUTE	RPCM-Session-Expire			2	uint32
 
 END-VENDOR	RCNTEC
 ALIAS		RCNTEC					Vendor-Specific.RCNTEC

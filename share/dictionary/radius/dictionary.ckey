@@ -12,7 +12,7 @@ VENDOR		Ckey				61349
 
 BEGIN-VENDOR	Ckey
 
-ATTRIBUTE	Auth-Info				10	integer
+ATTRIBUTE	Auth-Info				10	uint32
 
 VALUE	Auth-Info			Role-Reject		2
 VALUE	Auth-Info			Static-Reject		3

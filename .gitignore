@@ -1,31 +1,31 @@
 *~
-*.o
-*.a
-*.wasm
-*.lo
-*.loT
-*.la
-*.so
-*.lai
-*.sig
-*.orig
-*.rej
-.libs
-.depends
-*.log
-*.substvars
 *-stamp
-*.swp
-*.swo
+*.a
 *.cache
 *.dist
 *.dylib
-*.rej
-*.orig
 *.dSYM
+*.la
+*.lai
+*.lo
+*.log
+*.loT
+*.o
+*.orig
 *.patch
-*.sock
+*.plist
 *.profraw
+*.rej
+*.sig
+*.so
+*.substvars
+*.swp
+*.swo
+*.sock
+*.wasm
+
+.libs
+.depends
 .pc
 
 # Version markers
@@ -34,10 +34,10 @@ VERSION_COMMIT_DEPTH
 RELEASE
 
 # Editor projects
-*.kdev4
-*.cproject
-*.project
 *.bbprojectd
+*.cproject
+*.kdev4
+*.project
 
 # Exuberant ctags
 tags
@@ -78,9 +78,6 @@ warnings.txt
 nodes*.conf
 dump*.rdb
 appendonly*.aof
-
-# Analyzer output
-*.plist
 
 # Local scripts
 run.sh

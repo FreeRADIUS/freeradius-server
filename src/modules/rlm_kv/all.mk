@@ -1,0 +1,4 @@
+TARGETNAME	:= rlm_kv
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= rlm_kv.c
+LOG_ID_LIB	= 61

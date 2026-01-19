@@ -60,13 +60,13 @@ ATTRIBUTE	MN-hHA-MIP4-Key				10	octets encrypt=Tunnel-Password
 
 # MN-HA-CMIP4-SPI == MIP-SPI, or
 # MN-HA-PIMP4-SPI == MIP-SPI + 1
-ATTRIBUTE	MN-hHA-MIP4-SPI				11	integer
+ATTRIBUTE	MN-hHA-MIP4-SPI				11	uint32
 
 # MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
 ATTRIBUTE	MN-hHA-MIP6-Key				12	octets encrypt=Tunnel-Password
 
 # MN-HA-CMIP6-SPI == MIP-SPI + 2
-ATTRIBUTE	MN-hHA-MIP6-SPI				13	integer
+ATTRIBUTE	MN-hHA-MIP6-SPI				13	uint32
 
 # FA-RK = H(MIP-RK, "FA-RK")
 ATTRIBUTE	FA-RK-Key				14	octets encrypt=Tunnel-Password
@@ -74,18 +74,18 @@ ATTRIBUTE	FA-RK-Key				14	octets encrypt=Tunnel-Password
 # 160 bit random number
 ATTRIBUTE	HA-RK-Key				15	octets encrypt=Tunnel-Password
 # SPI-CMIP4
-ATTRIBUTE	HA-RK-SPI				16	integer
+ATTRIBUTE	HA-RK-SPI				16	uint32
 
-ATTRIBUTE	HA-RK-Lifetime				17	integer
+ATTRIBUTE	HA-RK-Lifetime				17	uint32
 
 #  The same as MN-HA-CMIP4, etc.  But in different packets.
 ATTRIBUTE	RRQ-HA-IP				18	combo-ip
 ATTRIBUTE	RRQ-MN-HA-Key				19	octets encrypt=Tunnel-Password
-ATTRIBUTE	RRQ-MN-HA-SPI				20	integer
+ATTRIBUTE	RRQ-MN-HA-SPI				20	uint32
 
-ATTRIBUTE	Session-Continue			21	integer
-ATTRIBUTE	Beginning-Of-Session			22	integer
-ATTRIBUTE	IP-Technology				23	integer
+ATTRIBUTE	Session-Continue			21	uint32
+ATTRIBUTE	Beginning-Of-Session			22	uint32
+ATTRIBUTE	IP-Technology				23	uint32
 
 VALUE	IP-Technology			Reserved-0		0
 VALUE	IP-Technology			Reserved-1		1
@@ -108,7 +108,7 @@ ATTRIBUTE	SDFID					27	short
 ATTRIBUTE	Packet-Flow-Descriptor			28	tlv
 ATTRIBUTE	Packet-Data-Flow-Id			.1	short
 ATTRIBUTE	Service-Data-Flow-Id			.2	short
-ATTRIBUTE	Service-Profile-Id			.3	integer
+ATTRIBUTE	Service-Profile-Id			.3	uint32
 ATTRIBUTE	Direction				.4	byte
 
 VALUE	Direction			Reserved-0		0
@@ -196,11 +196,11 @@ ATTRIBUTE	Global-Service-Class-Name		.2	string # 6 octets
 ATTRIBUTE	Service-Class-Name			.3	string
 ATTRIBUTE	Schedule-Type				.4	byte
 ATTRIBUTE	Traffic-Priority			.5	byte
-ATTRIBUTE	Maximum-Sustained-Traffic-Rate		.6	integer
-ATTRIBUTE	Minimum-Reserved-Traffic-Rate		.7	integer
-ATTRIBUTE	Maximum-Traffic-Burst			.8	integer
-ATTRIBUTE	Tolerated-Jitter			.9	integer
-ATTRIBUTE	Maximum-Latency				.10	integer
+ATTRIBUTE	Maximum-Sustained-Traffic-Rate		.6	uint32
+ATTRIBUTE	Minimum-Reserved-Traffic-Rate		.7	uint32
+ATTRIBUTE	Maximum-Traffic-Burst			.8	uint32
+ATTRIBUTE	Tolerated-Jitter			.9	uint32
+ATTRIBUTE	Maximum-Latency				.10	uint32
 ATTRIBUTE	Reduced-Resources-Code			.11	byte
 ATTRIBUTE	Media-Flow-Type				.12	byte
 ATTRIBUTE	Unsolicited-Grant-Interval		.13	short
@@ -229,12 +229,12 @@ VALUE	Media-Flow-Type			Control			12
 VALUE	Media-Flow-Type			Data			13
 
 ATTRIBUTE	Uplink-Granted-QoS			30	string
-ATTRIBUTE	Control-Packets-In			31	integer
-ATTRIBUTE	Control-Octets-In			32	integer
-ATTRIBUTE	Control-Packets-Out			33	integer
-ATTRIBUTE	Control-Octets-Out			34	integer
+ATTRIBUTE	Control-Packets-In			31	uint32
+ATTRIBUTE	Control-Octets-In			32	uint32
+ATTRIBUTE	Control-Packets-Out			33	uint32
+ATTRIBUTE	Control-Octets-Out			34	uint32
 ATTRIBUTE	PPAC					35	tlv
-ATTRIBUTE	Available-In-Client			.1	integer
+ATTRIBUTE	Available-In-Client			.1	uint32
 
 # Really a bitmap
 VALUE	Available-In-Client		Volume-Metering		1
@@ -245,31 +245,31 @@ VALUE	Available-In-Client		Rating-Groups		0x10
 VALUE	Available-In-Client		Multi-Services		0x20
 VALUE	Available-In-Client		Tariff-Switch		0x40
 
-ATTRIBUTE	Session-Termination-Capability		36	integer
+ATTRIBUTE	Session-Termination-Capability		36	uint32
 
 # Really a bitmap
 VALUE	Session-Termination-Capability	Dynamic-Authorization	1
 
 ATTRIBUTE	PPAQ					37	tlv
 ATTRIBUTE	PPAQ-Quota-Identifier			.1	octets
-ATTRIBUTE	Volume-Quota				.2	integer #kb
-ATTRIBUTE	Volume-Threshold			.3	integer #kb
-ATTRIBUTE	Duration-Quota				.4	integer #s
-ATTRIBUTE	Duration-Threshold			.5	integer #s
-ATTRIBUTE	Resource-Quota				.6	integer
-ATTRIBUTE	Resource-Threshold			.7	integer
-ATTRIBUTE	Update-Reason				.8	integer
+ATTRIBUTE	Volume-Quota				.2	uint32 #kb
+ATTRIBUTE	Volume-Threshold			.3	uint32 #kb
+ATTRIBUTE	Duration-Quota				.4	uint32 #s
+ATTRIBUTE	Duration-Threshold			.5	uint32 #s
+ATTRIBUTE	Resource-Quota				.6	uint32
+ATTRIBUTE	Resource-Threshold			.7	uint32
+ATTRIBUTE	Update-Reason				.8	uint32
 ATTRIBUTE	Prepaid-Server				.9	combo-ip
 ATTRIBUTE	Service-Id				.10	string
-ATTRIBUTE	Rating-Group-Id				.11	integer
+ATTRIBUTE	Rating-Group-Id				.11	uint32
 ATTRIBUTE	Termination-Action			.12	byte
-ATTRIBUTE	Pool-Id					.13	integer
-ATTRIBUTE	Pool-Multiplier				.14	integer
+ATTRIBUTE	Pool-Id					.13	uint32
+ATTRIBUTE	Pool-Multiplier				.14	uint32
 ATTRIBUTE	Requested-Action			.15	byte
 ATTRIBUTE	Check-Balance-Result			.16	byte
 
 #
-#  4 octets - integer representing 1/10's of lowest currency (e.g. cents)
+#  4 octets - uint32 representing 1/10's of lowest currency (e.g. cents)
 #  4 octets - currency code as in ISO-4217
 #  1+	    - UTF8 string containing text like "cost is $1 per minute"
 #
@@ -295,14 +295,14 @@ VALUE	Requested-Action		Price-Enquiry		2
 
 ATTRIBUTE	Prepaid-Tariff-Switching		38	tlv
 ATTRIBUTE	Prepaid-Quota-Identifier		.1	string
-ATTRIBUTE	Volume-Used-After			.2	integer #1k
-ATTRIBUTE	Tariff-Switch-Interval			.3	integer #s
-ATTRIBUTE	Time-Interval-After			.4	integer #s
+ATTRIBUTE	Volume-Used-After			.2	uint32 #1k
+ATTRIBUTE	Tariff-Switch-Interval			.3	uint32 #s
+ATTRIBUTE	Time-Interval-After			.4	uint32 #s
 
-ATTRIBUTE	Active-Time-Duration			39	integer
+ATTRIBUTE	Active-Time-Duration			39	uint32
 ATTRIBUTE	DHCP-RK					40	octets encrypt=Tunnel-Password
-ATTRIBUTE	DHCP-RK-Key-Id				41	integer
-ATTRIBUTE	DHCP-RK-Lifetime			42	integer
+ATTRIBUTE	DHCP-RK-Key-Id				41	uint32
+ATTRIBUTE	DHCP-RK-Lifetime			42	uint32
 ATTRIBUTE	DHCP-Msg-Server-IP			43	ipaddr
 ATTRIBUTE	Idle-Mode-Transition			44	byte
 ATTRIBUTE	NAP-Id					45	octets
@@ -313,8 +313,8 @@ ATTRIBUTE	BS-Id					46	octets
 ATTRIBUTE	Location				47	octets
 
 # Number of times Acct-Input-Packets rolled over 2^32.
-ATTRIBUTE	Acct-Input-Packets-Gigaword		48	integer
-ATTRIBUTE	Acct-Output-Packets-Gigaword		49	integer
+ATTRIBUTE	Acct-Input-Packets-Gigaword		48	uint32
+ATTRIBUTE	Acct-Output-Packets-Gigaword		49	uint32
 
 # Formatted as per IP Filter rule specification.
 ATTRIBUTE	Uplink-Flow-Description			50	string
@@ -328,17 +328,17 @@ ATTRIBUTE	HTTP-Redirection-Rule			54	string
 
 # Formatted as per IP Filter rule specification.
 ATTRIBUTE	IP-Redirection-Rule			55	string
-ATTRIBUTE	Hotline-Session-Timer			56	integer
+ATTRIBUTE	Hotline-Session-Timer			56	uint32
 
 # 3 octets
 ATTRIBUTE	NSP-Id					57	octets
-ATTRIBUTE	HA-RK-Key-Requested			58	integer
+ATTRIBUTE	HA-RK-Key-Requested			58	uint32
 
 VALUE	HA-RK-Key-Requested		No			0
 VALUE	HA-RK-Key-Requested		Yes			1
 
 ATTRIBUTE	Count-Type				59	byte
-ATTRIBUTE	DM-Action-Code				60	integer
+ATTRIBUTE	DM-Action-Code				60	uint32
 
 VALUE	DM-Action-Code			Deregister-MS		0
 VALUE	DM-Action-Code			Suspend-MS-Traffic	1
@@ -350,7 +350,7 @@ VALUE	DM-Action-Code			MS-Completed-IPv6-Handover 6
 VALUE	DM-Action-Code			BS-Sends-RES-Cmd	0xffff
 
 # FA-RK-SPI = SPI-CMIP4 = MIP-SPI
-ATTRIBUTE	FA-RK-SPI				61	integer
+ATTRIBUTE	FA-RK-SPI				61	uint32
 
 # Formatted as per IP Filter rule specification.
 ATTRIBUTE	Downlink-Flow-Description		62	string
@@ -364,23 +364,23 @@ ATTRIBUTE	vHA-IP-MIP4				64	ipaddr
 ATTRIBUTE	vHA-IP-MIP6				65	ipv6addr
 ATTRIBUTE	vHA-MIP4-Key				66	octets encrypt=Tunnel-Password
 ATTRIBUTE	vHA-RK-Key				67	octets encrypt=Tunnel-Password
-ATTRIBUTE	vHA-RK-SPI				68	integer
-ATTRIBUTE	vHA-RK-Lifetime				69	integer
+ATTRIBUTE	vHA-RK-SPI				68	uint32
+ATTRIBUTE	vHA-RK-Lifetime				69	uint32
 
 ATTRIBUTE	MN-vHA-MIP6-Key				70	octets encrypt=Tunnel-Password
-ATTRIBUTE	MN-vHA-MIP4-SPI				71	integer
-ATTRIBUTE	MN-vHA-MIP6-SPI				72	integer
+ATTRIBUTE	MN-vHA-MIP4-SPI				71	uint32
+ATTRIBUTE	MN-vHA-MIP6-SPI				72	uint32
 ATTRIBUTE	vDHCPv4-Server				73	ipaddr
 ATTRIBUTE	vDHCPv6-Server				74	ipv6addr
 ATTRIBUTE	vDHCP-RK				75	octets encrypt=Tunnel-Password
-ATTRIBUTE	vDHCP-RK-Key-ID				76	integer
-ATTRIBUTE	vDHCP-RK-Lifetime			77	integer
+ATTRIBUTE	vDHCP-RK-Key-ID				76	uint32
+ATTRIBUTE	vDHCP-RK-Lifetime			77	uint32
 
 ATTRIBUTE	PMIP-Authenticated-Network-Identity	78	string
 ATTRIBUTE	Visited-Framed-IP-Address		79	ipaddr
 ATTRIBUTE	Visited-Framed-IPv6-Prefix		80	ipv6prefix
 ATTRIBUTE	Visited-Framed-Interface-Id		81	ifid
-ATTRIBUTE	MIP-Authorization-Status		82	integer
+ATTRIBUTE	MIP-Authorization-Status		82	uint32
 
 VALUE	MIP-Authorization-Status	False			0
 VALUE	MIP-Authorization-Status	True			1
@@ -393,7 +393,7 @@ ATTRIBUTE	Flow-Descriptor-v2			83	tlv
 ATTRIBUTE	Packet-Flow-Descriptor-v2		84	tlv
 ATTRIBUTE	PFDv2-Packet-Data-Flow-Id		.1	short
 ATTRIBUTE	PFDv2-Service-Data-Flow-Id		.2	short
-ATTRIBUTE	PFDv2-Service-Profile-Id		.3	integer
+ATTRIBUTE	PFDv2-Service-Profile-Id		.3	uint32
 ATTRIBUTE	PFDv2-Direction				.4	byte
 ATTRIBUTE	PFDv2-Activation-Trigger		.5	byte
 ATTRIBUTE	PFDv2-Transport-Type			.6	byte
@@ -416,7 +416,7 @@ ATTRIBUTE	PFDv2-Src-IP-Address-Range		84.9.5.2	octets
 ATTRIBUTE	PFDv2-Src-IP-Address-Mask		84.9.5.3	combo-ip
 ATTRIBUTE	PFDv2-Src-Port				84.9.5.4	short
 # 2 shorts
-ATTRIBUTE	PFDv2-Src-Port-Range			84.9.5.5	integer
+ATTRIBUTE	PFDv2-Src-Port-Range			84.9.5.5	uint32
 ATTRIBUTE	PFDv2-Src-Inverted			84.9.5.6	byte
 ATTRIBUTE	PFDv2-Src-Assigned			84.9.5.7	byte
 
@@ -438,8 +438,8 @@ ATTRIBUTE	PFDv2-Eth-Proto-Type-Ethertype		.1.1	short
 ATTRIBUTE	PFDv2-Eth-Proto-Type-DSAP		.1.2	byte
 
 ATTRIBUTE	PFDv2-Eth-VLAN-Id			.2	tlv
-ATTRIBUTE	PFDv2-Eth-VLAN-Id-S-VID			.2.1	integer
-ATTRIBUTE	PFDv2-Eth-VLAN-Id-C-VID			.2.2	integer
+ATTRIBUTE	PFDv2-Eth-VLAN-Id-S-VID			.2.1	uint32
+ATTRIBUTE	PFDv2-Eth-VLAN-Id-C-VID			.2.2	uint32
 
 ATTRIBUTE	PFDv2-Eth-Priority-Range		.3	tlv
 ATTRIBUTE	PFDv2-Eth-Priority-Range-Low		.3.1	byte
@@ -469,22 +469,22 @@ ATTRIBUTE	VLAN-Tag-C-VLAN-Priority		.2	byte
 ATTRIBUTE	VLAN-Tag-VLAN-Id-Assignment		.3	short
 ATTRIBUTE	VLAN-Tag-C-VLAN-Id			.4	short
 ATTRIBUTE	VLAN-Tag-S-VLAN-Id			.5	short
-ATTRIBUTE	VLAN-Tag-C-S-VLAN-Id-Mapping		.6	integer
+ATTRIBUTE	VLAN-Tag-C-S-VLAN-Id-Mapping		.6	uint32
 ATTRIBUTE	VLAN-Tag-Local-Config-Info		.7	octets
 
 ATTRIBUTE	hDHCP-Server-Parameters			86	tlv
 ATTRIBUTE	hDHCP-DHCPv4-Address			.1	ipaddr
 ATTRIBUTE	hDHCP-DHCPv6-Address			.2	ipv6addr
 ATTRIBUTE	hDHCP-DHCP-RK				.3	string encrypt=Tunnel-Password
-ATTRIBUTE	hDHCP-DHCP-RK-Key-Id			.4	integer
-ATTRIBUTE	hDHCP-DHCP-RK-Lifetime			.5	integer
+ATTRIBUTE	hDHCP-DHCP-RK-Key-Id			.4	uint32
+ATTRIBUTE	hDHCP-DHCP-RK-Lifetime			.5	uint32
 
 ATTRIBUTE	vDHCP-Server-Parameters			87	tlv
 ATTRIBUTE	vDHCP-DHCPv4-Address			.1	ipaddr
 ATTRIBUTE	vDHCP-DHCPv6-Address			.2	ipv6addr
 ATTRIBUTE	vDHCP-DHCP-RK				.3	string encrypt=Tunnel-Password
-ATTRIBUTE	vDHCP-DHCP-RK-Key-Id			.4	integer
-ATTRIBUTE	vDHCP-DHCP-RK-Lifetime			.5	integer
+ATTRIBUTE	vDHCP-DHCP-RK-Key-Id			.4	uint32
+ATTRIBUTE	vDHCP-DHCP-RK-Lifetime			.5	uint32
 
 ATTRIBUTE	BS-Location				88	octets
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6			89	byte
@@ -505,7 +505,7 @@ ATTRIBUTE	hLMA-IPv4-PMIP6				128	ipaddr
 ATTRIBUTE	vLMA-IPv6-PMIP6				129	ipv6addr
 ATTRIBUTE	vLMA-IPv4-PMIP6				130	ipaddr
 ATTRIBUTE	PMIP6-RK-Key				131	octets encrypt=Tunnel-Password
-ATTRIBUTE	PMIP6-RK-SPI				132	integer
+ATTRIBUTE	PMIP6-RK-SPI				132	uint32
 ATTRIBUTE	Home-HNP-PMIP6				133	ipv6prefix
 ATTRIBUTE	Home-Interface-Id-PMIP6			134	ifid
 ATTRIBUTE	Home-IPv4-HoA-PMIP6			135	ipaddr

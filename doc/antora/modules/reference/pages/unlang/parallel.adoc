@@ -10,7 +10,7 @@ parallel [ empty | detach ] {
 
 The `parallel` section runs multiple child subsections in parallel.
 Once all of the statements in the `parallel` section have finished
-execution, the parallel section exits.  The return code of the
+execution, the parallel section exits.  The xref:unlang/return_codes.adoc[rcode] of the
 parallel section is the same as if each subsection was run
 sequentially.
 
@@ -117,10 +117,10 @@ The `parallel empty { ... }` syntax creates empty child requests.
 These requests contain no attributes.  Attributes in the child request
 must be added manually via an xref:unlang/edit.adoc[edit] statement.
 
-The `empty` keyword is most useful when it is necessary to manually
+The `empty` option is most useful when it is necessary to manually
 determine which attributes go into a child request.
 
-The `empty` keyword cannot be used with the `detach` keyword.  There
+The `empty` option cannot be used with the `detach` option.  There
 is no purpose to creating independent child requests which contain
 nothing.
 
@@ -161,16 +161,16 @@ contains copies of all attributes in the parent request.
 The parent request continues immediately, and independently of the
 child requests.
 
-The `detach` keyword cannot be used with the `empty` keyword.  There
-is no purpose to creating independent child requests which contain
-nothing.
-
 The return code from the `parallel detach { ... }` section is `noop`.
 Since all of the child requests are independent of the parent, they
 cannot convey any information back to the parent.  Therefore, the
 return code is always `noop`.
 
-The `detach` keyword is most useful when it is necessary to send
+The `detach` option cannot be used with the `empty` option.  There
+is no purpose to creating independent child requests which contain
+nothing.
+
+The `detach` option is most useful when it is necessary to send
 packets to multiple destinations, but where there is no need to wait
 for an answer.
 
@@ -232,5 +232,5 @@ parallel {
 ----
 
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

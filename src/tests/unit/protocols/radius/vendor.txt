@@ -151,7 +151,7 @@ encode-pair raw.241.26.6527.38 = 0xabcdef
 match f1 0b 1a 00 00 19 7f 26 ab cd ef
 
 decode-pair -
-match Extended-Attribute-1 = { Extended-Vendor-Specific-1 = { Nokia-SR = { raw.38 = 0xabcdef } } }
+match Extended-Attribute-1 = { Vendor-Specific = { Nokia-SR = { raw.38 = 0xabcdef } } }
 
 #
 #  Known vendor, unknown attribute.  Microsoft will never add more RADIUS attributes to

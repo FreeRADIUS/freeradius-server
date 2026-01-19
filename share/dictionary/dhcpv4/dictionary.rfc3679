@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -25,5 +25,8 @@ ATTRIBUTE	LDAP					95	octets
 ATTRIBUTE	Netinfo-Address				112	octets
 # NetInfo Parent-Server Tag
 ATTRIBUTE	Netinfo-Tag				113	octets
-# URL
-ATTRIBUTE	URL					114	octets
+
+#
+#  Renamed. See RFC 8910
+#
+ALIAS		URL					Captive-Portal

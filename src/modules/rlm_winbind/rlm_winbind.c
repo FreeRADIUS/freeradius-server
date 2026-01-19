@@ -62,7 +62,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_winbind_dict[];
 fr_dict_autoload_t rlm_winbind_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -72,7 +72,7 @@ extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
 fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -90,6 +90,7 @@ typedef struct {
  * @param request	The current request
  * @param name		Group name to be searched
  * @param env		Group check xlat call_env
+ * @param t		Winbind thread structure
  *
  * @return
  *	- 0 user is in group
@@ -397,7 +398,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_winbind_t);
 	winbind_autz_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_autz_call_env_t);
@@ -407,18 +408,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (!vp) {
 		REDEBUG2("No %s found in the request; not doing winbind authentication.",
 			 tmpl_attr_tail_da(env->password)->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
@@ -428,7 +429,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	winbind_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_auth_call_env_t);
 	rlm_winbind_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_winbind_thread_t);
@@ -438,7 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -457,10 +458,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (do_auth_wbclient_pap(request, env, t) == 0) {
 		RDEBUG2("User authenticated successfully using winbind");
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
-	RETURN_MODULE_REJECT;
+	RETURN_UNLANG_REJECT;
 }
 
 static const call_env_method_t winbind_autz_method_env = {
@@ -517,7 +518,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 		}
 
 		tmpl_afrom_substr(ctx, &parsed_tmpl,
-			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
+			          &FR_SBUFF_IN_STR(wb_info->netbios_domain),
 			          T_SINGLE_QUOTED_STRING, NULL, t_rules);
 		if (!parsed_tmpl) {
 			cf_log_perr(ci, "Bad domain");

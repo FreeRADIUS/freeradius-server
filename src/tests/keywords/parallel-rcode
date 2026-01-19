@@ -2,66 +2,47 @@
 #  PRE: parallel
 #
 
+noop {
+     noop = 1
+}
+
 #
 #  Ensure that a failing item causes the parallel section to return by default [1/2]
 #
 group {
 	parallel {
-		fail	# Runs
-		ok	# Should not run (would override fail - same priority)
-		ok
-	}
-
-	actions {
-		fail = 1
+		fail {
+			fail = 2
+		}
+		updated {
+			updated = 3
+		}
+		ok {
+			ok = 4
+		}
 	}
 }
-if (!fail) {
+if (!ok) {
 	test_fail
 }
 
 #
-#  Ensure that a failing item causes the parallel section to return by default [2/2]
+#  Ensure that a failing item does NOT causes the parallel section to
+#  return.  Instead, we run all children to the end.  The result is
+#  the same as if all children had run sequentially.
 #
 group {
 	parallel {
 		fail
-		group {	# This should *NOT* be dispatched
-			Filter-Id := 'foo'
+		group {	# This SHOULD be dispatched
+			parent.control.Class := 0x01
 		}
 	}
-	actions {
-		fail = 1
-	}
 }
-if (!fail) {
+if (!ok) {
 	test_fail
 }
-if (Filter-Id) {
-	test_fail
-}
-
-#
-#  If the rcode for the failing item is no longer action return, all items should be
-#  executed.
-#
-group {
-	parallel {
-		fail {
-			fail = 10	# Higher priority than ok and no longer action return
-		}
-		group {	# This should now be dispatched
-			parent.request.Filter-Id := 'foo'
-		}
-	}
-	actions {
-		fail = 1
-	}
-}
-if (!fail) {
-	test_fail
-}
-if (!(Filter-Id == 'foo')) {
+if (control.Class != 0x01) {
 	test_fail
 }
 

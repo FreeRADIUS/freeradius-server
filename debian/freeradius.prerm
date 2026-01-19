@@ -10,9 +10,7 @@ case "$1" in
 		/etc/init.d/freeradius stop
 	fi
 
-        for file in /etc/freeradius/mods-config/files/pre-proxy \
-          /etc/freeradius/mods-config/files/accounting \
-          /etc/freeradius/experimental.conf \
+        for file in /etc/freeradius/mods-config/files/accounting \
           /etc/freeradius/clients.conf
         do
           if dpkg-statoverride --list | grep -qw $file$; then

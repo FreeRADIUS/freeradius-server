@@ -9,8 +9,8 @@ VENDOR		Aruba				14823
 BEGIN-VENDOR	Aruba
 
 ATTRIBUTE	User-Role				1	string
-ATTRIBUTE	User-Vlan				2	integer
-ATTRIBUTE	Priv-Admin-User				3	integer
+ATTRIBUTE	User-Vlan				2	uint32
+ATTRIBUTE	Priv-Admin-User				3	uint32
 ATTRIBUTE	Admin-Role				4	string
 ATTRIBUTE	Essid-Name				5	string
 ATTRIBUTE	Location-Id				6	string
@@ -21,11 +21,11 @@ ATTRIBUTE	AP-Group				10	string
 
 ATTRIBUTE	Framed-IPv6-Address			11	string
 ATTRIBUTE	Device-Type				12	string
-ATTRIBUTE	No-DHCP-Fingerprint			14	integer
+ATTRIBUTE	No-DHCP-Fingerprint			14	uint32
 ATTRIBUTE	Mdps-Device-Udid			15	string
 ATTRIBUTE	Mdps-Device-Imei			16	string
 ATTRIBUTE	Mdps-Device-Iccid			17	string
-ATTRIBUTE	Mdps-Max-Devices			18	integer
+ATTRIBUTE	Mdps-Max-Devices			18	uint32
 ATTRIBUTE	Mdps-Device-Name			19	string
 ATTRIBUTE	Mdps-Device-Product			20	string
 
@@ -35,7 +35,7 @@ ATTRIBUTE	CPPM-Role				23	string
 ATTRIBUTE	AirGroup-User-Name			24	string
 ATTRIBUTE	AirGroup-Shared-User			25	string
 ATTRIBUTE	AirGroup-Shared-Role			26	string
-ATTRIBUTE	AirGroup-Device-Type			27	integer
+ATTRIBUTE	AirGroup-Device-Type			27	uint32
 ATTRIBUTE	Auth-Survivability			28	string
 ATTRIBUTE	AS-User-Name				29	string
 ATTRIBUTE	AS-Credential-Hash			30	string
@@ -47,9 +47,9 @@ ATTRIBUTE	AP-IP-Address				34	ipaddr
 ATTRIBUTE	AirGroup-Shared-Group			35	string
 ATTRIBUTE	User-Group				36	string
 ATTRIBUTE	Network-SSO-Token			37	string
-ATTRIBUTE	AirGroup-Version			38	integer
-ATTRIBUTE	Auth-SurvMethod				39	integer
-ATTRIBUTE	Port-Bounce-Host			40	integer
+ATTRIBUTE	AirGroup-Version			38	uint32
+ATTRIBUTE	Auth-SurvMethod				39	uint32
+ATTRIBUTE	Port-Bounce-Host			40	uint32
 
 ATTRIBUTE	Calea-Server-Ip				41	ipaddr
 ATTRIBUTE	Admin-Path				42	string
@@ -59,11 +59,11 @@ ATTRIBUTE	ACL-Server-Query-Info			45	string
 ATTRIBUTE	Command-String				46	string
 ATTRIBUTE	Network-Profile				47	string
 ATTRIBUTE	Admin-Device-Group			48	string
-ATTRIBUTE	PoE-Priority				49	integer
-ATTRIBUTE	Port-Auth-Mode				50	integer
+ATTRIBUTE	PoE-Priority				49	uint32
+ATTRIBUTE	Port-Auth-Mode				50	uint32
 
 ATTRIBUTE	NAS-Filter-Rule				51	string
-ATTRIBUTE	QoS-Trust-Mode				52	integer
+ATTRIBUTE	QoS-Trust-Mode				52	uint32
 ATTRIBUTE	UBT-Gateway-Role			53	string
 ATTRIBUTE	Gateway-Zone				54	string
 
@@ -71,7 +71,7 @@ ATTRIBUTE	DPP-Bootstrapping-Key-SHA256		55	string
 ATTRIBUTE	DPP-Bootstrapping-Net-Access-Key-SHA256	56	string
 ATTRIBUTE	DPP-Bootstrapping-Key-B64		57	string
 
-ATTRIBUTE	STP-Admin-Edge-Port			58	integer
+ATTRIBUTE	STP-Admin-Edge-Port			58	uint32
 
 ATTRIBUTE	UBT-Gateway-CPPM-Role			59	string
 
@@ -80,17 +80,17 @@ ATTRIBUTE	Device-MAC-Address			61	string
 
 ATTRIBUTE	MPSK-Key-Name				62	string
 
-ATTRIBUTE	Device-Traffic-Class			63	integer
+ATTRIBUTE	Device-Traffic-Class			63	uint32
 
-ATTRIBUTE	PVLAN-Port-Type				64	integer
-ATTRIBUTE	Network-Test				65	integer
+ATTRIBUTE	PVLAN-Port-Type				64	uint32
+ATTRIBUTE	Network-Test				65	uint32
 ATTRIBUTE	MPSK-Lookup-Info			66	string encrypt=User-Password
 ATTRIBUTE	AVPair					67	string
-ATTRIBUTE	DPP-Service-Type			68	integer
+ATTRIBUTE	DPP-Service-Type			68	uint32
 
 ATTRIBUTE	User-Mgmt-Interface			69	string
 
-ATTRIBUTE	Poe-Allocate-By-Method			70	integer
+ATTRIBUTE	Poe-Allocate-By-Method			70	uint32
 
 ATTRIBUTE	DPP-AKMs				71	string
 ATTRIBUTE	DPP-Passphrase				72	string encrypt=Tunnel-Password

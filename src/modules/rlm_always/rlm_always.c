@@ -127,11 +127,11 @@ done:
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static unlang_action_t CC_HINT(nonnull) mod_always_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_always_return(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_always_t);
 
-	RETURN_MODULE_RCODE(inst->mutable->rcode);
+	RETURN_UNLANG_RCODE(inst->mutable->rcode);
 }
 
 static int mod_detach(module_detach_ctx_t const *mctx)

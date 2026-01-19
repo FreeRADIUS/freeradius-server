@@ -6,21 +6,48 @@ that new user, and to receive a reply.
 *Time:* 15-25 minutes.
 
 *File:*
-
-- `etc/raddb/users`
+- `mods-config/files/authorize`
 
 *`man` page:* users
 
 The file is the usual place where new users may be added. The file is located
-in `etc/raddb/users`. It has a manual page; `man users`, or `man 5
+in `mods-config/files/authorize`. It has a manual page; `man users`, or `man 5
 users` will display this page. The manual page describes how the entries in the file are
 formatted and also contains some example entries.
 
-The comments at the top of the file should also be read.
+The comments at the top of the file should also be read, as they
+contain additional useful information.
 
-For testing purposes, add an entry at the top of the file, which will add
-a new user "bob" with password "hello", as suggested in the `man`
-page for the file.
+== Test PAP authentication
+
+First, we will test PAP authentication.  It is the simplest possible
+authentication method which works with nearly all databases, password
+formats, etc.
+
+Note that while some people claim that PAP is insecure, this is simply
+not true.  For a longer explanation as to why PAP is secure, see our
+[PAP vs
+CHAP](https://www.inkbridgenetworks.com/blog/blog-10/pap-vs-chap-is-pap-less-secure-55)
+page.
+
+=== Edit the "users" file
+
+For testing purposes, edit the following file:
+
+[source, bash]
+------------
+$ vi mods-config/files/authorize
+------------
+
+Add an entry at the top of the file to add a user `bob`, and a "known
+good" password `hello`:
+
+[source, text]
+------------
+bob	Password.Cleartext := "hello"
+------------
+
+=== Run the server
 
 Start the server:
 
@@ -29,22 +56,54 @@ Start the server:
 $ radiusd -X
 ------------
 
-Test the server with a radius test client (radclient, NTRadPing), and
-verify that the server responds with an Access-Accept packet. For this
-test, use a PAP password.
+Verify that it started correctly, and that the debug output finishes with the following text:
 
-If the server was successful, look for a message similar to:
+[source, text]
+----
+#### Opening listener interfaces ####
+Listening on radius_udp server * port 1812 bound to virtual server default
+Listening on radius_tcp server * port 1812 bound to virtual server default
+Listening on radius_udp server * port 1813 bound to virtual server default
+Listening on radius_udp server 127.0.0.1 port 18120 bound to virtual server inner-tunnel
+Ready to process requests
+----
 
----------------------------------------------------------------------
+If the final `Ready to process requests` message does not appear, you
+will have to find out why.  Debugging server configurations is a
+complex issue, and is outside of the scope of this tutorial.
+
+=== Run radclient
+
+Test the server with a radius test client (radclient), and verify that
+the server responds with an Access-Accept packet. For this test, use a
+PAP password:
+
+[source, bash]
+------------
+echo 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+------------
+
+If the server does not see the packet, then double-check the IP address
+and port to which the client is sending the request.
+
+If the server was successful, look in the debug output for a message
+similar to:
+
+[source, text]
+----
 (0)  files : users: Matched entry bob at line 1
 (0)   [files] = ok
----------------------------------------------------------------------
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message := Hello, %{User-Name}
+(0)          files - | %{User-Name}
+(0)          files - | --> bob
+(0)      files (ok)
+----
 
 These messages indicate which entries in the file were used to match the
 incoming request.
 
-If the server does not see the packet, then double-check the IP address
-and port to which the client is sending the request.
+==== Looking into Problems
 
 If the server does not send an Access-Accept, then stop the server and
 re-start it, while recording its output to a log file:
@@ -56,21 +115,81 @@ $ radiusd -X
 ----------------
 
 Send the test packet again, and after the Access-Reject is received by
-the client, "exit" the shell to close the "log.txt" file. Open the
-"log.txt" file in a text editor, and read the output. The cause of the
+the client, "exit" the shell to close the "log.txt" file.
+
+[source, bash]
+----------------
+exit
+----------------
+
+Open the "log.txt" file in a text editor, and read the output. The cause of the
 error can generally be determined from those messages.
 
-The error will usually be one of the following problems:
+The error will usually be one of a few common problems.  The following
+list contains a short description of each common error, and an example
+of the debug output with the relevant messages:
 
-* the shared secret was incorrect
+* the shared secret was incorrect, in case you will see a message similar to the follow
+[source, text]
+----
+(0)  ERROR: Failed decoding packet: invalid Message-Authenticator (shared secret is incorrect)
+----
+
 * the user was not found, or no entry matched the request.
+[source, text]
+----
+(0)    authenticate pap {
+(0)      pap - Login attempt with password
+(0)      pap - ERROR: No "known good" password found for user
+(0)      pap (fail)
+----
 
 Test the server again with a PAP password, but this time, deliberately
 use the wrong shared secret. Observe what happens and what error
 messages are produced.
 
+== Test CHAP Authentication
+
 Test the server again with a test packet, this time using a CHAP
-password. Verify that authentication also succeeds.
+password.  Note that you don't need to restart the server.
+
+=== Run radclient
+
+[source, bash]
+------------
+echo 'User-Name = "bob", CHAP-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+------------
+
+Note that we've sent `CHAP-Password` to `radclient`, but the password
+is a clear-text value "hello"!  If you read the output of `radclient`,
+you will see output similar to the following:
+
+[source, text]
+----
+Sent Access-Request Id 1 from 0.0.0.0:59639 to 127.0.0.1:1812 length 80
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        CHAP-Password = 0xf3a4d8667a2951cbd04128f2bcfa75227c
+        Password.Cleartext = "hello"
+        CHAP-Challenge = 0x1aaf91edde002632419d9ac3ce17ad56
+Received Access-Accept Id 1 from 127.0.0.1:1812 to 0.0.0.0:59639 via lo0 length 43
+        Message-Authenticator = 0x4db4bb10b088b5954159a73f380f2243
+----
+
+You can see that `radclient` received an Access-Accept, which is good.
+You can also see that `radclient` noticed the `CHAP-Password` was
+clear-text, and it did the appropriate calculations to get the correct
+format of the `CHAP-Password`.  It also created a `CHAP-Challenge`.
+
+Look at the server debug output to double-check that authentication
+succeeded, as given in the following debug output:
+
+[source, text]
+----
+(0)      chap - Using "known good" cleartext password Cleartext
+(0)      chap - CHAP user "bob" authenticated successfully
+(0)      chap (ok)
+----
 
 Test the server again with a CHAP password, but this time, deliberately
 use the wrong shared secret. Observe what happens and what error
@@ -86,5 +205,5 @@ Stop the server.
 3.  Why does the server need access to a clear-text password to perform
 CHAP authentication?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -21,7 +21,7 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
-#include "lib/util/hash.h"
+
 RCSIDH(dict_h, "$Id$")
 
 #ifdef __cplusplus
@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/ext.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
@@ -85,6 +86,7 @@ typedef struct {
 								///< ephemeral.
 	unsigned int		is_alias : 1;			//!< This isn't a real attribute, it's a reference to
 								///< to one.
+	unsigned int		has_alias : 1;			//!< this attribute has an alias.
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
@@ -106,6 +108,8 @@ typedef struct {
 
 	unsigned int		unsafe : 1;	       		//!< e.g. Cleartext-Password
 
+	unsigned int		is_ref_target : 1;		//!< is the target of a ref, and cannot be moved.
+
 	/*
 	 *	@todo - if we want to clean these fields up, make
 	 *	"subtype" and "type_size" both 4-bit bitfields.  That
@@ -117,7 +121,9 @@ typedef struct {
 
 	unsigned int		local : 1;       		//!< is a local variable
 
-	unsigned int		has_fixup : 1;
+	unsigned int		allow_flat : 1;			//!< only for FR_TYPE_GROUP, can contain "flat" lists.
+
+	unsigned int		has_fixup : 1;			//! needs a fixup during dictionary parsing
 
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
@@ -127,18 +133,26 @@ typedef struct {
 	uint8_t			subtype;			//!< protocol-specific values, OR key fields
 
 	/*
-	 *	Length in bytes for most attributes.
-	 *	Length in bits for da_is_bit_field(da)
+	 *	TLVs: Number of bytes in the "type" field for TLVs (typically 1, 2, or 4)
+	 *
+	 *	da_is_bit_field(da): offset in the byte where this bit
+	 *  	field ends.  This is only used as a caching mechanism
+	 *  	during parsing of the dictionaries.
+	 *
+	 *	time/time_delta: fr_time_res_t, which has 4 possible values.
+	 *
+	 *	otherwise: unused.
 	 */
-	uint8_t			length;				//!< length of the attribute
+	uint8_t			type_size;			//!< Type size for TLVs
 
 	/*
-	 *	TLVs: 1, 2, or 4.
-	 *	date / time types: fr_time_res_t, which has 4 possible values.
-	 *	bit fields: offset in the byte where this bit field ends, which is only
-	 *  	used as a caching mechanism during parsing of the dictionaries.
+	 *	da_is_bit_field(da): Length of the field in bits.
+	 *
+	 *	TLV: Number of bytes in the "length" field
+	 *
+	 *	otherwise: Length in bytes
 	 */
-	uint8_t			type_size;			//!< For TLV2 and root attributes.
+	uint16_t	       	length;				//!< length of the attribute
 } fr_dict_attr_flags_t;
 
 #define flag_time_res type_size
@@ -158,6 +172,8 @@ enum {
 #define fr_dict_attr_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))
 #define da_is_bit_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_BIT_FIELD))
 #define da_is_length_field(_da) ((_da)->flags.extra && (((_da)->flags.subtype == FLAG_LENGTH_UINT8) || ((_da)->flags.subtype == FLAG_LENGTH_UINT16)))
+#define da_is_length_field8(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT8))
+#define da_is_length_field16(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
 #define da_length_offset(_da) ((_da)->flags.type_size)
 
 /** Extension identifier
@@ -169,8 +185,8 @@ typedef enum {
 	FR_DICT_ATTR_EXT_CHILDREN,				//!< Attribute has children.
 	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
 								///< attribute and/or dictionary.
+	FR_DICT_ATTR_EXT_KEY,					//!< UNION attribute references a key
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
-	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
 	FR_DICT_ATTR_EXT_ENUMV,					//!< Enumeration values.
 	FR_DICT_ATTR_EXT_NAMESPACE,				//!< Attribute has its own namespace.
 	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,			//!< Protocol specific extensions
@@ -221,9 +237,16 @@ struct dict_attr_s {
  * @note New extension structures should also be added to the appropriate table in dict_ext.c
  */
 typedef enum {
-	FR_DICT_ENUM_EXT_UNION_REF = 0,				//!< Reference to a union/subs-struct.
+	FR_DICT_ENUM_EXT_ATTR_REF = 0,				//!< Reference to a child attribute associated with this key value
 	FR_DICT_ENUM_EXT_MAX
 } fr_dict_enum_ext_t;
+
+/** Enum extension - Sub-struct or union pointer
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const	*da;				//!< the child structure referenced by this value of key
+} fr_dict_enum_ext_attr_ref_t;
 
 /** Value of an enumerated attribute
  *
@@ -236,8 +259,6 @@ typedef struct {
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
 
 	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
-
-	fr_dict_attr_t const	*child_struct[];		//!< for key fields
 } fr_dict_enum_value_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise
@@ -288,6 +309,9 @@ typedef struct {
 	char const		*base_dir;			//!< Directory structure beneath share.
 	char const		*proto;				//!< The protocol dictionary name.
 } fr_dict_autoload_t;
+
+#define DICT_AUTOLOAD_TERMINATOR { .out = NULL }
+
 
 /** Errors returned by attribute lookup functions
  *
@@ -482,10 +506,6 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 #define FR_DICT_TLV_NEST_MAX		(24)
 
-/** Maximum level of da stack caching
- */
-#define FR_DICT_DA_STACK_CACHE_MAX	(5)
-
 /** Maximum TLV stack size
  *
  * The additional attributes are to account for
@@ -498,10 +518,15 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 #define FR_DICT_MAX_TLV_STACK		(FR_DICT_TLV_NEST_MAX + 5)
 
-/** Characters that are allowed in dictionary attribute names
+/** Characters allowed in a single dictionary attribute name
  *
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
+
+/** Characters allowed in a nested dictionary attribute name
+ *
+ */
+extern bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1];
 
 /** Characters that are allowed in dictionary enumeration value names
  *
@@ -536,7 +561,7 @@ int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
 int			fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *src) CC_HINT(nonnull);
 
-int			fr_dict_attr_set_group(fr_dict_attr_t **da_p) CC_HINT(nonnull);
+int			fr_dict_attr_set_group(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref) CC_HINT(nonnull);
 /** @} */
 
 /** @name Dict accessors
@@ -550,6 +575,8 @@ fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
  *
  * @{
  */
+fr_dict_attr_t		*fr_dict_attr_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_type_t type) CC_HINT(nonnull(2));
+
 fr_dict_attr_t const	*fr_dict_attr_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
 void			fr_dict_attr_unknown_free(fr_dict_attr_t const **da);
@@ -590,8 +617,23 @@ static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom
 	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, FR_TYPE_OCTETS, true);
 }
 
-fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
-		                     	       		   CC_HINT(nonnull(2));
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_afrom_oid(TALLOC_CTX *ctx,
+										     fr_dict_attr_t const *parent,
+										     fr_sbuff_t *in, fr_type_t type)
+{
+	uint32_t		num;
+	fr_sbuff_parse_error_t	sberr;
+
+	fr_sbuff_out(&sberr, &num, in);
+	if (sberr != FR_SBUFF_PARSE_OK) return NULL;
+
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, num, type, true);
+}
+
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
+}
 
 
 fr_slen_t		fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
@@ -609,6 +651,8 @@ fr_dict_attr_t const	*fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dic
  *
  * @{
  */
+int8_t			fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
+
 static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
 	int8_t ret;
@@ -852,7 +896,11 @@ int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char 
 
 fr_dict_t		*fr_dict_protocol_alloc(fr_dict_t const *parent);
 
+int			fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *root, fr_sbuff_t *in);
+
 int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
+
+bool			fr_dict_filename_loaded(fr_dict_t const *dict, char const *dict_dir, char const *filename);
 /** @} */
 
 /** @name Autoloader interface
@@ -910,7 +958,7 @@ int			fr_dict_global_ctx_dir_set(char const *dict_dir);
 
 void			fr_dict_global_ctx_read_only(void);
 
-void			fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx);
+void			fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx);
 
 char const		*fr_dict_global_ctx_dir(void);
 

@@ -17,7 +17,7 @@ VENDOR		APC				318
 
 BEGIN-VENDOR	APC
 
-ATTRIBUTE	Service-Type				1	integer
+ATTRIBUTE	Service-Type				1	uint32
 ATTRIBUTE	Outlets					2	string
 ATTRIBUTE	Perms					3	string
 ATTRIBUTE	Username				4	string

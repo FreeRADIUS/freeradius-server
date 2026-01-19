@@ -1,5 +1,7 @@
 = Proxy Load Balancing
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure a server to load-balanceproxied requests across
 multiple home servers.
 

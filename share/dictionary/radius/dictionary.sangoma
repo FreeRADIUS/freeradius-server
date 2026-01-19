@@ -29,9 +29,9 @@ ATTRIBUTE	Aniii					9	string
 ATTRIBUTE	Lastapp					10	string
 ATTRIBUTE	Lastdata				11	string
 ATTRIBUTE	Disposition				12	string
-ATTRIBUTE	Hangupcause				13	integer
-ATTRIBUTE	Billusec				15	integer
-ATTRIBUTE	AMAFlags				16	integer
+ATTRIBUTE	Hangupcause				13	uint32
+ATTRIBUTE	Billusec				15	uint32
+ATTRIBUTE	AMAFlags				16	uint32
 ATTRIBUTE	RDNIS					17	string
 ATTRIBUTE	Context					18	string
 ATTRIBUTE	Source					19	string

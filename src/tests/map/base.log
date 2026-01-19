@@ -1,5 +1,0 @@
-update request {
-	Filter-Id[*] := "filter"
-	User-Name[*] := "blah"
-	reply.Filter-Id[*] += Filter-Id[*]
-}

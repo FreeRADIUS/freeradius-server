@@ -56,7 +56,7 @@ extern fr_dict_autoload_t rlm_wimax_dict[];
 fr_dict_autoload_t rlm_wimax_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_eap_emsk;
@@ -90,24 +90,32 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ .out = &attr_wimax_msk, .name = "Vendor-Specific.WiMAX.MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_ip_technology, .name = "Vendor-Specific.WiMAX.IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip4, .name = "Vendor-Specific.WiMAX.hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip6, .name = "Vendor-Specific.WiMAX.hHA-IP-MIP6", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip6_key, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_fa_rk_key, .name = "Vendor-Specific.WiMAX.FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_fa_rk_spi, .name = "Vendor-Specific.WiMAX.FA-RK-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_rrq_mn_ha_spi, .name = "Vendor-Specific.WiMAX.RRQ-MN-HA-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_rrq_ha_ip, .name = "Vendor-Specific.WiMAX.RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_ha_rk_key_requested, .name = "Vendor-Specific.WiMAX.HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	/*
+	 *	Load this, but we don't use it.
+	 */
+	{ .out = NULL, .name = "Vendor-Specific.WiMAX", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
+
+	/*
+	 *	Relative names are shorter.
+	 */
+	{ .out = &attr_wimax_msk, .name = ".MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_ip_technology, .name = ".IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip4_key, .name = ".MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = ".MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip4, .name = ".hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip6, .name = ".hHA-IP-MIP6", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_key, .name = ".MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = ".MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_key, .name = ".FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_spi, .name = ".FA-RK-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_mn_ha_spi, .name = ".RRQ-MN-HA-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_ha_ip, .name = ".RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_ha_rk_key_requested, .name = ".HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -116,7 +124,7 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	fr_pair_t *vp;
 
@@ -144,16 +152,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 		}
 
 		DEBUG2("Fixing WiMAX binary Calling-Station-Id to %pV", &vp->data);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
-	RETURN_MODULE_NOOP;
+	RETURN_UNLANG_NOOP;
 }
 
 /*
  *	Massage the request before recording it or proxying it
  */
-static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return mod_authorize(p_result, mctx, request);
 }
@@ -161,7 +169,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;
@@ -178,7 +186,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	emsk = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_eap_emsk);
 	if (!msk || !emsk) {
 		REDEBUG2("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -440,7 +448,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	EVP_MD_CTX_free(hmac_ctx);
 	EVP_PKEY_free(hmac_pkey);
 
-	RETURN_MODULE_UPDATED;
+	RETURN_UNLANG_UPDATED;
 }
 
 /*
@@ -462,7 +470,7 @@ module_rlm_t rlm_wimax = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"), .method = mod_preacct },
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
 			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
 			MODULE_BINDING_TERMINATOR

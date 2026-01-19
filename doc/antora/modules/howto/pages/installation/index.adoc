@@ -1,4 +1,4 @@
-= Installing and Upgrading
+= Install and Upgrade
 
 FreeRADIUS is available from many locations. Select one of the options below to begin installing your server:
 
@@ -15,13 +15,11 @@ The documents in this section cover details of the above
 installation methods, as well as instructions on building
 packages locally.
 
-== Getting Started
-
-This page describes how to perform the first install of
+The following steps describes how to perform the first install of
 FreeRADIUS. It assumes a basic knowledge of Unix system administration.
 No RADIUS knowledge is required.
 
-## Install the Server
+== Install the server
 
 Where possible, while learning the basics, it's recommended that
 beginners use the packaging system that is used by your operating
@@ -48,7 +46,7 @@ located in `/etc/freeradius/` instead of `/etc/raddb/`. The terms
 `radiusd` and `/etc/raddb/` are used in this guide for simplicity.
 ====
 
-### Best Practice
+=== Best practice
 
 Once the server has been installed, the first thing to do is *change as
 little as possible*. The default configuration is designed to work
@@ -71,7 +69,7 @@ a lot of text, it describes exactly what is happening within the server
 and usually contains error messages which describe what went wrong, and
 how to fix it.
 
-## Start the server
+== Start the server
 
 include::partial$start_server.adoc[]
 
@@ -83,22 +81,23 @@ The output from `radiusd -X` is very verbose, see the xref:ROOT:debugging/radius
 explanation of the debug output.
 
 
-## Initial Tests
+== Initial tests
 
 Once your server is up and running, test basic authentication.
 include::partial$initial_tests.adoc[]
 
 
-## Add a client
+== Add a client
 
 After a successful authentication, add a client, and verify that packets are successfully sent and received.
 include::partial$add_client.adoc[]
 
 ***
 
-## Configure the Server
+## Configure the server
 
-  include::partial$config_server.adoc[]
+include::partial$config_server.adoc[]
+
 
 [WARNING]
 ====

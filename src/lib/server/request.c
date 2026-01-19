@@ -36,7 +36,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t request_dict[];
 fr_dict_autoload_t request_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *request_attr_root;
@@ -54,7 +54,7 @@ fr_dict_attr_autoload_t request_dict_attr[] = {
 	{ .out = &request_attr_control, .name = "control", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_state, .name = "session-state", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_local, .name = "local-variables", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifndef NDEBUG
@@ -664,11 +664,11 @@ void request_verify(char const *file, int line, request_t const *request)
 	fr_assert(request->magic == REQUEST_MAGIC);
 
 	(void)talloc_get_type_abort(request->request_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs);
+	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs, true);
 	(void)talloc_get_type_abort(request->reply_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs);
+	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs, true);
 	(void)talloc_get_type_abort(request->control_ctx, fr_pair_t);
-	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
+	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs, true);
 	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
 
 #ifndef NDEBUG
@@ -681,8 +681,8 @@ void request_verify(char const *file, int line, request_t const *request)
 	}
 #endif
 
-	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
-	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs);
+	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs, true);
+	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs, true);
 
 	fr_assert(request->proto_dict != NULL);
 	fr_assert(request->local_dict != NULL);

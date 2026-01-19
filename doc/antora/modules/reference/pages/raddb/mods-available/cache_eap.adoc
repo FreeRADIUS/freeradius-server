@@ -61,7 +61,7 @@ ttl:: TTL for cache entries.
 
 
 
-update <section> { ... }::
+update { ... }::
 
 
 == Default Configuration
@@ -70,7 +70,7 @@ update <section> { ... }::
 cache cache_eap {
 	key = "%{control.State || reply.State || State}"
 	ttl = 15
-	update reply {
+	update {
 		reply += reply
 		control.State := request.State
 	}

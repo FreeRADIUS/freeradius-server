@@ -31,19 +31,10 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-typedef struct {
-	uint8_t	code;
-	uint8_t	id;
-	uint8_t	length[2];
-	uint8_t	vector[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t	data[1];
-} radius_packet_t;
-
-
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
 
 
 /** Encode a packet
@@ -502,7 +493,7 @@ void fr_radius_packet_log(fr_log_t const *log, fr_packet_t *packet, fr_pair_list
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
 		if (!fr_pair_find_by_da(list, NULL, attr_message_authenticator)) {
-			fprintf(fr_log_fp, "\tMessage-Authenticator = 0x\n");
+			fr_log(log, L_DBG, __FILE__, __LINE__, "\tMessage-Authenticator = 0x\n");
 		}
 		break;
 

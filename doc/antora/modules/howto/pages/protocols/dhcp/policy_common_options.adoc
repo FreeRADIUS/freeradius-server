@@ -39,7 +39,7 @@ dhcp_common {
 }
 ----
 
-See the xref:unlang/edit.adoc[edit] documentation for instructions on
+See the xref:reference:unlang/edit.adoc[edit] documentation for instructions on
 creating and editing attributes.
 
 These edit operation allow for attributes to be set to default values and then

@@ -146,7 +146,7 @@ ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsig
 	 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
 	 */
 	slen = proto->encode(&work_dbuff, &vp->vp_group);
-	if (slen <= 0) return slen;
+	if (slen < 0) return slen;
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "group ref");
 
@@ -154,4 +154,26 @@ ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsig
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+/** Generic encode value.
+ *
+ */
+ssize_t fr_pair_encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+			      fr_dcursor_t *cursor, UNUSED void *encode_ctx)
+{
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+
+	if (!fr_type_is_leaf(vp->vp_type)) {
+		FR_PROTO_TRACE("Cannot use generic encoder for data type %s", fr_type_to_str(vp->vp_type));
+		fr_strerror_printf("Cannot encode data type %s", fr_type_to_str(vp->vp_type));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
+
+	(void) fr_dcursor_next(cursor);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);	
 }

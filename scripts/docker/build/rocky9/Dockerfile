@@ -4,17 +4,18 @@
 # Rebuild this file with `make docker.rocky9.regen`
 #
 ARG from=rockylinux/rockylinux:9
-FROM ${from} as build
+FROM ${from} AS build
 
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 
 #
 #  Install build tools
 #
-RUN dnf groupinstall -y "Development Tools"
+RUN dnf update -y
+RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
+	rsync dnf-plugins-core
 
-RUN dnf install -y rpmdevtools openssl dnf-utils
-
+RUN dnf config-manager --set-enabled crb
 
 #
 #  Set up NetworkRADIUS extras repository
@@ -45,17 +46,6 @@ COPY . .
 #
 RUN git clean -fdxx \
  && git reset --hard HEAD
-
-#
-#  Other requirements
-#
-
-#  Enable EPEL repository for freetds and hiredis
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-
-#  Enable Code Ready Builder repo (CentOS powertools equivalent)
-RUN dnf install -y dnf-utils
-RUN dnf config-manager --enable crb
 
 #
 #  Install build dependencies
@@ -113,7 +103,7 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 #  Other requirements
 #
 
-#  Needed for mysql-libs on Rocky 9
+#  Needed for mysql-libs
 RUN dnf install -y dnf-utils
 RUN dnf config-manager --enable crb
 

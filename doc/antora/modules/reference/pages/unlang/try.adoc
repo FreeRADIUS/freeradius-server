@@ -6,21 +6,24 @@
 try {
     [ statements ]
 }
-catch {
+catch [ <return-codes> ] {
+    ...
+}
+catch [ <return-codes> ] {
     ...
 }
 ----
 
 The `try` statement runs a series of substatements in a block.  If the
-block returns an error such as `fail`, `reject`, `invalid`, or
-`disallow`, a subsequent xref:unlang/catch.adoc[catch] block is
-executed.
+block returns an error such as `fail`, `reject`, `invalid`,
+`disallow`, or `timeout`, a subsequent xref:unlang/catch.adoc[catch]
+block is executed.
 
 [ statements ]:: The `unlang` commands which will be executed.  A
 `try` block cannot be empty.
 
-Every `try` block must be followed by a xref:unlang/catch.adoc[catch]
-block.
+Every `try` block must be followed by at least one
+xref:unlang/catch.adoc[catch] block.
 
 .Example
 
@@ -29,14 +32,14 @@ block.
 try {
 	sql
 }
-catch {
+catch fail {
 	# ... run only if sql failed
 
 	ok	# over-ride the "fail" code
 }
 ----
 
-There is some overlap in functionality between `try` / xref:unlang/catch.adoc[catch] and xref:unlang/redundant.adoc[redundant].  The main difference (TODO) is that a xref:unlang/catch.adoc[catch] statement can catch specific actions.
+There is some overlap in functionality between `try` / xref:unlang/catch.adoc[catch] and xref:unlang/redundant.adoc[redundant].  See the xref:unlang/catch.adoc[catch] documentation for more details.
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

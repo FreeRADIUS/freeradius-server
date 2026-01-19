@@ -97,7 +97,7 @@ extern fr_dict_autoload_t radsniff_dict[];
 fr_dict_autoload_t radsniff_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -105,7 +105,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t radsniff_dict_attr[];
 fr_dict_attr_autoload_t radsniff_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static NEVER_RETURNS void usage(int status);
@@ -1329,7 +1329,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
-	len = (p - data) + sizeof(udp_header_t) + sizeof(radius_packet_t);	/* length value */
+	len = (p - data) + sizeof(udp_header_t) + RADIUS_HEADER_LENGTH;	/* length value */
 	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
@@ -1406,17 +1406,21 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	if (ip) {
 		packet->socket.inet.src_ipaddr.af = AF_INET;
 		packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
+		packet->socket.inet.src_ipaddr.prefix = 32;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET;
 		packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
+		packet->socket.inet.dst_ipaddr.prefix = 32;
 	} else {
 		packet->socket.inet.src_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
 		       sizeof(packet->socket.inet.src_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.src_ipaddr.prefix = 128;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
 		       sizeof(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.dst_ipaddr.prefix = 128;
 	}
 
 	packet->socket.inet.src_port = ntohs(udp->src);
@@ -2101,11 +2105,14 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 		.ctx = conf,
 		.da = fr_dict_root(dict_radius),
 		.list = out,
+		.dict = dict_radius,
+		.internal = fr_dict_internal(),
 		.allow_compare = true,
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
-	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(filter, strlen(filter))) <= 0) {
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(filter)) <= 0) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}

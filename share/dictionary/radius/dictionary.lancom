@@ -14,20 +14,20 @@ VENDOR		Lancom				2356
 BEGIN-VENDOR	Lancom
 
 # Attributes
-ATTRIBUTE	Traffic-Limit				1	integer
+ATTRIBUTE	Traffic-Limit				1	uint32
 ATTRIBUTE	Mac-Address				2	string
 ATTRIBUTE	Redirection-URL				3	string
 ATTRIBUTE	Comment					4	string
-ATTRIBUTE	Account-End				5	integer
+ATTRIBUTE	Account-End				5	uint32
 ATTRIBUTE	WPA-Passphrase				6	string
 ATTRIBUTE	PbSpotUserName				7	string
-ATTRIBUTE	TxRateLimit				8	integer
-ATTRIBUTE	RxRateLimit				9	integer
-ATTRIBUTE	Access-Rights				11	integer
-ATTRIBUTE	Function-Rights				12	integer
+ATTRIBUTE	TxRateLimit				8	uint32
+ATTRIBUTE	RxRateLimit				9	uint32
+ATTRIBUTE	Access-Rights				11	uint32
+ATTRIBUTE	Function-Rights				12	uint32
 ATTRIBUTE	Advertisement-URL			13	string
-ATTRIBUTE	Advertisement-Interval			14	integer
-ATTRIBUTE	Traffic-Limit-Gigawords			15	integer
+ATTRIBUTE	Advertisement-Interval			14	uint32
+ATTRIBUTE	Traffic-Limit-Gigawords			15	uint32
 ATTRIBUTE	Orig-NAS-Identifier			16	string
 ATTRIBUTE	Orig-NAS-IP-Address			17	ipaddr
 ATTRIBUTE	Orig-NAS-IPv6-Address			18	ipv6addr
@@ -36,7 +36,7 @@ ATTRIBUTE	IKEv2-Remote-Password			20	string	has_tag,encrypt=Tunnel-Password
 ATTRIBUTE	DNS-Server-IPv4-Address			21	ipaddr
 ATTRIBUTE	VPN-IPv4-Rule				22	string
 ATTRIBUTE	VPN-IPv6-Rule				23	string
-ATTRIBUTE	Routing-Tag				24	integer
+ATTRIBUTE	Routing-Tag				24	uint32
 ATTRIBUTE	IKEv2-IPv4-Route			25	string
 ATTRIBUTE	IKEv2-IPv6-Route			26	string
 ATTRIBUTE	IKEv2-DNS-Domain			27	string
@@ -44,9 +44,9 @@ ATTRIBUTE	Load-Balancer				28	string
 ATTRIBUTE	IKEv2-Routing-Tag-List			29	string
 ATTRIBUTE	IKEv2-IPv4-Tagged-Route			30	string
 ATTRIBUTE	IKEv2-IPv6-Tagged-Route			31	string
-ATTRIBUTE	IPv6-Prefix-Length			32	integer
+ATTRIBUTE	IPv6-Prefix-Length			32	uint32
 ATTRIBUTE	IKEv2-PPK				33	string has_tag,encrypt=Tunnel-Password
-ATTRIBUTE	IKEv2-PPK-MANDATORY			34	integer
+ATTRIBUTE	IKEv2-PPK-MANDATORY			34	uint32
 
 END-VENDOR   Lancom
 ALIAS		Lancom					Vendor-Specific.Lancom

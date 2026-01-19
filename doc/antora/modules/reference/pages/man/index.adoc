@@ -1,4 +1,4 @@
-= Man pages
+= Man Pages
 
 These `man` pages are provided for quick reference, and for historical
 compatibility.  In some cases, it is easier to type `man radiusd` than
@@ -7,6 +7,8 @@ to open a web browser, and navigate to the correct page.
 That being said, the 'man' pages provide only brief summaries of
 functionality.  The main documentation pages provide for significantly
 more content and explanation.
+
+The format of the xref:man/dictionary.adoc[dictionary] files.
 
 The xref:man/radclient.adoc[radclient] program.
 
@@ -18,7 +20,7 @@ A RADIUS-aware packet capture tool, xref:man/radsniff.adoc[radsniff].
 
 A simple summary of xref:man/unlang.adoc[unlang].
 
-The format of the xref:man/dictionary.adoc[dictionary] files.
+
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

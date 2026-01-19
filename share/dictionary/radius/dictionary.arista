@@ -13,25 +13,25 @@ VENDOR		Arista				30065
 BEGIN-VENDOR	Arista
 
 ATTRIBUTE	AVPair					1	string
-ATTRIBUTE	User-Priv-Level				2	integer
+ATTRIBUTE	User-Priv-Level				2	uint32
 ATTRIBUTE	User-Role				3	string
 ATTRIBUTE	CVP-Role				4	string
 ATTRIBUTE	Command					5	string
-ATTRIBUTE	WebAuth					6	integer
+ATTRIBUTE	WebAuth					6	uint32
 ATTRIBUTE	BlockMac				7	string
 ATTRIBUTE	UnblockMac				8	string
-ATTRIBUTE	PortFlap				9	integer
+ATTRIBUTE	PortFlap				9	uint32
 ATTRIBUTE	Captive-Portal				10	string
 ATTRIBUTE	Segment-Id				11	string
 ATTRIBUTE	Origin-Identifier			12	string
-ATTRIBUTE	PeriodicIdentity			13	integer
-ATTRIBUTE	Dynamic-HostMode			14	integer
-ATTRIBUTE	DeviceType				15	integer
-ATTRIBUTE	Action					16	integer
+ATTRIBUTE	PeriodicIdentity			13	uint32
+ATTRIBUTE	Dynamic-HostMode			14	uint32
+ATTRIBUTE	DeviceType				15	uint32
+ATTRIBUTE	Action					16	uint32
 ATTRIBUTE	Device-Profiling			17	string
-ATTRIBUTE	Port-Shutdown				18	integer
-ATTRIBUTE	Mvrp					19	integer
-ATTRIBUTE	Tenant-Id				20	integer
+ATTRIBUTE	Port-Shutdown				18	uint32
+ATTRIBUTE	Mvrp					19	uint32
+ATTRIBUTE	Tenant-Id				20	uint32
 ATTRIBUTE	Interface-Profile			21	string
 
 VALUE	WebAuth				start			1

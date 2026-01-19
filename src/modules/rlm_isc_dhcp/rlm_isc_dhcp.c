@@ -37,7 +37,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t rlm_isc_dhcp_dict[];
 fr_dict_autoload_t rlm_isc_dhcp_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_client_hardware_address;
@@ -58,7 +58,7 @@ fr_dict_attr_autoload_t rlm_isc_dhcp_dict_attr[] = {
 	{ .out = &attr_server_ip_address, .name = "Server-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct rlm_isc_dhcp_info_s rlm_isc_dhcp_info_t;
@@ -96,7 +96,7 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
 	{ FR_CONF_OFFSET("debug", rlm_isc_dhcp_t, debug) },
 	{ FR_CONF_OFFSET("pedantic", rlm_isc_dhcp_t, pedantic) },
 	CONF_PARSER_TERMINATOR
@@ -459,7 +459,7 @@ redo:
 	state->token_len = p - state->token;
 
 	if (state->token_len == 0) {
-		fr_strerror_const("FUCK");
+		fr_strerror_const("Failed to find token");
 		return -1;
 	}
 
@@ -1516,11 +1516,6 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	return 2;
 }
 
-/*
- *	Utter laziness
- */
-#define vb_ipv4addr vb_ip.addr.v4.s_addr
-
 /** subnet IPADDR netmask MASK { ... }
  *
  */
@@ -1654,15 +1649,17 @@ done:
 
 static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
-	int ret;
 	fr_pair_t *vp;
 
 	if (!info->parent) return -1; /* internal error */
 
 	MEM(vp = fr_pair_afrom_da(info->parent, da));
 
-	ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
-	if (ret < 0) return ret;
+	/* TLS error buffer is checked */
+	if (unlikely(fr_value_box_copy(vp, &(vp->data), info->argv[0]) < 0)) {
+		talloc_free(vp);
+		return -1;
+	}
 
 	fr_pair_append(&info->parent->options, vp);
 
@@ -1742,7 +1739,6 @@ static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
  */
 static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 {
-	int ret;
 	rlm_isc_dhcp_info_t *host, *info;
 	fr_pair_t *vp;
 	fr_pair_t *yiaddr;
@@ -1771,9 +1767,10 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_your_ip_address));
 
-		ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
-		if (ret < 0) return ret;
-
+		if (unlikely(fr_value_box_copy(vp, &(vp->data), info->argv[0]) < 0)) {
+			RPEDEBUG("Failed assigning Your-IP-Address");
+			return -1;
+		}
 		fr_pair_append(&request->reply_pairs, vp);
 
 		/*
@@ -2204,32 +2201,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply_fixed_ip(inst, request);
-	if (ret < 0) RETURN_MODULE_FAIL;
-	if (ret == 0) RETURN_MODULE_NOOP;
+	if (ret < 0) RETURN_UNLANG_FAIL;
+	if (ret == 0) RETURN_UNLANG_NOOP;
 
-	if (ret == 2) RETURN_MODULE_UPDATED;
+	if (ret == 2) RETURN_UNLANG_UPDATED;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply(inst, request, inst->head);
-	if (ret < 0) RETURN_MODULE_FAIL;
-	if (ret == 0) RETURN_MODULE_NOOP;
+	if (ret < 0) RETURN_UNLANG_FAIL;
+	if (ret == 0) RETURN_UNLANG_NOOP;
 
 	// @todo - check for subnet mask option.  If none exists, use one from the enclosing network?
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 extern module_rlm_t rlm_isc_dhcp;

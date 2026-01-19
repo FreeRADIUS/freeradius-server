@@ -1,9 +1,7 @@
 * xref:index.adoc[Reference Documentation]
 
 ** xref:unlang/index.adoc[Unlang Policy Language]
-
 *** xref:unlang/interpreter.adoc[Interpreter]
-
 *** xref:unlang/keywords.adoc[Keywords]
 **** xref:unlang/break.adoc[break]
 **** xref:unlang/call.adoc[call]
@@ -65,18 +63,16 @@
 *** xref:type/numb.adoc[Numbers]
 *** xref:type/string/single.adoc[Single Quoted Strings]
 *** xref:type/string/double.adoc[Double Quoted Strings]
-*** xref:type/string/backticks.adoc[Backtick Quoted String]
+*** xref:type/string/backticks.adoc[Backtick Quoted Strings]
 *** xref:type/string/unquoted.adoc[Unquoted Strings]
 
-** xref:xlat/index.adoc[Dynamic Expansion]
-*** xref:xlat/all.adoc[list of Built-in Functions]
+** xref:xlat/index.adoc[Dynamic Expansions]
+*** xref:xlat/all.adoc[Summary of Built-in Functions]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
 *** xref:xlat/attribute.adoc[Attribute References]
 *** xref:xlat/conversion.adoc[Data Conversion]
 *** xref:xlat/deprecated.adoc[Deprecated Functions]
-
-*** xref:mods-available/dict.adoc[Dictionary Handling]
-
+*** xref:xlat/dict.adoc[Dictionary Handling]
 *** xref:xlat/file/index.adoc[File Handling]
 **** xref:reference:xlat/file/escape.adoc[escape]
 **** xref:xlat/file/exists.adoc[exists]
@@ -116,11 +112,16 @@
 
 *** xref:xlat/time/index.adoc[Time Management]
 **** xref:xlat/time/character.adoc[Single Character]
-**** xref:xlat/time/generic.adoc[Generic]                 
+**** xref:xlat/time/generic.adoc[Generic]
 **** xref:xlat/time/is_dst.adoc[Daylight Savings]
+**** xref:xlat/time/next.adoc[Next]
 **** xref:xlat/time/now.adoc[Now]
 **** xref:xlat/time/offset.adoc[UTC Offset]
 **** xref:xlat/time/request.adoc[Request Time]
+
+*** xref:xlat/ipv4/index.adoc[IPv4 Handling]
+**** xref:xlat/ipv4/broadcast.adoc[Broadcast Address]
+**** xref:xlat/ipv4/netmask.adoc[Subnet Mask]
 
 ** xref:dictionary/index.adoc[Dictionaries]
 *** xref:dictionary/alias.adoc[ALIAS]
@@ -132,7 +133,6 @@
 *** xref:dictionary/member.adoc[MEMBER]
 *** xref:dictionary/protocol.adoc[PROTOCOL]
 *** xref:dictionary/reference.adoc[References]
-*** xref:dictionary/struct.adoc[STRUCT]
 *** xref:dictionary/value.adoc[VALUE]
 *** xref:dictionary/vendor.adoc[VENDOR]
 *** xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL]
@@ -142,15 +142,6 @@
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
 
-** xref:policy/index.adoc[Policies]
-*** xref:policy/different.adoc[Why FreeRADIUS is different]
-
-** xref:man/index.adoc["man" pages]
-*** xref:man/radclient.adoc[radclient]
-*** xref:man/radiusd.adoc[radiusd]
-*** xref:man/radmin.adoc[radmin]
-*** xref:man/radsniff.adoc[radsniff]
-
 ** xref:raddb/index.adoc[Configuration Files]
 *** xref:raddb/format.adoc[Format of the Configuration Files]
 *** xref:raddb/certs/index.adoc[Certificates]
@@ -158,12 +149,14 @@
 **** xref:raddb/global.d/ldap.adoc[Ldap]
 **** xref:raddb/global.d/python.adoc[Python]
 
+
 ** xref:raddb/mods-available/index.adoc[Modules]
 *** xref:raddb/mods-available/all_modules.adoc[Summary of Modules]
-
 *** xref:raddb/mods-available/doc/authentication.adoc[Authentication]
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
+**** xref:raddb/mods-available/crl.adoc[CRL]
 **** xref:raddb/mods-available/digest.adoc[Digest]
+**** xref:raddb/mods-available/dpsk.adoc[DPSK]
 **** xref:raddb/mods-available/eap.adoc[EAP]
 **** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
 **** xref:raddb/mods-available/imap.adoc[IMAP]
@@ -178,7 +171,7 @@
 **** xref:raddb/mods-available/winbind.adoc[Winbind]
 **** xref:raddb/mods-available/yubikey.adoc[Yubikey]
 
-*** xref:raddb/mods-available/doc/datastore.adoc[Datastore]
+*** xref:raddb/mods-available/doc/datastore.adoc[Datastores]
 **** xref:raddb/mods-available/cache.adoc[Cache]
 ***** xref:raddb/mods-available/cache_eap.adoc[Cache EAP]
 ***** xref:raddb/mods-available/cache_tls.adoc[Cache TLS Session]
@@ -187,6 +180,8 @@
 **** xref:raddb/mods-available/etc_group.adoc[Etc_group]
 **** xref:raddb/mods-available/files.adoc[Files]
 ***** xref:raddb/mods-config/files/users.adoc[File Format]
+**** xref:raddb/mods-available/ftp.adoc[FTP]
+**** xref:raddb/mods-available/kv.adoc[KV]
 **** xref:raddb/mods-available/ldap.adoc[LDAP]
 **** xref:raddb/mods-available/opendirectory.adoc[OpenDirectory]
 **** xref:raddb/mods-available/passwd.adoc[Passwd]
@@ -226,13 +221,14 @@
 ***** xref:raddb/mods-available/detail.example.com.adoc[Example]
 ***** xref:raddb/mods-available/detail.log.adoc[Log Example]
 
+
 *** xref:raddb/mods-available/doc/policy.adoc[Policy]
 **** xref:raddb/mods-available/always.adoc[Always]
 **** xref:raddb/mods-available/attr_filter.adoc[Attr_filter]
 **** xref:raddb/mods-available/idn.adoc[IDN]
 **** xref:raddb/mods-available/sometimes.adoc[Sometimes]
 
-*** xref:raddb/mods-available/doc/protocol.adoc[Protocol]
+*** xref:raddb/mods-available/doc/protocol.adoc[Protocols]
 **** xref:raddb/mods-available/dhcpv4.adoc[DHCPv4]
 ***** xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP]
 **** xref:raddb/mods-available/radius.adoc[RADIUS]
@@ -244,6 +240,13 @@
 **** xref:raddb/mods-available/smtp.adoc[SMTP]
 **** xref:raddb/mods-available/stats.adoc[Stats]
 **** xref:raddb/mods-available/unbound.adoc[Unbound]
+
+
+** xref:raddb/policy.d/index.adoc[Policies]
+*** xref:policy/index.adoc[Create Policy Rules]
+**** xref:policy/different.adoc[Why FreeRADIUS is different]
+**** xref:raddb/policy.d/at_reference.adoc[@policy]
+**** xref:raddb/policy.d/method.adoc[Method Override]
 
 ** xref:raddb/sites-available/index.adoc[Virtual Servers]
 *** xref:raddb/sites-available/arp.adoc[ARP]
@@ -278,12 +281,21 @@
 **** xref:raddb/sites-available/dynamic-clients.adoc[Dynamic Clients]
 
 *** xref:raddb/clients.conf.adoc[Clients]
-*** xref:raddb/debug.conf.adoc[Debugging Configuration]
+*** xref:raddb/debug.conf.adoc[Debugging Configuration File]
 *** xref:raddb/dictionary.adoc[Local Dictionary Definitions]
 *** xref:raddb/radrelay.conf.adoc[Radrelay Configuration]
 *** xref:raddb/radiusd.conf.adoc[Server Configuration File]
 *** xref:raddb/templates.conf.adoc[Templates]
 *** xref:raddb/trigger.conf.adoc[Triggers]
+
+
+** xref:man/index.adoc[Man Pages]
+*** xref:man/dictionary.adoc[dictionary]
+*** xref:man/radclient.adoc[radclient]
+*** xref:man/radiusd.adoc[radiusd]
+*** xref:man/radmin.adoc[radmin]
+*** xref:man/radsniff.adoc[radsniff]
+*** xref:man/unlang.adoc[unlang]
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

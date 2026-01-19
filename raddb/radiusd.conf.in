@@ -541,6 +541,17 @@ security {
 #	group = radius
 
 	#
+	#  After the server has changed to the final user/group, it
+	#  can also set the current working directory.  While not
+	#  necessary, changing the working directory means that the
+	#  server does not have any dangling paths.
+	#
+	#  The directory here should either be "/", or ${confdir}
+	#
+#	chdir = ${confdir}
+
+
+	#
 	#  allow_core_dumps:: Core dumps are a bad thing.
 	#
 	#  This should only be set to `yes` if you're debugging
@@ -548,7 +559,7 @@ security {
 	#
 	#  allowed values: {no, yes}
 	#
-	allow_core_dumps = no
+	allow_core_dumps = @allow_core_dumps@
 
 	#
 	#  max_attributes:: The maximum number of attributes
@@ -567,13 +578,6 @@ security {
 	max_attributes = 200
 
 @openssl_version_check_config@
-
-	#
-	#  openssl_fips_mode:: Enable OpenSSL FIPS mode.
-	#
-	#  This disables non-FIPS compliant digests and algorithms
-	#
-#	openssl_fips_mode = no
 }
 
 #
@@ -672,28 +676,6 @@ global {
 #  Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
 #
 migrate {
-	#
-	#  rewrite_update:: Rewrite old `update` sections to use the new
-	#  "edit" code.
-	#
-	#  When this flag is set to `true`, the server will read the
-	#  `update` section, and swap the internal implementation to
-	#  use the new code.  The configuration file can still contain
-	#  the `update` keyword.
-	#
-	#  Not all `update` sections can be automatically converted.
-	#  If the conversion process does not work, then the server
-	#  will produce an error instead of doing the wrong thing.
-	#
-	rewrite_update = false
-
-	#
-	#  forbid_update:: Forbid the use of the `update` keyword.
-	#
-	#  This flag allows us to remove the last bits of the v2
-	#  configuration from the server.
-	#
-	forbid_update = false
 }
 
 #

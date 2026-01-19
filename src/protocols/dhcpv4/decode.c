@@ -120,6 +120,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *	string / octets / bool can be empty.  Other data types are
@@ -140,33 +141,52 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 	switch (vp->vp_type) {
+	case FR_TYPE_ATTR:
+		/*
+		 *	Force the length of the data to be one,
+		 *	otherwise the "from network" call complains.
+		 *	Because we pass in the enumv as the _parent_
+		 *	and not the da.  The da is marked as "array",
+		 *	but the parent is not.
+		 */
+		end = p + 1;
+
+		fr_assert(da->parent->flags.is_root);
+
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, da->parent,
+						 &FR_DBUFF_TMP(p, end - p), end - p, true);
+		if (slen <= 0) goto raw;
+
+		p++;
+		break;
+
 	/*
-	 *	Doesn't include scope, whereas the generic format can
+	 *	Doesn't include scope, whereas the generic format can.
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		if ((size_t) (end - p) < sizeof(vp->vp_ipv6addr)) goto raw;
+		slen = fr_value_box_ipaddr_from_network(&vp->data, da->type, da,
+							128, p, (size_t) (end - p),
+							exact, true);
+		if (slen < 0) goto raw;
+		fr_assert(slen == sizeof(vp->vp_ipv6addr));
 
-		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
-
-		memcpy(&vp->vp_ipv6addr, p, sizeof(vp->vp_ipv6addr));
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = 128;
-		vp->vp_tainted = true;
 		p += sizeof(vp->vp_ipv6addr);
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if ((size_t) (end - (p + 1)) < sizeof(vp->vp_ipv6addr)) goto raw;
+		/*
+		 *	Not enough room for the prefix length, that's an issue.
+		 *
+		 *	Note that there's actually no standard for IPv6 prefixes inside of DHCPv4.
+		 */
+		if ((end - p) < 1) goto raw;
 
-		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
+		slen = fr_value_box_ipaddr_from_network(&vp->data, da->type, da,
+							p[0], p + 1, ((size_t) (end - p)) - 1,
+							exact, true);
+		if (slen < 0) goto raw;
 
-		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr));
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[0];
-		vp->vp_tainted = true;
-		p += sizeof(vp->vp_ipv6addr) + 1;
+		p += slen + 1;
 		break;
 
 	case FR_TYPE_STRUCTURAL:
@@ -413,6 +433,7 @@ next:
 	if (!vp) {
 		vp = fr_pair_afrom_da(ctx, vendor);
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+		PAIR_ALLOCED(vp);
 
 		fr_pair_append(out, vp);
 	}
@@ -499,6 +520,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) {
 			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+			PAIR_ALLOCED(vp);
 
 			append = true;
 		}
@@ -597,8 +619,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		q = concat_buffer;
 
 		for (next = data; next < end; next += 2 + next[1]) {
-			if ((end - next) < 2) return -1;
+			if (next >= end) return -1;
 			if (next[0] != data[0]) break;
+			if ((end - next) < 2) return -1;
 			if ((next + 2 + next[1]) > end) return -1;
 
 			if ((size_t) (q + next[1] - concat_buffer) > sizeof(concat_buffer)) return -1;
@@ -609,9 +632,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (q == concat_buffer) return 0;
 
-		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
+		da = fr_dict_attr_child_by_num(packet_ctx->root, p[0]);
 		if (!da) {
-			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
+			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, packet_ctx->root, p[0]);
 			if (!da) return -1;
 
 			slen = fr_pair_raw_from_network(ctx, out, da, concat_buffer, q - concat_buffer);
@@ -638,7 +661,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return next - data;
 	}
 
-	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
+	slen = decode_option(ctx, out, packet_ctx->root, data, data[1] + 2, decode_ctx);
 	if (slen < 0) return slen;
 
 	FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %u byte(s)", slen, (unsigned int) data[1] + 2);
@@ -651,7 +674,9 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t slen;
 	uint8_t const *attr, *end;
 
-	fr_dhcpv4_ctx_t decode_ctx = {};
+	fr_dhcpv4_ctx_t decode_ctx = {
+		.root = fr_dict_root(dict_dhcpv4)
+	};
 
 	fr_assert(dict_dhcpv4 != NULL);
 
@@ -685,12 +710,14 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   fr_dict_attr_t const *root_da)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
+	test_ctx->root = root_da ? root_da : fr_dict_root(dict_dhcpv4);
 
 	*out = test_ctx;
 

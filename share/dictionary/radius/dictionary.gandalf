@@ -19,19 +19,19 @@ VENDOR		Gandalf				64
 BEGIN-VENDOR	Gandalf
 
 ATTRIBUTE	Remote-LAN-Name				0	string
-ATTRIBUTE	Operational-Modes			1	integer
-ATTRIBUTE	Compression-Status			2	integer
-ATTRIBUTE	Min-Outgoing-Bearer			3	integer
+ATTRIBUTE	Operational-Modes			1	uint32
+ATTRIBUTE	Compression-Status			2	uint32
+ATTRIBUTE	Min-Outgoing-Bearer			3	uint32
 ATTRIBUTE	Authentication-String			5	string
-ATTRIBUTE	PPP-Authentication			6	integer
-ATTRIBUTE	PPP-NCP-Type				7	integer
-ATTRIBUTE	Fwd-Multicast-In			8	integer
-ATTRIBUTE	Fwd-Broadcast-In			9	integer
-ATTRIBUTE	Fwd-Unicast-In				10	integer
-ATTRIBUTE	Fwd-Multicast-Out			11	integer
-ATTRIBUTE	Fwd-Broadcast-Out			12	integer
-ATTRIBUTE	Fwd-Unicast-Out				13	integer
-ATTRIBUTE	Around-The-Corner			14	integer
+ATTRIBUTE	PPP-Authentication			6	uint32
+ATTRIBUTE	PPP-NCP-Type				7	uint32
+ATTRIBUTE	Fwd-Multicast-In			8	uint32
+ATTRIBUTE	Fwd-Broadcast-In			9	uint32
+ATTRIBUTE	Fwd-Unicast-In				10	uint32
+ATTRIBUTE	Fwd-Multicast-Out			11	uint32
+ATTRIBUTE	Fwd-Broadcast-Out			12	uint32
+ATTRIBUTE	Fwd-Unicast-Out				13	uint32
+ATTRIBUTE	Around-The-Corner			14	uint32
 ATTRIBUTE	Channel-Group-Name-1			15	string
 ATTRIBUTE	Dial-Prefix-Name-1			16	string
 ATTRIBUTE	Phone-Number-1				17	string
@@ -40,17 +40,17 @@ ATTRIBUTE	Channel-Group-Name-2			19	string
 ATTRIBUTE	Dial-Prefix-Name-2			20	string
 ATTRIBUTE	Phone-Number-2				21	string
 ATTRIBUTE	Calling-Line-ID-2			22	string
-ATTRIBUTE	IPX-Spoofing-State			23	integer
-ATTRIBUTE	IPX-Watchdog-Spoof			24	integer
+ATTRIBUTE	IPX-Spoofing-State			23	uint32
+ATTRIBUTE	IPX-Watchdog-Spoof			24	uint32
 ATTRIBUTE	SAP-Group-Name-1			25	string
 ATTRIBUTE	SAP-Group-Name-2			26	string
 ATTRIBUTE	SAP-Group-Name-3			27	string
 ATTRIBUTE	SAP-Group-Name-4			28	string
 ATTRIBUTE	SAP-Group-Name-5			29	string
 ATTRIBUTE	Hunt-Group				30	string
-ATTRIBUTE	Modem-Mode				31	integer
-ATTRIBUTE	Modem-Required-1			32	integer
-ATTRIBUTE	Modem-Required-2			33	integer
+ATTRIBUTE	Modem-Mode				31	uint32
+ATTRIBUTE	Modem-Required-1			32	uint32
+ATTRIBUTE	Modem-Required-2			33	uint32
 
 VALUE	Operational-Modes		Disabled		1
 VALUE	Operational-Modes		Called-Only		2

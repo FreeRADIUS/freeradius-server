@@ -43,7 +43,9 @@ static fr_htrie_funcs_t const default_funcs[] = {
 		FUNC(hash_table, replace),
 		FUNC(hash_table, remove),
 		FUNC(hash_table, delete),
-		FUNC(hash_table, num_elements)
+		FUNC(hash_table, num_elements),
+		.iter_init = (fr_htrie_iter_func_t) fr_hash_table_iter_init,
+		.iter_next = (fr_htrie_iter_func_t) fr_hash_table_iter_next,
 	},
 	[FR_HTRIE_RB] = {
 		.match = (fr_htrie_find_t) fr_rb_find,
@@ -52,7 +54,9 @@ static fr_htrie_funcs_t const default_funcs[] = {
 		FUNC(rb, replace),
 		FUNC(rb, remove),
 		FUNC(rb, delete),
-		FUNC(rb, num_elements)
+		FUNC(rb, num_elements),
+		.iter_init = (fr_htrie_iter_func_t) fr_rb_iter_init_inorder,
+		.iter_next = (fr_htrie_iter_func_t) fr_rb_iter_next_inorder,
 	},
 	[FR_HTRIE_TRIE] = {
 		.match = (fr_htrie_find_t) fr_trie_match,
@@ -61,7 +65,7 @@ static fr_htrie_funcs_t const default_funcs[] = {
 		FUNC(trie, replace),
 		FUNC(trie, remove),
 		FUNC(trie, delete),
-		FUNC(trie, num_elements)
+		FUNC(trie, num_elements),
 	}
 };
 

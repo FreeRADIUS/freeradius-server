@@ -72,7 +72,7 @@ typedef struct {
 } xlat_redundant_inst_t;
 
 typedef struct {
-	bool				last_success;	//!< Did the last call succeed?
+	unlang_result_t			last_result;	//!< Did the last call succeed?
 
 	xlat_exp_head_t			**first;	//!< First function called.
 							///< Used for redundant-load-balance.
@@ -90,7 +90,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_redundant_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, xlat_redundant_rctx_t);
 	xlat_action_t			xa = XLAT_ACTION_DONE;
 
-	if (rctx->last_success) {
+	if (XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 	done:
 		talloc_free(rctx);
 		return xa;
@@ -105,6 +105,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	We're back to the first one we tried, fail...
 	 */
 	if (rctx->current == rctx->first) {
+		fr_strerror_printf("Failed all choices for redundant expansion %s", xctx->ex->fmt);
 	error:
 		xa = XLAT_ACTION_FAIL;
 		goto done;
@@ -115,7 +116,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Push the next child...
 	 */
-	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)out->dlist,
 			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -129,7 +130,7 @@ static xlat_action_t xlat_load_balance_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 					      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_redundant_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_redundant_rctx_t);
-	xlat_action_t 		xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+	xlat_action_t 		xa = XLAT_RESULT_SUCCESS(&rctx->last_result) ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
 
 	talloc_free(rctx);
 
@@ -184,7 +185,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(0);
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)out->dlist,
 			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -253,11 +254,11 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 		arg = xlat_exp_head(node->call.args);
 
 		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		        if (!arg) break;
+			if (!arg) break;
 
 			xlat_mark_safe_for(arg->group, arg_p->safe_for);
 
-		        arg = xlat_exp_next(node->call.args, arg);
+			arg = xlat_exp_next(node->call.args, arg);
 		}
 	}
 
@@ -565,12 +566,12 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 		fr_sbuff_marker(&name_start, name);
 
-		mrx = fr_rb_iter_init_inorder(&iter, mrx_tree);
-
 		/*
 		 *	Iterate over the all the xlats, registered by
 		 *	all the modules in the section.
 		 */
+		mrx = fr_rb_iter_init_inorder(mrx_tree, &iter);
+
 		while (mrx) {
 			xlat_t			*xlat;
 			xlat_func_flags_t	flags = default_flags;
@@ -620,7 +621,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 				if (!mrx->xlat->flags.pure) flags &= ~XLAT_FUNC_FLAG_PURE;
 				xlat_redundant_add_xlat(xr, mrx->xlat);
 				prev_mrx = mrx;
-			} while ((mrx = fr_rb_iter_next_inorder(&iter)) && (module_xlat_cmp(prev_mrx, mrx) == 0));
+			} while ((mrx = fr_rb_iter_next_inorder(mrx_tree, &iter)) && (module_xlat_cmp(prev_mrx, mrx) == 0));
 
 			/*
 			 *	Warn, but allow, redundant/failover expansions that are

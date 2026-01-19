@@ -23,12 +23,12 @@
  * @copyright 2021 The FreeRADIUS server project
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #undef XLAT_DEBUG
@@ -315,12 +315,16 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
+
 	b = fr_value_box_list_next(in, a);
-
-	if (!a && !b) return XLAT_ACTION_FAIL;
-
-	fr_assert(!a || (a->type == FR_TYPE_GROUP));
-	fr_assert(!b || (b->type == FR_TYPE_GROUP));
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(!fr_comparison_op[op]);
 
@@ -340,12 +344,12 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (!a) {
 		a = &one;
-		fr_value_box_init_zero(a, b->type);
+		fr_value_box_init_zero(a, b ? b->type : default_type);
 	}
 
 	if (!b) {
 		b = &two;
-		fr_value_box_init_zero(b, a->type);
+		fr_value_box_init_zero(b, a ? a->type : default_type);
 	}
 
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
@@ -452,9 +456,16 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
-	b = fr_value_box_list_next(in, a);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
-	if (!a || !b) return XLAT_ACTION_FAIL;
+	b = fr_value_box_list_next(in, a);
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);
@@ -503,7 +514,7 @@ typedef struct {
 } xlat_regex_inst_t;
 
 typedef struct {
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_list_t	list;
 } xlat_regex_rctx_t;
 
@@ -753,7 +764,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
@@ -805,7 +816,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(ctx, &rctx->last_result, &rctx->list,
 			     request, tmpl_xlat(inst->xlat->vpt), UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -860,7 +871,7 @@ typedef struct {
 
 typedef struct {
 	TALLOC_CTX		*ctx;
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_t		*box;		//!< output value-box
 	int			current;
 	fr_value_box_list_t	list;
@@ -954,7 +965,7 @@ check:
 	xlat_instance_unregister_func(parent);
 
 	xlat_exp_set_type(parent, XLAT_BOX);
-	fr_value_box_copy(parent, &parent->data, box);
+	if (!fr_cond_assert(fr_value_box_copy(parent, &parent->data, box) == 0)) return false;
 
 	return true;
 }
@@ -1132,7 +1143,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(rctx, &rctx->last_result, &rctx->list,
 			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -1186,7 +1197,7 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	if (last) fr_value_box_copy(rctx->box, rctx->box, last);
+	if (last && !fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, last) == 0)) return false;
 
 	return ret;
 }
@@ -1203,10 +1214,9 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool			match;
 
 	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
+	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1291,7 +1301,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(rctx->box, rctx->box, found);
+	if (!fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, found) == 0)) return false;
 
 	return true;
 }
@@ -1308,10 +1318,9 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool			match;
 
 	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
+	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1579,7 +1588,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t			at_in = fr_sbuff_used_total(out);
 	xlat_rcode_inst_t	*inst = instance;
 
-	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%expr.rcode('");
+	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%interpreter.rcode('");
 	if (xlat_exp_head(node->call.args)) {
 		ssize_t slen;
 
@@ -1599,7 +1608,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
  *
  * Example:
 @verbatim
-%expr.rcode('handled') == true
+%interpreter.rcode('handled') == true
 
 # ...or how it's used normally used
 if (handled) {
@@ -1620,10 +1629,16 @@ static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	/*
 	 *	If we have zero args, it's because the instantiation
-	 *	function consumed them. om nom nom.
+	 *	function consumed them. Unless the user read the debug
+	 *	output, and tried to see what the rcode is, in case we
 	 */
 	if (fr_value_box_list_num_elements(args) == 0) {
-		fr_assert(inst->rcode != RLM_MODULE_NOT_SET);
+		if (inst->rcode == RLM_MODULE_NOT_SET) {
+			RDEBUG("Request rcode is '%s'",
+			       fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
+			return XLAT_ACTION_DONE;
+		}
+
 		rcode = inst->rcode;
 	} else {
 		XLAT_ARGS(args, &arg_rcode);
@@ -1682,11 +1697,6 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 typedef struct {
 	tmpl_t const		*vpt;		//!< the attribute reference
 } xlat_exists_inst_t;
-
-typedef struct {
-	bool			last_success;
-	fr_value_box_list_t	list;
-} xlat_exists_rctx_t;
 
 static xlat_arg_parser_t const xlat_func_exists_arg[] = {
 	{ .type = FR_TYPE_VOID },
@@ -1885,7 +1895,12 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
+	XLAT_REGISTER_BOOL("interpreter.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
+	xlat_func_print_set(xlat, xlat_expr_print_rcode);
+
 	XLAT_REGISTER_BOOL("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat->deprecated = true;
 	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_rcode);
 
@@ -2208,7 +2223,6 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *
 static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t	m;
 	ssize_t			slen;
 
 	if (!fr_sbuff_next_if_char(&our_in, '(')) {
@@ -2217,28 +2231,46 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 		return 0;
 	}
 
-	fr_sbuff_marker(&m, &our_in);
+	/*
+	 *	Check for an actual data type.
+	 */
 	fr_sbuff_out_by_longest_prefix(&slen, cast, fr_type_table, &our_in, FR_TYPE_NULL);
 
 	/*
-	 *	We didn't read anything, there's no cast.
+	 *	It's not a known data type, so it's not a cast.
 	 */
-	if (fr_sbuff_diff(&our_in, &m) == 0) goto no_cast;
-
-	if (!fr_sbuff_next_if_char(&our_in, ')')) goto no_cast;
-
-	if (fr_type_is_null(*cast)) {
-		fr_strerror_printf("Invalid data type in cast");
-		FR_SBUFF_ERROR_RETURN(&m);
+	if (*cast == FR_TYPE_NULL) {
+		goto no_cast;
 	}
 
+	/*
+	 *	We're not allowed to start expressions with data types:
+	 *
+	 *		(ipaddr ...
+	 *		(ipaddr+...
+	 *		(ipaddr(...
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, ')')) {
+		if (!fr_sbuff_is_in_charset(&our_in, sbuff_char_word)) {
+			fr_strerror_printf("Unexpected text after data type '%s'", fr_type_to_str(*cast));
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		goto no_cast;
+	}
+
+	/*
+	 *	We're not allowed to cast to a structural data type: (group)
+	 *
+	 *	@todo - maybe cast to structural data type could mean "parse it as a string"?  But then where
+	 *	do the pairs go..
+	 */
 	if (!fr_type_is_leaf(*cast)) {
-		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
+		fr_strerror_printf("Invalid structural data type '%s' in cast", fr_type_to_str(*cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
-
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
@@ -2359,9 +2391,17 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	}
 
 	/*
+	 *	We do NOT do math on return codes.  But these two characters are allowed for attribute names.
+	 *	So we don't parse "Invalid-Packet" as "Invalid - packet".
+	 */
+	if (fr_sbuff_is_char(&our_in, '-') || fr_sbuff_is_char(&our_in, '/')) {
+		return 0;
+	}
+
+	/*
 	 *	@todo - allow for attributes to have the name "ok-foo" ???
 	 */
-	func = xlat_func_find("expr.rcode", -1);
+	func = xlat_func_find("interpreter.rcode", -1);
 	fr_assert(func != NULL);
 
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_start(&our_in), slen));
@@ -2407,7 +2447,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	Allow for explicit casts.  Non-leaf types are forbidden.
 	 */
-	if (expr_cast_from_substr(&cast_type, &our_in) < 0) return -1;
+	if (expr_cast_from_substr(&cast_type, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	/*
 	 *	Do NOT pass the cast down to the next set of parsing routines.  Instead, let the next data be
@@ -2499,12 +2539,14 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		/*
 		 *	Peek for rcodes.
 		 */
-		slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
-		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		if (cond) {
+			slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
+			if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-		if (slen > 0) {
-			fr_assert(node != NULL);
-			goto done;
+			if (slen > 0) {
+				fr_assert(node != NULL);
+				goto done;
+			}
 		}
 		FALL_THROUGH;
 
@@ -2630,7 +2672,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			/*
 			 *	Regex?  Or something else weird?
 			 */
-			tmpl_debug(vpt);
+			tmpl_debug(stderr, vpt);
 			fr_assert(0);
 		}
 	}

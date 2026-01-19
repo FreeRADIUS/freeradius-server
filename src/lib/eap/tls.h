@@ -113,7 +113,7 @@ typedef enum {
 
 typedef struct {
 	uint8_t		flags;
-	uint8_t		data[1];
+	uint8_t		data[];
 } eap_tls_data_t;
 
 /** Tracks the state of an EAP-TLS session

@@ -57,7 +57,7 @@ ATTRIBUTE	Extended-Attribute-1			241	tlv
 ATTRIBUTE	Extended-Attribute-2			242	tlv
 ATTRIBUTE	Extended-Attribute-5			245	tlv
 ATTRIBUTE	Extended-Attribute-6			246	tlv
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+ATTRIBUTE	Vendor-Specific		242.26	vsa
 
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
@@ -100,7 +100,10 @@ ATTRIBUTE	Unit-Long-Octets	247.241		octets
 ATTRIBUTE      Test-Struct     255 struct
 MEMBER         Key-Field       uint8  key
 MEMBER         Filler          uint32
+MEMBER	       Data	       union key=Key-Field
 
-STRUCT Sub-Struct Key-Field 1
+BEGIN Test-Struct.Data
+ATTRIBUTE Sub-Struct 1 struct
 MEMBER	Nested-Sub1 uint8
 MEMBER	Nested-Sub2 uint8
+END Test-Struct.Data

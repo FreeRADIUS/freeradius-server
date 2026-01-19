@@ -1,0 +1,6 @@
+#
+#	ARGV: -i 123 -c 1 -x -F
+#
+User-Name = "chap-test",
+CHAP-Challenge = 0x00112233445566778899aabbccddeeff
+CHAP-Password = 0x57b8930fe5ed789effe92f74441a85b9bd

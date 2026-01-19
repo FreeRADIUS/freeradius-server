@@ -1,0 +1,33 @@
+#
+#  PRE: cache-logic
+#
+
+#
+#  Basic update and retrieve
+#
+control.Callback-Id := 'cache me'
+Framed-IP-Address := 1.2.3.4
+
+compound_key.store
+if (!updated) {
+	test_fail
+}
+
+# Merge
+compound_key.load
+if (!updated) {
+	test_fail
+}
+
+if (Callback-Id != 'cache me') {
+	test_fail
+}
+
+Framed-IP-Address := 2.3.4.5
+
+compound_key.load
+if (!notfound) {
+	test_fail
+}
+
+test_pass

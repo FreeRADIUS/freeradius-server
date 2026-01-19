@@ -33,6 +33,7 @@
 #include <freeradius-devel/server/state.h>
 
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/action.h>
 
 #include <freeradius-devel/util/debug.h>
 
@@ -43,7 +44,7 @@ extern fr_dict_autoload_t process_ttls_dict[];
 fr_dict_autoload_t process_ttls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -81,7 +82,7 @@ fr_dict_attr_autoload_t process_ttls_dict_attr[] = {
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const	*enum_auth_type_accept;
@@ -91,7 +92,7 @@ extern fr_dict_enum_autoload_t process_ttls_dict_enum[];
 fr_dict_enum_autoload_t process_ttls_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -217,7 +218,7 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
@@ -278,7 +279,7 @@ RESUME(access_request)
 	 *	And continue with sending the generic reply.
 	 */
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
 }
@@ -296,7 +297,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	fr_process_state_t const	*state;
 
@@ -385,7 +386,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME(access_accept)
+RESUME_FLAG(access_accept, UNUSED,)
 {
 	fr_pair_t			*vp;
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
@@ -408,17 +409,17 @@ RESUME(access_accept)
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(access_reject)
+RESUME_FLAG(access_reject, UNUSED,)
 {
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(access_challenge)
@@ -441,7 +442,7 @@ RESUME(access_challenge)
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(protocol_error)
@@ -482,7 +483,7 @@ RESUME(protocol_error)
 	return CALL_RESUME(send_generic);
 }
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -544,7 +545,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_ttls_sections_t, access_request),
@@ -557,7 +558,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_accept,
 		.section_offset = offsetof(process_ttls_sections_t, access_accept),
@@ -570,7 +572,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_access_reject,
 		.section_offset = offsetof(process_ttls_sections_t, access_reject),
@@ -583,7 +586,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_challenge,
 		.section_offset = offsetof(process_ttls_sections_t, access_challenge),
@@ -598,7 +602,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] = FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_FAIL,
 		.send = send_generic,
 		.resume = resume_protocol_error,
 		.section_offset = offsetof(process_ttls_sections_t, protocol_error),
@@ -617,7 +622,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_ttls_sections_t, do_not_respond),
@@ -669,7 +675,8 @@ fr_process_module_t process_ttls = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "ttls",
 		.config		= config,
-		.inst_size	= sizeof(process_ttls_t),
+		MODULE_INST(process_ttls_t),
+		MODULE_RCTX(process_rctx_t),
 
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate

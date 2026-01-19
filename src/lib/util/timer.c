@@ -574,6 +574,7 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
  *				in a temporal sense, not in a memory structure or dependency sense.
  * @param[in] delta		In how many nanoseconds to wait before should we execute the event.
+ * @param[in] free_on_fire	Whether event memory should be freed if the event fires.
  * @param[in] callback		function to execute if the event fires.
  * @param[in] uctx		user data to pass to the event.
  * @return
@@ -1530,9 +1531,9 @@ void fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
 		}
 
-		for (node = fr_rb_iter_init_inorder(&event_iter, locations[i]);
+		for (node = fr_rb_iter_init_inorder(locations[i], &event_iter);
 		     node;
-		     node = fr_rb_iter_next_inorder(&event_iter)) {
+		     node = fr_rb_iter_next_inorder(locations[i], &event_iter)) {
 			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
 			EVENT_DEBUG("                         : %u allocd at %s[%d]",

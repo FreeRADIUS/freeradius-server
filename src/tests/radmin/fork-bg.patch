@@ -1,0 +1,87 @@
+diff --git i/src/tests/radclient/all.mk w/src/tests/radclient/all.mk
+index dc9fd27a91..20598b22af 100644
+--- i/src/tests/radclient/all.mk
++++ w/src/tests/radclient/all.mk
+@@ -54,7 +54,6 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
+ 	$(eval RADCLIENT_CLIENT_PORT := $(shell echo $$(($(RADCLIENT_CLIENT_PORT)+1))))
+ 
+ 	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
+-	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+ 	${Q}if ! $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+ 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
+ 			echo "FAILED";                                              \
+diff --git i/src/tests/radiusd.mk w/src/tests/radiusd.mk
+index dd595f87e9..c07514a77e 100644
+--- i/src/tests/radiusd.mk
++++ w/src/tests/radiusd.mk
+@@ -56,46 +56,14 @@ $(eval $(subst test.,,$(TEST))_port := $(PORT))
+ #
+ .PHONY: $(TEST).radiusd_kill
+ $(TEST).radiusd_kill: | ${2}
+-	${Q}if [ -f ${2}/radiusd.pid ]; then \
+-		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+-		    rm -f ${2}/radiusd.pid; \
+-		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
+-		    echo "GDB output was:"; \
+-		    cat "${2}/gdb.log" 2> /dev/null; \
+-		    echo "--------------------------------------------------"; \
+-		    echo "Last entries in server log (${2}/radiusd.log):"; \
+-		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
+-		    exit 0; \
+-		fi; \
+-		if ! kill -9 `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+-			exit 1; \
+-		fi; \
+-		rm -f ${2}/radiusd.pid; \
+-		exit 0; \
+-	fi
++	@echo $$(kill-bg $(TEST))
+ 
+ #
+ #  Stop it politely.
+ #
+ .PHONY: $(TEST).radiusd_stop
+ $(TEST).radiusd_stop: | ${2}
+-	${Q}if [ -f ${2}/radiusd.pid ]; then \
+-		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+-		    rm -f ${2}/radiusd.pid; \
+-		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_stop"; \
+-		    echo "GDB output was:"; \
+-		    cat "${2}/gdb.log" 2> /dev/null; \
+-		    echo "--------------------------------------------------"; \
+-		    echo "Last entries in server log (${2}/radiusd.log):"; \
+-		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
+-		    exit 1; \
+-		fi; \
+-		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+-			exit 1; \
+-		fi; \
+-		rm -f ${2}/radiusd.pid; \
+-		exit 0; \
+-	fi
++	@echo $$(kill-bg $(TEST))
+ 
+ #
+ #	Start radiusd instance
+@@ -105,19 +73,13 @@ ${2}/radiusd.pid: ${2}
+ 	$$(eval export OUTPUT	   := ${2})
+ 	$$(eval export TEST_PORT   := $(PORT))
+ 	$$(eval export TEST	   := $(subst test.,,$(TEST)))
+-	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
++	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -r -xx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+ 
+ 	${Q}rm -f ${2}/radiusd.log
+ 	${Q}if test ! -z "$$(PRINT_PORT)"; then \
+ 		echo "$(PORT)"; \
+ 	fi
+-	${Q}if ! $$(RADIUSD_RUN); then \
+-		echo "FAILED STARTING RADIUSD"; \
+-		grep 'Error :' "${2}/radiusd.log"; \
+-		echo "Last entries in server log (${2}/radiusd.log):"; \
+-		tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
+-		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
+-	fi
++	@echo $$(fork-bg ${2},TESTDIR=$(DIR),OUTPUT=${2},TEST_PORT=$(PORT),TEST=$(subst test.,,$(TEST)),$$(RADIUSD_RUN))
+ 
+ .PHONY: $(TEST).radiusd_start
+ $(TEST).radiusd_start: ${2}/radiusd.pid

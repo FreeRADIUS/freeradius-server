@@ -179,7 +179,7 @@ sql {
 	#  If set to `no`, we do not process the user profiles unless `Fall-Through = yes` in the reply list.
 	#
 	#  Default is `yes`.
-#	read_profile = yes
+#	read_profiles = yes
 
 	#
 	#  logfile:: Write SQL queries to a logfile.

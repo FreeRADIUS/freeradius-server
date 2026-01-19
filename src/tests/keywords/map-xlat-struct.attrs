@@ -1,8 +1,8 @@
 Packet-Type = Solicit
 Transaction-ID = 0xFFFFFF
-Client-ID.DUID.UUID.Value = 0xc1b91af2314149b4b53f60c5d2d4197d
+Client-ID.Value.EN.Identifier = 0xabcdef
 
 Packet-Type == Advertise
 Result-Status == "success"
 Transaction-ID == 0xFFFFFF
-Client-ID = { DUID == 0, DUID.UUID.Value == 0xc1b91af2314149b4b53f60c5d2d4197d }
+Client-ID == { Value == { EN == { Identifier == 0xabcdef } } }

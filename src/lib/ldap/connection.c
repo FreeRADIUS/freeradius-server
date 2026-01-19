@@ -956,7 +956,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					      .request_fail = ldap_request_fail,
 					},
 				      thread->trunk_conf,
-				      "rlm_ldap", found, false);
+				      "rlm_ldap", found, false, thread->trigger_args);
 
 	if (!found->trunk) {
 	error:
@@ -1313,7 +1313,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 					      .request_fail = ldap_trunk_bind_auth_fail,
 					},
 				       thread->bind_trunk_conf,
-				       "rlm_ldap bind auth", ttrunk, false);
+				       "rlm_ldap bind auth", ttrunk, false, thread->bind_trigger_args);
 
 	if (!ttrunk->trunk) {
 		ERROR("Unable to create LDAP connection");

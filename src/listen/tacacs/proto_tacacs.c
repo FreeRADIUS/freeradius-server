@@ -38,6 +38,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, U
 
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", proto_tacacs_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_tacacs_t, io.dynamic_timeout), .dflt = "600.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_tacacs_t, io.max_connections), .dflt = "1024" } ,
 
@@ -78,7 +79,7 @@ static fr_dict_t const *dict_tacacs;
 extern fr_dict_autoload_t proto_tacacs_dict[];
 fr_dict_autoload_t proto_tacacs_dict[] = {
  	{ .out = &dict_tacacs, .proto = "tacacs" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 
@@ -89,7 +90,7 @@ extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
 	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
@@ -385,7 +386,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	RHEXDUMP3(buffer, data_len, "proto_tacacs encode packet");

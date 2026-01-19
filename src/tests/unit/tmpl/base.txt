@@ -1,0 +1,31 @@
+#
+#  Tests for parsing tmpls
+#
+#  $Id$
+#
+
+proto-dictionary radius
+tmpl-rules allow_unresolved=yes allow_unknown=yes
+
+tmpl-rules allow_unresolved=false
+
+tmpl User-Name
+match User-Name
+
+tmpl User-Name[1]
+match User-Name[1]
+
+tmpl User-Name[*]
+match User-Name[*]
+
+tmpl User-Name[n]
+match User-Name[n]
+
+tmpl User-Name[#]
+match User-Name[#]
+
+tmpl User-Name["foo"]
+match ERROR offset 10: Invalid data type for array index
+
+count
+match 15

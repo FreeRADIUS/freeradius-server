@@ -46,7 +46,7 @@ extern fr_dict_autoload_t tmpl_dict[];
 fr_dict_autoload_t tmpl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" }, /* @todo - remove RADIUS from the server core... */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Placeholder attribute for uses of unspecified attribute references
@@ -511,7 +511,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	permitted.
 		 */
 		slen = xlat_aeval_compiled(tmp_ctx, &str, request, tmpl_xlat(vpt), escape, escape_ctx);
-		if (slen < 0) goto error;
+		if (slen < 0) {
+			RPEDEBUG("Failed expanding %s", vpt->name);
+			goto error;
+		}
 
 		/*
 		 *	The output is a string which might get cast to something later.
@@ -574,7 +577,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		if (cast_type == FR_TYPE_NULL) {
 			if (needs_dup) {
-				fr_value_box_copy(vb_out, vb_out, vb_in);
+				if (unlikely(fr_value_box_copy(vb_out, vb_out, vb_in) < 0)) {
+					talloc_free(vb_out);
+					goto failed_cast;
+				}
 			} else {
 				fr_value_box_steal(vb_out, vb_out, vb_in);
 			}
@@ -603,7 +609,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	Cast the data to the correct type.  Which also allocates any variable sized buffers from the
 	 *	output ctx.
 	 */
-	if (dst_type != vb_in->type) {		
+	if (dst_type != vb_in->type) {
 		if (vb_in == &value) {
 			fr_assert(tmp_ctx != NULL);
 			fr_assert(str != NULL);
@@ -633,9 +639,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		if (needs_dup) {
 			fr_assert(vb_in != &value);
 
-			ret = fr_value_box_copy(ctx, &value, vb_in);
-			if (ret < 0) goto failed_cast;
-
+			if (unlikely(fr_value_box_copy(ctx, &value, vb_in) < 0)) goto failed_cast;
 			vb_in = &value;
 		} else {
 			fr_assert(dst_type == FR_TYPE_STRING);
@@ -647,7 +651,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	} /* else the output type is a leaf, and is the same data type as the input */
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
-		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
+		fr_value_box_field_sizes[dst_type], out, fr_value_box_offsets[dst_type]);
 
 	fr_value_box_memcpy_out(out, vb_in);
 
@@ -824,6 +828,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 
 		if (pair_append_by_tmpl_parent(ctx, &vp, head, vpt, true) < 0) return -1;
 
+		PAIR_ALLOCED(vp);
 		*out = vp;
 	}
 		return 1;
@@ -879,26 +884,14 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 		 */
 		if (ar != leaf) {
 			vp = fr_pair_find_by_da(list, NULL, ar->da);
-			/*
-			 *	HACK - Pretend we didn't see this stupid key field
-			 *
-			 *	If we don't have this, the code creates a key pair
-			 *	and then horribly mangles its data by adding children
-			 *	to it.
-			 *
-			 *	We just skip one level down an don't create or update
-			 *	the key pair.
-			 */
-			if (vp && fr_dict_attr_is_key_field(ar->da) && fr_type_is_leaf(vp->data.type)) {
-				ar = tmpl_attr_list_next(ar_list, ar);
-				continue;
-			}
 		}
+
 		/*
 		 *	Nothing found, create the pair
 		 */
 		if (!vp) {
 			if (fr_pair_append_by_da(pair_ctx, &vp, list, ar->da) < 0) goto error;
+			PAIR_ALLOCED(vp);
 		}
 
 		/*
@@ -1042,7 +1035,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 			} else {
 				value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 				if (!value) goto oom;
-				fr_value_box_copy(value, value, &vp->data);
+				if(unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+					talloc_free(value);
+					goto fail;
+				}
 			}
 
 			fr_value_box_list_insert_tail(&list, value);
@@ -1059,7 +1055,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
 
-		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
+		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) goto fail;
 		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
@@ -1125,7 +1121,10 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	if (tmpl_is_data(vpt)) {
 		MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(vpt), NULL));
 
-		fr_value_box_copy(value, value, tmpl_value(vpt));	/* Also dups taint */
+		if (unlikely(fr_value_box_copy(value, value, tmpl_value(vpt)) < 0)) {
+			talloc_free(value);
+			return -1;	/* Also dups taint */
+		}
 		goto done;
 	}
 
@@ -1298,9 +1297,9 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	 *	we now need to handle potentially
 	 *	multivalued lists.
 	 */
-	fr_value_box_list_foreach_safe(list, vb) {
+	fr_value_box_list_foreach(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) goto error;
-	}}
+	}
 
 	/*
 	 *	...and finally, apply the escape function

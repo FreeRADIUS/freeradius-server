@@ -21,7 +21,6 @@
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/unlang/xlat.h"
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
@@ -30,6 +29,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <ctype.h>
 
@@ -152,7 +152,7 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RPEDEBUG("Failed allocating space for unescaped string");
 		return XLAT_ACTION_FAIL;
 	}
-	sbuff = FR_SBUFF_IN(out_p, arg->vb_length);
+	sbuff = FR_SBUFF_OUT(out_p, talloc_array_length(out_p));
 
 	p = arg->vb_strvalue;
 	end = p + arg->vb_length;

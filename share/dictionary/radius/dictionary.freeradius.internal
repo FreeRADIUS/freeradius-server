@@ -13,7 +13,7 @@
 #
 FLAGS	internal
 
-ATTRIBUTE	Packet-Type				1000	integer
+ATTRIBUTE	Packet-Type				1000	uint32
 VALUE	Packet-Type			Access-Request		1
 VALUE	Packet-Type			Access-Accept		2
 VALUE	Packet-Type			Access-Reject		3
@@ -70,6 +70,10 @@ VALUE	Packet-Type			Do-Not-Respond		256
 # 1001 was Response-Packet-Type.  Now &reply.Packet-Type
 
 ATTRIBUTE	Packet-Authentication-Vector		1002	octets
+
+ATTRIBUTE	Packet					1003	tlv
+ATTRIBUTE	Id					.1	uint8
+ATTRIBUTE	Authenticator				.2	octets
 
 #
 #  v4 has tags as groups.

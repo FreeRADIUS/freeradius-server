@@ -1,5 +1,7 @@
 = Using the Autz-Type attribute
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To control which authorization modules are executed for an
 `Access-Request`
 

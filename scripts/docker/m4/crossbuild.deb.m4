@@ -1,5 +1,5 @@
 ARG from=DOCKER_IMAGE
-FROM ${from} as build
+FROM ${from} AS build
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
 
@@ -14,7 +14,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 #
 RUN apt-get update && \
     apt-get install $APT_OPTS \
-        software-properties-common \
         devscripts \
         equivs \
         git \
@@ -96,37 +95,6 @@ dnl for tests:
 
 
 #
-#  Documentation build dependencies
-#
-define(`NODE_VER', `20')dnl
-define(`ANTORA_VER', `3.1.7')dnl
-
-WORKDIR /tmp
-
-#  - doxygen & JSON.pm
-RUN apt-get install $APT_OPTS \
-        doxygen \
-        graphviz \
-        libjson-perl
-
-#  - antora (needs npm)
-RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_`'NODE_VER.x)" && \
-    apt-get install $APT_OPTS nodejs && \
-    npm i -g @antora/cli@ANTORA_VER @antora/site-generator-default@ANTORA_VER
-
-#  - pandoc
-RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | sed -ne 's/.*"browser_download_url".*"\(.*amd64\.deb\)"/\1/ p') && \
-    find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -print0 | \
-        xargs -0 -r apt-get install $APT_OPTS && \
-    find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -delete
-
-#  - asciidoctor
-RUN apt-get install $APT_OPTS \
-    ruby ruby-dev && \
-    gem install asciidoctor
-
-
-#
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
@@ -142,12 +110,15 @@ RUN git clone --depth 1 --no-single-branch ${source}
 
 #
 #  Install build dependencies for all branches from v4 onwards
+#  Debian sid fails if debian/control doesn't exist due to an issue
+#  in one of the included make files, so we create a blank file.
 #
 WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master|${branch})$" | sort -u); \
     do \
         git checkout $i; \
         if [ -e ./debian/control.in ] ; then \
+	    touch -t 202001010000 debian/control; \
             debian/rules debian/control ; \
         fi ; \
         mk-build-deps -irt"apt-get -o Debug::pkgProblemResolver=yes $APT_OPTS" debian/control ; \

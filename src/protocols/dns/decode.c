@@ -69,7 +69,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
-	uint8_t			prefix_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -78,54 +77,24 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Address MAY be shorter than 16 bytes.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
+		if (data_len == 0) {
 		raw:
 			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
-
 		}
-
-		/*
-		 *	Structs used fixed length fields
-		 */
-		if (parent->parent->type == FR_TYPE_STRUCT) {
-			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) goto raw;
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-
-			vp->vp_ip.af = AF_INET6;
-			vp->vp_ip.prefix = data[0];
-			memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
-			break;
-		}
-
-		/*
-		 *	No address, the prefix length MUST be zero.
-		 */
-		if (data_len == 1) {
-			if (data[0] != 0) goto raw;
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-
-			vp->vp_ip.af = AF_INET6;
-			break;
-		}
-
-		prefix_len = data[0];
-
-		/*
-		 *	If we have a /64 prefix but only 7 bytes of
-		 *	address, that's an error.
-		 */
-		if (fr_bytes_from_bits(prefix_len) > (data_len - 1)) goto raw;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
 
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.prefix = prefix_len;
-		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+		/*
+		 *	Check values of prefix length, data lengths, etc.
+		 */
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     data[0], data + 1, data_len - 1,
+						     (parent->parent->type == FR_TYPE_STRUCT), true) < 0) {
+			talloc_free(vp);
+			goto raw;
+		}
 		break;
 
 	/*
@@ -137,6 +106,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (data_len != 0) goto raw;
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
+
 		vp->vp_bool = true;
 		break;
 
@@ -152,6 +123,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	default:
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
@@ -372,7 +344,8 @@ static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_at
 /*
  *	Test points
  */
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_dns_ctx_t *test_ctx;
 

@@ -12,6 +12,7 @@ endif
 
 SOURCES		:= \
 		   atexit.c \
+		   backtrace.c \
 		   base16.c \
 		   base32.c \
 		   base64.c \
@@ -112,12 +113,50 @@ endif
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
 
-SRC_CFLAGS	:= -DNO_ASSERT -I$(top_builddir)/src
+SRC_CFLAGS	:= -DNO_ASSERT -DTOP_SRCDIR=\"${top_srcdir}\" -I$(top_builddir)/src
 
 # System libraries discovered by our top level configure script, links things
 # like pthread and the regexp libraries.
 TGT_LDLIBS	:= $(LIBS) $(PCAP_LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS) $(PCAP_LDFLAGS)
+
+# libbacktrace is checked out as a submodule and linked statically into libfreeradius-util
+# as it's the only library that uses it.  Other libraries should not use it directly but
+# instead add the functionality they need to libfreeradius-util.
+ifeq "$(WITH_BACKTRACE)" "yes"
+HEADERS         += $(top_srcdir)/src/lib/backtrace/backtrace.h
+TGT_PREREQS	+= libbacktrace.la
+TGT_LDLIBS	+= '-lbacktrace'
+TGT_LDFLAGS	+= -L$(top_builddir)/build/lib/local/.libs
+
+#
+#  Our local backtrace.c file needs the soft link to be created.
+#
+src/include/backtrace:
+	cd src/include && ln -s ../lib/backtrace
+
+build/objs/src/lib/util/backtrace.$(OBJ_EXT): | src/include/backtrace
+
+# Actually call the 'sub'-make to build libbacktrace.
+src/lib/backtrace/libbacktrace.la src/lib/backtrace/.libs/libbacktrace.a:
+	$(MAKE) -C $(top_srcdir)/src/lib/backtrace
+
+# We need to do this so jlibtool can find the library.
+build/lib/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
+	cp $< $@
+
+# Boilermake needs this target to exist
+build/lib/libbacktrace.la: src/lib/backtrace/libbacktrace.la build/lib/.libs/libbacktrace.a
+	cp $< $@
+
+# We need to do this so jlibtool can find the library.
+build/lib/local/.libs/libbacktrace.a: src/lib/backtrace/.libs/libbacktrace.a
+	cp $< $@
+
+# Boilermake needs this target to exist
+build/lib/local/libbacktrace.la: src/lib/backtrace/libbacktrace.la build/lib/local/.libs/libbacktrace.a
+	cp $< $@
+endif
 
 ifeq "$(TARGET_IS_WASM)" "yes"
 SRC_CFLAGS      += -sMAIN_MODULE=1 -sUSE_PTHREADS=1

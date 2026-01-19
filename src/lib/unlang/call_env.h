@@ -233,7 +233,7 @@ struct call_env_ctx_s {
 								///< module_method_binding_t.
 };
 
-#define CALL_ENV_TERMINATOR { NULL }
+#define CALL_ENV_TERMINATOR { .name = NULL }
 
 /** Helper macro for populating the size/type fields of a #call_env_method_t from the output structure type
  */
@@ -428,6 +428,9 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
  */
 int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
 			call_env_ctx_t const *cec, call_env_parser_t const *rule);
+
+int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
+		   CONF_SECTION const *cs, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 /** @} */
 
 /** @name Functions to be used by the section callbacks to add parsed data.

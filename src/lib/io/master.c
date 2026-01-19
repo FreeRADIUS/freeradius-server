@@ -410,6 +410,9 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 
 	COPY_FIELD(require_message_authenticator);
 	COPY_FIELD(require_message_authenticator_is_set);
+#ifdef NAS_VIOLATES_RFC
+	COPY_FIELD(allow_vulnerable_clients);
+#endif
 	COPY_FIELD(limit_proxy_state);
 	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(received_message_authenticator);
@@ -1661,6 +1664,12 @@ do_read:
 		}
 
 		MEM(client = client_alloc(thread, state, inst, thread, radclient, network));
+
+		/*
+		 *	Parent the dynamic client radclient off the client - it
+		 *	is the client which gets freed by the dynamic client timers.
+		 */
+		if (state == PR_CLIENT_PENDING) talloc_steal(client, radclient);
 	}
 
 have_client:
@@ -2076,14 +2085,15 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
-			FALL_THROUGH;
-
-		case PR_CLIENT_DYNAMIC:
 			delay = inst->idle_timeout;
 			if (fr_time_delta_ispos(client->radclient->limit.idle_timeout) &&
 			    (fr_time_delta_lt(client->radclient->limit.idle_timeout, inst->idle_timeout))) {
 				delay = client->radclient->limit.idle_timeout;
 			}
+			break;
+
+		case PR_CLIENT_DYNAMIC:
+			delay = inst->dynamic_timeout;
 			break;
 
 		case PR_CLIENT_NAK:
@@ -2136,7 +2146,7 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		return;
 	}
 
-	DEBUG("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
+	DEBUG2("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
 
 	/*
 	 *	It's a dynamically defined client.  If no one is using
@@ -2226,7 +2236,7 @@ idle_timeout:
 		 *	idle timeut.
 		 */
 		client->ready_to_delete = true;
-		delay = inst->idle_timeout;
+		delay = client->state == PR_CLIENT_DYNAMIC ? inst->dynamic_timeout : inst->idle_timeout;
 		goto reset_timer;
 	}
 
@@ -2799,13 +2809,6 @@ static int mod_close(fr_listen_t *li)
 	}
 	pthread_mutex_unlock(&connection->parent->mutex);
 
-	/*
-	 *	Clean up listener
-	 */
-	if (unlikely(fr_network_listen_delete(connection->nr, child) < 0)) {
-		PERROR("Failed to delete connection %s", connection->name);
-	}
-
 	talloc_free(connection->mi);
 
 	return 0;
@@ -3140,6 +3143,7 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	li->thread_instance = thread;
 	li->app_io_instance = inst;
 	li->track_duplicates = inst->app_io->track_duplicates;
+	if (inst->app_io->hexdump_set) inst->app_io->hexdump_set(li, inst->app_io_instance);
 
 	/*
 	 *	The child listener points to the *actual* IO path.

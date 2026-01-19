@@ -166,3 +166,11 @@
 #  or "NT-Password".
 #
 #$INCLUDE ${dictdir}/freeradius/v3/dictionary.freeradius.internal
+
+#
+#  Any local dictionaries can be added in the `dictionary.d` subdirectory.
+#
+#  The server will load all files in that directory, but will skip
+#  editor backup files, and others which are known to not be real files.
+#
+$INCLUDE- dictionary.d/

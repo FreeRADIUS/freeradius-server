@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "rlm_mruby.h"
@@ -43,32 +42,11 @@ typedef struct {
 } mruby_call_env_t;
 
 /*
- *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
- */
-typedef struct {
-	char const *filename;
-	char const *module_name;
-
-	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
-	bool		funcs_init;		//!< Has the tree been initialised.
-
-	mrb_state *mrb;
-
-	struct RClass *mruby_module;
-	struct RClass *mruby_request;
-	mrb_value mrubyconf_hash;
-} rlm_mruby_t;
-
-/*
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_mruby_t, filename) },
-	{ FR_CONF_OFFSET("module", rlm_mruby_t, module_name), .dflt = "Radiusd" },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_mruby_t, filename) },
+	{ FR_CONF_OFFSET("module", rlm_mruby_t, module_name), .dflt = "FreeRADIUS" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -222,6 +200,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/* Define the Request class */
 	inst->mruby_request = mruby_request_class(mrb, inst->mruby_module);
 
+	inst->mruby_pair_list = mruby_pair_list_class(mrb, inst->mruby_module);
+	inst->mruby_pair = mruby_pair_class(mrb, inst->mruby_module);
+
+	inst->mruby_ptr = mrb_define_class_under(mrb, inst->mruby_module, "Ptr", mrb->object_class);
+	MRB_SET_INSTANCE_TT(inst->mruby_ptr, MRB_TT_DATA);
+
 	DEBUG("Loading file %s...", inst->filename);
 	f = fopen(inst->filename, "r");
 	if (!f) {
@@ -237,8 +221,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, mruby_func_def_t, node, mruby_func_def_cmp, NULL);
-	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
-	while (func) {
+
+	for (func = fr_rb_iter_init_inorder(&inst->funcs, &iter);
+	     func != NULL;
+	     func = fr_rb_iter_next_inorder(&inst->funcs, &iter)) {
 		/*
 		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
 		 */
@@ -278,9 +264,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				return -1;
 			}
 		}
-
-		func = fr_rb_iter_next_inorder(&iter);
 	}
+
+	if (mrb_nil_p(mrb_check_intern_cstr(mrb, "instantiate"))) return 0;
 
 	status = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), "instantiate", 0);
 	if (mrb_undef_p(status)) {
@@ -291,263 +277,52 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb, fr_pair_list_t *vps)
-{
-	mrb_value	res;
-	fr_pair_t	*vp;
-
-	res = mrb_ary_new(mrb);
-	for (vp = fr_pair_list_head(vps); vp; vp = fr_pair_list_next(vps, vp)) {
-		mrb_value	tmp, key, val, to_cast;
-
-		tmp = mrb_ary_new_capa(mrb, 2);
-		key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
-
-		/*
-		 *	The only way to create floats, doubles, bools etc,
-		 *	is to feed mruby the string representation and have
-		 *	it convert to its internal types.
-		 */
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			to_cast = mrb_str_new(mrb, vp->vp_ptr, vp->vp_length);
-			break;
-
-		case FR_TYPE_BOOL:
-#ifndef NDEBUG
-			to_cast = mrb_nil_value();	/* Not needed but clang flags it */
-#endif
-			break;
-
-		default:
-		{
-			char	*in;
-			size_t	len;
-
-			len = fr_value_box_aprint(request, &in, &vp->data, NULL);
-			to_cast = mrb_str_new(mrb, in, len);
-			talloc_free(in);
-		}
-			break;
-		}
-
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_IPV6_PREFIX:
-		case FR_TYPE_IFID:
-		case FR_TYPE_ETHERNET:
-		case FR_TYPE_COMBO_IP_ADDR:
-		case FR_TYPE_COMBO_IP_PREFIX:
-			val = to_cast;		/* No conversions required */
-			break;
-
-		case FR_TYPE_BOOL:
-			val = vp->vp_bool ? mrb_obj_value(mrb->true_class) : mrb_obj_value(mrb->false_class);
-			break;
-
-		case FR_TYPE_UINT8:
-		case FR_TYPE_UINT16:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_UINT64:
-		case FR_TYPE_INT8:
-		case FR_TYPE_INT16:
-		case FR_TYPE_INT32:
-		case FR_TYPE_INT64:
-		case FR_TYPE_DATE:
-		case FR_TYPE_TIME_DELTA:
-		case FR_TYPE_SIZE:
-			val = mrb_convert_type(mrb, to_cast, MRB_TT_FIXNUM, "Fixnum", "to_int");
-			break;
-
-		case FR_TYPE_FLOAT32:
-		case FR_TYPE_FLOAT64:
-			val = mrb_convert_type(mrb, to_cast, MRB_TT_FLOAT, "Float", "to_f");
-			break;
-
-		case FR_TYPE_NON_LEAF:
-			fr_assert(0);
-			return -1;
-		}
-
-		mrb_ary_push(mrb, tmp, key);
-		mrb_ary_push(mrb, tmp, val);
-		mrb_ary_push(mrb, res, tmp);
-
-		*out = res;
-	}
-
-	return 0;
-}
-
-static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, mrb_state *mrb, mrb_value value, char const *function_name)
-{
-	int i;
-	fr_pair_list_t tmp_list;
-
-	fr_pair_list_init(&tmp_list);
-
-	for (i = 0; i < RARRAY_LEN(value); i++) {
-		mrb_value	tuple = mrb_ary_entry(value, i);
-		mrb_value	key, val;
-		char const	*ckey, *cval;
-		fr_pair_t	*vp;
-		tmpl_t	*dst;
-		fr_token_t	op = T_OP_EQ;
-
-		/* This tuple should be an array of length 2 */
-		if (mrb_type(tuple) != MRB_TT_ARRAY) {
-			REDEBUG("add_vp_tuple, %s: non-array passed at index %i", function_name, i);
-			continue;
-		}
-
-		if (RARRAY_LEN(tuple) != 2 && RARRAY_LEN(tuple) != 3) {
-			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index "
-				"%i, expected 2 or 3, got %"PRId64, function_name, i, RARRAY_LEN(tuple));
-			continue;
-		}
-
-		key = mrb_ary_entry(tuple, 0);
-		val = mrb_ary_entry(tuple, -1);
-		if (mrb_type(key) != MRB_TT_STRING) {
-			REDEBUG("add_vp_tuple, %s: tuple element %i must have a string as first element", function_name, i);
-			continue;
-		}
-
-		ckey = mrb_str_to_cstr(mrb, key);
-		cval = mrb_str_to_cstr(mrb, mrb_obj_as_string(mrb, val));
-		if (ckey == NULL || cval == NULL) {
-			REDEBUG("%s: string conv failed", function_name);
-			continue;
-		}
-
-
-		if (RARRAY_LEN(tuple) == 3) {
-			if (mrb_type(mrb_ary_entry(tuple, 1)) != MRB_TT_STRING) {
-				REDEBUG("Invalid type for operator, expected string, falling back to =");
-			} else {
-				char const *cop = mrb_str_to_cstr(mrb, mrb_ary_entry(tuple, 1));
-				if (!(op = fr_table_value_by_str(fr_tokens_table, cop, 0))) {
-					REDEBUG("Invalid operator: %s, falling back to =", cop);
-					op = T_OP_EQ;
-				}
-			}
-		}
-		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
-
-		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
-					&(tmpl_rules_t){
-						.attr = {
-							.dict_def = request->proto_dict,
-							.list_def = request_attr_reply,
-						}
-					}) <= 0) {
-			ERROR("Failed to find attribute %s", ckey);
-			continue;
-		}
-
-		if (tmpl_request_ptr(&request, tmpl_request(dst)) < 0) {
-			ERROR("Attribute name %s refers to outer request but not in a tunnel, skipping...", ckey);
-			talloc_free(dst);
-			continue;
-		}
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(dst)));
-		talloc_free(dst);
-
-		if (fr_pair_value_from_str(vp, cval, strlen(cval), NULL, false) < 0) {
-			REDEBUG("%s: %s = %s failed", function_name, ckey, cval);
-		} else {
-			DEBUG("%s: %s = %s OK", function_name, ckey, cval);
-		}
-
-		fr_pair_append(&tmp_list, vp);
-	}
-	radius_pairmove(request, vps, &tmp_list);
-}
-
-static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,
-				char const *list_name, fr_pair_list_t *vps)
-{
-	mrb_value res;
-
-	memset(&res, 0, sizeof(res));	/* clang scan */
-
-	if (mruby_vps_to_array(request, &res, mrb, vps) < 0) return -1;
-
-	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, list_name), res);
-
-	return 0;
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_mruby(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mruby_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
 	mruby_call_env_t	*func = talloc_get_type_abort(mctx->env_data, mruby_call_env_t);
-	mrb_state *mrb = inst->mrb;
-	mrb_value mruby_request, mruby_result;
+	mrb_state		*mrb = inst->mrb;
+	mrb_value		mruby_packet, mruby_result, mruby_request, mruby_reply, mruby_control, mruby_session_state;
+	mrb_value		args[5];
 
-	mruby_request = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
-	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
-	mruby_set_vps(request, mrb, mruby_request, "@request", &request->request_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->session_state_pairs);
+	mruby_packet = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
 
+	args[0] = mruby_inst_object(mrb, inst->mruby_ptr, inst);
+	args[1] = mruby_request_object(mrb, inst->mruby_ptr, request);
+	args[2] = mruby_dict_attr_object(mrb, inst->mruby_ptr, fr_dict_root(request->proto_dict));
+	args[3] = mrb_int_value(mrb, 0);
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->request_pairs));
+	mruby_request = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@request"), mruby_request);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->reply_pairs));
+	mruby_reply = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@reply"), mruby_reply);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->control_pairs));
+	mruby_control = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@control"), mruby_control);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->session_state_pairs));
+	mruby_session_state = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@session_state"), mruby_session_state);
+
+	RDEBUG2("Calling %s", func->func->function_name);
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(class-varargs)
-	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_request);
+	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_packet);
 DIAG_ON(class-varargs)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
-	/* Two options for the return value:
-	 * - a fixnum: convert to rlm_rcode_t, and return that
-	 * - an array: this should have exactly three items in it. The first one
-	 *             should be a fixnum, this will once again be converted to
-	 *             rlm_rcode_t and eventually returned. The other two items
-	 *             should be arrays. The items of the first array should be
-	 *             merged into reply, the second array into control.
+	/*
+	 *	The return should be a fixnum, which is converted to rlm_rcode_t
 	 */
-	switch (mrb_type(mruby_result)) {
-		/* If it is a Fixnum: return that value */
-		case MRB_TT_FIXNUM:
-			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
+	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) RETURN_UNLANG_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
 
-		case MRB_TT_ARRAY:
-			/* Must have exactly three items */
-			if (RARRAY_LEN(mruby_result) != 3) {
-				ERROR("Expected array to have exactly three values, got %" PRId64 " instead", RARRAY_LEN(mruby_result));
-				RETURN_MODULE_FAIL;
-			}
-
-			/* First item must be a Fixnum, this will be the return type */
-			if (mrb_type(mrb_ary_entry(mruby_result, 0)) != MRB_TT_FIXNUM) {
-				ERROR("Expected first array element to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 0))));
-				RETURN_MODULE_FAIL;
-			}
-
-			/* Second and third items must be Arrays, these will be the updates for reply and control */
-			if (mrb_type(mrb_ary_entry(mruby_result, 1)) != MRB_TT_ARRAY) {
-				ERROR("Expected second array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 1))));
-				RETURN_MODULE_FAIL;
-			} else if (mrb_type(mrb_ary_entry(mruby_result, 2)) != MRB_TT_ARRAY) {
-				ERROR("Expected third array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 2))));
-				RETURN_MODULE_FAIL;
-			}
-
-			add_vp_tuple(request->reply_ctx, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), func->func->function_name);
-			add_vp_tuple(request->control_ctx, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), func->func->function_name);
-			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0)));
-
-		default:
-			/* Invalid return type */
-			ERROR("Expected return to be a Fixnum or an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
-			RETURN_MODULE_FAIL;
-	}
+	/* Invalid return type */
+	RERROR("Expected return to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
+	RETURN_UNLANG_FAIL;
 }
 
 /*

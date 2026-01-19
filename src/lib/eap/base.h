@@ -27,6 +27,7 @@ RCSIDH(lib_eap_base_h, "$Id$")
 #include <freeradius-devel/eap/types.h>
 
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/eap/base.h>
@@ -62,9 +63,8 @@ void			eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t 
 eap_packet_raw_t	*eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps);
 void			eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
 
-unlang_action_t		eap_virtual_server(request_t *request, eap_session_t *eap_session, CONF_SECTION *server_cs);
+unlang_action_t		eap_virtual_server(request_t *request, eap_session_t *eap_session, virtual_server_t *virtual_server);
 
 int			eap_base_init(void);
 
 void			eap_base_free(void);
-

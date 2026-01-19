@@ -146,7 +146,8 @@ echo "smtp_to_request_1: smtp_to_request_1" >> ${BUILDDIR}/untaint
 echo "smtp_to_request_2: smtp_to_request_2" >> ${BUILDDIR}/untaint
 echo "smtp_to_request_3: smtp_to_request_3" >> ${BUILDDIR}/untaint
 echo "smtp_cc_request_1: smtp_cc_request_1" >> ${BUILDDIR}/untaint
-echo "smtp_cc_request_2: smtp_cc_request_2" >> ${BUILDDIR}/untaint
+echo "xlat_recipient_1: xlat_recipient_1" >> ${BUILDDIR}/untaint
+echo "xlat_recipient_2: xlat_recipient_2" >> ${BUILDDIR}/untaint
 
 echo "Generating the file attachment"
 # Generate a file for test email attachments

@@ -1,0 +1,71 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+#
+#  This is an alias, so looking up the name gets us the full ref.
+#
+attr.name Client-ID.LLT
+match Client-ID.Value.LLT
+
+attr.flags Client-ID
+match has_alias
+
+attr.oid Client-ID.LLT
+match 1.2.1
+
+attr.type Client-ID.LLT
+match struct
+
+#
+#  @todo - attr.ref, where we find the name _without_ following the refs.  Or, find the DA of everything but the last element,
+#  and then call dict_attr_by_name() to get the raw attribute.
+#
+
+#
+#  @todo - attr.children - print out all children in the namespace, by looping over the namespace
+#
+
+attr.children Client-ID
+match UUID (ALIAS ref=Client-ID.Value.UUID), DUID (uint16), LL (ALIAS ref=Client-ID.Value.LL), EN (ALIAS ref=Client-ID.Value.EN), Value (union), LLT (ALIAS ref=Client-ID.Value.LLT)
+
+attr.children Server-ID
+match UUID (ALIAS ref=Server-ID.Value.UUID), DUID (uint16), LL (ALIAS ref=Server-ID.Value.LL), EN (ALIAS ref=Server-ID.Value.EN), Value (union), LLT (ALIAS ref=Server-ID.Value.LLT)
+
+#
+#  Printing and parsing omit the intermediate UNION.
+#
+pair Client-ID.LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = aa:bb:cc:dd:ee:ff } }
+match Client-ID = { LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
+
+pair Server-ID.LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = aa:bb:cc:dd:ee:ff } }
+match Server-ID = { LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
+
+# And Server
+attr.name Server-ID.LLT
+match Server-ID.Value.LLT
+
+attr.flags Server-ID.LLT
+match has_alias
+
+attr.oid Server-ID.LLT
+match 2.2.1
+
+attr.type Server-ID.LLT
+match struct
+
+#
+#  The tmpl should fix up its name, too.
+#
+tmpl Server-ID.LLT
+match Server-ID.Value.LLT
+
+count
+match 29

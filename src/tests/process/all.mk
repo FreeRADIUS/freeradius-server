@@ -89,7 +89,6 @@ $(foreach x,$(FILES),$(eval $(call PROCESS_TEST,$x)))
 #
 PROCESS_ARGS := -p test
 PROCESS_ARGS += -D $(DIR)/share -d $(DIR)/
-PROCESS_ARGS += -S forbid_update=yes
 PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
 
 $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf

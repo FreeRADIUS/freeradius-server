@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
@@ -26,10 +27,7 @@
  */
 
 #include <freeradius-devel/build.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/value.h>
-
-extern HIDDEN fr_dict_t const *dict_der;
 
 /** Enumeration describing the data types in a DER encoded structure
  */
@@ -111,10 +109,13 @@ typedef struct {
 	bool 			is_oid_and_value : 1;	//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool			has_default_value : 1;	//!< a default value exists
-	bool 			is_oid_leaf : 1;
+	bool 			leaf : 1;		//!< encode this OID along with its value
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
+typedef struct {
+	TALLOC_CTX	*tmp_ctx;		//!< ctx under which temporary data will be allocated
+} fr_der_decode_ctx_t;
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
 {
@@ -133,7 +134,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
 #define fr_der_flag_has_default_value(_da) 	((fr_der_attr_flags(_da)->has_default_value) != NULL);
-#define fr_der_flag_is_oid_leaf(_da) 	(fr_der_attr_flags(_da)->is_oid_leaf)
+#define fr_der_flag_leaf(_da) 		(fr_der_attr_flags(_da)->leaf)
 #define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
 
 /*
@@ -146,3 +147,9 @@ char	const *fr_der_tag_to_str(fr_der_tag_t tag);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);
+
+/*
+ *	decode.c
+ */
+ssize_t	fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx);

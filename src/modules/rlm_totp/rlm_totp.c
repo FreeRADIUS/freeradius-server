@@ -75,7 +75,7 @@ static const conf_parser_t module_config[] = {
 /*
  *  Do the authentication
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
 	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_totp_t);
@@ -89,16 +89,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	uint8_t			buffer[80];	/* multiple of 5*8 characters */
 	time_t			now;
 
-	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
+	if (fr_type_is_null(user_password->type)) RETURN_UNLANG_NOOP;
 
 	if (user_password->vb_length == 0) {
 		RWARN("TOTP.From-User is empty");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
 		RWARN("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -111,12 +111,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		ssize_t len;
 
-		if (fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
+		if (fr_type_is_null(secret->type)) RETURN_UNLANG_NOOP;
 
 		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
 			RERROR("TOTP.Secret cannot be decoded");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		our_key = buffer;
@@ -131,13 +131,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	switch (fr_totp_cmp(&inst->totp, request, now, our_key, our_keylen, user_password->vb_strvalue)) {
 	case 0:
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case -2:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	default:
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 }
 

@@ -1,0 +1,45 @@
+= Radiusd.conf
+
+The following configurations have been removed. See the new `listen`
+sections for their replacements.
+
+[width="100%",cols="30%,70%",options="header",]
+|===
+| v3              | v4
+| `cleanup_delay` | replaced with `cleanup_delay` in a `listen` section.
+| `reject_delay`  | see `mods-available/delay`. You should list `delay`
+                    last in any `send Access-Reject` section.
+| `status_server` | see `type = Status-Server` in a new `listen` section.
+|===
+
+The `log` section has been updated to remove many configuration items
+which are specific to RADIUS, and to Access-Request packets. Please see
+`sites-available/default`, and look for the `Access-Request`
+subsection there. See also xref:reference:raddb/templates.conf.adoc[`templates.conf`]
+for a way to regain one global configuration for `Access-Request`
+packets.
+
+== Instantiate Section
+
+The `instantiate` section has been removed.  It originally started out
+as a way to ensure that modules were instantiated in a particular
+order.  A later use of the `instantiate` section was to define
+"virtual modules" for dynamic expansion.  That functionality has been
+moved to the `mods-available/` and `mods-enabled/` directories.
+i.e. in version 4, just list the virtual module in a file, as if it
+was a real module.
+
+See the xref:reference:raddb/mods-available/redundant_sql.adoc[redundant_sql] module
+for more information.  In short, a virtual module can be put into
+the `mods-enabled` directory as with any other module, as with the
+following text:
+
+[source,unlang]
+----
+redundant redundant_sql {
+	sql1
+	sql2
+}
+----
+
+In this case, this definition creates a `redundant_sql` virtual module.

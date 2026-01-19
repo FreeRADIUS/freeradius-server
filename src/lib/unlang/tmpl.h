@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/unlang/tmpl.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 /** Flags that show the type of arguments included
  *
@@ -105,10 +106,10 @@ typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_signa
  * @param[in] rctx		a local context for the callback.
  * @return an unlang action.
  */
-typedef unlang_action_t (*fr_unlang_tmpl_resume_t)(rlm_rcode_t *p_result, request_t *request, void *rctx);
+typedef unlang_action_t (*fr_unlang_tmpl_resume_t)(unlang_result_t *p_result, request_t *request, void *rctx);
 
-int		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
-				 request_t *request, tmpl_t const *tmpl, unlang_tmpl_args_t *args)
+int		unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
+				 request_t *request, tmpl_t const *tmpl, unlang_tmpl_args_t *args, bool top_frame)
 		CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus

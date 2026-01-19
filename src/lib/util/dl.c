@@ -704,9 +704,9 @@ static int _dl_loader_free(dl_loader_t *dl_loader)
 		/*
 		 *	Yes, this is the correct call order
 		 */
-		for (data = fr_rb_iter_init_inorder(&iter, dl_loader->tree);
+		for (data = fr_rb_iter_init_inorder(dl_loader->tree, &iter);
 		     data;
-		     data = fr_rb_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(dl_loader->tree, &iter)) {
 			dl_t *dl = talloc_get_type_abort(data, dl_t);
 
 			fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
@@ -959,26 +959,26 @@ bool dl_loader_set_static(dl_loader_t *dl_loader, bool do_static)
 /** Called from a debugger to print information about a dl_loader
  *
  */
-void dl_loader_debug(dl_loader_t *dl)
+void dl_loader_debug(FILE *fp, dl_loader_t *dl)
 {
-	FR_FAULT_LOG("dl_loader %p", dl);
-	FR_FAULT_LOG("lib_dir           : %s", dl->lib_dir);
-	FR_FAULT_LOG("do_dlclose        : %s", dl->do_dlclose ? "yes" : "no");
-	FR_FAULT_LOG("uctx              : %p", dl->uctx);
-	FR_FAULT_LOG("uctx_free         : %s", dl->do_dlclose ? "yes" : "no");
-	FR_FAULT_LOG("defer_symbol_init : %s", dl->defer_symbol_init ? "yes" : "no");
+	fprintf(fp, "dl_loader %p", dl);
+	fprintf(fp, "lib_dir           : %s\n", dl->lib_dir);
+	fprintf(fp, "do_dlclose        : %s\n", dl->do_dlclose ? "yes" : "no");
+	fprintf(fp, "uctx              : %p\n", dl->uctx);
+	fprintf(fp, "uctx_free         : %s\n", dl->do_dlclose ? "yes" : "no");
+	fprintf(fp, "defer_symbol_init : %s\n", dl->defer_symbol_init ? "yes" : "no");
 
 	fr_dlist_foreach(&dl->sym_init, dl_symbol_init_t, sym) {
-		FR_FAULT_LOG("symbol_init %s", sym->symbol ? sym->symbol : "<base>");
-		FR_FAULT_LOG("\tpriority : %u", sym->priority);
-		FR_FAULT_LOG("\tfunc     : %p", sym->func);
-		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+		fprintf(fp, "symbol_init %s\n", sym->symbol ? sym->symbol : "<base>");
+		fprintf(fp, "\tpriority : %u\n", sym->priority);
+		fprintf(fp, "\tfunc     : %p\n", sym->func);
+		fprintf(fp, "\tuctx     : %p\n", sym->uctx);
 	}
 
 	fr_dlist_foreach(&dl->sym_free, dl_symbol_free_t, sym) {
-		FR_FAULT_LOG("symbol_free %s", sym->symbol ? sym->symbol : "<base>");
-		FR_FAULT_LOG("\tpriority : %u", sym->priority);
-		FR_FAULT_LOG("\tfunc     : %p", sym->func);
-		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+		fprintf(fp, "symbol_free %s\n", sym->symbol ? sym->symbol : "<base>");
+		fprintf(fp, "\tpriority : %u\n", sym->priority);
+		fprintf(fp, "\tfunc     : %p\n", sym->func);
+		fprintf(fp, "\tuctx     : %p\n", sym->uctx);
 	}
 }

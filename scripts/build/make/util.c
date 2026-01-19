@@ -41,7 +41,7 @@ int util_gmk_setup(void);
 extern int plugin_is_GPL_compatible;
 int plugin_is_GPL_compatible;
 
-static char *make_tolower(char const *nm, __attribute__((unused))  unsigned int argc, char **argv)
+static char *make_tolower(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	size_t	len = strlen(argv[0]);
 	char	*out = gmk_alloc(len + 1);
@@ -53,7 +53,7 @@ static char *make_tolower(char const *nm, __attribute__((unused))  unsigned int 
 	return out;
 }
 
-static char *make_toupper(char const *nm, __attribute__((unused))  unsigned int argc, char **argv)
+static char *make_toupper(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	size_t	len = strlen(argv[0]);
 	char	*out = gmk_alloc(len + 1);

@@ -1266,7 +1266,11 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf, false,
+	/*
+	 *  Triggers won't work from the tool
+	 */
+	this->conf.triggers = false;
+	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf,
 					       "rlm_redis_ippool_tool", NULL, NULL);
 	if (!this->cluster) {
 		talloc_free(this);
@@ -1610,7 +1614,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
 		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
+					     &FR_SBUFF_IN_STR(argv[1]), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		pool_arg = (uint8_t *)out.buff;
 	}
@@ -1621,7 +1625,7 @@ do { \
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
 		(void) fr_value_str_unescape(&out,
-					     &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
+					     &FR_SBUFF_IN_STR(argv[2]), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		range_arg = (uint8_t *)out.buff;
 	}

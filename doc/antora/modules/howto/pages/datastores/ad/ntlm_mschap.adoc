@@ -1,4 +1,4 @@
-= Configuring ntlm_auth
+= Configure ntlm_auth
 
 Once you have verified that Samba is installed and working correctly, and that the `ntlm_auth` program works, you can proceed with configuring FreeRADIUS to use ntlm_auth. For initial testing, we use the exec module, and will run the exact command line used in the previous testing step.
 
@@ -22,7 +22,7 @@ authenticate {
 }
 ```
 
-== Testing `ntlm_auth`
+== Test ntlm_auth
 
 Add the following text for testing purposes only to the top of the users file. The "users" file is located at `raddb/mods-config/files/authorize`.
 
@@ -49,9 +49,9 @@ rad_recv: Access-Accept packet from host 127.0.0.1 port 1812, length=20
 
 This text means that authentication succeeded. A few lines above this text, the debug output will also show the exact command line used to run `ntlm_auth`.
 
-== Configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP
+== Configure FreeRADIUS to use `ntlm_auth` for MS-CHAP
 
-Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+Once you have the previous steps working, configure FreeRADIUS to use `ntlm_auth` for MS-CHAP. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
 
 
 ```

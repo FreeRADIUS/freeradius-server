@@ -17,32 +17,98 @@ In FreeRADIUS, the `clients.conf` file lists the clients that are
 permitted to send requests to the server. Take some time to read this file and
 the included comments.
 
-Configure the server with the the IP address of the new client and a
-shared secret. If the server is already running, stop it.
+== Configure the server
 
-Start the server
+Configure the server by adding the new client's IP address and shared
+secret just below `client localhost`. If the server is already
+running, stop it.  The example below is a good start.  You will need
+to change it to use an IP address which is valid in your local
+network, and also to change the shared seceet.
+
+[source,text]
+----
+client new_client {
+    ipaddr = 192.168.1.100
+    secret = testing123
+    proto = udp
+    require_message_authenticator = auto
+    limit_proxy_state = auto
+    shortname = new_client
+}
+----
+
+Each client must have a single IP address and a shared secret. Only
+one of `ipaddr`, `ipv4addr`, or `ipv6addr` can be used. The `ipaddr`
+attribute defines the client's IP address and can be IPv4, IPv6, or a
+domain name, though using an IP is recommended. For example, `ipaddr =
+127.0.0.1` refers to the local machine. `ipv4addr` allows only IPv4
+addresses, with `*` permitting any IPv4. `ipv6addr` allows only IPv6
+addresses, with `::1` for localhost. Using explicit IP addresses
+avoids DNS lookup issues, as the server resolves hostnames only once
+at startup.
+
+The `secret` is a shared password used to secure communication between
+the client and the server. It can be any string up to 8k characters
+and should be random and strong to prevent unauthorized access.
+
+Other optional settings can be added to control how the client
+connects and communicates with the server. These include: `proto`,
+`require_message_authenticator`, `limit_proxy_state`, `shortname`, and
+`limit`.
+
+The `proto` attribute specifies the transport protocol used by the
+client. It can be `udp`, `tcp`, or `*` for both. If it is not set, it
+defaults to `udp`, which is the standard RADIUS protocol. TCP is used
+for clients which require reliable connections.
+
+`require_message_authenticator` ensures that a `Message-Authenticator`
+is included in `Access-Request` packets. Its values can be `yes`,
+`no`, or `auto` (default). Setting it to `yes` means that all
+`Access-Request` packets *must* contain `Message-Authenticator`,
+otherwise they are discarded.
+
+`limit_proxy_state` controls whether `Proxy-State` attributes are
+accepted in packets that do not include a
+`Message-Authenticator`. Allowed values are `yes`, `no`, or `auto`
+(default is `auto`). This helps prevent attacks by ensuring only valid
+packets are processed.
+
+The `shortname` attribute provides a simple alias for the client's
+full domain name or IP address. It is optional and primarily used for
+compatibility with older versions of FreeRADIUS.
+
+There is a `limit` sectio, which can be used for TCP, so it is not
+used here.  These limits help manage server load and prevent resource
+exhaustion.
+
+
+== Start the server
 
 [source, bash]
-------------
+----
 $ radiusd -X
-------------
+----
 
-Send a Status-Server packet from the new client to the server, using the
-correct IP address, port, and shared secret.
+== Verify the configuration
 
-Verify that the server saw the packet. Also verify that the client saw
-the response.
+Configure the client to send packets to the server.  How this is done
+depends on the client.
+
+Verify that the server receives packets from the client. Also verify
+that the client receives responses from the server.
+
+### Common Problems
 
 Some common problems are:
 
-* not using the correct port in the client software
-* not using the the correct shared secret in the client software
-* the server responds to the client from an address that is different from the one to which the client sent the request.
+* Not using the correct port in the client software.
+* Not using the correct shared secret in the client software.
+* The server responds to the client from an address that is different from the one to which the client sent the request.
 
-The first two problems can be solved by configuring the client with the
-correct information. The last problem is seen when the client does not
-see the response from the server, or when the server gives an error message about an
-invalid response.
+The first two problems can be solved by configuring the client with
+the correct information. The last problem is seen when the client does
+not see the response from the server, or when the server gives an
+error message about an invalid response.
 
 If the server responds to the packet and the client accepts the
 response, then the test was successful, and the server may be halted.

@@ -1,0 +1,99 @@
+= Upgrade from v3
+
+The configuration for v4 is _somewhat_ compatible with the v3
+configuration. It should be possible to reuse most of a v3
+reconfiguration with minor tweaks.
+
+In general, we have the following changes:
+
+* Most module configuration is very close to v3.
+* Most of the `unlang` processing is very close to v3.
+  * `update` is now replaced just by editing the attribute in place.
+* Each `server` section need a `namespace` parameter.
+* Packet processing sections are now `recv Access-Request`, etc. Not
+  `authorize`, etc.
+* Each `listen` section needs to be converted to the v4 format.
+
+[NOTE]
+====
+If you are upgrading from v2 you need to read the https://www.freeradius.org/documentation/freeradius-server/3.2.9/installation/upgrade.html[Upgrade to v3] on the https://www.freeradius.org[Freeradius website]. This file describes only the changes from v3 to v4.
+====
+
+== Use a v4 Default Configuration
+
+When upgrading, please start with the default configuration of v4. Then,
+move your v3 configuration over, one module at a time. Check this file
+for differences in module configuration, and update the module to use
+the new configuration. Start the server after every change via
+`radiusd -XC` to see if the configuration is OK. Then, convert the
+`listen` sections, followed by the `server` sections.
+
+== New Attributes Names
+
+All of the attribute names used in v3 have been changed in v4.  Please
+see the xref:howto:upgrade/attribute_names.adoc[Attribute Names] for more
+information.  This change was necessary in order to support the new
+"grouped" attributes, which are required for DHCPv6 and other
+protocols.
+
+== Connection Timeouts
+
+In v3 and earlier, the configuration items for configuring connection timeouts
+were either confusingly named, or completely absent in the case of many
+contributed modules.
+
+In v4, connection timeouts can be configured universally for all modules
+with the `connect_timeout` config item of the module’s `pool {}`
+section.
+
+The following modules will apply `connect_timeout`:
+
+* rlm_rest
+* rlm_linelog (network connections only)
+* rlm_ldap
+* rlm_cache_memcached
+* rlm_redis_* (all the redis modules)
+* rlm_sql_cassandra
+* rlm_sql_db2
+* rlm_sql_freetds
+* rlm_sql_mysql
+* rlm_sql_unixodbc
+
+Some modules such as rlm_sql_postgresql can have their timeout set via
+an alternative configuration item (e.g. `radius_db` in the case of
+postgresql).
+
+== Xlat Expansions
+
+The xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax like `%{md5:...}` to `%hash.md5(...)`.
+
+=== Removed expansions
+
+`%{integer:...}` has been removed.  Just use a cast, such as `(integer) Service-Type`.
+
+`%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{NAS-Port + 14}`.
+
+== Upgrade Steps
+
+. Start with the default configuration of v4.
+
+. Move your v3 configuration over, one module at a time.
+
+. Check for differences in module configuration and update the selected module to use the new configuration.
+
+. Start the server after every change via `radiusd -XC` to see if the configuration is OK.
+
+. Convert the listen sections, followed by the server sections.
+
+. Take your time and make small, incremental changes. This helps avoid major updates and reduces debugging problems.
+
+. Use a revision control system such as `git`` to save and track your changes.
+
+. If the changes work as expected, do a `git commit` and continue with the next change.
+
+. If the changes do not work, either keep at it or move to a different part of the configuration.
+
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

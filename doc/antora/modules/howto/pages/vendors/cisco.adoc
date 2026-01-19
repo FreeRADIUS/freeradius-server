@@ -18,7 +18,7 @@ To use RADIUS to authenticate your inbound shell (telnet and ssh) connections yo
 
 This will let a user (called _youruser_) in for the first level of access to your Cisco. You still need to **enable** to perform any configuration changes or anything requiring a higher level of access.
 
-See Configuring Basic AAA on a http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a0080093c81.shtml[Cisco Access Server] for more details.
+See Configure Basic AAA on a http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a0080093c81.shtml[Cisco Access Server] for more details.
 
 ## Enable Mode
 

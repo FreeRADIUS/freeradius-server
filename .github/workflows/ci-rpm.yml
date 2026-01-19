@@ -32,7 +32,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  },
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10",      "DIST": "rocky",   "VERSION": 10  },
             ]
           }
         EOF
@@ -41,7 +42,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   }
             ]
           }
         EOF
@@ -71,17 +72,10 @@ jobs:
     name: "RPM build"
 
     steps:
-    - name: Enable PowerTools / CRB
+    - name: Enable EPEL and CRB
       run: |
-        dnf install -y dnf-utils dnf-plugins-core
-        dnf config-manager --enable PowerTools || :
-        dnf config-manager --enable powertools || :
-        dnf config-manager --enable crb || :
-
-    - name: Enable EPEL for Rocky Linux 9
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
-      run: |
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y dnf-utils dnf-plugins-core epel-release
+        dnf config-manager --enable crb
 
     # For pkill
     - name: Enable procps-ng
@@ -200,17 +194,10 @@ jobs:
         echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
         rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
-    - name: Enable PowerTools / CRB
+    - name: Enable EPEL and CRB
       run: |
-        dnf install -y dnf-utils dnf-plugins-core
-        dnf config-manager --enable PowerTools || :
-        dnf config-manager --enable powertools || :
-        dnf config-manager --enable crb || :
-
-    - name: Enable EPEL for Rocky Linux 9
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
-      run: |
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y dnf-utils dnf-plugins-core epel-release
+        dnf config-manager --enable crb
 
     # For pkill
     - name: Enable procps-ng

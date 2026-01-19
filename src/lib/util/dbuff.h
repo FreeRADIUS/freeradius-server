@@ -38,6 +38,8 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+DIAG_OFF(cast-align)
+
 /** A dbuff
  *
  * dbuffs wrap an underlying buffer, maintaining 'start', 'current', and 'end'
@@ -158,8 +160,8 @@ struct fr_dbuff_s {
 		uint8_t *p;				//!< Mutable 'current' pointer.
 	};
 
-	uint8_t			is_const:1;		//!< The buffer this dbuff wraps is const.
-	uint8_t			adv_parent:2;	//!< Whether we advance the parent
+	unsigned int   		is_const : 1;  	//!< The buffer this dbuff wraps is const.
+	unsigned int   		adv_parent : 2;	//!< Whether we advance the parent
 						///< of this dbuff.
 
 	size_t			shifted;	//!< How many bytes this sbuff has been
@@ -186,6 +188,14 @@ do { \
 	ssize_t _slen = _func(__VA_ARGS__ ); \
 	if (_slen < 0) return _slen; \
 } while (0)
+
+/** Generic wrapper to return an error and an offset from encoding.
+ *
+ *  Some encoders return PAIR_ENCODE_FATAL_ERROR.  Substracting an
+ *  offset from that values means it wraps be be a positive number
+ *  near INT64_MAX.  This macro ensures that doesn't happen.
+ */
+#define FR_DBUFF_ERROR_OFFSET(_slen, _offset) ((_slen < INT32_MAX) ? _slen : _slen - (ssize_t) _offset)
 
 /** @name Initialisers
  * @{
@@ -1059,6 +1069,7 @@ _fr_dbuff_set_end(\
 	) \
 )
 
+
 /** Advance 'current' position in dbuff or marker by _len bytes
  *
  * @param[in] _dbuff_or_marker	to advance.
@@ -1898,7 +1909,6 @@ static inline ssize_t _fr_dbuff_out_int64v(int64_t *num, uint8_t **pos_p, fr_dbu
 #define FR_DBUFF_OUT_INT64V_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_int64v, _num, _dbuff_or_marker, _len)
 
 /** @} */
-
 #ifdef __cplusplus
 }
 #endif

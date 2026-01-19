@@ -7,7 +7,8 @@ SUBMAKEFILES := include/all.mk \
 	listen/all.mk \
 	process/all.mk \
 	modules/all.mk \
-	bin/all.mk
+	bin/all.mk \
+	stats/all.mk
 
 #
 #  The default is to just build the source code.  We skip running the

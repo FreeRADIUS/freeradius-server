@@ -319,6 +319,8 @@ static const conf_parser_t server_tcp_sub_config[] = {
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
+	{ FR_CONF_OFFSET_IS_SET("backlog", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, backlog) },
+
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
 

@@ -39,11 +39,11 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Only used by rlm_mschap.c
  */
-unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *call_env);
 
 
-static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request, char* inUserName, char **outUserName,
+static unlang_action_t getUserNodeRef(unlang_result_t *p_result, request_t *request, char* inUserName, char **outUserName,
 				      tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
 	tDataBuffer	     	*tDataBuff	= NULL;
@@ -52,14 +52,11 @@ static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request,
 	char const		*what		= NULL;
 	char			*status_name	= NULL;
 	tContextData	    	context		= 0;
-	uint32_t	   	nodeCount	= 0;
-	uint32_t		attrIndex	= 0;
 	tDataList	       *nodeName	= NULL;
 	tAttributeEntryPtr      pAttrEntry	= NULL;
 	tDataList	       *pRecName	= NULL;
 	tDataList	       *pRecType	= NULL;
 	tDataList	       *pAttrType	= NULL;
-	uint32_t	   	recCount	= 0;
 	tRecordEntry	    	*pRecEntry	= NULL;
 	tAttributeListRef       attrListRef	= 0;
 	char		    	*pUserLocation	= NULL;
@@ -67,15 +64,26 @@ static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request,
 	tDataList	       *pUserNode	= NULL;
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
 
+	/*
+	 *	These variables are passed to OSX APIs, which need
+	 *	UInt32.  And helpfully, the OSX headers define UInt32
+	 *	differently, depending on the platform.  As a result,
+	 *	we can't assume that uint32_t and UInt32 are
+	 *	compatible.  Thanks, Apple.
+	 */
+	UInt32		   	nodeCount	= 0;
+	UInt32		   	recCount	= 0;
+	UInt32			attrIndex	= 0;
+
 	if (!inUserName) {
 		REDEBUG("getUserNodeRef(): No username");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (!tDataBuff) {
 		REDEBUG("Failed allocating buffer");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	do {
@@ -219,10 +227,17 @@ static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request,
 	}
 	if (nodeRef != 0) dsCloseDirNode(nodeRef);
 
-	RETURN_MODULE_RCODE(result);
+	RETURN_UNLANG_RCODE(result);
 }
 
-unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+/*
+ *	DirServicesTypes.h defines "char fBufferData[1];" as a
+ *	old-style declaration, instead of as a new-style indeterminate
+ *	array.
+ */
+DIAG_OFF(array-bounds)
+
+unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *env_data)
 {
 	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
@@ -244,7 +259,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 	response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap2_response));
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
-	if (!username_string) RETURN_MODULE_FAIL;
+	if (!username_string) RETURN_UNLANG_FAIL;
 
 	strlcpy(username_string, usernamepair->vp_strvalue, usernamepair->vp_length + 1);
 
@@ -252,10 +267,10 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 	if (status != eDSNoErr) {
 		talloc_free(username_string);
 		RERROR("Failed opening directory service");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	getUserNodeRef(&rcode, request, username_string, &short_user_name, &userNodeRef, dsRef);
+	getUserNodeRef(p_result, request, username_string, &short_user_name, &userNodeRef, dsRef);
 	if (rcode != RLM_MODULE_OK) {
 		if (rcode != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
@@ -264,7 +279,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 			talloc_free(username_string);
 		if (dsRef != 0)
 			dsCloseDirService(dsRef);
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	/* We got a node; fill the stepBuffer
@@ -402,10 +417,10 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 		char *status_name = dsCopyDirStatusName(status);
 		RERROR("Authentication failed - status = %s", status_name);
 		free(status_name);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 #endif /* __APPLE__ */

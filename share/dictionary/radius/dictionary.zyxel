@@ -14,13 +14,13 @@ VENDOR		Zyxel				890
 BEGIN-VENDOR	Zyxel
 
 ATTRIBUTE	Privilege-AVPair			3	string
-ATTRIBUTE	Callback-Option				192	integer
+ATTRIBUTE	Callback-Option				192	uint32
 
 VALUE	Callback-Option			None			0
 VALUE	Callback-Option			Optional		1
 VALUE	Callback-Option			Mandatory		2
 
-ATTRIBUTE	Callback-Phone-Source			193	integer
+ATTRIBUTE	Callback-Phone-Source			193	uint32
 
 VALUE	Callback-Phone-Source		Preconfigured		0
 VALUE	Callback-Phone-Source		User			1

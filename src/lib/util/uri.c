@@ -146,9 +146,9 @@ int fr_uri_escape_list(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts,
 
 	fr_strerror_clear();
 
-	fr_value_box_list_foreach_safe(uri, uri_vb) {
+	fr_value_box_list_foreach(uri, uri_vb) {
 		if (unlikely(fr_uri_escape(uri_vb, &ctx)) < 0) return -1;
-	}}
+	}
 
 	return 0;
 }
@@ -172,7 +172,7 @@ int fr_uri_has_scheme(fr_value_box_list_t *uri, fr_table_num_sorted_t const *sch
 	/*
 	 *	Fill the scheme buffer with at most sizeof(scheme_buff) - 1 bytes of string data.
 	 */
-	fr_value_box_list_foreach_safe(uri, vb) {
+	fr_value_box_list_foreach(uri, vb) {
 		fr_value_box_t tmp;
 		int ret;
 
@@ -190,7 +190,7 @@ int fr_uri_has_scheme(fr_value_box_list_t *uri, fr_table_num_sorted_t const *sch
 		}
 
 		if (unlikely(ret < 0)) return -1;
-	}}
+	}
 
 	/*
 	 *	Ensure the first box is a valid scheme

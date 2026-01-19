@@ -6,6 +6,9 @@
 #
 #  Resolve using group name attribute
 #
+
+# John is a member of group foo, via a "member" attribute in that group
+# he is not a member via the "memberOf" attribute in his user entry!
 if !(%ldap.group("foo")) {
         test_fail
 }

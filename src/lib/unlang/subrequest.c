@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/action.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
@@ -37,7 +38,11 @@ RCSID("$Id$")
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
+static void unlang_subrequest_signal(
+#ifndef NDEBUG
+				     UNUSED
+#endif
+				     request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 	request_t			*child = talloc_get_type_abort(cr->request, request_t);
@@ -50,6 +55,10 @@ static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_fra
 	case CHILD_CANCELLED:
 		RDEBUG3("subrequest is cancelled - Not sending signal to child");
 		return;
+
+	case CHILD_RUNNABLE:
+		fr_assert_msg(!unlang_request_is_scheduled(request), "Parent cannot be runnable if child has not completed");
+		break;
 
 	default:
 		break;
@@ -94,7 +103,7 @@ static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_fra
 /** Parent being resumed after a child completes
  *
  */
-static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_subrequest_parent_resume(UNUSED unlang_result_t *p_result, request_t *request,
 						       unlang_stack_frame_t *frame)
 {
 	unlang_group_t				*g = unlang_generic_to_group(frame->instruction);
@@ -118,9 +127,6 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 
 	RDEBUG3("subrequest completeed with rcode %s",
 		fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"));
-
-	*p_result = cr->result.rcode;
-	frame->priority = cr->result.priority;
 
 	/*
 	 *	If there's a no destination tmpl, we're done.
@@ -146,9 +152,8 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		vp = tmpl_dcursor_build_init(NULL, request, &cc, &cursor, request, gext->dst, tmpl_dcursor_pair_build, NULL);
 		if (!vp) {
 			RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
-			*p_result = RLM_MODULE_FAIL;
 			tmpl_dcursor_clear(&cc);
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return UNLANG_ACTION_FAIL;
 		}
 
 		MEM(fr_pair_list_copy(vp, &vp->vp_group, &child->reply_pairs) >= 0);
@@ -163,7 +168,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 /** Allocates a new subrequest and initialises it
  *
  */
-static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t	*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 	request_t		*child;
@@ -181,18 +186,13 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	Initialize the state
 	 */
 	g = unlang_generic_to_group(frame->instruction);
-	if (!g->num_children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (unlang_list_empty(&g->children)) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_subrequest(g);
 	child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
-		*p_result = cr->result.rcode = RLM_MODULE_FAIL;
-		if (cr->result.p_result) *cr->result.p_result = *p_result;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 	}
 	/*
 	 *	Set the packet type.
@@ -257,14 +257,15 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	frame->instruction should be consistent
 	 *	as it's allocated by the unlang compiler.
 	 */
-	if (unlang_child_request_init(cr, cr, child, NULL, NULL, frame->instruction, false) < 0) goto fail;
+	if (unlang_child_request_init(cr, cr, child, p_result, NULL, frame->instruction, false) < 0) goto fail;
 
 	/*
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	if (unlang_interpret_push(child, g->children, frame->result,
-				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) goto fail;
+	if (unlang_interpret_push(NULL, child, unlang_list_head(&g->children),
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME),
+				  UNLANG_NEXT_SIBLING) < 0) goto fail;
 
 	/*
 	 *	Finally, setup the function that will be
@@ -310,17 +311,22 @@ request_t *unlang_subrequest_alloc(request_t *parent, fr_dict_t const *namespace
  *
  * @note Only executes if unlang_subrequest_child_push was called, not with the normal subrequest keyword.
  */
-static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_subrequest_child_done(unlang_result_t *p_result, UNUSED request_t *request,
 						    unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 
+	/*
+	 *	Default to NOOP
+	 */
 	if (cr->result.rcode == RLM_MODULE_NOT_SET) {
-		*p_result = cr->result.rcode = RLM_MODULE_NOOP;
+		cr->result.rcode = RLM_MODULE_NOOP;
+		if (cr->p_result) {
+			*cr->p_result = cr->result;
+		} else {
+			*p_result = cr->result;
+		}
 	}
-
-	if (cr->result.p_result) *cr->result.p_result = cr->result.rcode;
-	cr->result.priority = frame->priority;
 
 	/*
 	 *	We can free the child here as we're its parent
@@ -348,7 +354,7 @@ static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, UNUSE
  *
  * @note Called from the parent to start a child running.
  */
-unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 					    unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
@@ -419,8 +425,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
  *	- -1 on failure.
  */
 
-int unlang_subrequest_child_push(request_t *child,
-				 rlm_rcode_t *p_result, void const *unique_session_ptr, bool free_child, bool top_frame)
+int unlang_subrequest_child_push(unlang_result_t *p_result, request_t *child, void const *unique_session_ptr, bool free_child, bool top_frame)
 {
 	unlang_child_request_t	*cr;
 	unlang_stack_frame_t	*frame;
@@ -429,20 +434,7 @@ int unlang_subrequest_child_push(request_t *child,
 		.type = UNLANG_TYPE_SUBREQUEST,
 		.name = "subrequest",
 		.debug_name = "subrequest",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		}
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	fr_assert_msg(free_child || child->parent, "Child's request pointer must not be NULL when calling subrequest_child_push");
@@ -461,8 +453,8 @@ int unlang_subrequest_child_push(request_t *child,
 	 *	This frame executes once the subrequest has
 	 *	completed.
 	 */
-	if (unlang_interpret_push(child->parent, &subrequest_instruction,
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+	if (unlang_interpret_push(NULL, child->parent, &subrequest_instruction,
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		return -1;
 	}
 
@@ -510,31 +502,335 @@ int unlang_subrequest_child_push_and_detach(request_t *request)
 	return 0;
 }
 
+static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION			*cs = cf_item_to_section(ci);
+	char const			*name2;
+
+	unlang_t			*c;
+
+	unlang_group_t			*g;
+	unlang_subrequest_t		*gext;
+
+	unlang_compile_ctx_t		unlang_ctx2;
+
+	tmpl_rules_t			t_rules;
+	fr_dict_autoload_talloc_t	*dict_ref = NULL;
+
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*da = NULL;
+	fr_dict_enum_value_t const	*type_enum = NULL;
+
+	ssize_t				slen;
+	char 				*namespace = NULL;
+	char const			*packet_name = NULL;
+
+	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	/*
+	 *	subrequest { ... }
+	 *
+	 *	Create a subrequest which is of the same dictionary
+	 *	and packet type as the current request.
+	 *
+	 *	We assume that the Packet-Type attribute exists.
+	 */
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		dict = unlang_ctx->rules->attr.dict_def;
+		packet_name = name2 = unlang_ctx->section_name2;
+		goto get_packet_type;
+	}
+
+	if (cf_section_name2_quote(cs) != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'subrequest' must be a name or an attribute reference");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(subrequest));
+		return NULL;
+	}
+
+	dict = unlang_ctx->rules->attr.dict_def;
+
+	/*
+	 *	@foo is "dictionary foo", as with references in the dictionaries.
+	 *
+	 *	@foo::bar is "dictionary foo, Packet-Type = ::bar"
+	 *
+	 *	foo::bar is "dictionary foo, Packet-Type = ::bar"
+	 *
+	 *	::bar is "this dictionary, Packet-Type = ::bar", BUT
+	 *	we don't try to parse the new dictionary name, as it
+	 *	doesn't exist.
+	 */
+	if ((name2[0] == '@') ||
+	    ((name2[0] != ':') && (name2[0] != '&') && (strchr(name2 + 1, ':') != NULL))) {
+		char *q;
+
+		if (name2[0] == '@') name2++;
+
+		MEM(namespace = talloc_strdup(parent, name2));
+		q = namespace;
+
+		while (fr_dict_attr_allowed_chars[(unsigned int) *q]) {
+			q++;
+		}
+		*q = '\0';
+
+		dict = fr_dict_by_protocol_name(namespace);
+		if (!dict) {
+			dict_ref = fr_dict_autoload_talloc(NULL, &dict, namespace);
+			if (!dict_ref) {
+				cf_log_err(cs, "Unknown namespace in '%s'", name2);
+				talloc_free(namespace);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Skip the dictionary name, and go to the thing
+		 *	right after it.
+		 */
+		name2 += (q - namespace);
+		TALLOC_FREE(namespace);
+	}
+
+	/*
+	 *	@dict::enum is "other dictionary, Packet-Type = ::enum"
+	 *	::enum is this dictionary, "Packet-Type = ::enum"
+	 */
+	if ((name2[0] == ':') && (name2[1] == ':')) {
+		packet_name = name2;
+		goto get_packet_type;
+	}
+
+	/*
+	 *	Can't do foo.bar.baz::foo, the enums are only used for Packet-Type.
+	 */
+	if (strchr(name2, ':') != NULL) {
+		cf_log_err(cs, "Reference cannot contain enum value in '%s'", name2);
+		return NULL;
+	}
+
+	/*
+	 *	'&' means "attribute reference"
+	 *
+	 *	Or, bare word an require_enum_prefix means "attribute reference".
+	 */
+	slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
+				      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
+				      NULL, unlang_ctx->rules);
+	if (slen <= 0) {
+		cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
+		goto print_url;
+	}
+
+	fr_assert(tmpl_is_attr(vpt));
+
+	/*
+	 *	Anything resembling an integer or string is
+	 *	OK.  Nothing else makes sense.
+	 */
+	switch (tmpl_attr_tail_da(vpt)->type) {
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_STRING:
+		break;
+
+	default:
+		talloc_free(vpt);
+		cf_log_err(cs, "Invalid data type for attribute %s.  "
+			   "Must be an integer type or string", name2 + 1);
+		goto print_url;
+	}
+
+	dict = unlang_ctx->rules->attr.dict_def;
+	packet_name = NULL;
+
+get_packet_type:
+	/*
+	 *	Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
+	 *	are NOT copied to the subrequest.
+	 *
+	 *	@todo - maybe we want to copy local variables, too?  But there may be multiple nested local
+	 *	variables, each with their own dictionary.
+	 */
+	dict = fr_dict_proto_dict(dict);
+
+	/*
+	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
+	 */
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	if (!da) {
+		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
+	error:
+		talloc_free(namespace);
+		talloc_free(vpt);
+		talloc_free(dict_ref);
+		goto print_url;
+	}
+
+	if (packet_name) {
+		/*
+		 *	Allow ::enum-name for packet types
+		 */
+		if ((packet_name[0] == ':') && (packet_name[1] == ':')) packet_name += 2;
+
+		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+		if (!type_enum) {
+			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
+				   packet_name, fr_dict_root(dict)->name);
+			goto error;
+		}
+	}
+
+	/*
+	 *	No longer needed
+	 */
+	talloc_free(namespace);
+
+	/*
+	 *	Source and destination arguments
+	 */
+	{
+		char const	*dst, *src;
+
+		src = cf_section_argv(cs, 0);
+		if (src) {
+			RULES_VERIFY(unlang_ctx->rules);
+
+			(void) tmpl_afrom_substr(parent, &src_vpt,
+						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
+						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
+			if (!src_vpt) {
+				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
+				goto error;
+			}
+
+			if (!tmpl_contains_attr(src_vpt)) {
+				cf_log_err(cs, "Invalid argument to 'subrequest' src must be an attr or list, got %s",
+					   tmpl_type_to_str(src_vpt->type));
+				talloc_free(src_vpt);
+				goto error;
+			}
+
+			dst = cf_section_argv(cs, 1);
+			if (dst) {
+				RULES_VERIFY(unlang_ctx->rules);
+
+				(void) tmpl_afrom_substr(parent, &dst_vpt,
+							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
+							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
+				if (!dst_vpt) {
+					cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing dst");
+					goto error;
+				}
+
+				if (!tmpl_contains_attr(dst_vpt)) {
+					cf_log_err(cs, "Invalid argument to 'subrequest' dst must be an "
+						   "attr or list, got %s",
+						   tmpl_type_to_str(src_vpt->type));
+					talloc_free(src_vpt);
+					talloc_free(dst_vpt);
+					goto error;
+				}
+			}
+		}
+	}
+
+	if (!cf_item_next(cs, NULL)) {
+		talloc_free(vpt);
+		talloc_free(src_vpt);
+		talloc_free(dst_vpt);
+		return UNLANG_IGNORE;
+	}
+
+	t_rules = *unlang_ctx->rules;
+	t_rules.parent = unlang_ctx->rules;
+	t_rules.attr.dict_def = dict;
+	t_rules.attr.allow_foreign = false;
+
+	/*
+	 *	Copy over the compilation context.  This is mostly
+	 *	just to ensure that retry is handled correctly.
+	 *	i.e. reset.
+	 */
+	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
+
+	/*
+	 *	Then over-write the new compilation context.
+	 */
+	unlang_ctx2.section_name1 = "subrequest";
+	unlang_ctx2.section_name2 = name2;
+	unlang_ctx2.rules = &t_rules;
+
+	/*
+	 *	Compile the subsection with a *different* default dictionary.
+	 */
+	c = unlang_compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_SUBREQUEST);
+	if (!c) return NULL;
+
+	/*
+	 *	Set the dictionary and packet information, which tells
+	 *	unlang_subrequest() how to process the request.
+	 */
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_subrequest(g);
+
+	if (dict_ref) {
+		/*
+		 *	Parent the dictionary reference correctly now that we
+		 *	have the section with the dependency.  This should
+		 *	be fast as dict_ref has no siblings.
+		 */
+		talloc_steal(gext, dict_ref);
+	}
+	if (vpt) gext->vpt = talloc_steal(gext, vpt);
+
+	gext->dict = dict;
+	gext->attr_packet_type = da;
+	gext->type_enum = type_enum;
+	gext->src = src_vpt;
+	gext->dst = dst_vpt;
+
+	return c;
+}
+
+
 /** Initialise subrequest ops
  *
  */
 int unlang_subrequest_op_init(void)
 {
-	unlang_register(UNLANG_TYPE_SUBREQUEST,
-			&(unlang_op_t){
-				.name = "subrequest",
-				.interpret = unlang_subrequest_init,
-				.signal = unlang_subrequest_signal,
-				/*
-				 *	Frame can't be cancelled, because children need to
-				 *	write out status to the parent.  If we don't do this,
-				 *	then all children must be detachable and must detach
-				 *	so they don't try and write out status to a "done"
-				 *	parent.
-				 *
-				 *	It's easier to allow the child/parent relationship
-				 *	to end normally so that non-detachable requests are
-				 *	guaranteed the parent still exists.
+	unlang_register(&(unlang_op_t) {
+			.name = "subrequest",
+			.type = UNLANG_TYPE_SUBREQUEST,
+
+			/*
+			 *	Frame can't be cancelled, because children need to
+			 *	write out status to the parent.  If we don't do this,
+			 *	then all children must be detachable and must detach
+			 *	so they don't try and write out status to a "done"
+			 *	parent.
+			 *
+			 *	It's easier to allow the child/parent relationship
+			 *	to end normally so that non-detachable requests are
+			 *	guaranteed the parent still exists.
 				 */
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_CANCEL,
-				.frame_state_size = sizeof(unlang_child_request_t),
-				.frame_state_type = "unlang_child_request_t",
-			});
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+
+			.compile = unlang_compile_subrequest,
+			.interpret = unlang_subrequest_init,
+			.signal = unlang_subrequest_signal,
+
+			.unlang_size = sizeof(unlang_subrequest_t),
+			.unlang_name = "unlang_subrequest_t",
+			.pool_headers = (TMPL_POOL_DEF_HEADERS * 3),
+			.pool_len = (TMPL_POOL_DEF_LEN * 3),
+
+			.frame_state_size = sizeof(unlang_child_request_t),
+			.frame_state_type = "unlang_child_request_t",
+		});
 
 	if (unlang_child_request_op_init() < 0) return -1;
 

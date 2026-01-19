@@ -113,6 +113,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		char	buff[128];
 		ssize_t	slen;
@@ -855,7 +856,7 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 	lua_rawset(L, -3);
 }
 
-unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname)
+unlang_action_t fr_lua_run(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname)
 {
 	rlm_lua_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
 	lua_State		*L = thread->interpreter;
@@ -876,7 +877,7 @@ error:
 		fr_lua_util_set_mctx(NULL);
 		fr_lua_util_set_request(NULL);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (!lua_isfunction(L, -1)) {
@@ -921,7 +922,7 @@ done:
 	fr_lua_util_set_mctx(NULL);
 	fr_lua_util_set_request(NULL);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*

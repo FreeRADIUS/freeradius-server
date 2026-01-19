@@ -25,6 +25,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/unlang_priv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "foreach_priv.h"
@@ -46,7 +49,7 @@ typedef struct {
 	uint32_t		index;				//!< for xlat results
 	char			*buffer;			//!< for key values
 
-	bool			success;			//!< for xlat expansion
+	unlang_result_t		exp_result;			//!< for xlat expansion
 	fr_value_box_list_t	list;				//!< value box list for looping over xlats
 
 	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
@@ -112,7 +115,7 @@ static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr
 		fr_pair_append(&to->vp_group, child);
 
 		if (fr_type_is_leaf(child->vp_type)) {
-			if (fr_value_box_copy(child, &child->data, &vp->data) < 0) return -1;
+			if (unlikely(fr_value_box_copy(child, &child->data, &vp->data) < 0)) return -1;
 			continue;
 		}
 
@@ -173,7 +176,7 @@ static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state
 }
 
 
-static unlang_action_t unlang_foreach_xlat_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_xlat_next(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
@@ -182,10 +185,7 @@ next:
 	state->index++;
 
 	box = fr_dcursor_next(&state->cursor);
-	if (!box) {
-		*p_result = frame->result;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!box) return UNLANG_ACTION_EXECUTE_NEXT;	/* Don't change the section rcode */
 
 	if (unlang_foreach_xlat_key_update(request, state) < 0) goto next;
 
@@ -200,26 +200,24 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_foreach_xlat_expanded(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_xlat_expanded(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
 
-	if (!state->success) {
+	if (!XLAT_RESULT_SUCCESS(&state->exp_result)) {
 		RDEBUG("Failed expanding 'foreach' list");
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	box = fr_dcursor_init(&state->cursor, fr_value_box_list_dlist_head(&state->list));
 	if (!box) {
 	done:
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_NOOP;
 	}
 
 	fr_value_box_clear_value(&state->value->data);
@@ -233,33 +231,30 @@ next:
 		goto next;
 	}
 
-	frame->process = unlang_foreach_xlat_next;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_foreach_xlat_next);
 
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
 /*
  *	Loop over an xlat expansion
  */
-static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+static unlang_action_t unlang_foreach_xlat_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame,
 						unlang_frame_state_foreach_t *state)
 {
 	fr_value_box_list_init(&state->list);
 
-	if (unlang_xlat_push(state, &state->success, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
+	if (unlang_xlat_push(state, &state->exp_result, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
 		REDEBUG("Failed starting expansion of %s", state->vpt->name);
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (unlang_foreach_xlat_key_update(request, state) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
   	frame->process = unlang_foreach_xlat_expanded;
@@ -279,7 +274,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 
 	case FR_TYPE_STRING:
 		fr_value_box_clear_value(&state->key->data);
-		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+		if (tmpl_dcursor_print(&FR_SBUFF_OUT(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
 			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
 		}
 		break;
@@ -291,7 +286,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 	}
 }
 
-static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_attr_next(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_pair_t			*vp;
@@ -307,7 +302,10 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 	if (fr_type_is_leaf(vp->vp_type)) {
 		if (vp->vp_type == state->value->vp_type) {
 			fr_value_box_clear_value(&vp->data);
-			(void) fr_value_box_copy(vp, &vp->data, &state->value->data);
+			if (unlikely(fr_value_box_copy(vp, &vp->data, &state->value->data) < 0)) {
+				RPEDEBUG("Failed copying value from %s to %s", state->value->da->name, vp->da->name);
+				return UNLANG_ACTION_FAIL;
+			}
 		} else {
 			/*
 			 *	@todo - this shouldn't happen?
@@ -324,11 +322,10 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 next:
 	vp = fr_dcursor_next(&state->cursor);
 	if (!vp) {
-		*p_result = frame->result;
 #ifndef NDEBUG
 		fr_assert(state->indent == request->log.indent.unlang);
 #endif
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
 	unlang_foreach_attr_key_update(request, state);
@@ -343,8 +340,7 @@ next:
 
 		if (fr_pair_list_copy(state->value, &state->value->vp_group, &vp->vp_group) < 0) {
 			REDEBUG("Failed copying members of %s", state->value->da->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
@@ -354,8 +350,7 @@ next:
 
 		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
 			REDEBUG("Failed copying children of %s", state->value->da->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 	} else {
@@ -375,13 +370,13 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 /*
  *	Loop over an attribute
  */
-static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+static unlang_action_t unlang_foreach_attr_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame,
 						unlang_frame_state_foreach_t *state)
 {
 	fr_pair_t			*vp;
@@ -392,8 +387,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
 	if (!vp) {
 		tmpl_dcursor_clear(&state->cc);
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -405,8 +399,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 			REDEBUG("Cannot do nested 'foreach' loops over the same attribute %pP", vp);
 		fail:
 			tmpl_dcursor_clear(&state->cc);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 		vp->vp_edit = true;
@@ -435,9 +428,8 @@ next:
 			vp = fr_dcursor_next(&state->cursor);
 			if (vp) goto next;
 
-			*p_result = frame->result;
 			fr_assert(state->indent == request->log.indent.unlang);
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return UNLANG_ACTION_EXECUTE_NEXT;
 		}
 
 		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
@@ -457,8 +449,7 @@ next:
 		 */
 		if (!vp) {
 			tmpl_dcursor_clear(&state->cc);
-			*p_result = RLM_MODULE_NOOP;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_NOOP;
 		}
 	}
 
@@ -469,11 +460,11 @@ next:
 	/*
 	 *	Push the child, and go process it.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
@@ -501,8 +492,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 */
 	if (fr_pair_append_by_da(request->local_ctx, &state->value, &request->local_pairs, gext->value) < 0) {
 		REDEBUG("Failed creating %s", gext->value->name);
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 	fr_assert(state->value != NULL);
 
@@ -511,8 +501,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
 			REDEBUG("Failed creating %s", gext->key->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		fr_assert(state->key != NULL);
 	}
@@ -527,7 +516,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	return unlang_foreach_xlat_init(p_result, request, frame, state);
 }
 
-static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_break(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_action_t			ua;
 	unlang_stack_t			*stack = request->stack;
@@ -535,7 +524,13 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 
 	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
-	*p_result = frame->result;
+	/*
+	 *	As we're unwinding intermediary frames we
+	 *	won't be taking their rcodes or priorities
+	 *	into account.  We do however want to record
+	 *	the current section rcode.
+	 */
+	*p_result = frame->section_result;
 
 	/*
 	 *	Stop at the next break point, or if we hit
@@ -546,7 +541,7 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	return ua;
 }
 
-static unlang_action_t unlang_continue(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_continue(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_stack_t			*stack = request->stack;
 
@@ -555,24 +550,333 @@ static unlang_action_t unlang_continue(UNUSED rlm_rcode_t *p_result, request_t *
 	return unwind_to_op_flag(NULL, stack, UNLANG_OP_FLAG_CONTINUE_POINT);
 }
 
+static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION		*cs = cf_item_to_section(ci);
+	fr_token_t		token;
+	char const		*name2;
+	char const		*type_name, *variable_name;
+	fr_type_t		type;
+	unlang_t		*c;
+
+	fr_type_t		key_type;
+	char const		*key_name;
+
+	unlang_group_t		*g;
+	unlang_foreach_t	*gext;
+
+	ssize_t			slen;
+	tmpl_t			*vpt;
+	fr_dict_attr_t const	*da = NULL;
+
+	tmpl_rules_t		t_rules;
+	unlang_compile_ctx_t	unlang_ctx2;
+
+	/*
+	 *	Ignore empty "foreach" blocks, and don't even sanity check their arguments.
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		return UNLANG_IGNORE;
+	}
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.attr.allow_unknown = true;
+	t_rules.attr.allow_wildcard = true;
+	RULES_VERIFY(&t_rules);
+
+	name2 = cf_section_name2(cs);
+	fr_assert(name2 != NULL); /* checked in cf_file.c */
+
+	/*
+	 *	Allocate a group for the "foreach" block.
+	 */
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_FOREACH);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+
+	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	token = cf_section_name2_quote(cs);
+	if (token != T_BARE_WORD) {
+		cf_log_err(cs, "Data being looped over in 'foreach' must be an attribute reference or dynamic expansion, not a string");
+	print_ref:
+		cf_log_err(ci, DOC_KEYWORD_REF(foreach));
+	error:
+		talloc_free(g);
+		return NULL;
+	}
+
+	slen = tmpl_afrom_substr(g, &vpt,
+				 &FR_SBUFF_IN_STR(name2),
+				 token,
+				 NULL,
+				 &t_rules);
+	if (!vpt) {
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
+		goto error;
+	}
+
+	/*
+	 *	If we don't have a negative return code, we must have a vpt
+	 *	(mostly to quiet coverity).
+	 */
+	fr_assert(vpt);
+
+	if (tmpl_is_attr(vpt)) {
+		if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
+			cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
+			tmpl_attr_rewrite_leaf_num(vpt, NUM_ALL);
+		}
+
+		if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
+			cf_log_err(cs, "Attribute references must be of the form ...%s[*]", tmpl_attr_tail_da(vpt)->name);
+			goto print_ref;
+		}
+
+	} else if (!tmpl_contains_xlat(vpt)) {
+		cf_log_err(cs, "Invalid content in 'foreach (...)', it must be an attribute reference or a dynamic expansion");
+		goto print_ref;
+	}
+
+	gext = unlang_group_to_foreach(g);
+	gext->vpt = vpt;
+
+	c->name = "foreach";
+	MEM(c->debug_name = talloc_typed_asprintf(c, "foreach %s", name2));
+
+	/*
+	 *	Copy over the compilation context.  This is mostly
+	 *	just to ensure that retry is handled correctly.
+	 *	i.e. reset.
+	 */
+	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
+
+	/*
+	 *	Then over-write the new compilation context.
+	 */
+	unlang_ctx2.section_name1 = "foreach";
+	unlang_ctx2.section_name2 = name2;
+	unlang_ctx2.rules = &t_rules;
+	t_rules.parent = unlang_ctx->rules;
+
+	/*
+	 *	If we have "type name", then define a local variable of that name.
+	 */
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+
+	key_name = cf_section_argv(cs, 2);
+	if (key_name) {
+		key_type = fr_table_value_by_str(fr_type_table, key_name, FR_TYPE_VOID);
+	} else {
+		key_type = FR_TYPE_VOID;
+	}
+	key_name = cf_section_argv(cs, 3);
+
+	if (tmpl_is_xlat(vpt)) {
+		if (!type_name) {
+			cf_log_err(cs, "Dynamic expansions MUST specify a data type for the variable");
+			goto print_ref;
+		}
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+
+		/*
+		 *	No data type was specified, see if we can get one from the function.
+		 */
+		if (type == FR_TYPE_NULL) {
+			type = xlat_data_type(tmpl_xlat(vpt));
+			if (fr_type_is_leaf(type)) goto get_name;
+
+			cf_log_err(cs, "Unable to determine return data type from dynamic expansion");
+			goto print_ref;
+		}
+
+		if (!fr_type_is_leaf(type)) {
+			cf_log_err(cs, "Dynamic expansions MUST specify a non-structural data type for the variable");
+			goto print_ref;
+		}
+
+		if ((key_type != FR_TYPE_VOID) && !fr_type_is_numeric(key_type)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be numeric", fr_type_to_str(key_type));
+			goto print_ref;
+		}
+
+		goto get_name;
+	} else {
+		fr_assert(tmpl_is_attr(vpt));
+
+		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING) && (key_type != FR_TYPE_UINT32)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string' or 'uint32'", fr_type_to_str(key_type));
+			goto print_ref;
+		}
+	}
+
+	if (type_name) {
+		unlang_variable_t *var;
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+		fr_assert(type != FR_TYPE_VOID);
+
+		/*
+		 *	foreach string foo (&tlv-thing.[*]) { ... }
+		 */
+		if (tmpl_attr_tail_is_unspecified(vpt)) {
+			goto get_name;
+		}
+
+		da = tmpl_attr_tail_da(vpt);
+
+		if (type == FR_TYPE_NULL) {
+			type = da->type;
+
+		} else if (fr_type_is_leaf(type) != fr_type_is_leaf(da->type)) {
+		incompatible:
+			cf_log_err(cs, "Incompatible data types in foreach variable (%s), and reference %s being looped over (%s)",
+				   fr_type_to_str(type), da->name, fr_type_to_str(da->type));
+			goto print_ref;
+
+		} else if (fr_type_is_structural(type) && (type != da->type)) {
+			goto incompatible;
+		}
+
+	get_name:
+		variable_name = cf_section_argv(cs, 1);
+
+		/*
+		 *	Define the local variables.
+		 */
+		g->variables = var = talloc_zero(g, unlang_variable_t);
+		if (!var) goto error;
+
+		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
+		if (!var->dict) goto error;
+
+		var->root = fr_dict_root(var->dict);
+
+		var->max_attr = 1;
+
+		if (unlang_define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name, da) < 0) goto error;
+
+		t_rules.attr.dict_def = var->dict;
+		t_rules.attr.namespace = NULL;
+
+		/*
+		 *	And ensure we have the key.
+		 */
+		gext->value = fr_dict_attr_by_name(NULL, var->root, variable_name);
+		fr_assert(gext->value != NULL);
+
+		/*
+		 *	Define the local key variable.  Note that we don't copy any children.
+		 */
+		if (key_type != FR_TYPE_VOID) {
+			if (unlang_define_local_variable(cf_section_to_item(cs), var, &t_rules, key_type, key_name, NULL) < 0) goto error;
+
+			gext->key = fr_dict_attr_by_name(NULL, var->root, key_name);
+			fr_assert(gext->key != NULL);
+		}
+	}
+
+	return unlang_compile_children(g, &unlang_ctx2);
+}
+
+
+static unlang_t *unlang_compile_break(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *unlang;
+
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
+		/*
+		 *	"break" doesn't go past a return point.
+		 */
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
+
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_BREAK_POINT) != 0) break;
+	}
+
+	if (!unlang) {
+	error:
+		cf_log_err(ci, "Invalid location for 'break' - it can only be used inside 'foreach' or 'switch'");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		return NULL;
+	}
+
+	parent->closed = true;
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
+}
+
+static unlang_t *unlang_compile_continue(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *unlang;
+
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
+		/*
+		 *	"continue" doesn't go past a return point.
+		 */
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
+
+		if (unlang->type == UNLANG_TYPE_FOREACH) break;
+	}
+
+	if (!unlang) {
+	error:
+		cf_log_err(ci, "Invalid location for 'continue' - it can only be used inside 'foreach'");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		return NULL;
+	}
+
+	parent->closed = true;
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_CONTINUE);
+}
+
 void unlang_foreach_init(void)
 {
-	unlang_register(UNLANG_TYPE_FOREACH,
-			   &(unlang_op_t){
-				.name = "foreach",
-				.interpret = unlang_foreach,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "foreach",
+			.type = UNLANG_TYPE_FOREACH,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT,
 
-	unlang_register(UNLANG_TYPE_BREAK,
-			   &(unlang_op_t){
-				.name = "break",
-				.interpret = unlang_break,
-			   });
+			.compile = unlang_compile_foreach,
+			.interpret = unlang_foreach,
 
-	unlang_register(UNLANG_TYPE_CONTINUE,
-			   &(unlang_op_t){
-				.name = "continue",
-				.interpret = unlang_continue,
-			   });
+			.unlang_size = sizeof(unlang_foreach_t),
+			.unlang_name = "unlang_foreach_t",
+
+			.pool_headers = TMPL_POOL_DEF_HEADERS,
+			.pool_len = TMPL_POOL_DEF_LEN
+		});
+
+	unlang_register(&(unlang_op_t){
+			.name = "break",
+			.type = UNLANG_TYPE_BREAK,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD
+,
+			.compile = unlang_compile_break,
+			.interpret = unlang_break,
+
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
+
+	unlang_register(&(unlang_op_t){
+			.name = "continue",
+			.type = UNLANG_TYPE_CONTINUE,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD,
+
+			.compile = unlang_compile_continue,
+			.interpret = unlang_continue,
+
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
 }

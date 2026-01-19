@@ -65,7 +65,7 @@ static fr_table_num_sorted_t const brotli_mode[] = {
 	{ L("generic"),		BROTLI_MODE_GENERIC	},
 	{ L("text"),		BROTLI_MODE_TEXT	},
 };
-size_t brotli_mode_len = NUM_ELEMENTS(brotli_mode);
+static size_t brotli_mode_len = NUM_ELEMENTS(brotli_mode);
 
 static const conf_parser_t module_compress_config[] = {
 	{ FR_CONF_OFFSET("mode", rlm_brotli_compress_t, mode), .dflt = "generic",

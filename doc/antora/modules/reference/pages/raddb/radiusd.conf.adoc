@@ -44,7 +44,9 @@ documented in that "man" page.  They are only documented here,
 in the comments.
 
 The `unlang` policy language can be used to create complex
-if / else policies.  See `man unlang` for details.
+if / else policies.  For more information, see
+
+https://www.freeradius.org/documentation/freeradius-server/RADIUSD_DOC_VERSION/
 
 NOTE: The paths used for installed server files. They are set
 automatically at install time and will not normally need to be
@@ -473,6 +475,15 @@ controls.
 
 
 
+After the server has changed to the final user/group, it
+can also set the current working directory.  While not
+necessary, changing the working directory means that the
+server does not have any dangling paths.
+
+The directory here should either be "/", or ${confdir}
+
+
+
 allow_core_dumps:: Core dumps are a bad thing.
 
 This should only be set to `yes` if you're debugging
@@ -503,12 +514,6 @@ versions of OpenSSL known to have critical vulnerabilities.
 This check is based on the version number reported by libssl
 and may not reflect patches applied to libssl by
 distribution maintainers.
-
-
-
-openssl_fips_mode:: Enable OpenSSL FIPS mode.
-
-This disables non-FIPS compliant digests and algorithms
 
 
 
@@ -594,26 +599,6 @@ Some of these flags can also be passed on the command line as
 `-S flag=value`.
 
 Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
-
-
-rewrite_update:: Rewrite old `update` sections to use the new
-"edit" code.
-
-When this flag is set to `true`, the server will read the
-`update` section, and swap the internal implementation to
-use the new code.  The configuration file can still contain
-the `update` keyword.
-
-Not all `update` sections can be automatically converted.
-If the conversion process does not work, then the server
-will produce an error instead of doing the wrong thing.
-
-
-
-forbid_update:: Forbid the use of the `update` keyword.
-
-This flag allows us to remove the last bits of the v2
-configuration from the server.
 
 
 
@@ -782,10 +767,10 @@ templates {
 security {
 #	user = radius
 #	group = radius
-	allow_core_dumps = no
+#	chdir = ${confdir}
+	allow_core_dumps = yes
 	max_attributes = 200
 	allow_vulnerable_openssl = no
-#	openssl_fips_mode = no
 }
 $INCLUDE clients.conf
 thread pool {
@@ -799,8 +784,6 @@ global {
 	$INCLUDE global.d/
 }
 migrate {
-	rewrite_update = false
-	forbid_update = false
 }
 modules {
 #	$INCLUDE mods-enabled/sql

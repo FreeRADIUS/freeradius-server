@@ -467,12 +467,15 @@ need to customize it for your installation.
 
 
 
-For DH cipher suites to work, you have to run OpenSSL to
-create the DH file first:
+You can create the DH parameters by running the
+following command:
 
 	openssl dhparam -out certs/dh 2048
 
 The DH parameters will usually be ignored in FIPS mode.
+
+If this file isn't specified, then OpenSSL will
+automatically set the correct DH parameters.
 
 
 
@@ -562,6 +565,16 @@ Should be a colon-separated list of curve names.
 For supported curve names, please run the command:
 
 openssl ecparam -list_curves
+
+
+
+client_hello_parse:: Extract attributes from TLS Client Hello
+
+For logging / diagnostics it can be beneficial to extract
+data from the TLS Client Hello.
+
+These are placed in `session-state` so that they are
+accessible throughout the authentication process.
 
 
 
@@ -1399,7 +1412,7 @@ eap {
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"
 #		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
-		dh_file = ${certdir}/dh
+#		dh_file = ${certdir}/dh
 #		fragment_size = 1024
 		ca_path = ${cadir}
 		cipher_list = "DEFAULT"
@@ -1407,6 +1420,7 @@ eap {
 #		tls_max_version = 1.2
 #		tls_min_version = 1.2
 		ecdh_curve = prime256v1
+#		client_hello_parse = no
 		verify {
 #			mode = all
 #			attribute_mode = client-and-issuer

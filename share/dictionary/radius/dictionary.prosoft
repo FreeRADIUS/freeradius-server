@@ -22,18 +22,18 @@ ATTRIBUTE	Home-Agent-Address			0	ipaddr
 ATTRIBUTE	Default-Gateway				1	ipaddr
 ATTRIBUTE	Primary-DNS				2	ipaddr
 ATTRIBUTE	Secondary-DNS				3	ipaddr
-ATTRIBUTE	Security-Parameter-Index		4	integer
+ATTRIBUTE	Security-Parameter-Index		4	uint32
 ATTRIBUTE	Security-Key				5	string
 ATTRIBUTE	MAC-Address				7	string
-ATTRIBUTE	Authentication-Reason			8	integer
-ATTRIBUTE	ATM-Interface				9	integer
-ATTRIBUTE	ATM-VPI					10	integer
-ATTRIBUTE	ATM-VCI					11	integer
+ATTRIBUTE	Authentication-Reason			8	uint32
+ATTRIBUTE	ATM-Interface				9	uint32
+ATTRIBUTE	ATM-VPI					10	uint32
+ATTRIBUTE	ATM-VCI					11	uint32
 ATTRIBUTE	RSC-Identifier				12	string
 ATTRIBUTE	NPM-Identifier				13	string
 ATTRIBUTE	NPM-IP					14	string
 ATTRIBUTE	Sector-ID				15	string
-ATTRIBUTE	Auth-Role				16	integer
+ATTRIBUTE	Auth-Role				16	uint32
 
 VALUE	Auth-Role			Read-Status		0
 VALUE	Auth-Role			Read-Config		1

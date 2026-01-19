@@ -83,7 +83,7 @@ server load {
 			#  - blocked - 1 = true, 0 = false.   We're refusing
 			#    to enqueue more packets until we get responses
 			#    to the outstanding requests.
-			csv = ${confdir}/stats.csv
+			csv = ${logdir}/stats.csv
 
 			#
 			#  How many packets/s to start with.

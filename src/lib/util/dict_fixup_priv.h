@@ -40,8 +40,6 @@ typedef struct {
 	fr_dlist_head_t		alias;		//!< Aliases that can't be resolved immediately.
 } dict_fixup_ctx_t;
 
-int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *root, char const *ref);
-
 int	dict_fixup_enumv_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int line,
 			 	 char const *attr, size_t attr_len,
 				 char const *name, size_t name_len,

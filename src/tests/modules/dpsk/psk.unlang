@@ -1,0 +1,5 @@
+# Test dpks using a know pre shared key - provided in Filter-Id
+rewrite_called_station_id
+control.Pre-Shared-Key := Filter-Id
+dpsk.authenticate
+test_pass

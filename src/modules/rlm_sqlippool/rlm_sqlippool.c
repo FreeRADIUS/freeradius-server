@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/module.h>
 
 #include <ctype.h>
 
@@ -141,14 +143,14 @@ static void *sql_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
  */
 static int sqlippool_result_process(char *out, int outlen, fr_sql_query_t *query_ctx)
 {
-	rlm_rcode_t	p_result;
+	unlang_result_t	p_result;
 	int		rlen, retval = 0;
 	rlm_sql_row_t	row;
 	request_t	*request = query_ctx->request;
 
 	*out = '\0';
 
-	query_ctx->inst->fetch_row(&p_result, NULL, query_ctx->request, query_ctx);
+	query_ctx->inst->fetch_row(&p_result, query_ctx->request, query_ctx);
 	if (query_ctx->rcode < 0) {
 		REDEBUG("Failed fetching query_result");
 		goto finish;
@@ -223,7 +225,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	return 0;
 }
 
-#define REPEAT_MOD_ALLOC_RESUME if (unlang_function_repeat_set(request, mod_alloc_resume) < 0) RETURN_MODULE_FAIL
+#define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL
 #define SUBMIT_QUERY(_query_str, _new_status, _type, _function) do { \
 	alloc_ctx->status = _new_status; \
 	REPEAT_MOD_ALLOC_RESUME; \
@@ -231,7 +233,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	query_ctx->type = _type; \
 	query_ctx->status = SQL_QUERY_PREPARED; \
 	alloc_ctx->query = query; \
-	return unlang_function_push(request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
+	return unlang_function_push_with_result(p_result, request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
 } while (0)
 
 /** Resume function called after each IP allocation query is expanded
@@ -241,14 +243,13 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
  * Following the final (successful) query, the destination attribute is populated.
  *
  * @param p_result	Result of IP allocation.
- * @param priority	Unused.
+ * @param mctx		Current allocation context.
  * @param request	Current request.
- * @param uctx		Current allocation context.
  * @return One of the UNLANG_ACTION_* values.
  */
-static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ippool_alloc_ctx_t	*alloc_ctx = talloc_get_type_abort(uctx, ippool_alloc_ctx_t);
+	ippool_alloc_ctx_t	*alloc_ctx = talloc_get_type_abort(mctx->rctx, ippool_alloc_ctx_t);
 	ippool_alloc_call_env_t	*env = alloc_ctx->env;
 	int			allocation_len = 0;
 	char			allocation[FR_MAX_STRING_LEN];
@@ -259,7 +260,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	/*
 	 *	If a previous async call returned one of the "failure" results just return.
 	 */
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -282,10 +283,10 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (env->existing) {
 			alloc_ctx->status = IPPOOL_ALLOC_EXISTING;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->existing, NULL) < 0) {
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->existing, NULL, UNLANG_SUB_FRAME) < 0) {
 			error:
 				talloc_free(alloc_ctx);
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -309,7 +310,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
 			alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->requested, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->requested, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 		goto expand_find;
@@ -332,7 +333,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		 */
 		alloc_ctx->status = IPPOOL_ALLOC_FIND;
 		REPEAT_MOD_ALLOC_RESUME;
-		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->find, NULL) < 0) goto error;
+		if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->find, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case IPPOOL_ALLOC_FIND:
@@ -363,12 +364,12 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (env->pool_check) {
 			alloc_ctx->status = IPPOOL_ALLOC_POOL_CHECK;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->pool_check, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->pool_check, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 	no_address:
 		RWDEBUG("IP address could not be allocated");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 
 	case IPPOOL_ALLOC_MAKE_PAIR:
 	{
@@ -404,7 +405,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (env->update) {
 			alloc_ctx->status = IPPOOL_ALLOC_UPDATE;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->update, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->update, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -433,7 +434,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 			 *	NOTFOUND
 			 */
 			RWDEBUG("Pool \"%pV\" appears to be full", &env->pool_name);
-			RETURN_MODULE_NOTFOUND;
+			RETURN_UNLANG_NOTFOUND;
 		}
 
 		/*
@@ -444,7 +445,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		 */
 		RWDEBUG("IP address could not be allocated as no pool exists with the name \"%pV\"",
 			&env->pool_name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 
 	case IPPOOL_ALLOC_UPDATE:
 		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
@@ -465,7 +466,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	{
 		rlm_rcode_t	rcode = alloc_ctx->rcode;
 		talloc_free(alloc_ctx);
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 	}
 
@@ -473,7 +474,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	 *	All return paths are handled within the switch statement.
 	 */
 	fr_assert(0);
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /** Initiate the allocation of an IP address from the pool.
@@ -486,7 +487,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
  * @param request	Current request.
  * @return One of the UNLANG_ACTION_* values.
  */
-static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
@@ -499,12 +500,12 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 */
 	if (env->allocated_address.type) {
 		RDEBUG2("%s already exists (%pV)", env->allocated_address_attr->name, &env->allocated_address);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (env->pool_name.type == FR_TYPE_NULL) {
 		RDEBUG2("No %s defined", env->pool_name_tmpl->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	MEM(alloc_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_alloc_ctx_t));
@@ -524,29 +525,35 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
 
 	fr_value_box_list_init(&alloc_ctx->values);
-	if (unlang_function_push(request, NULL, mod_alloc_resume, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx) < 0 ) {
+	if (unlikely(unlang_module_yield(request, mod_alloc_resume, NULL, 0, alloc_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(alloc_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((env->begin.type == FR_TYPE_STRING) && env->begin.vb_length) {
 		alloc_ctx->query_ctx->query_str = env->begin.vb_strvalue;
-		return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx->query_ctx);
+		return unlang_function_push_with_result(/* mod_alloc_resume looks at frame result */ p_result,
+							request,
+							sql->query,
+							NULL,
+							NULL, 0,
+							UNLANG_SUB_FRAME,
+							alloc_ctx->query_ctx);
 	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Resume function called after mod_common "update" query has completed
  */
-static unlang_action_t mod_common_update_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t mod_common_update_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(uctx, ippool_common_ctx_t);
+	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(mctx->rctx, ippool_common_ctx_t);
 	fr_sql_query_t		*query_ctx = common_ctx->query_ctx;
 	rlm_sql_t const		*sql = common_ctx->sql;
 	int			affected = 0;
 
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -558,37 +565,43 @@ static unlang_action_t mod_common_update_resume(rlm_rcode_t *p_result, UNUSED in
 
 	talloc_free(common_ctx);
 
-	if (affected > 0) RETURN_MODULE_UPDATED;
-	RETURN_MODULE_NOTFOUND;
+	if (affected > 0) RETURN_UNLANG_UPDATED;
+	RETURN_UNLANG_NOTFOUND;
 }
 
 /** Resume function called after mod_common "free" query has completed
  */
-static unlang_action_t mod_common_free_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_common_free_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(uctx, ippool_common_ctx_t);
+	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(mctx->rctx, ippool_common_ctx_t);
 	fr_sql_query_t		*query_ctx = common_ctx->query_ctx;
 	rlm_sql_t const		*sql = common_ctx->sql;
 
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_USER_SECTION_REJECT:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	default:
 		break;
 	}
-	if (common_ctx->env->update.type != FR_TYPE_STRING) RETURN_MODULE_NOOP;
+	if (common_ctx->env->update.type != FR_TYPE_STRING) RETURN_UNLANG_NOOP;
 
 	sql->driver->sql_finish_query(query_ctx, &sql->config);
 
-	if (unlang_function_push(request, NULL, mod_common_update_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(common_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	common_ctx->query_ctx->query_str = common_ctx->env->update.vb_strvalue;
 	query_ctx->status = SQL_QUERY_PREPARED;
-	return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx);
+	return unlang_function_push_with_result(/* mod_common_update_resume uses frame rcode */p_result,
+						request,
+						sql->query,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						query_ctx);
 }
 
 /** Common function used by module methods which perform an optional "free" then "update"
@@ -597,7 +610,7 @@ static unlang_action_t mod_common_free_resume(rlm_rcode_t *p_result, UNUSED int 
  *	- bulk_release
  *	- mark
  */
-static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
@@ -605,7 +618,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 	ippool_common_ctx_t		*common_ctx = NULL;
 
-	if ((env->free.type != FR_TYPE_STRING) && (env->update.type != FR_TYPE_STRING)) RETURN_MODULE_NOOP;
+	if ((env->free.type != FR_TYPE_STRING) && (env->update.type != FR_TYPE_STRING)) RETURN_UNLANG_NOOP;
 
 	MEM(common_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_common_ctx_t));
 	*common_ctx = (ippool_common_ctx_t) {
@@ -623,19 +636,32 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	 */
 	if (env->free.type == FR_TYPE_STRING) {
 		common_ctx->query_ctx->query_str = env->free.vb_strvalue;
-		if (unlang_function_push(request, NULL, mod_common_free_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+		if (unlikely(unlang_module_yield(request, mod_common_free_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
 			talloc_free(common_ctx);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
-		return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, common_ctx->query_ctx);
+		return unlang_function_push_with_result(/* mod_common_free_resume looks at frame result */ NULL,
+							request,
+							sql->query,
+							NULL,
+							NULL, 0,
+							UNLANG_SUB_FRAME,
+							common_ctx->query_ctx);
 	}
 
 	common_ctx->query_ctx->query_str = env->update.vb_strvalue;
-	if (unlang_function_push(request, NULL, mod_common_update_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+
+	if (unlikely(unlang_module_yield(request, mod_common_update_resume, NULL, 0, common_ctx) != UNLANG_ACTION_YIELD)) {
 		talloc_free(common_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
-	return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, common_ctx->query_ctx);
+	return unlang_function_push_with_result(/* mod_common_update_resume looks at frame result */ p_result,
+						request,
+						sql->query,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						common_ctx->query_ctx);
 }
 
 /** Call SQL module box_escape_func to escape tainted values
@@ -656,8 +682,8 @@ static int sqlippool_box_escape(fr_value_box_t *vb, void *uctx)
  * the correct instance of the SQL module since escaping functions
  * are dependent on the driver used by a given module instance.
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+static int sqlippool_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				    call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_sqlippool_t const	*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sqlippool_t);
 	module_instance_t const	*sql_inst;
@@ -697,7 +723,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	}, \
 	.mode = TMPL_ESCAPE_PRE_CONCAT, \
 	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
-}, .pair.func = call_env_parse
+}, .pair.func = sqlippool_call_env_parse
 
 static const call_env_method_t sqlippool_alloc_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ippool_alloc_call_env_t),

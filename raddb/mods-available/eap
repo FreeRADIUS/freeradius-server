@@ -517,14 +517,17 @@ eap {
 #		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 
 		#
-		#  For DH cipher suites to work, you have to run OpenSSL to
-		#  create the DH file first:
+		#  You can create the DH parameters by running the
+		#  following command:
 		#
 		#  	openssl dhparam -out certs/dh 2048
 		#
 		#  The DH parameters will usually be ignored in FIPS mode.
 		#
-		dh_file = ${certdir}/dh
+		#  If this file isn't specified, then OpenSSL will
+		#  automatically set the correct DH parameters.
+		#
+#		dh_file = ${certdir}/dh
 
 		#
 		#  fragment_size:: Limit for size of EAP fragments.
@@ -621,6 +624,17 @@ eap {
 		#	openssl ecparam -list_curves
 		#
 		ecdh_curve = prime256v1
+
+		#
+		#  client_hello_parse:: Extract attributes from TLS Client Hello
+		#
+		#  For logging / diagnostics it can be beneficial to extract
+		#  data from the TLS Client Hello.
+		#
+		#  These are placed in `session-state` so that they are
+		#  accessible throughout the authentication process.
+		#
+#		client_hello_parse = no
 
 		#
 		#  verify:: Parameters for controlling client cert chain

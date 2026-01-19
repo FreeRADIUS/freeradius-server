@@ -18,8 +18,8 @@ ATTRIBUTE	Admin-Full-Name				1	string	# Optional
 ATTRIBUTE	Admin-Email				2	string	# Optional
 ATTRIBUTE	Admin-Phone				3	string	# Optional
 ATTRIBUTE	Admin-Mobile				4	string	# Optional
-ATTRIBUTE	Poll-Interval				5	integer	# Up to 6 numerals, default is 30 (seconds)
-ATTRIBUTE	Admin-Privilege				6	integer
+ATTRIBUTE	Poll-Interval				5	uint32	# Up to 6 numerals, default is 30 (seconds)
+ATTRIBUTE	Admin-Privilege				6	uint32
 
 VALUE	Admin-Privilege			group-administrator	0
 VALUE	Admin-Privilege			pool-administrator	1

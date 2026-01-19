@@ -200,7 +200,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t log_dict[];
 fr_dict_autoload_t log_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_module_failure_message;
@@ -208,7 +208,7 @@ static fr_dict_attr_t const *attr_module_failure_message;
 extern fr_dict_attr_autoload_t log_dict_attr[];
 fr_dict_attr_autoload_t log_dict_attr[] = {
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -779,7 +779,6 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 		      fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
 {
-	fr_dict_attr_t const	*parent_da = NULL;
 	fr_sbuff_t		*oid_buff;
 
 	if (!request->log.dst) return;
@@ -790,29 +789,23 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 
 	oid_buff = log_request_oid_buff();
 
-	if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
-	if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
+	if (fr_pair_print_name(oid_buff, parent ? parent->da : NULL, &vp) <= 0) return;
 
 	/*
 	 *	Recursively print grouped attributes.
 	 */
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
-		RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
-			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+		RDEBUGX(lvl, "%s%s{", prefix ? prefix : "", fr_sbuff_start(oid_buff));
 		log_request_pair_list(lvl, request, vp, &vp->vp_group, NULL);
 		RDEBUGX(lvl, "}");
 		break;
 
-	case FR_TYPE_QUOTED:
-		RDEBUGX(lvl, "%s%pV = \"%pV\"", prefix ? prefix : "",
-			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-			&vp->data);
-		break;
 	default:
-		RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
-			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-			&vp->data);
+		fr_assert(fr_type_is_leaf(vp->vp_type));
+		if (fr_pair_print_value_quoted(oid_buff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
+
+		RDEBUGX(lvl, "%s%s", prefix ? prefix : "", fr_sbuff_start(oid_buff));
 		break;
 	}
 }

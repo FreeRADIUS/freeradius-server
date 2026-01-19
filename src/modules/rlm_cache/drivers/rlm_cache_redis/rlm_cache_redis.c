@@ -50,7 +50,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_cache_redis_dict[];
 fr_dict_autoload_t rlm_cache_redis_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cache_created;
@@ -60,7 +60,7 @@ extern fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[];
 fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
 	{ .out = &attr_cache_created, .name = "Cache-Created", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_cache_expires, .name = "Cache-Expires", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Create a new rlm_cache_redis instance
@@ -77,7 +77,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
-	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf, true,
+	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf,
 						 buffer, "modules.cache.pool", NULL);
 	if (!driver->cluster) {
 		ERROR("Cluster failure");
@@ -124,7 +124,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	fr_redis_cluster_state_t	state;
 	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t		status;
+	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
 	redisReply			*reply = NULL;
 	int				s_ret;
 
@@ -255,7 +255,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	fr_redis_conn_t		*conn;
 	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t	status;
+	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 	int			s_ret;
 
@@ -430,7 +430,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;
 	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t			status;
+	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
 	redisReply			*reply = NULL;
 	int				s_ret;
 	cache_status_t			cache_status;

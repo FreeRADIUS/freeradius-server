@@ -112,8 +112,8 @@ typedef union {
 	};
 
 	struct {
-		void 		       * _CONST	cursor;			//!< cursors
-		char const     	       * _CONST	name;			//!< name of the current cursor
+		void			* _CONST cursor;		//!< cursors
+		char const		* _CONST name;			//!< name of the current cursor
 	};
 
 	/*
@@ -147,6 +147,8 @@ typedef union {
 	*/
 	size_t					size;			//!< System specific file/memory size.
 	fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
+
+	fr_dict_attr_t const			*da;			//!< dictionary reference
 
 	fr_value_box_list_t			children;		//!< for groups
 } fr_value_box_datum_t;
@@ -220,7 +222,6 @@ struct value_box_s {
 FR_DLIST_FUNCS(fr_value_box_list, fr_value_box_t, entry)
 
 #define fr_value_box_list_foreach(_list_head, _iter)		fr_dlist_foreach(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
-#define fr_value_box_list_foreach_safe(_list_head, _iter)	fr_dlist_foreach_safe(fr_value_box_list_dlist_head(_list_head), fr_value_box_t, _iter)
 
 FR_DCURSOR_FUNCS(fr_value_box_dcursor, fr_value_box_list, fr_value_box_t)
 /** @} */
@@ -258,8 +259,11 @@ typedef enum {
 #define vb_octets				datum.octets
 #define vb_void					datum.ptr
 #define vb_group				datum.children
+#define vb_attr					datum.da
 
 #define vb_ip					datum.ip
+#define vb_ipv4addr    				datum.ip.addr.v4.s_addr
+#define vb_ipv6addr    				datum.ip.addr.v6.s6_addr
 
 #define vb_ifid					datum.ifid.addr
 #define vb_ether				datum.ether.addr
@@ -716,7 +720,7 @@ void		fr_value_box_clear(fr_value_box_t *data)
 		CC_HINT(nonnull(1));
 
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					  const fr_value_box_t *src)
@@ -1049,14 +1053,26 @@ ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_dbuff_t *dbuff, size_t len, bool tainted)
 		CC_HINT(nonnull(2,5));
 
+ssize_t		fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+						 int prefix_len, uint8_t const *data, size_t data_len, bool fixed, bool tainted)
+		CC_HINT(nonnull(1,5));
+
+ssize_t		fr_value_box_from_memory(TALLOC_CTX *ctx,
+					 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					 void const *src, size_t len)
+		CC_HINT(nonnull(2,5));
+
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src)
-		CC_HINT(nonnull(2,5));
+		CC_HINT(warn_unused_result,nonnull(2,5));
 
 int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
-		CC_HINT(nonnull(1));
+		CC_HINT(warn_unused_result,nonnull(1));
+
+uint64_t       	fr_value_box_as_uint64(fr_value_box_t const *src)
+		CC_HINT(warn_unused_result,nonnull);
 
 bool		fr_value_box_is_truthy(fr_value_box_t const *box)
 		CC_HINT(nonnull(1));
@@ -1109,6 +1125,32 @@ void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 {
 	box->secret = secret;
 }
+
+/** Decide if we need an enum prefix.
+ *
+ *  We don't print the prefix in fr_value_box_print(), even though that function is the inverse of
+ *  fr_value_box_from_str().  If we always add the prefix there, then lots of code needs to be updated to
+ *  suppress printing the prefix.  e.g. When using %{Service-Type} in a filename, or %{Acct-Status-Type} in an
+ *  SQL query, etc.
+ *
+ *  Instead, the various unlang / debug routines add the prefix manually.  This way ends up being less
+ *  complicated, and has fewer cornrer cases than the "right" way of doing it.
+ *
+ *  Note that we don't return the enum name for booleans.  Those are printed as "true / false", or "yes / no"
+ *  without the "::" prefix.
+ */
+static inline CC_HINT(nonnull, always_inline)
+char const *fr_value_box_enum_name(fr_value_box_t const *box)
+{
+	if (fr_type_is_leaf(box->type) && (box->type != FR_TYPE_STRING) &&
+	    box->enumv && box->enumv->flags.has_value &&
+	    ((box->type != FR_TYPE_BOOL) || da_is_bit_field(box->enumv))) {
+		return fr_dict_enum_name_by_value(box->enumv, box);
+	}
+
+	return NULL;
+}
+
 
 /** @name Assign and manipulate binary-unsafe C strings
  *
@@ -1211,6 +1253,8 @@ void		fr_value_box_increment(fr_value_box_t *vb)
 void		fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
 
 #define		fr_value_box_get_cursor(_dst) talloc_get_type_abort((_dst)->vb_cursor, fr_dcursor_t)
+
+void		fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da);
 
 /** @name Parsing
  *
@@ -1325,8 +1369,8 @@ void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t c
  *
  * @{
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head);
-void fr_value_box_debug(fr_value_box_t const *vb);
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head);
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb);
 /** @} */
 
 #undef _CONST

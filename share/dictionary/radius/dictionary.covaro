@@ -15,27 +15,27 @@ VENDOR		Covaro				18022
 
 BEGIN-VENDOR	Covaro
 
-ATTRIBUTE	User-Privilege				1	integer
+ATTRIBUTE	User-Privilege				1	uint32
 
 VALUE	User-Privilege			SUPERUSER		1
 VALUE	User-Privilege			PROVISIONING		2
 VALUE	User-Privilege			MAINTENANCE		3
 VALUE	User-Privilege			RETRIEVE		4
 
-ATTRIBUTE	Max-Sessions				2	integer
-ATTRIBUTE	Session-Timeout				3	integer
+ATTRIBUTE	Max-Sessions				2	uint32
+ATTRIBUTE	Session-Timeout				3	uint32
 
-ATTRIBUTE	Inhibit-Message				4	integer
+ATTRIBUTE	Inhibit-Message				4	uint32
 
 VALUE	Inhibit-Message			N			0
 VALUE	Inhibit-Message			Y			1
 
-ATTRIBUTE	Inhibit-Dbchg				5	integer
+ATTRIBUTE	Inhibit-Dbchg				5	uint32
 
 VALUE	Inhibit-Dbchg			N			0
 VALUE	Inhibit-Dbchg			Y			1
 
-ATTRIBUTE	Inhibit-Pmrept				6	integer
+ATTRIBUTE	Inhibit-Pmrept				6	uint32
 
 VALUE	Inhibit-Pmrept			N			0
 VALUE	Inhibit-Pmrept			Y			1

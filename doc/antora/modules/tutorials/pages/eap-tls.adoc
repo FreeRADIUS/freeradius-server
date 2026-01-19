@@ -1,5 +1,7 @@
 = EAP-TLS: Certificate-based authentication
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to use the EAP-TLS authentication
 protocol and to send and receive test packets.
 
@@ -24,7 +26,7 @@ $ ls -l usr/lib64/freeradius/rlm_eap*
 Use the directory where the FreeRADIUS libraries were installed.
 
 You should see not only files like `rlm_eap.so`, but also
-`rlm_tls_md5.so` and `rlm_eap_tls.so`. If you do not see those files,
+`rlm_eap_md5.so` and `rlm_eap_tls.so`. If you do not see those files,
 you will have to install them now. If necessary, you may have to
 re-build the server, as follows:
 

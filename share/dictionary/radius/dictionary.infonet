@@ -42,7 +42,7 @@ ATTRIBUTE	Type					248	string
 #       auth packets.
 #
 ATTRIBUTE	Pool-Request				252	string
-ATTRIBUTE	Surcharge-Type				254	integer
+ATTRIBUTE	Surcharge-Type				254	uint32
 ATTRIBUTE	NAS-Location				255	string
 ATTRIBUTE	Random-IP-Pool				246	string
 #

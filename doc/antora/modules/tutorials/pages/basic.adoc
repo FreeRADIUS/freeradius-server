@@ -1,0 +1,17 @@
+= Basic Configuration
+
+This section serves as your guide to configuration expertise. Review step-by-step tutorials for essential tasks, such as xref:new_user.adoc[adding new users] or xref:new_client.adoc[clients], and xref:matching_users.adoc[matching users] from a backend i.e. database. Discover how to set up new clients and navigate xref:accounting.adoc[accounting features] and how to set up xref:simultaneous_use.adoc[simultaneous use].
+
+There is also a dedicated section for xref:unlang.adoc[Unlang], the FreeRADIUS policy language. You’ll find helpful tutorials on editing in place, creating conditions, splitting strings, and defining robust policies.
+
+Each entry links to a detailed page for further guidance and steps to help you complete the following tasks:
+
+* xref:new_user.adoc[New User]
+* xref:matching_users.adoc[Matching Users]
+* xref:new_client.adoc[New Client]
+* xref:accounting.adoc[Accounting]
+** xref:simultaneous_use.adoc[Simultaneous Use]
+* xref:unlang.adoc[Unlang]
+** xref:unlang_update_blocks_and_conditions.adoc[Update blocks and conditions]
+** xref:unlang_splitting_strings.adoc[Splitting strings]
+** xref:unlang_policies.adoc[Policies]

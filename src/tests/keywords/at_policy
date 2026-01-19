@@ -1,0 +1,15 @@
+#
+#  Test @policy foo {...} with overrides
+#
+
+at_policy
+
+if !control.Tmp-String-0 {
+	test_fail
+}
+
+if control.Tmp-String-0 != 'at_policy' {
+	test_fail
+}
+
+success

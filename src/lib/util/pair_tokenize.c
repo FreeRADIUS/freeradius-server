@@ -154,6 +154,7 @@ static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da
 	if (!vp) return NULL;
 
 	vp->op = op;
+	PAIR_ALLOCED(vp);
 
 	if (fr_pair_value_from_str(vp, value, value_len, uerules, false) < 0) {
 		talloc_free(vp);
@@ -259,6 +260,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, fr_value_unescape_by_char[(uint8_t)quote]);
 	if (!vp) return -(in - start);
 
+	PAIR_ALLOCED(vp);
 	fr_pair_append(pair_ctx->list, vp);
 
 	return p - start;

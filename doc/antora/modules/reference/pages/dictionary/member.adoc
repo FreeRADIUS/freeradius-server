@@ -7,14 +7,13 @@ MEMBER <name> <type> [<flags>]
 
 .Description
 
-The `MEMBER` keyword defines a name and data type mapping for members
-of a parent xref:dictionary/struct.adoc[STRUCT] definition.  The definitions
-preceding a `MEMBER` must be either another `MEMBER`, or be a `STRUCT`.
+The `MEMBER` keyword defines a name and data type mapping for fields
+of a `struct` data type.
 
 <name>:: The name of the attribute.  The name can contain alphanumeric
 characters, `-`, and `_`.  The name should be short and descriptive.
 +
-The name of this `MEMBER` is defined only within the context of its parent `STRUCT`.
+The name of this `MEMBER` is defined only within the context of its parent `struct`.
 
 <type>:: A xref:type/index.adoc[data type], or the special type `bit`.
 +
@@ -43,15 +42,15 @@ Common flags and meanings
 | Name         | Description
 | `array`      | For fixed-size types, declare that the contents of the packet can have an array of this value.
 | `enum=...`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an `xref:dictionary/enum.adoc[ENUM].
-| `clone=...`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
-| `key`        | This member is a "key" type.  The struct can have different xref:dictionary/struct.adoc[STRUCT] children depending on the value of the key.
+| `clone=...`  | For `tlv` types, clone (or copy) child definitions from another attribute of the same type
+| `key`        | This member is a "key" type.  The structure can have different children of type `union`, depending on the value of the key.
 |=====
 
 See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----
-STRUCT Foo
+ATTRIBUTE Foo 1 struct
 MEMBER Bar  bit[3]
 MEMBER Baz  bit[5]
 MEMBER Name string
@@ -72,6 +71,5 @@ Fixed Size types and meanings
 | `string[n]`  | Declare that this attribute uses `n` bytes of `string` data
 |=====
 
-
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

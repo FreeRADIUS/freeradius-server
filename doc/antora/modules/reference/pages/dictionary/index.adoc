@@ -78,13 +78,13 @@ Vendors can submit new dictionaries to us via
 mailto:dictionary@freeradius.org[email], or via
 https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 
-=== Names are Case-insensitive
+=== Names are case-insensitive
 
 When names are printed, they are printed as the name given in the
 dictionaries.  When a name is looked up in the dictionaries, the
 lookup is done in a case-insensitive manner.
 
-=== Names are Hierarchical
+=== Names are hierarchical
 
 In earlier versions of FreeRADIUS, the names were global.  The global
 names for attributes caused issue with implementations, as noted in
@@ -106,8 +106,7 @@ xref:dictionary/alias.adoc[ALIAS] keyword can help.  See
 Names occur in many places, such as in
 xref:dictionary/attribute.adoc[ATTRIBUTE] definitions,
 xref:dictionary/define.adoc[DEFINE],
-xref:dictionary/member.adoc[MEMBER],
-xref:dictionary/struct.adoc[STRUCT], etc.  We generally refer to all
+xref:dictionary/member.adoc[MEMBER], etc.  We generally refer to all
 of these entities as being 'attributes', no matter how the name was
 defined.
 
@@ -153,7 +152,6 @@ xref:dictionary/attribute.adoc[ATTRIBUTE] and xref:dictionary/value.adoc[VALUE].
 | xref:dictionary/include.adoc[$INCLUDE]     | Include another dictionary file
 | xref:dictionary/member.adoc[MEMBER]        | Define a member of a `STRUCT`
 | xref:dictionary/protocol.adoc[PROTOCOL]    | Define a protocol like `RADIUS` or `DHCPv4`
-| xref:dictionary/struct.adoc[STRUCT]        | Define a structure which can contain ``MEMBER``s
 | xref:dictionary/value.adoc[VALUE]          | Define a name for a particular value of an `ATTRIBUTE`
 | xref:dictionary/vendor.adoc[VENDOR]        | Define a name and number for a vendor
 |=====

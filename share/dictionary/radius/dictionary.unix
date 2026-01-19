@@ -12,8 +12,8 @@ VENDOR		Unix				4
 
 BEGIN-VENDOR	Unix
 
-ATTRIBUTE	FTP-UID					10	integer
-ATTRIBUTE	FTP-GID					11	integer
+ATTRIBUTE	FTP-UID					10	uint32
+ATTRIBUTE	FTP-GID					11	uint32
 ATTRIBUTE	FTP-Home				12	string
 ATTRIBUTE	FTP-Shell				13	string
 ATTRIBUTE	FTP-Group-Names				14	string

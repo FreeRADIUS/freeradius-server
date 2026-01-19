@@ -1,5 +1,13 @@
-if (%test_trigger('test') == false) {
+if !%test_trigger('test') {
 	test_fail
+}
+
+if !%test_trigger('test_log') {
+    test_fail
+}
+
+if !%test_trigger('server.start') {
+    test_fail
 }
 
 test_pass

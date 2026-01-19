@@ -181,7 +181,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_test_dict[];
 fr_dict_autoload_t rlm_test_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_user_name;
@@ -189,7 +189,7 @@ static fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_autoload_t rlm_test_dict_attr[];
 fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -198,7 +198,7 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -223,53 +223,53 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Massage the request before recording it or proxying it
  */
-static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_return(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
@@ -277,17 +277,17 @@ static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_si
 /** Continue after marked runnable
  *
  */
-static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test called main retry handler - that's a failure");
 
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /** Continue after FR_SIGNAL_RETRY
  *
  */
-static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume_retry(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test retry");
 
@@ -297,11 +297,11 @@ static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUS
 /** Continue after FR_SIGNAL_TIMEOUT
  *
  */
-static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume_timeout(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test timed out as expected");
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, fr_signal_t action)
@@ -331,7 +331,7 @@ static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request
 /*
  *	Test retries
  */
-static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, 0, NULL);
 }
@@ -353,15 +353,13 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
-	fr_dcursor_append(out, vb);
-
-	if (trigger_exec(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
+	if (trigger(unlang_interpret_get(request), NULL, NULL, in_head->vb_strvalue, false, NULL) < 0) {
 		RPEDEBUG("Running trigger failed");
-		vb->vb_bool = false;
 		return XLAT_ACTION_FAIL;
 	}
 
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, vb);
 	vb->vb_bool = true;
 
 	return XLAT_ACTION_DONE;
@@ -388,7 +386,7 @@ static xlat_action_t test_xlat_passthrough(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_foreach(in, vb_p) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 
-		if (fr_value_box_copy(vb, vb, vb_p) < 0) {
+		if (unlikely(fr_value_box_copy(vb, vb, vb_p) < 0)) {
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
@@ -415,6 +413,20 @@ static xlat_action_t test_xlat_fail(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	return XLAT_ACTION_FAIL;
 }
 
+
+/** Always return a NULL value-box
+ */
+static xlat_action_t test_xlat_null(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+				    UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL));
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
@@ -486,6 +498,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_fail_args);
 
+	if (!module_rlm_xlat_register(mctx->mi->boot, mctx, "null", test_xlat_null, FR_TYPE_VOID)) return -1;
+
 	return 0;
 }
 
@@ -536,8 +550,8 @@ module_rlm_t rlm_test = {
 
 			{ .section = SECTION_NAME("name1_null", NULL),			.method = mod_return },
 
-			{ .section = SECTION_NAME("recv", "access-challenge"),		.method = mod_return },
-			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
+			{ .section = SECTION_NAME("recv", "Access-Challenge"),		.method = mod_return },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"),	.method = mod_preacct },
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
 
 			{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },

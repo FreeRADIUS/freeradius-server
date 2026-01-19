@@ -157,6 +157,22 @@ struct fr_dict_gctx_s {
 	fr_dict_attr_t const	*attr_protocol_encapsulation;
 };
 
+typedef enum {
+	FR_DICT_PROTO_RADIUS = 1,
+	FR_DICT_PROTO_DHCPv4 = 2,
+	FR_DICT_PROTO_DHCPv6 = 3,
+	FR_DICT_PROTO_ETHERNET = 4,
+	FR_DICT_PROTO_TACACS = 5,
+	FR_DICT_PROTO_VMPS = 6,
+	FR_DICT_PROTO_SNMP = 7,
+	FR_DICT_PROTO_ARP = 8,
+	FR_DICT_PROTO_TFTP = 9,
+	FR_DICT_PROTO_TLS = 10,
+	FR_DICT_PROTO_DNS = 11,
+	FR_DICT_PROTO_LDAP = 12,
+	FR_DICT_PROTO_BFD = 13,
+} fr_dict_protocol_id_t;
+
 extern fr_dict_gctx_t *dict_gctx;
 
 bool			dict_has_dependents(fr_dict_t *dict);
@@ -245,11 +261,13 @@ fr_dict_attr_t		*_dict_attr_alloc(char const *filename, int line,
 					  fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(4));
 /** @} */
 
-fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
+fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *in, char const *new_name);
 
 int			dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
 int			dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
+
+int			dict_attr_acopy_aliases(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
 int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref);
 

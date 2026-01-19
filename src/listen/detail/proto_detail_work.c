@@ -98,7 +98,7 @@ extern fr_dict_autoload_t proto_detail_work_dict[];
 fr_dict_autoload_t proto_detail_work_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_transmit_counter;
@@ -106,7 +106,7 @@ static fr_dict_attr_t const *attr_packet_transmit_counter;
 extern fr_dict_attr_autoload_t proto_detail_work_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
 	{ .out = &attr_packet_transmit_counter, .name = "Packet-Transmit-Counter", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -665,7 +665,8 @@ free_track:
 	 */
 	if (thread->closing && !thread->outstanding) {
 		MPRINT("WRITE ASKED TO CLOSE");
-		return 0;
+		errno = ECONNRESET;
+		return -1;
 	}
 
 	MPRINT("WRITE RETURN B %ld", buffer_len);

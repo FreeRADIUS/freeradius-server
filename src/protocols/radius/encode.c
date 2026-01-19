@@ -34,6 +34,13 @@ RCSID("$Id$")
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 
+static const bool allow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
+	[ 0 ] = true,		/* only for testing */
+	[ FR_RADIUS_CODE_ACCESS_ACCEPT ] = true,
+	[ FR_RADIUS_CODE_COA_REQUEST ] = true,
+};
+
+
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
@@ -208,6 +215,16 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 		block_len = encrypted_len - n;
 		if (block_len > AUTH_PASS_LEN) block_len = AUTH_PASS_LEN;
 
+#ifdef __COVERITY__
+		/*
+		 *	Coverity is not doing the calculations correctly - it doesn't see
+		 *	that setting block_len = encrypted_len - n puts a safe boundary
+		 *	on block_len so the access to tpasswd won't overflow.
+		 */
+		if ((block_len + 2 + n) > RADIUS_MAX_STRING_LENGTH) {
+			block_len = RADIUS_MAX_STRING_LENGTH - n - 3;
+		}
+#endif
 		for (i = 0; i < block_len; i++) tpasswd[i + 2 + n] ^= digest[i];
 	}
 
@@ -252,6 +269,8 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 			fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 			vp = fr_dcursor_current(&child_cursor);
+			if (!vp) goto next;
+
 			fr_proto_da_stack_build(da_stack, vp->da);
 
 			/*
@@ -260,13 +279,14 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			slen = encode_tlv(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			if (slen < 0) return slen;
 
+		next:
 			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 		} else {
 			slen = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			if (slen < 0) return slen;
 		}
-		if (slen < 0) return slen;
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -458,7 +478,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_STRING:
 		if (fr_radius_flag_abinary(da)) {
 			slen = fr_radius_encode_abinary(vp, &value_dbuff);
-			if (slen <= 0) return slen;
+			if (slen < 0) return slen;
 			break;
 		}
 		FALL_THROUGH;
@@ -506,8 +526,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	{
 		bool has_tag = fr_radius_flag_has_tag(vp->da);
 
-		if (packet_ctx->disallow_tunnel_passwords) {
-			fr_strerror_const("Attributes with 'encrypt=Tunnel-Password' set cannot go into this packet.");
+		fr_assert(packet_ctx->code < FR_RADIUS_CODE_MAX);
+		if (!allow_tunnel_passwords[packet_ctx->code]) {
+			fr_strerror_printf("Attributes with 'encrypt=Tunnel-Password' set cannot go into %s.",
+					   fr_radius_packet_name[packet_ctx->code]);
 			goto return_0;
 		}
 
@@ -1697,7 +1719,8 @@ ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 }
 
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	static uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH] = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -1734,9 +1757,17 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
+	uint8_t const *request_authenticator = NULL;
 
 	vp = fr_pair_find_by_da(vps, NULL, attr_packet_type);
-	if (vp) packet_type = vp->vp_uint32;
+	if (vp) {
+		packet_type = vp->vp_uint32;
+
+		if (!FR_RADIUS_PACKET_CODE_VALID(packet_type)) {
+			fr_strerror_printf("Invalid packet code %u", packet_type);
+			return -1;
+		}
+	}
 
 	/*
 	 *	Force specific values for testing.
@@ -1744,18 +1775,14 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
 		vp = fr_pair_find_by_da(vps, NULL, attr_packet_authentication_vector);
 		if (!vp) {
-			int i;
-			uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH];
-
-			for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
-				data[4 + i] = fr_fast_rand(&packet_ctx->rand_ctx);
-			}
-
-			fr_pair_list_append_by_da_len(ctx, vp, vps, attr_packet_authentication_vector, vector, sizeof(vector), false);
+			fr_pair_list_append_by_da_len(ctx, vp, vps, attr_packet_authentication_vector,
+						      packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH, false);
 		}
 	}
 
 	packet_ctx->code = packet_type;
+	packet_ctx->request_code = allowed_replies[packet_type];
+	if (packet_ctx->request_code) request_authenticator = packet_ctx->request_authenticator;
 
 	/*
 	 *	@todo - pass in packet_ctx to this function, so that we
@@ -1764,7 +1791,8 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	slen = fr_radius_encode(&FR_DBUFF_TMP(data, data_len), vps, packet_ctx);
 	if (slen <= 0) return slen;
 
-	if (fr_radius_sign(data, NULL, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
+	if (fr_radius_sign(data, request_authenticator,
+			   (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
 		return -1;
 	}
 

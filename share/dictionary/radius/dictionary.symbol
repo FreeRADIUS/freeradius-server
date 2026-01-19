@@ -16,7 +16,7 @@ VENDOR		Symbol				388
 
 BEGIN-VENDOR	Symbol
 
-ATTRIBUTE	Admin-Role				1	integer
+ATTRIBUTE	Admin-Role				1	uint32
 
 VALUE	Admin-Role			Monitor			1
 VALUE	Admin-Role			Helpdesk		2
@@ -28,8 +28,8 @@ VALUE	Admin-Role			SuperUser		32768
 
 ATTRIBUTE	Current-ESSID				2	string
 ATTRIBUTE	Allowed-ESSID				3	string
-ATTRIBUTE	WLAN-Index				4	integer
-ATTRIBUTE	QoS-Profile				5	integer
+ATTRIBUTE	WLAN-Index				4	uint32
+ATTRIBUTE	QoS-Profile				5	uint32
 
 VALUE	QoS-Profile			BestEffort		1
 VALUE	QoS-Profile			Background		2
@@ -44,7 +44,7 @@ ATTRIBUTE	Downlink-Limit				10	string	# Format: 100-10000 (Kbps), 0 = Disabled
 ATTRIBUTE	Uplink-Limit				11	string	# Format: 100-10000 (Kbps), 0 = Disabled
 ATTRIBUTE	User-Group				12	string
 
-ATTRIBUTE	Login-Source				100	integer
+ATTRIBUTE	Login-Source				100	uint32
 
 VALUE	Login-Source			HTTP			16
 VALUE	Login-Source			SSH			32

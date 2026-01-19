@@ -52,7 +52,7 @@ static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->proto_dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 					}
 				}) <= 0) return -4;

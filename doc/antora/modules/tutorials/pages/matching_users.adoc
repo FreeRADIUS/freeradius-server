@@ -34,21 +34,278 @@ entry. Do the same for the third entry. Once all entries work in
 isolation, uncomment the first two and verify that the combination of
 entries behaves as expected.
 
-Test the server with username "bob" and password "hello". Use the
-debug output of the server to see which entries in the file were
-matched. You may use `radclient` or the `bob.sh` script to send the
-packets. In that case, save the packets into a file, and use the "-f"
-parameter to radclient to tell it which file to read.
+== Exercise 1: Basic Configuration (Entry 1)
 
-Perform other authentication tests, adding the appropriate attributes to
-the request sent by the RADIUS client. Continue until you have packets
-that will match:
+The first step is to configure user "bob" with password "hello". It
+will configure a reply message in an appropriate attribute. This
+configuration entry will cause the server to continue processing the
+file.
+
+Add the following configuration to `raddb/mods-config/files/authorize`:
+
+[source,text]
+----
+# Entry 1: Basic "bob" with password and reply message, continue processing
+bob     Password.Cleartext := "hello"
+        Reply-Message = "Hello, bob! Basic access granted.",
+        Fall-Through = Yes
+----
+
+Execute the following command to test this configuration:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+The debug log should show the server matching the entry and preparing the reply attributes:
+
+[source,text]
+----
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files (ok)
+----
+
+The client should receive an `Access-Accept` packet with the expected `Reply-Message`:
+
+[source,text]
+----
+Sent Access-Request Id 50 from 0.0.0.0:55490 to 127.0.0.1:1812 length 61
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 50 from 127.0.0.1:1812 to 0.0.0.0:55490 via lo length 78
+        Message-Authenticator = 0xeb6112615d97252ff1dae0d4f6eaa437
+        Reply-Message = "Hello, bob! Basic access granted."
+        User-Name = "bob"
+----
+
+== Exercise 2: PPP Configuration (Entry 2)
+
+The second entry will configure user "bob" and will match only when
+"bob" is asking to use PPP. The configuration entry should add the
+appropriate attributes to the reply, to allow "bob" to use PPP and to
+assign him the IP address 192.168.10.12. This entry should also cause
+the server to continue processing the file.
+
+Update `raddb/mods-config/files/authorize` with this additional entry:
+
+[source,text]
+----
+# Entry 2: "bob" for PPP only, assign IP, continue processing
+bob     Password.Cleartext := "hello"
+        Framed-Protocol := ::PPP,
+        Service-Type := ::Framed-User,
+        Framed-IP-Address := 192.168.10.12
+----
+
+Test this specific match by sending a request including `Framed-Protocol = PPP`:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Framed-Protocol = PPP' | radclient -x 127.0.0.1 auth testing123
+----
+
+The debug output will confirm the match on the specific line and the assignment of attributes:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 7 raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Framed-Protocol := ::PPP
+(0)        files - Service-Type := ::Framed-User
+(0)        files - Framed-IP-Address := 192.168.10.12
+(0)      files (ok)
+----
+
+The received packet will contain the PPP-related attributes:
+
+[source,text]
+----
+Sent Access-Request Id 152 from 0.0.0.0:38996 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Framed-Protocol = ::PPP
+Received Access-Accept Id 152 from 127.0.0.1:1812 to 0.0.0.0:38996 via lo length 61
+        Message-Authenticator = 0x9bb3b6295aff4ed43c8447d004cce0df
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
+
+== Exercise 3: Default Framed User (Entry 3)
+
+The last entry will configure any user asking for "framed" service,
+and will assign them a default route of 192.168.10.1 with netmask of
+255.255.255.0.
+
+Add this final entry to `raddb/mods-config/files/authorize`:
+
+[source,text]
+----
+# Entry 3: Any framed user, assign netmask and default route
+DEFAULT Service-Type == ::Framed-User
+        Framed-IP-Netmask = 255.255.255.0,
+        Framed-Route = "192.168.10.0/24 192.168.10.1 1"
+----
+
+Verify this entry in isolation by requesting `Service-Type = Framed-User`:
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Service-Type = Framed-User' | radclient -x 127.0.0.1 auth testing123
+----
+
+The server logs will show matches for both "bob" (Entry 1) and "DEFAULT" (Entry 3) due to fall-through:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files - files - Found match "DEFAULT" on line 14 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Framed-IP-Netmask = 255.255.255.0
+(0)        files - Framed-Route = 192.168.10.0/24 192.168.10.1 1
+(0)      files (ok)
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+The response will verify that the routing information is included:
+
+[source,text]
+----
+Sent Access-Request Id 87 from 0.0.0.0:38270 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Service-Type = ::Framed-User
+Received Access-Accept Id 87 from 127.0.0.1:1812 to 0.0.0.0:38270 via lo length 116
+        Message-Authenticator = 0xf402e23d4f51124a521b7dac1b374367
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-IP-Netmask = 255.255.255.0
+        Framed-Route = "192.168.10.0/24 192.168.10.1 1"
+        User-Name = "bob"
+----
+
+== Combined Tests
+
+Perform other authentication tests, adding the appropriate attributes
+to the request sent by the RADIUS client. Continue until you have
+packets that will match:
 
 * entries 1 and 2, but not 3.
-* entries 1 and 3, but not 2.
 * entries 1, 2, and 3.
 
-Save copies of the packets.
+=== Testing Entries 1 and 2
+
+To test matches for Entries 1 and 2 (while excluding Entry 3), send a
+request with `Framed-Protocol = PPP` but without explicitly requesting
+`Service-Type = Framed-user`.
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Framed-Protocol = PPP' | radclient -x 127.0.0.1 auth testing123
+----
+
+Debug Output:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files - files - Found match "bob" on line 8 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Framed-Protocol := ::PPP
+(0)        files - Service-Type := ::Framed-User
+(0)        files - Framed-IP-Address := 192.168.10.12
+(0)      files (ok)
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+Response:
+
+[source,text]
+----
+Sent Access-Request Id 245 from 0.0.0.0:34406 to 127.0.0.1:1812 length 67
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Framed-Protocol = ::PPP
+Received Access-Accept Id 245 from 127.0.0.1:1812 to 0.0.0.0:34406 via lo length 96
+        Message-Authenticator = 0x4fa7862a8a360b31afcd635db61126cf
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
+
+=== Testing Entries 1, 2, and 3
+
+To trigger all three entries, send a request with both `Service-Type =
+Framed-User` and `Framed-Protocol = PPP`.
+
+[source,bash]
+----
+echo -e 'User-Name = "bob", User-Password = "hello", Service-Type = Framed-User, Framed-Protocol = PPP' | radclient -x 127.0.0.1 auth testing123
+----
+
+Debug Output:
+
+[source,text]
+----
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 2 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Hello, bob! Basic access granted.
+(0)      files - files - Found match "bob" on line 8 of raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Framed-Protocol := ::PPP
+(0)        files - Service-Type := ::Framed-User
+(0)        files - Framed-IP-Address := 192.168.10.12
+(0)      files (ok)
+...
+(0)      pap - User authenticated successfully
+(0)      pap (ok)
+----
+
+Response:
+
+[source,text]
+----
+Sent Access-Request Id 184 from 0.0.0.0:54989 to 127.0.0.1:1812 length 73
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Service-Type = ::Framed-User
+        Framed-Protocol = ::PPP
+Received Access-Accept Id 184 from 127.0.0.1:1812 to 0.0.0.0:54989 via lo length 96
+        Message-Authenticator = 0x07c837908f7d3871d37456bbd924ea90
+        Reply-Message = "Hello, bob! Basic access granted."
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+        Framed-IP-Address = 192.168.10.12
+        User-Name = "bob"
+----
 
 == Questions
 
@@ -60,5 +317,5 @@ meets the requirements, but do the requirements fit the needs of the
 network?
 4.  How does this kind of simple configuration scale to many users?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

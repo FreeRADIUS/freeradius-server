@@ -1,7 +1,5 @@
 = SQL-IP-Pool
 
-== Introduction
-
 The `sqlippool` module allocates IP addresses from one or more pools
 of addresses.  It tracks addresses to that it does not issue the same
 leased IP address to multiple devices.

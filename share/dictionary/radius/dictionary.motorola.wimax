@@ -16,7 +16,7 @@ BEGIN-VENDOR	Motorola
 
 ATTRIBUTE	WiMAX-MIP-MN-HOME-ADDRESS		10	ipaddr
 ATTRIBUTE	WiMAX-MIP-KEY				11	string encrypt=Tunnel-Password
-ATTRIBUTE	WiMAX-MIP-SPI				12	integer
+ATTRIBUTE	WiMAX-MIP-SPI				12	uint32
 ATTRIBUTE	WiMAX-MN-HA				13	ipaddr
 ATTRIBUTE	WiMAX-DNS-Server-IP-Address		20	octets
 ATTRIBUTE	WiMAX-User-NAI				22	string

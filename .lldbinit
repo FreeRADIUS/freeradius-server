@@ -1,0 +1,14 @@
+#
+#  This was added to lldb recently, where it _defaults_ to showing a
+#  status line in the terminal.  And then scrolls text within the
+#  remaining part of that terminal.  Which means that the normal
+#  terminal scrolling doesn't work, and the output is borked /
+#  chopped.
+#
+#  There doesn't appear to be a simple way to enable mouse-wheel
+#  scrolling within LLDBs window (or any scrolling at all).
+#
+#  Clearing this flag reverts the behavior to 1990-style terminal
+#  windows, as nature intended.
+#
+settings set show-statusline false

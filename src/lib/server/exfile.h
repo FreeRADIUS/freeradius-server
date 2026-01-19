@@ -41,7 +41,7 @@ void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger
 				       fr_pair_list_t *trigger_args);
 
 CC_ACQUIRE_HANDLE("exfile_fd")
-int		exfile_open(exfile_t *lf, char const *filename, mode_t permissions, off_t *offset);
+int		exfile_open(exfile_t *lf, char const *filename, mode_t permissions, int flags, off_t *offset);
 
 int		exfile_close(exfile_t *lf, CC_RELEASE_HANDLE("exfile_fd") int fd);
 

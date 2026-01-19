@@ -72,7 +72,10 @@ match Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
 #  Otherwise the "3600.5" is interpreted as a bare word / string.
 #
 encode-pair Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
-match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ff 46 33 36 30 30 2e 35 ff
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ff d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
 
 #
 #  Zero-length strings and octets
@@ -133,7 +136,7 @@ match PMIP6-Home-HN-Prefix = ::/128
 #  From a fuzzer output
 #
 decode-pair 9f a1 1a 19 a1 82 00 da 00 00 03 ea a2 01 1a be 00 00 00 28 1b 70 a1 00 da 00 00 03 ea
-match Invalid cbor header - unexpected end of data
+match Invalid attribute number '430014976' - it must be no more than 8 bits in size
 
 count
-match 61
+match 63

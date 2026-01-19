@@ -306,7 +306,7 @@ it could be wrong.
 	}
 
 	if (!Event-Timestamp) {
-		Event-Timestamp := Packet-Original-Timestamp
+		Event-Timestamp := Packet-Original-Timestamp - %{Acct-Delay-Time || 0}
 	}
 
 ```

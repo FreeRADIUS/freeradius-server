@@ -1,8 +1,10 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 FLAGS	internal
+
+ATTRIBUTE	Packet-Type				1000	uint32 enum=@.Header.Opcode
 
 VALUE	Packet-Type			Query-Response		16
 VALUE	Packet-Type			Inverse-Query-Response	17
@@ -10,6 +12,5 @@ VALUE	Packet-Type			Status-Response		18
 VALUE	Packet-Type			Notify-Response		20
 VALUE	Packet-Type			Update-Response		21
 VALUE	Packet-Type			Stateful-Operation-Response 22
-ATTRIBUTE	Packet-Type				1000	uint32 enum=@.Header.Opcode
 
 VALUE	Packet-Type			Do-Not-Respond		256

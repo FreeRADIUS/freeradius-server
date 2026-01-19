@@ -38,6 +38,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/chap.h>
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/md4.h>
 #endif
 #include <ctype.h>
 
@@ -108,7 +110,7 @@ extern fr_dict_autoload_t radclient_dict[];
 fr_dict_autoload_t radclient_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cleartext_password;
@@ -152,7 +154,7 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static NEVER_RETURNS void usage(void)
@@ -228,6 +230,9 @@ static int openssl3_init(void)
 		return -1;
 	}
 
+	fr_md5_openssl_init();
+	fr_md4_openssl_init();
+
 	return 0;
 }
 
@@ -242,6 +247,9 @@ static void openssl3_free(void)
 		ERROR("Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
+
+	fr_md5_openssl_free();
+	fr_md4_openssl_free();
 }
 #else
 #define openssl3_init()
@@ -398,7 +406,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	 *	Read the reply VP's.
 	 */
 	if (fr_pair_list_afrom_file(request, dict_radius,
-				    &request->reply_pairs, coa_reply, coa_reply_done) < 0) {
+				    &request->reply_pairs, coa_reply, coa_reply_done, true) < 0) {
 		REDEBUG("Error parsing \"%s\"", reply_filename);
 	error:
 		talloc_free(request);
@@ -416,7 +424,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	 */
 	if (coa_filter) {
 		if (fr_pair_list_afrom_file(request, dict_radius,
-					    &request->filter, coa_filter, coa_filter_done) < 0) {
+					    &request->filter, coa_filter, coa_filter_done, true) < 0) {
 			REDEBUG("Error parsing \"%s\"", filter_filename);
 			goto error;
 		}
@@ -555,7 +563,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (fr_pair_list_afrom_file(request, dict_radius,
-					    &request->request_pairs, packets, &packets_done) < 0) {
+					    &request->request_pairs, packets, &packets_done, true) < 0) {
 			char const *input;
 
 			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
@@ -584,7 +592,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			bool filters_done;
 
 			if (fr_pair_list_afrom_file(request, dict_radius,
-						    &request->filter, filters, &filters_done) < 0) {
+						    &request->filter, filters, &filters_done, true) < 0) {
 				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}
@@ -648,8 +656,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				 */
 				pair_update_request(request->password, attr_cleartext_password);
 				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length, true);
-			} else if ((vp->da == attr_user_password) ||
-				   (vp->da == attr_ms_chap_password)) {
+			} else if (vp->da == attr_ms_chap_password) {
 				pair_update_request(request->password, attr_cleartext_password);
 				fr_pair_value_bstrndup(request->password, vp->vp_strvalue, vp->vp_length, true);
 
@@ -1008,27 +1015,24 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			fr_pair_t *vp;
 
-			if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password)) != NULL) {
-				fr_pair_value_strdup(vp, request->password->vp_strvalue, false);
-
-			} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password)) != NULL) {
+			if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password)) != NULL) {
 				uint8_t		buffer[17];
 				fr_pair_t	*challenge;
-				uint8_t	const	*vector;
 
 				/*
-				 *	Use Chap-Challenge pair if present,
-				 *	Request Authenticator otherwise.
+				 *	Use CHAP-Challenge pair if present, otherwise create CHAP-Challenge and
+				 *	populate with current Request Authenticator.
+				 *
+				 *	Request Authenticator is re-calculated by fr_packet_sign
 				 */
 				challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
-				if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
-					vector = challenge->vp_octets;
-				} else {
-					vector = request->packet->vector;
+				if (!challenge || (challenge->vp_length < 7)) {
+					pair_update_request(challenge, attr_chap_challenge);
+					fr_pair_value_memdup(challenge, request->packet->vector, RADIUS_AUTH_VECTOR_LENGTH, false);
 				}
 
 				fr_chap_encode(buffer,
-					       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
+					       fr_rand() & 0xff, challenge->vp_octets, challenge->vp_length,
 					       request->password->vp_strvalue,
 					       request->password->vp_length);
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
@@ -1298,6 +1302,7 @@ static int blast_radius_check(rc_request_t *request, fr_packet_t *reply)
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		if (reply->data[1] != request->packet->id) {
 			ERROR("Invalid reply ID %d to Access-Request ID %d", reply->data[1], request->packet->id);
 			return -1;
@@ -1556,6 +1561,9 @@ retry:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		break;
 
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
+		stats.error++;
+		break;
 	default:
 		stats.rejected++;
 	}
@@ -2238,11 +2246,13 @@ int main(int argc, char **argv)
 		      "\tAccepted      : %" PRIu64 "\n"
 		      "\tRejected      : %" PRIu64 "\n"
 		      "\tLost          : %" PRIu64 "\n"
+		      "\tErrored       : %" PRIu64 "\n"
 		      "\tPassed filter : %" PRIu64 "\n"
 		      "\tFailed filter : %" PRIu64,
 		      stats.accepted,
 		      stats.rejected,
 		      stats.lost,
+		      stats.error,
 		      stats.passed,
 		      stats.failed
 		);

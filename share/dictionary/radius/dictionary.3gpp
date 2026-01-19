@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -92,32 +92,35 @@ MEMBER		Type					uint8	key
 #  Meaning: 214 653
 #
 MEMBER		PLMN-ID					octets[3]
+MEMBER		Data					union key=Type
 
-STRUCT	CGI				Type			0
+BEGIN Vendor-Specific.3GPP.User-Location-Info.Data
+ATTRIBUTE	CGI					0	struct
 MEMBER		LAC					uint16
 MEMBER		CAI					uint16
 
-STRUCT	SAI				Type			1
+ATTRIBUTE	SAI					1	struct
 MEMBER		LAC					uint16
 MEMBER		SAC					uint16
 
-STRUCT	RAI				Type			2
+ATTRIBUTE	RAI					2	struct
 MEMBER		RAI					uint16
 MEMBER		RAC					uint16
 
-STRUCT	LAI				Type			32
+ATTRIBUTE	LAI					32	struct
 MEMBER		LAI					uint16
 
-STRUCT	TAI				Type			128
+ATTRIBUTE	TAI					128	struct
 MEMBER		TAC					uint16
 
-STRUCT	ECGI				Type			129
+ATTRIBUTE	ECGI					129	struct
 MEMBER		ECI					octets[4]
 
-STRUCT	TAI-ECGI			Type			130
+ATTRIBUTE	TAI-ECGI				130	struct
 MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
+END Vendor-Specific.3GPP.User-Location-Info.Data
 
 ATTRIBUTE	MS-TimeZone				23	struct
 

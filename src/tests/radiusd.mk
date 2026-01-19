@@ -47,7 +47,7 @@ include Make.inc
 
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $$(TEST_BIN)/radiusd)
-$(eval PORT := $(shell echo $$(($(PORT)+1))))
+$(eval PORT := $(shell echo $$(($(PORT)+20))))
 $(eval $(subst test.,,$(TEST))_port := $(PORT))
 
 #
@@ -57,9 +57,9 @@ $(eval $(subst test.,,$(TEST))_port := $(PORT))
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
+		echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \
-		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
@@ -101,7 +101,12 @@ $(TEST).radiusd_stop: | ${2}
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
-	$$(eval RADIUSD_RUN := TESTDIR=$(DIR) OUTPUT=${2} TEST_PORT=$(PORT) TEST=$(subst test.,,$(TEST)) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+	$$(eval export TESTDIR	   := $(DIR))
+	$$(eval export OUTPUT	   := ${2})
+	$$(eval export TEST_PORT   := $(PORT))
+	$$(eval export TEST	   := $(subst test.,,$(TEST)))
+	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+
 	${Q}rm -f ${2}/radiusd.log
 	${Q}if test ! -z "$$(PRINT_PORT)"; then \
 		echo "$(PORT)"; \

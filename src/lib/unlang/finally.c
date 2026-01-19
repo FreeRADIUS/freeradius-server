@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/finally.h>
@@ -37,6 +38,8 @@ RCSID("$Id$")
 typedef struct {
 	fr_time_delta_t				min_time;	//!< minimum time to run the finally instruction.
 	request_t				*request;
+	unlang_result_t				result;		//!< Result of the finally instruction.  We discard this.
+	rlm_rcode_t				original_rcode;	//!< The original request rcode when we entered.
 	unlang_t				*instruction;	//!< to run on timeout
 } unlang_frame_state_finally_t;
 
@@ -54,15 +57,31 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 }
 
-static unlang_action_t unlang_finally(UNUSED rlm_rcode_t *p_result, request_t *request, UNUSED unlang_stack_frame_t *frame)
+static unlang_action_t unlang_finally_resume(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
+
+	/*
+	 *	Reset the request->rcode, so that any other
+	 *	finally sections have access to the original
+	 *	rcode like 'timeout'.
+	 */
+	request->rcode = state->original_rcode;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
+
+	state->original_rcode = request->rcode;;
 
 	/*
 	 *	Ensure the request has at least min_time to continue
 	 *	executing before we cancel it.
 	 */
-	if (fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
+	if (request->timeout && fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
 		if (unlikely(fr_timer_in(unlang_interpret_frame_talloc_ctx(request),
 			     unlang_interpret_event_list(request)->tl, &request->timeout,
 			     state->min_time, false, unlang_timeout_handler, state) < 0)) {
@@ -71,9 +90,17 @@ static unlang_action_t unlang_finally(UNUSED rlm_rcode_t *p_result, request_t *r
 		}
 	}
 
-	if (unlikely(unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0)) {
+	/*
+	 *	Finally should be transparent to allow the rcode from
+	 *	process module to propagate back up, if there are no
+	 *	modules called.
+	 */
+	if (unlikely(unlang_interpret_push_instruction(&state->result, request, state->instruction,
+						       FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0)) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 	}
+
+	frame_repeat(frame, unlang_finally_resume);
 
 	/*
 	 *	Set a timer to cancel the request.  If we don't do this
@@ -107,21 +134,7 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 		.type = UNLANG_TYPE_FINALLY,
 		.name = "finally",
 		.debug_name = "finally",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 	};
 
 	unlang_frame_state_finally_t	*state;
@@ -138,8 +151,8 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 	 *	and will be cancelled if min_time or the request
 	 *	timer expires.
 	 */
-	if (unlang_interpret_push(request, &finally_instruction,
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+	if (unlang_interpret_push(NULL, request, &finally_instruction,
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -158,12 +171,20 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 
 void unlang_finally_init(void)
 {
-	unlang_register(UNLANG_TYPE_FINALLY,
-			&(unlang_op_t){
-				.name = "finally",
-				.interpret = unlang_finally,
-				.flag = UNLANG_OP_FLAG_NO_CANCEL,	/* No debug braces, the thing that's pushed in unlang finally should have braces */
-				.frame_state_size = sizeof(unlang_frame_state_finally_t),
-				.frame_state_type = "unlang_frame_state_finally_t",
-			});
+	unlang_register(&(unlang_op_t){
+			.name = "finally",
+			.type = UNLANG_TYPE_FINALLY,
+
+			.interpret = unlang_finally,
+
+			/*
+			 *	No debug braces, the thing
+			 *	that's pushed in unlang
+			 *	finally should have braces
+			 */
+			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
+
+			.frame_state_size = sizeof(unlang_frame_state_finally_t),
+			.frame_state_type = "unlang_frame_state_finally_t",
+		});
 }

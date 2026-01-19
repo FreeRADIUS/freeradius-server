@@ -84,7 +84,7 @@ jobs:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
           - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -g3",     LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 

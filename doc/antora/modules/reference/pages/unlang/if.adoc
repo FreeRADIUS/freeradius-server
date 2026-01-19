@@ -25,6 +25,40 @@ if (User-Name == "bob") {
 }
 ----
 
+== Expansions in an "if" condition
+
+An `if` condition may contain a xref:xlat/index.adoc[dynamic
+expansion], such as a call to the SQL module in the following example:
+
+.Example of Dynamic Expansion in Condition
+[source,unlang]
+----
+if %sql("SELECT reply_message FROM users where username = '%{User-Name}'") {
+    reject
+}
+----
+
+Unlike a simple check as with `if 1==2`, this dynamic expansion may fail.
+This failure can happen when the SQL database is unreachable, for
+example.  Different failures are possible for different functions.
+
+When a xref:xlat/index.adoc[dynamic expansion] fails, and `if`
+statement is followed by a trailing xref:unlang/else.adoc[else] or
+xref:unlang/elsif.adoc[elsif] statement, then `if` condition is treated
+as "false", and the `else` or `elsif statement is processed.
+
+Otherwise, the failed `if` statement returns the `fail`
+xref:unlang/return_codes.adoc[rcode], which is processed according to
+the rules for the current section.
+
+This distinction between "condition which evaluates to `false`" and
+"condition which fails to be processed" allow policies to distinguish
+those two cases.
+
+In previous versions of the server, a failed dynamic expansion was
+treated as a condition which returned `false`, which was not always
+optimal.
+
 == Practical Suggestions
 
 There are a number of practical suggestions which make it easier to work with conditions.
@@ -72,5 +106,5 @@ if (User-Name ==
 
 The last entry in an `if` section can also be an xref:unlang/actions.adoc[actions] subsection.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -115,12 +115,17 @@ struct fr_client_s {
 	bool			first_packet_no_proxy_state;	//!< Whether that first packet contained a Proxy-State
 								///< attribute.
 
+	bool			protocol_error;		//!< Whether the client supports Protocol-Error
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			use_connected;		//!< do we use connected sockets for this client
 
 #ifdef WITH_TLS
 	bool			tls_required;		//!< whether TLS encryption is required.
+#endif
+
+#ifdef NAS_VIOLATES_RFC
+	bool			allow_vulnerable_clients; //!< for vendors who violate the RFCs.
 #endif
 
 	char const		*nas_type;		//!< Type of client (arbitrary).

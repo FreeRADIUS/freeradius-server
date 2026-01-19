@@ -15,7 +15,7 @@ BEGIN-VENDOR	Centec
 #
 # Centec Privilege Attributes
 #
-ATTRIBUTE	Exec-Privilege				1	integer
+ATTRIBUTE	Exec-Privilege				1	uint32
 
 END-VENDOR      Centec
 ALIAS		Centec					Vendor-Specific.Centec

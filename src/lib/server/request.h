@@ -230,8 +230,8 @@ struct request_s {
 	 *
 	 */
 	struct {
-		uint8_t			detachable : 1;		//!< This request may be detached from its parent..
-		uint8_t			dynamic_client : 1;	//!< this is a dynamic client request
+		unsigned int   		detachable : 1;		//!< This request may be detached from its parent..
+		unsigned int		dynamic_client : 1;	//!< this is a dynamic client request
 	} flags;
 
 	/** Logging information
@@ -273,6 +273,10 @@ struct request_s {
 	int			alloc_line;	//!< Line the request was allocated on.
 
 	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
+
+	uint32_t		priority;	//!< higher == higher priority
+	uint32_t		sequence;	//!< higher == higher priority, too
+
 	fr_heap_index_t		runnable;	//!< entry in the heap of runnable packets
 
 };				/* request_t typedef */
@@ -354,6 +358,15 @@ void		request_log_prepend(request_t *request, fr_log_t *log, fr_log_lvl_t lvl);
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, request_t const *request);	/* only for special debug builds */
 #endif
+
+static inline bool request_attr_is_list(fr_dict_attr_t const *da)
+{
+	return (da == request_attr_request) ||
+		(da == request_attr_reply) ||
+		(da == request_attr_control) ||
+		(da == request_attr_state) ||
+		(da == request_attr_local);
+}
 
 #ifdef __cplusplus
 }

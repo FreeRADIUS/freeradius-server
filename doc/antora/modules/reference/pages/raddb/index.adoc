@@ -98,7 +98,7 @@ Note that unlike v3, there are no longer any `authorize`,
 been renamed. This change was necessary in order to simplify the
 operation of the server, and to better support multiple protocols.
 
-Please see the  xref:howto:installation/upgrade.adoc[upgrade] file for more
+Please see the  xref:howto:upgrade/index.adoc[upgrade] file for more
 information about these changes.
 
 The `sites-available/` directory contains many files. Each file is a

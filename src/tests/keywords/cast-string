@@ -1,0 +1,28 @@
+Service-Type := ::Framed-User
+
+#
+#  _print_ to string uses the leading "::", as we later want to
+#  _parse_ the data.
+#
+#  _cast_ to string means just get the enum name, without the
+#  leading "::".
+#
+if ((string) Service-Type != 'Framed-User') {
+	test_fail
+}
+
+#
+#  Simply using the value will still ignore the "::" prefix.
+#
+if (%{Service-Type} != 'Framed-User') {
+	test_fail
+}
+
+#
+#  Converting it to a string will also ignore the "::" prefix.
+#
+if ("1%{Service-Type}2" != '1Framed-User2') {
+	test_fail
+}
+
+success

@@ -25,9 +25,10 @@
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/signal.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/mod_action.h>
+#include <freeradius-devel/util/talloc.h>
 
-#include "lib/server/rcode.h"
-#include "lib/util/talloc.h"
 #include "unlang_priv.h"
 #include "child_request_priv.h"
 
@@ -94,6 +95,8 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
 		 */
 		repeatable_clear(frame);
 
+		frame->p_result = &frame->scratch_result;
+
 		/*
 		 *	Tell the parent to resume if all the request's siblings are done
 		 */
@@ -125,7 +128,7 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
  * the child is done executing, it runs this to inform the parent
  * that its done.
  */
-static unlang_action_t unlang_child_request_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_child_request_done(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_child_request_t *state = talloc_get_type_abort(frame->state, unlang_frame_state_child_request_t);
 	unlang_child_request_t *cr = state->cr; /* Can't use talloc_get_type_abort, may be an array element */
@@ -147,16 +150,7 @@ static unlang_action_t unlang_child_request_done(rlm_rcode_t *p_result, request_
 						 cr->config.session_unique_ptr,
 						 cr->num);
 		}
-
-		/*
-		 *	Record the child's result and the last
-		 *	priority. For parallel, this lets one
-		 *	child be used to control the rcode of
-		 *	the parallel keyword.
-		 */
-		cr->result.rcode = *p_result;
-		cr->result.priority = frame->priority;
-		if (cr->result.p_result) *(cr->result.p_result) = cr->result.rcode;
+		if (cr->p_result) *cr->p_result = cr->result;
 		break;
 
 	case CHILD_CANCELLED:
@@ -214,24 +208,12 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
 		.type = UNLANG_TYPE_CHILD_REQUEST,
 		.name = "child-request",
 		.debug_name = "child-request-resume",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		}
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	/* Sets up the frame for us to use immediately */
-	if (unlikely(unlang_interpret_push_instruction(child, &inform_parent, RLM_MODULE_NOOP, true) < 0)) {
+	if (unlikely(unlang_interpret_push_instruction(&cr->result, child, &inform_parent,
+						       FRAME_CONF(RLM_MODULE_NOOP, true)) < 0)) {
 		return -1;
 	}
 
@@ -263,7 +245,7 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
  *	- -1 on failure.
  */
 int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, request_t *child,
-			      rlm_rcode_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child)
+			      unlang_result_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child)
 {
 	*out = (unlang_child_request_t){
 		.name = talloc_bstrdup(ctx, child->name),
@@ -275,10 +257,7 @@ int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, requ
 			.session_unique_ptr = unique_session_ptr,
 			.free_child = free_child
 		},
-		.result = {
-			.p_result = p_result,
-			.rcode = RLM_MODULE_NOT_SET
-		}
+		.p_result = p_result
 	};
 
 	return unlang_child_request_stack_init(out);
@@ -286,26 +265,29 @@ int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, requ
 
 int unlang_child_request_op_init(void)
 {
-	unlang_register(UNLANG_TYPE_CHILD_REQUEST,
-			&(unlang_op_t){
-				.name = "child-request",
-				.interpret = unlang_child_request_done,
-				.signal = unlang_child_request_signal,
-				/*
-				 *	Frame can't be cancelled, because children need to
-				 *	write out status to the parent.  If we don't do this,
-				 *	then all children must be detachable and must detach
-				 *	so they don't try and write out status to a "done"
-				 *	parent.
-				 *
-				 *	It's easier to allow the child/parent relationship
-				 *	to end normally so that non-detachable requests are
-				 *	guaranteed the parent still exists.
-				 */
-				.flag = UNLANG_OP_FLAG_NO_CANCEL,
-				.frame_state_size = sizeof(unlang_frame_state_child_request_t),
-				.frame_state_type = "unlang_frame_state_child_request_t"
-			});
+	unlang_register(&(unlang_op_t){
+			.name = "child-request",
+			.type = UNLANG_TYPE_CHILD_REQUEST,
+
+			/*
+			 *	Frame can't be cancelled, because children need to
+			 *	write out status to the parent.  If we don't do this,
+			 *	then all children must be detachable and must detach
+			 *	so they don't try and write out status to a "done"
+			 *	parent.
+			 *
+			 *	It's easier to allow the child/parent relationship
+			 *	to end normally so that non-detachable requests are
+			 *	guaranteed the parent still exists.
+			 */
+			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+
+			.interpret = unlang_child_request_done,
+			.signal = unlang_child_request_signal,
+
+			.frame_state_size = sizeof(unlang_frame_state_child_request_t),
+			.frame_state_type = "unlang_frame_state_child_request_t"
+		});
 
 	return 0;
 }

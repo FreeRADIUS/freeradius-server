@@ -5,10 +5,12 @@
 ** xref:profile.adoc[Profiling]
 ** xref:coccinelle.adoc[Semantic Patches]
 ** xref:contributing.adoc[Contributing]
+*** xref:github.adoc[Send PRs via GitHub]
+*** xref:email.adoc[Email]
 ** xref:coverity.adoc[Coverity]
 ** xref:module_interface.adoc[Module Interface]
 ** xref:release-method.adoc[Release Method]
-** Buffer handling
+** xref:buffers.adoc[Buffer Handling]
 *** xref:dbuff.adoc[Data buffers] (`dbuff` s)
 *** xref:sbuff.adoc[String buffers] (`sbuff` s)
 *** xref:sbuff-parsing.adoc[Parsing with string buffers]

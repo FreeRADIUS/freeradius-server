@@ -101,7 +101,19 @@ clean.libs:
 
 # Re-define compilers and linkers
 #
-LIBTOOL_VERBOSE=$(if ${VERBOSE},--debug,--silent)
+
+#
+#  VERBOSE=1 means "debug the commands that we're running".
+#  VERBOSE=2 means "also debug the jlibtool internals".
+#
+#  For normal VERBOSE=1, we do NOT want to see thousands of lines of
+#  the same content of jlibtool environment variables.
+#
+ifeq "$(VERBOSE)" "2"
+LIBTOOL_VERBOSE=--debug
+else
+LIBTOOL_VERBOSE=--silent
+endif
 
 OBJ_EXT = lo
 
@@ -140,6 +152,8 @@ define ADD_TARGET_RULE.la
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_PRLIBS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/local/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -231,7 +245,8 @@ define ADD_LOCAL_RULE.exe
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_LOCAL_PRLIBS} \
-                $${LDLIBS} $${${1}_LDLIBS}
+                $${LDLIBS} $${${1}_LDLIBS} ${OSX_LDFLAGS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/$${${1}_LOCAL}
 	    $(Q)$${${1}_POSTMAKE}
 
     .PHONY: $(DIR)

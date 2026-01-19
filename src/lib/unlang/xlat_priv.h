@@ -162,7 +162,7 @@ struct xlat_exp_s {
 	union {
 		struct {
 			xlat_exp_head_t	*group;		//!< children of a group
-			uint8_t		hoist : 1;	//!< it's a group, but we need to hoist the results
+			unsigned int   	hoist : 1;	//!< it's a group, but we need to hoist the results
 		};
 
 		/** An tmpl_t reference
@@ -188,9 +188,10 @@ struct xlat_exp_s {
 struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
-	uint8_t			instantiated : 1;  //!< temporary flag until we fix more things
-	uint8_t			is_argv : 1;	//!< this thing holds function arguments
-	uint8_t			cursor : 1;	//!< otherwise it's too hard to pass xlat_arg_parser_t to the evaluation function.
+	unsigned int		instantiated : 1;  //!< temporary flag until we fix more things
+	unsigned int		is_argv : 1;	//!< this thing holds function arguments
+	unsigned int		cursor : 1;	//!< otherwise it's too hard to pass xlat_arg_parser_t to the evaluation function.
+	unsigned int		is_attr : 1;	//!< the argument is an attribute reference
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
@@ -334,7 +335,7 @@ void		xlat_eval_free(void);
 
 void		unlang_xlat_init(void);
 
-int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int		unlang_xlat_push_node(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				      request_t *request, xlat_exp_t *node);
 
 int 		xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,

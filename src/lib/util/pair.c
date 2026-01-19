@@ -177,6 +177,7 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 	}
 	talloc_set_destructor(vp, _fr_pair_free);
 
+	PAIR_ALLOCED(vp);
 	pair_init_null(vp);
 
 	return vp;
@@ -266,6 +267,7 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		return NULL;
 	}
 
+	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
 
 	return vp;
@@ -305,6 +307,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		da = unknown;
 	}
 
+	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
 
 	return vp;
@@ -392,6 +395,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 		da = unknown;
 	}
 
+	PAIR_ALLOCED(vp);
 	pair_init_from_da(vp, da);
 
 	return vp;
@@ -409,7 +413,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
  *	- A new #fr_pair_t.
  *	- NULL on error.
  */
-fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, int start)
+fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *da, unsigned int start)
 {
 	fr_pair_t		*vp;
 	unsigned int		i;
@@ -418,6 +422,15 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 	fr_pair_list_t		*cur_list;	/* Current list being searched */
 	fr_da_stack_t		da_stack;
 
+	/*
+	 *	Short-circuit the common case.
+	 */
+	if (da->depth == (start + 1)) {
+		if (fr_pair_append_by_da(ctx, &vp, list, da) < 0) return NULL;
+		PAIR_ALLOCED(vp);
+		return vp;
+	}
+
 	fr_proto_da_stack_build(&da_stack, da);
 	cur_list = list;
 	cur_ctx = ctx;
@@ -425,20 +438,10 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 	for (i = start; i <= da->depth; i++) {
 		find = da_stack.da[i];
 
-		/*
-		 *	If we're asked to create a key field, then do it.
-		 *
-		 *	Otherwise if we're creating a child struct (which is magically parented by the key
-		 *	field), then don't bother creating the key field.  It will be automatically filled in
-		 *	by the encoder.
-		 */
-		if ((find != da) && fr_dict_attr_is_key_field(find)) {
-			continue;
-		}
-
 		vp = fr_pair_find_by_da(cur_list, NULL, find);
 		if (!vp || (vp->da == da)) {
 			if  (fr_pair_append_by_da(cur_ctx, &vp, cur_list, find) < 0) return NULL;
+			PAIR_ALLOCED(vp);
 		}
 
 		if (find == da) return vp;
@@ -474,6 +477,7 @@ fr_pair_t *fr_pair_afrom_da_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dic
 		fr_pair_t *vp;
 
 		if  (fr_pair_append_by_da(ctx, &vp, list, da) < 0) return NULL;
+		PAIR_ALLOCED(vp);
 		return vp;
 	}
 
@@ -500,18 +504,20 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	if (!n) return NULL;
 
 	n->op = vp->op;
+	PAIR_ALLOCED(n);
 
 	/*
 	 *	Groups are special.
 	 */
 	if (fr_type_is_structural(n->vp_type)) {
 		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
+		error:
 			talloc_free(n);
 			return NULL;
 		}
 
 	} else {
-		fr_value_box_copy(n, &n->data, &vp->data);
+		if (unlikely(fr_value_box_copy(n, &n->data, &vp->data) < 0)) goto error;
 	}
 
 	return n;
@@ -852,7 +858,7 @@ fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const
 	}
 
 	/*
-	 *	Compatiblitity with flat atttrbutes
+	 *	Compatibility with flat attributes
 	 */
 	if (fr_pair_parent_list(prev) != list) prev = NULL;
 	return fr_pair_find_by_da(list, prev, da);
@@ -1341,8 +1347,6 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-	PAIR_VERIFY(to_add);
-
 #ifdef WITH_VERIFY_PTR
 	fr_assert(!fr_pair_order_list_in_a_list(to_add));
 	list->verified = false;
@@ -1552,6 +1556,7 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
 				if (out) *out = NULL;
 				return -1;
 			}
+			PAIR_ALLOCED(vp);
 		}
 
 		/*
@@ -1655,6 +1660,7 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 				if (out) *out = NULL;
 				return -1;
 			}
+			PAIR_ALLOCED(vp);
 		}
 
 		/*
@@ -2379,7 +2385,10 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);
 				return -1;
 			}
-			fr_value_box_copy(value, value, &vp->data);
+			if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+				talloc_free(value);
+				goto fail;
+			}
 		}
 
 		if (!first_added) first_added = value;
@@ -2565,8 +2574,8 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
-	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear_value(&dst->data);
-	fr_value_box_copy(dst, &dst->data, &src->data);
+	fr_value_box_clear_value(&dst->data);
+	if (unlikely(fr_value_box_copy(dst, &dst->data, &src->data) < 0)) return -1;
 
 	/*
 	 *	If either source or destination is secret, then this value is secret.
@@ -2770,8 +2779,7 @@ int fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size)
 
 /** Copy data into a "string" type value pair
  *
- * @note unlike the original strncpy, this function does not stop
- *	if it finds \0 bytes embedded in the string.
+ * @note This API will copy binary data, including embedded '\0'
  *
  * @note vp->da must be of type FR_TYPE_STRING.
  *
@@ -3081,7 +3089,8 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 /*
  *	Verify a fr_pair_t
  */
-void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_pair_t const *vp)
+void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
+		    fr_pair_list_t const *list, fr_pair_t const *vp, bool verify_values)
 {
 	(void) talloc_get_type_abort_const(vp, fr_pair_t);
 
@@ -3090,6 +3099,26 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
+
+
+	/*
+	 *	Enforce correct parentage.  If the parent exists, AND it's not a group (because groups break
+	 *	the strict hierarchy), then check parentage.
+	 *
+	 *	We also ignore parentage if either the expected parent or the vp is raw / unknown.  We may
+	 *	want to tighten that a little bit, as there are cases where we create raw / unknown
+	 *	attributes, and the parent is also raw / unknown.  In which case the parent_da _should_ be the
+	 *	same as vp->da->parent.
+	 */
+	if (parent_da && (parent_da->type != FR_TYPE_GROUP) &&
+	    !parent_da->flags.is_raw && !parent_da->flags.is_unknown &&
+	    !vp->da->flags.is_raw && !vp->da->flags.is_unknown) {
+		fr_fatal_assert_msg(vp->da->parent == parent_da,
+				    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
+				    "expected parent %s, found different parent %s",
+				    file, line, vp->da->name, vp->da->parent->name, parent_da->name);
+	}
+
 	if (list) {
 		fr_fatal_assert_msg(fr_pair_order_list_parent(vp) == &list->order,
 				    "CONSISTENCY CHECK FAILED %s[%d]:  pair does not have the correct parentage "
@@ -3110,6 +3139,37 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
 		}
 
+		/*
+		 *	The data types have to agree, except for comb-ip and combo-ipaddr.
+		 */
+		if (vp->vp_type != vp->da->type) switch (vp->da->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if ((vp->vp_type == FR_TYPE_IPV4_ADDR) ||
+			    (vp->vp_type == FR_TYPE_IPV6_ADDR)) {
+				    break;
+			    }
+			goto failed_type;
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if ((vp->vp_type == FR_TYPE_IPV4_PREFIX) ||
+			    (vp->vp_type == FR_TYPE_IPV6_PREFIX)) {
+				break;
+			}
+			FALL_THROUGH;
+
+		default:
+			failed_type:
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" has value of data type '%s', which disagrees with the dictionary data type '%s'",
+					     file, line, vp->da->name, fr_type_to_str(vp->vp_type), fr_type_to_str(vp->da->type));
+		}
+
+		/*
+		 *	We would like to enable this, but there's a
+		 *	lot of code like fr_pair_append_by_da() which
+		 *	creates the #fr_pair_t with no value.
+		 */
+		if (verify_values) fr_value_box_verify(file, line, &vp->data);
+
 	} else {
 		fr_pair_t *parent = fr_pair_parent(vp);
 
@@ -3118,7 +3178,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     file, line, vp->da->name);
 		}
 
-		fr_pair_list_verify(file, line, vp, &vp->vp_group);
+		fr_pair_list_verify(file, line, vp, &vp->vp_group, verify_values);
 	}
 
 	switch (vp->vp_type) {
@@ -3214,6 +3274,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		}
 		break;
 
+       case FR_TYPE_ATTR:
+		if (!vp->vp_attr) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" attribute pointer is NULL",
+					     file, line, vp->da->name);
+		}
+		break;
+
        case FR_TYPE_STRUCTURAL:
        {
 	       if (vp->vp_group.verified) break;
@@ -3238,7 +3305,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					    file, line,
 					    child->da->name, child->da->parent->name, vp->da->name);
 
-			fr_pair_verify(file, line, &vp->vp_group, child);
+			fr_pair_verify(file, line, vp->da, &vp->vp_group, child, verify_values);
 		}
 
 	       UNCONST(fr_pair_t *, vp)->vp_group.verified = true;
@@ -3294,8 +3361,9 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
  * @param[in] line	number in file
  * @param[in] expected	talloc ctx pairs should have been allocated in
  * @param[in] list	of fr_pair_ts to verify
+ * @param[in] verify_values whether we verify the values, too.
  */
-void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *list)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, fr_pair_list_t const *list, bool verify_values)
 {
 	fr_pair_t		*slow, *fast;
 	TALLOC_CTX		*parent;
@@ -3310,7 +3378,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	for (slow = fr_pair_list_head(list), fast = fr_pair_list_head(list);
 	     slow && fast;
 	     slow = fr_pair_list_next(list, slow), fast = fr_pair_list_next(list, fast)) {
-		PAIR_VERIFY_WITH_LIST(list, slow);
+		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
 		/*
 		 *	Advances twice as fast as slow...
@@ -3339,7 +3407,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	 *	Check the remaining pairs
 	 */
 	for (; slow; slow = fr_pair_list_next(list, slow)) {
-		PAIR_VERIFY_WITH_LIST(list, slow);
+		fr_pair_verify(__FILE__, __LINE__, NULL, list, slow, verify_values);
 
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) goto bad_parent;
@@ -3406,17 +3474,6 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
 static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr_t const *da)
 {
 	fr_pair_t *parent, *vp;
-
-	/*
-	 *	We should never be called with a leaf da.
-	 *
-	 *	If we're asked to create children of a keyed
-	 *	structure, just create the children in the parent.
-	 */
-	if (!fr_type_is_structural(da->type)) {
-		fr_assert(fr_dict_attr_is_key_field(da));
-		da = da->parent;
-	}
 
 	fr_assert(fr_type_is_structural(da->type));
 
@@ -3485,6 +3542,8 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 		.ctx = ctx,
 		.da = fr_dict_root(dict),
 		.list = out,
+		.dict = dict,
+		.internal = fr_dict_internal(),
 		.allow_crlf = true,
 		.tainted = box->tainted,
 	};
@@ -3492,48 +3551,5 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 
 	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
 		return;
-	}
-}
-
-static const char spaces[] = "                                                                                                                                ";
-
-static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
-{
-	fr_pair_list_foreach(list, vp) {
-		fprintf(fp, "%.*s", depth, spaces);
-
-		if (fr_type_is_leaf(vp->vp_type)) {
-			fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
-			continue;
-		}
-
-		fr_assert(fr_type_is_structural(vp->vp_type));
-
-		fprintf(fp, "%s = {\n", vp->da->name);
-		fprintf_pair_list(fp, &vp->vp_group, depth + 1);
-		fprintf(fp, "%.*s}\n", depth, spaces);
-	}
-}
-
-void fr_fprintf_pair_list(FILE *fp, fr_pair_list_t const *list)
-{
-	fprintf_pair_list(fp, list, 0);
-}
-
-/*
- *	print.c doesn't include pair.h, and doing so causes too many knock-on effects.
- */
-void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
-{
-	if (msg) fputs(msg, fp);
-
-	if (fr_type_is_leaf(vp->vp_type)) {
-		fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
-	} else {
-		fr_assert(fr_type_is_structural(vp->vp_type));
-
-		fprintf(fp, "%s = {\n", vp->da->name);
-		fprintf_pair_list(fp, &vp->vp_group, 1);
-		fprintf(fp, "}\n");
 	}
 }

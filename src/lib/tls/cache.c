@@ -348,8 +348,7 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 
 /** Process the result of `load session { ... }`
  */
-static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					     request_t *request, void *uctx)
+static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -458,8 +457,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 /** Process the result of `store session { ... }`
  */
-static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_store_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -594,8 +592,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 /** Process the result of `clear session { ... }`
  */
-static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_clear_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -745,6 +742,15 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
+
+	/*
+	 *	If the session is TLS 1.3, then resumption will be handled by a
+	 *	session ticket.  However, if this callback is defined, it still
+	 *	gets called.
+	 *	To avoid unnecessary entries in the stateful cache just return.
+	 */
+	if (tls_session->info.version == TLS1_3_VERSION) return 0;
+
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 

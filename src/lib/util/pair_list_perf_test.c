@@ -201,6 +201,8 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			.ctx = ctx,
 			.da = fr_dict_root(dict),
 			.list = &list,
+			.dict = dict,
+			.internal = fr_dict_internal(),
 		};
 		relative = (fr_pair_parse_t) { };
 
@@ -209,7 +211,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 		while ((p = strchr(p, '#'))) {
 			*p = (char)(i + 48);
 		}
-		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(prep_pairs, strlen(prep_pairs)));
+		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(prep_pairs));
 		if (slen <= 0) fr_perror("pair_list_perf_tests");
 		TEST_ASSERT(slen > 0);
 
@@ -525,5 +527,5 @@ TEST_LIST = {
 	all_repetition_tests(find_nth)
 	all_repetition_tests(fr_pair_list_free)
 
-	{ NULL }
+	TEST_TERMINATOR
 };

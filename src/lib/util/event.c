@@ -1715,7 +1715,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 
 		if (unlikely(kq < 0)) goto force;
 
-		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_reap_t, i) {
+		fr_dlist_foreach(&el->pid_to_reap, fr_event_pid_reap_t, i) {
 			if (!i->pid_ev) {
 				EVENT_DEBUG("%p - %s - Reaper already called (logic error)... - %p",
 					    el, __FUNCTION__, i);
@@ -1748,7 +1748,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 				continue;
 			}
 			waiting++;
-		}}
+		}
 
 		/*
 		 *	Keep draining process exits as they come in...
@@ -1919,19 +1919,18 @@ int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 
 /** Trigger a user event
  *
- * @param[in] el	containing the user event.
  * @param[in] ev	Handle for the user event.
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
-int fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev)
+int fr_event_user_trigger(fr_event_user_t *ev)
 {
 	struct kevent evset;
 
-	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, NULL);
+	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
 
-	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+	if (unlikely(kevent(ev->el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed triggering user event - kevent %s", fr_syserror(evset.flags));
 		return -1;
 	}

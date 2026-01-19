@@ -35,6 +35,8 @@ RCSID("$Id$")
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_OFF(unreachable-code-return)
+DIAG_OFF(unreachable-code-break)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 #ifdef INADDR_ANY
@@ -65,6 +67,10 @@ typedef struct {
 	perl_func_def_t	*func;
 } perl_call_env_t;
 
+typedef struct {
+	pthread_mutex_t	mutex;
+} rlm_perl_mutable_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -83,6 +89,7 @@ typedef struct {
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
+	rlm_perl_mutable_t	*mutable;
 
 } rlm_perl_t;
 
@@ -113,7 +120,7 @@ static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the gl
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
 	{ FR_CONF_OFFSET("func_detach", rlm_perl_t, func_detach), .data = NULL, .dflt = "detach", .quote = T_INVALID },
 
@@ -571,6 +578,11 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	PERLINT(32)
 	PERLINT(64)
 
+
+	case FR_TYPE_SIZE:
+		*value = sv_2mortal(newSVuv(vp->vp_size));
+		break;
+
 	case FR_TYPE_BOOL:
 		*value = sv_2mortal(newSVuv(vp->vp_bool));
 		break;
@@ -593,6 +605,7 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	case FR_TYPE_IFID:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		char	buff[128];
 		ssize_t	slen;
@@ -609,8 +622,8 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 		break;
 
 	/* Only leaf nodes should be able to call this */
-	default:
-		fr_assert(0);
+	case FR_TYPE_NON_LEAF:
+		croak("Cannot convert %s to Perl type", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 
@@ -688,58 +701,39 @@ static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
  */
 static int perl_value_unmarshal(fr_pair_t *vp, SV *value)
 {
-	char	*val;
-	STRLEN	len;
+	fr_value_box_t	vb;
 
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		val = SvPV(value, len);
-		fr_pair_value_clear(vp);
-		fr_pair_value_bstrndup(vp, val, len, true);
+	switch (SvTYPE(value)) {
+	case SVt_IV:
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = SvIV(value);
 		break;
 
-	case FR_TYPE_OCTETS:
-		val = SvPV(value, len);
-		fr_pair_value_clear(vp);
-		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
+	case SVt_NV:
+		fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+		vb.vb_float64 = SvNV(value);
 		break;
 
-#define PERLSETUINT(_size)	case FR_TYPE_UINT ## _size: \
-	vp->vp_uint ## _size = SvUV(value); \
-	break;
-	PERLSETUINT(8)
-	PERLSETUINT(16)
-	PERLSETUINT(32)
-	PERLSETUINT(64)
-
-#define PERLSETINT(_size)	case FR_TYPE_INT ## _size: \
-	vp->vp_int ## _size = SvIV(value); \
-	break;
-	PERLSETINT(8)
-	PERLSETINT(16)
-	PERLSETINT(32)
-	PERLSETINT(64)
-
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_DATE:
+	case SVt_PV:
+	case SVt_PVLV:
+	{
+		char	*val;
+		STRLEN	len;
+		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, true);
 		val = SvPV(value, len);
-		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) {
-			croak("Failed populating pair");
-			return -1;
-		}
+		fr_value_box_bstrndup_shallow(&vb, NULL, val, len, true);
+	}
 		break;
 
 	default:
-		fr_assert(0);
-		break;
+		croak("Unsupported Perl data type");
+		return -1;
+	}
+
+	fr_pair_value_clear(vp);
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
+		croak("Failed casting Perl value to %s", fr_type_to_str(vp->vp_type));
+		return -1;
 	}
 
 	return 0;
@@ -1442,7 +1436,7 @@ static void perl_pair_list_tie(HV *parent, HV *frpair_stash, char const *name, f
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
@@ -1516,7 +1510,7 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		LEAVE;
 	}
 
-	RETURN_MODULE_RCODE(ret);
+	RETURN_UNLANG_RCODE(ret);
 }
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
@@ -1558,7 +1552,15 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	PERL_SET_CONTEXT(inst->perl);
 
+	/*
+	 *	Ensure only one thread is cloning an interpreter at a time
+	 *	Whilst the documentation of perl_clone() does not say anything
+	 *	about this, seg faults have been seen if multiple threads clone
+	 *	the same inst->perl at the same time.
+	 */
+	pthread_mutex_lock(&inst->mutable->mutex);
 	interp = perl_clone(inst->perl, clone_flags);
+	pthread_mutex_unlock(&inst->mutable->mutex);
 	{
 		dTHXa(interp);			/* Sets the current thread's interpreter */
 	}
@@ -1697,8 +1699,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	automatic subroutine names based on section name.
 	 */
 	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, perl_func_def_t, node, perl_func_def_cmp, NULL);
-	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
-	while (func) {
+
+	for (func = fr_rb_iter_init_inorder(&inst->funcs, &iter);
+	     func != NULL;
+	     func = fr_rb_iter_next_inorder(&inst->funcs, &iter)) {
 		/*
 		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
 		 */
@@ -1734,12 +1738,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
 				return -1;
 			}
-		}
-
-		func = fr_rb_iter_next_inorder(&iter);
+		}		
 	}
 
 	PL_endav = end_AV;
+
+	inst->mutable = talloc(NULL, rlm_perl_mutable_t);
+	pthread_mutex_init(&inst->mutable->mutex, NULL);
 
 	return 0;
 }
@@ -1779,6 +1784,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	}
 
 	rlm_perl_interp_free(inst->perl);
+	talloc_free(inst->mutable);
 
 	return ret;
 }

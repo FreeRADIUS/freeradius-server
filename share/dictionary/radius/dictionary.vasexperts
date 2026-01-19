@@ -12,13 +12,13 @@ BEGIN-VENDOR	VasExperts
 ATTRIBUTE	Policing-Profile			1	string
 ATTRIBUTE	Service-Profile				2	string
 ATTRIBUTE	Enable-Service				3	string
-ATTRIBUTE	Multi-IP-User				4	integer
+ATTRIBUTE	Multi-IP-User				4	uint32
 ATTRIBUTE	UserName				5	string
-ATTRIBUTE	Service-Type				6	integer
-ATTRIBUTE	Restrict-User				7	integer
-ATTRIBUTE	Enable-Interconnect			8	integer
-ATTRIBUTE	OutVLAN					9	integer
-ATTRIBUTE	Command-Code				10	integer   # CoA command code
+ATTRIBUTE	Service-Type				6	uint32
+ATTRIBUTE	Restrict-User				7	uint32
+ATTRIBUTE	Enable-Interconnect			8	uint32
+ATTRIBUTE	OutVLAN					9	uint32
+ATTRIBUTE	Command-Code				10	uint32   # CoA command code
 ATTRIBUTE	OutMAC					11	string
 
 VALUE	Service-Type			Auth			0   # L3-authorization, known IP
@@ -34,10 +34,10 @@ VALUE	Command-Code			Check-Acct		1   # Check Accounting session for Framed-IP-Ad
 
 # Accounting
 ATTRIBUTE	Acct-Traffic-Class-Name			16	string
-ATTRIBUTE	Acct-Traffic-Class-Input-Octets		17	integer64
-ATTRIBUTE	Acct-Traffic-Class-Output-Octets	18	integer64
-ATTRIBUTE	Acct-Traffic-Class-Input-Packets	19	integer64
-ATTRIBUTE	Acct-Traffic-Class-Output-Packets	20	integer64
+ATTRIBUTE	Acct-Traffic-Class-Input-Octets		17	uint64
+ATTRIBUTE	Acct-Traffic-Class-Output-Octets	18	uint64
+ATTRIBUTE	Acct-Traffic-Class-Input-Packets	19	uint64
+ATTRIBUTE	Acct-Traffic-Class-Output-Packets	20	uint64
 ATTRIBUTE	NAT-IP					21	ipaddr     # NAT 1:1 white address
 
 # DHCP -> Radius attributes
@@ -46,7 +46,7 @@ ATTRIBUTE	DHCP-ClientId				33	octets  # DHCP Opt61
 ATTRIBUTE	DHCP-ClassId				34	octets  # DHCP Opt60
 ATTRIBUTE	DHCP-RelayInfo				35	octets  # DHCP Opt82
 ATTRIBUTE	DHCP-ClientIP				36	ipaddr  # DHCP Opt50
-ATTRIBUTE	DHCP-Request				37	integer
+ATTRIBUTE	DHCP-Request				37	uint32
 ATTRIBUTE	DHCP-RelayRemoteId			38	octets  # DHCP Opt82 subopt 2
 ATTRIBUTE	DHCP-RelayCircuitId			39	octets  # DHCP Opt82 subopt 1
 
@@ -69,12 +69,12 @@ ATTRIBUTE	ARP-SourceIP				60	ipaddr  # ARP source IP
 ATTRIBUTE	ARP-TargetIP				61	ipaddr  # ARP target IP
 
 # DHCPv6 -> Radius attributes
-ATTRIBUTE	DHCPv6-Request				70	integer # DHCPv6 request type
+ATTRIBUTE	DHCPv6-Request				70	uint32 # DHCPv6 request type
 ATTRIBUTE	DHCPv6-UserClass			71	octets  # DHCPv6 User Class option
 ATTRIBUTE	DHCPv6-VendorClass			72	octets  # DHCPv6 Vendor Class option
 ATTRIBUTE	DHCPv6-RemoteId				73	octets  # DHCPv6 RemoteId option [RFC 4649]
 ATTRIBUTE	DHCPv6-SubsId				74	octets  # DHCPv6 SubscriberId option [RFC 4580]
-ATTRIBUTE	DHCPv6-Delegated			75	integer # DHCPv6 flag: (1) - CPE requests delegated prefix, (0) - does not
+ATTRIBUTE	DHCPv6-Delegated			75	uint32 # DHCPv6 flag: (1) - CPE requests delegated prefix, (0) - does not
 
 # Radius -> DHCPv6 attributes
 ATTRIBUTE	DHCP-Option-IPv6			80	string  # IPv6 option: "opt:2001:fde3::709", for example: "22:2001:fde3::709"

@@ -442,9 +442,9 @@ static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 		void			*data;
 
 		WARN("Refusing to cleanup dl loader, the following modules are still in use:");
-		for (data = fr_rb_iter_init_inorder(&iter, dl_module_l->module_tree);
+		for (data = fr_rb_iter_init_inorder(dl_module_l->module_tree, &iter);
 		     data;
-		     data = fr_rb_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(dl_module_l->module_tree, &iter)) {
 			dl_module_t *module = talloc_get_type_abort(data, dl_module_t);
 
 			WARN("  %s", module->exported->name);
@@ -480,11 +480,6 @@ finish:
 char const *dl_module_search_path(void)
 {
 	return dl_search_path(dl_module_loader->dl_loader);
-}
-
-dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
-{
-	return dl_module_l->dl_loader;
 }
 
 /** Wrapper to log errors

@@ -1,0 +1,6 @@
+Sent Access-Request Id 123 from 0.0.0.0:1235 to 127.0.0.1:12360 length 86 
+        User-Name = "chap-test"
+        CHAP-Challenge = 0x00112233445566778899aabbccddeeff
+        CHAP-Password = 0x57b8930fe5ed789effe92f74441a85b9bd
+Received Access-Accept Id 123 from 127.0.0.1:12360 to 0.0.0.0:1235 via lo length 38
+(0) src/tests/radclient/auth_chap_hex.txt response code 2

@@ -22,6 +22,7 @@
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tls/freeradius.h>
 
@@ -30,7 +31,7 @@ static fr_dict_t const *dict_tls;
 extern fr_dict_autoload_t process_tls_dict[];
 fr_dict_autoload_t process_tls_dict[] = {
 	{ .out = &dict_tls, .proto = "tls" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -38,7 +39,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t process_tls_dict_attr[];
 fr_dict_attr_autoload_t process_tls_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tls},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -77,7 +78,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(load_session),
@@ -95,7 +96,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(store_session),
@@ -113,7 +114,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(clear_session),
@@ -131,7 +132,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(verify_certificate),
@@ -149,7 +150,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(new_session),
@@ -167,14 +168,14 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(establish_session),
 	},
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -233,7 +234,8 @@ fr_process_module_t process_tls = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "tls",
-		.inst_size	= sizeof(process_tls_t)
+		MODULE_INST(process_tls_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

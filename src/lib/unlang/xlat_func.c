@@ -534,13 +534,13 @@ void xlat_func_unregister_module(module_instance_t const *inst)
 
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
-	for (c = fr_rb_iter_init_inorder(&iter, xlat_root);
+	for (c = fr_rb_iter_init_inorder(xlat_root, &iter);
 	     c;
-	     c = fr_rb_iter_next_inorder(&iter)) {
+	     c = fr_rb_iter_next_inorder(xlat_root, &iter)) {
 		if (!c->mctx) continue;
 		if (c->mctx->mi != inst) continue;
 
-		fr_rb_iter_delete_inorder(&iter);
+		fr_rb_iter_delete_inorder(xlat_root, &iter);
 	}
 }
 

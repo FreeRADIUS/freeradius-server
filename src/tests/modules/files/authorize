@@ -115,6 +115,9 @@ addcontrol  Reply-Message += "success2"
 regex	NAS-Identifier =~ /der/, Password.Cleartext := "testing123"
 	Reply-Message := "wonderful"
 
+regex	NAS-Identifier !~ /der/, NAS-Identifier !~ /foo/, Password.Cleartext := "testing123"
+	Reply-Message := "totally amazing"
+
 vendor	Password.Cleartext := "we_are_so_smart"
 	Cisco.AVPair := "1",
 	Cisco.AVPair += "2"

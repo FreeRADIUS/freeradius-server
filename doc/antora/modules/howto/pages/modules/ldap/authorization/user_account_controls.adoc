@@ -1,4 +1,4 @@
-= Controlling user accounts
+= Control User Accounts
 
 In some instances it may be useful to "lock out" user accounts.
 
@@ -35,7 +35,7 @@ is enabled, or disabled, depending on the value of `user.access_positive`.
 
 When a user is "locked out", the LDAP module will return `disallow` in (≥ v4.0.x) and `userlock` in (≤ v3.2.x).
 
-=== Editing mods-available/ldap to only allow access if the 'Access Attribute' is present
+=== Edit mods-available/ldap to only allow access if the 'Access Attribute' is present
 
 [source,config]
 ----
@@ -52,7 +52,7 @@ ldap {
     If the attribute is absent or set to false then the user will be
     "locked out".
 
-=== Editing mods-available/ldap to disable access if the 'Access Attribute' is present
+=== Edit mods-available/ldap to disable access if the 'Access Attribute' is present
 
 [source,config]
 ----

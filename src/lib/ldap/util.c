@@ -30,6 +30,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/util/base16.h>
 
+#include <freeradius-devel/util/value.h>
+
 #include <stdarg.h>
 #include <ctype.h>
 
@@ -605,7 +607,7 @@ int fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char co
 		in = buffer;
 	}
 
-	len = tmpl_afrom_substr(ctx, &parsed, &FR_SBUFF_IN(in, strlen(in)), T_DOUBLE_QUOTED_STRING, NULL, t_rules);
+	len = tmpl_afrom_substr(ctx, &parsed, &FR_SBUFF_IN_STR(in), T_DOUBLE_QUOTED_STRING, NULL, t_rules);
 
 	talloc_free(buffer);
 
@@ -829,4 +831,111 @@ char const *fr_ldap_url_err_to_str(int ldap_url_err)
 	default:
 		return "unknown reason";
 	}
+}
+
+/** Dump out the contents of an LDAPMessage
+ *
+ * Intended to be called from a debugger.
+ *
+ * @param[in] entry	LDAPMessage to dump.
+ */
+void fr_ldap_entry_dump(LDAPMessage *entry)
+{
+	char		*dn;
+	BerElement	*ber = NULL;
+	char		*attr;
+	struct berval	**vals;
+	int		i;
+	LDAP		*ld = fr_ldap_handle_thread_local();
+	int		msgtype;
+
+	msgtype = ldap_msgtype(entry);
+	switch (msgtype) {
+	case LDAP_RES_SEARCH_ENTRY:
+		dn = ldap_get_dn(ld, entry);
+		if (dn) {
+			DEBUG("dn: %s", dn);
+			ldap_memfree(dn);
+		}
+
+		for (attr = ldap_first_attribute(ld, entry, &ber);
+		     attr != NULL;
+		     attr = ldap_next_attribute(ld, entry, ber)) {
+			vals = ldap_get_values_len(ld, entry, attr);
+			if (!vals) {
+				DEBUG("%s: no values", attr);
+				ldap_memfree(attr);
+				continue;
+			}
+
+			for (i = 0; vals[i] != NULL; i++) {
+				bool binary = false;
+				ber_len_t j;
+
+				for (j = 0; j < vals[i]->bv_len; j++) {
+					char c = vals[i]->bv_val[j];
+					if ((c < 32) || (c > 126)) {
+						binary = true;
+						break;
+					}
+				}
+
+				if (binary) {
+					DEBUG("%s[%u]: %pV", attr, i, fr_box_octets((uint8_t *)vals[i]->bv_val, vals[i]->bv_len));
+					continue;
+				}
+
+				DEBUG("%s[%u]: %pV", attr, i, fr_box_strvalue_len(vals[i]->bv_val, vals[i]->bv_len));
+			}
+
+			ldap_value_free_len(vals);
+			ldap_memfree(attr);
+		     }
+		break;
+
+	case LDAP_RES_SEARCH_RESULT:
+	case LDAP_RES_BIND:
+	case LDAP_RES_MODIFY:
+	case LDAP_RES_ADD:
+	case LDAP_RES_DELETE:
+	case LDAP_RES_COMPARE:
+	case LDAP_RES_EXTENDED:
+	{
+		int rc;
+		char *matched = NULL;
+		char *errmsg  = NULL;
+		char **refs   = NULL;
+
+		rc = ldap_parse_result(ld, entry, &msgtype, &matched, &errmsg, &refs, NULL, 0);
+		if (rc != LDAP_SUCCESS) {
+			DEBUG("failed to parse result: %s", ldap_err2string(rc));
+			break;
+		}
+
+		DEBUG("result code: %d (%s)", msgtype, ldap_err2string(msgtype));
+
+		if (matched && *matched) {
+			DEBUG("matched DN: %s", matched);
+		}
+		if (errmsg && *errmsg) {
+			DEBUG("error message: %s", errmsg);
+		}
+		if (refs) {
+			for (i = 0; refs[i] != NULL; i++) {
+				DEBUG("referral: %s", refs[i]);
+			}
+		}
+
+		if (matched) ldap_memfree(matched);
+		if (errmsg) ldap_memfree(errmsg);
+		if (refs) ldap_memvfree((void **)refs);
+	}
+		break;
+
+	default:
+		DEBUG("unhandled LDAP message type: %d", msgtype);
+		break;
+	}
+
+	if (ber) ber_free(ber, 0);
 }

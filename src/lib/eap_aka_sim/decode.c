@@ -1023,7 +1023,8 @@ static fr_aka_sim_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, s
 /*
  *	Test ctx data
  */
-static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			       UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1040,7 +1041,8 @@ static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t con
 }
 
 
-static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			       UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1056,7 +1058,8 @@ static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t con
 	return 0;
 }
 
-static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+				       UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,

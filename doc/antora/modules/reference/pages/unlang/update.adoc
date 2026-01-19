@@ -1,14 +1,12 @@
 = The update Statement
 
-The `update` statement is deprecated.  It may work, but it will be
-removed in a future release.  The `update` statement does not support
-the data types of `group` and `struct`.
+The `update` statement is not supported.
 
 All new configuration should use the new xref:unlang/edit.adoc[edit]
 syntax.  It is more flexible and more powerful than `update` sections.
 
-This page exists only document how the old-style `update` sections can
-be converted to the new syntax.
+This page documents how the old-style `update` sections can be
+converted to the new syntax.
 
 The most important conceptual change is that the
 xref:unlang/edit.adoc[edit] syntax separates list assignments from
@@ -36,6 +34,7 @@ The following example over-writes the values for two attributes in the
 `reply` list.
 
 [source,unlang]
+.Old Syntax
 ----
 update reply {
 	User-Name := "foo"
@@ -47,6 +46,7 @@ The simplest conversion here is to keep the `:=` operator, and to just
 assign the attributes in place, with a list qualifier.
 
 [source,unlang]
+.New Syntax
 ----
 reply.User-Name := "foo"
 reply.Filter-Id := "bar"
@@ -58,6 +58,7 @@ done, the `reply` list will contain only the two attributes being
 assigned to it.
 
 [source,unlang]
+.New Syntax
 ----
 reply := {
 	User-Name = "foo"
@@ -71,6 +72,7 @@ The following example creates four attributes, and appends them to the
 `reply` list.
 
 [source,unlang]
+.Old Syntax
 ----
 update reply {
 	User-Name += "foo"
@@ -83,6 +85,7 @@ update reply {
 This example should be converted to the following syntax:
 
 [source,unlang]
+.New Syntax
 ----
 request += {
 	User-Name = "foo"
@@ -107,6 +110,7 @@ previous values of an attribute, and then to add new values:
 
 [source,unlang]
 ----
+.Old Syntax
 update reply {
 	Filter-Id := "bar"
 	Filter-Id += "foo"
@@ -120,6 +124,7 @@ converted to a one-line edit statement:
 
 [source,unlang]
 ----
+.New Syntax
 reply.Filter-Id := { "bar", "boo", "baz" }
 ----
 
@@ -132,6 +137,7 @@ The following example conditionally over-writes the values for two attributes in
 
 [source,unlang]
 ----
+.Old Syntax
 update reply {
 	User-Name = "foo"
 	Filter-Id = "bar"
@@ -143,6 +149,7 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
+.New Syntax
 reply.User-Name = "foo"
 reply.Filter-Id = "bar"
 ----
@@ -153,6 +160,7 @@ The following example removes all `User-Name` attributes from the `reply` list.
 
 [source,unlang]
 ----
+.Old Syntax
 update reply {
 	User-Name !* ANY
 }
@@ -162,6 +170,7 @@ The conversion is to use the `-=` operator:
 
 [source,unlang]
 ----
+.New Syntax
 reply -= User-Name
 ----
 
@@ -195,7 +204,7 @@ a significant amount of confusion when people first tried to use
 FreeRADIUS.
 
 In addition, using `+=` to manipulate lists meant that it was
-impossible to use that operator for adding values.  The follow-on
+impossible to use that operator for adding values to attribute.  The follow-on
 effect was that math had to be done using the `%{expr:...}` expansion,
 which was confusing and difficult to document.  Changing the syntax
 allowed the separation of list assignments from value modifications,

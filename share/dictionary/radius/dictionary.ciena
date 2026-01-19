@@ -15,14 +15,14 @@ VENDOR		Ciena				1271
 
 BEGIN-VENDOR	Ciena
 
-ATTRIBUTE	CN4200-Priv-Level			1	integer
+ATTRIBUTE	CN4200-Priv-Level			1	uint32
 
 VALUE	CN4200-Priv-Level		limited			1
 VALUE	CN4200-Priv-Level		admin			2
 VALUE	CN4200-Priv-Level		super-user		3
 VALUE	CN4200-Priv-Level		diag			4
 
-ATTRIBUTE	CES-Priv-Level				10	integer
+ATTRIBUTE	CES-Priv-Level				10	uint32
 
 VALUE	CES-Priv-Level			limited			1
 VALUE	CES-Priv-Level			admin			2
@@ -42,7 +42,7 @@ ATTRIBUTE	OC-P6-Role				236	string
 ATTRIBUTE	OC-P7-Role				237	string
 ATTRIBUTE	OC-P8-Role				238	string
 ATTRIBUTE	OC-P9-Role				239	string
-ATTRIBUTE	NCS-Role				240	integer
+ATTRIBUTE	NCS-Role				240	uint32
 
 VALUE	NCS-Role			security		1
 VALUE	NCS-Role			admin			2
@@ -50,14 +50,14 @@ VALUE	NCS-Role			general			3
 
 ATTRIBUTE	OC-Role					250	string
 ATTRIBUTE	CS-Client-IP				253	ipaddr
-ATTRIBUTE	CS-Acc-Level				254	integer
+ATTRIBUTE	CS-Acc-Level				254	uint32
 
 VALUE	CS-Acc-Level			multi			1
 VALUE	CS-Acc-Level			craft			2
 VALUE	CS-Acc-Level			shell			3
 VALUE	CS-Acc-Level			ems			4
 
-ATTRIBUTE	CS-Priv-Level				255	integer
+ATTRIBUTE	CS-Priv-Level				255	uint32
 
 VALUE	CS-Priv-Level			read-only		1
 VALUE	CS-Priv-Level			read-write		2

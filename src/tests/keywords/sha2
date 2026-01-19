@@ -1,5 +1,5 @@
 #
-# PRE: update if
+# PRE: if
 #
 string test_string
 octets test_octets

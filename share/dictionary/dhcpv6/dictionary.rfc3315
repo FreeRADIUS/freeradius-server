@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -12,14 +12,19 @@
 
 ATTRIBUTE	Client-ID				1	struct
 MEMBER		DUID					uint16 key
+MEMBER		Value					union	key=DUID
 
-STRUCT	LLT				DUID			1
+BEGIN Client-ID.Value
+
+ATTRIBUTE	LLT					1	struct
 MEMBER		Hardware-Type				uint16 key
 MEMBER		Time					date
+MEMBER		Value					union key=Hardware-Type
 
-#  Sub-struct of Client-ID.LLT.Hardware-Type
-STRUCT	Ethernet			Hardware-Type		1
+BEGIN LLT.Value
+ATTRIBUTE	Ethernet				1	struct
 MEMBER		Address					ether
+END LLT.Value
 
 #
 #  If the 'key' field has value OTHER than what is defined here,
@@ -27,16 +32,20 @@ MEMBER		Address					ether
 #  contains the rest of the structure.
 #
 
-STRUCT	EN				DUID			2
+ATTRIBUTE	EN					2	struct
 MEMBER		Enterprise-Number			uint32
 MEMBER		Identifier				octets
 
-STRUCT	LL				DUID			3
+ATTRIBUTE	LL					3	struct
 MEMBER		Hardware-Type				uint16 key
+MEMBER		Value					union key=Hardware-Type
 
-#  Sub-struct of Client-ID.LL.Hardware-Type
-STRUCT	Ethernet			Hardware-Type		1
+BEGIN LL.Value
+ATTRIBUTE	Ethernet				1	struct
 MEMBER		Address					ether
+END LL.Value
+
+END Client-ID.Value
 
 #
 #  Server-ID is a clone of Client-ID
@@ -59,7 +68,7 @@ MEMBER		Preferred-Lifetime			time_delta
 MEMBER		Valid-Lifetime				time_delta
 MEMBER		Options					group
 
-ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested options
+ATTRIBUTE	Option-Request				6	attribute array
 
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16

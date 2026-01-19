@@ -4,7 +4,10 @@
 
 # Ensure if one module yields, the rest execute
 parallel {
-	reschedule
+	group {
+		ok # Set the rcode for the section, else it defaults to fail
+		reschedule
+	}
 	group {
 		parent.request.Filter-Id := 'foo'
 	}

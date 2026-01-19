@@ -33,11 +33,11 @@ VENDOR		Shiva				166
 BEGIN-VENDOR	Shiva
 
 ATTRIBUTE	User-Attributes				1	string
-ATTRIBUTE	Compression				30	integer
-ATTRIBUTE	Dialback-Delay				31	integer
-ATTRIBUTE	Call-Durn-Trap				32	integer
-ATTRIBUTE	Bandwidth-Trap				33	integer
-ATTRIBUTE	Minimum-Call				34	integer
+ATTRIBUTE	Compression				30	uint32
+ATTRIBUTE	Dialback-Delay				31	uint32
+ATTRIBUTE	Call-Durn-Trap				32	uint32
+ATTRIBUTE	Bandwidth-Trap				33	uint32
+ATTRIBUTE	Minimum-Call				34	uint32
 ATTRIBUTE	Default-Host				35	string
 ATTRIBUTE	Menu-Name				36	string
 ATTRIBUTE	User-Flags				37	string
@@ -45,28 +45,28 @@ ATTRIBUTE	Termtype				38	string
 ATTRIBUTE	Break-Key				39	string
 ATTRIBUTE	Fwd-Key					40	string
 ATTRIBUTE	Bak-Key					41	string
-ATTRIBUTE	Dial-Timeout				42	integer
+ATTRIBUTE	Dial-Timeout				42	uint32
 ATTRIBUTE	LAT-Port				43	string
-ATTRIBUTE	Max-VCs					44	integer
-ATTRIBUTE	DHCP-Leasetime				45	integer
+ATTRIBUTE	Max-VCs					44	uint32
+ATTRIBUTE	DHCP-Leasetime				45	uint32
 ATTRIBUTE	LAT-Groups				46	string
-ATTRIBUTE	RTC-Timestamp				60	integer # should probably be date?
-ATTRIBUTE	Circuit-Type				61	integer
+ATTRIBUTE	RTC-Timestamp				60	uint32 # should probably be date?
+ATTRIBUTE	Circuit-Type				61	uint32
 ATTRIBUTE	Called-Number				90	string
 ATTRIBUTE	Calling-Number				91	string
 ATTRIBUTE	Customer-Id				92	string
-ATTRIBUTE	Type-Of-Service				93	integer
-ATTRIBUTE	Link-Speed				94	integer
-ATTRIBUTE	Links-In-Bundle				95	integer
-ATTRIBUTE	Compression-Type			96	integer
-ATTRIBUTE	Link-Protocol				97	integer
-ATTRIBUTE	Network-Protocols			98	integer
-ATTRIBUTE	Session-Id				99	integer
-ATTRIBUTE	Disconnect-Reason			100	integer
+ATTRIBUTE	Type-Of-Service				93	uint32
+ATTRIBUTE	Link-Speed				94	uint32
+ATTRIBUTE	Links-In-Bundle				95	uint32
+ATTRIBUTE	Compression-Type			96	uint32
+ATTRIBUTE	Link-Protocol				97	uint32
+ATTRIBUTE	Network-Protocols			98	uint32
+ATTRIBUTE	Session-Id				99	uint32
+ATTRIBUTE	Disconnect-Reason			100	uint32
 ATTRIBUTE	Acct-Serv-Switch			101	ipaddr
-ATTRIBUTE	Event-Flags				102	integer
-ATTRIBUTE	Function				103	integer
-ATTRIBUTE	Connect-Reason				104	integer
+ATTRIBUTE	Event-Flags				102	uint32
+ATTRIBUTE	Function				103	uint32
+ATTRIBUTE	Connect-Reason				104	uint32
 
 VALUE	Compression			None			0
 VALUE	Compression			Negotiate		1

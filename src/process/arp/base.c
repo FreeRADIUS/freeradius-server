@@ -24,13 +24,14 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 static fr_dict_t const *dict_arp;
 
 extern fr_dict_autoload_t process_arp_dict[];
 fr_dict_autoload_t process_arp_dict[] = {
 	{ .out = &dict_arp, .proto = "arp" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -38,7 +39,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t process_arp_dict_attr[];
 fr_dict_attr_autoload_t process_arp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_arp},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -79,7 +80,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(request),
@@ -97,7 +98,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reply),
@@ -116,7 +118,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reverse_request),
@@ -134,7 +136,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reverse_reply),
@@ -155,7 +158,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
@@ -181,7 +185,7 @@ static void arp_packet_debug(request_t *request, fr_packet_t const *packet, fr_p
 	}
 }
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -198,7 +202,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	arp_packet_debug(request, request->packet, &request->request_pairs, true);
@@ -247,7 +251,8 @@ fr_process_module_t process_arp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "arp",
-		.inst_size	= sizeof(process_arp_t)
+		MODULE_INST(process_arp_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

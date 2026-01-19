@@ -44,7 +44,7 @@ match ERROR offset 45: Zero length attribute name: Unresolved attributes are not
 
 # Trailing dots, point to the dot that's an error
 condition Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id[0].
-match ERROR offset 61: Parent type of nested attribute Uplink-QOS-Id must be of type "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
+match ERROR offset 61: Attribute Uplink-QOS-Id of data type 'uint8' cannot have child attributes
 
 count
 match 19

@@ -115,7 +115,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		 */
 		found = fr_dict_enum_by_name(enumv, value, len);
 		if (found) {
-			if (fr_value_box_copy(ctx, out, found->value) < 0) return -1;
+			if (unlikely(fr_value_box_copy(ctx, out, found->value)) < 0) return -1;
 			return 0;
 		}
 
@@ -209,7 +209,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 	do_string:
 	{
 		char		buffer[64];
-		fr_sbuff_t	sbuff = FR_SBUFF_IN(buffer, sizeof(buffer));
+		fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 		if (fr_value_box_print(&sbuff, data, NULL) <= 0) return NULL;
 
@@ -429,6 +429,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		fr_slen_t slen;
 

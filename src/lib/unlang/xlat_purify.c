@@ -27,17 +27,21 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
-static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
+static int xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
 	fr_value_box_t *box;
 	xlat_exp_t *node;
 
 	while ((box = fr_value_box_list_pop_head(list)) != NULL) {
 		MEM(node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0));
-		fr_value_box_copy(node, &node->data, box);
+		if (unlikely(fr_value_box_copy(node, &node->data, box) < 0)) {
+			talloc_free(node);
+			return -1;
+		}
 
 		if (node->data.type == FR_TYPE_STRING) {
 			node->quote = T_DOUBLE_QUOTED_STRING;
@@ -53,6 +57,8 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 
 		xlat_exp_insert_tail(head, node);
 	}
+
+	return 0;
 }
 
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote);
@@ -65,7 +71,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote)
 {
 	int rcode;
-	bool success;
+	unlang_result_t result = UNLANG_RESULT_NOT_SET;
 	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
 	xlat_exp_t *node, *next;
@@ -81,7 +87,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 	our_flags.constant = our_flags.pure = true;		/* we flip these if the children are not pure */
 
 	for (node = fr_dlist_head(&head->dlist);
-	     next = fr_dlist_next(&head->dlist, node), node != NULL;
+	     (void) (next = fr_dlist_next(&head->dlist, node)), node != NULL;
 	     node = next) {
 		if (!node->flags.can_purify) continue;
 
@@ -254,8 +260,8 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 			fr_assert(node->flags.pure);
 			fr_value_box_list_init(&list);
-			success = false;
-			if (unlang_xlat_push_node(head, &success, &list, request, node) < 0) {
+			result.rcode = RLM_MODULE_NOT_SET;
+			if (unlang_xlat_push_node(head, &result, &list, request, node) < 0) {
 				return -1;
 			}
 
@@ -264,7 +270,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 
 			(void) unlang_interpret_synchronous(NULL, request);
-			if (!success) return -1;
+			if (!XLAT_RESULT_SUCCESS(&result)) return -1;
 
 			/*
 			 *	The function call becomes a GROUP of boxes
@@ -272,7 +278,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			xlat_instance_unregister_func(node);
 			xlat_exp_set_type(node, XLAT_GROUP);	/* Frees the argument list */
 
-			xlat_value_list_to_xlat(node->group, &list);
+			if (xlat_value_list_to_xlat(node->group, &list) < 0) return -1;
 			node->flags = node->group->flags;
 			break;
 		}
@@ -526,7 +532,10 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 	MEM(fr_value_box_aprint(node, &name, &box, NULL) >= 0);
 	xlat_exp_set_name_shallow(node, name);
-	fr_value_box_copy(node, &node->data, &box);
+	if (unlikely(fr_value_box_copy(node, &node->data, &box) < 0)) {
+		talloc_free(node);
+		return -1;
+	}
 
 	*out = node;
 

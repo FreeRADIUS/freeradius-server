@@ -82,7 +82,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_rediswho_dict[];
 fr_dict_autoload_t rlm_rediswho_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_acct_status_type;
@@ -90,7 +90,7 @@ static fr_dict_attr_t const *attr_acct_status_type;
 extern fr_dict_attr_autoload_t rlm_rediswho_dict_attr[];
 fr_dict_attr_autoload_t rlm_rediswho_dict_attr[] = {
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -175,7 +175,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, request_t *request, char
 	return ret;
 }
 
-static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t const *inst, request_t *request,
+static unlang_action_t mod_accounting_all(unlang_result_t *p_result, rlm_rediswho_t const *inst, request_t *request,
 					  char const *insert,
 					  char const *trim,
 					  char const *expire)
@@ -183,22 +183,21 @@ static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t 
 	int ret;
 
 	ret = rediswho_command(inst, request, insert);
-	if (ret < 0) RETURN_MODULE_FAIL;
+	if (ret < 0) RETURN_UNLANG_FAIL;
 
 	/* Only trim if necessary */
 	if (trim && (inst->trim_count >= 0) && (ret > inst->trim_count)) {
-		if (rediswho_command(inst, request, trim) < 0) RETURN_MODULE_FAIL;
+		if (rediswho_command(inst, request, trim) < 0) RETURN_UNLANG_FAIL;
 	}
 
-	if (rediswho_command(inst, request, expire) < 0) RETURN_MODULE_FAIL;
-	RETURN_MODULE_OK;
+	if (rediswho_command(inst, request, expire) < 0) RETURN_UNLANG_FAIL;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rediswho_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
 	CONF_SECTION			*conf = mctx->mi->conf;
-	rlm_rcode_t			rcode;
 	fr_pair_t			*vp;
 	fr_dict_enum_value_t const	*dv;
 	CONF_SECTION			*cs;
@@ -207,19 +206,19 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG2("Unknown Acct-Status-Type %u", vp->vp_uint32);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	cs = cf_section_find(conf, dv->name, NULL);
 	if (!cs) {
 		RDEBUG2("No subsection %s", dv->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	insert = cf_pair_value(cf_pair_find(cs, "insert"));
@@ -228,15 +227,15 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	if (!insert) {
 		RDEBUG("No 'insert' query - ignoring");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!expire) {
 		RDEBUG("No 'expire' query - ignoring");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	return mod_accounting_all(&rcode, inst, request, insert, trim, expire);
+	return mod_accounting_all(p_result, inst, request, insert, trim, expire);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -244,7 +243,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;

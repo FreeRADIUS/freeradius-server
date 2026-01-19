@@ -23,22 +23,24 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-
-
 RCSID("$Id$")
 
 /**
  * @defgroup xlat_functions xlat expansion functions
  */
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>
@@ -50,6 +52,30 @@ RCSID("$Id$")
 
 static char const hextab[] = "0123456789abcdef";
 static TALLOC_CTX *xlat_ctx;
+
+typedef struct {
+	fr_test_point_pair_decode_t	*tp_decode;
+	fr_dict_t const			*dict;		//!< Restrict xlat to this namespace
+} xlat_pair_decode_uctx_t;
+
+/** Copy an argument from the input list to the output cursor.
+ *
+ *  For now we just move it.  This utility function will let us have
+ *  value-box cursors as input arguments.
+ *
+ * @param[in] ctx	talloc ctx
+ * @param[out] out	where the value-box will be stored
+ * @param[in] in	input value-box list
+ * @param[in] vb		the argument to copy
+ */
+void xlat_arg_copy_out(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_value_box_list_t *in, fr_value_box_t *vb)
+{
+	fr_value_box_list_remove(in, vb);
+	if (talloc_parent(vb) != ctx) {
+		(void) talloc_steal(ctx, vb);
+	}
+	fr_dcursor_append(out, vb);
+}
 
 /*
  *	Regular xlat functions
@@ -102,26 +128,49 @@ done:
 }
 
 
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp);
+
+static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp;
+
+	for (vp = fr_pair_list_next(list, NULL);
+	     vp != NULL;
+	     vp = fr_pair_list_next(list, vp)) {
+		xlat_debug_attr_vp(request, vp);
+	}
+}
+
+
 static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
 	XLAT_ARG_PARSER_CURSOR,
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
 	size_t				i;
+	ssize_t				slen;
+	fr_sbuff_t			sbuff;
+	char				buffer[1024];
+
+	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+	/*
+	 *	Squash the names down if necessary.
+	 */
+	if (!RDEBUG_ENABLED3) {
+		slen = fr_pair_print_name(&sbuff, NULL, &vp);
+	} else {
+		slen = fr_sbuff_in_sprintf(&sbuff, "%s %s ", vp->da->name, fr_tokens[vp->op]);
+	}
+	if (slen <= 0) return;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
-		if (vpt) {
-			RIDEBUG2("%s.%s = {",
-				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name);
-		} else {
-			RIDEBUG2("%s = {", vp->da->name);
-		}
+		RIDEBUG2("%s{", buffer);
 		RINDENT();
 		xlat_debug_attr_list(request, &vp->vp_group);
 		REXDENT();
@@ -129,14 +178,8 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 		break;
 
 	default:
-		if (vpt) {
-			RIDEBUG2("%s.%s = %pV",
-				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name,
-				 &vp->data);
-		} else {
-			RIDEBUG2("%s = %pV", vp->da->name, &vp->data);
-		}
+		if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
+		RIDEBUG2("%s", buffer);
 	}
 
 	if (!RDEBUG_ENABLED3) return;
@@ -186,9 +229,10 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 		 */
 		if (!fr_type_is_leaf(type->value) || !fr_type_is_leaf(vp->vp_type)) goto next_type;
 
-		MEM(dst = fr_value_box_alloc_null(vp));
+		MEM(dst = fr_value_box_acopy(NULL, &vp->data));
+
 		/* We expect some to fail */
-		if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
+		if (fr_value_box_cast_in_place(dst, dst, type->value, NULL) < 0) {
 			goto next_type;
 		}
 
@@ -205,31 +249,19 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	REXDENT();
 }
 
-void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
-{
-	fr_pair_t *vp;
-
-	for (vp = fr_pair_list_next(list, NULL);
-	     vp != NULL;
-	     vp = fr_pair_list_next(list, vp)) {
-		xlat_debug_attr_vp(request, vp, NULL);
-	}
-}
-
 /** Common function to move boxes from input list to output list
  *
  * This can be used to implement safe_for functions, as the xlat framework
  * can be used for concatenation, casting, and marking up output boxes as
  * safe_for.
  */
-xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+xlat_action_t xlat_transparent(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx,
 			       UNUSED request_t *request, fr_value_box_list_t *args)
 {
-	fr_value_box_list_foreach_safe(args, vb) {
-		fr_value_box_list_remove(args, vb);
-		fr_dcursor_append(out, vb);
-	}}
+	fr_value_box_list_foreach(args, vb) {
+		xlat_arg_copy_out(ctx, out, args, vb);
+	}
 
 	return XLAT_ACTION_DONE;
 }
@@ -246,14 +278,14 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-%debug.attr(&request)
+%pairs.debug(&request)
 @endverbatim
  *
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		*cursor;
@@ -271,7 +303,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	for (vp = fr_dcursor_current(cursor);
 	     vp;
 	     vp = fr_dcursor_next(cursor)) {
-		xlat_debug_attr_vp(request, vp, NULL); /* @todo - pass in vpt, too, via the vb_cursor stuff */
+		xlat_debug_attr_vp(request, vp);
 	}
 	REXDENT();
 
@@ -359,6 +391,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_ATTR:
 		/*
 		 *	Printing prefixes etc. does NOT result in the escape function being called!  So
 		 *	instead, we cast the results to a string, and then escape the string.
@@ -705,6 +738,61 @@ done:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_file_cat_args[] = {
+	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
+	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
+	{ .required = true, .type = FR_TYPE_SIZE, .single = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*dst, *vb, *max_size;
+	char const	*filename;
+	ssize_t		len;
+	int		fd;
+	struct stat	buf;
+	uint8_t		*buffer;
+
+	XLAT_ARGS(args, &vb, &max_size);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fstat(fd, &buf) < 0) {
+		RPERROR("Failed checking file %s - %s", filename, fr_syserror(errno));
+	fail:
+		close(fd);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if ((size_t)buf.st_size > max_size->vb_size) {
+		RPERROR("File larger than specified maximum (%"PRIu64" vs %zu)", buf.st_size, max_size->vb_size);
+		goto fail;
+	}
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
+	fr_value_box_mem_alloc(dst, &buffer, dst, NULL, buf.st_size, true);
+
+	len = read(fd, buffer, buf.st_size);
+	if (len < 0) {
+		RPERROR("Failed reading file %s - %s", filename, fr_syserror(errno));
+		talloc_free(dst);
+		goto fail;
+	}
+	close(fd);
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
@@ -728,6 +816,31 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+	int		fd;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
+	if (fd == -1) {
+		dst->vb_bool = false;
+		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+	}
+	dst->vb_bool = true;
+
+	close(fd);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_taint_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -1012,7 +1125,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	Needed for correct alignment (as flagged by ubsan)
 		 */
-		memcpy(&ipv6int, &in_vb->vb_ip.addr.v6.s6_addr, sizeof(ipv6int));
+		memcpy(&ipv6int, &in_vb->vb_ipv6addr, sizeof(ipv6int));
 
 		fr_snprint_uint128(buff, sizeof(buff), ntohlll(ipv6int));
 
@@ -1209,7 +1322,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 
 static xlat_arg_parser_t const xlat_func_map_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1246,46 +1359,48 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &fmt_vb);
 
-	if (map_afrom_attr_str(request, &map, fmt_vb->vb_strvalue, &attr_rules, &attr_rules) < 0) {
-		RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
-		return XLAT_ACTION_FAIL;
-	}
-
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = false;	/* Default fail value - changed to true on success */
 	fr_dcursor_append(out, vb);
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-		break;
+	fr_value_box_list_foreach(&fmt_vb->vb_group, fmt) {
+		if (map_afrom_attr_str(request, &map, fmt->vb_strvalue, &attr_rules, &attr_rules) < 0) {
+			RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
 
-	default:
-		REDEBUG("Unexpected type %s in left hand side of expression",
-			tmpl_type_to_str(map->lhs->type));
-		return XLAT_ACTION_FAIL;
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_XLAT:
+			break;
+
+		default:
+			REDEBUG("Unexpected type %s in left hand side of expression",
+				tmpl_type_to_str(map->lhs->type));
+			return XLAT_ACTION_FAIL;
+		}
+
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+		case TMPL_TYPE_DATA:
+		case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
+		case TMPL_TYPE_XLAT:
+			break;
+
+		default:
+			REDEBUG("Unexpected type %s in right hand side of expression",
+				tmpl_type_to_str(map->rhs->type));
+			return XLAT_ACTION_FAIL;
+		}
+
+		RINDENT();
+		ret = map_to_request(request, map, map_to_vp, NULL);
+		REXDENT();
+		talloc_free(map);
+		if (ret < 0) return XLAT_ACTION_FAIL;
 	}
-
-	switch (map->rhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-	case TMPL_TYPE_DATA_UNRESOLVED:
-	case TMPL_TYPE_XLAT:
-		break;
-
-	default:
-		REDEBUG("Unexpected type %s in right hand side of expression",
-			tmpl_type_to_str(map->rhs->type));
-		return XLAT_ACTION_FAIL;
-	}
-
-	RINDENT();
-	ret = map_to_request(request, map, map_to_vp, NULL);
-	REXDENT();
-	talloc_free(map);
-	if (ret < 0) return XLAT_ACTION_FAIL;
 
 	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
@@ -1386,7 +1501,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 typedef struct {
-	bool		last_success;
+	unlang_result_t	last_result;
 	xlat_exp_head_t	*ex;
 } xlat_eval_rctx_t;
 
@@ -1398,7 +1513,7 @@ static xlat_action_t xlat_eval_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_eval_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_eval_rctx_t);
-	xlat_action_t		xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+	xlat_action_t		xa = XLAT_RESULT_SUCCESS(&rctx->last_result) ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
 
 	talloc_free(rctx);
 
@@ -1486,7 +1601,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_result, (fr_value_box_list_t *)out->dlist,
 			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -1760,8 +1875,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	FR_BASE64_DEC_LENGTH produces 2 for empty strings...
 	 */
 	if (in->vb_length == 0) {
-		fr_value_box_list_remove(args, in);
-		fr_dcursor_append(out, in);
+		xlat_arg_copy_out(ctx, out, args, in);
 		return XLAT_ACTION_DONE;
 	}
 
@@ -2172,17 +2286,16 @@ static xlat_arg_parser_t const xlat_func_join_args[] = {
  *
  * null boxes are not preserved.
  */
-static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_join(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_list_foreach(in, arg) {
 		fr_assert(arg->type == FR_TYPE_GROUP);
 
-		fr_value_box_list_foreach_safe(&arg->vb_group, vb) {
-			fr_value_box_list_remove(&arg->vb_group, vb);
-			fr_dcursor_append(out, vb);
-		}}
+		fr_value_box_list_foreach(&arg->vb_group, vb) {
+			xlat_arg_copy_out(ctx, out, &arg->vb_group, vb);
+		}
 	}
 	return XLAT_ACTION_DONE;
 }
@@ -2621,6 +2734,147 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Convert a UUID in an array of uint32_t to the conventional string representation.
+ */
+static int uuid_print_vb(fr_value_box_t *vb, uint32_t vals[4])
+{
+	char	buffer[36];
+	int	i, j = 0;
+
+#define UUID_CHARS(_v, _num)	for (i = 0; i < _num; i++) { \
+		buffer[j++] = fr_base16_alphabet_encode_lc[(uint8_t)((vals[_v] & 0xf0000000) >> 28)]; \
+		vals[_v] = vals[_v] << 4; \
+	}
+
+	UUID_CHARS(0, 8)
+	buffer[j++] = '-';
+	UUID_CHARS(1, 4)
+	buffer[j++] = '-';
+	UUID_CHARS(1, 4);
+	buffer[j++] = '-';
+	UUID_CHARS(2, 4);
+	buffer[j++] = '-';
+	UUID_CHARS(2, 4);
+	UUID_CHARS(3, 8);
+
+	return fr_value_box_bstrndup(vb, vb, NULL, buffer, sizeof(buffer), false);
+}
+
+static inline void uuid_set_version(uint32_t vals[4], uint8_t version)
+{
+	/*
+	 *	The version is indicated by the upper 4 bits of byte 7 - the 3rd byte of vals[1]
+	 */
+	vals[1] = (vals[1] & 0xffff0fff) | (((uint32_t)version & 0x0f) << 12);
+}
+
+static inline void uuid_set_variant(uint32_t vals[4], uint8_t variant)
+{
+	/*
+	 *	The variant is indicated by the first 1, 2 or 3 bits of byte 9
+	 *	The number of bits is determined by the variant.
+	 */
+	switch (variant) {
+	case 0:
+		vals[2] = vals[2] & 0x7fffffff;
+		break;
+
+	case 1:
+		vals[2] = (vals[2] & 0x3fffffff) | 0x80000000;
+		break;
+
+	case 2:
+		vals[2] = (vals[2] & 0x3fffffff) | 0xc0000000;
+		break;
+
+	case 3:
+		vals[2] = vals[2] | 0xe0000000;
+		break;
+	}
+}
+
+/** Generate a version 4 UUID
+ *
+ * Version 4 UUIDs are all random except the version and variant fields
+ *
+ * Example:
+@verbatim
+%uuid.v4 == "cba48bda-641c-42ae-8173-d97aa04f888a"
+@endverbatim
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_uuid_v4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	uint32_t	vals[4];
+	int		i;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+
+	/*
+	 *	A type 4 UUID is all random except a few bits.
+	 *	Start with 128 bits of random.
+	 */
+	for (i = 0; i < 4; i++) vals[i] = fr_rand();
+
+	/*
+	 *	Set the version and variant fields
+	 */
+	uuid_set_version(vals, 4);
+	uuid_set_variant(vals, 1);
+
+	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
+/** Generate a version 7 UUID
+ *
+ * Version 7 UUIDs use 48 bits of unix millisecond epoch and 74 bits of random
+ *
+ * Example:
+@verbatim
+%uuid.v7 == "019a58d8-8524-7342-aa07-c0fa2bba6a4e"
+@endverbatim
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_uuid_v7(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	uint32_t	vals[4];
+	int		i;
+	uint64_t	now;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+
+	/*
+	 *	A type 7 UUID has random data from bit 48
+	 *	Start with random from bit 32 - since fr_rand is uint32
+	 */
+	for (i = 1; i < 4; i++) vals[i] = fr_rand();
+
+	/*
+	 *	The millisecond epoch fills the first 48 bits
+	 */
+	now = fr_time_to_msec(fr_time());
+	now = now << 16;
+	vals[0] = now >> 32;
+	vals[1] = (vals[1] & 0x0000ffff) | (now & 0xffff0000);
+
+	/*
+	 *	Set the version and variant fields
+	 */
+	uuid_set_version(vals, 7);
+	uuid_set_variant(vals, 1);
+
+	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_range_arg[] = {
 	{ .required = true, .type = FR_TYPE_UINT64 },
@@ -2661,7 +2915,6 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	} else {
 		start = 0;
-		fr_value_box_debug(start_vb);
 		end = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
 		step = 1;
 	}
@@ -2785,7 +3038,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (regex_request_to_sub(vb, vb, request, idx.vb_uint32) < 0) {
 			REDEBUG2("No previous numbered regex capture group '%u'", idx.vb_uint32);
 			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+			return XLAT_ACTION_DONE;
 		}
 		fr_dcursor_append(out, vb);
 
@@ -2812,7 +3065,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (regex_request_to_sub_named(vb, vb, request, arg->vb_strvalue) < 0) {
 			REDEBUG2("No previous named regex capture group '%s'", arg->vb_strvalue);
 			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+			return XLAT_ACTION_DONE;	/* NOT an error, just an empty result */
 		}
 		fr_dcursor_append(out, vb);
 
@@ -3436,7 +3689,6 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_assert(vb && (vb->type != FR_TYPE_NULL));
 	fr_value_box_safety_copy(vb, subject_vb);
 	fr_value_box_safety_merge(vb, rep_vb);
 
@@ -3444,6 +3696,79 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
+/*
+ *	Debug builds only, we don't want to allow unsanitised inputs to crash the server
+ */
+#ifndef NDEBUG
+static xlat_arg_parser_t const xlat_func_signal_raise_args[] = {
+	{ .single = true, .required = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_signal_raise(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx, request_t *request,
+					    fr_value_box_list_t *args)
+{
+	static fr_table_num_sorted_t const signal_table[] = {
+		{ L("break"),		SIGTRAP },	/* Save flailing at the keyboard */
+		{ L("BREAK"),		SIGTRAP },
+		{ L("SIGABRT"),		SIGABRT },
+		{ L("SIGALRM"),		SIGALRM },
+#ifdef SIGBUS
+		{ L("SIGBUS"),		SIGBUS },
+#endif
+		{ L("SIGCHLD"),		SIGCHLD },
+		{ L("SIGCONT"),		SIGCONT },
+		{ L("SIGFPE"),		SIGFPE },
+		{ L("SIGHUP"),		SIGHUP },
+		{ L("SIGILL"),		SIGILL },
+		{ L("SIGINT"),		SIGINT },
+		{ L("SIGKILL"),		SIGKILL },
+		{ L("SIGPIPE"),		SIGPIPE },
+#ifdef SIGPOLL
+		{ L("SIGPOLL"),		SIGPOLL },
+#endif
+		{ L("SIGPROF"),		SIGPROF },
+		{ L("SIGQUIT"),		SIGQUIT },
+		{ L("SIGSEGV"),		SIGSEGV },
+		{ L("SIGSTOP"),		SIGSTOP },
+#ifdef SIGSYS
+		{ L("SIGSYS"),		SIGSYS },
+#endif
+		{ L("SIGTERM"),		SIGTERM },
+#ifdef SIGTRAP
+		{ L("SIGTRAP"),		SIGTRAP },
+#endif
+		{ L("SIGTSTP"),		SIGTSTP },
+		{ L("SIGTTIN"),		SIGTTIN },
+		{ L("SIGTTOU"),		SIGTTOU },
+		{ L("SIGURG"),		SIGURG },
+		{ L("SIGUSR1"),		SIGUSR1 },
+		{ L("SIGUSR2"),		SIGUSR2 },
+		{ L("SIGVTALRM"),	SIGVTALRM },
+		{ L("SIGXCPU"),		SIGXCPU },
+		{ L("SIGXFSZ"),		SIGXFSZ }
+	};
+	static size_t signal_table_len = NUM_ELEMENTS(signal_table);
+
+	fr_value_box_t	*signal_vb;
+	int		signal;
+
+	XLAT_ARGS(args, &signal_vb);
+
+	signal = fr_table_value_by_substr(signal_table, signal_vb->vb_strvalue, signal_vb->vb_length, -1);
+	if (signal < 0) {
+		RERROR("Invalid signal \"%pV\"", signal_vb);
+		return XLAT_ACTION_FAIL;
+	}
+	if (raise(signal) < 0) {
+		RERROR("Failed raising signal %d: %s", signal, strerror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+	return XLAT_ACTION_DONE;
+}
+#endif
 
 static xlat_arg_parser_t const xlat_func_time_args[] = {
 	{ .required = false, .single = true, .type = FR_TYPE_STRING },
@@ -3649,8 +3974,8 @@ static xlat_action_t xlat_func_time_is_dst(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
-static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       UNUSED request_t *request, fr_value_box_list_t *args, bool upper)
+static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED request_t *request, fr_value_box_list_t *args, bool upper)
 {
 	char		*p;
 	char const	*end;
@@ -3666,8 +3991,7 @@ static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p++;
 	}
 
-	fr_value_box_list_remove(args, vb);	/* Can't leave it in both lists */
-	fr_dcursor_append(out, vb);
+	xlat_arg_copy_out(ctx, out, args, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3875,8 +4199,9 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
-	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
+static xlat_arg_parser_t const xlat_pair_decode_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .single = true, .type = FR_TYPE_ATTR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -3891,26 +4216,56 @@ static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_pair_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
-	fr_value_box_t				*vb;
+	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
-	fr_test_point_pair_decode_t const	*tp_decode = *(void * const *)xctx->inst;
+	xlat_pair_decode_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, xlat_pair_decode_uctx_t);
+	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+	fr_pair_t				*vp = NULL;
+	bool					created = false;
+
+	XLAT_ARGS(in, &in_head, &root_da);
+
+	fr_assert(in_head->type == FR_TYPE_GROUP);
+
+	if (decode_uctx->dict && decode_uctx->dict != request->proto_dict) {
+		REDEBUG2("Can't call %%%s() when in %s namespace", xctx->ex->call.func->name,
+			 fr_dict_root(request->proto_dict)->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (root_da) {
+		int ret;
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Decoding context must be a structural attribute reference");
+			return XLAT_ACTION_FAIL;
+		}
+		ret = fr_pair_update_by_da_parent(fr_pair_list_parent(&request->request_pairs), &vp, root_da->vb_attr);
+		if (ret < 0) {
+			REDEBUG2("Failed creating decoding root pair");
+			return XLAT_ACTION_FAIL;
+		}
+		if (ret == 0) created = true;
+	}
 
 	if (tp_decode->test_ctx) {
-		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict) < 0) {
-			return XLAT_ACTION_FAIL;
+		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
+			goto fail;
 		}
 	}
 
-	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
-					     request, decode_ctx, tp_decode->func, in);
+	decoded = xlat_decode_value_box_list(root_da ? vp : request->request_ctx,
+					     root_da ? &vp->vp_group : &request->request_pairs,
+					     request, decode_ctx, tp_decode->func, &in_head->vb_group);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
+	fail:
+		if (created) fr_pair_delete(&request->request_pairs, vp);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -3947,7 +4302,7 @@ static xlat_action_t xlat_func_subnet_netmask(TALLOC_CTX *ctx, fr_dcursor_t *out
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ip.addr.v4.s_addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+	vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -3969,17 +4324,23 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ip.addr.v4.s_addr = htonl( ntohl(subnet->vb_ip.addr.v4.s_addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
+	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
 
-static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
+static int xlat_pair_dencode_instantiate(xlat_inst_ctx_t const *mctx)
 {
 	*(void **) mctx->inst = mctx->uctx;
 	return 0;
 }
+
+static xlat_arg_parser_t const xlat_pair_encode_args[] = {
+	XLAT_ARG_PARSER_CURSOR,
+	{ .single = true, .type = FR_TYPE_ATTR },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Encode protocol attributes / options
  *
@@ -3992,23 +4353,24 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+static xlat_action_t xlat_pair_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
-	bool		tainted = false;
+	bool		tainted = false, encode_children = false;
 	fr_value_box_t	*encoded;
 
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	fr_dbuff_t	*dbuff;
 	ssize_t		len = 0;
-	fr_value_box_t	*in_head;
+	fr_value_box_t	*in_head, *root_da;
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
 
-	XLAT_ARGS(args, &in_head);
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
+
+	XLAT_ARGS(args, &in_head, &root_da);
 
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
@@ -4018,20 +4380,56 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
+	}
+
+	if (root_da) {
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Encoding context must be a structural attribute reference");
+			return XLAT_ACTION_FAIL;
+		}
+		vp = fr_dcursor_current(cursor);
+		if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
+			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
+			return XLAT_ACTION_FAIL;
+		}
+		if (root_da->vb_attr == vp->da) encode_children = true;
 	}
 
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = fr_dcursor_current(cursor);
-	     vp != NULL;
-	     vp = fr_dcursor_next(cursor)) {
-		if (vp->da->flags.internal) continue;
+	RDEBUG2("Encoding attributes");
 
+	if (RDEBUG_ENABLED2) {
+		RINDENT();
+		for (vp = fr_dcursor_current(cursor);
+		     vp != NULL;
+		     vp = fr_dcursor_next(cursor)) {
+			RDEBUG2("%pP", vp);
+		}
+		REXDENT();
+	}
+
+	/*
+	 *	Encoders advance the cursor, so we just need to feed
+	 *	in the next pair.  This was originally so we could
+	 *	extend the output buffer, but with dbuffs that's
+	 *	no longer necessary... we might want to refactor this
+	 *	in future.
+	 */
+	for (vp = fr_dcursor_head(cursor);
+	     vp != NULL;
+	     vp = fr_dcursor_current(cursor)) {
 		/*
+		 *
+		 *	Don't check for internal attributes, the
+		 *	encoders can skip them if they need to, and the
+		 *	internal encoder can encode anything, as can
+		 *	things like CBOR.
+		 *
 		 *	Don't check the dictionaries.  By definition,
 		 *	vp->da->dict==request->proto_dict, OR else we're
 		 *	using the internal encoder and encoding a real
@@ -4042,31 +4440,48 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
 		 *	their value is true.
 		 */
+		if (encode_children) {
+			fr_dcursor_t	child_cursor;
 
-		len = tp_encode->func(&FR_DBUFF_TMP(p, end), cursor, encode_ctx);
+			fr_assert(fr_type_is_structural(vp->vp_type));
+
+			/*
+			 *	If we're given an encoding context which is the
+			 *	same as the DA returned by the cursor, that means
+			 *	encode the children.
+			 */
+			fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+			while (fr_dcursor_current(&child_cursor)) {
+				len = tp_encode->func(dbuff, &child_cursor, encode_ctx);
+				if (len < 0) break;
+			}
+			fr_dcursor_next(cursor);
+		} else {
+			len = tp_encode->func(dbuff, cursor, encode_ctx);
+		}
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
-		p += len;
 	}
 
 	/*
 	 *	Pass the options string back to the caller.
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), tainted);
 	fr_dcursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;
 }
 
-static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
+static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t const *dict)
 {
 	fr_test_point_pair_decode_t *tp_decode;
 	fr_test_point_pair_encode_t *tp_encode;
+	xlat_pair_decode_uctx_t *decode_uctx;
 	xlat_t *xlat;
 	char buffer[256+32];
 
@@ -4081,10 +4496,13 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 		/* May be called multiple times, so just skip protocols we've already registered */
 		if (xlat_func_find(buffer, -1)) return 1;
 
-		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
-		xlat_func_args_set(xlat, protocol_decode_xlat_args);
+		if (unlikely((xlat = xlat_func_register(NULL, buffer, xlat_pair_decode, FR_TYPE_UINT32)) == NULL)) return -1;
+		xlat_func_args_set(xlat, xlat_pair_decode_args);
+		decode_uctx = talloc(xlat, xlat_pair_decode_uctx_t);
+		decode_uctx->tp_decode = tp_decode;
+		decode_uctx->dict = dict;
 		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, xlat_pair_decode_uctx_t *, NULL, decode_uctx);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -4098,10 +4516,10 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 
 		if (xlat_func_find(buffer, -1)) return 1;
 
-		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
-		xlat_func_args_set(xlat, xlat_pair_cursor_args);
+		if (unlikely((xlat = xlat_func_register(NULL, buffer, xlat_pair_encode, FR_TYPE_OCTETS)) == NULL)) return -1;
+		xlat_func_args_set(xlat, xlat_pair_encode_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -4125,7 +4543,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		*p = tolower((uint8_t) *p);
 	}
 
-	return xlat_protocol_register_by_name(dl, name);
+	return xlat_protocol_register_by_name(dl, name, dict != fr_dict_internal() ? dict : NULL);
 }
 
 static dl_loader_t *cbor_loader = NULL;
@@ -4140,7 +4558,7 @@ static int xlat_protocol_register_cbor(void)
 	dl = dl_by_name(cbor_loader, "libfreeradius-cbor", NULL, false);
 	if (!dl) return 0;
 
-	if (xlat_protocol_register_by_name(dl, "cbor") < 0) return -1;
+	if (xlat_protocol_register_by_name(dl, "cbor", NULL) < 0) return -1;
 
 	return 0;
 }
@@ -4295,8 +4713,10 @@ do { \
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
+	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
 
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.immutable");
@@ -4328,13 +4748,16 @@ do { \
 	xlat_func_instantiate_set(xlat, xlat_instantiate_subst_regex, xlat_subst_regex_inst_t, NULL, NULL);
 #endif
 
+#ifndef NDEBUG
+	XLAT_REGISTER_ARGS("signal.raise", xlat_func_signal_raise, FR_TYPE_STRING, xlat_func_signal_raise_args);
+#endif
+
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_VOID("time.now", xlat_func_time_now, FR_TYPE_DATE);
 	XLAT_REGISTER_VOID("time.request", xlat_func_time_request, FR_TYPE_DATE);
 	XLAT_REGISTER_VOID("time.offset", xlat_func_time_offset, FR_TYPE_TIME_DELTA);
 	XLAT_REGISTER_VOID("time.is_dst", xlat_func_time_is_dst, FR_TYPE_BOOL);
 
-	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
@@ -4342,6 +4765,9 @@ do { \
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_NEW("str.rand");
+
+	XLAT_REGISTER_VOID("uuid.v4", xlat_func_uuid_v4, FR_TYPE_STRING);
+	XLAT_REGISTER_VOID("uuid.v7", xlat_func_uuid_v7, FR_TYPE_STRING);
 
 	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
@@ -4421,6 +4847,7 @@ do { \
 	XLAT_REGISTER_HASH("sha2_256", xlat_func_sha2_256);
 	XLAT_REGISTER_HASH("sha2_384", xlat_func_sha2_384);
 	XLAT_REGISTER_HASH("sha2_512", xlat_func_sha2_512);
+	XLAT_REGISTER_HASH("sha2", xlat_func_sha2_256);
 
 #  ifdef HAVE_EVP_BLAKE2S256
 	XLAT_REGISTER_HASH("blake2s_256", xlat_func_blake2s_256);
@@ -4433,13 +4860,14 @@ do { \
 	XLAT_REGISTER_HASH("sha3_256", xlat_func_sha3_256);
 	XLAT_REGISTER_HASH("sha3_384", xlat_func_sha3_384);
 	XLAT_REGISTER_HASH("sha3_512", xlat_func_sha3_512);
+	XLAT_REGISTER_HASH("sha3", xlat_func_sha3_256);
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);
 	xlat->deprecated = true;
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
 	XLAT_NEW("length");
-	
+
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
 

@@ -53,7 +53,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_passwd_dict[];
 fr_dict_autoload_t rlm_passwd_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifdef TEST
@@ -371,7 +371,7 @@ typedef struct {
 } rlm_passwd_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_passwd_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_passwd_t, filename) },
 	{ FR_CONF_OFFSET_FLAGS("format", CONF_FLAG_REQUIRED, rlm_passwd_t, format) },
 	{ FR_CONF_OFFSET("delimiter", rlm_passwd_t, delimiter), .dflt = ":" },
 
@@ -560,7 +560,7 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *req
 	}
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_passwd_map(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_passwd_t);
 
@@ -571,7 +571,7 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 	int			found = 0;
 
 	key = fr_pair_find_by_da(&request->request_pairs, NULL, inst->keyattr);
-	if (!key) RETURN_MODULE_NOTFOUND;
+	if (!key) RETURN_UNLANG_NOTFOUND;
 
 	for (i = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, inst->keyattr);
 	     i;
@@ -601,9 +601,9 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 		if (!inst->allow_multiple) break;
 	}
 
-	if (!found) RETURN_MODULE_NOTFOUND;
+	if (!found) RETURN_UNLANG_NOTFOUND;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 extern module_rlm_t rlm_passwd;

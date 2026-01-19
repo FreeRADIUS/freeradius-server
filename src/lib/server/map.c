@@ -863,37 +863,41 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 *	Check the "update" section for destination lists.
 	 */
 	if (update) {
-		fr_slen_t slen;
-		char const *p;
+		char const *name2 = cf_section_name2(cs);
 
-		p = cf_section_name2(cs);
-		if (!p) goto do_children;
+		if (name2) {
+			fr_dict_attr_t const *list_def = NULL;
+			fr_sbuff_t sbuff = FR_SBUFF_IN(name2, strlen(name2));
 
-		if (our_lhs_rules.attr.list_presence == TMPL_ATTR_LIST_FORBID) {
-			cf_log_err(ci, "Invalid \"update\" section - list references are not allowed here");
-			return -1;
-		}
+			/*
+			 *	There's a name, but it's not one we recognize.  Or, it's one we recognize but
+			 *	there are things after it, we forbid it.
+			 *
+			 *	This code is ONLY used for "update" sections in modules.  None of those
+			 *	examples use a destination list.  If we allow any destination list (including
+			 *	parent, outer, etc.) then we allow the possibility of changing protocols,
+			 *	which is bad.
+			 *
+			 *	This limitation also means that the module "update" lists can't automatically
+			 *	edit other structural attributes, such as "reply.foo".  But that seems a small
+			 *	price to pay.
+			 *
+			 *	The admin can still specify outer / parent / etc. on the individual entries in
+			 *	an "update" section, but we'll let that go for now.
+			 *
+			 *	@todo - We should arguably forbid parent/outer list references in an "update"
+			 *	section.
+			 */
+			if ((tmpl_attr_list_from_substr(&list_def, &sbuff) <= 0) ||
+			    !fr_sbuff_eof(&sbuff)) {
+				cf_log_err(ci, "Invalid destination list specifier for 'update' - must be one of 'request', 'reply', 'control', or 'state'");
+				return -1;
+			}
 
-		MEM(tmp_ctx = talloc_init_const("tmp"));
-
-		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN(p, strlen(p)));
-		if (slen < 0) {
-			cf_log_err(ci, "Invalid reference - %s", fr_strerror());
-			talloc_free(tmp_ctx);
-			return -1;
-		}
-		p += slen;
-
-		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN(p, strlen(p)));
-		if (slen == 0) {
-			cf_log_err(ci, "Unknown list reference \"%s\"", p);
-			talloc_free(tmp_ctx);
-			return -1;
+			our_lhs_rules.attr.list_def = list_def;
 		}
 	}
 
-do_children:
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
@@ -1030,7 +1034,7 @@ do_children:
 				fr_assert(fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type));
 
 				/*
-				 *	&foo := { a, b, c }
+				 *	foo := { a, b, c }
 				 *
 				 *	@todo - maybe lhs_rules?  But definitely not child_lhs_rules.
 				 *
@@ -1065,14 +1069,14 @@ do_children:
 		/*
 		 *	Over-ride RHS rules for
 		 *
-		 *	&reply += {
-		 *		&User-Name = &User-Name
+		 *	reply += {
+		 *		User-Name = User-Name
 		 *	}
 		 *
 		 *	Which looks stupid.  Instead we require
 		 *
-		 *	&reply += {
-		 *		&User-Name = &request.User-Name
+		 *	reply += {
+		 *		User-Name = request.User-Name
 		 *	}
 		 *
 		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
@@ -1089,7 +1093,6 @@ do_children:
 		}
 
 		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, our_rhs_rules, edit) < 0) {
-			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -1386,7 +1389,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	map = map_alloc(ctx, NULL);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
-				 &FR_SBUFF_IN(lhs, strlen(lhs)),
+				 &FR_SBUFF_IN_STR(lhs),
 				 lhs_quote,
 				 NULL,
 				 lhs_rules);
@@ -1500,7 +1503,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 		break;
 	}
 
-	fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data);
+	if (unlikely(fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data) < 0)) {
+		talloc_free(map);
+		return -1;
+	}
 
 	*out = map;
 
@@ -1797,8 +1803,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (tmpl_attr_tail_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
-			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
+			if (unlikely(fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0)) {
 				rcode = -1;
+				talloc_free(n);
 				goto error;
 			}
 
@@ -2619,7 +2626,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		fr_assert(tmpl_is_attr(parent->lhs));
 		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
-		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN(lhs, strlen(lhs)),
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN_STR(lhs),
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 	} else {
 		/*
@@ -2778,7 +2785,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	Parse it as the given data type.
 		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN_STR(rhs),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) {
 			goto parse_as_attr;

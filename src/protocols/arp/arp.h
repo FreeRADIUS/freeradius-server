@@ -45,6 +45,10 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 
 int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], uint8_t macaddr[static 6]);
 
+#ifdef __FreeBSD__
+int fr_bsd_arp_entry_add(uint32_t ifindex, uint8_t ipaddr[static 4], uint8_t macaddr[static 6]);
+#endif
+
 /*
  *	ARP for ethernet && IPv4.
  */

@@ -465,9 +465,9 @@ static void fr_network_suspend(fr_network_t *nr)
 
 	if (nr->suspended) return;
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_read);
 	}
 	nr->suspended = true;
@@ -484,9 +484,9 @@ static void fr_network_unsuspend(fr_network_t *nr)
 
 	if (!nr->suspended) return;
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_read);
 	}
 	nr->suspended = false;
@@ -600,7 +600,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 				/*
 				 *	Close the hole...
 				 */
-				memcpy(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
+				memmove(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
 				break;
 			}
 		}
@@ -955,6 +955,7 @@ next_message:
 	s->cd = NULL;
 
 	DEBUG3("Read %zd byte(s) from FD %u", data_size, sockfd);
+	if (s->listen->read_hexdump) HEXDUMP2(cd->m.data, data_size, "%s read ", s->listen->name);
 	nr->stats.in++;
 	s->stats.in++;
 
@@ -1178,15 +1179,19 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		int rcode;
 
 		fr_assert(li == cd->listen);
+		if (li->write_hexdump) HEXDUMP2(cd->m.data, cd->m.data_size, "%s writing ", li->name);
 		rcode = li->app_io->write(li, cd->packet_ctx,
 					  cd->reply.request_time,
 					  cd->m.data, cd->m.data_size, s->written);
 
 		/*
-		 *	As a special case, allow write() to return
-		 *	"0", which means "close the socket".
+		 *	Write of 0 bytes means an OS bug, and we just discard this packet.
 		 */
-		if (rcode == 0) goto dead;
+		if (rcode == 0) {
+			RATE_LIMIT_GLOBAL(ERROR, "Discarding packet due to write returning zero for socket %s",
+					  s->listen->name);
+			goto discard;
+		}
 
 		/*
 		 *	Or we have a write error.
@@ -1225,6 +1230,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
+			PERROR("Failed writing to socket %s", s->listen->name);
+
 			/*
 			 *	As a special hack, check for something
 			 *	that will never be returned from a
@@ -1232,9 +1239,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 *	signals to us that we have to close
 			 *	the socket, but NOT complain about it.
 			 */
-			if (errno == ECONNREFUSED) goto dead;
+			if ((errno == ECONNREFUSED) || (errno == ECONNRESET)) goto dead;
 
-			PERROR("Failed writing to socket %s", s->listen->name);
 			if (li->app_io->error) li->app_io->error(li);
 
 		dead:
@@ -1251,6 +1257,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			goto save_pending;
 		}
 
+	discard:
 		s->written = 0;
 
 		/*
@@ -2076,9 +2083,9 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 
 	// @todo - note that this isn't thread-safe!
 
-	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	for (s = fr_rb_iter_init_inorder(nr->sockets, &iter);
 	     s != NULL;
-	     s = fr_rb_iter_next_inorder(&iter)) {
+	     s = fr_rb_iter_next_inorder(nr->sockets, &iter)) {
 		if (!s->listen->app_io->get_name) {
 			fprintf(fp, "%s\n", s->listen->app_io->common.name);
 		} else {

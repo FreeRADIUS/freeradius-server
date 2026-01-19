@@ -36,7 +36,6 @@ typedef struct {
 	uint32_t			num_messages;			//!< for message ring buffer.
 
 	bool				tunnel_password_zeros;		//!< check for trailing zeroes in Tunnel-Password.
-
 	uint32_t			priorities[FR_RADIUS_CODE_MAX];	//!< priorities for individual packets
 
 	char const			**allowed_types;		//!< names for for 'type = ...'

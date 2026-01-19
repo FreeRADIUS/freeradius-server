@@ -62,16 +62,18 @@ $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
 
 test.unit.xlat: $(addprefix $(OUTPUT)/,$(filter xlat/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-unlang.la
 
-test.unit.help: TEST_UNIT_HELP += test.unit.xlat
+test.unit.purify: $(addprefix $(OUTPUT)/,$(filter purify/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-unlang.la
 
-
-#  This is useful, too
 test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
+
+test.unit.tmpl: $(addprefix $(OUTPUT)/,$(filter tmpl/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
+
+test.unit.help: TEST_UNIT_HELP += test.unit.xlat
 
 #
 #  Add special command-line flag for purify tests.
 #
-$(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/cond_%,$(FILES.$(TEST))): PURIFY=-p
+$(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 
 #
 #  For automatically fixing the tests when only the output has changed
@@ -87,12 +89,8 @@ $(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/co
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
-	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
-		echo "TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
-		rm -f $(BUILD_DIR)/tests/test.unit; \
-		exit 1; \
-	fi
+	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<)
+	${Q}$(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

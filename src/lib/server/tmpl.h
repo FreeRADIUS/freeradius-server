@@ -298,26 +298,30 @@ struct tmpl_attr_rules_s {
 	tmpl_attr_list_presence_t list_presence;	//!< Whether the attribute reference can
 							///< have a list, forbid it, or require it.
 
-	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
+	CONF_ITEM		*ci;			//!< for migration support and various warnings
+
+	unsigned int		allow_unknown : 1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	uint8_t			allow_unresolved:1;	//!< Allow attributes that look valid but were
+	unsigned int		allow_unresolved : 1;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	uint8_t			allow_wildcard:1;	//!< Allow the special case of .[*] representing
+	unsigned int		allow_wildcard : 1;	//!< Allow the special case of .[*] representing
 							///< all children of a structural attribute.
 
-	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
+	unsigned int		allow_foreign : 1;	//!< Allow arguments not found in dict_def.
 
-	uint8_t			disallow_filters:1;	//!< disallow filters.
+	unsigned int		allow_oid : 1;		//!< allow numerical OIDs.
 
-	uint8_t			xlat:1	;		//!< for %{User-Name}
+	unsigned int		disallow_filters : 1;	//!< disallow filters.
 
-	uint8_t			bare_word_enum:1;	//!< for v3 compatibility.
+	unsigned int		xlat : 1	;	//!< for %{User-Name}
 
-	uint8_t			disallow_rhs_resolve:1;	//!< map RHS is NOT immediately resolved in the context of the LHS.
+	unsigned int		bare_word_enum : 1;	//!< for v3 compatibility.
+
+	unsigned int		disallow_rhs_resolve : 1; //!< map RHS is NOT immediately resolved in the context of the LHS.
 };
 
 struct tmpl_xlat_rules_s {
@@ -680,11 +684,7 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 {
 	if (!ar || !ar_is_normal(ar)) return false;
 
-	return (ar->ar_da == request_attr_request) ||
-	       (ar->ar_da == request_attr_reply) ||
-	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state) ||
-	       (ar->ar_da == request_attr_local);
+	return request_attr_is_list(ar->ar_da);
 }
 
 /** Return true if the head attribute reference is a list reference
@@ -1023,8 +1023,10 @@ typedef enum {
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
 	TMPL_ATTR_ERROR_INVALID_FILTER,			//!< Invalid filter
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
+	TMPL_ATTR_ERROR_INVALID_REQUEST_REF,		//!< invalid request reference
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
-	TMPL_ATTR_ERROR_BAD_CAST			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_BAD_CAST,			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_INVALID_OID			//!< OIDs are not allowed
 } tmpl_attr_error_t;
 
 /** Map ptr type to a boxed type
@@ -1071,7 +1073,7 @@ typedef enum {
 #define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt) \
 			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, NULL, NULL, _type)
 
-void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_list_t		*tmpl_list_head(request_t *request, fr_dict_attr_t const *list);
 
@@ -1169,11 +1171,11 @@ void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
+void			tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
+void			tmpl_attr_ref_list_debug(FILE *fp, FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 
-void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_attr_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
@@ -1234,8 +1236,6 @@ int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enum
 int			tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules) CC_HINT(nonnull(1));
 
 void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
-
-void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_unknown_add(tmpl_t *vpt);
 
@@ -1313,7 +1313,7 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 						   tmpl_t const *vpt) CC_HINT(nonnull);
 
-void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
+void			tmpl_extents_debug(FILE *fp, fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 

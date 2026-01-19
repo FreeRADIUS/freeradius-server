@@ -17,14 +17,14 @@ fuzzer-out dns
 
 #                                                 Z  type   class   TTL
 decode-proto 00 00 80 00 00 00 00 01 00 00 00 00  00 00 01   00 01  00 00 00 10  00 04 7f 00 00 01
-match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = ".", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = ".", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 encode-proto -
 match  00 00 80 00 00 00 00 01 00 00 00 00 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #  Really "decode RR".
 #           Z  type   class  TTL          length  IPaddr
 decode-pair 00 00 01  00 01  00 00 00 10  00 04   7f 00 00 01
-match Resource-Record = { Name = ".", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+match Resource-Record = { Name = ".", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 
 encode-pair -
 match 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
@@ -32,24 +32,24 @@ match 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 #
 #  And a complex label
 #
-encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { ip = 127.0.0.1 } }
+encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, A = { ip = 127.0.0.1 } }
 match 00 00 80 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 decode-proto -
-match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 
 #
 #  Check the encoder can manage counts on its own, and finishes encoding missing count attributes in the header
 #  This is regession test for the struct encoder, which would stop encoding if count attributes weren't explicitly
 #  provided resulting in a malformed header.
 #
-encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { ip = 127.0.0.1 } }
+encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, A = { ip = 127.0.0.1 } }
 match 00 00 80 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
 #  multiple labels (2)
 #
-encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 2, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 2, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = A, Class = Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 match 00 00 80 00 00 00 00 02 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
@@ -57,7 +57,7 @@ match 00 00 80 00 00 00 00 02 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03
 #  and then "ftp" with a pointer c010 to "example.com"
 #
 decode-proto -
-match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 2, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 2, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 
 #
 #  multiple labels (3), but with all counts removed.  The counts will
@@ -68,7 +68,7 @@ match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = n
 #  about every bit of RFC correctness here, we just care to test the
 #  encoders and decoders for formatting.
 #
-encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 3, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ns.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 3, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = A, Class = Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ns.example.com", Type = A, Class = Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 match 00 00 80 00 00 00 00 03 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 02 6e 73 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
@@ -76,7 +76,7 @@ match 00 00 80 00 00 00 00 03 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03
 #  and then "ftp" with a pointer c010 to "example.com"
 #
 decode-proto -
-match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 3, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ns.example.com", Type = ::A, Class = ::Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
+match Header = { ID = 0, Query = ::Response, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 0, Answer-Count = 3, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ftp.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }, Resource-Record = { Name = "ns.example.com", Type = ::A, Class = ::Internet, TTL = 16, A = { IP = 127.0.0.1 } }
 
 count
 match 25

@@ -58,6 +58,8 @@ typedef struct {
 	bool		escape;		//!< do filename escaping, yes / no
 
 	exfile_t    	*ef;		//!< Log file handler
+
+	bool		triggers;	//!< Do we run triggers.
 } rlm_detail_t;
 
 typedef struct {
@@ -77,6 +79,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("locking", rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", rlm_detail_t, log_srcdst), .dflt = "no" },
+	{ FR_CONF_OFFSET("triggers", rlm_detail_t, triggers) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -87,7 +90,7 @@ extern fr_dict_autoload_t rlm_detail_dict[];
 fr_dict_autoload_t rlm_detail_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_net;
@@ -104,7 +107,7 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_net_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Print one attribute and value to FP
@@ -157,7 +160,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_detail_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_detail_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking,
+					  inst->triggers, "modules.detail", NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
@@ -304,7 +308,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 /*
  *	Do detail, compatible with old accounting
  */
-static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
+static unlang_action_t CC_HINT(nonnull) detail_do(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request,
 						  fr_packet_t *packet, fr_pair_list_t *list)
 {
 	rlm_detail_env_t	*env = talloc_get_type_abort(mctx->env_data, rlm_detail_env_t);
@@ -315,12 +319,12 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 
 	RDEBUG2("%s expands to %pV", env->filename_tmpl->name, &env->filename);
 
-	outfd = exfile_open(inst->ef, env->filename.vb_strvalue, inst->perm, NULL);
+	outfd = exfile_open(inst->ef, env->filename.vb_strvalue, inst->perm, 0, NULL);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %pV", &env->filename);
-		*p_result = RLM_MODULE_FAIL;
+
 		/* coverity[missing_unlock] */
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (inst->group_is_set) {
@@ -344,7 +348,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	fail:
 		if (outfp) fclose(outfp);
 		exfile_close(inst->ef, outfd);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (detail_write(outfp, inst, request, &env->header, packet, list, env->ht) < 0) goto fail;
@@ -358,13 +362,13 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	/*
 	 *	And everything is fine.
 	 */
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Accounting - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs);
 }
@@ -372,7 +376,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 /*
  *	Incoming Access Request - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs);
 }
@@ -380,7 +384,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->reply, &request->reply_pairs);
 }
@@ -498,8 +502,8 @@ module_rlm_t rlm_detail = {
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &method_env },
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_accounting, .method_env = &method_env },
-			{ .section = SECTION_NAME("send", "accounting-response"), .method = mod_accounting, .method_env = &method_env },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"), .method = mod_accounting, .method_env = &method_env },
+			{ .section = SECTION_NAME("send", "Accounting-Response"), .method = mod_accounting, .method_env = &method_env },
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &method_env },
 			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &method_env },
 			MODULE_BINDING_TERMINATOR

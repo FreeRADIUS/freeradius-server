@@ -37,6 +37,10 @@ match User-Name = "0123456789012345678901234567890123456789012345678901234567890
 returned
 match 304
 
+# Decode an empty grouping attribute (this is a regression test)
+decode-pair 00 1a 04 20 2c 50 00
+match Vendor-Specific = { FreeRADIUS = { } }
+
 #
 #  Edge cases
 #
@@ -77,4 +81,4 @@ match -2
 #
 
 count
-match 40
+match 42

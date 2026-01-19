@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -12,129 +12,134 @@
 
 ATTRIBUTE	Client-Link-Layer			79	struct
 MEMBER		Type					uint16 key
+MEMBER		Address					union	key=Type
 
-STRUCT	Ethernet			Type			1
+BEGIN Client-Link-Layer.Address
+
+ATTRIBUTE	Ethernet				1	struct
 MEMBER		Address					ether
 
-STRUCT	Experimental-Ethernet		Type			2
+ATTRIBUTE	Experimental-Ethernet			2	struct
 MEMBER		Address					octets
 
-STRUCT	AX_25				Type			3
+ATTRIBUTE	AX_25					3	struct
 MEMBER		Address					octets
 
-STRUCT	Proteon-Token-Ring		Type			4
+ATTRIBUTE	Proteon-Token-Ring			4	struct
 MEMBER		Address					octets
 
-STRUCT	Chaos				Type			5
+ATTRIBUTE	Chaos					5	struct
 MEMBER		Address					octets
 
-STRUCT	IEEE-802			Type			6
+ATTRIBUTE	IEEE-802				6	struct
 MEMBER		Address					octets
 
-STRUCT	Arcnet				Type			7
+ATTRIBUTE	Arcnet					7	struct
 MEMBER		Address					octets
 
-STRUCT	Hyperchannel			Type			8
+ATTRIBUTE	Hyperchannel				8	struct
 MEMBER		Address					octets
 
-STRUCT	Lanstar				Type			9
+ATTRIBUTE	Lanstar					9	struct
 MEMBER		Address					octets
 
-STRUCT	Autonet-Short-Address		Type			10
+ATTRIBUTE	Autonet-Short-Address			10	struct
 MEMBER		Address					octets
 
-STRUCT	LocalTalk			Type			11
+ATTRIBUTE	LocalTalk				11	struct
 MEMBER		Address					octets
 
-STRUCT	LocalNet			Type			12
+ATTRIBUTE	LocalNet				12	struct
 MEMBER		Address					octets
 
-STRUCT	Ultra-Link			Type			13
+ATTRIBUTE	Ultra-Link				13	struct
 MEMBER		Address					octets
 
-STRUCT	SMDS				Type			14
+ATTRIBUTE	SMDS					14	struct
 MEMBER		Address					octets
 
-STRUCT	Frame-Relay			Type			15
+ATTRIBUTE	Frame-Relay				15	struct
 MEMBER		Address					octets
 
-STRUCT	ATM-16				Type			16
+ATTRIBUTE	ATM-16					16	struct
 MEMBER		Address					octets
 
-STRUCT	HDLC				Type			17
+ATTRIBUTE	HDLC					17	struct
 MEMBER		Address					octets
 
-STRUCT	Fibre-Channel			Type			18
+ATTRIBUTE	Fibre-Channel				18	struct
 MEMBER		Address					octets
 
-STRUCT	ATM-19				Type			19
+ATTRIBUTE	ATM-19					19	struct
 MEMBER		Address					octets
 
-STRUCT	Serial-Line			Type			20
+ATTRIBUTE	Serial-Line				20	struct
 MEMBER		Address					octets
 
-STRUCT	ATM-21				Type			21
+ATTRIBUTE	ATM-21					21	struct
 MEMBER		Address					octets
 
-STRUCT	MIL-STD-188-220			Type			22
+ATTRIBUTE	MIL-STD-188-220				22	struct
 MEMBER		Address					octets
 
-STRUCT	Metricom			Type			23
+ATTRIBUTE	Metricom				23	struct
 MEMBER		Address					octets
 
-STRUCT	IEEE-1394			Type			24
+ATTRIBUTE	IEEE-1394				24	struct
 MEMBER		Address					octets
 
-STRUCT	MAPOS				Type			25
+ATTRIBUTE	MAPOS					25	struct
 MEMBER		Address					octets
 
-STRUCT	Twinaxial			Type			26
+ATTRIBUTE	Twinaxial				26	struct
 MEMBER		Address					octets
 
-STRUCT	EUI-64				Type			27
+ATTRIBUTE	EUI-64					27	struct
 MEMBER		Address					octets
 
-STRUCT	HIPARP				Type			28
+ATTRIBUTE	HIPARP					28	struct
 MEMBER		Address					octets
 
-STRUCT	IP-Over-ISO-7816-3		Type			29
+ATTRIBUTE	IP-Over-ISO-7816-3			29	struct
 MEMBER		Address					octets
 
-STRUCT	ARPSec				Type			30
+ATTRIBUTE	ARPSec					30	struct
 MEMBER		Address					octets
 
-STRUCT	IPSec-Tunnel			Type			31
+ATTRIBUTE	IPSec-Tunnel				31	struct
 MEMBER		Address					octets
 
-STRUCT	Infiniband			Type			32
+ATTRIBUTE	Infiniband				32	struct
 MEMBER		Address					octets
 
-STRUCT	CAI-TIA-102			Type			33
+ATTRIBUTE	CAI-TIA-102				33	struct
 MEMBER		Address					octets
 
-STRUCT	Wiegand-Interface		Type			34
+ATTRIBUTE	Wiegand-Interface			34	struct
 MEMBER		Address					octets
 
-STRUCT	Pure-IP				Type			35
+ATTRIBUTE	Pure-IP					35	struct
 MEMBER		Address					octets
 
-STRUCT	HW-EXP1				Type			36
+ATTRIBUTE	HW-EXP1					36	struct
 MEMBER		Address					octets
 
-STRUCT	HFI				Type			37
+ATTRIBUTE	HFI					37	struct
 MEMBER		Address					octets
 
 #
 #	Unassigned 38-255
 #
 
-STRUCT	HW_EXP2				Type			256
+ATTRIBUTE	HW_EXP2					256	struct
 MEMBER		Address					octets
 
-STRUCT	AEthernet			Type			257
+ATTRIBUTE	AEthernet				257	struct
 MEMBER		Address					octets
 
 #
 #	Unassigned	258-65534
 #	Reserved	65535
 #
+
+END Client-Link-Layer.Address

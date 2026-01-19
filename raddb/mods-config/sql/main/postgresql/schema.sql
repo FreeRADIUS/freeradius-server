@@ -8,133 +8,133 @@
 -- Table structure for table 'radacct'
 --
 CREATE TABLE IF NOT EXISTS radacct (
-	RadAcctId		bigserial PRIMARY KEY,
-	AcctSessionId		text NOT NULL,
-	AcctUniqueId		text NOT NULL UNIQUE,
-	UserName		text,
-	GroupName		text,
-	Realm			text,
-	NASIPAddress		inet NOT NULL,
-	NASPortId		text,
-	NASPortType		text,
-	AcctStartTime		timestamp with time zone,
-	AcctUpdateTime		timestamp with time zone,
-	AcctStopTime		timestamp with time zone,
-	AcctInterval		bigint,
-	AcctSessionTime		bigint,
-	AcctAuthentic		text,
-	ConnectInfo_start	text,
-	ConnectInfo_stop	text,
-	AcctInputOctets		bigint,
-	AcctOutputOctets	bigint,
-	CalledStationId		text,
-	CallingStationId	text,
-	AcctTerminateCause	text,
-	ServiceType		text,
-	FramedProtocol		text,
-	FramedIPAddress		inet,
-	FramedIPv6Address	inet,
-	FramedIPv6Prefix	inet,
-	FramedInterfaceId	text,
-	DelegatedIPv6Prefix	inet,
-	Class 			text
+	radacctid		bigserial PRIMARY KEY,
+	acctsessionid		text NOT NULL,
+	acctuniqueid		text NOT NULL UNIQUE,
+	username		text,
+	groupname		text,
+	realm			text,
+	nasipaddress		inet NOT NULL,
+	nasportid		text,
+	nasporttype		text,
+	acctstarttime		timestamp with time zone,
+	acctupdatetime		timestamp with time zone,
+	acctstoptime		timestamp with time zone,
+	acctinterval		bigint,
+	acctsessiontime		bigint,
+	acctauthentic		text,
+	connectinfo_start	text,
+	connectinfo_stop	text,
+	acctinputoctets		bigint,
+	acctoutputoctets	bigint,
+	calledstationid		text,
+	callingstationid	text,
+	acctterminatecause	text,
+	servicetype		text,
+	framedprotocol		text,
+	framedipaddress		inet,
+	framedipv6address	inet,
+	framedipv6prefix	inet,
+	framedinterfaceid	text,
+	delegatedipv6prefix	inet,
+	class 			text
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
 
 -- For use by update-, stop- and simul_* queries
-CREATE INDEX radacct_active_session_idx ON radacct (AcctUniqueId) WHERE AcctStopTime IS NULL;
+CREATE INDEX radacct_active_session_idx ON radacct (acctuniqueid) WHERE acctstoptime IS NULL;
 
 -- Add if you you regularly have to replay packets
 -- CREATE INDEX radacct_session_idx ON radacct (AcctUniqueId);
 
 -- For use by onoff-
-CREATE INDEX radacct_bulk_close ON radacct (NASIPAddress, AcctStartTime) WHERE AcctStopTime IS NULL;
+CREATE INDEX radacct_bulk_close ON radacct (nasipaddress, acctstarttime) WHERE acctstoptime IS NULL;
 
 -- For use by cleanup scripts
 -- Works well for timeout queries, where ((acctstoptime IS NULL) AND (acctupdatetime < (now() - '1 day'::interval)))
 -- as well as removing old sessions from the database.
 --
--- Although at first glance it appears where an index on AcctUpdateTime with condition WHERE AcctStopTime IS NULL;
+-- Although at first glance it appears where an index on acctupdatetime with condition WHERE acctstoptime IS NULL;
 -- would be more effective, the query planner refused to use the index (for some unknown reason), and doing it this
 -- way allows the index to be used for both timeouts and cleanup.
-CREATE INDEX radacct_bulk_timeout ON radacct (AcctStopTime NULLS FIRST, AcctUpdateTime);
+CREATE INDEX radacct_bulk_timeout ON radacct (acctstoptime NULLS FIRST, acctupdatetime);
 
 -- and for common statistic queries:
-CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
+CREATE INDEX radacct_start_user_idx ON radacct (acctstarttime, username);
 -- and, optionally
--- CREATE INDEX radacct_stop_user_idx ON radacct (acctStopTime, UserName);
+-- CREATE INDEX radacct_stop_user_idx ON radacct (acctstoptime, username);
 
 --
 -- Table structure for table 'radcheck'
 --
 CREATE TABLE radcheck (
 	id			serial PRIMARY KEY,
-	UserName		text NOT NULL DEFAULT '',
-	Attribute		text NOT NULL DEFAULT '',
+	username		text NOT NULL DEFAULT '',
+	attribute		text NOT NULL DEFAULT '',
 	op			VARCHAR(2) NOT NULL DEFAULT '==',
-	Value			text NOT NULL DEFAULT ''
+	value			text NOT NULL DEFAULT ''
 );
-create index radcheck_UserName on radcheck (UserName,Attribute);
+create index radcheck_username on radcheck (username,attribute);
 --
 -- Use this index if you use case insensitive queries
 --
--- create index radcheck_UserName_lower on radcheck (lower(UserName),Attribute);
+-- create index radcheck_username_lower on radcheck (lower(username),attribute);
 
 --
 -- Table structure for table 'radgroupcheck'
 --
 CREATE TABLE radgroupcheck (
 	id			serial PRIMARY KEY,
-	GroupName		text NOT NULL DEFAULT '',
-	Attribute		text NOT NULL DEFAULT '',
+	groupname		text NOT NULL DEFAULT '',
+	attribute		text NOT NULL DEFAULT '',
 	op			VARCHAR(2) NOT NULL DEFAULT '==',
-	Value			text NOT NULL DEFAULT ''
+	value			text NOT NULL DEFAULT ''
 );
-create index radgroupcheck_GroupName on radgroupcheck (GroupName,Attribute);
+create index radgroupcheck_groupname on radgroupcheck (groupname,attribute);
 
 --
 -- Table structure for table 'radgroupreply'
 --
 CREATE TABLE radgroupreply (
 	id			serial PRIMARY KEY,
-	GroupName		text NOT NULL DEFAULT '',
-	Attribute		text NOT NULL DEFAULT '',
+	groupname		text NOT NULL DEFAULT '',
+	attribute		text NOT NULL DEFAULT '',
 	op			VARCHAR(2) NOT NULL DEFAULT '=',
-	Value			text NOT NULL DEFAULT ''
+	value			text NOT NULL DEFAULT ''
 );
-create index radgroupreply_GroupName on radgroupreply (GroupName,Attribute);
+create index radgroupreply_groupname on radgroupreply (groupname,attribute);
 
 --
 -- Table structure for table 'radreply'
 --
 CREATE TABLE radreply (
 	id			serial PRIMARY KEY,
-	UserName		text NOT NULL DEFAULT '',
-	Attribute		text NOT NULL DEFAULT '',
+	username		text NOT NULL DEFAULT '',
+	attribute		text NOT NULL DEFAULT '',
 	op			VARCHAR(2) NOT NULL DEFAULT '=',
-	Value			text NOT NULL DEFAULT ''
+	value			text NOT NULL DEFAULT ''
 );
-create index radreply_UserName on radreply (UserName,Attribute);
+create index radreply_username on radreply (username,attribute);
 --
 -- Use this index if you use case insensitive queries
 --
--- create index radreply_UserName_lower on radreply (lower(UserName),Attribute);
+-- create index radreply_username_lower on radreply (lower(username),attribute);
 
 --
 -- Table structure for table 'radusergroup'
 --
 CREATE TABLE radusergroup (
 	id			serial PRIMARY KEY,
-	UserName		text NOT NULL DEFAULT '',
-	GroupName		text NOT NULL DEFAULT '',
+	username		text NOT NULL DEFAULT '',
+	groupname		text NOT NULL DEFAULT '',
 	priority		integer NOT NULL DEFAULT 0
 );
-create index radusergroup_UserName on radusergroup (UserName);
+create index radusergroup_username on radusergroup (UserName);
 --
 -- Use this index if you use case insensitive queries
 --
--- create index radusergroup_UserName_lower on radusergroup (lower(UserName));
+-- create index radusergroup_username_lower on radusergroup (lower(username));
 
 --
 -- Table structure for table 'radpostauth'
@@ -144,10 +144,10 @@ CREATE TABLE radpostauth (
 	username		text NOT NULL,
 	pass			text,
 	reply			text,
-	CalledStationId		text,
-	CallingStationId	text,
+	calledstationid		text,
+	callingstationid	text,
 	authdate		timestamp with time zone NOT NULL default now(),
-	Class			text
+	class			text
 );
 
 --
@@ -172,6 +172,6 @@ create index nas_nasname on nas (nasname);
  * Table structure for table 'nasreload'
  */
 CREATE TABLE IF NOT EXISTS nasreload (
-	NASIPAddress		inet PRIMARY KEY,
-	ReloadTime		timestamp with time zone NOT NULL
+	nasipaddress		inet PRIMARY KEY,
+	reloadtime		timestamp with time zone NOT NULL
 );

@@ -14,7 +14,7 @@ VENDOR		Alteon				1872
 BEGIN-VENDOR	Alteon
 
 ATTRIBUTE	Group-Mapping				1	string
-ATTRIBUTE	VPN-Id					3	integer
+ATTRIBUTE	VPN-Id					3	uint32
 ATTRIBUTE	Client-IP-Address			4	ipaddr
 ATTRIBUTE	Client-Netmask				5	ipaddr
 ATTRIBUTE	Primary-NBNS-Server			6	ipaddr
@@ -23,7 +23,7 @@ ATTRIBUTE	Primary-DNS-Server			8	ipaddr
 ATTRIBUTE	Secondary-DNS-Server			9	ipaddr
 ATTRIBUTE	Domain-Name				10	string
 
-ATTRIBUTE	Service-Type				26	integer
+ATTRIBUTE	Service-Type				26	uint32
 
 VALUE	Service-Type			Admin			6
 VALUE	Service-Type			L4admin			250
@@ -33,7 +33,7 @@ VALUE	Service-Type			L4oper			253
 VALUE	Service-Type			Slboper			254
 VALUE	Service-Type			User			255
 
-ATTRIBUTE	Language				28	integer
+ATTRIBUTE	Language				28	uint32
 
 VALUE	Language			English			0
 VALUE	Language			Chinese			1

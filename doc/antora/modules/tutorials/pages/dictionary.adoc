@@ -1,5 +1,7 @@
 = Custom Dictionaries and Attributes
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To understand how the dictionaries affect the server and to create
 a new vendor-specific dictionary with a number of custom attributes; also, to test those attributes in the server.
 

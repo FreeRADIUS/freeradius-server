@@ -35,7 +35,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_eap_md5_dict[];
 fr_dict_autoload_t rlm_eap_md5_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cleartext_password;
@@ -43,13 +43,13 @@ static fr_dict_attr_t const *attr_cleartext_password;
 extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	MD5_PACKET		*packet;
@@ -68,7 +68,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -77,7 +77,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	packet = eap_md5_extract(request, eap_session->this_round);
 	if (!packet) {
 		if (ephemeral) TALLOC_FREE(known_good);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -106,13 +106,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 	if (ephemeral) TALLOC_FREE(known_good);
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	MD5_PACKET	*reply;
@@ -163,7 +163,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx
 	 */
 	eap_session->process = mod_process;
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 /*

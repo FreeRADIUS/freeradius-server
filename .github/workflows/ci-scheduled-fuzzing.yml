@@ -211,7 +211,7 @@ jobs:
           echo "Testing commit:"
           git log -n1
           echo
-          CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
+          CFLAGS="-DWITH_EVAL_DEBUG -g3" ./configure -C \
             --enable-werror \
             --enable-address-sanitizer \
             --enable-undefined-behaviour-sanitizer \

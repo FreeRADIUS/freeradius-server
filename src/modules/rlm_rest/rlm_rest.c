@@ -27,27 +27,14 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/tmpl_escape.h>
-#include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
-
-#include <curl/curl.h>
-
-#include <talloc.h>
 
 #include "rest.h"
 
@@ -196,58 +183,44 @@ static const conf_parser_t module_config[] = {
 #define REST_CALL_ENV_RESPONSE_COMMON \
 	{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE, rlm_rest_call_env_t, response.header) }, \
 
-#define REST_CALL_ENV_SECTION(_var, _section, _dflt_username, _dflt_password) \
-static const call_env_method_t _var = { \
-	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t), \
-	.env = (call_env_parser_t[]){ \
-		{ FR_CALL_ENV_SUBSECTION(_section, NULL, CALL_ENV_FLAG_NONE, \
-			((call_env_parser_t[]) { \
-				{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_REQUIRED, \
-							((call_env_parser_t[]) { \
-								{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
-										     .pair.escape = { \
-											.box_escape = { \
-												.func = fr_uri_escape, \
-												.safe_for = CURL_URI_SAFE_FOR, \
-												.always_escape = true, /* required! */ \
-											}, \
-											.mode = TMPL_ESCAPE_PRE_CONCAT, \
-											.uctx = { \
-												.func = { \
-													.alloc = rest_uri_part_escape_uctx_alloc, \
-													.uctx = rest_uri_parts \
-												} , \
-												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
-											}, \
-										      }, \
-										      .pair.literals_safe_for = CURL_URI_SAFE_FOR}, /* Do not concat */ \
-								REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
-								CALL_ENV_TERMINATOR \
-							})) }, \
-				{ FR_CALL_ENV_SUBSECTION("response", NULL, CALL_ENV_FLAG_NONE, \
-							((call_env_parser_t[]) { \
-								REST_CALL_ENV_RESPONSE_COMMON \
-								CALL_ENV_TERMINATOR \
-							})) }, \
+#define REST_CALL_ENV_SECTION(_var, _dflt_username, _dflt_password) \
+static const call_env_parser_t _var[] = { \
+	{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_REQUIRED, \
+		((call_env_parser_t[]) { \
+			{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
+					     .pair.escape = { \
+						.box_escape = { \
+							.func = fr_uri_escape, \
+							.safe_for = CURL_URI_SAFE_FOR, \
+							.always_escape = true, /* required! */ \
+						}, \
+						.mode = TMPL_ESCAPE_PRE_CONCAT, \
+						.uctx = { \
+							.func = { \
+								.alloc = rest_uri_part_escape_uctx_alloc, \
+								.uctx = rest_uri_parts \
+							}, \
+							.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC \
+						}, \
+					      }, \
+					      .pair.literals_safe_for = CURL_URI_SAFE_FOR}, /* Do not concat */ \
+				REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
 				CALL_ENV_TERMINATOR \
-			}) \
-		) }, \
-		CALL_ENV_TERMINATOR \
-	} \
-}
+	})) }, \
+	{ FR_CALL_ENV_SUBSECTION("response", NULL, CALL_ENV_FLAG_NONE, \
+		((call_env_parser_t[]) { \
+			REST_CALL_ENV_RESPONSE_COMMON \
+			CALL_ENV_TERMINATOR \
+		})) }, \
+	CALL_ENV_TERMINATOR \
+};
 
-REST_CALL_ENV_SECTION(rest_call_env_authorize, "authorize",,);
-REST_CALL_ENV_SECTION(rest_call_env_authenticate, "authenticate", .pair.dflt = "User-Name", .pair.dflt = "User-Password");
-REST_CALL_ENV_SECTION(rest_call_env_post_auth, "post-auth",,);
-REST_CALL_ENV_SECTION(rest_call_env_accounting, "accounting",,);
+REST_CALL_ENV_SECTION(rest_section_common_env,,)
+REST_CALL_ENV_SECTION(rest_section_authenticate_env, .pair.dflt = "User-Name", .pair.dflt = "User-Password")
 
 /*
  *	xlat call env doesn't have the same set of config items as the other sections
  *	because some values come from the xlat call itself.
- *
- *	If someone can figure out a non-fuggly way of omitting the uri from the
- *	configuration, please do, and use the REST_CALL_ENV_SECTION macro for this
- *	too.
  */
 static const call_env_method_t rest_call_env_xlat = { \
 	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t), \
@@ -272,29 +245,23 @@ static const call_env_method_t rest_call_env_xlat = { \
 };
 
 fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rest_dict[];
 fr_dict_autoload_t rlm_rest_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_rest_http_body;
 fr_dict_attr_t const *attr_rest_http_header;
 fr_dict_attr_t const *attr_rest_http_status_code;
-static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
 fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 	{ .out = &attr_rest_http_body, .name = "REST-HTTP-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_header, .name = "REST-HTTP-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern global_lib_autoinst_t const * const rlm_rest_lib[];
@@ -302,6 +269,12 @@ global_lib_autoinst_t const * const rlm_rest_lib[] = {
 	&fr_curl_autoinst,
 	GLOBAL_LIB_TERMINATOR
 };
+
+static int8_t rest_section_cmp(void const *one, void const *two)
+{
+	rlm_rest_section_conf_t const *a = one, *b = two;
+	return CMP(a->cs, b->cs);
+}
 
 /** Update the status attribute
  *
@@ -387,7 +360,7 @@ static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	}
 
 	str = talloc_typed_strdup(vb, escaped);
-	fr_value_box_strdup_shallow_replace(vb, str, strlen(str));
+	fr_value_box_strdup_shallow_replace(vb, str, talloc_strlen(str));
 
 	curl_free(escaped);
 
@@ -451,9 +424,19 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case 403:
 	case 401:
 	{
+		fr_pair_t *vp;
 		xa = XLAT_ACTION_FAIL;
 error:
 		rest_response_error(request, handle);
+
+		/*
+		 *	When the HTTP status code is a failure, put the
+		 *	response body in REST-HTTP-Body.
+		 */
+		len = rest_get_handle_data(&body, handle);
+		if (len == 0) goto finish;
+		MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
+		fr_pair_value_bstrndup(vp, body, len, true);
 		goto finish;
 	}
 	case 204:
@@ -474,9 +457,8 @@ error:
 		}
 	}
 
-finish:
 	/*
-	 *	Always output the xlat data.
+	 *	Output the xlat data if the HTTP status code is one of the "success" ones.
 	 *
 	 *	The user can check REST-HTTP-Status-Code to figure out what happened.
 	 *
@@ -491,6 +473,7 @@ finish:
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
 		fr_dcursor_insert(out, vb);
 	}
+finish:
 
 	rest_slab_release(handle);
 
@@ -630,10 +613,11 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
 }
 
-static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_common_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
-	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	rlm_rest_section_t const 	*section = &env->section->section;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
@@ -707,7 +691,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
@@ -716,38 +700,34 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
-	rlm_rest_section_t const	*section = &inst->authorize;
+	rlm_rest_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	rlm_rest_section_t const	*section = &env->section->section;
 
 	void				*handle;
 	int				ret;
 
-	if (!section->name) {
-		RDEBUG2("No authorize section configured");
-		RETURN_MODULE_NOOP;
-	}
-
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authorize_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
+	return unlang_module_yield(request, mod_common_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
+static unlang_action_t mod_authenticate_result(unlang_result_t *p_result,
 					       module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
-	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	rlm_rest_section_t const 	*section = &env->section->section;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
@@ -821,26 +801,19 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_call_env_t 		*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
-	rlm_rest_section_t const	*section = &inst->authenticate;
+	rlm_rest_section_t const	*section = &call_env->section->section;
 	fr_curl_io_request_t		*handle;
-
 	int				ret;
-
-	if (!section->name) {
-		RDEBUG2("No authentication section configured");
-		RETURN_MODULE_NOOP;
-	}
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -848,12 +821,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (!call_env->request.username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!call_env->request.password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -861,35 +834,36 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (call_env->request.password->vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &call_env->request.password);
+		RDEBUG("Login attempt with password \"%pV\"", call_env->request.password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
 
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_accounting_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
-	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	rlm_rest_section_t const 	*section = &env->section->section;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
@@ -931,123 +905,39 @@ static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
  *	Send accounting info to a REST API endpoint
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
-	rlm_rest_section_t const	*section = &inst->accounting;
-
+	rlm_rest_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	rlm_rest_section_t const	*section = &env->section->section;
 	void				*handle;
 	int				ret;
 
-	if (!section->name) {
-		RDEBUG2("No accounting section configured");
-		RETURN_MODULE_NOOP;
-	}
-
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
-	rlm_rest_section_t const 	*section = &inst->authenticate;
-	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
-
-	int				hcode;
-	int				rcode = RLM_MODULE_OK;
-	int				ret;
-
-	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
-
-	if (rlm_rest_status_update(request, handle) < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	if (hcode >= 500) {
-		rcode = RLM_MODULE_FAIL;
-	} else if (hcode == 204) {
-		rcode = RLM_MODULE_OK;
-	} else if ((hcode >= 200) && (hcode < 300)) {
-		ret = rest_response_decode(inst, section, request, handle);
-		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;
-	} else {
-		rcode = RLM_MODULE_INVALID;
-	}
-
-	switch (rcode) {
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_FAIL:
-		rest_response_error(request, handle);
-		break;
-
-	default:
-		rest_response_debug(request, handle);
-		break;
-	}
-
-finish:
-	rest_slab_release(handle);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/*
- *	Send post-auth info to a REST API endpoint
- */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
-	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
-	rlm_rest_section_t const	*section = &inst->post_auth;
-
-	void				*handle;
-	int				ret;
-
-	if (!section->name) {
-		RDEBUG2("No post-auth section configured");
-		RETURN_MODULE_NOOP;
-	}
-
-	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
-
-	ret = rlm_rest_perform(mctx, section, handle, request);
-	if (ret < 0) {
-		rest_slab_release(handle);
-
-		RETURN_MODULE_FAIL;
-	}
-
-	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
-}
-
 static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser_t const *config_items,
-			     rlm_rest_section_t *config, char const *name)
+			     rlm_rest_section_t *config, char const *name, CONF_SECTION *cs)
 {
-	CONF_SECTION *cs, *request_cs;
+	CONF_SECTION *request_cs;
 
-	cs = cf_section_find(parent, name, NULL);
+	if (!cs) cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
 		config->name = NULL;
 		return 0;
@@ -1166,9 +1056,6 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
  *
  * Resets all options associated with a CURL handle, and frees any headers
  * associated with it.
- *
- * Calls rest_read_ctx_free and rest_response_free to free any memory used by
- * context data.
  *
  * @param[in] randle to cleanup.
  * @param[in] uctx unused.
@@ -1310,31 +1197,33 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int instantiate(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_rest_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
+	rlm_rest_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+	rlm_rest_section_conf_t	*section;
+	fr_rb_iter_inorder_t	iter;
 
 	inst->xlat.request.method_str = "GET";
 	inst->xlat.request.body = REST_HTTP_BODY_NONE;
 	inst->xlat.request.body_str = "application/x-www-form-urlencoded";
-	inst->xlat.response.force_to_str = "plain";
+	inst->xlat.response.accept_all = true;
+
+	if (!inst->sections_init) fr_rb_inline_init(&inst->sections, rlm_rest_section_conf_t, node, rest_section_cmp, NULL);
 
 	/*
-	 *	Parse sub-section configs.
+	 *	Parse xlat config.
 	 */
-	if (
-		(parse_sub_section(inst, conf, xlat_config, &inst->xlat, "xlat") < 0) ||
-		(parse_sub_section(inst, conf, section_config, &inst->authorize,
-				   "authorize") < 0) ||
-		(parse_sub_section(inst, conf, section_config, &inst->authenticate,
-				   "authenticate") < 0) ||
-		(parse_sub_section(inst, conf, section_config, &inst->accounting,
-				   "accounting") < 0) ||
-		(parse_sub_section(inst, conf, section_config, &inst->post_auth,
-				   "post-auth") < 0))
-	{
-		return -1;
+	if ((parse_sub_section(inst, conf, xlat_config, &inst->xlat, "xlat", NULL) < 0)) return -1;
+
+	/*
+	 *	Parse section configs from calls found by the call_env parser.
+	 */
+	for (section = fr_rb_iter_init_inorder(&inst->sections, &iter);
+	     section != NULL;
+	     section = fr_rb_iter_next_inorder(&inst->sections, &iter)) {
+		if (parse_sub_section(inst, conf, section_config, &section->section,
+				      cf_section_name(section->cs), section->cs) < 0) return -1;
 	}
 
 	inst->conn_config.reuse.num_children = 1;
@@ -1354,19 +1243,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/** Initialises libcurl.
- *
- * Allocates global variables and memory required for libcurl to function.
- * MUST only be called once per module instance.
- *
- * mod_unload must not be called if mod_load fails.
- *
- * @see mod_unload
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
 static int mod_load(void)
 {
 	/* developer sanity */
@@ -1378,6 +1254,102 @@ static int mod_load(void)
 
 	return 0;
 }
+
+/*
+ *	Custom call_env parser which looks for a conf section matching the name
+ *	of the section the module is called in and then hands off to the normal
+ *	parsing.
+ */
+static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+			   CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_rest_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_rest_t);
+	CONF_SECTION		*cs;
+	CONF_SECTION		*sect = NULL;
+	call_env_parsed_t	*parsed;
+	void			*found;
+	rlm_rest_section_conf_t	*section;
+	char			*p, *name2 = NULL;
+	size_t			i;
+
+	/*
+	 *	The parent section is the main module conf section
+	 *	in which we'll look for a suitable section to parse.
+	 */
+	cs = cf_item_to_section(cf_parent(ci));
+
+	if (cec->asked->name2) {
+		name2 = talloc_strdup(NULL, cec->asked->name2);
+		p = name2;
+		for (i = 0; i < talloc_array_length(name2); i++) {
+			*p = tolower(*p);
+			p++;
+		}
+		sect = cf_section_find(cs, cec->asked->name1, name2);
+	}
+
+	if (!sect) {
+		sect = cf_section_find(cs, cec->asked->name1, NULL);
+	}
+
+	if (!inst->sections_init) {
+		fr_rb_inline_init(&inst->sections, rlm_rest_section_conf_t, node, rest_section_cmp, NULL);
+		inst->sections_init = true;
+	}
+
+	if (!sect) {
+		cf_log_err(cs, "%s called in %s %s - requires conf section %s %s%s%s", cec->mi->name,
+			   cec->asked->name1, cec->asked->name2 ? cec->asked->name2 : "",
+			   cec->asked->name1, cec->asked->name2 ? name2 : "",
+			   cec->asked->name2 ? " or " : "",
+			   cec->asked->name2 ? cec->asked->name1 : "");
+		talloc_free(name2);
+		return -1;
+	}
+	talloc_free(name2);
+
+	/*
+	 *	"authenticate" sections use a different rules with defaults set for username and password
+	 */
+	if (strcmp(cec->asked->name1, "authenticate") == 0) {
+		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_authenticate_env);
+	} else {
+		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_common_env);
+	}
+	parsed = call_env_parsed_add(ctx, out,
+				     &(call_env_parser_t) {
+					.name = "section",
+					.flags = CALL_ENV_FLAG_PARSE_ONLY,
+					.pair = {
+						.parsed = {
+							.offset = offsetof(rlm_rest_call_env_t, section),
+							.type = CALL_ENV_PARSE_TYPE_VOID
+						}
+					}
+				});
+
+	MEM(section = talloc_zero(inst, rlm_rest_section_conf_t));
+	section->cs = sect;
+	if (fr_rb_find_or_insert(&found, &inst->sections, section) < 0) {
+		talloc_free(section);
+		return -1;
+	}
+	if (found) {
+		talloc_free(section);
+		call_env_parsed_set_data(parsed, found);
+	} else {
+		call_env_parsed_set_data(parsed, section);
+	}
+	return 0;
+}
+
+static const call_env_method_t rest_method_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, rest_sect_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -1398,22 +1370,17 @@ module_rlm_t rlm_rest = {
 		.config			= module_config,
 		.onload			= mod_load,
 		.bootstrap		= mod_bootstrap,
-		.instantiate		= instantiate,
+		.instantiate		= mod_instantiate,
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			/*
-			 *	Hack to support old configurations
-			 */
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &rest_call_env_authorize },
-
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_accounting, .method_env = &rest_call_env_accounting },
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &rest_call_env_authorize },
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &rest_call_env_accounting },
-			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &rest_call_env_authenticate },
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &rest_call_env_post_auth },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"), .method = mod_accounting, .method_env = &rest_method_env },
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &rest_method_env },
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &rest_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_accounting, .method_env = &rest_method_env },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_common, .method_env = &rest_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}

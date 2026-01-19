@@ -286,21 +286,13 @@ cache {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Condition            | Description
-	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value #                           (and reset the expiry timer).
+	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
+	#                           (and reset the expiry timer).
 	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
 	#                           one with TTL set to `Cache-TTL` * `-1`.
 	#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
 	#  |===
 
-[options="header,autowidth"]
-|===
-| Parameter       | Description
-| %l              | request time in seconds since the epoch.
-| %M              | request time microsecond component.
-| %c              | current time in seconds since the epoch.
-| %C              | current time microsecond component.
-| &Attribute-Name | for string attributes, parse the string according to `format`, and return the integer value as a Unix timestamp.
-|===
 	#
 	#  control.Cache-Status-Only:: If present and set to `yes` will
 	#  prevent a new entry from being created, and existing entries from

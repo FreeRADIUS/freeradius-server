@@ -34,6 +34,7 @@ RCSID("$Id$")
 
 #include "action.h"
 #include "interpret.h"
+#include "mod_action.h"
 #include "subrequest.h"
 #include "interpret_priv.h"
 #include "unlang_priv.h"
@@ -130,16 +131,16 @@ static void unlang_parallel_signal(UNUSED request_t *request,
 }
 
 
-static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 	unsigned int			i;
-	int				priority;
-	rlm_rcode_t			result;
 
 	fr_assert(state->num_runnable == 0);
 
 	for (i = 0; i < state->num_children; i++) {
+		unlang_child_request_t	*cr = &state->children[i];
+
 		if (state->children[i].state != CHILD_EXITED) continue;
 
 		REQUEST_VERIFY(state->children[i].request);
@@ -150,33 +151,33 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 
 		state->children[i].state = CHILD_DONE;
 
-		priority = ((unlang_stack_t *)state->children[i].request->stack)->priority;
-		result = ((unlang_stack_t *)state->children[i].request->stack)->result;
-
 		/*
-		 *	Return isn't allowed to make it back
-		 *	to the parent... Not sure this is
-		 *      the correct behaviour, but it's what
-		 *      was there before.
+		 *	Over-ride "return" and "reject".  A "return"
+		 *	in a child of a parallel just stops the child.
+		 *	It doesn't stop the parent.
 		 */
-		if (priority == MOD_ACTION_RETURN) {
-			priority = 0;
-		} else if (priority == MOD_ACTION_REJECT) {
-			result = RLM_MODULE_REJECT;
-			priority = 0;
+		if (cr->result.priority == MOD_ACTION_RETURN) {
+			cr->result.priority = MOD_ACTION_NOT_SET;
+
+		} else if (cr->result.priority == MOD_ACTION_REJECT) {
+			cr->result = UNLANG_RESULT_RCODE(RLM_MODULE_REJECT);
+
+		} else {
+			fr_assert(cr->result.priority != MOD_ACTION_RETRY);
+			fr_assert(MOD_ACTION_VALID(cr->result.priority));
 		}
 
 		/*
 		 *	Do priority over-ride.
 		 */
-		if (priority > state->priority) {
-			state->result = result;
-			state->priority = priority;
-
-			RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+		if (cr->result.priority > state->result.priority) {
+			RDEBUG4("** [%i] %s - overwriting existing result (%s %s) from higher priority to (%s %s)",
 				stack_depth_current(request), __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"),
-				priority);
+				fr_table_str_by_value(mod_rcode_table, state->result.rcode, "<invalid>"),
+				mod_action_name[state->result.priority],
+				fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"),
+				mod_action_name[cr->result.priority]);
+			state->result = cr->result;
 		}
 	}
 
@@ -197,20 +198,19 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t const			*instruction;
 	unlang_group_t			*g;
 	unlang_parallel_t		*gext;
 	unlang_parallel_state_t		*state;
-
-	int			i;
+	int				i;
+	size_t				num_children;
 
 	g = unlang_generic_to_group(frame->instruction);
-	if (!g->num_children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+
+	num_children = unlang_list_num_elements(&g->children);
+	if (num_children == 0) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_parallel(g);
 
@@ -219,27 +219,28 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 	 */
 	MEM(frame->state = state = _talloc_zero_pooled_object(request,
 							      sizeof(unlang_parallel_state_t) +
-							      (sizeof(state->children[0]) * g->num_children),
+							      (sizeof(state->children[0]) * num_children),
 							      "unlang_parallel_state_t",
-							      g->num_children,
+							      num_children,
 							      (talloc_array_length(request->name) * 2)));
 	if (!state) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	(void) talloc_set_type(state, unlang_parallel_state_t);
-	state->result = RLM_MODULE_FAIL;
-	state->priority = -1;				/* as-yet unset */
+	state->result = UNLANG_RESULT_NOT_SET;
 	state->detach = gext->detach;
 	state->clone = gext->clone;
-	state->num_children = g->num_children;
+	state->num_children = unlang_list_num_elements(&g->children);
 
 	/*
 	 *	Initialize all of the children.
 	 */
-	for (i = 0, instruction = g->children; instruction != NULL; i++, instruction = instruction->next) {
+	for (i = 0, instruction = unlang_list_head(&g->children);
+	     instruction != NULL;
+	     i++, instruction = unlang_list_next(&g->children, instruction)) {
 		request_t			*child;
+		unlang_result_t			*child_result;
 
 		child = unlang_io_subrequest_alloc(request,
 						   request->proto_dict, state->detach);
@@ -277,7 +278,7 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 					state->children[i].state = CHILD_FREED;
 				}
 
-				RETURN_MODULE_FAIL;
+				return UNLANG_ACTION_FAIL;
 			}
 		}
 
@@ -296,9 +297,13 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 			if (unlang_child_request_init(state, &state->children[i], child, NULL, &state->num_runnable,
 						      frame_current(request)->instruction, false) < 0) goto error;
 			fr_assert(state->children[i].state == CHILD_INIT);
+			child_result = &state->children[i].result;
+			state->children[i].result = UNLANG_RESULT_NOT_SET;
+
 		} else {
 			state->children[i].num = i;
 			state->children[i].request = child;
+			child_result = NULL;
 		}
 
 		/*
@@ -306,10 +311,10 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 		 *	which in case of parallel, is the child's
 		 *	subsection within the parallel block.
 		 */
-		if (unlang_interpret_push(child,
-					  instruction, RLM_MODULE_FAIL,
-					  UNLANG_NEXT_STOP,
-					  state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME) < 0) goto error;
+		if (unlang_interpret_push(child_result, child,
+					  instruction,
+					  FRAME_CONF(RLM_MODULE_NOOP, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
+					  UNLANG_NEXT_STOP) < 0) goto error;
 	}
 
 	/*
@@ -383,13 +388,73 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 	return UNLANG_ACTION_YIELD;
 }
 
+static unlang_t *unlang_compile_parallel(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION			*cs = cf_item_to_section(ci);
+	unlang_t			*c;
+	char const			*name2;
+
+	unlang_group_t			*g;
+	unlang_parallel_t		*gext;
+
+	bool				clone = true;
+	bool				detach = false;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	/*
+	 *	Parallel sections can create empty child requests, if
+	 *	the admin demands it.  Otherwise, the principle of
+	 *	least surprise is to copy the whole request, reply,
+	 *	and config items.
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		if (strcmp(name2, "empty") == 0) {
+			clone = false;
+
+		} else if (strcmp(name2, "detach") == 0) {
+			detach = true;
+
+		} else {
+			cf_log_err(cs, "Invalid argument '%s'", name2);
+			cf_log_err(ci, DOC_KEYWORD_REF(parallel));
+			return NULL;
+		}
+
+	}
+
+	/*
+	 *	We can do "if" in parallel with other "if", but we
+	 *	cannot do "else" in parallel with "if".
+	 */
+	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) {
+		return NULL;
+	}
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_PARALLEL);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_parallel(g);
+	gext->clone = clone;
+	gext->detach = detach;
+
+	return c;
+}
+
 void unlang_parallel_init(void)
 {
-	unlang_register(UNLANG_TYPE_PARALLEL,
-			   &(unlang_op_t){
-				.name = "parallel",
-				.interpret = unlang_parallel,
-				.signal = unlang_parallel_signal,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_CANCEL
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "parallel",
+			.type = UNLANG_TYPE_PARALLEL,	
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+
+			.compile = unlang_compile_parallel,
+			.interpret = unlang_parallel,
+			.signal = unlang_parallel_signal,
+
+			.unlang_size = sizeof(unlang_parallel_t),
+			.unlang_name = "unlang_parallel_t"
+		});
 }

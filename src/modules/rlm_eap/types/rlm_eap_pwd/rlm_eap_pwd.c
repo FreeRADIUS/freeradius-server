@@ -65,7 +65,7 @@ extern fr_dict_autoload_t rlm_eap_pwd_dict[];
 fr_dict_autoload_t rlm_eap_pwd_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cleartext_password;
@@ -79,7 +79,7 @@ fr_dict_attr_autoload_t rlm_eap_pwd_dict_attr[] = {
 	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int send_pwd_request(request_t *request, pwd_session_t *session, eap_round_t *eap_round)
@@ -152,7 +152,7 @@ static int send_pwd_request(request_t *request, pwd_session_t *session, eap_roun
 	return 0;
 }
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
 	eap_session_t	*eap_session = eap_session_get(request->parent);
@@ -170,7 +170,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	uint8_t		exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t		peer_confirm[SHA256_DIGEST_LENGTH];
 
-	if (((eap_round = eap_session->this_round) == NULL) || !inst) RETURN_MODULE_FAIL;
+	if (((eap_round = eap_session->this_round) == NULL) || !inst) RETURN_UNLANG_FAIL;
 
 	session = talloc_get_type_abort(eap_session->opaque, pwd_session_t);
 	response = eap_session->this_round->response;
@@ -181,7 +181,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	 */
 	if (!hdr || (response->type.length < sizeof(pwd_hdr))) {
 		REDEBUG("Packet with insufficient data");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	in = hdr->data;
@@ -192,9 +192,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	 */
 	if (session->out_pos) {
 		if (in_len) REDEBUG("PWD got something more than an ACK for a fragment");
-		if (send_pwd_request(request, session, eap_round) < 0) RETURN_MODULE_FAIL;
+		if (send_pwd_request(request, session, eap_round) < 0) RETURN_UNLANG_FAIL;
 
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	/*
@@ -204,18 +204,18 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	if (EAP_PWD_GET_LENGTH_BIT(hdr)) {
 		if (session->in) {
 			REDEBUG("PWD already alloced buffer for fragments");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		if (in_len < 2) {
 			REDEBUG("Invalid packet: length bit set, but no length field");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		session->in_len = ntohs(in[0] * 256 | in[1]);
 		if (!session->in_len) {
 			DEBUG("EAP-PWD malformed packet (input length)");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		MEM(session->in = talloc_zero_array(session, uint8_t, session->in_len));
@@ -232,12 +232,12 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
 		if (!session->in) {
 			RDEBUG2("Unexpected fragment");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		if ((session->in_pos + in_len) > session->in_len) {
 			REDEBUG("Fragment overflows packet");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		memcpy(session->in + session->in_pos, in, in_len);
@@ -255,7 +255,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 		hdr = (pwd_hdr *)eap_round->request->type.data;
 		EAP_PWD_SET_EXCHANGE(hdr, exch);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 
@@ -265,7 +265,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 */
 		if ((session->in_pos + in_len) > session->in_len) {
 			REDEBUG("PWD will overflow a fragment buffer");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 		memcpy(session->in + session->in_pos, in, in_len);
 		in = session->in;
@@ -283,13 +283,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_ID) {
 			REDEBUG("PWD exchange is incorrect, Not ID");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		packet = (pwd_id_packet_t *) in;
 		if (in_len < sizeof(*packet)) {
 			REDEBUG("Packet is too small (%zd < %zd).", in_len, sizeof(*packet));
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		if ((packet->prf != EAP_PWD_DEF_PRF) ||
@@ -298,7 +298,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		    (CRYPTO_memcmp(packet->token, &session->token, 4)) ||
 		    (packet->group_num != ntohs(session->group_num))) {
 			REDEBUG("PWD ID response is malformed");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		/*
@@ -314,7 +314,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		session->peer_id_len = in_len - sizeof(pwd_id_packet_t);
 		if (session->peer_id_len >= sizeof(session->peer_id)) {
 			REDEBUG("PWD ID response is malformed");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
@@ -324,7 +324,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 					   allowed_passwords, NUM_ELEMENTS(allowed_passwords), false);
 		if (!known_good) {
 			REDEBUG("No \"known good\" password found for user");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		ret = compute_password_element(request, session, session->group_num,
@@ -335,7 +335,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		if (ephemeral) TALLOC_FREE(known_good);
 		if (ret < 0) {
 			REDEBUG("Failed to obtain password element");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -343,7 +343,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 */
 		if (compute_scalar_element(request, session, inst->bnctx)) {
 			REDEBUG("Failed to compute server's scalar and element");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		MEM(x = BN_new());
@@ -356,7 +356,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			REDEBUG("Server point assignment failed");
 			BN_clear_free(x);
 			BN_clear_free(y);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -387,7 +387,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	case PWD_STATE_COMMIT:
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_COMMIT) {
 			REDEBUG("PWD exchange is incorrect, not commit!");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		/*
@@ -395,7 +395,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 */
 		if (process_peer_commit(request, session, in, in_len, inst->bnctx)) {
 			REDEBUG("Failed processing peer's commit");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -403,7 +403,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 */
 		if (compute_server_confirm(request, session, session->my_confirm, inst->bnctx)) {
 			REDEBUG("Failed computing confirm");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -422,24 +422,24 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	case PWD_STATE_CONFIRM:
 		if (in_len < SHA256_DIGEST_LENGTH) {
 			REDEBUG("Peer confirm is too short (%zd < %d)", in_len, SHA256_DIGEST_LENGTH);
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_CONFIRM) {
 			REDEBUG("PWD exchange is incorrect, not commit");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 		if (compute_peer_confirm(request, session, peer_confirm, inst->bnctx)) {
 			REDEBUG("Cannot compute peer's confirm");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (CRYPTO_memcmp(peer_confirm, in, SHA256_DIGEST_LENGTH)) {
 			REDEBUG("PWD exchange failed, peer confirm is incorrect");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (compute_keys(request, session, peer_confirm, msk, emsk)) {
 			REDEBUG("Failed generating (E)MSK");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
@@ -454,7 +454,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	default:
 		REDEBUG("Unknown PWD state");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -465,7 +465,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		session->in = NULL;
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static int _free_pwd_session(pwd_session_t *session)
@@ -484,7 +484,7 @@ static int _free_pwd_session(pwd_session_t *session)
 	return 0;
 }
 
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_pwd_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -535,11 +535,11 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	packet->prep = EAP_PWD_PREP_NONE;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
-	if (send_pwd_request(request, session, eap_session->this_round) < 0) RETURN_MODULE_FAIL;
+	if (send_pwd_request(request, session, eap_session->this_round) < 0) RETURN_UNLANG_FAIL;
 
 	eap_session->process = mod_process;
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 static int mod_detach(module_detach_ctx_t const *mctx)

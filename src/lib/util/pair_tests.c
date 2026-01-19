@@ -1368,5 +1368,5 @@ TEST_LIST = {
 	{ "fr_pair_value_enum",                   test_fr_pair_value_enum },
 	{ "fr_pair_value_enum_box",               test_fr_pair_value_enum_box },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

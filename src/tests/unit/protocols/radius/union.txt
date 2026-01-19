@@ -1,0 +1,84 @@
+
+#
+#  UNION tests
+#
+#  src/tests/dict checks if the dictionaries can be parsed.
+#  This file tests if the contents are OK.
+#
+proto radius
+proto-dictionary radius
+load-dictionary dictionary.test
+fuzzer-out radius
+
+#
+#  Too small.
+#
+#  @todo - should this be malformed?  Ideally we want a way to signal
+#  that the structure has been truncated.  Perhaps we need an internal
+#  attribute "truncated" of type bool.
+#
+decode-pair fd 04 01 21
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Sub-Struct = { Nested-Uint1 = 33 } }
+#match raw.Test-Struct2 = 0x0121
+
+#
+#  We encode the full structure
+#
+encode-pair -
+match fd 05 01 21 00
+
+#
+#  Too large.  Extra data is silently ignored.
+#
+#  @todo - perhaps we want an internal attribute for "extra" data, of type octets?
+#
+decode-pair fd 06 01 21 12 33
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+
+encode-pair -
+match fd 05 01 21 12
+
+#
+#  Just right.
+#
+decode-pair fd 05 01 21 12
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+
+encode-pair -
+match fd 05 01 21 12
+
+#
+#  Without Key-Field - it automatically figures it out
+#
+encode-pair Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match fd 05 01 21 12
+
+#
+#  Skip the UNION
+#
+pair Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+
+encode-pair Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match fd 05 01 21 12
+
+#
+#  Wrong Key-Field - it gets over-written
+#
+#  @todo - to we want to update the parser to disallow bare key fields like this?
+#
+encode-pair Test-Struct2 = { Key-Field = 2, Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match fd 05 01 21 12
+
+decode-pair fd 05 02 43 41
+match Test-Struct2 = { Key-Field = ::CC, CC = "CA" }
+
+encode-pair -
+match fd 05 02 43 41
+
+#
+#  @todo - add tests for TLV (only one can be used), and for arrays of leaf attributes.
+#
+
+count
+match 28

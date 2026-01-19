@@ -23,11 +23,11 @@
  * @copyright 2018-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2018 The FreeRADIUS server project
  */
-#include "lib/unlang/call_env.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 /** Holds instance data created by xlat_instantiate

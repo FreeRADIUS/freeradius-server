@@ -126,6 +126,8 @@ typedef struct {
 	bool		check_crl;			//!< Check certificate revocation lists.
 	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
 	bool		allow_not_yet_valid_crl;	//!< Don't error out if CRL is not-yet-valid.
+
+	bool		der_decode;			//!< Should certificates be passed to the DER decoder.
 } fr_tls_verify_conf_t;
 
 /* configured values goes right here */
@@ -181,6 +183,7 @@ struct fr_tls_conf_s {
 	bool		verify_certificate;		//!< Does the "verify certificate" section exist.
 	bool		new_session;			//!< Does the "new session" section exist.
 	bool		establish_session;		//!< Does the "establish session" section exist.
+	bool		client_hello_parse;		//!< Should attributes be extracted from Client Hello.
 };
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);

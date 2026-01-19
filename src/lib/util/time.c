@@ -215,8 +215,8 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 				    bool no_trailing, fr_sbuff_term_t const *tt)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	int64_t			integer;	/* Whole units */
-	double			f;
+	int64_t			integer = 0;	/* Whole units */
+	double			f = 0.0;
 	fr_time_res_t		res;
 	bool			do_float;
 	bool			negative;

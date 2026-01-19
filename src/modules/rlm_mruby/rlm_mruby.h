@@ -32,7 +32,33 @@ DIAG_OFF(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
+#include <mruby/class.h>
+#include <mruby/data.h>
 DIAG_ON(documentation)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+#include <freeradius-devel/server/base.h>
+
+typedef struct {
+	char const *filename;
+	char const *module_name;
+
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
+
+	mrb_state *mrb;
+
+	struct RClass *mruby_module;
+	struct RClass *mruby_request;
+	struct RClass *mruby_ptr;
+	struct RClass *mruby_pair_list;
+	struct RClass *mruby_pair;
+	mrb_value mrubyconf_hash;
+} rlm_mruby_t;
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);
+struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent);
+struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent);
+mrb_value mruby_inst_object(mrb_state *mrb, struct RClass *klass, rlm_mruby_t const *inst);
+mrb_value mruby_request_object(mrb_state *mrb, struct RClass *klass, request_t *request);
+mrb_value mruby_value_pair_object(mrb_state *mrb, struct RClass *klass, fr_pair_t *vp);
+mrb_value mruby_dict_attr_object(mrb_state *mrb, struct RClass *klass, fr_dict_attr_t const *da);

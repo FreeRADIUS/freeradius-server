@@ -181,8 +181,9 @@ static uint32_t parent_of(uint32_t key)
 }
 
 
-static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
-				  fr_hash_entry_t *head, uint32_t reversed, void const *data)
+static CC_NO_UBSAN(undefined)
+fr_hash_entry_t *list_find(fr_hash_table_t *ht,
+			   fr_hash_entry_t *head, uint32_t reversed, void const *data)
 {
 	fr_hash_entry_t *cur;
 
@@ -205,16 +206,16 @@ static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
 /*
  *	Inserts a new entry into the list, in order.
  */
-static bool list_insert(fr_hash_table_t *ht,
+static CC_NO_UBSAN(undefined)
+bool list_insert(fr_hash_table_t *ht,
 		        fr_hash_entry_t **head, fr_hash_entry_t *node)
 {
 	fr_hash_entry_t **last, *cur;
 
 	last = head;
 
-	for (cur = *head; cur != &ht->null; cur = cur->next) {
+	for (cur = *head; cur != &ht->null; last = &(cur->next), cur = cur->next) {
 		if (cur->reversed > node->reversed) break;
-		last = &(cur->next);
 
 		if (cur->reversed == node->reversed) {
 			if (ht->cmp) {
@@ -629,15 +630,18 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 	uint32_t	i;
 
 	/*
-	 *	Return the next element in the bucket
+	 *	Return the next element in the bucket.
 	 */
-	if (iter->node != &ht->null) {
-		node = iter->node;
-		iter->node = node->next;
+	if (iter->next != &ht->null) {
+		node = iter->next;
+		iter->next = node->next;
 
 		return node->data;
 	}
 
+	/*
+	 *	We've wrapped around to bucket 0 again.  That means we're done.
+	 */
 	if (iter->bucket == 0) return NULL;
 
 	/*
@@ -656,7 +660,7 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 			continue;	/* This bucket was empty too... */
 		}
 
-		iter->node = node->next;		/* Store the next one to examine */
+		iter->next = node->next;		/* Store the next one to examine */
 		iter->bucket = i;
 		return node->data;
 	}
@@ -678,7 +682,7 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 {
 	iter->bucket = ht->num_buckets;
-	iter->node = &ht->null;
+	iter->next = &ht->null;
 
 	return fr_hash_table_iter_next(ht, iter);
 }

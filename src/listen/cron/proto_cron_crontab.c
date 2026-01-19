@@ -28,8 +28,8 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/skip.h>
+#include <freeradius-devel/server/cf_util.h>
 
-#include "lib/server/cf_util.h"
 #include "proto_cron.h"
 
 extern fr_app_io_t proto_cron_crontab;
@@ -86,7 +86,7 @@ struct proto_cron_tab_s {
 static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t crontab_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_crontab_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_crontab_t, filename) },
 
 	{ FR_CONF_OFFSET_FLAGS("timespec", CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_crontab_t, spec),
 	  		.func = time_parse },
@@ -716,7 +716,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
+	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done, true) < 0) {
 		cf_log_perr(conf, "Failed reading %s", inst->filename);
 		fclose(fp);
 		return -1;

@@ -23,9 +23,9 @@ FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
 #
-#  Some tests require PCRE or PCRE2
+#  Some tests require PCRE2
 #
-ifeq "$(AC_HAVE_REGEX_PCRE)$(AC_HAVE_REGEX_PCRE2)" ""
+ifeq "$(AC_HAVE_REGEX_PCRE2)" ""
 FILES := $(filter-out if-regex-match-named,$(FILES))
 endif
 
@@ -53,37 +53,16 @@ $(OUTPUT)/${1}.attrs: src/tests/keywords/default-input.attrs
 endif
 	@cp $$< $$@
 
-#
-#  Tests which don't work in the update -> edit conversion
-#
-#  update-to-edit		Conversion doesn't parse &request.[*].
-#  update-remove-index		Remove by index _and_ value.  Not implemented in edit code
-#  update-error-*		the errors are different, and we don't really care.
-#  vendor-specific-error	tries to parse RHS string as pair list.  Which is OK in the new code
-#
-
-#
-#  Migration support.  Some of the tests don't run under the new
-#  conditions, so we don't run them under the new conditions.
-#
-#  Tests for the "update" keyword
-ifneq "$(findstring ${1}, update-remove-index update-to-edit vendor-specific-error )" ""
-$(OUTPUT)/${1}: NEW_COND=
-
-# Tests for rewriting "update"
-else ifneq "$(findstring ${1}, update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec update-error-3 update-group-error update-null-value-assign update-filter xlat-unknown )" ""
-$(OUTPUT)/${1}: NEW_COND=-S rewrite_update=yes
-
-else
-$(OUTPUT)/${1}: NEW_COND=-S forbid_update=yes
-
 ifeq "${1}" "mschap"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_mschap.la $(BUILD_DIR)/lib/rlm_mschap.la
 endif
 
+ifeq "${1}" "kv"
+$(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/rlm_kv.la $(BUILD_DIR)/lib/rlm_kv.la
+endif
+
 ifeq "${1}" "xlat-dhcpv4"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/libfreeradius-dhcpv4.la $(BUILD_DIR)/lib/libfreeradius-dhcpv4.la
-endif
 endif
 endef
 $(foreach x,$(FILES),$(eval $(call KEYWORD_TEST,$x)))
@@ -154,7 +133,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 #	(make -k test.keywords 2>&1) | grep 'KEYWORD=' | sed 's/KEYWORD=//;s/ .*$//'
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
-	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(NEW_COND) $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx )
+	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx )
 	@echo "KEYWORD-TEST $(notdir $@)"
 	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \

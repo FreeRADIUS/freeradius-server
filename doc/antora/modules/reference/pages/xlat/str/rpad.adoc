@@ -8,9 +8,11 @@ Right-pad a string.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := "123"
+string test
 
-reply.Reply-Message := "Maximum should be %str.rpad(%{control.Tmp-String-0}, 11, '0')"
+test := "123"
+
+reply.Reply-Message := "Maximum should be %str.rpad(test, 11, '0')"
 ----
 
 .Output

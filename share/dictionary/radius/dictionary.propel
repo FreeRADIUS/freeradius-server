@@ -11,11 +11,11 @@
 VENDOR		Propel				14895
 
 BEGIN-VENDOR	Propel
-ATTRIBUTE	Accelerate				1	integer
+ATTRIBUTE	Accelerate				1	uint32
 ATTRIBUTE	Dialed-Digits				2	string
 ATTRIBUTE	Client-IP-Address			3	ipaddr
 ATTRIBUTE	Client-NAS-IP-Address			4	ipaddr
-ATTRIBUTE	Client-Source-ID			5	integer
-ATTRIBUTE	Content-Filter-ID			6	integer
+ATTRIBUTE	Client-Source-ID			5	uint32
+ATTRIBUTE	Content-Filter-ID			6	uint32
 END-VENDOR	Propel
 ALIAS		Propel					Vendor-Specific.Propel

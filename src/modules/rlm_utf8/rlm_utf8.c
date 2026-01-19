@@ -29,7 +29,7 @@ RCSID("$Id$")
 /*
  *	Reject any non-UTF8 data.
  */
-static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t		i, len;
 
@@ -38,11 +38,11 @@ static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(rlm_rcode_t *p_result, UN
 
 		for (i = 0; i < vp->vp_length; i += len) {
 			len = fr_utf8_char(&vp->vp_octets[i], -1);
-			if (len == 0) RETURN_MODULE_FAIL;
+			if (len == 0) RETURN_UNLANG_FAIL;
 		}
 	}
 
-	RETURN_MODULE_NOOP;
+	RETURN_UNLANG_NOOP;
 }
 
 /*

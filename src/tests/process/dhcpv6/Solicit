@@ -1,8 +1,14 @@
-subrequest DHCPv6.Solicit {
+subrequest @DHCPv6::Solicit {
 	Transaction-ID = 0xd81eb8
-	Client-ID.DUID = LL
-	Client-ID.DUID.LL.Hardware-Type = Ethernet
-	Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+	Client-Id = {
+		DUID = ::LL
+		LL = {
+			Hardware-Type = ::Ethernet
+			Ethernet = {
+				Address = 00:01:02:03:04:05
+			}
+		}
+	}
 	Option-Request = DNS-Servers
 	Option-Request = AFTR-Name
 	Elapsed-Time = 0
@@ -10,7 +16,7 @@ subrequest DHCPv6.Solicit {
 	IA-PD.T2 = 5400
 
 	call dhcpv6 {
-		if (reply.Packet-Type != Advertise) {
+		if (reply.Packet-Type != ::Advertise) {
 			test_fail
 		}
 

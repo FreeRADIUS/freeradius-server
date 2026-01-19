@@ -14,12 +14,12 @@ VENDOR		Hillstone			28557
 
 BEGIN-VENDOR	Hillstone
 
-ATTRIBUTE	User-vsys-id				1	integer
-ATTRIBUTE	User-Type				2	integer
-ATTRIBUTE	User-Admin-Privilege			3	integer
-ATTRIBUTE	User-Login-Type				4	integer
+ATTRIBUTE	User-vsys-id				1	uint32
+ATTRIBUTE	User-Type				2	uint32
+ATTRIBUTE	User-Admin-Privilege			3	uint32
+ATTRIBUTE	User-Login-Type				4	uint32
 ATTRIBUTE	User-Mobile-Number			5	string
-ATTRIBUTE	User-Mobile-Operator			6	integer
+ATTRIBUTE	User-Mobile-Operator			6	uint32
 ATTRIBUTE	User-Policy-dst-ip-begin		7	ipaddr
 ATTRIBUTE	User-Policy-dst-ip-end			8	ipaddr
 ATTRIBUTE	User-Role-Bame				9	string
@@ -30,7 +30,7 @@ ATTRIBUTE	VPN-WINS				103	string
 ATTRIBUTE	VPN-DNS					104	string
 ATTRIBUTE	VPN-Split-Route				105	string
 ATTRIBUTE	VPN-Tunnel-IP				106	string
-ATTRIBUTE	VPN-SNAT				107	integer
+ATTRIBUTE	VPN-SNAT				107	uint32
 
 VALUE	User-Type			HS-User-l2tp		1
 VALUE	User-Type			HS-User-8021x		2

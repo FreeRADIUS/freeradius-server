@@ -117,8 +117,11 @@ typedef struct {
 	uint8_t			id;
 
 	bool			add_proxy_state;       	//!< do we add a Proxy-State?
-	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 	bool			seen_message_authenticator;
+#ifdef NAS_VIOLATES_RFC
+	bool			allow_vulnerable_clients; //!< for vendors who violate the RFCs.
+#endif
+
 } fr_radius_encode_ctx_t;
 
 typedef struct {

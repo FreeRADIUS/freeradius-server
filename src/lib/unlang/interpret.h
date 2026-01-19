@@ -30,6 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/action.h>
 
 #define UNLANG_TOP_FRAME (true)
@@ -129,12 +130,37 @@ typedef struct {
 							///< runnable queue.
 } unlang_request_func_t;
 
-int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
-					      	      rlm_rcode_t default_action, bool top_frame)
+typedef struct {
+	rlm_rcode_t 			rcode;			//!< The current rcode, from executing the instruction
+								///< or merging the result from a frame.
+	unlang_mod_action_t		priority;		//!< The priority or action for that rcode.
+} unlang_result_t;
+
+#define UNLANG_RESULT_NOT_SET ((unlang_result_t) { .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET })
+#define UNLANG_RESULT_RCODE(_x) ((unlang_result_t) { .rcode = (_x), .priority = MOD_ACTION_NOT_SET })
+
+/** Configuration structure to make it easier to pass configuration options to initialise the frame with
+ */
+typedef struct {
+	bool				top_frame;		//!< Is this the top frame?
+	unlang_result_t			default_result;		//!< The default result for the frame.
+								///< This needs to be specified separately
+								///< from p_result, because we may be passing
+								///< in NULL for p_result.
+} unlang_frame_conf_t;
+
+#define FRAME_CONF(_default_rcode, _top_frame)		\
+	&(unlang_frame_conf_t){				\
+		.top_frame = (_top_frame),		\
+		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
+	}
+
+int			unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
+						      CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 						      CC_HINT(warn_unused_result);
 
-int			unlang_interpret_push_instruction(request_t *request, void *instruction,
-						  	  rlm_rcode_t default_rcode, bool top_frame)
+int			unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *request,
+							  void *instruction, unlang_frame_conf_t const *conf)
 						  	  CC_HINT(warn_unused_result);
 
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,
@@ -168,6 +194,8 @@ bool			unlang_request_is_done(request_t const *request);
 
 void			unlang_interpret_request_done(request_t *request);
 
+void			unlang_interpret_request_cancel_retry(request_t *request);
+
 void			unlang_interpret_request_prioritise(request_t *request, uint32_t priority);
 
 void			unlang_interpret_mark_runnable(request_t *request);
@@ -178,9 +206,11 @@ void			unlang_interpret_signal(request_t *request, fr_signal_t action);
 
 int			unlang_interpret_stack_depth(request_t *request);
 
-rlm_rcode_t		unlang_interpret_stack_result(request_t *request);
+rlm_rcode_t		unlang_interpret_rcode(request_t *request);
 
-void			unlang_interpret_stack_result_set(request_t *request, rlm_rcode_t code);
+unlang_mod_action_t	unlang_interpret_priority(request_t *request);
+
+unlang_result_t		*unlang_interpret_result(request_t *request);
 
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 

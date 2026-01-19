@@ -797,18 +797,18 @@ ignore_length:
 /** Process the result from the last TLS handshake round
  *
  * @return
- *	- eap_tls_session->state = EAP_TLS_FAIL if the message is invalid.
- *	- eap_tls_session->state = EAP_TLS_HANDLED if we need to send an
+ *	- eap_tls_session->state == EAP_TLS_FAIL if the message is invalid.
+ *	- eap_tls_session->state == EAP_TLS_HANDLED if we need to send an
  *	  additional request to the peer.
- *	- eap_tls_session->state = EAP_TLS_ESTABLISHED if the handshake
+ *	- eap_tls_session->state == EAP_TLS_ESTABLISHED if the handshake
  *	  completed successfully, and there's no more data to send.
  */
-static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						request_t *request, void *uctx)
+static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(eap_tls_session->tls_session, fr_tls_session_t);
+	unlang_action_t		ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	switch (tls_session->result) {
 	case FR_TLS_RESULT_IN_PROGRESS:
@@ -856,17 +856,18 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 
 			RDEBUG("(TLS) EAP Sending final Commitment Message.");
 			tls_session->record_from_buff(&tls_session->clean_in, "\0", 1);
-		}
+		} else {
 
-		/*
-		 *	Always returns UNLANG_ACTION_CALCULATE_RESULT
-		 */
-		(void) fr_tls_session_async_handshake_push(request, tls_session);
-		if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
-			REDEBUG("TLS receive handshake failed during operation");
-			fr_tls_cache_deny(request, tls_session);
-			eap_tls_session->state = EAP_TLS_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			/*
+			 *	Returns UNLANG_ACTION_PUSHED_CHILD unless something has failed
+			 */
+			ret = fr_tls_session_async_handshake_push(request, tls_session);
+			if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
+				REDEBUG("TLS receive handshake failed during operation");
+				fr_tls_cache_deny(request, tls_session);
+				eap_tls_session->state = EAP_TLS_FAIL;
+				return ret;
+			}
 		}
 	}
 #endif
@@ -909,7 +910,7 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 	eap_tls_session->state = EAP_TLS_FAIL;
 
 finish:
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ret;
 }
 
 /** Push functions to continue the handshake asynchronously
@@ -930,7 +931,9 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 	if (unlang_function_push(request,
 				 NULL,
 				 eap_tls_handshake_resume,
-				 NULL, 0, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+				 NULL,
+				 0, UNLANG_SUB_FRAME,
+				 eap_session) < 0) return UNLANG_ACTION_FAIL;
 
 	if (fr_tls_session_async_handshake_push(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
 

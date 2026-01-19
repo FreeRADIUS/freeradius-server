@@ -34,7 +34,7 @@ RCSID("$Id$")
 #define REQUEST_DATA_REGEX (0xadbeef00)
 
 typedef struct {
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+#if defined(HAVE_REGEX_PCRE2)
 	regex_t		*preg;		//!< Compiled pattern.
 #endif
 	fr_regmatch_t	*regmatch;	//!< Match vectors.
@@ -89,7 +89,7 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
 	/*
 	 *	Steal runtime pregs, leave precompiled ones
 	 */
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+#if defined(HAVE_REGEX_PCRE2)
 	if (!(*preg)->precompiled) {
 		new_rc->preg = talloc_steal(new_rc, *preg);
 		*preg = NULL;
@@ -222,121 +222,6 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *
 		fr_value_box_set_secret(out, rc->secret);
 
 		RDEBUG4("Found \"%s\": %pV (%zu)", name, out, out->vb_length);
-		break;
-	}
-
-	return 0;
-}
-#  elif defined(HAVE_REGEX_PCRE)
-/** Extract a subcapture value from the request
- *
- * @note This is the PCRE variant of the function.
- *
- * @param[in] ctx	To allocate subcapture buffer in.
- * @param[out] out	Where to write the subcapture string.
- * @param[in] request	to extract.
- * @param[in] num	Subcapture index (0 for entire match).
- * @return
- *	- 0 on success.
- *	- -1 on notfound.
- */
-int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, uint32_t num)
-{
-	fr_regcapture_t	*rc;
-	char const	*p;
-	int		ret;
-
-	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
-	if (!rc) {
-		RDEBUG4("No subcapture data found");
-		return -1;
-	}
-
-	ret = pcre_get_substring(rc->regmatch->subject,
-				 (int *)rc->regmatch->match_data, (int)rc->regmatch->used, num, &p);
-	switch (ret) {
-	case PCRE_ERROR_NOMEMORY:
-		MEM(NULL);
-		break;
-
-	/*
-	 *	Not finding a substring is fine
-	 */
-	case PCRE_ERROR_NOSUBSTRING:
-		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
-		return -1;
-
-	default:
-		if (ret < 0) return -1;
-
-		talloc_set_type(p, char);
-		talloc_steal(ctx, p);
-
-		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
-		fr_value_box_bstrndup_shallow(out, NULL, p,  talloc_array_length(p) - 1, false);
-		fr_value_box_mark_safe_for(out, rc->safe_for);
-		fr_value_box_set_secret(out, rc->secret);
-
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
-		break;
-	}
-
-	return 0;
-}
-
-/** Extract a named subcapture value from the request
- *
- * @note This is the PCRE variant of the function.
- *
- * @param[in] ctx	To allocate subcapture buffer in.
- * @param[out] out	Where to write the subcapture string.
- * @param[in] request	to extract.
- * @param[in] name	of subcapture.
- * @return
- *	- 0 on success.
- *	- -1 on notfound.
- */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, char const *name)
-{
-	fr_regcapture_t	*rc;
-	void		*rd;
-	char const	*p;
-	int		ret;
-
-	rd = request_data_reference(request, request, REQUEST_DATA_REGEX);
-	if (!rd) {
-		RDEBUG4("No subcapture data found");
-		return -1;
-	}
-
-	rc = talloc_get_type_abort(rd, fr_regcapture_t);
-	ret = pcre_get_named_substring(rc->preg->compiled, rc->regmatch->subject,
-				       (int *)rc->regmatch->match_data, (int)rc->regmatch->used, name, &p);
-	switch (ret) {
-	case PCRE_ERROR_NOMEMORY:
-		MEM(NULL);
-		break;
-
-	/*
-	 *	Not finding a substring is fine
-	 */
-	case PCRE_ERROR_NOSUBSTRING:
-		RDEBUG4("No named capture group \"%s\"", name);
-		return -1;
-
-	default:
-		if (ret < 0) return -1;
-
-		talloc_set_type(p, char);
-		talloc_steal(ctx, p);
-
-		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
-		fr_value_box_bstrndup_shallow(out, NULL, p,  talloc_array_length(p) - 1, false);
-		fr_value_box_mark_safe_for(out, rc->safe_for);
-		fr_value_box_set_secret(out, rc->secret);
-
-		RDEBUG4("Found \"%s\": %pV (%zu)", name, out, out->vb_length);
-
 		break;
 	}
 

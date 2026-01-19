@@ -35,18 +35,29 @@ extern "C" {
 #endif
 
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
-					fr_pair_list_t *out, FILE *fp, bool *pfiledone);
+					fr_pair_list_t *out, FILE *fp, bool *pfiledone, bool allow_exec);
 
 void		fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op);
 
-typedef struct fr_pair_parse_s {
+typedef struct {
 	TALLOC_CTX		*ctx;
 	fr_dict_attr_t const	*da;		//!< root da to start parsing from
 	fr_pair_list_t		*list;		//!< list where output is placed
+
+	fr_dict_t const		*dict;		//!< the protocol dictionary we use
+	fr_dict_t const		*internal;	//!< a cached pointer to the internal dictionary
+
 	bool			allow_compare;	//!< allow comparison operators
 	bool			allow_crlf;	//!< allow CRLF, and treat like comma
+	bool			allow_zeros;	//!< allow '\0' as end of attribute
+	bool			allow_exec;	//!< allow `exec` to execute external commands.
+						///< This should only be allowed in trusted input,
+						///< and on startup only.  popen() is used for the
+						///< execution, and it has no configurable timeout,
+						///< so the calling code will wait indefinitely.
 	bool			tainted;	//!< source is tainted
 	char			last_char;	//!< last character we read - ',', '\n', or 0 for EOF
+	bool			end_of_list;	//!< do we expect an end of list '}' character?
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,

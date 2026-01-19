@@ -65,7 +65,8 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_XML
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_YAML
 	REST_HTTP_BODY_INVALID,			// REST_HTTP_BODY_HTML
-	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_PLAIN
+	REST_HTTP_BODY_PLAIN,			// REST_HTTP_BODY_PLAIN
+	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_CRL
 };
 
 /*
@@ -144,6 +145,7 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_body_type_table[] = {
+	{ L("crl"),					REST_HTTP_BODY_CRL		},
 	{ L("html"),					REST_HTTP_BODY_HTML		},
 	{ L("invalid"),					REST_HTTP_BODY_INVALID		},
 	{ L("json"),					REST_HTTP_BODY_JSON		},
@@ -188,6 +190,8 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
 	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/pkix-crl"),			REST_HTTP_BODY_CRL		},
+	{ L("application/x-pkcs7-crl"),			REST_HTTP_BODY_CRL		},
 	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
 	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
 	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
@@ -592,23 +596,23 @@ static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *
 					   rest_read_t func, size_t limit, void *userdata)
 {
 	char	*buff = NULL;
-	size_t	alloc = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
+	size_t	needed = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
 	size_t	used = 0;			/* Size of data written */
 	size_t	len = 0;
 
-	buff = talloc_array(NULL, char, alloc);
+	buff = talloc_array(NULL, char, needed);
 	for (;;) {
-		len = func(buff + used, alloc - used, 1, userdata);
+		len = func(buff + used, needed - used, 1, userdata);
 		used += len;
 		if (!len) {
 			*out = buff;
 			return used;
 		}
 
-		alloc = alloc * 2;
-		if (alloc > limit) break;
+		needed *= 2;
+		if (needed > limit) break;
 
-		MEM(buff = talloc_realloc(NULL, buff, char, alloc));
+		MEM(buff = talloc_realloc(NULL, buff, char, needed));
 	}
 
 	talloc_free(buff);
@@ -736,7 +740,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_reply
 						}
 					}) <= 0) {
@@ -1026,7 +1030,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 						&(tmpl_rules_t){
 							.attr = {
-								.dict_def = request->proto_dict,
+								.dict_def = request->local_dict,
 								.list_def = request_attr_reply
 							}
 						}) <= 0) {
@@ -1405,6 +1409,12 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			 */
 			} else {
 				ctx->type = http_body_type_supported[type];
+
+				/*
+				 *  No need to check supported types if we accept everything.
+				 */
+				if (ctx->section->response.accept_all) break;
+
 				switch (ctx->type) {
 				case REST_HTTP_BODY_UNKNOWN:
 					RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
@@ -1482,6 +1492,8 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	case REST_HTTP_BODY_UNSUPPORTED:
 	case REST_HTTP_BODY_UNAVAILABLE:
 	case REST_HTTP_BODY_INVALID:
+		if (ctx->section->response.accept_all) goto accept_body;
+
 		while ((q = memchr(p, '\n', (end - p)))) {
 			REDEBUG("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
@@ -1502,7 +1514,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	default:
 	{
 		char *out_p;
-
+	accept_body:
 		if ((ctx->section->response.max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->response.max_body_in)) {
 			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
 				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->response.max_body_in);

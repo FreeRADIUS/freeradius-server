@@ -22,6 +22,7 @@
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 
 static fr_dict_t const *dict_test;
@@ -29,7 +30,7 @@ static fr_dict_t const *dict_test;
 extern fr_dict_autoload_t process_test_dict[];
 fr_dict_autoload_t process_test_dict[] = {
 	{ .out = &dict_test, .proto = "test" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -37,7 +38,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t process_test_dict_attr[];
 fr_dict_attr_autoload_t process_test_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_test},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -71,21 +72,22 @@ typedef enum {
 static fr_process_state_t const process_state[] = {
 	[ FR_TEST_REQUEST ] = {
 		.default_reply = FR_TEST_REPLY,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_test_sections_t, recv_request),
 	},
 	[ FR_TEST_REPLY ] = {
 		.default_reply = FR_TEST_REPLY,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_test_sections_t, send_reply),
 	},
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -124,7 +126,8 @@ fr_process_module_t process_test = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "test",
-		.inst_size	= sizeof(process_test_t),
+		MODULE_INST(process_test_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

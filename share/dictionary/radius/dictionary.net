@@ -12,65 +12,65 @@ BEGIN-VENDOR	NET
 #  MSC/Media related attributes
 ATTRIBUTE	Fwd-Flow-In-Realm			11	string  #  unsupported
 ATTRIBUTE	Fwd-Flow-In-Src-Addr			12	string
-ATTRIBUTE	Fwd-Flow-In-Src-Port			13	integer
+ATTRIBUTE	Fwd-Flow-In-Src-Port			13	uint32
 ATTRIBUTE	Fwd-Flow-In-Dst-Addr			14	string
-ATTRIBUTE	Fwd-Flow-In-Dst-Port			15	integer
+ATTRIBUTE	Fwd-Flow-In-Dst-Port			15	uint32
 ATTRIBUTE	Fwd-Flow-Out-Realm			16	string  #  unsupported
 ATTRIBUTE	Fwd-Flow-Out-Src-Addr			17	string
-ATTRIBUTE	Fwd-Flow-Out-Src-Port			18	integer
+ATTRIBUTE	Fwd-Flow-Out-Src-Port			18	uint32
 ATTRIBUTE	Fwd-Flow-Out-Dst-Addr			19	string
-ATTRIBUTE	Fwd-Flow-Out-Dst-Port			20	integer
+ATTRIBUTE	Fwd-Flow-Out-Dst-Port			20	uint32
 ATTRIBUTE	Bwd-Flow-In-Realm			21	string  #  unsupported
 ATTRIBUTE	Bwd-Flow-In-Src-Addr			22	string
-ATTRIBUTE	Bwd-Flow-In-Src-Port			23	integer
+ATTRIBUTE	Bwd-Flow-In-Src-Port			23	uint32
 ATTRIBUTE	Bwd-Flow-In-Dst-Addr			24	string
-ATTRIBUTE	Bwd-Flow-In-Dst-Port			25	integer
+ATTRIBUTE	Bwd-Flow-In-Dst-Port			25	uint32
 ATTRIBUTE	Bwd-Flow-Out-Realm			26	string  #  unsupported
 ATTRIBUTE	Bwd-Flow-Out-Src-Addr			27	string
-ATTRIBUTE	Bwd-Flow-Out-Src-Port			28	integer
+ATTRIBUTE	Bwd-Flow-Out-Src-Port			28	uint32
 ATTRIBUTE	Bwd-Flow-Out-Dst-Addr			29	string
-ATTRIBUTE	Bwd-Flow-Out-Dst-Port			30	integer
+ATTRIBUTE	Bwd-Flow-Out-Dst-Port			30	uint32
 ATTRIBUTE	Fwd-Flow-Media-Type			31	string
-ATTRIBUTE	Fwd-Flow-PTime				32	integer
-ATTRIBUTE	Fwd-Octets				33	integer
-ATTRIBUTE	Fwd-Packets				34	integer
-ATTRIBUTE	Fwd-RTCP-Packets-Lost			35	integer  #  future
-ATTRIBUTE	Fwd-RTCP-Avg-Jitter			36	integer  #  future
-ATTRIBUTE	Fwd-RTP-Avg-Latency			37	integer
-ATTRIBUTE	Fwd-RTCP-MaxJitter			38	integer  #  future
-ATTRIBUTE	Fwd-RTP-MaxLatency			39	integer
-ATTRIBUTE	Fwd-RTP-Packets-Lost			40	integer
-ATTRIBUTE	Fwd-RTP-Avg-Jitter			41	integer
-ATTRIBUTE	Fwd-RTP-MaxJitter			42	integer
-ATTRIBUTE	Bwd-Octets				43	integer
-ATTRIBUTE	Bwd-Packets				44	integer
-ATTRIBUTE	Bwd-RTCP-Packets-Lost			45	integer  #  future
-ATTRIBUTE	Bwd-RTCP-Avg-Jitter			46	integer  #  future
-ATTRIBUTE	Bwd-RTP-Avg-Latency			47	integer
-ATTRIBUTE	Bwd-RTCP-MaxJitter			48	integer  #  future
-ATTRIBUTE	Bwd-RTP-MaxLatency			49	integer
-ATTRIBUTE	Bwd-RTP-Packets-Lost			50	integer
-ATTRIBUTE	Bwd-RTP-Avg-Jitter			51	integer
-ATTRIBUTE	Bwd-RTP-MaxJitter			52	integer
+ATTRIBUTE	Fwd-Flow-PTime				32	uint32
+ATTRIBUTE	Fwd-Octets				33	uint32
+ATTRIBUTE	Fwd-Packets				34	uint32
+ATTRIBUTE	Fwd-RTCP-Packets-Lost			35	uint32  #  future
+ATTRIBUTE	Fwd-RTCP-Avg-Jitter			36	uint32  #  future
+ATTRIBUTE	Fwd-RTP-Avg-Latency			37	uint32
+ATTRIBUTE	Fwd-RTCP-MaxJitter			38	uint32  #  future
+ATTRIBUTE	Fwd-RTP-MaxLatency			39	uint32
+ATTRIBUTE	Fwd-RTP-Packets-Lost			40	uint32
+ATTRIBUTE	Fwd-RTP-Avg-Jitter			41	uint32
+ATTRIBUTE	Fwd-RTP-MaxJitter			42	uint32
+ATTRIBUTE	Bwd-Octets				43	uint32
+ATTRIBUTE	Bwd-Packets				44	uint32
+ATTRIBUTE	Bwd-RTCP-Packets-Lost			45	uint32  #  future
+ATTRIBUTE	Bwd-RTCP-Avg-Jitter			46	uint32  #  future
+ATTRIBUTE	Bwd-RTP-Avg-Latency			47	uint32
+ATTRIBUTE	Bwd-RTCP-MaxJitter			48	uint32  #  future
+ATTRIBUTE	Bwd-RTP-MaxLatency			49	uint32
+ATTRIBUTE	Bwd-RTP-Packets-Lost			50	uint32
+ATTRIBUTE	Bwd-RTP-Avg-Jitter			51	uint32
+ATTRIBUTE	Bwd-RTP-MaxJitter			52	uint32
 
 #  Generic Session and Signaling Group related metrics
-ATTRIBUTE	Session-Ingress-CallId			60	integer
-ATTRIBUTE	Session-Egress-CallId			61	integer
-ATTRIBUTE	Session-Generic-Id			62	integer
-ATTRIBUTE	Routing-Table-Number			63	integer
-ATTRIBUTE	Ingress-Signaling-Group			64	integer
-ATTRIBUTE	Egress-Signaling-Group			65	integer
+ATTRIBUTE	Session-Ingress-CallId			60	uint32
+ATTRIBUTE	Session-Egress-CallId			61	uint32
+ATTRIBUTE	Session-Generic-Id			62	uint32
+ATTRIBUTE	Routing-Table-Number			63	uint32
+ATTRIBUTE	Ingress-Signaling-Group			64	uint32
+ATTRIBUTE	Egress-Signaling-Group			65	uint32
 ATTRIBUTE	Primary-Routing-Number			66	string
 ATTRIBUTE	Egress-Final-Routing-Num		67	string
-ATTRIBUTE	Ingress-Channel-Number			68	integer
-ATTRIBUTE	Egress-Channel-Number			69	integer
-ATTRIBUTE	Call-Type				70	integer
-ATTRIBUTE	Call-Origin				71	integer
+ATTRIBUTE	Ingress-Channel-Number			68	uint32
+ATTRIBUTE	Egress-Channel-Number			69	uint32
+ATTRIBUTE	Call-Type				70	uint32
+ATTRIBUTE	Call-Origin				71	uint32
 ATTRIBUTE	Calling-Number				72	string
 ATTRIBUTE	Called-Number				73	string
 ATTRIBUTE	Calling-Name				74	string
-ATTRIBUTE	Disconnect-Cause			75	integer
-ATTRIBUTE	Abort-Cause				76	integer
+ATTRIBUTE	Disconnect-Cause			75	uint32
+ATTRIBUTE	Abort-Cause				76	uint32
 ATTRIBUTE	Ingress-Channel-Id			77	string
 ATTRIBUTE	Egress-Channel-Id			78	string
 ATTRIBUTE	Call-Priority				79	string
@@ -98,9 +98,9 @@ ATTRIBUTE	Connect-Time				112	string
 ATTRIBUTE	Disconnect-Time				113	string
 ATTRIBUTE	Inbound-Seize-Time			114	string
 ATTRIBUTE	Outbound-Seize-Time			115	string
-ATTRIBUTE	Call-Duration				116	integer
-ATTRIBUTE	Post-Dial-Delay				117	integer
-ATTRIBUTE	Disconnect-Initiator			118	integer
+ATTRIBUTE	Call-Duration				116	uint32
+ATTRIBUTE	Post-Dial-Delay				117	uint32
+ATTRIBUTE	Disconnect-Initiator			118	uint32
 
 #  SIP related
 ATTRIBUTE	P-Asserted-ID				130	string
@@ -109,17 +109,17 @@ ATTRIBUTE	Ingress-Local-Addr			132	string
 ATTRIBUTE	Ingress-Remote-Addr			133	string
 ATTRIBUTE	Egress-Local-Addr			134	string
 ATTRIBUTE	Egress-Remote-Addr			135	string
-ATTRIBUTE	Ingress-Interface-Id			136	integer
-ATTRIBUTE	Egress-Interface-Id			137	integer
+ATTRIBUTE	Ingress-Interface-Id			136	uint32
+ATTRIBUTE	Egress-Interface-Id			137	uint32
 ATTRIBUTE	Refer-Call-Transfer-Id			138	string
 ATTRIBUTE	Session-Forked-Call-Id			139	string
 ATTRIBUTE	Redirect-Number				140	string
 ATTRIBUTE	Redirect-Ip-Address			141	string
 ATTRIBUTE	Session-Ingress-Realm			142	string
 ATTRIBUTE	Session-Egress-Realm			143	string
-ATTRIBUTE	Ingress-Signaling-Port-Num		144	integer
-ATTRIBUTE	Egress-Signaling-Port-Num		145	integer
-ATTRIBUTE	Transport-Type				146	integer
+ATTRIBUTE	Ingress-Signaling-Port-Num		144	uint32
+ATTRIBUTE	Egress-Signaling-Port-Num		145	uint32
+ATTRIBUTE	Transport-Type				146	uint32
 ATTRIBUTE	P-Preferred-ID				147	string
 ATTRIBUTE	Replaced-Header				148	string
 

@@ -11,7 +11,7 @@ VENDOR		CheckPoint			2620
 BEGIN-VENDOR	CheckPoint
 
 ATTRIBUTE	Gaia-User-Role				229	string
-ATTRIBUTE	Gaia-SuperUser-Access			230	integer
+ATTRIBUTE	Gaia-SuperUser-Access			230	uint32
 
 END-VENDOR	CheckPoint
 ALIAS		CheckPoint				Vendor-Specific.CheckPoint

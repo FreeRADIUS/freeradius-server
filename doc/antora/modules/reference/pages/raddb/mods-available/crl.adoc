@@ -1,0 +1,154 @@
+
+
+
+
+= CRL Module
+
+The `crl` module provides CRL checking of TLS certificates.
+
+Its primary use case is within the `verify certificate` processing
+section of the `tls-session` virtual server when verifying client
+certificates during EAP-TLS.
+
+
+
+## Configuration Settings
+
+
+source:: Where CRLs will be loaded from
+
+
+dynamic:: Expansions for CRLs loaded dynamically from URIs in certificates
+
+The CRL distribution point URI will be in the
+attribute `CRL.CDP-URL` when this expansion is performed.
+
+
+http:: Expansion to use when URI scheme is http
+
+The `rest` module must be enabled to support this
+
+
+
+ldap:: Expansion to use when URI scheme is ldap
+
+If any CRLs need to be retrieved by LDAP queries
+then configure and enable the `ldap` module to
+support this.
+
+If the URIs in CRL distribution points do not include
+an LDAP host (i.e. they start ldap:///) then the
+ldap module must be configured with the correct
+server details to fetch the CRL from
+
+
+
+ftp:: Expansion to use when URI scheme is ftp
+
+If any CRLs need to be retrieved by FTP GET calls
+then configure and enable the `ftp` module to
+support this.
+
+
+
+force_expiry:: Maximum time between expiring CRLs
+
+If the `nextUpdate` attribute of a CRL is closer than this interval
+then that will be used as the point that the CRL is expired.
+
+
+
+force_delta_expiry:: Maximum time between expiring delta CRLs
+
+This overrides `force_expiry` for delta CRLs.
+
+
+
+early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
+
+
+
+ca_file:: File containing trusted CA, used to sign CRLs
+
+This can reference the setting in the `eap` module, but in that
+case, the eap module must be instantiate before the `crl` module
+by adding it to the list of explicitly instantiated modules
+in `radiusd.conf`
+
+
+
+ca_path:: Directory containing trusted CAs, used to sign CRLs
+
+
+
+trigger_rate_limit::
+
+If triggers are enabled (either here or in trigger.conf),
+should the trigger messages be rate limited.
+
+
+trigger::  Xlats to run when specific CRL events happen
+
+When configured here, they are specific to this module instance.
+Alternatively global settings for all instances of the `crl`
+module can be set in `triggers.conf` under the `modules` -> `crl`
+section.
+
+For triggers to be enabled, a top level `trigger` section must
+exist.  Enable the line `$INCLUDE trigger.conf` in `radiusd.conf`
+and if none of the triggers in there are required, comment them
+out, leaving just the outer section.
+
+Triggers can either be calls to execute programs or xlat expansions.
+The examples below show the use of the `linelog` xlat.
+
+In the "fetch..." triggers, the attributes from the request list
+where the `crl` module is called are available.
+The "expired" trigger only has `CRL.CDP-URL` available.
+
+
+fetchuri:: A CRL URI is being requested
+
+
+
+fetchfail:: Fetching a CRL URI failed
+
+
+
+fetchbad:: Fetching a CRL URI returned bad data
+
+
+
+expired:: A CRL has expired
+
+
+== Default Configuration
+
+```
+crl {
+	source {
+		dynamic {
+			http = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+#			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
+#			ftp = %ftp.get(%uri.safe("%{CRL.CDP-URL}"))
+		}
+	}
+#	force_expiry = 7d
+#	force_delta_expiry = 1d
+	early_refresh = 1h
+#	ca_file = ${modules.eap.tls-config[tls-common].ca_file}
+	ca_file = ${cadir}/rsa/ca.pem
+#	ca_path = ${modules.eap.tls-config[tls-common].ca_path}
+	ca_path = ${cadir}
+#	trigger_rate_limit = yes
+#	trigger {
+#		fetchuri = %linelog("Fetching CRL from %{CRL.CDP-URL}")
+#		fetchfail = %linelog("Failed fetching %{CRL.CDP-URL}: %{Module-Failure-Message}")
+#		fetchbad = %linelog("Data returned from %{CRL.CDP-URL} was not valid")
+#		expired = %linelog("CRL from %{CRL.CDP-URL} has expired")
+#	}
+}
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

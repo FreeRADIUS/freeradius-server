@@ -70,7 +70,7 @@ extern fr_dict_autoload_t rlm_pam_dict[];
 fr_dict_autoload_t rlm_pam_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_pam_auth;
@@ -82,7 +82,7 @@ fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
 	{ .out = &attr_pam_auth, .name = "Pam-Auth", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -211,7 +211,7 @@ static int do_pam(request_t *request, char const *username, char const *passwd, 
 	return 0;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->mi->data, rlm_pam_t);
 	int			ret;
@@ -229,12 +229,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -242,7 +242,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -262,9 +262,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, username->vp_strvalue, password->vp_strvalue, pam_auth_string);
-	if (ret < 0) RETURN_MODULE_REJECT;
+	if (ret < 0) RETURN_UNLANG_REJECT;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 extern module_rlm_t rlm_pam;
