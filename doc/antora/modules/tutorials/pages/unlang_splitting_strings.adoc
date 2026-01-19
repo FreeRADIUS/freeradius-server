@@ -55,6 +55,53 @@ If you’ve completed the xref:proxy.adoc[Proxy] tutorial and have test realms s
 policy code you have just written to proxy the request to the realm specified
 in the `User-Name` attribute.
 
+== Step 1 – Basic splitting policy
+
+[source,unlang]
+.FILE: /etc/raddb/policy.d/realm-split
+----
+realm-split {
+    # Check if User-Name exists and contains an "@" symbol
+    if (request.User-Name =~ /^([^@]+)@(.+)$/) {
+        # First capture group - username part (before @)
+        request.Stripped-User-Name := %regex.match(1)
+
+        # Second capture group - domain/realm part (after @)
+        control.Stripped-User-Domain := %regex.match(2)
+
+        # IMPORTANT: Override User-Name with just the username part
+        # This allows the users file to match on "bob" instead of "bob@realm1.com"
+        request.User-Name := request.Stripped-User-Name
+
+        # Add reply attributes to validate the split worked correctly
+        # Using Reply-Message to show both values (visible in reply)
+        reply += {
+            Reply-Message = "User: %{request.Stripped-User-Name}"
+            Reply-Message = "Domain: %{control.Stripped-User-Domain}"
+        }
+    }
+}
+----
+
+Add the above created policy into `raddb/sites-available/default`:
+
+[source,unlang]
+----
+server default {
+    recv Access-Request {
+        realm_split
+        files
+    }
+}
+----
+
+Also make sure our testing user "bob" exists in `raddb/mods-config/files/authorize`:
+
+[source,text]
+----
+bob     Password.Cleartext := "hello"
+----
+
 == Questions
 
 1.  Regular expressions can contain attribute expansions.  Given that
