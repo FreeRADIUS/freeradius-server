@@ -269,7 +269,7 @@ int			dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
 int			dict_attr_acopy_aliases(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
-int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref);
+int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref, bool from_public);
 
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 

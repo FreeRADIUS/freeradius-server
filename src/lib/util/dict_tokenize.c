@@ -1484,7 +1484,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 					fr_dict_attr_unconst(parent), argv[1]);
 	}
 
-	return dict_attr_alias_add(fr_dict_attr_unconst(parent), argv[0], da);
+	return dict_attr_alias_add(fr_dict_attr_unconst(parent), argv[0], da, true);
 }
 
 /*
@@ -1750,7 +1750,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	if (parent->type == FR_TYPE_UNION) {
 		fr_assert(parent->parent);
 
-		if (dict_attr_alias_add(parent->parent, da->name, da) < 0) {
+		if (dict_attr_alias_add(parent->parent, da->name, da, false) < 0) {
 			goto error;
 		}
 	}

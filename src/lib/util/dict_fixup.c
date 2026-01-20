@@ -775,7 +775,7 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 	}
 
 	fr_dict_attr_unconst(da)->flags.has_fixup = false;
-	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da);
+	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da, true);
 }
 
 /** Initialise a fixup ctx

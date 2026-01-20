@@ -1180,7 +1180,7 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 	 */
 	if (src->type != FR_TYPE_UNION) return 0;
 
-	return dict_attr_alias_add(dst->parent, copy->name, copy);
+	return dict_attr_alias_add(dst->parent, copy->name, copy, false);
 }
 
 
@@ -1396,7 +1396,7 @@ int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *sr
 		new_ref = dict_alias_reref(dst, src, ref);
 		fr_assert(new_ref != NULL);
 
-		if (dict_attr_alias_add(dst, da->name, new_ref) < 0) return -1;
+		if (dict_attr_alias_add(dst, da->name, new_ref, false) < 0) return -1;
 #endif
 	}
 
@@ -1406,9 +1406,9 @@ int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *sr
 /** Add an alias to an existing attribute
  *
  */
-int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref)
+int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref, bool from_public)
 {
-	fr_dict_attr_t const *da, *common;
+	fr_dict_attr_t const *da;
 	fr_dict_attr_t *self;
 	fr_hash_table_t *namespace;
 
@@ -1451,11 +1451,14 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	}
 
 	/*
-	 *	ALIASes can point across the tree and down, for the same parent.  ALIASes cannot go back up
-	 *	the tree.
+	 *	ALIASes from the dictionaries, need to point to a child of the same parent.  ALIASes cannot go
+	 *	back up the tree.
+	 *
+	 *	ALIASes added internally, they can break this restriction.
+	 *
+	 *	This restriction is here to prevent people from creating loops of ALIASes.
 	 */
-	common = fr_dict_attr_common_parent(parent, ref, true);
-	if (!common) {
+	if (from_public && !fr_dict_attr_common_parent(parent, ref, true)) {
 		fr_strerror_printf("Invalid ALIAS to target attribute %s of data type '%s' - the attributes do not share a parent",
 				   ref->name, fr_type_to_str(ref->type));
 		return -1;
