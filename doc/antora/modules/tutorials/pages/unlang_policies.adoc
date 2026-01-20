@@ -9,8 +9,6 @@
 - `etc/raddb/policy.d/*`   (policy.d where we create and define policies)
 - `etc/raddb/sites-available/default`  (virtual server where we call the policy)
 
-*Related man page:* `man unlang`
-
 == Preparation
 
 Look through the existing files in `etc/raddb/policy.d/` and review other documentation sections (especially the unlang reference, conditions, and regular expressions) to become familiar with:
@@ -82,6 +80,33 @@ authorize {
 ----
 
 Placing it early ensures the username is stripped and cleaned before any local authorization modules (like files, sql, ldap, etc.) try to match it.
+
+== Testing
+
+Make sure our testing user "bob" exists in `raddb/mods-config/files/authorize`:
+
+Run the server in debug mode:
+
+[source]
+----
+$ radiusd -X
+----
+
+Send an Access-Request with User-Name: bob@example.com
+
+[source,text]
+----
+echo 'User-Name = "bob@example.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+----
+Received Access-Accept Id 246 from 127.0.0.1:1812 to 0.0.0.0:56242 via lo length 74
+        Message-Authenticator = 0x1a82a50a6973affe690efe4146e6581e
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: example.com"
+        User-Name = "bob"
+----
 
 == Questions
 
