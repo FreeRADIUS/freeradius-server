@@ -1,23 +1,28 @@
-= Unlang Policies
+= Policies
 
-*Goal:* Create and use policies for abstracting business logic
+*Goal:* Create and use policies to abstract and reuse business logic in FreeRADIUS.
 
 *Time:* 10-20 minutes
 
-*File:*
+*Files / Directories:*
 
-- `etc/raddb/policy.d/*`
+- `etc/raddb/policy.d/*`   (policy.d where we create and define policies)
+- `etc/raddb/sites-available/default`  (virtual server where we call the policy)
 
-*`man` page:* unlang
+*Related man page:* `man unlang`
 
-include::partial$unlang_start.adoc[]
+== Preparation
 
-Look through the existing files in `etc/raddb/policy.d/*` and the rest
-of the documentation to get a feel for the unlang syntax and the tasks
-that policies can be used for.
+Look through the existing files in `etc/raddb/policy.d/` and review other documentation sections (especially the unlang reference, conditions, and regular expressions) to become familiar with:
 
-The basic structure of a policy is the policy name then a set of curly
-braces containing the body of the policy
+- Policy syntax
+- Attribute references (`request.`, `control.`, `reply.`, etc.)
+- Regular expression matching in `if` conditions
+- Common update operators (`:=`, `+=`, etc.)
+
+Policies are named blocks of unlang code that can be called almost anywhere a module can be called.
+
+Basic structure of a policy:
 
 ------------------------------------------------
 a_policy {
