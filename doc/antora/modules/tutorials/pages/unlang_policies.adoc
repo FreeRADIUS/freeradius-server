@@ -62,18 +62,26 @@ realm-split {
 }
 ----
 
-Create a policy `proxy_to_realm` that forwards the incoming request
-to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`.
+Task: Call this policy at the very beginning of the authorize {} section in the default virtual server.
 
-The contents of this policy should be identical to the the 'unlang'
-code written for the xref:unlang_splitting_strings.adoc[Splitting Strings]
-tutorial.
+Open the file:
 
-Call this policy at the start of the `authorize {}` section of the
-`etc/raddb/sites-available/default` virtual server.
+[source]
+----
+$ vi etc/raddb/sites-available/default
+----
 
-All the information you need to create this policy is contained within
-documentation pages and the examples in this exercise.
+Add the policy call near the top of the authorize section:
+
+[source,text]
+----
+authorize {
+    realm-split
+    # ... rest of your authorize section (chap, mschap, digest, files, etc.) ...
+}
+----
+
+Placing it early ensures the username is stripped and cleaned before any local authorization modules (like files, sql, ldap, etc.) try to match it.
 
 == Questions
 
