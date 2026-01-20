@@ -1,0 +1,36 @@
+linelog {
+        format = "This is a log message for %{User-Name}"
+        destination = file
+
+        file {
+                filename = ${logdir}/linelog
+                permissions = 0600
+                escape_filenames = no
+        }
+
+        pool {
+                start = 1
+                min = 0
+                spare = 1
+                uses = 0
+                retry_delay = 30
+                lifetime = 0
+                idle_timeout = 60
+        }
+}
+
+linelog log_stdout {
+        destination = stdout
+        format = "foo"
+}
+
+linelog log_unix_sock {
+        destination = file
+        format = "bar"
+
+        file {
+                filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
+                permissions = 0644
+                escape_filenames = no
+        }
+}
