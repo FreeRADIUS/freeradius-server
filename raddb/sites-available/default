@@ -675,22 +675,23 @@ preacct {
 #	acct_counters64
 
 	#
-	#  Session start times are *implied* in RADIUS.
+	#  Event times times are *implied* in RADIUS.
 	#  The NAS never sends a "start time".  Instead, it sends
 	#  a start packet, *possibly* with an Acct-Delay-Time.
 	#  The server is supposed to conclude that the start time
 	#  was "Acct-Delay-Time" seconds in the past.
 	#
-	#  The code below creates an explicit start time, which can
+	#  The code below creates an explicit event time, which can
 	#  then be used in other modules.  It will be *mostly* correct.
 	#  Any errors are due to the 1-second resolution of RADIUS,
 	#  and the possibility that the time on the NAS may be off.
 	#
-	#  The start time is: NOW - delay - session_length
+	#  The event time is NOW - delay
 	#
-
-#	update request {
-#	  	&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#	if (!Event-Timestamp) {
+#		update request {
+#	  		&Event-Timestamp = "%{expr: %l - %{%{Acct-Delay-Time}:-0}}"
+#		}
 #	}
 
 
