@@ -188,3 +188,190 @@ Received Access-Accept Id 237 from 127.0.0.1:1812 to 0.0.0.0:53537 via lo length
         Framed-IP-Address = 192.168.10.12
         User-Name = "bob"
 ----
+
+* If an incoming request contains a `Service-Type` attribute with a value
+  of `Framed-User` (_condition 3_), reply with a `Framed-Route` attribute
+  assigning a default route of `192.168.10.1` (`0.0.0.0/0 192.168.10.1 1`) and
+  a `Framed-IP-Netmask` attribute with a value of `255.255.255.0`.
+
+== Condition 3
+
+For testing purposes, edit the following file:
+
+[source,shell]
+----
+$ vi raddb/sites-enabled/default
+----
+
+[text]
+----
+server default {
+    recv Access-Request {
+        # Condition 1
+        if ( User-Name == "bob" ) {
+            Control.Password.Cleartext := "hello"
+            if  (Framed-Protocol == "PPP" ){
+                Reply.Framed-IP-Address := "192.168.10.12"
+            }
+            if ( Service-Type == "Framed-User" ){
+                Reply.Framed-Route := "0.0.0.0/0 192.168.10.1 1"
+                Reply.Framed-IP-Netmask := 255.255.255.0
+            }
+        }
+    }
+}
+----
+
+Execute the following command to test this configuration:
+[source,text]
+----
+echo 'User-Name = "bob",
+User-Password = "hello",
+Framed-Protocol = "PPP",
+Service-Type = "Framed-User"' | radclient -x 127.0.0.1 auth testing123
+----
+
+=== Debug Log Response
+
+[text]
+----
+(2)    Running 'recv Access-Request' from file ./scripts/bin/../../raddb/sites-enabled/default
+(2)    recv Access-Request {
+(2)      if ( User-Name == "bob" )  {
+(2)        | ==
+(2)            | User-Name
+(2)              | %{User-Name}
+(2)              | --> bob
+(2)        | ({bob} == {bob})
+(2)        | --> true
+(2)        Control.Password.Cleartext := "hello"
+(2)        if (Framed-Protocol == "PPP" ) {
+(2)          | ==
+(2)              | Framed-Protocol
+(2)                | %{Framed-Protocol}
+(2)                | --> PPP
+(2)          | ({PPP} == {PPP})
+(2)          | --> true
+(2)          Reply.Framed-IP-Address := 192.168.10.12
+(2)        } # if (Framed-Protocol == "PPP" ) (...)
+(2)        if ( Service-Type == "Framed-User" ) {
+(2)          | ==
+(2)              | Service-Type
+(2)                | %{Service-Type}
+(2)                | --> Framed-User
+(2)          | ({Framed-User} == {Framed-User})
+(2)          | --> true
+(2)          Reply.Framed-Route := "0.0.0.0/0 192.168.10.1 1"
+(2)          Reply.Framed-IP-Netmask := 255.255.255.0
+(2)        }
+----
+
+=== Server Response
+
+[text]
+----
+Sent Access-Request Id 237 from 0.0.0.0:49684 to 127.0.0.1:1812 length 73
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+        Framed-Protocol = ::PPP
+        Service-Type = ::Framed-User
+Received Access-Accept Id 237 from 127.0.0.1:1812 to 0.0.0.0:49684 via lo length 81
+        Message-Authenticator = 0x47734ce6231d0376d41ec238771b94b7
+        Framed-IP-Address = 192.168.10.12
+        Framed-Route = "0.0.0.0/0 192.168.10.1 1"
+        Framed-IP-Netmask = 255.255.255.0
+        User-Name = "bob"
+
+----
+
+Again test the server with username "bob" and password "hello". Use the
+debug output of the server to see which unlang conditions evaluated to
+true.
+
+Perform other authentication tests, adding the appropriate attributes to
+the test requests to exercise the different conditions. If you already have
+test packets from the xref:matching_users.adoc[Matching Users] exercises,
+you may use those, otherwise continue until you have packets that will match:
+
+=== Conditions 1 and 2, but not 3
+
+Execute the following command to test this configuration:
+[source,text]
+----
+echo "User-Name = bob
+User-Password = hello
+Framed-Protocol = PPP" | radclient -x 127.0.0.1 auth testing123
+----
+
+==== Response
+
+[text]
+----
+(0)  Sending Access-Accept ID 131 from 0.0.0.0/0:1812 to 127.0.0.1:53913 length 49 via socket radius_udp server * port 1812
+(0)    Framed-IP-Address = 192.168.10.12
+(0)    Packet-Type = ::Access-Accept
+(0)    User-Name = "bob"
+(0)  Finished request
+----
+
+=== Conditions 1 and 3, but not 2
+
+Execute the following command to test this configuration:
+[source,text]
+----
+echo "User-Name = bob
+User-Password = hello
+Service-Type = Framed-User" | radclient -x 127.0.0.1 auth testing123
+----
+
+==== Response
+
+[text]
+----
+(1)  Sending Access-Accept ID 63 from 0.0.0.0/0:1812 to 127.0.0.1:57840 length 75 via socket radius_udp server * port 1812
+(1)    Framed-Route = "0.0.0.0/0 192.168.10.1 1"
+(1)    Framed-IP-Netmask = 255.255.255.0
+(1)    Packet-Type = ::Access-Accept
+(1)    User-Name = "bob"
+(1)  Finished request
+----
+
+=== Conditions 1, 2, and 3
+
+Execute the following command to test this configuration:
+[source,text]
+----
+echo "User-Name = bob
+User-Password = hello
+Framed-Protocol = PPP
+Service-Type = Framed-User" | radclient -x 127.0.0.1 auth testing123
+----
+
+==== Response
+
+[text]
+----
+(2)  Sending Access-Accept ID 153 from 0.0.0.0/0:1812 to 127.0.0.1:41313 length 81 via socket radius_udp server * port 1812
+(2)    Framed-IP-Address = 192.168.10.12
+(2)    Framed-Route = "0.0.0.0/0 192.168.10.1 1"
+(2)    Framed-IP-Netmask = 255.255.255.0
+(2)    Packet-Type = ::Access-Accept
+(2)    User-Name = "bob"
+(2)  Finished request
+----
+
+== Questions
+
+1.  What are the advantages of unlang over the files module when creating
+    policies?
+2.  What are the advantages of the files modules over unlang?  Are there
+    any situations where you think the files module might be better suited
+    to a task than unlang?
+3.  Can you think of any efficiencies the users module might have over
+    multiple conditions, where policies are being assigned to many different
+    users?
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
+
