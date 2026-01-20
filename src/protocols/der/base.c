@@ -184,6 +184,18 @@ bool fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag)
 }
 
 
+char const *fr_der_dict_attr_to_shortname(fr_dict_attr_t const *da)
+{
+	fr_der_attr_flags_t const *flags;
+
+	if (da->dict != dict_der) return NULL;
+
+	flags = fr_der_attr_flags(da);
+	if (!flags || !flags->has_shortname) return NULL;
+
+	return flags->shortname;
+}
+
 int fr_der_global_init(void)
 {
 	if (instance_count > 0) {
@@ -265,6 +277,11 @@ static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNU
 	if (!fr_type_is_leaf((*da_p)->type)) {
 		fr_strerror_printf("Cannot set 'default=...' for attribute %s DER type %s",
 				   (*da_p)->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	if (flags->has_shortname) {
+		fr_strerror_const("Cannot set 'default=...' when there is already a 'shortname=...'");
 		return -1;
 	}
 
@@ -433,6 +450,33 @@ static int dict_flag_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSE
 	}
 
 	flags->leaf = true;
+
+	return 0;
+}
+
+static int dict_flag_shortname(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	if (!fr_type_is_leaf((*da_p)->type)) {
+		fr_strerror_printf("Cannot set 'shortname=...' for attribute %s DER type %s",
+				   (*da_p)->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	if (flags->has_default_value) {
+		fr_strerror_const("Cannot set 'shortname=...' when there is already a 'default=...'");
+		return -1;
+	}
+
+	/*
+	 *	The shortnames are parented from the dict root.  That way we don't need to copy the values
+	 *	when we clone the attribute, we can just copy the pointer.
+	 */
+	flags->shortname = talloc_strdup(fr_dict_unconst((*da_p)->dict), value);
+	if (flags->shortname) return -1;
+
+	flags->has_shortname = true;
 
 	return 0;
 }
@@ -638,6 +682,7 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("optional"),       	{ .func = dict_flag_optional} },
 	{ L("sequence_of"),	{ .func = dict_flag_sequence_of, .needs_value = true } },
 	{ L("set_of"),		{ .func = dict_flag_set_of, .needs_value = true } },
+	{ L("shortname"),      	{ .func = dict_flag_shortname,.needs_value = true } },
 	{ L("size"),		{ .func = dict_flag_size, .needs_value=true } },
 };
 

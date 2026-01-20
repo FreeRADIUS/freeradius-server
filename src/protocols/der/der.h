@@ -97,6 +97,7 @@ typedef struct {
 		fr_der_tag_t 		sequence_of;
 		fr_der_tag_t 		set_of;
 		fr_value_box_t		*default_value;
+		char const		*shortname;
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
@@ -109,6 +110,7 @@ typedef struct {
 	bool 			is_oid_and_value : 1;	//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool			has_default_value : 1;	//!< a default value exists
+	bool			has_shortname : 1;	//!< has a short name
 	bool 			leaf : 1;		//!< encode this OID along with its value
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
@@ -144,6 +146,7 @@ fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type);
 bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag);
 bool	fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2);
 char	const *fr_der_tag_to_str(fr_der_tag_t tag);
+char	const *fr_der_dict_attr_to_shortname(fr_dict_attr_t const *da);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);
