@@ -24,24 +24,43 @@ Policies are named blocks of unlang code that can be called almost anywhere a mo
 
 Basic structure of a policy:
 
-------------------------------------------------
-a_policy {
-	if (User-Name =~ /@([\w.+])/) {
-		reply.Reply-Message := "Hello remote %{User-Name}"
-	}
+[source,text]
+----
+policy_name {
+    # unlang statements here
 }
-------------------------------------------------
+----
+Example:
 
-Policies defined within `etc/raddb/policy.d/*` can be called from
-anywhere in the server where modules can be called.
+You have already created a policy named realm-split in the xref:unlang_splitting_strings.adoc[Splitting Strings] tutorial.
 
-------------------------------------------------
-authorize {
-	...
-	a_policy
-	...
+File: etc/raddb/policy.d/realm-split
+
+[source,text]
+----
+realm-split {
+    # Check if User-Name exists and contains an "@" symbol
+    if (request.User-Name =~ /^([^@]+)@(.+)$/) {
+
+        # First capture group - username part (before @)
+        request.Stripped-User-Name := %regex.match(1)
+
+        # Second capture group - domain/realm part (after @)
+        control.Stripped-User-Domain := %regex.match(2)
+
+        # IMPORTANT: Override User-Name with just the username part
+        # This allows the users file to match on "bob" instead of "bob@realm1.com"
+        request.User-Name := request.Stripped-User-Name
+
+        # Add reply attributes to validate the split worked correctly
+        # Using Reply-Message to show both values (visible in reply)
+        reply += {
+            Reply-Message = "User: %{request.Stripped-User-Name}"
+            Reply-Message = "Domain: %{control.Stripped-User-Domain}"
+        }
+    }
 }
-------------------------------------------------
+----
 
 Create a policy `proxy_to_realm` that forwards the incoming request
 to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`.
