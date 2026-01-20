@@ -1,55 +1,114 @@
-= Unlang Policies
+= Policies
 
-*Goal:* Create and use policies for abstracting business logic
+*Goal:* Create and use policies to abstract and reuse business logic in FreeRADIUS.
 
 *Time:* 10-20 minutes
 
-*File:*
+*Files / Directories:*
 
-- `etc/raddb/policy.d/*`
+- `etc/raddb/policy.d/*`   (policy.d where we create and define policies)
+- `etc/raddb/sites-available/default`  (virtual server where we call the policy)
 
-*`man` page:* unlang
+== Preparation
 
-include::partial$unlang_start.adoc[]
+Look through the existing files in `policy.d/` and review
+other documentation sections (especially the unlang reference,
+conditions, and regular expressions) to become familiar with:
 
-Look through the existing files in `etc/raddb/policy.d/*` and the rest
-of the documentation to get a feel for the unlang syntax and the tasks
-that policies can be used for.
+- Policy syntax
+- Attribute references (`request.`, `control.`, `reply.`, etc.)
+- Regular expression matching in `if` conditions
+- Common update operators (`:=`, `+=`, etc.)
 
-The basic structure of a policy is the policy name then a set of curly
-braces containing the body of the policy
+Policies are named blocks of unlang code that can be called almost
+anywhere a module can be called.
 
-------------------------------------------------
-a_policy {
-	if (User-Name =~ /@([\w.+])/) {
-		reply.Reply-Message := "Hello remote %{User-Name}"
-	}
+Basic structure of a policy:
+
+[source,text]
+----
+policy_name {
+    # unlang statements here
 }
-------------------------------------------------
+----
+Example:
 
-Policies defined within `etc/raddb/policy.d/*` can be called from
-anywhere in the server where modules can be called.
+You should have already created a policy named `realm-split` in the
+xref:unlang_splitting_strings.adoc[Splitting Strings] tutorial.
 
-------------------------------------------------
-authorize {
-	...
-	a_policy
-	...
+File: etc/raddb/policy.d/realm-split
+
+[source,text]
+----
+realm-split {
+    # Check if User-Name exists and contains an "@" symbol
+    if (request.User-Name =~ /^([^@]+)@(.+)$/) {
+
+        # First capture group - username part (before @)
+        request.Stripped-User-Name := %regex.match(1)
+
+        # Second capture group - domain/realm part (after @)
+        control.Stripped-User-Domain := %regex.match(2)
+
+        # Add reply attributes to validate the split worked correctly
+        # Using Reply-Message to show both values (visible in reply)
+        reply += {
+            Reply-Message = "User: %{request.Stripped-User-Name}"
+            Reply-Message = "Domain: %{control.Stripped-User-Domain}"
+        }
+    }
 }
-------------------------------------------------
+----
 
-Create a policy `proxy_to_realm` that forwards the incoming request
-to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`.
+Task: Call this policy at the very beginning of the `recv Access-Request`
+section in the default virtual server.
 
-The contents of this policy should be identical to the the 'unlang'
-code written for the xref:unlang_splitting_strings.adoc[Splitting Strings]
-tutorial.
+Open the file:
 
-Call this policy at the start of the `authorize {}` section of the
-`etc/raddb/sites-available/default` virtual server.
+[source]
+----
+$ vi sites-available/default
+----
 
-All the information you need to create this policy is contained within
-documentation pages and the examples in this exercise.
+Add the policy call near the top of the authorize section:
+
+[source,text]
+----
+recv Access-Request {
+    realm-split
+    # ... rest of the section (chap, mschap, digest, files, etc.) ...
+}
+----
+
+Placing it early ensures the User-Name is stripped before any local
+authorization modules (like files, sql, ldap, etc.) access it.
+
+== Testing
+
+Make sure the testing user "bob" exists in `mods-config/files/authorize`:
+
+Run the server in debug mode:
+
+[source]
+----
+$ radiusd -X
+----
+
+Send an Access-Request with User-Name: bob@example.com
+
+[source,text]
+----
+echo 'User-Name = "bob@example.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+**Expected output:**
+----
+Received Access-Accept Id 246 from 127.0.0.1:1812 to 0.0.0.0:56242 via lo length 74
+        Message-Authenticator = 0x1a82a50a6973affe690efe4146e6581e
+        Reply-Message = "User: bob"
+        Reply-Message = "Domain: example.com"
+        User-Name = "bob"
+----
 
 == Questions
 
