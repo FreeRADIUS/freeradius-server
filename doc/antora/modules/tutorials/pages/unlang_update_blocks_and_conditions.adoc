@@ -46,3 +46,65 @@ the `User-Name` in the request is 'bob'.
 * Within that condition block, set the control attribute `Password.Cleartext`
 to be 'hello', and instruct the server to run the `authenticate { ... }`
 subsection for `pap`.
+
+== Condition 1
+
+For testing purposes, edit the following file:
+
+[source,shell]
+----
+$ vi raddb/sites-enabled/default
+----
+
+[text]
+----
+server default {
+    recv Access-Request {
+        # Condition 1
+        if (User-Name == "bob") {
+        Control.Password.Cleartext := "hello"
+        }
+    }
+}
+----
+We have defined the cleartext password for the user `bob` here, instead of defining it in `raddb/mods-config/files/authorize`, as usual.
+
+Execute the following command to test this configuration:
+[source,text]
+----
+echo -e 'User-Name = "bob",
+User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+After executing, verify that you see an Access-Accept returned despite the files module not being called.
+
+=== Debug Log Response
+
+[text]
+----
+(0)    Running 'recv Access-Request' from file ./scripts/bin/../../raddb/sites-enabled/default
+(0)    recv Access-Request {
+(0)      if ( User-Name == "bob" )  {
+(0)        | ==
+(0)            | User-Name
+(0)              | %{User-Name}
+(0)              | --> bob
+(0)        | ({bob} == {bob})
+(0)        | --> true
+(0)        Control.Password.Cleartext := "hello"
+(0)      }
+----
+
+=== Server Response
+
+[text]
+----
+Sent Access-Request Id 84 from 0.0.0.0:54238 to 127.0.0.1:1812 length 61
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 84 from 127.0.0.1:1812 to 0.0.0.0:54238 via lo length 43
+        Message-Authenticator = 0x6bdd99181d25a5c61b7577815379d877
+        User-Name = "bob"
+----
+
