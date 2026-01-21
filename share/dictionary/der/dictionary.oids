@@ -72,12 +72,12 @@ ATTRIBUTE	joint-iso-itu-t				2	sequence
 ATTRIBUTE	ds					2.5	sequence
 
 ATTRIBUTE	attributeType				2.5.4	sequence
-ATTRIBUTE	commonName				2.5.4.3	printablestring leaf
-ATTRIBUTE	countryName				2.5.4.6	printablestring size=2,leaf
+ATTRIBUTE	commonName				2.5.4.3	printablestring leaf,shortname=CN
+ATTRIBUTE	countryName				2.5.4.6	printablestring size=2,leaf,shortname=C
 ATTRIBUTE	serialNumber				2.5.4.5	printablestring leaf
-ATTRIBUTE	localityName				2.5.4.7	string  leaf
-ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  leaf
-ATTRIBUTE	organizationName			2.5.4.10	printablestring leaf
+ATTRIBUTE	localityName				2.5.4.7	string  leaf,shortname=L
+ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  leaf,shortname=ST
+ATTRIBUTE	organizationName			2.5.4.10	printablestring leaf,shortname=O
 
 ATTRIBUTE	certificateExtension			2.5.29	sequence
 
