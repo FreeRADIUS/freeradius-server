@@ -128,16 +128,18 @@ done:
 }
 
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp);
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
+			       fr_dict_attr_t const *da);
 
-static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list,
+				 fr_dict_attr_t const *parent)
 {
 	fr_pair_t *vp;
 
 	for (vp = fr_pair_list_next(list, NULL);
 	     vp != NULL;
 	     vp = fr_pair_list_next(list, vp)) {
-		xlat_debug_attr_vp(request, vp);
+		xlat_debug_attr_vp(request, vp, parent);
 	}
 }
 
@@ -147,7 +149,8 @@ static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
+			       fr_dict_attr_t const *parent)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
@@ -162,7 +165,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 	 *	Squash the names down if necessary.
 	 */
 	if (!RDEBUG_ENABLED3) {
-		slen = fr_pair_print_name(&sbuff, NULL, &vp);
+		slen = fr_pair_print_name(&sbuff, parent, &vp);
 	} else {
 		slen = fr_sbuff_in_sprintf(&sbuff, "%s %s ", vp->da->name, fr_tokens[vp->op]);
 	}
@@ -172,7 +175,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 	case FR_TYPE_STRUCTURAL:
 		RIDEBUG2("%s{", buffer);
 		RINDENT();
-		xlat_debug_attr_list(request, &vp->vp_group);
+		xlat_debug_attr_list(request, &vp->vp_group, vp->da);
 		REXDENT();
 		RIDEBUG2("}");
 		break;
@@ -303,7 +306,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	for (vp = fr_dcursor_current(cursor);
 	     vp;
 	     vp = fr_dcursor_next(cursor)) {
-		xlat_debug_attr_vp(request, vp);
+		xlat_debug_attr_vp(request, vp, NULL);
 	}
 	REXDENT();
 
