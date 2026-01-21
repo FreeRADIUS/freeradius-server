@@ -474,7 +474,7 @@ static int dict_flag_shortname(fr_dict_attr_t **da_p, char const *value, UNUSED 
 	 *	when we clone the attribute, we can just copy the pointer.
 	 */
 	flags->shortname = talloc_strdup(fr_dict_unconst((*da_p)->dict), value);
-	if (flags->shortname) return -1;
+	if (!flags->shortname) return -1;
 
 	flags->has_shortname = true;
 
@@ -1077,7 +1077,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 	if ((da->type == FR_TYPE_GROUP) && !da->flags.allow_flat) {
 		if ((da->parent == attr_oid_tree) || da->parent->flags.allow_flat) {
 			da->flags.allow_flat = true;
-		} else {			
+		} else {
 			fr_dict_attr_t const *oid;
 
 			for (oid = da->parent; !oid->flags.is_root; oid = oid->parent) {
