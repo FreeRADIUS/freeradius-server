@@ -2597,6 +2597,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	COPY_FIELD(client, src_ipaddr);
 	COPY_FIELD(client, require_message_authenticator);
 	COPY_FIELD(client, require_message_authenticator_is_set);
+#ifdef NAS_VIOLATES_RFC
+	COPY_FIELD(client, allow_vulnerable_clients);
+#endif
 	COPY_FIELD(client, limit_proxy_state);
 	COPY_FIELD(client, limit_proxy_state_is_set);
 	COPY_FIELD(client, use_connected);
