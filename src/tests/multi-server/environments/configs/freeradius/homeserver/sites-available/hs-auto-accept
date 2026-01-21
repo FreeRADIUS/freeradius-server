@@ -9,9 +9,6 @@ server hs-auto-accept {
 		}
 	}
 
-	dictionary {
-	}
-
 	listen authentication {
 		type = Access-Request
 		type = Status-Server
@@ -107,7 +104,6 @@ server hs-auto-accept {
 
 	send Access-Challenge {
 		attr_filter.access_challenge
-		handled
 	}
 
 	send Access-Reject {
@@ -116,32 +112,26 @@ server hs-auto-accept {
 		attr_filter.access_reject
 		eap
 		remove_reply_message_if_eap
-		delay_reject
 	}
 
 	recv Accounting-Request {
-		acct_unique
 		files_accounting
 	}
 
 	accounting Start {
-		-sql
 	}
 
 	accounting Stop {
-		-sql
+
 	}
 
 	accounting Interim-Update {
-		-sql
 	}
 
 	accounting Accounting-On {
-		-sql
 	}
 
 	accounting Accounting-Off {
-		-sql
 	}
 
 	accounting Failed {
