@@ -730,7 +730,7 @@ send_reply:
 	 *	Cache the session state context.
 	 */
 	if ((state_create(request->reply_ctx, &request->reply_pairs, request, true) < 0) ||
-	    (fr_request_to_state(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_store(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
@@ -743,7 +743,7 @@ RECV(auth_cont)
 	process_tacacs_session_t	*session;
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
-	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_restore(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
@@ -810,7 +810,7 @@ RECV(auth_cont_abort)
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
-	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
+	    (fr_state_restore(inst->auth.state_tree, request) < 0)) {
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 

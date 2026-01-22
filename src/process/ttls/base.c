@@ -418,7 +418,7 @@ RESUME(access_challenge)
 	 *
 	 *	If this fails, don't respond to the request.
 	 */
-	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
+	if (fr_state_store(inst->auth.state_tree, request) < 0) {
 		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
 		UPDATE_STATE_CS(reply);
 		return CALL_SEND_STATE(state);

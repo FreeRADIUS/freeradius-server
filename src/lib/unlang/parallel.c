@@ -357,7 +357,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		 *      into the child.
 		 */
 		if (state->children[i].config.session_unique_ptr) {
-			fr_state_restore_to_child(state->children[i].request,
+			fr_state_restore_from_parent(state->children[i].request,
 						  state->children[i].config.session_unique_ptr,
 						  state->children[i].num);
 		}

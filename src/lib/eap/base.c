@@ -436,7 +436,7 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 	/*
 	 *	Re-present the previously stored child's session state if there is one
 	 */
-	fr_state_restore_to_child(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
+	fr_state_restore_from_parent(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
 
 	if (fr_pair_prepend_by_da(request->request_ctx, &vp, &request->request_pairs,
 				  attr_packet_type) < 0) return UNLANG_ACTION_FAIL;

@@ -309,7 +309,7 @@ RECV(access_request)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
-	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
+	if (fr_state_restore(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_ACCESS_REJECT);
 	}
 
@@ -575,7 +575,7 @@ RESUME(access_challenge)
 	 *
 	 *	If this fails, don't respond to the request.
 	 */
-	if (!request->parent && fr_request_to_state(inst->auth.state_tree, request) < 0) {
+	if (!request->parent && fr_state_store(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_DO_NOT_RESPOND);
 	}
 

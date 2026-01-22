@@ -27,12 +27,12 @@
  * entry holds data that should be available during the complete lifecycle
  * of the authentication attempt.
  *
- * When a request is complete, #fr_request_to_state is called to transfer
+ * When a request is complete, #fr_state_store is called to transfer
  * ownership of the state fr_pair_ts and state_ctx (which the fr_pair_ts
  * are allocated in) to a #fr_state_entry_t.  This #fr_state_entry_t holds the
  * value of the State attribute, that will be send out in the response.
  *
- * When the next request is received, #fr_state_to_request is called to transfer
+ * When the next request is received, #fr_state_restore is called to transfer
  * the fr_pair_ts and state ctx to the new request.
  *
  * The ownership of the state_ctx and state fr_pair_ts is transferred as below:
@@ -619,7 +619,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/*
-	 *	If fr_state_to_request was never called, this ensures
+	 *	If fr_state_restore was never called, this ensures
 	 *	the state owned by entry is freed, otherwise this is
 	 *	mostly a NOOP, other than freeing the memory held by
 	 *	the entry.
@@ -627,7 +627,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	TALLOC_FREE(entry);
 
 	/*
-	 *	If fr_state_to_request was called, then the request
+	 *	If fr_state_restore was called, then the request
 	 *	holds the existing state data.  We need to destroy it,
 	 *	and return the request to the state it was in when
 	 *	it was first allocated, just in case a user does something
@@ -656,7 +656,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
  *	- 0 on success (state restored)
  *	- -1 if a state entry has already been thawed by a another request.
  */
-int fr_state_to_request(fr_state_tree_t *state, request_t *request)
+int fr_state_restore(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
 	fr_pair_t		*vp;
@@ -733,7 +733,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
  *
  * Also creates a new state entry.
  */
-int fr_request_to_state(fr_state_tree_t *state, request_t *request)
+int fr_state_store(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
@@ -854,7 +854,7 @@ void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int uniq
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_restore_to_child(request_t *child, void const *unique_ptr, int unique_int)
+void fr_state_restore_from_parent(request_t *child, void const *unique_ptr, int unique_int)
 {
 	state_child_entry_t	*child_entry;
 	request_t		*request = child; /* Stupid logging */

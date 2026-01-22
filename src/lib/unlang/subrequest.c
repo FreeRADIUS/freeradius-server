@@ -371,7 +371,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UN
 	 *	Ensure we restore the session state information
 	 *      into the child.
 	 */
-	if (cr->config.session_unique_ptr) fr_state_restore_to_child(child,
+	if (cr->config.session_unique_ptr) fr_state_restore_from_parent(child,
 								     cr->config.session_unique_ptr,
 								     cr->num);
 	/*
