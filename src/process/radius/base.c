@@ -125,7 +125,7 @@ typedef struct {
 	CONF_SECTION	*disconnect_nak;
 
 	CONF_SECTION	*do_not_respond;
-	CONF_SECTION	*protocol_error;	/* @todo - allow protocol error as a reject reply? */
+	CONF_SECTION	*protocol_error;
 
 	CONF_SECTION	*new_client;
 	CONF_SECTION	*add_client;
@@ -731,9 +731,10 @@ RESUME(status_server)
 }
 #endif
 
-RESUME(protocol_error)
+RESUME_FLAG(protocol_error,UNUSED,)
 {
 	fr_pair_t 			*vp;
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -761,6 +762,13 @@ RESUME(protocol_error)
 			vp->vp_uint32 = FR_ERROR_CAUSE_VALUE_INVALID_REQUEST;
 			fr_pair_append(&request->reply_pairs, vp);
 		}
+	}
+
+	/*
+	 *	Discard any session state associated with the request.
+	 */
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		fr_state_discard(inst->auth.state_tree, request);
 	}
 
 	/*
