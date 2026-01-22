@@ -1165,20 +1165,68 @@ eap {
 	#	tls = tls-common
 
 		#
-		#  Automatically go through the workflow of first machine, then user
-		#  authentication.
+		#  Define which inner authentications are allowed, and
+		#  in what order.
 		#
 		#  allowed values:  	"machine,user"
 		#  	   		"user,machine"
 		#			"user"
 		#			"machine"
 		#
-		#  If this isn't set, then TEAP likely won't work.
+		#  If only one method is listed, then that is the only
+		#  method which is allowed.  The server will reject
+		#  authentication if the defined method isn't
+		#  provided.
+		#
+		#  If only one method is listed, then the server will
+		#  not do the method which isn't listed.  The server
+		#  won't reject authentication if the supplicant tries
+		#  an extra method, but the supplicant is likely to
+		#  fail in that case.
+		#
+		#  If two methods are listed, then both must be
+		#  succeed in order for authentication to succeed.  If
+		#  one inner method fails, then authentication is
+		#  rejected.
+		#
+		#  The order of "machine,user" versus "user,machine"
+		#  doesn't matter for authentication.  Both methods
+		#  must still succeed.
+		#
+		#  The configuration of "machine,user" versus
+		#  "user,machine" changes what method the server
+		#  initiates when the supplicant connects.  When
+		#  authentication starts, the server will initiate the
+		#  first method.  Once that method succeeds, the
+		#  server will initiate the second method.
+		#
+		#  Note that the server can suggest "user", and the
+		#  supplicant can reply with "machine" authentication
+		#  (or vice versa).  This is allowed, and doesn't
+		#  affect the status of authentication.
+		#
+		#  OPTIONAL
+		#
+		#  As a special case if two methods are configured,
+		#  then one method can be prefixed with a "?"
+		#  character.  This configuration indicates that the
+		#  method is optional.  That is, the server will
+		#  _suggest_ that method, but will not _require_ it.
+		#
+		#	identity_types = "machine,?user"
+		#
+		#  If the optional method isn't sent by the
+		#  supplicant, that's OK.  However, the other method
+		#  is still mandatory, and it still must succeed.
+		#
+		#  This configuration is most useful when you want to
+		#  allow machines to access the network, even if a
+		#  user isn't logged into the desktop on that machine.
 		#
 		#  This configuration sets &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type with the
 		#  relevant values.  The TEAP module then picks those values, in order, to authenticate the
 		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
-		#  manually, but that is substantially more complicated.
+		#  manually, but doing that is substantially more complicated.
 		#
 	#	identity_types = "machine,user"
 
