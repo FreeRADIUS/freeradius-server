@@ -161,10 +161,15 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 
 	case XLAT_TMPL:
 		fr_assert(node->fmt != NULL);
-		if (tmpl_is_attr(node->vpt) && (node->fmt[0] == '&')) {
+
+		/*
+		 *	Just print the attribute name, or the nested xlat.
+		 */
+		if (tmpl_is_attr(node->vpt) || (tmpl_is_xlat(node->vpt))) {
 			return fr_sbuff_in_strcpy(out, node->fmt);
+
 		} else {
-			return fr_sbuff_in_sprintf(out, "%%{%pV}", fr_box_strvalue_buffer(node->fmt));
+			return fr_sbuff_in_sprintf(out, "%%{%s}", node->fmt);
 		}
 
 #ifdef HAVE_REGEX
