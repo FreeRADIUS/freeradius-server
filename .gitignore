@@ -52,6 +52,9 @@ icon.png
 # OS specific cruft
 .DS_Store
 
+# Claude Code
+CLAUDE.md
+
 # Archives
 freeradius-server-*tar*
 
