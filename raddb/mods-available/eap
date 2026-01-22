@@ -84,6 +84,11 @@ eap {
 	#
 	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
 	#
+	#  In addition, setting `type = md5` will load the configuration section `md5 { ... }`.
+	#  There is no need to "comment out" the entire configuration section for EAP types
+	#  which are not used.  Instead, simply comment out or delete the `type = ..` entry
+	#  for that EAP method, and the entire configuration section will be ignored.
+	#
 	#  If the `control.EAP-Type` attribute is set, then that is used to form the list of
 	#  allowed EAP types, with the first instance being the default type and others also
 	#  being allowed.
@@ -109,7 +114,6 @@ eap {
 	#  WARNING: EAP-MD5 authentication cannot be used for wireless
 	#  connections.  It is insecure, and does not provide for dynamic WEP
 	#  keys or WPA enterprise.
-
 	#
 	md5 {
 	}
@@ -121,16 +125,16 @@ eap {
 	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
 	#  is no not used.
 	#
-#	pwd {
-#		group = 19
+	pwd {
+		group = 19
 
-#		server_id = theserver@example.com
+		server_id = theserver@example.com
 
 		#
 		#  fragment_size:: This has the same meaning as for TLS.
 		#
-#		fragment_size = 1020
-#	}
+		fragment_size = 1020
+	}
 
 	#
 	#  ### Generic Token Card
