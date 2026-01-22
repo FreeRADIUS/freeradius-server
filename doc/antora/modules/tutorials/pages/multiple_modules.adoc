@@ -116,6 +116,54 @@ $ more /var/log/radius/radacct/byname/*
 $ more /var/log/radius/radacct/bydate/*
 ------------------------------------------------
 
+Once you navigate to `/var/log/radius/radacct/byname/*`, you can view the detailed RADIUS access request packet logs.
+
+------------------------------------------------
+$ cat /usr/local/var/log/radius/radacct/byname/bob
+Wed Jan 21 10:49:07 2026
+	Message-Authenticator = 0xaacc2a1e9975dd0e3844cb3c16cb25c6
+	User-Name = "bob"
+	CHAP-Password = 0xcfae1948e618e50b063faac5f34d505cda
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	NAS-Port-Type = ::Virtual
+	CHAP-Challenge = 0xe74c71c9c3c8d780ec5cefe344276923
+	Net.Src.IP = 127.0.0.1
+	Net.Src.Port = 39245
+	Net.Dst.IP = 127.0.0.1
+	Net.Dst.Port = 1812
+	Net.Timestamp = "2026-01-21T10:49:07Z"
+	Net.Interface = "lo"
+	Packet.Id = 64
+	Packet.Authenticator = 0x6541d513a41109f3134d57691fa11d26
+	Packet-Type = ::Access-Request
+	Timestamp = 1768992547
+------------------------------------------------
+
+Verify that the same RADIUS Access-Request is also logged in the files under `/var/log/radius/radacct/bydate/*`.
+
+------------------------------------------------
+$ cat /usr/local/var/log/radius/radacct/bydate/2112026
+Wed Jan 21 10:49:07 2026
+	Message-Authenticator = 0xaacc2a1e9975dd0e3844cb3c16cb25c6
+	User-Name = "bob"
+	CHAP-Password = 0xcfae1948e618e50b063faac5f34d505cda
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 501
+	NAS-Port-Type = ::Virtual
+	CHAP-Challenge = 0xe74c71c9c3c8d780ec5cefe344276923
+	Net.Src.IP = 127.0.0.1
+	Net.Src.Port = 39245
+	Net.Dst.IP = 127.0.0.1
+	Net.Dst.Port = 1812
+	Net.Timestamp = "2026-01-21T10:49:07Z"
+	Net.Interface = "lo"
+	Packet.Id = 64
+	Packet.Authenticator = 0x6541d513a41109f3134d57691fa11d26
+	Packet-Type = ::Access-Request
+	Timestamp = 1768992547
+------------------------------------------------
+
 Once you have verified that the files exist and that the correct
 information is logged in them, you may stop the server.
 
