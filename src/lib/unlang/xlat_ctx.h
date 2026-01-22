@@ -121,7 +121,7 @@ struct xlat_thread_inst_ctx_s {
  * @param[in] _el	To register any I/O handlers or timers against.
  * @param[in] _uctx	passed when the instantiation function was registered.
  */
-#define XLAT_THREAD_INST_CTX(_inst, _thread, _ex, _mctx, _el, _uctx) &(xlat_thread_inst_ctx_t){ .inst = _inst, .ex = _ex, .mctx = _mctx, .el = _el, .uctx = _uctx }
+#define XLAT_THREAD_INST_CTX(_inst, _thread, _ex, _mctx, _el, _uctx) &(xlat_thread_inst_ctx_t){ .inst = _inst, .thread = _thread, .ex = _ex, .mctx = _mctx, .el = _el, .uctx = _uctx }
 
 #ifdef __cplusplus
 }
