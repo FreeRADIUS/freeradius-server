@@ -2131,6 +2131,9 @@ do_suffix:
 			} else if (parent && parent->flags.is_root) {
 				our_parent = namespace = parent;
 
+			} else if (request_attr_is_list(da)) {
+				our_parent = namespace = NULL;
+
 			} else if (at_rules->dict_def) {
 				our_parent = namespace = fr_dict_root(at_rules->dict_def);
 
