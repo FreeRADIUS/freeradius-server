@@ -599,6 +599,7 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 	return entry;
 }
 
+
 /** Called when sending an Access-Accept/Access-Reject to discard state information
  *
  */
@@ -617,25 +618,26 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	 *
 	 *	Relying on request data also means that the user can
 	 *	nuke request.State, and the code will still work.
+	 *
+	 *	Find a pointer to the entry, but leave the request
+	 *	data associated with the entry.  That way when the
+	 *	request is freed, the entry will also be freed.
 	 */
-	entry = request_data_get(request, state, 0);
+	entry = request_data_reference(request, state, 0);
 	if (!entry) return;
 
+	/*
+	 *	Unlink the entry to shrink the state tree, and make
+	 *	sure that the state is never re-used.
+	 *
+	 *	However, we don't wipe the session-state list, as the
+	 *	request can still be processed through a "finally"
+	 *	section.  And we want the session state data to be
+	 *	usable from there.
+	 */
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	/*
-	 *	Free the entry, and any cached session-state attributes.
-	 */
-	TALLOC_FREE(entry);
-
-	/*
-	 *	Nuke any session-state attributes from the current request.
-	 */
-	talloc_free(request_state_replace(request, NULL));
-
-	RDEBUG3("%s - discarded", state->da->name);
 
 	return;
 }
