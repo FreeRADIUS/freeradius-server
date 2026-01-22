@@ -1076,7 +1076,6 @@ static int timer_list_shared_deferred(fr_timer_list_t *tl)
 	return 0;
 }
 
-
 static uint64_t timer_list_lst_num_events(fr_timer_list_t *tl)
 {
 	return fr_lst_num_elements(tl->lst);
@@ -1256,6 +1255,8 @@ static fr_timer_list_t *timer_list_alloc(TALLOC_CTX *ctx, fr_timer_list_t *paren
 
 /** Allocate a new lst based timer list
  *
+ * @note Entries may be inserted in any order.
+ *
  * @param[in] ctx	to insert head timer event into.
  * @param[in] parent	to insert the head timer event into.
  */
@@ -1281,6 +1282,8 @@ fr_timer_list_t *fr_timer_list_lst_alloc(TALLOC_CTX *ctx, fr_timer_list_t *paren
 }
 
 /** Allocate a new sorted event timer list
+ *
+ * @note Entries must be inserted in the order that they will fire.
  *
  * @param[in] ctx	to allocate the event timer list from.
  * @param[in] parent	to insert the head timer event into.
