@@ -1250,9 +1250,11 @@ void		fr_value_box_increment(fr_value_box_t *vb)
 
 
 
-void		fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
+void		fr_value_box_set_cursor_shallow(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
 
 #define		fr_value_box_get_cursor(_dst) talloc_get_type_abort((_dst)->vb_cursor, fr_dcursor_t)
+
+void		fr_value_box_set_void_shallow(fr_value_box_t *dst, void const *ptr);
 
 void		fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da);
 

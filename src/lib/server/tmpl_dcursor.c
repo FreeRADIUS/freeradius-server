@@ -540,7 +540,7 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t
 	}
 
 set_cursor:
-	fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+	fr_value_box_set_cursor_shallow(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
 	return vp;
 }
 

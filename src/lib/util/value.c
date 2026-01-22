@@ -663,6 +663,10 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_ATTR:
 	case FR_TYPE_NULL:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_PAIR_CURSOR:
 		break;
 
 	case FR_TYPE_TLV:
@@ -670,7 +674,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_UNION:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_MAX:
 		fr_assert(0);
 		break;
 	}
@@ -863,8 +867,14 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 */
 		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
 
+	case FR_TYPE_VOID:
+		return CMP(a->vb_void, b->vb_void);
+
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
+	case FR_TYPE_MAX:
 		break;
 
 	/*
@@ -4539,6 +4549,11 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_attr = src->vb_attr;
 		fr_value_box_copy_meta(dst, src);
 		break;
+
+	case FR_TYPE_VOID:
+		dst->vb_void = src->vb_void;
+		fr_value_box_copy_meta(dst, src);
+		break;
 	}
 }
 
@@ -5191,13 +5206,25 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 /*
  *	Assign a cursor to the data type.
  */
-void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, char const *name)
+void fr_value_box_set_cursor_shallow(fr_value_box_t *dst, fr_type_t type, void *cursor, char const *name)
 {
 	fr_assert((type == FR_TYPE_VALUE_BOX_CURSOR) || (type == FR_TYPE_PAIR_CURSOR));
 
 	fr_value_box_init(dst, type, NULL, false);
 	dst->vb_cursor = cursor;
 	dst->vb_cursor_name = name;
+}
+
+
+/** Assign a void pointer to a box
+ *
+ * @param[in] dst	to assign void pointer to.
+ * @param[in] ptr	to assign.
+ */
+void fr_value_box_set_void_shallow(fr_value_box_t *dst, void const *ptr)
+{
+	fr_value_box_init(dst, FR_TYPE_VOID, NULL, false);
+	dst->vb_void = UNCONST(void *, ptr);
 }
 
 static fr_dict_attr_t const *fr_value_box_attr_enumv(fr_dict_attr_t const *da)
