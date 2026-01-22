@@ -39,11 +39,31 @@ In the module configurations contained within `/etc/raddb/mods-available/*`,
 each module may have two names. The first name is the name of the dynamically
 loadable module that implements that functionality. The second (optional) name
 is the name of an additional instance of the module. In this case, the `detail`
-module has two additional instances, `byname` and `bydate`. 
+module has two additional instances, `byname` and `bydate`.
 
-You should now add the two modules to the list of modules in the
-`authorize` section. Start the server and verify that it is
-`Ready to process requests.`
+These instance names can be used in the `/etc/raddb/sites-enabled/default` file, `recv Access-Request`, `recv Accounting-Request`, etc. sections, just like a
+normal module name.Please ensure that all other configurations under recv Access-Request remain unchanged, and add the following information as specified below.
+
+[source]
+--------------------------------------------------------------------
+recv Access-Request {
+        #log to per user file
+        byname
+
+        # Log to per-date file
+        bydate
+}
+--------------------------------------------------------------------
+[source]
+--------------------------------------------------------------------
+recv Accounting-Request {
+	#log to per user file
+	byname
+
+	# Log to per-date file
+      	bydate
+}
+--------------------------------------------------------------------
 
 Send the server a test `Access-Request` packet (`bob.sh`). Verify that
 the client receives a response packet and that the server is using the
