@@ -80,6 +80,34 @@ the client receives a response packet.
 echo -e 'User-Name = "bob",User-Password = "hello",NAS-IP-Address = 127.0.0.1,NAS-Port = 501,NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 ------------------------------------------------
 
+Verify the server is using two modules to log the request
+
+------------------------------------------------
+(1)        | %{User-Name}
+(1)        | --> bob
+(1)      | t
+(1)        | %t
+(1)        | --> Wed Jan 21 10:49:21 2026
+(1)      byname - /usr/local/var/log/radius/radacct/byname/%{User-Name} expands to /usr/local/var/log/radius/radacct/byname/bob
+(1)      byname (ok)
+------------------------------------------------
+------------------------------------------------
+(1)        | %Y%m%d
+(1)          | %{\%Y\%m\%d}
+(1)          | Y
+(1)            | %Y
+(1)            | --> 2026
+(1)            | %m
+(1)            | --> 1
+(1)            | %d
+(1)            | --> 21
+(1)      | t
+(1)        | %t
+(1)        | --> Wed Jan 21 10:49:21 2026
+(1)      bydate - /usr/local/var/log/radius/radacct/bydate/%{%Y%m%d} expands to /usr/local/var/log/radius/radacct/bydate/2112026
+(1)      bydate (ok)
+------------------------------------------------
+
 Verify that the request was logged to two different files by examining
 them:
 
