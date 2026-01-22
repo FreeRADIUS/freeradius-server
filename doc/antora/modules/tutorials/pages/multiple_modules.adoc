@@ -1,7 +1,5 @@
 = Multiple instances of a module
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To configure the server to have multiple instances of a module.
 
 *Time:* 10-20 minutes
