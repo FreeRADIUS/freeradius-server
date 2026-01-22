@@ -1164,7 +1164,23 @@ eap {
 		#
 	#	tls = tls-common
 
-	#	default_eap_type = mschapv2
+		#
+		#  Automatically go through the workflow of first machine, then user
+		#  authentication.
+		#
+		#  allowed values:  	"machine,user"
+		#  	   		"user,machine"
+		#			"user"
+		#			"machine"
+		#
+		#  If this isn't set, then TEAP likely won't work.
+		#
+		#  This configuration sets &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type with the
+		#  relevant values.  The TEAP module then picks those values, in order, to authenticate the
+		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
+		#  manually, but that is substantially more complicated.
+		#
+	#	identity_types = "machine,user"
 
 		#
 		#  Set the EAP type for user / machine authentication.
@@ -1202,10 +1218,19 @@ eap {
 		#  from the Basic-Password-Auth-Resp TLV which is in TEAP.
 		#
 		#  Supported authentication methods inside of TEAP are
-		#  EAP-TLS, EAP-MSCHAPv2, and PAP.
+		#  EAP-TLS, EAP-MSCHAPv2, and PAP.  FreeRADIUS
+		#  supports other methods, but the Windows supplicant
+		#  does not.
 		#
 #		user_eap_type = mschapv2
 #		machine_eap_type = tls
+
+		#
+		#  Set the default EAP type.  This configuration item
+		#  is only used if the "user_eap_type" and
+		#  "machine_eap_type" items are not set.
+		#
+	#	default_eap_type = mschapv2
 
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'
@@ -1230,25 +1255,6 @@ eap {
 		#  name.
 		#
 	#	authority_identity = "1234"
-
-
-		#
-		#  Automatically go through the workflow of first machine, then user
-		#  authentication.
-		#
-		#  allowed values:  	"machine,user"
-		#  	   		"user,machine"
-		#			"user"
-		#			"machine"
-		#
-		#  If this isn't set, then TEAP likely won't work.
-		#
-		#  This configuration sets &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type with the
-		#  relevant values.  The TEAP module then picks those values, in order, to authenticate the
-		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
-		#  manually, but that is substantially more complicated.
-		#
-	#	identity_types = "machine,user"
 
 		#  Same as for TTLS, PEAP, etc.
 		#
