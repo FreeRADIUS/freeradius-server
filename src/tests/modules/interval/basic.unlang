@@ -1,0 +1,35 @@
+#
+#  Test basic interval limiting
+#
+#  Each xlat call site has its own interval limit counter, so we can only
+#  verify that the first call to each call site is allowed.
+#  Use keyed interval limiting to test the blocking behavior.
+#
+
+#
+#  First keyless call should be allowed (this is a new call site)
+#
+if (%interval(1s)) {
+	reply += {
+		Reply-Message = "first allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "first blocked - FAIL"
+	}
+}
+
+#
+#  Second keyless call is also allowed (different call site, new counter)
+#
+if (%interval(1s)) {
+	reply += {
+		Reply-Message = "second allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "second blocked - FAIL"
+	}
+}
+
+control.Password.Cleartext := "hello"

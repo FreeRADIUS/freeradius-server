@@ -1,0 +1,79 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = Interval Module
+#
+#  The `interval` module provides interval limiting functionality via an
+#  xlat function.
+#
+#  ## xlat for interval limiting
+#
+#  The module registers an xlat function:
+#
+#  %interval(<interval> [, <key>])
+#
+#  This function returns `true` if the request is allowed, or `false`
+#  if the interval limit has been exceeded.
+#
+#  interval:: Time period for the interval limit (e.g., `1s`, `500ms`).
+#
+#  key:: Optional key to track interval limits separately. If omitted,
+#  interval limiting is applied per xlat call site.
+#
+#  .Example - Global interval limit of 1 request per second
+#
+#  ```
+#  if (!%interval(1s)) {
+#      reject
+#  }
+#  ```
+#
+#  .Example - Per-user interval limit of 1 request per 5 seconds
+#
+#  ```
+#  if (!%interval(5s, User-Name)) {
+#      reject
+#  }
+#  ```
+#
+#  ## Scope
+#
+#  The module supports two scopes for interval limit tracking:
+#
+#  global:: Interval limits are shared across all worker threads.
+#  Use this when you need server-wide interval limiting.
+#
+#  thread:: Interval limits are tracked per worker thread.
+#  Use this for higher performance when approximate interval limiting
+#  is acceptable.  If no key argument is specified in thread mode,
+#  then the cost is reduced further.
+#
+#  NOTE: With `scope = thread`, the effective interval limit is multiplied
+#  by the number of worker threads, as each thread tracks independently.
+#
+
+#
+#  ## Configuration Settings
+#
+interval interval_global {
+	#
+	#  scope:: Whether interval limits are global or per-thread.
+	#
+	#  `global` - Interval limits shared across all threads (requires locking).
+	#  `thread` - Interval limits tracked per-thread (higher performance).
+	#
+	scope = global
+}
+
+#
+#  ## Thread-scoped instance
+#
+#  This instance uses per-thread interval limiting for higher performance.
+#
+interval interval_thread {
+	scope = thread
+}

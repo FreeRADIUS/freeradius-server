@@ -1,0 +1,101 @@
+#
+#  Test keyed interval limiting - different keys should have independent limits
+#
+
+#
+#  First request for key "alice" should be allowed
+#
+if (%interval(1s, 'alice')) {
+	reply += {
+		Reply-Message = "alice first allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "alice first blocked - FAIL"
+	}
+}
+
+#
+#  First request for key "bob" should also be allowed (different key)
+#
+if (%interval(1s, 'bob')) {
+	reply += {
+		Reply-Message = "bob first allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "bob first blocked - FAIL"
+	}
+}
+
+#
+#  Second request for "alice" within interval should be blocked
+#
+if (%interval(1s, 'alice')) {
+	reply += {
+		Reply-Message = "alice second allowed - FAIL"
+	}
+} else {
+	reply += {
+		Reply-Message = "alice second blocked"
+	}
+}
+
+#
+#  Second request for "bob" within interval should also be blocked
+#
+if (%interval(1s, 'bob')) {
+	reply += {
+		Reply-Message = "bob second allowed - FAIL"
+	}
+} else {
+	reply += {
+		Reply-Message = "bob second blocked"
+	}
+}
+
+#
+#  Advance time past the 1s interval
+#
+%time.advance(1100ms)
+
+#
+#  After the interval, "alice" should be allowed again
+#
+if (%interval(1s, 'alice')) {
+	reply += {
+		Reply-Message = "alice after interval allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "alice after interval blocked - FAIL"
+	}
+}
+
+#
+#  After the interval, "bob" should also be allowed again
+#
+if (%interval(1s, 'bob')) {
+	reply += {
+		Reply-Message = "bob after interval allowed"
+	}
+} else {
+	reply += {
+		Reply-Message = "bob after interval blocked - FAIL"
+	}
+}
+
+#
+#  But a second request still within the new interval should be blocked
+#
+if (%interval(1s, 'alice')) {
+	reply += {
+		Reply-Message = "alice new interval second allowed - FAIL"
+	}
+} else {
+	reply += {
+		Reply-Message = "alice new interval second blocked"
+	}
+}
+
+control.Password.Cleartext := "hello"
