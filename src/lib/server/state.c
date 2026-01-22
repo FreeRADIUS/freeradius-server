@@ -605,34 +605,33 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 void fr_state_discard(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
-	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, state->da);
-	if (!vp) return;
+	/*
+	 *	The caller MUST have called fr_state_restore() before
+	 *	calling this function.  If so, there is request data
+	 *	that points to the state entry.
+	 *
+	 *	This function should only be called from the "outer"
+	 *	request.  Any child request should call
+	 *	fr_state_discard_child()
+	 *
+	 *	Relying on request data also means that the user can
+	 *	nuke request.State, and the code will still work.
+	 */
+	entry = request_data_get(request, state, 0);
+	if (!entry) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find_and_unlink(state, &vp->data);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return;
-	}
+	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/*
-	 *	If fr_state_restore was never called, this ensures
-	 *	the state owned by entry is freed, otherwise this is
-	 *	mostly a NOOP, other than freeing the memory held by
-	 *	the entry.
+	 *	Free the entry, and any cached session-state attributes.
 	 */
 	TALLOC_FREE(entry);
 
 	/*
-	 *	If fr_state_restore was called, then the request
-	 *	holds the existing state data.  We need to destroy it,
-	 *	and return the request to the state it was in when
-	 *	it was first allocated, just in case a user does something
-	 *	stupid like add more session-state attributes
-	 *	in  one of the later sections.
+	 *	Nuke any session-state attributes from the current request.
 	 */
 	talloc_free(request_state_replace(request, NULL));
 
