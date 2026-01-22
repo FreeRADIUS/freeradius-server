@@ -165,7 +165,8 @@ DIAG_OFF(unused-function) \
 	 * @param[in] alloc		Optional callback to use when allocating new elements. \
 	 * @param[in] reserve		Optional callback run on element reserving. \
 	 * @param[in] uctx		to pass to callbacks. \
-	 * @param[in] release_reset	Should elements be reset and children freed when the element is released.\
+	 * @param[in] release_reset	On release: free talloc children, zero element memory. \
+	 *				Use when elements may accumulate allocations that should not persist. \
 	 * @param[in] reserve_mru	If true, the most recently used element will be returned when an element is reserved. \
 	 * @return \
 	 *	- A new slab. \
