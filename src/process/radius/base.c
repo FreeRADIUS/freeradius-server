@@ -133,13 +133,7 @@ typedef struct {
 } process_radius_sections_t;
 
 typedef struct {
-	fr_time_delta_t			session_timeout;//!< Maximum time between the last response and next request.
-	uint32_t			max_session;	//!< Maximum ongoing session allowed.
-
-	uint8_t       			state_server_id;//!< Sets a specific byte in the state to allow the
-							//!< authenticating server to be identified in packet
-							//!<captures.
-
+	fr_state_config_t		session;	//!< track state session information.
 	fr_state_tree_t			*state_tree;	//!< State tree to link multiple requests/responses.
 } process_radius_auth_t;
 
@@ -169,16 +163,8 @@ typedef struct {
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_RADIUS_CODE_ACCESS_ACCEPT
 #include <freeradius-devel/server/process.h>
 
-static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", process_radius_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", process_radius_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", process_radius_auth_t, state_server_id) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t auth_config[] = {
-	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) session_config },
+	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) state_session_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -877,9 +863,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
-						   inst->auth.session_timeout, inst->auth.state_server_id,
-						   fr_hash_string(cf_section_name2(inst->server_cs)));
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, >=, 32);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.session.max_rounds, <=, 100);
+
+	inst->auth.session.thread_safe = main_config->spawn_workers;
+	inst->auth.session.context_id = fr_hash_string(cf_section_name2(inst->server_cs));
+
+	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, &inst->auth.session);
 
 	return 0;
 }

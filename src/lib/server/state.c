@@ -56,6 +56,16 @@ RCSID("$Id$")
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/rand.h>
 
+const conf_parser_t state_session_config[] = {
+	{ FR_CONF_OFFSET("timeout", fr_state_config_t, timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", fr_state_config_t, max_sessions), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_rounds", fr_state_config_t, max_rounds), .dflt = "50" },
+	{ FR_CONF_OFFSET("state_server_id", fr_state_config_t, server_id) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
 /** Holds a state value, and associated fr_pair_ts and data
  *
  */
@@ -110,7 +120,7 @@ typedef struct {
 		fr_dlist_t		free_entry;		//!< Entry in the list of things to free.
 	};
 
-	int			tries;
+	unsigned int   		tries;
 
 	fr_pair_t		*ctx;				//!< for all session specific data.
 
@@ -144,25 +154,19 @@ struct fr_state_tree_s {
 	uint64_t		id;				//!< Next ID to assign.
 	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
 								//!< timeout.
-	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
+	fr_state_config_t	config;				//!< a local copy
+
 	uint32_t		used_sessions;			//!< How many sessions are currently in progress.
 	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
-	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entries.
-
-	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 
-	uint8_t			server_id;			//!< ID to use for load balancing.
-	uint32_t		context_id;			//!< ID binding state values to a context such
-								///< as a virtual server.
-
-	fr_dict_attr_t const	*da;				//!< State attribute used.
+	fr_dict_attr_t const	*da;				//!< Attribute where the state is stored.
 };
 
-#define PTHREAD_MUTEX_LOCK if (state->thread_safe) pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK if (state->thread_safe) pthread_mutex_unlock
+#define PTHREAD_MUTEX_LOCK if (state->config.thread_safe) pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK if (state->config.thread_safe) pthread_mutex_unlock
 
 static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 
@@ -185,7 +189,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 {
 	fr_state_entry_t *entry;
 
-	if (state->thread_safe) pthread_mutex_destroy(&state->mutex);
+	if (state->config.thread_safe) pthread_mutex_destroy(&state->mutex);
 
 	DEBUG4("Freeing state tree %p", state);
 
@@ -207,27 +211,20 @@ static int _state_tree_free(fr_state_tree_t *state)
  *
  * @param[in] ctx		to link the lifecycle of the state tree to.
  * @param[in] da		Attribute used to store and retrieve state from.
- * @param[in] thread_safe		Whether we should mutex protect the state tree.
- * @param[in] max_sessions	we track state for.
- * @param[in] timeout		How long to wait before cleaning up entries.
- * @param[in] server_id		ID byte to use in load-balancing operations.
- * @param[in] context_id	Specifies a unique ctx id to prevent states being
- *				used in contexts for which they weren't intended.
+ * @param[in] config		the configuration data
  * @return
  *	- A new state tree.
  *	- NULL on failure.
  */
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
-				    uint32_t max_sessions, fr_time_delta_t timeout,
-				    uint8_t server_id, uint32_t context_id)
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_state_config_t const *config)
 {
 	fr_state_tree_t *state;
 
 	state = talloc_zero(NULL, fr_state_tree_t);
 	if (!state) return 0;
 
-	state->max_sessions = max_sessions;
-	state->timeout = timeout;
+	state->config = *config;
+	state->da = da;		/* Remember which attribute we use to load/store state */
 
 	/*
 	 *	Create a break in the contexts.
@@ -238,7 +235,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 */
 	talloc_link_ctx(ctx, state);
 
-	if (thread_safe && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
+	if (state->config.thread_safe && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
 		talloc_free(state);
 		return NULL;
 	}
@@ -257,11 +254,6 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 	talloc_set_destructor(state, _state_tree_free);
-
-	state->da = da;		/* Remember which attribute we use to load/store state */
-	state->server_id = server_id;
-	state->context_id = context_id;
-	state->thread_safe = thread_safe;
 
 	return state;
 }
@@ -378,7 +370,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	state->timed_out += timed_out;
 
 	if (!old) {
-		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
+		too_many = (state->used_sessions == state->config.max_sessions);
 		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
 		memset(old_state, 0, sizeof(old_state));
 	} else {
@@ -412,7 +404,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 */
 	if (too_many) {
 		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
-		       state->max_sessions);
+		       state->config.max_sessions);
 		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
 	}
@@ -448,7 +440,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = fr_time_add(now, state->timeout);
+	entry->cleanup = fr_time_add(now, state->config.timeout);
 
 	/*
 	 *	Some modules create their own magic
@@ -491,6 +483,13 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		if (old) {
 			memcpy(entry->state, old_state, sizeof(entry->state));
 			entry->tries = old_tries + 1;
+
+			if (entry->tries > state->config.max_rounds) {
+				RERROR("Failed tracking state entry - too many rounds (%u)", entry->tries);
+				goto fail;
+			}
+			
+
 		/*
 		 *	16 octets of randomness should be enough to
 		 *	have a globally unique state.
@@ -519,7 +518,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 *	Allow a portion of the State attribute to be set,
 		 *	this is useful for debugging purposes.
 		 */
-		entry->state_comp.server_id = state->server_id;
+		entry->state_comp.server_id = state->config.server_id;
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, state->da));
 		fr_pair_value_memdup(vp, entry->state, sizeof(entry->state), false);
@@ -538,10 +537,11 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	only succeed in the virtual server that created the state
 	 *	value.
 	 */
-	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->context_id;
+	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->config.context_id;
 
 	if (!fr_rb_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
+	fail:
 		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
 		return NULL;
@@ -588,7 +588,7 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 	/*
 	 *	Make it unique for different virtual servers handling the same request
 	 */
-	my_entry.state_comp.context_id ^= state->context_id;
+	my_entry.state_comp.context_id ^= state->config.context_id;
 
 	entry = fr_rb_remove(state->tree, &my_entry);
 	if (entry) {

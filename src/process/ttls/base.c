@@ -124,16 +124,7 @@ typedef struct {
 } process_ttls_sections_t;
 
 typedef struct {
-	fr_time_delta_t	timeout;	//!< Maximum time between the last response and next request.
-	uint32_t	max;		//!< Maximum ongoing session allowed.
-
-	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
-						//!< authenticating server to be identified in packet
-						//!<captures.
-} process_ttls_session_t;
-
-typedef struct {
-	process_ttls_session_t 		session;	//!< Session settings.
+	fr_state_config_t 		session;	//!< Session settings.
 
 	fr_state_tree_t			*state_tree;	//!< State tree to link multiple requests/responses.
 } process_ttls_auth_t;
@@ -152,16 +143,8 @@ typedef struct {
 #define PROCESS_INST			process_ttls_t
 #include <freeradius-devel/server/process.h>
 
-static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", process_ttls_session_t, timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", process_ttls_session_t, max), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", process_ttls_session_t, state_server_id) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t auth_config[] = {
-	{ FR_CONF_OFFSET_SUBSECTION("session", 0, process_ttls_auth_t, session, session_config )},
+	{ FR_CONF_OFFSET_SUBSECTION("session", 0, process_ttls_auth_t, session, state_session_config )},
 
 	CONF_PARSER_TERMINATOR
 };
@@ -510,9 +493,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.session.max,
-						   inst->auth.session.timeout, inst->auth.session.state_server_id,
-						   fr_hash_string(cf_section_name2(inst->server_cs)));
+	inst->auth.session.thread_safe = main_config->spawn_workers;
+	inst->auth.session.context_id = fr_hash_string(cf_section_name2(inst->server_cs));
+
+	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, &inst->auth.session);
 
 	return 0;
 }

@@ -32,12 +32,22 @@ extern "C" {
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/cf_parse.h>
 
 typedef struct fr_state_tree_s fr_state_tree_t;
 
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
-				    uint32_t max_sessions, fr_time_delta_t timeout,
-				    uint8_t server_id, uint32_t context_id);
+typedef struct {
+	uint32_t		max_sessions;  	//!< maximum number of sessions
+	uint32_t		max_rounds;	//!< maximum number of rounds before we give up
+	uint32_t		context_id;	//!< internal number to help keep state trees separate
+	fr_time_delta_t		timeout;	//!< idle timeout
+	uint8_t			server_id;	//!< for mangling State
+	bool			thread_safe;	
+} fr_state_config_t;
+
+extern const conf_parser_t state_session_config[];
+
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_state_config_t const *config);
 
 void	fr_state_discard(fr_state_tree_t *state, request_t *request);
 
