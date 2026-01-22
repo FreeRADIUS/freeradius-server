@@ -22,15 +22,16 @@ The first instance should log requests to a different file for each username.The
 for each date. The following configuration should be added after the `detail{}` section in the
 `/etc/raddb/mods-available/detail` file.
 
+[source]
 --------------------------------------------------------------------
 detail byname {
-	filename = ${radacctdir}/byname/%{User-Name || 'none'}
-	permissions = 0600
+    filename = "${radacctdir}/byname/%{User-Name}"
+    permissions = 0600
 }
 
 detail bydate {
-	filename = ${radacctdir}/bydate/%Y-%m-%d
-	permissions = 0600
+    filename = "${radacctdir}/bydate/%{%Y%m%d}"
+    permissions = 0600
 }
 --------------------------------------------------------------------
 
