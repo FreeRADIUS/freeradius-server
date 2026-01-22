@@ -16,9 +16,10 @@ the request to a local file and is therefore an easy module to use for
 demonstration purposes.
 
 The first step is to configure the server to have two instances of the
-`detail` module. The first instance should log requests to a different
-file for each user name. The second should log requests to a different file
-for each date. The following information should be added to the
+`detail` module. 
+
+The first instance should log requests to a different file for each username.The second should log requests to a different file
+for each date. The following configuration should be added after the `detail{}` section in the
 `/etc/raddb/mods-available/detail` file.
 
 --------------------------------------------------------------------
