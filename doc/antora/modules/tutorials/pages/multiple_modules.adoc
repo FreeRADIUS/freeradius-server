@@ -65,6 +65,13 @@ recv Accounting-Request {
 }
 --------------------------------------------------------------------
 
+Start the server and verify that it is `Ready to process requests.`
+
+[source]
+------------------------------------------------
+$ radiusd -X
+------------------------------------------------
+
 Send the server a test `Access-Request` packet (`bob.sh`). Verify that
 the client receives a response packet and that the server is using the
 two modules to log the request.
