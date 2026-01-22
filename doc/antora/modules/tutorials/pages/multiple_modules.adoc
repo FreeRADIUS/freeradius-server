@@ -108,10 +108,9 @@ Verify the server is using two modules to log the request
 (1)      bydate (ok)
 ------------------------------------------------
 
-Verify that the request was logged to two different files by examining
-them:
+The correct file paths can be obtained from the debug output and verify that the request was logged into two different files by examining them:
 
-[source, bash]
+[source]
 ------------------------------------------------
 $ more /var/log/radius/radacct/byname/*
 $ more /var/log/radius/radacct/bydate/*
