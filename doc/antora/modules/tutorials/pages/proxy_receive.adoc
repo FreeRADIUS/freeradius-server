@@ -9,8 +9,8 @@ RADIUS server and to receive packets from another proxy server.
 
 *Files:*
 
-- `etc/raddb/proxy.conf`
-- `etc/raddb/clients.conf`
+- `proxy.conf`
+- `clients.conf`
 
 For this exercise, the users will be divided into groups of two. One
 user will be named "realm1" and the other will be named

@@ -7,8 +7,8 @@ references.
 
 *Files:*
 
-- `etc/raddb/radiusd.conf`
-- `etc/raddb/users`
+- `radiusd.conf`
+- `mods-config/files/authorize`
 
 Run-time variables in the server may include more than simple references to
 attributes in packets. The server supports the ability to perform complex
@@ -16,7 +16,7 @@ inter-module queries, which significantly extends its usefulness. In this
 exercise, we will work through a number of different examples of configuring
 inter-module calls.
 
-To start, open `raddb/mods-available/exec` and read the sample configuration for
+To start, open `mods-available/exec` and read the sample configuration for
 the `exec` module. Then, edit the users file to add the following entry at the
 top:
 

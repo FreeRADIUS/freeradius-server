@@ -7,7 +7,7 @@ server.
 
 *File:*
 
-- `etc/raddb/clients.conf`
+- `clients.conf`
 
 The RADIUS server will only communicate with known clients. This
 restriction is for security, so that unknown machines on the Internet

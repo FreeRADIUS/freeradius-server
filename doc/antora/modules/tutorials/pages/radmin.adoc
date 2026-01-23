@@ -6,7 +6,7 @@
 
 *File:*
 
-- `etc/raddb/sites-enabled/control-socket`
+- `sites-enabled/control-socket`
 
 *`man` page:* radmin, raddebug
 

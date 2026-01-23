@@ -7,7 +7,7 @@ protocol and to send and receive test packets.
 
 *File:*
 
-- `etc/raddb/mods-available/eap`
+- `mods-available/eap`
 
 *Diagram:*
 
@@ -31,12 +31,12 @@ therefore has a more limited application. One of the most common uses for
 EAP is for wireless authentication. In this exercise, we will configure
 and test the EAP-MD5 sub-type of EAP.
 
-`raddb/mods-available/eap` has a configuration section for the `eap`
+`mods-available/eap` has a configuration section for the `eap`
 module. The EAP sub-types are configured inside of that section. By
 default, the server ships with the EAP-MD5 module enabled, and with the
 EAP module initiating EAP-MD5 for all RADIUS requests containing EAP.
 
-You should now read the appropriate section of the `raddb/mods-available/eap`
+You should now read the appropriate section of the `mods-available/eap`
 file, to verify that the `eap` module is configured and that the `md5`
 sub-module of the `eap` module is configured.
 

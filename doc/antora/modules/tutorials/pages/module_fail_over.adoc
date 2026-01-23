@@ -9,7 +9,7 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *Files:*
 
-- `etc/raddb/mods-available/detail`
+- `mods-available/detail`
 - `usr/share/doc/freeradius*/configurable_failover`
 - `/var/log/radius/radacct/detail1`
 - `/var/log/radius/radacct/detail2`
@@ -29,7 +29,7 @@ second detail file.
 
 The first step is to configure the server to have two instances of the
 `detail` module. The following information should be added to the
-`etc/raddb/mods-available/detail` file:
+`mods-available/detail` file:
 
 --------------------------------------------------
 detail detail1 {
@@ -45,10 +45,10 @@ detail detail2 {
 
 In the file `configurable_failover` in the documentation directory,
 there is a section titled "More Complex Configurations". This section contains a
-sample entry for the "accounting" section of `etc/raddb/sites-available/default`.
+sample entry for the "accounting" section of `sites-available/default`.
 The sample entry is a "group" with configurable fail-over between two modules named
 `detail1` and `detail2`. Copy the "group" section to the start of the
-`accounting` section in your `etc/raddb/sites-available/default` file.
+`accounting` section in your `sites-available/default` file.
 
 Now start the server and verify that it is `Ready to process requests.`
 

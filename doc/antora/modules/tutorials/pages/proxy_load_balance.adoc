@@ -9,7 +9,7 @@ multiple home servers.
 
 *File:*
 
-- `etc/raddb/proxy.conf`
+- `proxy.conf`
 
 *Diagram:*
 

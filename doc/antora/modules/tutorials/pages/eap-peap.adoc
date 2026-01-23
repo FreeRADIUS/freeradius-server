@@ -7,7 +7,7 @@ protocol and to send and receive test packets.
 
 *File:*
 
-- `etc/raddb/mods-available/eap`
+- `mods-available/eap`
 
 *Diagram:*
 
@@ -28,9 +28,9 @@ wireless client software for details on this process.
 For the initial testing of EAP-PEAP, we recommend using
 `EAP-MSCHAPv2` on the wireless client as the tunneled authentication
 protocol. You should check that the `mschap` module is configured in the
-`raddb/modules` directory. The `mschapv2` module performs EAP-MSCHAPv2
+`modules` directory. The `mschapv2` module performs EAP-MSCHAPv2
 authentication and is contained in the `eap` section of the
-`raddb/eap.conf`. While these authentication methods are similar, they
+`eap.conf`. While these authentication methods are similar, they
 are not identical. Both modules need to be configured for EAP-PEAP to
 work.
 

@@ -9,9 +9,9 @@ protocol and to send and receive test packets.
 
 *Files:*
 
-- `etc/raddb/mods-available/eap`
+- `mods-available/eap`
 - `scripts/certs.sh`
-- `etc/raddb/certs/`
+- `certs/`
 
 EAP-TLS is an authentication protocol that uses a TLS session, along
 with client and server certificates, to authenticate a user. You
@@ -50,7 +50,7 @@ and client certificates, along with a demonstration certificate
 authority. These certificates may be used for this exercise, but should
 not be used in any live deployment of the server.
 
-You now edit the `etc/raddb/mods-available/eap` file to enable
+You now edit the `mods-available/eap` file to enable
 the `tls`. You should also set the configuration entry `default_eap_type`
 to `tls`.
 
@@ -63,7 +63,7 @@ suggest that the you consult the documentation for your wireless
 client software for details on this process.
 
 The wireless client will require the client certificate from the
-`raddb/certs` directory.
+`certs` directory.
 
 Once the wireless client has been configured to enable EAP-TLS,
 you should perform a test authentication to the server. If all goes well,

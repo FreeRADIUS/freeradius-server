@@ -4,7 +4,7 @@
 *Time:* 10-20 minutes
 
 *File:*
-- `etc/raddb/policy.d/*`
+- `policy.d/*`
 
 *`man` page:* `unlang`
 
@@ -79,7 +79,7 @@ realm-split {
 }
 ----
 
-Add the above created policy into `raddb/sites-available/default`:
+Add the above created policy into `sites-available/default`:
 
 [source,unlang]
 ----
@@ -91,7 +91,7 @@ server default {
 }
 ----
 
-Also make sure our testing user "bob" exists in `raddb/mods-config/files/authorize`:
+Also make sure our testing user "bob" exists in `mods-config/files/authorize`:
 
 [source,unlang]
 ----

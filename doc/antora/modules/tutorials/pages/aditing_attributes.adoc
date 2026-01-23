@@ -6,7 +6,7 @@
 
 *File:*
 
-- `raddb/sites-available/default`
+- `sites-available/default`
 
 *Documentation pages:*
 
@@ -63,7 +63,7 @@ server default {
 ----
 
 We have defined the cleartext password for the user `bob` here,
-instead of defining it in `raddb/mods-config/files/authorize`, as
+instead of defining it in `mods-config/files/authorize`, as
 usual.
 
 Execute the following command to test this configuration:

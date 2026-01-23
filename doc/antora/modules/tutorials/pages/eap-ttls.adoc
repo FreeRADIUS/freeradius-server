@@ -9,7 +9,7 @@ protocol and to send and receive test packets.
 
 *File:*
 
-- `etc/raddb/sites-available/default`
+- `sites-available/default`
 
 *Diagram:*
 

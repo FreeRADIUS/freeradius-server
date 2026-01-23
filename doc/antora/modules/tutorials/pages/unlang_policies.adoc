@@ -6,8 +6,8 @@
 
 *Files / Directories:*
 
-- `etc/raddb/policy.d/*`   (policy.d where we create and define policies)
-- `etc/raddb/sites-available/default`  (virtual server where we call the policy)
+- `policy.d/*`   (policy.d where we create and define policies)
+- `sites-available/default`  (virtual server where we call the policy)
 
 == Preparation
 

@@ -8,7 +8,7 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *File:*
 
-- `etc/raddb/sites-enabled/virtual`
+- `sites-enabled/virtual`
 
 *documentation page:* raddb/sites-available/README
 
@@ -24,7 +24,7 @@ following sections:
 - *preacct* The pre-accounting section
 - *accounting* The accounting section
 
-Create a new file `raddb/sites-enabled/virtual`. Put the following text
+Create a new file `sites-enabled/virtual`. Put the following text
 into it:
 
 -----------------------------------------------

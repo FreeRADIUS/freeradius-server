@@ -9,8 +9,8 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *Files:*
 
-- `etc/raddb/sites-available/default`
-- `etc/raddb/users`
+- `sites-available/default`
+- `mods-config/files/authorize`
 
 This exercise is a follow-up to the previous one in
 xref:multiple_modules.adoc[Multiple Modules], and it uses the `byname` and `bydate` modules
@@ -31,7 +31,7 @@ DEFAULT  Autz-Type := byname
          Fall-Through = 1
 ----------------------------
 
-In the `raddb/sites-available/default` file, edit the `authorize` section entries for
+In the `sites-available/default` file, edit the `authorize` section entries for
 the `byname` and `bydate` modules to be as follows:
 
 ----------------------

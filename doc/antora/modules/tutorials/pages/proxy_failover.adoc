@@ -9,8 +9,8 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *Files:*
 
-- `etc/raddb/proxy.conf`
-- `etc/raddb/clients.conf`
+- `proxy.conf`
+- `clients.conf`
 
 *Diagram:*
 

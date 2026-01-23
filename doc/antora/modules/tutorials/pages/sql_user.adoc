@@ -7,8 +7,8 @@ to send test packets as that user, and to receive a reply.
 
 *File:*
 
-- `etc/raddb/mods-available/sql`
-- `etc/raddb/mods-config/sql/main/*`
+- `mods-available/sql`
+- `mods-config/sql/main/*`
 
 Now that we have verified in the previous exercise,
 xref:sql.adoc[SQL] that the server can communicate with
@@ -44,7 +44,7 @@ are now in the database.
 As the previous exercise in xref:sql.adoc[SQL]
 did not tell the server to query the database, but only to connect to it,
 we must now configure FreeRADIUS to query the database. This may be done
-by editing `etc/raddb/sites-available/default`, and listing the `sql`
+by editing `sites-available/default`, and listing the `sql`
 module in the "authorize" section.
 
 There should already be a commented-out entry for `sql` in the
@@ -71,7 +71,7 @@ requests." Verify that the file entry for "bob" has not matched the
 request. Verify that the SQL module returns "ok", rather than
 "notfound".
 
-If necessary, edit the `etc/raddb/mods-enabled/sql` file, and enable
+If necessary, edit the `mods-enabled/sql` file, and enable
 additional debugging of SQL statements via the `sqltrace` and `sqltracefile`
 configuration options. If the SQL queries are performed by the server and
 logged to the file, but the request for user "bob" is still rejected, then
@@ -86,7 +86,7 @@ the queries, then send the access request again.
 3.  Why is there no "Fall-Through" entry in an SQL database?
 4.  Does that DEFAULT entry differ from its use in the file? If so, why,
 and how? If not, why not?
-5.  What other configuration entries in `etc/raddb/sites-available/default`
+5.  What other configuration entries in `sites-available/default`
     exist for the `sql` module, and why?
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

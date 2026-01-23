@@ -10,7 +10,7 @@ proxy server and the home server.
 
 *File:*
 
-- `etc/raddb/proxy.conf`
+- `proxy.conf`
 
 *Diagram:*
 
@@ -21,7 +21,7 @@ requests to a home RADIUS server that is run by another user
 (the uber user)).
 
 You will configure a realm, called "realm1" in the
-`raddb/proxy.conf` file. This realm will be proxied to the RADIUS server
+`proxy.conf` file. This realm will be proxied to the RADIUS server
 administered by the uber user, who will supply the IP address, port,
 and shared secret used by their RADIUS server. The entry for the home
 server in `proxy.conf` will be configured to "strip" the realm name

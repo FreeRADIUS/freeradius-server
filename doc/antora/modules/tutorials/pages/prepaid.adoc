@@ -9,16 +9,16 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *Files:*
 
-- `etc/raddb/mods-available/counter`
+- `mods-available/counter`
 
 Many system administrators wish to implement "prepaid" billing for
 their systems. In this exercise, we will configure the server to use a
 simple "prepaid" scheme, wherein all users will be permitted to log in
 for only one hour a day.
 
-Read `etc/raddb/mods-available/counter` and look for the `counter daily` instance
+Read `mods-available/counter` and look for the `counter daily` instance
 The documentation for the module consists solely of the comments in
-`etc/raddb/mods-available/counter`, so those comments should be read carefully.
+`mods-available/counter`, so those comments should be read carefully.
 Search the rest of the configuration file for references to the `daily` module
 and un-comment any references you find.
 

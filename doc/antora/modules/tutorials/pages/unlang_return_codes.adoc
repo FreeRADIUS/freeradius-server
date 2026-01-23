@@ -6,7 +6,7 @@
 
 *File:*
 
-- `etc/raddb/policy.d/*`
+- `policy.d/*`
 
 *`man` page:* unlang
 

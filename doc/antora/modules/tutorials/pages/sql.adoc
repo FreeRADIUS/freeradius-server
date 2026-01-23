@@ -8,8 +8,8 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *File:*
 
-- `etc/raddb/mods-available/sql`
-- `etc/raddb/mods-config/sql/main/*`
+- `mods-available/sql`
+- `mods-config/sql/main/*`
 
 In addition to the file, the server may obtain user configuration
 information from an SQL database. In this exercise, you will
@@ -28,12 +28,12 @@ maintaining and updating the databases.
 
 The SQL schema used by FreeRADIUS is designed to mirror the users file.
 Each SQL dialect has its own set of schema and configuration files.
-They are located in the `raddb/mods-config/sql/main/<dialect>` directory.
+They are located in the `mods-config/sql/main/<dialect>` directory.
 
 The schema is defined by the "schema.sql" file, and the queries are
 defined by the `queries.conf` file.
 
-The main configuration for the SQL module is `raddb/mods-available/sql`
+The main configuration for the SQL module is `mods-available/sql`
 it will `$INCLUDE` the appropriate "queries.conf" file for the dialect
 chosen.
 
@@ -44,7 +44,7 @@ use.
 ========================================================================
 Unless there is a pre-configured database available we recommend the
 sqlite driver be used. If the sqlite specific stanzas are uncommented
-in `raddb/mods-available/sql` it will automatically bootstrap a new
+in `mods-available/sql` it will automatically bootstrap a new
 database using the bundled schema.
 ========================================================================
 
@@ -66,7 +66,7 @@ in to process any authentication requests, or accounting requests. For
 now, we are interested solely in making the FreeRADIUS server
 communicate with the SQL server.
 
-Open `raddb/mods-available/sql` verify that the first few configuration
+Open `mods-available/sql` verify that the first few configuration
 entries are correct. That is, the "server", "login", and "password"
 entries should be set up correctly for your local SQL database.
 
@@ -104,8 +104,8 @@ the remainder of this exercise, we will assume that the driver is
 installed in the appropriate library directory.
 
 Once you have verified that the SQL driver exists, have enabled the module
-by creating a symlink from `raddb/mods-available/sql` to
-`raddb/mods-enabled/sql` and you have configured the appropriate sql dialect,
+by creating a symlink from `mods-available/sql` to
+`mods-enabled/sql` and you have configured the appropriate sql dialect,
 you should start the server as usual:
 
 ------------

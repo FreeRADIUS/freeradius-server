@@ -6,9 +6,9 @@
 
 *Files:*
 
-- `etc/raddb/radiusd.conf`
+- `radiusd.conf`
 - `etc/mods-config/files/authorize`
-- `etc/raddb/mods-available/detail`
+- `mods-available/detail`
 
 *`man` page:* `radiusd.conf`
 
@@ -53,7 +53,7 @@ properties of the run-time variables.
 
 The main configuration file `radiusd.conf` and the module configuration
 files contains a number of examples of the use of variables. For example,
-the `detail` module (configured in `etc/raddb/mods-enabled/detail`)
+the `detail` module (configured in `mods-enabled/detail`)
 has a configuration entry named "filename", which by default has the
 following value:
 
@@ -105,7 +105,7 @@ configuration. You should see something like this:
 
 If you don't see any configuration printed for the `detail` file module
 ensure it is uncommented in the `accounting {}` section of the
-`raddb/sites-available/default` virtual server.
+`sites-available/default` virtual server.
 
 [source]
 ----
