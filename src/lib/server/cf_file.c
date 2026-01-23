@@ -363,6 +363,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 				}
 
 				strcpy(p, cp->value);
+				cp->referenced = true;
 				p += strlen(p);
 				ptr = next;
 
