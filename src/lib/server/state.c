@@ -405,7 +405,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	if (too_many) {
 		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
 		       state->config.max_sessions);
-		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
 	}
 
@@ -541,6 +540,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	if (!fr_rb_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	fail:
 		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
@@ -764,11 +764,10 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	/*
-	 *	Reuses old if possible
+	 *	Reuses old if possible, and leaves the mutex unlocked on failure.
 	 */
 	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
 
 		talloc_free(request_state_replace(request, state_ctx));
