@@ -66,7 +66,7 @@ The following command-line options are accepted by the program.
   functionality is off by default.
 
 *-n name*::
-  Read `raddb/name.conf` instead of `raddb/radiusd.conf`.
+  Read `name.conf` instead of `radiusd.conf`.
 
 *-q*::
   Quiet mode.

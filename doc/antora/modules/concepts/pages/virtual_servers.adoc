@@ -196,7 +196,7 @@ processed through the `server inner-tunnel` virtual server.
 More examples
 -------------
 
-For more examples, see the `raddb/sites-enabled/` directory that is
+For more examples, see the `sites-enabled/` directory that is
 included in the server distribution.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

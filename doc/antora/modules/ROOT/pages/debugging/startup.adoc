@@ -47,7 +47,7 @@ Next is loads the main `radiusd.conf` file, and some associated ones like `proxy
     including configuration file /etc/raddb/clients.conf
 ====
 
-It now loads all of the modules.  The module configuration is usually stored in `raddb/mods-enabled/`, with one module configuration per file in that directory.
+It now loads all of the modules.  The module configuration is usually stored in `mods-enabled/`, with one module configuration per file in that directory.
 
 Sometimes the module you're using does not seem to be loaded or used.  In that case, you should check this section to see that the file is loaded.
 [%collapsible]
@@ -286,7 +286,7 @@ The server then creates `Auth-Type`, as set in the virtual servers.  These `Auth
 
 ## Modules
 
-When the server read the module configuration file above (from `raddb/mods-enabled`), that meant just reding the contents of the file.  It is now ready to load the dynamic library which reads that configuration, and which parses the configuration to determine what to do with it.
+When the server read the module configuration file above (from `mods-enabled`), that meant just reding the contents of the file.  It is now ready to load the dynamic library which reads that configuration, and which parses the configuration to determine what to do with it.
 
 Each module will print out it's configuration, along with any errors or warnings it sees when it is loading itself.
 

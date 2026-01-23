@@ -67,7 +67,7 @@ Enable logging in `gdb` via the following commands:
 and follow the instructions in the proceeding section.
 
 You can also enable the `panic_action` given in
-`raddb/radiusd.conf`. See the comments in that file for more details
+`radiusd.conf`. See the comments in that file for more details
 about automatically collecting gdb debugging information when the server
 crashes.
 
