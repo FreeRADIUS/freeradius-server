@@ -4,9 +4,9 @@
 
 = Files Module
 
-The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
+The `users` file as located in `mods-config/files/authorize`. (Livingston-style format).
 
-See the xref:reference:raddb/mods-config/files/users.adoc[users] file for information
+See the raddb/mods-config/files/users.adoc file for information
 on the format of the input file, and how it operates.
 
 
@@ -73,5 +73,5 @@ files files_accounting {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

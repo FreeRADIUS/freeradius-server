@@ -166,7 +166,7 @@ wimax {
 	#
 	#  By default, the EAP modules sends `MS-MPPE-*-Key` attributes.
 	#
-	#  The default virtual server (`raddb/sites-available/default`)
+	#  The default virtual server (`sites-available/default`)
 	#  contains examples of adding the `WiMAX-MSK`.
 	#
 	#  This configuration option makes the WiMAX module delete

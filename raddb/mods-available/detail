@@ -39,7 +39,7 @@ detail {
 	#  This will create a new `detail` file for every hour.
 	#
 	#  If you are reading detail files via the `listen { ... }` section
-	#  (e.g. as in `raddb/sites-available/robust-proxy-accounting`),
+	#  (e.g. as in `sites-available/robust-proxy-accounting`),
 	#  you MUST use a unique directory for each combination of a `detail`
 	#  file writer, and reader.
 	#

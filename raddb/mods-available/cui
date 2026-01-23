@@ -12,8 +12,8 @@
 #  module to do the bulk of the work, but has custom schemas and
 #  queries.
 #
-#  * Schema is in `raddb/sql/cui/<DB>/schema.sql`
-#  * Queries are in `raddb/sql/cui/<DB>/queries.conf`
+#  * Schema is in `sql/cui/<DB>/schema.sql`
+#  * Queries are in `sql/cui/<DB>/queries.conf`
 #
 
 #

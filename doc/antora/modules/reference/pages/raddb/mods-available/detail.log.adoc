@@ -21,7 +21,7 @@ instances of the `detail` module can be used to log the
 authentication requests to one or more files.
 
 NOTE: You will also need to un-comment the `auth_log` line in the
-`recv Access-Request` section of `raddb/sites-enabled/default`.
+`recv Access-Request` section of `sites-enabled/default`.
 
 
 
@@ -36,7 +36,7 @@ This module logs authentication reply packets sent to a NAS.
 Both `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]` and `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` packets are logged.
 
 NOTE: You will also need to un-comment the 'reply_log' line in the
-`send Access-Accept` section of `raddb/sites-enabled/default`.
+`send Access-Accept` section of `sites-enabled/default`.
 
 
 
@@ -56,5 +56,5 @@ detail reply_log {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

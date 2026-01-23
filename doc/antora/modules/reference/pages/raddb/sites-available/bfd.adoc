@@ -15,7 +15,7 @@ The code is in FreeRADIUS because we want to know if the *application*
 is running. It doesn't matter if the link is up, or if the host system
 is running. If the FreeRADIUS daemon is down, then we want to know ASAP.
 
-NOTE: See also `raddb/trigger.conf`.  There are BFD-specific triggers
+NOTE: See also `trigger.conf`.  There are BFD-specific triggers
 which are executed when the link is started, goes up, down, or is
 administratively down.
 
@@ -296,5 +296,5 @@ Sneak in more data after a BFD packet!
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -9,8 +9,8 @@ The module `cui` (`link:https://freeradius.org/rfc/rfc6572.html#Chargeable-User-
 module to do the bulk of the work, but has custom schemas and
 queries.
 
-  * Schema is in `raddb/sql/cui/<DB>/schema.sql`
-  * Queries are in `raddb/sql/cui/<DB>/queries.conf`
+  * Schema is in `sql/cui/<DB>/schema.sql`
+  * Queries are in `sql/cui/<DB>/queries.conf`
 
 
 
@@ -105,5 +105,5 @@ sql cuisql {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

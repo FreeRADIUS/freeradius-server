@@ -8,7 +8,7 @@ The `eap_inner` module provides a sample configuration for an `EAP`
 module that occurs *inside* of a tunneled method. It is used to limit
 the `EAP` types that can occur inside of the inner tunnel.
 
-See also `raddb/sites-available/inner-tunnel`
+See also xref:reference:raddb/sites-available/inner-tunnel.adoc[sites-available/inner-tunnel]
 
 See the `eap` module for full documentation on the meaning of these
 configuration entries.
@@ -174,5 +174,5 @@ eap inner-eap {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

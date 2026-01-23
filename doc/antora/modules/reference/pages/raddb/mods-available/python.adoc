@@ -37,7 +37,7 @@ items which control the Python path.
 
 [NOTE]
 ====
-See `raddb/global.d/python` for configuration items that affect the
+See `global.d/python` for configuration items that affect the
 python interpreter globally, such as the Python path.
 ====
 
@@ -105,5 +105,5 @@ python {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

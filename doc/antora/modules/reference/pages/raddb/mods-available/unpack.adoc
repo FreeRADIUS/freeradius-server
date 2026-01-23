@@ -16,7 +16,7 @@ NOTE: The module is useful only for `xlat`.
 
 ## Syntax
 
-To use it, add it to the `raddb/mods-enabled/` directory.  Then,
+To use it, add it to the `mods-enabled/` directory.  Then,
 use it on the right-hand side of a variable assignment.
 
  %unpack(<data>, <offset>, <data_type>[, <repeat>])
@@ -67,5 +67,5 @@ unpack {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -19,7 +19,7 @@
 #
 #  ## Syntax
 #
-#  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
+#  To use it, add it to the `mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
 #   %unpack(<data>, <offset>, <data_type>[, <repeat>])

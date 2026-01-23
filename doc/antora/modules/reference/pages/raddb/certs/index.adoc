@@ -35,7 +35,7 @@ users, and to issue client certificates for `EAP-TLS`.
 If you already have CA and server certificates, rename (or delete) this
 directory, and create a new `certs` directory containing your
 certificates. Note that the `make install` command will NOT over-write
-your existing `raddb/certs` directory, which means that the
+your existing `certs` directory, which means that the
 `bootstrap` command will not be run.
 
 == New Installations
@@ -55,10 +55,10 @@ Then, follow the instructions below for creating real certificates.
 Once the final certificates have been created, you can delete the
 `bootstrap` command from this directory, and delete the
 `make_cert_command` configuration from the `tls` sub-section of
-`raddb/mods-available/eap`.
+`mods-available/eap`.
 
 If you do not want to enable EAP-TLS, PEAP, or EAP-TTLS, then delete the
-relevant sub-sections from the `raddb/mods-available/eap` file.
+relevant sub-sections from the `mods-available/eap` file.
 
 == Root Certificate
 
@@ -196,7 +196,7 @@ with ALL operating systems. Some common issues are:
   them, it will stop doing EAP. The most visible effect is that the client
   starts EAP, gets a few `Access-Challenge` packets, and then a little while
   later re-starts EAP. If this happens, see the FAQ, and the comments in
-  `raddb/mods-available/eap` for how to fix it.
+  `mods-available/eap` for how to fix it.
 
 * Windows requires the root certificates to be on the client PC. If it
   doesn’t have them, you will see the same issue as above.

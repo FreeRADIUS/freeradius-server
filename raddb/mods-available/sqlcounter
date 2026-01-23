@@ -179,7 +179,7 @@ sqlcounter noresetcounter {
 #  Set an account to expire T seconds after first login. Requires the `Expire-After`
 #  attribute to be set, in seconds.
 #
-#  NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribute.
+#  NOTE: You may need to edit `dictionary` to add the `Expire-After` attribute.
 #
 sqlcounter expire_on_login {
 	sql_module_instance = sql

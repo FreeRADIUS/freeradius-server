@@ -8,8 +8,8 @@ Please see the `detail` module for full documentation.
 
 Detail file writer, used in the following examples:
 
-  * `raddb/sites-available/robust-proxy-accounting`
-  * `raddb/sites-available/decoupled-accounting`
+  * xref:reference:raddb/sites-available/robust-proxy-accounting.adoc[sites-available/robust-proxy-accounting]
+  * xref:reference:raddb/sites-available/decoupled-accounting.adoc[sites-available/decoupled-accounting]
 
 NOTE: This module can write detail files that are read by
 only ONE `listen { ... }` section. If you use BOTH of the examples
@@ -39,5 +39,5 @@ detail detail.example.com {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

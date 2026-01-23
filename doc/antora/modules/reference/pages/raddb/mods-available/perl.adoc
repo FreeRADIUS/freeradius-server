@@ -6,7 +6,7 @@
 
 The `perl` module processes attributes through a Perl interpreter.
 
-  * Please see the `raddb/mods-config/perl/example.pl` sample.
+  * Please see the `mods-config/perl/example.pl` sample.
   * Please see http://www.perl.org/docs.html for more information about the
 Perl language.
 
@@ -144,5 +144,5 @@ perl {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -18,7 +18,7 @@
 #  just replace `radrelay`, you will need to add additional
 #  configuration.
 #
-#  See `raddb/sites-available/copy-acct-to-home-server` for a
+#  See `sites-available/copy-acct-to-home-server` for a
 #  more complete example.  That example is intended to be run
 #  as part of a larger RADIUS configuration, where the server
 #  also listens on ports 1812, etc.  The example given here
@@ -263,7 +263,7 @@ server radrelay {
 		#  filename:: The filename here should be the same as the one used by the
 		#  main `radiusd` program.
 		#
-		#  It writes the file using the `detail` module (see `raddb/modules/detail`).
+		#  It writes the file using the `detail` module (see `modules/detail`).
 		#
 		filename = ${radacctdir}/detail
 
@@ -278,7 +278,7 @@ server radrelay {
 	#  Accounting-Request packet (which will be from the
 	#  "detail" reader above.
 	#
-	#  See also `raddb/sites-available/copy-acct-to-home-server`
+	#  See also `sites-available/copy-acct-to-home-server`
 	#  for additional description.
 	#
 	recv Accounting-Request {

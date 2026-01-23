@@ -24,7 +24,7 @@
 #  authentication requests to one or more files.
 #
 #  NOTE: You will also need to un-comment the `auth_log` line in the
-#  `recv Access-Request` section of `raddb/sites-enabled/default`.
+#  `recv Access-Request` section of `sites-enabled/default`.
 #
 detail auth_log {
 	filename = "${radacctdir}/%{Net.Src.IP}/auth-detail-%Y-%m-%d"
@@ -46,7 +46,7 @@ detail auth_log {
 #  Both `Access-Accept` and `Access-Reject` packets are logged.
 #
 #  NOTE: You will also need to un-comment the 'reply_log' line in the
-#  `send Access-Accept` section of `raddb/sites-enabled/default`.
+#  `send Access-Accept` section of `sites-enabled/default`.
 #
 detail reply_log {
 	filename = "${radacctdir}/%{Net.Src.IP}/reply-detail-%Y-%m-%d"

@@ -689,7 +689,7 @@ All of the other configuration sections like:
 
 Have been moved to the the file:
 
-`raddb/sites-available/default`
+`sites-available/default`
 
 This is the `default` virtual server that has the same
 configuration as in version 1.0.x and 1.1.x.  The default
@@ -698,7 +698,7 @@ edit it to create policies for your local site.
 
 For more documentation on virtual servers, see:
 
-`raddb/sites-available/index.adoc`
+`sites-available/index.adoc`
 
 
 == Default Configuration

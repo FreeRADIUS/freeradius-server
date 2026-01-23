@@ -9,13 +9,13 @@
 #
 #  The module `sqlippool` provide configuration for the SQL based IP Pool module.
 #
-#  NOTE: The database schemas are available at `raddb/sql/ippool/<DB>/schema.sql`.
+#  NOTE: The database schemas are available at `sql/ippool/<DB>/schema.sql`.
 #
 #  ## Configuration Settings
 #
 sqlippool {
 	#
-	#  sql_module_instance:: SQL instance to use (from `raddb/mods-available/sql`)
+	#  sql_module_instance:: SQL instance to use (from `mods-available/sql`)
 	#
 	#  If you have multiple sql instances, such as `sql sql1 {...}`,
 	#  use the *instance* name here: `sql1`.

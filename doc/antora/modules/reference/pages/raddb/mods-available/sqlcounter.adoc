@@ -134,7 +134,7 @@ utc:: Use UTC for calculating the period start and end values.
 Set an account to expire T seconds after first login. Requires the `Expire-After`
 attribute to be set, in seconds.
 
-NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribute.
+NOTE: You may need to edit `dictionary` to add the `Expire-After` attribute.
 
 
 
@@ -196,5 +196,5 @@ sqlcounter expire_on_login {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

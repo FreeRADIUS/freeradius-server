@@ -11,8 +11,8 @@
 #
 #  Detail file writer, used in the following examples:
 #
-#  * `raddb/sites-available/robust-proxy-accounting`
-#  * `raddb/sites-available/decoupled-accounting`
+#  * `sites-available/robust-proxy-accounting`
+#  * `sites-available/decoupled-accounting`
 #
 #  NOTE: This module can write detail files that are read by
 #  only ONE `listen { ... }` section. If you use BOTH of the examples

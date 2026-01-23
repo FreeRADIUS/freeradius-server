@@ -342,6 +342,10 @@ do not (e.g. mixed IPoE and PPPoE).
 
 
 
+dn_attribute:: Where to cache the user's DN for use in authentication.
+
+
+
 ### User membership checking
 
 
@@ -953,7 +957,6 @@ my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
 %ldap.profile(my_profile)
 ----
 
-
 == Default Configuration
 
 ```
@@ -1002,6 +1005,7 @@ ldap {
 #		access_value_negate = 'false'
 #		access_value_suspend = 'suspended'
 #		expect_password = no
+#		dn_attribute = 'LDAP-UserDN'
 	}
 	group {
 		base_dn = "${..base_dn}"
@@ -1106,5 +1110,5 @@ ldap {
 #}
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

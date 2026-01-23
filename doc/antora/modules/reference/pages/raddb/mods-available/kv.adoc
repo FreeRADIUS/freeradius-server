@@ -74,6 +74,10 @@ The module will automatically choose a data structure based
 on the data type. It will be a hash table, rbtree or
 patricia trie store depending on the data type of the key.
 
+Any `key` which is passed to the `kv` functions
+(`%kv.write()`, `%kv.read()`, or `%kv.delete()`) must be
+the same data type as is given in `key_type`.
+
 
 
 max_entries:: Maximum entries allowed.
@@ -96,7 +100,7 @@ unused) key is deleted every time a new key is inserted.
 ```
 kv {
 	key_type = string
-#	max_entries = 0
+#	max_entries = 1024
 }
 ```
 

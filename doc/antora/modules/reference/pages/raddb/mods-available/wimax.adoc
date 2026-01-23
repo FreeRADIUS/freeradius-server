@@ -137,7 +137,7 @@ attributes are NOT sent in the `link:https://freeradius.org/rfc/rfc2865.html#Acc
 
 By default, the EAP modules sends `MS-MPPE-*-Key` attributes.
 
-The default virtual server (`raddb/sites-available/default`)
+The default virtual server (xref:reference:raddb/sites-available/default.adoc[sites-available/default])
 contains examples of adding the `WiMAX-MSK`.
 
 This configuration option makes the WiMAX module delete
@@ -182,5 +182,5 @@ wimax {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

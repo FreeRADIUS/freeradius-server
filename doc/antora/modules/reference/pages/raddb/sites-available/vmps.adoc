@@ -86,7 +86,7 @@ create one using other attributes.
 ```
 		if (!MAC-Address) {
 			if (Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
-				request.MAC-Address = "%regex.match(1):%regex.match(2):%regex.match(3):%regex.match(4):%regex.match(5):%regex.match(6)"
+				request.MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 			}
 			else {
 				request.MAC-Address = Cookie
@@ -97,7 +97,7 @@ create one using other attributes.
 
 Do a simple mapping of MAC to VLAN.
 
-See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
+See xref:reference:raddb/mods-available/mac2vlan.adoc[mods-available/mac2vlan] for the definition of the "mac2vlan"
 module.
 
 ```
@@ -176,5 +176,5 @@ This section is called when not responding to packets.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

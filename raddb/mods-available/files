@@ -7,7 +7,7 @@
 #
 #  = Files Module
 #
-#  The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
+#  The `users` file as located in `mods-config/files/authorize`. (Livingston-style format).
 #
 #  See the raddb/mods-config/files/users.adoc file for information
 #  on the format of the input file, and how it operates.

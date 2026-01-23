@@ -170,14 +170,14 @@ eap {
 	#
 	#  ## Common TLS configuration for TLS-based EAP types
 	#
-	#  See `raddb/certs/index.adoc` for additional comments on certificates.
+	#  See `certs/index.adoc` for additional comments on certificates.
 	#
 	#  If OpenSSL was not found at the time the server was built, the `tls`,
 	#  `ttls`, and `peap` sections will be ignored.
 	#
 	#  If you do not currently have certificates signed by a trusted CA you
 	#  may use the 'snakeoil' certificates. Included with the server in
-	#  `raddb/certs`.
+	#  `certs`.
 	#
 	#  If these certificates have not been auto-generated:
 	#

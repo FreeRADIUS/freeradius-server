@@ -1752,41 +1752,29 @@ Filter attributes from the accounting response.
 
 ```
 
-## Timeouts
+## Finally
 
-A virtual server can have a `catch timeout` section.  The format and
-contents are the same as the normal `catch timeout`.
+If a `finally` section is defined, then all packets will be processed
+through it.
 
-This section limits the total processing time for a request.  The
-values given here should be less than `request.timeout`.
+This includes packets whose processing has been stopped due to reaching
+`request.timeout`.  Such packets can be detected by testing for the
+`timeout` rcode.
 
-When a request reaches `request.timeout`, it is forcibly stopped.
-No further processing takes place.
-
-When a request reaches the time specified in this `timeout` section,
-all normal processing is stopped.  The `timeout` section is then run.
-
-This configuration allows the server to take action when a request
-is taking too long.  For example, it could write a failure message
-to a log file.
-
-The `timeout` section can contain any `unlang` keyword, including
-`call`, and other `timeout` sections.  If you need to have a
-"timeout for the timeout", then just add anoither `timeout` section
-inside of this one.
-
-Note that `request.timeout` still applies.  So the timeout value
-given here should be less than the value given by
-`request.timeout`.
-
-
+The `finally` section can be used as a common logging section for
+all packets, allowing their final state to be captured.
 
 ```
-#	catch timeout {
-#		do_logging_here
-#		...
+#finally {
+#	if (timeout) {
+#		logging relating to timeouts
+#		return
 #	}
+```
 
+```
+#	normal packet logging
+#}
 }
 ```
 
@@ -1795,5 +1783,5 @@ given here should be less than the value given by
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -9,7 +9,7 @@
 #
 #  The `perl` module processes attributes through a Perl interpreter.
 #
-#  * Please see the `raddb/mods-config/perl/example.pl` sample.
+#  * Please see the `mods-config/perl/example.pl` sample.
 #  * Please see http://www.perl.org/docs.html for more information about the
 #  Perl language.
 #

@@ -21,9 +21,9 @@ configuration.
 
 You must:
 
-1. Link `raddb/sites-enabled/dynamic_clients` to `raddb/sites-available/dynamic_clients`.
+1. Link `sites-enabled/dynamic_clients` to xref:reference:raddb/sites-available/dynamic_clients.adoc[sites-available/dynamic_clients].
 
-2. Define a client network/mask (see the top of `raddb/sites-enabled/dynamic_clients).
+2. Define a client network/mask (see the top of `sites-enabled/dynamic_clients).
 
 3. Uncomment the `directory` entry in that client definition.
 
@@ -34,7 +34,7 @@ The default example already does this.
 a normal client definition
 for a client with IP address `192.0.2.1`.
 
-NOTE: For more documentation, see the file `raddb/sites-available/dynamic-clients`
+NOTE: For more documentation, see the file xref:reference:raddb/sites-available/dynamic-clients.adoc[sites-available/dynamic-clients]
 
 
 
@@ -91,5 +91,5 @@ client {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

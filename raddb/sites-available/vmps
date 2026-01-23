@@ -81,7 +81,7 @@ server vmps {
 		#
 		#  Do a simple mapping of MAC to VLAN.
 		#
-		#  See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
+		#  See `mods-available/mac2vlan` for the definition of the "mac2vlan"
 		#  module.
 		#
 #		mac2vlan
