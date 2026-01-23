@@ -1,5 +1,5 @@
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include <freeradius-devel/util/test/acutest.h>
+#include <freeradius-devel/util/test/acutest_helpers.h>
 #include <freeradius-devel/util/syserror.h>
 #include <sys/socket.h>
 

@@ -1,8 +1,8 @@
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <float.h>
 
-#include "dbuff.h"
+#include <freeradius-devel/util/dbuff.h>
 
 //#include <gperftools/profiler.h>
 

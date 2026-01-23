@@ -16,12 +16,12 @@
 
 /** Size printing/parsing
  *
- * @file src/lib/util/size_tests.c
+ * @file src/lib/util/test//size_tests.c
  * @copyright Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/size.h>
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H

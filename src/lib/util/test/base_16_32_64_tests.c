@@ -1,9 +1,9 @@
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 
-#include "base16.h"
-#include "base32.h"
-#include "base64.h"
+#include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/base32.h>
+#include <freeradius-devel/util/base64.h>
 
 typedef struct {
 	struct {

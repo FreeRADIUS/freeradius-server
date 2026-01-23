@@ -16,12 +16,12 @@
 
 /** Tests for rbtrees
  *
- * @file src/lib/util/rb_tests.c
+ * @file src/lib/util/test//rb_tests.c
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rb.h>
 

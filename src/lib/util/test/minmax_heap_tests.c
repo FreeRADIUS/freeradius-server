@@ -1,9 +1,9 @@
-#include <freeradius-devel/util/acutest.h>
+#include "acutest.h"
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/time.h>
 
-#include "minmax_heap.c"
+#include "../minmax_heap.c"
 
 typedef struct {
 	unsigned int		data;

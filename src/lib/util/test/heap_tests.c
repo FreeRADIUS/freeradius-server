@@ -1,8 +1,8 @@
-#include <freeradius-devel/util/acutest.h>
+#include "acutest.h"
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/rand.h>
 
-#include "heap.c"
+#include "../heap.c"
 
 static bool fr_heap_check(fr_heap_t *h, void *data)
 {

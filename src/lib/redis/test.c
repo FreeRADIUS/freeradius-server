@@ -1,7 +1,7 @@
 /*
  *  cc  -g3 -Wall -DHAVE_DLFCN_H -I../../../src -include freeradius-devel/build.h -L../../../build/lib/local/.libs -ltalloc -lhiredis -lfreeradius-unlang -lfreeradius-util -lfreeradius-server -o test_redis test.c redis.c io.c crc16.c
  */
-#include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/test/acutest.h>
 #include "base.h"
 #include "io.h"
 #include "pipeline.h"

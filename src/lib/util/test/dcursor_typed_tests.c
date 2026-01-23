@@ -1,6 +1,6 @@
-#include <freeradius-devel/util/acutest.h>
+#include "acutest.h"
 
-#include "dcursor.c"
+#include "../dcursor.c"
 
 /*
  *	A repeat of the tests in dcursor_tests.c, but using

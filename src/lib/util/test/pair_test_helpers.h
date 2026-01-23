@@ -17,7 +17,7 @@
 
 /** Helper functions for pair tests
  *
- * @file src/lib/util/pair_test_helpers.h
+ * @file src/lib/util/test//pair_test_helpers.h
  *
  * @copyright 2021 The FreeRADIUS server project
  */

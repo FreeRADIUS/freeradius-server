@@ -16,12 +16,12 @@
 
 /** Tests for timer lists
  *
- * @file src/lib/util/timer_tests.c
+ * @file src/lib/util/test//timer_tests.c
  *
  * @copyright 2025 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/timer.h>
 

@@ -16,12 +16,12 @@
 
 /** Tests for a generic string buffer structure for string printing and parsing
  *
- * @file src/lib/util/time_tests.c
+ * @file src/lib/util/test//time_tests.c
  *
  * @copyright 2022 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/time.h>
 
 #define ROUNDS (100000)

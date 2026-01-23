@@ -17,7 +17,7 @@
 
 /** Type specific TEST_CHECK macros for acutest
  *
- * @file src/lib/util/acutest_helpers.h
+ * @file src/lib/util/test//test/acutest_helpers.h
  *
  * @copyright 2020 Arran Cudbard-Bell
  */

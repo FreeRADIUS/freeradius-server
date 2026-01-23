@@ -16,15 +16,15 @@
 
 /** Tests for the dlist API
  *
- * @file src/lib/util/dlist_tests.c
+ * @file src/lib/util/test//dlist_tests.c
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 
-#include "dlist.h"
+#include <freeradius-devel/util/dlist.h>
 
 typedef struct {
 	char const	*id;

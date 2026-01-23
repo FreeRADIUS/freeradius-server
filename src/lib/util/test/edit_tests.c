@@ -16,7 +16,7 @@
 
 /** Tests for a AVP manipulation and search API.
  *
- * @file src/lib/util/edit_tests.c
+ * @file src/lib/util/test//edit_tests.c
  * @author Alan DeKok (aland@networkradius.com)
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
@@ -39,9 +39,9 @@ static void test_init(void);
 #	define TEST_INIT  test_init()
 #endif
 
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
-#include <freeradius-devel/util/pair_test_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
+#include "pair_test_helpers.h"
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>

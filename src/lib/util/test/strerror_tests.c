@@ -16,12 +16,12 @@
 
 /** Tests for a generic string buffer structure for string printing and parsing
  *
- * @file src/lib/util/strerror_tests.c
+ * @file src/lib/util/test//strerror_tests.c
  *
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/time.h>
 
 static void strerror_uninit(void)

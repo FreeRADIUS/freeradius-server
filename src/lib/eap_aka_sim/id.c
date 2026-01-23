@@ -672,7 +672,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
  */
 #include <stddef.h>
 #include <stdbool.h>
-#include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/test/acutest.h>
 
 void test_encrypt_decypt_key0(void)
 {

@@ -16,7 +16,7 @@
 
 /** Performance tests for lists of fr_pair_t
  *
- * @file src/lib/util/pair_list_perf_test.c
+ * @file src/lib/util/test//pair_list_perf_test.c
  * @author Nick Porter <nick.porter@networkradius.com>
  *
  * @copyright 2021 Network RADIUS SAS <legal@networkradius.com>
@@ -40,7 +40,7 @@ static void pair_list_perf_init(void);
 #define TEST_INIT pair_list_perf_init()
 #endif
 
-#include <freeradius-devel/util/acutest.h>
+#include "acutest.h"
 
 #ifdef WITH_VERIFY_PTR
 #undef WITH_VERIFY_PTR

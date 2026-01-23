@@ -1,5 +1,5 @@
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/heap.h>
@@ -9,7 +9,7 @@
  *	access to fr_lst_t internals that lst.h doesn't reveal
  *	to those who #include it.
  */
-#include "lst.c"
+#include "../lst.c"
 
 typedef struct {
 	unsigned int	data;

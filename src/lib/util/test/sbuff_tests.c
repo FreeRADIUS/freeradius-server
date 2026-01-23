@@ -16,14 +16,14 @@
 
 /** Tests for a generic string buffer structure for string printing and parsing
  *
- * @file src/lib/util/sbuff_tests.c
+ * @file src/lib/util/test//sbuff_tests.c
  *
  * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/util/acutest.h>
-#include <freeradius-devel/util/acutest_helpers.h>
+#include "acutest.h"
+#include"acutest_helpers.h"
 
-#include "sbuff.h"
+#include <freeradius-devel/util/sbuff.h>
 
 //#include <gperftools/profiler.h>
 
