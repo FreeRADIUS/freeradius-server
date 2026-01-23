@@ -552,10 +552,10 @@ match ERROR offset 10: Invalid array index '-1'
 #  attributes MUST be prefixed with '&'.
 #
 xlat_purify_cond request.Foo == 'request.Foo'
-match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify_cond request.Foo == 'request.Foo'
-match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 #match ERROR offset 10: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify_cond not-a-list.User-Name == not-a-list.User-Name
