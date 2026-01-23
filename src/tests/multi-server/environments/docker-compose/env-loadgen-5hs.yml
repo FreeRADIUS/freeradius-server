@@ -18,14 +18,10 @@ x-common-config: &id001
   - SYS_PTRACE
 services:
   homeserver1:
-    image: freeradius-dev-ubuntu24:latest
+    image: fr-build-ubuntu22:latest
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/trigger.conf:/etc/raddb/trigger.conf
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/homeserver/clients.conf:/etc/raddb/clients.conf
     - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
-    - ${DATA_PATH}/freeradius/homeserver/mods-available/linelog:/etc/raddb/mods-available/linelog
-    - ${DATA_PATH}/freeradius/homeserver/sites-available/hs-auto-accept:/etc/raddb/sites-available/hs-auto-accept
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -36,32 +32,30 @@ services:
     - |
       set -euo pipefail
 
+      # Next three lines based on test-framework test config example
       apt-get update
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
-      # Ensure EAP/PEAP certs exist (generate only if missing)
-      if [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        echo "[*] Generating FreeRADIUS certs..."
-        (cd /etc/raddb/certs && make)
-      fi
-
+      # Disable default virtual server config and disable unused modules
       rm -f /etc/raddb/sites-enabled/default
-      ln -sf /etc/raddb/sites-available/hs-auto-accept /etc/raddb/sites-enabled/hs-auto-accept
+      rm -f /etc/raddb/sites-enabled/inner-tunnel
+      rm -f /etc/raddb/mods-enabled/eap
+      rm -f /etc/raddb/mods-enabled/eap_inner
+      rm -f /etc/raddb/mods-enabled/mschap
+      rm -f /etc/raddb/mods-enabled/linelog
+
+      ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
+      sleep infinity
     <<: *id001
   homeserver2:
-    image: freeradius-dev-ubuntu24:latest
+    image: fr-build-ubuntu22:latest
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/trigger.conf:/etc/raddb/trigger.conf
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/homeserver/clients.conf:/etc/raddb/clients.conf
     - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
-    - ${DATA_PATH}/freeradius/homeserver/mods-available/linelog:/etc/raddb/mods-available/linelog
-    - ${DATA_PATH}/freeradius/homeserver/sites-available/hs-auto-accept:/etc/raddb/sites-available/hs-auto-accept
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -72,32 +66,30 @@ services:
     - |
       set -euo pipefail
 
+      # Next three lines based on test-framework test config example
       apt-get update
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
-      # Ensure EAP/PEAP certs exist (generate only if missing)
-      if [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        echo "[*] Generating FreeRADIUS certs..."
-        (cd /etc/raddb/certs && make)
-      fi
-
+      # Disable default virtual server config and disable unused modules
       rm -f /etc/raddb/sites-enabled/default
-      ln -sf /etc/raddb/sites-available/hs-auto-accept /etc/raddb/sites-enabled/hs-auto-accept
+      rm -f /etc/raddb/sites-enabled/inner-tunnel
+      rm -f /etc/raddb/mods-enabled/eap
+      rm -f /etc/raddb/mods-enabled/eap_inner
+      rm -f /etc/raddb/mods-enabled/mschap
+      rm -f /etc/raddb/mods-enabled/linelog
+
+      ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
+      sleep infinity
     <<: *id001
   homeserver3:
-    image: freeradius-dev-ubuntu24:latest
+    image: fr-build-ubuntu22:latest
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/trigger.conf:/etc/raddb/trigger.conf
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/homeserver/clients.conf:/etc/raddb/clients.conf
     - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
-    - ${DATA_PATH}/freeradius/homeserver/mods-available/linelog:/etc/raddb/mods-available/linelog
-    - ${DATA_PATH}/freeradius/homeserver/sites-available/hs-auto-accept:/etc/raddb/sites-available/hs-auto-accept
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -108,32 +100,30 @@ services:
     - |
       set -euo pipefail
 
+      # Next three lines based on test-framework test config example
       apt-get update
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
-      # Ensure EAP/PEAP certs exist (generate only if missing)
-      if [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        echo "[*] Generating FreeRADIUS certs..."
-        (cd /etc/raddb/certs && make)
-      fi
-
+      # Disable default virtual server config and disable unused modules
       rm -f /etc/raddb/sites-enabled/default
-      ln -sf /etc/raddb/sites-available/hs-auto-accept /etc/raddb/sites-enabled/hs-auto-accept
+      rm -f /etc/raddb/sites-enabled/inner-tunnel
+      rm -f /etc/raddb/mods-enabled/eap
+      rm -f /etc/raddb/mods-enabled/eap_inner
+      rm -f /etc/raddb/mods-enabled/mschap
+      rm -f /etc/raddb/mods-enabled/linelog
+
+      ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
+      sleep infinity
     <<: *id001
   homeserver4:
-    image: freeradius-dev-ubuntu24:latest
+    image: fr-build-ubuntu22:latest
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/trigger.conf:/etc/raddb/trigger.conf
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/homeserver/clients.conf:/etc/raddb/clients.conf
     - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
-    - ${DATA_PATH}/freeradius/homeserver/mods-available/linelog:/etc/raddb/mods-available/linelog
-    - ${DATA_PATH}/freeradius/homeserver/sites-available/hs-auto-accept:/etc/raddb/sites-available/hs-auto-accept
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -144,32 +134,30 @@ services:
     - |
       set -euo pipefail
 
+      # Next three lines based on test-framework test config example
       apt-get update
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
-      # Ensure EAP/PEAP certs exist (generate only if missing)
-      if [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        echo "[*] Generating FreeRADIUS certs..."
-        (cd /etc/raddb/certs && make)
-      fi
-
+      # Disable default virtual server config and disable unused modules
       rm -f /etc/raddb/sites-enabled/default
-      ln -sf /etc/raddb/sites-available/hs-auto-accept /etc/raddb/sites-enabled/hs-auto-accept
+      rm -f /etc/raddb/sites-enabled/inner-tunnel
+      rm -f /etc/raddb/mods-enabled/eap
+      rm -f /etc/raddb/mods-enabled/eap_inner
+      rm -f /etc/raddb/mods-enabled/mschap
+      rm -f /etc/raddb/mods-enabled/linelog
+
+      ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
+      sleep infinity
     <<: *id001
   homeserver5:
-    image: freeradius-dev-ubuntu24:latest
+    image: fr-build-ubuntu22:latest
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/trigger.conf:/etc/raddb/trigger.conf
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/homeserver/clients.conf:/etc/raddb/clients.conf
     - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
-    - ${DATA_PATH}/freeradius/homeserver/mods-available/linelog:/etc/raddb/mods-available/linelog
-    - ${DATA_PATH}/freeradius/homeserver/sites-available/hs-auto-accept:/etc/raddb/sites-available/hs-auto-accept
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -180,28 +168,29 @@ services:
     - |
       set -euo pipefail
 
+      # Next three lines based on test-framework test config example
       apt-get update
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
-      # Ensure EAP/PEAP certs exist (generate only if missing)
-      if [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        echo "[*] Generating FreeRADIUS certs..."
-        (cd /etc/raddb/certs && make)
-      fi
-
+      # Disable default virtual server config and disable unused modules
       rm -f /etc/raddb/sites-enabled/default
-      ln -sf /etc/raddb/sites-available/hs-auto-accept /etc/raddb/sites-enabled/hs-auto-accept
+      rm -f /etc/raddb/sites-enabled/inner-tunnel
+      rm -f /etc/raddb/mods-enabled/eap
+      rm -f /etc/raddb/mods-enabled/eap_inner
+      rm -f /etc/raddb/mods-enabled/mschap
+      rm -f /etc/raddb/mods-enabled/linelog
+
+      ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
+      sleep infinity
     <<: *id001
   load-generator:
     image: freeradius-dev-ubuntu24:latest
     ports:
-      # Expose RADIUS ports for load generator to allow us to access the server from outside docker.
-      # Especially true when using macOS terminal to send packets to the server in the container.
+      # Expose RADIUS ports for load generator to allow us to access the server from outside docker
       - "1812:1812/udp"
       - "1813:1813/udp"
       - "1820:1820/udp"
@@ -258,11 +247,6 @@ services:
 
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Generate FreeRADIUS certs if missing (needed for eap/peap)
-      if [ -e /etc/raddb/mods-enabled/eap ] && [ ! -f /etc/raddb/certs/rsa/server.pem ]; then
-        (cd /etc/raddb/certs && make)
-      fi
 
       ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
       ln -sf /etc/raddb/mods-available/radius /etc/raddb/mods-enabled/radius
