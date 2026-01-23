@@ -23,8 +23,7 @@
  */
 RCSIDH(skip_h, "$Id$")
 
-#include <sys/types.h>
-#include <stdbool.h>
+#include <freeradius-devel/util/sbuff.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +54,7 @@ ssize_t		fr_skip_brackets(char const *start, char const *end, char end_quote);
 
 ssize_t		fr_skip_xlat(char const *start, char const *end) CC_HINT(nonnull(1));
 
-ssize_t		fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1],
+ssize_t		fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS],
 				  bool *eol) CC_HINT(nonnull(1,3));
 #ifdef __cplusplus
 }

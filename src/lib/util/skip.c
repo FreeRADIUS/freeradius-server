@@ -283,7 +283,7 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
  *	>0 length of the string which was parsed.  *eol is false.
  *	<=0 on error, *eol may be set.
  */
-ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1], bool *eol)
+ssize_t fr_skip_condition(char const *start, char const *end, bool const terminal[static SBUFF_CHAR_CLASS], bool *eol)
 {
 	char const *p = start;
 	bool was_regex = false;

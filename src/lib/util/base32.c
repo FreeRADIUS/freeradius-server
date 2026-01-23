@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #define us(x) (uint8_t) x
 
-char const fr_base32_alphabet_encode[UINT8_MAX] = {
+char const fr_base32_alphabet_encode[SBUFF_CHAR_CLASS] = {
 	[26] = '2',
 	[27] = '3',
 	[28] = '4',
@@ -64,7 +64,7 @@ char const fr_base32_alphabet_encode[UINT8_MAX] = {
 	[25] = 'Z',
 };
 
-uint8_t const fr_base32_alphabet_decode[UINT8_MAX] = {
+uint8_t const fr_base32_alphabet_decode[SBUFF_CHAR_CLASS] = {
 	F32(0, UINT8_MAX), F16(32, UINT8_MAX), F2(48, UINT8_MAX),
 	['2'] = 26,
 	['3'] = 27,
@@ -102,7 +102,7 @@ uint8_t const fr_base32_alphabet_decode[UINT8_MAX] = {
 	F128(91, UINT8_MAX), F32(219, UINT8_MAX), F4(251, UINT8_MAX)
 };
 
-char const fr_base32_hex_alphabet_encode[UINT8_MAX] = {
+char const fr_base32_hex_alphabet_encode[SBUFF_CHAR_CLASS] = {
 	[0] = '0',
 	[1] = '1',
 	[2] = '2',
@@ -137,7 +137,7 @@ char const fr_base32_hex_alphabet_encode[UINT8_MAX] = {
 	[31] = 'V',
 };
 
-uint8_t const fr_base32_hex_alphabet_decode[UINT8_MAX] = {
+uint8_t const fr_base32_hex_alphabet_decode[SBUFF_CHAR_CLASS] = {
 	F32(0, UINT8_MAX), F16(32, UINT8_MAX),
 	['0'] = 0,
 	['1'] = 1,
@@ -188,7 +188,7 @@ uint8_t const fr_base32_hex_alphabet_decode[UINT8_MAX] = {
  *	- <0 the number of bytes we would have needed in the ouput buffer.
  */
 ssize_t fr_base32_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
-			      bool add_padding, char const alphabet[static UINT8_MAX])
+			      bool add_padding, char const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t		our_out = FR_SBUFF(out);
 	fr_dbuff_t		our_in = FR_DBUFF(in);
@@ -313,7 +313,7 @@ ssize_t fr_base32_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
  *	- Length of decoded data.
  */
 fr_slen_t fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-				bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
+				bool expect_padding, bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dbuff_t		our_out = FR_DBUFF(out);

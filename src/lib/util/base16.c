@@ -28,7 +28,7 @@ RCSID("$Id$")
 /** lower case encode alphabet for base16
  *
  */
-char const fr_base16_alphabet_encode_lc[UINT8_MAX + 1] = {
+char const fr_base16_alphabet_encode_lc[SBUFF_CHAR_CLASS] = {
 	[0] = '0',
 	[1] = '1',
 	[2] = '2',
@@ -50,7 +50,7 @@ char const fr_base16_alphabet_encode_lc[UINT8_MAX + 1] = {
 /** lower case encode alphabet for base16
  *
  */
-char const fr_base16_alphabet_encode_uc[UINT8_MAX + 1] = {
+char const fr_base16_alphabet_encode_uc[SBUFF_CHAR_CLASS] = {
 	[0] = '0',
 	[1] = '1',
 	[2] = '2',
@@ -72,7 +72,7 @@ char const fr_base16_alphabet_encode_uc[UINT8_MAX + 1] = {
 /** Mixed case decode alphabet for base16
  *
  */
-uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1] = {
+uint8_t const fr_base16_alphabet_decode_mc[SBUFF_CHAR_CLASS] = {
 	F32(0, UINT8_MAX), F16(32, UINT8_MAX),
 	['0'] = 0,
 	['1'] = 1,
@@ -112,7 +112,7 @@ uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1] = {
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.
  */
-fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1])
+fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 	fr_dbuff_t	our_in = FR_DBUFF(in);
@@ -142,7 +142,7 @@ fr_slen_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alph
  *	- Length of decoded data.
  */
 fr_slen_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-				bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1])
+				bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_dbuff_t	our_out = FR_DBUFF(out);

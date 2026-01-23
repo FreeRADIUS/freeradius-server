@@ -36,10 +36,10 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-extern char const fr_base32_alphabet_encode[UINT8_MAX];
-extern uint8_t const fr_base32_alphabet_decode[UINT8_MAX];
-extern char const fr_base32_hex_alphabet_encode[UINT8_MAX];
-extern uint8_t const fr_base32_hex_alphabet_decode[UINT8_MAX];
+extern char const fr_base32_alphabet_encode[SBUFF_CHAR_CLASS];
+extern uint8_t const fr_base32_alphabet_decode[SBUFF_CHAR_CLASS];
+extern char const fr_base32_hex_alphabet_encode[SBUFF_CHAR_CLASS];
+extern uint8_t const fr_base32_hex_alphabet_decode[SBUFF_CHAR_CLASS];
 
 /** Check if char is in base32 alphabet
  *
@@ -51,19 +51,19 @@ extern uint8_t const fr_base32_hex_alphabet_decode[UINT8_MAX];
  *	- true if c is a character from the base32 alphabet.
  *	- false if character is not in the base32 alphabet.
  */
-static inline bool fr_is_base32_nstd(char c, uint8_t const alphabet[static UINT8_MAX])
+static inline bool fr_is_base32_nstd(char c, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 {
 	return alphabet[(uint8_t)c] < 32;
 }
 
 ssize_t		fr_base32_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
-				      bool add_padding, char const alphabet[static UINT8_MAX]);
+				      bool add_padding, char const alphabet[static SBUFF_CHAR_CLASS]);
 
 #define		fr_base32_encode(_out, _in, _add_padding) \
 		fr_base32_encode_nstd(_out, _in, _add_padding, fr_base32_alphabet_encode)
 
 ssize_t		fr_base32_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-				      bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
+				      bool expect_padding, bool no_trailing, uint8_t const alphabet[static SBUFF_CHAR_CLASS])
 				      CC_HINT(nonnull(2,3,6));
 
 #define		fr_base32_decode(_out, _in, _expect_padding, _no_trailing) \

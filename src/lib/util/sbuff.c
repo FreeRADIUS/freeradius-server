@@ -60,29 +60,29 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 #  define CHECK_SBUFF_WRITEABLE(_sbuff)
 #endif
 
-bool const sbuff_char_class_uint[UINT8_MAX + 1] = {
+bool const sbuff_char_class_uint[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['+'] = true
 };
 
-bool const sbuff_char_class_int[UINT8_MAX + 1] = {
+bool const sbuff_char_class_int[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['+'] = true, ['-'] = true
 };
 
-bool const sbuff_char_class_float[UINT8_MAX + 1] = {
+bool const sbuff_char_class_float[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_NUM,
 	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
 };
 
-bool const sbuff_char_class_zero[UINT8_MAX + 1] = {
+bool const sbuff_char_class_zero[SBUFF_CHAR_CLASS] = {
 	['0'] = true
 };
 
 /*
  *	Anything which vaguely resembles an IP address, prefix, or host name.
  */
-bool const sbuff_char_class_hostname[UINT8_MAX + 1] = {
+bool const sbuff_char_class_hostname[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['.'] = true,		/* only for IPv4 and host names */
 	[':'] = true,		/* only for IPv6 numerical addresses */
@@ -94,21 +94,21 @@ bool const sbuff_char_class_hostname[UINT8_MAX + 1] = {
 	['*'] = true,		/* really only for ipv4 addresses */
 };
 
-bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
-bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
-bool const sbuff_char_word[UINT8_MAX + 1] = {
+bool const sbuff_char_class_hex[SBUFF_CHAR_CLASS] = { SBUFF_CHAR_CLASS_HEX };
+bool const sbuff_char_alpha_num[SBUFF_CHAR_CLASS] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
+bool const sbuff_char_word[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['-'] = true, ['_'] = true,
 };
-bool const sbuff_char_whitespace[UINT8_MAX + 1] = {
+bool const sbuff_char_whitespace[SBUFF_CHAR_CLASS] = {
 	['\t'] = true, ['\n'] = true, ['\r'] = true, ['\f'] = true, ['\v'] = true, [' '] = true,
 };
 
-bool const sbuff_char_line_endings[UINT8_MAX + 1] = {
+bool const sbuff_char_line_endings[SBUFF_CHAR_CLASS] = {
 	['\n'] = true, ['\r'] = true
 };
 
-bool const sbuff_char_blank[UINT8_MAX + 1] = {
+bool const sbuff_char_blank[SBUFF_CHAR_CLASS] = {
 	['\t'] = true, [' '] = true,
 };
 
@@ -508,14 +508,14 @@ int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
  * @param[in] term		Terminals to populate the index with.
  */
 static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *needle_len,
-								     uint8_t idx[static UINT8_MAX + 1],
+								     uint8_t idx[static SBUFF_CHAR_CLASS],
 								     fr_sbuff_term_t const *term)
 {
 	size_t i, len, max = 0;
 
 	if (!term) return;
 
-	memset(idx, 0, UINT8_MAX + 1);
+	memset(idx, 0, SBUFF_CHAR_CLASS);
 
 	for (i = 0; i < term->len; i++) {
 		len = term->elem[i].len;
@@ -543,7 +543,7 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
  *	- false if not.
  */
 static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
-					    uint8_t idx[static UINT8_MAX + 1],
+					    uint8_t idx[static SBUFF_CHAR_CLASS],
 					    fr_sbuff_term_t const *term, size_t needle_len)
 {
 	uint8_t 	term_idx;
@@ -651,7 +651,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 {
 	size_t				i, j, num;
 	fr_sbuff_term_t			*out;
-	fr_sbuff_term_elem_t const	*tmp[UINT8_MAX + 1];
+	fr_sbuff_term_elem_t const	*tmp[SBUFF_CHAR_CLASS];
 
 	/*
 	 *	Check all inputs are pre-sorted.  It doesn't break this
@@ -819,7 +819,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
  *	- >0 the number of bytes copied.
  */
 size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				     bool const allowed[static UINT8_MAX + 1])
+				     bool const allowed[static SBUFF_CHAR_CLASS])
 {
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 
@@ -871,7 +871,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	bool		do_escape = false;		/* Track state across extensions */
 
-	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];		/* Fast path index */
 	size_t		needle_len = 1;
 	char		escape_chr = u_rules ? u_rules->chr : '\0';
 
@@ -947,7 +947,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 	fr_sbuff_marker_t		c_s;
 	fr_sbuff_marker_t		end;
 
-	uint8_t				idx[UINT8_MAX + 1];			/* Fast path index */
+	uint8_t				idx[SBUFF_CHAR_CLASS];			/* Fast path index */
 	size_t				needle_len = 1;
 	fr_sbuff_extend_status_t	status = 0;
 
@@ -1115,7 +1115,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 
-	static bool const bool_prefix[UINT8_MAX + 1] = {
+	static bool const bool_prefix[SBUFF_CHAR_CLASS] = {
 		['t'] = true, ['T'] = true,	/* true */
 		['f'] = true, ['F'] = true,	/* false */
 		['y'] = true, ['Y'] = true,	/* yes */
@@ -1803,11 +1803,11 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
  * @return how many bytes we advanced.
  */
 size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
-				 const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt)
+				 const allowed[static SBUFF_CHAR_CLASS], fr_sbuff_term_t const *tt)
 {
 	size_t		total = 0;
 	char const	*p;
-	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];	/* Fast path index */
 	size_t		needle_len = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -1883,7 +1883,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
 	char const	*p;
 	bool		do_escape = false;		/* Track state across extensions */
 
-	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];		/* Fast path index */
 	size_t		needle_len = 1;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -2153,7 +2153,7 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
  * @param[in] to_trim		Charset to trim.
  * @return how many chars we removed.
  */
-size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1])
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static SBUFF_CHAR_CLASS])
 {
 	char	*p = sbuff->p - 1;
 	ssize_t	slen;
@@ -2179,7 +2179,7 @@ size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]
  */
 bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
-	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	uint8_t		idx[SBUFF_CHAR_CLASS];	/* Fast path index */
 	size_t		needle_len = 1;
 
 	/*
@@ -2212,7 +2212,7 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
  */
 static char const *sbuff_print_char(char c)
 {
-	static bool const unprintables[UINT8_MAX + 1] = {
+	static bool const unprintables[SBUFF_CHAR_CLASS] = {
 		SBUFF_CHAR_UNPRINTABLES_LOW,
 		SBUFF_CHAR_UNPRINTABLES_EXTENDED
 	};

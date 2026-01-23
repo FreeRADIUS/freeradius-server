@@ -196,6 +196,15 @@ typedef struct {
 	.elem = (fr_sbuff_term_elem_t[]){ __VA_ARGS__ }, \
 }
 
+/*
+ *	We can't put this into a typdef:
+ *
+ *	  typedef bool sbuff_char_class_t[static UINT8_MAX + 1];
+ *
+ *	So we use a macro instead.
+ */
+#define SBUFF_CHAR_CLASS UINT8_MAX + 1
+
 /** Set of parsing rules for *unescape_until functions
  *
  */
@@ -203,10 +212,10 @@ typedef struct {
 	char const	*name;				//!< Name for rule set to aid we debugging.
 
 	char		chr;				//!< Character at the start of an escape sequence.
-	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[SBUFF_CHAR_CLASS];		//!< Special characters and their substitutions.
 							///< Indexed by the printable representation i.e.
 							///< 'n' for \n.
-	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
+	bool		skip[SBUFF_CHAR_CLASS];		//!< Characters that are escaped, but left in the
 							///< output along with the escape character.
 							///< This is useful where we need to interpret escape
 							///< sequences for parsing, but where the string will
@@ -225,10 +234,10 @@ typedef struct {
 
 	char		chr;				//!< Character at the start of an escape sequence.
 
-	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[SBUFF_CHAR_CLASS];		//!< Special characters and their substitutions.
 							///< Indexed by the binary representation i.e.
 							///< 0x0a for \n.
-	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
+	bool		esc[SBUFF_CHAR_CLASS];		//!< Characters that should be translated to hex or
 							///< octal escape sequences.
 	bool		do_utf8;			//!< If true Don't apply escaping rules to valid UTF-8 sequences.
 
@@ -281,17 +290,17 @@ static inline bool fr_sbuff_is_extendable(fr_sbuff_t *sbuff)
 
 #define fr_sbuff_was_extended(_status)		(_status & FR_SBUFF_FLAG_EXTENDED)
 
-extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
-extern bool const sbuff_char_class_int[UINT8_MAX + 1];
-extern bool const sbuff_char_class_float[UINT8_MAX + 1];
-extern bool const sbuff_char_class_zero[UINT8_MAX + 1];
-extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
-extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
-extern bool const sbuff_char_word[UINT8_MAX + 1];
-extern bool const sbuff_char_whitespace[UINT8_MAX + 1];
-extern bool const sbuff_char_line_endings[UINT8_MAX + 1];
-extern bool const sbuff_char_blank[UINT8_MAX + 1];
-extern bool const sbuff_char_class_hostname[UINT8_MAX + 1];
+extern bool const sbuff_char_class_uint[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_int[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_float[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_zero[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_hex[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_alpha_num[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_word[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_whitespace[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_line_endings[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_blank[SBUFF_CHAR_CLASS];
+extern bool const sbuff_char_class_hostname[SBUFF_CHAR_CLASS];
 
 /** Matches a-z,A-Z
  */
@@ -1463,7 +1472,7 @@ do { \
 /** Toggle any chars to 'true' in out, that were present in, out or in
  *
  */
-static inline void fr_sbuff_allowed_merge(bool out[static UINT8_MAX + 1], bool const in[static UINT8_MAX + 1])
+static inline void fr_sbuff_allowed_merge(bool out[static SBUFF_CHAR_CLASS], bool const in[static SBUFF_CHAR_CLASS])
 {
 	for (size_t i = 0; i <= UINT8_MAX; i++) out[i] = out[i] || in[i];
 }
@@ -1476,7 +1485,7 @@ size_t	fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 ssize_t	fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len);
 
 size_t	fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
-				      bool const allowed[static UINT8_MAX + 1]);
+				      bool const allowed[static SBUFF_CHAR_CLASS]);
 
 size_t	fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				    fr_sbuff_term_t const *tt,
@@ -1600,7 +1609,7 @@ static inline fr_slen_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
 
 static inline fr_slen_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						       bool const allowed[static UINT8_MAX + 1])
+						       bool const allowed[static SBUFF_CHAR_CLASS])
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed)
 
 static inline fr_slen_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
@@ -1709,7 +1718,7 @@ size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 #define fr_sbuff_adv_past_strcase_literal(_sbuff, _needle) fr_sbuff_adv_past_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len,
-				  bool const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt);
+				  bool const allowed[static SBUFF_CHAR_CLASS], fr_sbuff_term_t const *tt);
 
 #define fr_sbuff_adv_past_zeros(_sbuff, _len, _tt) fr_sbuff_adv_past_allowed(_sbuff, _len, sbuff_char_class_zero, _tt)
 
@@ -1749,7 +1758,7 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
  *
  * @{
  */
-size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]);
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static SBUFF_CHAR_CLASS]);
 /** @} */
 
 /** @name Conditions
@@ -1760,7 +1769,7 @@ size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]
  */
 bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
-static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static UINT8_MAX + 1])
+static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[static SBUFF_CHAR_CLASS])
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
 	return chars[(uint8_t)*sbuff->p];
