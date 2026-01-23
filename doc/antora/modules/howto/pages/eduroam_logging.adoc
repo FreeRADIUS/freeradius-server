@@ -56,7 +56,7 @@ first packet the list will be empty. Update the list at the same
 time to ensure that it is not empty on the next round; we can use
 Tmp-String-1 to note the type of log record.
 
-Make these changes in the default server (`raddb/sites-enabled/default`).
+Make these changes in the default server (`sites-enabled/default`).
 
     authorize {
         if (!session-state.) {
@@ -72,7 +72,7 @@ Make these changes in the default server (`raddb/sites-enabled/default`).
 ## Recording the inner User-Name
 
 To log the inner User-Name, it needs to be copied from the
-inner-tunnel to the outer. In `raddb/sites-enabled/inner-tunnel`,
+inner-tunnel to the outer. In `sites-enabled/inner-tunnel`,
 update `post-auth`:
 
     server inner-tunnel {

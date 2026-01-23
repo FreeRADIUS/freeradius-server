@@ -1,5 +1,5 @@
 Testing authentication is simple. Edit the `users` file (in v3 this has
-been moved to `raddb/mods-config/files/authorize`), and add the
+been moved to `mods-config/files/authorize`), and add the
 following line of text at the top of the file, before anything else:
 
     testing Cleartext-Password := "password"

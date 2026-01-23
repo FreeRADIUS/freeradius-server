@@ -86,19 +86,19 @@ If a CA is not already in use for signing certificates then FreeRADIUS
 ships with scripts which can create a CA, server certificates, and client
 certificates.
 
-See xref:reference:raddb/certs/index.adoc[Certificates] in the Configuration Files section on how to generate certificates and the corresponding `raddb/certs/Makefile` for more details.
+See xref:reference:raddb/certs/index.adoc[Certificates] in the Configuration Files section on how to generate certificates and the corresponding `certs/Makefile` for more details.
 
 == Loading certificates onto the RADIUS servers
 
 Certificates to be loaded onto the RADIUS servers must be copied into
-`raddb/certs` directory.  Use file names which help to identify
+`certs` directory.  Use file names which help to identify
 what the certificates are.
 
 The freeradius certificates required at a minimum are:
 
-* ca.pem: `raddb/certs/ca.pem`
-* server.pem: `raddb/certs/server.pem`
-* server.key: `raddb/certs/server.key`
+* ca.pem: `certs/ca.pem`
+* server.pem: `certs/server.pem`
+* server.key: `certs/server.key`
 
 If additional certificates are needed for different EAP methods (e.g. EAP-PEAP
 using one server certificate and EAP-TLS using another) then generate and add the required certificates into this directory.
@@ -106,7 +106,7 @@ using one server certificate and EAP-TLS using another) then generate and add th
 == Certificates in the FreeRADIUS EAP Configuration
 
 Certificate settings for EAP are found in the eap module configuration
-located in the `raddb/mods-enabled/eap` directory.
+located in the `mods-enabled/eap` directory.
 
 If a common set of certificates is used by all EAP methods then it will
 be set in a `tls-config` section called `tls-common`. This section is referenced

@@ -2,7 +2,7 @@
 = Attributes
 
 Much of the information in this section is also in the
-`raddb/dictionary` file
+`dictionary` file
 
 All of the attributes have been renamed from v3.  This change was
 necessary in order to support new functionality in v4.  The

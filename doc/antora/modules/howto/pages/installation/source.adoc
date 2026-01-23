@@ -160,7 +160,7 @@ received the request, and responded to it.
 You can now edit the configuration files for your local system. You will
 usually want to start with `sites-enabled/default` for main
 configurations. To set which NASes (clients) can communicate with this
-server, edit `raddb/clients.conf`. Please read the configuration files
+server, edit `clients.conf`. Please read the configuration files
 carefully, as many configuration options are only documented in comments
 in the file.
 

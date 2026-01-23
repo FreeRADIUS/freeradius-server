@@ -25,7 +25,7 @@ This method is used to prevent a user from logging in multiple times across mult
 .Troubleshooting Checklist
 [%collapsible]
 ====
-1. Check that you added your NAS to `raddb/clients.conf` and selected the correct NAS type. Verify the the password.
+1. Check that you added your NAS to `clients.conf` and selected the correct NAS type. Verify the the password.
 2. Run `radiusd -X` and see if it parses the Simultaneous-Use line.
 3. Try to run `checkrad` manually; maybe you may have a wrong version of perl, don't have cmu-snmp installed etc.
 4. Check the database.  If it says no one is logged in, Simultaneous-Use *won't* work.

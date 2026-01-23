@@ -22,7 +22,7 @@ do this, create a symlink from `sites-enabled/status` to
 [NOTE]
 ====
 If you are not starting from the default configuration, check that
-`status_server` is still set to `yes` in `raddb/radiusd.conf` as
+`status_server` is still set to `yes` in `radiusd.conf` as
 well.
 ====
 

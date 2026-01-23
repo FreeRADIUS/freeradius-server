@@ -53,7 +53,7 @@ attributes, such as from the `users` file or `sql`.  When the server
 prints attributes, it will always print the new v4 names.
 
 These alias dictionaries can be enabled by editing the
-`raddb/dictionary` file.  Please see that file for more information.
+`dictionary` file.  Please see that file for more information.
 
 == Tools to help
 

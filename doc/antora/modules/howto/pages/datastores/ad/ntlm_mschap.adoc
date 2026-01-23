@@ -24,7 +24,7 @@ authenticate {
 
 == Test ntlm_auth
 
-Add the following text for testing purposes only to the top of the users file. The "users" file is located at `raddb/mods-config/files/authorize`.
+Add the following text for testing purposes only to the top of the users file. The "users" file is located at `mods-config/files/authorize`.
 
 ```
 DEFAULT     Auth-Type = ntlm_auth

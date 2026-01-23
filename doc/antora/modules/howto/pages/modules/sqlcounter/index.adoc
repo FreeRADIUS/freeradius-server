@@ -20,13 +20,13 @@ exceeded, the module will return `reject`
 
 == Configuration
 
-A sample module configuration is provided in `raddb/mods-available/sqlcounter`.
+A sample module configuration is provided in `mods-available/sqlcounter`.
 
 This includes configurations which cover daily and monthly periods, plus a
 couple of examples where there are no reset dates on the periods being considered.
 
 The SQL queries associated with these sample module configurations are found
-in `raddb/mods-config/sql/counter/<dialect>/*.conf` with each instances query
+in `mods-config/sql/counter/<dialect>/*.conf` with each instances query
 in a different file.
 
 As provided, the counters are all based on session time, using the `acctsessiontime`,

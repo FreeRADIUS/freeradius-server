@@ -42,7 +42,7 @@ Cisco provides an Ascend compatibility mode that accepts
 only the OLD style Ascend attributes, which may be problematic.
 
 You can make FreeRADIUS send the OLD style attributes by prefixing the
-Ascend attributes with `X-` in the `raddb/mods-config/files/authorize` file,
+Ascend attributes with `X-` in the `mods-config/files/authorize` file,
 `sql` table, `ldap` directory, `attr_filter` module, etc…
 
 The original VSA Ascend attribute:

@@ -47,7 +47,7 @@ multiple destinations.
 == home_server
 
 The `home_server` configuration has been replaced with the `radius`
-module. See `raddb/mods-available/radius` for examples and
+module. See `mods-available/radius` for examples and
 documentation.
 
 == home_server_pool

@@ -18,7 +18,7 @@ examples in the users file.
 
 == Schema and usage
 
-The schemas are available in `raddb/sql/*`, where is the name of the
+The schemas are available in `sql/*`, where is the name of the
 database (mysql, postgresql, etc.)
 
 The SQL module employs two sets of check and reply item tables for
