@@ -1109,6 +1109,7 @@ static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("line_number", fr_log_t, line_number) },
 	{ FR_CONF_OFFSET("use_utc", fr_log_t, dates_utc) },
 	{ FR_CONF_OFFSET("print_level", fr_log_t, print_level) },
+	{ FR_CONF_OFFSET("suppress_secrets", fr_log_t, suppress_secrets) },
 	CONF_PARSER_TERMINATOR
 };
 
