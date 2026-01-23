@@ -539,8 +539,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->config.context_id;
 
 	if (!fr_rb_insert(state->tree, entry)) {
-		RERROR("Failed inserting state entry - Insertion into state tree failed");
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		RERROR("Failed inserting state entry - Insertion into state tree failed");
 	fail:
 		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
@@ -768,8 +768,6 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	 */
 	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
-		RERROR("Creating state entry failed");
-
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
