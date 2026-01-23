@@ -191,6 +191,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		uint8_t			*cd;
 		int			der_len;
 		fr_der_decode_ctx_t	der_ctx;
+		fr_pair_list_t		tmp_list;
 
 		der_len = i2d_X509(cert, NULL);
 		if (der_len < 0) {
@@ -200,13 +201,19 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		der_ctx.tmp_ctx = talloc_new(ctx);
 		cert_der = cd = talloc_array(der_ctx.tmp_ctx, uint8_t, der_len);
 		i2d_X509(cert, &cd);
-		slen = fr_der_decode_pair_dbuff(request->session_state_ctx, &request->session_state_pairs,
+		fr_pair_list_init(&tmp_list);
+		slen = fr_der_decode_pair_dbuff(request->session_state_ctx, &tmp_list,
 						attr_der_certificate, &FR_DBUFF_TMP(cert_der, (size_t)der_len), &der_ctx);
 		talloc_free(der_ctx.tmp_ctx);
 		if (slen < 0) {
 			fr_tls_log(request, "Failed decoding certificate");
 			return -1;
 		}
+		/*
+		 *  Certificates are decoded in CA .. intermediate .. client sequence
+		 *  so, prepend each decoded one to get the client cert first.
+		 */
+		fr_pair_list_prepend(&request->session_state_pairs, &tmp_list);
 	}
 #endif
 
