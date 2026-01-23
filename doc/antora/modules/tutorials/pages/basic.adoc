@@ -15,3 +15,6 @@ Each entry links to a detailed page for further guidance and steps to help you c
 ** xref:unlang_update_blocks_and_conditions.adoc[Update blocks and conditions]
 ** xref:unlang_splitting_strings.adoc[Splitting strings]
 ** xref:unlang_policies.adoc[Policies]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

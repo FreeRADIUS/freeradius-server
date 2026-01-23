@@ -457,3 +457,6 @@ determine whether accounting requests are delivered reliably in your network.
 If accounting requests are received reliably then `lease_duration` could be set a little longer than *twice the accounting interim interval* to handle the
 occasional lost interim-update. Otherwise the lease duration might need to be
 set several times longer.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

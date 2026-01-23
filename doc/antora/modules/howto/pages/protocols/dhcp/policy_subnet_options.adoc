@@ -183,3 +183,6 @@ size by setting the `status` field of the majority of the rows for each subnet
 to "`disabled`" to cause offers to be made more readily with IP addresses in
 different subnets.
 ====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

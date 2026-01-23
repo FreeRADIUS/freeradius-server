@@ -151,3 +151,6 @@ received,3, ... ,,Access-Request,eth0,2.3.4.5,1812,192.0.2.100,1812,207, \
 "bob",172.16.246.129,
 noreq,4, ... ,,Access-Reject,eth0,192.0.2.100,1812,2.3.4.5,1812,209, \
 ,,"Subscriber carol not found"
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

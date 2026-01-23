@@ -87,3 +87,6 @@ if (User-Name == "bob") {
 As with any upgrade across major version numbers, there are caveats.
 See the full xref:reference:unlang/update.adoc[update] documentation
 for further guidance.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

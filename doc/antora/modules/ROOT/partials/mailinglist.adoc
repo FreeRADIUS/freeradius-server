@@ -20,3 +20,6 @@ Please see the following for a description of the FreeRADIUS mailing lists. For 
 |https://lists.freeradius.org/pipermail/freeradius-devel/[Developer Mailing List Archive]
 |An archive of all previous posts and emails from the developement users' email list.
 |===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

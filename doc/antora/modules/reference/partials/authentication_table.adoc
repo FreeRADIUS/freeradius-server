@@ -22,3 +22,6 @@ to match the copy of the password the server has retrieved.
 Active-Directory to retrieve group information and the user's NT-Password.
 | xref:raddb/mods-available/yubikey.adoc[yubikey]	| Supports authentication of yubikey tokens where the PSK is known to FreeRADIUS, and integrates with the Yubico cloud-based authentication service.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

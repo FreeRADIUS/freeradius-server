@@ -29,3 +29,6 @@ $ cat <<EOF | radclient 127.0.0.1 coa testing123
     Vendor-Specific.Cisco.AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
     EOF
 ```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

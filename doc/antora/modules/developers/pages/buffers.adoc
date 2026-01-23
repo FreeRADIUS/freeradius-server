@@ -9,3 +9,6 @@ The dbuff API handles data. It simplifies memory management and minimises common
 == xref:sbuff.adoc[sbuff (String Buffers)]
 
 This API is used for managing strings. A sbuff structure manages metrics such as start and end pointers for specific items.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

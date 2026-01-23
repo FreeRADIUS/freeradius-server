@@ -43,3 +43,6 @@ redundant redundant_sql {
 ----
 
 In this case, this definition creates a `redundant_sql` virtual module.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

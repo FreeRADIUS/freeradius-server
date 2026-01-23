@@ -162,3 +162,6 @@ The policies are now equivalent to the old home server pools in version 3, and t
 This change was made in order to permit new features which were long requested in previous versions of the server. Due to design limitations, these features were impossible to implement.
 
 Please see the xref:howto:protocols/radius/proxy_extensions.adoc[Proxy Extensions] page for new proxy features. These include proxying to multiple destinations, failing over to local authentication if proxying fails, and more.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

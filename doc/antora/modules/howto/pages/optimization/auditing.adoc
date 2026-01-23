@@ -3,3 +3,6 @@
 Auditing refers to the proactive analysis of accounting logs and other data sources. This ongoing process makes up part of the maintenance and xref:optimization/monitoring/index.adoc[monitoring] of the entire system. Auditing examines data to comprehend user patterns and system behavior. These insights detail how users interact with the network after successful authentication. Audits help to identify unauthorized access, policy violations, compromised NASes, and other anomalies.
 
 For example, a user manages to override site policy and log into a particular server. The site policy failed to deny that user access. by performing an audit of the AAA records, you would see that policy violation. The audit shows that the site policy needs an update by the network administrator to prevent future policy violations. Subsequent audits would track long-term behavior ensuring that the policy is being enforced.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

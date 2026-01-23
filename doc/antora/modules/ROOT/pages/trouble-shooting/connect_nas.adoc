@@ -445,3 +445,6 @@ oversized IP packets instead of performing IP fragmentation.
 **Solution:** Either use a device that performs flow tracking to match ICMP
 messages with their associated data flows and steer them to the same backend,
 or broadcast ICMP messages required for PMTUD to all backends.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

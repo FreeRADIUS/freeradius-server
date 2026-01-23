@@ -137,3 +137,6 @@ To ensure effective communication, consider the following:
 * Standardize dates, phone numbers, and addresses. 
 
 include::partial$terminology.adoc[]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

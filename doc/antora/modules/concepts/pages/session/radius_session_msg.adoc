@@ -125,3 +125,6 @@ The server processes requests through local site policy. That policy is used to 
 |===
 
 See the xref:reference:unlang/list.adoc[Attribute Lists] reference documentation for more details.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -5,3 +5,6 @@ to start it in debugging mode, as user `root`:
 
 This step demonstrates that the server is installed and configured
 properly. If the output says `Ready to process requests`, then the installation was successful.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

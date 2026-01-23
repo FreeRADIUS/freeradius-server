@@ -8,3 +8,6 @@ FreeRADIUS is packaged with the functionality to support these AAA processes. So
 ** xref:protocols/radius/coa_examples.adoc[CoA Examples]
 * xref:protocols/radius/proxy_config.adoc[Proxy Configuration]
 ** xref:protocols/radius/proxy_extensions.adoc[Proxy Extensions]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -210,3 +210,6 @@ Changes to syntax should include an example of the previous syntax and
 new syntax.  Changes to behaviour should include a description of those
 changes.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

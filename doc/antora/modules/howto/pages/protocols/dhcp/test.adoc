@@ -135,3 +135,6 @@ The remainder of this guide describes how to configure the IP address plan,
 setup the IP pools and define a DHCP policy. It's recommended to develop your policy by making small, incremental changes to the provided configuration and then test those changes with the approach described above, using `dhcpclient` and `radius -X`, modifying the sample DHCP packet as required. If you break the policy then revert the last change, attempt to understand what went wrong, and try something else.
 
 Now xref:protocols/dhcp/policy.adoc[define the DHCP policy].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

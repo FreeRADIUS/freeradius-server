@@ -54,3 +54,6 @@ should included in the `<raddb>/mods-config/files/dhcp_subnet` configuration fil
 Any number of additional filters can be added to the initial "check"
 line to restrict matches to the network block.
 ====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

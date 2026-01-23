@@ -29,3 +29,6 @@ The debug output show the current configuration and relevant information such as
 * The debug output shows that the packets are being processed as you expect.
 
 * The response packets contain the attributes you expect to see.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

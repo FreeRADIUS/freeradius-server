@@ -16,3 +16,6 @@ Each entry links to a detailed page, allowing users to explore advanced features
 * xref:virtual.adoc[Virtual]
 * xref:radmin.adoc[Radmin]
 * xref:final_group_project.adoc[Final group project]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -33,3 +33,6 @@ This method is used to prevent a user from logging in multiple times across mult
 6. Verify that the accounting packets are accepted by the database module. If the module returns "noop", it means that the accounting packets do not have enough information for the server to perform Simultaneous-Use enforcement.
 7. In case you have SQL as a database, and you have accounting records in radacct table, you'll need to uncomment sql in session section of radiusd.conf file. Also, you'll need to uncomment Simutaneus check query in sql.conf file.
 ====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

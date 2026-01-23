@@ -57,3 +57,6 @@ Add another table of technical terms and abbreviations here. Keep running across
 | TCPIP, TCPip, TcpIP   | TCP/IP        | Standard way to reference protocol.
 | Udp, udp              | UDP           | Standard way to reference protocol.
 |===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

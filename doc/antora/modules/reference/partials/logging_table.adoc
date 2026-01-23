@@ -8,3 +8,6 @@
 |xref:raddb/mods-available/detail.example.com.adoc[example]	| Detail file example for configuration.
 | xref:raddb/mods-available/detail.log.adoc[log example]	| Log example.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

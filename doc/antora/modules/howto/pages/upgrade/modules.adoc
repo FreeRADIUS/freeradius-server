@@ -474,3 +474,6 @@ if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
 
 
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

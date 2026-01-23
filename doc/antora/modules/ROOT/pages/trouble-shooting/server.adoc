@@ -274,3 +274,6 @@ If none of these solutions work, then your *only* option is to build FreeRADIUS 
 	make install
 
 READ the messages produced during the 'make' and 'make install' stages. While there is a lot of text to wade through, these messages may be the *only* source of information as to what's wrong your system.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

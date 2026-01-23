@@ -76,3 +76,6 @@
 | xref:xlat/ipv4/broadcast.adoc[broadcast]          | Get the broadcast address from an IPv4 prefix
 | xref:xlat/ipv4/netmask.adoc[netmask]              | Get the netmask from an IPv4 prefix
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

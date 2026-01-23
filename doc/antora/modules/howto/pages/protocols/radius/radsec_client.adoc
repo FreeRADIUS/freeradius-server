@@ -179,3 +179,6 @@ Once things are working we are ready to
 xref:protocols/radius/radsec_with_haproxy.adoc[configure HAproxy to proxy RadSec
 connections] or to xref:protocols/radius/radsec_with_traefik.adoc[configure
 Traefik to proxy RadSec connections].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

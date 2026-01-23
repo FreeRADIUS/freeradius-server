@@ -56,3 +56,6 @@ If your system design includes a secondary database which is synchronized with t
 
 Need more help?
 Network RADIUS has been helping clients around the world design and deploy their RADIUS infrastructure for 20 years. We specialize in complex systems and have seen pretty much every variation and problem out there. If you want help from the people who wrote FreeRADIUS, contact us for a consultation.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

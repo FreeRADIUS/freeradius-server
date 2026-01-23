@@ -110,3 +110,6 @@ FreeRADIUS database, using the mac as the identifier:
 ----
 rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t fr_ippool -k mac -f /etc/raddb
 ----
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

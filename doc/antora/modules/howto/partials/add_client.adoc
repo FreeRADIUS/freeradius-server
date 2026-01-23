@@ -30,3 +30,6 @@ output
 server. Following them lets you create complex configurations with a
 minimum of effort. Failure to follow them leads to days of frustration
 and wasted effort.*
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

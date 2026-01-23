@@ -59,3 +59,6 @@ The database encountered a deadlock while placing a lock on data to prevent conf
 ERROR 1213 (Deadlock found when trying to get lock; \
 try restarting transaction): 40001
 ```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -35,3 +35,6 @@ Enable the ldap module to allow FreeRADIUS to authenticate users against an LDAP
 Enable the Redis module and configure it to connect to your Redis server. Modify the FreeRADIUS configuration files to specify the Redis server's hostname, port, and password.
 
 === xref:datastores/sql.adoc[SQL]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -51,3 +51,6 @@ supporting the `Attribute-Name:tag` syntax for tagged attributes.
 This change requires modifications to all configuration files and
 databases which use tags.  This change means also that `detail` files
 from v3 are not readable by v4.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

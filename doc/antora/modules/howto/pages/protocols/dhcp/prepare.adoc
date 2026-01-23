@@ -57,3 +57,6 @@ to customize the IP allocation policy such as by disabling address
 "stickiness".
 
 Now xref:protocols/dhcp/enable.adoc[enable the DHCP service].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

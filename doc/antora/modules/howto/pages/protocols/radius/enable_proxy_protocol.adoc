@@ -112,3 +112,6 @@ connection information from the PROXY Protocol.  FreeRADIUS then
 handles the RadSec requests as though they have been received directly
 from the originating client.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

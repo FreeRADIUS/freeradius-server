@@ -334,3 +334,6 @@ Received Access-Accept Id 194 from 127.0.0.1:46c9 to 127.0.0.1:55447 length 236
 	FreeRADIUS-Total-Acct-Dropped-Requests = 0
 	FreeRADIUS-Total-Acct-Unknown-Types = 0
 ----
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

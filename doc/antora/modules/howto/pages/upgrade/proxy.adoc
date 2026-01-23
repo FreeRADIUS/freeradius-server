@@ -161,3 +161,6 @@ if (fail) {
 The `sites-available/originate-coa` virtual server has been updated to
 use the new `subrequest` feature.  Please see that virtual server, and
 the `subrequest` keyword for details.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

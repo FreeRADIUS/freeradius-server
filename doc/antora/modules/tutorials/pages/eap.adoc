@@ -3,3 +3,6 @@ EAP, or Extensible Authentication Protocol, is your gateway to secure connection
 
 Each EAP Type unveils a unique mechanism for securing access. The robust 802.1X standard diligently authenticates both wireless and wired LAN users. It’s your trusted sentry for safeguarding entry into enterprise networks.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

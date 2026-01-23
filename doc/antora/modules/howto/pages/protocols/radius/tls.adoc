@@ -124,3 +124,6 @@ This guide is organised into four parts that should be read in order:
 3. xref:protocols/radius/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
 4. xref:protocols/radius/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
 5. xref:protocols/radius/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

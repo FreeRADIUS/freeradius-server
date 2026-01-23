@@ -197,3 +197,6 @@ and device data is not removed when an `Accounting Stop` (and `Accounting
 On/Off`) request is received. Ensure that users receive their previous IP
 address when they authenticate using a device whose recent session is
 disconnected.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

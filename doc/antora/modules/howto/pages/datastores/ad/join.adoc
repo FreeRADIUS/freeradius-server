@@ -149,3 +149,6 @@ ntlm_auth = "/path/to/ntlm_auth
 ntlm_auth_username = "username: %{mschap:User-Name}
 ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
 With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

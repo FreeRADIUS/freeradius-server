@@ -43,3 +43,6 @@ FreeRADIUS is packaged with some useful tools such as radsniff and radclient tha
 === xref:tuning/tuning_guide.adoc[Tuning Guide]
 
 Tuning the FreeRADIUS server and relevant components ensures optimal performance across the network.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

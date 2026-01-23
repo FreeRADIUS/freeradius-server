@@ -8,3 +8,6 @@
 | xref:raddb/mods-available/radius.adoc[radius]	| Allows Access-Requests, Accounting-Requests, CoA-Requests and Disconnect-Messages to be sent during request processing.
 | xref:raddb/mods-available/wimax.adoc[wimax]	| Implements WiMAX authentication over RADIUS.
 |=====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

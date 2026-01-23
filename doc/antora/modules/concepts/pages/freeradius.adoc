@@ -39,3 +39,6 @@ While many commercial severs offer different versions of their software to handl
 * All known RADIUS clients.
 * Flexible configurations using attribute pairs.
 * Supports virtual servers.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -2,3 +2,6 @@
 
 FreeRADIUS 4 organizes its configuration files in a specific directory structure, typically within /etc/freeradius/ (on Debian-based systems) or /etc/raddb/. The files are text-based and loaded once when the server starts; changes require a server restart to take effect. The files are text-based and include extensive comments to explain their purpose and usage.
 
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

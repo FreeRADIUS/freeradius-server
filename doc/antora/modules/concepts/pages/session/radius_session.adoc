@@ -39,3 +39,6 @@ A RADIUS session consists of the following steps:
 (stop) message indicates the end of the session; the session
 * The data stored in the database during the accounting sessions is used to generate billable information and reports.
 * Accounting information retained in the database includes the following: time of session, number of packets and amount of data transferred, user and machine identification, network address, and point of attachment information.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

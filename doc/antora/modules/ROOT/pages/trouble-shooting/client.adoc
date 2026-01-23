@@ -21,3 +21,6 @@ You *must* follow the instructions on the first page, and install the hot fix fr
 * Click OK, OK to set it.
 
 If you have control over NAS, then set it to accept only PAP authentication. If you do that, all clients will "listen" and use only PAP. In that case there is no need to configure anything on the client(s).
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -16,3 +16,6 @@ the policy is created, the server then uses that information to make decisions.
 This process becomes more complicated when different NAS elements send the same information in different formats.
 
 For example, RADIUS has no MAC address data type, which means that the MAC address is sent as ASCII strings. Some NAS elements send a MAC address in the format of “00:01:02:03:04:05”, while others use the format “00-01-02-03-04-05”. The fact that these differences are not documented makes policy creation very difficult.In most cases, the administrator has to resort to trial and error methods to determine how to implement policies.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
