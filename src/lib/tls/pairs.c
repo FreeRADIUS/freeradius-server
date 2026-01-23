@@ -207,6 +207,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		talloc_free(der_ctx.tmp_ctx);
 		if (slen < 0) {
 			fr_tls_log(request, "Failed decoding certificate");
+			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
 		/*
