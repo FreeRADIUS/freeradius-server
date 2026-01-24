@@ -1,114 +1,163 @@
 = Using git to administer FreeRADIUS server configurations
 
-As well as being an excellent SCM (Source control management) tool, git is also very useful for tracking changes to configuration files, and even for performing remote administration of servers.
+As well as being an excellent SCM (Source control management) tool,
+git is also very useful for tracking changes to configuration files,
+and even for performing remote administration of servers.
 
 == The basics
 
 For basic configuration management one only has to:
- 
- cd <config_dir>/raddb
- git init
- git add .
- git commit --message 'Initial commit of FreeRADIUS configuration'
+
+[source,bash]
+---- 
+cd <config_dir>
+git init
+git add .
+git commit --message 'Initial commit of FreeRADIUS configuration'
+----
 
 Then every time a change is made:
 
- git commit -a --message 'Added support for xyz'
+[source,bash]
+---- 
+git commit -a --message 'Added support for xyz'
+----
 
 To see a list of changes:
 
- git log
+[source,bash]
+---- 
+git log
+----
 
 To know who to blame:
 
- git blame
+[source,bash]
+---- 
+git blame
+----
 
 And if it's all gone horribly wrong:
 
- git log # To find the last known good commit id
- git revert <commit id>
+[source,bash]
+---- 
+git log # To find the last known good commit id
+git revert <commit id>
+----
 
-There are many many tutorials available if you want to learn more generic git administration, this one is extra pretty: http://gitimmersion.com.
+There are many many tutorials available if you want to learn more
+generic git administration, this one is extra pretty:
+http://gitimmersion.com.
 
 === Remote administration
 
-The basic functionality of git is useful on its own, but one of the features that really makes git shine among the SCMs is its support for commit hooks. Hooks don't require anything special to function (like gitosis or the git-daemon), they work just as well over straight SSH.
+The basic functionality of git is useful on its own, but one of the
+features that really makes git shine among the SCMs is its support for
+commit hooks. Hooks don't require anything special to function (like
+gitosis or the git-daemon), they work just as well over straight SSH.
 
-They can be as simple or complex as you want to make them, but the server source contains a particularly compelling example_.
+They can be as simple or complex as you want to make them, but the
+server source contains a particularly compelling example_.
 
 == Installation
 
+First, initialize a git repository in the FreeRADIUS configuration
+directory, as noted above:
 
-To install it convert your raddb folder to a git repository (as show above)
+Copy the post-receive hook script to the `.git/hooks` directory:
 
-Copy the post-receive hook script to the .git/hooks dir:
+[source,bash]
+----
+cd <config_dir>/.git/hooks
+https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/git/post-receive
+chmod +x post-receive
+----
 
- cd <config_dir>/raddb/.git/hooks
- https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/git/post-receive
- chmod +x post-receive
-
-Edit parameters at the top of the file to work with with your system (defaults are for Ubuntu 10.04 LTS)
+Edit the parameters at the top of the file to work with with your system (defaults are for Ubuntu 10.04 LTS)
 
 Tweak the git configuration to allow commits to the currently checked out branch::
 
- cd <config_dir>/raddb
- git config receive.denyCurrentBranch ignore
+[source,bash]
+----
+cd <config_dir>/raddb
+git config receive.denyCurrentBranch ignore
+----
 
 Clone the servers remote repository to your local machine:
 
- mkdir <respositories>
- cd <repositories>
- git clone ssh://<user>@<server>/<config_dir>/raddb
+[source,bash]
+----
+mkdir <respositories>
+cd <repositories>
+git clone ssh://<user>@<server>/<config_dir>/raddb
+----
 
 Make your local modifications:
 
- echo "foouser    Cleartext-Password := 'foopass'" >> users
- git add users
- git commit --message 'Add foouser'
- git push
+[source,bash]
+----
+echo "foouser    Password.Cleartext := 'foopass'" >> mods-config/files/authorize
+git commit --message 'Add foouser' mods-config/files/authorize
+git push
+----
 
 And if all goes well you should see something like:
 
- Counting objects: 7, done.
- Delta compression using up to 4 threads.
- Compressing objects: 100% (4/4), done.
- Writing objects: 100% (4/4), 367 bytes, done.
- Total 4 (delta 3), reused 0 (delta 0)
- remote: HEAD is now at f4419ec Commit stuff
- remote: Checking new configuration... ok
- remote: Restarting server... ok
- remote: Updated tag 'stable' (was ae98fa8)
- To ssh://<user>@<server>/usr/local/etc/raddb
-   ae98fa8..f4419ec  master -> master
+[source,text]
+----
+Counting objects: 7, done.
+Delta compression using up to 4 threads.
+Compressing objects: 100% (4/4), done.
+Writing objects: 100% (4/4), 367 bytes, done.
+Total 4 (delta 3), reused 0 (delta 0)
+remote: HEAD is now at f4419ec Commit stuff
+remote: Checking new configuration... ok
+remote: Restarting server... ok
+remote: Updated tag 'stable' (was ae98fa8)
+To ssh://<user>@<server>/usr/local/etc/raddb
+  ae98fa8..f4419ec  master -> master
+----
 
 == What just happened?
 
-First the commit was transferred to the remote server and merged with the commits already there, then our post-receive hook was executed. The post receive hook updated the working copy to the repository HEAD **(throwing away any local changes, be careful)**.
+First the commit was transferred to the remote server and merged with
+the commits already there, then our post-receive hook was
+executed. The post receive hook updated the working copy to the
+repository HEAD **(throwing away any local changes, be careful)**.
 
-``radiusd -C`` was called to check the new config was valid, it appeared to be valid so the server was restarted to load in the new config parameters, restart seemed to go ok so the *stable* tag was updated to point to the new commit (tags are user assigned aliases for particular commits).
+`radiusd -C` was called to check the new config was valid, it
+appeared to be valid so the server was restarted to load in the new
+config parameters, restart seemed to go ok so the *stable* tag was
+updated to point to the new commit (tags are user assigned aliases for
+particular commits).
 
 == The stable tag
 
-The stable tag actually provides two functions here. If ``radiusd -C`` passed the config, but the server failed to restart correctly, the hook script uses it to roll back the config automatically to a known good version and start the server. If the server started ok, but unfortunately so have the angry emails; to rapidly revert the server back to a known good configuration ``git revert stable``.
+The stable tag actually provides two functions here. If `radiusd -C`
+passed the config, but the server failed to restart correctly, the
+hook script uses it to roll back the config automatically to a known
+good version and start the server. If the server started ok, but
+unfortunately so have the angry emails; to rapidly revert the server
+back to a known good configuration `git revert stable`.
 
 == With multiple servers
 
-Extending the idea further you can add multiple cluster servers as remotes and push the new configuration out to each of them (or write a simple script to do that for you):
+Extending the idea further you can add multiple cluster servers as
+remotes and push the new configuration out to each of them (or write a
+simple script to do that for you):
 
- git remote rename master server0
- git remote add server1 ssh://<user>@<server>/usr/local/etc/raddb
- git remote add server2 ssh://<user>@<server>/usr/local/etc/raddb
+[source,bash]
+----
+git remote rename master server0
+git remote add server1 ssh://<user>@<server>/usr/local/etc/raddb
+git remote add server2 ssh://<user>@<server>/usr/local/etc/raddb
 
- for remote in `git remote`; do
-     git push $remote master
- done
+for remote in `git remote`; do
+    git push $remote master
+done
+----
 
 .. _example: https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/git/post-receive
-
-== See Also
-
-* Contributing with GitHub
-* http://git.freeradius.org
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
