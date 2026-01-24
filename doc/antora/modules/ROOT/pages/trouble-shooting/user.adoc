@@ -12,7 +12,7 @@ The following entry denies access to one specific user. Note that it MUST be put
 	foo Auth-Type := Reject
 		Reply-Message = "foo is not allowed to dial-in"
 
-The following entry denies access to a group of users. The same restrictions as above on location in the raddb/users file also apply:
+The following entry denies access to a group of users. The same restrictions as above on location in the `users` file also apply:
 
 	DEFAULT Group == "disabled", Auth-Type := Reject
 		Reply-Message = "Your account has been disabled"

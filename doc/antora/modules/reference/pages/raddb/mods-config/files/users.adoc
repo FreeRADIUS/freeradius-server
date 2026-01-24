@@ -55,7 +55,7 @@ The `$INCLUDE` directive reads another file into the current `users` file, as if
 
 The filename can be absolute, and begin with `/`.  That usage is not recommended.
 
-If the filename does not begin with `/`, it is a relative filename.  The module reads the file which is relative to the current file being processed.  For example, if the current file is `/etc/raddb/mods-config/files/users` and that file contains a directive `$INCLUDE next`, the file which will be read is `/etc/raddb/mods-config/files/next`.
+If the filename does not begin with `/`, it is a relative filename.  The module reads the file which is relative to the current file being processed.  For example, if the current file is `mods-config/files/users` and that file contains a directive `$INCLUDE next`, the file which will be read is `mods-config/files/next`.
 
 The `$INCLUDE` can be nested to any depth, subject only to available memory.  The module does not cross-reference `$INCLUDE` files, so it is possible for a file to `$INCLUDE` itself in an infinite loop.  This practice is not recommended.  When this misconfiguration happens, the server will run out of memory processing the file, and then exit.
 

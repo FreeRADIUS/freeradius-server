@@ -28,7 +28,7 @@ authentication and accounting practices. See xref:concepts:components/architectu
 FreeRADIUS is an open-source product with all the benefits of open-source software that includes flexibility, scalibility, and cost-effectivness. FreeRADIUS has many features not found in other free and commercial versions. Some of these features are:
 
 * Access based on huntgroups.
-* Multiple DEFAULT entries in raddb/users file.
+* Multiple DEFAULT entries in `users` file.
 * All users file entries can optionally `fall through`.
 * Caches all config files in-memory.
 * Supports Simultaneous-Use = X parameter to prevent double logins.
@@ -116,7 +116,7 @@ DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
 
 === Can I permit access to any user regardless of password?
 
-Yes. Edit the raddb/users file with the following entry on the first line (top of the file). This entry accepts everybody on to the network.
+Yes. Edit the `users` file with the following entry on the first line (top of the file). This entry accepts everybody on to the network.
 
     DEFAULT Auth-Type := Accept
 
@@ -200,7 +200,7 @@ Yes. The most common approach is to just assign non-globally-routable IP address
 
 Depending on your internal network configuration, you may need to set up internal routes for those addresses, and if you don't want them to do anything besides SMTP and POP3 within your network, you'll have to set up ACLs on your dialup interfaces allowing only ports 25 and 110 through.
 
-User entry in raddb/users file example
+User entry in `users` file example
 [%collapsible]
 ====
 
@@ -242,7 +242,7 @@ and
 	DEFAULT Huntgroup-Name ="somehunt", Auth-Type=PAM, Pam-Auth="radhunt", Simultaneous-Use=1
 		Fall-Through = Yes
 
-With this method, I have NO users on /etc/password and NO need for lots of lines on /etc/raddb/users. time to search for a db enabled pam_listfile module
+With this method, I have NO users on /etc/password and NO need for lots of lines on `users`. time to search for a db enabled pam_listfile module
 
 === Is the RADIUS server broken after an upgrade?
 

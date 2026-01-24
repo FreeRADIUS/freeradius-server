@@ -3,7 +3,7 @@
 
 == Why does PAP authentication work but CHAP fails?
 
-You're not using plaintext passwords in the raddb/users file or other password store. The CHAP protocol requires a plaintext password on the radius server side, for PAP it doesn't matter.
+You're not using plaintext passwords in the `users` file or other password store. The CHAP protocol requires a plaintext password on the radius server side, for PAP it doesn't matter.
 
 To use CHAP, each user entry must shown in this format:
 
@@ -27,14 +27,14 @@ If FreeRADIUS is configured to use threads, then nothing is wrong.  Newer Linux 
 	* `ps auxH`
 
 
-== I can't get RADIUS to pick up changes in the raddb/users.
+== I can't get RADIUS to pick up changes in the `users`.
 
 The server reads the config files once at startup. This is very efficient, but you need to tell the server somehow to re-read its config files after you made a change. This can be done by sending the server a SIGHUP (signal '1' on almost if not all UNIX systems). The server writes its PID in
 `/var/run/radiusd.pid`, so a simple UNIX command to do this would be:
 
 	kill -1 `cat /var/run/radiusd.pid`
 
-Some people are tempted to do this every 5 minutes so that changes come through automatically. That is not a good idea it takes some time to re-read the config files and the server may drop a few authentication requests at that time. A better idea is to use a so-called "timestamp file" and only send a SIGHUP if the raddb/users file changed since the last time. See the example SIGHUP script.
+Some people are tempted to do this every 5 minutes so that changes come through automatically. That is not a good idea it takes some time to re-read the config files and the server may drop a few authentication requests at that time. A better idea is to use a so-called "timestamp file" and only send a SIGHUP if the `users` file changed since the last time. See the example SIGHUP script.
 
 .SIGHUP script
 [%collapsible]
@@ -91,9 +91,9 @@ configuration files. The problem with this approach is that any syntax errors in
 ====
 
 
-=== Do I need the commas in the raddb/users file?
+=== Do I need the commas in the `users` file?
 
-Yes. Commas link lists of attributes together and must be present for the data to be parsed properly. The general format for a raddb/users file entry is:
+Yes. Commas link lists of attributes together and must be present for the data to be parsed properly. The general format for a `users` file entry is:
 
 	name Check-Item = Value, ..., Check-Item = Value
 		Reply-Item = Value,
@@ -111,7 +111,7 @@ The dots represents a repetition of attributes.
 * Commas go *between* Reply-Items.
 * The last line of the reply-item list ends *without* a comma.
 
-Check-Items are used to match attributes in a request packet or to set server parameters. Reply-Items are used to set attributes which are to go in the reply packet. So things like Simultaneous-Use go on the first line of a raddb/users file entry and Framed-IP-Address goes on any following line.
+Check-Items are used to match attributes in a request packet or to set server parameters. Reply-Items are used to set attributes which are to go in the reply packet. So things like Simultaneous-Use go on the first line of a `users` file entry and Framed-IP-Address goes on any following line.
 
 
 === Why are all the Incoming Authentication-Request passwords corrupt?
