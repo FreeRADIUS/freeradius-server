@@ -1,6 +1,6 @@
 = Editing Attributes
 
-*Goal:* To explore uses of update blocks in the policy language
+*Goal:* To explore uses of editing attributes in the policy language
 
 *Time:* 10-25 minutes
 

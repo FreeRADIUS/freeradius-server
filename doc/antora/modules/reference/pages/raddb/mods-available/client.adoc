@@ -21,9 +21,9 @@ configuration.
 
 You must:
 
-1. Link `sites-enabled/dynamic_clients` to xref:reference:raddb/sites-available/dynamic_clients.adoc[sites-available/dynamic_clients].
+1. Link `sites-enabled/dynamic-clients` to xref:reference:raddb/sites-available/dynamic-clients.adoc[sites-available/dynamic-clients].
 
-2. Define a client network/mask (see the top of `sites-enabled/dynamic_clients).
+2. Define a client network/mask (see the top of `sites-enabled/dynamic-clients).
 
 3. Uncomment the `directory` entry in that client definition.
 

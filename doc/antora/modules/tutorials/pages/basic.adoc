@@ -12,7 +12,7 @@ Each entry links to a detailed page for further guidance and steps to help you c
 * xref:accounting.adoc[Accounting]
 ** xref:simultaneous_use.adoc[Simultaneous Use]
 * xref:unlang.adoc[Unlang]
-** xref:unlang_update_blocks_and_conditions.adoc[Update blocks and conditions]
+** xref:editing_attributes.adoc[Editing attributes]
 ** xref:unlang_splitting_strings.adoc[Splitting strings]
 ** xref:unlang_policies.adoc[Policies]
 
