@@ -156,7 +156,6 @@ struct fr_state_tree_s {
 								//!< timeout.
 	fr_state_config_t	config;				//!< a local copy
 
-	uint32_t		used_sessions;			//!< How many sessions are currently in progress.
 	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
@@ -319,8 +318,6 @@ static int _state_entry_free(fr_state_entry_t *entry)
 
 	DEBUG4("State ID %" PRIu64 " freed", entry->id);
 
-	entry->state_tree->used_sessions--;
-
 	return 0;
 }
 
@@ -379,8 +376,20 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	state->timed_out += timed_out;
 
 	if (!old) {
-		too_many = (state->used_sessions == state->config.max_sessions);
-		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+		/*
+		 *	We're inserting a new session.  Limit the
+		 *	number of sessions based on how many are in
+		 *	the RB tree.  If at least one session has
+		 *	timed out, then we can definitely add a new
+		 *	session.
+		 *
+		 *	Note that sessions being processed are removed
+		 *	from the tree.  This means that the maximum
+		 *	number of sessions might actually be
+		 *	max_session+num_workers.  In practice this
+		 *	shouldn't be a problem.
+		 */
+		too_many = (fr_rb_num_elements(state->tree) >= state->config.max_sessions) && (timed_out == 0);
 		memset(old_state, 0, sizeof(old_state));
 	} else {
 		old_tries = old->tries;
@@ -389,29 +398,25 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (timed_out > 0) RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
+	if (timed_out > 0) {
+		RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
 
-	/*
-	 *	Now free the unlinked entries.
-	 *
-	 *	We do it here as freeing may involve significantly more
-	 *	work than just freeing the data.
-	 *
-	 *	If there's request data that was persisted it will now
-	 *	be freed also, and it may have complex destructors associated
-	 *	with it.
-	 */
-	while ((entry = fr_dlist_head(&to_free)) != NULL) {
-		fr_dlist_remove(&to_free, entry);
-		talloc_free(entry);
-	}
+		/*
+		 *	Now free the unlinked entries.
+		 *
+		 *	We do it here as freeing may involve significantly more
+		 *	work than just freeing the data.
+		 *
+		 *	If there's request data that was persisted it will now
+		 *	be freed also, and it may have complex destructors associated
+		 *	with it.
+		 */
+		while ((entry = fr_dlist_head(&to_free)) != NULL) {
+			fr_dlist_remove(&to_free, entry);
+			talloc_free(entry);
+		}
 
-	/*
-	 *	Have to do this post-cleanup, else we end up returning with
-	 *	a list full of entries to free with none of them being
-	 *	freed which is bad...
-	 */
-	if (too_many) {
+	} else if (too_many) {
 		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
 		       state->config.max_sessions);
 		return NULL;
@@ -424,7 +429,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	if (!old) {
 		MEM(entry = talloc_zero(NULL, fr_state_entry_t));
 		talloc_set_destructor(entry, _state_entry_free);
-		/* tree->used_sessions incremented above */
+
 	/*
 	 *	Reuse the old state entry cleaning up any memory associated
 	 *	with it.
