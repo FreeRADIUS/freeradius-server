@@ -332,8 +332,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	fr_pair_t		*vp;
 	fr_state_entry_t	*entry, *next;
 
-	uint8_t			old_state[sizeof(old->state)];
-	int			old_tries = 0;
 	uint64_t		timed_out = 0;
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
@@ -388,10 +386,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 *	shouldn't be a problem.
 		 */
 		too_many = (fr_rb_num_elements(state->tree) >= state->config.max_sessions) && (timed_out == 0);
-		memset(old_state, 0, sizeof(old_state));
-	} else {
-		old_tries = old->tries;
-		memcpy(old_state, old->state, sizeof(old_state));
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -484,8 +478,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 *	Base the new state on the old state if we had one.
 		 */
 		if (old) {
-			memcpy(entry->state, old_state, sizeof(entry->state));
-			entry->tries = old_tries + 1;
+			entry->tries++;
 
 			if (entry->tries > state->config.max_rounds) {
 				RERROR("Failed tracking state entry - too many rounds (%u)", entry->tries);
