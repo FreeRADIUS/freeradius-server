@@ -949,7 +949,6 @@ fi
 %{_libdir}/freeradius/process_radius.so
 %{_libdir}/freeradius/process_tacacs.so
 %{_libdir}/freeradius/process_tls.so
-%{_libdir}/freeradius/process_ttls.so
 %{_libdir}/freeradius/process_vmps.so
 
 # Proto modules without external deps
