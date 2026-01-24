@@ -220,6 +220,15 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, f
 {
 	fr_state_tree_t *state;
 
+	/*
+	 *	We can only handle 'octets' types.
+	 */
+	if (da->type != FR_TYPE_OCTETS) {
+		fr_strerror_printf("Input state attribute '%s' has data type %s instead of 'octets'",
+				   da->name, fr_type_to_str(da->type));
+		return NULL;
+	}
+
 	state = talloc_zero(NULL, fr_state_tree_t);
 	if (!state) return 0;
 
@@ -914,28 +923,4 @@ void fr_state_discard_child(request_t *parent, void const *unique_ptr, int uniqu
 	}
 
 	talloc_free(child_entry);
-}
-
-/** Return number of entries created
- *
- */
-uint64_t fr_state_entries_created(fr_state_tree_t *state)
-{
-	return state->id;
-}
-
-/** Return number of entries that timed out
- *
- */
-uint64_t fr_state_entries_timeout(fr_state_tree_t *state)
-{
-	return state->timed_out;
-}
-
-/** Return number of entries we're currently tracking
- *
- */
-uint64_t fr_state_entries_tracked(fr_state_tree_t *state)
-{
-	return fr_rb_num_elements(state->tree);
 }

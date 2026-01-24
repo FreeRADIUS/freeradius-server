@@ -58,13 +58,6 @@ void	fr_state_store_in_parent(request_t *request, void const *unique_ptr, int un
 void	fr_state_restore_from_parent(request_t *child, void const *unique_ptr, int unique_int);
 void	fr_state_discard_child(request_t *parent, void const *unique_ptr, int unique_int);
 
-/*
- *	Stats
- */
-uint64_t fr_state_entries_created(fr_state_tree_t *state);
-uint64_t fr_state_entries_timeout(fr_state_tree_t *state);
-uint64_t fr_state_entries_tracked(fr_state_tree_t *state);
-
 #ifdef __cplusplus
 }
 #endif
