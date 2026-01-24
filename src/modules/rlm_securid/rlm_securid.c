@@ -59,7 +59,6 @@ fr_dict_autoload_t mem_dict[] = {
 
 fr_dict_attr_t const *attr_prompt;
 fr_dict_attr_t const *attr_reply_message;
-fr_dict_attr_t const *attr_state;
 fr_dict_attr_t const *attr_user_name;
 fr_dict_attr_t const *attr_user_password;
 
@@ -67,7 +66,6 @@ extern fr_dict_attr_autoload_t mem_dict_attr[];
 fr_dict_attr_autoload_t mem_dict_attr[] = {
 	{ .out = &attr_prompt, .name = "Prompt", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	DICT_AUTOLOAD_TERMINATOR

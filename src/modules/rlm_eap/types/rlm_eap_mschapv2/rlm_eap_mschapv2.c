@@ -82,7 +82,6 @@ static fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
 static fr_dict_attr_t const *attr_ms_mppe_encryption_type;
 static fr_dict_attr_t const *attr_ms_mppe_send_key;
 static fr_dict_attr_t const *attr_ms_mppe_recv_key;
-static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[];
@@ -103,7 +102,6 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ .out = &attr_ms_mppe_encryption_type, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	DICT_AUTOLOAD_TERMINATOR
 };

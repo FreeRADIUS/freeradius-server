@@ -97,7 +97,6 @@ static fr_dict_attr_t const *attr_module_failure_message;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
-static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
 
@@ -111,7 +110,6 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	DICT_AUTOLOAD_TERMINATOR
