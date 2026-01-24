@@ -96,14 +96,14 @@ typedef struct {
 								//!< to all virtual servers.
 
 			uint8_t		vx_0;			//!< Random component.
-			uint8_t		r_5;			//!< Random component.
+			uint8_t		r_1;			//!< Random component.
 			uint8_t		vx_1;			//!< Random component.
-			uint8_t		r_6;			//!< Random component.
+			uint8_t		r_2;			//!< Random component.
 
 			uint8_t		vx_2;			//!< Random component.
 			uint8_t		vx_3;			//!< Random component.
-			uint8_t		r_8;			//!< Random component.
-			uint8_t		r_9;			//!< Random component.
+			uint8_t		r_3;			//!< Random component.
+			uint8_t		r_4;			//!< Random component.
 		} state_comp;
 
 		uint8_t		state[sizeof(struct state_comp)];	//!< State value in binary.
@@ -319,6 +319,28 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	return 0;
 }
 
+static void state_entry_fill(fr_state_entry_t *entry, fr_value_box_t const *vb)
+{
+
+	uint64_t hash;
+
+	/*
+	 *	Use the supplied State if it's the correct size.
+	 */
+	if (vb->vb_length == sizeof(entry->state)) {
+		memcpy(&entry->state, vb->vb_octets, vb->vb_length);
+		return;
+	}
+
+	/*
+	 *	Otherwise hash the data.
+	 */
+	memset(&entry->state, 0, sizeof(entry->state));
+
+	hash = fr_hash64(vb->vb_octets, vb->vb_length);
+	memcpy(&entry->state, &hash, sizeof(hash));
+}
+
 /** Create a new state entry
  *
  * @note Called with the mutex held.
@@ -326,8 +348,6 @@ static int _state_entry_free(fr_state_entry_t *entry)
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
 					    fr_pair_list_t *reply_list, fr_state_entry_t *old)
 {
-	size_t			i;
-	uint32_t		x;
 	fr_time_t		now = fr_time();
 	fr_pair_t		*vp;
 	fr_state_entry_t	*entry, *next;
@@ -440,81 +460,63 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	entry->cleanup = fr_time_add(now, state->config.timeout);
 
 	/*
-	 *	Some modules create their own magic
-	 *	state attributes.  If a state value already exists
-	 *	int the reply, we use that in preference to the
-	 *	old state.
+	 *	Some modules either create their own state, or need to
+	 *	synthesize it from data in a packet header.  If we
+	 *	have such a state, then use that in preference to
+	 *	creating a random one.
 	 */
 	vp = fr_pair_find_by_da(reply_list, NULL, state->da);
-	if (vp) {
-		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
-			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
-			     sizeof(entry->state), vp->vp_length);
-		}
+	if (vp && vp->vp_length) {
+		state_entry_fill(entry, &vp->data);
 
-		/*
-		 *	Assume our own State first.
-		 */
-		if (vp->vp_length == sizeof(entry->state)) {
-			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
-
-		/*
-		 *	Too big?  Get the MD5 hash, in order
-		 *	to depend on the entire contents of State.
-		 */
-		} else if (vp->vp_length > sizeof(entry->state)) {
-			fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
-
-		/*
-		 *	Too small?  Use the whole thing, and
-		 *	set the rest of my_entry.state to zero.
-		 */
-		} else {
-			memcpy(entry->state, vp->vp_octets, vp->vp_length);
-			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
-		}
 	} else {
-		/*
-		 *	Base the new state on the old state if we had one.
-		 */
 		if (old) {
+			/*
+			 *	Just re-use the old state.
+			 */
 			entry->tries++;
 
 			if (entry->tries > state->config.max_rounds) {
 				RERROR("Failed tracking state entry - too many rounds (%u)", entry->tries);
 				goto fail;
 			}
-			
-
-		/*
-		 *	16 octets of randomness should be enough to
-		 *	have a globally unique state.
-		 */
 		} else {
-			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
-				x = fr_rand();
-				memcpy(entry->state + (i * 4), &x, sizeof(x));
+			size_t i;
+			uint32_t hash;
+
+			/*
+			 *	Get a bunch of random numbers.
+			 */
+			for (i = 0; i < sizeof(entry->state); i+= 4) {
+				hash = fr_rand();
+				memcpy(&entry->state[i], &hash, sizeof(hash));
 			}
+
+			/*
+			 *	Add in a server ID.  This lets a "FreeRADIUS
+			 *	aware" load balancer direct the packet based
+			 *	on the contents of the State attribute.
+			 */
+			entry->state_comp.server_id = state->config.server_id;
+
+			/*
+			 *	Add our own custom brand of magic.
+			 */
+			entry->state_comp.vx_0 = entry->state_comp.r_0 ^
+				((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 24) & 0xff);
+			entry->state_comp.vx_1 = entry->state_comp.r_0 ^
+				((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
+			entry->state_comp.vx_2 = entry->state_comp.r_0 ^
+				((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
+			entry->state_comp.vx_3 = entry->state_comp.r_0 ^
+				(((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 		}
 
-		entry->state_comp.tries = entry->tries + 1;
-
-		entry->state_comp.tx = entry->state_comp.tries ^ entry->tries;
-
-		entry->state_comp.vx_0 = entry->state_comp.r_0 ^
-					 ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 24) & 0xff);
-		entry->state_comp.vx_1 = entry->state_comp.r_0 ^
-					 ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
-		entry->state_comp.vx_2 = entry->state_comp.r_0 ^
-					 ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
-		entry->state_comp.vx_3 = entry->state_comp.r_0 ^
-					 (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
-
 		/*
-		 *	Allow a portion of the State attribute to be set,
-		 *	this is useful for debugging purposes.
+		 *	Track the number of round trips, too.
 		 */
-		entry->state_comp.server_id = state->config.server_id;
+		entry->state_comp.tx ^= entry->tries;
+		entry->state_comp.tries = entry->tries ^ entry->state_comp.r_3;
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, state->da));
 		fr_pair_value_memdup(vp, entry->state, sizeof(entry->state), false);
@@ -522,18 +524,20 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	}
 
 	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %pV",
-	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)),
+	       entry->id, &vp->data,
 	       fr_box_time_delta(fr_time_sub(entry->cleanup, now)));
 
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-
 	/*
-	 *	XOR the server hash with four bytes of random data.
-	 *	We XOR is again before resolving, to ensure state lookups
-	 *	only succeed in the virtual server that created the state
+	 *	XOR the server hash with four bytes of random context
+	 *	ID after adding it to the reply, but before inserting
+	 *	it into the RB rtree.  We XOR is again before looking
+	 *	it up in the tree, to ensure state lookups only
+	 *	succeed in the virtual server that created the state
 	 *	value.
 	 */
-	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->config.context_id;
+	entry->state_comp.context_id ^= state->config.context_id;
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	if (!fr_rb_insert(state->tree, entry)) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -562,27 +566,7 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 {
 	fr_state_entry_t *entry, my_entry;
 
-	/*
-	 *	Assume our own State first.
-	 */
-	if (vb->vb_length == sizeof(my_entry.state)) {
-		memcpy(my_entry.state, vb->vb_octets, sizeof(my_entry.state));
-
-		/*
-		 *	Too big?  Get the MD5 hash, in order
-		 *	to depend on the entire contents of State.
-		 */
-	} else if (vb->vb_length > sizeof(my_entry.state)) {
-		fr_md5_calc(my_entry.state, vb->vb_octets, vb->vb_length);
-
-		/*
-		 *	Too small?  Use the whole thing, and
-		 *	set the rest of my_entry.state to zero.
-		 */
-	} else {
-		memcpy(my_entry.state, vb->vb_octets, vb->vb_length);
-		memset(&my_entry.state[vb->vb_length], 0, sizeof(my_entry.state) - vb->vb_length);
-	}
+	state_entry_fill(&my_entry, vb);
 
 	/*
 	 *	Make it unique for different virtual servers handling the same request
