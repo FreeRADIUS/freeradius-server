@@ -10,19 +10,23 @@ include::ROOT:partial$v3_warning.adoc[]
 
 - `sites-enabled/virtual`
 
-*documentation page:* raddb/sites-available/README
+*documentation page:* xref:reference:raddb/sites-available/index.adoc[virtual servers]
 
-A "virtual server" is a configuration file that contains the
-following sections:
+A "virtual server" is a configuration file that contains sections
+which process packets.  These are usually `recv FOO` or `send FOO`.
+They can also include `listen` sections, long with a few others.
+
+For RADIUS, the common sections are:
 
 - *listen* Defines a new socket.
-- *authorize* The authorization section
-- *authenticate* The authentication section
-- *post-auth* The post-authentication section
-- *pre-proxy* The pre-proxy section
-- *post-proxy* The post-proxy section
-- *preacct* The pre-accounting section
-- *accounting* The accounting section
+- *recv Access-Request* Run pilicies when receiving an `Access-Request` packet
+- *authenticate <name>* Run an authentication method
+- *send Access-Accept* Run policies when sending an `Access-Accept`
+- *send Access-Reject* Run policies when sending an `Access-Reject`
+- *send Access-Challenge* Run policies when sending an `Access-Challenge`
+- *recv Accounting-Request* Run policies when receiving an `Accounting-Request` packet
+- *accounting <type>* Run policies for a particular value of `Acct-Status-Type`
+- *send Accounting-Response* Run policies when receiving an `Accounting-Response` packet
 
 Create a new file `sites-enabled/virtual`. Put the following text
 into it:
@@ -34,12 +38,12 @@ listen {
     type = auth
 }
 
-authorize {
+recv Access-Request {
     control.Clearext-Password := "hello"
     pap
 }
 
-authenticate {
+authenticate pep {
     pap
 }
 -----------------------------------------------

@@ -58,7 +58,7 @@ in the `User-Name` attribute.
 == Step 1 – Basic splitting policy
 
 [source,unlang]
-.FILE: /etc/raddb/policy.d/realm-split
+.FILE: policy.d/realm-split
 ----
 realm-split {
     # Check if User-Name exists and contains an "@" symbol

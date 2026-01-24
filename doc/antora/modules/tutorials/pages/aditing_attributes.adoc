@@ -47,7 +47,7 @@ For testing purposes, edit the following file:
 
 [source,shell]
 ----
-$ vi raddb/sites-enabled/default
+$ vi sites-enabled/default
 ----
 
 [text]
@@ -80,7 +80,7 @@ the `files` module not being called.
 
 [text]
 ----
-(0)    Running 'recv Access-Request' from file raddb/sites-enabled/default
+(0)    Running 'recv Access-Request' from file /etc/raddb/sites-enabled/default
 (0)    recv Access-Request {
 (0)      if ( User-Name == "bob" )  {
 (0)        | ==
@@ -117,7 +117,7 @@ Using additional conditions and update blocks, emulate the logic implemented usi
 For testing purposes, edit the following file:
 [source,shell]
 ----
-$ vi raddb/sites-enabled/default
+$ vi sites-enabled/default
 ----
 
 [text]
@@ -153,7 +153,7 @@ the `files` module not being called.
 
 [text]
 ----
-(0)    Running 'recv Access-Request' from file raddb/sites-enabled/default
+(0)    Running 'recv Access-Request' from file /etc/raddb/sites-enabled/default
 (0)    recv Access-Request {
 (0)      if ( User-Name == "bob" )  {
 (0)        | ==
@@ -200,7 +200,7 @@ For testing purposes, edit the following file:
 
 [source,shell]
 ----
-$ vi raddb/sites-enabled/default
+$ vi sites-enabled/default
 ----
 
 [text]
@@ -237,7 +237,7 @@ Service-Type = "Framed-User"' | radclient -x 127.0.0.1 auth testing123
 
 [text]
 ----
-(2)    Running 'recv Access-Request' from file raddb/sites-enabled/default
+(2)    Running 'recv Access-Request' from file /etc/raddb/sites-enabled/default
 (2)    recv Access-Request {
 (2)      if ( User-Name == "bob" )  {
 (2)        | ==

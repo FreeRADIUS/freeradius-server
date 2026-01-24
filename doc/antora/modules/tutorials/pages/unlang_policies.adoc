@@ -36,7 +36,7 @@ Example:
 You should have already created a policy named `realm-split` in the
 xref:unlang_splitting_strings.adoc[Splitting Strings] tutorial.
 
-File: etc/raddb/policy.d/realm-split
+File: policy.d/realm-split
 
 [source,text]
 ----

@@ -8,7 +8,7 @@ include::ROOT:partial$v3_warning.adoc[]
 
 *File:*
 
-- `/etc/raddb/mods-available/detail`
+- `mods-available/detail`
 
 In this exercise, we will configure the server to use two independent
 ``databases'' (here, detail files) for recording accounting data. These
@@ -21,7 +21,7 @@ The first step is to configure the server to have two instances of the
 `detail` module. The first instance should log requests to a different
 file for each user name. The second should log requests to a different file
 for each date. The following information should be added to the
-`/etc/raddb/mods-available/detail` file.
+`mods-available/detail` file.
 
 --------------------------------------------------------------------
 detail byname {
@@ -35,7 +35,7 @@ detail bydate {
 }
 --------------------------------------------------------------------
 
-In the module configurations contained within `/etc/raddb/mods-available/*`,
+In the module configurations contained within `mods-available/*`,
 each module may have two names. The first name is the name of the dynamically
 loadable module that implements that functionality. The second (optional) name
 is the name of an additional instance of the module. In this case, the `detail`

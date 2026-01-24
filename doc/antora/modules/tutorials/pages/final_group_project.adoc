@@ -51,11 +51,11 @@ For local preparation, you should ensure that the following sections have no
 content:
 
 - The `recv Access-Request { ... }` or `authorize { ... }` section of
-  `/etc/raddb/sites-available/default`.
+  `sites-available/default`.
 - The `send Access-Accept { ... }` or `post-auth { ... }` section of
-  `/etc/raddb/sites-available/default`.
+  `sites-available/default`.
   _Clear the `post-auth-type reject { ...}` section if present but do not remove_.
-- The `send Access-Reject { ... }` section of `/etc/raddb/sites-available/default`.
+- The `send Access-Reject { ... }` section of `sites-available/default`.
 
 After completing each of the sections below, you should check that the
 configuration you've produced is valid (radiusd -XC), and if possible, test the
