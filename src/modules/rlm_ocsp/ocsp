@@ -62,7 +62,7 @@
 			#  In order to retrieve cached OCSP states, a virtual
 			#  server must be defined here.
 			#
-			#  See `raddb/sites-available/tls-cache` for details.
+			#  See `sites-available/tls-cache` for details.
 			#
 #			virtual_server = 'tls-cache'
 
@@ -166,7 +166,7 @@
 			#  The same virtual server can be used for caching
 			#  client OCSP response states, and stapling information.
 			#
-			#  See `raddb/sites-available/tls-cache` for details.
+			#  See `sites-available/tls-cache` for details.
 			#
 #			virtual_server = 'tls-cache'
 

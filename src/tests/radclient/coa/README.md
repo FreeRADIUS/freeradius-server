@@ -2,7 +2,7 @@
 
 It's a bit messed up.
 
-Edit `raddb/sites-enabled/default`, and change the `recv Access-Request` section:
+Edit `sites-enabled/default`, and change the `recv Access-Request` section:
 
 ```
 recv Access-Request {
