@@ -159,6 +159,8 @@ again:
 		fr_rb_tree_test_node_t *p;
 
 		p = talloc(t, fr_rb_tree_test_node_t);	/* Do not use talloc_zero, rbcode should initialise fr_rb_node_t */
+		if (!p) return 1;
+
 		p->num = fr_rand();
 		vals[i].num = p->num;
 		fr_rb_insert(t, p);
