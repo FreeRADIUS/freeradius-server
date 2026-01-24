@@ -127,8 +127,6 @@ typedef struct {
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
 	request_t		*thawed;			//!< The request that thawed this entry.
-
-	fr_state_tree_t		*state_tree;			//!< Tree this entry belongs to.
 } fr_state_entry_t;
 
 /** A child of a fr_state_entry_t
@@ -430,22 +428,14 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		MEM(entry = talloc_zero(NULL, fr_state_entry_t));
 		talloc_set_destructor(entry, _state_entry_free);
 
-	/*
-	 *	Reuse the old state entry cleaning up any memory associated
-	 *	with it.
-	 */
+		entry->id = state->id++;
+
 	} else {
-		_state_entry_free(old);
-		talloc_free_children(old);
-		memset(old, 0, sizeof(*old));
+		fr_assert(!old->ctx);
 		entry = old;
 	}
 
-	entry->state_tree = state;
-
 	request_data_list_init(&entry->data);
-
-	entry->id = state->id++;
 
 	/*
 	 *	Limit the lifetime of this entry based on how long the
@@ -566,6 +556,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	ordered by cleanup time.
 	 */
 	fr_dlist_insert_tail(&state->to_expire, entry);
+
+	entry->thawed = NULL;
 
 	return entry;
 }
@@ -688,15 +680,14 @@ int fr_state_restore(fr_state_tree_t *state, request_t *request)
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = state_entry_find_and_unlink(state, &vp->data);
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RDEBUG2("No state entry matching request.%pP found", vp);
 		return 2;
 	}
-   	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/* Probably impossible in the current code */
-	if (unlikely(entry->thawed != NULL)) {
+	if (unlikely(entry->thawed && (entry->thawed != request))) {
 		RERROR("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
 		return -2;
 	}
@@ -775,13 +766,14 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	}
 
 	MEM(state_ctx = request_state_replace(request, NULL));
-	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	/*
 	 *	Reuses old if possible, and leaves the mutex unlocked on failure.
 	 */
+	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;
