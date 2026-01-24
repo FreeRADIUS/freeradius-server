@@ -213,14 +213,16 @@ static const conf_parser_t config[] = {
  */
 static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, bool reply)
 {
-	uint8_t		buffer[12];
-	uint32_t	hash;
+	uint64_t	hash;
+	uint32_t	sequence;
 	fr_pair_t 	*vp;
+
+	if (!request->async->listen) return -1;
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_session_id);
 	if (!vp) return -1;
 
-	fr_nbo_from_uint32(buffer, vp->vp_uint32);
+	hash = fr_hash64(&vp->vp_uint32, sizeof(vp->vp_uint32));
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_tacacs_sequence_number);
 	if (!vp) return -1;
@@ -230,23 +232,15 @@ static int state_create(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request
 	 *	So if we want to synthesize a state in a reply which gets matched with the next
 	 *	request, we have to add 2 to it.
 	 */
-	hash = vp->vp_uint8 + ((int) reply << 1);
+	sequence = vp->vp_uint8 + ((int) reply << 1);
+	hash = fr_hash64_update(&sequence, sizeof(sequence), hash);
 
-	fr_nbo_from_uint32(buffer + 4, hash);
-
-	/*
-	 *	Hash in the listener.  For now, we don't allow internally proxied requests.
-	 */
-	fr_assert(request->async != NULL);
-	fr_assert(request->async->listen != NULL);
-	hash = fr_hash(&request->async->listen, sizeof(request->async->listen));
-
-	fr_nbo_from_uint32(buffer + 8, hash);
+	hash = fr_hash64_update(&request->async->listen, sizeof(request->async->listen), hash);
 
 	vp = fr_pair_afrom_da(ctx, attr_tacacs_state);
 	if (!vp) return -1;
 
-	(void) fr_pair_value_memdup(vp, buffer, 12, false);
+	(void) fr_pair_value_memdup(vp, (uint8_t const *) &hash, sizeof(hash), false);
 
 	fr_pair_append(out, vp);
 
