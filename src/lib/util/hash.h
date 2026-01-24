@@ -52,6 +52,9 @@ uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash);
 uint32_t fr_hash_string(char const *p);
 uint32_t fr_hash_case_string(char const *p);
 
+uint64_t fr_hash64(void const *, size_t);
+uint64_t fr_hash64_update(void const *data, size_t size, uint64_t hash);
+
 typedef struct fr_hash_table_s fr_hash_table_t;
 typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 

@@ -895,6 +895,61 @@ uint32_t fr_hash_case_string(char const *p)
 	return hash;
 }
 
+/*
+ *	64-bit variants of the above functions/
+ */
+#undef FNV_MAGIC_INIT
+#undef FNV_MAGIC_PRIME
+#define FNV_MAGIC_INIT ((uint64_t) 0xcbf29ce484222325)
+#define FNV_MAGIC_PRIME ((uint64_t) 0x01000193)
+
+/*
+ *	A 64-bit version of the above hash
+ */
+uint64_t fr_hash64(void const *data, size_t size)
+{
+	uint8_t const *p = data;
+	uint8_t const *q = p + size;
+	uint64_t      hash = FNV_MAGIC_INIT;
+
+	/*
+	 *	FNV-1 hash each octet in the buffer
+	 */
+	while (p != q) {
+		/*
+		 *	XOR the 8-bit quantity into the bottom of
+		 *	the hash.
+		 */
+		hash ^= (uint32_t) (*p++);
+
+		/*
+		 *	Multiple by 32-bit magic FNV prime, mod 2^32
+		 */
+		hash *= FNV_MAGIC_PRIME;
+    }
+
+    return hash;
+}
+
+/*
+ *	Continue hashing data.
+ */
+uint64_t fr_hash64_update(void const *data, size_t size, uint64_t hash)
+{
+	uint8_t const *p = data;
+	uint8_t const *q;
+
+	if (size == 0) return hash;	/* Avoid ubsan issues with access NULL pointer */
+
+ 	q = p + size;
+	while (p < q) {
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint64_t) (*p++);
+	}
+
+	return hash;
+}
+
 /** Check hash table is sane
  *
  */
