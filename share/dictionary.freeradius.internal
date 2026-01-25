@@ -631,8 +631,11 @@ ATTRIBUTE	TLS-Server-Name-Indication		1951	string
 ATTRIBUTE	TLS-Cert-CRL-Distribution-Points	1960	string
 ATTRIBUTE	TLS-Client-Cert-CRL-Distribution-Points	1961	string
 
+ATTRIBUTE	TLS-Cert-Serial-Number-And-Issuer	1962	string
+ATTRIBUTE	TLS-Client-Cert-Serial-Number-And-Issuer	1963	string
+
 #
-#	Range:	1960-2099
+#	Range:	1964-2099
 #		Free
 #
 #	Range:	2100-2199
