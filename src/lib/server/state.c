@@ -61,6 +61,7 @@ const conf_parser_t state_session_config[] = {
 	{ FR_CONF_OFFSET("max", fr_state_config_t, max_sessions), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_rounds", fr_state_config_t, max_rounds), .dflt = "50" },
 	{ FR_CONF_OFFSET("state_server_id", fr_state_config_t, server_id) },
+	{ FR_CONF_OFFSET("dedup_key", fr_state_config_t, dedup_key) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -70,7 +71,7 @@ const conf_parser_t state_session_config[] = {
  *
  */
 typedef struct {
-	uint64_t		id;				//!< State number within state heap.
+	uint64_t		id;				//!< State number
 	fr_rb_node_t		node;				//!< Entry in the state rbtree.
 	union {
 		/** Server ID components
@@ -127,6 +128,9 @@ typedef struct {
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
 	request_t		*thawed;			//!< The request that thawed this entry.
+
+	fr_value_box_t const	*dedup_key;			//!< Key for dedup
+	fr_rb_node_t		dedup_node;    			//!< Entry in the dedup rbtree
 } fr_state_entry_t;
 
 /** A child of a fr_state_entry_t
@@ -155,6 +159,7 @@ struct fr_state_tree_s {
 	fr_state_config_t	config;				//!< a local copy
 
 	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
+	fr_rb_tree_t		*dedup_tree;		       	//!< rbtree used to do dedups
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
@@ -178,6 +183,17 @@ static int8_t state_entry_cmp(void const *one, void const *two)
 	ret = memcmp(a->state, b->state, sizeof(a->state));
 	return CMP(ret, 0);
 }
+
+/** Compare two fr_state_entry_t based on their dedup key
+ *
+ */
+static int8_t state_dedup_cmp(void const *one, void const *two)
+{
+	fr_state_entry_t const *a = one, *b = two;
+
+	return fr_value_box_cmp(a->dedup_key, b->dedup_key);
+}
+
 
 /** Free the state tree
  *
@@ -233,6 +249,25 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, f
 	state->da = da;		/* Remember which attribute we use to load/store state */
 
 	/*
+	 *      Some systems may start a new session before closing
+	 *      out the old one.  The dedup key lets us find
+	 *      pre-existing sessions, and close them out.
+	 */
+	if (config->dedup_key) {
+		if ((!tmpl_is_attr(config->dedup_key) &&
+		     !tmpl_is_xlat(config->dedup_key)) ||
+		    tmpl_needs_resolving(config->dedup_key)) {
+			fr_strerror_const("Invalid value for \"dedup_key\" - it must be an attribute reference or a simple expansion");
+			return NULL;
+		}
+
+		if (tmpl_async_required(config->dedup_key)) {
+			fr_strerror_const("Invalid value for \"dedup_key\" - it must be a simple expansion, and cannot query external systems such as databases");
+			return NULL;
+		}
+	}
+
+	/*
 	 *	Create a break in the contexts.
 	 *	We still want this to be freed at the same time
 	 *	as the parent, but we also need it to be thread
@@ -261,6 +296,14 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, f
 	}
 	talloc_set_destructor(state, _state_tree_free);
 
+	if (config->dedup_key) {
+		state->dedup_tree = fr_rb_inline_talloc_alloc(state->tree, fr_state_entry_t, dedup_node, state_dedup_cmp, NULL);
+		if (!state->dedup_tree) {
+			talloc_free(state);
+			return NULL;
+		}
+	}
+
 	return state;
 }
 
@@ -277,6 +320,7 @@ void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 
 	fr_dlist_remove(&state->to_expire, entry);
 	fr_rb_delete(state->tree, entry);
+	if (state->dedup_tree) fr_rb_delete(state->dedup_tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
 }
@@ -346,7 +390,8 @@ static void state_entry_fill(fr_state_entry_t *entry, fr_value_box_t const *vb)
  * @note Called with the mutex held.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
-					    fr_pair_list_t *reply_list, fr_state_entry_t *old)
+					    fr_pair_list_t *reply_list, fr_state_entry_t *old,
+					    fr_value_box_t const *dedup_key)
 {
 	fr_time_t		now = fr_time();
 	fr_pair_t		*vp;
@@ -357,16 +402,39 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	fr_dlist_head_t		to_free;
 
 	/*
-	 *	Shouldn't be in any lists if it's being reused
+	 *	If we have a previous entry, then it can't be in an
+	 *	expiry list, and it can't be in the list of states
+	 *	where we have sent a reply.
 	 */
 	fr_assert(!old ||
 		  (!fr_dlist_entry_in_list(&old->expire_entry) &&
 		   !fr_rb_node_inline_in_tree(&old->node)));
 
+	/*
+	 *	If we have a previous entry and a dedup_tree, then we
+	 *	must have a dedup key, AND the entry must be in the
+	 *	dedup tree.
+	 */
+	fr_assert(!old || !state->dedup_tree || (old->dedup_key && fr_rb_node_inline_in_tree(&old->dedup_node)));
+
+	/*
+	 *	If there is an old entry, we can't have a dedup_key.
+	 */
+	fr_assert(!old || (old || !dedup_key));
+
+	/*
+	 *	We track a separate free list, as we have to check
+	 *	expiration with the mutex locked.  But we want to free
+	 *	things with the mutex unlocked.
+	 */
 	fr_dlist_init(&to_free, fr_state_entry_t, free_entry);
 
 	/*
-	 *	Clean up expired entries
+	 *	Clean up expired entries which have not finished.  If
+	 *	the request fails, then the corresponding entry is
+	 *	discarded.  So the expiration list is only for entries
+	 *	which have been half-started, and then (many seconds
+	 *	later) haven't seen a "next" packet.
 	 */
 	for (entry = fr_dlist_head(&state->to_expire);
 	     entry != NULL;
@@ -374,7 +442,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
  		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
 		next = fr_dlist_next(&state->to_expire, entry);		/* Advance *before* potential unlinking */
 
-		if (entry == old) continue;
+		/*
+		 *	It's active (and asserted so above), so it can't be in the expiry list.
+		 */
+		fr_assert(entry != old);
 
 		/*
 		 *	Too old, we can delete it.
@@ -388,8 +459,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 		break;
 	}
-
-	state->timed_out += timed_out;
 
 	if (!old) {
 		/*
@@ -406,12 +475,27 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 *	shouldn't be a problem.
 		 */
 		too_many = (fr_rb_num_elements(state->tree) >= state->config.max_sessions) && (timed_out == 0);
+
+		/*
+		 *	If there is a previous session for the same dedup key, then remove the old one from
+		 *	the dedup tree.
+		 */
+		if (dedup_key) {
+			fr_state_entry_t *unfinished;
+
+			unfinished = fr_rb_find(state->dedup_tree, &(fr_state_entry_t) { .dedup_key = dedup_key });
+			if (unfinished) {
+				state_entry_unlink(state, unfinished);
+				fr_dlist_insert_tail(&to_free, unfinished);
+			}
+		}
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (timed_out > 0) {
 		RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
+		state->timed_out += timed_out;
 
 		/*
 		 *	Now free the unlinked entries.
@@ -429,6 +513,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		}
 
 	} else if (too_many) {
+		talloc_const_free(dedup_key);
 		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
 		       state->config.max_sessions);
 		return NULL;
@@ -483,6 +568,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		} else {
 			size_t i;
 			uint32_t hash;
+
+			if (dedup_key) entry->dedup_key = talloc_steal(entry, dedup_key);
 
 			/*
 			 *	Get a bunch of random numbers.
@@ -540,12 +627,20 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	if (!fr_rb_insert(state->tree, entry)) {
+	fail_unlock:
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
 	fail:
 		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
 		return NULL;
+	}
+
+	/*
+	 *	Ensure that we can de-duplicate things if the supplicant is misbehaving.
+	 */
+	if (state->dedup_tree && !old) {
+		if (!fr_rb_insert(state->dedup_tree, entry)) goto fail_unlock;
 	}
 
 	/*
@@ -721,6 +816,7 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
 	fr_pair_t		*state_ctx;
+	fr_value_box_t		*dedup_key = NULL;
 
 	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
@@ -742,15 +838,34 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 #endif
 	}
 
+	/*
+	 *	If there's a dedup tree, then we need to expand the
+	 *	key, but only if we don't already have a pre-existing state.
+	 */
+	if (state->dedup_tree && !old) {
+		fr_value_box_list_t list;
+
+		fr_value_box_list_init(&list);
+
+		if (tmpl_eval(NULL, &list, request, state->config.dedup_key) < 0) {
+			REDEBUG("Failed expanding dedup_key - not doing dedup");
+		} else {
+			dedup_key = fr_value_box_list_pop_head(&list);
+			if (!dedup_key) {
+				RDEBUG("Failed expanding dedup_key - not doing dedup due to empty output");
+			}
+			fr_value_box_list_talloc_free_head(&list);
+		}
+	}
+
 	MEM(state_ctx = request_state_replace(request, NULL));
 
 	/*
 	 *	Reuses old if possible, and leaves the mutex unlocked on failure.
 	 */
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_create(state, request, &request->reply_pairs, old);
+	entry = state_entry_create(state, request, &request->reply_pairs, old, dedup_key);
 	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
 		return -1;

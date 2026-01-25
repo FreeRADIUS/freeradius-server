@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/tmpl.h>
 
 typedef struct fr_state_tree_s fr_state_tree_t;
 
@@ -41,6 +42,7 @@ typedef struct {
 	uint32_t		max_rounds;	//!< maximum number of rounds before we give up
 	uint32_t		context_id;	//!< internal number to help keep state trees separate
 	fr_time_delta_t		timeout;	//!< idle timeout
+	tmpl_t			*dedup_key;	//!< for tracking misbehaving supplicants
 	uint8_t			server_id;	//!< for mangling State
 	bool			thread_safe;	
 } fr_state_config_t;

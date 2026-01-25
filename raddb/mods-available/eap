@@ -47,6 +47,13 @@ eap {
 #	require_identity_realm = nai
 
 	#
+	#  Session tracking has moved to the `session` section of a virtual server.
+	#  * timer_expire --> timeout
+	#  * max_sessions --> max
+	#  * dedup_key    --> dedup_key
+	#
+
+	#
 	#  default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
 	#  response is received.
 	#

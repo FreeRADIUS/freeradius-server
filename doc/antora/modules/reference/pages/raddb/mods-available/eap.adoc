@@ -42,6 +42,13 @@ it is enabled by OS and device vendors.
 
 
 
+Session tracking has moved to the `session` section of a virtual server.
+  * timer_expire --> timeout
+  * max_sessions --> max
+  * dedup_key    --> dedup_key
+
+
+
 default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
 response is received.
 
@@ -153,7 +160,7 @@ may use the 'snakeoil' certificates. Included with the server in
 
 If these certificates have not been auto-generated:
 
-  cd raddb/certs
+  cd _confdir_/certs
   make
 
 These test certificates *SHOULD NOT* be used in a normal
