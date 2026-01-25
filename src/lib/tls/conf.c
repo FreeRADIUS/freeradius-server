@@ -116,9 +116,11 @@ static conf_parser_t tls_chain_config[] = {
 			 	.len = &certificate_format_table_len
 			 },
 			 .dflt = "pem" },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS, fr_tls_chain_conf_t, certificate_file) },
+	{ FR_CONF_OFFSET("certificate_uri", fr_tls_chain_conf_t, certificate_uri) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS, fr_tls_chain_conf_t, private_key_file) },
+	{ FR_CONF_OFFSET("private_key_uri", fr_tls_chain_conf_t, private_key_uri) },
 
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_MULTI, fr_tls_chain_conf_t, ca_files) },
 

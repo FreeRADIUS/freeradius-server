@@ -1921,13 +1921,13 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	on OpenSSL's opaque error messages.
 	 */
 	} else {
-		if (!conf->chains || !conf->chains[0]->private_key_file) {
-			ERROR("TLS Server requires a private key file");
+		if (!conf->chains || (!conf->chains[0]->private_key_file && !conf->chains[0]->private_key_uri)) {
+			ERROR("TLS Server requires a private key file or URI");
 			goto error;
 		}
 
-		if (!conf->chains || !conf->chains[0]->certificate_file) {
-			ERROR("TLS Server requires a certificate file");
+		if (!conf->chains || (!conf->chains[0]->certificate_file && !conf->chains[0]->certificate_uri)) {
+			ERROR("TLS Server requires a certificate file or URI");
 			goto error;
 		}
 	}

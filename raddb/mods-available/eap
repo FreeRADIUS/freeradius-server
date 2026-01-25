@@ -337,6 +337,16 @@ eap {
 			certificate_file = ${certdir}/rsa/server.pem
 
 			#
+			#  certificate_uri:: URI which contains the certificate presented
+			#  as the "server certificate" to the client.
+			#
+			#  At least one of `certificate_file` and `certificate_uri`
+			#  should be specified. If both are specified, then
+			#  `certificate_file` will be used.
+			#
+#			certificate_uri = "pkcs11:"
+
+			#
 			#  ca_file::  File which contains the root CA.
 			#
 			#  THis configuration item allows the server to load
@@ -378,6 +388,19 @@ eap {
 			#  same file name.
 			#
 			private_key_file = ${certdir}/rsa/server.key
+
+			#
+			#  private_key_file:: URI which contains the private key.
+			#
+			#  If the Private key & Certificate should be loaded with the same URI,
+			#  then `private_key_uri` & `certificate_uri` should contain the
+			#  same URI.
+			#
+			#  At least one of `private_key_file` and `certificate_uri`
+			#  should be specified. If both are specified, then
+			#  `certificate_file` will be used.
+			#
+#			private_key_uri = "pkcs11:"
 
 			#
 			#  verify_mode:: How we verify the certificate chain.

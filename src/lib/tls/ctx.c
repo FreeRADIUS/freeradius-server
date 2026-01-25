@@ -47,6 +47,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/dh.h>
 #include <openssl/x509v3.h>
 #include <openssl/provider.h>
+#include <openssl/store.h>
 
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
@@ -234,14 +235,17 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 	 return 0;
 }
 
+static OSSL_STORE_INFO *tls_ctx_load_cert_chain_store_post_process(OSSL_STORE_INFO *info, void *type) {
+	return (int)type == OSSL_STORE_INFO_get_type(info) ? info : NULL;
+}
+
 static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, bool allow_multi_self_signed)
 {
 	char		*password;
-
-	/*
-	 *	Conf parser should ensure they're both populated
-	 */
-	fr_assert(chain->certificate_file && chain->private_key_file);
+	X509		*certificate;
+	EVP_PKEY	*private_key;
+	OSSL_STORE_CTX	*store_ctx;
+	OSSL_STORE_INFO	*store_info;
 
 	/*
 	 *	Set the password (this should have been retrieved earlier)
@@ -255,32 +259,81 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 	 */
 	SSL_CTX_set_default_passwd_cb(ctx, fr_tls_session_password_cb);
 
-	switch (chain->file_format) {
-	case SSL_FILETYPE_PEM:
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
-			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
-				      chain->certificate_file);
+	if (chain->certificate_file) {
+		switch (chain->file_format) {
+		case SSL_FILETYPE_PEM:
+			if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
+				fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
+						  chain->certificate_file);
+				return -1;
+			}
+			break;
+
+		case SSL_FILETYPE_ASN1:
+			if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
+				fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
+						  chain->certificate_file);
+				return -1;
+			}
+			break;
+
+		default:
+			fr_assert(0);
+			break;
+		}
+	} else if (chain->certificate_uri) {
+		if (!(store_ctx = OSSL_STORE_open(chain->certificate_uri, NULL, NULL, tls_ctx_load_cert_chain_store_post_process, (void*)OSSL_STORE_INFO_CERT))) {
+			fr_tls_log(NULL, "Failed reading certificate from \"%s\"",
+				      chain->certificate_uri);
 			return -1;
 		}
-		break;
-
-	case SSL_FILETYPE_ASN1:
-		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
-			fr_tls_log(NULL, "Failed reading certificate file \"%s\"",
-				      chain->certificate_file);
+		if (!(store_info = OSSL_STORE_load(store_ctx))) {
+			fr_tls_log(NULL, "Failed reading certificate from \"%s\"",
+				      chain->certificate_uri);
+			OSSL_STORE_close(store_ctx);
 			return -1;
 		}
-		break;
-
-	default:
-		fr_assert(0);
-		break;
+		certificate = OSSL_STORE_INFO_get0_CERT(store_info);
+		fr_assert(certificate);
+		if (!(SSL_CTX_use_certificate(ctx, certificate))) {
+			fr_tls_log(NULL, "Failed reading certificate uri \"%s\"",
+				      chain->certificate_uri);
+			OSSL_STORE_close(store_ctx);
+			return -1;
+		}
+		OSSL_STORE_close(store_ctx);
+	} else {
+		fr_tls_log(NULL, "Missing certificate. Either certificate_file or certificate_uri must be specified.");
+		return -1;
 	}
 
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
-		fr_tls_log(NULL, "Failed reading private key file \"%s\"",
-			      chain->private_key_file);
-		return -1;
+	if (chain->private_key_file) {
+		if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
+			fr_tls_log(NULL, "Failed reading private key file \"%s\"",
+				      chain->private_key_file);
+			return -1;
+		}
+	} else if (chain->private_key_uri) {
+		if (!(store_ctx = OSSL_STORE_open(chain->private_key_uri, NULL, NULL, tls_ctx_load_cert_chain_store_post_process, (void*)OSSL_STORE_INFO_PKEY))) {
+			fr_tls_log(NULL, "Failed reading private key from \"%s\"",
+				      chain->private_key_uri);
+			return -1;
+		}
+		if (!(store_info = OSSL_STORE_load(store_ctx))) {
+			fr_tls_log(NULL, "Failed reading private key from \"%s\"",
+				      chain->private_key_uri);
+			OSSL_STORE_close(store_ctx);
+			return -1;
+		}
+		private_key = OSSL_STORE_INFO_get0_PKEY(store_info);
+		fr_assert(certificate);
+		if (!(SSL_CTX_use_PrivateKey(ctx, private_key))) {
+			fr_tls_log(NULL, "Failed reading private key uri \"%s\"",
+				      chain->private_key_uri);
+			OSSL_STORE_close(store_ctx);
+			return -1;
+		}
+		OSSL_STORE_close(store_ctx);
 	}
 
 	{
