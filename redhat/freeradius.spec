@@ -804,7 +804,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 
 # install doc files omitted by standard install
-for f in COPYRIGHT CREDITS; do
+for f in COPYRIGHT ; do
     %__cp $f $RPM_BUILD_ROOT/%{docdir}
 done
 %__cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
