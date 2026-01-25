@@ -10,7 +10,7 @@ postgresql {
 	#
 	#  NOTE: unlike MySQL, which has a tls{} connection configuration, postgresql
 	#  uses its connection parameters - see the radius_db option in
-	#  the main raddb/mods-available/sql file
+	#  the main mods-available/sql file
 	#
 
 	#

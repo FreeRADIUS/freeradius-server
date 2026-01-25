@@ -1,3 +1,5 @@
+bob	Password.Cleartext := "bob"
+
 #
 # 	Configuration file for the rlm_files module.
 # 	Please see rlm_files documentation for more information.
@@ -81,7 +83,7 @@
 # users with spaces in their names, you must also change
 # the "filter_username" policy to allow spaces.
 #
-# See raddb/policy.d/filter, filter_username {} section.
+# See policy.d/filter, filter_username {} section.
 #
 #"John Doe"	Password.Cleartext := "hello"
 #		Reply-Message = "Hello, %{User-Name}"

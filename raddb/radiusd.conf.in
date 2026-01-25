@@ -763,7 +763,7 @@ policy {
 #  match the regular expression: /[a-zA-Z0-9_.]+/
 #
 #  It allows you to define new virtual servers simply by placing
-#  a file into the raddb/sites-enabled/ directory.
+#  a file into the sites-enabled/ directory.
 #
 #  All of the other configuration sections like:
 #

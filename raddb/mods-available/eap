@@ -181,7 +181,7 @@ eap {
 	#
 	#  If these certificates have not been auto-generated:
 	#
-	#    cd raddb/certs
+	#    cd _confdir_/certs
 	#    make
 	#
 	#  These test certificates *SHOULD NOT* be used in a normal

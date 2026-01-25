@@ -55,7 +55,7 @@ recv Access-Request {
 	#
 	#      outer.request.<attribute>
 	#
-	#  The following policy in raddb/policy.d/eap can be used
+	#  The following policy in policy.d/eap can be used
 	#  to copy attributes over.
 	#
 #	copy_request_to_tunnel

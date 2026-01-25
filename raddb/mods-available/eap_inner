@@ -159,7 +159,7 @@ eap inner-eap {
 	#
 	#  You can create the `inner-server.pem` file by doing:
 	#
-	#       cd raddb/certs
+	#       cd _confdir_/certs
 	#       vi inner-server.cnf
 	#       make inner-server
 	#

@@ -83,7 +83,7 @@ realm acct_realm.example.com {
 }
 
 #  (4) Define a detail file writer.
-#   See raddb/modules/detail.example.com
+#   See mods-available/detail.example.com
 
 #  (5) Define a virtual server to handle pre/post-proxy re-writing
 server home.example.com {

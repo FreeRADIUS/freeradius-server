@@ -3,11 +3,11 @@
 #
 #	This is a virtual server that handles DHCP.
 #
-#  See raddb/mods-available/sqlippool for the IP Pool configuration.
+#  See mods-available/sqlippool for the IP Pool configuration.
 #
-#  See raddb/mods-config/sql/ippool/ for the schemas.
+#  See mods-config/sql/ippool/ for the schemas.
 #
-#  See raddb/sites-available/dhcp for instructions on how to configure
+#  See sites-available/dhcp for instructions on how to configure
 #  the DHCP server.
 #
 #	$Id$
@@ -26,7 +26,7 @@ server dhcp {
 #  If you want it to do real DHCP, change this to 67, and good luck!
 #
 #  You can also bind the DHCP socket to an interface.
-#  See below, and raddb/radiusd.conf for examples.
+#  See below, and radiusd.conf for examples.
 #
 #  This lets you run *one* DHCP server instance and have it listen on
 #  multiple interfaces, each with a separate policy.
@@ -326,9 +326,9 @@ recv Lease-Query {
 #  There is a preconfigured "mac2ip" module setup in
 #  mods-available/mac2ip. To use it do:
 #
-#    # cd raddb/
-#    # ln -s ../mods-available/mac2ip mods-enabled/mac2ip
-#    # mkdir mods-config/passwd
+#    $ cd _confdir_
+#    $ ln -s ../mods-available/mac2ip mods-enabled/mac2ip
+#    $ mkdir mods-config/passwd
 #
 #  Then create the file mods-config/passwd/mac2ip with the above
 #  format.

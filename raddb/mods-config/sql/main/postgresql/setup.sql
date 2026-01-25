@@ -2,7 +2,7 @@
 -- setup.sql -- PostgreSQL commands for creating the RADIUS user.
 --
 --	WARNING: You should change 'localhost' and 'radpass'
---		 to something else.  Also update raddb/mods-available/sql
+--		 to something else.  Also update mods-available/sql
 --		 with the new RADIUS password.
 --
 --	WARNING: This example file is untested.  Use at your own risk.

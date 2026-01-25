@@ -101,7 +101,7 @@
 #  a single persistent search.
 #
 #  Most options within the listen section are identical to rlm_ldap.
-#  See /etc/raddb/mods-available/ldap for more detailed descriptions of
+#  See mods-available/ldap for more detailed descriptions of
 #  configuration items.
 #
 server ldap_sync {

@@ -63,7 +63,7 @@ authenticate step1 {
 
 	#
 	#  Send an Access-Challenge.
-	#  See raddb/policy.d/control for the definition
+	#  See policy.d/control for the definition
 	#  of "challenge"
 	#
 	challenge

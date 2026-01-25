@@ -1,6 +1,6 @@
 ######################################################################
 #
-#	Make file to be installed in /etc/raddb/certs to enable
+#	Make file to be installed in _confdir_/certs to enable
 #	the easy creation of certificates.
 #
 #	See the README file in this directory for more information.
