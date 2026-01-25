@@ -813,13 +813,10 @@ done
 # add Red Hat specific documentation
 %__cat >> $RPM_BUILD_ROOT/%{docdir}/REDHAT << EOF
 
-Red Hat, RHEL, Fedora, and CentOS specific information can be found on the
-FreeRADIUS Wiki in the Red Hat FAQ.
+Red Hat, RHEL, Fedora, and CentOS specific information can be found
+online in the FreeRADIUS documentation:
 
-http://wiki.freeradius.org/guide/Red_Hat_FAQ
-
-Please reference that document.
-
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/installation/redhat.html
 EOF
 
 # Install the selinux module

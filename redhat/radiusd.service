@@ -1,7 +1,7 @@
 [Unit]
 Description=FreeRADIUS multi-protocol policy server
 After=network-online.target
-Documentation=man:radiusd(8) man:radiusd.conf(5) https://wiki.freeradius.org/ https://freeradius.org/documentation/freeradius-server/
+Documentation=man:radiusd(8) man:radiusd.conf(5) https://freeradius.org/documentation/freeradius-server/
 
 [Service]
 Type=notify

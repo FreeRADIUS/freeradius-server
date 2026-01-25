@@ -28,7 +28,7 @@ Please read "man radiusd" before editing this file.  See the
 section titled DEBUGGING.  It outlines a method where you can
 quickly obtain the configuration you want, without running into
 trouble. And finally, the debug output can be complex. Please read
-https://wiki.freeradius.org/radiusd-X[debugging] to understand that output.
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html
 
 The best way to configure the server for your local system is to
   *carefully* edit this file.  Most attempts to make large edits to
@@ -995,9 +995,7 @@ is located in `mods-config/files/authorize`.
 ```
 
 Look in an SQL database. The schema of the database is
-meant to mirror the `users` file.  For a full description
-of the module behavior, please see
-https://wiki.freeradius.org/modules/Rlm_sql
+meant to mirror the `users` file.
 
 ```
 	-sql
@@ -1015,9 +1013,6 @@ module.
 
 The `ldap` module reads passwords and other attributes from
 an LDAP database.
-
-For a full description of the module behavior, please see
-https://wiki.freeradius.org/modules/Rlm_ldap
 
 ```
 	-ldap
@@ -1088,7 +1083,7 @@ Access-Request` section, above.
 
 Since version 4, proxying also happens in this section.  For more
 information on how proxying has changed in version 4, please see
-https://wiki.freeradius.org/upgrading/version4/proxy.
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/upgrade/proxy.html
 
 For authentication, you should generally NOT set the `Auth-Type`
 attribute.  As noted above, the modules will usually figure it what
@@ -1230,7 +1225,7 @@ now trivial in v4.  For example:
     * note that this won't work for EAP.
 
 For more information, see:
-https://wiki.freeradius.org/upgrading/version4/proxy.
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/upgrade/proxy.html
 
 
 

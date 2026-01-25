@@ -54,7 +54,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		ROPTIONAL(RWDEBUG, WARN, "!! EAP session %016" PRIxPTR " did not finish!                   !!",
 			  (uintptr_t)eap_session);
-		ROPTIONAL(RWDEBUG, WARN, "!! See http://wiki.freeradius.org/guide/Certificate_Compatibility !!");
+		ROPTIONAL(RWDEBUG, WARN, "!! See https://www.freeradius.org/documentation/freeradius-server/4.0.0/trouble-shooting/client.html !!");
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 

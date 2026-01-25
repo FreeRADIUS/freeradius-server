@@ -35,10 +35,6 @@ authenticate proxy {
 }
 ----
 
-For more detailed examples, see the Wiki page:
-https://wiki.freeradius.org/upgrading/version4/proxy. That page also
-describes how to upgrade a v3 configuration to the new v4 style.
-
 The benefit of this approach is that the "RADIUS proxy" functionality
 is just another module.  It is now possible to not just fail over from
 one home server to another, but also to proxy the same packet to

@@ -36,12 +36,11 @@ the developers on the
 https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
 mailing list].
 
-Some of the documents here started life as pages on
-https://wiki.freeradius.org[wiki.freeradius.org].  If you've just been
-through a particularly arduous service configuration and deployment, and would
-like to help your fellow users, then please create a new how to on the wiki.
-If it's popular enough, we'll include it in the official documentation for the
-next release.
+Some of the documents here started life as pages on the old
+Wiki. However, there were eventually very few contributions to it.
+The full documentation is now maintained by [InkBridge
+Networks](https://inkbridgenetworks.com) (previously Network
+RADIUS).
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

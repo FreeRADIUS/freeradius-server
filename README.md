@@ -23,7 +23,7 @@ of people, in sites ranging from 10 to 10 million+ users.
 Please see the [documentation](doc/) directory, which has full
 documentation for version 4.
 
-Please also see <https://freeradius.org> and <https://wiki.freeradius.org>
+Please also see <https://freeradius.org> and <https://www.freeradius.org/documentation/freeradius-server/4.0.0/>
 for additional documentation.
 
 ## Installation
@@ -70,12 +70,8 @@ which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
 
 The debug output is explained in detail in the
-[radiusd-X](https://wiki.freeradius.org/radiusd-X) page on the
-[wiki](https://wiki.freeradius.org).
-
-Many questions are answered on the Wiki:
-
-<https://wiki.freeradius.org>
+[radiusd-X](https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html)
+page.
 
 Read the configuration files.  Many parts of the server are
 documented only with extensive comments in the configuration files.
@@ -84,17 +80,21 @@ Search the mailing lists. For example, using Google, searching
 "site:lists.freeradius.org <search term>" will return results from
 the FreeRADIUS mailing lists.
 
-<https://freeradius.org/support/>
+[Additional
+help](https://www.freeradius.org/documentation/freeradius-server/4.0.0/gethelp.html)
+is available via the mailing lists, including commercial support.
 
-Instructions for what to post on the mailing list are [on the
-wiki](https://wiki.freeradius.org/list-help).  Please note that we DO
-recommend posting the output of `radiusd -X`.  That information shows
-what the server is doing when it receives packets, and how it
-processes those packets.
+When posting to the mailing list, we recommend posting the output of
+`radiusd -X`.  That information shows what the server is doing when it
+receives packets, and how it processes those packets.
 
-We do NOT recommend posting the configuration files to the mailing
-list.  They don't help.  Instead, post the output of `radiusd -X`.  We
-really cannot emphasize that enough.
+Do NOT post the configuration files to the mailing list.  They're not
+useful.  Instead, post the output of `radiusd -X`.  We really cannot
+emphasize that enough.
+
+DO post a clear description ofwhat the problem is.  Empty questions
+will not make you friends.  e.g. "I changed things and now it doesn't
+work.  What do I do to fix it?"
 
 ## Feedback, Defects, and Community Support
 
@@ -114,8 +114,8 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-[here](doc/antora/modules/developers/pages/bugs.adoc) or on the
-[wiki](https://wiki.freeradius.org/project/bug-reports).
+[here](doc/antora/modules/developers/pages/bugs.adoc) and online at
+<https://www.freeradius.org/documentation/freeradius-server/4.0.0/developers/bugs.html>
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you

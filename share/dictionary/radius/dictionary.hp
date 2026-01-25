@@ -83,7 +83,7 @@ ATTRIBUTE	URI-Exception				83	uint32
 
 ATTRIBUTE	VC-groups				192	string
 
-# See http://wiki.freeradius.org/vendor/HP#Capability-advertisements
+# See https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/vendors/hp.html
 ATTRIBUTE	Capability-Advert			255	octets
 
 # Management-Protocol

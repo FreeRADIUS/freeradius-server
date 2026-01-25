@@ -180,8 +180,8 @@ you have carried out each of the above steps correctly and examine the debug
 output from FreeRADIUS, which will usually tell you what is wrong.
 
 See [how to read the debug
-output](http://wiki.freeradius.org/radiusd-X) for instructions on
-reading amd understanding the debug output.
+output](https://www.freeradius.org/documentation/freeradius-server/4.0.0/debugging/radiusd_X.html) for instructions on
+reading and understanding the debug output.
 
 The next step is to xref:protocols/radius/radsec_client.adoc[configure
 FreeRADIUS as a RadSec test client] so that we can verify that our

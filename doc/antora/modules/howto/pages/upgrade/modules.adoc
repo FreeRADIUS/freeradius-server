@@ -243,8 +243,7 @@ to store session data, instead of radutmp.
 === rlm_rest
 
 `REST-HTTP-Code` is now inserted into the `request` list instead
-of the `reply.` list, to be compliant with the
-https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
+of the `reply.` list.
 
 [#rlm_sql]
 === rlm_sql

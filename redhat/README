@@ -1,10 +1,5 @@
-  The files in this directory are intended only for "generic" systems.
+The files in this directory are intended only for "generic" systems.
 If you need to build FreeRADIUS from source on a RedHat system (RHEL,
-Fedora, or CentOS), please read the following FAQ:
+etc.), please see the following document:
 
-	http://wiki.freeradius.org/guide/Red-Hat-FAQ
-
-  It was written by the person who maintains the RedHat FreeRADIUS
-packages, and contains detailed instructions for creating an RPM from
-the original RedHat spec files.  This ensures that the RPMs on your
-system closely match the RedHat requirements.
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/installation/redhat.html
