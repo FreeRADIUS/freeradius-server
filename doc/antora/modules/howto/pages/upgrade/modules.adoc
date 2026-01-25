@@ -123,6 +123,14 @@ number of users, and they made the code substantially more complicated.
 Experience shows that having configurable policies in `unlang` is
 preferable to having them hard-coded in C.
 
+Session tracking has moved to the `session` section of a virtual
+server.  See `sites-available/default`.
+
+* timer_expire --> timeout
+* max_sessions --> max
+* dedup_key    --> dedup_key
+
+
 [#rlm_eap_pwd]
 === rlm_eap_pwd
 
