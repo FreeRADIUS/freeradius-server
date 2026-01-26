@@ -634,7 +634,7 @@ static void NEVER_RETURNS usage(void)
 	DEBUG("Send a DHCP request with provided RADIUS attrs and output response.");
 
 	DEBUG("  <command>              One of: discover, request, decline, release, inform; or: auto.");
-	DEBUG("  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").");
+	DEBUG("  -d <directory>         Set the directory where the dictionaries are stored (defaults to " CONFDIR ").");
         ...
 }
 ```

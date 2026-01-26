@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 	conf = talloc_zero(NULL, sync_touch_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
-	conf->raddb_dir = RADDBDIR;
+	conf->raddb_dir = CONFDIR;
 	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout = fr_time_delta_from_sec(3);
 	conf->retries = 5;

@@ -336,9 +336,9 @@ The directory containing the tests may have multiple subdirectories to group the
 
 	parser.add_argument("-d",
 						dest = "raddb_dir",
-						help = "Set configuration directory (defaults {})".format(pyfr.RADDBDIR),
+						help = "Set configuration directory (defaults {})".format(pyfr.CONFDIR),
 						required = False,
-						default = pyfr.RADDBDIR
+						default = pyfr.CONFDIR
 	)
 	parser.add_argument("-D",
 						dest = "dict_dir",

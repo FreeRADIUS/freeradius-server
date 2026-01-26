@@ -59,7 +59,7 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 static NEVER_RETURNS void usage(char *argv[])
 {
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
-	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                 Debugging mode.\n");
 	fprintf(stderr, "  -M                 Show program version information.\n");
@@ -159,7 +159,7 @@ static int process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int			c, ret = EXIT_SUCCESS;
-	char const		*raddb_dir = RADDBDIR;
+	char const		*raddb_dir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
 	char const		*receipt_file = NULL;

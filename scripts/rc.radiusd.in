@@ -38,7 +38,7 @@ sysconfdir=@sysconfdir@
 export LD_LIBRARY_PATH LD_RUN_PATH LD_PRELOAD
 
 RADIUSD=$sbindir/radiusd
-RADDBDIR=@raddbdir@
+CONFDIR=@raddbdir@
 DESC="FreeRADIUS"
 
 #
@@ -47,7 +47,7 @@ DESC="FreeRADIUS"
 ARGS=""
 
 test -f $RADIUSD || exit 0
-test -f $RADDBDIR/radiusd.conf || exit 0
+test -f $CONFDIR/radiusd.conf || exit 0
 
 #if [ ! -d $rundir ] ; then
 #    mkdir $rundir

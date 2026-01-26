@@ -1212,7 +1212,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "Usage: %s [options]\n", program);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 #ifndef NDEBUG
 	fprintf(output, "  -e <seconds>  Exit after the specified number of seconds.  Useful for diagnosing \"crash-on-exit\" issues.\n");

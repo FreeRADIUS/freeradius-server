@@ -131,7 +131,7 @@ LIBS		= $(OPENSSL_LIBS) $(TALLOC_LIBS) $(KQUEUE_LIBS) @LIBS@
 LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_LDFLAGS) $(KQUEUE_LDFLAGS) @LDFLAGS@
 
 LOGDIR		= ${logdir}
-RADDBDIR	= ${raddbdir}
+CONFDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}

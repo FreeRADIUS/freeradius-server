@@ -1,6 +1,6 @@
 /* Default Database File Names */
 
-#define RADIUS_DIR			RADDBDIR
+#define RADIUS_DIR			CONFDIR
 #define RADACCT_DIR			RADIR
 #define L_DST_DIR			LOGDIR
 
