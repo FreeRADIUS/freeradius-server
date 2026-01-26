@@ -212,7 +212,7 @@ static void test_dbuff_no_advance(void)
 
 	no_advance_dbuff = FR_DBUFF(&dbuff);
 	init_remaining = fr_dbuff_remaining(&dbuff);
-	fr_dbuff_in_bytes(&no_advance_dbuff, 0x11, 0x12, 0x13);
+	TEST_CHECK(fr_dbuff_in_bytes(&no_advance_dbuff, 0x11, 0x12, 0x13) == 3);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
 	fr_dbuff_advance(&no_advance_dbuff, 2);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
