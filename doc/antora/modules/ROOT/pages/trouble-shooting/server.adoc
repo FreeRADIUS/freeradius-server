@@ -53,7 +53,7 @@ Some people are tempted to do this every 5 minutes so that changes come through 
 
 [NOTE]
 ====
-A Makefile is can fulfill this requirement and have raddb checked every 5 minutes.
+A Makefile is can fulfill this requirement and can be used to check the configuration directory.
 ====
 
 
@@ -116,7 +116,7 @@ Check-Items are used to match attributes in a request packet or to set server pa
 
 === Why are all the Incoming Authentication-Request passwords corrupt?
 
-The shared secret is incorrect. This is a text string which is a "secret" (in the raddb/clients file) shared by both the NAS and the server. It is used to authenticate and to encrypt/decrypt packets.
+The shared secret is incorrect. This is a text string which is a "secret" (in the `clients.conf` file) shared by both the NAS and the server. It is used to authenticate and to encrypt/decrypt packets.
 
 Run the server in xref:debugging/radiusd_X.adoc[debugging] mode:
 
@@ -130,7 +130,7 @@ The second password will be in a log message, e.g.:
 
 	Login failed [user/password] ...
 
-If the text *after* the slash is corrupted, then the shared secret is wrong. Delete it on *both* the NAS and the raddb/clients file and re-enter it. *Don't* check to see if they are the same, as there may be hidden spaces or other characters.
+If the text *after* the slash is corrupted, then the shared secret is wrong. Delete it on *both* the NAS and the `clients.conf` file and re-enter it. *Don't* check to see if they are the same, as there may be hidden spaces or other characters.
 
 Another cause of corrupted passwords being logged is the secret being too long.  Certain NAS boxes have limitations on the length of the secret and don't complain about it. FreeRADIUS is limited to 31 characters for the shared secret.
 

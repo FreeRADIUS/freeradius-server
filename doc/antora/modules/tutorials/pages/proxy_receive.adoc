@@ -70,7 +70,7 @@ will be.
 
 1.  Why is it necessary for each server to mark some realms as local?
 2.  What would happen if each user did not configure the other RADIUS
-server in the "raddb/clients.conf" file?
+server in the `clients.conf` file?
 3.  What would happen if each user did not configure the realms to
 "strip" the realm from the proxied requests?
 

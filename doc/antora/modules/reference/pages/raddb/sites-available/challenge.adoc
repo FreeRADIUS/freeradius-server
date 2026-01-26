@@ -72,7 +72,7 @@ Set the random number to save.
 ```
 
 Send an Access-Challenge.
-See raddb/policy.d/control for the definition
+See policy.d/control for the definition
 of "challenge"
 
 ```
@@ -95,5 +95,5 @@ Do PAP authentication with the password.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

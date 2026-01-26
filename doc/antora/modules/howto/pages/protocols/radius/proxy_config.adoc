@@ -122,7 +122,7 @@ In larger configurations there may be a large number of home server pools, each 
 
 For example, say there were two home server pools, pool_a and pool_b, and twenty realms, ten of which used one pool, and ten the other. Listing the home servers of pool_a in ten realms, and the servers of pool_b in another ten realms, starts to lead to a lot of duplication.
 
-Instead, create a new policy file, raddb/policy.d/proxy and define two policies, proxy_pool_a and proxy_pool_b:
+Instead, create a new module, `policy.d/proxy` and define two policies, `proxy_pool_a` and `proxy_pool_b`:
 
 ```
 proxy_pool_a {

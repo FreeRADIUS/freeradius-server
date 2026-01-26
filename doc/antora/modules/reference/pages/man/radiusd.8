@@ -98,12 +98,12 @@ useful for when running the server with "valgrind".
 .sp
 \fB\-n name\fP
 .RS 4
-Read \f(CRraddb/name.conf\fP instead of \f(CRraddb/radiusd.conf\fP.
+Read \f(CRname.conf\fP instead of \f(CRradiusd.conf\fP.
 .sp
 Note that by default, the server looks for a configuration file
 which matches its own name.  Creating a soft link from file \f(CRfoo\fP
 to \f(CRradiusd\fP, and then running the program \f(CRfoo\fP, will cause the
-binary to look for \f(CRraddb/foo.conf\fP.
+binary to look for \f(CRfoo.conf\fP.
 .RE
 .sp
 \fB\-s\fP
@@ -179,7 +179,7 @@ will never work, and you will never be able to debug the problem.
 or SQL), then:
 
 .br
-a) Edit \f(CRraddb/modules/foo\fP
+a) Edit \f(CRmods-available/foo\fP
 
 .br
 This file contains the default configuration for the module. It contains
@@ -187,7 +187,7 @@ comments describing what can be configured, and what those configuration
 entries mean.
 
 .br
-b) Edit \f(CRraddb/sites\-available/default\fP
+b) Edit \f(CRsites\-available/default\fP
 
 .br
 This file contains the default policy for the server. e.g. "enable CHAP,
@@ -196,7 +196,7 @@ to your module "foo". Read the comments, and remove the leading hash \(aq#\(aq
 from the lines referencing the module. This enables the module.
 
 .br
-c) Edit \f(CRraddb/sites\-available/inner\-tunnel\fP
+c) Edit \f(CRsites\-available/inner\-tunnel\fP
 
 .br
 This file contains the default policy for the "tunneled" portion of

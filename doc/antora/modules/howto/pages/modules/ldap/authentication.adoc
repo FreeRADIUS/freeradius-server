@@ -49,14 +49,14 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    pap - Setting control.Auth-Type = pap
 (0)    pap (updated)
 (0)  } # recv Access-Request (updated)
-(0)  Running 'authenticate pap' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  Running 'authenticate pap' from file /etc/raddb/sites-enabled/default
 (0)  authenticate pap {
 (0)    pap - Login attempt with password
 (0)    pap - Comparing with "known-good" Password.Cleartext (8)
 (0)    pap - User authenticated successfully
 (0)    pap (ok)
 (0)  } # authenticate pap (ok)
-(0)  Running 'send Access-Accept' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  Running 'send Access-Accept' from file /etc/raddb/sites-enabled/default
 ...
 ----
 
@@ -117,7 +117,7 @@ You should now look to the output of the debugging from the FreeRADIUS terminal 
 (0)    pap (noop)
 (0)  } # recv Access-Request (ok)
 (0)  ERROR: No Auth-Type available: rejecting the user.
-(0)  Running 'send Access-Reject' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  Running 'send Access-Reject' from file /etc/raddb/sites-enabled/default
 ----
 
 Here FreeRADIUS describes it:
@@ -142,7 +142,7 @@ You have two options available to you here (`Ctrl-C` the running FreeRADIUS serv
  ** this is the recommended option
  ** fixing this, means you should see `Access-Accept` as described above
  . configure FreeRADIUS to attempt to 'bind' (LDAP language for 'login') as the user in the RADIUS request
- ** do this by editing `/usr/local/etc/raddb/sites-available/default`
+ ** do this by editing `sites-available/default`
  ** amend by adding after the call to `ldap` in `recv Access-Request { ... }` section, so that it looks like:
 +
 [source,unlang]
@@ -175,7 +175,7 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 (0)    pap - WARNING: Authentication will fail unless a "known good" password is available
 (0)    pap (noop)
 (0)  } # recv Access-Request (ok)
-(0)  Running 'authenticate ldap' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  Running 'authenticate ldap' from file /etc/raddb/sites-enabled/default
 (0)  authenticate ldap {
 (0)    ldap - Login attempt with password
 (0)    ldap - Reserved connection (1)
@@ -187,7 +187,7 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 (0)    ldap - Released connection (1)
 (0)    ldap (ok)
 (0)  } # authenticate ldap (ok)
-(0)  Running 'send Access-Accept' from file /usr/local/etc/raddb/sites-enabled/default
+(0)  Running 'send Access-Accept' from file /etc/raddb/sites-enabled/default
 ----
 
 Here FreeRADIUS is describes it:

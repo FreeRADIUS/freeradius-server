@@ -25,7 +25,7 @@ service:
 
 Add a new `tls` home server definition, which will point to the RadSec
 server.  We do this by creating a file
-`/etc/raddb/sites-enabled/radsec-homeserver` with the following
+`sites-enabled/radsec-homeserver` with the following
 contents:
 
 .Example homeserver, pool and realm definitions for the RadSec service
@@ -57,14 +57,14 @@ contents:
 [TIP]
 ====
 Complete descriptions of each of the above configuration items can be found in the
-`[raddb]/sites-available/tls` example configuration file.  For simple tests, however,
+`sites-available/tls` example configuration file.  For simple tests, however,
 we can omit all of the comments from the file.
 ====
 
 To use this `tls` home server, we change the `default` virtual server to proxy
 all authentication and accounting requests to it.
 
-Edit the `/etc/raddb/sites-enabled/default` file so that the beginning of
+Edit the `sites-enabled/default` file so that the beginning of
 the `authorize` and `preacct` sections looks as follows:
 
 .Example default virtual server modification to proxy requests to a RadSec proxy server
@@ -103,15 +103,15 @@ Replace the following files on `radseccli` with the equivalent files from
 |===
 |File|Corresponding configuration item|Purpose
 
-|/etc/raddb/certs/ca.pem
+|certs/ca.pem
 |`ca_file`
 |CA certificate which is used to authenticate the server certificate presented by the RadSec server to the client.
 
-|/etc/raddb/certs/client.pem
+|certs/client.pem
 |`certificate_file`
 |Client certificate (signed by the CA certificate) that is presented by the test client to the RadSec server.
 
-|/etc/raddb/certs/client.pem
+|certs/client.pem
 |`private_key_file` and `private_key_password`
 |Private key corresponding to the client certificate
 |===

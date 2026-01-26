@@ -100,7 +100,7 @@ This text means that authentication succeeded. A few lines above this text, the 
 
 == Configure FreeRADIUS to use ntlm_auth for MS-CHAP
 
-Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the `users` file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the `users` file, as leaving it in will break other authentication types. Then, find the mschap module in `mods-enabled/mschap` file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
 
 ```
 ntlm_auth = "/path/to/ntlm_auth --request-nt-key --allow-mschapv2 --username=%{mschap:User-Name:-None} --domain=%{%{mschap:NT-Domain}:-MYDOMAIN} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"

@@ -18,7 +18,7 @@ The general order of operations is:
 8. Start the server with ``radiusd -X || freeradius -X``
 9. Check that the ``eapol_test`` files work with *REAL* credentials.
 10. Stop the server.
-11. Replace the dummy certs in the ``certs`` directory (``/etc/raddb/certs`` or ``/etc/freeradius/certs/``) with ones issued by [edupki](https://www.edupki.org) or a commerical certification authority.
+11. Replace the dummy certs in the ``certs`` directory (``${confdir}/certs``) with ones issued by [edupki](https://www.edupki.org) or a commerical certification authority.
 12. Alter the ``eapol_test`` files so they specify a certification authority.
 13. Check that the ``eapol_test`` files work with a *REAL* certificate, and *REAL* credentials.
 14. Clone the config onto two servers (or clone the server).
@@ -551,7 +551,7 @@ network={
 
 	# Uncomment to validate the server's certificate by checking
 	# it was signed by this CA.
-	#ca_cert="raddb/certs/ca.pem"
+	#ca_cert="/path/to/freeradius/config/certs/ca.pem"
 	password="changeme"
 	phase2="auth=PAP"
 }
@@ -571,7 +571,7 @@ network={
 
 	# Uncomment to validate the server's certificate by checking
 	# it was signed by this CA.
-	#ca_cert="raddb/certs/ca.pem"
+	#ca_cert="/path/to/freeradius/config/certs/ca.pem"
 	password="changeme"
 	phase2="auth=MSCHAPV2 mschapv2_retry=0"
 	phase1="peapver=0"
@@ -591,13 +591,13 @@ network={
 
 	# Uncomment to validate the server's certificate by checking
 	# it was signed by this CA.
-	#ca_cert="raddb/certs/ca.pem"
+	#ca_cert="/path/to/freeradius/config/certs/ca.pem"
 
 	# supplicant's public cert
-        client_cert="raddb/certs/client.crt"
+        client_cert="/path/to/freeradius/config/certs/client.crt"
 
 	# supplicant's private key
-        private_key="raddb/certs/client.key"
+        private_key="/path/to/freeradius/config/certs/client.key"
 
 	# password to decrypt private key
         private_key_passwd="whatever"

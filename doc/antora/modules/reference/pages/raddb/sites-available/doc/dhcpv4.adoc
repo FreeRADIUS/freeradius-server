@@ -119,4 +119,4 @@ IP adddress pools can be store in
 xref:raddb/mods-available/sqlippool.adoc[SQL] or
 xref:raddb/mods-available/redis_ippool.adoc[Redist]
 
-See raddb/mods-config/sql/ippool/ for the SQL schemas.
+See mods-config/sql/ippool/ for the SQL schemas.

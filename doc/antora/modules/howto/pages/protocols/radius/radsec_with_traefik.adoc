@@ -69,7 +69,7 @@ policy decisions.
 Now amend the test RadSec client so that instead of making connections directly
 to the RadSec server it makes them via Traefik.
 
-On `radseccli` amend `/etc/raddb/sites-enabled/tls` and set the IP address to
+On `radseccli` amend `sites-enabled/tls` and set the IP address to
 that of the `traefik` host.
 
 .Example updated test client homeserver configuration
