@@ -10,10 +10,10 @@ SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
 ifneq "$(TARGETNAME)" ""
-install: $(R)$(raddbdir)/mods-available/securid
+install: $(R)${raddbdir}/mods-available/securid
 
-$(R)$(raddbdir)/mods-available/securid: src/modules/rlm_securid/securid | $(R)$(raddbdir)/mods-available
+$(R)${raddbdir}/mods-available/securid: src/modules/rlm_securid/securid | $(R)${raddbdir}/mods-available
 	@$(ECHO) INSTALL $(notdir $<)
-	@$(INSTALL) -m 640 $< $(R)$(raddbdir)/mods-available
+	@$(INSTALL) -m 640 $< $(R)${raddbdir}/mods-available
 endif
 LOG_ID_LIB	= 45

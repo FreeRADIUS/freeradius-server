@@ -13,7 +13,7 @@ ifneq "$(TARGETNAME)" ""
 install: $(R)$(modconfdir)/python/example.py
 
 $(R)$(modconfdir)/python: | $(R)$(modconfdir)
-	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	@echo INSTALL $(patsubst $(R)${raddbdir}%,raddb%,$@)
 	@$(INSTALL) -d -m 750 $@
 
 $(R)$(modconfdir)/python/example.py: src/modules/rlm_python/example.py | $(R)$(modconfdir)/python
