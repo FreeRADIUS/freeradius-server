@@ -73,7 +73,7 @@ struct main_config_s {
 	char const	*lib_dir;
 	char const	*sbin_dir;
 	char const	*run_dir;
-	char const	*raddb_dir;			//!< Path to raddb directory
+	char const	*confdir;			//!< Path to raddb directory
 
 	char const	*prefix;
 
@@ -159,7 +159,7 @@ struct main_config_s {
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
-void			main_config_raddb_dir_set(main_config_t *config, char const *path);
+void			main_config_confdir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
 
 int			main_config_parse_option(char const *value); /* flat / nested migration */

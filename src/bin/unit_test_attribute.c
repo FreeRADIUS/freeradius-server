@@ -203,7 +203,7 @@ typedef struct {
 typedef struct {
 	fr_dict_t 		*dict;			//!< Dictionary to "reset" to.
 	fr_dict_gctx_t const	*dict_gctx;		//!< Dictionary gctx to "reset" to.
-	char const		*raddb_dir;
+	char const		*confdir;
 	char const		*dict_dir;
 	char const		*fuzzer_dir;		//!< Where to write fuzzer files.
 	CONF_SECTION		*features;		//!< Enabled features.
@@ -4313,7 +4313,7 @@ int main(int argc, char *argv[])
 	bool			exit_now = false;
 
 	command_config_t	config = {
-					.raddb_dir = CONFDIR,
+					.confdir = CONFDIR,
 					.dict_dir = DICTDIR
 				};
 
@@ -4372,7 +4372,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			config.raddb_dir = optarg;
+			config.confdir = optarg;
 			break;
 
 		case 'D':

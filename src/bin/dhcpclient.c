@@ -537,7 +537,7 @@ int main(int argc, char **argv)
 	static fr_ipaddr_t	client_ipaddr;
 
 	int			c;
-	char const		*raddb_dir = CONFDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
 
@@ -564,7 +564,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'f':
@@ -617,7 +617,7 @@ int main(int argc, char **argv)
 		fr_exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("dhcpclient");
 		fr_exit(EXIT_FAILURE);
 	}

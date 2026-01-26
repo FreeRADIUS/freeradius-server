@@ -50,7 +50,7 @@ char const *fr_path_default_lib_dir(void)
  * This is set at build time from --prefix
  * @return the value of CONFDIR
  */
-char const *fr_path_default_raddb_dir(void)
+char const *fr_path_default_confdir(void)
 {
 	return CONFDIR;
 }

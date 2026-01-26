@@ -2335,7 +2335,7 @@ int main(int argc, char *argv[])
 	int			c;
 	unsigned int		timeout = 0;
 	fr_timer_t		*timeout_ev = NULL;
-	char const		*raddb_dir = CONFDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	TALLOC_CTX		*autofree;
 
@@ -2445,7 +2445,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'D':
@@ -2733,7 +2733,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;

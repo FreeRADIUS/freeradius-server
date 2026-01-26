@@ -829,13 +829,13 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
  * @param[in] config	to alter.
  * @param[in] name	to set as dir root e.g. /usr/local/etc/raddb.
  */
-void main_config_raddb_dir_set(main_config_t *config, char const *name)
+void main_config_confdir_set(main_config_t *config, char const *name)
 {
-	if (config->raddb_dir) {
-		talloc_const_free(config->raddb_dir);
-		config->raddb_dir = NULL;
+	if (config->confdir) {
+		talloc_const_free(config->confdir);
+		config->confdir = NULL;
 	}
-	if (name) config->raddb_dir = talloc_typed_strdup(config, name);
+	if (name) config->confdir = talloc_typed_strdup(config, name);
 }
 
 /** Clean up the semaphore when the main config is freed
@@ -907,7 +907,7 @@ int main_config_exclusive_proc(main_config_t *config)
 		}
 		MEM(path = talloc_typed_strdup(config, config->pid_file));
 	}  else {
-		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
+		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->confdir, config->name));
 	}
 
 #ifdef HAVE_SEMAPHORES
@@ -984,7 +984,7 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 	 *	Set the defaults from compile time arguments
 	 *	these can be overridden later on the command line.
 	 */
-	main_config_raddb_dir_set(config, CONFDIR);
+	main_config_confdir_set(config, CONFDIR);
 	main_config_dict_dir_set(config, DICTDIR);
 
 	main_config = config;
@@ -1018,15 +1018,15 @@ int main_config_init(main_config_t *config)
 	 */
 	xlat_func_init();
 
-	if (stat(config->raddb_dir, &statbuf) < 0) {
-		ERROR("Error checking raddb_dir \"%s\": %s", config->raddb_dir, fr_syserror(errno));
+	if (stat(config->confdir, &statbuf) < 0) {
+		ERROR("Error checking confdir \"%s\": %s", config->confdir, fr_syserror(errno));
 		return -1;
 	}
 
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		ERROR("Configuration directory %s is globally writable. "
-		      "Refusing to start due to insecure configuration", config->raddb_dir);
+		      "Refusing to start due to insecure configuration", config->confdir);
 		return -1;
 	}
 #endif
@@ -1034,7 +1034,7 @@ int main_config_init(main_config_t *config)
 #if 0 && defined(S_IROTH)
 	if (statbuf.st_mode & S_IROTH != 0) {
 		ERROR("Configuration directory %s is globally readable. "
-		      "Refusing to start due to insecure configuration", config->raddb_dir);
+		      "Refusing to start due to insecure configuration", config->confdir);
 		return -1;
 	}
 #endif
@@ -1094,9 +1094,9 @@ int main_config_init(main_config_t *config)
 
 	/*
 	 *	@todo - not quite done yet... these dictionaries have
-	 *	to be loaded from raddb_dir.  But the
+	 *	to be loaded from confdir.  But the
 	 *	fr_dict_autoload_t has a base_dir pointer
-	 *	there... it's probably best to pass raddb_dir into
+	 *	there... it's probably best to pass confdir into
 	 *	fr_dict_autoload() and have it use that instead.
 	 *
 	 *	Once that's done, the proto_foo dictionaries SHOULD be
@@ -1115,7 +1115,7 @@ int main_config_init(main_config_t *config)
 	if (fr_debug_lvl) cf_md5_init();
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->confdir, config->name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
 		goto failure;

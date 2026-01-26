@@ -159,7 +159,7 @@ static int process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int			c, ret = EXIT_SUCCESS;
-	char const		*raddb_dir = CONFDIR;
+	char const		*confdir = CONFDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
 	char const		*receipt_file = NULL;
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "d:D:xMhr:")) != -1) switch (c) {
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'D':
@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Load the custom dictionary
 	 */
-	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(dict, confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_strerror_const_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;

@@ -696,7 +696,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->filename) {
 		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s",
-							   main_config->raddb_dir, config->sql_db));
+							   main_config->confdir, config->sql_db));
 	}
 
 	/*

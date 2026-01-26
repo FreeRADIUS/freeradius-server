@@ -164,7 +164,7 @@ static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: %s [ args ]\n", progname);
-	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
+	fprintf(output, "  -d confdir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -D <dictdir>    Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e command      Execute 'command' and then exit.\n");
 	fprintf(output, "  -E              Echo commands as they are being executed.\n");
@@ -837,7 +837,7 @@ int main(int argc, char **argv)
 	char const		*server = NULL;
 	fr_dict_t		*dict = NULL;
 
-	char const		*raddb_dir = RADIUS_DIR;
+	char const		*confdir = RADIUS_DIR;
 	char const		*dict_dir = DICTDIR;
 #ifdef USE_READLINE_HISTORY
 	char 			history_file[PATH_MAX];
@@ -884,7 +884,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
 				fr_exit_now(EXIT_FAILURE);
 			}
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'D':
@@ -905,7 +905,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'f':
-			raddb_dir = NULL;
+			confdir = NULL;
 			file = optarg;
 			break;
 
@@ -959,7 +959,7 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (raddb_dir) {
+	if (confdir) {
 		int		rcode;
 		uid_t		uid;
 		gid_t		gid;
@@ -968,7 +968,7 @@ int main(int argc, char **argv)
 
 		file = NULL;	/* MUST read it from the conf_file now */
 
-		snprintf(io_buffer, sizeof(io_buffer), "%s/%s.conf", raddb_dir, name);
+		snprintf(io_buffer, sizeof(io_buffer), "%s/%s.conf", confdir, name);
 
 		/*
 		 *	Need to read in the dictionaries, else we may get
@@ -984,7 +984,7 @@ int main(int argc, char **argv)
 			fr_exit_now(64);
 		}
 
-		if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
+		if (fr_dict_read(dict, confdir, FR_DICTIONARY_FILE) == -1) {
 			fr_perror("radmin");
 			fr_exit_now(64);
 		}

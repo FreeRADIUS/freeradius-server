@@ -31,7 +31,7 @@ extern "C" {
 
 char const	*fr_path_default_log_dir(void);
 char const	*fr_path_default_lib_dir(void);
-char const	*fr_path_default_raddb_dir(void);
+char const	*fr_path_default_confdir(void);
 char const	*fr_path_default_run_dir(void);
 char const	*fr_path_default_sbin_dir(void);
 char const	*fr_path_default_radacct_dir(void);

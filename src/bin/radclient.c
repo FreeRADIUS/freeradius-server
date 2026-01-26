@@ -1621,7 +1621,7 @@ int main(int argc, char **argv)
 {
 	int		ret = EXIT_SUCCESS;
 	int		c;
-	char		const *raddb_dir = CONFDIR;
+	char		const *confdir = CONFDIR;
 	char		const *dict_dir = DICTDIR;
 	char		filesecret[256];
 	FILE		*fp;
@@ -1720,7 +1720,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'd':
-			raddb_dir = optarg;
+			confdir = optarg;
 			break;
 
 		case 'e':	/* magical extra stuff */
@@ -1920,7 +1920,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
+	if (fr_dict_read(fr_dict_unconst(dict_freeradius), confdir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, __FILE__, __LINE__, NULL,
 			      "Failed to initialize the dictionaries");
 		exit(EXIT_FAILURE);
