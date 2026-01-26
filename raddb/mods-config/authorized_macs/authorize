@@ -1,0 +1,14 @@
+#
+# 	Configuration file for the rlm_files module.
+# 	Please see rlm_files documentation for more information.
+#
+# 	This file contains authentication security and configuration
+#	information for each user.  Accounting requests are NOT processed
+#	through this file.  Instead, see the 'accounting' file in this directory.
+#
+#	This file follows the same format as other instances of the files mod, see
+#	the `files/authorize` for more details and examples
+#
+#	An example entry is below
+#00-00-5E-00-53-FF
+#        Reply-Message = "Device with MAC Address %{Calling-Station-Id} authorized for network access"
