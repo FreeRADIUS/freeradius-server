@@ -59,7 +59,7 @@ accessed with:
 
     outer.request.<attribute>
 
-The following policy in raddb/policy.d/eap can be used
+The following policy in policy.d/eap can be used
 to copy attributes over.
 
 ```
@@ -390,5 +390,5 @@ Let the outer session know which module failed, and why.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

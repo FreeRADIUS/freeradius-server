@@ -99,7 +99,7 @@ The listen section represents a single connection, and a sync represents
 a single persistent search.
 
 Most options within the listen section are identical to rlm_ldap.
-See /etc/raddb/mods-available/ldap for more detailed descriptions of
+See mods-available/ldap for more detailed descriptions of
 configuration items.
 
 ```
@@ -590,5 +590,5 @@ The return code of this section is ignored (for now).
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

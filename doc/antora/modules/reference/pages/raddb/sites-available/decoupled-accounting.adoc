@@ -31,7 +31,7 @@ server write_detail.example.com {
 
 Write the "detail" files.
 
-See raddb/modules/detail.example.com for more info.
+See mods-available/detail.example.com for more info.
 ```
 		detail.example.com
 	}
@@ -162,5 +162,5 @@ See "Autz-Type Status-Server" for how this works.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
