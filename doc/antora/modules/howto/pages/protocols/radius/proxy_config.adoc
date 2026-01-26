@@ -122,30 +122,34 @@ In larger configurations there may be a large number of home server pools, each 
 
 For example, say there were two home server pools, pool_a and pool_b, and twenty realms, ten of which used one pool, and ten the other. Listing the home servers of pool_a in ten realms, and the servers of pool_b in another ten realms, starts to lead to a lot of duplication.
 
-Instead, create a new module, `policy.d/proxy` and define two policies, `proxy_pool_a` and `proxy_pool_b`:
+Instead, create new modules, `mods-enabled/proxy_pool_a`, and `mods-enabled/proxy_pool_v`,
 
-```
-proxy_pool_a {
-    redundant-load-balance {
-        home_server_1
-        home_server_2
-        home_server_3
-        home_server_4
-        home_server_5
-    }
+[source,text]
+----
+redundant-load-balance proxy_pool_a {
+    home_server_1
+    home_server_2
+    home_server_3
+    home_server_4
+    home_server_5
 }
+----
 
-proxy_pool_b {
-    redundant-load-balance {
-        home_server_6
-        home_server_7
-        home_server_8
-    }
+and then
+
+[source,text]
+----
+redundant-load-balance proxy_pool_b {
+    home_server_6
+    home_server_7
+    home_server_8
 }
-```
+----
 
 Now, in the authenticate sections for each realm, just call the appropriate policy:
-```
+
+[source,text]
+----
 authenticate proxy-realm_1.example {
     proxy_pool_a
 }
@@ -153,7 +157,7 @@ authenticate proxy-realm_1.example {
 authenticate proxy-realm_2.example {
     proxy_pool_b
 }
-```
+----
 
 The policies are now equivalent to the old home server pools in version 3, and the named authenticate sections are equivalent to realms.
 
