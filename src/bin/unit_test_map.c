@@ -59,7 +59,7 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 static NEVER_RETURNS void usage(char *argv[])
 {
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
-	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " CONFDIR ").\n");
+	fprintf(stderr, "  -d <confdir>       Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                 Debugging mode.\n");
 	fprintf(stderr, "  -M                 Show program version information.\n");

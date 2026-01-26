@@ -1354,7 +1354,7 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -c <count>         Run packets through the interpreter <count> times\n");
-	fprintf(output, "  -d <confdir>     Configuration files are in \"confdir/*\".\n");
+	fprintf(output, "  -d <confdir>       Configuration files are in \"confdir/*\".\n");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
 	fprintf(output, "  -f <file>          Filter reply against attributes in 'file'.\n");
 	fprintf(output, "  -h                 Print this help message.\n");

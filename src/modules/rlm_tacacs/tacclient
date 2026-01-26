@@ -11,7 +11,7 @@ Usage: tacclient [options] server[:port] <command> [secret]
   <command>              One of auth-start, auth-continue, autz, acct
   -4                     Use IPv4 address of server
   -6                     Use IPv6 address of server.
-  -d <raddb>             Set user dictionary directory.
+  -d <confdir>           Set configuration directory for local dictionaries.
   -D <dictdir>           Set main dictionary directory.
   -f <file>              Read packets from file, not stdin.
   -h                     Print usage help information.

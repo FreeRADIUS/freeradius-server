@@ -4031,7 +4031,7 @@ static void usage(char const *name)
 {
 	INFO("usage: %s [options] (-|<filename>[:<lines>] [ <filename>[:<lines>]])", name);
 	INFO("options:");
-	INFO("  -d <raddb>         Set user dictionary path (defaults to " CONFDIR ").");
+	INFO("  -d <confdir>       Set user dictionary path (defaults to " CONFDIR ").");
 	INFO("  -D <dictdir>       Set main dictionary path (defaults to " DICTDIR ").");
 	INFO("  -x                 Debugging mode.");
 	INFO("  -f                 Print features.");

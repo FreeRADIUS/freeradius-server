@@ -130,7 +130,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                     Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                     Use IPv6 address of server.\n");
-	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " CONFDIR ").\n");
+	fprintf(stderr, "  -d <confdir>           Set user dictionary directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -l <file>              Log output to file.\n");

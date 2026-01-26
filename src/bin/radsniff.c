@@ -2274,7 +2274,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
 	fprintf(output, "  -C <checksum_type>    Enable checksum validation. (Specify 'udp' or 'radius')\n");
-	fprintf(output, "  -d <raddb>            Set configuration directory (defaults to " CONFDIR ").\n");
+	fprintf(output, "  -d <confdir>          Set configuration directory (defaults to " CONFDIR ").\n");
 	fprintf(output, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
 	fprintf(output, "                        Event may be one of the following:\n");
