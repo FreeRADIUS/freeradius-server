@@ -396,7 +396,7 @@ static void queue_cmp(unsigned int count)
 		TEST_CHECK(minmax != NULL);
 
 		start_insert = fr_time();
-		for (i = 0; i < count; i++) fr_minmax_heap_insert(minmax, &values[i]);
+		for (i = 0; i < count; i++) (void) fr_minmax_heap_insert(minmax, &values[i]);
 		end_insert = fr_time();
 
 		start_pop = fr_time();
@@ -609,7 +609,7 @@ static void minmax_heap_iter(void)
 
 	populate_values(values, NUM_ELEMENTS(values));
 
-	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) fr_minmax_heap_insert(hp, &values[i]);
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) (void) fr_minmax_heap_insert(hp, &values[i]);
 
 	data = fr_minmax_heap_iter_init(hp, &iter);
 
