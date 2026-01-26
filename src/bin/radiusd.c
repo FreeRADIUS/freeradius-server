@@ -1212,7 +1212,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "Usage: %s [options]\n", program);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(stderr, "  -d <confdir>  Set configuration directory (defaults to " CONFDIR ").\n");
+	fprintf(stderr, "  -d <confdir>  Configuration file directory (defaults to " CONFDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 #ifndef NDEBUG
 	fprintf(output, "  -e <seconds>  Exit after the specified number of seconds.  Useful for diagnosing \"crash-on-exit\" issues.\n");
@@ -1223,7 +1223,7 @@ static NEVER_RETURNS void usage(int status)
 #ifndef NDEBUG
 	fprintf(output, "  -L <size>     When running in memory debug mode, set a hard limit on talloced memory\n");
 #endif
-	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/%s.conf.\n", program);
+	fprintf(output, "  -n <name>     Read ${confdir}/name.conf instead of ${confdir}/%s.conf.\n", program);
 	fprintf(output, "  -m            Allow multiple processes reading the same %s.conf to exist simultaneously.\n", program);
 #ifndef NDEBUG
 	fprintf(output, "  -M            Enable talloc memory debugging, and issue a memory report when the server terminates\n");

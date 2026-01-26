@@ -73,7 +73,7 @@ struct main_config_s {
 	char const	*lib_dir;
 	char const	*sbin_dir;
 	char const	*run_dir;
-	char const	*confdir;			//!< Path to raddb directory
+	char const	*confdir;			//!< Path to configuration directory
 
 	char const	*prefix;
 

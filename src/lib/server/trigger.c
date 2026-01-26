@@ -107,7 +107,7 @@ typedef struct {
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
- * (e.g. send an SNMP trap) defined in raddb/triggers.conf or in the trigger
+ * (e.g. send an SNMP trap) defined in triggers.conf or in the trigger
  * section of a module.  There's no setup for triggers, the triggering code
  * just calls this function with the name of the trigger to run, and an optional
  * interpreter if the trigger should run asynchronously.

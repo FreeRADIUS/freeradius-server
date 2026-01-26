@@ -33,13 +33,13 @@ RCSID("$Id$")
  *  This is just so that the callers don't need to call a million functions.
  *
  *  @param[in] cs 	 The root configuration section.
- *  @param[in] dict_dir	The path to the raddb directory.
+ *  @param[in] conf_dir	 The path to the main configuration directory.
  *  @param[in] dict	 the main dictionary, usually the internal dictionary.
  *  @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
+int server_init(CONF_SECTION *cs, char const *conf_dir, fr_dict_t *dict)
 {
 	/*
 	 *	Initialize the dictionary attributes needed by the tmpl code.
@@ -83,12 +83,12 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	 *	have created any attributes they need to, so that we can define
 	 *	additional protocol attributes, and add
 	 */
-	switch (fr_dict_read(dict, dict_dir, FR_DICTIONARY_FILE)) {
+	switch (fr_dict_read(dict, conf_dir, FR_DICTIONARY_FILE)) {
 	case -1:
 		PERROR("Failed reading site-local dictionary");
 		return -1;
 	case 0:
-		DEBUG2("Including dictionary file \"%s/%s\"", dict_dir, FR_DICTIONARY_FILE);
+		DEBUG2("Including dictionary file \"%s/%s\"", conf_dir, FR_DICTIONARY_FILE);
 		break;
 
 	default:

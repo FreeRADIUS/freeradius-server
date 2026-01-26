@@ -164,7 +164,7 @@ static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: %s [ args ]\n", progname);
-	fprintf(output, "  -d confdir    Configuration files are in \"raddbdir/*\".\n");
+	fprintf(output, "  -d <confdir>    Configuration file directory. (defaults to " CONFDIR ").");
 	fprintf(output, "  -D <dictdir>    Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e command      Execute 'command' and then exit.\n");
 	fprintf(output, "  -E              Echo commands as they are being executed.\n");
@@ -172,7 +172,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -h              Print usage help information.\n");
 	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
 	fprintf(output, "  -l <log_file>   Commands which are executed will be written to this file.\n");
-	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	fprintf(output, "  -n name         Read ${confdir}/name.conf instead of ${confdir}/radiusd.conf\n");
 	fprintf(output, "  -q              Reduce output verbosity\n");
 	fprintf(output, "  -s <server>     Look in named server for name of control socket.\n");
 	fprintf(output, "  -S <secret>     Use argument as shared secret for authentication to the server.\n");
@@ -379,7 +379,7 @@ static int do_connect(int *out, char const *file, char const *server)
 			fr_perror("radmin");
 			if (errno == ENOENT) {
 					fprintf(stderr, "Perhaps you need to run the commands:");
-					fprintf(stderr, "\tcd /etc/raddb\n");
+					fprintf(stderr, "\tcd " CONFDIR "\n");
 					fprintf(stderr, "\tln -s sites-available/control-socket "
 						"sites-enabled/control-socket\n");
 					fprintf(stderr, "and then re-start the server?\n");

@@ -100,7 +100,7 @@ BEGIN {
 };
 
 #
-#	Get password from /etc/raddb/naspasswd file.
+#	Get password from naspasswd file.
 #	Returns (login, password).
 #
 sub naspasswd {
@@ -679,7 +679,7 @@ sub portslave_finger {
 #	See if the user is already logged-in at the 3Com/USR Total Control.
 #	(this routine by Alexis C. Villalon <alexisv@compass.com.ph>).
 #	You must have the Net::Telnet module from CPAN for this to work.
-#	You must also have your /etc/raddb/naspasswd made up.
+#	You must also have your naspasswd made up.
 #
 sub tc_tccheck {
 	#

@@ -11,7 +11,7 @@ Supports authentication against an RSA SecurID ACE instance.
 
 This module implements SecurID token checking.  It should be listed in the "authenticate" section.
 
-The module configuration is in the "securid" file.  You will need to copy it by hand to the raddb/modules/directory.
+The module configuration is in the "securid" file.  You will need to copy it by hand to the `mods-enabled/` directory.
 
 There is a configure script, but you will most likely need to pass --with-securid-dir=<securid_path> argument.
 

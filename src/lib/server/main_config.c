@@ -827,7 +827,7 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
 /** Set the global radius config directory.
  *
  * @param[in] config	to alter.
- * @param[in] name	to set as dir root e.g. /usr/local/etc/raddb.
+ * @param[in] name	to set as main configuration directory.
  */
 void main_config_confdir_set(main_config_t *config, char const *name)
 {
