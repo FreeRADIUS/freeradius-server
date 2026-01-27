@@ -16219,8 +16219,6 @@ fi
 
 ac_config_commands="$ac_config_commands stamp-h"
 
-ac_config_commands="$ac_config_commands build-radpaths-h"
-
 ac_config_commands="$ac_config_commands main-chmod"
 
 ac_config_commands="$ac_config_commands scripts-chmod"
@@ -16229,7 +16227,7 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 
 
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/checkrad ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/util/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+ac_config_files="$ac_config_files ./Make.inc ./src/bin/checkrad ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/util/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -16932,11 +16930,9 @@ do
   case $ac_config_target in
     "src/include/autoconf.h") CONFIG_HEADERS="$CONFIG_HEADERS src/include/autoconf.h" ;;
     "stamp-h") CONFIG_COMMANDS="$CONFIG_COMMANDS stamp-h" ;;
-    "build-radpaths-h") CONFIG_COMMANDS="$CONFIG_COMMANDS build-radpaths-h" ;;
     "main-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS main-chmod" ;;
     "scripts-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS scripts-chmod" ;;
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
-    "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
     "./src/bin/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/bin/checkrad" ;;
     "./src/bin/radtest") CONFIG_FILES="$CONFIG_FILES ./src/bin/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
@@ -17496,7 +17492,6 @@ printf "%s\n" "$as_me: executing $ac_file commands" >&6;}
 
   case $ac_file$ac_mode in
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
-    "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
     "main-chmod":C) (cd ./src/bin && chmod +x checkrad radtest) ;;
     "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly util/cryptpasswd) ;;
 

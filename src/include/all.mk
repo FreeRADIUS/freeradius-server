@@ -104,9 +104,27 @@ src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 	@$(ECHO) HEADER $@
 	${Q}sed -f src/include/autoconf.sed < $< > $@
 
-src/include/radpaths.h: src/include/build-radpaths-h
+#
+#  Define and export the configure arguments from GNU Make to a
+#  header file.
+#
+#  We can't just use radpaths.h.in and @logdir@, because of the way
+#  that autoconf deals with paths.
+#
+define include_defs
+#define LOGDIR		"${logdir}"
+#define LIBDIR		"${libdir}"
+#define CONFDIR		"${raddbdir}"
+#define RUNDIR		"${RUNDIR}"
+#define SBINDIR		"${sbindir}"
+#define RADIR		"${radacctdir}"
+#define DICTDIR		"${dictdir}"
+endef
+export include_defs
+
+src/include/radpaths.h: Make.inc
 	@$(ECHO) HEADER $@
-	${Q}cd src/include && /bin/sh build-radpaths-h
+	${Q}echo "$$include_defs" > $@
 
 #
 #  Create the soft link for the fake include file paths.
