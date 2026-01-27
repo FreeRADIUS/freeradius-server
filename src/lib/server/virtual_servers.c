@@ -946,7 +946,7 @@ CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
 /** Resolve a CONF_SECTION to a virtual server
  *
  */
-virtual_server_t const *virtual_server_from_cs(CONF_SECTION *server_cs)
+virtual_server_t const *virtual_server_from_cs(CONF_SECTION const *server_cs)
 {
 	virtual_server_t *vs;
 
