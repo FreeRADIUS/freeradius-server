@@ -868,6 +868,14 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 	if (!entry) {
 		talloc_free(request_state_replace(request, state_ctx));
 		request_data_restore(request, &data);	/* Put it back again */
+
+#ifdef __COVERITY__
+		/*
+		 *  Coverity doesn't see that state_entry_create releases
+		 *  the lock on failure
+		 */
+		PTHREAD_MUTEX_UNLOCK(&state->mutex)
+#endif
 		return -1;
 	}
 
