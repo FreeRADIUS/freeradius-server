@@ -50,7 +50,7 @@ $prefix		= "@prefix@";
 $localstatedir	= "@localstatedir@";
 $logdir		= "@logdir@";
 $sysconfdir	= "@sysconfdir@";
-$raddbdir	= "@raddbdir@";
+$confdir	= "@raddbdir@";
 
 $debug		= "";
 #$debug		= "$logdir/checkrad.log";
@@ -61,7 +61,7 @@ $snmp_timeout	= 5;
 $snmp_retries	= 1;
 $snmp_version	= "2c";
 $rusers		= "@RUSERS@";
-$naspass	= "$raddbdir/naspasswd";
+$naspass	= "$confdir/naspasswd";
 
 # Community string. Change this if yours isn't "public".
 $cmmty_string	= "public";
