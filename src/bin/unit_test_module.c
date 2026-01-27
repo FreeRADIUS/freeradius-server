@@ -1360,7 +1360,7 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "  -h                 Print this help message.\n");
 	fprintf(output, "  -i <file>          File containing request attributes.\n");
 	fprintf(output, "  -m                 On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n <name>          Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -n <name>          Read ${confdir}/name.conf instead of ${confdir}/radiusd.conf.\n");
 	fprintf(output, "  -o <file>          Output file for the reply.\n");
 	fprintf(output, "  -p <radius|...>    Define which protocol namespace is used to read the file\n");
 	fprintf(output, "                     Use radius, dhcpv4, or dhcpv6\n");

@@ -1316,7 +1316,6 @@ fi
 %files unbound
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_unbound.so
-%doc %{_mandir}/man5/rlm_unbound.5.gz
 %endif
 
 %if %{with rlm_sigtran}
