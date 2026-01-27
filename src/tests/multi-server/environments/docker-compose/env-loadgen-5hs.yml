@@ -184,7 +184,6 @@ services:
     <<: *id001
   load-generator:
     image: fr-build-ubuntu22:latest
-    #image: freeradius-dev-ubuntu24:latest
     ports:
       # Expose RADIUS ports for load generator to allow us to access the server from outside docker
       - "1812:1812/udp"
