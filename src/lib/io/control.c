@@ -97,6 +97,12 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	size_t message_size;
 	uint32_t id = 0;
 
+	/*
+	 *  The presence of data on the pipe fd is just a trigger to pop all
+	 *  available messages from the atomic queue, so the number of bytes
+	 *  read is not important.
+	 */
+	/* coverity[check_return] */
 	if (read(fd, read_buffer, sizeof(read_buffer)) <= 0) return;
 
 	now = fr_time();
