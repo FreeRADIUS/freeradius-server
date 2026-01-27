@@ -48,7 +48,6 @@ fr_dict_autoload_t dns_dict[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-//fr_dict_attr_t const *attr_dns_packet_type;
 fr_dict_attr_t const *attr_dns_packet;
 fr_dict_attr_t const *attr_dns_question;
 fr_dict_attr_t const *attr_dns_rr;
@@ -57,7 +56,6 @@ fr_dict_attr_t const *attr_dns_ar;
 
 extern fr_dict_attr_autoload_t dns_dict_attr[];
 fr_dict_attr_autoload_t dns_dict_attr[] = {
-//	{ .out = &attr_dns_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT16, .dict = &dict_dns },
 	{ .out = &attr_dns_packet, .name = "Header", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_question, .name = "Question", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_rr, .name = "Resource-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
