@@ -28,15 +28,30 @@ states:
               export TEST_CONF_NUM_MESSAGES
 
               #
-              # Delay to allow the rest of the environment to startup before starting load generation
+              # Delay to allow the rest of the environment to startup before starting load generation.
+              # When emulating x86 hardware on ARM hardware, the startup time can be significant, hence
+              # the 50 second sleep here.
               #
-              sleep 20
+              sleep 50
 
               #
               # Starting load-generator server which will generate traffic based on env configuration
               # from above.
               #
-              /docker-entrypoint.sh &
+              printf "Starting load-generator with the following configuration:\n"
+              printf "  Start PPS:        %s\n" "$TEST_CONF_START_PPS"
+              printf "  Max PPS:          %s\n" "$TEST_CONF_MAX_PPS"
+              printf "  Duration (secs):  %s\n" "$TEST_CONF_DURATION"
+              printf "  Step PPS:         %s\n" "$TEST_CONF_STEP"
+              printf "  Parallel:         %s\n" "$TEST_CONF_PARALLEL"
+              printf "  Max Backlog:      %s\n" "$TEST_CONF_MAX_BACKLOG"
+              printf "  Num Messages:     %s\n" "$TEST_CONF_NUM_MESSAGES"
+
+              # Run the server with the following line to allow for easier debugging of load-generator server logs.
+              # Logging generates a substantial amount of data which is why it is disabled by default.
+              # freeradius -X > freeradius-load-generator.log 2>&1 &
+              freeradius -X &
+
               tail -f /dev/null
 
             detach: true
