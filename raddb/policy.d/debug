@@ -2,7 +2,7 @@
 #  Outputs the contents of the control list in debugging (-X) mode
 #
 debug_control {
-	if (%debug_attr('control')) {
+	if (%pairs.debug('control')) {
 		noop
 	}
 }
@@ -11,7 +11,7 @@ debug_control {
 #  Outputs the contents of the request list in debugging (-X) mode
 #
 debug_request {
-	if (%debug_attr('request')) {
+	if (%pairs.debug('request')) {
 		noop
 	}
 }
@@ -20,7 +20,7 @@ debug_request {
 #  Outputs the contents of the reply list in debugging (-X) mode
 #
 debug_reply {
-	if (%debug_attr('reply')) {
+	if (%pairs.debug('reply')) {
 		noop
 	}
 }
@@ -29,7 +29,7 @@ debug_reply {
 #  Outputs the contents of the session state list in debugging (-X) mode
 #
 debug_session_state {
-	if (%debug_attr('session-state')) {
+	if (%pairs.debug('session-state')) {
 		noop
 	}
 }

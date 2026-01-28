@@ -9,7 +9,7 @@ output.
 ----
 recv Access-Request {
     if (request.User-Name == "bob") {
-        %pirts.debug(request.[*])
+        %pairs.debug('request.[*]')
     }
     ...
 }
@@ -27,7 +27,7 @@ recv Access-Request {
 (0)        request.NAS-IP-Address = 127.0.1.1
 (0)        request.NAS-Port = 1
 (0)        request.Message-Authenticator = 0x9210ee447a9f4c522f5300eb8fc15e14
-(0)      EXPAND %debug_attr(request[*])
+(0)      EXPAND %pairs.debug('request[*]')
 (0)    } # if (request.User-Name == "bob") (...)
 ...
 ```
