@@ -1008,6 +1008,21 @@ virtual_server_t const *virtual_server_by_child(CONF_ITEM const *ci)
 	return cf_data_value(cd);
 }
 
+/** Return the packet type attribute for a virtual server specified by a config section
+ *
+ * @param[in] server_cs		to look for packet type attribute in.
+ * @return
+ *	- NULL on error.
+ *	- packet type dict attr on success.
+ */
+fr_dict_attr_t const *virtual_server_packet_type_by_cs(CONF_SECTION const *server_cs)
+{
+	virtual_server_t const *vs = virtual_server_from_cs(server_cs);
+
+	if (unlikely(!vs || !vs->process_module || !vs->process_module->packet_type)) return NULL;
+	return *vs->process_module->packet_type;
+}
+
 /** Wrapper for the config parser to allow pass1 resolution of virtual servers
  *
  */

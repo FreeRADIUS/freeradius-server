@@ -91,6 +91,8 @@ virtual_server_t const	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
 virtual_server_t const	*virtual_server_by_child(CONF_ITEM const *ci) CC_HINT(nonnull);
 
+fr_dict_attr_t const	*virtual_server_packet_type_by_cs(CONF_SECTION const *server_cs);
+
 /** Additional validation rules for virtual server lookup
  *
  * This is used to ensure that the virtual server we find matches
