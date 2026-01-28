@@ -1973,6 +1973,45 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_block_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_TIME_DELTA },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Block for the specified duration
+ *
+ * This is for developer use only to simulate blocking, synchronous I/O.
+ * For normal use, use the %delay() xlat instead.
+ *
+ * Example:
+@verbatim
+%block(1s)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_block(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t		*delay;
+	fr_value_box_t		*vb;
+	struct timespec		ts_in, ts_remain = {};
+
+	XLAT_ARGS(args, &delay);
+
+	ts_in = fr_time_delta_to_timespec(delay->vb_time_delta);
+
+	(void)nanosleep(&ts_in, &ts_remain);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = fr_time_delta_sub(delay->vb_time_delta,
+					      fr_time_delta_from_timespec(&ts_remain));
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_cast_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
 	{ .type = FR_TYPE_VOID },
@@ -4709,6 +4748,7 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("block", xlat_func_block, FR_TYPE_TIME_DELTA, xlat_func_block_args);
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.debug");
