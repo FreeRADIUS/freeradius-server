@@ -2,10 +2,10 @@ Index: freeradius-server/Make.inc.in
 ===================================================================
 --- freeradius-server.orig/Make.inc.in
 +++ freeradius-server/Make.inc.in
-@@ -105,7 +105,7 @@ LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_L
+@@ -120,7 +120,7 @@ LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_LDFLAGS) $(KQUEUE_LDFLAGS) @LDFLAGS@
  
  LOGDIR		= ${logdir}
- CONFDIR	= $(confdir)
+ CONFDIR		= ${confdir}
 -RUNDIR		= ${localstatedir}/run/radiusd
 +RUNDIR		= ${localstatedir}/run/freeradius
  SBINDIR		= ${sbindir}
