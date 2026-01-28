@@ -243,13 +243,13 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 			a = fr_value_box_list_head(args);
 			b = fr_value_box_list_next(args, a);
 
-			RDEBUG2("| (%pV %s %pV)", a, fr_tokens[node->call.func->token], b);
+			RDEBUG2("| (%pR %s %pR)", a, fr_tokens[node->call.func->token], b);
 
 #ifndef NDEBUG
 			if (a && b) {
 				a = fr_value_box_list_next(args, b);
 				if (a) {
-					RDEBUG2("| ... ??? %pV", a);
+					RDEBUG2("| ... ??? %pR", a);
 					fr_assert(0);
 				}
 			}
@@ -296,7 +296,7 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
 
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("| --> %pV", result);
+	RDEBUG2("| --> %pR", result);
 }
 
 static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, xlat_exp_t const *node, fr_value_box_t *vb)
@@ -1128,7 +1128,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
 		if (node->call.func) {
-			RDEBUG2("| --> %pV", fr_dcursor_current(out));
+			RDEBUG2("| --> %pR", fr_dcursor_current(out));
 			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
 					 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 		}

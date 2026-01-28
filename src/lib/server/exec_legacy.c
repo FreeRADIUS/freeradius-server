@@ -538,10 +538,10 @@ wait:
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if (status != 0) {
-				RERROR("Program returned code (%d) and output \"%pV\"", status,
+				RERROR("Program returned code (%d) and output %pV", status,
 				       fr_box_strvalue_len(answer, len));
 			} else {
-				RDEBUG2("Program returned code (%d) and output \"%pV\"", status,
+				RDEBUG2("Program returned code (%d) and output %pV", status,
 					fr_box_strvalue_len(answer, len));
 			}
 

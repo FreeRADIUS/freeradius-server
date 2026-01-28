@@ -50,7 +50,7 @@ static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, f
 
 	switch (box->type) {
 	case FR_TYPE_QUOTED:
-		RDEBUG2("%s %s \"%pV\"", attr, fr_tokens[op], box);
+		RDEBUG2("%s %s %pR", attr, fr_tokens[op], box);
 		break;
 
 	case FR_TYPE_INTERNAL:
@@ -66,7 +66,7 @@ static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, f
 			break;
 		}
 
-		RDEBUG2("%s %s %pV", attr, fr_tokens[op], box);
+		RDEBUG2("%s %s %pR", attr, fr_tokens[op], box);
 		break;
 	}
 }
@@ -386,7 +386,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		relative = (fr_pair_parse_t) { };
 
 		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
-			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
+			RPEDEBUG("Failed parsing string %pV as attribute list", box);
 			return -1;
 		}
 

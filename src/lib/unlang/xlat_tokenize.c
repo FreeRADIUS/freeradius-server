@@ -2006,7 +2006,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 				 *	FIXME - Produce proper error with marker
 				 */
 				if (!xr_rules->allow_unresolved) {
-					fr_strerror_printf("Failed resolving function \"%pV\"",
+					fr_strerror_printf("Failed resolving function %pV",
 							   fr_box_strvalue_buffer(node->fmt));
 					return -1;
 				}

@@ -102,7 +102,7 @@ int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		ssize_t		len;
 
 		if (vb->type != FR_TYPE_OCTETS) {
-			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
+			RWDEBUG("Skipping value \"%pR\", expected value of type %s, got type %s",
 				vb,
 				fr_type_to_str(FR_TYPE_OCTETS),
 				fr_type_to_str(vb->type));

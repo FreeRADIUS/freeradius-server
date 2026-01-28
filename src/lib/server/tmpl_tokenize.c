@@ -289,7 +289,7 @@ void tmpl_attr_debug(FILE *fp, tmpl_t const *vpt)
 		return;
 	}
 
-	fprintf(fp, "tmpl_t %s (%.8x) \"%pV\" (%p)\n",
+	fprintf(fp, "tmpl_t %s (%.8x) %pV (%p)\n",
 		tmpl_type_to_str(vpt->type),
 		vpt->type,
 		fr_box_strvalue_len(vpt->name, vpt->len), vpt);

@@ -52,7 +52,7 @@ static int _list_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!vp) return -1;
 
 	if (fr_value_box_cast(vp, &vp->data, vp->data.type, vp->da, value) < 0) {
-		RPEDEBUG("Failed casting \"%pV\" for attribute %s", value, vp->da->name);
+		RPEDEBUG("Failed casting %pR for attribute %s", value, vp->da->name);
 		talloc_free(vp);
 		return -1;
 	}

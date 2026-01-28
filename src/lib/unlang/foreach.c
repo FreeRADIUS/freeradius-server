@@ -191,7 +191,7 @@ next:
 
 	fr_value_box_clear_value(&state->value->data);
 	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
+		RPEDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		goto next;
 	}
 
@@ -224,7 +224,7 @@ static unlang_action_t unlang_foreach_xlat_expanded(unlang_result_t *p_result, r
 
 next:
 	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
+		RPEDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		box = fr_dcursor_next(&state->cursor);
 		if (!box) goto done;
 
@@ -361,7 +361,7 @@ next:
 		}
 
 #ifndef NDEBUG
-		RDEBUG2("# looping with: %s = %pV", state->value->da->name, &vp->data);
+		RDEBUG2("# looping with: %s = %pR", state->value->da->name, &vp->data);
 #endif
 	}
 

@@ -1048,7 +1048,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	switch (in_vb->type) {
 	default:
 	error:
-		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
+		RPEDEBUG("Failed converting %pR (%s) to an integer", in_vb,
 			 fr_type_to_str(in_vb->type));
 		talloc_free(in_vb);
 		return XLAT_ACTION_FAIL;

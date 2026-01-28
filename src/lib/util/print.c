@@ -668,15 +668,17 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 			 *	subst types
 			 */
 			switch (*(p + 1)) {
+			case 'R':
+				/*
+				 *	If the caller explicitly asks to suppress secrets via '%pR', then we
+				 *	do that.
+				 */
+				suppress_secrets = true;
+				FALL_THROUGH;
+
 			case 'V':
 			{
 				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
-				fr_sbuff_escape_rules_t const *e_rules = NULL;
-
-				/*
-				 *	Value boxes get escaped as double-quoted strings.
-				 */
-				e_rules = &fr_value_escape_double;
 
 				/*
 				 *	Allocations that are not part of the output
@@ -687,7 +689,11 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 					subst = talloc_typed_strdup(NULL, "<<< secret >>>");
 
 				} else if (in) {
-					fr_value_box_aprint(NULL, &subst, in, e_rules);
+					/*
+					 *	Value boxes get escaped as double-quoted strings.
+					 */
+					fr_value_box_aprint(NULL, &subst, in, &fr_value_escape_double);
+
 				} else {
 					subst = talloc_typed_strdup(NULL, "(null)");
 				}

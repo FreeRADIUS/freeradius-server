@@ -354,7 +354,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	if (rcode < 0) {
-		RPEDEBUG("Failed calculating '%pV %s %pV'", a, fr_tokens[op], b);
+		RPEDEBUG("Failed calculating '%pR %s %pR'", a, fr_tokens[op], b);
 		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
 	}
