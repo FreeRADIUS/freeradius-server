@@ -97,7 +97,7 @@ static int process_file(char const *filename)
 	config->root_cs = cf_section_alloc(config, NULL, "main", NULL);
 	cf_section_set_unlang(config->root_cs);
 
-	if ((cf_file_read(config->root_cs, filename) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
+	if ((cf_file_read(config->root_cs, filename, true) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n", filename);
 		return EXIT_FAILURE;
 	}

@@ -1595,7 +1595,7 @@ do { \
 	/*
 	 *	Read configuration files if necessary.
 	 */
-	if (filename && (cf_file_read(conf->cs, filename) < 0 || (cf_section_pass2(conf->cs) < 0))) {
+	if (filename && (cf_file_read(conf->cs, filename, true) < 0 || (cf_section_pass2(conf->cs) < 0))) {
 		fr_exit_now(EXIT_FAILURE);
 	}
 

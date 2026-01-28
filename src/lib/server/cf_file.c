@@ -3563,20 +3563,35 @@ static void cf_stack_cleanup(cf_stack_t *stack)
 /*
  *	Bootstrap a config file.
  */
-int cf_file_read(CONF_SECTION *cs, char const *filename)
+int cf_file_read(CONF_SECTION *cs, char const *filename, bool root)
 {
 	int		i;
-	char		*p;
-	CONF_PAIR	*cp;
 	fr_rb_tree_t	*tree;
 	cf_stack_t	stack;
 	cf_stack_frame_t	*frame;
 
-	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-	if (!cp) return -1;
+	/*
+	 *	Only add the default config directory if we're loading a top-level configuration file.
+	 */
+	if (root) {
+		char	  *p;
+		CONF_PAIR *cp;
 
-	p = strrchr(cp->value, FR_DIR_SEP);
-	if (p) *p = '\0';
+		/*
+		 *	For compatibility, this goes first.  And we don't care if there are too many '/'.
+		 */
+		cp = cf_pair_alloc(cs, "raddbdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		if (!cp) return -1;
+
+		/*
+		 *	This goes second, and we try to be nice about too many '/'.
+		 */
+		cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		if (!cp) return -1;
+
+		p = strrchr(cp->value, FR_DIR_SEP);
+		if (p) *p = '\0';
+	}
 
 	MEM(tree = fr_rb_inline_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL));
 

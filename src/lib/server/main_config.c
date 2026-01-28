@@ -1116,7 +1116,7 @@ int main_config_init(main_config_t *config)
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->confdir, config->name);
-	if (cf_file_read(cs, buffer) < 0) {
+	if (cf_file_read(cs, buffer, true) < 0) {
 		ERROR("Error reading or parsing %s", buffer);
 		goto failure;
 	}
