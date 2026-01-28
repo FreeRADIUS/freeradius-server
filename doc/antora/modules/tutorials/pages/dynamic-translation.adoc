@@ -40,40 +40,94 @@ $ which echo
 This will tell you the full pathname of the `echo` command. Use that pathname in
 the file entry.
 
-Start the server and send it a test packet for user `bob`. The debug output of
-the server should print messages similar to the following.
-
+Start the server 
 -------------------------------------------------------------------------------
-(0)  files : users: Matched entry bob at line 1
-Executing: /bin/echo Hello, there:
-Program returned code (0) and output 'Hello, there'
-(0)  files : EXPAND %exec('/bin/echo', "Hello, there")
-(0)  files :    --> Hello, there
-(0)   [files] = ok
+$ radiusd -X
 -------------------------------------------------------------------------------
 
-These message indicate that the first entry in the file (at line 1) was used to
-match the incoming request.
+Send the test packet for user `bob`
+-------------------------------------------------------------------------------
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+-------------------------------------------------------------------------------
 
-The `exec` xlat function was then used to perform the dynamic translation of the
-string, which resulted in a call to the `rlm_exec` module.
 
-That module called the `Exec-Program` function of the server to execute a
-program, and finally, the `exec` xlat function returned the string "Hello
-there".
+The debug output of the server should print messages similar to the following.
 
-That text was then sent back to the RADIUS client in the `Callback-Id`
-attribute, which was not quoted above.
+-------------------------------------------------------------------------------
+files - | ||
+(0)        files - | %logical_or()
+(0)          files - | Stripped-User-Name
+(0)            files - | %{Stripped-User-Name}
+(0)            files - (null)
+(0)          files - | User-Name
+(0)          files - | %logical_or(...)
+(0)            files - | %{User-Name}
+(0)            files - | --> bob
+(0)          files - | %logical_or(...)
+(0)          files - | --> bob
+(0)      files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 4 of ./scripts/bin/../../raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Callback-Id = %exec('/bin/echo', "Hello, there")
+(0)        files - | exec
+(0)        files - | %exec({/bin/echo}{Hello, there})
+proto_radius_udp - Received Access-Request ID 156 length 98 radius_udp server * port 1812
+Ignoring retransmit from client localhost - we are still processing the request
+(0)          files - pid 263593 (stdout) - Hello, there\n
+(0)          files - Program exited with status code 0
+(0)          files - xlat - Resuming execution
+(0)          files - | %exec(...)
+(0)          files - | --> Hello, there
+(0)      files (ok)
+-------------------------------------------------------------------------------
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
-Another dynamic translation string function is the `expr` module. It performs
-some simple mathematical operations. The following sample file entry
-demonstrates how to use the `expr` module.
+
+== Mathematical Operations
+
+Another dynamic translation string function is the `expr` module. It performs some simple mathematical operations. The following sample file entry demonstrates how to use mathematical expressions.
 
 -------------------------------------------------------------------------------
 bob	Password.Cleartext := "hello"
 	Session-Timeout = "%{60 * 60}"
+-------------------------------------------------------------------------------
+
+**What this does:**-User `bob` logs in with password `hello` and the server calculates: 60 multiplied by 60,Result: 3600 seconds (which equals 1 hour).This timeout value is sent back to the client and the client will disconnect the user after 1 hour
+
+This entry will set the Session-Timeout attribute to 3600 seconds (which equals 1 hour). The mathematical expression inside the `%{...}` braces is evaluated to produce the final value.
+
+Start the server and send it a test packet for user `bob`. 
+-------------------------------------------------------------------------------
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+-------------------------------------------------------------------------------
+
+The debug output should show the mathematical expression being evaluated and the final result.
+-------------------------------------------------------------------------------
+files - files - Looking for key "bob"
+(0)      files - files - Found match "bob" on line 1 of ./scripts/bin/../../raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Session-Timeout = %{60 * 60}
+(0)          files - | *
+(0)          files - | ({60} * {60})
+(0)          files - | --> 3600
+(0)      files (ok)
+......
+(0)  Sending Access-Accept ID 53 from 0.0.0.0/0:1812 to 127.0.0.1:39326 length 49 via socket radius_udp server * port 1812
+(0)    Session-Timeout = 3600
+(0)    Packet-Type = ::Access-Accept
+(0)    User-Name = "bob"
+(0)  Finished request
 -------------------------------------------------------------------------------
 
 Dynamically translated strings may also be used as "check items" to match
