@@ -19,7 +19,7 @@ inter-module calls.
 == Basic Program Execution
 
 To start, open `raddb/mods-available/exec` and read the sample configuration for
-the `exec` module. Then, edit the users file to add the following entry at the
+the `exec` module. Then, edit the `mods-config/files/authorize` file to add the following entry at the
 top:
 
 -------------------------------------------------------------------------------
@@ -27,12 +27,11 @@ bob Password.Cleartext := "hello"
     Callback-Id = "%exec('/bin/echo', 'Hello, there')"
 -------------------------------------------------------------------------------
 
-**What this does:**User bob logs in with password `hello` and the server runs the program `/bin/echo` with the text 'Hello, there'.Whatever the program outputs becomes the value of `Callback-Id` , the client receives this value in the response.
+**What this does:** User bob logs in with password `hello` and the server runs the program `/bin/echo` with the text 'Hello, there'. Whatever the program outputs becomes the value of `Callback-Id` , the client receives this value in the response.
 
 The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
 many systems you can use the following command:
 
-[source, bash]
 ------------
 $ which echo
 ------------
@@ -51,7 +50,7 @@ echo 'User-Name = "bob"
 CHAP-Password = "hello"
 NAS-IP-Address = 127.0.0.1
 NAS-Port = 501
-NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
 
@@ -98,7 +97,7 @@ bob	Password.Cleartext := "hello"
 	Session-Timeout = "%{60 * 60}"
 -------------------------------------------------------------------------------
 
-**What this does:**User `bob` logs in with password `hello` and the server calculates: 60 multiplied by 60,Result: 3600 seconds (which equals 1 hour).This timeout value is sent back to the client and the client will disconnect the user after 1 hour
+**What this does:** User `bob` logs in with password `hello` and the server calculates: 60 multiplied by 60,Result: 3600 seconds (which equals 1 hour). This timeout value is sent back to the client and the client will disconnect the user after 1 hour.
 
 This entry will set the Session-Timeout attribute to 3600 seconds (which equals 1 hour). The mathematical expression inside the `%{...}` braces is evaluated to produce the final value.
 
@@ -108,7 +107,7 @@ echo 'User-Name = "bob"
 CHAP-Password = "hello"
 NAS-IP-Address = 127.0.0.1
 NAS-Port = 501
-NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
 The debug output should show the mathematical expression being evaluated and the final result.
@@ -162,10 +161,10 @@ FreeRADIUS tries entries in order and uses the first one that matches.
 
 You can find the UID by running the following command:
 -------------------------------------------------------------------------------
-/bin/id -u
+$ /bin/id -u
 -------------------------------------------------------------------------------
 
-Send a test packet to verify the server’s response as Your port is very nice using:
+Send a test packet to verify the server’s response as `Your port is very nice` using:
 -------------------------------------------------------------------------------
 echo 'User-Name = "bob"
 CHAP-Password = "hello"
@@ -197,7 +196,7 @@ Ignoring retransmit from client localhost - we are still processing the request
 (0)      files (ok)
 -------------------------------------------------------------------------------
 
-Verify by sending a test packet to receive the response Your port is less nice.
+Verify by sending a test packet to receive the response `Your port is less nice.`
 
 -------------------------------------------------------------------------------
 echo 'User-Name = "bob"
@@ -260,10 +259,19 @@ echo 'User-Name = "bob"
 CHAP-Password = "hello"
 NAS-IP-Address = 127.0.0.1
 NAS-Port = 1000
-NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
-Debug output
+Verify the response:
+
+Note: The packet is sent as the root user; therefore, the UID returned is 0.
+-------------------------------------------------------------------------------
+Message-Authenticator = 0x12a9957a52f142ce1bd4b654253e773d
+        Session-Timeout = 0
+        User-Name = "bob"
+-------------------------------------------------------------------------------
+
+Debug output:
 -------------------------------------------------------------------------------
 files - Password.Cleartext := hello
 (2)        files - Session-Timeout = %{60 * "%exec('/bin/id', '-u')"}
@@ -284,19 +292,12 @@ Ignoring retransmit from client localhost - we are still processing the request
 
 == Further considerations
 
-Run-time variables allow inter-module calling. The administrator may perform LDAP
-queries and SQL queries to use database information in other modules.
+Run-time variables allow inter-module calling. The administrator may perform LDAP queries and SQL queries to use database information in other modules.
 
-Unfortunately, the format of the string is module-dependent. This limitation
-comes from the fact that each module has its own syntax for database queries.
-The syntax for querying LDAP databases is different than the syntax for querying
-SQL database. The administrator should consult the `man` pages for the relevant
-module for more information on the syntax for run-time dynamic translation of
-strings.
+Unfortunately, the format of the string is module-dependent. This limitation comes from the fact that each module has its own syntax for database queries. The syntax for querying LDAP databases is different than the syntax for querying SQL databases. The administrator should consult the documentation for the relevant module for more information on the syntax for run-time dynamic translation of strings.
 
-Another limitation is that the query string can be only approximately 250
-characters long in the current version of the server. This limitation may be
-removed in a later version.
+Another limitation is that the query string can be only approximately 250 characters long in the current version of the server. This limitation may be removed in a later version.
+
 
 == Questions
 
