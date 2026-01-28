@@ -324,7 +324,7 @@ void tmpl_debug(FILE *fp, tmpl_t const *vpt)
 		break;
 	}
 
-	fprintf(fp, "tmpl_t %s (%.8x) \"%pR\" (%p)\n",
+	fprintf(fp, "tmpl_t %s (%.8x) %pV (%p)\n",
 		tmpl_type_to_str(vpt->type),
 		vpt->type,
 		vpt->name, vpt);

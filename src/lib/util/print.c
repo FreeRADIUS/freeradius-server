@@ -669,21 +669,14 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 			 */
 			switch (*(p + 1)) {
 			case 'V':
-			case 'R':
 			{
 				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
 				fr_sbuff_escape_rules_t const *e_rules = NULL;
 
 				/*
-				 *	Value boxes get escaped as double-quoted strings, unless the value-box
-				 *	in question is secret, AND we've been asked to hide secrets.
-				 *
-				 *	Note that the secret_rules only hides secrets of data type "string",
-				 *	which should be good enough for most purposes.
+				 *	Value boxes get escaped as double-quoted strings.
 				 */
-				if (*(p + 1) == 'V') {
-					e_rules = &fr_value_escape_double;
-				}
+				e_rules = &fr_value_escape_double;
 
 				/*
 				 *	Allocations that are not part of the output
