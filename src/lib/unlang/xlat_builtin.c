@@ -181,8 +181,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp,
 		break;
 
 	default:
-		if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
-		RIDEBUG2("%s", buffer);
+		RIDEBUG2("%s%pV", buffer, &vp->data);
 	}
 
 	if (!RDEBUG_ENABLED3) return;
