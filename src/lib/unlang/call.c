@@ -288,7 +288,7 @@ static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unl
 		return NULL;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	attr_packet_type = virtual_server_packet_type_by_cs(server_cs);
 	if (!attr_packet_type) {
 		cf_log_err(cs, "Cannot call server %s with namespace '%s' - it has no Packet-Type attribute",
 			   server, fr_dict_root(dict)->name);
