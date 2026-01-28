@@ -803,9 +803,8 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 
 	default:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
-		if (fr_pair_print_value_quoted(oid_buff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
 
-		RDEBUGX(lvl, "%s%s", prefix ? prefix : "", fr_sbuff_start(oid_buff));
+		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
 		break;
 	}
 }
