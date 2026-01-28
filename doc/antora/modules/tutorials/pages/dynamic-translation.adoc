@@ -98,7 +98,7 @@ bob	Password.Cleartext := "hello"
 	Session-Timeout = "%{60 * 60}"
 -------------------------------------------------------------------------------
 
-**What this does:**-User `bob` logs in with password `hello` and the server calculates: 60 multiplied by 60,Result: 3600 seconds (which equals 1 hour).This timeout value is sent back to the client and the client will disconnect the user after 1 hour
+**What this does:**User `bob` logs in with password `hello` and the server calculates: 60 multiplied by 60,Result: 3600 seconds (which equals 1 hour).This timeout value is sent back to the client and the client will disconnect the user after 1 hour
 
 This entry will set the Session-Timeout attribute to 3600 seconds (which equals 1 hour). The mathematical expression inside the `%{...}` braces is evaluated to produce the final value.
 
@@ -139,11 +139,11 @@ You should send test packets to match the first entry and should send another re
 -------------------------------------------------------------------------------
 bob     Password.Cleartext := "hello", NAS-Port == "%exec('/bin/id', '-u')"
         Reply-Message = "Your port is very nice.",
-        Session-Timeout = "%{60 * 60}",
+        Session-Timeout = "%{60 * 60}"
 
 bob     Password.Cleartext := "hello", NAS-Port != "%exec('/bin/id', '-u')"
         Reply-Message = "Your port is less nice.",
-        Session-Timeout = "%{60 * 2}",
+        Session-Timeout = "%{60 * 2}"
 -------------------------------------------------------------------------------
 
 ** Both entries define the user `bob` with the password `hello`. The server determines its own user ID by executing the `id -u` command.
@@ -174,7 +174,7 @@ NAS-Port = 0
 NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
-Debug output
+Debug output:
 -------------------------------------------------------------------------------
 files - files - Looking for key "bob"
 (0)      files - | exec
@@ -207,7 +207,7 @@ NAS-Port = 501
 NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
-Debug output
+Debug output:
 -------------------------------------------------------------------------------
 files - pid 270077 (stdout) - 0\n
 (1)        files - Program exited with status code 0
@@ -227,7 +227,60 @@ files - pid 270077 (stdout) - 0\n
 
 These check items demonstrate how dynamic expansion can be used in conditional logic. The server evaluates the expression and compares it to the incoming request attribute to determine which entry to use for the user.
 
+== Nested Dynamic Expansions
 
+The run-time variables may be nested, too. The following file entry demonstrates this nesting.
+
+```
+bob     Password.Cleartext := "hello"
+        Session-Timeout = "%{60 * "%exec('/bin/id', '-u')"}"
+```
+**What this does:**
+User `bob` logs in with password `hello`.
+	Server gets its own user ID using `id -u`(Example:UID=105)
+	Server multiplies that user ID by 60 (105 * 60 = 6300)
+	The result becomes the Session-Timeout in seconds
+Result: User gets 6300 seconds (105 minutes) timeout
+
+**How nesting works:**
+	The inner expression `%exec(/usr/bin/id, '-u')` is evaluated FIRST
+	Its output (the UID) is then used in the outer expression `%{60 * ...}`
+	This allows combining multiple operations together
+
+**Examples based on server UID:**
+ If server UID = 0 (root): Timeout = 60 * 0 = 0 seconds
+ If server UID = 105 (radius user): Timeout = 60 * 105 = 6300 seconds (105 minutes)
+ If server UID = 1000 (regular user): Timeout = 60 * 1000 = 60000 seconds (16.7 hours)
+
+## Testing the Exercises
+
+Send test packets:
+-------------------------------------------------------------------------------
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 1000
+NAS-Port-Type = Virtual' | ./scripts/bin/radclient -x 127.0.0.1 auth testing123
+-------------------------------------------------------------------------------
+
+Debug output
+-------------------------------------------------------------------------------
+files - Password.Cleartext := hello
+(2)        files - Session-Timeout = %{60 * "%exec('/bin/id', '-u')"}
+(2)          files - | *
+(2)                files - | exec
+(2)                files - | %exec({/bin/id}{-u})
+proto_radius_udp - Received Access-Request ID 222 length 98 radius_udp server * port 1812
+Ignoring retransmit from client localhost - we are still processing the request
+(2)                  files - pid 270418 (stdout) - 0\n
+(2)                  files - Program exited with status code 0
+(2)                  files - xlat - Resuming execution
+(2)                  files - | %exec(...)
+(2)                  files - | --> 0
+(2)          files - | ({60} * {0})
+(2)          files - | --> 0
+(2)      files (ok)
+-------------------------------------------------------------------------------
 
 == Further considerations
 
