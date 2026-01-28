@@ -2455,12 +2455,47 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_assert(client->pending != NULL);
 
 	/*
-	 *	The request has timed out trying to define the dynamic
-	 *	client.  Oops... try again.
+	 *	The request failed trying to define the dynamic
+	 *	client.  Discard the client and all pending packets.
 	 */
 	if ((buffer_len == 1) && (*buffer == true)) {
-		DEBUG("Request has timed out trying to define a new client.  Trying again.");
-		goto reread;
+		DEBUG("Request failed trying to define a new client.  Discarding client and pending packets.");
+
+		if (!connection) {
+			talloc_free(client);
+			return buffer_len;
+		}
+
+		/*
+		 *	Free pending packets and tracking table.
+		 *	The table is parented by connection->parent, so won't
+		 *	be auto-freed when connection->client is freed.
+		 */
+		TALLOC_FREE(client->pending);
+		if (client->table) TALLOC_FREE(client->table);
+
+		/*
+		 *	Remove from parent's hash table so new packets won't
+		 *	be routed to this connection.
+		 */
+		pthread_mutex_lock(&connection->parent->mutex);
+		if (connection->in_parent_hash) {
+			connection->in_parent_hash = false;
+			(void) fr_hash_table_delete(connection->parent->ht, connection);
+		}
+		pthread_mutex_unlock(&connection->parent->mutex);
+
+		/*
+		 *	Mark the connection as dead, then trigger the
+		 *	standard cleanup path via fr_network_listen_read().
+		 *	This calls mod_read(), which sees connection->dead,
+		 *	returns -1, and the network layer closes the
+		 *	connection through its normal error handling.
+		 */
+		connection->dead = true;
+		fr_network_listen_read(connection->nr, connection->listen);
+
+		return buffer_len;
 	}
 
 	/*
@@ -2753,7 +2788,6 @@ finish:
 		client_expiry_timer(el->tl, fr_time_wrap(0), client);
 	}
 
-reread:
 	/*
 	 *	If there are pending packets (and there should be at
 	 *	least one), tell the network socket to call our read()
