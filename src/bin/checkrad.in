@@ -50,7 +50,7 @@ $prefix		= "@prefix@";
 $localstatedir	= "@localstatedir@";
 $logdir		= "@logdir@";
 $sysconfdir	= "@sysconfdir@";
-$confdir	= "@raddbdir@";
+$confdir	= "@confdir@";
 
 $debug		= "";
 #$debug		= "$logdir/checkrad.log";

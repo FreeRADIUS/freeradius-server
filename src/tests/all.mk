@@ -75,7 +75,7 @@ ci-test: raddb/test.conf test
 	${Q}FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -xxxv -n test
 	${Q}rm -f raddb/test.conf
 	${Q}$(MAKE) install
-	${Q}perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
+	${Q}perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' $(confdir)/radiusd.conf
 	${Q}${sbindir}/radiusd -XC
 
 #

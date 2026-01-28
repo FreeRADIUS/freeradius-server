@@ -241,7 +241,7 @@ install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
 	@echo INSTALL $(notdir $<)
-	@sed -e "s,/etc/raddb,$(raddbdir),g" \
+	@sed -e "s,/etc/raddb,$(confdir),g" \
 		-e "s,/usr/local/share,$(datarootdir),g" \
 		$< > $<.subst
 	@$(INSTALL) -m 644 $<.subst $@
@@ -260,10 +260,10 @@ ifneq ($(RADMIN),)
   ifneq ($(RGROUP),)
 .PHONY: install-chown
 install-chown:
-	chown -R $(RADMIN)   $(R)$(raddbdir)
-	chgrp -R $(RGROUP)   $(R)$(raddbdir)
-	chmod u=rwx,g=rx,o=  `find $(R)$(raddbdir) -type d -print`
-	chmod u=rw,g=r,o=    `find $(R)$(raddbdir) -type f -print`
+	chown -R $(RADMIN)   $(R)$(confdir)
+	chgrp -R $(RGROUP)   $(R)$(confdir)
+	chmod u=rwx,g=rx,o=  `find $(R)$(confdir) -type d -print`
+	chmod u=rw,g=r,o=    `find $(R)$(confdir) -type f -print`
 	chown -R $(RADMIN)   $(R)$(logdir)
 	chgrp -R $(RGROUP)   $(R)$(logdir)
 	find $(R)$(logdir) -type d -exec chmod u=rwx,g=rwx,o= {} \;

@@ -41,13 +41,13 @@ LOCAL_CERT_FILES :=	dh \
 			ecc/server.key \
 			ecc/server.pem
 
-INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(INSTALL_CERT_FILES))
+INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(confdir)/certs/,$(INSTALL_CERT_FILES))
 
 ifeq ("$(TEST_CERTS)","yes")
-INSTALL_CERT_PRODUCTS += $(addprefix $(R)$(raddbdir)/certs/,$(LOCAL_CERT_FILES))
+INSTALL_CERT_PRODUCTS += $(addprefix $(R)$(confdir)/certs/,$(LOCAL_CERT_FILES))
 endif
 
-LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users)
+LEGACY_LINKS :=		$(addprefix $(R)$(confdir)/,users)
 
 BUILD_RADDB := $(strip $(foreach x,install clean,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(BUILD_RADDB)" ""
@@ -56,7 +56,7 @@ RADDB_DIRS :=		certs mods-available mods-enabled global.d policy.d template.d \
 			$(patsubst raddb/%,%,$(call FIND_DIRS,raddb/mods-config))
 
 # Installed directories
-INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/,$(RADDB_DIRS))
+INSTALL_RADDB_DIRS :=	$(R)$(confdir)/ $(addprefix $(R)$(confdir)/,$(RADDB_DIRS))
 
 # Grab files from the various subdirectories
 INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
@@ -68,7 +68,7 @@ INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 			$(call FIND_FILES,raddb/template.d)
 
 # Re-write local files to installed files, filtering out editor backups
-INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,$(INSTALL_FILES))
+INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(confdir)/%,$(INSTALL_FILES))
 endif
 
 all: build.raddb
@@ -97,7 +97,7 @@ raddb/sites-enabled/%: raddb/sites-available/% | raddb/sites-enabled
 ifneq "$(BUILD_RADDB)" ""
 # Installation rules for directories.  Note permissions are 750!
 $(INSTALL_RADDB_DIRS):
-	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	${Q}echo INSTALL $(patsubst $(R)$(confdir)%,raddb%,$@)
 	${Q}$(INSTALL) -d -m 750 $@
 
 #  The installed files have ORDER dependencies.  This means that they
@@ -107,32 +107,32 @@ $(INSTALL_RADDB_DIRS):
 #  This dependency lets us install the server on top of an existing
 #  system, hopefully without breaking anything.
 
-ifeq "$(wildcard $(R)$(raddbdir)/mods-available/)" ""
-INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
+ifeq "$(wildcard $(R)$(confdir)/mods-available/)" ""
+INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(confdir)/%,\
 			$(filter-out %~,$(LOCAL_MODULES)))
 
 # Installation rules for mods-enabled.  Note ORDER dependencies
-$(R)$(raddbdir)/mods-enabled/%: | $(R)$(raddbdir)/mods-available/%
+$(R)$(confdir)/mods-enabled/%: | $(R)$(confdir)/mods-available/%
 	${Q}cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
 endif
 
-ifeq "$(wildcard $(R)$(raddbdir)/sites-available/)" ""
-INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
+ifeq "$(wildcard $(R)$(confdir)/sites-available/)" ""
+INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(confdir)/%,\
 			$(filter-out %~,$(LOCAL_SITES)))
 
 # Installation rules for sites-enabled.  Note ORDER dependencies
-$(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
+$(R)$(confdir)/sites-enabled/%: | $(R)$(confdir)/sites-available/%
 	${Q}cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 endif
 
 # Installation rules for plain modules.
-$(R)$(raddbdir)/%: | raddb/%
-	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+$(R)$(confdir)/%: | raddb/%
+	${Q}echo INSTALL $(patsubst $(R)$(confdir)/%,raddb/%,$@)
+	${Q}$(INSTALL) -m 640 $(patsubst $(R)$(confdir)/%,raddb/%,$@) $@
 
-$(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
-	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
+$(R)$(confdir)/users: $(R)$(modconfdir)/files/authorize
+	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(confdir)/%,raddb/%,$@)
+	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(confdir)/%,./%,$<) $@
 endif
 
 ifeq ("$(PACKAGE)","")
@@ -173,9 +173,9 @@ endif
 #  Install the bootstrap script so that installations can run it
 #  to generate test certs.
 #
-$(R)$(raddbdir)/certs/bootstrap: raddb/certs/bootstrap
-	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+$(R)$(confdir)/certs/bootstrap: raddb/certs/bootstrap
+	${Q}echo INSTALL $(patsubst $(R)$(confdir)/%,raddb/%,$@)
+	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(confdir)/%,raddb/%,$@) $@
 
 #  List directories before the file targets.
 #  It's not clear why GNU Make doesn't deal well with this.

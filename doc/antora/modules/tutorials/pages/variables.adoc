@@ -32,7 +32,7 @@ sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
 sbindir = ${exec_prefix}/sbin
 logdir = ${localstatedir}/log/radius
-raddbdir = ${sysconfdir}/raddb
+confdir = ${sysconfdir}/raddb
 radacctdir = ${logdir}/radacct
 ----
 

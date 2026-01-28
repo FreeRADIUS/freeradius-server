@@ -114,7 +114,7 @@ src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 define include_defs
 #define LOGDIR		"${logdir}"
 #define LIBDIR		"${libdir}"
-#define CONFDIR		"${raddbdir}"
+#define CONFDIR		"${confdir}"
 #define RUNDIR		"${RUNDIR}"
 #define SBINDIR		"${sbindir}"
 #define RADIR		"${radacctdir}"

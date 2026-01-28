@@ -61,7 +61,7 @@ sysconfdir = @sysconfdir@
 localstatedir = @localstatedir@
 sbindir = @sbindir@
 logdir = @logdir@
-raddbdir = @raddbdir@
+confdir = @confdir@
 radacctdir = @radacctdir@
 
 #
@@ -74,7 +74,6 @@ name = radiusd
 #
 #  Location of config and logfiles.
 #
-confdir = ${raddbdir}
 modconfdir = ${confdir}/mods-config
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
@@ -163,7 +162,7 @@ pidfile = ${run_dir}/${name}.pid
 #
 #  An example panic action for opening an automated session in GDB would be:
 #
-#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
+#panic_action = "gdb -silent -x ${confdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
 #
 #  NOTE: That command can be used on a production system.
 #
@@ -456,7 +455,7 @@ ENV {
 	#  This also permits the server to use those credentials when it is
 	#  run in debug mode.
 	#
-#	KRB5_CLIENT_KTNAME = ${raddbdir}/radiusd.keytab
+#	KRB5_CLIENT_KTNAME = ${confdir}/radiusd.keytab
 
 	#
 	#  `LD_PRELOAD` is special.  It is normally set before the
@@ -673,7 +672,7 @@ global {
 #  Some of these flags can also be passed on the command line as
 #  `-S flag=value`.
 #
-#  Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
+#  Dictionary migration instructions can be found in `${confdir}/dictionary`.
 #
 migrate {
 }

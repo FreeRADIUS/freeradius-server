@@ -678,10 +678,9 @@ ACLOCAL
 RUSERS
 SNMPWALK
 SNMPGET
-modconfdir
 mibdir
 dictdir
-raddbdir
+confdir
 radacctdir
 logdir
 openssl_version_check_config
@@ -6219,7 +6218,7 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $radacctdir" >&5
 printf "%s\n" "$radacctdir" >&6; }
 
-raddbdir='${sysconfdir}/raddb'
+confdir='${sysconfdir}/raddb'
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking raddbdir" >&5
 printf %s "checking raddbdir... " >&6; }
 
@@ -6233,7 +6232,7 @@ then :
   yes)
     ;;
   [\\/$]* | ?:[\\/]* )
-    raddbdir="$withval"
+    confdir="$withval"
     ;;
   *)
     as_fn_error $? "expected an absolute directory name for --with-raddbdir: $withval" "$LINENO" 5
@@ -6243,8 +6242,8 @@ then :
 fi
 
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
-printf "%s\n" "$raddbdir" >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $confdir" >&5
+printf "%s\n" "$confdir" >&6; }
 
 dictdir='${datarootdir}/freeradius/dictionary'
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking dictdir" >&5
@@ -6299,8 +6298,6 @@ fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $mibdir" >&5
 printf "%s\n" "$mibdir" >&6; }
-
-modconfdir='${raddbdir}/mods-config'
 
 
 

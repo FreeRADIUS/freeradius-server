@@ -40,7 +40,7 @@ sysconfdir=@sysconfdir@
 export LD_LIBRARY_PATH LD_RUN_PATH LD_PRELOAD
 
 RADIUSD=$sbindir/radiusd
-CONFDIR=@raddbdir@
+CONFDIR=@confdir@
 DESC="FreeRADIUS"
 
 #

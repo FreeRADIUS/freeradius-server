@@ -13,7 +13,7 @@ ifneq "$(TARGETNAME)" ""
 install: $(R)$(modconfdir)/mruby/example.rb
 
 $(R)$(modconfdir)/mruby: | $(R)$(modconfdir)
-	@echo INSTALL $(patsubst $(R)${raddbdir}%,raddb%,$@)
+	@echo INSTALL $(patsubst $(R)$(confdir)%,raddb%,$@)
 	@$(INSTALL) -d -m 750 $@
 
 $(R)$(modconfdir)/mruby/example.rb: src/modules/rlm_mruby/example.rb | $(R)$(modconfdir)/mruby

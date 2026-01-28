@@ -27,7 +27,7 @@ mandir          = /usr/share/man
 libdir          = /usr/lib/$(package)
 logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
-raddbdir        = /etc/$(package)
+confdir        = /etc/$(package)
 
 modulelist=krb5 ldap redis rest yubikey
 sqldriverlist=freetds mysql unixodbc postgresql
@@ -99,7 +99,7 @@ endif
 		--libdir=$(libdir) \
 		--datadir=/usr/share \
 		--localstatedir=/var \
-		--with-raddbdir=$(raddbdir) \
+		--with-raddbdir=$(confdir) \
 		--with-logdir=/var/log/$(package) \
 		--with-large-files \
 		--with-udpfromto \

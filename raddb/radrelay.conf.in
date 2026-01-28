@@ -74,7 +74,7 @@ sysconfdir = @sysconfdir@
 localstatedir = @localstatedir@
 sbindir = @sbindir@
 logdir = @logdir@
-raddbdir = @raddbdir@
+confdir = @confdir@
 radacctdir = @radacctdir@
 
 #
@@ -87,7 +87,6 @@ name = radrelay
 #
 #  Location of config and logfiles.
 #
-confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/${name}
 libdir = @libdir@
 pidfile = ${run_dir}/${name}.pid
