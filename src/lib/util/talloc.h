@@ -183,6 +183,7 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 
 void		*_talloc_realloc_zero(const void *ctx, void *ptr, size_t elem_size, unsigned count, const char *name);
 
+#undef talloc_realloc_zero
 #define talloc_realloc_zero(_ctx, _ptr, _type, _count) \
     (_type *)_talloc_realloc_zero((_ctx), (_ptr), sizeof(_type), _count, #_type)
 
