@@ -16,14 +16,18 @@ inter-module queries, which significantly extends its usefulness. In this
 exercise, we will work through a number of different examples of configuring
 inter-module calls.
 
+== Basic Program Execution
+
 To start, open `raddb/mods-available/exec` and read the sample configuration for
 the `exec` module. Then, edit the users file to add the following entry at the
 top:
 
 -------------------------------------------------------------------------------
 bob Password.Cleartext := "hello"
-    Callback-Id = "%exec('/bin/echo', "Hello, there")
+    Callback-Id = "%exec('/bin/echo', 'Hello, there')"
 -------------------------------------------------------------------------------
+
+**What this does:**User bob logs in with password `hello` and the server runs the program `/bin/echo` with the text 'Hello, there'.Whatever the program outputs becomes the value of `Callback-Id` , the client receives this value in the response.
 
 The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
 many systems you can use the following command:
