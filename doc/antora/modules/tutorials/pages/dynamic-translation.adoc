@@ -130,34 +130,104 @@ files - files - Looking for key "bob"
 (0)  Finished request
 -------------------------------------------------------------------------------
 
-Dynamically translated strings may also be used as "check items" to match
-requests coming in to the server. The following examples show how those strings
-(or run-time variables) may be used to both match a request and to configure
-dynamic responses.
+== Dynamic Check Items with Conditional Matching
 
-You should use the `bob-login-one.sh` script to send a request to match the
-first entry and should send another request with a different NAS-Port.
+Dynamically translated strings may also be used as `check items` to match requests coming in to the server. The following examples show how those strings (or run-time variables) may be used to both match a request and to configure dynamic responses.
+
+You should send test packets to match the first entry and should send another request with a different NAS-Port.
 
 -------------------------------------------------------------------------------
-bob	Password.Cleartext := "hello", NAS-Port == "%exec('/usr/bin/id', '-u')"
-	Reply-Message = "Your port is very nice.",
-	Session-Timeout = "%{60 * 60}"
+bob     Password.Cleartext := "hello", NAS-Port == "%exec('/bin/id', '-u')"
+        Reply-Message = "Your port is very nice.",
+        Session-Timeout = "%{60 * 60}",
 
-bob	Password.Cleartext := "hello", NAS-Port != "%exec('/usr/bin/id', '-u')"
+bob     Password.Cleartext := "hello", NAS-Port != "%exec('/bin/id', '-u')"
         Reply-Message = "Your port is less nice.",
-        Session-Timeout = "%{60 * 2}"
+        Session-Timeout = "%{60 * 2}",
 -------------------------------------------------------------------------------
 
-The run-time variables may be nested, too. The following file entry
-demonstrates this nesting.
+** Both entries define the user `bob` with the password `hello`. The server determines its own user ID by executing the `id -u` command.
+	* First entry: If the NAS-Port from the request equals the server's user ID, use this entry
+  	Reply message: `Your port is very nice.`
+  	Timeout: 1 hour (3600 seconds)
+	* Second entry: If the NAS-Port from the request does not equal the server's user ID, use this entry
+  	Reply message: `Your port is less nice.`
+  	Timeout: 2 minutes (120 seconds)
+FreeRADIUS tries entries in order and uses the first one that matches.
+
+**Example:**
+	If server is running as root (UID = 0)
+	Request comes in with NAS-Port = 0 → First entry matches → `Your port is very nice.`
+	Request comes in with NAS-Port = 2000 → Second entry matches → `Your port is less nice.`
+
+You can find the UID by running the following command:
+-------------------------------------------------------------------------------
+/bin/id -u
+-------------------------------------------------------------------------------
+
+Send a test packet to verify the server’s response as Your port is very nice using:
+-------------------------------------------------------------------------------
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 0  
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+-------------------------------------------------------------------------------
+
+Debug output
+-------------------------------------------------------------------------------
+files - files - Looking for key "bob"
+(0)      files - | exec
+(0)      files - | %exec({/bin/id}{-u})
+proto_radius_udp - Received Access-Request ID 17 length 98 radius_udp server * port 1812
+Ignoring retransmit from client localhost - we are still processing the request
+(0)        files - pid 270061 (stdout) - 0\n
+(0)        files - Program exited with status code 0
+(0)        files - xlat - Resuming execution
+(0)        files - | %exec(...)
+(0)        files - | --> 0
+(0)      files - files - Found match "bob" on line 5 of ./scripts/bin/../../raddb/mods-config/files/authorize
+(0)      files - files - Preparing attribute updates:
+(0)        files - Password.Cleartext := hello
+(0)        files - Reply-Message = Your port is very nice.
+(0)        files - Session-Timeout = %{60 * 60}
+(0)          files - | *
+(0)          files - | ({60} * {60})
+(0)          files - | --> 3600
+(0)      files (ok)
+-------------------------------------------------------------------------------
+
+Verify by sending a test packet to receive the response Your port is less nice.
 
 -------------------------------------------------------------------------------
-bob	Password.Cleartext := "hello"
-	Session-Timeout = "%{60 * %exec(/usr/bin/id -u})"
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
 -------------------------------------------------------------------------------
 
-In this case, the user "bob" is given one minute of access time,
-multiplied by the value of the "UID" of the RADIUS server.
+Debug output
+-------------------------------------------------------------------------------
+files - pid 270077 (stdout) - 0\n
+(1)        files - Program exited with status code 0
+(1)        files - xlat - Resuming execution
+(1)        files - | %exec(...)
+(1)        files - | --> 0
+(1)      files - files - Found match "bob" on line 9 of ./scripts/bin/../../raddb/mods-config/files/authorize
+(1)      files - files - Preparing attribute updates:
+(1)        files - Password.Cleartext := hello
+(1)        files - Reply-Message = Your port is less nice.
+(1)        files - Session-Timeout = %{60 * 2}
+(1)          files - | *
+(1)          files - | ({60} * {2})
+(1)          files - | --> 120
+(1)      files (ok)
+-------------------------------------------------------------------------------
+
+These check items demonstrate how dynamic expansion can be used in conditional logic. The server evaluates the expression and compares it to the incoming request attribute to determine which entry to use for the user.
+
+
 
 == Further considerations
 
