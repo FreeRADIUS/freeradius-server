@@ -132,4 +132,5 @@ fr_process_module_t process_test = {
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_test,
+	.packet_type	= &attr_packet_type,
 };
