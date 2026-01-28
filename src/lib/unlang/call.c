@@ -161,7 +161,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 		return UNLANG_ACTION_FAIL;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	attr_packet_type = virtual_server_packet_type_by_cs(server_cs);
 	if (!attr_packet_type) {
 		REDEBUG("No Packet-Type attribute available");
 		return UNLANG_ACTION_FAIL;
