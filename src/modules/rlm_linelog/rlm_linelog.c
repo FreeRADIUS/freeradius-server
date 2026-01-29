@@ -122,6 +122,7 @@ typedef struct {
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
 		bool			fsync;			//!< fsync after each write.
+		fr_time_delta_t		max_idle;		//!< How long to keep file metadata around without activity.
 	} file;
 
 	struct {
@@ -147,6 +148,7 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },
+	{ FR_CONF_OFFSET("max_idle", rlm_linelog_t, file.max_idle), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -966,7 +968,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 		if (!cf_pair_find(cs, "filename")) goto no_filename;
 
-		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true,
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, inst->file.max_idle, true,
 						       inst->triggers, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
