@@ -804,7 +804,7 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 	default:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
 
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+		RDEBUGX(lvl, "%s%s%pV", prefix ? prefix : "", fr_sbuff_start(oid_buff), &vp->data);
 		break;
 	}
 }
