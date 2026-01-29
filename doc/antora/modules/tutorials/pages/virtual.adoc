@@ -22,6 +22,11 @@ A `virtual server` is a configuration file that contains sections which process 
 - *accounting <type>* - Run policies for a particular value of `Acct-Status-Type`
 - *send Accounting-Response* - Run policies when receiving an `Accounting-Response` packet
 
+**Default behavior:**  All site configurations are stored in the sites-available directory, while only the active (running) sites are present in sites-enabled. To activate a site, a symbolic link must be created in sites-enabled that points to the corresponding configuration in sites-available.
+
+**Best practice:**  Always create or modify site configurations in sites-available, and then enable them by creating a symbolic link in sites-enabled.
+
+
 Create a new file `raddb/sites-enabled/virtual`. Put the following text
 into it:
 
