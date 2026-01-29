@@ -1216,6 +1216,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	void				*instance = vs->process_mi->data;
 	CONF_SECTION			*server = vs->server_cs;
 	int				i, found;
+	bool				fail;
 	CONF_SECTION			*subcs = NULL;
 
 	found = 0;
@@ -1228,7 +1229,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	 *	definitely want to tell people when running in debug mode.
 	 */
 	if (check_config || DEBUG_ENABLED) {
-		bool fail = false;
+		fail = false;
 
 		while ((subcs = cf_section_next(server, subcs)) != NULL) {
 			char const *name;
@@ -1381,6 +1382,8 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 
 	if (!check_config && !DEBUG_ENABLED) return found;
 
+	fail = false;
+
 	/*
 	 *	Check for 'send FOO' and 'recv BAR' which are unused.
 	 */
@@ -1412,7 +1415,8 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
 			cf_log_err(subcs, "Unused processing section %s ... {", name);
 			cf_log_err(subcs, "If this is intentional, please rename it to '-%s'", name);
-			return -1;
+			fail = true;
+			continue;
 		}
 
 		name2 = cf_section_name2(subcs);
@@ -1422,6 +1426,12 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
 		}
 	}
+
+	/*
+	 *	Be nice to people, and complaing about ALL unused processing sections.  That way they don't
+	 *	have to run the server many, many, times to see all of the errors.
+	 */
+	if (fail) return -1;
 
 	return found;
 }
