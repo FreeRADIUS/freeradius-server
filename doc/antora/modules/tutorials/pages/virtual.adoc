@@ -1,28 +1,26 @@
 = Virtual Servers
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To understand how to create and use a new virtual server.
 
 *Time:* 20-30 minutes
 
 *File:*
 
-- `etc/raddb/sites-enabled/virtual`
+- `sites-enabled/virtual`
+- `sites-available/virtual`
 
-*documentation page:* raddb/sites-available/README
 
-A "virtual server" is a configuration file that contains the
-following sections:
+A `virtual server` is a configuration file that contains sections which process packets. They can also include listen sections, along with a few others.
 
 - *listen* Defines a new socket.
-- *authorize* The authorization section
-- *authenticate* The authentication section
-- *post-auth* The post-authentication section
-- *pre-proxy* The pre-proxy section
-- *post-proxy* The post-proxy section
-- *preacct* The pre-accounting section
-- *accounting* The accounting section
+- *recv Access-Request* - Run policies when receiving an `Access-Request` packet
+- *authenticate <name>* - Run an authentication method
+- *send Access-Accept* - Run policies when sending an `Access-Request`
+- *send Access-Reject* - Run policies when sending an `Access-Reject`
+- *send Access-Challenge* - Run policies when sending an `Access-Challenge`
+- *recv Accounting-Request* - Run policies when receiving an `Accounting-Request` packet
+- *accounting <type>* - Run policies for a particular value of `Acct-Status-Type`
+- *send Accounting-Response* - Run policies when receiving an `Accounting-Response` packet
 
 Create a new file `raddb/sites-enabled/virtual`. Put the following text
 into it:
