@@ -66,9 +66,9 @@ typedef enum {
 
 static fr_table_num_sorted_t const radsnmp_command_str[] = {
 	{ L(""),		RADSNMP_EXIT },			//!< Terminate radsnmp.
-	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ L("get"),	RADSNMP_GET },			//!< Get the value of an OID.
 	{ L("getnext"), 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
+	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
 	{ L("set"),	RADSNMP_SET },			//!< Set the value of an OID.
 };
 static size_t radsnmp_command_str_len = NUM_ELEMENTS(radsnmp_command_str);
@@ -97,11 +97,13 @@ typedef struct {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_snmp;
 
 extern fr_dict_autoload_t radsnmp_dict[];
 fr_dict_autoload_t radsnmp_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_snmp, .proto = "snmp" },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -115,9 +117,9 @@ static fr_dict_attr_t const *attr_vendor_specific;
 extern fr_dict_attr_autoload_t radsnmp_dict_attr[];
 fr_dict_attr_autoload_t radsnmp_dict_attr[] = {
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_radius },
-	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_radius },
+	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
+	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
 	DICT_AUTOLOAD_TERMINATOR
@@ -1043,6 +1045,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	if (!fr_dict_global_ctx_init(NULL, true, conf->dict_dir)) {
+		fr_perror("radsnmp");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	if (fr_dict_autoload(radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
@@ -1057,6 +1064,12 @@ int main(int argc, char **argv)
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}
+
+	if (fr_radius_global_init() < 0) {
+		fr_perror("radsnmp");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
