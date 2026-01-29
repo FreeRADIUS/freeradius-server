@@ -890,7 +890,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 	 *	Don't re-initialize data which was already parsed.
 	 */
 	cp = cf_pair_find(cs, rule->name1);
-	if (cp && cp->parsed) return 0;
+	if (cp && cp->item.parsed) return 0;
 
 	if ((rule->type != FR_TYPE_STRING) &&
 	    (!(rule->flags & CONF_FLAG_FILE_READABLE)) &&
@@ -922,7 +922,7 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 			CONF_PAIR *cp;
 
 			cp = cf_item_to_pair(ci);
-			if (cp->parsed || cp->referenced || (ci->lineno < 0)) continue;
+			if (cp->item.parsed || cp->item.referenced || (ci->lineno < 0)) continue;
 
 			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
 			     ci->filename, ci->lineno,
