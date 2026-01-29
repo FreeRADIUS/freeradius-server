@@ -32,6 +32,7 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 
@@ -63,6 +64,8 @@ typedef struct {
 struct exfile_s {
 	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
 	fr_time_delta_t		max_idle;		//!< Maximum idle time for a descriptor.
+							///< If this is zero, the descriptor will be closed
+							///< immediately after it is unlocked.
 	fr_time_t      		last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
@@ -556,6 +559,17 @@ static int exfile_close_lock(exfile_t *ef, int fd)
 
 		(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
+
+		/*
+		 *	If max idle is 0, then clean up the file immediately
+		 *	this is mostly used for testing.
+		 */
+		if (fr_time_delta_eq(ef->max_idle, fr_time_delta_from_sec(0))) {
+			exfile_cleanup_entry(ef, &ef->entries[i]);
+			pthread_mutex_unlock(&(ef->mutex));
+			return 0;
+		}
+
 		pthread_mutex_unlock(&(ef->mutex));
 
 		exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RELEASE);
