@@ -110,48 +110,6 @@ realm acct_realm.example.com {
 (5) Define a virtual server to handle pre/post-proxy re-writing
 ```
 server home.example.com {
-	pre-proxy {
-```
-Insert pre-proxy rules here
-```
-	}
-
-	post-proxy {
-```
-Insert post-proxy rules here
-
-This will be called when the CURRENT packet failed
-to be proxied.  This may happen when one home server
-suddenly goes down, even though another home server
-may be alive.
-
-i.e. the current request has run out of time, so it
-cannot fail over to another (possibly) alive server.
-
-We want to respond to the NAS, so that it can stop
-resending the packet.  We write the packet to the
-"detail" file, where it will be read, and sent to
-another home server.
-
-```
-		Post-Proxy-Type Fail-Accounting {
-			detail.example.com
-		}
-
-```
-
-This section is run when there are problems
-proxying Access-Request packets
-
-```
-		Post-Proxy-Type Fail-Authentication {
-```
-add policies here
-```
-		}
-
-	}
-
 ```
 Read accounting packets from the detail file(s) for
 the home server.

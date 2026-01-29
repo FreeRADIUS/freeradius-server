@@ -150,50 +150,6 @@ locally.  Ensure that the accounting section
 ```
 		   ok
 	}
-
-```
-
-When the server decides to proxy a request to a home server,
-the proxied request is first passed through the pre-proxy
-stage.  This stage can re-write the request, or decide to
-cancel the proxy.
-
-Only a few modules currently have this method.
-
-```
-	pre-proxy {
-
-```
-If you want to have a log of packets proxied to a home
-server, uncomment the following line, and the
-'detail pre_proxy_log' section in radiusd.conf.
-pre_proxy_log
-```
-	}
-
-```
-
-When the server receives a reply to a request it proxied
-to a home server, the request may be massaged here, in the
-post-proxy stage.
-
-```
-	post-proxy {
-```
-
-
-If you want to have a log of replies from a home
-server, uncomment the following line, and the
-'detail post_proxy_log' section in radiusd.conf.
-post_proxy_log
-
-Uncomment the following line if you want to filter
-replies from remote proxies based on the rules
-defined in the 'attrs' file.
-
-attr_filter
-```
-	}
 }
 ```
 
@@ -202,5 +158,5 @@ attr_filter
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
