@@ -1,0 +1,91 @@
+string test_string
+string page_size
+string ret
+
+#  Remove old log files
+%file.rm("$ENV{MODULE_TEST_DIR}/test_batch.log")
+
+parallel {
+        %linelog_batch('bob')
+        %linelog_batch('bob')
+        %linelog_batch('bob')
+        %linelog_batch('bob')
+        %linelog_batch('bob')
+        %linelog_batch('bob')
+}
+
+
+test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_batch.log")
+
+if (test_string == 'bob') {
+	test_pass
+}
+else {
+        test_fail
+}
+
+# Some interpreter thing to advance time
+%time.advance(5s)
+
+parallel {
+        linelog_batch
+        linelog_batch
+}
+
+test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_batch.log")
+
+if (test_string == 'bob') {
+        test_pass
+}
+else {
+        test_fail
+}
+
+# Test timeouts/partial writes
+parallel {
+        linelog_batch
+        linelog_batch
+        linelog_batch
+        timeout 1s {
+                linelog_batch
+                %time.advance(5s)
+                linelog_batch
+        }
+        linelog_batch
+}
+
+#  Remove the file
+%file.rm("$ENV{MODULE_TEST_DIR}/test_batch.log")
+
+# Only run the rest of the test if we are on Linux, since it relies on tmpfs
+if (`/usr/bin/uname` == 'Linux') {
+        %file.rm("$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log")
+        %file.rmdir("$ENV{MODULE_TEST_DIR}/mnt")
+
+        # Mount the tmpfs
+        %file.mkdir("$ENV{MODULE_TEST_DIR}/mnt")
+        ret := `/usr/bin/sudo /usr/bin/mount -t tmpfs -o size=1K tmpfs $ENV{MODULE_TEST_DIR}/mnt`
+
+        page_size := `/usr/bin/stat -fc %%s $ENV{MODULE_TEST_DIR}/mnt`
+
+        ret := `/usr/bin/dd if=/dev/zero of=$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log bs=1 count=%{(int32)page_size - 6} status=none`
+
+        parallel {
+                %linelog_batch_partial('bob')
+                %linelog_batch_partial('bob')
+        }
+
+        %time.advance(5s)
+
+        if (%file.size('$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log') == 4094) {
+                test_pass
+        }
+        else {
+                test_fail
+        }
+
+        # Cleanup the test
+        %file.rm("$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log")
+        %exec('/usr/bin/sudo', '/usr/bin/umount', '-l', '$ENV{MODULE_TEST_DIR}/mnt')
+        %file.rmdir("$ENV{MODULE_TEST_DIR}/mnt")
+}
