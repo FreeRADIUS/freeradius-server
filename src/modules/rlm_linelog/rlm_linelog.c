@@ -20,7 +20,6 @@
  * @copyright 2004,2006 The FreeRADIUS server project
  * @copyright 2004 Alan DeKok (aland@freeradius.org)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -63,20 +62,11 @@ RCSID("$Id$")
 
 #include <sys/uio.h>
 
+#include "file.h"
+
 static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
 				   call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule);
-typedef enum {
-	LINELOG_DST_INVALID = 0,
-	LINELOG_DST_FILE,				//!< Log to a file.
-	LINELOG_DST_REQUEST,				//!< Log to the request->log
-	LINELOG_DST_SYSLOG,				//!< Log to syslog.
-	LINELOG_DST_UNIX,				//!< Log via Unix socket.
-	LINELOG_DST_UDP,				//!< Log via UDP.
-	LINELOG_DST_TCP,				//!< Log via TCP.
-	LINELOG_DST_STDOUT,				//!< Log to stdout.
-	LINELOG_DST_STDERR,				//!< Log to stderr.
-} linefr_log_dst_t;
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
 	{ L("file"),	LINELOG_DST_FILE	},
@@ -92,53 +82,6 @@ static fr_table_num_sorted_t const linefr_log_dst_table[] = {
 static size_t linefr_log_dst_table_len = NUM_ELEMENTS(linefr_log_dst_table);
 
 typedef struct {
-	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
-	fr_ipaddr_t		src_ipaddr;		//!< Send requests from a given src_ipaddr.
-	uint16_t		port;			//!< Network port.
-	fr_time_delta_t		timeout;		//!< How long to wait for read/write operations.
-} linelog_net_t;
-
-/** linelog module instance
- */
-typedef struct {
-	fr_pool_t		*pool;			//!< Connection pool instance.
-
-	char const		*delimiter;		//!< Line termination string (usually \n).
-	size_t			delimiter_len;		//!< Length of line termination string.
-
-	linefr_log_dst_t	log_dst;		//!< Logging destination.
-	char const		*log_dst_str;		//!< Logging destination string.
-
-	struct {
-		char const		*facility;		//!< Syslog facility string.
-		char const		*severity;		//!< Syslog severity string.
-		int			priority;		//!< Bitwise | of severity and facility.
-	} syslog;
-
-	struct {
-		mode_t			permissions;		//!< Permissions to use when creating new files.
-		char const		*group_str;		//!< Group to set on new files.
-		gid_t			group;			//!< Resolved gid.
-		exfile_t		*ef;			//!< Exclusive file access handle.
-		bool			escape;			//!< Do filename escaping, yes / no.
-		bool			fsync;			//!< fsync after each write.
-		fr_time_delta_t		max_idle;		//!< How long to keep file metadata around without activity.
-	} file;
-
-	struct {
-		char const		*path;			//!< Where the UNIX socket lives.
-		fr_time_delta_t		timeout;		//!< How long to wait for read/write operations.
-	} unix_sock;	// Lowercase unix is a macro on some systems?!
-
-	linelog_net_t		tcp;			//!< TCP server.
-	linelog_net_t		udp;			//!< UDP server.
-
-	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
-
-	bool			triggers;		//!< Do we do triggers.
-} rlm_linelog_t;
-
-typedef struct {
 	int			sockfd;			//!< File descriptor associated with socket
 } linelog_conn_t;
 
@@ -149,6 +92,9 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },
 	{ FR_CONF_OFFSET("max_idle", rlm_linelog_t, file.max_idle), .dflt = "30s" },
+	{ FR_CONF_OFFSET("buffer_count", rlm_linelog_t, file.buffer_count), .dflt = "1000" },
+	{ FR_CONF_OFFSET_IS_SET("buffer_delay", FR_TYPE_TIME_DELTA, 0, rlm_linelog_t, file.buffer_delay), .dflt = "1s" },
+	{ FR_CONF_OFFSET_IS_SET("buffer_expiry", FR_TYPE_TIME_DELTA, CONF_FLAG_HIDDEN, rlm_linelog_t, file.buffer_expiry), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -203,17 +149,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_DEPRECATED("syslog_severity", rlm_linelog_t, syslog.severity) },
 	CONF_PARSER_TERMINATOR
 };
-
-typedef struct {
-	tmpl_t			*log_src;		//!< Source of log messages.
-
-	fr_value_box_t		*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-							///< log messages).
-
-	fr_value_box_t		*log_head;		//!< Header to add to each new log file.
-
-	fr_value_box_t		*filename;		//!< File name, if output is to a file.
-} linelog_call_env_t;
 
 #define LINELOG_BOX_ESCAPE { \
 			  .func = linelog_escape_func, \
@@ -612,7 +547,25 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector[i].iov_len = inst->delimiter_len;
 		i++;
 	}
-	slen = linelog_write(inst, call_env, request, vector, i, with_delim);
+	if (inst->file.buffer_write) {
+		rlm_linelog_file_entry_t	*entry = NULL;
+
+		switch(file_enqueue_write(&entry, xctx->mctx, call_env, request, vector, i)) {
+		case LINELOG_BUFFER_WRITE_FAIL:
+			return XLAT_ACTION_FAIL;
+
+		case LINELOG_BUFFER_WRITE_DONE:
+			break;
+
+		case LINELOG_BUFFER_WRITE_YIELD:
+			return unlang_xlat_yield(request, file_batching_xlat_resume, file_batching_xlat_handle_signal, ~FR_SIGNAL_CANCEL, entry);
+		}
+
+		slen = entry->data_len;
+	} else {
+		slen = linelog_write(inst, call_env, request, vector, i, with_delim);
+	}
+
 	if (slen < 0) return XLAT_ACTION_FAIL;
 
 	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
@@ -678,6 +631,21 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(unlang_result_t *p
 			memcpy(&vector_p->iov_base, &(inst->delimiter), sizeof(vector_p->iov_base));
 			vector_p->iov_len = inst->delimiter_len;
 			vector_p++;
+		}
+	}
+
+	if (inst->file.buffer_write) {
+		rlm_linelog_file_entry_t	*entry = NULL;
+
+		switch(file_enqueue_write(&entry, mctx, call_env, request, vector, vector_len)) {
+		case LINELOG_BUFFER_WRITE_FAIL:
+			RETURN_UNLANG_FAIL;
+
+		case LINELOG_BUFFER_WRITE_DONE:
+			RETURN_UNLANG_OK;
+
+		case LINELOG_BUFFER_WRITE_YIELD:
+			return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, ~FR_SIGNAL_CANCEL, entry);
 		}
 	}
 
@@ -867,6 +835,26 @@ build_vector:
 		if (vector_len == 0) {
 			RDEBUG2("No data to write");
 			rcode = RLM_MODULE_NOOP;
+		}
+		else if (inst->file.buffer_write) {
+			linelog_buffer_action_t		ret;
+			rlm_linelog_file_entry_t	*entry = NULL;
+
+			ret = file_enqueue_write(&entry, mctx, call_env, request, vector_p, vector_len);
+
+			talloc_free(vpt);
+			talloc_free(vector);
+
+			switch (ret) {
+			case LINELOG_BUFFER_WRITE_FAIL:
+				RETURN_UNLANG_FAIL;
+
+			case LINELOG_BUFFER_WRITE_DONE:
+				RETURN_UNLANG_OK;
+
+			case LINELOG_BUFFER_WRITE_YIELD:
+				return unlang_module_yield(request, file_batching_mod_resume, file_batching_mod_handle_signal, ~FR_SIGNAL_CANCEL, entry);
+			}
 		} else {
 			rcode = linelog_write(inst, call_env, request, vector_p, vector_len, with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
 		}
@@ -987,6 +975,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				}
 			}
 		}
+
+		if (inst->file.buffer_count != 0 || fr_time_delta_unwrap(inst->file.buffer_delay) != 0) {
+			inst->file.buffer_write = true;
+
+			if (inst->file.buffer_delay_is_set && !inst->file.buffer_expiry_is_set) {
+				/*
+				 *	If only delay is set, set expiry to double that value
+				 */
+				inst->file.buffer_expiry = fr_time_delta_mul(inst->file.buffer_delay, 2);
+			}
+ 		} else {
+			inst->file.buffer_write = false;
+		}
 	}
 		break;
 
@@ -1072,6 +1073,31 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Initialise thread specific data strcuture
+ */
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_linelog_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
+
+	if (inst->log_dst == LINELOG_DST_FILE && inst->file.buffer_write) {
+		rlm_linelog_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_linelog_thread_t);
+		file_thread_init(thread, mctx->el->tl);
+	}
+
+	return 0;
+}
+
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_linelog_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
+
+	if (inst->log_dst == LINELOG_DST_FILE && inst->file.buffer_write) {
+		rlm_linelog_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_linelog_thread_t);
+		file_thread_detach(thread);
+	}
+	return 0;
+}
+
 /*
  *	Externally visible module definition.
  */
@@ -1084,7 +1110,10 @@ module_rlm_t rlm_linelog = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach
+		.detach		= mod_detach,
+		MODULE_THREAD_INST(rlm_linelog_thread_t),
+		.thread_instantiate = mod_thread_instantiate,
+		.thread_detach	= mod_thread_detach
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
