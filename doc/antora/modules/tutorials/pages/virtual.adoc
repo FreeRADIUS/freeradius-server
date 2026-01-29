@@ -22,33 +22,83 @@ A `virtual server` is a configuration file that contains sections which process 
 - *accounting <type>* - Run policies for a particular value of `Acct-Status-Type`
 - *send Accounting-Response* - Run policies when receiving an `Accounting-Response` packet
 
-**Default behavior:**  All site configurations are stored in the sites-available directory, while only the active (running) sites are present in sites-enabled. To activate a site, a symbolic link must be created in sites-enabled that points to the corresponding configuration in sites-available.
+**Default behavior:**  All site configurations are stored in the `sites-available` directory, while only the active (running) sites are present in `sites-enabled`. To activate a site, a symbolic link must be created in `sites-enabled` that points to the corresponding configuration in `sites-available`.
 
-**Best practice:**  Always create or modify site configurations in sites-available, and then enable them by creating a symbolic link in sites-enabled.
+**Best practice:**  Always create or modify site configurations in `sites-available`, and then enable them by creating a symbolic link in `sites-enabled`.
 
 
-Create a new file `raddb/sites-enabled/virtual`. Put the following text
-into it:
+== Create Virtual Server file
 
------------------------------------------------
-listen {
-    ipaddr = 127.0.0.1
-    port = 18273   # some random 5 digit number
-    type = auth
+Create a new file `sites-available/virtual`:
+
+[source,text]
+----
+server virtual {
+
+    listen authentication {
+        udp {
+            ipaddr = *
+            port = 20000 # some random 5 digit number
+        }
+    }
+
+    recv Access-Request {
+        control.Password.Cleartext := "hello"
+        pap
+    }
+
+    authenticate pap {
+        pap
+    }
+
 }
+----
 
-authorize {
-    control.Clearext-Password := "hello"
-    pap
-}
+This configuration defines a virtual FreeRADIUS server named `virtual` that listens for authentication requests on UDP port `20000` on all interfaces. The port value can be changed to any available UDP port as required. When an `Access-Request` packet is received, the server sets a cleartext password and processes the request using PAP authentication. The `authenticate pap` section explicitly handles PAP-based authentication by invoking the PAP module.
 
-authenticate {
-    pap
-}
------------------------------------------------
+== Enable the Virtual Server
 
-Start the server in debugging mode, and use `radtest` to send a PAP
-authentication request to the server at the port defined above.
+Create a symbolic link from `sites-available/` to `sites-enable/`:
+
+[source,text]
+----
+$ cd sites-enabled
+$ ln -s ../sites-available/virtual virtual
+----
+
+Verify the symbolic link was created:
+
+[source,text]
+----
+$ cat /sites-enabled/virtual
+----
+
+Start the server in debugging mode (`radiusd -X`), and use `radclient` to send a test packet.
+
+[source, bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+The debug mode shows the server successfully started, is listening on UDP port 20000, and has received an Access-Request for authentication:
+
+[source,text]
+----
+Scheduler created successfully with 1 networks and 1 workers
+#### Opening listener interfaces ####
+Listening on radius_udp server * port 20000 bound to virtual server default
+Ready to process requests
+...
+(0)    recv Access-Request {
+(0)      control.Password.Cleartext := "hello"
+(0)     ...
+(0)     }
+
+----
 
 == Questions
 
