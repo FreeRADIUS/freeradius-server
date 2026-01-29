@@ -1392,40 +1392,44 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	 *	process it.
 	 */
 	if (request->packet->dst_port == 0) {
+		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+		    main_config.hoist_state && !request->state) {
+			fr_state_get_vps(request, request->packet);
+		}
+
 		request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 		return 1;
 	}
 
-	if (!request->packet->vps) { /* FIXME: check for correct state */
-		rcode = request->listener->decode(request->listener, request);
+	/*
+	 *	It was already decoded.  Don't do anything more.
+	 *
+	 *	FIXME: check for correct state.
+	 */
+	if (request->packet->vps) return 0;
 
-#ifdef WITH_UNLANG
-		if (debug_condition) {
-			/*
-			 *	Ignore parse errors.
-			 */
-			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition) == 1) {
-				request->log.lvl = L_DBG_LVL_2;
-				request->log.func = vradlog_request;
-			}
-		}
-#endif
-
-		debug_packet(request, request->packet, true);
-	} else {
-		rcode = 0;
-	}
-
+	rcode = request->listener->decode(request->listener, request);
 	if (rcode < 0) {
 		RATE_LIMIT(INFO("Dropping packet without response because of error: %s (from client %s)", fr_strerror(), request->client->shortname));
 		request->reply->offset = -2; /* bad authenticator */
 		return 0;
 	}
 
-	if (!request->username) {
-		request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+#ifdef WITH_UNLANG
+	if (debug_condition) {
+		/*
+		 *	Ignore parse errors.
+		 */
+		if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition) == 1) {
+			request->log.lvl = L_DBG_LVL_2;
+			request->log.func = vradlog_request;
+		}
 	}
+#endif
+
+	debug_packet(request, request->packet, true);
+	request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 
 	return 1;
 }
