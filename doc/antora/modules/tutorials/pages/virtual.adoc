@@ -1,7 +1,5 @@
 = Virtual Servers
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To understand how to create and use a new virtual server.
 
 *Time:* 20-30 minutes
@@ -19,7 +17,7 @@ They can also include `listen` sections, long with a few others.
 For RADIUS, the common sections are:
 
 - *listen* Defines a new socket.
-- *recv Access-Request* Run pilicies when receiving an `Access-Request` packet
+- *recv Access-Request* Run policies when receiving an `Access-Request` packet
 - *authenticate <name>* Run an authentication method
 - *send Access-Accept* Run policies when sending an `Access-Accept`
 - *send Access-Reject* Run policies when sending an `Access-Reject`
@@ -28,28 +26,94 @@ For RADIUS, the common sections are:
 - *accounting <type>* Run policies for a particular value of `Acct-Status-Type`
 - *send Accounting-Response* Run policies when receiving an `Accounting-Response` packet
 
-Create a new file `sites-enabled/virtual`. Put the following text
-into it:
+**Default behavior:**
+All site configurations are stored in the `sites-availabl`e directory,
+while only the active (running) sites are present in sites-enabled. To
+activate a site, a symbolic link must be created in sites-enabled that
+points to the corresponding configuration in sites-available.
 
------------------------------------------------
-listen {
-    ipaddr = 127.0.0.1
-    port = 18273   # some random 5 digit number
-    type = auth
-}
+**Best practice:**
+Always create or modify site configurations in `sites-available`, and
+then enable them by creating a symbolic link in `sites-enabled`.
 
-recv Access-Request {
-    control.Clearext-Password := "hello"
-    pap
-}
 
-authenticate pep {
-    pap
-}
------------------------------------------------
+== Create Virtual Server file
 
-Start the server in debugging mode, and use `radtest` to send a PAP
-authentication request to the server at the port defined above.
+Create a new file `sites-available/virtual`:
+
+[source,text]
+----
+server virtual {
+
+    listen authentication {
+        udp {
+            ipaddr = *
+            port = 20000
+        }
+    }
+
+    recv Access-Request {
+        control.Password.Cleartext := "hello"
+        pap
+    }
+
+    authenticate pap {
+        pap
+    }
+----
+
+This configuration defines a virtual FreeRADIUS server named `virtual`
+that listens for authentication requests on UDP port `20000` on all
+interfaces. The port value can be changed to any available UDP port as
+required. When an `Access-Request` packet is received, the server sets
+a cleartext password and processes the request using PAP
+authentication. The `authenticate pap` section explicitly handles
+PAP-based authentication by invoking the PAP module.
+
+== Enable the Virtual Server
+
+Create a symbolic link from `sites-available/` to `sites-enable/`:
+
+[source,text]
+----
+$ cd sites-enabled
+$ ln -s ../sites-available/virtual virtual
+----
+
+Verify the symbolic link was created:
+
+[source,text]
+----
+$ cat sites-enabled/virtual
+----
+
+Start the server in debugging mode (`radiusd -X`), and use `radclient` to send a test packet.
+
+[source, bash]
+----
+echo 'User-Name = "bob"
+CHAP-Password = "hello"
+NAS-IP-Address = 127.0.0.1
+NAS-Port = 501
+NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+The debug mode shows the server successfully started, is listening on
+UDP port 20000, and has received an Access-Request for authentication:
+
+[source,text]
+----
+Scheduler created successfully with 1 networks and 1 workers
+#### Opening listener interfaces ####
+Listening on radius_udp server * port 20000 bound to virtual server default
+Ready to process requests
+...
+(0)    recv Access-Request {
+(0)      control.Password.Cleartext := "hello"
+(0)     ...
+(0)     }
+
+----
 
 == Questions
 
@@ -57,7 +121,7 @@ authentication request to the server at the port defined above.
 2.  How can you make that virtual server use CHAP or MS-CHAP?
 3.  What happens when you try different User-Names? Why does this result occur?
 4.  How can you make the above configuration authenticate different
-users via different passwords?
+    users via different passwords?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
