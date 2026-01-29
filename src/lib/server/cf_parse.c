@@ -1226,6 +1226,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 
 	cf_log_debug(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
 
+	cf_item_mark_parsed(cs);
 	return 0;
 }
 

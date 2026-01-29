@@ -1379,6 +1379,50 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		return -1;
 	}
 
+	if (!check_config && !DEBUG_ENABLED) return found;
+
+	/*
+	 *	Check for 'send FOO' and 'recv BAR' which are unused.
+	 */
+	for (subcs = cf_section_first(server);
+	     subcs != NULL;
+	     subcs = cf_section_next(server, subcs)) {
+		char const *name, *name2;
+
+		if (cf_item_is_parsed(subcs)) continue;
+
+		name = cf_section_name1(subcs);
+
+		/*
+		 *	Allow them to "comment out" an entire block by prefixing the name with "-", ala
+		 *	"-sql".
+		 */
+		if (*name == '-') continue;
+
+		/*
+		 *	Local clients are parsed by the listener after the virtual server is bootstrapped.  So
+		 *	we just ignore them here.
+		 */
+		if (strcmp(name, "client") == 0) continue;
+
+		/*
+		 *	When checking the configuration, it is an error to have an unused "send FOO" or "recv
+		 *	BAR" section.
+		 */
+		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
+			cf_log_err(subcs, "Unused processing section %s ... {", name);
+			cf_log_err(subcs, "If this is intentional, please rename it to '-%s'", name);
+			return -1;
+		}
+
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			cf_log_warn(subcs, "Ignoring %s { - it is unused", name);
+		} else {
+			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
+		}
+	}
+
 	return found;
 }
 
@@ -1738,6 +1782,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 	 */
 	cf_data_remove(server_cs, fr_dict_t, "dict");
 	cf_data_add(server_cs, dict, "dict", false);
+	cf_item_mark_parsed(cs);
 
 	return dict;
 }

@@ -2233,6 +2233,7 @@ int unlang_compile(virtual_server_t const *vs,
 	 *	section is freed.
 	 */
 	cf_data_add(cs, c, NULL, true);
+	cf_item_mark_parsed(cs);
 	if (instruction) *instruction = c;
 
 	return 0;

@@ -584,6 +584,7 @@ fr_client_list_t *client_list_parse_section(CONF_SECTION *section, int proto, TL
 			goto error;
 		}
 
+		cf_item_mark_parsed(cs);
 	}
 
 	/*
@@ -916,6 +917,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 			c->limit.idle_timeout = fr_time_delta_wrap(0);
 	}
 
+	cf_item_mark_parsed(cs);
 	return c;
 }
 
