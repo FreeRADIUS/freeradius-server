@@ -1359,25 +1359,25 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 }
 
 
-/** Mark a pair as parsed
+/** Mark an item as parsed
  *
- * @param[in] cp	to mark as parsed.
+ * @param[in] ci	to mark as parsed.
  */
-void cf_pair_mark_parsed(CONF_PAIR *cp)
+void _cf_item_mark_parsed(CONF_ITEM *ci)
 {
-	cp->item.parsed = true;
+	ci->parsed = true;
 }
 
-/** Return whether a pair has already been parsed
+/** Return whether an item has already been parsed
  *
- * @param[in] cp	to check.
+ * @param[in] ci	to check.
  * @return
- *	- true if pair has been parsed.
+ *	- true if item has been parsed.
  *	- false if the pair hasn't been parsed.
  */
-bool cf_pair_is_parsed(CONF_PAIR *cp)
+bool _cf_item_is_parsed(CONF_ITEM *ci)
 {
-	return cp->item.parsed;
+	return ci->parsed;
 }
 
 /** Return the first child that's a #CONF_PAIR

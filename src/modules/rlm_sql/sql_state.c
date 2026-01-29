@@ -186,7 +186,7 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 			entry->rcode = rcode;	/* Override previous sql rcode */
 		}
 
-		cf_pair_mark_parsed(cp);		/* Make sure it doesn't emit a warning later */
+		cf_item_mark_parsed(cp);		/* Make sure it doesn't emit a warning later */
 	}
 
 	return 0;

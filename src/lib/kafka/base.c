@@ -191,7 +191,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 	}
 
 	MEM(*out = cf_pair_alloc(cs, rule->name1, value, T_OP_EQ, T_BARE_WORD, quote));
-	cf_pair_mark_parsed(*out);	/* Don't re-parse this */
+	cf_item_mark_parsed(*out);	/* Don't re-parse this */
 
 	return 0;
 }
@@ -460,7 +460,7 @@ static int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *ba
 		     cp_p;
 		     cp_p = cf_pair_find_next(cs, cp_p, rule->name1), i++) {
 			if (kafka_config_parse_single(&array[i], cp_p, rule) < 0) return -1;
-			cf_pair_mark_parsed(cp_p);
+			cf_item_mark_parsed(cp_p);
 		}
 
 		slen = talloc_array_concat(agg, array, kctx->string_sep);

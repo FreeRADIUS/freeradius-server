@@ -640,13 +640,13 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			cf_pair_debug_log(cs, cp, rule);
 
-			if (cf_pair_is_parsed(cp)) continue;
+			if (cp->item.parsed) continue;
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				return -1;
 			}
-			cf_pair_mark_parsed(cp);
+			cp->item.parsed = true;
 		}
 		if (array) *(void **)out = array;
 	/*
@@ -690,10 +690,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		cf_pair_debug_log(cs, cp, rule);
 
-		if (cf_pair_is_parsed(cp)) return 0;
+		if (cp->item.parsed) return 0;
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) return -1;
-		cf_pair_mark_parsed(cp);
+		cp->item.parsed = true;
 	}
 
 	return was_dflt ? 1 : 0;

@@ -133,6 +133,12 @@ void		_cf_lineno_set(CONF_ITEM *cs, int lineno);
 
 void		cf_item_free_children(CONF_ITEM *ci);
 
+#define		cf_item_mark_parsed(_cf) _cf_item_mark_parsed(CF_TO_ITEM(_cf))
+void		_cf_item_mark_parsed(CONF_ITEM *ci);
+
+#define		cf_item_is_parsed(_cf) _cf_item_is_parsed(CF_TO_ITEM(_cf))
+bool		_cf_item_is_parsed(CONF_ITEM *ci);
+
 /*
  *	Section manipulation and searching
  */
@@ -202,10 +208,6 @@ CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp, bool copy_meta);
 
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-
-void		cf_pair_mark_parsed(CONF_PAIR *cp);
-
-bool		cf_pair_is_parsed(CONF_PAIR *cp);
 
 CONF_PAIR	*cf_pair_first(CONF_SECTION const *cs);
 
