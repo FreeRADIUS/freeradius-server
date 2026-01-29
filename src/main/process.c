@@ -4201,6 +4201,7 @@ static int request_proxy_anew(REQUEST *request)
 
 		request->original_handle = request->handle;
 		request->handle = rad_proxy_to_virtual_server;
+		ASSERT_MASTER;
 		request_queue_or_run(request, request_running);
 		return 0;
 	}
