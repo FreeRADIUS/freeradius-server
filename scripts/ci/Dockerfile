@@ -131,6 +131,9 @@ RUN apt-get install -y --no-install-recommends \
 	apparmor-utils \
 	dovecot-imapd \
 	exim4 \
+	ipcalc \
+	iproute2 \
+	iputils-ping \
 	krb5-user \
 	ldap-utils \
 	mariadb-client \
