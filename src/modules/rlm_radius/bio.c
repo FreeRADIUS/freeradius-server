@@ -477,7 +477,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
-		   h->buffer, slen) != DECODE_FAIL_NONE) return;
+		   h->buffer, slen) != FR_RADIUS_FAIL_NONE) return;
 
 	fr_pair_list_free(&reply);	/* FIXME - Do something with these... */
 
@@ -685,11 +685,11 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 *	the logging destination of the module.
 	 */
 	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
-		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+		if (failure == FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
 
-		if (failure == DECODE_FAIL_MA_MISSING) {
+		if (failure == FR_RADIUS_FAIL_MA_MISSING) {
 			if (h->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
 				ERROR("We are configured with 'require_message_authenticator = true'");
 			} else {
@@ -1186,8 +1186,8 @@ static int8_t request_prioritise(void const *one, void const *two)
  * @param[in] data			to decode.
  * @param[in] data_len			Length of input data.
  * @return
- *	- DECODE_FAIL_NONE on success.
- *	- DECODE_FAIL_* on failure.
+ *	- FR_RADIUS_FAIL_NONE on success.
+ *	- FR_RADIUS_FAIL_* on failure.
  */
 static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			    bio_handle_t *h, request_t *request, bio_request_t *u,
@@ -1215,7 +1215,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
 		RPEDEBUG("Failed reading packet");
-		return DECODE_FAIL_UNKNOWN;
+		return FR_RADIUS_FAIL_UNKNOWN;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
 
@@ -1253,7 +1253,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	 */
 	if (fr_time_gt(u->retry.start, h->mrs_time)) h->mrs_time = u->retry.start;
 
-	return DECODE_FAIL_NONE;
+	return FR_RADIUS_FAIL_NONE;
 }
 
 static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t id)
@@ -2109,7 +2109,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	Decode the incoming packet.
 		 */
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
-		if (reason != DECODE_FAIL_NONE) continue;
+		if (reason != FR_RADIUS_FAIL_NONE) continue;
 
 		/*
 		 *	Only valid packets are processed
@@ -2302,7 +2302,7 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 *	Decode the incoming packet
 		 */
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
-		if (reason != DECODE_FAIL_NONE) continue;
+		if (reason != FR_RADIUS_FAIL_NONE) continue;
 
 		/*
 		 *	Only valid packets are processed
