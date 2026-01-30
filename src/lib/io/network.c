@@ -1405,7 +1405,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 	 */
 	s->ms = fr_message_set_create(s, num_messages,
 				      sizeof(fr_channel_data_t),
-				      size);
+				      size, false);
 	if (!s->ms) {
 		PERROR("Failed creating message buffers for network IO");
 		talloc_free(s);
@@ -1493,7 +1493,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	s->ms = fr_message_set_create(s, num_messages,
 				      sizeof(fr_channel_data_t),
-				      s->listen->default_message_size * s->listen->num_messages);
+				      s->listen->default_message_size * s->listen->num_messages, false);
 	if (!s->ms) {
 		PERROR("Failed creating message buffers for directory IO");
 		talloc_free(s);

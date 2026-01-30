@@ -309,7 +309,7 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 
 			ms = fr_message_set_create(worker, worker->config.message_set_size,
 						   sizeof(fr_channel_data_t),
-						   worker->config.ring_buffer_size);
+						   worker->config.ring_buffer_size, false);
 			fr_assert(ms != NULL);
 			fr_channel_responder_uctx_add(ch, ms);
 

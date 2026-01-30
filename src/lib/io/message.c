@@ -120,11 +120,13 @@ struct fr_message_set_s {
  * @param[in] num_messages size of the initial message array.  MUST be a power of 2.
  * @param[in] message_size the size of each message, INCLUDING fr_message_t, which MUST be at the start of the struct
  * @param[in] ring_buffer_size of the ring buffer.  MUST be a power of 2.
+ * @param[in] unlimited_size allow any message size to be allocated.  If false it is limited to ring_buffer_size / 2.
  * @return
  *	- NULL on error
  *	- newly allocated fr_message_set_t on success
  */
-fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t message_size, size_t ring_buffer_size)
+fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t message_size, size_t ring_buffer_size,
+					bool unlimited_size)
 {
 	fr_message_set_t *ms;
 
@@ -170,7 +172,11 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		return NULL;
 	}
 
-	ms->max_allocation = ring_buffer_size / 2;
+	/*
+	 * If unlimited size is allowed, set the max allocation to 1 << 29
+	 * which is based on the maximum ring buffer reservation of 1 << 30
+	 */
+	ms->max_allocation = unlimited_size ? 1 << 29 : ring_buffer_size / 2;
 
 	return ms;
 }
@@ -795,6 +801,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 {
 	int i;
 	fr_ring_buffer_t *rb;
+	size_t alloc_size;
 
 	/*
 	 *	And... we go through a bunch of hoops, all over again.
@@ -873,9 +880,15 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 alloc_rb:
 	/*
 	 *	Allocate another message ring, double the size
-	 *	of the previous maximum.
+	 *	of the previous maximum, or large enough to hold
+	 *	twice the requested size if that is larger.
+	 *	fr_ring_buffer_create will round to the next power of 2.
 	 */
-	rb = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->rb_array[ms->rb_max]) * 2);
+	alloc_size = fr_ring_buffer_size(ms->rb_array[ms->rb_max]) * 2;
+	if (alloc_size < m->rb_size) {
+		alloc_size = m->rb_size * 2;
+	}
+	rb = fr_ring_buffer_create(ms, alloc_size);
 	if (!rb) {
 		fr_strerror_const_push("Failed allocating ring buffer");
 		goto cleanup;
