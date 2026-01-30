@@ -653,7 +653,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 	/*
-	 *	Failed to start some workers, refuse to do anything!
+	 *	Failed to start some networks, refuse to do anything!
 	 */
 	if ((unsigned int)fr_dlist_num_elements(&sc->networks) < sc->config->max_networks) {
 		fr_schedule_destroy(&sc);
