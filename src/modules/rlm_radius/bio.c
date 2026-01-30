@@ -1215,7 +1215,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
 		RPEDEBUG("Failed reading packet");
-		return FR_RADIUS_FAIL_UNKNOWN;
+		return decode_ctx.reason;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
 
