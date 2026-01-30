@@ -145,13 +145,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
 		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
-				 "error reading socket - %s", fr_strerror());
+				 "%s", fr_strerror());
 		return data_size;
 	}
 
 	if (!data_size) {
 		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
-				 "no data received");
+				 "Received no data");
 		return 0;
 	}
 
@@ -159,21 +159,21 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	if (data_size < 20) {
 		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
-				 "received %zu which is smaller than minimum 20", packet_len);
+				 "Received packet length %zu", packet_len);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if (packet_len > inst->max_packet_size) {
 		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
-				 "received %zu which is larger than maximum %zu", packet_len, inst->max_packet_size);
+				 "Received packet length %zu");
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
 		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &address->socket,
-				 "received packet code %u", buffer[0]);
+				 "Received packet code %u", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
@@ -183,7 +183,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
 		proto_radius_log(li, thread->name, reason, &address->socket,
-				 "");
+				 "Received invalid packet");
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}

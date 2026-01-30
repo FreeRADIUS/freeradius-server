@@ -208,18 +208,17 @@ void proto_radius_log(fr_listen_t *li, char const *name, fr_radius_decode_fail_t
 	if (*fmt) msg = talloc_asprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	DEBUG2("proto_%s - failed reading socket %s - %s",
-	       li->app_io->common.name, name, fr_radius_decode_fail_reason[reason]);
-
 	if (sock) {
-		DEBUG2("proto_%s - from client %pV port %u",
-		       li->app_io->common.name, fr_box_ipaddr(sock->inet.src_ipaddr), sock->inet.src_port);
+		DEBUG2("proto_%s - discarding packet on socket %s from client %pV port %u - %s (%s)",
+		       li->app_io->common.name, name,
+		       fr_box_ipaddr(sock->inet.src_ipaddr), sock->inet.src_port,
+		       msg,
+		       fr_radius_decode_fail_reason[reason]);
+	} else {
+		DEBUG2("proto_%s - discarding packet on socket %s - %s (%s)",
+		       li->app_io->common.name, name, msg, fr_radius_decode_fail_reason[reason]);
 	}
 
-	if (!msg) return;
-
-	DEBUG2("proto_%s - %s",
-	       li->app_io->common.name, name, msg);
 	talloc_free(msg);
 }
 DIAG_ON(format-nonliteral)
