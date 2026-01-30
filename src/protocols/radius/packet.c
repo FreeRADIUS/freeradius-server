@@ -109,12 +109,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  */
 bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
-	char host_ipaddr[INET6_ADDRSTRLEN];
-
 	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_message_authenticator, reason)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
-					 inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
-						   host_ipaddr, sizeof(host_ipaddr)));
 		return false;
 	}
 

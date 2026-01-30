@@ -505,6 +505,32 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 	return 0;
 }
 
+char const *fr_radius_decode_fail_reason[DECODE_FAIL_MAX + 1] = {
+	[DECODE_FAIL_NONE] = "none",
+	[DECODE_FAIL_MIN_LENGTH_PACKET] = "packet is smaller than the minimum packet length",
+	[DECODE_FAIL_MAX_LENGTH_PACKET] = "packet is larger than the maximum packet length",
+	[DECODE_FAIL_MIN_LENGTH_FIELD] = "header 'length' field has a value smaller than the minimum packet length",
+	[DECODE_FAIL_MIN_LENGTH_MISMATCH] = "header 'length' field has a value larger than the received data",
+	[DECODE_FAIL_UNKNOWN_PACKET_CODE] = "unknown packet code",
+	[DECODE_FAIL_UNEXPECTED_REQUEST_CODE] = "unexpected request code",
+	[DECODE_FAIL_UNEXPECTED_RESPONSE_CODE] = "unexpected response code",
+	[DECODE_FAIL_TOO_MANY_ATTRIBUTES] = "packet contains too many attributes",
+
+	[DECODE_FAIL_INVALID_ATTRIBUTE] = "attribute number 0 is invalid",
+
+	[DECODE_FAIL_HEADER_OVERFLOW] = "attribute header overflows the packet",
+	[DECODE_FAIL_ATTRIBUTE_TOO_SHORT] = "attribute 'length' field contains invalid value",
+	[DECODE_FAIL_ATTRIBUTE_OVERFLOW] = "attribute 'length' field overflows the packet",
+
+	[DECODE_FAIL_MA_INVALID_LENGTH] = "Message-Authenticate has invalid length",
+	[DECODE_FAIL_MA_MISSING] = "Message-Authenticator is required for this packet, but it is missing",
+	[DECODE_FAIL_MA_INVALID] = "Message-Authenticator fails verification (shared secret is incorrect)",
+	[DECODE_FAIL_PROXY_STATE_MISSING] = "Proxy-State is required for this request, but it is missing",
+
+	[DECODE_FAIL_VERIFY] = "packet fails verification (shared secret is incorrect)",
+	[DECODE_FAIL_UNKNOWN] = "???",
+	[DECODE_FAIL_MAX] = "???",
+};
 
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
@@ -535,8 +561,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("Packet is too short (received %zu < minimum 20)",
-					 packet_len);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
 		goto finish;
 	}
@@ -555,7 +579,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if ((packet[0] == 0) ||
 	    (packet[0] >= FR_RADIUS_CODE_MAX)) {
-		FR_DEBUG_STRERROR_PRINTF("Unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
 	}
@@ -581,10 +604,10 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		break;
 
 		/*
-		 *	Message-Authenticator is not required for all other packets.
+		 *	Message-Authenticator is not required for all other packets, but is required if the
+		 *	caller asks for it.
 		 */
 	default:
-		require_message_authenticator = false;
 		break;
 	}
 
@@ -600,8 +623,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("Length in header is too small (length %zu < minimum 20)",
-					 totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
 		goto finish;
 	}
@@ -630,8 +651,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	i.e. No response to the NAS.
 	 */
 	if (totallen > packet_len) {
-		FR_DEBUG_STRERROR_PRINTF("Packet is truncated (received %zu <  packet header length of %zu)",
-					 packet_len, totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
 		goto finish;
 	}
@@ -668,7 +687,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute header.
 		 */
 		if ((end - attr) < 2) {
-			FR_DEBUG_STRERROR_PRINTF("Attribute header overflows the packet");
 			failure = DECODE_FAIL_HEADER_OVERFLOW;
 			goto finish;
 		}
@@ -677,7 +695,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			FR_DEBUG_STRERROR_PRINTF("Invalid attribute 0 at offset %zd", attr - packet);
 			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
 			goto finish;
 		}
@@ -687,8 +704,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			FR_DEBUG_STRERROR_PRINTF("Attribute %u is too short at offset %zd",
-						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
 			goto finish;
 		}
@@ -698,8 +713,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute, it's a bad packet.
 		 */
 		if ((attr + attr[1]) > end) {
-			FR_DEBUG_STRERROR_PRINTF("Attribute %u data overflows the packet starting at offset %zd",
-						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
 			goto finish;
 		}
@@ -721,8 +734,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 
 		case FR_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + RADIUS_AUTH_VECTOR_LENGTH) {
-				FR_DEBUG_STRERROR_PRINTF("Message-Authenticator has invalid length (%d != 18) at offset %zd",
-					   attr[1] - 2, attr - packet);
 				failure = DECODE_FAIL_MA_INVALID_LENGTH;
 				goto finish;
 			}
@@ -735,25 +746,11 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	}
 
 	/*
-	 *	If the attributes add up to a packet, it's allowed.
-	 *
-	 *	If not, we complain, and throw the packet away.
-	 */
-	if (attr != end) {
-		FR_DEBUG_STRERROR_PRINTF("Attributes do NOT exactly fill the packet");
-		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
-		goto finish;
-	}
-
-	/*
 	 *	If we're configured to look for a maximum number of
 	 *	attributes, and we've seen more than that maximum,
 	 *	then throw the packet away, as a possible DoS.
 	 */
-	if ((max_attributes > 0) &&
-	    (num_attributes > max_attributes)) {
-		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %u, max %u are allowed).",
-					 num_attributes, max_attributes);
+	if (num_attributes > max_attributes) {
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
 	}
@@ -770,16 +767,14 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_message_authenticator && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("We require Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
 	}
 
 finish:
 
-	if (reason) {
-		*reason = failure;
-	}
+	if (reason) *reason = failure;
+
 	return (failure == DECODE_FAIL_NONE);
 }
 
