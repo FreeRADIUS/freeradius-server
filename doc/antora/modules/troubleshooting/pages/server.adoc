@@ -118,7 +118,7 @@ Check-Items are used to match attributes in a request packet or to set server pa
 
 The shared secret is incorrect. This is a text string which is a "secret" (in the `clients.conf` file) shared by both the NAS and the server. It is used to authenticate and to encrypt/decrypt packets.
 
-Run the server in xref:debugging/radiusd_X.adoc[debugging] mode:
+Run the server in xref:ROOT:debugging/radiusd_X.adoc[debugging] mode:
 
 	radiusd -X
 

@@ -141,7 +141,7 @@ radiusd -X
 ----
 
 You should see a lot of text printed on the screen as it starts up. If
-you don’t, or if you see error messages, please read the xref:ROOT:faq.adoc[FAQ] and xref:ROOT:trouble-shooting/index.adoc[troubleshooting] sections.
+you don’t, or if you see error messages, please read the xref:ROOT:faq.adoc[FAQ] and xref:troubleshooting:index.adoc[troubleshooting] sections.
 
 If the server says `Ready to process requests.`, then it is running
 properly. From another shell (or another window), type
