@@ -43,8 +43,7 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
 == Sections in this guide
 
 * xref:getstarted.adoc[Getting Started] guides you through a basic
-  install, xref:debugging/radiusd_X.adoc[debugging], and
-  xref:trouble-shooting/index.adoc[troubleshooting] the server. More
+  install, xref:debugging/radiusd_X.adoc[debugging]. More
   information about where to xref:gethelp.adoc[get help],
   xref:bestpractices.adoc[best practices], and a xref:faq.adoc[FAQ]
   are found here to help you resolve issues.

@@ -5,14 +5,9 @@
 **** xref:debugging/processing.adoc[Process Packets]
 *** xref:gethelp.adoc[Get Help]
 ** xref:bestpractices.adoc[Best Practices]
-*** xref:trouble-shooting/eap_certificates.adoc[EAP Certificates]
+*** xref:troubleshooting:eap_certificates.adoc[EAP Certificates]
 ** xref:faq.adoc[Frequently Asked Question (FAQ)]
-** xref:trouble-shooting/index.adoc[Troubleshooting]
-*** xref:trouble-shooting/user.adoc[User Management]
-*** xref:trouble-shooting/server.adoc[Server Configuration]
-*** xref:trouble-shooting/client.adoc[Client Configuration]
-*** xref:trouble-shooting/connect_nas.adoc[Connectivity]
-*** xref:trouble-shooting/datastore.adoc[Datastores]
+
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

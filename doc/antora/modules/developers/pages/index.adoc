@@ -58,11 +58,11 @@ xref:sbuff.adoc[String] buffers enabling devlopers to streamline their coding an
 == More Information
 
 The two most important RADIUS RFC's and drafts are
-http://www.freeradius.org/rfc/rfc2865.html[RFC2865] and
-http://www.freeradius.org/rfc/rfc2866.html[RFC2866]. These are
+https://datatracker.ietf.org/doc/rfc2865[RFC 2865] and
+https://datatracker.ietf.org/doc/rfc2866[RFC 2866]. These are
 the new RFCs, which replace the old ones,
-http://www.freeradius.org/rfc/rfc2138.txt[RFC2138] and
-http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
+https://datatracker.ietf.org/doc/rfc2138[RFC 2138] and
+https://datatracker.ietf.org/doc/rfc2139[RFC 2139].
 
 Also see the  xref:howto:installation/dependencies.adoc[build
 dependencies] page.
