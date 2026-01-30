@@ -530,6 +530,7 @@ char const *fr_radius_decode_fail_reason[FR_RADIUS_FAIL_MAX + 1] = {
 
 	[FR_RADIUS_FAIL_VERIFY] = "packet fails verification (shared secret is incorrect)",
 	[FR_RADIUS_FAIL_NO_MATCHING_REQUEST] = "did not find request which matched response",
+	[FR_RADIUS_FAIL_IO_ERROR] = "IO error",
 	[FR_RADIUS_FAIL_MAX] = "???",
 };
 

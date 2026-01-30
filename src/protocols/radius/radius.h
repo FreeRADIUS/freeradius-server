@@ -112,6 +112,7 @@ typedef enum {
 
 	FR_RADIUS_FAIL_VERIFY,
 	FR_RADIUS_FAIL_NO_MATCHING_REQUEST,
+	FR_RADIUS_FAIL_IO_ERROR,
 	FR_RADIUS_FAIL_MAX
 } fr_radius_decode_fail_t;
 

@@ -144,43 +144,46 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
-		PDEBUG2("proto_radius_udp got read error");
+		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
+				 "error reading socket - %s", fr_strerror());
 		return data_size;
 	}
 
 	if (!data_size) {
-		DEBUG2("proto_radius_udp got no data: ignoring");
+		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
+				 "no data received");
 		return 0;
 	}
 
 	packet_len = data_size;
 
 	if (data_size < 20) {
-		DEBUG2("proto_radius_udp got 'too short' packet size %zd", data_size);
+		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
+				 "received %zu which is smaller than minimum 20", packet_len);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if (packet_len > inst->max_packet_size) {
-		DEBUG2("proto_radius_udp got 'too long' packet size %zd > %u", data_size, inst->max_packet_size);
+		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
+				 "received %zu which is larger than maximum %zu", packet_len, inst->max_packet_size);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
 
-	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_CODE_MAX)) {
-		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
+	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
+		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, &address->socket,
+				 "received packet code %u", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
 
 	/*
-	 *      If it's not a RADIUS packet, ignore it.
+	 *      If it's not well-formed, discard it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
-		/*
-		 *      @todo - check for F5 load balancer packets.  <sigh>
-		 */
-		DEBUG2("proto_radius_udp got a packet which isn't RADIUS: %s", fr_strerror());
+		proto_radius_log(li, thread->name, reason, &address->socket,
+				 "");
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
