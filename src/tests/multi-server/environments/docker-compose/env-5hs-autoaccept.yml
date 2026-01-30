@@ -21,7 +21,6 @@ services:
     image: fr-build-ubuntu22:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -35,17 +34,6 @@ services:
       # Next three lines based on test-framework test config example
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Disable default virtual server config and disable unused modules
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
-
-      # Enable framework linelog module config
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
       sleep infinity
@@ -54,7 +42,6 @@ services:
     image: fr-build-ubuntu22:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -68,17 +55,6 @@ services:
       # Next three lines based on test-framework test config example
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Disable default virtual server config and disable unused modules
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
-
-      # Enable framework linelog module config
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
       sleep infinity
@@ -87,7 +63,6 @@ services:
     image: fr-build-ubuntu22:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -101,17 +76,6 @@ services:
       # Next three lines based on test-framework test config example
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Disable default virtual server config and disable unused modules
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
-
-      # Enable framework linelog module config
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
       sleep infinity
@@ -120,7 +84,6 @@ services:
     image: fr-build-ubuntu22:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -134,17 +97,6 @@ services:
       # Next three lines based on test-framework test config example
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Disable default virtual server config and disable unused modules
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
-
-      # Enable framework linelog module config
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
       sleep infinity
@@ -153,7 +105,6 @@ services:
     image: fr-build-ubuntu22:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     command: radiusd -X
@@ -167,17 +118,6 @@ services:
       # Next three lines based on test-framework test config example
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Disable default virtual server config and disable unused modules
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
-
-      # Enable framework linelog module config
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
 
       exec /docker-entrypoint.sh "$@"
       sleep infinity
@@ -196,9 +136,6 @@ services:
       - homeserver4
       - homeserver5
     volumes:
-    # FreeRADIUS load-generator log file
-    - ${DATA_PATH}/freeradius/load-generator/logs/freeradius-load-generator.log:/freeradius-load-generator.log
-
     # load-generator templates
     - ${DATA_PATH}/freeradius/load-generator/template.d/load-generator-templates:/etc/raddb/template.d/load-generator-templates
 
@@ -209,7 +146,6 @@ services:
     # load-generator radiusd.conf
     - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/raddb/radiusd.conf
 
-    - ${DATA_PATH}/freeradius/utils/${TEST_LOGGER_CONFIG}:/etc/raddb/mods-available/linelog_test_framework
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${DATA_PATH}/freeradius/load-generator/load-generator-packets/:/etc/raddb/load-generator-packets/
     - ${DATA_PATH}/freeradius/load-generator/stats/:/etc/raddb/stats/
@@ -229,41 +165,8 @@ services:
     - |
       set -euo pipefail
 
-      # FreeRADIUS log file for load-generator
-      touch freeradius-load-generator.log
-
       source /tmp/env-setup.sh
       export TEST_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
-
-      # Calculate TEST_CONF_NUM_MESSAGES dynamically based on proto_load default env variables.
-      # Helps setup the Docker Compose environment in such a way that configures the load-generator
-      # to send a small amount of traffice for debugging purposes. All load-generator env variables
-      # can be overridden via the test config file.
-      export TEST_CONF_START_PPS=5
-      export TEST_CONF_MAX_PPS=10
-      # Duration must be equal or greater than max pps for proto_load to calculate "pps_accepted" effectively
-      export TEST_CONF_DURATION=5
-      export TEST_CONF_STEP=5
-      export TEST_CONF_PARALLEL=1
-      export TEST_CONF_MAX_BACKLOG=1000
-      export TEST_CONF_REPEAT="no"
-
-      TEST_CONF_NUM_MESSAGES=0
-      for (( pps=TEST_CONF_START_PPS; pps<=TEST_CONF_MAX_PPS; pps+=TEST_CONF_STEP )); do
-        (( TEST_CONF_NUM_MESSAGES += TEST_CONF_DURATION * pps ))
-      done
-      export TEST_CONF_NUM_MESSAGES
-
-      ln -sf /etc/raddb/mods-available/linelog_test_framework /etc/raddb/mods-enabled/linelog_test_framework
-
-      # Disable default virtual server config and disable unused modules.
-      # load-generator radiusd.conf has all necessary configurations.
-      rm -f /etc/raddb/sites-enabled/default
-      rm -f /etc/raddb/sites-enabled/inner-tunnel
-      rm -f /etc/raddb/mods-enabled/eap
-      rm -f /etc/raddb/mods-enabled/eap_inner
-      rm -f /etc/raddb/mods-enabled/mschap
-      rm -f /etc/raddb/mods-enabled/linelog
 
       sleep infinity
     <<: *id001
