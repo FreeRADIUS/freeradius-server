@@ -47,10 +47,7 @@ states:
               printf "  Max Backlog:      %s\n" "$TEST_CONF_MAX_BACKLOG"
               printf "  Num Messages:     %s\n" "$TEST_CONF_NUM_MESSAGES"
 
-              # Run the server with the following line to allow for easier debugging of load-generator server logs.
-              # Logging generates a substantial amount of data which is why it is disabled by default.
-              # freeradius -X > freeradius-load-generator.log 2>&1 &
-              freeradius -X &
+              freeradius &
 
               tail -f /dev/null
 
