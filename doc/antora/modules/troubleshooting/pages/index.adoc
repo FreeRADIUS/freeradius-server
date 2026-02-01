@@ -28,11 +28,12 @@ output.  Don't look at the output of `radclient.  You cannot debug
 server policies by looking at a simple binary `Access-Accept` or
 `Access-Reject` on the client.
 
-== Common Errors
+== Network Errors
 
-The xref:errors/index.adoc[common errors] page covers the most common
-errors that people see when trying to configure the server.  If you
-see an error which is unclear to you, you should start on that page.
+The xref:network/index.adoc[network errors] page covers the most
+common errors that people see when initially trying to configure the
+server.  If you see an error which is unclear to you, you should start
+on that page.
 
 The error messages produced by FreeRADIUS are necessrily short, and
 cannot contain a full explanation of the issue.  The documentation

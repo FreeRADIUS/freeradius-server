@@ -1,0 +1,36 @@
+= Errors
+
+== The Server isn't receiving packets
+
+These are _network_ errors.
+
+* Common errors
+** xref:network/unknown_packet_code.adoc[Unknown packet code]
+** xref:network/unexpected_request_code.adoc[Unexpected request code]
+** xref:network/message_authenticator_missing.adoc[Message-Authenticator is missing]
+** xref:network/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
+** xref:network/proxy_state_missing.adoc[Proxy-State is missing]
+** xref:network/packet_fails_verification.adoc[Packet fails verification]
+** xref:network/no_matching_request.adoc[Did not find request which matched response]
+
+** Other errors
+** xref:network/unexpected_response_code.adoc[Unexpected response code]
+** xref:network/too_many_attributes.adoc[Packet contains too many attributes]
+** xref:network/io_error.adoc[IO error]
+
+* Rare errors
+** xref:network/packet_too_small.adoc[Packet is too small]
+** xref:network/packet_too_large.adoc[Packet is too large]
+** xref:network/mismatched_length.adoc[Header length does not match received packet length]
+** xref:network/attribute_0.adoc[Attribute 0 is invalid]
+** xref:network/attribute_invalid_length.adoc[Attribute has invalid length]
+** xref:network/attribute_overflow.adoc[Attribute overflows the packet]
+** xref:network/decode_failure.adoc[Failure decoding a packet]
+** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
+
+== Authentication Failures
+
+== Issues with Databases
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
