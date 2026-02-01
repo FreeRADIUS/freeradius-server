@@ -11,14 +11,15 @@ information you can remember that will somehow solve all problems.
 FreeRADIUS has extensive documentation, and there is no need to
 memorize it.
 
-Instead of memorization things, you should carefully troubleshoot the
-proble,.  Troubleshooting is the step-by-step method that helps you to
-determine the root cause of a problem.  Once the root cause is
-determined, you should use similar step-by-step methods to fix the
-problem, and verify that the fix works.
+Instead of searching for the one piece of information which will
+somehow fix the problem, you should carefully troubleshoot the issues
+that you are seeing.  Troubleshooting is the step-by-step method that
+helps you to determine the root cause of a problem.  Once the root
+cause is determined, you should use similar step-by-step methods to
+fix the problem, and verify that the fix works.
 
-This process can see, slow, but it is much more productive than making
-a bunch of changes, in the hope that one of the changes will fix the
+This process can seem slow, but it is much more productive than making
+a bunch of changes in the hope that one of the changes will fix the
 issue.  As the saying goes, **slow is fast, and fast is slow**.
 
 == General Rules
@@ -28,18 +29,31 @@ output.  Don't look at the output of `radclient.  You cannot debug
 server policies by looking at a simple binary `Access-Accept` or
 `Access-Reject` on the client.
 
+The error messages produced by FreeRADIUS are necessarily short, and
+cannot contain a full explanation of the issue.  The documentation
+pages here are much larger, and can therefore contain detailed
+description descriptions.  In many cases, the debug output of the
+server will point you to a relevant documentation page!
+
 == Network Errors
 
 The xref:network/index.adoc[network errors] page covers the most
 common errors that people see when initially trying to configure the
-server.  If you see an error which is unclear to you, you should start
-on that page.
+server, and have it process packets.  Start there if the server isn't
+receiving packets, or if it is complaining about the packets it is
+receiving.
 
-The error messages produced by FreeRADIUS are necessrily short, and
-cannot contain a full explanation of the issue.  The documentation
-pages are larger, and therefore contain those descriptions.  In many
-cases, the debug output of the server will point you to a specific
-documentation page!
+== Authentication Failures
+
+* password incorrect
+* unprintable characters in the password
+* certificate failures
+* authentication does not complete
+
+== Database Problems
+
+* can't connect
+* user not found in database
 
 == How to make Changes
 
@@ -50,19 +64,25 @@ read the entire debug output.
 
 Follow these recommended steps to troubleshoot your server:
 
-. Make small, discrete changes to the configuration files.
+1. Make small, discrete changes to the configuration files.
 
-. Start the server in debugging mode by entering the command radiusd -X
+2. Start the server in debugging mode by entering the command `radiusd -X`.
 
-. Verify that the results are what you expect
+3. Send test packets using `radclient`, or wait for a real client to send a packet.
+
+4. Read the debug output to verify that the it is doing what you expect.
 
 The debug output show the current configuration and relevant information such as:
 
+* The server is reading the configuration files that you expect it to read
+
 * Datastores are connected and operating.
+
+* the server is listening on the correct IP address(es) and port(s).
 
 * Test packets are accepted by the server.
 
-* The debug output shows that the packets are being processed as you expect.
+* The debug output shows that the request packets are being processed as you expect.
 
 * The response packets contain the attributes you expect to see.
 

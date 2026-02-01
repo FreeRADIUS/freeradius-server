@@ -28,9 +28,5 @@ These are _network_ errors.
 ** xref:network/decode_failure.adoc[Failure decoding a packet]
 ** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
 
-== Authentication Failures
-
-== Issues with Databases
-
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
