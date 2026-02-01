@@ -1,0 +1,8 @@
+= Failure Decoding the Packet
+
+The server is out of memory, or the packet has malformed VSAs, TLV
+nesting is too deep, or any other "packet is malformed in a weird way"
+problem.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

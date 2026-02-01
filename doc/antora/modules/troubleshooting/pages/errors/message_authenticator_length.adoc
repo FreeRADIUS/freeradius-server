@@ -1,0 +1,7 @@
+= Message-Authenticator has Invalid Length
+
+This will pretty much never happen.  If it does, it means that the
+client is completely broken, or that the packet is not RADIUS.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

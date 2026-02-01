@@ -1,0 +1,6 @@
+= Attribute 0 is Invalid
+
+Either the client is completely broken, or the packet is not RADIUS.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

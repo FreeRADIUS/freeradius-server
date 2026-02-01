@@ -1,0 +1,14 @@
+= Too Many Attributes
+
+Each `listen` section has a `max_attributes` configuration.  This
+prevents malicious clients from consuming large amounts of memory on
+the server for each request.
+
+The value is large enough for nearly all common use-cases.  Take care
+before increasing it.
+
+If you see this error, it's likely that a client is either malicious,
+or misconfigured.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

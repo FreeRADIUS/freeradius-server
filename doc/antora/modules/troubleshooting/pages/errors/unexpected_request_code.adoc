@@ -1,0 +1,13 @@
+= Unexpected Request Code
+
+Each `listen` section accepts only a limited number of packet types.
+This means that the client is sending packets that the server doesn't
+expect to receive.
+
+Since there is no negotiation in RADIUS, the client has no way of
+knowing that the server is configured to receive.  Fix either the
+client to not send those packets, or fix the server to accept those
+packets.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

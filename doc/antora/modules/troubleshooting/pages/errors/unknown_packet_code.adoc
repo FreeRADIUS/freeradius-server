@@ -1,0 +1,10 @@
+= Unknown Packet Code
+
+The packet code is 0, or is larger than 53.
+
+The RFCs define a limited number of packet codes.
+
+This can also mean that something is sending non-RADIUS packets to the RADIUS port.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,4 +1,30 @@
 * xref:index.adoc[Troubleshooting]
+
+** xref:errors/index.adoc[Common Errors]
+*** xref:errors/unknown_packet_code.adoc[Unknown packet code]
+*** xref:errors/unexpected_request_code.adoc[Unexpected request code]
+*** xref:errors/message_authenticator_missing.adoc[Message-Authenticator is missing]
+*** xref:errors/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
+*** xref:errors/proxy_state_missing.adoc[Proxy-State is missing]
+*** xref:errors/packet_fails_verification.adoc[Packet fails verification]
+*** xref:errors/no_matching_request.adoc[Did not find request which matched response]
+
+** Less common errors
+*** xref:errors/unexpected_response_code.adoc[Unexpected response code]
+*** xref:errors/too_many_attributes.adoc[Packet contains too many attributes]
+*** xref:errors/io_error.adoc[IO error]
+
+** Rare errors
+*** xref:errors/packet_too_small.adoc[Packet is too small]
+*** xref:errors/packet_too_large.adoc[Packet is too large]
+*** xref:errors/mismatched_length.adoc[Header length does not match received packet length]
+*** xref:errors/attribute_0.adoc[Attribute 0 is invalid]
+*** xref:errors/attribute_invalid_length.adoc[Attribute has invalid length]
+*** xref:errors/attribute_overflow.adoc[Attribute overflows the packet]
+*** xref:errors/decode_failure.adoc[Failure decoding a packet]
+*** xref:errors/message_authenticator_length.adoc[Message Authenticator has invalid length]
+
+
 ** xref:user.adoc[User Management]
 ** xref:server.adoc[Server Configuration]
 ** xref:client.adoc[Client Configuration]

@@ -1,16 +1,51 @@
 = Troubleshooting
 
-Troubleshooting is a step-by-step method used to determine the root cause of a problem and the processes how to resolve and test the fix. The goal of this guide is to enable the users to help user resolve the current issue and get FreeRADIUS server back into production.
+The guides in this section enable administrators to quickly determine
+the root cause of an issue, to resolve it, and to get the FreeRADIUS
+server back into production.  The guides also provide information that
+helps administrators easily debug changes to complex policies.
 
-Some of the more common troubleshooting issues are covered in the xref:ROOT:faq.adoc[FAQ]. The section is divided into the following areas:
+The most important thing to know about these guides is that _method is
+more important than memorization_.  That is, there is no one piece of
+information you can remember that will somehow solve all problems.
+FreeRADIUS has extensive documentation, and there is no need to
+memorize it.
 
-* xref:user.adoc[User Management]
-* xref:server.adoc[Server Configuration]
-* xref:client.adoc[Client Configuration]
-* xref:connect_nas.adoc[Connectivity-NAS]
-* xref:datastore.adoc[Datastores]
+Instead of memorization things, you should carefully troubleshoot the
+proble,.  Troubleshooting is the step-by-step method that helps you to
+determine the root cause of a problem.  Once the root cause is
+determined, you should use similar step-by-step methods to fix the
+problem, and verify that the fix works.
 
-If your server starts up successfully, *save* a copy of the configuration so you always have a "known working" configuration. When the server doesn’t start up, go back and verify the configuration and read the entire debug output.
+This process can see, slow, but it is much more productive than making
+a bunch of changes, in the hope that one of the changes will fix the
+issue.  As the saying goes, **slow is fast, and fast is slow**.
+
+== General Rules
+
+Run the server in debugging mode (`radiusd -X`).  Look at the debug
+output.  Don't look at the output of `radclient.  You cannot debug
+server policies by looking at a simple binary `Access-Accept` or
+`Access-Reject` on the client.
+
+== Common Errors
+
+The xref:errors/index.adoc[common errors] page covers the most common
+errors that people see when trying to configure the server.  If you
+see an error which is unclear to you, you should start on that page.
+
+The error messages produced by FreeRADIUS are necessrily short, and
+cannot contain a full explanation of the issue.  The documentation
+pages are larger, and therefore contain those descriptions.  In many
+cases, the debug output of the server will point you to a specific
+documentation page!
+
+== How to make Changes
+
+If your server starts up successfully, *save* a copy of the
+configuration so you always have a "known working" configuration. When
+the server doesn’t start up, go back and verify the configuration and
+read the entire debug output.
 
 Follow these recommended steps to troubleshoot your server:
 
@@ -29,6 +64,18 @@ The debug output show the current configuration and relevant information such as
 * The debug output shows that the packets are being processed as you expect.
 
 * The response packets contain the attributes you expect to see.
+
+== Common Issues
+
+Some of the more common issues are covered in the
+xref:ROOT:faq.adoc[FAQ]. The section is divided into the following
+areas:
+
+* xref:user.adoc[User Management]
+* xref:server.adoc[Server Configuration]
+* xref:client.adoc[Client Configuration]
+* xref:connect_nas.adoc[Connectivity-NAS]
+* xref:datastore.adoc[Datastores]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
