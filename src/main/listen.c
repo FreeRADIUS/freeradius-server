@@ -4117,7 +4117,11 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
+int listen_init(CONF_SECTION *config, rad_listen_t **head,
+#ifndef WITH_TLS
+		UNUSED
+#endif
+		bool spawn_flag)
 {
 	bool		override = false;
 	CONF_SECTION	*cs = NULL;
