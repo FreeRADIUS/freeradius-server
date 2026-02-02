@@ -114,6 +114,7 @@ typedef struct main_config {
 	fr_ipaddr_t	myip;				//!< IP to bind to. Set on command line.
 	uint16_t	port;				//!< Port to bind to. Set on command line.
 
+	bool		hoist_state;			//!< hoist state handling to IO routines.
 	bool		suppress_secrets;		//!< for debug levels < 3
 	bool		log_auth;			//!< Log all authentication attempts.
 	bool		log_accept;			//!< Log Access-Accept

@@ -346,6 +346,10 @@ int rad_postauth(REQUEST *request)
 			process_post_auth(PW_POST_AUTH_TYPE_REJECT, request);
 		}
 
+		result = RLM_MODULE_REJECT;
+
+		if (!main_config.hoist_state) break;
+
 		/*
 		 *	Only discard session state when we're sending
 		 *	packets to the network.  The State attribute
@@ -356,7 +360,6 @@ int rad_postauth(REQUEST *request)
 		 *	accessible from the outer session.
 		 */
 		if (!request->parent) fr_state_discard(request, request->packet);
-		result = RLM_MODULE_REJECT;
 		break;
 	/*
 	 *	The module handled the request, cancel the reply.
@@ -372,6 +375,8 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		result = RLM_MODULE_OK;
+
+		if (main_config.hoist_state) break;
 
 		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
 			fr_state_put_vps(request, request->packet, request->reply);
@@ -474,7 +479,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		case PW_CODE_ACCESS_CHALLENGE:
 			request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-			fr_state_put_vps(request, request->packet, request->reply);
+			if (!main_config.hoist_state) fr_state_put_vps(request, request->packet, request->reply);
 			return RLM_MODULE_OK;
 
 		/*
@@ -510,7 +515,7 @@ int rad_authenticate(REQUEST *request)
 	/*
 	 *	Grab the VPS associated with the State attribute.
 	 */
-	fr_state_get_vps(request, request->packet);
+	if (!main_config.hoist_state) fr_state_get_vps(request, request->packet);
 
 	/*
 	 *	Get the user's authorization information from the database

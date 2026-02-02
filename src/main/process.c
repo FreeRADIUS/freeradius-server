@@ -1392,8 +1392,11 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	 *	process it.
 	 */
 	if (request->packet->dst_port == 0) {
+		/*
+		 *	If we haven't already restored the state, do so now.
+		 */
 		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-		    !request->state) {
+		    main_config.hoist_state && !request->state) {
 			fr_state_get_vps(request, request->packet);
 		}
 
@@ -1430,6 +1433,15 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 
 	debug_packet(request, request->packet, true);
 	request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+
+	/*
+	 *	Restore the state attributes just before we run the
+	 *	request for the first time.
+	 */
+	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    main_config.hoist_state && !request->state) {
+		fr_state_get_vps(request, request->packet);
+	}
 
 	return 1;
 }
@@ -1584,6 +1596,20 @@ static void request_finish(REQUEST *request, int action)
 		if (vp && (vp->vp_integer == 256)) {
 			RDEBUG2("Not responding to request");
 			request->reply->code = 0;
+		}
+
+		/*
+		 *	Delay "save state" until just after we're done
+		 *	processing the packet, but before jumping to
+		 *	"done", or encoding the packet, or setting up
+		 *	a reject delay.
+		 */
+		if (main_config.hoist_state) {
+			if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+				fr_state_put_vps(request, request->packet, request->reply);
+			} else {
+				fr_state_discard(request, request->packet);
+			}
 		}
 	}
 
