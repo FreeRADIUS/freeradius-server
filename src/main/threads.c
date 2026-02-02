@@ -41,14 +41,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-#ifdef WITH_GCD
-#include <dispatch/dispatch.h>
-#endif
 #include <mach/task.h>
 #include <mach/mach_init.h>
 #include <mach/semaphore.h>
 
-#ifndef WITH_GCD
 #undef sem_t
 #define sem_t semaphore_t
 #undef sem_init
@@ -57,7 +53,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define sem_wait(s) semaphore_wait(*s)
 #undef sem_post
 #define sem_post(s) semaphore_signal(*s)
-#endif	/* WITH_GCD */
 #endif	/* __APPLE__ */
 
 #ifdef HAVE_SYS_WAIT_H
@@ -76,7 +71,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/evp.h>
 #endif
 
-#ifndef WITH_GCD
 #define SEMAPHORE_LOCKED	(0)
 
 #define THREAD_RUNNING		(1)
@@ -116,8 +110,6 @@ typedef struct THREAD_HANDLE {
 	REQUEST			*request;
 } THREAD_HANDLE;
 
-#endif	/* WITH_GCD */
-
 #ifdef WNOHANG
 typedef struct thread_fork_t {
 	pid_t		pid;
@@ -153,7 +145,6 @@ static int request_fifo_discard(int priority, bool lower, time_t now);
  *	easier.
  */
 typedef struct THREAD_POOL {
-#ifndef WITH_GCD
 	THREAD_HANDLE	*head;
 	THREAD_HANDLE	*tail;
 
@@ -169,17 +160,12 @@ typedef struct THREAD_POOL {
 	time_t		time_last_spawned;
 	uint32_t	cleanup_delay;
 	bool		stop_flag;
-#endif	/* WITH_GCD */
 	bool		spawn_flag;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
 	fr_hash_table_t *waiters;
 #endif
-
-#ifdef WITH_GCD
-	dispatch_queue_t	queue;
-#else
 
 #ifdef WITH_STATS
 	fr_pps_t	pps_in, pps_out;
@@ -211,19 +197,15 @@ typedef struct THREAD_POOL {
 	atomic_uint32_t	  exited_threads;
 	fr_atomic_queue_t *queue[NUM_FIFOS];
 #endif	/* STDATOMIC */
-#endif	/* WITH_GCD */
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
 static bool pool_initialized = false;
 
-#ifndef WITH_GCD
 static time_t last_cleaned = 0;
 
 static void thread_pool_manage(time_t now);
-#endif
 
-#ifndef WITH_GCD
 /*
  *	A mapping of configuration file names to internal integers
  */
@@ -358,11 +340,7 @@ static void reap_children(void)
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
-#else
-#define reap_children()
-#endif /* WNOHANG */
 
-#ifndef WITH_GCD
 /*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
@@ -1128,7 +1106,6 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	return handle;
 }
-#endif	/* WITH_GCD */
 
 
 #ifdef WNOHANG
@@ -1157,10 +1134,8 @@ static int pid_cmp(void const *one, void const *two)
 DIAG_OFF(deprecated-declarations)
 int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 {
-#ifndef WITH_GCD
 	uint32_t	i;
 	int		rcode;
-#endif
 	CONF_SECTION	*pool_cf;
 	time_t		now;
 #ifdef HAVE_STDATOMIC_H
@@ -1177,24 +1152,18 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	rad_assert(pool_initialized == false); /* not called on HUP */
 
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
-#ifdef WITH_GCD
-	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
-#else
 	if (!pool_cf) *spawn_flag = false;
-#endif
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
 	 */
 	memset(&thread_pool, 0, sizeof(THREAD_POOL));
-#ifndef WITH_GCD
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
 	thread_pool.cleanup_delay = 5;
 	thread_pool.stop_flag = false;
-#endif
 	thread_pool.spawn_flag = *spawn_flag;
 
 	/*
@@ -1222,7 +1191,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	}
 #endif
 
-#ifndef WITH_GCD
 	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
 		return -1;
 	}
@@ -1248,7 +1216,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		      thread_pool.start_threads, thread_pool.max_threads);
 		return -1;
 	}
-#endif	/* WITH_GCD */
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
@@ -1258,7 +1225,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		return 0;
 	}
 
-#ifndef WITH_GCD
 	/*
 	 *	Initialize the queue of requests.
 	 */
@@ -1301,9 +1267,7 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		}
 #endif
 	}
-#endif
 
-#ifndef WITH_GCD
 	/*
 	 *	Create a number of waiting threads.
 	 *
@@ -1314,13 +1278,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 			return -1;
 		}
 	}
-#else
-	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
-	if (!thread_pool.queue) {
-		ERROR("Failed creating dispatch queue: %s", fr_syserror(errno));
-		fr_exit(1);
-	}
-#endif
 
 	DEBUG2("Thread pool initialized");
 	pool_initialized = true;
@@ -1353,7 +1310,6 @@ void thread_pool_stop(void)
  */
 void thread_pool_free(void)
 {
-#ifndef WITH_GCD
 	int i;
 	int total_threads;
 	THREAD_HANDLE *handle;
@@ -1413,26 +1369,9 @@ void thread_pool_free(void)
 	 *	the memory.
 	 */
 	tls_mutexes_destroy();
-#endif
 }
 
 
-#ifdef WITH_GCD
-int request_enqueue(REQUEST *request)
-{
-	dispatch_block_t block;
-
-	block = ^{
-		request->process(request, FR_ACTION_RUN);
-	};
-
-	dispatch_async(thread_pool.queue, block);
-
-	return 1;
-}
-#endif
-
-#ifndef WITH_GCD
 /*
  *	Check the min_spare_threads and max_spare_threads.
  *
@@ -1586,7 +1525,6 @@ static void thread_pool_manage(time_t now)
 	 */
 	return;
 }
-#endif	/* WITH_GCD */
 
 #ifdef WNOHANG
 /*
@@ -1688,7 +1626,6 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 {
 	int i;
 
-#ifndef WITH_GCD
 	if (pool_initialized) {
 		struct timeval now;
 
@@ -1712,7 +1649,6 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 				 &now);
 
 	} else
-#endif	/* WITH_GCD */
 	{
 		for (i = 0; i < RAD_LISTEN_MAX; i++) {
 			array[i] = 0;
@@ -1724,7 +1660,6 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 
 void thread_pool_thread_stats(int stats[3])
 {
-#ifndef WITH_GCD
 	if (pool_initialized) {
 		/*
 		 *	We don't need a mutex lock here as we only want to
@@ -1738,9 +1673,7 @@ void thread_pool_thread_stats(int stats[3])
 #endif
 		stats[1] = thread_pool.total_threads;
 		stats[2] = thread_pool.max_threads;
-	} else
-#endif	/* WITH_GCD */
-	{
+	} else {
 		stats[0] = stats[1] = stats[2] = 0;
 	}
 }
