@@ -224,7 +224,7 @@ static const CONF_PARSER thread_config[] = {
 #endif
 	CONF_PARSER_TERMINATOR
 };
-#endif
+#endif	/* HAVE_PTHREAD_H */
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(HAVE_CRYPTO_SET_LOCKING_CALLBACK)
 
@@ -299,7 +299,7 @@ static void tls_mutexes_destroy(void)
 #define tls_mutexes_destroy()
 #endif
 
-#ifdef WNOHANG
+#if defined(WNOHANG) && defined(HAVE_PTHREAD_H)
 /*
  *	We don't want to catch SIGCHLD for a host of reasons.
  *
