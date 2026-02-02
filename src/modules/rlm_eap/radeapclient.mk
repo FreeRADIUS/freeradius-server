@@ -1,3 +1,8 @@
+#
+#  We only build radeapclient if we also build libfreeradius-eap.
+#
+ifneq "$(filter libfreeradius-eap%,${ALL_TGTS})" ""
+
 TARGET   := radeapclient
 SOURCES := radeapclient.c
 
@@ -5,14 +10,8 @@ SOURCES += ${top_srcdir}/src/main/files.c \
 	   ${top_srcdir}/src/main/threads.c \
 	   ${top_srcdir}/src/main/version.c
 
-TGT_PREREQS := libfreeradius-radius.a libfreeradius-server.a
+TGT_PREREQS := libfreeradius-eap.a libfreeradius-server.a libfreeradius-radius.a 
 TGT_LDLIBS  := $(LIBS)
-
-#
-#  For future work, if we want radeapclient to become radclient
-#
-ifneq "$(filter libfreeradius-eap%,${ALL_TGTS})" ""
-TGT_PREREQS += libfreeradius-eap.a
 
 ifneq ($(OPENSSL_LIBS),)
 SOURCES += ${top_srcdir}/src/main/cb.c ${top_srcdir}/src/main/tls.c

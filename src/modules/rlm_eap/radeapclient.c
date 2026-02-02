@@ -74,7 +74,7 @@ char const *radiusd_version = "";
 #include <freeradius-devel/tls.h>
 #endif
 
-log_lvl_t rad_debug_lvl = 0;
+extern log_lvl_t rad_debug_lvl;
 
 //TODO: move structures to a header file.
 
