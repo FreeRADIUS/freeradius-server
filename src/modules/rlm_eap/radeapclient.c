@@ -74,8 +74,6 @@ char const *radiusd_version = "";
 #include <freeradius-devel/tls.h>
 #endif
 
-extern log_lvl_t rad_debug_lvl;
-
 //TODO: move structures to a header file.
 
 typedef struct rc_input_vps_list rc_input_vps_list_t;
