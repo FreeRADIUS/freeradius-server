@@ -1538,9 +1538,6 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 static CONF_PARSER performance_config[] = {
 	{ "skip_duplicate_checks", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, nodup), NULL },
 
-	{ "synchronous", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, synchronous), NULL },
-
-	{ "workers", FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, workers), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1771,16 +1768,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rcode = cf_section_parse(subcs, this,
 					 performance_config);
 		if (rcode < 0) return -1;
-
-		if (this->synchronous && sock->max_rate) {
-			WARN("Setting 'max_pps' is incompatible with 'synchronous'.  Disabling 'max_pps'");
-			sock->max_rate = 0;
-		}
-
-		if (!this->synchronous && this->workers) {
-			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-			this->workers = 0;
-		}
 	}
 
 	subcs = cf_section_sub_find(cs, "limit");
@@ -3437,13 +3424,11 @@ static int listen_bind(rad_listen_t *this)
 		 *
 		 *	Otherwise, all input TCP sockets are non-blocking.
 		 */
-		if (!this->workers) {
-			if (fr_nonblock(this->fd) < 0) {
-				close(this->fd);
-				ERROR("Failed setting non-blocking on socket: %s",
-				      fr_syserror(errno));
-				return -1;
-			}
+		if (fr_nonblock(this->fd) < 0) {
+			close(this->fd);
+			ERROR("Failed setting non-blocking on socket: %s",
+			      fr_syserror(errno));
+			return -1;
 		}
 
 		/*
@@ -4127,23 +4112,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	return this;
 }
 
-#ifdef HAVE_PTHREAD_H
-/*
- *	A child thread which does NOTHING other than read and process
- *	packets.
- */
-static void *recv_thread(void *arg)
-{
-	rad_listen_t *this = arg;
-
-	while (1) {
-		this->recv(this);
-	}
-
-	return NULL;
-}
-#endif
-
 
 /*
  *	Generate a list of listeners.  Takes an input list of
@@ -4384,43 +4352,7 @@ add_sockets:
 		}
 #endif
 		if (!check_config) {
-			if (this->workers && !spawn_flag) {
-				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-				this->workers = 0;
-			}
-
-			if (this->workers) {
-#ifdef HAVE_PTHREAD_H
-				int rcode;
-				uint32_t i;
-				char buffer[256];
-
-				this->print(this, buffer, sizeof(buffer));
-
-				for (i = 0; i < this->workers; i++) {
-					pthread_t id;
-
-					/*
-					 *	FIXME: create detached?
-					 */
-					rcode = pthread_create(&id, 0, recv_thread, this);
-					if (rcode != 0) {
-						ERROR("Thread create failed: %s",
-						      fr_syserror(rcode));
-						fr_exit(1);
-					}
-
-					DEBUG("Thread %d for %s\n", i, buffer);
-				}
-#else
-				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-				this->workers = 0;
-#endif
-
-			} else {
-				radius_update_listener(this);
-			}
-
+			radius_update_listener(this);
 		}
 	}
 

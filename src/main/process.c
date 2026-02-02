@@ -2109,35 +2109,6 @@ skip_dup:
 	}
 
 	/*
-	 *	Process it.  Send a response, and free it.
-	 */
-	if (listener->synchronous) {
-#ifdef WITH_DETAIL
-		rad_assert(listener->type != RAD_LISTEN_DETAIL);
-#endif
-
-		request->listener->decode(request->listener, request);
-		request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-		request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-
-		fun(request);
-
-		if (request->reply->code != 0) {
-			request->listener->send(request->listener, request);
-		} else {
-			RDEBUG("Not sending reply");
-		}
-
-		/*
-		 *	Don't do delayed reject.  Oh well.
-		 */
-		fr_assert(request->child_state != REQUEST_QUEUED);
-		request->child_state = REQUEST_DONE;
-		request_free(request);
-		return 1;
-	}
-
-	/*
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
 	 */
@@ -3746,11 +3717,6 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!pool) {
 		RWDEBUG2("Cancelling proxy as no home pool exists");
-		return 0;
-	}
-
-	if (request->listener->synchronous) {
-		WARN("Cannot proxy a request which is from a 'synchronous' socket");
 		return 0;
 	}
 

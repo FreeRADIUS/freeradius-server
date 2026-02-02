@@ -1172,7 +1172,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	We don't do duplicate detection for "detail" sockets.
 	 */
 	this->nodup = true;
-	this->synchronous = false;
 
 	if (!data->filename) {
 		cf_log_err_cs(cs, "No detail file specified in listen section");

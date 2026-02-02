@@ -80,9 +80,7 @@ struct rad_listen {
 	bool		listen;			//! just calls listen()
 #endif
 	bool		nodup;
-	bool		synchronous;
 	bool		dead;
-	uint32_t	workers;
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
