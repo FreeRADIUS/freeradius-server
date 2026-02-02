@@ -1393,7 +1393,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	 */
 	if (request->packet->dst_port == 0) {
 		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-		    main_config.hoist_state && !request->state) {
+		    !request->state) {
 			fr_state_get_vps(request, request->packet);
 		}
 
