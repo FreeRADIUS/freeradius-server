@@ -113,3 +113,15 @@ authenticate  proxy-realm1 {
         proxy-realm1
     }
 ----
+
+
+== Step 3. Verify config & restart
+
+[source,text]
+----
+# Check configuration
+$ radiusd -XC
+
+# Run in debug mode to watch what happens
+$ radiusd -X
+----
