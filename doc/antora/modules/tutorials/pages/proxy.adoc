@@ -125,3 +125,58 @@ $ radiusd -XC
 # Run in debug mode to watch what happens
 $ radiusd -X
 ----
+
+
+== Step 4. Testing
+
+=== Non-proxied (local) authentication
+
+[source,text]
+----
+echo 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+=== Radclient output
+
+[source,text]
+----
+Sent Access-Request Id 200 from 0.0.0.0:58423 to 127.0.0.1:1812 length 61
+	Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length 43
+        Message-Authenticator = 0x31d0d6a1aba5a83a6d77b4187c0562a5
+        User-Name = "bob"
+----
+
+=== Server debug output (main / proxy server – local user)
+
+[source,text]
+----
+(0)      if (User-Name =~ /@realm1\.com$/)  {
+(0)        | =~
+(0)            | User-Name
+(0)              | %{User-Name}
+(0)              | --> bob
+(0)        | ({bob} =~ (null))
+(0)        | --> false
+(0)        ...
+(0)      }
+(0)      else {
+(0)          files - | ||
+(0)          files - | %logical_or()
+(0)            files - | Stripped-User-Name
+(0)              files - | %{Stripped-User-Name}
+(0)              files - (null)
+(0)            files - | User-Name
+(0)            files - | %logical_or(...)
+(0)              files - | %{User-Name}
+(0)              files - | --> bob
+(0)            files - | %logical_or(...)
+(0)            files - | --> bob
+(0)        files - files - Looking for key "bob"
+(0)        files - files - Found match "bob" on line 1 of ../mods-config/files/authorize
+(0)        files - files - Preparing attribute updates:
+(0)          files - Password.Cleartext := hello
+(0)        files (ok)
+----
