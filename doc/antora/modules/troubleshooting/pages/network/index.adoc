@@ -13,7 +13,7 @@ These are _network_ errors.
 ** xref:network/packet_fails_verification.adoc[Packet fails verification]
 ** xref:network/no_matching_request.adoc[Did not find request which matched response]
 
-** Other errors
+* Other errors
 ** xref:network/unexpected_response_code.adoc[Unexpected response code]
 ** xref:network/too_many_attributes.adoc[Packet contains too many attributes]
 ** xref:network/io_error.adoc[IO error]
@@ -25,6 +25,7 @@ These are _network_ errors.
 ** xref:network/attribute_0.adoc[Attribute 0 is invalid]
 ** xref:network/attribute_invalid_length.adoc[Attribute has invalid length]
 ** xref:network/attribute_overflow.adoc[Attribute overflows the packet]
+** xref:network/attribute_header.adoc[Attribute header overflows the packet]
 ** xref:network/decode_failure.adoc[Failure decoding a packet]
 ** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
 

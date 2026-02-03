@@ -23,6 +23,7 @@
 **** xref:network/attribute_0.adoc[Attribute 0 is invalid]
 **** xref:network/attribute_invalid_length.adoc[Attribute has invalid length]
 **** xref:network/attribute_overflow.adoc[Attribute overflows the packet]
+**** xref:network/attribute_header.adoc[Attribute header overflows the packet]
 **** xref:network/decode_failure.adoc[Failure decoding a packet]
 **** xref:network/message_authenticator_length.adoc[Message Authenticator has invalid length]
 

@@ -191,6 +191,35 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 	return 0;
 }
 
+static char const *url[FR_RADIUS_FAIL_MAX + 1] = {
+	[FR_RADIUS_FAIL_NONE]			= "index",
+	[FR_RADIUS_FAIL_MIN_LENGTH_PACKET]	= "packet_too_small",
+	[FR_RADIUS_FAIL_MAX_LENGTH_PACKET]	= "packet_too_large",
+	[FR_RADIUS_FAIL_MIN_LENGTH_FIELD]	= "mismatched_length",
+	[FR_RADIUS_FAIL_MIN_LENGTH_MISMATCH]	= "mismatched_length",
+	[FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE]	= "unknown_packet_code",
+	[FR_RADIUS_FAIL_UNEXPECTED_REQUEST_CODE] = "unexpected_request_code",
+	[FR_RADIUS_FAIL_UNEXPECTED_RESPONSE_CODE] = "unexpected_response_code",
+	[FR_RADIUS_FAIL_TOO_MANY_ATTRIBUTES]	= "too_many_attributes",
+
+	[FR_RADIUS_FAIL_INVALID_ATTRIBUTE]	= "attribute_0",
+
+	[FR_RADIUS_FAIL_HEADER_OVERFLOW]	= "attribute_header",
+	[FR_RADIUS_FAIL_ATTRIBUTE_TOO_SHORT]	= "attribute_invalid_length",
+	[FR_RADIUS_FAIL_ATTRIBUTE_OVERFLOW]	= "attribute_overflow",
+	[FR_RADIUS_FAIL_ATTRIBUTE_DECODE]	= "decode_failure",
+
+	[FR_RADIUS_FAIL_MA_INVALID_LENGTH]	= "message_authenticator_length",
+	[FR_RADIUS_FAIL_MA_MISSING]		= "message_authenticator_missing",
+	[FR_RADIUS_FAIL_MA_INVALID]		= "message_authenticator_invalid",
+	[FR_RADIUS_FAIL_PROXY_STATE_MISSING]	= "proxy_state_missing",
+
+	[FR_RADIUS_FAIL_VERIFY]			= "packet_fails_verification",
+	[FR_RADIUS_FAIL_NO_MATCHING_REQUEST]	= "no_matching_request",
+	[FR_RADIUS_FAIL_IO_ERROR]		= "io_error",
+	[FR_RADIUS_FAIL_MAX]			= "index",
+};
+
 DIAG_OFF(format-nonliteral)
 /** Log a message in a canonical format.
  *
@@ -218,6 +247,8 @@ void proto_radius_log(fr_listen_t *li, char const *name, fr_radius_decode_fail_t
 		DEBUG2("proto_%s - discarding packet on socket %s - %s (%s)",
 		       li->app_io->common.name, name, msg, fr_radius_decode_fail_reason[reason]);
 	}
+
+	DEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html", url[reason]);
 
 	talloc_free(msg);
 }
