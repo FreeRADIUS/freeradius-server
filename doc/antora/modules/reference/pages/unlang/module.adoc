@@ -53,7 +53,7 @@ if (notfound) {
 ----
 
 [#configurable_failover]
-== Configurable Failover
+== Overriding Return Codes
 
 The return codes for a module can be can be modified on a per-call basis.
 These over-rides use the same syntax as theq
@@ -64,12 +64,15 @@ The format of an override is `<rcode> = ([0-9]+|<rcode>|return)` - That is,
 a decimal number greater than or equal to 0, the priority of another rcode, or the special
 priority `return` which causes the current section to immediately exit.
 
+The following example shows what happens on each line of a
+configuration file when return code overrides are being used.
+
 [source, unlang]
 ----
-ldap { <1>
-	fail = 1        <2>
-	ok = handled    <3>
-	reject = return <4>
+ldap {                    <1>
+	fail = 1          <2>
+	ok = handled      <3>
+	reject = return   <4>
 }
 ----
 
