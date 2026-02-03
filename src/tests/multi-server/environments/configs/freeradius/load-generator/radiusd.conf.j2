@@ -39,40 +39,15 @@ modules {
 	# Common stats module configuration
 	{% include "environments/configs/freeradius/common/mods-available/stats" %}
 
-	radius radius-module-homeserver1 {
+	# radius module instance configuration
+	{% for i in range(1, 6) %}
+	radius radius-module-homeserver{{ i }} {
 		$template radius-module-homeserver-tmpl
 		udp {
-			ipaddr = homeserver1
+			ipaddr = homeserver{{ i }}
 		}
 	}
-
-	radius radius-module-homeserver2 {
-		$template radius-module-homeserver-tmpl
-		udp {
-			ipaddr = homeserver2
-		}
-	}
-
-	radius radius-module-homeserver3 {
-		$template radius-module-homeserver-tmpl
-		udp {
-			ipaddr = homeserver3
-		}
-	}
-
-	radius radius-module-homeserver4 {
-		$template radius-module-homeserver-tmpl
-		udp {
-			ipaddr = homeserver4
-		}
-	}
-
-	radius radius-module-homeserver5 {
-		$template radius-module-homeserver-tmpl
-		udp {
-			ipaddr = homeserver5
-		}
-	}
+	{% endfor %}
 
 }
 
