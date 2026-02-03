@@ -80,3 +80,36 @@ Change the `mods-enabled/proxy-realm1` file permission accordingly.
 $ cd mods-enabled
 $ ln -s ../mods-available/proxy-realm1 proxy-realm1
 ----
+
+== Step 2. Modify the virtual server to decide when to proxy
+
+Edit `sites-enabled/default`
+
+Find the `recv Access-Request { … }` block.
+
+[source,unlang]
+----
+recv Access-Request {
+    if (User-Name =~ /@realm1\.com$/) {
+        proxy-realm1
+
+        # Accept the proxied result and stop processing
+        if (ok) {
+            accept
+        }
+    }
+    else {
+        files
+        pap
+    }
+}
+----
+
+Then, near the bottom of the file, in the `authenticate { … }` section, add:
+
+[source,unlang]
+----
+authenticate  proxy-realm1 {
+        proxy-realm1
+    }
+----
