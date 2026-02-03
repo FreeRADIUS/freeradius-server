@@ -7,8 +7,16 @@ Multi-server environment Docker compose environments are based on the fr-build-u
 DOCKER_DEFAULT_PLATFORM=linux/amd64 make docker.ubuntu22.build
 ```
 
-### Multi-server test run
+### Jinja2 Template Pre-Processing:
+```bash
+freeradius-multi-server % python3 src/config_builder.py --listener_type file --aux ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs/freeradius/homeserver/radiusd.conf.j2 --includepath ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+ ```
+ ```bash
+freeradius-multi-server % python3 src/config_builder.py --listener_type file --aux ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs/freeradius/load-generator/radiusd.conf.j2 --includepath ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+```
+
+### Testcase "run" command:
 
 ```bash
-DATA_PATH=${FREERADIUS-SERVER-REPO}/src/tests/multi-server/environments/configs make test-framework -- -x -v --compose ${FREERADIUS-SERVER-REPO}/src/tests/multi-server/environments/docker-compose/env-loadgen-5hs.yml --test ${FREERADIUS-SERVER-REPO}/src/tests/multi-server/test-5hs-autoaccept.yml --use-files --listener-dir $(pwd)/freeradius-listener-logs
+(.venv) freeradius-multi-server % DATA_PATH=${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs make test-framework -- -x -v --compose ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/docker-compose/env-loadgen-5hs.yml --test ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/test-5hs-autoaccept.yml --use-files --listener-dir --listener-dir ${FREERADIUS-SERVER-LOCAL-REPO}/build/tests/multi-server/freeradius-listener-logs/${TEST_NAME}
 ```

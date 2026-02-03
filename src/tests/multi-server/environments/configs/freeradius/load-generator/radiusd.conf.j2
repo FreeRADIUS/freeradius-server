@@ -7,7 +7,7 @@ logdir     = /var/log/freeradius
 radacctdir = ${logdir}/radacct
 
 templates {
-	$INCLUDE template.d/
+	{% include "environments/configs/freeradius/load-generator/template.d/load-generator-templates" %}
 }
 
 security {
@@ -26,58 +26,18 @@ log {
 }
 
 modules {
-	# TODO: Replace linelog {...} with Jinja template
-	#{% include "../../../../../raddb/mods-available/linelog" %}
-	linelog {
-		format = "This is a log message for %{User-Name}"
-		destination = file
+	# Common linelog module configuration
+	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
 
-		file {
-			filename = ${logdir}/linelog
-			permissions = 0600
-			escape_filenames = no
-		}
-	}
+	# Test-framework specific linelog module configuration based on OS environment
+	{% if test.listener_type == "unix" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
+	{% elif test.listener_type == "file" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
+	{% endif %}
 
-	linelog log_stdout {
-		destination = stdout
-	}
-
-	linelog log_unix_sock {
-		destination = file
-
-		file {
-			filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
-			permissions = 0644
-			escape_filenames = no
-		}
-	}
-
-	# TODO: Replace linelog_test_framework config instance with Jinja template
-	#{% if filesystem_type == "file" %}
-	#	{% include "linelog_file" %}
-	#{% elif filesystem_type == "socket" %}
-	#	{% include "linelog_socket" %}
-	#{% else %}
-	#	# div by 0 to cause error
-	#	{% set _ = 1 / 0 %}
-	#{% endif %}
-	linelog linelog_test_framework {
-		destination = file
-
-		file {
-			filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
-			permissions = 0644
-			escape_filenames = no
-		}
-	}
-
-
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/mods-available/stats" %}
-	stats {
-
-	}
+	# Common stats module configuration
+	{% include "environments/configs/freeradius/common/mods-available/stats" %}
 
 	radius radius-module-homeserver1 {
 		$template radius-module-homeserver-tmpl
@@ -222,6 +182,7 @@ server load-generator {
 		# stats module required to have access to the Status-Server's global statistics
 		stats
 
+		{%raw%}
 		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server: %{reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server || 0}")
 		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request: %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request || 0}")
 		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept: %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept || 0}")
@@ -236,6 +197,7 @@ server load-generator {
 		if (reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request == (reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept - reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server)) {
 			%linelog_test_framework("loadgen-recv-status-server - INFO - %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request} requests processed successfully, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request}, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept}, reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server = %{reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server}")
 		}
+		{%endraw%}
 	}
 
 	recv Access-Request {

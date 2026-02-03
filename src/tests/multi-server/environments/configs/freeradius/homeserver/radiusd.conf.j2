@@ -6,10 +6,6 @@ modconfdir  = ${confdir}/mods-config
 logdir      = /var/log/freeradius
 radacctdir  = ${logdir}/radacct
 
-templates {
-        $INCLUDE template.d/
-}
-
 security {
         allow_core_dumps = yes
 }
@@ -38,107 +34,32 @@ log {
 }
 
 modules {
-        # TODO: Replace linelog { ... } config instance with Jinja template
-	#{% include "../../../../../raddb/mods-available/linelog" %}
-	linelog {
-		format = "This is a log message for %{User-Name}"
-		destination = file
+	# Common linelog module configuration
+	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
 
-		file {
-			filename = ${logdir}/linelog
-			permissions = 0600
-			escape_filenames = no
-		}
-	}
+	# Test-framework specific linelog module configuration based on OS environment
+	{% if test.listener_type == "unix" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
+	{% elif test.listener_type == "file" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
+	{% endif %}
 
-	linelog log_stdout {
-		destination = stdout
-	}
+	# Common always module configuration
+	{% include "environments/configs/freeradius/common/mods-available/always" %}
 
-	linelog log_unix_sock {
-		destination = file
+	# Common attr_filter module configuration
+	{% include "environments/configs/freeradius/common/mods-available/attr_filter" %}
 
-		file {
-			filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
-			permissions = 0644
-			escape_filenames = no
-		}
-	}
+	# Common files module configuration
+	{% include "environments/configs/freeradius/common/mods-available/files" %}
 
-	# TODO: Replace linelog_test_framework config instance iwith Jinja template
-	#{% if filesystem_type == "file" %}
-	#	{% include "linelog_file" %}
-	#{% elif filesystem_type == "socket" %}
-	#	{% include "linelog_socket" %}
-	#{% else %}
-	#	# div by 0 to cause error
-	#	{% set _ = 1 / 0 %}
-	#{% endif %}
-	linelog linelog_test_framework {
-		destination = file
-
-		file {
-			filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
-			permissions = 0644
-			escape_filenames = no
-		}
-	}
-
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/mods-available/always" %}
-	always ok {
-		rcode = ok
-	}
-	always handled {
-		rcode = handled
-	}
-
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/mods-available/attr_filter" %}
-	attr_filter attr_filter.access_reject {
-		key = User-Name
-		filename = ${modconfdir}/${.:name}/access_reject
-	}
-
-	attr_filter attr_filter.access_challenge {
-		key = User-Name
-		filename = ${modconfdir}/${.:name}/access_challenge
-	}
-
-	attr_filter attr_filter.accounting_response {
-		key = User-Name
-		filename = ${modconfdir}/${.:name}/accounting_response
-	}
-
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/mods-available/files" %}
-	files {
-		moddir = ${modconfdir}/${.:instance}
-		filename = ${moddir}/authorize
-	}
-
-	files files_accounting {
-		filename = ${modconfdir}/files/accounting
-	}
-
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/mods-available/detail" %}
-	detail {
-		filename = "${radacctdir}/%{Net.Src.IP}/detail-%Y-%m-%d"
-		escape_filenames = no
-		permissions = 0600
-		header = "%t"
-	}
+	# Common detail module configuration
+	{% include "environments/configs/freeradius/common/mods-available/detail" %}
 }
 
 policy {
-	# TODO: Replace with Jinja template
-	#{% include "../../../../../raddb/policy.d/control" %}
-	accept {
-		reply.Packet-Type := ::Access-Accept
-
-		handled
-	}
+	# Common control policy configuration
+	{% include "environments/configs/freeradius/common/policy.d/control" %}
 }
 
 server hs-auto-accept {
@@ -208,13 +129,17 @@ server hs-auto-accept {
 	}
 
 	recv Access-Request {
+		{% raw %}
 		%linelog("hs-access-request-received - INFO - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} rx Access-Request src=%{Net.Src.IP}:%{Net.Src.Port} user=%{%{User-Name}} Calling-Station-Id=%{Calling-Station-Id}")
+		{% endraw %}
 		accept
 	}
 
 	send Access-Accept {
+		{% raw %}
 		%linelog("hs-access-accept-sent - INFO - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} tx Access-Accept src=%{Net.Src.IP}:%{Net.Src.Port} dst=%{Net.Dst.IP}:%{Net.Dst.Port}")
-	    	handled
+	    	{% endraw %}
+		handled
 	}
 
 	recv Status-Server {
@@ -226,7 +151,9 @@ server hs-auto-accept {
 	}
 
 	send Access-Reject {
+		{% raw %}
 		%linelog_test_framework("hs-access-reject-sent - ERROR - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} tx Access-Accept src=%{Net.Src.IP}:%{Net.Src.Port} dst=%{Net.Dst.IP}:%{Net.Dst.Port}")
+		{% endraw %}
 		attr_filter.access_reject
 	}
 
