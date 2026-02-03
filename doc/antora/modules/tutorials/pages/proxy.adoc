@@ -1,61 +1,39 @@
 = Configuring a server to proxy requests
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To configure the server to proxy packets to a remote (home)
 RADIUS server and to perform test authentications against both the
 proxy server and the home server.
 
-*Time:* 15-25 minutes
+*Time:* 15–25 minutes
 
-*File:*
+*Files:*
 
-- `proxy.conf`
+- `mods-enabled/proxy-realm1`
+- `sites-enabled/default`
 
 *Diagram:*
 
 image::access-request-proxy.svg[Fig. Proxy]
 
-For this exercise, you will configure a RADIUS server to proxy
-requests to a home RADIUS server that is run by another user
-(the uber user)).
+We assume:
 
-You will configure a realm, called "realm1" in the
-`proxy.conf` file. This realm will be proxied to the RADIUS server
-administered by the uber user, who will supply the IP address, port,
-and shared secret used by their RADIUS server. The entry for the home
-server in `proxy.conf` will be configured to "strip" the realm name
-from the incoming request.
+- You already have a working *second FreeRADIUS server* (the "home" server) running on another machine / IP.
+- It accepts authentication on port 1812 with a known shared secret.
+- It can authenticate users like `bob` with password `hello`.
 
-The entry from the exercise in
-xref:new_user.adoc[New User] for user "bob", in the
-"users" file will be used in this exercise.
+Configure your (proxy) server to:
 
-The example packets `bob.sh` and `bob@realm1.sh` may be used in this
-exercise.
+- Handle local users itself (e.g. `bob`)
+- Proxy users in `@realm1` (e.g. `bob@realm1.com`) to the remote home server. The home server should be configured to authenticate the user with the full `User-Name` (e.g., `bob@realm1.com`) and the provided password.
 
-You should verify that authentication requests for user "bob"
-to their RADIUS server result in authentication accept replies and that
-the request was not forwarded to the home RADIUS server. You
-should then use the `bob@realm1.sh` script to attempt an authentication
-request to their RADIUS server, which will then be proxied to the home
-server.
+For this exercise, you will configure a RADIUS server to proxy requests to a home RADIUS server that is run by another user.
 
-Once you have verified that authentication requests are proxied
-to the home server and that you have received an authentication accept, the
-uber user will halt the home server. The users should then
-re-attempt the `bob@realm1.sh` authentication request to their server.
-They should then observe the resulting behavior of their server, as it
-attempts to proxy to a home server that does not respond.
+You will configure a realm, called "realm1", by creating a new module instance in `mods-available/proxy-realm1`. This module will point to the RADIUS server administered by another user (the "uber user"), who will supply the IP address, port, and shared secret.
 
-== Questions
+The entry for the user "bob" from the xref:new_user.adoc[New User] exercise, typically located in `mods-config/files/authorize`, will be used here.
 
-1.  How would you configure "proxy.conf" so that "realm1" was not
-proxied, but was instead handled by the local RADIUS server?
-2.  Will it make any difference for the home server if the request sent
-to the proxy contains CHAP-Password instead of User-Password?
-3.  Since the User-Password is encrypted with the RADIUS shared secret,
-what happens to it when a request is proxied?
+You can use the `radclient` commands shown in the testing section to simulate the authentication requests.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
-// This documentation was developed by Network RADIUS SAS.
+First, you should verify that authentication requests for user "bob" are handled locally and result in an `Access-Accept` without being forwarded. Then, you should attempt an authentication request for `bob@realm1.com`, which should be proxied to the home server.
+
+Once proxying is verified, the home server will be halted. You should then re-attempt the `bob@realm1.com` request and observe how the proxy server behaves when the home server does not respond.
