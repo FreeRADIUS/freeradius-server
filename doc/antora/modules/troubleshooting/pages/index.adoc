@@ -25,9 +25,9 @@ issue.  As the saying goes, **slow is fast, and fast is slow**.
 == General Rules
 
 Run the server in debugging mode (`radiusd -X`).  Look at the debug
-output.  Don't look at the output of `radclient.  You cannot debug
-server policies by looking at a simple binary `Access-Accept` or
-`Access-Reject` on the client.
+output.  Don't look at the output of `radclient`.  **You cannot debug
+server policies by looking at a simple binary result of
+`Access-Accept` or `Access-Reject` on the client**.
 
 The error messages produced by FreeRADIUS are necessarily short, and
 cannot contain a full explanation of the issue.  The documentation
