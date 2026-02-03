@@ -52,10 +52,11 @@ if (notfound) {
 }
 ----
 
-== Module Return Code priority overrides
+[#configurable_failover]
+== Configurable Failover
 
-In the case of modules, rcodes can be modified on a per-call basis.
-These over-rides use the same syntax as the
+The return codes for a module can be can be modified on a per-call basis.
+These over-rides use the same syntax as theq
 xref:unlang/actions.adoc[actions] subsection.
 
 Module priority overrides are specified in a block inline with the module call.
@@ -86,5 +87,5 @@ ldap { <1>
 See the xref:unlang/actions.adoc[actions] page for more information on
 the syntax of the `actions` section.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

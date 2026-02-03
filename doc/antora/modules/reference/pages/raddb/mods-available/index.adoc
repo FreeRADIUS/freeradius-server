@@ -1,9 +1,40 @@
 = Modules
 
 The server includes a number of "plug-in" modules which perform a
-variety of actions.  A full and annotated
-xref:raddb/mods-available/all_modules.adoc[module list] available on a
-separate page.
+variety of actions.  Each module has a small set of functionality,
+such as "connect to SQL database", or "check passwords".  This
+structure means that most of the complexity of the server is hidden
+behind (or encapsulated into) simple modular blocks.
+
+For example, a simple policy which says "get password from SQL, and
+then check it" is little more than two lines of text in a
+configuration file:
+
+[source,text]
+----
+sql
+pap
+----
+
+Each of the above modules has a complex configuration file, but the
+above policy does not contain the full configuration of SQL server
+address, admin login, queries, etc.  Instead, the policy focusses on
+the functional aspects of the requirements, which means that it is
+easier to create and understand.  A simple policy also means that (for
+example) the underlying SQL module can be reconfigured for a different
+SQL server or even a different SQL database, and the policy does not
+need to change.
+
+The full syntax for using modules in policies can be found in the
+`unlang` xref:reference:unlang/module.adoc[module] page.
+
+The full and annotated
+xref:raddb/mods-available/all_modules.adoc[module list] is large, and
+is therefore available on a separate page.
+
+
+
+== Categories
 
 Modules are divided up into a few categories:
 
@@ -26,6 +57,7 @@ Modules which do not belong elsewhere.
 Policy xref:raddb/mods-available/all_modules.adoc#_policy_modules[list]::
 Modules which implement policies to filter or enforce packets.
 
+[#enabling]
 == Enabling a Module
 
 Modules are enabled by creating a file in the `mods-enabled/` directory.
