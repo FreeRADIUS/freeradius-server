@@ -34,7 +34,6 @@
 *** xref:variables.adoc[Variables]
 *** xref:dynamic-translation.adoc[Dynamic-Translation]
 *** xref:multiple_modules.adoc[Module instances]
-*** xref:autz-type.adoc[Autz-Type]
 *** xref:module_fail_over.adoc[Module-Fail-Over]
 *** xref:prepaid.adoc[Prepaid]
 *** xref:dictionary.adoc[Dictionary]

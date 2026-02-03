@@ -87,7 +87,7 @@
 #
 
 #
-#  Within this virtual server we provide only an Autz-Type Status-Server section
+#  Within this virtual server we provide only a `recv Status-Server` section
 #  whose task is to perform the resource checks and sets the status of the
 #  "control module"
 #

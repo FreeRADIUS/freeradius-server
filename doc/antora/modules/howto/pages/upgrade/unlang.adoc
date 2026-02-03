@@ -88,5 +88,12 @@ As with any upgrade across major version numbers, there are caveats.
 See the full xref:reference:unlang/update.adoc[update] documentation
 for further guidance.
 
+=== Autz-Type has been removed
+
+The `Autz-Type` sections have been removed, and are not supported.
+The `Autz-Type` attribute has also been removed.  Its functionality
+can be replaced with a xref:reference:unlang/switch.adoc[switch]
+statement.
+
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -80,7 +80,7 @@ send Accounting-Response {
 	#  Return an address to the IP Pool when we see a stop record.
 	#
 	#  Ensure that control.IP-Pool.Name is set to determine which
-￼	#  pool of IPs are used.
+	#  pool of IPs are used.
 	#
 	sqlippool
 
@@ -109,12 +109,4 @@ send Accounting-Response {
 
 	#  Filter attributes from the accounting response.
 	attr_filter.accounting_response
-
-	#
-	#  See "Autz-Type Status-Server" for how this works.
-	#
-#	Acct-Type Status-Server {
-#
-#	}
-}
 }

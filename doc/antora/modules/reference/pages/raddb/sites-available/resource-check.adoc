@@ -85,7 +85,7 @@ authentication and accounting.
 
 
 
-Within this virtual server we provide only an Autz-Type Status-Server section
+Within this virtual server we provide only a `recv Status-Server` section
 whose task is to perform the resource checks and sets the status of the
 "control module"
 
@@ -149,5 +149,5 @@ Set the db_online module status to alive, if it isn't already
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
