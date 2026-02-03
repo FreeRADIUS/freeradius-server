@@ -37,3 +37,46 @@ You can use the `radclient` commands shown in the testing section to simulate th
 First, you should verify that authentication requests for user "bob" are handled locally and result in an `Access-Accept` without being forwarded. Then, you should attempt an authentication request for `bob@realm1.com`, which should be proxied to the home server.
 
 Once proxying is verified, the home server will be halted. You should then re-attempt the `bob@realm1.com` request and observe how the proxy server behaves when the home server does not respond.
+
+
+== Step 1. Create the proxy module instance (pointing to your home server)
+
+Create this file: `mods-available/proxy-realm1`
+
+[source,text]
+----
+radius proxy-realm1 {
+    mode = proxy
+
+    transport = udp
+
+    udp {
+        ipaddr = 192.168.50.200
+        port   = 1812
+        secret = testing123secret
+    }
+
+    # What packets to proxy
+    type = Access-Request
+    type = Accounting-Request
+
+    # Remove @realm1 before sending to home server
+    replicate = no
+
+    # What to do if home server does not reply
+    status_check = none
+
+    # Optional timeouts (seconds)
+    connect_timeout = 3.0
+    response_timeout = 3.0
+    zombie_period = 40
+}
+----
+
+Change the `mods-enabled/proxy-realm1` file permission accordingly.
+
+[source,text]
+----
+$ cd mods-enabled
+$ ln -s ../mods-available/proxy-realm1 proxy-realm1
+----
