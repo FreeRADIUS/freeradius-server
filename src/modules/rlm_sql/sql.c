@@ -209,14 +209,16 @@ static unlang_action_t sql_trunk_query_start(UNUSED unlang_result_t *p_result,
 static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	trunk_request_t	*treq;
 
 	if (!query_ctx->treq) return;
+	treq = query_ctx->treq;
 
 	/*
 	 *	A reapable trunk request has already completed.
 	 */
-	if (unlikely(query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
-		trunk_request_signal_complete(query_ctx->treq);
+	if (unlikely(treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
+		trunk_request_signal_complete(treq);
 		query_ctx->treq = NULL;
 		return;
 	}
@@ -225,11 +227,10 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
 	 */
-	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(query_ctx->treq, query_ctx);
-
-	trunk_request_signal_cancel(query_ctx->treq);
-
+	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(treq, query_ctx);
 	query_ctx->treq = NULL;
+
+	trunk_request_signal_cancel(treq);
 }
 
 /** Submit an SQL query using a trunk connection.
