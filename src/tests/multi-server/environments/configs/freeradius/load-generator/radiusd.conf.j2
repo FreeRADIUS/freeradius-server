@@ -41,8 +41,8 @@ modules {
 
 	# radius module instance configuration
 	{% for i in range(1, 6) %}
-	radius radius-module-homeserver{{ i }} {
-		$template radius-module-homeserver-tmpl
+	radius radius-module-dst-server{{ i }} {
+		$template radius-module-dst-server-tmpl
 		udp {
 			ipaddr = homeserver{{ i }}
 		}
@@ -183,11 +183,9 @@ server load-generator {
 	authenticate load-generator-proxy {
 		# Use redundant-load-balance to distribute requests to multiple home servers
 		redundant-load-balance {
-			radius-module-homeserver1
-			radius-module-homeserver2
-			radius-module-homeserver3
-			radius-module-homeserver4
-			radius-module-homeserver5
+			{% for i in range(1, 6) %}
+			radius-module-dst-server{{ i }}
+			{% endfor %}
 		}
 	}
 
