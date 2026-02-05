@@ -183,8 +183,8 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 			return 0;
 		}
 
-		if (memcmp(eap_ds->response->type.data,
-			   vp->vp_strvalue, vp->vp_length) != 0) {
+		if (rad_digest_cmp(eap_ds->response->type.data,
+				   (uint8_t const *) vp->vp_strvalue, vp->vp_length) != 0) {
 			REDEBUG2("Passwords are different");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
