@@ -326,7 +326,15 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
 			     data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
-		RPEDEBUG("Failed decoding packet");
+
+		/*
+		 *	@todo - print out socket name, too.
+		 */
+		DEBUG2("proto_%s - discarding packet - failed decode (%s)",
+		       inst->io.app_io->common.name, fr_radius_decode_fail_reason[decode_ctx.reason]);
+		DEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html",
+		       url[decode_ctx.reason]);
+
 		return -1;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
