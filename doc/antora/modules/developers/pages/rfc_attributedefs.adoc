@@ -1,0 +1,24 @@
+= RFCs and Attributes
+
+The RFCs have several issues and ambiguities. The proposed standard, https://datatracker.ietf.org/doc/html/rfc5080[RFC 5080] *Common Remote Authentication Dial In User Service (RADIUS) Implementation Issues and Suggested Fixes*, resolves some of these discrepencies. When creating new RADIUS standards, follow the guidelines in the https://datatracker.ietf.org/doc/html/rfc6158[RFC 6158] *RADIUS Design Guidelines* document. To review a list of all the standard RADIUS attributes, navigate to the xref:rfc_attributelist.adoc[Attribute Definitions] section below.
+
+However, these documents do not cover all the known issues with RADIUS. The RFCs are unclear in some areas, and some things are not explicitly allowed or forbidden. Developers should not assume something is allowed just because it is not prohibited.  After 20 years of RADIUS deployments, new behaviours could conflict with current practices. We recommend that you follow the RFC specifications closely for the best results.
+
+The https://www.freeradius.org/rfc/issues.html[open issues] page lists the problems we know about and our suggested solutions.
+
+.RFCs
+
+include::partial$rfc_radius.adoc[]
+
+
+.Related Documents (old RFCs, information, etc)
+
+include::partial$rfc_related.adoc[]
+
+== More Information
+
+https://www.inkbridgenetworks.com/blog/blog-10/the-freeradius-auth-type-attribute-103[The FreeRADIUS Auth-Type attribute]
+
+https://www.inkbridgenetworks.com/blog/blog-10/radius-standards-compliance-from-rfc-to-wifi-alliance-135[RADIUS standards compliance: from RFC to WiFI Alliance]
+
+

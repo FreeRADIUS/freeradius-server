@@ -1,0 +1,79 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.4[MS-ARAP-Challenge] |This attribute is only present in an Access-Request packet containing a Framed-Protocol Attribute with the value 3 (ARAP).
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.3[MS-ARAP-Password-Change-Reason]    |Indicates the reason for a server-initiated password change.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.4[MS-Acct-Auth-Type] |Represents the method used to authenticate the dial-up user.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.5[MS-Acct-EAP-Type]  |Represents the Extensible Authentication Protocol (EAP) [15] type used to authenticate the dial-up user.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.5.1[MS-BAP-Usage]  |Determines if the use of BAP is allowed, disallowed or required on new multilink calls.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.6[MS-CHAP-CPW-1] |Allows the user to change their password if it has expired.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.7[MS-CHAP-CPW-2] |Allows the user to change their password if it has expired.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.2[MS-CHAP-Challenge] |Contains the challenge sent by a NAS to a MS-CHAP user.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.4[MS-CHAP-Domain]    |Indicates the Windows NT domain in which the user was authenticated.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.5[MS-CHAP-Error] |Contains error data related to the preceding MS-CHAP exchange.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.8[MS-CHAP-LM-Enc-PW] |Contains the new Windows NT password encrypted with the old LAN Manager password hash.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.4[MS-CHAP-MPPE-Keys] |Present in an Access-Request packet containing a Framed-Protocol Attribute with the value 3 (ARAP).
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.2[MS-CHAP-NT-Enc-PW]   |Contains the new Windows NT password encrypted with the old Windows NT password hash.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.1.3[MS-CHAP-Response]  |Contains the response value provided by a PPP MS-CHAP user in response to the challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.3.4[MS-CHAP2-CPW]  |Allows the user to change their password if it has expired.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.3.2[MS-CHAP2-Response] |Contains the response value provided by an MS-CHAP-V2 peer in response to the challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.3.3[MS-CHAP2-Success]  |Contains the response value provided by an MS-CHAP-V2 peer in response to the challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.3[MS-Filter] |
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.5.3[MS-Link-Drop-Time-Limit]   |Indicates the length of time (in seconds) that a link must be underutilized before it is dropped.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.5.2[MS-Link-Utilization-Threshold] |Represents the percentage of available bandwidth utilization below which the link must fall before the link is
+eligible for termination.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.4.4[MS-MPPE-Encryption-Policy] |Used to indicate if encryption is on or off.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.4.5[MS-MPPE-Encryption-Types]  |Defines what type of encryptions are available.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.4.3[MS-MPPE-Recv-Key]  |Contains a session key to use for encrypting packets received by the NAS from the remote host.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.2[MS-MPPE-Send-Key]  |Contains a session key to use for encrypting packets sent by the NAS to the remote host.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.2[MS-New-ARAP-Password]  |Contains the new ARAP password during a password change operation.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.1[MS-Old-ARAP-Password]  |Contains the old ARAP password during a password change operation.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.6.4[MS-Primary-DNS-Server] |The primary Domain Name Server's (DNS) IP address.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.6[MS-Primary-NBNS-Server]    |The primary Net Bios Name Server's (NBNS) IP address.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.1[MS-RAS-Vendor] | The manufacturer name of the RAIDIUS client machine.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.2[MS-RAS-Version]    | The software version of the RADIUS client machine.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.7[MS-Secondary-DNS-Server]   |The IP address of the secondary DNS server to be used by the PPP peer. This attribute can be included in Access-Accept or Accounting-Request packets.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-2.7.8[MS-Secondary-NBNS-Server]  |The IP address of the secondary Net Bios Name Server(NBNS) server to be used by the PPP peer.
+
+|https://datatracker.ietf.org/doc/html/rfc5607#section-6.3[Management-Policy-Id]    |The name of the management access policy for the specific user.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-6.4[Management-Privilege-Level]  |The assigned privilege level for management access for the authenticated user.
+
+|https://datatracker.ietf.org/doc/html/rfc2548#section-6.2[Management-Transport-Protection] |The minimum level of protection required for transport within an access session.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.14[Message-Authenticator]  |Used to sign Access-Requests to prevent spoofing Access-Requests using CHAP, ARAP or EAP authentication.
+
+|https://datatracker.ietf.org/doc/html/rfc6572#section-4.2[Mobile-Node-Identifier]  |Contains the mobile node identifier (MN-Identifier) to identify the device on the network.
+
+|====

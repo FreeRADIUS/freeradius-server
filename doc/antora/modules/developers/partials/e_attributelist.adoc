@@ -1,0 +1,36 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.13[EAP-Message]    |This attribute encapsulates EAP packets allowing the NAS to authenticate dial-in users via EAP.
+
+|https://datatracker.ietf.org/doc/html/rfc5176#section-3.5[Error-Cause] |Holds information about why the Authorization Server cannot process Disconnect-Request or CoA-Request packets.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.3[Event-Timestamp] |This attribute is used Accounting-Request packets to record the time of an event.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.1[Extended-Type-1] |Encapsulates "Extended Type" attributes format, in the RADIUS Attribute Type space of 241.{1-255}.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.2[Extended-Type-2]|Encapsulates "Extended Type" attributes format, in the RADIUS Attribute Type space of 242.{1-255}.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.3[Extended-Type-3] |Encapsulates "Extended Type" attributes format, in the RADIUS Attribute Type space of 243.{1-255}.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-3.4[Extended-Type-4] |Encapsulates "Extended Type" attributes format, in the RADIUS Attribute Type space of 244.{1-255}.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.1[Extended-Vendor-Specific-1]  |Defines a RADIUS Type Code of 241.26 ("evs" data type).
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.2[Extended-Vendor-Specific-2]  |Defines a RADIUS Type Code of 242.26 ("evs" data type).
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.3[Extended-Vendor-Specific-3]  |Defines a RADIUS Type Code of 243.26 ("evs" data type).
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.4[Extended-Vendor-Specific-4]  |Defines a RADIUS Type Code of 244.26 ("evs" data type).
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.5[Extended-Vendor-Specific-5]  |Defines a RADIUS Type Code of 245.26 ("evs" data type).
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4.6[Extended-Vendor-Specific-6]  |Defines a RADIUS Type Code of 246.26 ("evs" data type).
+
+|====
+
+
+
+
+
+

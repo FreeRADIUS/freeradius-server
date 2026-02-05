@@ -1,0 +1,51 @@
+= Attribute Definitions
+
+In FreeRADIUS v4, following the RFC definitions is critical. The modular codespace allows RADIUS to function as a plug-in protocol, like DHCP or DNS. Standardization enables devices from different manufacturers to communicate using shared protocols and frameworks. RFC-compliant systems show clear behaviours to prevent security issues in authentication or authorisation.
+
+If non-standard attribute numbers or types are used, a NAS might ignore some authorisation instructions. FreeRADIUS v4 depends on the strict data types defined in https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044] ensure that attributes are parsed  the correct data type and interpreted accurately. This prevents "garbled" data or session crashes when dealing with complex attributes. Standard Logic: Many core modules depend on certain RFC attributes and formats. For example, State (RFC 5080) helps link many requests into one session. Re-defining these flows can lead to failed authentications or replay attacks.
+
+RADIUS has a finite range (0–255) available for standard attributes. Defining a custom attribute with a number already used by an RFC can cause a collision. The server might apply the wrong policy to a packet. This can lead to unauthorised access or accounting errors. FreeRADIUS v4 supports Extended Attributes (IDs > 255). Ignoring RFC formats can break the server's ability to manage longer or fragmented attributes.
+
+Use Internal Attributes (defined with the DEFINE keyword) for local logic. These attributes are never sent over the network, eliminating interoperability issues.
+
+== Attribute RFCs and Definitions
+
+The following tables list the relevant attributes used in RADIUS development. Each attribute includes a brief explanation and a direct link to its definition. All RADIUS attribute information is available this documentation.
+
+== A
+include::partial$a_attributelist.adoc[]
+== C
+include::partial$c_attributelist.adoc[]
+== D
+include::partial$d_attributelist.adoc[]
+== E
+include::partial$e_attributelist.adoc[]
+== F
+include::partial$f_attributelist.adoc[]
+== I
+include::partial$i_attributelist.adoc[]
+== K
+include::partial$k_attributelist.adoc[]
+== L
+include::partial$l_attributelist.adoc[]
+== M
+include::partial$m_attributelist.adoc[]
+== N
+include::partial$n_attributelist.adoc[]
+== P
+include::partial$p_attributelist.adoc[]
+== R
+include::partial$r_attributelist.adoc[]
+== S
+include::partial$s_attributelist.adoc[]
+== T
+include::partial$t_attributelist.adoc[]
+== U
+include::partial$u_attributelist.adoc[]
+== V
+include::partial$v_attributelist.adoc[]
+
+
+
+
+

@@ -15,6 +15,9 @@
 *** xref:sbuff.adoc[String buffers] (`sbuff` s)
 *** xref:sbuff-parsing.adoc[Parsing with string buffers]
 *** xref:sbuff-ng.adoc[Sbuff issues]
+** xref:rfc_attributedefs.adoc[RFCs and Attributes]
+*** xref:rfc_compliance.adoc[RFC Compliance]
+*** xref:rfc_attributelist.adoc[Attribute Definitions]
 ** xref:guidelines.adoc[Documentation Guidelines]
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

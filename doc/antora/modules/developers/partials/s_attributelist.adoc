@@ -1,0 +1,16 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc4590#section-3.20[SIP-AOR]    |This attribute, identifies the URI, and is used for the authorisation of SIP messages.
+
+|https://datatracker.ietf.org/doc/html/rfc6572#section-4.3[Service-Selection]   |The name of the service or the external network with which the mobility service for the particular MN.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.6[Service-Type]    |The the type of service the user has requested, or the type of service to be provided.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.27[Session-Timeout]    |The maximum number of seconds of service provided to the user before a session terminates.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.24[State]  |An attribute that's sent by the server to the client in an Access-Challenge or by client to the server in the new Access-Request.
+
+|https://datatracker.ietf.org/doc/html/rfc6911#section-3.5[Stateful-IPv6-Address-Pool]  |The assigned pool used to select an IPv6 address for the user on the NAS.
+
+|====
