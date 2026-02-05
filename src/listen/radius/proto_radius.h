@@ -56,4 +56,4 @@ struct proto_radius_io_thread_s {
 
 };
 
-void proto_radius_log(fr_listen_t *li, char const *name, fr_radius_decode_fail_t reason, fr_socket_t const *sock, char const *fmt, ...);
+void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason, fr_socket_t const *sock, char const *fmt, ...);

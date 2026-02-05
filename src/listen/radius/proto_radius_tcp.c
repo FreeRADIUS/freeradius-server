@@ -145,7 +145,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 			break;
 		}
 
-		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
+		proto_radius_log(li, FR_RADIUS_FAIL_IO_ERROR, NULL,
 				 "%s", fr_strerror());
 		return data_size;
 	}
@@ -160,7 +160,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	TCP read of zero means the socket is dead.
 	 */
 	if (!data_size) {
-		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_IO_ERROR, NULL,
+		proto_radius_log(li, FR_RADIUS_FAIL_IO_ERROR, NULL,
 				 "Client closed the connection");
 		return -1;
 	}
@@ -170,7 +170,7 @@ have_packet:
 	 *	We MUST always start with a known RADIUS packet.
 	 */
 	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
-		proto_radius_log(li, thread->name, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, NULL,
+		proto_radius_log(li, FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE, NULL,
 				 "Received packet code %u", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return -1;
@@ -210,7 +210,7 @@ have_packet:
 	 *      If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->max_attributes, false, &reason)) {
-		proto_radius_log(li, thread->name, reason, NULL, "Received invalid packet");
+		proto_radius_log(li, reason, NULL, "Received invalid packet");
 		thread->stats.total_malformed_requests++;
 		return -1;
 	}
