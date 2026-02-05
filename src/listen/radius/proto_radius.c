@@ -238,17 +238,17 @@ void proto_radius_log(fr_listen_t *li, char const *name, fr_radius_decode_fail_t
 	va_end(ap);
 
 	if (sock) {
-		DEBUG2("proto_%s - discarding packet on socket %s from client %pV port %u - %s (%s)",
-		       li->app_io->common.name, name,
-		       fr_box_ipaddr(sock->inet.src_ipaddr), sock->inet.src_port,
-		       msg,
-		       fr_radius_decode_fail_reason[reason]);
+		EDEBUG2("proto_%s - discarding packet on socket %s from client %pV port %u - %s (%s)",
+			li->app_io->common.name, name,
+			fr_box_ipaddr(sock->inet.src_ipaddr), sock->inet.src_port,
+			msg,
+			fr_radius_decode_fail_reason[reason]);
 	} else {
-		DEBUG2("proto_%s - discarding packet on socket %s - %s (%s)",
-		       li->app_io->common.name, name, msg, fr_radius_decode_fail_reason[reason]);
+		EDEBUG2("proto_%s - discarding packet on socket %s - %s (%s)",
+			li->app_io->common.name, name, msg, fr_radius_decode_fail_reason[reason]);
 	}
 
-	DEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html", url[reason]);
+	EDEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html", url[reason]);
 
 	talloc_free(msg);
 }
@@ -330,9 +330,9 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		/*
 		 *	@todo - print out socket name, too.
 		 */
-		DEBUG2("proto_%s - discarding packet - failed decode (%s)",
+		EDEBUG2("proto_%s - discarding packet - failed decode (%s)",
 		       inst->io.app_io->common.name, fr_radius_decode_fail_reason[decode_ctx.reason]);
-		DEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html",
+		EDEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html",
 		       url[decode_ctx.reason]);
 
 		return -1;

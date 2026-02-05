@@ -273,6 +273,18 @@ void	log_global_free(void);
 #define PDEBUG3(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define PDEBUG4(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
 #define PDEBUGX(_lvl, _fmt, ...)	_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
+
+#define WDEBUG(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define WDEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define WDEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define WDEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG_WARN, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define WDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_WARN, _lvl, _fmt, ## __VA_ARGS__)
+
+#define EDEBUG(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define EDEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define EDEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define EDEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define EDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_ERRR, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
