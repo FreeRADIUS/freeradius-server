@@ -1085,7 +1085,7 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 }
 
 
-static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
+static fr_io_track_t *fr_io_track_add(fr_listen_t const *li, fr_io_client_t *client,
 				      fr_io_address_t *address,
 				      uint8_t const *packet, size_t packet_len,
 				      fr_time_t recv_time, bool *is_dup)
@@ -1112,6 +1112,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		my_address->radclient = client->radclient;
 	}
 
+	track->li = li;
 	track->client = client;
 
 	track->timestamp = recv_time;
@@ -1709,7 +1710,7 @@ have_client:
 			static 	fr_rate_limit_t tracking_failed;
 			bool	is_dup = false;
 
-			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, &is_dup);
+			track = fr_io_track_add(li, client, &address, buffer, packet_len, recv_time, &is_dup);
 			if (!track) {
 				RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.tracking_failed : &tracking_failed,
 						 ERROR, "Failed tracking packet from client %s - discarding it",
@@ -1954,7 +1955,7 @@ static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len,
 	/*
 	 *	Track this packet, because that's what mod_read expects.
 	 */
-	track = fr_io_track_add(connection->client, connection->address,
+	track = fr_io_track_add(li, connection->client, connection->address,
 				buffer, buffer_len, recv_time, &is_dup);
 	if (!track) {
 		DEBUG2("Failed injecting packet to tracking table");
@@ -3304,6 +3305,8 @@ fr_io_track_t *fr_master_io_track_alloc(fr_listen_t *li, fr_client_t *radclient,
 
 	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
 	MEM(track->address = address = talloc_zero(track, fr_io_address_t));
+
+	track->li = li;
 	track->client = client;
 
 	address->socket.inet.src_port = src_port;

@@ -39,6 +39,7 @@ typedef struct fr_io_client_s fr_io_client_t;
 
 typedef struct fr_io_track_s {
 	fr_rb_node_t			node;		//!< rbtree node in the tracking tree.
+	fr_listen_t const		*li;		//!< listener associated with this tracking structure
 	fr_timer_t			*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
 	fr_time_t			expires;	//!< when this packet expires
