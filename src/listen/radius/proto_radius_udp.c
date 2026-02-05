@@ -35,15 +35,7 @@
 
 extern fr_app_io_t proto_radius_udp;
 
-typedef struct {
-	char const			*name;			//!< socket name
-	int				sockfd;
-
-	fr_io_address_t			*connection;		//!< for connected sockets.
-
-	fr_stats_t			stats;			//!< statistics for this socket
-
-} proto_radius_udp_thread_t;
+typedef struct proto_radius_io_thread_s proto_radius_udp_thread_t;
 
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
