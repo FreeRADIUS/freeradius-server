@@ -1,0 +1,8 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-2.6[Vendor-Id]   |This attribute assigns the identify to the vendor.
+
+|https://datatracker.ietf.org/doc/html/rfc6929#section-4[Vendor-Specific]   |This attribute extends defines the characteristics of the specific vendor.
+
+|====

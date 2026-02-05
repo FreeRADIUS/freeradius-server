@@ -1,0 +1,38 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.29[Termination-Action] |This Attribute indicates what action the NAS should take when the specified service is completed.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.7[Tunnel-Assignment-ID]    |This Attribute is used to indicate to the tunnel initiator the particular tunnel to which a session is to be assigned.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.9[Tunnel-Client-Auth-ID]   |This Attribute specifies the name used by the tunnel initiator during the authentication phase of tunnel establishment.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.3[Tunnel-Client-Endpoint]  |This Attribute contains the address of the initiator end of the tunnel.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-3.6[Tunnel-Link-Reject]  |This value marks the rejection of the establishment of a new link in an existing tunnel.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-3.4[Tunnel-Link-Start]   |This value marks the creation of a tunnel link.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-3.5[Tunnel-Link-Stop]    |This value marks the destruction of a tunnel link.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.2[Tunnel-Medium-Type]  |Attribute indicates which transport medium to use when creating a tunnel for those protocols (such as L2TP) that can operate over multiple transports.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.5[Tunnel-Password] | Contains a password to be used to authenticate to a remote server.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.8[Tunnel-Preference]   |An attribute to indicate the relative preference assigned to each tunnel.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.6[Tunnel-Private-Group-ID] |This Attribute indicates the group ID for a particular tunneled session.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-3.20[Tunnel-Reject]  |   This attribute, identifies the URI, and is used for the authorisation of SIP messages.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.10[Tunnel-Server-Auth-ID]  | This Attribute specifies the name used by the tunnel terminator during the authentication phase of tunnel establishment.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.4[Tunnel-Server-Endpoint]  |This Attribute indicates the address of the server end of the tunnel.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-3.1[Tunnel-Start]    |This value MAY be used to mark the establishment of a tunnel with another node.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-3.2[Tunnel-Stop] |This value MAY be used to mark the destruction of a tunnel to or from another node.
+
+|https://datatracker.ietf.org/doc/html/rfc2868#section-3.1[Tunnel-Type] |This Attribute indicates the tunneling protocol(s) to be used a tunnel (either as a  tunnel initiator or terminator).
+
+|====

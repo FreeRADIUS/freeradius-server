@@ -1,0 +1,67 @@
+[options=cols="15,~"]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.15[ARAP-Challenge-Response]    |Contains the response to the dial-in
+client's challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.5[ARAP-Features]   |Holds password information that the NAS sent to the user (via feature flags).
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.4[ARAP-Password]   |Contains the dial-in user's response to the NAS challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.7[ARAP-Security]   |Identifies the ARAP Security Module to be used in an Access-Challenge packet.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.8[ARAP-Security-Data]  |Contains the security module challenge or response in Access type packets.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.6[ARAP-Zone-Access]    |Indicates how the ARAP zone list for the user is to be used.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.7[AUTH-Key]    |RADIUS attributes providing support for 802.16 Privacy Key Management (v1).
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-4.2[Access-Accept]   |Access-Accept packets that contain specific configuration information to start delivery of service to the user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-4.4[Access-Challenge]    |Access-Challenge packets sent by RADIUS in response to a user's Access-Request message.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-4.3[Access-Reject]   |Access-Reject packets are sent when an attribute verification fails.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-4.1[Access-Request]  |Access-Request packets that contain select information to determine the user's level of access and services.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-4.1[Accounting-Request]  |Accounting-Request packets contain information used by accounting operations for a service or resource granted to a user.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-4.2[Accounting-Response] |Accounting-Response packets are acknowledgments indication that the Accounting-Request has been processed.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.6[Acct-Authentic]  |Indicates how the user was authenticated.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.2[Acct-Delay-Time] | The delay between two accounting events and shows client's time taken  to send a specific record.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.1[Acct-Input-Gigawords]    |Indicates how many times the Acct-Input-Octets
+counter has wrapped during service provided.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.3[Acct-Input-Octets]   |The number of octets that have been received from the port after the service started.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.8[Acct-Input-Packets]  |The number of packets received on the ingress port.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.16[Acct-Interim-Interval]  |The time (in seconds) between each interim update for the specific session and only appears in the Access-Accept message.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.12[Acct-Link-Count]    |Gives the count of links used in a select multilink session when the accounting record is  generated.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.11[Acct-Multi-Session-Id]  |A unique Accounting ID to make it easy to link together multiple related sessions in a log file.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.2[Acct-Output-Gigawords]   |Indicates how many times the Acct-Output-Octets
+counter has wrapped while delivering this service.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.4[Acct-Output-Octets]  |The number of octets sent to the port while delivering this service.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.9[Acct-Output-Packets] |The number of packets sent on the egress port.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.5[Acct-Session-Id] | An ID assigned to a session and tracked by this ID via log files. Exmple stop and start events are mapped to this ID.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.7[Acct-Session-Time]   |Indicates how long the user has been granted access.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.1[Acct-Status-Type]    |Indicates the state of the user service, for example: start or stop events.
+
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.10[Acct-Terminate-Cause]   |Gives the reasons why a connection ended.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-4.1[Acct-Tunnel-Connection]  |Gives details of the the tunnel connection such as port, ip address etc.
+
+|https://datatracker.ietf.org/doc/html/rfc2867#section-4.2[Acct-Tunnel-Packets-Lost]    |Tracks the number of accounting packets lost during a session.
+
+|====

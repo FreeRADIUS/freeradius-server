@@ -1,0 +1,24 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.7[PKM-AUTH-Key]|Contains a PKM authorisation key.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.2[PKM-CA-Cert] |A string value containing the X.509 certificate used to sign the SS certificate.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.3[PKM-Config-Settings] |Contains string values that map to relevant TLVs used in the PKM configuration.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.4[PKM-Cryptosuite-List]    |Contains a list of cryptosuite attributes that may be used to create security attributes.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.6[PKM-SA-Descriptor]   |Specifies the characteristics of a PKM security association.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.5[PKM-SAID]    |Contains a PKM Security Association Identifier.
+
+|https://datatracker.ietf.org/doc/html/rfc5904#section-3.1[PKM-SS-Cert] |Contains a an X.509 certificate (public key).
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.9[Password-Retry]  |The number of authentication attempts a user may be allowed before being disconnected.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.42[Port-Limit] |Sets the maximum number of ports to be provided to the user by the NAS.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.33[Proxy-State]    |This state attribute is sent by a proxy server to another server when forwarding an Access-Request.
+
+|====

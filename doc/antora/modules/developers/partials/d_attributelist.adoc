@@ -1,0 +1,54 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc6911#section-3.2[DNS-Server-IPv6-Address] |Contains the IPv6 address of a
+DNS server.
+
+|https://datatracker.ietf.org/doc/html/rfc6519#section-3[DS-Lite]   |Provides IPv4 and IPv6 connectivity to users that are addressed only with an IPv6 prefix.
+
+|https://datatracker.ietf.org/doc/html/rfc6519#section-4.1[DS-Lite-Tunnel-Name] |Specifies the Fully Qualified Domain Name (FQDN) of the Address Family Transition Router (AFTR) that the client connects to.
+
+|https://datatracker.ietf.org/doc/html/rfc4818#section-1[Delegated-IPv6-Prefix] |Contains the IPv6 prefix that's assigned to the user for network operations.
+
+|https://datatracker.ietf.org/doc/html/rfc6911#section-3.2[Delegated-IPv6-Prefix-Pool]  |Contains the name of an assigned pool used for prefix delegation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.16[Digest-AKA-Auts]   |Contains the auts parameter that's used in theDigest AKA calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.9[Digest-Algorithm]   |Holds the algorithm parameter that defines the HTTP Digest calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.15[Digest-Auth-Param]  |Used for future extensions and also maps to the auth-param parameter [RFC2617].
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.11[Digest-CNonce]  |Contains the client nonce parameter that's used in HTTP Digest calculations.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.17[Digest-Domain]  |Contains a URI that helps define the protection space for HTTP type protocols.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.10[Digest-Entity-Body-Hash]    |Contains a HASH value of an HTTP type message body that used in digest calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.19[Digest-HA1] |Enables the generation of an Authentication-Info header.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.14[Digest-Method]  |Contains the opaque parameter that is passed to the HTTP-style client.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.5[Digest-Nextnonce]   |Holds a nonce to be used in the HTTP Digest calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.3[Digest-Nonce]    |holds a nonce to be used in the HTTP Digest calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.12[Digest-Nonce-Count] |Contains the nonce count parameter that is used to detect replay attacks.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.14[Digest-Opaque]  | Contains the opaque parameter that is passed to the HTTP-style client.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.8[Digest-Qop]  |Contins the `Quality of Protection` parameter that impacts the HTTP Digest calculation.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.2[Digest-Realm]    |Defines a protection space of the RADIUS server.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.1[Digest-Response] |If present in an Access-Request message, a RADIUS server will process theAccess-Request as a request for Digest Authentication.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.4[Digest-Response-Auth]    |Enables the RADIUS server to prove possession of the password.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.18[Digest-Stale]   |An attribute value (T/F) that's sent by a RADIUS server to notify
+client whether it has accepted a nonce.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.7[Digest-URI]. |Contains the contents of the digest-uri directive or the URI of the HTTP-style request.
+
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.13[Digest-Username]    |Holds the user name used in the HTTP Digestcalculation.
+
+|====

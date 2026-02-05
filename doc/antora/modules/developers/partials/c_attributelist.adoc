@@ -1,0 +1,29 @@
+[options=cols="15,~", autowidth]
+|====
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.40[CHAP-Challenge] |Contains the CHAP Challenge sent by the NAS to a PPP Challenge-Handshake Authentication Protocol (CHAP) user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.3[CHAP-Password]   |Contains the response value provided by a PPP Challenge-Handshake Authentication Protocol (CHAP) user in response to the challenge.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.20[Callback-Id]    |Indicates the name of a place to be called, to be interpreted by the NAS.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.19[Callback-Number]    |Indicates a dialing string to be used for callback.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.30[Called-Station-Id]  |The phone number that the user called, using Dialed Number Identification (DNIS).
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.31[Calling-Station-Id] |The phone number that the call came from, using Automatic Number Identification (ANI).
+
+|https://datatracker.ietf.org/doc/html/rfc5176#section-2.2[Change-of-Authorization] |Contains information for dynamically changing session authorizations.
+
+|https://datatracker.ietf.org/doc/html/rfc6672#section-4.19[Chargeable-User-Identity]   |CUI, is a unique handle used correlate and process authentication/accounting operations for a specific user.
+
+|https://datatracker.ietf.org/doc/html/rfc2865#section-5.25[Class]  |This Attribute is available to be sent by the server to the client
+in an Access-Accept packet.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.12[Configuration-Token]    |Indicates the type of user profile to be applied during authentication requests.
+
+|https://datatracker.ietf.org/doc/html/rfc2869#section-5.11[Connect-Info]     |Indicates the nature of the user's connection.
+
+|====
+
+
