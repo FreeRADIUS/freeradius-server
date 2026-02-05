@@ -1,10 +1,69 @@
 = Errors
 
-== The Server isn't receiving packets
+If the server isn't processing packets, this is due to two common
+problems.  Either it is either not receiving packets, or else it
+receives a packet and discards it with a complaint.  Both situations
+can be solved by running the server in
+xref:ROOT:debugging/radiusd_X.adoc[debugging] mode.
 
-These are _network_ errors.
+== Not Receiving Packets
 
-* Common errors
+When the server is started in debugging mode, the last line it prints is:
+
+[source,text]
+----
+Ready to process requests
+----
+
+When it receives packets, it either prints out an error (as discussed
+in the next section), or it processes the packet through the `unlang`
+policies.  However, sometimes it just prints out `Ready to process
+requests`, and then nothing happens.  i.e. it doesn't print out any
+messages.  So what's wrong?
+
+The problem is simple: the server isn't receiving any packets.  If the
+server receives a packet in debug mode, it _always_ prints out a
+message, without exception.
+
+So if there are no messages being printed, that means the server isn't
+receiving packets.  There are a number of reasons why this happens.
+Perhaps the client isn't sending packets.  Perhaps the packets from
+the client aren't reaching the machine which is hosting the server.
+Perhaps the OS has a firewall, and is dropping packets before they are
+sent to the server.  Or maybe the OS is discarding packets for another
+reason.
+
+The root cause of the problem can only be determined by eliminating
+each of the above possibilities.  You can't fix the problem simply by
+asking "we sent packets to the server and it didn't receive them, so
+what's wrong with the server?".  The only possible answer to that
+question is "nothing".  The problem isn't in the server, it's
+elsewhere.  Things you should check include:
+
+* is the client actually sending packets?
+* is the client sending packets to the right server IP?
+* is the server OS receiving packets?
+  * i.e. use `tcpdump` or `wireshark` to verify that the packets are received.
+* does the OS have a firewall which is blocking the application from receiving packets?
+  * packet analyzers like `wireshark` can often see packets before the firewall drops them!
+* is something like SeLinux preventing the application from receiving packets?
+
+All of these should be checked beforing checking any FreeRADIUS configuration.
+
+== Receiving Packets
+
+When the server discards packets for a particular reason, it gives a
+descriptive error messages when running in
+xref:ROOT:debugging/radiusd_X.adoc[debugging] mode.  The errors are
+not sent to the normal log file, because that could allow attackers to
+DoS the server.
+
+The common reasons why packets are discarded are listed below.  When
+run in xref:ROOT:debugging/radiusd_X.adoc[debugging] mode, the server
+also prints out a reference to the specific page that is associated
+with that error.
+
+* Common error messages when receiving packets
 ** xref:network/unknown_packet_code.adoc[Unknown packet code]
 ** xref:network/unexpected_request_code.adoc[Unexpected request code]
 ** xref:network/message_authenticator_missing.adoc[Message-Authenticator is missing]
@@ -13,12 +72,12 @@ These are _network_ errors.
 ** xref:network/packet_fails_verification.adoc[Packet fails verification]
 ** xref:network/no_matching_request.adoc[Did not find request which matched response]
 
-* Other errors
+* Other error messages
 ** xref:network/unexpected_response_code.adoc[Unexpected response code]
 ** xref:network/too_many_attributes.adoc[Packet contains too many attributes]
 ** xref:network/io_error.adoc[IO error]
 
-* Rare errors
+* Rare error messages
 ** xref:network/packet_too_small.adoc[Packet is too small]
 ** xref:network/packet_too_large.adoc[Packet is too large]
 ** xref:network/mismatched_length.adoc[Header length does not match received packet length]
