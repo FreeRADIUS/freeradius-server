@@ -8,7 +8,7 @@ Loading multiple certificate chains means that the server can have
 different identities.  i.e. When a user `bob@example.com` requests
 network access, the server can present an `example.com` certificate.
 On the other hand, when a user `doug@example.org` requests network
-access, the server cna present an `example.org` certificate.
+access, the server can present an `example.org` certificate.
 
 This functionality means that it is possible to configure only one
 `eap` module, and then use multiple certificate chains. Previous
@@ -32,10 +32,8 @@ The simplest way to do this is via the following `unlang` statements:
 authenticate {
 	...
 	Auth-Type eap {
-		if ("%{unpack:&EAP-Message 4 byte}" == 1) {
-			update control {
-				TLS-Session-Cert-File := "${certdir}/realms/%{Realm}"
-			}
+		update control {
+			TLS-Session-Cert-File := "${certdir}/realms/%{Realm}.pem"
 		}
 
 		eap
@@ -44,11 +42,10 @@ authenticate {
 }
 ```
 
-This configuration looks at the `EAP-Message` attribute, and checks if
-it is an EAP-Identity packet.  If so, it then adds a special attribute
-`TLS-Session-Cert-File`, with a value based on the `Realm`, from the
-`User-Name`.  That setting tells the server to look in the file for a
-certificate.
+This configuration adds a special attribute `TLS-Session-Cert-File`,
+with a value based on the `Realm`, from the `User-Name`.  That setting
+tells the server to look in the file for a certificate.  This setting
+is ignored for EAP types which don't use TLS.
 
 If the file is there, and contains a correctly formatted `PEM`
 certificate chain, then it is loaded and used.
