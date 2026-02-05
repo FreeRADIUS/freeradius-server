@@ -537,15 +537,17 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
+			char *fullpath;
+
 			/*
 			 *	Trim the trailing slash
 			 */
 			p = strrchr(path, '/');
 			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
 
-			path = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
-			handle = dlopen(path, flags);
-			talloc_free(path);
+			fullpath = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
+			handle = dlopen(fullpath, flags);
+			talloc_free(fullpath);
 			if (handle) break;
 
 			/*
@@ -574,6 +576,10 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	and instead complain about access permissions.
 			 */
 			dlerror_txt = dlerror();
+			if (!dlerror_txt) {
+				fr_strerror_printf_push("Unknown error when trying directory %s", path);
+				continue;
+			}
 
 			/*
 			 *	Yes, this really is the only way of getting the errno
@@ -586,7 +592,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 #  ifdef AT_ACCESS
 				access_mode |= AT_ACCESS;
 #  endif
-				if (access(path, access_mode) < 0 && errno == ENOENT) continue;
+				if ((access(path, access_mode) < 0) && (errno == ENOENT)) continue;
 #endif
 				fr_strerror_printf_push("Access check failed: %s", dlerror_txt);
 				break;
@@ -601,8 +607,17 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	don't know which one would be useful
 			 *	in diagnosing the underlying cause of the
 			 *	load failure.
+			 *
+			 *	However, OSX doesn't clear the error,
+			 *	it simply appends to it.  We don't
+			 *	want endless amounts of duplication,
+			 *	so we tidy it up here.
 			 */
-			fr_strerror_printf_push("%s", dlerror_txt ? dlerror_txt : "unknown dlopen error");
+#ifndef __APPLE__
+			fr_strerror_const_push(dlerror_txt);
+#else
+			fr_strerror_const(dlerror_txt);
+#endif
 		}
 
 		/*
