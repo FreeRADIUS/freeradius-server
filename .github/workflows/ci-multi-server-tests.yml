@@ -47,6 +47,7 @@ jobs:
         run: |
           sudo apt-get remove -y libhashkit2
 
+      # Installing build dependencies requires a ubuntu-24.04 runner
       - name: Install build dependencies
         run: |
           sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
@@ -61,4 +62,5 @@ jobs:
 
       - name: Run test-5hs-autoaccept test
         run: |
+          export FRAMEWORK_GIT_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/InkbridgeNetworks/freeradius-multi-server.git"
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
