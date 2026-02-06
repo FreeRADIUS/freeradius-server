@@ -10,6 +10,13 @@
 #
 # ./scripts/dict/rfc-title share/dictionary/*/dictionary.rfc*
 #
+#
+#  Or:
+#
+#  for x in dhcpv4 dhcpv6 dns radius tacacs; do ./scripts/dict/rfc-title share/dictionary/$x/dictionary.rfc* > doc/antora/modules/developers/partials/dict_$x.adoc; done
+#
+#  We don't want this to run automatically, because it hits the IETF web site quite a bit.
+#
 
 ######################################################################
 #
@@ -49,6 +56,14 @@ $ua->ssl_opts(
     verify_hostname => 0
 );
 
+print <<EOF;
+[options=header,cols="20,~",autowidth]
+|====
+
+|RFC    |Description
+
+EOF
+
 while (@ARGV) {
     my $rfc= shift;
 
@@ -70,5 +85,7 @@ while (@ARGV) {
     $title =~ s/(RFC \d+) - //;
 
 
-    print $url, "[$1] - ", $title, "\n";
+    print "|", $url, "[$1] | ", $title, "\n\n";
 }
+
+print "|====\n";
