@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
       - 'src/tests/multi-server/**'
+  workflow_dispatch:
 
 jobs:
   test-5hs-autoaccept:
