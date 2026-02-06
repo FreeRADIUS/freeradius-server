@@ -4,6 +4,7 @@ FreeRADIUS 3.0.28 Tue 09 Jul 2024 12:00:00 UTC urgency=low
 	Feature improvements
 
 	Bug fixes
+	* Ignore home server "ping" packets for statistics
 
 FreeRADIUS 3.0.27 Tue 09 Jul 2024 12:00:00 UTC urgency=high
 	Configuration changes
