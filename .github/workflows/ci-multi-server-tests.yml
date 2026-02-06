@@ -34,7 +34,8 @@ jobs:
             llvm \
             nodejs \
             npm \
-            asciidoctor
+            asciidoctor \
+            libtalloc-dev
 
       - name: Build Docker image for multi-server test environment
         run: |
