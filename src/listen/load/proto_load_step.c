@@ -126,7 +126,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	/*
 	 *	Where the addresses should go.  This is a special case
-	 *	for proto_radius.
+	 *	for proto_load.
 	 */
 	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
@@ -169,7 +169,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	thread->stats.total_responses++;
 
 	/*
-	 *	Tell the load generatopr subsystem that we have a
+	 *	Tell the load generator subsystem that we have a
 	 *	reply.  Then if the load test is done, exit the
 	 *	server.
 	 */
