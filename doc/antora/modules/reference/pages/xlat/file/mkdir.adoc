@@ -1,0 +1,21 @@
+= mkdir
+
+The `mkdir` function creates directories and subdirectories.  If the directory exists or was created successfully, it returns `true`.  Otherwise if it could not be created, it returns `false.
+
+[#syntax]
+== Syntax
+
+`%file.mkdir(_string_)`
+
+.Return: _bool_
+
+.Create a directory
+====
+[source,unlang]
+----
+%file.mkdir("/var/log/radius/auth")
+----
+====
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
