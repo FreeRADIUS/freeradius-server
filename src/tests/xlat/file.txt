@@ -37,6 +37,23 @@ match no
 xlat_expr "foo/bar/" + %file.escape(%taint('..baz'))
 match foo/bar/_x2e_x2ebaz
 
+xlat_expr %file.mkdir('src/tests/xlat/file/new-dir')
+xlat_expr %file.exists('src/tests/xlat/file/new-dir')
+match yes
+
+xlat_expr %file.rmdir('src/tests/xlat/file/new-dir')
+xlat_expr %file.exists('src/tests/xlat/file/new-dir')
+match no
+
+xlat_expr %file.mkdir('src/tests/xlat/file/nested/dir')
+xlat_expr %file.exists('src/tests/xlat/file/nested/dir')
+match yes
+
+xlat_expr %file.rmdir('src/tests/xlat/file/nested/dir')
+xlat_expr %file.rmdir('src/tests/xlat/file/nested')
+xlat_expr %file.exists('src/tests/xlat/file/nested/dir')
+match no
+
 #
 #  Can now do expressions as function arguments
 #

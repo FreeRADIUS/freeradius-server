@@ -844,6 +844,48 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*dirname;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	dirname = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (fr_mkdir(NULL, dirname, -1, 0700, NULL, NULL) == 0);
+	if (!dst->vb_bool) {
+		REDEBUG3("Failed creating directory %s - %s", dirname, fr_syserror(errno));
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*dirname;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	dirname = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (rmdir(dirname) == 0);
+	if (!dst->vb_bool) {
+		REDEBUG3("Failed removing directory %s - %s", dirname, fr_syserror(errno));
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_taint_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
@@ -4759,6 +4801,8 @@ do { \
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
+	XLAT_REGISTER_ARGS("file.mkdir", xlat_func_file_mkdir, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.rmdir", xlat_func_file_rmdir, FR_TYPE_BOOL, xlat_func_file_name_args);
 
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.immutable");
