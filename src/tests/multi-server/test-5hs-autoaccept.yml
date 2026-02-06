@@ -1,0 +1,92 @@
+timeout: 90
+state_order: sequence
+states:
+  state_1:
+    description: Baseline load-generator test for load-generator -> 5 home servers. Home servers auto-accept requests.
+    host:
+      load-generator:
+        actions:
+        - execute_command:
+            command: |
+              #
+              # proto_load configuration via environment variables
+              #
+
+              export TEST_CONF_START_PPS=5
+              export TEST_CONF_MAX_PPS=10
+              # Duration must be equal or greater than max pps for proto_load to calculate "pps_accepted" effectively
+              export TEST_CONF_DURATION=5
+              export TEST_CONF_STEP=5
+              export TEST_CONF_PARALLEL=1
+              export TEST_CONF_MAX_BACKLOG=1000
+              export TEST_CONF_REPEAT="no"
+
+              TEST_CONF_NUM_MESSAGES=0
+              for ((pps=$TEST_CONF_START_PPS; pps<=$TEST_CONF_MAX_PPS; pps+=$TEST_CONF_STEP)); do
+                TEST_CONF_NUM_MESSAGES=$((TEST_CONF_NUM_MESSAGES + TEST_CONF_DURATION * pps))
+              done
+              export TEST_CONF_NUM_MESSAGES
+
+              #
+              # Delay to allow the rest of the environment to startup before starting load generation.
+              # When emulating x86 hardware on ARM hardware, the startup time can be significant, hence
+              # the 60 second sleep here.
+              #
+              sleep 60
+
+              #
+              # Starting load-generator server which will generate traffic based on env configuration
+              # from above.
+              #
+              printf "Starting load-generator with the following configuration:\n"
+              printf "  Start PPS:        %s\n" "$TEST_CONF_START_PPS"
+              printf "  Max PPS:          %s\n" "$TEST_CONF_MAX_PPS"
+              printf "  Duration (secs):  %s\n" "$TEST_CONF_DURATION"
+              printf "  Step PPS:         %s\n" "$TEST_CONF_STEP"
+              printf "  Parallel:         %s\n" "$TEST_CONF_PARALLEL"
+              printf "  Max Backlog:      %s\n" "$TEST_CONF_MAX_BACKLOG"
+              printf "  Num Messages:     %s\n" "$TEST_CONF_NUM_MESSAGES"
+
+              freeradius &
+
+              tail -f /dev/null
+
+            detach: true
+    verify:
+      timeout: 70
+      trigger_mode: unordered
+      triggers:
+      - hs-access-request-received:
+          may_pattern:
+            reg_pattern: \- INFO \- (\d+)-(\d+)-(\d+)-(\d+):(\d+):(\d+) Homeserver (\d+\.\d+\.\d+\.\d+):(\d+) rx Access-Request src=
+      - hs-access-accept-sent:
+          may_pattern:
+            reg_pattern: \- INFO \- (\d+)-(\d+)-(\d+)-(\d+):(\d+):(\d+) Homeserver (\d+\.\d+\.\d+\.\d+):(\d+) tx Access-Accept src=
+  state_2:
+    description: Check load-generator Status-Server stats
+    host:
+      load-generator:
+        actions:
+        - execute_command:
+            command: |
+              # This command will query the load-generator's built-in Status-Server for statistics. Port 1820 configured to be used for Status-Server.
+              printf 'User-Name := "testuser"\nUser-Password := "testpass"' | /usr/bin/radclient -x localhost:1820 status testing123
+    verify:
+      timeout: 5
+      trigger_mode: unordered
+      triggers:
+      - loadgen-recv-status-server:
+          pattern:
+            reg_pattern: '- INFO - (\d+) requests processed successfully,'
+      - loadgen-recv-status-server:
+          may_pattern:
+            reg_pattern: '- INFO - reply\.FreeRADIUS\.Stats4\.Packet-Counters\.Access-Reject: 0'
+      - loadgen-recv-status-server:
+          may_pattern:
+            reg_pattern: '- INFO - reply\.FreeRADIUS\.Stats4\.Packet-Counters\.Access-Accept: (\d+)'
+      - loadgen-recv-status-server:
+          may_pattern:
+            reg_pattern: '- INFO - reply\.FreeRADIUS\.Stats4\.Packet-Counters\.Access-Request: (\d+)'
+      - loadgen-recv-status-server:
+          may_pattern:
+            reg_pattern: '- INFO - reply\.FreeRADIUS\.Stats4\.Packet-Counters\.Status-Server:'
