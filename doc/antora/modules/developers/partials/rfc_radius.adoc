@@ -5,7 +5,7 @@
 
 |https://datatracker.ietf.org/doc/rfc2548/[RFC 2548]   |Microsoft Vendor-specific RADIUS Attributes (attributes)
 
-|https://datatracker.ietf.org/doc/rfc809/[RFC 2809]   |Implementation of L2TP Compulsory Tunneling via RADIUS (information )
+|https://datatracker.ietf.org/doc/rfc809/[RFC 2809]    |Implementation of L2TP Compulsory Tunneling via RADIUS (information )
 
 |https://datatracker.ietf.org/doc/rfc2865/[RFC 2865]   |Remote Authentication Dial In User Service (RADIUS) (attributes)
 
@@ -35,11 +35,11 @@
 
 |https://datatracker.ietf.org/doc/rfc4818/[RFC 4818]   |RADIUS Delegated-IPv6-Prefix Attribute (attributes)
 
-|https://datatracker.ietf.org/doc/rfc4849/[RFC 4849]    |RADIUS Filter Rule Attribute (attributes)
+|https://datatracker.ietf.org/doc/rfc4849/[RFC 4849]   |RADIUS Filter Rule Attribute (attributes)
 
 |https://datatracker.ietf.org/doc/rfc5080/[RFC 5080]   |Common Remote Authentication Dial In User Service (RADIUS) Implementation Issues and Suggested Fixes (information)
 
-|https://datatracker.ietf.org/doc/rfc5997/[RFC 5997]    |Use of Status-Server Packets in the Remote Authentication Dial In User Service (RADIUS) Protocol (information)
+|https://datatracker.ietf.org/doc/rfc5997/[RFC 5997]   |Use of Status-Server Packets in the Remote Authentication Dial In User Service (RADIUS) Protocol (information)
 
 |====
 

@@ -1,16 +1,45 @@
 = Attribute Definitions
 
-In FreeRADIUS v4, following the RFC definitions is critical. The modular codespace allows RADIUS to function as a plug-in protocol, like DHCP or DNS. Standardization enables devices from different manufacturers to communicate using shared protocols and frameworks. RFC-compliant systems show clear behaviours to prevent security issues in authentication or authorisation.
+This page contains a list of RADIUS attribute definitions, with links
+to the relevant standards.
 
-If non-standard attribute numbers or types are used, a NAS might ignore some authorisation instructions. FreeRADIUS v4 depends on the strict data types defined in https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044] ensure that attributes are parsed  the correct data type and interpreted accurately. This prevents "garbled" data or session crashes when dealing with complex attributes. Standard Logic: Many core modules depend on certain RFC attributes and formats. For example, State (RFC 5080) helps link many requests into one session. Re-defining these flows can lead to failed authentications or replay attacks.
+It is critical that all vendors and administrators follow the RFC
+definitions of attributes.  Standardization enables devices from
+different manufacturers to communicate using shared protocols and
+frameworks.  RFC-compliant systems have consistent behaviour, which
+prevents interoperability issues that can cause problems in production
+networks.
 
-RADIUS has a finite range (0–255) available for standard attributes. Defining a custom attribute with a number already used by an RFC can cause a collision. The server might apply the wrong policy to a packet. This can lead to unauthorised access or accounting errors. FreeRADIUS v4 supports Extended Attributes (IDs > 255). Ignoring RFC formats can break the server's ability to manage longer or fragmented attributes.
+In addition to interoperability issues, FreeRADIUS depends on the data
+types which are defined in
+https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044].  Many modules
+in the server use specific RFC attributes, and rely on using their
+defined data types.  Changing the definitions of those attributes in
+the dictionaries _will_ cause problems.  Since the server needs a
+specific definition for these attributes, it will detect edits to the
+dictionaries, and refuse to start if the dictionary definitions for
+standard attributes have been modified.
 
-Use Internal Attributes (defined with the DEFINE keyword) for local logic. These attributes are never sent over the network, eliminating interoperability issues.
+RADIUS also has a finite range (1-255) available for standard
+attributes.  Defining a custom attribute with a number already used by
+an RFC can cause a collision.  Vendors who need custom attributes
+*must* use
+https://datatracker.ietf.org/doc/html/rfc6929#section-4[Vendor-Specific]
+attributes.
+
+For local site policy, administrators can define local attributes in
+the xref:reference:raddb/dictionary.adoc[local dictionary].  These
+attributes should use the
+xref:reference:dictionary/define.adoc[DEFINE] keyword, which avoids
+all issues with assigning attribute numbers. Policies in `unlang` can
+also use xref:reference:unlang/local.adoc[local variables].  All of
+these local attributes are never sent over the network.
 
 == Attribute RFCs and Definitions
 
-The following tables list the relevant attributes used in RADIUS development. Each attribute includes a brief explanation and a direct link to its definition. All RADIUS attribute information is available this documentation.
+The following tables list the RADIUS attributes which are defined in
+the RFCs.  Each attribute includes a brief explanation and a direct
+link to its definition in the RFCs.
 
 == A
 include::partial$a_attributelist.adoc[]
@@ -45,7 +74,5 @@ include::partial$u_attributelist.adoc[]
 == V
 include::partial$v_attributelist.adoc[]
 
-
-
-
-
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
