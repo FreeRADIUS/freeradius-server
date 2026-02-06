@@ -1,0 +1,58 @@
+= RFC Compliance
+
+RFC compliance is critical for ensuring that production systems are
+secure, interoperable, and scalable in modern environments.  Adhering
+to the IETF standards provides a common language for diverse
+networking hardware and software to communicate reliably.  The
+importance of RADIUS RFC compliance centers on four key areas:
+
+== Interoperability in Multi-Vendor Environments
+
+* De Facto Standard: RADIUS is the industry standard for centralizing
+  Authentication, Authorization, and Accounting (AAA). Compliance
+  ensures that a RADIUS server can communicate with network access
+  servers (NAS) like Wi-Fi access points, VPN gateways, and switches
+  from different manufacturers (e.g., Cisco, Aruba, Fortinet).
+
+* Consistent Behavior: RFCs provide documented, predictable behavior,
+  reducing unexpected issues when integrating new equipment into an
+  existing infrastructure.
+
+* Standardized Attributes: Standards like
+  https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] and
+  https://datatracker.ietf.org/doc/html/rfc2868[RFC 2868] define how
+  user attributes (e.g., VLAN assignments, tunnel protocols) are
+  formatted, ensuring they are correctly interpreted across the
+  network.
+
+== Security and Vulnerability Mitigation
+
+* Addressing Cryptographic Weaknesses: Legacy RADIUS (RFC 2865) relies
+  on MD5 hashing, which is now considered insecure. Recent critical
+  vulnerabilities like
+  https://www.inkbridgenetworks.com/blastradius[BlastRADIUS]
+  (identified in 2024) exploit these MD5 weaknesses to forge
+  authentication responses.
+
+* Protocol Evolution: Modern compliance often requires moving toward
+  newer standards like RadSec (RADIUS over TLS, RFC 6614), which
+  replaces unencrypted UDP transport with encrypted TLS. This protects
+  sensitive data, such as usernames and location information, from
+  eavesdropping and tampering.
+
+* Mandatory Integrity Checks: Updated standards mandate features like
+  the `Message-Authenticator` attribute to prevent packet forgery
+  attacks that were previously optional.
+
+== Scalability and Reliability
+
+* Centralised Management: Compliance allows organizations to manage
+  millions of users from a single point, making it suitable for large
+  ISPs and global enterprises.
+
+* Backward Compatibility: RFC-compliant systems are designed to evolve
+  while maintaining connections with older infrastructure, allowing
+  for gradual network upgrades without total system overhauls.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

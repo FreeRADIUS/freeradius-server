@@ -1,7 +1,7 @@
-= RFCs and Attributes
+= Designing and Using Attributes
 
 The standard RADIUS attributes are listed in the
-xref:rfc_attributelist.adoc[Attribute Definitions] section below.
+xref:rfc/radius_attributes.adoc[Attribute Definitions] page.
 
 When creating new RADIUS dictionaries or standards, you must follow
 the *RADIUS Design Guidelines* document
@@ -29,14 +29,6 @@ Additional problems with the RADIUS standards and implementations are listed on 
 https://github.com/radext-wg/issues-and-fixes-2/wiki/[IETF RADEXT
 Wiki], and in the https://www.freeradius.org/rfc/issues.html[open
 issues] page.
-
-.RFCs
-
-include::partial$rfc_radius.adoc[]
-
-.Related Documents (old RFCs, information, etc)
-
-include::partial$rfc_related.adoc[]
 
 == More Information
 

@@ -1,0 +1,17 @@
+= DNS RFCs
+
+The following is a comprehensive set of tables that list all the
+related RFCs.  Depending on the section or feature that you are
+developing, will determine which documents you need to review.
+
+.Dynamic Name Service (DNS)
+[options=header, cols="20,~",autowidth]
+|====
+
+|RFC |Description
+
+|https://datatracker.ietf.org/doc/html/rfc1034[RFC 1034]    |Domain names - concepts and facilities.
+
+|https://datatracker.ietf.org/doc/html/rfc6731[RFC 6731]    |Improved Recursive DNS Server Selection for Multi-Interfaced Nodes.
+
+|====

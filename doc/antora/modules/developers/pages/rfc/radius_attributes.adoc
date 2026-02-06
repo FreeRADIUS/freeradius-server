@@ -1,4 +1,4 @@
-= Attribute Definitions
+= RADIUS Attribute Definitions
 
 This page contains a list of RADIUS attribute definitions, with links
 to the relevant standards.
