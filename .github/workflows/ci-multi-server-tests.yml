@@ -1,7 +1,11 @@
 name: Multi-Server CI Tests
 
 on:
+  push:
+    branches: [ "loadgen-5hs-tests" ]
+
   pull_request:
+    branches: [ "loadgen-5hs-tests" ]
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
       - 'src/tests/multi-server/**'
