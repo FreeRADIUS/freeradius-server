@@ -20,22 +20,39 @@ jobs:
         with:
           lfs: false
 
+      - name: Package manager performance improvements
+        run: |
+          sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo dpkg-reconfigure man-db
+          sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+      - name: NetworkRADIUS signing key
+        shell: bash
+        run: |
+          sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
+          curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | sudo tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
+
+      - name: Set up NetworkRADIUS extras repository
+        shell: bash
+        run: |
+          DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+          RELEASE=$(lsb_release -cs)
+          sudo /bin/sh -c "echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+            > /etc/apt/sources.list.d/networkradius-extras.list"
+          sudo apt-get update
+
+      # Remove pre-installed package which conflicts with dependency installation
       - name: Remove package conflicts
         run: |
           sudo apt-get remove -y libhashkit2
 
-      - name: Install additional build tools and dependencies
+      - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            make \
-            pcre2-utils \
-            brotli \
-            llvm \
-            nodejs \
-            npm \
-            asciidoctor \
-            libtalloc-dev
+          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+          debian/rules debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
       - name: Build Docker image for multi-server test environment
         run: |
