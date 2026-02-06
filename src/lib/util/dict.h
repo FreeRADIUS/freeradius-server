@@ -982,7 +982,7 @@ fr_dict_t const		*fr_dict_internal(void);
  */
 void			dict_dctx_debug(dict_tokenize_ctx_t *dctx);
 
-int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
+int			fr_dict_parse_str(fr_dict_t *dict, char const *str,
 					  fr_dict_attr_t const *parent);
 
 ssize_t			fr_dict_valid_name(char const *name, ssize_t len);

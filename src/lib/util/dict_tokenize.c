@@ -3798,22 +3798,32 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 /*
  *	External API for testing
  */
-int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
+int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *parent)
 {
 	int			argc;
 	char			*argv[DICT_MAX_ARGV];
 	int			ret;
-	fr_dict_attr_flags_t	base_flags;
+	fr_dict_attr_flags_t	base_flags = {};
 	dict_tokenize_ctx_t	dctx;
+	char			*buf;
 
 	INTERNAL_IF_NULL(dict, -1);
 
-	argc = fr_dict_str_to_argv(buf, argv, DICT_MAX_ARGV);
-	if (argc == 0) return 0;
+	/*
+	 *	str_to_argv() mangles the input buffer, which messes with 'unit_test_attribute -w foo'
+	 */
+	buf = talloc_strdup(NULL, input);
 
+	argc = fr_dict_str_to_argv(buf, argv, DICT_MAX_ARGV);
+	if (argc == 0) {
+		talloc_free(buf);
+		return 0;
+	}
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
+	
+	dctx.stack[0].da = parent;
 	dctx.stack[0].nest = NEST_TOP;
 
 	if (dict_fixup_init(NULL, &dctx.fixup) < 0) return -1;
@@ -3823,6 +3833,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
 		error:
 			TALLOC_FREE(dctx.fixup.pool);
+			talloc_free(buf);
 			return -1;
 		}
 
@@ -3832,25 +3843,34 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 			goto error;
 		}
 		ret = dict_read_process_value(&dctx, argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 		if (parent && (parent != dict->root)) {
 			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
 		}
 
-		memset(&base_flags, 0, sizeof(base_flags));
-
 		ret = dict_read_process_attribute(&dctx,
 						  argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
+
+	} else if (strcasecmp(argv[0], "DEFINE") == 0) {
+		if (parent && (parent != dict->root)) {
+			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
+		}
+
+		ret = dict_read_process_define(&dctx,
+					       argv + 1, argc - 1, &base_flags);
+
 	} else if (strcasecmp(argv[0], "VENDOR") == 0) {
 		ret = dict_read_process_vendor(&dctx, argv + 1, argc - 1, &base_flags);
-		if (ret < 0) goto error;
+
 	} else {
 		fr_strerror_printf("Invalid input '%s'", argv[0]);
 		goto error;
 	}
+
+	if (ret < 0) goto error;
+
+	talloc_free(buf);
 
 	return dict_finalise(&dctx);
 }
