@@ -20,18 +20,11 @@ jobs:
         with:
           lfs: false
 
-      - name: Install build dependencies
-        uses: ./.github/actions/freeradius-deps
-
-      - name: Build FreeRADIUS
-        uses: ./.github/actions/build-freeradius
-        with:
-          use_sanitizers: false
-          platform: ubuntu-22.04
-
       - name: Build Docker image for multi-server test environment
         run: |
+          ./configure
           make docker.ubuntu22.build
 
       - name: Run test-5hs-autoaccept test
-        run: make -f src/tests/multi-server/all.mk test-5hs-autoaccept
+        run: |
+          make -f src/tests/multi-server/all.mk test-5hs-autoaccept
