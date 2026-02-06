@@ -20,12 +20,6 @@ jobs:
         with:
           lfs: false
 
-      #  Docker image does not have same environment as the
-      #  standard GitHub actions image, so use this to bring them
-      #  more in line.
-      - name: Prepare Docker environment
-        uses: ./.github/actions/docker-prep
-
       - name: Install build dependencies
         uses: ./.github/actions/freeradius-deps
 
