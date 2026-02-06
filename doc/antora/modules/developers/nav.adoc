@@ -20,9 +20,10 @@
 **** xref:rfc/design.adoc[Creating new Attributes]
 **** xref:rfc/compliance.adoc[Compliance]
 **** xref:rfc/radius_attributes.adoc[RADIUS Attribute List]
-*** xref:rfc/dns.adoc[DNS]
 *** xref:rfc/dhcpv4.adoc[DHCPv4]
 *** xref:rfc/dhcpv6.adoc[DHCPv6]
+*** xref:rfc/dns.adoc[DNS]
+*** xref:rfc/tacacs.adoc[TACACS+]
 ** xref:guidelines.adoc[Documentation Guidelines]
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
