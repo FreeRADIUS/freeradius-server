@@ -13,7 +13,7 @@ on:
 
 jobs:
   test-5hs-autoaccept:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
