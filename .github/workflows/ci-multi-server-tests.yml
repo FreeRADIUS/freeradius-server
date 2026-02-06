@@ -20,6 +20,17 @@ jobs:
         with:
           lfs: false
 
+      - name: Remove package conflicts
+        run: |
+          sudo apt-get remove -y libhashkit2
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+          debian/rules debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
       - name: Build Docker image for multi-server test environment
         run: |
           ./configure
