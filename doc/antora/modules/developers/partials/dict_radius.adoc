@@ -1,0 +1,78 @@
+[options=header,cols="20,~",autowidth]
+|====
+
+|RFC    |Description
+
+|https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] | Remote Authentication Dial In User Service (RADIUS)
+
+|https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] | RADIUS Accounting
+
+|https://datatracker.ietf.org/doc/html/rfc2867[RFC 2867] | RADIUS Accounting Modifications for Tunnel Protocol Support
+
+|https://datatracker.ietf.org/doc/html/rfc2868[RFC 2868] | RADIUS Attributes for Tunnel Protocol Support
+
+|https://datatracker.ietf.org/doc/html/rfc2869[RFC 2869] | RADIUS Extensions
+
+|https://datatracker.ietf.org/doc/html/rfc3162[RFC 3162] | RADIUS and IPv6
+
+|https://datatracker.ietf.org/doc/html/rfc3576[RFC 3576] | Dynamic Authorization Extensions to Remote Authentication Dial In User Service (RADIUS)
+
+|https://datatracker.ietf.org/doc/html/rfc3580[RFC 3580] | IEEE 802.1X Remote Authentication Dial In User Service (RADIUS) Usage Guidelines
+
+|https://datatracker.ietf.org/doc/html/rfc4072[RFC 4072] | Diameter Extensible Authentication Protocol (EAP) Application
+
+|https://datatracker.ietf.org/doc/html/rfc4372[RFC 4372] | Chargeable User Identity
+
+|https://datatracker.ietf.org/doc/html/rfc4603[RFC 4603] | Additional Values for the NAS-Port-Type Attribute
+
+|https://datatracker.ietf.org/doc/html/rfc4675[RFC 4675] | RADIUS Attributes for Virtual LAN and Priority Support
+
+|https://datatracker.ietf.org/doc/html/rfc4679[RFC 4679] | DSL Forum Vendor-Specific RADIUS Attributes
+
+|https://datatracker.ietf.org/doc/html/rfc4818[RFC 4818] | RADIUS Delegated-IPv6-Prefix Attribute
+
+|https://datatracker.ietf.org/doc/html/rfc4849[RFC 4849] | RADIUS Filter Rule Attribute
+
+|https://datatracker.ietf.org/doc/html/rfc5090[RFC 5090] | RADIUS Extension for Digest Authentication
+
+|https://datatracker.ietf.org/doc/html/rfc5176[RFC 5176] | Dynamic Authorization Extensions to Remote Authentication Dial In User Service (RADIUS)
+
+|https://datatracker.ietf.org/doc/html/rfc5447[RFC 5447] | Diameter Mobile IPv6: Support for Network Access Server to Diameter Server Interaction
+
+|https://datatracker.ietf.org/doc/html/rfc5580[RFC 5580] | Carrying Location Objects in RADIUS and Diameter
+
+|https://datatracker.ietf.org/doc/html/rfc5607[RFC 5607] | Remote Authentication Dial-In User Service (RADIUS) Authorization for Network Access Server (NAS) Management
+
+|https://datatracker.ietf.org/doc/html/rfc5904[RFC 5904] | RADIUS Attributes for IEEE 802.16 Privacy Key Management Version 1 (PKMv1) Protocol Support
+
+|https://datatracker.ietf.org/doc/html/rfc6519[RFC 6519] | RADIUS Extensions for Dual-Stack Lite
+
+|https://datatracker.ietf.org/doc/html/rfc6572[RFC 6572] | RADIUS Support for Proxy Mobile IPv6
+
+|https://datatracker.ietf.org/doc/html/rfc6677[RFC 6677] | Channel-Binding Support for Extensible Authentication Protocol (EAP) Methods
+
+|https://datatracker.ietf.org/doc/html/rfc6911[RFC 6911] | RADIUS Attributes for IPv6 Access Networks
+
+|https://datatracker.ietf.org/doc/html/rfc6929[RFC 6929] | Remote Authentication Dial In User Service (RADIUS) Protocol Extensions
+
+|https://datatracker.ietf.org/doc/html/rfc6930[RFC 6930] | RADIUS Attribute for IPv6 Rapid Deployment on IPv4 Infrastructures (6rd)
+
+|https://datatracker.ietf.org/doc/html/rfc7055[RFC 7055] | A GSS-API Mechanism for the Extensible Authentication Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc7155[RFC 7155] | Diameter Network Access Server Application
+
+|https://datatracker.ietf.org/doc/html/rfc7268[RFC 7268] | RADIUS Attributes for IEEE 802 Networks
+
+|https://datatracker.ietf.org/doc/html/rfc7499[RFC 7499] | Support of Fragmentation of RADIUS Packets
+
+|https://datatracker.ietf.org/doc/html/rfc7930[RFC 7930] | Larger Packets for RADIUS over TCP
+
+|https://datatracker.ietf.org/doc/html/rfc8045[RFC 8045] | RADIUS Extensions for IP Port Configuration and Reporting
+
+|https://datatracker.ietf.org/doc/html/rfc8559[RFC 8559] | Dynamic Authorization Proxying in the Remote Authentication Dial-In User Service (RADIUS) Protocol
+
+|https://datatracker.ietf.org/doc/html/rfc8658[RFC 8658] | RADIUS Attributes for Softwire Mechanisms Based on Address plus Port (A+P)
+
+|https://datatracker.ietf.org/doc/html/rfc9445[RFC 9445] | RADIUS Extensions for DHCP-Configured Services
+
+|====

@@ -1,0 +1,8 @@
+[options=header,cols="20,~",autowidth]
+|====
+
+|RFC    |Description
+
+|https://datatracker.ietf.org/doc/html/rfc1034[RFC 1034] | Domain names - concepts and facilities
+
+|====
