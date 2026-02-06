@@ -24,12 +24,17 @@ jobs:
         run: |
           sudo apt-get remove -y libhashkit2
 
-      - name: Install build dependencies
+      - name: Install additional build tools and dependencies
         run: |
-          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-          debian/rules debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            make \
+            pcre2-utils \
+            brotli \
+            llvm \
+            nodejs \
+            npm \
+            asciidoctor
 
       - name: Build Docker image for multi-server test environment
         run: |
