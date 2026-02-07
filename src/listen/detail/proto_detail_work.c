@@ -703,7 +703,7 @@ static int mod_open(fr_listen_t *li)
 		struct stat buf;
 
 		if (fstat(thread->fd, &buf) < 0) {
-			cf_log_err(inst->cs, "Failed examining %s: %s", thread->filename_work, fr_syserror(errno));
+			cf_log_err(inst->cs, "Failed checking %s: %s", thread->filename_work, fr_syserror(errno));
 			return -1;
 		}
 

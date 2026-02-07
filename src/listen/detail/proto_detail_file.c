@@ -323,6 +323,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	This listener is parented from the worker.  So that
 	 *	when the worker goes away, so does the listener.
 	 */
+	li->cs = inst->parent->work_io_conf;
 	li->app_io = inst->parent->work_io;
 
 	li->app = inst->parent->self;

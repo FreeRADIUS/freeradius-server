@@ -253,7 +253,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening UDP socket");
+		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -268,7 +268,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -279,7 +279,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->recv_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'recv_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -290,7 +290,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->send_buff;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-			WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'send_buf' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -301,7 +301,7 @@ static int mod_open(fr_listen_t *li)
 
 		opt = inst->ttl;
 		if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &opt, sizeof(opt)) < 0) {
-			WARN("Failed setting 'ttl': %s", fr_syserror(errno));
+			cf_log_warn(li->cs, "Failed setting 'ttl' - %s", fr_syserror(errno));
 		}
 	}
 #endif
@@ -311,7 +311,7 @@ static int mod_open(fr_listen_t *li)
 	 */
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding socket - %s", fr_strerror());
 		goto error;
 	}
 

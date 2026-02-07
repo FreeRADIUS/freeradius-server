@@ -3231,7 +3231,6 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	 *	socket for us.
 	 */
 	if (inst->app_io->open(child) < 0) {
-		cf_log_err(inst->app_io_conf, "Failed opening %s interface", inst->app_io->common.name);
 		talloc_free(li);
 		return -1;
 	}
@@ -3253,10 +3252,8 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 
 		other = listen_find_any(thread->child);
 		if (other) {
-			ERROR("Failed opening %s - that port is already in use by another listener in server %s { ... } - %s",
-			      child->name, cf_section_name2(other->server_cs), other->name);
-
-			ERROR("got socket %d %d\n", child->app_io_addr->inet.src_port, other->app_io_addr->inet.src_port);
+			cf_log_err(other->cs, "Already opened socket %s", other->name);
+			cf_log_err(li->cs, "Failed opening duplicate socket - cannot use the same configuration for two different listen sections");
 
 			talloc_free(li);
 			return -1;

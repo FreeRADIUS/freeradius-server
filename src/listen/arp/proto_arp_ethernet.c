@@ -175,12 +175,12 @@ static int mod_open(fr_listen_t *li)
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
-		PERROR("Failed initializing pcap handle.");
+		cf_log_err(li->cs, "Failed initializing pcap - %s", fr_strerror());
 		return -1;
 	}
 
 	if (fr_pcap_open(thread->pcap) < 0) {
-		PERROR("Failed opening interface %s", inst->interface);
+		cf_log_err(li->cs, "Failed opening interface %s - %s", inst->interface, fr_strerror());
 		return -1;
 	}
 
@@ -194,7 +194,7 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	if (fr_pcap_apply_filter(thread->pcap, filter) < 0) {
-		PERROR("Failed applying pcap filter '%s'", filter);
+		cf_log_err(li->cs, "Failed applying pcap filter '%s' - %s", filter, fr_strerror());
 		talloc_free(our_filter);
 		return -1;
 	}

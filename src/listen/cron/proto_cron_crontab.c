@@ -412,6 +412,9 @@ static int mod_open(fr_listen_t *li)
 	 */
 	if (inst->filename == NULL) return -1;
 	li->fd = open(inst->filename, O_RDONLY);
+	if (li->fd < 0) {
+		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+	}
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;

@@ -1853,9 +1853,6 @@ int virtual_servers_open(fr_schedule_t *sc)
 							   listener->proto_mi->conf);
 			module_instance_data_protect(listener->proto_mi);
 			if (unlikely(ret < 0)) {
-				cf_log_err(listener->proto_mi->conf,
-					   "Failed opening listener %s",
-					   listener->proto_module->common.name);
 				return -1;
 			}
 

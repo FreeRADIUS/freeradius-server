@@ -151,7 +151,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
+static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
 	fr_listen_t	*li;
 	proto_arp_t 	*inst = talloc_get_type_abort(instance, proto_arp_t);
@@ -164,6 +164,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	li = talloc_zero(inst, fr_listen_t);
 	talloc_set_destructor(li, fr_io_listen_free);
 
+	li->cs = conf;
 	li->app = &proto_arp;
 	li->app_instance = instance;
 	li->server_cs = inst->server_cs;

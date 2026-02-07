@@ -266,7 +266,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, "domain", true);
 	if (sockfd < 0) {
-		PERROR("Failed opening UDP socket");
+		cf_log_err(li->cs, "Failed opening UDP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -281,7 +281,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-			ERROR("Failed to set socket 'reuseport': %s", fr_syserror(errno));
+			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -294,7 +294,7 @@ static int mod_open(fr_listen_t *li)
 	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	rad_suid_down();
 	if (rcode < 0) {
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
 		close(sockfd);
 		goto error;
 	}

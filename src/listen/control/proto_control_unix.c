@@ -423,7 +423,7 @@ static int mod_open(fr_listen_t *li)
 
 	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
 	if (!thread->fd_bio) {
-		PERROR("Failed allocating UNIX path %s", inst->filename);
+		cf_log_err(li->cs, "Failed opening UNIX path %s - ", inst->filename, fr_strerror());
 		return -1;
 	}
 

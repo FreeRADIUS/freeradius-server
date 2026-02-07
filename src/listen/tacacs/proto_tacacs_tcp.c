@@ -364,7 +364,7 @@ static int mod_open(fr_listen_t *li)
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		PERROR("Failed opening TCP socket");
+		cf_log_err(li->cs, "Failed opening TCP socket - %s", fr_strerror());
 	error:
 		return -1;
 	}
@@ -373,13 +373,13 @@ static int mod_open(fr_listen_t *li)
 
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
-		PERROR("Failed binding socket");
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
 		goto error;
 	}
 
 	if (listen(sockfd, 8) < 0) {
 		close(sockfd);
-		PERROR("Failed listening on socket");
+		cf_log_err(li->cs, "Failed listening on socket - %s", fr_syserror(errno));
 		goto error;
 	}
 

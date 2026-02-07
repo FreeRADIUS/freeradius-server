@@ -202,6 +202,10 @@ static int mod_open(fr_listen_t *li)
 	 *	readable FD in order to bootstrap the process.
 	 */
 	li->fd = open(inst->filename, O_RDONLY);
+	if (li->fd < 0) {
+		cf_log_err(li->cs, "Failed opening %s - %s", inst->filename, fr_syserror(errno));
+		return -1;
+	}
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;

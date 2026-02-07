@@ -1139,6 +1139,7 @@ static void _proto_ldap_socket_init(connection_t *conn, UNUSED connection_state_
 	thread->li = li;
 	li->thread_instance = thread;
 
+	li->cs = thread->parent->cs;
 	li->app_io = &proto_ldap_sync_child;
 	li->name = li->app_io->common.name;
 	li->default_message_size = li->app_io->default_message_size;
