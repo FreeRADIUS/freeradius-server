@@ -712,6 +712,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 */
 		li->connected = true;
 		li->app_io = thread->child->app_io;
+		li->cs = inst->app_io_conf;
 		li->thread_instance = connection;
 		li->app_io_instance = mi->data;
 		li->track_duplicates = thread->child->app_io->track_duplicates;
@@ -752,6 +753,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 		li->connected = true;
 		li->thread_instance = connection;
+		li->cs = inst->app_io_conf;
 		li->app_io_instance = li->thread_instance;
 		li->track_duplicates = thread->child->app_io->track_duplicates;
 
@@ -3177,6 +3179,7 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	/*
 	 *	Set the listener to call our master trampoline function.
 	 */
+	li->cs = inst->app_io_conf;
 	li->app_io = &fr_master_app_io;
 	li->thread_instance = thread;
 	li->app_io_instance = inst;

@@ -38,6 +38,7 @@ struct fr_listen {
 	fr_app_t const		*app;
 	void const		*app_instance;
 
+	CONF_SECTION		*cs;			//!< of this listener
 	CONF_SECTION		*server_cs;		//!< CONF_SECTION of the server
 
 	bool			connected;		//!< is this for a connected socket?
