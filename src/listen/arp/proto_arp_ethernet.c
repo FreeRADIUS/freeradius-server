@@ -24,6 +24,7 @@
  */
 #include <netdb.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/util.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -172,6 +173,7 @@ static int mod_open(fr_listen_t *li)
 
 	char const			*filter;
 	char				*our_filter = NULL;
+	int				rcode;
 
 	thread->pcap = fr_pcap_init(thread, inst->interface, PCAP_INTERFACE_IN);
 	if (!thread->pcap) {
@@ -179,7 +181,10 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	if (fr_pcap_open(thread->pcap) < 0) {
+	rad_suid_up();
+	rcode = fr_pcap_open(thread->pcap);
+	rad_suid_down();
+	if (rcode < 0) {
 		cf_log_err(li->cs, "Failed opening interface %s - %s", inst->interface, fr_strerror());
 		return -1;
 	}
