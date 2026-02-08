@@ -558,3 +558,13 @@ char const *fr_filename_common_trim(char const *path, char const *common)
 
 	return p_p;
 }
+
+/*
+ *	Trampoline points for wrapping rad_suid_up() and rad_suid_down().
+ */
+void fr_suid_noop(void)
+{
+}
+
+fr_suid_t fr_suid_up = fr_suid_noop;
+fr_suid_t fr_suid_down = fr_suid_noop;

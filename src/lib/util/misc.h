@@ -157,6 +157,17 @@ int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(no
 char const	*fr_filename(char const *path);
 char const	*fr_filename_common_trim(char const *path, char const *common);
 
+/*
+ *	Some libraries need to call suid up/down, except that those are functions in the server, and we don't
+ *	want to link everything to the server library.  As a result, we include trampoline functions which do
+ *	nothing, but which can be over-written by the server when is starts.
+ */
+typedef void (*fr_suid_t)(void);
+
+void		fr_suid_noop(void);
+extern		fr_suid_t fr_suid_up;
+extern		fr_suid_t fr_suid_down;
+
 #ifdef __cplusplus
 }
 #endif

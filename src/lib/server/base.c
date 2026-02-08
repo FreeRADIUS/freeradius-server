@@ -124,6 +124,9 @@ int server_init(CONF_SECTION *cs, char const *conf_dir, fr_dict_t *dict)
 	 */
 	if (packet_global_init() < 0) return -1;
 
+	fr_suid_up = rad_suid_up;
+	fr_suid_down = rad_suid_down;
+
 	return 0;
 }
 
@@ -137,4 +140,7 @@ void server_free(void)
 	 *	Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
+
+	fr_suid_up = fr_suid_noop;
+	fr_suid_down = fr_suid_noop;
 }
