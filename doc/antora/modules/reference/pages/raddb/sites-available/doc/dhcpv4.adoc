@@ -120,3 +120,6 @@ xref:raddb/mods-available/sqlippool.adoc[SQL] or
 xref:raddb/mods-available/redis_ippool.adoc[Redist]
 
 See mods-config/sql/ippool/ for the SQL schemas.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -19,3 +19,5 @@ you can then run it in debug mode.
 **Action:** Check that something like SeLinux is not preventing the
 server from opening sockets.
 
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
