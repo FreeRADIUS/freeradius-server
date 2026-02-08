@@ -294,8 +294,9 @@ static int mod_open(fr_listen_t *li)
 	rcode = fr_socket_bind(sockfd, inst->interface, &ipaddr, &port);
 	rad_suid_down();
 	if (rcode < 0) {
-		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
 		close(sockfd);
+		cf_log_err(li->cs, "Failed binding to socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 

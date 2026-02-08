@@ -4,11 +4,20 @@ If the server isn't processing packets, this is due to two common
 problems.  Either it is either not receiving packets, or else it
 receives a packet and discards it with a complaint.  Both situations
 can be solved by running the server in
-xref:ROOT:debugging/radiusd_X.adoc[debugging] mode.
+xref:ROOT:debugging/radiusd_X.adoc[debug mode].
+
+== Server does not start
+
+If the server does not start, it prints a descriptive message to the
+log files, or to the terminal window.  The common errors are listed
+below.
+
+* xref:network/bind.adoc[Failed binding to socket]
 
 == Not Receiving Packets
 
-When the server is started in debugging mode, the last line it prints is:
+When the server successfully starts in debugging mode, the last line
+it prints is:
 
 [source,text]
 ----
@@ -54,7 +63,7 @@ All of these should be checked beforing checking any FreeRADIUS configuration.
 
 When the server discards packets for a particular reason, it gives a
 descriptive error messages when running in
-xref:ROOT:debugging/radiusd_X.adoc[debugging] mode.  The errors are
+xref:ROOT:debugging/radiusd_X.adoc[debug mode].  The errors are
 not sent to the normal log file, because that could allow attackers to
 DoS the server.
 

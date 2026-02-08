@@ -312,6 +312,7 @@ static int mod_open(fr_listen_t *li)
 	if (fr_socket_bind(sockfd, inst->interface, &ipaddr, &port) < 0) {
 		close(sockfd);
 		cf_log_err(li->cs, "Failed binding socket - %s", fr_strerror());
+		cf_log_err(li->cs, DOC_ROOT_REF(troubleshooting/network/bind));
 		goto error;
 	}
 

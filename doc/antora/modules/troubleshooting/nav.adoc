@@ -2,6 +2,9 @@
 
 ** xref:network/index.adoc[Network Errors]
 
+*** Server does not start
+**** xref:network/bind.adoc[Failed binding to socket]
+
 *** Common Errors
 **** xref:network/unknown_packet_code.adoc[Unknown packet code]
 **** xref:network/unexpected_request_code.adoc[Unexpected request code]
