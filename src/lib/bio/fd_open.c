@@ -731,6 +731,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 
 static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
+	bool do_suid;
 	socklen_t salen;
 	struct sockaddr_storage	salocal;
 
@@ -744,25 +745,35 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		return -1;
 	}
 
+	/*
+	 *	Source port is in the restricted range, and we're not root, update permissions / capabilities
+	 *	so that the bind is permitted.
+	 */
+	do_suid = (my->info.socket.inet.src_port > 0) && (my->info.socket.inet.src_port < 1024) && (geteuid() != 0);
+
 #ifdef HAVE_CAPABILITY_H
 	/*
-	 *	Source port is in the restricted range, and we're not root, we need to set a capability.
-	 *
-	 *	@todo - we really need to call rad_suid_up() and rad_suid_down() here.  But those functions
-	 *	are in src/lib/server/util.c, and we can't require that libfreeradius-bio is linked to
-	 *	libfreeradius-server.
+	 *	If we can set the capabilities, then we don't need to do SUID.
 	 */
-	if ((my->info.socket.inet.src_port > 0) && (my->info.socket.inet.src_port < 1024) && (geteuid() != 0));
-		(void) fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE);
-	}
+	if (do_suid) do_suid = (fr_cap_enable(CAP_NET_BIND_SERVICE, CAP_EFFECTIVE) < 0);
 #endif
 
-	if (fr_bio_fd_socket_bind_to_device(my, cfg) < 0) return -1;
+	/*
+	 *	SUID up before we bind to the interface.  If we can set the capabilities above, then should
+	 *	also be able to set the capabilities to bind to an interface.
+	 */
+	if (do_suid) fr_suid_up();
+
+	if (fr_bio_fd_socket_bind_to_device(my, cfg) < 0) {
+	down:
+		if (do_suid) fr_suid_down();
+		return -1;
+	}
 
 	/*
 	 *	Get the sockaddr for bind()
 	 */
-	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my->info.socket.inet.src_ipaddr, my->info.socket.inet.src_port) < 0) return -1;
+	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my->info.socket.inet.src_ipaddr, my->info.socket.inet.src_port) < 0) goto down;
 
 	/*
 	 *	We don't have a source port range, just bind to whatever source port that we're given.
@@ -770,8 +781,9 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	if (!my->info.cfg->src_port_start) {
 		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) < 0) {
 			fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
-			return -1;
+			goto down;
 		}
+		if (do_suid) fr_suid_down();
 
 	} else {
 		uint16_t src_port, current, range;
