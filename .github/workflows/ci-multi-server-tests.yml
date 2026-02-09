@@ -81,9 +81,14 @@ jobs:
           fi
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
 
+          # Display contents of the multi-server test log file for debugging purposes,
+          # regardless of test success or failure.
+          echo "============ ${MULTI_SERVER_TEST_LOG} ============"
+          cat "${MULTI_SERVER_TEST_LOG}"
+
       - name: Verify test results
         run: |
-          echo "==== ${MULTI_SERVER_TEST_LOG} ===="
+          echo "============ ${MULTI_SERVER_TEST_LOG} ============"
           cat "${MULTI_SERVER_TEST_LOG}"
 
           if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
