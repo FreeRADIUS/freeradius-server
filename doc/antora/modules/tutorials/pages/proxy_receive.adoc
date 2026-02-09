@@ -13,15 +13,19 @@
 - `clients.conf`
 - `sites-enabled/default`
 
-For this exercise, the users will be divided into groups of two. One
-user will be named "realm1" and the other will be named
-"realm2".
+== Overview
 
-Each user will configure two realms in the `proxy.conf` file. One of the
-user's assigned realms will be authenticated by the local RADIUS
-server. The other realm will be proxied to the RADIUS server
-administered by the other user. Both realms will be configured to
-"strip" the realm name from the incoming request.
+This guide shows how to:
+
+* Authenticate `bob` locally using the `files` module
+* Proxy `bob@realm1.com` to remote server 1
+* Proxy `bob@realm2.com` to remote server 2
+
+For this exercise, the users will be divided into groups of two using `realm` they use. One
+realms will be named "realm1" and the other will be named "realm2".
+
+We assume two remote servers exist with IP addresses you will replace in the `clients.conf` configuration.
+
 
 User 1:
 
