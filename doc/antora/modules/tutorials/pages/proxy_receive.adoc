@@ -1,16 +1,17 @@
 = Configuring a server to send and receive proxy requests
 
-include::ROOT:partial$v3_warning.adoc[]
+**Goal:** Configure the server to handle local authentication and proxy requests to different remote RADIUS servers based on realm suffix.
 
-*Goal:* To configure the server to proxy packets to a remote (home)
-RADIUS server and to receive packets from another proxy server.
+**Time:** 20-30 minutes
 
-*Time:* 15-25 minutes
+*Files to create / edit:*
 
-*Files:*
-
-- `proxy.conf`
+- `mods-available/proxy-realm1`
+- `mods-available/proxy-realm2`
+- `mods-enabled/proxy-realm1` (symlink)
+- `mods-enabled/proxy-realm2` (symlink)
 - `clients.conf`
+- `sites-enabled/default`
 
 For this exercise, the users will be divided into groups of two. One
 user will be named "realm1" and the other will be named
