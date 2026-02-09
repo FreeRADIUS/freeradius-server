@@ -87,19 +87,49 @@ jobs:
           cat "${MULTI_SERVER_TEST_LOG}"
 
       - name: Verify test results
+        shell: bash
         run: |
+          set -euo pipefail
+
           echo "============ ${MULTI_SERVER_TEST_LOG} ============"
           cat "${MULTI_SERVER_TEST_LOG}"
 
           if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
-            echo "Test failed: Found [Failed] in log"
+            echo "TEST FAILED: Found [Failed] in log"
             grep '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"
             exit 1
           fi
 
-          if ! grep -q '\[Passed\] Matched:' "${MULTI_SERVER_TEST_LOG}"; then
-            echo "Test failed: No [Passed] Matched: found in log"
+          if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"; then
+            echo "TEST FAILED: Found Failures > 0 in log"
+            grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"
             exit 1
           fi
 
-          echo "Test results verified: No [Failed] found and at least one [Passed] Matched: present."
+          log="${MULTI_SERVER_TEST_LOG}"
+          if awk '
+            BEGIN { found=0; n1=0; n2=0; line="" }
+            index($0,"Matched:") {
+              orig=$0
+              s=$0
+              gsub(/[[:space:]]/, "", s)
+              sub(/^.*Matched:/, "", s)
+              sub(/\(.*/, "", s)
+              n = split(s, parts, "/")
+              if (n == 2) {
+                a = parts[1] + 0
+                b = parts[2] + 0
+                if (a > 0 && a == b) { found=1; n1=a; n2=b; line=orig }
+              }
+            }
+            END {
+              if (found) { printf "MATCH: %d / %d\nMatched line: %s\n", n1, n2, line; exit 0 }
+              exit 1
+            }
+          ' "$log"
+          then
+            : # PASS
+          else
+            echo "TEST FAILED: No Matched line found with equal non-zero counts"
+            exit 1
+          fi
