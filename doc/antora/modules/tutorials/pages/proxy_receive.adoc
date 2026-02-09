@@ -1,70 +1,397 @@
 = Configuring a server to send and receive proxy requests
 
-include::ROOT:partial$v3_warning.adoc[]
+**Goal:** Configure the server to handle local authentication and proxy requests to different remote RADIUS servers based on realm suffix.
 
-*Goal:* To configure the server to proxy packets to a remote (home)
-RADIUS server and to receive packets from another proxy server.
+**Time:** 20-30 minutes
 
-*Time:* 15-25 minutes
+*Files to create / edit:*
 
-*Files:*
-
-- `proxy.conf`
+- `mods-available/proxy-realm1`
+- `mods-available/proxy-realm2`
+- `mods-enabled/proxy-realm1` (symlink)
+- `mods-enabled/proxy-realm2` (symlink)
 - `clients.conf`
+- `sites-enabled/default`
 
-For this exercise, the users will be divided into groups of two. One
-user will be named "realm1" and the other will be named
-"realm2".
+== Overview
 
-Each user will configure two realms in the `proxy.conf` file. One of the
-user's assigned realms will be authenticated by the local RADIUS
-server. The other realm will be proxied to the RADIUS server
-administered by the other user. Both realms will be configured to
-"strip" the realm name from the incoming request.
+This guide shows how to:
 
-User 1:
+* Authenticate `bob` locally using the `files` module
+* Proxy `bob@realm1.com` to remote server 1
+* Proxy `bob@realm2.com` to remote server 2
 
-realm1 is local
+For this exercise, the users will be divided into groups of two using `realm` they use. One
+realms will be named "realm1" and the other will be named "realm2".
 
-realm2 gets proxied to the server running as "realm2".
+We assume two remote servers exist with IP addresses you will replace in the `clients.conf` configuration.
 
-User 2:
+== Step-by-step Configuration
 
-realm1 gets proxied to the server running as "realm1".
+=== 1. Create proxy modules.
 
-realm2 is local
+Create file `mods-available/proxy-realm1`
 
-The users should also configure each other's server as a RADIUS
-client, as given in the exercise in xref:new_client.adoc[New Clients].
+[source,unlang]
+----
+# Proxies requests for @realm1.com to remote server 1
 
-The entry from the exercise in xref:new_user.adoc[New User] for user "bob" in
-the file, will be used in this exercise.
+radius proxy-realm1 {
+    mode = proxy
+    transport = udp
 
-The example packets `bob.sh`, `bob@realm1.sh`, and `bob@realm2.sh` may
-be used in this exercise.
+    udp {
+        # replace with real IP of realm1 server
+        ipaddr = 192.168.100.51
+        port   = 1812
+        secret = testing123
+    }
 
-Each user should test that authentication requests from "bob" to
-their RADIUS server should result in authentication accept replies and
-that the request was not forwarded to the other RADIUS server.
+    type = Access-Request
+    type = Accounting-Request
 
-Each user should test that authentication requests for their own
-realm (User 1: "bob@realm1", User 2: "bob@realm2") to their
-RADIUS server should result in authentication accept replies and that
-the request was not forwarded to the other RADIUS server.
+    status_check = none
 
-Each user in turn should then attempt authentication using the other
-user's realm (User 1: "bob@realm2", User 2: "bob@realm1"),
-to their local RADIUS server.
+    connect_timeout  = 3.0
+    response_timeout = 3.0
+    zombie_period    = 40
+}
+----
 
-Each in turn should verify that authentication requests for their
-realm sent to the other user's RADIUS server results in an
-authentication reject.
+Create file `mods-available/proxy-realm2`
 
-User 2 should then stop his server. User 1 should then attempt an
-authentication request to his server where the request would normally
-be proxied. Both users should examine the debug logs of User 1’s
-RADIUS client and server in order to observe what the server's resulting behavior
-will be.
+[source,unlang]
+----
+# Proxies requests for @realm2.com to remote server 2
+
+radius proxy-realm2 {
+    mode = proxy
+    transport = udp
+
+    udp {
+        # replace with real IP of realm2 server
+        ipaddr = 192.168.100.52
+        port   = 1812
+        secret = testing123
+    }
+
+    type = Access-Request
+    type = Accounting-Request
+
+    status_check = none
+
+    connect_timeout  = 3.0
+    response_timeout = 3.0
+    zombie_period    = 40
+}
+----
+
+Enable both modules:
+
+[source,bash]
+----
+$ cd ../mods-enabled
+$ ln -s ../mods-available/proxy-realm1 .
+$ ln -s ../mods-available/proxy-realm2 .
+----
+
+=== 2. Register remote servers as clients
+
+Edit `clients.conf` and add:
+
+[source]
+----
+client realm1_remote {
+    # same IP as proxy-realm1
+    ipaddr = 192.168.100.51
+    secret = testing123
+    shortname = realm1-server
+    nas_type = other
+}
+
+client realm2_remote {
+    # same IP as proxy-realm2
+    ipaddr = 192.168.100.52
+    secret = testing123
+    shortname = realm2-server
+    nas_type = other
+}
+----
+
+=== 3. Update virtual server logic
+
+Edit `sites-enabled/default`
+
+Update the `recv Access-Request { … }` section:
+
+[source,unlang]
+----
+recv Access-Request {
+    if (&User-Name =~ /@realm1\.com$/) {
+        proxy-realm1
+
+        if (ok) {
+            accept
+        }
+    }
+    elsif (&User-Name =~ /@realm2\.com$/) {
+        proxy-realm2
+
+        if (ok) {
+            accept
+        }
+    }
+    else {
+        files
+        pap
+    }
+}
+----
+
+Update (or add) the `authenticate` section:
+
+[source,unlang]
+----
+authenticate PAP {
+        pap
+    }
+
+authenticate proxy-realm1 {
+        proxy-realm1
+    }
+
+authenticate proxy-realm2 {
+        proxy-realm2
+    }
+
+----
+
+=== 4. Ensure local user exists
+
+In `mods-config/files/authorize` (or your users file):
+
+[source,text]
+----
+bob     Cleartext-Password := "hello"
+----
+
+== Testing Commands
+
+Run server in debug mode:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+All radclient tests below assume secret = `testing123`
+
+=== Test 1 – Local user (no realm)
+
+[source,bash]
+----
+echo 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+Radclient output :
+
+[source,text]
+----
+Sent Access-Request Id 200 from 0.0.0.0:58423 to 127.0.0.1:1812 length 61
+  Message-Authenticator = 0x
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length 43
+        Message-Authenticator = 0x31d0d6a1aba5a83a6d77b4187c0562a5
+        User-Name = "bob"
+----
+
+Server debug output (main / proxy server – local user) :
+
+[source,text]
+----
+(0)      if (User-Name =~ /@realm1\.com$/)  {
+(0)        | =~
+(0)            | User-Name
+(0)              | %{User-Name}
+(0)              | --> bob
+(0)        | ({bob} =~ (null))
+(0)        | --> false
+(0)        ...
+(0)      }
+(0)      else {
+(0)          files - | ||
+(0)          files - | %logical_or()
+(0)            files - | Stripped-User-Name
+(0)              files - | %{Stripped-User-Name}
+(0)              files - (null)
+(0)            files - | User-Name
+(0)            files - | %logical_or(...)
+(0)              files - | %{User-Name}
+(0)              files - | --> bob
+(0)            files - | %logical_or(...)
+(0)            files - | --> bob
+(0)        files - files - Looking for key "bob"
+(0)        files - files - Found match "bob" on line 1 of ../mods-config/files/authorize
+(0)        files - files - Preparing attribute updates:
+(0)          files - Password.Cleartext := hello
+(0)        files (ok)
+----
+
+=== Test 2 – Proxy to realm1.com
+
+[source,bash]
+----
+echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+Radclient output :
+
+[source,text]
+----
+Sent Access-Request Id 130 from 0.0.0.0:43437 to 127.0.0.1:1812 length 72
+  Message-Authenticator = 0x
+        User-Name = "bob@realm1.com"
+        User-Password = "hello"
+Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length 54
+        Message-Authenticator = 0x591568951632aae69f913f707912e464
+        User-Name = "bob@realm1.com"
+----
+
+Server debug output (main / proxy server – proxied user) :
+
+[source,text]
+----
+(0)      if (User-Name =~ /@realm1\.com$/)  {
+(0)        | =~
+(0)            | User-Name
+(0)              | %{User-Name}
+(0)              | --> bob@realm1.com
+(0)        | ({bob@realm1.com} =~ (null))
+(0)        | --> true
+(0)        proxy-realm1 - proxy-realm1 - [1] Trunk connection assigned request 1
+(0)        proxy-realm1 - Sending Access-Request ID 0 length 0 over connection proto udp local 10.0.16.96 port 37726 remote 44.222.160.231 port 1812
+(0)          proxy-realm1 - Message-Authenticator = 0xb8c474a818edf42917887303b3181172
+(0)          proxy-realm1 - User-Name = "bob@realm1.com"
+(0)          proxy-realm1 - User-Password = "hello"
+(0)          proxy-realm1 - Packet {
+(0)            proxy-realm1 - Id = 130
+(0)            proxy-realm1 - Authenticator = 0x970cd7fde6e8fefc4d155017d1a0bed1
+(0)          proxy-realm1 - }
+(0)          proxy-realm1 - Packet-Type = ::Access-Request
+(0)          proxy-realm1 - Proxy-State = 0x6836cf35495baced
+(0)        proxy-realm1 - Proxied request.  Relying on NAS to perform more retransmissions
+(0)        proxy-realm1 - Received Access-Accept ID 0 length 48 reply packet on connection proto udp local 10.0.16.96 port 37726 remote 44.222.160.231 port 1812
+(0)          proxy-realm1 - Message-Authenticator = 0xb0438c94e081c9c66b194a770b38bd5f
+(0)          proxy-realm1 - Proxy-State = 0xedac5b4935cf3668
+(0)        proxy-realm1 - proxy-realm1 - Resuming execution
+(0)        proxy-realm1 (ok)
+----
+
+Proxy server debug output (when proxied packet arrives) :
+
+[source,text]
+----
+(0) suffix: Checking for suffix after "@"
+(0) suffix: Looking up realm "realm1.com" for User-Name = "bob@realm1.com"
+(0) suffix: Found realm "default"
+(0) suffix: Adding Stripped-User-Name = "bob"
+(0) suffix: Adding Realm = "default"
+(0) suffix: Authentication realm is LOCAL
+(0)     [suffix] = ok
+(0) files: users: Matched entry bob at line 2
+(0)     [files] = ok
+(0)     [pap] = updated
+(0)   } # authorize = updated
+(0) Found Auth-Type = PAP
+(0) # Executing group from file ../sites-enabled/default
+(0)   Auth-Type PAP {
+(0)     [ok] = ok
+(0)   } # Auth-Type PAP = ok
+----
+
+=== Test 3 – Proxy to realm2.com
+
+[source,text]
+----
+echo 'User-Name = "bob@realm2.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+Radclient output :
+
+[source,text]
+----
+Sent Access-Request Id 130 from 0.0.0.0:43437 to 127.0.0.1:1812 length 72
+  Message-Authenticator = 0x
+        User-Name = "bob@realm2.com"
+        User-Password = "hello"
+Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length 54
+        Message-Authenticator = 0x591568951632aae69f913f707912e464
+        User-Name = "bob@realm2.com"
+----
+
+Server debug output (main / proxy server – proxied user) :
+
+[source,text]
+----
+(0)      if (User-Name =~ /@realm2\.com$/)  {
+(0)        | =~
+(0)            | User-Name
+(0)              | %{User-Name}
+(0)              | --> bob@realm2.com
+(0)        | ({bob@realm2.com} =~ (null))
+(0)        | --> true
+(0)        proxy-realm2 - proxy-realm2 - [1] Trunk connection assigned request 1
+(0)        proxy-realm2 - Sending Access-Request ID 0 length 0 over connection proto udp local 10.0.16.96 port 37726 remote 44.222.160.231 port 1812
+(0)          proxy-realm2 - Message-Authenticator = 0xb8c474a818edf42917887303b3181172
+(0)          proxy-realm2 - User-Name = "bob@realm2.com"
+(0)          proxy-realm2 - User-Password = "hello"
+(0)          proxy-realm2 - Packet {
+(0)            proxy-realm2 - Id = 130
+(0)            proxy-realm2 - Authenticator = 0x970cd7fde6e8fefc4d155017d1a0bed1
+(0)          proxy-realm2 - }
+(0)          proxy-realm2 - Packet-Type = ::Access-Request
+(0)          proxy-realm2 - Proxy-State = 0x6836cf35495baced
+(0)        proxy-realm2 - Proxied request.  Relying on NAS to perform more retransmissions
+(0)        proxy-realm2 - Received Access-Accept ID 0 length 48 reply packet on connection proto udp local 10.0.16.96 port 37726 remote 44.222.160.231 port 1812
+(0)          proxy-realm2 - Message-Authenticator = 0xb0438c94e081c9c66b194a770b38bd5f
+(0)          proxy-realm2 - Proxy-State = 0xedac5b4935cf3668
+(0)        proxy-realm2 - proxy-realm2 - Resuming execution
+(0)        proxy-realm2 (ok)
+----
+
+Proxy server debug output (when proxied packet arrives) :
+
+[source,text]
+----
+(0) suffix: Checking for suffix after "@"
+(0) suffix: Looking up realm "realm2.com" for User-Name = "bob@realm2.com"
+(0) suffix: Found realm "default"
+(0) suffix: Adding Stripped-User-Name = "bob"
+(0) suffix: Adding Realm = "default"
+(0) suffix: Authentication realm is LOCAL
+(0)     [suffix] = ok
+(0) files: users: Matched entry bob at line 2
+(0)     [files] = ok
+(0)     [pap] = updated
+(0)   } # authorize = updated
+(0) Found Auth-Type = PAP
+(0) # Executing group from file ../sites-enabled/default
+(0)   Auth-Type PAP {
+(0)     [ok] = ok
+(0)   } # Auth-Type PAP = ok
+----
+
+=== Test 4 – Proxy failure simulation
+
+Stop the remote server for realm1, then run :
+
+[source,text]
+----
+echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+The request should be rejected
 
 == Questions
 
