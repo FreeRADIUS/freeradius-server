@@ -143,7 +143,7 @@ recv Access-Request {
     }
     else {
         files
-        pap        
+        pap
     }
 }
 ----
@@ -258,7 +258,7 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
         User-Name = "bob@realm1.com"
 ----
 
-Server debug output (main / proxy server – proxied user) : 
+Server debug output (main / proxy server – proxied user) :
 
 [source,text]
 ----
@@ -317,7 +317,7 @@ Proxy server debug output (when proxied packet arrives) :
 echo 'User-Name = "bob@realm2.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-Radclient output : 
+Radclient output :
 
 [source,text]
 ----
