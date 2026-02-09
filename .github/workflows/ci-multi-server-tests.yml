@@ -60,6 +60,18 @@ jobs:
           ./configure
           make docker.ubuntu22.build
 
+          # List all images
+          docker images --all
+
+          # Retag image to what the compose/test harness expects
+          docker tag freeradius4/ubuntu22:latest fr-build-ubuntu22:latest
+
+          docker images --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}' | grep -E 'freeradius4/ubuntu22|fr-build-ubuntu22'
+
       - name: Run test-5hs-autoaccept test
         run: |
+          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q '^fr-build-ubuntu22:latest$'; then
+            echo "Error: fr-build-ubuntu22:latest Docker image not found and required for multi-server test environment."
+            exit 1
+          fi
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
