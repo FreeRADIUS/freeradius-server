@@ -26,50 +26,155 @@ realms will be named "realm1" and the other will be named "realm2".
 
 We assume two remote servers exist with IP addresses you will replace in the `clients.conf` configuration.
 
+== Step-by-step Configuration
 
-User 1:
+=== 1. Create proxy modules.
 
-realm1 is local
+Create file `mods-available/proxy-realm1`
 
-realm2 gets proxied to the server running as "realm2".
+[source,unlang]
+----
+# Proxies requests for @realm1.com to remote server 1
 
-User 2:
+radius proxy-realm1 {
+    mode = proxy
+    transport = udp
 
-realm1 gets proxied to the server running as "realm1".
+    udp {
+        # replace with real IP of realm1 server
+        ipaddr = 192.168.100.51
+        port   = 1812
+        secret = testing123
+    }
 
-realm2 is local
+    type = Access-Request
+    type = Accounting-Request
 
-The users should also configure each other's server as a RADIUS
-client, as given in the exercise in xref:new_client.adoc[New Clients].
+    status_check = none
 
-The entry from the exercise in xref:new_user.adoc[New User] for user "bob" in
-the file, will be used in this exercise.
+    connect_timeout  = 3.0
+    response_timeout = 3.0
+    zombie_period    = 40
+}
+----
 
-The example packets `bob.sh`, `bob@realm1.sh`, and `bob@realm2.sh` may
-be used in this exercise.
+Create file `mods-available/proxy-realm2`
 
-Each user should test that authentication requests from "bob" to
-their RADIUS server should result in authentication accept replies and
-that the request was not forwarded to the other RADIUS server.
+[source,unlang]
+----
+# Proxies requests for @realm2.com to remote server 2
 
-Each user should test that authentication requests for their own
-realm (User 1: "bob@realm1", User 2: "bob@realm2") to their
-RADIUS server should result in authentication accept replies and that
-the request was not forwarded to the other RADIUS server.
+radius proxy-realm2 {
+    mode = proxy
+    transport = udp
 
-Each user in turn should then attempt authentication using the other
-user's realm (User 1: "bob@realm2", User 2: "bob@realm1"),
-to their local RADIUS server.
+    udp {
+        # replace with real IP of realm2 server
+        ipaddr = 192.168.100.52
+        port   = 1812
+        secret = testing123
+    }
 
-Each in turn should verify that authentication requests for their
-realm sent to the other user's RADIUS server results in an
-authentication reject.
+    type = Access-Request
+    type = Accounting-Request
 
-User 2 should then stop his server. User 1 should then attempt an
-authentication request to his server where the request would normally
-be proxied. Both users should examine the debug logs of User 1’s
-RADIUS client and server in order to observe what the server's resulting behavior
-will be.
+    status_check = none
+
+    connect_timeout  = 3.0
+    response_timeout = 3.0
+    zombie_period    = 40
+}
+----
+
+Enable both modules:
+
+[source,bash]
+----
+$ cd ../mods-enabled
+$ ln -s ../mods-available/proxy-realm1 .
+$ ln -s ../mods-available/proxy-realm2 .
+----
+
+=== 2. Register remote servers as clients
+
+Edit `clients.conf` and add:
+
+[source]
+----
+client realm1_remote {
+    # same IP as proxy-realm1
+    ipaddr = 192.168.100.51
+    secret = testing123
+    shortname = realm1-server
+    nas_type = other
+}
+
+client realm2_remote {
+    # same IP as proxy-realm2
+    ipaddr = 192.168.100.52
+    secret = testing123
+    shortname = realm2-server
+    nas_type = other
+}
+----
+
+=== 3. Update virtual server logic
+
+Edit `sites-enabled/default`
+
+Update the `recv Access-Request { … }` section:
+
+[source,unlang]
+----
+recv Access-Request {
+    if (&User-Name =~ /@realm1\.com$/) {
+        proxy-realm1
+
+        if (ok) {
+            accept
+        }
+    }
+    elsif (&User-Name =~ /@realm2\.com$/) {
+        proxy-realm2
+
+        if (ok) {
+            accept
+        }
+    }
+    else {
+        files
+        pap        
+    }
+}
+----
+
+Update (or add) the `authenticate` section:
+
+[source,unlang]
+----
+authenticate PAP {
+        pap
+    }
+
+authenticate proxy-realm1 {
+        proxy-realm1
+    }
+
+authenticate proxy-realm2 {
+        proxy-realm2
+    }
+
+----
+
+=== 4. Ensure local user exists
+
+In `mods-config/files/authorize` (or your users file):
+
+[source,text]
+----
+bob     Cleartext-Password := "hello"
+----
+
 
 == Questions
 
