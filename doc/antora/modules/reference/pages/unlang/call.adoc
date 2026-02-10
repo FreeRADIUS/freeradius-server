@@ -24,10 +24,18 @@ the `recv Access-Request` section, followed by the `authenticate
 <type>` section, followed by the `send Access-Accept` section.
 
 [ statements ]:: Once the called virtual server has finished, the _[
-statements]_ from inside of the `call` section will be executed.
+statements]_ from inside of the `call` section are executed.
 
 The return code of the `call` statement is taken from the final return
 code of the called virtual server.
+
+The `call` keyword will take the _current_ request and send it through
+the named virtual server.  This means that the called virtual server
+can edit the request list, reply list, session-state list, etc.
+
+In many cases (e.g. proxying), the `call` keyword should be wrapped in
+a xref:unlang/subrequest.adoc[subrequest] keyword.  The `subrequest`
+can be used to create a child request that the other server can edit.
 
 .Example
 
