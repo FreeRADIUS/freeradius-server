@@ -78,15 +78,15 @@ $(1): clone
 		echo "INFO: MULTI_SERVER_BUILD_DIR_REL_PATH=$(MULTI_SERVER_BUILD_DIR_REL_PATH)"; \
 		echo "INFO: LISTENER_DIR=$$$$LISTENER_DIR"; \
 		\
-		CMD="python3 src/config_builder.py --listener_type file --aux $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/homeserver/radiusd.conf.j2 --includepath $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
+		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/homeserver/radiusd.conf.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
 		echo "INFO: CMD = $$$$CMD"; \
 		bash -c "$$$$CMD"; \
 		\
-		CMD="python3 src/config_builder.py --listener_type file --aux $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/load-generator/radiusd.conf.j2 --includepath $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
+		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/load-generator/radiusd.conf.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
 		echo "INFO: CMD = $$$$CMD"; \
 		bash -c "$$$$CMD"; \
 		\
-		CMD="python3 src/config_builder.py --listener_type file --aux $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/docker-compose/env-5hs-autoaccept.yml.j2 --includepath $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
+		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/docker-compose/env-5hs-autoaccept.yml.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
 		echo "INFO: CMD = $$$$CMD"; \
 		bash -c "$$$$CMD"; \
 		\
