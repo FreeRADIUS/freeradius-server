@@ -139,15 +139,14 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		char buffer[1024];
 
 		/*
-		 *	Integer data types let the admin
-		 *	select which frame is being used.
+		 *	Hash the attribute value to select the statement which will be used.
 		 */
 		if (tmpl_is_attr(gext->vpt)) {
 			fr_pair_t *vp;
 
 			slen = tmpl_find_vp(&vp, request, gext->vpt);
 			if (slen < 0) {
-				REDEBUG("Failed finding attribute %s", gext->vpt->name);
+				REDEBUG("Failed finding attribute %s - choosing random statement", gext->vpt->name);
 				goto randomly_choose;
 			}
 
@@ -159,11 +158,13 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 			uint8_t *octets = NULL;
 
 			/*
-			 *	If the input is an IP address, prefix, etc., we don't need to convert it to a
-			 *	string.  We can just hash the raw data directly.
+			 *	Get the raw data, and then hash the data.
 			 */
 			slen = tmpl_expand(&octets, buffer, sizeof(buffer), request, gext->vpt);
-			if (slen <= 0) goto randomly_choose;
+			if (slen <= 0) {
+				REDEBUG("Failed expanding %s - choosing random statement", gext->vpt->name);
+				goto randomly_choose;
+			}
 
 			hash = fr_hash(octets, slen);
 
@@ -234,6 +235,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 						 unlang_type_t type)
 {
 	char const			*name2;
+	fr_token_t			quote;
 	unlang_t			*c;
 	unlang_group_t			*g;
 	unlang_load_balance_t		*gext;
@@ -257,27 +259,39 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	g = unlang_generic_to_group(c);
 
 	/*
-	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 *	Inside of the "modules" section, it's a virtual module.  The key is the third argument, and
+	 *	the "name2" is the module name, which we ignore here.
 	 */
 	name2 = cf_section_name2(cs);
+	quote = cf_section_name2_quote(cs);
 
-	/*
-	 *	Inside of the "modules" section, it's a virtual
-	 *	module.  The name is a module name, not a key.
-	 */
 	if (name2) {
-		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) name2 = NULL;
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) {
+			char const *key;
+
+			/*
+			 *	Key is optional.
+			 */
+			key = cf_section_argv(cs, 0);
+			if (key) {
+				name2 = key;
+				quote = cf_section_argv_quote(cs, 0);
+			} else {
+				name2 = NULL; /* no key */
+			}
+		}
 	}
 
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 */
 	if (name2) {
-		fr_token_t quote;
 		ssize_t slen;
 
 		/*
 		 *	Create the template.  All attributes and xlats are
 		 *	defined by now.
 		 */
-		quote = cf_section_name2_quote(cs);
 		gext = unlang_group_to_load_balance(g);
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
 					 &FR_SBUFF_IN_STR(name2),
@@ -299,6 +313,8 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 			talloc_free(g);
 			return NULL;
 		}
+
+		ERROR("SHIT %s %d", gext->vpt->name, gext->vpt->type);
 
 		switch (gext->vpt->type) {
 		default:

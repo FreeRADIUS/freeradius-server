@@ -2633,6 +2633,40 @@ check_for_eol:
 
 		fr_skip_whitespace(ptr);
 
+		/*
+		 *	load-balance and redundant-load-balance MUST have a static module name, and MAY have
+		 *	an additional load-balance keyword.
+		 */
+		if ((parent->unlang == CF_UNLANG_MODULES) && (*ptr != '{') &&
+		    ((strcmp(buff[1], "load-balance") == 0) ||
+		     (strcmp(buff[1], "redundant-load-balance") == 0))) {
+			/*
+			 *	The third name could be an attribute name, xlat expansion, etc.
+			 */
+			if (cf_get_token(parent, &ptr, &value_token, buff[3], stack->bufsize,
+					 frame->filename, frame->lineno) < 0) {
+				return -1;
+			}
+
+			fr_skip_whitespace(ptr);
+
+			if (*ptr != '{') {
+				return parse_error(stack, ptr, "Expected '{'");
+			}
+
+			ptr++;
+
+			css = cf_section_alloc(parent, parent, buff[1], buff[2]);
+			if (!css) goto oom;
+
+			css->argc = 1;
+			css->argv = talloc_array(css, char const *, 1);
+			css->argv[0] = talloc_typed_strdup(css->argv, buff[3]);
+			css->argv_quote = talloc_array(css, fr_token_t, 1);
+			css->argv_quote[0] = value_token;
+			goto setup_section;
+		}
+
 		if (*ptr != '{') {
 			return parse_error(stack, ptr, "Missing '{' for configuration section");
 		}
@@ -2800,6 +2834,7 @@ alloc_section:
 		return -1;
 	}
 
+setup_section:
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
 	css->name2_quote = name2_token;
