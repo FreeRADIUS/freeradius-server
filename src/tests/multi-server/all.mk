@@ -26,22 +26,20 @@
 # of the test-framework.
 #
 
-# Find ENV compose file by stripping trailing "-suffix" chunks until a match exists.
-# Returns: environments/docker-compose/env-<base-without-test->.yml
-define FIND_ENV_COMPOSE
+# Find ENV compose template by stripping trailing "-suffix" chunks until a match exists.
+# Returns: environments/docker-compose/env-<base-without-test->.yml.j2
+define FIND_ENV_COMPOSE_J2
 $(strip $(shell \
 	name='$(1)'; base="$$name"; \
 	while :; do \
 		env="environments/docker-compose/env-$${base#test-}.yml"; \
 		envj2="$$env.j2"; \
 		if [ -f "$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$envj2" ]; then \
-			printf '%s' "$$env"; exit 0; \
-		elif [ -f "$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$env" ]; then \
-			printf '%s' "$$env"; exit 0; \
+			printf '%s' "$$envj2"; exit 0; \
 		fi; \
 		newbase="$${base%-*}"; \
 		if [ "$$newbase" = "$$base" ]; then \
-			echo "ERROR: No matching env compose file for $(1) (tried $$env(.j2) and shorter prefixes)" 1>&2; \
+			echo "ERROR: No matching env compose template for $(1) (expected $$env.j2 and shorter prefixes)" 1>&2; \
 			exit 1; \
 		fi; \
 		base="$$newbase"; \
@@ -54,49 +52,66 @@ define MAKE_TEST_TARGET
 $(1): TEST_NAME     := $(1)
 $(1): TEST_FILENAME := $$(TEST_NAME).yml
 
-# Compute compose path by finding the longest matching base env file
-$(1): ENV_COMPOSE_PATH := $$(call FIND_ENV_COMPOSE,$$(TEST_NAME))
+# Compose template (must exist)
+$(1): ENV_COMPOSE_TEMPLATE_PATH := $$(call FIND_ENV_COMPOSE_J2,$$(TEST_NAME))
+
+# Output compose file (strip .j2)
+$(1): ENV_COMPOSE_PATH := $$(patsubst %.j2,%,$$(ENV_COMPOSE_TEMPLATE_PATH))
+
+# Stem: environments/docker-compose/env-5hs-autoaccept.yml -> 5hs-autoaccept
+$(1): ENV_STEM := $$(patsubst environments/docker-compose/env-%.yml,%,$$(ENV_COMPOSE_PATH))
+
+# Vars aligned to stem
+$(1): VARS_FILE_REL ?= environments/jinja-vars/env-$$(ENV_STEM).vars.yml
 
 $(1): clone
 	@echo "MULTI_SERVER_BUILD_DIR_REL_PATH=$(MULTI_SERVER_BUILD_DIR_REL_PATH)"
 	@echo "MULTI_SERVER_BUILD_DIR_ABS_PATH=$(MULTI_SERVER_BUILD_DIR_ABS_PATH)"
 	@mkdir -p "$(MULTI_SERVER_BUILD_DIR_REL_PATH)/freeradius-listener-logs/$$(TEST_NAME)"
-	@cd "$(FRAMEWORK_REPO_DIR)" && \
-		git pull && \
-		\
-		$(MAKE) configure && \
-		. ".venv/bin/activate" && \
+	@bash -lc 'set -euo pipefail; \
+		echo "INFO: entering framework repo: $(FRAMEWORK_REPO_DIR)"; \
+		cd "$(FRAMEWORK_REPO_DIR)"; \
+		git pull; \
+		$(MAKE) configure; \
+		. ".venv/bin/activate"; \
 		\
 		DATA_PATH="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs"; \
 		LISTENER_DIR="$(MULTI_SERVER_BUILD_DIR_ABS_PATH)/freeradius-listener-logs/$$(TEST_NAME)"; \
+		INCLUDE_PATH_ABS="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
+		VARS_FILE_ABS="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(VARS_FILE_REL)"; \
+		ENV_COMPOSE_TEMPLATE_ABS="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(ENV_COMPOSE_TEMPLATE_PATH)"; \
+		ENV_COMPOSE_ABS="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(ENV_COMPOSE_PATH)"; \
+		TEST_ABS="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(TEST_FILENAME)"; \
 		\
-		echo "INFO: TEST_FILENAME=$$(TEST_FILENAME)"; \
 		echo "INFO: TEST_NAME=$$(TEST_NAME)"; \
+		echo "INFO: TEST_FILENAME=$$(TEST_FILENAME)"; \
+		echo "INFO: TEST_ABS=$$TEST_ABS"; \
+		echo "INFO: ENV_COMPOSE_TEMPLATE_PATH=$$(ENV_COMPOSE_TEMPLATE_PATH)"; \
 		echo "INFO: ENV_COMPOSE_PATH=$$(ENV_COMPOSE_PATH)"; \
-		echo "INFO: MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH=$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
-		echo "INFO: DATA_PATH=$$$$DATA_PATH"; \
-		echo "INFO: MULTI_SERVER_BUILD_DIR_REL_PATH=$(MULTI_SERVER_BUILD_DIR_REL_PATH)"; \
+		echo "INFO: ENV_STEM=$$(ENV_STEM)"; \
+		echo "INFO: VARS_FILE_REL=$$(VARS_FILE_REL)"; \
+		echo "INFO: VARS_FILE_ABS=$$$$VARS_FILE_ABS"; \
+		echo "INFO: ENV_COMPOSE_TEMPLATE_ABS=$$$$ENV_COMPOSE_TEMPLATE_ABS"; \
+		echo "INFO: ENV_COMPOSE_ABS=$$$$ENV_COMPOSE_ABS"; \
 		echo "INFO: LISTENER_DIR=$$$$LISTENER_DIR"; \
 		\
-		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/homeserver/radiusd.conf.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
-		echo "INFO: CMD = $$$$CMD"; \
-		bash -c "$$$$CMD"; \
+		test -f "$$$$VARS_FILE_ABS" || { echo "ERROR: Missing vars file: $$$$VARS_FILE_ABS" >&2; exit 1; }; \
+		test -f "$$$$ENV_COMPOSE_TEMPLATE_ABS" || { echo "ERROR: Missing compose template: $$$$ENV_COMPOSE_TEMPLATE_ABS" >&2; exit 1; }; \
+		test -f "$$$$TEST_ABS" || { echo "ERROR: Missing test file: $$$$TEST_ABS" >&2; exit 1; }; \
 		\
-		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/load-generator/radiusd.conf.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
-		echo "INFO: CMD = $$$$CMD"; \
-		bash -c "$$$$CMD"; \
+		echo "INFO: Rendering homeserver radiusd.conf.j2"; \
+		python3 src/config_builder.py --vars-file "$$$$VARS_FILE_ABS" --aux-file "$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/homeserver/radiusd.conf.j2" --include-path "$$$$INCLUDE_PATH_ABS"; \
 		\
-		CMD="python3 src/config_builder.py --vars-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/jinja-vars/env-loadgen-5hs-vars.yml --aux-file $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/docker-compose/env-5hs-autoaccept.yml.j2 --include-path $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)"; \
-		echo "INFO: CMD = $$$$CMD"; \
-		bash -c "$$$$CMD"; \
+		echo "INFO: Rendering load-generator radiusd.conf.j2"; \
+		python3 src/config_builder.py --vars-file "$$$$VARS_FILE_ABS" --aux-file "$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs/freeradius/load-generator/radiusd.conf.j2" --include-path "$$$$INCLUDE_PATH_ABS"; \
 		\
-		test -f "$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(ENV_COMPOSE_PATH)" || { \
-			echo "ERROR: Missing compose file: $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(ENV_COMPOSE_PATH)"; \
-			exit 1; \
-		} && \
-		CMD="DATA_PATH=$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs make test-framework -- -x -v --compose $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(ENV_COMPOSE_PATH) --test $(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)$$(TEST_FILENAME) --use-files --listener-dir $$$$LISTENER_DIR"; \
-		echo "INFO: CMD = $$$$CMD"; \
-		bash -c "$$$$CMD"
+		echo "INFO: Rendering docker-compose env from template"; \
+		python3 src/config_builder.py --vars-file "$$$$VARS_FILE_ABS" --aux-file "$$$$ENV_COMPOSE_TEMPLATE_ABS" --include-path "$$$$INCLUDE_PATH_ABS"; \
+		\
+		test -f "$$$$ENV_COMPOSE_ABS" || { echo "ERROR: Compose file was not generated: $$$$ENV_COMPOSE_ABS" >&2; exit 1; }; \
+		\
+		echo "INFO: Running test-framework"; \
+		DATA_PATH="$(MULTI_SERVER_TESTS_BASE_DIR_ABS_PATH)environments/configs" make test-framework -- -x -v --compose "$$$$ENV_COMPOSE_ABS" --test "$$$$TEST_ABS" --use-files --listener-dir "$$$$LISTENER_DIR"'
 endef
 
 # Set directory name where all.mk is located. Help with relative paths
