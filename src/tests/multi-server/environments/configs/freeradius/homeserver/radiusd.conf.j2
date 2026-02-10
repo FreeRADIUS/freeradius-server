@@ -38,9 +38,9 @@ modules {
 	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
 
 	# Test-framework specific linelog module configuration based on OS environment
-	{% if test.listener_type == "unix" %}
+	{% if listener_type == "unix" %}
         {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
-	{% elif test.listener_type == "file" %}
+	{% elif listener_type == "file" %}
         {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
 	{% endif %}
 
