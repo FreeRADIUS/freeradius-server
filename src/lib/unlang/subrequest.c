@@ -518,7 +518,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	fr_dict_autoload_talloc_t	*dict_ref = NULL;
 
 	fr_dict_t const			*dict;
-	fr_dict_attr_t const		*da = NULL;
+	fr_dict_attr_t const		*attr_packet_type = NULL;
 	fr_dict_enum_value_t const	*type_enum = NULL;
 
 	ssize_t				slen;
@@ -540,7 +540,8 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		dict = unlang_ctx->rules->attr.dict_def;
-		packet_name = name2 = unlang_ctx->section_name2;
+		packet_name = name2 = unlang_ctx->section_name2;		
+		attr_packet_type =  virtual_server_packet_type_by_cs(virtual_server_cs(unlang_ctx->vs));
 		goto get_packet_type;
 	}
 
@@ -568,7 +569,15 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	    ((name2[0] != ':') && (name2[0] != '&') && (strchr(name2 + 1, ':') != NULL))) {
 		char *q;
 
-		if (name2[0] == '@') name2++;
+		/*
+		 *	This is a different protocol dictionary.  We reset the packet type.
+		 *
+		 *	@todo - the packet type should really be stored in #fr_dict_protocol_t.
+		 */
+		if (name2[0] == '@') {
+			attr_packet_type = NULL;
+			name2++;
+		}
 
 		MEM(namespace = talloc_strdup(parent, name2));
 		q = namespace;
@@ -614,9 +623,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	}
 
 	/*
-	 *	'&' means "attribute reference"
-	 *
-	 *	Or, bare word an require_enum_prefix means "attribute reference".
+	 *	Bare words are attribute references.
 	 */
 	slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
 				      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
@@ -649,25 +656,27 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 
 get_packet_type:
 	/*
-	 *	Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
-	 *	are NOT copied to the subrequest.
+	 *      Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
+	 *      are NOT copied to the subrequest.
 	 *
-	 *	@todo - maybe we want to copy local variables, too?  But there may be multiple nested local
-	 *	variables, each with their own dictionary.
+	 *      @todo - maybe we want to copy local variables, too?  But there may be multiple nested local
+	 *      variables, each with their own dictionary.
 	 */
 	dict = fr_dict_proto_dict(dict);
 
 	/*
-	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
+	 *	We're switching virtual servers, find the packet type by name.
 	 */
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
-	if (!da) {
-		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
+	if (!attr_packet_type) {
+		attr_packet_type =  fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+		if (!attr_packet_type) {
+			cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
 	error:
-		talloc_free(namespace);
-		talloc_free(vpt);
-		talloc_free(dict_ref);
-		goto print_url;
+			talloc_free(namespace);
+			talloc_free(vpt);
+			talloc_free(dict_ref);
+			goto print_url;
+		}
 	}
 
 	if (packet_name) {
@@ -676,10 +685,10 @@ get_packet_type:
 		 */
 		if ((packet_name[0] == ':') && (packet_name[1] == ':')) packet_name += 2;
 
-		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
+		type_enum = fr_dict_enum_by_name(attr_packet_type, packet_name, -1);
 		if (!type_enum) {
-			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
-				   packet_name, fr_dict_root(dict)->name);
+			cf_log_err(cs, "No such value '%s' for attribute '%s' in namespace '%s'",
+				   packet_name, attr_packet_type->name, fr_dict_root(dict)->name);
 			goto error;
 		}
 	}
@@ -788,7 +797,7 @@ get_packet_type:
 	if (vpt) gext->vpt = talloc_steal(gext, vpt);
 
 	gext->dict = dict;
-	gext->attr_packet_type = da;
+	gext->attr_packet_type = attr_packet_type;
 	gext->type_enum = type_enum;
 	gext->src = src_vpt;
 	gext->dst = dst_vpt;
