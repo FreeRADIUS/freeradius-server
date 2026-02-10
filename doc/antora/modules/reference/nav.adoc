@@ -262,6 +262,7 @@
 *** xref:raddb/sites-available/ldap_sync.adoc[LDAP Sync]
 *** xref:raddb/sites-available/doc/radius.adoc[RADIUS]
 **** xref:raddb/sites-available/default.adoc[Default]
+**** xref:raddb/sites-available/proxy.adoc[Proxy]
 **** xref:raddb/sites-available/buffered-sql.adoc[Buffered SQL]
 **** xref:raddb/sites-available/challenge.adoc[Challenge-Response]
 **** xref:raddb/sites-available/coa.adoc[CoA]

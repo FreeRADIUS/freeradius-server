@@ -1,0 +1,152 @@
+
+= Proxy RADIUS packets
+
+This virtual server replaces the old `pre-proxy` and `post-proxy`
+sections that were in v3.
+
+It can be called from another virtual server via the `call` keyword:
+
+```
+#	subrequest {
+#		request := parent.request
+#		call proxy {
+#		}
+#	}
+```
+
+For server pools with load-balancing, fail-over, etc., you can just
+use the `load-balance` and `redundant` keywords.  Those sections
+should then include multiple `radius` modules, one for each home
+server.
+
+You can also create virtual modules in `mods-enabled/`, simply by
+giving the `load-balance` section a name.  See the keyword
+documentation for `load-balance` for more details.
+
+See also the proxy upgrade documentation for examples.
+xref:howto:upgrade/proxy.adoc[proxy]
+
+
+
+
+```
+server proxy {
+	namespace = radius
+
+```
+
+== Authentication
+
+Process Access-Request packets and responses.
+
+=== Receive the Access-Request from the parent
+
+This section replaces `pre-proxy`.  It receives an Access-Request
+from the parent, and uses the `radius` module to proxy it.
+
+Note that there is no `send Access-Request` section.  If you add
+one, the server will give an error, and will refuse to start.
+
+```
+recv Access-Request {
+```
+
+Rewrite the Access-Request before it gets sent to the home server
+
+
+
+This is where you decide which home server the packet is
+proxied to.
+
+```
+#	radius
+}
+
+```
+
+=== Return the Access-Accept to the parent
+
+```
+send Access-Accept {
+}
+
+```
+
+=== Return the Access-Reject to the parent
+
+```
+send Access-Reject {
+}
+
+```
+
+=== Return the Access-Challenge to the parent
+
+```
+send Access-Challenge {
+}
+
+```
+
+== Accounting
+
+
+=== Receive the Accounting-Request from the parent
+
+```
+recv Accounting-Request {
+
+```
+
+As the last thing in the section, proxy it.
+
+   radius
+```
+}
+
+```
+
+=== Return the Accounting-Response to the parent
+
+```
+send Accounting-Response {
+}
+
+```
+
+== Other Packet Types
+
+You can add sections here such as `recv CoA-Request`, `send
+CoA-ACK`, etc.
+
+
+
+== Finalize the response
+
+```
+finally {
+```
+
+Remove all Proxy-State attributes from the response
+
+```
+	reply -= Proxy-State[*]
+
+```
+
+Over-write all of the parents response attributes with our response.
+
+```
+	parent.reply := reply
+}
+
+}
+```
+
+== Default Configuration
+
+```
+```
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
