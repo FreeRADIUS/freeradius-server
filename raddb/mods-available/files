@@ -29,9 +29,7 @@ files {
 	#  The content of this attribute is used to match the `name` of the entry.
 	#
 	#  Note that unlike v4, the key does not have to be a string, but could instead
-	#  be an IP address or netmask!  For more information, see
-	#
-	#	doc/antora/modules/raddb/pages/mods-config/files/users.adoc
+	#  be an IP address or netmask!
 	#
 #	key = "%{Stripped-User-Name || User-Name}"
 

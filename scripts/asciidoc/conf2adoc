@@ -191,7 +191,7 @@ sub process_file {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
 
-		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:reference:$1/$2/$3.adoc[$3],g;
+		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:$1:$2/$3.adoc[$3],g;
 
 		if (!$inline) {
 		    if ($raw && $was_raw) {

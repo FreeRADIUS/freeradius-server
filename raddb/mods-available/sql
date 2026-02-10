@@ -29,7 +29,7 @@
 #  For authorization queries, the default schema mirrors the
 #  functionality of the `files` module, including check items and
 #  reply items.  See the
-#  doc/antora/modules/raddb/pages/mods-config/files/users.adoc file
+#  doc/antora/modules/reference/pages/raddb/mods-config/files/users.adoc file
 #  documentation for information on the format of the check items and
 #  reply items.
 #
