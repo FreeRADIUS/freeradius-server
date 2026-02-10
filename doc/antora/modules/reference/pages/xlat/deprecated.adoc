@@ -22,7 +22,7 @@ This expansion has been removed.  Instead, just use `%{(integer) ...}` with math
 reply.Reply-Message := "Value of Service-Type is %{(integer) Service-Type}"
 ----
 
-=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
+== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
 
 This expansion has been removed.  Just convert the strings to octets, and concatenate them via `+`.
 
