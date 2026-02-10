@@ -30,9 +30,9 @@ modules {
 	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
 
 	# Test-framework specific linelog module configuration based on OS environment
-	{% if test.listener_type == "unix" %}
+	{% if listener_type == "unix" %}
         {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
-	{% elif test.listener_type == "file" %}
+	{% elif listener_type == "file" %}
         {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
 	{% endif %}
 
@@ -40,7 +40,7 @@ modules {
 	{% include "environments/configs/freeradius/common/mods-available/stats" %}
 
 	# radius module instance configuration
-	{% for i in range(1, 6) %}
+	{% for i in range(1, (num_of_dst_servers + 1)) %}
 	radius radius-module-dst-server{{ i }} {
 		$template radius-module-dst-server-tmpl
 		udp {
@@ -183,7 +183,7 @@ server load-generator {
 	authenticate load-generator-proxy {
 		# Use redundant-load-balance to distribute requests to multiple home servers
 		redundant-load-balance {
-			{% for i in range(1, 6) %}
+			{% for i in range(1, (num_of_dst_servers + 1)) %}
 			radius-module-dst-server{{ i }}
 			{% endfor %}
 		}
