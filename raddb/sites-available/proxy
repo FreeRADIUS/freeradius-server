@@ -17,15 +17,13 @@
 #  For server pools with load-balancing, fail-over, etc., you can just
 #  use the `load-balance` and `redundant` keywords.  Those sections
 #  should then include multiple `radius` modules, one for each home
-#  server.
+#  server.  See `mods-available/home_server_pool` for an example of
+#  how to convert a v3 `home_server` and `home_server_pool`
+#  configuration to v4.
 #
-#  You can also create virtual modules in `mods-enabled/`, simply by
-#  giving the `load-balance` section a name.  See the keyword
-#  documentation for `load-balance` for more details.
-#
-#  See also the proxy upgrade documentation for examples.
+#  See also the proxy upgrade documentation for more examples of
+#  upgrading from v3 to v4:
 #  doc/antora/modules/howto/pages/upgrade/proxy.adoc
-#
 #
 #	$Id$
 #
@@ -52,11 +50,16 @@ recv Access-Request {
 	#  Rewrite the Access-Request before it gets sent to the home server
 	#
 
+	Auth-Type := ::proxy
+}
+
+authenticate proxy {
 	#
 	#  This is where you decide which home server the packet is
-	#  proxied to.
+	#  proxied to.  See `mods-available/home_server_pool` for an
+	#  example of the `pool1` module configuration.
 	#
-#	radius
+#	pool1
 }
 
 
@@ -86,10 +89,18 @@ send Access-Challenge {
 #
 recv Accounting-Request {
 
-     #
-     #  As the last thing in the section, proxy it.
-     #
-#     radius
+	#
+	#  As the last thing in the section, proxy it.
+	#
+	#  Unlike `Access-Request` packets, there is no `Acct-Type =
+	#  proxy`.  There are sections like `accounting start {...}`, but
+	#  those sections are called based on the `Acct-Status-Type`
+	#  attribute in the request.
+	#
+	#  As a result, the `pool1` virtual module has to be listed in
+	#  this section.
+	#
+#	pool1
 }
 
 #
@@ -110,7 +121,11 @@ send Accounting-Response {
 #
 finally {
 	#
-	#  Remove all Proxy-State attributes from the response
+	#  Remove all `Proxy-State` attributes from the response.
+	#
+	#  The `Proxy-State` attributes we get from the home server
+	#  are specific to the link between the proxy and the home
+	#  server.  They must not be sent back to the client.
 	#
 	reply -= Proxy-State[*]
 
