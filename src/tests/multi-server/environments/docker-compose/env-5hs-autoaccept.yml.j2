@@ -17,7 +17,7 @@ x-common-config: &id001
   - NET_ADMIN
   - SYS_PTRACE
 services:
-{% for i in range(1, (num_of_dst_servers + 1)) %}
+{% for i in range(1, (compose_num_of_home_servers + 1)) %}
   homeserver{{ i }}:
     image: freeradius-build:latest
     volumes:
@@ -48,7 +48,7 @@ services:
       - "1813:1813/udp"
       - "1820:1820/udp"
     depends_on:
-{% for i in range(1, (num_of_dst_servers + 1)) %}
+{% for i in range(1, (compose_num_of_home_servers + 1)) %}
       - homeserver{{ i }}
 {% endfor %}
     volumes:
