@@ -233,6 +233,7 @@
 ***** xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP]
 **** xref:raddb/mods-available/radius.adoc[RADIUS]
 ***** xref:raddb/mods-available/cui.adoc[CUI]
+***** xref:raddb/mods-available/home_server_pool.adoc[home_server_pool]
 ***** xref:raddb/mods-available/wimax.adoc[WiMAX]
 
 *** xref:raddb/mods-available/doc/utility.adoc[Utility]

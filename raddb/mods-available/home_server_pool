@@ -1,0 +1,112 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = home_server_pool Example
+#
+#  This configuration file is an example of how to translate a v3
+#  `home_server_pool` into a v4 configuration.
+#
+#  You should not enable this module, as it does not contain the IP
+#  address, port, and secret information for your local network.
+#  Instead, you can use this file as template to translate a v3
+#  `home_server_pool` configuration into a v4 configuration.
+#
+
+#
+#  == Name and Type
+#
+#  In v3, we have:
+#
+#	home_server_pool pool1 {
+#		type = load-balance
+#
+#		home_server = home1
+#		home_server = home2
+#		home_server = home3
+#	}
+#
+#  This translates to a `load-balance` section with name `pool1`, and the following contents.
+#
+load-balance pool1 {
+	#
+	#  `home1`, `home2`, and `home3` should be instances of the `radius` module.
+	#
+	home1
+	home2
+	home3
+}
+#
+#  If you are using a Load-Balance-Key in v3, that can be translated
+#  to a v4 configuration by simply specifying an option to the
+#  `load-balance` section.  For example, to load balance on
+#  `Calling-Station-Id`, the above `pool1` configuration can be
+#  modified with one addition:
+#
+#	load-balance pool1 Calling-Station-Id {
+#		...
+#	}
+#
+#  See the `load-balance` keyword documentation for more information.
+#
+
+#
+#  == Using the home_server_pool
+#
+#  In this configuration, `pool1` is a _virtual module_.  That is, it
+#  can be referred to by name as a module: `pool1`.  This name can be
+#  used anywhere that a module name is allowed.
+#
+#  The need to use the pool as a module is the one major difference in
+#  proxying between v3 and v4.  In v3, proxying was an automatic thing
+#  that happened when a special attribute got set.
+#  e.g. `Proxy-To-Realm = ...`, or `Home-Server = ...`.
+#
+#  In v4, proxying happens only when you explicitly configure the
+#  server to run the `radius` module.  The simplest way to do this is
+#  to add a section:
+#
+#	authenticate proxy {
+#		pool1
+#	}
+#
+#  And then set `Auth-Type := proxy`.  See the sites-available/proxy
+#  example for more information.
+#
+#
+
+#
+#  == home_server Example
+#
+#  In v3, we have:
+#
+#	home_server radius1 {
+#		type = auth+acct
+#		ipaddr = 192.0.2.1
+#		port = 1812
+#		secret = testing123
+#	}
+#
+#  This translates to the `radius` module, with name `home1`, and the following contents.
+#
+#  See the `radius` module for more information about its full configuration.
+#
+radius home1 {
+	transport = udp
+
+	type = Access-Request
+	type = Accounting-Request
+
+	udp {
+		ipaddr = 192.0.2.1
+		port = 1812
+		secret = testing123
+	}
+}
+
+#
+#  You can add `home2`, `home3`, etc. here.  They do not need to be in separate files.
+#
