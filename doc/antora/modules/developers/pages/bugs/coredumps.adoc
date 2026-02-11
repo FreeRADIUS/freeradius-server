@@ -1,0 +1,41 @@
+= Core dumps
+
+If the server (or one of the accompanying programs) core dumps, then you
+should rebuild the server as follows:
+
+```
+$ ./configure --enable-developer
+$ make
+$ make install
+```
+
+and then run the program again. You may have to to enable core dumps,
+via:
+
+```
+$ ulimit -c unlimited
+```
+
+When it core dumps, do:
+
+```
+$ gdb /path/to/executable /path/to/core/file
+```
+
+Enable logging in `gdb` via the following commands:
+
+```
+(gdb) set logging file gdb-radiusd.log
+(gdb) set logging on
+```
+
+and follow the instructions in the xref:bugs/info.adoc[Extract Information]] section.
+
+You can also enable the `panic_action` given in
+`radiusd.conf`. See the comments in that file for more details
+about automatically collecting gdb debugging information when the server
+crashes.
+
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

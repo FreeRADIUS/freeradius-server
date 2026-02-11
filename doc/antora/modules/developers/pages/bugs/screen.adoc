@@ -1,0 +1,25 @@
+= Use `screen`
+
+If the bug is a crash of the server, and it takes a long time for the
+crash to happen, perform the following steps:
+
+* Log in as root.
+* Open a https://www.gnu.org/software/screen/[screen] session: `$ screen bash`.
+* Make sure FreeRADIUS is not running.
+* Make sure you have all the debug symbols about, or a debugable version
+of the server installed (one built with `--enable-developer` as above).
+* Configure screen to log to a file by pressing `Ctrl+a`, then `h`.
+* Type `gdb /path/to/radiusd` (or /path/to/freeradius on Debian).
+* At the `(gdb)` prompt, type `run -X`.
+* Detach from screen with `Ctrl+a`, `d`.
+* When you notice FreeRADIUS has died, reconnect to your screen session
+`$ screen -D -r`.
+* At the `(gdb)` prompt type `where` or for _lots_ of info try
+`thread apply all bt full`.
+* Tell screen to stop logging, `Ctrl+a`, `h`.
+* Logout from screen.
+
+
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
