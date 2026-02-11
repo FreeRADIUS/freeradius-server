@@ -1088,6 +1088,7 @@ fi
 %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
 %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
 %config(noreplace) %{_sysconfdir}/raddb/trigger.conf
+%config(noreplace) %{_sysconfdir}/raddb/proxy.conf
 %config(noreplace) %{_sysconfdir}/raddb/users
 
 %config(noreplace) %{_sysconfdir}/raddb/certs

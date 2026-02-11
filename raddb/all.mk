@@ -2,7 +2,7 @@
 #  The list of files to install.
 #
 LOCAL_FILES :=		clients.conf dictionary \
-			radiusd.conf trigger.conf panic.gdb
+			radiusd.conf trigger.conf panic.gdb proxy.conf
 
 DEFAULT_SITES :=	default inner-tunnel proxy
 LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
