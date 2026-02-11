@@ -268,6 +268,20 @@ doc/man/%.1: doc/man/%.adoc
 asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
 
+#
+#  OSX: pcregrep --color
+#  Linux: grep --color='auto' -P -n
+#
+
+.PHONY: doc.ascii
+doc.ascii:
+	@pcregrep --color  '[\x80-\xFF]'  $$(find doc/antora -name "*.adoc" -print)
+
+.PHONY: doc.fixascii
+doc.fixascii:
+	@perl -p -i -e "s,‘,',g;s,’,',g;s,–,-,g;s,—,-,g;s, , ,g;s:…:,:g;s,“,\",g;s,”,\",g;s,≤,<=,g;s,≥,>=,g;s,→,->,g" $$(find doc/antora -name "*.adoc" -print)
+
+
 doc: build/docsite/sitemap.xml
 
 # end of WITH_DOC
