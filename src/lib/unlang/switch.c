@@ -86,7 +86,10 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 
 		slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
 					 request, switch_gext->vpt);
-		if (slen < 0) goto find_null_case;
+		if (slen < 0) {
+			RDEBUG("Switch failed expanding %s - %s", switch_gext->vpt->name, fr_strerror());
+			goto find_null_case;
+		}
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -110,7 +113,15 @@ do_null_case:
 	 *	Nothing found.  Just continue, and ignore the "switch"
 	 *	statement.
 	 */
-	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
+	if (!found) {
+		if (box) {
+			RWDEBUG("Failed to find 'case' target for value %pV", box);
+		} else {
+			RWDEBUG("Failed to find 'default' target when expansion of %s returning no value",
+				switch_gext->vpt->name);
+		}
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
 
 	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		RETURN_UNLANG_ACTION_FATAL;
