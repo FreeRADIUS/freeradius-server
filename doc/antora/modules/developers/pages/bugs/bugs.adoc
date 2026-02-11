@@ -1,0 +1,148 @@
+= Bugs
+
+If you think you've found a bug, first check to confirm that it's
+really a problem.  Review the documentation, try to reproduce the bug,
+or see if it's a misconfiguration.  Once you've confirmed the issue,
+you can then report the bug to the development team.  Good bug reports
+help developers fix problems faster.
+
+This document is primarily for non-developers of the FreeRADIUS
+server. If you are able to patch the code to work correctly, then
+we invite you to join the development list to discuss it. If
+you’re the type who know little about how to code, then this is
+the place for you!
+
+The https://freeradius.org/[FreeRADIUS] web site also hosts most of the
+information referenced in this document.
+
+
+[NOTE]
+====
+Do *not* post configuration questions on GitHub, they belong on the
+https://freeradius.org/support/[mailing lists] instead. Raising
+support requests or questions as a *Defect Report* will result in them
+being closed and locked. Repeatedly doing so will lead to you being
+banned from the FreeRADIUS project's GitHub repositories.
+====
+
+== You found a bug
+
+To report a bug or defect, use the FreeRADIUS GitHub
+https://github.com/FreeRADIUS/freeradius-server/issues[Issues]
+page. The freeradius-server repository is where development of
+FreeRADIUS happens, making it the best place to submit bug reports.
+
+For example, report a bug when the server terminates ungracefully due
+to a bus error, segmentation violation, or other memory
+error. Generate the *Defect Report* using the
+https://github.com/FreeRADIUS/freeradius-server/issues/new?template=bug.yml[Create
+new issue] modal and include information from the debugging sections.
+
+The https://github.com/FreeRADIUS/freeradius-server/issues/[Issues]
+page is for non-security related defect reports. Report security
+issues to security@freeradius.org, especially those that can be
+exploited from a remote location. This allows patches to be developed
+before the issue is made public. This process keeps development
+organized and ensures sensitive information is handled properly.
+
+If the behaviour is correct but confusing, we think that’s a bug too, and
+you should file a bug against our documentation.
+
+For any other issues, discuss them on the
+https://www.freeradius.org/list/users.html[FreeRADIUS users list], to
+see if anyone can reproduce them. Often there’s a simple explanation
+of why the server behaves as it does, and it’s not necessarily a bug
+in the code, so browse the lists’ archives of the last two months, and
+if you don’t see messages about it, ask!
+
+For more information about the users list, the
+https://lists.freeradius.org/pipermail/freeradius-users/[lists’
+archives] and the faq, please visit the
+https://freeradius.org/support/[support] page. Make sure to READ and
+RESPECT the house-rules. You will get much better response and much
+faster if you do!
+
+== Reproduce the bug on current code
+
+Before reporting a bug, make sure that you're not running an old
+version.  In many cases, a bug is fixed in a newer release.  You can
+get the bug fiux by upgrading, rather than submitting a duplicate bug
+report.
+
+Check that the issue still exists in the current released version, and
+also the latest version in Git. Check out the latest branch for your
+server version, listed on the FreeRADIUS server
+https://doc.freeradius.org/[build page]. Once you've switched
+branches, build the server from the updated code.
+
+Next, try to reproduce the issue by following the same steps that
+caused the problem. This will check if the defect is still there. It
+will also help you give accurate details when you report it. For
+instance, if you're working on a feature in version 4.0, check out the
+release/4.0 branch and test the issue there. This way, you'll report a
+valid defect and help our team fix the issue faster.
+
+Also, check the
+https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/ChangeLog[ChangeLog]
+for the stable branch to see if your issue is already fixed. The
+ChangeLog is updated as fixes are made to the server code, and usually
+reflects the state of the Git HEAD.
+
+Review the GitHub FreeRADIUS
+https://github.com/FreeRADIUS/freeradius-server/issues[Issues] list to
+see if your issue has been previously reported.
+
+== Filing a defect report
+
+To start, gather information by running the server in
+xref:ROOT:debugging/radiusd_X.adoc[debug mode] with radiusd -X to
+capture logs. These logs, traces, etc. are needed for diagnosing
+issues. Please attach *all* relevant output logs to your report.
+
+=== Create Issue
+
+Navigate to the GitHub FreeRADIUS
+https://github.com/FreeRADIUS/freeradius-server/issues[Issues] page
+and click "New Issue" to generate a *Defect Report*. Provide all the
+requested details including a descriptive title that summarizes the
+bug or behaviour.
+
+*Type of bug/defect*
+
+Choose the correct type of bug/defect from the category list. By
+selecting the right category, developers can find the root cause and
+take the right action to fix it. This helps keep the FreeRADIUS
+codebase stable, secure, and working as expected.
+
+.Type of Bug or Defect
+[options=header, cols="20,~",autowidth]
+|===
+| Category                       | Description
+| Crash or memory corruption     | This happens when the system or app suddenly stops working or doesn't respond.
+| Non-compliance                 | Occurs when a system or application does not meet the required standards or regulations. For example, if a new attribute is incorrectly designed, it may not comply with RFC standards. The last category is unexpected behaviour. This applies when the issue is apparent or has been validated by a project member.
+| incorrect 3rd party API usage  | The application programming interface is not used as intended. It can lead to errors or unexpected behaviour.
+| Unexpected behaviour           | If the issue is obvious or has been validated by a project member.
+|===
+
+*Steps to reproduce*
+
+Explain how to reproduce the bug using clear, step-by-step
+instructions. Please provide details about your environment. Include
+the operating system, version, platform, and any configuration changes
+made. Describe what you expected to happen and what actually happened.
+
+*Log outputs*
+
+When filing a bug report, you need to include logs. Please attach the
+relevant debug logs or stack traces, along with any output from
+debugging you did. The following techniques are avaiable to help you
+debug FreeRADIUS:
+
+* xref:bugs/coredumps.adoc[Core Dumps]
+* xref:bugs/debugserver.adoc[Debug a Live Server]
+* xref:bugs/info.adoc[Obtain Useful Information]
+* xref:bugs/screen.adoc[Use `screen`]
+* xref:bugs/valgrind.adoc[Valgrind]
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

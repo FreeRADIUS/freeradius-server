@@ -1,4 +1,3 @@
-
 = FreeRADIUS Development
 
 As the name suggests, FreeRADIUS is developed under the GNU General Public License, Version 2 (GPLv2). We invite anyone to use and contribute code to the project. The following information should be helpful to those who want to contribute.
@@ -18,7 +17,7 @@ development list]. This list is highly technical and isn't for most users of the
 interested in writing software for the new server.
 For normal discussion of the server and how to use it, subscribe to the https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS user-list].
 
-== xref:bugs.adoc[Bugs]
+== xref:bugs/bugs.adoc[Bugs]
 
 If the server crashes due to memory errors, report it to the issue tracker with debugging info. For other issues, discuss them on the users mailing list.
 

@@ -1,0 +1,42 @@
+= Extract Information
+
+Once you have a core dump loaded into gdb, or FreeRADIUS running under
+gdb, you may use the commands below to get useful information about the
+state of the server.
+
+If the server was built with threads, you can do:
+
+```
+(gdb) info threads
+```
+
+Which will give you information about the threads. If the server isn’t
+threaded, that command-line will print a message saying so.
+
+Then, do:
+
+```
+(gdb) thread apply all bt full
+```
+
+If the server isn’t threaded, the `thread apply` section isn’t
+necessary
+
+The output should be printed to the screen, and also sent to the
+`gdb-radiusd.log` file.
+
+Submit the information from the log file, along with any log output
+files, the output of `radiusd -xv`, and the required information about
+your environment to the GitHub FreeRADIUS
+https://github.com/FreeRADIUS/freeradius-server/issues[Issues] page.
+
+Submit all the *required* logs and relevant information with your
+xref:bugs/bugs.adoc#CreateIssue[Issue Defect Report].
+
+Submitting it to the bug database ensures that the bug report won’t
+get forgotten, and that it will be dealt with in due course.
+
+You should provide the issue number in any mail sent to the user’s list.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

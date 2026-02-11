@@ -1,0 +1,50 @@
+= Debug a Server
+
+If you can’t get a core dump, or the problem doesn’t result in a core
+dump, you may have to run the server under gdb. To do this, ensure
+that you have symbols in the binaries (i.e. a 'non-stripped' binary)
+by re-building the server as described in the
+xref:bugs/coredumps.adoc[Core Dumps] section. Then, run the server
+under gdb as follows:
+
+```
+$ gdb radiusd
+```
+
+Enable logging in `gdb` via the following commands:
+
+```
+(gdb) set logging file gdb-radiusd.log
+(gdb) set logging on
+```
+
+Tell `gdb` to pass any necessary command-line arguments to the server:
+
+```
+(gdb) set args ...
+```
+
+Where the ``…'' are the command-line arguments you normally pass to
+radiusd. For debugging, you probably want to do:
+
+```
+(gdb) set args -fxx
+```
+
+Then, do:
+
+```
+(gdb) run
+```
+
+When something interesting happens, you can hit CTRL-C in the window,
+and you should be back at the gdb prompt:
+
+```
+(gdb)
+```
+
+Next, follow the instructions in the xref:developers:bugs/info.adoc[Extract Information].
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

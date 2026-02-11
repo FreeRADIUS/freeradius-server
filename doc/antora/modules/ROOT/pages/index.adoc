@@ -84,8 +84,8 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
   xref:developers:coding-methods.adoc[coding standards],
   xref:developers:coverage.adoc[coverage], and
   xref:developers:coccinelle.adoc[patches] used when developing.  This
-  guide includes information about xref:developers:bugs.adoc[bugs
-  reports], and xref:developers:contributing.adoc[contributing] to the
+  guide includes information about xref:developers:bugs/bugs.adoc[bugs
+  ], and xref:developers:contributing.adoc[contributing] to the
   project using GitHub.
 
 == Why v4?

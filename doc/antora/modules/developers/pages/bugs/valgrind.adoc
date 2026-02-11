@@ -1,0 +1,16 @@
+= Valgrind
+
+On Linux systems, `valgrind` is a useful tool that can catch certain
+classes of bugs. To use it, run the server via:
+
+```
+$ valgrind --tool=memcheck --leak-check=full radiusd -Xm
+```
+
+It will print out certain kinds of errors to the screen. There may be a
+number of errors related to OpenSSL, dlopen(), or libtldl. We cannot do
+anything about those problems. However, any errors that are inside of
+the FreeRADIUS source should be brought to our attention.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
