@@ -2,7 +2,7 @@
 #
 # radius module template for load-generator
 #
-radius-module-dst-server-tmpl {
+radius-module-dest-server-tmpl {
 	mode = client
 	transport = udp
 	type = Access-Request
