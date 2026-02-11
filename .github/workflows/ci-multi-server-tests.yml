@@ -12,11 +12,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  pre-test:
+    runs-on: ubuntu-latest
+    outputs:
+      selfhosted: 0
+      #selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+    steps:
+      - run: echo "Pre-test job; checking if using self-hosted runners"
+
   test-5hs-autoaccept:
-    runs-on: ubuntu-24.04
+    needs: pre-test
+    runs-on: ${{ needs.pre-test.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}
 
     env:
-      DOCKER_BUILD_OS: ubuntu22
+      MULTI_SERVER_ENV_DOCKER_BUILD_OS: ubuntu24
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
 
     steps:
@@ -61,30 +70,33 @@ jobs:
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
       - name: Build Docker image for multi-server test environment
+        if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
         run: |
           ./configure
-          make docker.${DOCKER_BUILD_OS}.build
+          make docker.${MULTI_SERVER_ENV_DOCKER_BUILD_OS}.build
 
           # List all images
           docker images --all
 
-          # Retag image to what the multi-server test's docker compose environment expects
-          docker tag freeradius4/${DOCKER_BUILD_OS}:latest fr-build-${DOCKER_BUILD_OS}:latest
+          # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
+          docker tag freeradius4/${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
 
-          docker images --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}' | grep -E "freeradius4/${DOCKER_BUILD_OS}|fr-build-${DOCKER_BUILD_OS}"
+      - name: Get pre-built Docker image for self-hosted runner test
+        if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
+        run: |
+          docker pull docker.internal.networkradius.com/self-hosted-${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest
+
+          # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
+          docker tag docker.internal.networkradius.com/self-hosted-${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
 
       - name: Run test-5hs-autoaccept test
+        if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
         run: |
-          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^fr-build-${DOCKER_BUILD_OS}:latest$"; then
-            echo "Error: fr-build-${DOCKER_BUILD_OS}:latest Docker image not found and required for multi-server test environment."
+          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
+            echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
             exit 1
           fi
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
-
-          # Display contents of the multi-server test log file for debugging purposes,
-          # regardless of test success or failure.
-          echo "============ ${MULTI_SERVER_TEST_LOG} ============"
-          cat "${MULTI_SERVER_TEST_LOG}"
 
       - name: Verify test results
         shell: bash

@@ -19,7 +19,7 @@ x-common-config: &id001
 services:
 {% for i in range(1, (num_of_dst_servers + 1)) %}
   homeserver{{ i }}:
-    image: fr-build-ubuntu22:latest
+    image: freeradius-build:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
@@ -41,7 +41,7 @@ services:
     <<: *id001
 {% endfor %}
   load-generator:
-    image: fr-build-ubuntu22:latest
+    image: freeradius-build:latest
     ports:
       # Expose RADIUS ports for load generator to allow us to access the server from outside docker
       - "1812:1812/udp"
