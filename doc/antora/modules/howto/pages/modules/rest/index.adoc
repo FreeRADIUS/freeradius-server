@@ -22,7 +22,7 @@ data in that format the REST module expected.
 //== xref:modules/rest/custom_data.adoc[Calling REST endpoints with a custom data format]
 
 The REST module can also communicate with arbitrary REST endpoints,
-and versions ≥ v4.0.x include a JSON module xref:reference:raddb/mods-available/json.adoc[JSON]
+and versions >= v4.0.x include a JSON module xref:reference:raddb/mods-available/json.adoc[JSON]
 which allows mapping elements of a JSON response to FreeRADIUS.
 
 If you're attempting to integrate an existing REST API, this section will provide

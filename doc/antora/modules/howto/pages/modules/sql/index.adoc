@@ -64,8 +64,8 @@ added to the reply
 
 Processing continues to the next group if any of the following conditions are met:
 
-- There was not a match for the last group’s check items OR
-- Fall-Through was set in the last group’s reply items
+- There was not a match for the last group's check items OR
+- Fall-Through was set in the last group's reply items
 
 The above is exactly the same as in the `users` file.
 
@@ -74,7 +74,7 @@ The above is exactly the same as in the `users` file.
 For any complex setup, it is likely that most of the actual
 processing will be done using groups. In these cases, the user entries
 in radcheck and radreply will be of limited use except for things like
-setting user-specific attributes such as the user’s password. So, one
+setting user-specific attributes such as the user's password. So, one
 might have the following setup:
 
 .radcheck table
@@ -130,7 +130,7 @@ Framed-IP-Address     :=      1.2.3.4
 ^ ATTRIBUTE ^       ^ OP ^   ^ VALUE ^
 ----
 
-_Why doesn’t my SQL configuration work when I leave the `op` field
+_Why doesn't my SQL configuration work when I leave the `op` field
 empty?
 
 If leave the `op' field blank, the server is misconfigured, and unpreditable behaviour occurs. Read this documentation thoroughly before you post questions on the mailing list.
@@ -140,14 +140,14 @@ If the op field is empty, the server does not know what you want it to do with t
   * Is it a check item that should be compared against the request?
   * Should it be added to the control or reply list?
 
-Without the operator, the server simply doesn’t know, so always put a
+Without the operator, the server simply doesn't know, so always put a
 value in the field. The value is the string form of the operator: "=",
 ">=", etc. See below for more details.
 
 == Authentication versus Authorization
 
 Many people ask if they can "authenticate" users to their SQL
-database. The answer to this question is "You’re asking the wrong
+database. The answer to this question is "You're asking the wrong
 question."
 
 An SQL database stores information. An SQL database is NOT an

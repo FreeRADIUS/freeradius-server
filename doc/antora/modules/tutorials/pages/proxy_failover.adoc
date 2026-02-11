@@ -30,7 +30,7 @@ partner's RADIUS servers. user 1 will configure the realms to "strip"
 the realm name from the incoming request.
 
 The two group for "realm2" should also configure their
-`clients.conf` file to permit user 1’s RADIUS server to act as a client,
+`clients.conf` file to permit user 1's RADIUS server to act as a client,
 as given in the exercise in xref:new_client.adoc[New Clients].
 Each user operating "realm2" should pick a different shared
 secret to use with user 1.

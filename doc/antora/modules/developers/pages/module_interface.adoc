@@ -146,7 +146,7 @@ all of the persistent variables that are particular to this instance
 (open file descriptors, configured pathnames, etc.) and store a pointer
 to it in `*instance`. That `void *` becomes a handle (some would
 call it a `cookie`) representing this instance. The instance handle is
-passed as a parameter in all subsequent calls to the module’s methods,
+passed as a parameter in all subsequent calls to the module's methods,
 so they can determine which database they are supposed to act on.
 
 The `authorize()`, `authenticate()`, `preaccounting()`, and

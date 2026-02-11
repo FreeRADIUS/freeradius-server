@@ -18,7 +18,7 @@ attribute.
 ntlm_auth helper binary to pass authentication onwards to a domain
 controller.
 
-These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
+These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
 have the unix/md5/sha crypt of your users password.
 
 See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatability chart] for more information.
@@ -35,18 +35,18 @@ Method 3 above involves configuring the mschap module to call the Samba
 ntlm_auth helper:
 
 ```
-mschap { ntlm_auth = `/path/to/bin …` }
+mschap { ntlm_auth = `/path/to/bin ,` }
 ```
 
 You need to be careful about setting this command line. There are
 several options for the arguments, in particular username and domain:
 
-* `–username=%{User-Name}` - this will fail if you’re using realms or
+* `-username=%{User-Name}` - this will fail if you're using realms or
 host-based auth
-* `–username=%mschap(User-Name)` - this will fail if using using suffix
-i.e. user@domain
+* `-username=%mschap(User-Name)` - this will fail if using using suffix
+i.e. user@domain
 
-You’ll need to fit this to your local needs.
+You'll need to fit this to your local needs.
 
 === Disable ntlm_auth for some users
 
@@ -74,7 +74,7 @@ ntlm_auth to change passwords. In modules/mschap you should configure::
 
 ```
 mschap {
-  ntlm_auth = …
+  ntlm_auth = ,
   passchange {
     # path to the binary
     ntlm_auth = "/path/to/ntlm_auth --helper-protocol=ntlm-change-password-1"
@@ -109,7 +109,7 @@ To do this, you configure the `local_cpw` string:
 ```
 mschap {
   passchange {
-    local_cpw = "%function{…}
+    local_cpw = "%function{,}
   }
 }
 ```
@@ -137,7 +137,7 @@ mschap {
 }
 ```
 
-…and an example stored procedure for Postgres might be:
+,and an example stored procedure for Postgres might be:
 
 ```
 CREATE FUNCTION change_password(raduser text, ntpassword text) RETURNS
@@ -167,7 +167,7 @@ This allows you to do things like::
 . update via
 
 ```
-SQL local_cpw = %sql("update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and attribute=’Password.NT'")
+SQL local_cpw = %sql("update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and attribute='Password.NT'")
 ```
 
 Or:
@@ -193,7 +193,7 @@ N.B. this could be fixed, if we wanted to pull in something like iconv.
 
 In addition, you should beware of `Password.Cleartext` when using SQL; any
 password character not in safe_characters will be encoded as a hex
-number, e.g. =20.
+number, e.g. =20.
 
 == Password changes over EAP
 

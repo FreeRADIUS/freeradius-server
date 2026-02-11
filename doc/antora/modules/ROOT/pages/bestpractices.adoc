@@ -1,7 +1,7 @@
 = Best Practices
 
 == Not properly resourcing your RADIUS infrastructure
-We’ve said it once, we’ll say it again:
+We've said it once, we'll say it again:
 
 RADIUS is a key component of your critical infrastructure. You should treat it that way.
 
@@ -9,26 +9,26 @@ We often see RADIUS on hardware (or VM) that is also running many other things. 
 
 We recommend running RADIUS in a VM, by itself where it uses 5-10% CPU capacity in everyday operations.
 
-Some system administrators consider this wasteful, because there is so much idle CPU time. That’s when they start installing other components onto their RADIUS system.
+Some system administrators consider this wasteful, because there is so much idle CPU time. That's when they start installing other components onto their RADIUS system.
 
-When everything is running well, loading up your RADIUS machine with other components will not cause any problems. But if there is one thing we know for sure, it’s that everything won’t run well all the time. It is good system administration practice to plan for the worst case scenario. If your network goes down for any reason, (and it will), you will desperately need that extra CPU capacity when all your users try to log back onto your network. If you don’t have those reserve CPU resources available, you can end up with a cascading series of failures that becomes difficult to recover from as users overwhelm your system.
+When everything is running well, loading up your RADIUS machine with other components will not cause any problems. But if there is one thing we know for sure, it's that everything won't run well all the time. It is good system administration practice to plan for the worst case scenario. If your network goes down for any reason, (and it will), you will desperately need that extra CPU capacity when all your users try to log back onto your network. If you don't have those reserve CPU resources available, you can end up with a cascading series of failures that becomes difficult to recover from as users overwhelm your system.
 
 == Setup your RADIUS server in a VM
 The primary benefit of running RADIUS inside a Virtual Machine (VM) is that it makes recovering from problems almost trivial. If you take regular snapshots of your VM (which you should), the cost of recovering from a problem is as simple as reverting back to a previous snapshot.
 
-As we’ve already mentioned, it is a certainty that your systems will encounter some kind of problem at some point. For example: after a system update, or a library update, or if a file becomes corrupted. When RADIUS is not run in a VM, it can take hours or even days to find the problem and fix it. If you do run RADIUS in a VM however, it will take minutes to revert to your previous snapshot.
+As we've already mentioned, it is a certainty that your systems will encounter some kind of problem at some point. For example: after a system update, or a library update, or if a file becomes corrupted. When RADIUS is not run in a VM, it can take hours or even days to find the problem and fix it. If you do run RADIUS in a VM however, it will take minutes to revert to your previous snapshot.
 
 == Enable automatic updates
-Updates are not in themselves a bad thing, you just shouldn’t do them automatically. If you run your RADIUS server in a VM (which you should), you should take a snapshot of your VM before installing the update. If the only thing running on your VM is your RADIUS server (see point #1) taking a snapshot shouldn’t take more than a couple of minutes. After you’ve taken the snapshot and installed the update, you can recover from any unexpected issues by quickly reverting back to your previous image.
+Updates are not in themselves a bad thing, you just shouldn't do them automatically. If you run your RADIUS server in a VM (which you should), you should take a snapshot of your VM before installing the update. If the only thing running on your VM is your RADIUS server (see point #1) taking a snapshot shouldn't take more than a couple of minutes. After you've taken the snapshot and installed the update, you can recover from any unexpected issues by quickly reverting back to your previous image.
 
 == Reboot after an OS update
-Rebooting after an OS update is simply good system administration hygiene, but we’ve seen this issue often enough that we realize it might not be common knowledge.
+Rebooting after an OS update is simply good system administration hygiene, but we've seen this issue often enough that we realize it might not be common knowledge.
 
-When you update your operating system, the update isn’t actually “complete” until you have restarted your system.
+When you update your operating system, the update isn't actually "complete" until you have restarted your system.
 
-We have encountered situations where an administrator performed a system update, and didn’t reboot until weeks or months later. If the update caused any problems, it can be extremely difficult to track down when you’ve forgotten about the update. We realize that nobody likes to reboot their system, and it never seems like there is a good time to do it. But you should do it anyways.
+We have encountered situations where an administrator performed a system update, and didn't reboot until weeks or months later. If the update caused any problems, it can be extremely difficult to track down when you've forgotten about the update. We realize that nobody likes to reboot their system, and it never seems like there is a good time to do it. But you should do it anyways.
 
-== Store your RADIUS logs “off-box”
+== Store your RADIUS logs "off-box"
 In keeping with our philosophy of designing for the worst case scenario, we recommend that all log files should be stored in different hardware than your RADIUS server. Keeping logs and server separate makes it much easier to recover from errors. If something catastrophic happens to your RADIUS server, you will still have your logs to help you diagnose the problem and recover. By distributing the potential points of failure, your overall system becomes more resilient to problems.
 
 == Setup your database on separate hardware
@@ -47,10 +47,10 @@ The risk of clashes between libraries and dependencies is greatly reduced.
 == Export database backups regularly
 Optimism is not the most helpful system administrator trait.
 
-It is extremely likely that at some point, your database will encounter a problem. Perhaps because of a new library update, or because someone accidentally typed the wrong thing and deleted all your records. When this happens (and it will), a backup of your database will make recovery trivial. If you don’t have a backup, it can be almost impossible to recover from a catastrophic failure.
+It is extremely likely that at some point, your database will encounter a problem. Perhaps because of a new library update, or because someone accidentally typed the wrong thing and deleted all your records. When this happens (and it will), a backup of your database will make recovery trivial. If you don't have a backup, it can be almost impossible to recover from a catastrophic failure.
 
 == Minimize the admin queries against your production database
-We often see clients running into problems when they run complex billing queries against the “live” production database. These queries can be very long lived and resource intensive, which make the database stop responding to FreeRADIUS. This outage can result in “unresponsive child” error messages in the FreeRADIUS logs.
+We often see clients running into problems when they run complex billing queries against the "live" production database. These queries can be very long lived and resource intensive, which make the database stop responding to FreeRADIUS. This outage can result in "unresponsive child" error messages in the FreeRADIUS logs.
 
 If your system design includes a secondary database which is synchronized with the primary one, all complex queries should be run against the secondary database. If you only have a single primary database, we recommend exporting the data to a backup system and running the complex queries on the backup.
 

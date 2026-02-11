@@ -1,7 +1,7 @@
 = Proxying
 
 The proxy feature has undergone massive changes. The `proxy.conf` file no
-longer exists, and everything in it has been removed. e.g. `realm`,
+longer exists, and everything in it has been removed. e.g. `realm`,
 `home_server`, `home_server_pool` no longer exist. The old proxying
 functionality was welded into the server core, which made many useful
 features impossible to configure.
@@ -24,7 +24,7 @@ For ease of management, we recommend naming the modules for the host
 name of the home server.
 
 It is often simplest to do proxying via an `authenticate proxy { ... }`
-section, though that section can have any name. e.g. setting
+section, though that section can have any name. e.g. setting
 `Auth-Type := proxy` will call the `authenticate proxy` section, and
 is similar to the previous setting `Proxy-To-Realm`.
 

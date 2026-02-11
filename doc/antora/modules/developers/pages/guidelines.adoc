@@ -25,7 +25,7 @@ All other headings (H3-6) are Sentence case.
 
 Use a clear font that legible on-screen and large enough so it's easy to read (accessible). Generally a non-serif font is best for screens and works in PDFs (if required)
 
-It's advisable to remove CAPS BECAUSE IT SEEMS LIKE WE’RE ALWAYS YELLING AT OUR READERS - use bold to emphasize or italics (sparingly). Use CAPS for all acronyms such as TCP/IP, EAP etc.
+It's advisable to remove CAPS BECAUSE IT SEEMS LIKE WE'RE ALWAYS YELLING AT OUR READERS - use bold to emphasize or italics (sparingly). Use CAPS for all acronyms such as TCP/IP, EAP etc.
 
 === Formatting
 
@@ -41,7 +41,7 @@ Shorten sentences or break into 2 sentences to ensure conciseness.
 
 === Landing Pages
 
-All landing pages (H1 top level sections) need introductory paragraph and explanation of what the section contains.
+All landing pages (H1 top level sections) need introductory paragraph and explanation of what the section contains.
 
 Add xrefs to all the subsections contained in theis section on the top level landing page. Users can select a topic from main page while reading or use the navigation panel on left side.
 
@@ -53,7 +53,7 @@ CSS files control the margins and page size.
 
 === Localization
 
-Remove as many gerunds (words ending in *ing*) as possible - english doesn't translate the words easily and these verbs are confusing to readers who's first language is not english.
+Remove as many gerunds (words ending in *ing*) as possible - english doesn't translate the words easily and these verbs are confusing to readers who's first language is not english.
 
 Check convoluted text or run-on sentencces with xref:https://hemingwayapp.com/[Hemingway] or xref:https://app.grammarly.com/[Grammarly] editors. The reading level needs to be Grade 9 to ensure that the document is readable, and every user (limited inteliigence or not) can understand what they're reading on the first pass.
 
@@ -74,14 +74,14 @@ See xref:https://procomm.ieee.org/using-numbers-in-technical-documents-2/[IEEE e
 
 Use the Oxford comma to make sentences clear & concise.
 Lists use periods at the end of the sentence entry.
-Use unordered lists when listing contents, or items. 
+Use unordered lists when listing contents, or items. 
 Use ordered list for tasks or steps.
 
-=== Spacing 
+=== Spacing 
 
 All Headings have a line space after them before the first paragraph.
 H1 and H2 headings need 2 line breaks before the following paragraph - TO DO the CSS file and update heading spacing as a global change.
-Spacing of 1 line between paragraphs. 
+Spacing of 1 line between paragraphs. 
 Only one space at the end of a sentence is required.
 
 === Spelling
@@ -101,7 +101,7 @@ https://learn.microsoft.com/en-us/style-guide/global-communications/writing-tips
 
 === Xrefs
 
-RFCs need to be x-ref’d and no dash between RFC and xxxx digits. For example,
+RFCs need to be x-ref'd and no dash between RFC and xxxx digits. For example,
 xref:https://datatracker.ietf.org/doc/html/rfc2865[RFC 2345]
 
 == Recommendations
@@ -134,7 +134,7 @@ To ensure effective communication, consider the following:
 
 * Try using standard expressions and avoid phrasal verbs, gerunds, and colloquialisms.
 
-* Standardize dates, phone numbers, and addresses. 
+* Standardize dates, phone numbers, and addresses. 
 
 include::partial$terminology.adoc[]
 

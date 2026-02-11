@@ -10,7 +10,7 @@ Read this FAQ before posting questions to the mailing lists as your question may
 
 == FreeRADIUS Overview
 
-FreeRADIUS is the worlds leading RADIUS server used by Internet Service Providers (ISPs), cellular providers, and corporate and educational networks.  RADIUS, which stands for “Remote Authentication Dial In User Service”, is a network protocol used to manage network access using xref:concepts:protocol/authproto.adoc[Authentication, authorisation and Accounting] processes.
+FreeRADIUS is the worlds leading RADIUS server used by Internet Service Providers (ISPs), cellular providers, and corporate and educational networks.  RADIUS, which stands for "Remote Authentication Dial In User Service", is a network protocol used to manage network access using xref:concepts:protocol/authproto.adoc[Authentication, authorisation and Accounting] processes.
 
 FreeRADIUS is developed by a group of people who call themselves "The FreeRADIUS Project" and is sponsored by https://www.inkbridgenetworks.com/[InkBridge Networks].
 

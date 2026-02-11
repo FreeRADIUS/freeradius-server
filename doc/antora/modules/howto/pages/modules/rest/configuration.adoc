@@ -32,7 +32,7 @@ cd raddb/mods-enabled && ln -s ../mods-available/rest
 The REST module allows a different REST API endpoint to be configured for each
 type of section it can be called in.
 
-If called in `recv Access-Request` (≥ v4.0.x) or `authorize { ... }` (≤ v3.2.x)
+If called in `recv Access-Request` (>= v4.0.x) or `authorize { ... }` (<= v3.2.x)
 the `rest.authorize` module section will be evaluated.
 
 [source,config]
@@ -63,7 +63,7 @@ rest {
 <1> The URL to authenticate against. Will be expanded (if required).
 <2> The HTTP 'verb' to use.
 
-If called in `recv Accounting-Request` (≥ v4.0.x) or `accounting { ... }` (≤ v3.2.x)
+If called in `recv Accounting-Request` (>= v4.0.x) or `accounting { ... }` (<= v3.2.x)
 the `rest.authorize` mould section will be evaluated.
 
 [source,config]

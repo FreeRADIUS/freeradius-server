@@ -97,7 +97,7 @@ $ ln -s ../mods-available/proxy-realm1 proxy-realm1
 
 Edit `sites-enabled/default`
 
-Find the `recv Access-Request { … }` block.
+Find the `recv Access-Request { , }` block.
 
 [source,unlang]
 ----
@@ -116,7 +116,7 @@ recv Access-Request {
 }
 ----
 
-Then, near the bottom of the file, add a new `authenticate { … }`
+Then, near the bottom of the file, add a new `authenticate { , }`
 section:
 
 [source,unlang]

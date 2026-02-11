@@ -1,9 +1,9 @@
 = Contributing
 
-== Submitting patches or diff’s to the FreeRADIUS project
+== Submitting patches or diff's to the FreeRADIUS project
 
 For a person or company wishing to submit a change to the FreeRADIUS
-project the process can sometimes be daunting if you’re not familiar
+project the process can sometimes be daunting if you're not familiar
 with "the system." This text is a collection of suggestions which can
 greatly increase the chances of your change being accepted.
 
@@ -22,7 +22,7 @@ Be as specific as possible. The WORST descriptions possible include
 things like "update file X", "bug fix for file X", or "this patch
 includes updates for subsystem X. Please apply."
 
-If your description starts to get long, that’s a sign that you probably
+If your description starts to get long, that's a sign that you probably
 need to split up your commit. See the next point.
 
 === 2. Separate your changes

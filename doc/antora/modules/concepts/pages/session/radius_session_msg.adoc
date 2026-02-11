@@ -13,7 +13,7 @@ Each client and server supports only a limited set of attributes. In some cases,
 Consult the software vendor documentation to determine what attributes are supported. If the documentation doesn't contain this information, the select attributes are probably not supported. Contact the vendor for additional information.
 
 In addition to standardized attributes, vendors can extend RADIUS with vendor-specific attributes (VSAs). Using VSAs means that the vendor can rapidly add functionality without having to do a time-consuming standardisation process.
-In order to be useful in the RADIUS client protocol, however, VSAs must be defined on the RADIUS server. Because VSAs are non-standardized attributes, it is difficult to discover any information about them. In addition, they are all vendor-specific (only work on that vendor’s products). Thus, defining VSAs for
+In order to be useful in the RADIUS client protocol, however, VSAs must be defined on the RADIUS server. Because VSAs are non-standardized attributes, it is difficult to discover any information about them. In addition, they are all vendor-specific (only work on that vendor's products). Thus, defining VSAs for
 RADIUS server use may be difficult.
 
 == Attribute types
@@ -44,7 +44,7 @@ See xref:reference:type/index.adoc[data types of attributes] for a more details.
 
 FreeRADIUS contains over 100 dictionaries, which hold nearly 5000 attribute definitions.
 
-Unlike text-based protocols such as SMTP or HTTP, RADIUS is a binary protocol; therefore, although attributes are commonly referred to by name (for example, “User-Name”), these names have no meaning in the protocol. Data (i.e., “User-Name”) are encoded in a message as a binary header with binary data, and not as text strings.
+Unlike text-based protocols such as SMTP or HTTP, RADIUS is a binary protocol; therefore, although attributes are commonly referred to by name (for example, "User-Name"), these names have no meaning in the protocol. Data (i.e., "User-Name") are encoded in a message as a binary header with binary data, and not as text strings.
 
 Dictionary files are used to map between the names used by people and the binary data in the RADIUS packets.
 
@@ -52,10 +52,10 @@ The packets sent by the NAS contain attributes that have a number, a length, and
 
 The server uses the dictionaries to interpret the binary data as follows: the server searches the dictionaries to match the number from the packet, and the corresponding data type in the dictionary entry is then used by the server to interpret the binary data in the packet. The name within the dictionary entry appears in all logs and debug messages, in order to present the attribute in a form that is understandable to people.
 
-This process also works in reverse: the server uses the dictionaries to encode a string (i.e., “User-Name = Bob”) as “number, length, binary data” in a packet.
+This process also works in reverse: the server uses the dictionaries to encode a string (i.e., "User-Name = Bob") as "number, length, binary data" in a packet.
 
-For example, a server may receive a packet that contains the number 1 and some binary data. The server would not be able to decode these attributes without knowing if the binary data were in the form of a string, an IP address, or an integer. The corresponding dictionary entry may state: the number ‘1’ is called
-‘User-Name’ and it is in the form ‘string’. This information (i.e., form = ‘string’), contained in the dictionary entry, allows the server to successfully decode the packet.
+For example, a server may receive a packet that contains the number 1 and some binary data. The server would not be able to decode these attributes without knowing if the binary data were in the form of a string, an IP address, or an integer. The corresponding dictionary entry may state: the number '1' is called
+'User-Name' and it is in the form 'string'. This information (i.e., form = 'string'), contained in the dictionary entry, allows the server to successfully decode the packet.
 
 Adding new attributes to RADIUS software is made simpler through the use of dictionaries, as they allow the administrator to create new mappings without upgrading the software.
 
@@ -72,8 +72,8 @@ The NAS and server may use different dictionaries, which may cause problems if t
 ====
 
 Since the attribute names are not sent in RADIUS packets, the dictionaries are limited to the local server and to the policy implemented by that server.
-In this respect, NAS implementations are much simpler than server implementations. Each NAS “looks” in the RADIUS packet for what it “understands” and ignores everything else. In contrast, each RADIUS server
-is presented with all of the information from every NAS in the RADIUS deployment. Each RADIUS server must be capable of “understanding” the functionality and configure-ability of every attribute that is
+In this respect, NAS implementations are much simpler than server implementations. Each NAS "looks" in the RADIUS packet for what it "understands" and ignores everything else. In contrast, each RADIUS server
+is presented with all of the information from every NAS in the RADIUS deployment. Each RADIUS server must be capable of "understanding" the functionality and configure-ability of every attribute that is
 necessary to authenticate or authorize the users.
 
 == Dictionary file format
@@ -92,14 +92,14 @@ Some servers may not contain all the necessary dictionary files because each ven
 [#server-attr]
 === Server-side attributes
 
-Server-side attributes are attributes that control the server’s behavior. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
+Server-side attributes are attributes that control the server's behavior. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
 gets sent through the network in a RADIUS message. Server-side attributes should not be included in RADIUS messages, since these attributes are internal to server implementation.
 
 Definitions for server-side attributes may vary by server vendor, or may vary even from one version of the same server to another. Only FreeRADIUS definitions for internal attributes are referenced in this document. Those definitions are generally the same across all versions of the server, but other vendors may have different implementations.
 
-Information such as “use LDAP server X”, or “remember that the user is in group Y” should be used to create local policy. This information should be stored in server-side attributes (also known as “non-protocol attributes”).
+Information such as "use LDAP server X", or "remember that the user is in group Y" should be used to create local policy. This information should be stored in server-side attributes (also known as "non-protocol attributes").
 
-Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say “use LDAP server X for this request” and “respond with attribute X, value Y”.
+Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say "use LDAP server X for this request" and "respond with attribute X, value Y".
 
 === xref:session/processing.adoc[Processing requests]
 

@@ -29,7 +29,7 @@ limit the lifetime of sessions by splitting them so that the start of each
 reconnected session aligns with the start of the desired reporting interval and
 does not extend significantly beyond the end of the same interval. This places
 unnecessary load on both the RADIUS and database servers and may inconvenience
-a network’s users. There is usually no need to do either of these things.
+a network's users. There is usually no need to do either of these things.
 ====
 
 FreeRADIUS provides a schema extension that implements a recommended approach
@@ -56,7 +56,7 @@ choice but to set a `Session-Timeout` RADIUS attribute dynamically to cause the
 NAS to terminate long-running sessions and report their final data usage close
 to the start of the reporting period. Alternatively, scripting the generation
 of CoA/Disconnect packets for all ongoing sessions in the `radacct` table may be
-possible, but great care should be taken to not overwhelm a NAS’s limited CPU
+possible, but great care should be taken to not overwhelm a NAS's limited CPU
 resources since disconnected devices will likely be trying to reauthenticate
 while other are still being disconnected. Either approach to terminating
 existing sessions will of course result in an interruption of connectivity for
@@ -78,7 +78,7 @@ session data that was updated since the previous update was ran.
 
 Running an update closes the current _accounting period_ allocating data
 consumed by all sessions that _reported in_ during that period (via
-interim-updates or stops) to the period’s users. The update process
+interim-updates or stops) to the period's users. The update process
 additionally creates an open-ended, next accounting period to capture future
 data usage. It is careful to avoid duplicate counting of data used in sessions
 that span multiple accounting periods by carrying forward into this next period
@@ -93,7 +93,7 @@ current accounting period. It therefore makes efficient use of storage.
 ====
  The update process does not have to be called at regular intervals but in
 production is likely to be invoked either as a cronjob or using the database
-server’s event scheduler. It can be safely manually invoked (for debugging or
+server's event scheduler. It can be safely manually invoked (for debugging or
 ad hoc reporting purposes) as often as necessary outside of the normal schedule
 without impacting normal usage reporting.
 ====
@@ -189,7 +189,7 @@ performance reasons if this would result in an enormous number of rows in the
 ====
 
 Next, enable daily processing of the `radacct` table by adding something like
-the following into the database user’s crontab:
+the following into the database user's crontab:
 
 [source,cron]
 ----

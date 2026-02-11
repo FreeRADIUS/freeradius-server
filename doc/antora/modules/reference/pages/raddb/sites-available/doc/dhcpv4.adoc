@@ -15,7 +15,7 @@ threads. For example, our benchmarking tests were using thirty-two
 threads, because there was no performance benefit in using more
 threads. In contrast, ISC DHCP is single threaded, while the more
 recent Kea implementation is single threaded by default, and only
-supports up to four threads as an “experimental” feature.
+supports up to four threads as an "experimental" feature.
 
 The mature multi-threaded capability of FreeRADIUS translates into
 higher performance in high load scenarios. While one thread is
@@ -34,7 +34,7 @@ how they should work. We believe that the network administrator has
 made site-local choices for a reason.
 
 FreeRADIUS is designed to be highly modular, which makes it trivial to
-“mix and match” different systems. For example, leases could be taken
+"mix and match" different systems. For example, leases could be taken
 from SQL, and options from LDAP. Or, options could be assigned from
 both PostgreSQL and MySQL, depending on factors such as the network
 from which the request originates, or the type of device. This
@@ -93,8 +93,8 @@ elsewhere. When a lease expires, it is eventually removed from the
 database. This process makes it very difficult or even impossible to
 know how many leases are free, by just looking at the
 database. Management software instead has to be aligned with the pool
-definitions maintained within configuration files, via some “out of
-band” method. Such a limited use of the database makes it more
+definitions maintained within configuration files, via some "out of
+band" method. Such a limited use of the database makes it more
 difficult to use KEA in a production environment.
 
 FreeRADIUS supports:

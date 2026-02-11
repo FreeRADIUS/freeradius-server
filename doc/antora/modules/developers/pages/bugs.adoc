@@ -8,7 +8,7 @@ information referenced in this document can be found there.
 This document is primarily for non-developers of the FreeRADIUS
 server. If you are able to patch the code to work correctly, then
 we invite you to join the development list to discuss it. If
-you’re the type who know little about how to code, then this is
+you're the type who know little about how to code, then this is
 the place for you!
 
 == You found a bug
@@ -20,15 +20,15 @@ information from the debugging sections below.
 
 For any other issues, you should first discuss them on the
 https://freeradius.org/support/[FreeRADIUS users list], to
-see if anyone can reproduce them. Often there’s a simple explanation of
-why the server behaves as it does, and it’s not necessarily a bug in the
-code, so browse the lists’ archives of the last two months, and if you
-don’t see messages about it, ask!
+see if anyone can reproduce them. Often there's a simple explanation of
+why the server behaves as it does, and it's not necessarily a bug in the
+code, so browse the lists' archives of the last two months, and if you
+don't see messages about it, ask!
 
-If the behavior is correct but confusing, we think that’s a bug too, and
+If the behavior is correct but confusing, we think that's a bug too, and
 you should file a bug against our documentation.
 
-For more information about the users list, the lists’ archives and the
+For more information about the users list, the lists' archives and the
 faq, please visit https://www.freeradius.org/list/users.html Please make
 sure to READ and RESPECT the house-rules. You will get much better
 response and much faster if you do!
@@ -73,9 +73,9 @@ crashes.
 
 == Debugging a live server
 
-If you can’t get a core dump, or the problem doesn’t result in a core
+If you can't get a core dump, or the problem doesn't result in a core
 dump, you may have to run the server under gdb. To do this, ensure that
-you have symbols in the binaries (i.e. a 'non-stripped' binary) by
+you have symbols in the binaries (i.e. a 'non-stripped' binary) by
 re-building the server as described in the previous section. Then, run
 the server under gdb as follows:
 
@@ -96,7 +96,7 @@ Tell `gdb` to pass any necessary command-line arguments to the server:
 (gdb) set args ...
 ```
 
-Where the ``…'' are the command-line arguments you normally pass to
+Where the ``,'' are the command-line arguments you normally pass to
 radiusd. For debugging, you probably want to do:
 
 ```
@@ -130,7 +130,7 @@ If the server was built with threads, you can do:
 (gdb) info threads
 ```
 
-Which will give you information about the threads. If the server isn’t
+Which will give you information about the threads. If the server isn't
 threaded, that command-line will print a message saying so.
 
 Then, do:
@@ -139,7 +139,7 @@ Then, do:
 (gdb) thread apply all bt full
 ```
 
-If the server isn’t threaded, the `thread apply` section isn’t
+If the server isn't threaded, the `thread apply` section isn't
 necessary
 
 The output should be printed to the screen, and also sent to the
@@ -151,10 +151,10 @@ operating system to:
 
 https://bugs.freeradius.org/
 
-Submitting it to the bug database ensures that the bug report won’t get
+Submitting it to the bug database ensures that the bug report won't get
 forgotten, and that it will be dealt with in due course.
 
-You should provide the issue number in any mail sent to the user’s list.
+You should provide the issue number in any mail sent to the user's list.
 
 == Valgrind
 

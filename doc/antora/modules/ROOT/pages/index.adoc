@@ -19,7 +19,7 @@ modular, high-performance server that's deployed in VPNs, Wi-Fi, and
 enterprise networks.
 
 The default settings are sufficient for a simple install and basic
-functionality. The software’s flexibility presents challenges when
+functionality. The software's flexibility presents challenges when
 configuring it for advanced or specialized environments. There are
 many options and customisations for the FreeRADIUS
 server. Administrators must decide how and what settings to change,

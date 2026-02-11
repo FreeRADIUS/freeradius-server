@@ -31,7 +31,7 @@ A RADIUS session consists of the following steps:
 * Access Reject locks the user out of the network if the user is invalid or not authorized, denying them access to the requested resource.
 * Access Challenge occurs when the server requires additional information from the user. Since RADIUS packages are limited in size, Access Challenges allow the exchange of larger amounts of data.
 * Access Accept provides the user access to the resource and contains policy information which the NAS uses to provide services to, and enforce the behavior of the user. An Access Accept condition does not apply to all resources. Each additional resource is checked as required. The RADIUS client also verifies the original access offered on a periodic basis.
-* An Access Accept response results in the NAS providing the following services to the remote client: supplys a static or dynamic IP address; assigning a Time-to-Live for the session; downloading and applying the users’ Access Control List (ACL); setting up any L2TP , VLAN, and QoS session parameters required
+* An Access Accept response results in the NAS providing the following services to the remote client: supplys a static or dynamic IP address; assigning a Time-to-Live for the session; downloading and applying the users' Access Control List (ACL); setting up any L2TP , VLAN, and QoS session parameters required
 
 . Once the session is established on the RADIUS client, the accounting process is initiated:
 

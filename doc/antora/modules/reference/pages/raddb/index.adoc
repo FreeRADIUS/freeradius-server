@@ -56,9 +56,9 @@ This directory contains complex configuration files for modules loaded
 from `mods-enabled/`.
 
 For example, the `sql` module can connect to multiple types of SQL
-databases. Each SQL database has it’s own schema, along with default
+databases. Each SQL database has it's own schema, along with default
 queries for RADIUS, IP pools, DHCP, etc. If these files were placed into
-the ’mods-available/` directory, that directory would get compled and
+the 'mods-available/` directory, that directory would get compled and
 difficult to manage.
 
 Instead, the files are placed into a separate directory.
@@ -81,10 +81,10 @@ contains virtual servers which process packets. They are similar in
 concept to the virtual servers used by Apache and Nginx.
 
 Each virtual server will begin with a `server` declaration, along with
-it’s name. e.g. `server default { ...`. The declaration is then
+it's name. e.g. `server default { ...`. The declaration is then
 followed by a `namespace =` parameter, which describes which
 application protocol is being used in that virtual server.
-e.g. `namespace = radius`.
+e.g. `namespace = radius`.
 
 The virtual server will then contain zero or more `listen`
 subsections. Each `listen` subsection defines a network socket which
@@ -123,7 +123,7 @@ The standard installation of FreeRADIUS enables only a few virtual servers.
 === `certs/`
 
 This directory contains certificates and configuration for EAP and
-RADIUS over TLS (i.e. RadSec).
+RADIUS over TLS (i.e. RadSec).
 
 == Additional Configuration Files
 

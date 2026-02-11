@@ -106,7 +106,7 @@ than to try and just get the old configuration to work.
 
 == Run the server
 
-If the server builds and installs, but doesn’t run correctly, then
+If the server builds and installs, but doesn't run correctly, then
 you should first use xref:ROOT:debugging/radiusd_X.adoc[debugging mode] to figure out
 the problem.
 
@@ -114,13 +114,13 @@ This is your best hope for understanding the problem. Read _all_
 of the messages which are printed to the screen, the answer to
 your problem will often be in a warning or error message.
 
-Configure a RADIUS server for complex local authentication isn’t a trivial
+Configure a RADIUS server for complex local authentication isn't a trivial
 task. Your _best_ and _only_ method for debugging it is to read
 the debug messages, where the server will tell you exactly what
-it’s doing, and why. You should then compare its behaviour to what
+it's doing, and why. You should then compare its behaviour to what
 you intended, and edit the configuration files as appropriate.
 
-If you don’t use xref:ROOT:debugging/radiusd_X.adoc[debugging mode], and ask questions on the mailing
+If you don't use xref:ROOT:debugging/radiusd_X.adoc[debugging mode], and ask questions on the mailing
 list, then the responses will all tell you to use debugging mode.
 The server prints out a lot of information in this mode, including
 suggestions for fixes to common problems. Look especially for
@@ -128,8 +128,8 @@ suggestions for fixes to common problems. Look especially for
 messages.
 
 Since the main developers of FreeRADIUS use debugging mode to
-track down their configuration problems with the server, it’s a
-good idea for you to use it, too. If you don’t, there is little
+track down their configuration problems with the server, it's a
+good idea for you to use it, too. If you don't, there is little
 hope for you to solve any configuration problem related to the
 server.
 
@@ -141,7 +141,7 @@ radiusd -X
 ----
 
 You should see a lot of text printed on the screen as it starts up. If
-you don’t, or if you see error messages, please read the xref:ROOT:faq.adoc[FAQ] and xref:troubleshooting:index.adoc[troubleshooting] sections.
+you don't, or if you see error messages, please read the xref:ROOT:faq.adoc[FAQ] and xref:troubleshooting:index.adoc[troubleshooting] sections.
 
 If the server says `Ready to process requests.`, then it is running
 properly. From another shell (or another window), type
@@ -153,7 +153,7 @@ radtest test test localhost 0 testing123
 
 You should see the server print out more messages as it receives the
 request, and responds to it. The `radtest` program should receive the
-response within a few seconds. It doesn’t matter if the authentication
+response within a few seconds. It doesn't matter if the authentication
 request is accepted or rejected, what matters is that the server
 received the request, and responded to it.
 

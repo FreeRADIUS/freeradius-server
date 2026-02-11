@@ -272,7 +272,7 @@ Note: If a GVRP VLAN is no longer advertised to the switch, all clients assigned
 
 ## Administrative interface authentication
 
-On most HP Procurve switches there are two levels of authorised access, _‘Operator’_ access and _‘Manager’_ access.
+On most HP Procurve switches there are two levels of authorised access, _'Operator'_ access and _'Manager'_ access.
 
 * _Operator_ access allows the user to view most of the vital stats of the switch (using the show commands), but will not allow them to make any potentially dangerous changes (such as modify the configuration).
 

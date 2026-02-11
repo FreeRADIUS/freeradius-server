@@ -13,7 +13,7 @@ communicates all EAP messages by embedding them in this attribute.
 
 General Terminology Authenticator/NAS/Access Point(AP) - _A network
 device providing users Supplicant/EAP Client_ - The software on the
-end-user/client machine (e.g. machine with the wireless card or
+end-user/client machine (e.g. machine with the wireless card or
 connected to an 802.1X switch port). with a point of entry into the
 network. EAPOL - EAP over LAN as defined in 802.1X standard. EAPOW - EAP
 over Wireless as defined in the 802.11 standard.
@@ -156,7 +156,7 @@ To configure `EAP-SIM` authentication, the following attributes must be
 set in the server. This can be done in the users file, but in many cases
 will be taken from a database server, via one of the SQL interface.
 
-If one has SIM cards that one controls (i.e. whose share secret you
+If one has SIM cards that one controls (i.e. whose share secret you
 know), one should be able to write a module to generate these attributes
 (the triplets) in the server.
 
@@ -250,7 +250,7 @@ Although there is no in-built support for PEAP-GTC in MS Windows, it is supporte
 
 [NOTE]
 ====
-The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market.  Even with its late start, Microsoft’s and Cisco’s size allowed them to quickly overtake EAP-TTLS in the market.  Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1.  PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.  From Cisco’s perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.  Since Microsoft only supports PEAPv0 and doesn’t support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator.  Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.  However, Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don’t support.  PEAP-EAP-TLS does require a client-side digital certificate located on the client’s hard drive or a more secure smartcard.  PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS.  Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.  Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know.  PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
+The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market.  Even with its late start, Microsoft's and Cisco's size allowed them to quickly overtake EAP-TTLS in the market.  Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1.  PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.  From Cisco's perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.  Since Microsoft only supports PEAPv0 and doesn't support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator.  Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.  However, Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don't support.  PEAP-EAP-TLS does require a client-side digital certificate located on the client's hard drive or a more secure smartcard.  PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS.  Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.  Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know.  PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
 ====
 
 This version of PEAP is defined through the IETF internet draft "draft-josefsson-pppext-eap-tls-eap-05 http://www.watersprings.org/pub/id/draft-josefsson-pppext-eap-tls-eap-05.txt."  Note that this is an expired draft.
@@ -480,8 +480,8 @@ mailto:jlindsay@internode.com.au[jlindsay@internode.com.au]
 To make it clear for everyone, the supplicant is the software on the
 client (machine with the wireless card).
 
-The EAP process doesn’t start until the client has associated with the
-Access Point using Open authentication. If this process isn’t crystal
+The EAP process doesn't start until the client has associated with the
+Access Point using Open authentication. If this process isn't crystal
 clear you need to go away and gain understanding.
 
 Once the association is made the AP blocks all traffic that is not

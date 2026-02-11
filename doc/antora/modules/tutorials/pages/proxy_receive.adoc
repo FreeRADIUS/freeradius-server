@@ -62,7 +62,7 @@ authentication reject.
 
 User 2 should then stop his server. User 1 should then attempt an
 authentication request to his server where the request would normally
-be proxied. Both users should examine the debug logs of User 1’s
+be proxied. Both users should examine the debug logs of User 1's
 RADIUS client and server in order to observe what the server's resulting behavior
 will be.
 

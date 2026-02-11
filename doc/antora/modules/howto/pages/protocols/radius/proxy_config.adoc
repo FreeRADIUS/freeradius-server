@@ -1,6 +1,6 @@
 = Proxy
 
-Proxying has undergone significant changes in version 4. The proxy.conf file, which previously handled proxying, is deprecated. Instead, all proxying is managed through a new RADIUS client module called rlm_radius. This change moves proxying outside of the server’s core.
+Proxying has undergone significant changes in version 4. The proxy.conf file, which previously handled proxying, is deprecated. Instead, all proxying is managed through a new RADIUS client module called rlm_radius. This change moves proxying outside of the server's core.
 
 However, configuring the server for proxying is now more verbose. The good news is that we have a complete RADIUS client providing greater flexibility.  This client is fully accessible from anywhere using unlang wherever it is needed.
 

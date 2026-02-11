@@ -1,6 +1,6 @@
 = Getting Started
 
-To begin with FreeRADIUS, install it on your system and configure a basic setup with a test user and client. Next, test the server’s functionality in debug mode (`radiusd -X`). This process includes editing the client and users files to add a test user and client.
+To begin with FreeRADIUS, install it on your system and configure a basic setup with a test user and client. Next, test the server's functionality in debug mode (`radiusd -X`). This process includes editing the client and users files to add a test user and client.
 
 == Get the source
 

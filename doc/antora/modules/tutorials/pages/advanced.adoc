@@ -1,6 +1,6 @@
 = Advanced Configuration
 
-This section organizes documentation topics related to connectivity and interoperability in FreeRADIUS. It includes guides on xref:eap.adoc[EAP] (Extensible Authentication Protocol) and its variants—EAP-MD5, EAP-TTLS, EAP-PEAP, and EAP-TLS—which are commonly used for secure network authentication.
+This section organizes documentation topics related to connectivity and interoperability in FreeRADIUS. It includes guides on xref:eap.adoc[EAP] (Extensible Authentication Protocol) and its variants-EAP-MD5, EAP-TTLS, EAP-PEAP, and EAP-TLS-which are commonly used for secure network authentication.
 
 There are also sections on xref:sql.adoc[SQL integration], including managing xref:sql_user.adoc[SQL users], which is useful for storing and retrieving user data from databases. Finally, it covers xref:proxy.adoc[proxying] features, with dedicated guides for proxy receive, fail-over, and load balancing, helping administrators configure and optimize network traffic routing and redundancy.
 

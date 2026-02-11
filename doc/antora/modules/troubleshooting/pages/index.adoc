@@ -59,7 +59,7 @@ receiving.
 
 If your server starts up successfully, *save* a copy of the
 configuration so you always have a "known working" configuration. When
-the server doesn’t start up, go back and verify the configuration and
+the server doesn't start up, go back and verify the configuration and
 read the entire debug output.
 
 Follow these recommended steps to troubleshoot your server:

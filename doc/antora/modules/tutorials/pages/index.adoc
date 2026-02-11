@@ -18,7 +18,7 @@ Finally, it covers proxying and how to set up proxy receive, fail-over, and load
 
 This section covers connectivity and interoperability in FreeRADIUS.  It navigates key topics such as variable usage and dynamic translation. It also tackles the art of managing multiple module instances.
 
-More topics include strategies for module failover, handling prepaid accounts, and working with dictionaries. You’ll find guidance on setting up virtual servers and using the Radmin management tool.
+More topics include strategies for module failover, handling prepaid accounts, and working with dictionaries. You'll find guidance on setting up virtual servers and using the Radmin management tool.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

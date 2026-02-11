@@ -2,7 +2,7 @@
 
 Maintaining productivity, ensuring customer satisfaction, improving network performance, and reducing downtime are all key benefits of connectivity troubleshooting. Network outages can halt business operations, preventing employees from accessing critical applications and collaborating effectively. This leads to lost productivity and revenue.
 
-Additionally, these problems can disrupt online services, negatively impacting customer satisfaction and damaging the business’s reputation. Troubleshooting helps identify and resolve bottlenecks, congestion, and other issues that affect network performance, ensuring efficient and reliable operations. By quickly identifying and resolving issues, businesses can minimize downtime and reduce the financial impact of connectivity problems. 
+Additionally, these problems can disrupt online services, negatively impacting customer satisfaction and damaging the business's reputation. Troubleshooting helps identify and resolve bottlenecks, congestion, and other issues that affect network performance, ensuring efficient and reliable operations. By quickly identifying and resolving issues, businesses can minimize downtime and reduce the financial impact of connectivity problems. 
 
 == Allocating IP netmasks
 
@@ -46,7 +46,7 @@ To determine any authentication issues, you first need to test and ensure that b
 
 `wbinfo -a '<domain|realm>\<user>'%'<password>'`
 
-The response indicates “NetworkCleartext” authentication was successful. This type of authentication involves sending LM-Password and NT-Password hashes for immediate verification.
+The response indicates "NetworkCleartext" authentication was successful. This type of authentication involves sending LM-Password and NT-Password hashes for immediate verification.
 
 `plaintext password authentication succeeded`
 
@@ -60,7 +60,7 @@ The response shows a successful challenge/response for NTLM authentication. The 
 
 *Method 3: Challenge/Response using NTLMv1*
 
-The Domain Controller still accepts NTLMv1 authentication even if the NTLMv1 security session is “disabled” for security reasons.
+The Domain Controller still accepts NTLMv1 authentication even if the NTLMv1 security session is "disabled" for security reasons.
 
 Challenge/response authentication using NTLMv1 can be done without setting the `MSV1_0_ALLOW_MSVCHAPV2` flag with the following command:
 
@@ -106,7 +106,7 @@ An error response returns if any of the `wbinfo` commands are unsuccessful. Also
 
 ==== Checks and Validations
 
-If the winbind service is failing, you need to investigate the cause and restart it. If winbind still can’t authenticate users, it may be an AD connection issue or a configuration problem.
+If the winbind service is failing, you need to investigate the cause and restart it. If winbind still can't authenticate users, it may be an AD connection issue or a configuration problem.
 
 [NOTE]
 ====
@@ -141,7 +141,7 @@ Verify the connection to a Domain Controller for the Active Directory with the f
 
 802.1X authentication methods like EAP-TLS transmit large UDP packets that need IP fragmentation to reach their destination. If the network used for 802.1X mishandles IP fragments or has an issue with Path MTU Discovery (PMTUD), this issue shows up as unreliable or non-functional 802.1X authentication.
 
-Before attempting to troubleshoot possible IP or EAP fragmentation issues, it’s important to have a comprehensive understanding of the normal behavior of IP networks regarding fragmentation and reassembly, forwarding of fragments, and critical network services like PMTUD.
+Before attempting to troubleshoot possible IP or EAP fragmentation issues, it's important to have a comprehensive understanding of the normal behavior of IP networks regarding fragmentation and reassembly, forwarding of fragments, and critical network services like PMTUD.
 
 Debugging network problems without understanding IP networking usually leads to making mistakes. Often, random changes are made until something appears to work. The final result may have issues or cause network instability.
 
@@ -176,22 +176,22 @@ $ tracepath -m 20 110.60.100.30
 20:  no reply
 ```
 
-The MTU was first reduced to the default Ethernet MTU (1500 bytes) to allow packet transmission via the source’s uplink interface. The source reaches the local gateway successfully using the 1500-byte MTU on hop 1. However, to reach the host on hop 2, another reduction in the path MTU to 1492 bytes was required. This reduction was learned from an ICMP "Fragmentation Needed" response. In this scenario, hop 2 is probably a host located on the remote side of a PPP connection. Notably, the PPPoE header consumes 8 bytes of overhead, which caused the MTU reduction.
+The MTU was first reduced to the default Ethernet MTU (1500 bytes) to allow packet transmission via the source's uplink interface. The source reaches the local gateway successfully using the 1500-byte MTU on hop 1. However, to reach the host on hop 2, another reduction in the path MTU to 1492 bytes was required. This reduction was learned from an ICMP "Fragmentation Needed" response. In this scenario, hop 2 is probably a host located on the remote side of a PPP connection. Notably, the PPPoE header consumes 8 bytes of overhead, which caused the MTU reduction.
 
 [NOTE]
 ====
-Some network devices are configured to not respond with an ICMP “TTL exceeded in transit” message when dropping a packet because the TTL reaches 0, as in hop 4. If all hosts outside a specific LAN exhibit “`no reply`,” it’s likely that an critical ICMP response is being filtered by a firewall. Erroneously dropping ICMP “TTL exceeded in transit” messages is a *fundamental IP network issue that must be fixed.*
+Some network devices are configured to not respond with an ICMP "TTL exceeded in transit" message when dropping a packet because the TTL reaches 0, as in hop 4. If all hosts outside a specific LAN exhibit "`no reply`," it's likely that an critical ICMP response is being filtered by a firewall. Erroneously dropping ICMP "TTL exceeded in transit" messages is a *fundamental IP network issue that must be fixed.*
 ====
 
-Also note, that if connections to the destination host are filtered to prevent the return of an ICMP “destination unreachable” response for closed UDP ports, such as by a host-based firewall, network firewall, or router ACL, the trace will stop receiving replies either at or immediately prior to the hop where the filters are applied. The trace continues to report “`no reply`” until the hop count is exhausted. This does not necessarily indicate a fundamental network issue (beyond silent filtering of high-numbered ports).
+Also note, that if connections to the destination host are filtered to prevent the return of an ICMP "destination unreachable" response for closed UDP ports, such as by a host-based firewall, network firewall, or router ACL, the trace will stop receiving replies either at or immediately prior to the hop where the filters are applied. The trace continues to report "`no reply`" until the hop count is exhausted. This does not necessarily indicate a fundamental network issue (beyond silent filtering of high-numbered ports).
 
 ==== Symptoms of broken PMTUD
 
-Run the `tracepath` command from a host that’s on the same LAN as the NAS, and target the RADIUS Server. Then, do the same thing in reverse.
+Run the `tracepath` command from a host that's on the same LAN as the NAS, and target the RADIUS Server. Then, do the same thing in reverse.
 
 *Example: MTU size*
 
-If the trace stops reporting path information at an intermediate hop en route to the destination that doesn’t perform packet filtering, it’s likely that there’s a path MTU restriction. However, a device along the already-probed segment of the path is preventing ICMP "Fragmentation Needed" or ICMP "Too Big" responses generated by the restrictive network device from reaching the source.
+If the trace stops reporting path information at an intermediate hop en route to the destination that doesn't perform packet filtering, it's likely that there's a path MTU restriction. However, a device along the already-probed segment of the path is preventing ICMP "Fragmentation Needed" or ICMP "Too Big" responses generated by the restrictive network device from reaching the source.
 
 In this type of scenario, a broken PMTUD shows a trace like the following:
 

@@ -35,7 +35,7 @@ mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/procedure.sql
 [NOTE]
 ====
 The above command assumes that passwordless login has been configured via
-the user’s `~/.my.cnf` file, or otherwise.
+the user's `~/.my.cnf` file, or otherwise.
 ====
 
 Read the comments in the `procedure.sql` file which explain how to use

@@ -2,7 +2,7 @@
 
 FreeRADIUS supports security certificates and uses them for various authentication methods. FreeRADIUS can generate and manage its own certificates. Alternatively, you can install certificates from an external Certificate Authorities (CAs).
 
-EAP-TLS is a secure authentication method that relies on digital certificates to verify the identity of both the client and the server. See the following section to learn how to install and manage your certificates:
+EAP-TLS is a secure authentication method that relies on digital certificates to verify the identity of both the client and the server. See the following section to learn how to install and manage your certificates:
 
 * xref:os/letsencrypt.adoc[LetsEncrypt]
 

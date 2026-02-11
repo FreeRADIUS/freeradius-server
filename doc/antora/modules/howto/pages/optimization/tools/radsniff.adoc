@@ -8,7 +8,7 @@ See the xref:reference:man/radsniff.adoc[radsniff] man page for more details.
 
 === Live packet capture
 
-In it’s default mode radsniff will display incoming and outgoing RADIUS packets, one per line, annotated with timing information and “events”. To view your real-time transmission of packets, enter the following command:
+In it's default mode radsniff will display incoming and outgoing RADIUS packets, one per line, annotated with timing information and "events". To view your real-time transmission of packets, enter the following command:
 
 `root@radius# radsniff`
 
@@ -76,7 +76,7 @@ To view real-time traffic statistics (rate, latency, success rate) continuously,
 |Shows the number of requests that were sent but did not receive responses indicating that the RADIUS server is overwhelmed, most likely due to an authentication dependancy (e.g. SQL database, LDAP directory, credential cache) not responding in a timely manner.
 
 |RT(0)
-| means “retransmits 0”, i.e. the first time a request was sent it received a response. If requests are retransmitted these appear as RT(1), RT(2), RT(3), ... where the number after the initial RT shows how many times the request was retransmitted before it received a response.
+| means "retransmits 0", i.e. the first time a request was sent it received a response. If requests are retransmitted these appear as RT(1), RT(2), RT(3), ... where the number after the initial RT shows how many times the request was retransmitted before it received a response.
 Lost means that the request never received a response.
 |===
 

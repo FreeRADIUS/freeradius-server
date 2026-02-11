@@ -1,7 +1,7 @@
 = PAM
 
 PAM support was done by Jeph Blaize. Miguel a.l. Paraz
-mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS’
+mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS'
 parent, Cistron-Radius. Chris Dent
 mailto:cdent@kiva.net[cdent@kiva.net] added the Pam-Auth
 attribute.
@@ -14,7 +14,7 @@ Use Auth-Type = Pam in the users file. You cannot use
 You can also use `Pam-Auth = somestring` to specify an entry in
 /etc/pam.d. The default is `radius`.
 
-Compile and install freeradius with pam support (./configure –help will
+Compile and install freeradius with pam support (./configure -help will
 tell you how)
 
 Within your radiusd.conf file, in the `modules' section, make sure that
@@ -38,7 +38,7 @@ In the `authenticate` section, do the same:
 
 ```
 process Access-Request { # Uncomment this if you want to use PAM
-(Auth-Type = PAM) pam …
+(Auth-Type = PAM) pam ,
 ```
 
 In your /etc/pam.d/ directory create a file called radiusd with the
@@ -54,7 +54,7 @@ auth required /lib/security/pam_nologin.so account required
 required /lib/security/pam_unix_session.so
 ```
 
-If you don’t want to run your freeradius server in debug mode as root
+If you don't want to run your freeradius server in debug mode as root
 (ie, run as an unprivileged user) you will need to run freeradius with
 a group membership that is able to read the /etc/shadow file - otherwise
 pam will be unable to read the /etc/shadow file and will fail. I suggest

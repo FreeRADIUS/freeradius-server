@@ -58,7 +58,7 @@ udp {
 ```
 
 For `udp`, the configuration entries are largely the same as for v3.
-e.g. `ipaddr`, `port`, etc.
+e.g. `ipaddr`, `port`, etc.
 
 The `listen` section then compiles each
 xref:index.adoc#_processing_sections[Processing Section] based on the named packet
@@ -109,7 +109,7 @@ clients behind a NAT gateway, and to have different shared secrets for
 each client. e.g._by keying off of the `NAS-Identifier` attribute.
 
 The dynamic client functionality behaves the same for all protocols
-supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
+supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
 
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

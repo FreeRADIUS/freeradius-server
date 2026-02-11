@@ -6,7 +6,7 @@ It can be challenging to identify issues or what component needs adjusting. To s
 
 == Why optimise?
 
-A poorly optimized FreeRADIUS server can lead to slow authentication times, timeouts, and even system instability. Enhance your FreeRADIUS server’s performance, reliability, and resource efficiency to enhance the user experience while maintaining a secure environment.
+A poorly optimized FreeRADIUS server can lead to slow authentication times, timeouts, and even system instability. Enhance your FreeRADIUS server's performance, reliability, and resource efficiency to enhance the user experience while maintaining a secure environment.
 
 === Performance
 

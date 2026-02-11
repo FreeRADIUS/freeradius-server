@@ -6,7 +6,7 @@ certificates configured. There are two distinct purposes for these certificates:
   * Server certificates are presented to connecting devices for them to validate their trust of the server.
   * Trusted CA certificates are used to validate trust of certificates presented by end devices.
 
-FreeRADIUS uses OpenSSL to handle SSL operations. Some of its behavior depends on the version of the OpenSSL libraries it uses and how the global system configuration for OpenSSL is set up.  
+FreeRADIUS uses OpenSSL to handle SSL operations. Some of its behavior depends on the version of the OpenSSL libraries it uses and how the global system configuration for OpenSSL is set up.  
 
 When upgrading the operating system and OpenSSL libraries it's crucial to understand any version-specific differences relevant to the functionality of the RADIUS service. Some default behaviours that may change include:
 
@@ -19,7 +19,7 @@ When upgrading the operating system and OpenSSL libraries it's crucial to unders
 
 Any RADIUS server performing xref:reference:raddb/mods-available/eap.adoc[TLS-based EAP] must have a server certificate and associated key. This certificate can be signed by a public CA which the end devices already trust, or it can be signed by a self-signed CA managed by the organization. If using a self-signed CA, configure the supplicant to trust the self-signed CA for EAP server authentication purposes. This is often done with a managed security policy.
 
-It’s also possible that a supplicant is instructed to trust an “anchor” certificate in a chain of certificates. The server certificate in this chain has been signed by an intermediate CA certificate, which may have been signed by another CA certificate, and so on, up to a self-signed root CA certificate.
+It's also possible that a supplicant is instructed to trust an "anchor" certificate in a chain of certificates. The server certificate in this chain has been signed by an intermediate CA certificate, which may have been signed by another CA certificate, and so on, up to a self-signed root CA certificate.
 
 The trust anchor configured on the end device may not be the root CA, in which case this is referred to as validating a "partial chain" as shown below.
 
@@ -33,7 +33,7 @@ The trust anchor configured on the end device may not be the root CA, in which c
 
 The simplest set up for the server certificate for FreeRADIUS is to put all certificates into the `certificate file`.  Put the server certificate and any intermediate certificates needed to reach the certificate trusted by the end device. This file must start with the server certificate and work its way up the chain.
 
-While the certificate file can include the certificate trusted by the supplicant, this may cause larger packet exchanges between FreeRADIUS and the end device. Some supplicants may also fail to trust the server if this certificate is included. Therefore, it’s recommended to stop the certificate file at the certificate in the chain that’s immediately before the one configured as a trust anchor.
+While the certificate file can include the certificate trusted by the supplicant, this may cause larger packet exchanges between FreeRADIUS and the end device. Some supplicants may also fail to trust the server if this certificate is included. Therefore, it's recommended to stop the certificate file at the certificate in the chain that's immediately before the one configured as a trust anchor.
 
 In the example above, this means the server certificate file should contain:
 
@@ -65,19 +65,19 @@ For example, specific names (or domain suffixes) expected in the CN and/or
 Subject Alternative Names may be part of requirements that have been pinned in
 the network's 802.1X profile via an explicit managed security policy.
 
-Furthermore, the CN and/or SAN names from certificates presented during previous network connections may have been automatically saved. This action results in an implicit requirement for future certificates. Changing these “learned” properties cause an authentication failure or the user is prompted to manually accept any new certificate with previously unknown properties.
+Furthermore, the CN and/or SAN names from certificates presented during previous network connections may have been automatically saved. This action results in an implicit requirement for future certificates. Changing these "learned" properties cause an authentication failure or the user is prompted to manually accept any new certificate with previously unknown properties.
 
-When replacing a server certificate, make sure you have enough time to update the end devices’ policies. This way, the end devices trust the new server certificates before the old ones expire or are replaced.
+When replacing a server certificate, make sure you have enough time to update the end devices' policies. This way, the end devices trust the new server certificates before the old ones expire or are replaced.
 
 == Trusted CA certificates
 
-When using “mutual TLS", FreeRADIUS needs to know which CAs to trust to authenticate the end device.  The end devices present certificates to the server like EAP-TLS.
+When using "mutual TLS", FreeRADIUS needs to know which CAs to trust to authenticate the end device.  The end devices present certificates to the server like EAP-TLS.
 
 The easiest way to manage this is to put any CAs that must be trusted in a single file (named `ca_file`). Alternatively, the trusted certificates can be placed in a directory (named `ca_dir`).
 
 CAs used for signing end device certificates should NOT be public CAs. Trusting public CAs usually means that an end device presenting any certificate signed by that same CA is trusted. If client authentication uses a public CA, the acceptable client certificates must be resticted (using the `check_cert_cn` option or the `check-eap-tls` virtual server).
 
-However, a self-signed CA used only for EAP authentication, whose private key is known only to the organization, doesn’t have this problem.
+However, a self-signed CA used only for EAP authentication, whose private key is known only to the organization, doesn't have this problem.
 
 
 == Using FreeRADIUS's provided scripts to create certificates

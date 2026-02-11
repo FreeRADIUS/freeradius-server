@@ -191,8 +191,8 @@ server!
 
 =======
 **Example:**
-Request comes in with NAS-Port = 501 → First entry matches → `Your port is very nice.`
-Request comes in with NAS-Port = 2000 → Second entry matches → `Your port is less nice.`
+Request comes in with NAS-Port = 501 -> First entry matches -> `Your port is very nice.`
+Request comes in with NAS-Port = 2000 -> Second entry matches -> `Your port is less nice.`
 =======
 
 You can find the UID by running the following command:
@@ -202,7 +202,7 @@ You can find the UID by running the following command:
 $ /bin/id -u
 ----
 
-Send a test packet to verify the server’s response as Your port is very nice using:
+Send a test packet to verify the server's response as Your port is very nice using:
 
 [source,bash]
 ----

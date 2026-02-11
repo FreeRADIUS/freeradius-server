@@ -10,12 +10,12 @@ using random usernames and passwords with the `radclient` program.
 Many people want to see the difference in efficiency behind the various
 authentication methods, compilation methods, etc of their radius server.
 Before now, this was difficult to do efficiently across a large number
-of users. However, with this document, you’ll be able to test your
+of users. However, with this document, you'll be able to test your
 radius server and determine the best options to use for your system.
 
 == Getting started
 
-First thing we have to do is generate a large number of users. You’ll
+First thing we have to do is generate a large number of users. You'll
 want to do this even if you have a large passwd file you want to use
 from your system, because the create user script sets up other files you
 need for testing. So head to the scripts/ directory, and do this:
@@ -160,7 +160,7 @@ to complete. See A6 above for more info.
 
 === Other methods
 
-There is no reason why you can’t use some of this to test modules for
+There is no reason why you can't use some of this to test modules for
 PAM, SQL, LDAP, etc, but that will require a little extra work on your
 end (ie, getting the users/passes you generated into the corresponding
 database). However, by now you should have a good idea of how to test
@@ -192,7 +192,7 @@ best base to start from, which is key to an efficient server.
 
 == Results
 
-The testing results vary tremendouslywith other system-specific configurations. This is exactly the reason you should run tests of this nature, to find what’s best for _your_ system. Good luck!
+The testing results vary tremendouslywith other system-specific configurations. This is exactly the reason you should run tests of this nature, to find what's best for _your_ system. Good luck!
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

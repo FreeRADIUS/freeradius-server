@@ -22,7 +22,7 @@ required for the new features in v4.
 | `Post-Auth-Type Challenge` | `send Access-Challenge`
 |===
 
-So, instead of the section names being (mostly) randomly named, the
+So, instead of the section names being (mostly) randomly named, the
 names are now consistent. The `recv` sections receive packets from the
 network. The `send` sections send packets back to the network. The
 second name of the section is the _type_ of the packet that is being

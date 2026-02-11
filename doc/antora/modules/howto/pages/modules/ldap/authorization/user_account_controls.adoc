@@ -33,7 +33,7 @@ is enabled, or disabled, depending on the value of `user.access_positive`.
 | `user.access_positive = no`  | `locked out`                        | `ok`                                 | `ok`
 |===
 
-When a user is "locked out", the LDAP module will return `disallow` in (≥ v4.0.x) and `userlock` in (≤ v3.2.x).
+When a user is "locked out", the LDAP module will return `disallow` in (>= v4.0.x) and `userlock` in (<= v3.2.x).
 
 === Edit mods-available/ldap to only allow access if the 'Access Attribute' is present
 

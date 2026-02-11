@@ -9,9 +9,9 @@ The services manage network activities by:
 
 == What is it?
 
-When FreeRADIUS is integrated with Active Directory, the AD server functions as an “authentication oracle.” FreeRADIUS doesn’t store user credentials internally, but instead, passes these credentials to AD for verification.
+When FreeRADIUS is integrated with Active Directory, the AD server functions as an "authentication oracle." FreeRADIUS doesn't store user credentials internally, but instead, passes these credentials to AD for verification.
 
-For MS-CHAP based authentications, FreeRADIUS uses tools such as Samba, including winbind and the `ntlm_auth` helper program to communicate with the AD server. 
+For MS-CHAP based authentications, FreeRADIUS uses tools such as Samba, including winbind and the `ntlm_auth` helper program to communicate with the AD server. 
 
 === FreeRADIUS AD authentication process
 

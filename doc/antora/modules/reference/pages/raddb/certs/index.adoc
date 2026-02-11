@@ -1,7 +1,7 @@
 = Certificates
 
 This directory contains scripts to create the server certificates. To
-make a set of default (i.e. test) certificates, simply type:
+make a set of default (i.e. test) certificates, simply type:
 
 ```
 $ ./bootstrap
@@ -9,7 +9,7 @@ $ ./bootstrap
 
 The `openssl` command will be run against the sample configuration
 files included here, and will make a self-signed certificate authority
-(i.e. root CA), and a server certificate. This "root CA" should be
+(i.e. root CA), and a server certificate. This "root CA" should be
 installed on any client machine needing to do EAP-TLS, PEAP, or
 EAP-TTLS.
 
@@ -21,7 +21,7 @@ The root CA and the `XP Extensions` file also contain a
 crlDistributionPoints attribute. The latest release of Windows Phone
 needs this to be present for the handset to validate the RADIUS server
 certificate. The RADIUS server must have the URI defined but the CA need
-not have…however it is best practice for a CA to have a revocation URI.
+not have,however it is best practice for a CA to have a revocation URI.
 Note that while the Windows Mobile client cannot actually use the CRL
 when doing 802.1X it is recommended that the URI be an actual working
 URL and contain a revocation format file as there may be other OS
@@ -159,7 +159,7 @@ $ make client
 ```
 
 The user's certificates (RSA and ECC) will be in `emailAddress.pem` and
-`emailAddress.ecc.pem`, e.g. `user@example.com.pem`.
+`emailAddress.ecc.pem`, e.g. `user@example.com.pem`.
 
 To create another client certificate, just repeat the steps for making a
 client certificate, being sure to enter a different login name for `commonName`,
@@ -192,17 +192,17 @@ be done for `EAP-TLS` (or `TTLS`, or `PEAP`).  Typically eh
 The certificates created using this method are known to be compatible
 with ALL operating systems. Some common issues are:
 
-* Most systems now require certain OIDs in the certificates. If it doesn’t see
+* Most systems now require certain OIDs in the certificates. If it doesn't see
   them, it will stop doing EAP. The most visible effect is that the client
   starts EAP, gets a few `Access-Challenge` packets, and then a little while
   later re-starts EAP. If this happens, see the FAQ, and the comments in
   `mods-available/eap` for how to fix it.
 
 * Windows requires the root certificates to be on the client PC. If it
-  doesn’t have them, you will see the same issue as above.
+  doesn't have them, you will see the same issue as above.
 
 * Windows XP post SP2 has a bug where it has problems with certificate
-  chains. i.e. if the server certificate is an intermediate one, and not a
+  chains. i.e. if the server certificate is an intermediate one, and not a
   root one, then authentication will silently fail, as above.
 
 * Some versions of Windows CE cannot handle 4K RSA certificates. They
@@ -216,7 +216,7 @@ with ALL operating systems. Some common issues are:
   work.  Most clients cannot handle 64K certificate chains. Most Access
   Points will shut down the EAP session after about 50 round trips,
   while 64K certificate chains will take about 60 round trips. So
-  don’t use large certificate chains. They will only work after
+  don't use large certificate chains. They will only work after
   everyone upgrade everything in the network.
 
 * All other operating systems are known to work with EAP and FreeRADIUS.

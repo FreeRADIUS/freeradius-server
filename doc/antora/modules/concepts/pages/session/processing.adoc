@@ -13,10 +13,10 @@ image:request_flow_4.0.svg[Process Flow railroad diagram].
 
 === Request flow summary
 
-. An end-user tries to access a network through a RADIUS client such as a wireless access point. 
+. An end-user tries to access a network through a RADIUS client such as a wireless access point. 
 . The RADIUS client sends a request to the RADIUS server along with the user's credentials.
-. The RADIUS server verifies the user's credentials against its datastore (flat file, SQL, LDAP, etc.). 
-. If authentication passes, the server returns configuration details (including authorization) to the client. The client can now grant network access to the end-user 
+. The RADIUS server verifies the user's credentials against its datastore (flat file, SQL, LDAP, etc.). 
+. If authentication passes, the server returns configuration details (including authorization) to the client. The client can now grant network access to the end-user 
 . If the authentication fails, the server denies access, and the RADIUS client informs the end-user.
 
 

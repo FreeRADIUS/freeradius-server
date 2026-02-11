@@ -20,7 +20,7 @@ The server core does the basic RADIUS and network handling. Almost everyother fe
 
 For example, each of the authentication methods (PAP,CHAP, MS-CHAP, TOTP, and EAP) are individual modules. Similarly, each database connector (SQL,Redis, LDAP, etc.) are individual modules. In many cases, no code changes to the server core have to be made in order to support complex new functionality.
 
-This modular design streamlines development, testing, and enhances the system’s adaptability to new requirements or technologies.
+This modular design streamlines development, testing, and enhances the system's adaptability to new requirements or technologies.
 
 == Scalability
 

@@ -43,7 +43,7 @@ were either confusingly named, or completely absent in the case of many
 contributed modules.
 
 In v4, connection timeouts can be configured universally for all modules
-with the `connect_timeout` config item of the module’s `pool {}`
+with the `connect_timeout` config item of the module's `pool {}`
 section.
 
 The following modules will apply `connect_timeout`:
@@ -60,7 +60,7 @@ The following modules will apply `connect_timeout`:
 * rlm_sql_unixodbc
 
 Some modules such as rlm_sql_postgresql can have their timeout set via
-an alternative configuration item (e.g. `radius_db` in the case of
+an alternative configuration item (e.g. `radius_db` in the case of
 postgresql).
 
 == Xlat Expansions

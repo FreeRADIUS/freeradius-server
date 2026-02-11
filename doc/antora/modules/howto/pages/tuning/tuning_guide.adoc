@@ -13,13 +13,13 @@ avoid it do not use the detail and radwtmp (files) modules. They will
 slow down your accounting.
 * Use the users file to only set default profiles. Do not place any
 users there. Keep it as small as possible. Always set default attributes
-in the users file and don’t fill the user entries in ldap/sql with
+in the users file and don't fill the user entries in ldap/sql with
 default values. In general the ldap user profiles should contain
 user attributes only in special user cases.
 * Tune thread pool parameters to match your size requirements. Set
 `max_requests_per_server` to zero to avoid server thread restarts.
 * Enlarge the timeout (10 secs) and retries (5-7) in the access servers
-for accounting. That way you won’t lose any accounting information.
+for accounting. That way you won't lose any accounting information.
 * Use well tuned Fast Ethernet connections to minimize latency.
 * freeradius is multi threaded and i/o bound. That means you should use
 the latest OS kernels/patches for improved multi processor and network

@@ -47,16 +47,16 @@ Other EAP types may be supported by 802.1X clients and servers developed by spec
 
 == See also
 
-* WAPI —<!-- controversial--> Chinese National Standard for wireless LAN security.
-* tinyPEAP — a small-footprint RADIUS server designed to load into a wireless access point
+* WAPI -<!-- controversial--> Chinese National Standard for wireless LAN security.
+* tinyPEAP - a small-footprint RADIUS server designed to load into a wireless access point
 * FreeRADIUS - a free [[open source]] RADIUS server
-* Radiuz — a "cooperative WiFi network" that provides free RADIUS service for WPA-Enterprise compatible routers
-* SecureMyWiFi — Service that provides WPA/WPA2-Enterprise security with User/Network Management Interface.
-* SecureEasySetup — a technology developed by Broadcom to easily set up wireless LANs with WPA
+* Radiuz - a "cooperative WiFi network" that provides free RADIUS service for WPA-Enterprise compatible routers
+* SecureMyWiFi - Service that provides WPA/WPA2-Enterprise security with User/Network Management Interface.
+* SecureEasySetup - a technology developed by Broadcom to easily set up wireless LANs with WPA
 
 == References
 
-* Wi-Fi Alliance. (2003). Wi-Fi Protected Access: Strong, standards-based, interoperable security for today’s Wi-Fi networks. Retrieved March 1, 2004 from http://www.wifialliance.com/OpenSection/pdf/Whitepaper_Wi-Fi_Security4-29-03.pdf
+* Wi-Fi Alliance. (2003). Wi-Fi Protected Access: Strong, standards-based, interoperable security for today's Wi-Fi networks. Retrieved March 1, 2004 from http://www.wifialliance.com/OpenSection/pdf/Whitepaper_Wi-Fi_Security4-29-03.pdf
 * Wi-Fi Alliance. (2004). Wi-Fi Protected Access&trade; security sees strong adoption: Wi-Fi Alliance takes strong position by requiring WPA security for product certification. Retrieved January 5, 2004 from http://www.wi-fi.org/opensection/ReleaseDisplay.asp?TID=4&ItemID=165&StrYear=2004&strmonth=2
 * Weakness in Passphrase Choice in WPA Interface, by Robert Moskowitz. Retrieved March 2, 2004 from http://wifinetnews.com/archives/002452.html
 * Press Release about new EAP types supported under WPA-Enterprise from http://www.wi-fi.org/OpenSection/ReleaseDisplay.asp?TID=4&ItemID=205&StrYear=2005&strmonth=4

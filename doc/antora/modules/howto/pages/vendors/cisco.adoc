@@ -114,7 +114,7 @@ secret) to perform any configuration changes or anything requiring a
 higher level of access. The username `!root` was used as an example
 here, you can make this any username you want, of course.
 
-== Unique Acct-Session-Id’s
+== Unique Acct-Session-Id's
 
 Just a note to all cisco ISPs out there who want `RFC 2866` compliance
 need to enable the hidden command: `radius-server unique-ident <n>`
@@ -188,7 +188,7 @@ radius-server vsa accounting
 == Cisco 36xx & 26xx, keeping the NAS IP static
 
 The Cisco 36/26 by default selects (it seems at random) any IP address
-assigned to it (serial, ethernet etc.) as it’s RADIUS client source
+assigned to it (serial, ethernet etc.) as it's RADIUS client source
 address, thus the access request may be dropped by the RADIUS server,
 because it can not verify the client. To make the cisco box always use
 one fixed address, add the following to your configuration:
@@ -208,7 +208,7 @@ Use a real world IP address and check the Cisco documentation for why it
 is a good idea to have working loopback interface configured on your
 router.
 
-If you don’t want to use the loopback interface of course you can set
+If you don't want to use the loopback interface of course you can set
 the source-interface to any interface on your Cisco box which has an IP
 address.
 

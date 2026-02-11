@@ -41,7 +41,7 @@ above.
 
 You can create another virtual server by:
 
-* Define a new "server foo \{…}" section in `radiusd.conf`
+* Define a new "server foo \{,}" section in `radiusd.conf`
 * Put the normal "authorize", etc. sections inside of it
 * Add a "listen" section _inside_ of the "server" section.
 
@@ -111,7 +111,7 @@ also inside of that virtual server. Not only is this client definition
 available only to this virtual server, but the details of the client
 configuration is also available only to this virtual server.
 
-i.e. Two virtual servers can listen on different IP address and ports,
+i.e. Two virtual servers can listen on different IP address and ports,
 but both can have a client with IP address 127.0.0.1. The shared secret
 for that client can be different for each virtual server.
 
@@ -309,7 +309,7 @@ servers
 ** in each, set "clients = Y"
 ** define "clients Y" section, containing multiple clients.
 +
-This also means that you can have a third socket, which doesn’t share
+This also means that you can have a third socket, which doesn't share
 any of these clients.
 
 === How to decide what to do
@@ -327,7 +327,7 @@ add the second virtual server.
 
 If you want to reuse the previously defined sockets with the second
 virtual server, then you will need one or more global "client"
-sections. Those clients will contain a "virtual_server = …" entry that
+sections. Those clients will contain a "virtual_server = ," entry that
 will direct requests from those clients to the appropriate virtual
 server.
 

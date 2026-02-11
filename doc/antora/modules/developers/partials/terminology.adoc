@@ -14,17 +14,17 @@ The following tables indicate what are good or bad terms to use in our  document
 | minimize, minimizing, minimized       | minimise, minimised, minimising| Standardize on International or Global English.
 | freeradius, FreeRadius | freeRADIUS, FreeRADIUS                        | Use a standard word for freeRADIUS so users don't think it's a different software version or product. This form most represents our logo the most.
 | thus, thusly                          | therfore, as a result, so, thereby| Thus is a formal term and not recommended for software docs. Try rephrasing the sentence to remove the word.
-| v.4.0.0, ver 4.0, v4.0.x              | v4, version 4                  | Standardize on one term throughout the docs.
+| v.4.0.0, ver 4.0, v4.0.x              | v4, version 4                  | Standardize on one term throughout the docs.
 | v.3.0.0, ver 3.0, v3.0.x              | v3, version 3                  | Standardize on one term throughout the docs.
 | master                                | primary, main                  | Use Inclusive language. Can only change the term where/when 'primary' reference works in the selected context. Legacy terms master/slave are still to be used.
 | mandatory                             | required, needed, must be present| Inclusive language.
-| user                                  | end-user                       | This term means the end-user or user clients that are accessing the network. These aren’t network clients like a NAS or proxy server that talk directly to the freeRADIUS server.
+| user                                  | end-user                       | This term means the end-user or user clients that are accessing the network. These aren't network clients like a NAS or proxy server that talk directly to the freeRADIUS server.
 | nases, NASes, Nases                   | NASs                          | NAS refers to network Access Server that may be a device or software. Many plural forms but need to standardize on one form. Currently set to NASs, but open to suggestion if we decide we want to go with NASes.
 | network user(s)                       | end-user(s)                    | To differentiate between the RADIUS Server clients i.e. NAS, proxy server versus the end-user clients (windows machines, Macs).
 | clients                               | network clients, NAS           | Refers to any device that communicates directy with the RADIUS server.
 | should                                | must, required                 | Need to be More direct language to instruct user what they have to do. Should implies a suggestion and not necessarily a step that's required.
 | Network RADIUS, Network Radius        | InkBridge Networks             | Rebranding of documents.
-| whilst                                |while                           | Whilst is a formal term and not recommended for software docs.
+| whilst                                |while                           | Whilst is a formal term and not recommended for software docs.
 |===
 
 == Forbidden Words
@@ -33,7 +33,7 @@ The following tables indicate what are good or bad terms to use in our  document
 [options="headers, autowidth"]
 |===
 | Not Recommended        | Recommended Words             | Reason
-| stupid, stupidities    | nonsensical, problems, issues, senseless (if referring to an action, not person.) Other suggestions - lower intelligence threshold, unwanted behaviors, unexpected results, imprudences. | Stupid is a superfluous word and not needed.
+| stupid, stupidities    | nonsensical, problems, issues, senseless (if referring to an action, not person.) Other suggestions - lower intelligence threshold, unwanted behaviors, unexpected results, imprudences. | Stupid is a superfluous word and not needed.
 | crap, shit             | problems, issues               | Crap and shit are slang and hard to translate.
 | retarded               | not recommended, nonsensical   | Use inclusive language, this word precludes 'slower than average' reader.
 | hell                   | troublesome, gives you issues   | Hell is hard to translate and alternative words can be used.

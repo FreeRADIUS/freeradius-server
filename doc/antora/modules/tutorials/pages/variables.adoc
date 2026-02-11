@@ -63,14 +63,14 @@ filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y%m%d
 ----
 
 The `filename` setting defines where FreeRADIUS stores its accounting
-“detail” files and how they are named.  The variable `${radacctdir}`
+"detail" files and how they are named.  The variable `${radacctdir}`
 points to the main directory where accounting files are stored, and
 is defined in the `radiusd.conf` file.
 
 The attribute `%{Net.Src.IP}` represents the IP address of the
 RADIUS client (such as a NAS or access point) sending the request.
 It is used to create a separate subdirectory for each client, so that
-each client’s logs are kept separate.  The `detail-%Y-%m-%d` part
+each client's logs are kept separate.  The `detail-%Y-%m-%d` part
 specifies the naming pattern for the files using date formatting,
 where `%Y` represents the year (e.g., 2026), `%m` represents the month
 (e.g., 01), and `%d` represents the day (e.g., 16).

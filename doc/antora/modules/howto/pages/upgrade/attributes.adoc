@@ -61,10 +61,10 @@ easier, but also make it less likely that people will upgrade.
 
 == Attribute References
 
-Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
+Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 
 As of v3, the preferred format for `unknown` attributes is
-`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would
+`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would
 still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed in
 version 4. The server would never produce such names, and allowing

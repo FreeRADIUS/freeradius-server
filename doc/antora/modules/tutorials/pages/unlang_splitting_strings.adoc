@@ -24,7 +24,7 @@ recv Access-Request {
 }
 ----
 
-in the virtual server you’re using to process requests.
+in the virtual server you're using to process requests.
 
 == Common control attributes
 Attributes in the control list can control the behaviour of the server.
@@ -36,7 +36,7 @@ Regular expressions are an extremely powerful tool in the 'unlang' policy langua
 They provide both validation capabilities, allowing users to check the format of
 incoming attributes, and substring extraction (via capture groups).
 
-If you’ve completed the xref:proxy.adoc[Proxy] exercise you’ll have used the `suffix` module to
+If you've completed the xref:proxy.adoc[Proxy] exercise you'll have used the `suffix` module to
 split an incoming `User-Name` value into its components and setup the request for
 proxying.
 
@@ -51,11 +51,11 @@ attribute.
 Use `bob@realm1.com` and `bob@realm2.com` to test your new policy to ensure it works
 as expected.
 
-If you’ve completed the xref:proxy.adoc[Proxy] tutorial and have test realms setup, modify the
+If you've completed the xref:proxy.adoc[Proxy] tutorial and have test realms setup, modify the
 policy code you have just written to proxy the request to the realm specified
 in the `User-Name` attribute.
 
-== Step 1 – Basic splitting policy
+== Step 1 - Basic splitting policy
 
 [source,unlang]
 .FILE: policy.d/realm-split

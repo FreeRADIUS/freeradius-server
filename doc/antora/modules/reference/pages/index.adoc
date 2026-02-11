@@ -1,6 +1,6 @@
 = Reference Documentation
 
-This comprehensive reference documents all aspects of the unlang syntax and its features. These details help the readers’ understanding and use of the configuration language. Additionally, the FreeRADIUS configuration is organised into directories for modules, virtual servers, and policies.  To enable specific modules or virtual servers, create symbolic links in the mods-enabled and sites-enabled directories. This hierarchy ensures clarity and manageability during setup. The man pages offer a quick way to look up functionality and options, serving as a handy reference for administrators.
+This comprehensive reference documents all aspects of the unlang syntax and its features. These details help the readers' understanding and use of the configuration language. Additionally, the FreeRADIUS configuration is organised into directories for modules, virtual servers, and policies.  To enable specific modules or virtual servers, create symbolic links in the mods-enabled and sites-enabled directories. This hierarchy ensures clarity and manageability during setup. The man pages offer a quick way to look up functionality and options, serving as a handy reference for administrators.
 
 == xref:unlang/index.adoc[Unlang Policy Language]
 
@@ -32,7 +32,7 @@ The FreeRADIUS server uses modules to manage different functions and tasks. Most
 
 == xref:raddb/mods-available/doc/policy.adoc[Policies]
 
-Contains policies, written in unlang, that determine how the server processes messages. For example, policy.d/debug determines what information to print to the terminal when the server is run in debug mode. >It’s important to note that the policy.d directory is not the only place containing policies. Policies are anything written in Unlang, throughout the configuration files, which describes how data should be processed as it flows through the processing sections.
+Contains policies, written in unlang, that determine how the server processes messages. For example, policy.d/debug determines what information to print to the terminal when the server is run in debug mode. >It's important to note that the policy.d directory is not the only place containing policies. Policies are anything written in Unlang, throughout the configuration files, which describes how data should be processed as it flows through the processing sections.
 
 == xref:raddb/sites-available/index.adoc[Virtual Servers]
 

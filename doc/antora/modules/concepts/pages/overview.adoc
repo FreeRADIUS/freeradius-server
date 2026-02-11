@@ -4,15 +4,15 @@ A RADIUS (Remote Authentication Dial In User Service) server offers authenticati
 
 The key concepts of any RADIUS include:
 
-* *Centralized AAA*: RADIUS servers manage network access by verifying user credentials, granting access rights, and tracking user activity. 
+* *Centralized AAA*: RADIUS servers manage network access by verifying user credentials, granting access rights, and tracking user activity. 
 
-* *Client-Server Protocol*: RADIUS uses a client-server protocol. Network Access Servers are RADIUS clients that send requests to the RADIUS server. 
+* *Client-Server Protocol*: RADIUS uses a client-server protocol. Network Access Servers are RADIUS clients that send requests to the RADIUS server. 
 
-* *Background Process*: RADIUS servers run as background processes or daemons on UNIX systems. 
+* *Background Process*: RADIUS servers run as background processes or daemons on UNIX systems. 
 
-* *User Credentials:* The server stores or can access user account information and verifies authentication requests. 
+* *User Credentials:* The server stores or can access user account information and verifies authentication requests. 
 
-* *Configuration Details*: The RADIUS server sends details to the client, enabling the client to grant or deny network access. 
+* *Configuration Details*: The RADIUS server sends details to the client, enabling the client to grant or deny network access. 
 
 == What is RADIUS?
 
@@ -33,7 +33,7 @@ When RADIUS was created, network access systems were distributed across a wide a
 A remote access server (RAS) is often called a Network Access Server (NAS),  Network Access Client (NAC), or simply client.
 ====
 
-In response to contact from the remote access server, the central server would return a “success” or “failure” message, and the remote machines would enforce this response for each end-user. This process ensures that authentication decisions are centralized, while enforcement happens at the network edge, maintaining both security and scalability in the system.
+In response to contact from the remote access server, the central server would return a "success" or "failure" message, and the remote machines would enforce this response for each end-user. This process ensures that authentication decisions are centralized, while enforcement happens at the network edge, maintaining both security and scalability in the system.
 
 The goal of RADIUS was to create a central location for user authentication, wherein users from many locations could request network access.
 The simplicity, efficiency, and usability of the RADIUS system led to its widespread adoption by network equipment vendors. RADIUS evolved into an industry and Internet Engineering Task Force (IETF) standard as outlined in https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865].

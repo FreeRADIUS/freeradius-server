@@ -85,8 +85,8 @@ function(s) it's performing.
 === User authorization and group checks
 
 For simple authentication types like `PAP` and `CHAP` the LDAP module
-should be listed in the `recv Access-Request { ... }` (≥ v4.0.x)
-or `authorize { ... }` (≤ v3.2.x) section of the virtual server
+should be listed in the `recv Access-Request { ... }` (>= v4.0.x)
+or `authorize { ... }` (<= v3.2.x) section of the virtual server
 listening on the network (usually found in `sites-available/default`).
 
 For EAP authentication the LDAP module should be listed in
@@ -138,8 +138,8 @@ explain which authentication methods are appropriate for different deployments
 and authentication protocols.
 
 LDAP binds for simple authentication types like `PAP` the LDAP module should be
-listed in the `recv Access-Request { ... }` and `authenticate ldap { ... }` (≥
-v4.0.x) or `authorize { ... }` and `authenticate { ... }` (≤ v3.2.x) sections of
+listed in the `recv Access-Request { ... }` and `authenticate ldap { ... }` (>=
+v4.0.x) or `authorize { ... }` and `authenticate { ... }` (<= v3.2.x) sections of
 the virtual server listening on the network (usually found in
 `sites-available/default`).
 

@@ -14,17 +14,17 @@ available, the server can authenticate the user.
 
 Authorization refers to the process of determining what permissions are granted to the user. For example, the user may or may not be permitted certain kinds of network access or allowed to issue certain commands.
 
-The NAS sends a “request” - a packet of information about the user - and the RADIUS server either grants or denies authorization based solely on information in the “request” sent by the NAS. In each case, the RADIUS server manages the authorization policy and the NAS enforces the policy.
+The NAS sends a "request" - a packet of information about the user - and the RADIUS server either grants or denies authorization based solely on information in the "request" sent by the NAS. In each case, the RADIUS server manages the authorization policy and the NAS enforces the policy.
 
-The NAS “request” is really a set of statements. For example, the NAS may send the RADIUS server a “request” containing the following user information:
+The NAS "request" is really a set of statements. For example, the NAS may send the RADIUS server a "request" containing the following user information:
 
 ```
-“user name is Bob”
-“password is Hello”
-“ip address is 192.02.34”
+"user name is Bob"
+"password is Hello"
+"ip address is 192.02.34"
 ```
 
-Once the RADIUS server receives the request, it uses that information to figure out what properties the user should have (i.e., “Bob” is saying he/she has IP address 192.0.2.34, do the server records contradict this statement?).
+Once the RADIUS server receives the request, it uses that information to figure out what properties the user should have (i.e., "Bob" is saying he/she has IP address 192.0.2.34, do the server records contradict this statement?).
 The RADIUS server then sends a reply to the NAS. The reply contains a series of statements about what properties the user should have:
 
 ```
@@ -34,7 +34,7 @@ The RADIUS server then sends a reply to the NAS. The reply contains a series of 
 
 [NOTE]
 ====
-The RADIUS server can’t request further information from the NAS. In contrast with SQL systems, RADIUS is limited in that it cannot make complicated queries. In SQL, queries such as "SELECT name from table where ipaddress = 192.02.34" are common. RADIUS does not have that capability. Instead, RADIUS
+The RADIUS server can't request further information from the NAS. In contrast with SQL systems, RADIUS is limited in that it cannot make complicated queries. In SQL, queries such as "SELECT name from table where ipaddress = 192.02.34" are common. RADIUS does not have that capability. Instead, RADIUS
 only makes statements about what is, and what should be.
 ====
 

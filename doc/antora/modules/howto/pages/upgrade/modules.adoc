@@ -27,7 +27,7 @@ The `radius` module connects to one home server, just like the
 similar to the `home_server` configuration, but not all.
 
 The module can send multiple packet types to one home server.
-e.g. Access-Request and Accounting-Request.
+e.g. Access-Request and Accounting-Request.
 
 This module also replaces the old `coa` and `originate-coa`
 configuration. See also `subrequest` for creating child requests that are
@@ -76,7 +76,7 @@ The following modules exhibit changed behaviour.
 `control.Cache-Merge` has been renamed to
 `control.Cache-Merge-New` and controls whether new entries are merged
 into the current request. It defaults to `no`. The primary use case,
-is if you’re using xlat expansions in the cache module itself to
+is if you're using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
 expansions to be available immediately.
 

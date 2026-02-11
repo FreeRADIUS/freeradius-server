@@ -12,7 +12,7 @@ The directories in the server source are laid out as follows:
 | `doc/developers/`   | Developer documentation for internal APIs
 | `doc/unlang/`       | The unlang processing language.
 | `doc/upgrade/`      | How to upgrade from version 3 to version 4.
-| `doc/rfc/`          | Copies of the RFC’s. If you have Perl, do a `make` in
+| `doc/rfc/`          | Copies of the RFC's. If you have Perl, do a `make` in
                         that directory, and look at the HTML output.
 | `doc/antora/`       | Metadata and documentation source files to build
                         an Antora based documentation site.

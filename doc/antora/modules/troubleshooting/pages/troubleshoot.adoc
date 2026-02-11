@@ -22,7 +22,7 @@ be in unusual formats, so be sure to consult the NAS documentation.
 
 ##The accounting logs do not contain the information I want to see. How can I make the server log the correct information?
 
-A FreeRADIUS server can only log the information it receives. If the information isn't in the accounting packets, then it wasn’t sent by the NAS.
+A FreeRADIUS server can only log the information it receives. If the information isn't in the accounting packets, then it wasn't sent by the NAS.
 
 ## How can I restrict a users network access after authentication?
 
@@ -47,7 +47,7 @@ console and forcibly reset the port. Refer to the specific NAS documentation for
 ## The server logs have many numerous messages about request timeout or blocked child. How can I fix this?
 
 These blockages generally occur because the server is using a database for authentication that is inactive
-or slow. To solve this problem, increase the database’s response speed. As a rough guideline, if a query
+or slow. To solve this problem, increase the database's response speed. As a rough guideline, if a query
 takes more than a second, something is catastrophically wrong with the database. Possible solutions
 include:
 
@@ -65,7 +65,7 @@ If the users are stored in a database, FreeRADIUS is limited to the speed of the
 example, a database that performs a thousand queries per second limits FreeRADIUS to the same number.
 
 ## How many accounting packets per second can the server handle?
-The host system’s CPU power and database determines how many accounting packets the server can
+The host system's CPU power and database determines how many accounting packets the server can
 handle per second. If the database is limited to a thousand writes per second, the FreeRADIUS accounting
 requests is also limited to a thousand writes per second.
 

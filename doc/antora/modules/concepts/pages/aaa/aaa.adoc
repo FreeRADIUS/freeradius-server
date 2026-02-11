@@ -23,11 +23,11 @@ RADIUS server there are additional steps.
 
 The following analogy illustrates the difference between Authentication and Authorization:
 
-Imagine you are driving a car and you are stopped by a police officer. The officer asks you to provide a piece of identification to identify yourself. You could, for example, use your passport, driver’s license, or ID card to prove or *authenticate* who you are. In terms of the RADIUS protocol, the authentication process identifies the user as someone who is allowed to access the network.
+Imagine you are driving a car and you are stopped by a police officer. The officer asks you to provide a piece of identification to identify yourself. You could, for example, use your passport, driver's license, or ID card to prove or *authenticate* who you are. In terms of the RADIUS protocol, the authentication process identifies the user as someone who is allowed to access the network.
 
-The police officer may also ask you to prove that you are authorized to drive. In this case, there is only one document - a driver’s license - that proves that you are permitted or *authorized* to drive a car.
+The police officer may also ask you to prove that you are authorized to drive. In this case, there is only one document - a driver's license - that proves that you are permitted or *authorized* to drive a car.
 
-The authorization process combines the policy on the RADIUS server and the information in the request from the NAS. The NAS may add additional information to the request, such as the user’s Media Access Control (MAC) address. The NAS sends the information to the RADIUS server, where an authorization decision is made.
+The authorization process combines the policy on the RADIUS server and the information in the request from the NAS. The NAS may add additional information to the request, such as the user's Media Access Control (MAC) address. The NAS sends the information to the RADIUS server, where an authorization decision is made.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
