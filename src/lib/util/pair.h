@@ -407,16 +407,15 @@ do { \
  * Version for simple C data types.
  * If the pair does not already exist, a new one is allocated.
  *
- * @param[in] _ctx	to allocate the pair in
  * @param[out] _vp	the allocated pair
  * @param[in] _list	to append the pair to
  * @param[in] _attr	to use when creating pair
  * @param[in] _val	to assign to the pair
  * @param[in] _tainted	does the value come from a trusted source
  */
-#define fr_pair_list_replace_by_da(_ctx, _vp, _list, _attr, _val, _tainted) \
+#define fr_pair_list_replace_by_da(_vp, _list, _attr, _val, _tainted) \
 do { \
-	fr_pair_update_by_da(_ctx, _vp, _list, _attr, 0); \
+	fr_pair_update_by_da_parent(fr_pair_list_parent(_list), &_vp, _attr); \
 	if (!vp) break; \
 	fr_value_box(&_vp->data, _val, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
