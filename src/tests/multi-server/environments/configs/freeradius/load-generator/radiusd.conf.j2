@@ -40,11 +40,11 @@ modules {
 	{% include "environments/configs/freeradius/common/mods-available/stats" %}
 
 	# radius module instance configuration
-	{% for i in range(1, (load_gen_num_of_dest_servers + 1)) %}
-	radius radius-module-dest-server{{ i }} {
-		$template radius-module-dest-server-tmpl
+	{% for i in range(1, (load_gen_num_of_dst_servers + 1)) %}
+	radius radius-module-dst-server{{ i }} {
+		$template radius-module-dst-server-tmpl
 		udp {
-			ipaddr = {{ load_gen_dest_server_name }}{{ i }}
+			ipaddr = {{ load_gen_dst_server_name }}{{ i }}
 		}
 	}
 	{% endfor %}
@@ -183,8 +183,8 @@ server load-generator {
 	authenticate load-generator-proxy {
 		# Use redundant-load-balance to distribute requests to multiple home servers
 		redundant-load-balance {
-			{% for i in range(1, (load_gen_num_of_dest_servers + 1)) %}
-			radius-module-dest-server{{ i }}
+			{% for i in range(1, (load_gen_num_of_dst_servers + 1)) %}
+			radius-module-dst-server{{ i }}
 			{% endfor %}
 		}
 	}
