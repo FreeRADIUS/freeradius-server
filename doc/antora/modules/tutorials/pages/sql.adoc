@@ -79,9 +79,30 @@ sql {
 
 ----
 
-Once you have verified that the SQL driver exists, have enabled the module
-by creating a symlink from `mods-available/sql` to
-`mods-enabled/sql` and you have configured the appropriate sql dialect,
+== Step 2 — Make the virtual server use the sql module
+
+Almost all real deployments use at least one named virtual server. The simplest way to start is to edit the default one.
+
+Open `sites-enabled/default` and locate the `recv Access-Request { … }` section.
+
+A very common and safe pattern is to call the `sql` module early and then check whether it returned useful data:
+
+[source,unlang]
+----
+server default {
+    namespace = radius
+
+    recv Access-Request {
+        # If the site already have files, suffix, etc. here — keep them
+        sql
+    }
+
+    recv Accounting-Request {
+        sql
+        ok
+    }
+}
+----
 you should start the server as usual:
 
 ------------
