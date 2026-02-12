@@ -62,23 +62,6 @@ static size_t		seed_string_len = 3;
 static size_t		reserve_size = 2048;
 static size_t		allocation_mask = 0x3ff;
 
-/**********************************************************************/
-typedef struct request_s request_t;
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args);
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
-
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
-{
-	return NULL;
-}
-
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request)
-{
-}
-
-/**********************************************************************/
-
-
 static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *start, int *end)
 {
 	int i;
@@ -220,7 +203,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024);
+	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -385,8 +368,9 @@ int main(int argc, char *argv[])
 
 		end_t = fr_time();
 
-		printf("\nELAPSED %d.%06d seconds, %d allocation / free cycles\n\n",
-		       (int) (end_t - start_t) / NSEC, (int) ((end_t - start_t) % NSEC),
+		printf("\nELAPSED %"PRIu64".%06d seconds, %d allocation / free cycles\n\n",
+		       fr_time_delta_to_sec(fr_time_sub(end_t, start_t)),
+		       (int) fr_time_delta_to_usec(fr_time_sub(end_t, start_t)),
 		       my_alloc_size * 10000);
 	}
 
