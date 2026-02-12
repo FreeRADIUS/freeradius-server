@@ -480,7 +480,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	dhcpv4 root, OR inside of option 43.  It could be
 	 *	argued that it's wrong for all other TLVs.
 	 */
-	if ((data_len == 1) && ((data[0] == 0) || (data[1] == 255))) return data_len;
+	if ((data_len == 1) && ((data[0] == 0) || (data[0] == 255))) return data_len;
 
 	/*
 	 *	Must have at least an option header.
