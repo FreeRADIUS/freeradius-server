@@ -113,7 +113,7 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	int			ret;
 
 	uint8_t const		*data;
-	ssize_t			data_len;
+	size_t			data_len;
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
 	uint16_t		src_port, dst_port;
 	struct pcap_pkthdr	*header;
@@ -194,6 +194,11 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	p += sizeof(udp_header_t);
 
 	data_len = ntohs(udp->len);
+	if (data_len <= sizeof(udp_header_t)) {
+		fr_strerror_printf("UDP header length (%zd) smaller than required for layers 2+3+4", data_len);
+		return NULL;
+	}
+	data_len -= sizeof(udp_header_t);
 
 	dst_port = ntohs(udp->dst);
 	src_port = ntohs(udp->src);
