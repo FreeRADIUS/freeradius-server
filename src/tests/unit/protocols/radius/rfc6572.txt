@@ -1,0 +1,99 @@
+proto radius
+proto-dictionary radius
+fuzzer-out radius
+
+pair PMIP6-Home-IPv4-HoA = 127/8
+match PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+pair PMIP6-Home-IPv4-HoA = 127/8
+match PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+#
+#  Invalid inputs
+#
+pair PMIP6-Home-IPv4-HoA = 127.63.1.6
+match PMIP6-Home-IPv4-HoA = 127.63.1.6/32
+
+pair PMIP6-Home-IPv4-HoA = 256/8
+match Failed to parse IPv4 prefix string "256/8"
+
+pair PMIP6-Home-IPv4-HoA = bob/8
+match Failed to parse IPv4 prefix string "bob/8"
+
+#
+#  Octets outside of the mask are OK, but
+#  are mashed to zero.
+#
+pair PMIP6-Home-IPv4-HoA = 127.63/8
+match PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+#
+#  Unless you give a good mask.
+#
+pair PMIP6-Home-IPv4-HoA = 127.63/16
+match PMIP6-Home-IPv4-HoA = 127.63.0.0/16
+
+pair PMIP6-Home-IPv4-HoA = 127.999/16
+match Failed to parse IPv4 prefix string "127.999/16"
+
+pair PMIP6-Home-IPv4-HoA = 127.bob/16
+match Failed to parse IPv4 prefix string "127.bob/16"
+
+pair PMIP6-Home-IPv4-HoA = 127.63/15
+match PMIP6-Home-IPv4-HoA = 127.62.0.0/15
+
+pair PMIP6-Home-IPv4-HoA = 127.63.1/24
+match PMIP6-Home-IPv4-HoA = 127.63.1.0/24
+
+encode-pair -
+match 9b 08 00 18 7f 3f 01 00
+
+#
+#  Address is all zeros, then the prefix length MUST be set to 32.
+#
+encode-pair PMIP6-Home-IPv4-HoA = 0.0.0.0/0
+match 9b 08 00 20 00 00 00 00
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 0.0.0.0/32
+
+encode-pair PMIP6-Home-IPv4-HoA = 0.0.0.0/32
+match 9b 08 00 20 00 00 00 00
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 0.0.0.0/32
+
+encode-pair PMIP6-Home-IPv4-HoA = 127.0.0.1/32
+match 9b 08 00 20 7f 00 00 01
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 127.0.0.1/32
+
+encode-pair PMIP6-Home-IPv4-HoA = 127.0.0.1/24
+match 9b 08 00 18 7f 00 00 00
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 127.0.0.0/24
+
+#
+#  Extra non-zero bits are ignored
+#
+decode-pair 9b 08 00 18 7f 00 00 ad
+match PMIP6-Home-IPv4-HoA = 127.0.0.0/24
+
+#
+#  Invalid prefixes are raw
+#
+decode-pair 9b 08 00 21 7f 00 00 00
+match raw.PMIP6-Home-IPv4-HoA = 0x00217f000000
+
+#
+#  Reserved field is non-zero.  This is raw
+#
+#  @todo - maybe just discard the reserved field?
+#
+decode-pair 9b 08 01 20 7f 00 00 00
+match raw.PMIP6-Home-IPv4-HoA = 0x01207f000000
+
+count
+match 49

@@ -475,7 +475,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			/*
 			 *	If the ipaddr is all zeros, then the prefix length MUST be set to 32.
 			 */
-			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, 0x20);
+			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00);
 		} else {
 			uint32_t ipaddr = vp->vp_ipv4addr;
 
