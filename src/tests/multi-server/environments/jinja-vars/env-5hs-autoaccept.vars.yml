@@ -1,7 +1,7 @@
 # Docker compose Jinja template vars
 compose_num_of_home_servers: 5
 # Load generator Jinja template vars
-load_gen_num_of_dest_servers: 5
-load_gen_dest_server_name: homeserver
+load_gen_num_of_dst_servers: 5
+load_gen_dst_server_name: homeserver
 # General Jinja template vars
 listener_type: file
