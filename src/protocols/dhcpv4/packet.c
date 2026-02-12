@@ -242,8 +242,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				 *	The 'file' field is used to hold options.
 				 *	It must be interpreted before 'sname'.
 				 */
-				p = data + 44;
-				end = p + 64;
+				p = data + offsetof(dhcp_packet_t, file);
+				end = p + DHCP_FILE_LEN;
 				while (p < end) {
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
@@ -256,8 +256,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				/*
 				 *	The 'sname' field is used to hold options.
 				 */
-				p = data + 108;
-				end = p + 128;
+				p = data + offsetof(dhcp_packet_t, sname);
+				end = p + DHCP_SNAME_LEN;
 				while (p < end) {
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
