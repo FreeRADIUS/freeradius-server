@@ -100,13 +100,14 @@ fr_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 
 	if (data_len <= 0) {
 		fr_strerror_printf("Failed reading data from DHCP socket: %s", fr_syserror(errno));
+	error:
 		talloc_free(data);
 		return NULL;
 	}
 
+	/* Bounds check for tainted scalar (Coverity) */
 	if (!fr_cond_assert(data_len <= (ssize_t)talloc_array_length(data))) {
-		talloc_free(data);	/* Bounds check for tainted scalar (Coverity) */
-		return NULL;
+		goto error;
 	}
 	sizeof_dst = sizeof(dst);
 
@@ -115,8 +116,7 @@ fr_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 	 */
 	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
 		fr_strerror_printf("getsockname failed: %s", fr_syserror(errno));
-		talloc_free(data);
-		return NULL;
+		goto error;
 	}
 
 	fr_ipaddr_from_sockaddr(&dst_ipaddr, &dst_port, &dst, sizeof_dst);
@@ -125,7 +125,7 @@ fr_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
 
 	packet = fr_dhcpv4_packet_alloc(data, data_len);
-	if (!packet) return NULL;
+	if (!packet) goto error;
 
 	fr_socket_addr_init_inet(&packet->socket, IPPROTO_UDP, ifindex, &src_ipaddr, src_port, &dst_ipaddr, dst_port);
 
