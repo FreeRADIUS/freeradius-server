@@ -46,7 +46,7 @@ static bool verify_tlvs(uint8_t const *data, size_t data_len)
 	while (p < end) {
 		if ((end - p) < 2) return false;
 
-		if ((p + p[1]) > end) return false;
+		if ((p + 2 + p[1]) > end) return false;
 
 		p += 2 + p[1];
 	}
