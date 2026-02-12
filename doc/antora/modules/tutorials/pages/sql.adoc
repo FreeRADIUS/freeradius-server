@@ -103,63 +103,84 @@ server default {
     }
 }
 ----
-you should start the server as usual:
+== Step 3 — Start the server in debug mode to verify startup
 
-------------
+Run the server in foreground debug mode so you can watch everything that happens:
+
+[source,bash]
+----
 $ radiusd -X
-------------
+----
 
-If all has gone well, the server should print out the normal "Ready to
-process requests" message. Scroll up in your terminal window, and there
-should be messages from the `sql` module, such as:
+You should see messages similar to these when everything is working correctly:
 
---------------
-rlm_sql_sqlite: Database doesn't exist, creating it and loading schema
-rlm_sql_sqlite: Executing SQL statements from file "/etc/raddb/mods-config/sql/main/sqlite/schema.sql"
-rlm_sql (sql): Driver rlm_sql_sqlite (module rlm_sql_sqlite) loaded and linked
-rlm_sql (sql): Attempting to connect to database "radius"
-rlm_sql (sql): Initialising connection pool
-   pool {
-   	start = 5
-   	min = 4
-   	max = 100
-   	spare = 3
-   	uses = 0
-   	lifetime = 0
-   	cleanup_interval = 30
-   	idle_timeout = 60
-   	retry_delay = 1
-   	spread = no
-   }
-rlm_sql (sql): Opening additional connection (0)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (1)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (2)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (3)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (4)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
---------------
-
-These messages indicate that the server was able to load the `sql`
-module, and that the `sql` module was able to communicate with the SQL
-server.
-
-If there is a problem with shared libraries, or with access permissions
-to the SQL database, then an error message will be printed, and the
-server will not start properly. The FreeRADIUS FAQ and the
-`radiusd.conf` file, entry "libdir", contain information as to how to
-fix shared library issues.
-
-If there are issues connecting to the database you should verify manually
-that you can connect to the SQL database using the given "server",
-"login", and "password". The SQL database should come with a test
-client which may be used to perform this test.
-
-Now stop the server. The next exercise will be to add the schema to the
-database, and to populate it with a test entry.
+[source,text]
+----
+including configuration file ./scripts/bin/../../raddb/mods-enabled/sql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/driver/mysql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/main/mysql/queries.conf
+...
+Loaded module rlm_sql
+    sql {
+      driver = mysql
+rlm_sql_mysql - libmysql version: 3.2.6
+Loaded module rlm_sql_mysql
+      mysql {
+        tls {
+        }
+        warnings = auto
+      }
+      server = "localhost"
+      port = 3306
+      login = "radius"
+      password = <<< secret >>>
+      radius_db = "radius"
+      read_groups = yes
+      group_attribute = "sql-Group"
+      read_profiles = yes
+      safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
+      query_timeout = 5
+      pool {
+        start = 0
+        min = 1
+        max = 100
+        connecting = 2
+        uses = 0
+        lifetime = 0
+        idle_timeout = 0
+        open_delay = 0.2
+        close_delay = 10.0
+        manage_interval = 0.2
+        max_backlog = 1000
+        connection {
+          connect_timeout = 3.0
+          reconnect_delay = 1
+        }
+        request {
+          per_connection_max = 2000
+          per_connection_target = 1000
+          free_delay = 10.0
+        }
+      }
+    }
+...
+Bootstrapping rlm_sql "sql"
+...
+Instantiating rlm_sql "sql"
+Instantiating rlm_sql_mysql "sql.mysql"
+...
+sql - [3] - Signalled to start from HALTED state
+sql - [3] - Connection changed state HALTED -> INIT
+sql - [3] - Starting connect to MySQL server
+sql - [3] - Connecting to database 'radius' on localhost:3306, fd 31
+sql - [3] - Connection changed state INIT -> CONNECTING
+...
+sql - [3] - Connected to database on Localhost via UNIX socket, server version 8.0.44, protocol version 10
+sql - [3] - Signalled connected from CONNECTING state
+sql - [3] - Connection changed state CONNECTING -> CONNECTED
+sql - [3] - Connection established
+Ready to process requests
+----
 
 == Questions
 
