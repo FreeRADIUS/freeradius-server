@@ -466,12 +466,31 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	/*
-	 *	Common encoder doesn't add reserved byte
+	 *	Common encoder doesn't add reserved byte, so we add one here to be compliant with RFC 8044
+	 *	Section 3.11.
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	ipv4_prefix:
-		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
-		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		if (!vp->vp_ipv4addr) {
+			/*
+			 *	If the ipaddr is all zeros, then the prefix length MUST be set to 32.
+			 */
+			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, 0x20);
+		} else {
+			uint32_t ipaddr = vp->vp_ipv4addr;
+
+			FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
+
+			if (vp->vp_ip.prefix == 0) {
+				ipaddr = 0;
+
+			} else if (vp->vp_ip.prefix < 32) {
+				ipaddr &= htonl(~((1UL << (32 - vp->vp_ip.prefix)) - 1));
+
+			} /* else leave ipaddr alone */
+
+			FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *) &ipaddr, sizeof(ipaddr));
+		}
 		break;
 
 	/*
