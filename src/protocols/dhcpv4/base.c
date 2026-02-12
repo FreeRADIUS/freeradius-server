@@ -695,14 +695,22 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	while (attr < end) {
 		fprintf(fp, "\t\t");
 
+		/*
+		 *	The caller should already have called fr_dhcpv4_ok().
+		 */
+		fr_assert((attr + 2) <= end);
+
+		/*
+		 *	End of options.
+		 */
+		if ((attr[0] == 0) || (attr[1]) == 255) {
+			fprintf(fp, "%02x\n", attr[0]);
+			break;
+		}
+
 		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
 
 		print_hex_data(fp, attr + 2, attr[1], 3);
-
-		/*
-		 *	"End of option" option.
-		 */
-		if (attr[0] == 255) break;
 
 		attr += attr[1] + 2;
 	}
