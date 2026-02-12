@@ -1681,7 +1681,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,
-						packet_ctx->common->secret, packet_ctx->request_authenticator);
+						packet_ctx->common->secret, packet_ctx->common->secret_length,
+						packet_ctx->request_authenticator);
 			buffer[RADIUS_AUTH_VECTOR_LENGTH] = '\0';
 			data_len = strlen((char *) buffer);
 			break;

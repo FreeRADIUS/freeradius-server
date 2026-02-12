@@ -553,7 +553,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	there can pass a marker so we can use it here, too.
 		 */
 		slen = fr_radius_ascend_secret(&work_dbuff, fr_dbuff_current(&value_start), fr_dbuff_used(&value_dbuff),
-					       packet_ctx->common->secret, packet_ctx->request_authenticator);
+					       packet_ctx->common->secret, packet_ctx->common->secret_length,
+					       packet_ctx->request_authenticator);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
