@@ -41,13 +41,29 @@
 #
 
 #
-#  Update the "pre-proxy" section to list the "proxy_rate_limit" module:
+#  Update the "authorize" section to list the "proxy_rate_limit" module:
 #
-#	pre-proxy {
+#	authorize {
 #		...
 #		proxy_rate_limit
 #		...
 #	}
+#
+#  This allows the bad packets to be rejected as quickly as possible.
+#
+#  If you want the bad packets to be discarded instead, you can do:
+#
+#	authorize {
+#		...
+#		proxy_rate_limit {
+#			reject = 1   # don't stop processing on reject
+#		}
+#		if (reject) {
+#			do_not_respond
+#		}
+#		...
+#	}
+#
 #
 #  And update the "post-proxy" section to list the "proxy_rate_limit" module:
 #
