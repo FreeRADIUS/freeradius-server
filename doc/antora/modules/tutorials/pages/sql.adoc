@@ -242,6 +242,61 @@ mysql> SELECT * FROM radreply WHERE username = 'alice';
 
 If you see the rows appear in the `SELECT` output, the test user is correctly stored in the database.
 
+== Step 5 — Test authentication using radclient
+
+Keep the server running in debug mode (`radiusd -X`).
+
+Open a second terminal and send a PAP authentication request:
+
+[source,bash]
+----
+$ echo 'User-Name = "alice", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+A successful response should look similar to this:
+(You should see `Access-Accept` and the `Reply-Message` coming back from the server.)
+
+[source,text]
+----
+Sent Access-Request Id 60 from 0.0.0.0:48774 to 127.0.0.1:1812 length 63
+	Message-Authenticator = 0x
+        User-Name = "alice"
+        User-Password = "hello"
+Received Access-Accept Id 60 from 127.0.0.1:1812 to 0.0.0.0:48774 via lo length 93
+        Message-Authenticator = 0x27b9670734452d218b977f5518b5e1f2
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        User-Name = "alice"
+----
+
+Return to the terminal where the server is running in debug mode.
+
+After the `radclient` command completes, scroll upward in the debug output. Look for the section that corresponds to this request.
+
+Debug output
+
+[source,text]
+----
+(0)      sql - SQL-User-Name set to 'alice'
+(0)        sql - | %{SQL-User-Name}
+(0)        sql - | --> alice
+(0)        sql - | ||
+(0)        sql - | %logical_or()
+(0)          sql - | User-Password
+(0)            sql - | %{User-Password}
+(0)            sql - | --> hello
+(0)          sql - | %logical_or(...)
+(0)          sql - | --> hello
+(0)        sql - | %{reply.Packet-Type}
+(0)        sql - | --> Access-Accept
+(0)        sql - | %S
+(0)        sql - | --> 2026-02-11 11:06:52
+(0)        sql - | %M
+(0)        sql - | --> 374075
+(0)        sql - | %{reply.Class}
+(0)        sql - (null)
+(0)      -sql (ok)
+----
+
 == Questions
 
 1.  Why is it important to test SQL connectivity, independently of
