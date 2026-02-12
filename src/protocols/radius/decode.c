@@ -612,7 +612,7 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 redo:
 	FR_PROTO_HEX_DUMP(p, end - p, "decode_digest_attributes");
 
-	if (((size_t) (p - end) < 2) || (p[1] > (size_t) (end - p))) {
+	if (((size_t) (end - p) < 2) || (p[1] > (size_t) (end - p))) {
 		slen = fr_pair_raw_from_network(vp, &vp->vp_group, parent, p, end - p);
 		if (slen < 0) {
 			talloc_free(vp);
