@@ -195,7 +195,7 @@ static ssize_t extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, size_t l
 
 	/*
 	 *	This can't follow the convention of operating on
-	 *	a chlld dbuff because it must work on and amidst
+	 *	a child dbuff because it must work on and amidst
 	 *	already-written data.
 	 */
 

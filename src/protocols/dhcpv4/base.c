@@ -336,7 +336,7 @@ void *fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 		if (c->vp_type == FR_TYPE_BOOL && fr_dhcpv4_flag_exists(c->da) && !c->vp_bool) continue;
 
 		/*
-		 *	The VSIO encoder expects to seee VENDOR inside of VSA, and has an assertion to that
+		 *	The VSIO encoder expects to see VENDOR inside of VSA, and has an assertion to that
 		 *	effect.  Until we fix that, we simply ignore all attributes which do not fit into the
 		 *	established hierarchy.
 		 */
