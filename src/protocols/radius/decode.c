@@ -491,6 +491,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	uint8_t	const	*decode, *decode_end;
 	uint8_t		*buffer = NULL;
 	size_t		total = 0;
+	int		attrs = 0;
 
 	/*
 	 *	Figure out how long the total length of the data is.
@@ -508,6 +509,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		total += ptr[1] - 2;
 		ptr += ptr[1];
+		attrs++;
 	}
 	end = ptr;
 
@@ -517,7 +519,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	More than one attribute, create a temporary buffer,
 	 *	and copy all of the data over to it.
 	 */
-	if (total > RADIUS_MAX_STRING_LENGTH) {
+	if (attrs > 1) {
 		uint8_t *p;
 
 		buffer = talloc_array(packet_ctx->tmp_ctx, uint8_t, total);
