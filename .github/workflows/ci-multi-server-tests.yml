@@ -15,8 +15,8 @@ jobs:
   pre-test:
     runs-on: ubuntu-latest
     outputs:
-      selfhosted: 0
-      #selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+      #selfhosted: 0
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     steps:
       - run: echo "Pre-test job; checking if using self-hosted runners"
 
@@ -84,10 +84,10 @@ jobs:
       - name: Get pre-built Docker image for self-hosted runner test
         if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
         run: |
-          docker pull docker.internal.networkradius.com/self-hosted-${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest
+          docker pull docker.internal.networkradius.com/self-hosted
 
           # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
-          docker tag docker.internal.networkradius.com/self-hosted-${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
+          docker tag docker.internal.networkradius.com/self-hosted freeradius-build:latest
 
       - name: Run test-5hs-autoaccept test
         if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
@@ -145,3 +145,29 @@ jobs:
             echo "TEST FAILED: No Matched line found with equal non-zero counts"
             exit 1
           fi
+
+      #
+      #  If the CI has failed and the branch is loadgen-5hs-tests then we start a tmate
+      #  session to provide interactive shell access to the session.
+      #
+      #  The SSH rendezvous point will be emited continuously in the job output,
+      #  which will look something like:
+      #
+      #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  For example:
+      #
+      #      git push origin loadgen-5hs-tests --force
+      #
+      #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+      #
+      #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+      #
+      #  Access requires that you have the private key corresponding to the
+      #  public key of the GitHub user that initiated the job.
+      #
+      - name: "Debug: Start tmate"
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.ref == 'refs/heads/loadgen-5hs-tests' && failure() }}
