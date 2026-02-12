@@ -28,60 +28,56 @@ Inside you will find:
 
 The main configuration file for the module itself lives in `mods-available/sql`. This file contains the connection parameters, pool settings, dialect selection, and — most importantly — an `$INCLUDE` directive that pulls in the correct dialect-specific `queries.conf`.
 
-The first step is to configure the server to use the SQL module, and to
-communicate with the SQL database. Edit the `radiusd.conf` file, and
-look for the `instantiate` section. Inside of that section, add one line
-containing the word `sql`, as follows:
+== Step 1 — Enable and configure the sql module
 
-------------------------------------------
-instantiate {
-        sql     # start up the SQL module.
+The most common way to activate the SQL module is:
+
+[source,bash]
+----
+$ cd raddb/mods-enabled
+$ ln -s ../mods-available/sql sql
+----
+
+Next, open `mods-available/sql` and configure it for mysql testing. A minimal working configuration looks like this:
+
+[source,unlang]
+----
+sql {
+
+	dialect = "mysql"
+
+	driver = "${dialect}"
+
+	server = "localhost"
+	port = 3306
+	login = "radius"
+	password = "radpass"
+	radius_db = "radius"
+
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+
+	postauth_table = "radpostauth"
+	authcheck_table = "radcheck"
+	groupcheck_table = "radgroupcheck"
+	authreply_table = "radreply"
+	groupreply_table = "radgroupreply"
+	usergroup_table = "radusergroup"
+
+	pool {
+		start = 0
+		min = 1
+		max = 100
+		connecting = 2
+		uses = 0
+		lifetime = 0
+	}
+	group_attribute = "${.:instance}-Group"
+
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
-------------------------------------------
 
-This tells the server to look for, and use, the `sql` module when the
-server starts. Note that since the `sql` module is not listed in any of
-the "authorize", "authenticate", etc. sections, it will not be used
-in to process any authentication requests, or accounting requests. For
-now, we are interested solely in making the FreeRADIUS server
-communicate with the SQL server.
-
-Open `mods-available/sql` verify that the first few configuration
-entries are correct. That is, the "server", "login", and "password"
-entries should be set up correctly for your local SQL database.
-
-If using sqlite, these entries can be left commented out as they're not
-required, but you should uncomment the `sqlite {}` section and the
-configuration items within that section.
-
-FreeRADIUS uses the `rlm_sql` module to interface with the SQL
-databases. You should check that this module is installed by doing:
-
-[source, bash]
---------------------------------------
-$ ls -l usr/lib64/freeradius/rlm_sql*
---------------------------------------
-
-(Or, the directory wherever the FreeRADIUS libraries were installed.)
-
-You should see not only files like "rlm_sql.so", but also
-"rlm_sql_mysql.so", or "rlm_sql_sqlite.so". If you do not see
-"rlm_sql.so", or you do not see the sub-module which interfaces with
-your SQL server, you will have to install it now. You may do this by
-going to the rlm_sql subdirectory, and building the module:
-
-[source, bash]
-------------------------
-$ cd freeradius-server/src/modules/rlm_sql
-$ ./configure
-$ make
-$ make install
-------------------------
-
-This exercise has insufficient room to describe how to debug any
-configuration, build, or installation problems with the SQL drivers. For
-the remainder of this exercise, we will assume that the driver is
-installed in the appropriate library directory.
+----
 
 Once you have verified that the SQL driver exists, have enabled the module
 by creating a symlink from `mods-available/sql` to
