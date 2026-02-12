@@ -376,8 +376,8 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 
 	/* Maximum-Msg-Size */
 	vp = fr_pair_find_by_da(vps, NULL, attr_dhcp_dhcp_maximum_msg_size);
-	if (vp && (vp->vp_uint32 > mms)) {
-		mms = vp->vp_uint32;
+	if (vp && (vp->vp_uint16 > mms)) {
+		mms = vp->vp_uint16;
 
 		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
 	}
