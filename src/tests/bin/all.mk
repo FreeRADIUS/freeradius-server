@@ -3,6 +3,7 @@ TEST	:= test.bin
 FILES	:= \
 	atomic_queue_test 	\
 	control_test		\
+	message_set_test	\
 	radclient		\
 	radict 			\
 	radmin			\
@@ -16,7 +17,6 @@ FILES	:= \
 	unit_test_module
 
 #	dhcpclient		\
-#	message_set_test	\
 #	radmin			\
 #	radsniff 		\
 #	radsnmp 		\
