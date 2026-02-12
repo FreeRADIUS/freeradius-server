@@ -257,7 +257,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	if (data_len > MAX_PACKET_SIZE) {
-		fr_strerror_printf("DHCP packet is too large (%zx > %d)", data_len, MAX_PACKET_SIZE);
+		fr_strerror_printf("DHCP packet is too large (%zd > %d)", data_len, MAX_PACKET_SIZE);
 		return false;
 	}
 
