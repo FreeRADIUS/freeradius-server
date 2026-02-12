@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 {
 	int			c;
 	int			i, start, end, ret;
-	fr_message_set_t	*ms;
+	fr_message_set_t	*ms, *ms2;
 	uint32_t		seed;
 
 	TALLOC_CTX		*autofree = talloc_autofree_context();
@@ -384,6 +384,22 @@ int main(int argc, char *argv[])
 	 */
 	ret = fr_message_set_messages_used(ms);
 	fr_assert(ret == 0);
+
+	/*
+	 *	Allocate a message set with small initial ring buffer size, but allowing for "unlimited" size.
+	 */
+	ms2 = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE / 4, true);
+	if (!ms2) {
+		fprintf(stderr, "Failed creating message set\n");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Use the new message set - the allocations will be beyond the origial ring buffer size.
+	 */
+	alloc_blocks(ms2, &seed, &start, &end);
+	free_blocks(ms2, &seed, &start, &end);
+	fr_message_set_gc(ms2);
 
 	return ret;
 }
