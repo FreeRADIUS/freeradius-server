@@ -218,7 +218,7 @@ static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair
 	}
 }
 
-/** Keep a copy of some attributes to keep them from being tamptered with
+/** Keep a copy of some attributes to keep them from being tampered with
  *
  */
 static inline CC_HINT(always_inline)
