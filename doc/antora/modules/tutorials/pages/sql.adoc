@@ -182,6 +182,66 @@ sql - [3] - Connection established
 Ready to process requests
 ----
 
+== Step 4 — Add a test user directly into the database (MySQL)
+
+Since we are using MySQL, you will connect to the database server using the `mysql` command-line client.
+
+First, make sure you can connect to your MySQL server with the credentials you put in `mods-available/sql`:
+
+- server   = "127.0.0.1"
+- login    = "radius"
+- password = "your_password_here"
+- radius_db = "radius"
+
+Test the connection manually before proceeding:
+
+[source,bash]
+----
+$ mysql -h 127.0.0.1 -u radius -p
+----
+
+Enter the password when prompted.
+
+Now add the test user.
+
+[source,bash]
+----
+USE radius;
+
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
+
+INSERT INTO radreply (username, attribute, op, value)
+VALUES ('alice', 'Reply-Message', '+', 'Hello! You authenticated via the SQL database.');
+
+-- Optional: confirm the rows were inserted
+SELECT * FROM radcheck WHERE username = 'alice';
+SELECT * FROM radreply WHERE username = 'alice';
+----
+
+These two `INSERT` statements are the direct SQL equivalent of the following classic `authorize` file entry:
+
+[source,text]
+----
+mysql> SELECT * FROM radcheck WHERE username = 'alice';
++----+----------+--------------------+----+------------+
+| id | username | attribute          | op | value      |
++----+----------+--------------------+----+------------+
+|  1 | alice    | Cleartext-Password | := | hello      |
++----+----------+--------------------+----+------------+
+1 row in set (0.00 sec)
+
+mysql> SELECT * FROM radreply WHERE username = 'alice';
++----+----------+---------------+----+------------------------------------------------+
+| id | username | attribute     | op | value                                          |
++----+----------+---------------+----+------------------------------------------------+
+|  1 | alice    | Reply-Message | := | Hello! You authenticated via the SQL database. |
++----+----------+---------------+----+------------------------------------------------+
+1 row in set (0.00 sec)
+----
+
+If you see the rows appear in the `SELECT` output, the test user is correctly stored in the database.
+
 == Questions
 
 1.  Why is it important to test SQL connectivity, independently of
