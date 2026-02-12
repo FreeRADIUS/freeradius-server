@@ -90,10 +90,10 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 
 		m = fr_message_reserve(ms, reserve_size);
-		fr_assert(m != NULL);
+		if (m == NULL) fr_exit_now(EXIT_FAILURE);
 
 		messages[index] = (fr_test_t *) fr_message_alloc(ms, m, hash);
-		fr_assert(messages[index] == (void *) m);
+		if (messages[index] != (void *) m) fr_exit_now(EXIT_FAILURE);
 
 		if (touch_memory) {
 			size_t j;
@@ -108,7 +108,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
-		fr_assert(m->status == FR_MESSAGE_USED);
+		if (m->status != FR_MESSAGE_USED) fr_exit_now(EXIT_FAILURE);
 
 		used += hash;
 //		fr_assert(fr_ring_buffer_used(rb) == used);
@@ -134,14 +134,11 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 
 		m = &messages[index]->m;
 
-		fr_assert(m->status == FR_MESSAGE_USED);
+		if(m->status != FR_MESSAGE_USED) fr_exit_now(EXIT_FAILURE);
 
 		ret = fr_message_done(m);
-#ifndef NDEBUG
-		fr_assert(ret == 0);
-#else
+
 		if (ret != 0) fr_exit_now(EXIT_FAILURE);
-#endif
 
 		used -= array[index];
 
@@ -344,10 +341,10 @@ int main(int argc, char *argv[])
 	my_alloc_size = end - start;
 	free_blocks(ms, &seed, &start, &end);
 
-	fr_assert(used == 0);
+	if (used != 0) fr_exit_now(EXIT_FAILURE);
 
 	for (i = 0; i < MY_ARRAY_SIZE; i++) {
-		fr_assert(messages[i] == NULL);
+		if (messages[i] != NULL) fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (debug_lvl) {
