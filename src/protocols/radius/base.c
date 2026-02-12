@@ -1274,33 +1274,33 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	if (da->parent->type == FR_TYPE_STRUCT) {
 		if (flags->extended) {
-			fr_strerror_const("Attributes of type 'extended' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'extended' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
 		if (flags->long_extended) {
-			fr_strerror_const("Attributes of type 'long_extended' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'long_extended' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
 
 		if (flags->concat) {
-			fr_strerror_const("Attributes of type 'concat' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'concat' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
 		if (flags->has_tag) {
-			fr_strerror_const("Attributes of type 'concat' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'tag' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
 		if (flags->abinary) {
-			fr_strerror_const("Attributes of type 'abinary' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'abinary' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
 		if (flags->encrypt > 0) {
-			fr_strerror_const("Attributes of type 'encrypt' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes with 'encrypt' flag cannot be used inside of a 'struct'");
 			return false;
 		}
 
