@@ -195,11 +195,7 @@ static ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, fr_radius_d
 	int		i;
 	size_t		n;
 
-	/*
-	 *	The RFC's say that the maximum is 128, but where we
-	 *	come from, we don't need limits.
-	 */
-	if (pwlen > RADIUS_MAX_PASS_LENGTH) pwlen = RADIUS_MAX_PASS_LENGTH;
+	fr_assert(pwlen <= RADIUS_MAX_STRING_LENGTH);
 
 	/*
 	 *	Catch idiots.
@@ -1491,7 +1487,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_dict_attr_t const	*child;
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
-	uint8_t			buffer[256];
+	uint8_t			buffer[256]; /* must be multiple of 16 */
 	fr_radius_attr_flags_encrypt_t encrypt;
 	fr_radius_decode_ctx_t *packet_ctx = decode_ctx;
 
@@ -1615,6 +1611,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	encrypt = fr_radius_flag_encrypted(parent);
+
 	/*
 	 *	Decrypt the attribute.
 	 */
@@ -1638,7 +1635,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			fr_radius_decode_password((char *)buffer, attr_len, packet_ctx);
-			buffer[253] = '\0';
 
 			/*
 			 *	MS-CHAP-MPPE-Keys are 24 octets, and
