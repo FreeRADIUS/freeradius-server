@@ -99,7 +99,7 @@ encode-pair Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 match Tunnel-Password too long
 
 returned
-match -254
+match -253
 
 count
 match 65

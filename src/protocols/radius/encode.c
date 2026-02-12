@@ -416,11 +416,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	If the first byte of the string value looks like a
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
+	 *
+	 *	And for Tunnel-Password, we always encode a tag byte.
 	 */
 	if ((vp->vp_type == FR_TYPE_STRING) && fr_radius_flag_has_tag(vp->da)) {
 		if (packet_ctx->tag) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)packet_ctx->tag);
-		} else if (TAG_VALID(vp->vp_strvalue[0])) {
+		} else if (TAG_VALID(vp->vp_strvalue[0]) ||
+			   (fr_radius_flag_encrypted(da) == RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x00);
 		}
 	}
@@ -523,9 +526,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		break;
 
 	case RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD:
-	{
-		bool has_tag = fr_radius_flag_has_tag(vp->da);
-
 		fr_assert(packet_ctx->code < FR_RADIUS_CODE_MAX);
 		if (!allow_tunnel_passwords[packet_ctx->code]) {
 			fr_strerror_printf("Attributes with 'encrypt=Tunnel-Password' set cannot go into %s.",
@@ -533,33 +533,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			goto return_0;
 		}
 
-		/*
-		 *	Always encode the tag even if it's zero.
-		 *
-		 *	The Tunnel-Password uses 2 salt fields which
-		 *	MAY have any value.  As a result, we always
-		 *	encode a tag.  If we would omit the tag, then
-		 *	perhaps one of the salt fields could be
-		 *	mistaken for the tag.
-		 */
-		if (has_tag) fr_dbuff_advance(&work_dbuff, 1);
-
 		slen = encode_tunnel_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
 		if (slen < 0) {
 			fr_strerror_printf("%s too long", vp->da->name);
-			return slen - has_tag;
+			return slen;
 		}
 
-		/*
-		 *	Do this after so we don't mess up the input
-		 *	value.
-		 */
-		if (has_tag) {
-			fr_dbuff_set_to_start(&value_start);
-			fr_dbuff_in(&value_start, (uint8_t) 0x00);
-		}
 		encrypted = true;
-	}
 		break;
 
 	/*
