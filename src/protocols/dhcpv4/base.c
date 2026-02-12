@@ -261,7 +261,7 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 		return false;
 	}
 
-	if (data[1] > 1) {
+	if (data[1] != 1) {
 		fr_strerror_printf("DHCP can only process ethernet requests, not type %02x", data[1]);
 		return false;
 	}
