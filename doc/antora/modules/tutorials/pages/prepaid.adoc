@@ -1,15 +1,14 @@
 = A simple pre-paid example
 
-include::ROOT:partial$v3_warning.adoc[]
-
-
 *Goal:* To implement a simple "prepaid" functionality in the server.
 
 *Time:* 15-25 minutes
 
 *Files:*
 
-- `mods-available/counter`
+- `mods-enabled/sqlcounter`
+- `sites-enabled/default`
+- `mods-config/files/authorize`
 
 Many system administrators wish to implement "prepaid" billing for
 their systems. In this exercise, we will configure the server to use a
