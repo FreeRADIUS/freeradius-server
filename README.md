@@ -92,7 +92,7 @@ Do NOT post the configuration files to the mailing list.  They're not
 useful.  Instead, post the output of `radiusd -X`.  We really cannot
 emphasize that enough.
 
-DO post a clear description ofwhat the problem is.  Empty questions
+DO post a clear description of what the problem is.  Empty questions
 will not make you friends.  e.g. "I changed things and now it doesn't
 work.  What do I do to fix it?"
 
