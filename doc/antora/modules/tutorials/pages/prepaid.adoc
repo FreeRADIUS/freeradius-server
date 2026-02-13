@@ -10,10 +10,9 @@
 - `sites-enabled/default`
 - `mods-config/files/authorize`
 
-Many system administrators wish to implement "prepaid" billing for
-their systems. In this exercise, we will configure the server to use a
-simple "prepaid" scheme, wherein all users will be permitted to log in
-for only one hour a day.
+== Overview
+
+Many system administrators wish to implement `prepaid` billing for their systems. In this exercise, we will configure the server to use a simple `prepaid` scheme, wherein all users will be permitted to log in for only one hour a day using the `sqlcounter` module.
 
 Read `mods-available/counter` and look for the `counter daily` instance
 The documentation for the module consists solely of the comments in
