@@ -16,14 +16,16 @@ jobs:
   pre-test:
     runs-on: ubuntu-latest
     outputs:
-      #selfhosted: 0
-      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
+      selfhosted: 0
+      #selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
     steps:
       - run: echo "Pre-test job; checking if using self-hosted runners"
 
+  # Job only runs on GitHub-hosted runners
   test-5hs-autoaccept:
     needs: pre-test
-    runs-on: ${{ needs.pre-test.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
+    if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
 
     env:
       MULTI_SERVER_ENV_DOCKER_BUILD_OS: ubuntu24
@@ -71,7 +73,6 @@ jobs:
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
       - name: Build Docker image for multi-server test environment
-        if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
         run: |
           ./configure
           make docker.${MULTI_SERVER_ENV_DOCKER_BUILD_OS}.build
@@ -82,16 +83,90 @@ jobs:
           # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
           docker tag freeradius4/${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
 
-      - name: Get pre-built Docker image for self-hosted runner test
-        if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
+      - name: Run test-5hs-autoaccept test
         run: |
-          docker pull docker.internal.networkradius.com/self-hosted
+          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
+            echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
+            exit 1
+          fi
+          make -f src/tests/multi-server/all.mk test-5hs-autoaccept
+
+      - name: Verify test results
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "============ ${MULTI_SERVER_TEST_LOG} ============"
+          cat "${MULTI_SERVER_TEST_LOG}"
+
+          if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
+            echo "TEST FAILED: Found [Failed] in log"
+            grep '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"
+            exit 1
+          fi
+
+          if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"; then
+            echo "TEST FAILED: Found Failures > 0 in log"
+            grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"
+            exit 1
+          fi
+
+          log="${MULTI_SERVER_TEST_LOG}"
+          if awk '
+            BEGIN { found=0; n1=0; n2=0; line="" }
+            index($0,"Matched:") {
+              orig=$0
+              s=$0
+              gsub(/[[:space:]]/, "", s)
+              sub(/^.*Matched:/, "", s)
+              sub(/\(.*/, "", s)
+              n = split(s, parts, "/")
+              if (n == 2) {
+                a = parts[1] + 0
+                b = parts[2] + 0
+                if (a > 0 && a == b) { found=1; n1=a; n2=b; line=orig }
+              }
+            }
+            END {
+              if (found) { printf "MATCH: %d / %d\nMatched line: %s\n", n1, n2, line; exit 0 }
+              exit 1
+            }
+          ' "$log"
+          then
+            : # PASS
+          else
+            echo "TEST FAILED: No Matched line found with equal non-zero counts"
+            exit 1
+          fi
+
+  # Job only runs on self-hosted runners
+  test-5hs-autoaccept-selfhosted:
+    needs: pre-test
+    runs-on: self-hosted
+    if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
+
+    env:
+      MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
+
+    steps:
+
+      #  Need git installed for checkout to behave normally
+      - name: Install checkout prerequisites
+        run: apt-get update && apt-get install -y --no-install-recommends git git-lfs ca-certificates
+
+      # Checkout, but defer pulling LFS objects until we've restored the cache
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Get pre-built Docker image for self-hosted runner test
+        run: |
+          docker pull docker.internal.networkradius.com/self-hosted-ubuntu24
 
           # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
-          docker tag docker.internal.networkradius.com/self-hosted freeradius-build:latest
+          docker tag docker.internal.networkradius.com/self-hosted-ubuntu24 freeradius-build:latest
 
       - name: Run test-5hs-autoaccept test
-        if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
         run: |
           if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
             echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
