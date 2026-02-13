@@ -36,8 +36,7 @@
  * @param[in] encode_value	Function to perform encoding of a single value.
  * @return
  *	- >0 length of data encoded.
- *	- 0 if we ran out of space.
- *	- < 0 on error.
+ *	- <= 0 on error.
  */
 ssize_t fr_pair_array_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, int depth,
 				 fr_dcursor_t *cursor, void *encode_ctx, fr_encode_dbuff_t encode_value)
@@ -56,8 +55,11 @@ ssize_t fr_pair_array_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, int
 	while (fr_dbuff_extend(&work_dbuff)) {
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
 
+		/*
+		 *	Encoding "no data" in an array doesn't make sense.
+		 */
 		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (slen < 0) return slen;
+		if (slen <= 0) return slen;
 
 		fr_dbuff_set(&work_dbuff, &element_dbuff);
 
