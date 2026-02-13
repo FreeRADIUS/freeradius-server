@@ -597,9 +597,8 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
  * @param[in] value	to encode.
  * @param[in] lb	label tracking data structure.
  * @return
- *	- >0 the number of bytes written to the dbuff
- *	- 0 could not encode anything, an error has occurred.
- *	- <0 the number of bytes the dbuff should have had, instead of "remaining".
+ *	- >=0 the number of bytes written to the dbuff
+ *	- <0 error
  */
 ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value, fr_dns_labels_t *lb)
 {
@@ -607,11 +606,9 @@ ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, f
 	size_t			need = 0;
 
 	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value, lb);
-	if (slen < 0) return 0;
+	if (slen < 0) return -1;
 
-	if (slen == 0) return -need;
-
-	fr_dbuff_advance(dbuff, (size_t)slen);
+	fr_dbuff_advance(dbuff, (size_t) slen);
 	return slen;
 }
 
