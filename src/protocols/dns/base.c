@@ -404,6 +404,11 @@ next:
 		return false;
 	}
 
+	/*
+	 *	@todo - save fr_dns_marker[] data, so that it can be used by fr_dns_labels_get().  This helps
+	 *	to reduce redundant work.
+	 */
+
 	DECODE_FAIL(NONE);
 	return true;
 }

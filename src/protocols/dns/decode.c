@@ -186,9 +186,6 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if ((da->type == FR_TYPE_STRING) && fr_dns_flag_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, packet_ctx->packet, data + 4, len, packet_ctx->lb, true);
 
-	} else if (da->flags.array) {
-		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
-
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}
@@ -363,7 +360,7 @@ fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
 	{ L("packet is larger than 65535"),			FR_DNS_DECODE_FAIL_MAX_LENGTH_PACKET	},
 	{ L("expected query / answer, got answer / query"),	FR_DNS_DECODE_FAIL_UNEXPECTED		},
 	{ L("no 'questions' in query packet"),			FR_DNS_DECODE_FAIL_NO_QUESTIONS	},
-	{ L("unexprected answers in query packet"),		FR_DNS_DECODE_FAIL_ANSWERS_IN_QUESTION	},
+	{ L("unexpected answers in query packet"),		FR_DNS_DECODE_FAIL_ANSWERS_IN_QUESTION	},
 	{ L("unexpected NS records in query packet"),		FR_DNS_DECODE_FAIL_NS_IN_QUESTION	},
 	{ L("invalid label for resource record"),	       	FR_DNS_DECODE_FAIL_INVALID_RR_LABEL	},
 	{ L("missing resource record header"),			FR_DNS_DECODE_FAIL_MISSING_RR_HEADER	},

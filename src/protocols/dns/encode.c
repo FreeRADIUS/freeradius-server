@@ -454,7 +454,7 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	ssize_t			slen;
 	uint8_t			*packet;
 	fr_pair_t		*vp;
-	fr_dcursor_t		cursor, child_cursor;
+	fr_dcursor_t		cursor;
 	fr_da_stack_t		da_stack;
 
 	packet = fr_dbuff_current(&work_dbuff);
@@ -474,7 +474,6 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	/*
 	 *	Encode the header.
 	 */
-	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	fr_proto_da_stack_build(&da_stack, attr_dns_packet);
 
 	slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &cursor, packet_ctx, encode_value, NULL);
