@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include "dns.h"
 #include "attrs.h"
+#include <freeradius-devel/protocol/dns/rfc1034.h>
 
 static uint32_t instance_count = 0;
 static bool	instantiated = false;
@@ -108,6 +109,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 {
 	uint8_t const *p, *end;
 	int qdcount, count, expected;
+	uint8_t opcode;
 
 	if (packet_len <= DNS_HDR_LEN) {
 		DECODE_FAIL(MIN_LENGTH_PACKET);
@@ -129,7 +131,19 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 
 	qdcount = fr_nbo_to_uint16(packet + 4);
 
-	if (query) {
+	opcode = (packet[2] >> 3) & 0x0f;
+
+	/*
+	 *	RFC 2136 (DNS update) defines the four "count" fields to have different meanings:
+	 *
+	 *	ZOCOUNT The number of RRs in the Zone Section.
+	 *	PRCOUNT The number of RRs in the Prerequisite Section.
+	 *	UPCOUNT The number of RRs in the Update Section.
+	 *	ADCOUNT The number of RRs in the Additional Data Section.
+	 *
+	 *	@todo - we can likely do more validation checks on input packets.
+	 */
+	if (query && (opcode != FR_OPCODE_VALUE_UPDATE)) {
 		/*
 		 *	There should be at least one query, and no
 		 *	replies in the query.
@@ -142,10 +156,12 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			DECODE_FAIL(NO_QUESTIONS);
 			return false;
 		}
+
 		if (fr_nbo_to_uint16(packet + 6) != 0) {
 			DECODE_FAIL(ANSWERS_IN_QUESTION);
 			return false;
 		}
+
 		if (fr_nbo_to_uint16(packet + 8) != 0) {
 			DECODE_FAIL(NS_IN_QUESTION);
 			return false;
