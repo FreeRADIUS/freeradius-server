@@ -6,7 +6,6 @@ on:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
-    branches: [ "loadgen-5hs-tests" ]
   pull_request:
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
