@@ -143,11 +143,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			return false;
 		}
 		if (fr_nbo_to_uint16(packet + 6) != 0) {
-			DECODE_FAIL(NS_IN_QUESTION);
+			DECODE_FAIL(ANSWERS_IN_QUESTION);
 			return false;
 		}
 		if (fr_nbo_to_uint16(packet + 8) != 0) {
-			DECODE_FAIL(ANSWERS_IN_QUESTION);
+			DECODE_FAIL(NS_IN_QUESTION);
 			return false;
 		}
 		// additional records can exist!
