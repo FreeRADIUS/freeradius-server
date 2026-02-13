@@ -23,7 +23,7 @@
  *
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(dhcp_h, "$Id$")
+RCSIDH(protocols_dns_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {

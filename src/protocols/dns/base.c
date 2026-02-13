@@ -69,6 +69,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_QUERY] = "Query",
 	[FR_DNS_INVERSE_QUERY] = "Inverse-Query",
 	[FR_DNS_STATUS] = "Status",
+	[FR_DNS_NOTIFY] = "Notify",
 	[FR_DNS_UPDATE] = "Update",
 	[FR_DNS_STATEFUL_OPERATION] = "Stateful-Operation",
 };
@@ -284,7 +285,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			}
 
 			/*
-			 *	0b10 and 0b10 are forbidden
+			 *	0b01 and 0b10 are forbidden
 			 */
 			if (*p > 63) {
 				DECODE_FAIL(INVALID_POINTER);

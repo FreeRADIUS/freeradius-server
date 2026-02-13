@@ -174,7 +174,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_IPV6_PREFIX:
-		fr_strerror_const("invalid data type - ipv4prefix");
+		fr_strerror_const("invalid data type - ipv6prefix");
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_BOOL:
