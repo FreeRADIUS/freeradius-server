@@ -56,6 +56,141 @@ sqlcounter dailycounter {
 
 The `sql_module_instance` defines which SQL connection to use, and `dialect = ${modules.sql.dialect}` ensures the correct database type is applied. The `counter_name` is used for identification and logging, while `check_name` specifies the control attribute that holds the usage limit (e.g., Max-Daily-Session). The `reply_name` defines the reply attribute (usually Session-Timeout) sent to the NAS. The `auto_extend` option allows timeout extension until the next reset period. The `key` identifies the lookup attribute (typically User-Name), `reply_message_name` defines the reply message attribute, and `reset` determines when the counter is cleared (daily, weekly, monthly, or never).
 
+== Exercise Steps
+
+=== Add the user to the database
+
+[source,sql]
+----
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
+----
+
+=== Set User Limits
+
+Edit `mods-config/files/authorize` and add following entry to the file :
+
+[source,text]
+----
+DEFAULT &control.Max-Daily-Session := 3600
+----
+
+=== Enable SQLCounter dailycounter
+
+Edit `etc/sites-enabled/default` and add the `dailycounter` module to the `recv Access-Request` section:
+
+[source,unlang]
+----
+recv Access-Request {
+    preprocess
+    chap
+    mschap
+    digest
+    suffix
+    eap
+    files
+    sql
+    dailycounter        # Add this line
+    pap
+}
+----
+
+=== Enabling dailycounter in the Accounting Start Section
+
+Verify accounting start is enabled in `etc/sites-enabled/default`:
+
+[source,unlang]
+----
+accounting Start {
+        -sql
+        dailycounter   # Add this line
+}
+----
+
+=== Enabling dailycounter in the Accounting Stop Section
+
+Verify accounting stop is enabled in `etc/sites-enabled/default`:
+
+[source,unlang]
+----
+accounting Stop {
+        -sql
+        dailycounter   # Add this line
+}
+----
+
+=== Test the Configuration
+
+Start FreeRADIUS in debug mode:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+=== Send Authentication Request
+
+From another terminal, test user authentication:
+
+[source,bash]
+----
+echo 'User-Name = "alice", CHAP-Password = "hello", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Expected Output:
+
+[source,text]
+----
+Received Access-Accept Id 48 from 127.0.0.1:1812 to 0.0.0.0:53031 via lo length 99
+        Message-Authenticator = 0xc8b4a4caa88f7b70217c9ae1d6c91c98
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        Session-Timeout = 3600
+        User-Name = "alice"
+----
+
+Note the `Session-Timeout = 3600` attribute in the response.
+
+=== Simulate Usage
+
+[source,bash]
+----
+echo 'User-Name = "alice", Acct-Status-Type = Start, Acct-Session-Id = "01020304", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+Wait 5-10 seconds to simulate usage.
+
+=== Send Accounting Stop
+
+Send an Accounting-Stop to record usage:
+
+[source,bash]
+----
+echo "User-Name = alice, Acct-Session-Id = 'test-session-1', NAS-IP-Address = 127.0.0.1, NAS-Port = 501, Acct-Status-Type = Stop, Acct-Session-Time = 10" | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+=== Test Reduced Session Timeout
+
+Authenticate the user again:
+
+[source,bash]
+----
+echo 'User-Name = "alice", CHAP-Password = "hello", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Expected Output:
+
+[source,text]
+----
+Received Access-Accept Id 167 from 127.0.0.1:1812 to 0.0.0.0:57205 via lo length 99
+        Message-Authenticator = 0x0e96f55860e0af123286fcb9ccdfd6db
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        Session-Timeout = 3590
+        User-Name = "alice"
+----
+
+The Session-Timeout should now be approximately 3590 seconds (3600 - 10 used).
+
+
 == Questions
 
 1.  How would you configure the server to obtain the daily access limits
