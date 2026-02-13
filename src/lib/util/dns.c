@@ -372,7 +372,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 			 *	which matches.
 			 */
 			ptr = q + *q + 1;
-			if (ptr > end) return false;
+			if (ptr >= end) return false;
 
 			/*
 			 *	Label lengths aren't the same, skip
@@ -506,7 +506,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 		 *	buffer.  Check for a match.
 		 */
 		ptr = q + *q + 1;
-		if (ptr > end) return compressed;
+		if (ptr >= end) return compressed;
 
 		/*
 		 *	Label lengths aren't the same, skip it.
