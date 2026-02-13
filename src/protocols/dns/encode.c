@@ -420,6 +420,7 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr);
 	if (!vp) {
 		FR_PROTO_TRACE("      %s not found in list", attr->name);
+		counter[0] = counter[1] = 0;
 		return 0;
 	}
 
