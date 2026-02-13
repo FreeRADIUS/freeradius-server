@@ -130,6 +130,15 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		return false;
 	}
 
+	/*
+	 *	@todo - the truncation rules mean that the various counts below are wrong, and the caller
+	 *	should retry over TCP.  This is really an indication to us, that we need to fully implement
+	 *	the truncation checks.
+	 */
+	if ((packet[2] & 0x02) != 0) {
+		DECODE_FAIL(TRUNCATED);
+		return false;
+	}
 	qdcount = fr_nbo_to_uint16(packet + 4);
 
 	opcode = (packet[2] >> 3) & 0x0f;

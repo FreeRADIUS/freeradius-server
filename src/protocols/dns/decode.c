@@ -382,6 +382,7 @@ fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
 	{ L("query record header is missing"),			FR_DNS_DECODE_FAIL_MISSING_QD_HEADER		},
 	{ L("missing TLV header in OPT RR"),			FR_DNS_DECODE_FAIL_MISSING_TLV_HEADER		},
 	{ L("TLV overflows enclosing RR"),			FR_DNS_DECODE_FAIL_TLV_OVERFLOWS_RR		},
+	{ L("TC bit indicates truncation"),			FR_DNS_DECODE_FAIL_TRUNCATED		},
 };
 size_t fr_dns_reason_fail_table_len = NUM_ELEMENTS(fr_dns_reason_fail_table);
 
