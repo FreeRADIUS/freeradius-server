@@ -2,10 +2,12 @@ name: Multi-Server CI Tests
 
 on:
   push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
     branches: [ "loadgen-5hs-tests" ]
-
   pull_request:
-    branches: [ "loadgen-5hs-tests" ]
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
       - 'src/tests/multi-server/**'
@@ -16,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       #selfhosted: 0
-      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS' || github.repository_owner == 'marc-casavant') && '1' || '0' }}
+      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
     steps:
       - run: echo "Pre-test job; checking if using self-hosted runners"
 
