@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+
+BEGIN Resource-Record.RDATA
+
+ATTRIBUTE	SRV					33	struct length=uint16
+MEMBER		Priority				uint16
+MEMBER		Weight					uint16
+MEMBER		Port					uint16
+MEMBER		Target					string	dns_label
+
+END Resource-Record.RDATA
