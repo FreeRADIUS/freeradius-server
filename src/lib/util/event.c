@@ -547,7 +547,7 @@ static int8_t fr_event_fd_cmp(void const *one, void const *two)
  */
 uint64_t fr_event_list_num_fds(fr_event_list_t *el)
 {
-	if (unlikely(!el)) return -1;
+	if (unlikely(!el)) return 0;
 
 	return fr_rb_num_elements(el->fds);
 }
@@ -559,7 +559,7 @@ uint64_t fr_event_list_num_fds(fr_event_list_t *el)
  */
 uint64_t fr_event_list_num_timers(fr_event_list_t *el)
 {
-	if (unlikely(!el)) return -1;
+	if (unlikely(!el)) return 0;
 
 	return fr_timer_list_num_events(el->pub.tl);
 }
@@ -699,7 +699,7 @@ static ssize_t fr_event_build_evset(
 			map++;
 		} while (1);
 
-		if (out > end) {
+		if (out >= end) {
 			fr_strerror_const("Out of memory to store kevent filters");
 			return -1;
 		}
