@@ -189,7 +189,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		goto encode_int;
 
 	case FR_TYPE_UINT32:
-		data = vb->vb_uint64;
+		data = vb->vb_uint32;
 		goto encode_int;
 
 	case FR_TYPE_UINT64:
@@ -215,7 +215,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		neg = vb->vb_int64;
 	encode_neg:
 		if (neg >= 0) {
-			type = CBOR_NEGATIVE;
+			type = CBOR_INTEGER;
 			data = neg;
 			goto encode_int;
 		}
@@ -356,7 +356,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 		if (vb->vb_ip.scope_id == 0) break;
 
-		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, (uint8_t) 32);
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, (uint8_t) 128);
 		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.scope_id);
@@ -438,16 +438,12 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 	case FR_TYPE_FLOAT32:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | CBOR_4_BYTE));
-
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_float32, 4);
-		if (slen <= 0) return_slen;
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *) &vb->vb_float32, sizeof(vb->vb_float32));
 		break;
 
 	case FR_TYPE_FLOAT64:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | CBOR_8_BYTE));
-
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_float64, 8);
-		if (slen <= 0) return_slen;
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *) &vb->vb_float64, sizeof(vb->vb_float64));
 		break;
 
 	case FR_TYPE_GROUP:
@@ -527,6 +523,7 @@ static ssize_t cbor_decode_integer(uint64_t *out, uint8_t info, fr_dbuff_t *dbuf
 	/*
 	 *	28 and greater are invalid according to the RFCs.
 	 */
+	if (info > CBOR_8_BYTE) return -1;
 
 done:
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -701,7 +698,7 @@ static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	 */
 	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ipv6addr,
 					 sizeof(vb->vb_ipv6addr),
-					 sizeof(vb->vb_ipv6addr), dbuff);
+					 sizeof(vb->vb_ipv6addr), &work_dbuff);
 
 	if (slen <= 0) return_slen;
 
@@ -872,7 +869,7 @@ static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_d
 	ssize_t slen;
 	int64_t neg;
 
-	slen = cbor_decode_int64(&neg, dbuff, FR_TYPE_DATE);
+	slen = cbor_decode_int64(&neg, &work_dbuff, FR_TYPE_DATE);
 	if (slen <= 0) return_slen;
 
 	vb->vb_date = fr_unix_time_from_sec(neg);
@@ -1556,7 +1553,7 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 		return FR_TYPE_UINT64;
 
 	case CBOR_NEGATIVE:
-		return FR_TYPE_UINT64;
+		return FR_TYPE_INT64;
 
 	case CBOR_STRING:
 		return FR_TYPE_STRING;
