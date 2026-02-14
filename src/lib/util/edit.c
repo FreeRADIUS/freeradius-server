@@ -671,7 +671,7 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
 	if (!el) {
 		if (fr_pair_insert_after(list, to_replace, vp) < 0) return -1;
 		fr_pair_delete(list, to_replace);
-		return -1;
+		return 0;
 	}
 
 	/*
@@ -775,8 +775,6 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 	}
 
 	fr_pair_list_free(&el->deleted_pairs);
-
-	talloc_free(el);
 
 	return 0;
 }
