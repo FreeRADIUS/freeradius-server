@@ -262,7 +262,7 @@ int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b
 		/*
 		 *	Order known attributes before unknown / raw ones.
 		 */
-		ret = (b->flags.is_unknown | b->flags.is_raw) - (a->flags.is_unknown | a->flags.is_raw);
+		ret = CMP((a->flags.is_unknown | a->flags.is_raw), (b->flags.is_unknown | b->flags.is_raw));
 		if (ret != 0) return 0;
 
 		return CMP(a->attr, b->attr);
@@ -2932,10 +2932,10 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 	INTERNAL_IF_NULL(dict, NULL);
 
-	if (!name) return 0;
+	if (!name) return NULL;
 
 	found = fr_hash_table_find(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
-	if (!found) return 0;
+	if (!found) return NULL;
 
 	return found;
 }
@@ -3571,7 +3571,7 @@ fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned in
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
-	if ((attr & 0xff) > talloc_array_length(children)) return NULL;
+	if ((attr & 0xff) >= talloc_array_length(children)) return NULL;
 
 	bin = children[attr & 0xff];
 	for (;;) {
@@ -3902,7 +3902,6 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	 */
 	sym_name = talloc_typed_asprintf(NULL, "libfreeradius_%s_dict_protocol", name);
 	if (unlikely(sym_name == NULL)) {
-		talloc_free(lib_name);
 		goto oom;
 	}
 	talloc_bstr_tolower(sym_name);
