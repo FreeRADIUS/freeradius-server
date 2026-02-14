@@ -284,16 +284,6 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 	h->num_elements--;
 
 	/*
-	 *	If the number of elements in the heap is half
-	 *	what we need, shrink the heap back.
-	 */
-	if ((h->num_elements * 2) < h->size) {
-		unsigned int n_size = ROUND_UP_DIV(h->size, 2);
-
-		if ((n_size > h->min) && (realloc_heap(&h, n_size)) == 0) *hp = h;
-	}
-
-	/*
 	 *	We didn't end up at the last element in the heap.
 	 *	This element has to be re-inserted.
 	 */
@@ -305,6 +295,19 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 		h->p[parent] = h->p[max];
 
 		fr_heap_bubble(h, parent);
+	}
+
+	/*
+	 *	After re-building the heap, check the new size.  If
+	 *	the heap is less than a third full, shrink it by half.
+	 *
+	 *	Note that we don't check for half full, in order to
+	 *	avoid hysteresis around doubling / halving the heap.
+	 */
+	if ((h->num_elements * 3) < h->size) {
+		unsigned int n_size = ROUND_UP_DIV(h->size, 2);
+
+		if ((n_size > h->min) && (realloc_heap(&h, n_size)) == 0) *hp = h;
 	}
 
 	return 0;
