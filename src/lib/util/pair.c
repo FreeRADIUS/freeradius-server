@@ -264,6 +264,7 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 
 	if (unlikely(da->flags.is_unknown)) {
 		fr_strerror_const("Root attribute cannot be unknown");
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -2059,7 +2060,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 		/* Same VP, no point doing expensive checks */
 		if (a_p == b_p) continue;
 
-		ret = (a_p->da < b_p->da) - (a_p->da > b_p->da);
+		ret = CMP(a_p->da, b_p->da);
 		if (ret != 0) return ret;
 
 		switch (a_p->vp_type) {
@@ -2550,7 +2551,7 @@ void fr_pair_value_clear(fr_pair_t *vp)
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_pair_list_empty(&vp->vp_group)) return;
+		if (fr_pair_list_empty(&vp->vp_group)) return;
 
 		while ((child = fr_pair_order_list_pop_tail(&vp->vp_group.order))) {
 			fr_pair_value_clear(child);
@@ -3345,13 +3346,13 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		char data_type_int[10], da_type_int[10];
 
 		snprintf(data_type_int, sizeof(data_type_int), "%u", vp->vp_type);
-		snprintf(da_type_int, sizeof(da_type_int), "%u", vp->vp_type);
+		snprintf(da_type_int, sizeof(da_type_int), "%u", vp->da->type);
 
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t attribute %p \"%s\" "
 				     "data type (%s) does not match da type (%s)",
 				     file, line, vp->da, vp->da->name,
 				     fr_table_str_by_value(fr_type_table, vp->vp_type, data_type_int),
-				     fr_table_str_by_value(fr_type_table, vp->vp_type, da_type_int));
+				     fr_table_str_by_value(fr_type_table, vp->da->type, da_type_int));
 	}
 }
 
