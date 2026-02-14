@@ -34,15 +34,17 @@ RCSID("$Id$")
  * @param[in] now	the current time
  * @return
  *	- true if data was inserted.
- *	- false if data already existed and was not inserted.
+ *	- false if we can't insert it.
  */
 bool fr_rb_expire_insert(fr_rb_expire_t *expire, void *data, fr_time_t now)
 {
 	fr_dlist_t *entry = fr_dlist_item_to_entry(expire->head.offset, data);
 	fr_rb_expire_node_t *re = (fr_rb_expire_node_t *) (((uintptr_t) entry) - offsetof(fr_rb_expire_node_t, entry));
 
+	fr_assert(!fr_rb_node_inline_in_tree(&re->node));
+
 	if (!fr_rb_insert(&expire->tree, data)) {
-		fr_dlist_remove(&expire->head, entry);
+		return false;
 	}
 
 	fr_dlist_insert_tail(&expire->head, data);
@@ -56,6 +58,8 @@ void fr_rb_expire_update(fr_rb_expire_t *expire, void *data, fr_time_t now)
 {
 	fr_dlist_t *entry = fr_dlist_item_to_entry(expire->head.offset, data);
 	fr_rb_expire_node_t *re = (fr_rb_expire_node_t *) (((uintptr_t) entry) - offsetof(fr_rb_expire_node_t, entry));
+
+	fr_assert(fr_rb_node_inline_in_tree(&re->node));
 
 	fr_dlist_remove(&expire->head, data);
 
