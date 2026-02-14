@@ -856,8 +856,8 @@ uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 
  	q = p + size;
 	while (p < q) {
-		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (*p++);
+		hash *= FNV_MAGIC_PRIME;
 	}
 
 	return hash;
@@ -943,8 +943,8 @@ uint64_t fr_hash64_update(void const *data, size_t size, uint64_t hash)
 
  	q = p + size;
 	while (p < q) {
-		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint64_t) (*p++);
+		hash *= FNV_MAGIC_PRIME;
 	}
 
 	return hash;
