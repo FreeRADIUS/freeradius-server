@@ -1376,14 +1376,16 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 	case FR_TYPE_COMBO_IP_ADDR:
 		if (in->vb_ip.af == AF_INET) goto cast_ipv4_addr;
 
-		fr_value_box_init(out, FR_TYPE_IPV4_ADDR, NULL, in->tainted);
+		fr_assert(in->vb_ip.af == AF_INET6);
+		fr_value_box_init(out, FR_TYPE_IPV6_ADDR, NULL, in->tainted);
 		out->vb_ip = in->vb_ip;
 		break;
 
 	case FR_TYPE_COMBO_IP_PREFIX:
 		if (in->vb_ip.af == AF_INET) goto cast_ipv4_prefix;
 
-		fr_value_box_init(out, FR_TYPE_IPV4_PREFIX, NULL, in->tainted);
+		fr_assert(in->vb_ip.af == AF_INET6);
+		fr_value_box_init(out, FR_TYPE_IPV6_PREFIX, NULL, in->tainted);
 		out->vb_ip = in->vb_ip;
 		break;
 
@@ -1448,6 +1450,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 
 	switch (op) {
 	case T_ADD:
+	case T_OR:
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
@@ -1457,7 +1460,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 *	We can only add something to a prefix, and
 		 *	that something has to be a number. The cast
 		 *	operation already ensured that the number is
-		 *	uint32, and is at least vaguely within the
+		 *	uint64, and is at least vaguely within the
 		 *	allowed range.
 		 */
 		if (a->type != FR_TYPE_IPV6_PREFIX) return ERR_INVALID;
@@ -1477,6 +1480,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		/*
 		 *	Add in the relevant low bits.
 		 */
+		memcpy(&dst->vb_ipv6addr, a->vb_ipv6addr, sizeof(dst->vb_ipv6addr));
 		mask = b->vb_uint64;
 		for (i = 15; i >= ((a->vb_ip.prefix + 7) >> 3); i--) {
 			dst->vb_ipv6addr[i] |= mask & 0xff;
@@ -1484,7 +1488,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		}
 
 		dst->vb_ip.af = AF_INET6;
-		dst->vb_ip.prefix = 0;
+		dst->vb_ip.prefix = 128;
 		dst->vb_ip.scope_id = a->vb_ip.scope_id;
 		fr_value_box_safety_copy(dst, a);
 		break;
@@ -1550,7 +1554,7 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 		pb = b->vb_octets;
 		prefix = get_ipv6_prefix(pb);
 
-	} else if (a->type == FR_TYPE_IPV6_ADDR) {
+	} else if (b->type == FR_TYPE_IPV6_ADDR) {
 		pb = (const uint8_t *) &b->vb_ip.addr.v6;
 
 	} else {
