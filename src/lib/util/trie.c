@@ -422,7 +422,7 @@ static void write_chunk(uint8_t *out, int start_bit, int num_bits, uint16_t chun
 	 *	Special-case 1-bit writes.
 	 */
 	if (num_bits == 1) {
-		out[0] &= ~((1 << (7 - start_bit)) - 1);
+		out[0] &= ~(1 << (7 - start_bit));
 		out[0] |= chunk << (7 - start_bit);
 		return;
 	}
@@ -847,7 +847,10 @@ static CC_HINT(nonnull(2)) fr_trie_path_t *trie_path_split(TALLOC_CTX *ctx, fr_t
 	if (!split) return NULL;
 
 	child = fr_trie_path_alloc(ctx, &path->key[0], start_bit + lcp, start_bit + path->bits);
-	if (!child) return NULL;
+	if (!child) {
+		talloc_free(split);
+		return NULL;
+	}
 
 	split->trie = (fr_trie_t *) child;
 	child->trie = (fr_trie_t *) path->trie;
