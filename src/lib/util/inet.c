@@ -1185,13 +1185,13 @@ int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
 		fr_strerror_printf("Failed opening temporary socket for SIOCGIFADDR: %s", fr_syserror(errno));
-	error:
-		close(fd);
 		return -1;
 	}
 	if (ioctl(fd, SIOCGIFADDR, &if_req) < 0) {
 		fr_strerror_printf("Failed determining address for interface %s: %s", name, fr_syserror(errno));
-		goto error;
+	error:
+		close(fd);
+		return -1;
 	}
 
 	/*
