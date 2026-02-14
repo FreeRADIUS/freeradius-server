@@ -654,6 +654,7 @@ char *talloc_bstr_realloc(TALLOC_CTX *ctx, char *in, size_t inlen)
 
 	if (!in) {
 		n = talloc_array(ctx, char, inlen + 1);
+		if (!n) return NULL;
 		n[0] = '\0';
 		return n;
 	}
@@ -983,8 +984,9 @@ TALLOC_CTX *talloc_autofree_context_global(void)
 
 	if (!af) {
 		af = talloc_init_const("global_autofree_context");
-		talloc_set_destructor(af, _autofree_global_destructor);
 		if (unlikely(!af)) return NULL;
+
+		talloc_set_destructor(af, _autofree_global_destructor);
 
 		fr_atexit_global(_autofree_on_exit, af);
 		global_ctx = af;
