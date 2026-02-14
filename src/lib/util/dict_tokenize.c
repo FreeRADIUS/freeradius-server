@@ -268,7 +268,7 @@ int fr_dict_str_to_argv(char *str, char **argv, int max_argc)
 	return argc;
 }
 
-static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
+static bool dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 {
 	int unsigned ret = 0;
 	int base = 10;
@@ -288,7 +288,9 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 		if (*str == '.') break;
 
 		c = memchr(tab, tolower((uint8_t)*str), base);
-		if (!c) return 0;
+		if (!c) return false;
+
+		if (ret >= (UINT_MAX / base)) return false;
 
 		ret *= base;
 		ret += (c - tab);
@@ -296,7 +298,7 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 	}
 
 	*pvalue = ret;
-	return 1;
+	return true;
 }
 
 /** Set a new root dictionary attribute
@@ -1639,7 +1641,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	 */
 	if (da->type == FR_TYPE_UNION) {
 		fr_strerror_const("ATTRIBUTEs of type 'union' can only be defined as a MEMBER of data type 'struct'");
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -1653,7 +1655,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		} else if (da->flags.length != parent->flags.length) {
 			fr_strerror_printf("Invalid length %u for struct, the parent union %s has a different length %u",
 					   da->flags.length, parent->name, parent->flags.length);
-			return -1;
+			goto error;
 		}
 	}
 
