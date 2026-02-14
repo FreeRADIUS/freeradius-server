@@ -773,6 +773,10 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 
 			/*
 			 *	Use constant-time comparisons for secret values.
+			 *
+			 *	@todo - this can leak data about the length of the secret, as the comparison
+			 *	is done only up to the length of the shortest input.  In order to fix this, we
+			 *	would have to do a lot more work.  For now, this is good enough.
 			 */
 			if (a->secret || b->secret) {
 				cmp = fr_digest_cmp(a->datum.ptr, b->datum.ptr, length);
@@ -1391,10 +1395,12 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_UINT32:
+	case FR_TYPE_FLOAT32:	/* same offset and size as uint32 */
 		dst->vb_uint32 = htonl(src->vb_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT64:	/* same offset and size as uint64 */
 		dst->vb_uint64 = htonll(src->vb_uint64);
 		break;
 
@@ -1416,14 +1422,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	case FR_TYPE_TIME_DELTA:
 		dst->vb_time_delta = fr_time_delta_wrap(htonll(fr_time_delta_unwrap(src->vb_time_delta)));
-		break;
-
-	case FR_TYPE_FLOAT32:
-		dst->vb_float32 = htonl((uint32_t)src->vb_float32);
-		break;
-
-	case FR_TYPE_FLOAT64:
-		dst->vb_float64 = htonll((uint64_t)src->vb_float64);
 		break;
 
 	default:
@@ -1778,13 +1776,13 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		} else switch (value->enumv->flags.length) {
 		case 2:
 			if (date > UINT16_MAX) date = UINT16_MAX;
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) date);
 			break;
 
 		date_size4:
 		case 4:
 			if (date > UINT32_MAX) date = UINT32_MAX;
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t) date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) date);
 			break;
 
 		case 8:
@@ -3258,7 +3256,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
 		dst->vb_ip.prefix = src->vb_octets[1];
-		memcpy(&dst->vb_ipv6addr, src->vb_octets, sizeof(dst->vb_ipv6addr));
+		memcpy(&dst->vb_ipv6addr, src->vb_octets + 2, sizeof(dst->vb_ipv6addr));
 		break;
 
 	default:
@@ -3408,11 +3406,11 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->vb_bool = (fpclassify(src->vb_float32) == FP_ZERO);
+		dst->vb_bool = (fpclassify(src->vb_float32) != FP_ZERO);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->vb_bool = (fpclassify(src->vb_float64) == FP_ZERO);
+		dst->vb_bool = (fpclassify(src->vb_float64) != FP_ZERO);
 		break;
 
 	default:
@@ -4362,9 +4360,9 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		 *	of talloc hierarchy.
 		 */
 		{
-			fr_value_box_t	*vb = NULL;
+			fr_value_box_t *vb;
 
-			while ((vb = fr_value_box_list_next(&data->vb_group, vb))) {
+			while ((vb = fr_value_box_list_pop_head(&data->vb_group)) != NULL) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
@@ -4672,6 +4670,7 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 		fr_strerror_const("Failed re-allocing string buffer");
 		return -1;
 	}
+	vb->vb_strvalue = str;
 	vb->vb_length = len;
 
 	return 0;
@@ -4812,18 +4811,15 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
  */
 int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
 {
-	size_t	clen;
-	char	*cstr;
+	size_t	dstlen;
 	char	*str;
 
 	fr_assert(dst->type == FR_TYPE_STRING);
 
-	memcpy(&cstr, &dst->vb_strvalue, sizeof(cstr));
+	dstlen = talloc_array_length(dst->vb_strvalue) - 1;
+	if (dstlen == len) return 0;	/* No change */
 
-	clen = talloc_array_length(dst->vb_strvalue) - 1;
-	if (clen == len) return 0;	/* No change */
-
-	str = talloc_realloc(ctx, cstr, char, len + 1);
+	str = talloc_realloc(ctx, UNCONST(char *, dst->vb_strvalue), char, len + 1);
 	if (!str) {
 		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len + 1);
 		return -1;
@@ -4832,10 +4828,10 @@ int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, 
 	/*
 	 *	Zero out the additional bytes
 	 */
-	if (clen < len) {
-		memset(str + clen, '\0', (len - clen) + 1);
+	if (dstlen < len) {
+		memset(str + dstlen, '\0', (len - dstlen) + 1);
 	} else {
-		cstr[len] = '\0';
+		str[len] = '\0';
 	}
 	dst->vb_strvalue = str;
 	dst->vb_length = len;
@@ -4889,7 +4885,10 @@ int fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_at
 		return -1;
 	}
 
-	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) return -1;
+	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) {
+		talloc_free(str);
+		return -1;
+	}
 	str[len] = '\0';
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
@@ -5033,16 +5032,13 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
  */
 int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
 {
-	size_t	clen;
-	uint8_t	*cbin;
+	size_t	dstlen;
 	uint8_t	*bin;
 
 	fr_assert(dst->type == FR_TYPE_OCTETS);
 
-	memcpy(&cbin, &dst->vb_octets, sizeof(cbin));
-
-	clen = talloc_array_length(dst->vb_octets);
-	if (clen == len) return 0;	/* No change */
+	dstlen = talloc_array_length(dst->vb_octets);
+	if (dstlen == len) return 0;	/* No change */
 
 	/*
 	 *	Realloc the buffer.  If the new length is 0, we
@@ -5050,7 +5046,7 @@ int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst
 	 *	as talloc_realloc() will fail.
 	 */
 	if (len > 0) {
-		bin = talloc_realloc(ctx, cbin, uint8_t, len);
+		bin = talloc_realloc(ctx, UNCONST(uint8_t *, dst->vb_octets), uint8_t, len);
 	} else {
 		bin = talloc_array(ctx, uint8_t, 0);
 	}
@@ -5063,12 +5059,12 @@ int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst
 	 *	Only free the original buffer once we've allocated
 	 *	a new empty array.
 	 */
-	if (len == 0) talloc_free(cbin);
+	if (len == 0) talloc_const_free(dst->vb_octets);
 
 	/*
 	 *	Zero out the additional bytes
 	 */
-	if (clen < len) memset(bin + clen, 0x00, len - clen);
+	if (dstlen < len) memset(bin + dstlen, 0x00, len - dstlen);
 	dst->vb_octets = bin;
 	dst->vb_length = len;
 
@@ -5130,7 +5126,11 @@ int fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr
 		fr_strerror_printf("Failed allocating octets buffer");
 		return -1;
 	}
-	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) return -1;
+
+	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) {
+		talloc_free(bin);
+		return -1;
+	}
 	talloc_set_type(bin, uint8_t);
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
