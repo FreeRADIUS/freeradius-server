@@ -99,7 +99,7 @@ static fr_rb_tree_t *coa_tree = NULL;
 
 static fr_packet_list_t *packet_list = NULL;
 
-static fr_dlist_head_t rc_request_list;
+static FR_DLIST_HEAD(rc_request_list) rc_request_list;
 
 static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 
@@ -132,7 +132,7 @@ static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_radclient_coa_filename;
 static fr_dict_attr_t const *attr_radclient_coa_filter;
 
-static fr_dict_attr_t const *attr_coa_filter = NULL;
+static fr_dict_attr_t const *attr_coa_match_attr = NULL;
 
 extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
@@ -195,7 +195,7 @@ static NEVER_RETURNS void usage(void)
  */
 static int _rc_request_free(rc_request_t *request)
 {
-	fr_dlist_remove(&rc_request_list, request);
+	rc_request_list_remove(&rc_request_list, request);
 
 	if (do_coa) (void) fr_rb_delete_by_inline_node(coa_tree, &request->node);
 
@@ -381,10 +381,13 @@ static bool already_hex(fr_pair_t *vp)
 	return false;
 }
 
-/*
- *	Read one CoA reply and possibly filter
+/** Read one CoA reply and potentially a filter
+ *
+ *
  */
-static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_filename, bool *coa_reply_done, FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
+static int coa_init(rc_request_t *parent,
+		    FILE *coa_reply, char const *reply_filename, bool *coa_reply_done,
+		    FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
 {
 	rc_request_t	*request;
 	fr_pair_t	*vp;
@@ -663,6 +666,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			} else if (vp->da == attr_radclient_test_name) {
 				request->name = vp->vp_strvalue;
 
+			/*
+			 *	Allow these to be dynamically specified
+			 *	in the request file, as well as on the
+			 *	command line.
+			 */
 			} else if (vp->da == attr_radclient_coa_filename) {
 				coa_reply_filename = vp->vp_strvalue;
 
@@ -803,7 +811,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				coa_filter = NULL;
 			}
 
-			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+			/*
+			 *	Read in one CoA reply and/or filter
+			 */
+			if (coa_init(request,
+				     coa_reply, coa_reply_filename, &coa_reply_done,
 				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
 				goto error;
 			}
@@ -817,7 +829,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			do_coa = true;
 
 		} else if (coa_reply) {
-			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+			if (coa_init(request,
+				     coa_reply, coa_reply_filename, &coa_reply_done,
 				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
 				goto error;
 			}
@@ -833,7 +846,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Add it to the tail of the list.
 		 */
-		fr_dlist_insert_tail(&rc_request_list, request);
+		rc_request_list_insert_tail(&rc_request_list, request);
 
 		/*
 		 *	Set the destructor so it removes itself from the
@@ -901,8 +914,8 @@ static int8_t request_cmp(void const *one, void const *two)
 	rc_request_t const *a = one, *b = two;
 	fr_pair_t *vp1, *vp2;
 
-	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_filter);
-	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_filter);
+	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_match_attr);
+	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_match_attr);
 
 	if (!vp1) return -1;
 	if (!vp2) return +1;
@@ -1160,7 +1173,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	}
 
 	/*
-	 *	Fails the signature validation: not a real reply.
+	 *	Fails the signature validation: not a real reply
 	 */
 	if (fr_packet_verify(packet, NULL, secret) < 0) {
 		DEBUG("CoA verification failed");
@@ -1659,7 +1672,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	fr_dlist_talloc_init(&rc_request_list, rc_request_t, entry);
+	rc_request_list_talloc_init(&rc_request_list);
 
 	fr_dlist_talloc_init(&filenames, rc_file_pair_t, entry);
 
@@ -1785,8 +1798,9 @@ int main(int argc, char **argv)
 			break;
 
 		case 'i':
-			if (!isdigit((uint8_t) *optarg))
+			if (!isdigit((uint8_t) *optarg)) {
 				usage();
+			}
 			last_used_id = atoi(optarg);
 			if ((last_used_id < 0) || (last_used_id > 255)) {
 				usage();
@@ -1927,8 +1941,8 @@ int main(int argc, char **argv)
 	}
 
 	if (do_coa) {
-		attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
-		if (!attr_coa_filter) {
+		attr_coa_match_attr = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
+		if (!attr_coa_match_attr) {
 			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
 			fr_exit_now(1);
 		}
@@ -1936,7 +1950,7 @@ int main(int argc, char **argv)
 		/*
 		 *	If there's no attribute given to match CoA to requests, use User-Name
 		 */
-		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
+		if (!attr_coa_match_attr) attr_coa_match_attr = attr_user_name;
 
 		MEM(coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL));
 	}
@@ -2002,7 +2016,7 @@ int main(int argc, char **argv)
 	/*
 	 *	No packets read.  Die.
 	 */
-	if (!fr_dlist_num_elements(&rc_request_list)) {
+	if (!rc_request_list_num_elements(&rc_request_list)) {
 		ERROR("Nothing to send");
 		fr_exit_now(1);
 	}
@@ -2013,7 +2027,7 @@ int main(int argc, char **argv)
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
 	 */
-	request = fr_dlist_head(&rc_request_list);
+	request = rc_request_list_head(&rc_request_list);
 
 	if (client_ipaddr.af == AF_UNSPEC) {
 		if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
@@ -2070,7 +2084,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of packets, sanity checking
 	 *	everything.
 	 */
-	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
+	rc_request_list_foreach(&rc_request_list, this) {
 		this->packet->socket.inet.src_ipaddr = client_ipaddr;
 		this->packet->socket.inet.src_port = client_port;
 		if (radclient_sane(this) != 0) {
@@ -2089,7 +2103,6 @@ int main(int argc, char **argv)
 	 */
 	do {
 		int n = parallel;
-		rc_request_t *this, *next;
 		char const *filename = NULL;
 
 		done = true;
@@ -2097,13 +2110,14 @@ int main(int argc, char **argv)
 
 		/*
 		 *	Walk over the packets, sending them.
+		 *
+		 *	This essentially ends up handling
+		 *	retries as well, as requests to
+		 *	retry stay in the request list, and
+		 *	then get sent again on the next
+		 *	iteration of the outer loop.
 		 */
-
-		for (this = fr_dlist_head(&rc_request_list);
-		     this != NULL;
-		     this = next) {
-			next = fr_dlist_next(&rc_request_list, this);
-
+		rc_request_list_foreach(&rc_request_list, this) {
 			/*
 			 *	If there's a packet to receive,
 			 *	receive it, but don't wait for a
@@ -2224,7 +2238,7 @@ int main(int argc, char **argv)
 
 	fr_packet_list_free(packet_list);
 
-	fr_dlist_talloc_free(&rc_request_list);
+	rc_request_list_talloc_free(&rc_request_list);
 
 	talloc_free(coa_tree);
 
