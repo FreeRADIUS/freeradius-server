@@ -757,6 +757,8 @@ int dict_fixup_alias_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int l
 	if (!fixup->filename) goto oom;
 	fixup->line = line;
 
+	alias_parent->flags.has_fixup = true;
+
 	return dict_fixup_common(&fctx->alias, &fixup->common);
 }
 
@@ -774,7 +776,7 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 		return -1;
 	}
 
-	fr_dict_attr_unconst(da)->flags.has_fixup = false;
+	fixup->alias_parent->flags.has_fixup = false;
 	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da, true);
 }
 
