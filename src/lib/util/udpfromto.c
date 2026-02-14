@@ -443,7 +443,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 	 *	INADDR_ANY
 	 */
 	{
-	struct sockaddr bound;
+	struct sockaddr_storage bound;
 	socklen_t bound_len = sizeof(bound);
 
 	if (getsockname(fd, &bound, &bound_len) < 0) {
