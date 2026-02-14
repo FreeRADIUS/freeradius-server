@@ -385,9 +385,9 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuf
 
 	/*
 	 *	Check we don't exceed the maximum buffer
-	 *	length.
+	 *	length, including the NUL byte.
 	 */
-	if (tctx->max && ((clen + elen) > tctx->max)) {
+	if (tctx->max && ((clen + elen + 1) > tctx->max)) {
 		elen = tctx->max - clen;
 		if (elen == 0) {
 			fr_strerror_printf("Failed extending buffer by %zu bytes to "
@@ -1994,7 +1994,7 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 
 		if (!fr_sbuff_extend(&our_sbuff)) break;
 
-		end = CONSTRAINED_END(sbuff, len, total);
+		end = CONSTRAINED_END(&our_sbuff, len, total);
 		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
 		if (found) {
 			(void)fr_sbuff_set(sbuff, found);
