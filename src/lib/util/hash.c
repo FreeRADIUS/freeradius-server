@@ -521,8 +521,8 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
  * @param[in] data 	to replace.  Will be passed to the
  *      		hashing function.
  * @return
- *      - 1 if data was replaced.
- *	- 0 if data was inserted.
+ *	- 1 if data was inserted (hash table grows)
+ *      - 0 if data was replaced (hash table doesn't grow)
  *      - -1 if we failed to replace data
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
