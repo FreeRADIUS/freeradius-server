@@ -416,11 +416,12 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 void *_talloc_realloc_zero(const void *ctx, void *ptr, size_t elem_size, unsigned count, const char *name)
 {
     size_t old_size = talloc_get_size(ptr);
-    size_t new_size = elem_size * count;
+    size_t new_size;
 
     void *new = _talloc_realloc_array(ctx, ptr, elem_size, count, name);
     if (!new) return NULL;
 
+    new_size = talloc_array_length((uint8_t *) new);
     if (new_size > old_size) {
         memset((uint8_t *)new + old_size, 0, new_size - old_size);
     }
