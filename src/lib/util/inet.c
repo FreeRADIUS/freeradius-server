@@ -494,6 +494,8 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 */
 	memset(out, 0, sizeof(*out));
 
+	if (inlen < 0) inlen = strlen(value);
+
 	end = value + inlen;
 	while ((value < end) && isspace((uint8_t) *value)) value++;
 	if (value == end) {
@@ -786,6 +788,8 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	bool ipv4 = true;
 	bool ipv6 = true;
 	char const *end;
+
+	if (inlen < 0) inlen = strlen(value);
 
 	end = value + inlen;
 	while ((value < end) && isspace((uint8_t) *value)) value++;
