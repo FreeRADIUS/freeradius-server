@@ -72,35 +72,42 @@ typedef struct {
 } rc_file_pair_t;
 
 typedef struct rc_request rc_request_t;
+FR_DLIST_TYPES(rc_request_list)
 
 struct rc_request {
-	uint64_t		num;		//!< The number (within the file) of the request were reading.
+	FR_DLIST_ENTRY(rc_request_list) entry;		//!< Entry in the list of requests.
 
-	fr_dlist_t		entry;
+	uint64_t		num;			//!< The number (within the file) of the request were reading.
 
-	rc_file_pair_t		*files;		//!< Request and response file names.
+	rc_file_pair_t		*files;			//!< Request and response file names.
 
-	rc_request_t		*coa;		//!< CoA filter and reply
-	fr_rb_node_t		node;		//!< rbtree node data for CoA
+	rc_request_t		*coa;			//!< CoA filter and reply
+	fr_rb_node_t		node;			//!< rbtree node data for CoA
 
-	fr_pair_t		*password;	//!< Password.Cleartext
+	fr_pair_t		*password;		//!< Password.Cleartext
 	fr_time_t		timestamp;
 
-	fr_packet_t	*packet;	//!< The outgoing request.
-	fr_packet_t	*reply;		//!< The incoming response.
+	fr_packet_t		*packet;		//!< The outgoing request.
+	fr_packet_t		*reply;			//!< The incoming response.
 
 	fr_pair_list_t		request_pairs;
 	fr_pair_list_t		reply_pairs;
 
-	fr_pair_list_t		filter;		//!< If the reply passes the filter, then the request passes.
-	fr_radius_packet_code_t	filter_code;	//!< Expected code of the response packet.
+	fr_pair_list_t		filter;			//!< If the reply passes the filter, then the request passes.
+	fr_radius_packet_code_t	filter_code;		//!< Expected code of the response packet.
 
 	int			resend;
 	int			tries;
-	bool			done;		//!< Whether the request is complete.
 
-	char const		*name;		//!< Test name (as specified in the request).
+	bool			done;			//!< Whether the request is complete.
+
+	char const		*name;			//!< Test name (as specified in the request).
 };
+
+FR_DLIST_FUNCS(rc_request_list, rc_request_t, entry)
+
+#define rc_request_list_foreach(_list_head, _iter) \
+	fr_dlist_foreach(rc_request_list_dlist_head(_list_head), rc_request_t, _iter)
 
 #ifdef __cplusplus
 }
