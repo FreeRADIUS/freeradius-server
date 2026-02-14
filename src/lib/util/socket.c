@@ -137,7 +137,6 @@ static int socket_inaddr_any_v6only(int sockfd, fr_ipaddr_t const *ipaddr)
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
 				fr_strerror_printf("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
-				close(sockfd);
 				return -1;
 			}
 		}
