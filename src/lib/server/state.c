@@ -420,7 +420,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	/*
 	 *	If there is an old entry, we can't have a dedup_key.
 	 */
-	fr_assert(!old || (old || !dedup_key));
+	fr_assert(!old || !dedup_key);
 
 	/*
 	 *	We track a separate free list, as we have to check
@@ -640,7 +640,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	Ensure that we can de-duplicate things if the supplicant is misbehaving.
 	 */
 	if (state->dedup_tree && !old) {
-		if (!fr_rb_insert(state->dedup_tree, entry)) goto fail_unlock;
+		if (!fr_rb_insert(state->dedup_tree, entry)) {
+			(void) fr_rb_remove(state->tree, entry);
+			goto fail_unlock;
+		}
 	}
 
 	/*
