@@ -426,13 +426,13 @@ char **exec_build_env(char **env_in, bool env_inherit)
 	/*
 	 *	Copy the radiusd environment to the local array
 	 */
-	memcpy(env_exec_arr, environ, num_environ + 1);
+	memcpy(env_exec_arr, environ, (num_environ + 1) * sizeof(environ[0]));
 
 	for (num_in = 0; env_in[num_in] != NULL; num_in++) {
 		if ((num_environ + num_in + 1) >= NUM_ELEMENTS(env_exec_arr)) break;
 	}
 
-	memcpy(env_exec_arr + num_environ, env_in, num_in);
+	memcpy(env_exec_arr + num_environ, env_in, num_in * sizeof(environ[0]));
 	env_exec_arr[num_environ + num_in] = NULL;
 
 	return env_exec_arr;
