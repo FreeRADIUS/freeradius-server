@@ -500,51 +500,58 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 {
 	static char const	disallowed[] = "%{}\\'\"`";
 	size_t 			outmax = vb->vb_length * 3;
-	size_t			outlen = 0;
-	char 			escaped[outmax + 1];
+	char 			*escaped;
 	char const		*in, *end;
-	char			*out = escaped;
+	char			*out;
+
+	if (!vb->vb_length) return 0;
 
 	fr_assert(vb->type == FR_TYPE_STRING);
-	in = vb->vb_strvalue;
-	end = in + vb->vb_length;
 
-	do {
+	escaped = out = talloc_array(vb, char, outmax + 1);
+	if (!escaped) return -1;
+
+	end = escaped + outmax;
+
+	for (in = vb->vb_strvalue; in < (vb->vb_strvalue + vb->vb_length); in++) {
 		/*
 		 *	Non-printable characters get replaced with their
 		 *	mime-encoded equivalents.
 		 */
-		if ((in[0] < 32)) {
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+		if (in[0] < 32) {
+			snprintf(out, (size_t) (end - escaped), "=%02X", (unsigned char) in[0]);
 			out += 3;
-			outlen += 3;
 			continue;
 		}
+
 		if (strchr(disallowed, *in) != NULL) {
 			out[0] = '\\';
 			out[1] = *in;
 			out += 2;
-			outlen += 2;
 			continue;
 		}
+
 		/*
 		 *	Allowed character.
 		 */
 		*out = *in;
 		out++;
-		outlen++;
-	} while (++in < end);
+	}
 	*out = '\0';
 
 	/*
-	 *	If the output length is greater than the input length
-	 *	something has been escaped - replace the original string
+	 *	No change - do nothing.
 	 */
-	if (outlen > vb->vb_length) {
-		char	*outbuff;
-		if (fr_value_box_bstr_realloc(vb, &outbuff, vb, outlen) < 0) return -1;
-		memcpy(outbuff, escaped, outlen);
+	if ((size_t) (out - escaped) == vb->vb_length) {
+		talloc_free(escaped);
+		return 0;
 	}
+
+	/*
+	 *	Replace the original string.
+	 */
+	(void) fr_value_box_bstrndup(vb, vb, vb->enumv, escaped, (size_t) (out - escaped), vb->tainted);
+	talloc_free(escaped);
 
 	return 0;
 
