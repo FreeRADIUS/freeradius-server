@@ -186,7 +186,9 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	rlm_rcode_t rcode;
 
 	if (strcmp(info->argv[0], "alive") == 0) {
+		module_instance_data_unprotect(mi);
 		mi->force = false;
+		module_instance_data_protect(mi);
 		return 0;
 	}
 
@@ -196,8 +198,10 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 		return -1;
 	}
 
+	module_instance_data_unprotect(mi);
 	mi->code = rcode;
 	mi->force = true;
+	module_instance_data_protect(mi);
 
 	return 0;
 }
@@ -364,7 +368,7 @@ static int8_t _mlg_module_instance_cmp(void const *one, void const *two)
 	fr_assert(a->ml && b->ml);
 
 	ret = CMP(a->ml, b->ml);
-	if (ret != 0) return 0;
+	if (ret != 0) return ret;
 
 	return CMP(a->number, b->number);
 }
@@ -1426,7 +1430,7 @@ static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out,
  */
 static void module_detach_parent(module_instance_t *mi)
 {
-	if (!(mi->state & (MODULE_INSTANCE_BOOTSTRAPPED | MODULE_INSTANCE_BOOTSTRAPPED))) return;
+	if (!(mi->state & (MODULE_INSTANCE_BOOTSTRAPPED | MODULE_INSTANCE_INSTANTIATED))) return;
 
 	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
 
@@ -1720,7 +1724,7 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 */
 	mi->exported = (module_t *)mi->module->exported;
 	if (unlikely(mi->exported == NULL)) {
-		ERROR("Missing public structure for \"%s\"", qual_inst_name);
+		ERROR("Missing public structure for \"%s\"", mi->name);
 		goto error;
 	}
 
