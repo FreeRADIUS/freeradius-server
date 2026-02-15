@@ -5,8 +5,11 @@ SUBMAKEFILES := \
 	dcursor_typed_tests.mk \
 	dlist_tests.mk \
 	edit_tests.mk \
+	fifo_tests.mk \
+	hash_tests.mk \
 	heap_tests.mk \
 	hmac_tests.mk \
+	inet_tests.mk \
 	lst_tests.mk \
 	minmax_heap_tests.mk \
 	pair_legacy_tests.mk \
@@ -15,9 +18,11 @@ SUBMAKEFILES := \
 	pair_tests.mk \
 	rbmonkey.mk \
 	rb_tests.mk \
+	retry_tests.mk \
 	sbuff_tests.mk \
 	size_tests.mk \
 	slab_tests.mk \
 	strerror_tests.mk \
 	time_tests.mk \
-	timer_tests.mk
+	timer_tests.mk  \
+	trie_tests.mk

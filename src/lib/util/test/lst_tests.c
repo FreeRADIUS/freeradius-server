@@ -68,7 +68,7 @@ static void lst_test_basic(void)
 	lst_thing	values[NVALUES];
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, NVALUES);
-	TEST_CHECK(lst != NULL);
+	TEST_ASSERT(lst != NULL);
 
 	populate_values(values, NUM_ELEMENTS(values));
 
@@ -99,7 +99,7 @@ static void lst_test(int skip)
 	int		ret;
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
-	TEST_CHECK(lst != NULL);
+	TEST_ASSERT(lst != NULL);
 
 	values = calloc(LST_TEST_SIZE, sizeof(lst_thing));
 
@@ -178,8 +178,9 @@ static void lst_stress_realloc(void)
 	rand_ctx.b = fr_rand();
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
-	TEST_CHECK(lst != NULL);
+	TEST_ASSERT(lst != NULL);
 	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, 0);
+	TEST_ASSERT(hp != NULL);
 
 	lst_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
 	hp_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
@@ -298,7 +299,7 @@ static void lst_cycle(void)
 	fr_time_t	start_insert, start_remove, start_swap, end;
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
-	TEST_CHECK(lst != NULL);
+	TEST_ASSERT(lst != NULL);
 
 	values = calloc(LST_CYCLE_SIZE, sizeof(lst_thing));
 
@@ -375,7 +376,7 @@ static void lst_iter(void)
 	unsigned int	total;
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
-	TEST_CHECK(lst != NULL);
+	TEST_ASSERT(lst != NULL);
 
 	populate_values(values, NUM_ELEMENTS(values));
 
@@ -444,7 +445,7 @@ static void queue_cmp(unsigned int count)
 		start_alloc = fr_time();
 		lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 		end_alloc = fr_time();
-		TEST_CHECK(lst != NULL);
+		TEST_ASSERT(lst != NULL);
 
 		start_insert = fr_time();
 		for (i = 0; i < count; i++) TEST_CHECK(fr_lst_insert(lst, &values[i]) == 0);
@@ -480,7 +481,7 @@ static void queue_cmp(unsigned int count)
 		start_alloc = fr_time();
 		hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, count);
 		end_alloc = fr_time();
-		TEST_CHECK(hp != NULL);
+		TEST_ASSERT(hp != NULL);
 
 		start_insert = fr_time();
 		for (i = 0; i < count; i++) fr_heap_insert(&hp, &values[i]);

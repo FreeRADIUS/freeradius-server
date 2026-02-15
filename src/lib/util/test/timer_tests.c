@@ -49,7 +49,7 @@ static void timer_cb(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	bool *fired = (bool *)uctx;
 
-	TEST_CHECK(tl != NULL);
+	TEST_ASSERT(tl != NULL);
 	TEST_CHECK(fr_time_gt(now, fr_time_wrap(0)));
 
 	*fired = true;
@@ -161,8 +161,7 @@ static void lst_basic_test(void)
 	fr_timer_list_t *tl;
 
 	tl = fr_timer_list_lst_alloc(NULL, NULL);
-	TEST_CHECK(tl != NULL);
-	if (tl == NULL) return;
+	TEST_ASSERT(tl != NULL);
 
 	fr_timer_list_set_time_func(tl, basic_time);
 
@@ -215,8 +214,7 @@ static void ordered_basic_test(void)
 	fr_timer_list_t *tl;
 
 	tl = fr_timer_list_ordered_alloc(NULL, NULL);
-	TEST_CHECK(tl != NULL);
-	if (tl == NULL) return;
+	TEST_ASSERT(tl != NULL);
 
 	fr_timer_list_set_time_func(tl, basic_time);
 
@@ -230,8 +228,7 @@ static void lst_deferred_test(void)
 	fr_timer_list_t *tl;
 
 	tl = fr_timer_list_lst_alloc(NULL, NULL);
-	TEST_CHECK(tl != NULL);
-	if (tl == NULL) return;
+	TEST_ASSERT(tl != NULL);
 
 	deferred_timer_list_tests(tl);
 
@@ -243,8 +240,7 @@ static void ordered_deferred_test(void)
 	fr_timer_list_t *tl;
 
 	tl = fr_timer_list_ordered_alloc(NULL, NULL);
-	TEST_CHECK(tl != NULL);
-	if (tl == NULL) return;
+	TEST_ASSERT(tl != NULL);
 
 	deferred_timer_list_tests(tl);
 
@@ -259,8 +255,7 @@ static void ordered_bad_inserts_test(void)
 	int ret;
 
 	tl = fr_timer_list_ordered_alloc(NULL, NULL);
-	TEST_CHECK(tl != NULL);
-	if (tl == NULL) return;
+	TEST_ASSERT(tl != NULL);
 
 	fr_timer_list_set_time_func(tl, basic_time);
 
@@ -337,12 +332,10 @@ static void lst_nested(void)
 	int ret;
 
 	tl_outer = fr_timer_list_lst_alloc(NULL, NULL);
-	TEST_CHECK(tl_outer != NULL);
-	if (tl_outer == NULL) return;
+	TEST_ASSERT(tl_outer != NULL);
 
 	tl_inner = fr_timer_list_lst_alloc(tl_outer, tl_outer);
-	TEST_CHECK(tl_inner != NULL);
-	if (tl_inner == NULL) return;
+	TEST_ASSERT(tl_inner != NULL);
 
 	fr_timer_list_set_time_func(tl_outer, basic_time);
 	fr_timer_list_set_time_func(tl_inner, basic_time);
@@ -370,12 +363,10 @@ static void ordered_nested(void)
 	int ret;
 
 	tl_outer = fr_timer_list_ordered_alloc(NULL, NULL);
-	TEST_CHECK(tl_outer != NULL);
-	if (tl_outer == NULL) return;
+	TEST_ASSERT(tl_outer != NULL);
 
 	tl_inner = fr_timer_list_ordered_alloc(tl_outer, tl_outer);
-	TEST_CHECK(tl_inner != NULL);
-	if (tl_inner == NULL) return;
+	TEST_ASSERT(tl_inner != NULL);
 
 	fr_timer_list_set_time_func(tl_outer, basic_time);
 	fr_timer_list_set_time_func(tl_inner, basic_time);
