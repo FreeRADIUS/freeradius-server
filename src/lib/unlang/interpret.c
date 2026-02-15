@@ -571,7 +571,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 */
 			if (fr_time_delta_ispos(instruction->actions.retry.mrd)) {
 				if (fr_timer_in(retry, unlang_interpret_event_list(request)->tl, &retry->ev, instruction->actions.retry.mrd,
-						false, instruction_retry_handler, request) < 0) {
+						false, instruction_retry_handler, retry) < 0) {
 					RPEDEBUG("Failed inserting retry event");
 					*frame_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 					goto finalize;
