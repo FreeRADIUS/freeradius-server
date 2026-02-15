@@ -477,10 +477,20 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		if (call_env_is_subsection(rule_p->flags)) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, rule_p->name, rule_p->section.name2);
-			if (!subcs && !call_env_parse_missing(rule_p->flags)) {
-				if (!call_env_required(rule_p->flags)) goto next;
-				cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule_p->name);
-				return -1;
+			if (!subcs) {
+				/*
+				 *	No CONF_SECTION, but it's required.  That's an error.
+				 */
+				if (call_env_required(rule_p->flags)) {
+					cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule_p->name);
+					return -1;
+				}
+
+				/*
+				 *	No flag saying "do callback even if subcs is missing", just skip the
+				 *	callbacks.
+				 */
+				if (!call_env_parse_missing(rule_p->flags)) goto next;
 			}
 
 			/*
@@ -498,7 +508,6 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 				if (rule_p->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), cec, rule_p) < 0) {
 					cf_log_perr(cs, "Failed parsing configuration section %s",
 						    rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
-					talloc_free(call_env_parsed);
 					return -1;
 				}
 
