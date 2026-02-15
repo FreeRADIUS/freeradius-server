@@ -308,23 +308,23 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	char trigger_prefix_buff[128];
 
 	fr_pool_t *pool;
-	char const *cs_name1, *cs_name2;
+	char const *mod_name1, *mod_name2;
 
 	int ret;
 
 #define parent_name(_x) cf_section_name(cf_item_to_section(cf_parent(_x)))
 
-	cs_name1 = cf_section_name1(module);
-	cs_name2 = cf_section_name2(module);
-	if (!cs_name2) cs_name2 = cs_name1;
+	mod_name1 = cf_section_name1(module);
+	mod_name2 = cf_section_name2(module);
+	if (!mod_name2) mod_name2 = mod_name1;
 
 	if (!trigger_prefix) {
-		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", cs_name1);
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", mod_name1);
 		trigger_prefix = trigger_prefix_buff;
 	}
 
 	if (!log_prefix) {
-		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", cs_name1, cs_name2);
+		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", mod_name1, mod_name2);
 		log_prefix = log_prefix_buff;
 	}
 
@@ -350,10 +350,11 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	 */
 	mycs = cf_section_find(module, "pool", NULL);
 	if (!mycs) {
-		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
-		       cf_section_name(module));
+		DEBUG4("%s: Adding pool section to module configuration \"%s\" to store pool references", log_prefix,
+		       mod_name2);
 
 		mycs = cf_section_alloc(module, module, "pool", NULL);
+		if (!mycs) return NULL;
 	}
 
 	/*
@@ -362,7 +363,7 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	 */
 	if (!cs) {
 		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
-		       parent_name(cs), parent_name(mycs));
+		       mod_name1, parent_name(mycs));
 		cs = mycs;
 	}
 
