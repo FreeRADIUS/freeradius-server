@@ -1,0 +1,8 @@
+request -= Packet-Type
+
+#
+#  The old syntax is not supported
+#
+foreach &Filter-Id[*] {	# ERROR
+	fail
+}

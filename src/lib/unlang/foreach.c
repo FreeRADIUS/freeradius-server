@@ -304,7 +304,7 @@ static unlang_action_t unlang_foreach_attr_next(unlang_result_t *p_result, reque
 			fr_value_box_clear_value(&vp->data);
 			if (unlikely(fr_value_box_copy(vp, &vp->data, &state->value->data) < 0)) {
 				RPEDEBUG("Failed copying value from %s to %s", state->value->da->name, vp->da->name);
-				return UNLANG_ACTION_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 		} else {
 			/*
@@ -589,6 +589,13 @@ static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *
 
 	name2 = cf_section_name2(cs);
 	fr_assert(name2 != NULL); /* checked in cf_file.c */
+
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (!type_name) {
+		cf_log_err(cs, "Invalid foreach %s (...) - missing reference", name2);
+		cf_log_err(ci, DOC_KEYWORD_REF(foreach));
+		return NULL;
+	}
 
 	/*
 	 *	Allocate a group for the "foreach" block.
