@@ -478,7 +478,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			RPEDEBUG("Function \"%s\" was provided an incorrect number of values at argument %u, "
 				 "expected %s got %u",
 				 name, arg_num,
-				 arg->required ? "0-1" : "1",
+				 arg->required ? "1" : "0-1",
 				 fr_value_box_list_num_elements(list));
 			return XLAT_ACTION_FAIL;
 		}
@@ -815,7 +815,10 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	switch (letter) {
 	case '%':
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return XLAT_ACTION_FAIL;
+		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) {
+			talloc_free(value);
+			return XLAT_ACTION_FAIL;
+		}
 		break;
 
 	/*
@@ -879,7 +882,10 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) {
+			talloc_free(value);
+			goto error;
+		}
 		break;
 
 	case 'e': /* Request second */
@@ -974,7 +980,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL));
 
-		value->datum.int16 = ts.tm_year + 1900;
+		value->datum.uint16 = ts.tm_year + 1900;
 		break;
 
 	default:
@@ -1127,7 +1133,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
-		if (node->call.func) {
+		if ((node->type == XLAT_FUNC) && (node->call.func)) {
 			RDEBUG2("| --> %pR", fr_dcursor_current(out));
 			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
 					 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
@@ -1567,7 +1573,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
-			if (!node->group) return XLAT_ACTION_DONE;
+			if (!node->group) continue; /* empty group means we just keep going */
 
 			/*
 			 *	Hand back the child node to the caller
@@ -1658,7 +1664,7 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 		}
 
 		len = vb->vb_length * 3;
-		MEM(escaped = talloc_array(vb, char, len));
+		MEM(escaped = talloc_array(vb, char, len + 1));
 		real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
 
 		fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
@@ -2009,8 +2015,6 @@ int xlat_eval_init(void)
 		return 0;
 	}
 
-	instance_count++;
-
 	if (fr_dict_autoload(xlat_eval_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
@@ -2022,6 +2026,7 @@ int xlat_eval_init(void)
 		return -1;
 	}
 
+	instance_count++;
 	return 0;
 }
 
