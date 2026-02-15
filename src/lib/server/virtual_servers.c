@@ -1106,14 +1106,15 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		.retry = RETRY_INIT,
 	};
 
-	fr_dict_attr_t const	*da = NULL;
+	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const 	**da_p = vs->process_module->packet_type;
 	CONF_SECTION		*subcs;
 
-	if (da_p) {
-		da = *da_p;
-		fr_assert_msg(da != NULL, "Packet-Type attr not resolved");
+	if (!da_p || !*da_p) {
+		cf_log_err(vs->server_cs, "No 'packet_type' in #fr_process_module_t");
+		return -1;
 	}
+	da = *da_p;
 
 	/*
 	 *	Iterate over all the finally sections, trying to resolve
@@ -1128,7 +1129,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		int				ret;
 		void				*instruction;
 
-		if (!cf_section_name2(subcs)) {
+		if (!packet_type) {
 			if (vs->finally_default) {
 				cf_log_err(subcs, "Duplicate 'finally { ... }' section");
 				return -1;
@@ -1177,7 +1178,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 			goto forbid;
 		}
 
-		if (key.vb_uint16 > talloc_array_length(vs->finally_by_packet_type)) {
+		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type)) {
 			MEM(vs->finally_by_packet_type = talloc_realloc_zero(vs, vs->finally_by_packet_type,
 									     void *, key.vb_uint16 + 1));
 		}
@@ -1820,6 +1821,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 		size_t			j, listener_cnt;
 
 		listeners = virtual_servers[i]->listeners;
+		if (!listeners) continue; /* servers can have no listeners */
+
 		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {
