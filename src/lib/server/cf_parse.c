@@ -441,8 +441,6 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 	p = cp->value;
 	q = str;
 	while (*p) {
-		unsigned int x;
-
 		if (*p != '\\') {
 			*(q++) = *(p++);
 			continue;
@@ -461,15 +459,30 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 			break;
 
 		default:
-			if (*p >= '0' && *p <= '9' &&
-			    sscanf(p, "%3o", &x) == 1) {
-				if (!x) {
-					cf_log_err(cp, "Cannot have embedded zeros in value for %s", cp->attr);
+			if ((*p >= '0') && (*p <= '7')) {
+				unsigned long oct;
+				char *end;
+
+				oct = strtoul(p, &end, 8);
+				if (oct == ULONG_MAX) {
+					cf_log_err(cp, "Failed parsing octal string");
+				error:
+					talloc_free(str);
 					return -1;
 				}
 
-				*q++ = x;
-				p += 2;
+				if (!oct) {
+					cf_log_err(cp, "Cannot have embedded zeros in value at %s", p);
+					goto error;
+				}
+
+				if (oct > UINT8_MAX) {
+					cf_log_err(cp, "Invalid octal number in value at %s", p);
+					goto error;
+				}
+
+				*q++ = oct;
+				p = end;
 			} else {
 				*q++ = *p;
 			}
@@ -480,9 +493,8 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 	*q = '\0';
 
 	unescaped = talloc_typed_strdup(cp, str); /* no embedded NUL */
-	if (!unescaped) return -1;
-
 	talloc_free(str);
+	if (!unescaped) return -1;
 
 	/*
 	 *	Replace the old value with the new one.
