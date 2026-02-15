@@ -268,15 +268,18 @@ cp_found:
 			fr_rb_insert(trigger_last_fired_tree, found);
 		}
 
-		pthread_mutex_unlock(trigger_mutex);
-
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 *
 		 *	@todo - make this configurable for longer periods of time.
 		 */
-		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -2;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) {
+			pthread_mutex_unlock(trigger_mutex);
+			return -2;
+		}
+
 		found->last_fired = now;
+		pthread_mutex_unlock(trigger_mutex);
 	}
 
 	/*
