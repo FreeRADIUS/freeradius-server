@@ -1924,8 +1924,8 @@ static inline CC_HINT(nonnull) void truncate_filename(char const **e, char const
 	q = strchr(*p, FR_DIR_SEP);
 	if (q) {
 		q++;
-		*p += (q - *p);
 		*len -= (q - *p);
+		*p += (q - *p);
 	}
 
 	*e = "...";
