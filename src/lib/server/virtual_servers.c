@@ -1111,9 +1111,13 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 	CONF_SECTION		*subcs;
 
 	if (!da_p || !*da_p) {
-		cf_log_err(vs->server_cs, "No 'packet_type' in #fr_process_module_t");
+		subcs = cf_section_find(vs->server_cs, "finally", CF_IDENT_ANY);
+		if (!subcs) return 0;
+
+		cf_log_err(subcs, "Invalid 'finally' section - virtual server does not define a 'packet_type'");
 		return -1;
 	}
+
 	da = *da_p;
 
 	/*
