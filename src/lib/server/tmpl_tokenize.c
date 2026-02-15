@@ -324,7 +324,7 @@ void tmpl_debug(FILE *fp, tmpl_t const *vpt)
 		break;
 	}
 
-	fprintf(fp, "tmpl_t %s (%.8x) %pV (%p)\n",
+	fprintf(fp, "tmpl_t %s (%.8x) %s (%p)\n",
 		tmpl_type_to_str(vpt->type),
 		vpt->type,
 		vpt->name, vpt);
@@ -635,7 +635,7 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TA
 		 *
 		 *	If there is a parent, we use the outermost one.
 		 */
-		if (!t_rules->parent) {
+		if (!t_rules || !t_rules->parent) {
 			t_rules = NULL;
 
 		} else while (t_rules->parent) {
@@ -2859,7 +2859,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	 *	Handle scope
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '%')) {
-		len = fr_sbuff_adv_until(&our_in, IFNAMSIZ + 1, p_rules->terminals, '\0');
+		len = fr_sbuff_adv_until(&our_in, IFNAMSIZ + 1, p_rules ? p_rules->terminals : NULL, '\0');
 		if ((len < 1) || (len > IFNAMSIZ)) {
 			fr_strerror_const("IPv6 scope too long");
 			goto error;
@@ -3599,6 +3599,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	so that their instance data will be created.
 		 */
 		if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
+			talloc_free(vpt);
 			fr_strerror_const("Failed to bootstrap xlat");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -3627,7 +3628,10 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &arg_t_rules);
-		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		if (slen < 0) {
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
 
 		/*
 		 *	Check if the string actually contains an xlat
