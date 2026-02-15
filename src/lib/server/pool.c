@@ -1438,7 +1438,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	    	pool->state.last_held_min = this->last_released;
 	}
 
-	if (fr_time_delta_ispos(pool->held_trigger_min) &&
+	if (fr_time_delta_ispos(pool->held_trigger_max) &&
 	    (fr_time_delta_gt(held, pool->held_trigger_max)) &&
 	    (fr_time_delta_gteq(fr_time_sub(this->last_released, pool->state.last_held_max), fr_time_delta_from_sec(1)))) {
 	    	trigger_max = true;
