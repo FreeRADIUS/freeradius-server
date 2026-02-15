@@ -176,7 +176,10 @@ static bool transaction_ok(CONF_SECTION *cs)
 				continue;
 			}
 
-			if (fr_list_assignment_op[cf_section_name2_quote(cs)]) continue;
+			/*
+			 *	Ignore edits.
+			 */
+			if (fr_list_assignment_op[cf_section_name2_quote(subcs)]) continue;
 
 			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) {
 				cf_log_err(ci, "Invalid keyword in 'transaction'");
