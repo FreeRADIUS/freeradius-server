@@ -4219,8 +4219,12 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 			/*
 			 *	This connection has been inactive since before the idle timeout.  Drain it,
 			 *	and free it.
+			 *
+			 *	This also extracts the connection from the minmax heap, which invalidates the
+			 *	iterator, so we stop iterating over it.
 			 */
 			trunk_connection_enter_draining_to_free(tconn);
+			break;
 		}
 	}
 
