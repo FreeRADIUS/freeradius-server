@@ -1491,7 +1491,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	 *	Allocate the RHS
 	 */
 	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, NULL, -1);
-	if (!map->lhs) goto oom;
+	if (!map->rhs) goto oom;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_QUOTED:
@@ -1574,7 +1574,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	vp->op = map->op;
 	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
 		RPEDEBUG("Failed parsing exec output");
-		talloc_free(&vp);
+		talloc_free(vp);
 		return -2;
 	}
 	fr_pair_append(out, vp);
