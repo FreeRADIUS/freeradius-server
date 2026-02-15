@@ -233,6 +233,8 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 */
 	if (!gext->vpt) return true;
 
+	if (map_list_num_elements(&gext->map) == 0) return true;
+
 	return pass2_fixup_tmpl(map_list_head(&gext->map)->ci, &gext->vpt,
 				cf_section_to_item(g->cs), rules->attr.dict_def);
 }
@@ -354,10 +356,12 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	if (!ctx) {
 		/*
 		 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
+		 *
+		 *	RHS may be NULL for T_OP_CMP_FALSE.
 		 */
 		switch (map->rhs->type) {
 		case TMPL_TYPE_ATTR:
-			if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
+			if (map->rhs && !tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
 			break;
 
 		default:
@@ -561,7 +565,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 			/* FIXME - Broken check, doesn't work for key attributes */
 			cf_log_err(cp, "Invalid location for %s - it is not a child of %s",
 				   da->name, parent->name);
-			return 0;
+			return -1;
 		}
 		break;
 
@@ -650,7 +654,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 	/*
 	 *	Allocate the map and initialize it.
 	 */
-	MEM(map = talloc_zero(parent, map_t));
+	MEM(map = talloc_zero(edit, map_t));
 	map->op = op;
 	map->ci = cf_section_to_item(cs);
 	map_list_init(&map->child);
@@ -786,6 +790,8 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
 		cf_log_err(cp, "Invalid operator \"%s\".",
 			   fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
+	fail:
+		talloc_free(edit);
 		return NULL;
 	}
 
@@ -793,9 +799,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	 *	Convert this particular map.
 	 */
 	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL, true) < 0) {
-	fail:
-		talloc_free(edit);
-		return NULL;
+		goto fail;
 	}
 
 	/*
@@ -1142,12 +1146,12 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 
 	if (module_retry) {
 		if (!fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(csi, "initial_rtx_time MUST be non-zero for modules which support retries.");
+			cf_log_err(action_cs, "initial_rtx_time MUST be non-zero for modules which support retries.");
 			return false;
 		}
 	} else {
 		if (fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(csi, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
+			cf_log_err(action_cs, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
 			return false;
 		}
 
@@ -1164,13 +1168,13 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
 
 		if (module_retry) {
-			cf_log_err(csi, "Cannot use a '%s = retry' action for a module which has its own retries",
+			cf_log_err(action_cs, "Cannot use a '%s = retry' action for a module which has its own retries",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 
 		if (disallow_retry_action) {
-			cf_log_err(csi, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
+			cf_log_err(action_cs, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1178,7 +1182,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (!fr_time_delta_ispos(actions->retry.irt) &&
 		    !actions->retry.mrc &&
 		    !fr_time_delta_ispos(actions->retry.mrd)) {
-			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
+			cf_log_err(action_cs, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1621,7 +1625,7 @@ bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name)
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
-			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) return true;
+			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) continue;
 
 			if (cf_pair_value(cp) != NULL) {
 				cf_log_err(cp, "Unknown keyword '%s', or invalid location", cf_pair_attr(cp));
@@ -1762,8 +1766,12 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, UNUSED char const *re
 	 *	"foo.name1" and if that's not found just look for
 	 *	a policy "foo".
 	 */
-	snprintf(buffer, sizeof(buffer), "%s.%s.%s", virtual_name, unlang_ctx->section_name1, unlang_ctx->section_name2);
-	subcs = cf_section_find(cs, buffer, NULL);
+	if (unlang_ctx->section_name2) {
+		snprintf(buffer, sizeof(buffer), "%s.%s.%s", virtual_name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+		subcs = cf_section_find(cs, buffer, NULL);
+	} else {
+		subcs = NULL;
+	}
 
 	if (!subcs) {
 		snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, unlang_ctx->section_name1);
