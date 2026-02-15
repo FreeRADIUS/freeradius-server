@@ -308,6 +308,8 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			 */
 			if (q) {
 				CONF_SECTION *find = cf_item_to_section(ci);
+				char const *f;
+				size_t flen;
 
 				if (ci->type != CONF_ITEM_SECTION) {
 					ERROR("%s[%d]: Can only reference properties of sections", cf, lineno);
@@ -316,18 +318,23 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 				switch (fr_table_value_by_str(conf_property_name, q, CONF_PROPERTY_INVALID)) {
 				case CONF_PROPERTY_NAME:
-					strcpy(p, find->name1);
+					f = find->name1;
 					break;
 
 				case CONF_PROPERTY_INSTANCE:
-					strcpy(p, find->name2 ? find->name2 : find->name1);
+					f = find->name2 ? find->name2 : find->name1;
 					break;
 
 				default:
 					ERROR("%s[%d]: Invalid property '%s'", cf, lineno, q);
 					return NULL;
 				}
-				p += strlen(p);
+
+				flen = talloc_array_length(f) - 1;
+				if ((p + flen) >= (output + outsize)) goto too_long;
+
+				memcpy(p, f, flen);
+				p += flen;
 				ptr = next;
 
 			} else if (ci->type == CONF_ITEM_PAIR) {
@@ -462,6 +469,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 	check_eos:
 		if (p >= (output + outsize)) {
+		too_long:
 			ERROR("%s[%d]: Reference \"%s\" is too long",
 			      cf, lineno, input);
 			return NULL;
