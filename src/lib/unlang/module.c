@@ -885,8 +885,6 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 
 	switch (ua) {
 	case UNLANG_ACTION_YIELD:
-		state->thread->active_callers++;
-
 		/*
 		 *	The module yielded but didn't set a
 		 *	resume function, this means it's done
@@ -911,10 +909,12 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 					&state->ev, state->retry.next,
 					false, unlang_module_event_retry_handler, request) < 0) {
 				RPEDEBUG("Failed inserting event");
+				ua = UNLANG_ACTION_CALCULATE_RESULT;
 				goto fail;
 			}
 		}
 
+		state->thread->active_callers++;
 		return UNLANG_ACTION_YIELD;
 
 	/*
