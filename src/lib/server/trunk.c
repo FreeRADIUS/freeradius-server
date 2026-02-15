@@ -3625,7 +3625,7 @@ static void _trunk_connection_on_failed(connection_t *conn,
 	 *	future, then fail all the requests in the
 	 *	trunk backlog.
 	 */
-	if ((state == CONNECTION_STATE_CONNECTED) &&
+	if ((prev == CONNECTION_STATE_CONNECTED) &&
 	    (trunk_connection_count_by_state(trunk,
 						(TRUNK_CONN_ACTIVE |
 						 TRUNK_CONN_FULL |
