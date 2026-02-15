@@ -332,8 +332,6 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 	frame->indent = request->log.indent;
 
-	if (!instruction) return 0;
-
 	frame_state_init(stack, frame);
 
 	return 0;
