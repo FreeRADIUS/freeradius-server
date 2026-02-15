@@ -632,7 +632,7 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			stop = 1;
 
 		} else if (num->vb_uint32 <= 16) {
-			stop = num->vb_uint64;
+			stop = num->vb_uint32;
 
 		} else {
 			stop = 16;
@@ -791,6 +791,12 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 	close(fd);
 
+	if (len < buf.st_size) {
+		RPERROR("Failed reading all of file %s", filename);
+		talloc_free(dst);
+		goto fail;
+	}
+
 	fr_dcursor_append(out, dst);
 
 	return XLAT_ACTION_DONE;
@@ -832,10 +838,11 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
-	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
-	if (fd == -1) {
+	fd = open(filename, O_CREAT | O_WRONLY, 0600);
+	if (fd < 0) {
 		dst->vb_bool = false;
 		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_DONE;
 	}
 	dst->vb_bool = true;
 
@@ -1471,7 +1478,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
 					 request_t *request, fr_value_box_list_t *args)
 {
-	long		num;
+	unsigned long  	num;
 
 	char const	*p;
 	char		*q;
@@ -1491,7 +1498,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	p = in_head->vb_strvalue;
 
 	num = strtoul(p, &q, 10);
-	if (!q || *q == '\0') {
+	if ((num == ULONG_MAX) || !q || *q == '\0') {
 		REDEBUG("<int> must be followed by time period (h|d|w|m|y)");
 		return XLAT_ACTION_FAIL;
 	}
@@ -2907,7 +2914,10 @@ static xlat_action_t xlat_func_uuid_v4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSE
 	uuid_set_version(vals, 4);
 	uuid_set_variant(vals, 1);
 
-	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+	if (uuid_print_vb(vb, vals) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
@@ -3930,9 +3940,6 @@ static xlat_action_t xlat_func_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		nsec += when % 86400;
 		nsec *= NSEC;
 		nsec += fr_unix_time_unwrap(unix_time) % NSEC;
-
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
-		vb->vb_time_delta = fr_time_delta_wrap(nsec);
 
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
 		vb->vb_time_delta = fr_time_delta_wrap(nsec);
