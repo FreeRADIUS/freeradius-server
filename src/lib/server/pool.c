@@ -872,15 +872,16 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 			pool->state.last_at_max = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
 		if (!fr_rate_limit_enabled() || complain) {
 			ERROR("No connections available and at max connection limit");
+
 			/*
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
 			 */
 			fr_pool_trigger(pool, "none");
 		}
+		pthread_mutex_unlock(&pool->mutex);
 
 		return NULL;
 	}
