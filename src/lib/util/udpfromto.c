@@ -446,11 +446,11 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 	struct sockaddr_storage bound;
 	socklen_t bound_len = sizeof(bound);
 
-	if (getsockname(fd, &bound, &bound_len) < 0) {
+	if (getsockname(fd, (struct sockaddr *) &bound, &bound_len) < 0) {
 		return -1;
 	}
 
-	switch (bound.sa_family) {
+	switch (bound.ss_family) {
 	case AF_INET:
 		if (((struct sockaddr_in *) &bound)->sin_addr.s_addr != INADDR_ANY) {
 			from = NULL;
