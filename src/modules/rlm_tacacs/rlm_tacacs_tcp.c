@@ -539,13 +539,13 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Larger priority is more important.
 	 */
-	ret = CMP(a->priority, b->priority);
+	ret = CMP_PREFER_LARGER(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller timestamp (i.e. earlier) is more important.
 	 */
-	return CMP_PREFER_SMALLER(fr_time_unwrap(a->recv_time), fr_time_unwrap(b->recv_time));
+	return fr_time_cmp(a->recv_time, b->recv_time);
 }
 
 /** Decode response packet data, extracting relevant information and validating the packet

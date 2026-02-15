@@ -994,12 +994,21 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	request_t const *a = one, *b = two;
 	int ret;
 
-	ret = CMP(b->priority, a->priority);
+	/*
+	 *	Prefer higher priority packets.
+	 */
+	ret = CMP_PREFER_LARGER(b->priority, a->priority);
 	if (ret != 0) return ret;
 
-	ret = CMP(a->sequence, b->sequence);
+	/*
+	 *	Prefer packets which are further along in their processing sequence.
+	 */
+	ret = CMP_PREFER_LARGER(a->sequence, b->sequence);
 	if (ret != 0) return ret;
 
+	/*
+	 *	Smaller timestamp (i.e. earlier) is more important.
+	 */
 	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 

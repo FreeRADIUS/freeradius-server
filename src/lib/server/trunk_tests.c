@@ -350,7 +350,8 @@ static int8_t test_preq_cmp(void const *a, void const *b)
 {
 	test_proto_request_t const	*preq_a = a;
 	test_proto_request_t const	*preq_b = b;
-	return CMP(preq_a->priority, preq_b->priority);
+
+	return CMP_PREFER_SMALLER(preq_a->priority, preq_b->priority); /* our priorities are NOT request->priority */
 }
 
 static trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_conf_t *conf, bool with_cancel_mux, void *uctx)
