@@ -148,7 +148,7 @@ typedef struct {
  *				Will be declared in the scope of the loop.
  */
 #define cf_item_foreach(_ci, _iter) \
-	for (CONF_ITEM *_iter = fr_dlist_head(&(_ci)->children); _iter; _iter = fr_dlist_next(&(_ci)->children, _iter))
+	for (CONF_ITEM *JOIN(_next,_iter), *_iter = fr_dlist_head(&(_ci)->children); JOIN(_next,_iter) = fr_dlist_next(&(_ci)->children, _iter), _iter != NULL; _iter = JOIN(_next,_iter))
 
 /** Iterate over the contents of a list
  *

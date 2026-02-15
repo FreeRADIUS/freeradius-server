@@ -2405,14 +2405,8 @@ void cf_section_debug(CONF_SECTION *cs)
  */
 void cf_item_free_children(CONF_ITEM *ci)
 {
-	CONF_ITEM *child = NULL;
-
-	while ((child = fr_dlist_next(&ci->children, child)) != NULL) {
-		if (child->type == CONF_ITEM_DATA) {
-			continue;
-		}
-
-		child = fr_dlist_talloc_free_item(&ci->children, child);
+	cf_item_foreach(ci, child) {
+		_cf_item_remove(ci, child);
 	}
 }
 
