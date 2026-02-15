@@ -542,7 +542,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	pthread_mutex_init(&dl_module_loader->lock, NULL);
 
 	dl_module_loader->dl_loader = dl_loader_init(NULL, dl_module_loader, false, true);
-	if (!dl_module_loader) {
+	if (!dl_module_loader->dl_loader) {
 		PERROR("Failed initialising dl_loader");
 	error:
 		TALLOC_FREE(dl_module_loader);
