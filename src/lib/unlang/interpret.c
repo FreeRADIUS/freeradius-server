@@ -290,7 +290,7 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 	if (!conf) conf = &default_conf;
 
-	fr_assert(instruction);
+	if (!instruction) return -1;
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction type \"%s\" - args %s %s",
@@ -320,7 +320,6 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 	frame->instruction = instruction;
 
 	if (do_next_sibling && instruction->list) {
-		fr_assert(instruction != NULL);
 		frame->next = unlang_list_next(instruction->list, instruction);
 	}
 	/* else frame->next MUST be NULL */
@@ -702,7 +701,7 @@ static inline CC_HINT(always_inline) void instruction_done_debug(request_t *requ
 		 */
 		if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 			RDEBUG("# %s %s%s%s", frame->instruction->debug_name,
-				frame->p_result == &frame->section_result ? "(" : "))",
+				frame->p_result == &frame->section_result ? "(" : "((",
 				fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
 				frame->p_result == &frame->section_result ? "(" : "))");
 		} else {
@@ -1168,8 +1167,8 @@ int unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
 	if (cs) {
 		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
-			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
-				cf_section_name1(cs), cf_section_name2(cs));
+			REDEBUG("Failed to find pre-compiled unlang for section %s ... { ... }",
+				cf_section_name1(cs));
 			return -1;
 		}
 	}
@@ -1936,7 +1935,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	All of the remaining things need a CONF_ITEM.
 	 */
 	if (!instruction->ci) {
-		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 3, false) < 0) goto error;
+		if (fr_value_box_bstrndup(vb, vb, NULL, "<INVALID>", 9, false) < 0) goto error;
 
 		goto finish;
 	}
