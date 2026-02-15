@@ -1016,7 +1016,7 @@ int fr_snmp_process(request_t *request)
 			break;
 
 		default:
-			ERROR("Invalid operation %u", vp->vp_uint32);
+			ERROR("Invalid operation %u", op->vp_uint32);
 			return -1;
 		}
 
