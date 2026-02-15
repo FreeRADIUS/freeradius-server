@@ -615,7 +615,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 		return out;
 
 	default:
-		MEM(out = password_normify(ctx, request, known_good));
+		out = password_normify(ctx, request, known_good);
 		if (!out) return NULL;
 
 		normalised = password_process_sha3(ctx, request, out);
