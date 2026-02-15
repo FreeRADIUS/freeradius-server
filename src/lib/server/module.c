@@ -690,9 +690,9 @@ int module_data_unprotect(module_instance_t const *mi, module_data_pool_t const 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int module_instance_data_protect(module_instance_t const *mi)
+int module_instance_data_protect(module_instance_t *mi)
 {
-	return module_data_unprotect(mi, &mi->inst_pool);
+	return module_data_protect(mi, &mi->inst_pool);
 }
 
 /** Mark module data as read/write
@@ -702,7 +702,7 @@ int module_instance_data_protect(module_instance_t const *mi)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int module_instance_data_unprotect(module_instance_t const *mi)
+int module_instance_data_unprotect(module_instance_t *mi)
 {
 	return module_data_unprotect(mi, &mi->inst_pool);
 }

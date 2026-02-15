@@ -468,9 +468,9 @@ void module_list_debug(module_list_t const *ml) CC_HINT(nonnull);
  *
  * @{
  */
-int			module_instance_data_protect(module_instance_t const *mi);
+int			module_instance_data_protect(module_instance_t *mi);
 
-int			module_instance_data_unprotect(module_instance_t const *mi);
+int			module_instance_data_unprotect(module_instance_t *mi);
  /** @} */
 
 /** @name Module and module thread lookup
