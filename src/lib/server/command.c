@@ -1204,7 +1204,7 @@ static int fr_command_tab_expand_argv(TALLOC_CTX *ctx, fr_cmd_t *cmd, fr_cmd_inf
 			ret = fr_command_tab_expand_argv(ctx, cmd, info, name, child, max_expansions - count, &expansions[count]);
 			if (!ret) continue;
 
-			count++;
+			count += ret;
 		}
 
 		return count;
