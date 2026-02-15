@@ -618,14 +618,12 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		slen = tmpl_afrom_substr(ctx, &mmc->key, &our_name, T_BARE_WORD, NULL, t_rules);
 		if (slen < 0) {
 			fr_strerror_const_push("Invalid dynamic module selector expression");
-			talloc_free(mmc);
 			return slen;
 		}
 
 		if (!fr_sbuff_is_char(&our_name, ']')) {
 			fr_strerror_const_push("Missing terminating ']' for dynamic module selector");
 		error:
-			talloc_free(mmc);
 			return fr_sbuff_error(&our_name);
 		}
 		fr_sbuff_marker(&s_end, &our_name);
@@ -1356,6 +1354,10 @@ int modules_rlm_free(void)
 {
 	if (talloc_free(rlm_modules_static) < 0) return -1;
 	rlm_modules_static = NULL;
+
+	if (talloc_free(rlm_modules_dynamic) < 0) return -1;
+	rlm_modules_dynamic = NULL;
+
 	if (talloc_free(module_rlm_virtual_name_tree) < 0) return -1;
 	module_rlm_virtual_name_tree = NULL;
 
