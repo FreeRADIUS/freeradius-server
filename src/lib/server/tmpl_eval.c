@@ -399,6 +399,7 @@ ssize_t _tmpl_to_type(void *out,
 		if (bufflen < len) {
 			REDEBUG("Expansion buffer is too small.  Buffer is %zu bytes, and we need %zu bytes",
 				bufflen, len);
+			return -1;
 		}
 
 		/*
