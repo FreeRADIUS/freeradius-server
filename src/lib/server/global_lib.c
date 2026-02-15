@@ -109,7 +109,7 @@ static int lib_auto_instantiate(global_lib_autoinst_t * const *to_init)
 		 */
 		if ((lib) && (lib->initialised)) {
 			lib->instance_count++;
-			return 0;
+			continue;
 		}
 
 		if (!lib) {
@@ -156,7 +156,7 @@ static void lib_autofree(global_lib_autoinst_t * const *to_free)
 
 		fr_assert_msg(lib, "Library %s already freed", (*p)->name);
 
-		if (--lib->instance_count > 0) return;
+		if (--lib->instance_count > 0) continue;
 
 		/*
 		 *  Only run the free callback if the library was successfully initialised
