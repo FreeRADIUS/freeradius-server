@@ -309,112 +309,6 @@ int rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc)
 	return 0;
 }
 
-/** Converts data stored in a file name back to its original form
- *
- * @param out Where to write the unescaped string (may be the same as in).
- * @param outlen Length of the output buffer.
- * @param in Input filename.
- * @param inlen Length of input.
- * @return
- *	- Number of bytes written to output buffer
- *	- offset where parse error occurred on failure.
- */
-ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen)
-{
-	char const *p, *end = in + inlen;
-	size_t freespace = outlen;
-
-	for (p = in; p < end; p++) {
-		if (freespace <= 1) break;
-
-		if (((*p >= 'A') && (*p <= 'Z')) ||
-		    ((*p >= 'a') && (*p <= 'z')) ||
-		    ((*p >= '0') && (*p <= '9')) ||
-		    (*p == '_')) {
-		 	*out++ = *p;
-		 	freespace--;
-		 	continue;
-		}
-
-		if (p[0] == '-') {
-			/*
-			 *	End of input, '-' needs at least one extra char after
-			 *	it to be valid.
-			 */
-			if ((end - p) < 2) return in - p;
-			if (p[1] == '-') {
-				p++;
-				*out++ = '-';
-				freespace--;
-				continue;
-			}
-
-			/*
-			 *	End of input, '-' must be followed by <hex><hex>
-			 *	but there aren't enough chars left
-			 */
-			if ((end - p) < 3) return in - p;
-
-			/*
-			 *	If hex2bin returns 0 the next two chars weren't hexits.
-			 */
-			if (fr_base16_decode(NULL,
-				       &FR_DBUFF_TMP((uint8_t *) out, 1),
-				       &FR_SBUFF_IN(in, 1), false) == 0) return in - (p + 1);
-			in += 2;
-			out++;
-			freespace--;
-		}
-
-		return in - p; /* offset we found the bad char at */
-	}
-	*out = '\0';
-
-	return outlen - freespace;	/* how many bytes were written */
-}
-
-/** talloc a buffer to hold the concatenated value of all elements of argv
- *
- * @param ctx to allocate buffer in.
- * @param argv array of substrings.
- * @param argc length of array.
- * @param c separation character. Optional, may be '\0' for no separator.
- * @return the concatenation of the elements of argv, separated by c.
- */
-char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
-{
-	char *buff, *p;
-	int i;
-	size_t total = 0, freespace;
-
-	if (!*argv) {
-		goto null;
-	}
-
-	for (i = 0; i < argc; i++) total += (strlen(argv[i]) + ((c == '\0') ? 0 : 1));
-	if (!total) {
-	null:
-		return talloc_zero_array(ctx, char, 1);
-	}
-
-	if (c == '\0') total++;
-
-	freespace = total;
-	buff = p = talloc_array(ctx, char, total);
-	for (i = 0; i < argc; i++) {
-		size_t len;
-
-		len = strlcpy(p, argv[i], freespace);
-		p += len;
-		freespace -= len;
-
-		*p++ = c;
-		freespace--;
-	}
-	buff[total] = '\0';
-
-	return buff;
-}
 
 /*
  *	Copy a quoted string.
@@ -591,8 +485,9 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	int argc = -1;
 	int i;
 	int left;
+	size_t len = strlen(cmd);
 
-	if (strlen(cmd) > (argv_buflen - 1)) {
+	if (len > (argv_buflen - 1)) {
 		fr_strerror_const("Expansion string is too long for output buffer");
 		return -1;
 	}
@@ -600,7 +495,7 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	/*
 	 *	Check for bad escapes.
 	 */
-	if (cmd[strlen(cmd) - 1] == '\\') {
+	if ((len > 0) && (cmd[len - 1] == '\\')) {
 		fr_strerror_const("Expansion string ends with a trailing backslash - invalid escape sequence");
 		return -1;
 	}
