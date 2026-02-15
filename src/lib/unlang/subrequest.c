@@ -192,6 +192,7 @@ static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request
 	child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
+		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
 	/*
@@ -473,7 +474,10 @@ int unlang_subrequest_child_push(unlang_result_t *p_result, request_t *child, vo
 	 *	This instruction will mark the parent as runnable
 	 *	when it executed.
 	 */
-	if (unlang_child_request_init(cr, cr, child, p_result, NULL, unique_session_ptr, free_child) < 0) return -1;
+	if (unlang_child_request_init(cr, cr, child, p_result, NULL, unique_session_ptr, free_child) < 0) {
+		unwind_set(frame);
+		return -1;
+	}
 
 	return 0;
 }
