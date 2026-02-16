@@ -1502,6 +1502,10 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		REDEBUG("<int> must be followed by time period (h|d|w|m|y)");
 		return XLAT_ACTION_FAIL;
 	}
+	if (num == 0) {
+		REDEBUG("<int> must be greater than zero");
+		return XLAT_ACTION_FAIL;
+	}
 
 	if (p == q) {
 		num = 1;
