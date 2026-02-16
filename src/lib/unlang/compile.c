@@ -359,13 +359,15 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 *
 		 *	RHS may be NULL for T_OP_CMP_FALSE.
 		 */
-		switch (map->rhs->type) {
-		case TMPL_TYPE_ATTR:
-			if (map->rhs && !tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
-			break;
+		if (map->rhs) {
+			switch (map->rhs->type) {
+			case TMPL_TYPE_ATTR:
+				if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
+				break;
 
-		default:
-			break;
+			default:
+				break;
+			}
 		}
 	}
 
