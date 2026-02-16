@@ -344,7 +344,7 @@ int dhcpv6_client_fields_store(request_t *request, process_dhcpv6_rctx_t *rctx, 
 		return -1;
 	}
 
-	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
+	MEM(rctx->transaction_id = fr_pair_copy(rctx, transaction_id));
 
 	fr_pair_list_init(&rctx->client_id);
 	fr_pair_list_init(&rctx->server_id);
@@ -357,13 +357,11 @@ int dhcpv6_client_fields_store(request_t *request, process_dhcpv6_rctx_t *rctx, 
 					      &request->request_pairs, attr_client_id)) {
 	case -1:
 		REDEBUG("Error copying Client-ID");
-	error:
-		talloc_free(rctx);
 		return -1;
 
 	case 0:
 		REDEBUG("Missing Client-ID");
-		goto error;
+		return -1;
 
 	default:
 		break;
@@ -373,19 +371,19 @@ int dhcpv6_client_fields_store(request_t *request, process_dhcpv6_rctx_t *rctx, 
 					      &request->request_pairs, attr_server_id)) {
 	case -1:
 			REDEBUG("Error copying Server-ID");
-			goto error;
+			return -1;
 
 	case 0:
 		if (expect_server_id) {
 			REDEBUG("Missing Server-ID");
-			goto error;
+			return -1;
 		}
 		break;
 
 	default:
 		if (!expect_server_id) {
 			REDEBUG("Server-ID should not be present");
-			goto error;
+			return -1;
 		}
 		break;
 	}
@@ -558,14 +556,14 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 		fr_sbuff_uctx_talloc_t	tctx;
 		fr_sbuff_t		sbuff;
 
-		do {
-			/*
-			 *	Create an aggregation buffer up to
-			 *      the maximum length of a status
-			 *	message.
-			 */
-			fr_sbuff_init_talloc(vp, &sbuff, &tctx, 1024, UINT16_MAX - 2);
+		/*
+		 *	Create an aggregation buffer up to
+		 *      the maximum length of a status
+		 *	message.
+		 */
+		fr_sbuff_init_talloc(vp, &sbuff, &tctx, 1024, UINT16_MAX - 2);
 
+		do {
 			/*
 			 *	Best effort... it's probably OK
 			 *	if we truncate really long messages.
@@ -575,6 +573,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 		} while ((failure_message = fr_pair_find_by_da(&request->request_pairs, failure_message,
 							       attr_module_failure_message)) &&
 			 (fr_sbuff_in_strcpy_literal(&sbuff, ". ") == 2));
+
 		fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);	/* Fix size */
 		fr_pair_value_bstrndup_shallow(vp, fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), false);
 	}
