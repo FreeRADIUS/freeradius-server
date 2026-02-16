@@ -187,6 +187,14 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	request->module = NULL;
 	fr_assert(request->proto_dict == dict_tls);
 
+	/*
+	 *	Success, failure, and notfound are not TLS packets that we 
+	 */
+	if (!request->packet->code || (request->packet->code > FR_PACKET_TYPE_VALUE_ESTABLISH_SESSION)) {
+		REDEBUG("Invalid packet code %u", request->packet->code);
+		RETURN_UNLANG_FAIL;
+	}
+
 	UPDATE_STATE(packet);
 
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
