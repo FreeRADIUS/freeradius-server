@@ -333,11 +333,24 @@ RESUME(access_request)
 	 */
 	UPDATE_STATE(packet);
 
-	request->reply->code = state->packet_type[rcode];
-	if (!request->reply->code) request->reply->code = state->default_reply;
+	/*
+	 *	A policy or a module can hard-code the reply, in which case we can process that immediately,
+	 *	and bypass the "authenticate" section.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+	if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
+		request->reply->code = vp->vp_uint32;
+		(void) fr_pair_delete(&request->reply_pairs, vp);
+	} else {
+		/*
+		 *	Get the default reply packet based on the rcode.
+		 */
+		request->reply->code = state->packet_type[rcode];
+		if (!request->reply->code) request->reply->code = state->default_reply;
+	}
 
 	/*
-	 *	Something set reject, we're done.
+	 *	Either the code above or a module set reject, we're done.
 	 */
 	if (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT) {
 		RDEBUG("The 'recv Access-Request' section returned %s - rejecting the request",
@@ -350,19 +363,11 @@ RESUME(access_request)
 		return CALL_SEND_STATE(state);
 	}
 
+	/*
+	 *	Something set a reply, bypass the "authenticate" section.
+	 */
 	if (request->reply->code) {
 		goto send_reply;
-	}
-
-	/*
-	 *	A policy _or_ a module can hard-code the reply.
-	 */
-	if (!request->reply->code) {
-		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
-			request->reply->code = vp->vp_uint32;
-			goto send_reply;
-		}
 	}
 
 	/*
@@ -383,25 +388,21 @@ RESUME(access_request)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Invalid value for 'Auth-Type' attribute, cannot authenticate the user - rejecting the request");
-
 		goto reject;
 	}
 
 	/*
-	 *	The magic Auth-Type Accept value
-	 *	which means skip the authenticate
-	 *	section.
+	 *	The magic Auth-Type Accept value which means skip the authenticate section.
 	 *
-	 *	And Reject means always reject.  Tho the admin should
-	 *	just return "reject" from the section.
+	 *	And Reject means always reject.  Tho the admin should instead just return "reject" from the
+	 *	section.
 	 */
 	if (fr_value_box_cmp(enum_auth_type_accept, dv->value) == 0) {
 		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		goto send_reply;
 
 	} else if (fr_value_box_cmp(enum_auth_type_reject, dv->value) == 0) {
-		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		goto send_reply;
+		goto reject;
 	}
 
 	cs = cf_section_find(inst->server_cs, "authenticate", dv->name);
@@ -424,14 +425,16 @@ RESUME(access_request)
 RESUME(auth_type)
 {
 	static const fr_process_rcode_t auth_type_rcode = {
-		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
-		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_HANDLED] =	0,
+		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_TIMEOUT] =  FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
 	rlm_rcode_t			rcode = RESULT_RCODE;
@@ -442,21 +445,18 @@ RESUME(auth_type)
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
-	if (auth_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND) {
-		request->reply->code = auth_type_rcode[rcode];
-		UPDATE_STATE(reply);
-
-		RDEBUG("The 'authenticate' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
-
-		fr_assert(state->send != NULL);
-		return state->send(p_result, mctx, request);
-	}
-
 	/*
-	 *	Most cases except handled...
+	 *	Allow user to specify response packet type here, too.
 	 */
-	if (auth_type_rcode[rcode]) request->reply->code = auth_type_rcode[rcode];
+	if (!auth_type_rcode[rcode]) {
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+		if (vp && FR_RADIUS_PROCESS_CODE_VALID(vp->vp_uint32)) {
+			request->reply->code = vp->vp_uint32;
+			(void) fr_pair_delete(&request->reply_pairs, vp);
+		}
+	} else {
+		request->reply->code = auth_type_rcode[rcode];
+	}
 
 	switch (request->reply->code) {
 	case 0:
@@ -484,9 +484,10 @@ RESUME(auth_type)
 
 					size = fr_utf8_char(p, -1);
 					if (!size) {
-						RWDEBUG("Unprintable characters in the password. "
+						REDEBUG("Unprintable characters in the password. "
 							"Double-check the shared secret on the server "
 							"and the NAS!");
+						REDEBUG("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/shared_secret.html");
 						break;
 					}
 					p += size;
@@ -514,7 +515,6 @@ RESUME(auth_type)
 
 	default:
 		break;
-
 	}
 	UPDATE_STATE(reply);
 
@@ -598,6 +598,7 @@ RESUME(acct_type)
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_TIMEOUT] =  FR_RADIUS_CODE_DO_NOT_RESPOND,
 	};
 
 	rlm_rcode_t			rcode = RESULT_RCODE;
@@ -884,7 +885,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_access_request,
@@ -897,7 +898,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_OK,
@@ -911,7 +912,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_REJECT,
@@ -925,7 +926,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.default_rcode = RLM_MODULE_NOOP,
 		.result_rcode = RLM_MODULE_OK,

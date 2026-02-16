@@ -5,13 +5,14 @@
 *** Server does not start
 **** xref:network/bind.adoc[Failed binding to socket]
 
-*** Common Errors
+*** Common Errors*
+**** xref:network/shared_secret.adoc[Shared secret is incorrect]
+**** xref:network/packet_fails_verification.adoc[Packet fails verification]
+**** xref:network/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
 **** xref:network/unknown_packet_code.adoc[Unknown packet code]
 **** xref:network/unexpected_request_code.adoc[Unexpected request code]
 **** xref:network/message_authenticator_missing.adoc[Message-Authenticator is missing]
-**** xref:network/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
 **** xref:network/proxy_state_missing.adoc[Proxy-State is missing]
-**** xref:network/packet_fails_verification.adoc[Packet fails verification]
 **** xref:network/no_matching_request.adoc[Did not find request which matched response]
 
 *** Other Errors
