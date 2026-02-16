@@ -505,7 +505,7 @@ RESUME(auth_type)
 	 *	section.
 	 */
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		if ((vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) != NULL) {
+		if ((vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_state)) == NULL) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
