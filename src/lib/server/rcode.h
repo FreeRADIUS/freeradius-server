@@ -36,6 +36,10 @@ extern "C" {
  *
  * All module functions must return one of the codes listed below (apart from
  * RLM_MODULE_NUMCODES, which is used to check for validity).
+ *
+ *  When updating this, be sure to check everything using #fr_process_rcode_t, rcode_table, and
+ *  everything which references RLM_MODULE_NUMCODES.  e.g. foo [RLM_MODULE_NUMCODES];
+ 
  */
 typedef enum {
 	RLM_MODULE_NOT_SET = 0,				//!< Error resolving rcode (should not be
