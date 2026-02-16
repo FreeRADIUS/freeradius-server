@@ -1049,7 +1049,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->auth.session.thread_safe = main_config->spawn_workers;
 	inst->auth.session.context_id = fr_hash_string(cf_section_name2(inst->server_cs));
 
-	inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, &inst->auth.session);
+	MEM(inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, &inst->auth.session));
+
 	return 0;
 }
 
