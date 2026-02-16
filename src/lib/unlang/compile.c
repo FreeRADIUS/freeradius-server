@@ -383,7 +383,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		 *	What exactly where you expecting to happen here?
 		 */
 		if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
-		    tmpl_is_list(map->rhs)) {
+		    map->rhs && tmpl_is_list(map->rhs)) {
 			cf_log_err(map->ci, "Can't copy list into an attribute");
 			return -1;
 		}
@@ -405,6 +405,11 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	processing we need to, as RHS is unused.
 	 */
 	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	if (unlikely(!map->rhs)) {
+		cf_log_err(map->ci, "Missing rhs");
+		return -1;
+	}
 
 	if (!tmpl_is_data_unresolved(map->rhs)) return 0;
 
