@@ -736,6 +736,11 @@ RESUME_FLAG(protocol_error,UNUSED,)
 	}
 
 	/*
+	 *	Add Proxy-State back.
+	 */
+	radius_request_pairs_to_reply(request, talloc_get_type_abort(mctx->rctx, process_radius_rctx_t));
+
+	/*
 	 *	And do the generic processing after running a "send" section.
 	 */
 	return CALL_RESUME(send_generic);
@@ -1047,7 +1052,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
 		.default_rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic,
+		.recv = recv_generic_radius_request,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
 	},
