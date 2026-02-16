@@ -249,7 +249,7 @@ static void _batch_write(rlm_linelog_file_t *file)
 	}
 
 done:
-	if (exfile_close(inst->file.ef, fd) < 0) {
+	if ((fd >= 0) && (exfile_close(inst->file.ef, fd) < 0)) {
 		PERROR("Failed closing file %s", file->filename);
 	}
 
