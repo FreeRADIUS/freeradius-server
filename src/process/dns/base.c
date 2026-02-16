@@ -121,6 +121,7 @@ typedef struct {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DNS_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_DNS_PACKET_CODE_VALID
 #define PROCESS_INST			process_dns_t
+#define PROCESS_RCTX_EXTRA_FIELDS	process_dns_fields_t fields;
 
 /** Map an rlm_rcode_t to a header.rcode value
  */
@@ -243,12 +244,12 @@ static void dns_packet_debug(request_t *request, fr_packet_t const *packet, fr_p
  *
  */
 static inline CC_HINT(always_inline)
-process_dns_fields_t *dns_fields_store(request_t *request)
+process_rctx_t *dns_fields_store(request_t *request)
 {
 	fr_pair_t		*header;
 	fr_pair_t		*id;
 	fr_pair_t		*opcode;
-	process_dns_fields_t	*rctx;
+	process_rctx_t		*rctx;
 
 	/*
 	 *	We could use fr_find_by_da_nested, but it's more efficient
@@ -272,9 +273,9 @@ process_dns_fields_t *dns_fields_store(request_t *request)
 		return NULL;
 	}
 
-	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), process_dns_fields_t));
-	rctx->id = id->vp_uint16;
-	rctx->opcode = opcode->vp_uint8;
+	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), process_rctx_t));
+	rctx->fields.id = id->vp_uint16;
+	rctx->fields.opcode = opcode->vp_uint8;
 
 	return rctx;
 }
@@ -284,7 +285,7 @@ process_dns_fields_t *dns_fields_store(request_t *request)
  * If a value already exists in the response, don't overwrite it so the user has absolute control
  */
 static inline CC_HINT(always_inline)
-int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
+int dns_fields_restore(request_t *request, process_rctx_t *rctx)
 {
 	fr_pair_t *header;
 	fr_pair_t *id;
@@ -301,7 +302,7 @@ int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(header, &id, attr_id)) != -1);
 	fr_assert_msg(ret >= 0, "Failed to update header attribute %s:", fr_strerror());
-	if (ret == 0) id->vp_uint16 = rctx->id;
+	if (ret == 0) id->vp_uint16 = rctx->fields.id;
 
 	/*
 	 *	This marks the packet as a response.
@@ -317,7 +318,7 @@ int dns_fields_restore(request_t *request, process_dns_fields_t *rctx)
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(header, &opcode, attr_opcode)) != -1);
 	fr_assert_msg(ret >= 0, "Failed to update opcode attribute %s:", fr_strerror());
-	if (ret == 0) opcode->vp_uint8 = rctx->opcode;
+	if (ret == 0) opcode->vp_uint8 = rctx->fields.opcode;
 
 	/*
 	 *	Default to setting the authoritative bit if
@@ -362,7 +363,7 @@ void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const *
  */
 RECV(request)
 {
-	process_dns_fields_t		*rctx;
+	process_rctx_t		*rctx;
 
 	PROCESS_TRACE;
 
@@ -450,7 +451,7 @@ RESUME(send_response)
 	 *	Add fields from the request back in,
 	 *	deferring to user specified values.
 	 */
-	dns_fields_restore(request, talloc_get_type_abort(mctx->rctx, process_dns_fields_t));
+	dns_fields_restore(request, talloc_get_type_abort(mctx->rctx, process_rctx_t));
 
 	/*
 	 *	Do this last, so we show everything
