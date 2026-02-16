@@ -288,24 +288,25 @@ static uint32_t reply_code(request_t *request, fr_dict_attr_t const *status_da,
 			RDEBUG("Setting reply Packet-Type from %pP", vp);
 			return code;
 		}
+
 		REDEBUG("Ignoring invalid status %pP", vp);
 	}
 
 	if (state) {
 		code = state->packet_type[rcode];
-		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code) || (code == FR_TACACS_CODE_DO_NOT_RESPOND)) return code;
 	}
 
 	if (process_rcode) {
 		code = process_rcode[rcode];
-		if (FR_TACACS_PACKET_CODE_VALID(code)) return code;
+		if (FR_TACACS_PACKET_CODE_VALID(code) || (code == FR_TACACS_CODE_DO_NOT_RESPOND)) return code;
 	}
 
 	/*
 	 *	Otherwise use Packet-Type (if set)
 	 */
 	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
-	if (vp && FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32)) {
+	if (vp && (FR_TACACS_PACKET_CODE_VALID(vp->vp_uint32) || (vp->vp_uint32 == FR_TACACS_CODE_DO_NOT_RESPOND))) {
 		RDEBUG("Setting reply Packet-Type from %pV", &vp->data);
 		return vp->vp_uint32;
 	}
@@ -467,8 +468,12 @@ RESUME(auth_start)
 	if (request->reply->code) {
 		switch (request->reply->code) {
 		case FR_TACACS_CODE_AUTH_FAIL:
-			RDEBUG("The 'recv Authentication-Start' section returned %s - rejecting the request",
+			RDEBUG("The 'recv Authentication-Start' section returned %s - failing the request",
 			       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
+			break;
+
+		case FR_TACACS_CODE_DO_NOT_RESPOND:
+			RDEBUG("Reply packet type was set to Do-Not-Respond");
 			break;
 
 		default:
@@ -598,7 +603,7 @@ RESUME(auth_type)
 	case FR_TACACS_CODE_AUTH_GETUSER:
 	case FR_TACACS_CODE_AUTH_GETPASS:
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_tacacs_authentication_type);
-		if (vp && (vp->vp_uint32 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+		if (vp && (vp->vp_uint8 != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
 			RDEBUG2("Cannot send challenges for %pP", vp);
 			goto fail;
 		}
@@ -813,9 +818,29 @@ RECV(auth_cont_abort)
 
 RESUME(auth_cont_abort)
 {
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 
-	if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTH_RESTART;
+	UPDATE_STATE(packet);
+
+	if (!request->reply->code) {
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = FR_TACACS_CODE_AUTH_RESTART;
+			break;
+
+		default:
+			request->reply->code = FR_TACACS_CODE_AUTH_FAIL;
+			break;
+		}
+
+	} else {
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
+	}
+
+	RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 	UPDATE_STATE(reply);
 
@@ -858,10 +883,11 @@ RESUME(autz_request)
 		if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTZ_ERROR;
 
 	} else {
-		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 	}
 
-	RDEBUG("Reply packet type set to %s", fr_tacacs_packet_names[request->reply->code]);
+	RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 	UPDATE_STATE(reply);
 
@@ -963,9 +989,10 @@ RESUME(accounting_request)
 	 *	Something set the reply code, so we reply and don't run "accounting foo { ... }"
 	 */
 	if (request->reply->code) {
-		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
+		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 
-		RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
+		RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
 		UPDATE_STATE(reply);
 
