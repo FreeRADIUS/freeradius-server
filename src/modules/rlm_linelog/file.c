@@ -289,7 +289,7 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 		talloc_set_name_const(file, "rlm_linelog_file_t");
 
 		file->filename = talloc_strdup(file, path);
-		file->log_header = fr_value_box_alloc_null(file);
+		MEM(file->log_header = fr_value_box_alloc_null(file));
 		file->mod_inst = inst;
 		file->thread_inst = thread;
 
