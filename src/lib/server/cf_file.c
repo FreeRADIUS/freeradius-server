@@ -307,7 +307,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			 *	it's the property of a section.
 			 */
 			if (q) {
-				CONF_SECTION *find = cf_item_to_section(ci);
+				CONF_SECTION *find;
 				char const *f;
 				size_t flen;
 
@@ -316,6 +316,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 					return NULL;
 				}
 
+				find = cf_item_to_section(ci);
 				switch (fr_table_value_by_str(conf_property_name, q, CONF_PROPERTY_INVALID)) {
 				case CONF_PROPERTY_NAME:
 					f = find->name1;
@@ -603,7 +604,10 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 			return -1;
 		}
 
-		if (fstatat(my_fd, r, &my_file.buf, 0) < 0) goto error;
+		if (fstatat(my_fd, r, &my_file.buf, 0) < 0) {
+			if (my_fd != AT_FDCWD) close(my_fd);
+			goto error;
+		}
 
 		file = fr_rb_find(tree, &my_file);
 
@@ -679,8 +683,8 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
  */
 void cf_file_check_set_uid_gid(uid_t uid, gid_t gid)
 {
-	if (uid != 0) conf_check_uid = uid;
-	if (gid != 0) conf_check_gid = gid;
+	if (uid != (uid_t) -1) conf_check_uid = uid;
+	if (gid != (gid_t) -1) conf_check_gid = gid;
 }
 
 /** Perform an operation with the effect/group set to conf_check_gid and conf_check_uid
@@ -697,17 +701,17 @@ cf_file_check_err_t cf_file_check_effective(char const *filename,
 {
 	int ret;
 
-	uid_t euid = (uid_t)-1;
-	gid_t egid = (gid_t)-1;
+	uid_t euid = (uid_t) -1;
+	gid_t egid = (gid_t) -1;
 
-	if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
+	if ((conf_check_gid != (gid_t) -1) && ((egid = getegid()) != conf_check_gid)) {
 		if (setegid(conf_check_gid) < 0) {
 			fr_strerror_printf("Failed setting effective group ID (%d) for file check: %s",
 					   (int) conf_check_gid, fr_syserror(errno));
 			return CF_FILE_OTHER_ERROR;
 		}
 	}
-	if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
+	if ((conf_check_uid != (uid_t) -1) && ((euid = geteuid()) != conf_check_uid)) {
 		if (seteuid(conf_check_uid) < 0) {
 			fr_strerror_printf("Failed setting effective user ID (%d) for file check: %s",
 					   (int) conf_check_uid, fr_syserror(errno));
@@ -923,10 +927,10 @@ cf_file_check_err_t cf_file_check(CONF_PAIR *cp, bool check_perms)
 
 	top = cf_root(cp);
 	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
-	if (!tree) return false;
+	if (!tree) return CF_FILE_OTHER_ERROR;
 
 	file = talloc(tree, cf_file_t);
-	if (!file) return false;
+	if (!file) return CF_FILE_OTHER_ERROR;
 
 	file->filename = talloc_strdup(file, filename);	/* The rest of the code expects this to be talloced */
 	file->cs = cf_item_to_section(cf_parent(cp));
@@ -1244,7 +1248,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 */
 	{
 		char		*directory;
-		DIR		*dir;
+		DIR		*dir = NULL;
 		struct dirent	*dp;
 		struct stat	stat_buf;
 		cf_file_heap_t	*h;
@@ -1266,6 +1270,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			      frame->filename, frame->lineno, value,
 			      fr_syserror(errno));
 		error:
+			if (dir) closedir(dir);
 			talloc_free(directory);
 			return -1;
 		}
@@ -1326,8 +1331,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			 *	Check for valid characters
 			 */
 			for (p = dp->d_name; *p != '\0'; p++) {
-				if (isalpha((uint8_t)*p) ||
-				    isdigit((uint8_t)*p) ||
+				if (isalpha((uint8_t) *p) ||
+				    isdigit((uint8_t) *p) ||
 				    (*p == '-') ||
 				    (*p == '_') ||
 				    (*p == '.')) continue;
@@ -1345,8 +1350,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			 	continue;
 			}
 			if ((len > 9) && (strncmp(&dp->d_name[len - 9], ".dpkg-old", 9) == 0)) goto pkg_file;
-			if ((len > 7) && (strncmp(&dp->d_name[len - 7], ".rpmnew", 9) == 0)) goto pkg_file;
-			if ((len > 8) && (strncmp(&dp->d_name[len - 8], ".rpmsave", 10) == 0)) goto pkg_file;
+			if ((len > 7) && (strncmp(&dp->d_name[len - 7], ".rpmnew", 7) == 0)) goto pkg_file;
+			if ((len > 8) && (strncmp(&dp->d_name[len - 8], ".rpmsave", 8) == 0)) goto pkg_file;
 
 			snprintf(stack->buff[1], stack->bufsize, "%s%s",
 				 frame->directory, dp->d_name);
@@ -1370,6 +1375,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			h->heap_id = FR_HEAP_INDEX_INVALID;
 			(void) fr_heap_insert(&frame->heap, h);
 		}
+
 		closedir(dir);
 		return 1;
 	}
@@ -1878,9 +1884,10 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 			continue;
 		}
 
-		if (argc > RLM_MODULE_NUMCODES) {
+		if (argc >= RLM_MODULE_NUMCODES) {
 			ERROR("%s[%d]: Invalid syntax for 'catch' - too many arguments at'%s'",
 			      frame->filename, frame->lineno, ptr);
+			talloc_free(name2);
 			return NULL;
 		}
 
@@ -2631,11 +2638,11 @@ check_for_eol:
 		}
 
 		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
-		if (name1_token == T_INVALID) {
+		if (name2_token == T_INVALID) {
 			return parse_error(stack, ptr2, fr_strerror());
 		}
 
-		if (name1_token != T_BARE_WORD) {
+		if (name2_token != T_BARE_WORD) {
 			return parse_error(stack, ptr2, "Unexpected quoted string after section name");
 		}
 
