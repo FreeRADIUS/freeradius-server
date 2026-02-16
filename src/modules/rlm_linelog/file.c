@@ -257,8 +257,8 @@ done:
 	file->entry_p = file->entry;
 
 	if (fr_time_delta_gt(inst->file.buffer_expiry, fr_time_delta_wrap(0))) {
-		fr_timer_in(file, file->thread_inst->tl, &file->expiry, inst->file.buffer_expiry,
-			    false, _batching_cleanup_timer, file);
+		(void) fr_timer_in(file, file->thread_inst->tl, &file->expiry, inst->file.buffer_expiry,
+				   false, _batching_cleanup_timer, file);
 	}
 }
 
