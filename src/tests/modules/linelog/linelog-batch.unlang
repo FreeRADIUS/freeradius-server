@@ -64,7 +64,11 @@ if (`/usr/bin/uname` == 'Linux') {
 
         # Mount the tmpfs
         %file.mkdir("$ENV{MODULE_TEST_DIR}/mnt")
-        ret := `/usr/bin/sudo /usr/bin/mount -t tmpfs -o size=1K tmpfs $ENV{MODULE_TEST_DIR}/mnt`
+	if (%file.exists('/usr/bin/sudo')) {
+        	ret := `/usr/bin/sudo /usr/bin/mount -t tmpfs -o size=1K tmpfs $ENV{MODULE_TEST_DIR}/mnt`
+	} else {
+		ret := `/usr/bin/mount -t tmpfs -o size=1K tmpfs $ENV{MODULE_TEST_DIR}/mnt`
+	}
 
         page_size := `/usr/bin/stat -fc %%s $ENV{MODULE_TEST_DIR}/mnt`
 
@@ -86,6 +90,10 @@ if (`/usr/bin/uname` == 'Linux') {
 
         # Cleanup the test
         %file.rm("$ENV{MODULE_TEST_DIR}/mnt/test_batch_partial.log")
-        %exec('/usr/bin/sudo', '/usr/bin/umount', '-l', '$ENV{MODULE_TEST_DIR}/mnt')
+	if (%file.exists('/usr/bin/sudo')) {
+        	%exec('/usr/bin/sudo', '/usr/bin/umount', '-l', '$ENV{MODULE_TEST_DIR}/mnt')
+	} else {
+		%exec('/usr/bin/umount', '-l', '$ENV{MODULE_TEST_DIR}/mnt')
+	}
         %file.rmdir("$ENV{MODULE_TEST_DIR}/mnt")
 }
