@@ -46,7 +46,7 @@ fr_dict_attr_autoload_t process_ldap_sync_dict_attr[] = {
 };
 
 static char const *ldap_sync_message_types[FR_LDAP_SYNC_CODE_MAX] = {
-	"",					//!< 0
+	"<INVALID>",   				//!< 0
 	"Present",
 	"Add",
 	"Modify",
@@ -54,6 +54,7 @@ static char const *ldap_sync_message_types[FR_LDAP_SYNC_CODE_MAX] = {
 	"Entry-Response",
 	"Cookie-Load",
 	"Cookie-Load-Response",
+	"Cookie-Load-Fail",
 	"Cookie-Store",
 	"Cookie-Store-Response",
 };
