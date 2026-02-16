@@ -1159,7 +1159,7 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Prioritise status check packets
 	 */
-	ret = (b->status_check - a->status_check);
+	ret = CMP_PREFER_LARGER(a->status_check, b->status_check);
 	if (ret != 0) return ret;
 
 	/*
