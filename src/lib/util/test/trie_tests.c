@@ -193,8 +193,8 @@ static void test_trie_remove(void)
 	ft = fr_trie_alloc(NULL, NULL, NULL);
 	TEST_ASSERT(ft != NULL);
 
-	fr_trie_insert_by_key(ft, key1, 32, data1);
-	fr_trie_insert_by_key(ft, key2, 32, data2);
+	TEST_CHECK(fr_trie_insert_by_key(ft, key1, 32, data1) == 0);
+	TEST_CHECK(fr_trie_insert_by_key(ft, key2, 32, data2) == 0);
 
 	TEST_CASE("Remove returns the data");
 	removed = fr_trie_remove_by_key(ft, key1, 32);
@@ -247,9 +247,9 @@ static void test_trie_walk(void)
 	ft = fr_trie_alloc(NULL, NULL, NULL);
 	TEST_ASSERT(ft != NULL);
 
-	fr_trie_insert_by_key(ft, k1, 32, data[0]);
-	fr_trie_insert_by_key(ft, k2, 32, data[1]);
-	fr_trie_insert_by_key(ft, k3, 32, data[2]);
+	TEST_CHECK(fr_trie_insert_by_key(ft, k1, 32, data[0]) == 0);
+	TEST_CHECK(fr_trie_insert_by_key(ft, k2, 32, data[1]) == 0);
+	TEST_CHECK(fr_trie_insert_by_key(ft, k3, 32, data[2]) == 0);
 
 	memset(&ctx, 0, sizeof(ctx));
 
