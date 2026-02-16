@@ -64,12 +64,12 @@ extern "C" {
 #  error PROCESS_INST must be defined to the C type of the process instance e.g. process_bfd_t
 #endif
 
-#ifndef PROCESS_RCTX
-#  define PROCESS_RCTX	process_rctx_t
-#endif
-
 #if defined(PROCESS_RCTX) && defined(PROCESS_RCTX_EXTRA_FIELDS)
 #  error Only one of PROCESS_RCTX (the type of the rctx struct) OR PROCESS_RCTX_EXTRA_FIELDS (extra fields for the common rctx struct) can be defined.
+#endif
+
+#ifndef PROCESS_RCTX
+#  define PROCESS_RCTX	process_rctx_t
 #endif
 
 #ifndef PROCESS_RCTX_RESULT
