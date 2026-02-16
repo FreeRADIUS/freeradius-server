@@ -337,8 +337,10 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 	*entry_p = file->entry_p;
 
 	if (fr_time_delta_gt(inst->file.buffer_delay, fr_time_delta_wrap(0)) && !fr_timer_armed(file->write) ) {
-		fr_timer_in(file, file->thread_inst->tl, &file->write, inst->file.buffer_delay,
-			    false, _batching_handle_timeout, file);
+		if (unlikely(fr_timer_in(file, file->thread_inst->tl, &file->write, inst->file.buffer_delay,
+					 false, _batching_handle_timeout, file)) < 0) {
+			RWARN("Failed adding timer to write logs for %pV", call_env->filename);
+		}
 	}
 
 	file->entry_p->data_len = ret;
