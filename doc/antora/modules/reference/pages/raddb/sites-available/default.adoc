@@ -1542,11 +1542,16 @@ The server is supposed to conclude that the start time was
 "Acct-Delay-Time" seconds in the past.
 
 If there's no Event-Timestamp, then we create one, using
-Acct-Delay-Time as an offset if it exists.
+Acct-Delay-Time as an offset if it exists.  BUT we only do
+this if Acct-Delay-Time exists, and has a reasonable value.
 
 ```
 	if (!Event-Timestamp) {
-		Event-Timestamp := %time.request() - %{Acct-Delay-Time || 0}
+		Event-Timestamp := %time.request()
+
+		if (Acct-Delay-Time && (Acct-Delay-Time < 86400 * 7)) {
+			Event-Timestamp -= Acct-Delay-Time
+		}
 	}
 
 ```
