@@ -181,7 +181,7 @@ static const virtual_server_compile_t compile_list[] = {
 		.offset = PROCESS_CONF_OFFSET(stateful_operation_response),
 	},
 	{
-		.section = SECTION_NAME("send", "Do-Dot-Respond"),
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
@@ -401,16 +401,12 @@ RESUME(recv_request)
 	 */
 	dns_rcode_add(&rcode, request, state->dns_rcode[RESULT_RCODE]);
 
-#ifdef __clang_analyzer__
-	if (!rcode) RETURN_UNLANG_FAIL;
-#endif
-
 	/*
 	 *	Call an appropriate error section if it's been set
 	 *	otherwise, just call the generic recv resume
 	 *	which'll call an appropriate send section.
 	 */
-	if ((rcode->vp_uint8 < NUM_ELEMENTS(inst->sections.rcode)) &&
+	if (rcode && (rcode->vp_uint8 < NUM_ELEMENTS(inst->sections.rcode)) &&
 	    (inst->sections.rcode[rcode->vp_uint8])) {
 		return unlang_module_yield_to_section(RESULT_P, request,
 						      inst->sections.rcode[rcode->vp_uint8],
@@ -465,8 +461,9 @@ RESUME(send_response)
 	 *	packet types, and DNS uses the same values for
 	 *	both request and response packet types.
 	 */
-	MEM(pair_update_reply(&vp, attr_packet_type) >= 1);
-	request->reply->code = vp->vp_uint8 = state->default_reply;
+	(void) pair_update_reply(&vp, attr_packet_type);
+	MEM(vp);
+	request->reply->code = vp->vp_uint32 = state->default_reply;
 
 	return CALL_RESUME(send_generic);
 }
@@ -508,7 +505,8 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		[RLM_MODULE_FAIL] = &enum_rcode_server_failure, \
 		[RLM_MODULE_INVALID] = &enum_rcode_format_error, \
 		[RLM_MODULE_DISALLOW] = &enum_rcode_refused, \
-		[RLM_MODULE_NOTFOUND] = &enum_rcode_name_error \
+		[RLM_MODULE_NOTFOUND] = &enum_rcode_name_error, \
+		[RLM_MODULE_TIMEOUT] = &enum_rcode_server_failure, \
 	}
 
 static fr_process_state_t const process_state[] = {
