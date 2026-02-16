@@ -239,7 +239,7 @@ static fr_process_state_t const process_state[] = {
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
-		.section_offset = PROCESS_CONF_OFFSET(request),
+		.section_offset = PROCESS_CONF_OFFSET(decline),
 	},
 
 	[FR_DHCP_ACK] = {
