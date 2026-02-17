@@ -2149,7 +2149,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	No checks on the attribute, we're just popping _A_ frame,
 	 *	we don't care what attribute it represents.
 	 */
-	if (argc == 1) return 0;
+	if (argc == 0) return 0;
 
 	/*
 	 *	This is where we'll have begun the previous search to
