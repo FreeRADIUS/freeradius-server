@@ -171,6 +171,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 					       prf_label->context,
 					       prf_label->context_len,
 					       prf_label->use_context) != 1) {
+			talloc_free(buff);
 			fr_tls_log(request, "Failed generating TLS session ID");
 			return -1;
 		}
