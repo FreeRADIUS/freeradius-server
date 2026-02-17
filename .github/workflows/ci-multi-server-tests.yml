@@ -153,9 +153,9 @@ jobs:
       #  Need git installed for checkout to behave normally
       - name: Install multi-server framework test environment dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential
-          sudo apt-get install -y --no-install-recommends git git-lfs ca-certificates
+          apt-get update
+          apt-get install -y build-essential
+          apt-get install -y --no-install-recommends git git-lfs ca-certificates
           make --version
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
