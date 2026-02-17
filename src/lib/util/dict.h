@@ -889,27 +889,27 @@ static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **o
  * @{
  */
 int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name,
-						    char const *dependent);
+						    char const *dependent) CC_HINT(nonnull);
 
 int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir,
-						    char const *dependent);
+						    char const *dependent) CC_HINT(nonnull(1,2,4));
 
-fr_dict_t		*fr_dict_protocol_alloc(fr_dict_t const *parent);
+fr_dict_t		*fr_dict_protocol_alloc(fr_dict_t const *parent) CC_HINT(nonnull);
 
-int			fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *root, fr_sbuff_t *in);
+int			fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *root, fr_sbuff_t *in) CC_HINT(nonnull);
 
-int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
+int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename) CC_HINT(nonnull);
 
-bool			fr_dict_filename_loaded(fr_dict_t const *dict, char const *dict_dir, char const *filename);
+bool			fr_dict_filename_loaded(fr_dict_t const *dict, char const *dict_dir, char const *filename) CC_HINT(nonnull);
 /** @} */
 
 /** @name Autoloader interface
  *
  * @{
  */
-int			fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load);
+int			fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load) CC_HINT(nonnull);
 
-int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
+int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load) CC_HINT(nonnull);
 
 #define			fr_dict_autoload(_to_load) _fr_dict_autoload(_to_load, __FILE__)
 int			_fr_dict_autoload(fr_dict_autoload_t const *to_load, char const *dependent);
@@ -920,13 +920,13 @@ int			_fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent
 #define			fr_dict_autoload_talloc(_ctx, _dict_out, _proto) _fr_dict_autoload_talloc(_ctx, _dict_out, _proto, __FILE__)
 fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t const **out, char const *proto, char const *dependent);
 
-int			fr_dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx);
+int			fr_dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx) CC_HINT(nonnull);
 
-int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx);
+int			fr_dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx) CC_HINT(nonnull);
 
-int			fr_dl_dict_autoload(dl_t const *module, void *symbol, void *user_ctx);
+int			fr_dl_dict_autoload(dl_t const *module, void *symbol, void *user_ctx) CC_HINT(nonnull);
 
-void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
+void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx) CC_HINT(nonnull);
 /** @} */
 
 /** @name Allocating and freeing
@@ -946,19 +946,19 @@ int			fr_dict_const_free(fr_dict_t const **dict, char const *dependent) CC_HINT(
  *
  * @{
  */
-fr_dict_gctx_t		*fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir);
+fr_dict_gctx_t		*fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir) CC_HINT(nonnull(3));
 
-void			fr_dict_global_ctx_perm_check(fr_dict_gctx_t *gctx, bool enable);
+void			fr_dict_global_ctx_perm_check(fr_dict_gctx_t *gctx, bool enable) CC_HINT(nonnull);
 
-void			fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx);
+void			fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx) CC_HINT(nonnull);
 
-int			fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx);
+int			fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx) CC_HINT(nonnull);
 
-int			fr_dict_global_ctx_dir_set(char const *dict_dir);
+int			fr_dict_global_ctx_dir_set(char const *dict_dir) CC_HINT(nonnull);
 
 void			fr_dict_global_ctx_read_only(void);
 
-void			fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx);
+void			fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx) CC_HINT(nonnull(1));
 
 char const		*fr_dict_global_ctx_dir(void);
 
@@ -968,9 +968,9 @@ fr_dict_t		*fr_dict_global_ctx_iter_init(fr_dict_global_ctx_iter_t *iter) CC_HIN
 
 fr_dict_t		*fr_dict_global_ctx_iter_next(fr_dict_global_ctx_iter_t *iter) CC_HINT(nonnull);
 
-fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict);
+fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict) CC_HINT(nonnull);
 
-fr_dict_attr_t		*fr_dict_attr_unconst(fr_dict_attr_t const *da);
+fr_dict_attr_t		*fr_dict_attr_unconst(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_dict_t const		*fr_dict_internal(void);
 
@@ -980,22 +980,23 @@ fr_dict_t const		*fr_dict_internal(void);
  *
  * @{
  */
-void			dict_dctx_debug(dict_tokenize_ctx_t *dctx);
+void			dict_dctx_debug(dict_tokenize_ctx_t *dctx) CC_HINT(nonnull);
 
 int			fr_dict_parse_str(fr_dict_t *dict, char const *str,
-					  fr_dict_attr_t const *parent);
+					  fr_dict_attr_t const *parent) CC_HINT(nonnull);
 
-ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
+ssize_t			fr_dict_valid_name(char const *name, ssize_t len) CC_HINT(nonnull);
 
-ssize_t			fr_dict_valid_oid_str(char const *name, ssize_t len);
+ssize_t			fr_dict_valid_oid_str(char const *name, ssize_t len) CC_HINT(nonnull);
 
-fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev);
+fr_dict_attr_t const	*fr_dict_attr_iterate_children(fr_dict_attr_t const *parent,
+						       fr_dict_attr_t const **prev) CC_HINT(nonnull(1));
 
 typedef int		(*fr_dict_walk_t)(fr_dict_attr_t const *da, void *uctx);
 
-int			fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx);
+int			fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
-void			fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da);
+void			fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da) CC_HINT(nonnull);
 /** @} */
 
 #undef _CONST
