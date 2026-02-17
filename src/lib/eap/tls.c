@@ -891,7 +891,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		eap_tls_request(request, eap_session);
+		if (eap_tls_request(request, eap_session) < 0) goto fail;
 		eap_tls_session->state = EAP_TLS_HANDLED;
 		goto finish;
 	}
@@ -919,6 +919,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	/*
 	 *	Who knows what happened...
 	 */
+fail:
 	REDEBUG("TLS failed during operation");
 	eap_tls_session->state = EAP_TLS_FAIL;
 
@@ -970,11 +971,13 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
  * session object SHOULD be maintained even after the session is completed, for session
  * resumption.
  *
+ * Note that we never return FAIL to the interpreter.  Instead, we
+ * send the EAP failure back to the supplicant.
+ *
  * @param request	the request
  * @param eap_session	to continue.
  * @return
- *	- EAP_TLS_ESTABLISHED
- *	- EAP_TLS_HANDLED
+ *	- UNLANG_ACTION_CALCULATE_RESULT
  */
 unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 {
@@ -1106,8 +1109,11 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 			goto done;
 		}
 
-		eap_tls_request(request, eap_session);
-		eap_tls_session->state = EAP_TLS_HANDLED;
+		if (eap_tls_request(request, eap_session) < 0) {
+			eap_tls_session->state = EAP_TLS_FAIL;
+		} else {
+			eap_tls_session->state = EAP_TLS_HANDLED;
+		}
 		goto done;
 
 	/*
