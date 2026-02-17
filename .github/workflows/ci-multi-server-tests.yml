@@ -151,10 +151,12 @@ jobs:
     steps:
 
       #  Need git installed for checkout to behave normally
-      #- name: Install checkout prerequisites
-      #  run: |
-      #    sudo apt-get update
-      #    sudo apt-get install -y --no-install-recommends git git-lfs ca-certificates
+      - name: Install multi-server framework test environment dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          sudo apt-get install -y --no-install-recommends git git-lfs ca-certificates
+          make --version
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
@@ -174,6 +176,14 @@ jobs:
 
           # Display all docker images for debugging purposes
           docker images --all
+
+      - name: Configure and build freeradius-server from src
+        shell: bash
+        run: |
+          # The multi-server test framework requires the availability of the $BUILD_DIR, hence why
+          # the following is needed before running multi-server tests.
+          ./configure
+          make -j"$(nproc)" all
 
       - name: Run test-5hs-autoaccept test
         shell: bash
