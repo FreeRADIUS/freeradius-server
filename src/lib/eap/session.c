@@ -229,7 +229,7 @@ eap_session_t *eap_session_thaw(request_t *request)
  */
 static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
-	uint16_t 	len;
+	size_t 	len;
 
 	if (!eap_packet ||
 	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
@@ -265,7 +265,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *  here.
 	 */
 	if (len <= EAP_HEADER_LEN) {
-		REDEBUG("EAP-Identity length field too short, expected >= 5, got %u", len);
+		REDEBUG("EAP-Identity length field too short, expected >= 5, got %zu", len);
 		return NULL;
 	}
 
