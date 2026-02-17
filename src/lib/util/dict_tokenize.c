@@ -2532,7 +2532,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		CURRENT_FRAME(dctx)->struct_is_closed = da;
         }
 
-	if (unlikely(dict_attr_num_init(da, ++CURRENT_FRAME(dctx)->member_num) < 0)) goto error;
+	if (unlikely(dict_attr_num_init(da, CURRENT_FRAME(dctx)->member_num + 1) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
 
 	/*
@@ -2638,6 +2638,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 			return -1;
 		}
 	}
+
+	/*
+	 *	Now that we know everything is OK, we can increase the number.
+	 */
+	CURRENT_FRAME(dctx)->member_num++;
 
 	/*
 	 *	Set or clear the attribute for VALUE statements.
