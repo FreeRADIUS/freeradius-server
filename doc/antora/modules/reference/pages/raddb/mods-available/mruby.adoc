@@ -93,7 +93,7 @@ A set of predefined constants are provided to use as return values:
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 filename:: Module to load functions from.
@@ -112,5 +112,5 @@ mruby {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

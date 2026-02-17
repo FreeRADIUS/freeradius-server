@@ -19,7 +19,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 winbind {
 	#

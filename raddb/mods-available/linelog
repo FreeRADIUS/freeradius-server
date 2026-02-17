@@ -18,7 +18,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 linelog {
 	#
@@ -390,7 +390,7 @@ linelog {
 }
 
 #
-#  ## Sample
+#  == Sample
 #
 #  Another example, for accounting packets.
 #
@@ -428,7 +428,7 @@ linelog log_accounting {
 }
 
 #
-#  ## Authentication success / failure logging
+#  == Authentication success / failure logging
 #
 #  A set of sample module instances which can replace the previous builtin auth log messages
 #

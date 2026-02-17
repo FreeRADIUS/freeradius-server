@@ -22,7 +22,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 isc_dhcp {
 	#
@@ -71,12 +71,12 @@ isc_dhcp {
 }
 
 #
-#  ## Configuration Keywords
+#  == Configuration Keywords
 #
 #  The following tables list the ISC DHCP configuration file keywords
 #  which are either supported, not yet implemented, or are ignored.
 #
-#  ### Supported Keywords
+#  === Supported Keywords
 #
 #  The following keywords are have the same meaning and behavior as ISC DHCP.
 #
@@ -96,11 +96,11 @@ isc_dhcp {
 #  | subnet IPADDR netmask IPADDR SECTION | match subnet
 #  |===
 #
-#  ## Remaining Keywords
+#  == Remaining Keywords
 #
 #  All other keywords are not supported.
 
-#  ## Ignored Keywords
+#  == Ignored Keywords
 #
 #  The following keywords control ISC DHCP behavior such as network
 #  IP/port, LDAP access, etc.  These keywords are ignored even when

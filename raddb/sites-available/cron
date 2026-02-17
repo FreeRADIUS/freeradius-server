@@ -9,7 +9,7 @@
 #
 #  The `cron` virtual server is an example of using `cron` style functionality in FreeRADIUS.
 #
-#  ## The Virtual Server
+#  == The Virtual Server
 #
 #  This is the `cron` virtual server.
 #

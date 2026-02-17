@@ -21,7 +21,7 @@ updates are not supported.
 See the `smbpasswd` and `etc_group` files for more examples.
 
 
-## Configuration Settings
+== Configuration Settings
 
 An example configuration for using `/etc/passwd`.
 
@@ -112,5 +112,5 @@ passwd etc_passwd {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

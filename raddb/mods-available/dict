@@ -10,11 +10,11 @@
 #  The `dict` module registers expansions which query the dictionaries.
 
 #
-#  ## Expansions
+#  == Expansions
 #
 #  The following expansions allow querying the dictionaries.
 #
-#  ### %dict.attr(_<string>_)
+#  === %dict.attr(_<string>_)
 #
 #  Takes an attribute name, and returns the canonicalized name of the attribute.
 #
@@ -22,7 +22,7 @@
 #
 #  .Return: _string_
 #
-#  ### %dict.attr.by_num(_<uint32>_)
+#  === %dict.attr.by_num(_<uint32>_)
 #
 #  Takes an attribute number, and returns the canonicalized name of the attribute.
 #
@@ -33,7 +33,7 @@
 #
 #  .Return: _string_
 #
-#  ### %dict.attr.by_oid(_<string>_)
+#  === %dict.attr.by_oid(_<string>_)
 #
 #  Takes a full OID reference (e.g. `26.9.1`), and returns the name of
 #  the attribute.
@@ -42,7 +42,7 @@
 #
 #  .Return: _string_
 #
-#  ### %dict.attr.num(_<string>_)
+#  === %dict.attr.num(_<string>_)
 #
 #  Takes an attribute name, and returns the number of the attribute.
 #
@@ -54,7 +54,7 @@
 #
 #  .Return: _uint32_
 #
-#  ### %dict.attr.type(_<string>_)
+#  === %dict.attr.type(_<string>_)
 #
 #  Takes an attribute name, and returns the data type of the attribute.
 #
@@ -62,7 +62,7 @@
 #
 #  .Return: _string_
 #
-#  ### %dict.vendor(_<string>_)
+#  === %dict.vendor(_<string>_)
 #
 #  Takes an vendor name, and returns the canonicalized name of the vendor.
 #
@@ -70,7 +70,7 @@
 #
 #  .Return: _string_
 #
-#  ### %dict.vendor.by.num(_<uint32>_)
+#  === %dict.vendor.by.num(_<uint32>_)
 #
 #  Takes an vendor number, and returns the canonicalized name of the vendor.
 #
@@ -80,7 +80,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  This module takes no configuration.
 #

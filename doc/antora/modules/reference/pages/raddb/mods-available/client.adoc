@@ -38,14 +38,14 @@ NOTE: For more documentation, see the file xref:reference:raddb/sites-available/
 
 
 
-## Client Configuration
+== Client Configuration
 
 In addition to loading `client` definitions in from flat files, the clients module can
 also be used to access data from previously defined clients.
 
 
 
-### Attribute Mapping
+=== Attribute Mapping
 
 Maps arbitrary fields from a client definition to attributes in the current request.
 
@@ -68,7 +68,7 @@ map client [<ipaddr>] {      // <1>
     with the client.
 
 
-### Access Expansion
+=== Access Expansion
 
 [options="header,autowidth"]
 |===
@@ -79,7 +79,7 @@ map client [<ipaddr>] {      // <1>
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 This module takes no configuration.
 

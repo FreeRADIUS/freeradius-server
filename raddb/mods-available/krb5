@@ -11,7 +11,7 @@
 #
 #  NOTE: This default config presumes you have the MIT Kerberos 5 distribution.
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  krb5 { ... }::
 #
@@ -62,7 +62,7 @@ krb5 {
 }
 
 #
-#  ## Sample
+#  == Sample
 #
 #  You can configure the module with the following parameters:
 #

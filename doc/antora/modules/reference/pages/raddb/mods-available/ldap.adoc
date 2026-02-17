@@ -16,7 +16,7 @@ which control LDAP library debugging.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 ldap { ... }::
 
@@ -801,7 +801,7 @@ binds which there can be on a single thread.
 
 
 
-## Policy Over-rides
+== Policy Over-rides
 
 The following policy ensures that every call to the `ldap` module
 will time out within a short period of time.
@@ -812,11 +812,11 @@ of the module.
 
 
 
-## Expansions
+== Expansions
 
 The `rlm_ldap` module provides the following xlat functions.
 
-### %ldap(...)
+=== %ldap(...)
 
 Retrieve a value from an LDAP directory using an LDAP uri.
 
@@ -835,7 +835,7 @@ reply.Reply-Message := "Welcome %ldap("ldap:///ou=people,dc=example,dc=com?displ
 "Welcome Example User"
 ```
 
-### %ldap.uri.escape(...)
+=== %ldap.uri.escape(...)
 
 Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
 in LDAP URIs and DNs, and will not be escaped or modified.
@@ -856,7 +856,7 @@ reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 ```
 
-### %ldap.uri.safe(...)
+=== %ldap.uri.safe(...)
 
 Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
 URIs will not be escaped or modified, and will be allowed in places where dynamic values are
@@ -871,7 +871,7 @@ usually prohibited.
 my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 ----
 
-### %ldap.uri.unescape(...)
+=== %ldap.uri.unescape(...)
 
 Unescape a string for use in an LDAP filter or DN.
 
@@ -891,7 +891,7 @@ reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 ```
 
-### %ldap.uri.attr_option(...)
+=== %ldap.uri.attr_option(...)
 
 Add an option to all attribute referenced in an LDAP URI.
 
@@ -916,7 +916,7 @@ reply.Reply-Message := %ldap.uri.attr_option(my-uri, 'binary')
 "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList;binary?base?objectClass=cRLDistributionPoint"
 ```
 
-### %ldap.group(...)
+=== %ldap.group(...)
 
 Check whether the current user is a member of a the given group.  If the attribute
 `control.LDAP-UserDN` exists, that will be used as the "user" object.  If it does
@@ -938,7 +938,7 @@ if (%ldap.group('cn=group1,ou=Groups,dc=example,dc=org')) {
 ----
 
 
-### %ldap.profile(...)
+=== %ldap.profile(...)
 
 Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
 updates as configured in the module `update` section.  This can be useful when

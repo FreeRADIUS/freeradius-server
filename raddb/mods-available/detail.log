@@ -14,10 +14,10 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 
-#  ### Access-Request
+#  === Access-Request
 #
 #  Many people want to log authentication requests. Different
 #  instances of the `detail` module can be used to log the
@@ -40,7 +40,7 @@ detail auth_log {
 }
 
 #
-#  ### Access-Accept
+#  === Access-Accept
 #
 #  This module logs authentication reply packets sent to a NAS.
 #  Both `Access-Accept` and `Access-Reject` packets are logged.

@@ -2,7 +2,7 @@
 
 
 
-# Local dictionary definitions
+= Local dictionary definitions
 
 This is the local dictionary file which can be
 edited by local administrators.  It will be loaded
@@ -26,7 +26,7 @@ This file exists for two purposes:
    process of migrating from version 3 to version 4.  We
    recommend using the new names where possible.
 
-## Dictionary loading order
+== Dictionary loading order
 
 FreeRADIUS will automatically load the main dictionary files from:
 
@@ -37,7 +37,7 @@ dictionaries from this file.  However, if the `$INCLUDE` line is
 here, nothing bad will happen.
 
 
-## Dictionaries per Virtual Server
+== Dictionaries per Virtual Server
 
 v4 also supports a `dictionary { ... }` subsection in a virtual
 server.  If the attributes are used only in one virtual server,
@@ -45,7 +45,7 @@ they should be defined there.
 
 
 
-## Editing the dictionary
+== Editing the dictionary
 
 Any new/changed attributes *must* be placed in this file.
 The pre-defined dictionaries *should not* be edited.
@@ -73,7 +73,7 @@ See https://tools.ietf.org/html/rfc6158[RFC 6158] for more details:
   http://ietf.org/rfc/rfc6158.txt
 
 
-## Example attributes
+== Example attributes
 
 The attributes below are examples. You should edit them as
 required, or add your own.
@@ -81,7 +81,7 @@ required, or add your own.
 
 
 
-## v3 Compatibility and Migration
+== v3 Compatibility and Migration
 
 By default, the server does NOT load the v3 names.  While this
 behavior is done to simplify the server configuration, it can also
@@ -177,5 +177,5 @@ editor backup files, and others which are known to not be real files.
 $INCLUDE- dictionary.d/
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

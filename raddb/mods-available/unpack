@@ -17,7 +17,7 @@
 #
 
 #
-#  ## Syntax
+#  == Syntax
 #
 #  To use it, add it to the `mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
@@ -48,7 +48,7 @@
 #  as can be from the input data.
 
 #
-#  ## Sample
+#  == Sample
 #
 #  if we have `Class = 0x000001020304`, then
 #
@@ -58,7 +58,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  This module takes no configuration.
 #

@@ -19,7 +19,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  ldap { ... }::
 #
@@ -947,7 +947,7 @@ ldap {
 }
 
 #
-#  ## Policy Over-rides
+#  == Policy Over-rides
 #
 #  The following policy ensures that every call to the `ldap` module
 #  will time out within a short period of time.
@@ -964,11 +964,11 @@ ldap {
 
 
 #
-#  ## Expansions
+#  == Expansions
 #
 #  The `rlm_ldap` module provides the following xlat functions.
 #
-#  ### %ldap(...)
+#  === %ldap(...)
 #
 #  Retrieve a value from an LDAP directory using an LDAP uri.
 #
@@ -987,7 +987,7 @@ ldap {
 #  "Welcome Example User"
 #  ```
 #
-#  ### %ldap.uri.escape(...)
+#  === %ldap.uri.escape(...)
 #
 #  Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
 #  in LDAP URIs and DNs, and will not be escaped or modified.
@@ -1008,7 +1008,7 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  ```
 #
-#  ### %ldap.uri.safe(...)
+#  === %ldap.uri.safe(...)
 #
 #  Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
 #  URIs will not be escaped or modified, and will be allowed in places where dynamic values are
@@ -1023,7 +1023,7 @@ ldap {
 #  my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ----
 #
-#  ### %ldap.uri.unescape(...)
+#  === %ldap.uri.unescape(...)
 #
 #  Unescape a string for use in an LDAP filter or DN.
 #
@@ -1043,7 +1043,7 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ```
 #
-#  ### %ldap.uri.attr_option(...)
+#  === %ldap.uri.attr_option(...)
 #
 #  Add an option to all attribute referenced in an LDAP URI.
 #
@@ -1068,7 +1068,7 @@ ldap {
 #  "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList;binary?base?objectClass=cRLDistributionPoint"
 #  ```
 #
-#  ### %ldap.group(...)
+#  === %ldap.group(...)
 #
 #  Check whether the current user is a member of a the given group.  If the attribute
 #  `control.LDAP-UserDN` exists, that will be used as the "user" object.  If it does
@@ -1090,7 +1090,7 @@ ldap {
 #  ----
 #
 #
-#  ### %ldap.profile(...)
+#  === %ldap.profile(...)
 #
 #  Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
 #  updates as configured in the module `update` section.  This can be useful when

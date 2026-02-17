@@ -1,13 +1,17 @@
+
+
+
+
 = Dict Module
 
 The `dict` module registers expansions which query the dictionaries.
 
 
-## Expansions
+== Expansions
 
 The following expansions allow querying the dictionaries.
 
-### %dict.attr(_<string>_)
+=== %dict.attr(_<string>_)
 
 Takes an attribute name, and returns the canonicalized name of the attribute.
 
@@ -15,7 +19,7 @@ If the attribute does not exist, nothing is returned.
 
 .Return: _string_
 
-### %dict.attr.by_num(_<uint32>_)
+=== %dict.attr.by_num(_<uint32>_)
 
 Takes an attribute number, and returns the canonicalized name of the attribute.
 
@@ -26,7 +30,7 @@ Where the attribute is nested, use `%dict.attr.by_oid()` instead.
 
 .Return: _string_
 
-### %dict.attr.by_oid(_<string>_)
+=== %dict.attr.by_oid(_<string>_)
 
 Takes a full OID reference (e.g. `26.9.1`), and returns the name of
 the attribute.
@@ -35,7 +39,7 @@ If the attribute does not exist, nothing is returned.
 
 .Return: _string_
 
-### %dict.attr.num(_<string>_)
+=== %dict.attr.num(_<string>_)
 
 Takes an attribute name, and returns the number of the attribute.
 
@@ -47,7 +51,7 @@ for `Vendor-Specific.Cisco.AVPair` is `26.9.1`.  This function will return
 
 .Return: _uint32_
 
-### %dict.attr.type(_<string>_)
+=== %dict.attr.type(_<string>_)
 
 Takes an attribute name, and returns the data type of the attribute.
 
@@ -55,7 +59,7 @@ If the attribute does not exist, nothing is returned.
 
 .Return: _string_
 
-### %dict.vendor(_<string>_)
+=== %dict.vendor(_<string>_)
 
 Takes an vendor name, and returns the canonicalized name of the vendor.
 
@@ -63,7 +67,7 @@ If the vendor does not exist, nothing is returned.
 
 .Return: _string_
 
-### %dict.vendor.by.num(_<uint32>_)
+=== %dict.vendor.by.num(_<uint32>_)
 
 Takes an vendor number, and returns the canonicalized name of the vendor.
 
@@ -73,7 +77,7 @@ If the vendor does not exist, nothing is returned.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 This module takes no configuration.
 
@@ -86,5 +90,5 @@ dict {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

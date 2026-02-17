@@ -12,7 +12,7 @@ as can be seen at `link:https://tools.ietf.org/html/draft-sterman-aaa-sip-01[dra
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 This module takes no configuration.
 
@@ -25,5 +25,5 @@ digest {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

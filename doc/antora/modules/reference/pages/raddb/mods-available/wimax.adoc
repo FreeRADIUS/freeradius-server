@@ -13,7 +13,7 @@ NOTE: The module will change the horrible binary version of
 `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]` to the normal format, as specified in RFC
 3580, Section 3.21.
 
-## recv Access-Request
+== recv Access-Request
 
 In the `recv Access-Request section. the `wimax` module fixes up
 various non-standard WiMAX issues.
@@ -123,7 +123,7 @@ and `SPI` is the relevant `SPI` for the `HA-RK`.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 delete_mppe_keys::

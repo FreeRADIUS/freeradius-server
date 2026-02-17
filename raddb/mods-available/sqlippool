@@ -11,7 +11,7 @@
 #
 #  NOTE: The database schemas are available at `sql/ippool/<DB>/schema.sql`.
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 sqlippool {
 	#

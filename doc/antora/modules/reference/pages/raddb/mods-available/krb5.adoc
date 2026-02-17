@@ -8,7 +8,7 @@ The `krb5` module enables the use of Kerberos 5 for authentication.
 
 NOTE: This default config presumes you have the MIT Kerberos 5 distribution.
 
-## Configuration Settings
+== Configuration Settings
 
 krb5 { ... }::
 
@@ -48,7 +48,7 @@ cleanup_interval:: How often to free un-used handles.
 
 
 
-## Sample
+== Sample
 
 You can configure the module with the following parameters:
 
@@ -91,5 +91,5 @@ krb5 {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

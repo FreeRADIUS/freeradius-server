@@ -24,7 +24,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 lua {
 	#

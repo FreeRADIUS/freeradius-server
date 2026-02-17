@@ -14,7 +14,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 files {
 	#
@@ -62,7 +62,7 @@ files {
 }
 
 #
-#  ## An instance of the `files` module for use in processing accounting packets
+#  == An instance of the `files` module for use in processing accounting packets
 #
 files files_accounting {
 #	key = "%{Stripped-User-Name || User-Name}"

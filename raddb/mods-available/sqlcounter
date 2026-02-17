@@ -24,7 +24,7 @@
 #
 
 #
-#  ## Syntax
+#  == Syntax
 #
 #  Configuration explanation.
 #
@@ -115,11 +115,11 @@
 #  utc:: Use UTC for calculating the period start and end values.
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 
 #
-#  ### Daily Counter
+#  === Daily Counter
 #
 sqlcounter dailycounter {
 	sql_module_instance = sql
@@ -140,7 +140,7 @@ sqlcounter dailycounter {
 }
 
 #
-#  ### Monthly Counter
+#  === Monthly Counter
 #
 sqlcounter monthlycounter {
 	sql_module_instance = sql
@@ -158,7 +158,7 @@ sqlcounter monthlycounter {
 }
 
 #
-#  ### No Reset Counter
+#  === No Reset Counter
 #
 sqlcounter noresetcounter {
 	sql_module_instance = sql
@@ -174,7 +174,7 @@ sqlcounter noresetcounter {
 }
 
 #
-#  ### Expire on login
+#  === Expire on login
 #
 #  Set an account to expire T seconds after first login. Requires the `Expire-After`
 #  attribute to be set, in seconds.

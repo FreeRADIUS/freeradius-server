@@ -99,7 +99,7 @@
 #  to minimize the amount of brute-force attempts.
 #
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 dpsk {
 	#

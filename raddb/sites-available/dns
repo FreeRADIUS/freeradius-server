@@ -9,7 +9,7 @@
 #
 #  The `dns` virtual server is an example of using `dns` style functionality in FreeRADIUS.
 #
-#  ## The Virtual Server
+#  == The Virtual Server
 #
 #  This is the `dns` virtual server.
 #

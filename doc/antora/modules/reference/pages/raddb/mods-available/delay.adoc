@@ -14,7 +14,7 @@ instead possible to have a policy that delays the response.
 TIP: The module can also be used to introduce artificial jitter into
 responses by adding random delays.
 
-## xlat for delays
+== xlat for delays
 
 The module also registers an xlat function for delays
 
@@ -31,11 +31,11 @@ This function takes a time-delta argument (or data which is converted to a time-
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 
-### Simple delay
+=== Simple delay
 
 
 delay:: How long to delay request processing for.
@@ -81,7 +81,7 @@ in the section.
 
 
 
-### Delaying Access-Reject packets
+=== Delaying Access-Reject packets
 
 The `delay_reject` module should be used in a `send Access-Reject`
 section, as the last module in that section. When `delay_reject`
@@ -116,5 +116,5 @@ delay delay_reject {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

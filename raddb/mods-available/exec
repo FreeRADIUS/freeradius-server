@@ -95,7 +95,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 exec {
 	#

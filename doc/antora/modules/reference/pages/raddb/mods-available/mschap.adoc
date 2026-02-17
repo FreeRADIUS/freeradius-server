@@ -44,7 +44,7 @@ http://deployingradius.com/documents/configuration/active_directory.html
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 NOTE: If you are using `/etc/smbpasswd`, see the `passwd` module
 for an example of how to use `/etc/smbpasswd`
@@ -389,5 +389,5 @@ mschap {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

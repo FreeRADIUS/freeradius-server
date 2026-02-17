@@ -15,7 +15,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  This module connects to a Redis database.  Other modules
 #  (e.g. `redis_ippool`) perform task-specific functions using Redis.

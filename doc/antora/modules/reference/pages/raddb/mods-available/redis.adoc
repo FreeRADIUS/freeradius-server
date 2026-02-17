@@ -12,7 +12,7 @@ Redis database.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 This module connects to a Redis database.  Other modules
 (e.g. `redis_ippool`) perform task-specific functions using Redis.
@@ -228,5 +228,5 @@ redis {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

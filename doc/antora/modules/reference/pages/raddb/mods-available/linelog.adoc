@@ -15,7 +15,7 @@ done by the server.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 delimiter::  Custom line delimiters.
@@ -337,7 +337,7 @@ Defaults is `info`.
 
 
 
-## Sample
+== Sample
 
 Another example, for accounting packets.
 
@@ -358,7 +358,7 @@ Don't log anything for these packets.
 Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` 's.
 
 
-## Authentication success / failure logging
+== Authentication success / failure logging
 
 A set of sample module instances which can replace the previous builtin auth log messages
 
@@ -489,5 +489,5 @@ linelog log_auth_authentication_fail {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

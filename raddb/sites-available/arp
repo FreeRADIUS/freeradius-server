@@ -17,7 +17,7 @@
 #
 
 #
-#  ## server arp { ... }
+#  == server arp { ... }
 #
 #  This is the `arp` virtual server.
 #
@@ -76,14 +76,14 @@ server arp {
 	}
 
 #
-#  ### Process an ARP request
+#  === Process an ARP request
 #
 recv Request {
 	ok
 }
 
 #
-#  ### Process an ARP reply before sending it
+#  === Process an ARP reply before sending it
 #
 send Reply {
 	ok

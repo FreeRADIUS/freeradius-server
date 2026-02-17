@@ -22,7 +22,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 date {
 	#
@@ -45,7 +45,7 @@ date {
 }
 
 #
-#  ### ISO format
+#  === ISO format
 #
 #  The core `xlat`, `%T` returns the request timestamp in `ISO` format
 #  including milliseconds. This expansion returns it without the
@@ -59,7 +59,7 @@ date date_iso {
 }
 
 #
-#  ### xlat expansions
+#  === xlat expansions
 #
 #  The `date` module defines an expansion `%date()` When the
 #  expansion is not passed an argument, it returns the current date

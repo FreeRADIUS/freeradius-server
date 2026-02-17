@@ -21,7 +21,7 @@ administratively down.
 
 
 
-## server bfd  { ... }
+== server bfd  { ... }
 
 The virtual server which manages BFD.
 
@@ -196,7 +196,7 @@ allowed values: {no, yes}
 
 ```
 
-## Packet Processing sections
+== Packet Processing sections
 
 Unlike other protocols, BFD does not follow a "request / reply" process.  Instead, there are two
 independent streams of packets.  One where the peer sends us packets (`recv foo { ... }`), and the other
@@ -207,7 +207,7 @@ are defined by the protocol.  The `send` section is called only for informationa
 
 
 
-### Receive "Admin-Down" packets from the peer.
+=== Receive "Admin-Down" packets from the peer.
 
 ```
 recv Admin-Down {
@@ -216,7 +216,7 @@ recv Admin-Down {
 
 ```
 
-### Receive "Down" packets from the peer.
+=== Receive "Down" packets from the peer.
 
 ```
 recv Down {
@@ -225,7 +225,7 @@ recv Down {
 
 ```
 
-### Receive "Init" packets from the peer.
+=== Receive "Init" packets from the peer.
 
 ```
 recv Init {
@@ -234,7 +234,7 @@ recv Init {
 
 ```
 
-### Receive "Up" packets from the peer.
+=== Receive "Up" packets from the peer.
 
 ```
 recv Up {
@@ -243,7 +243,7 @@ recv Up {
 
 ```
 
-### Send "Admin-Down" packets to the peer.
+=== Send "Admin-Down" packets to the peer.
 
 ```
 send Admin-Down {
@@ -252,7 +252,7 @@ send Admin-Down {
 
 ```
 
-### Send "Down" packets to the peer.
+=== Send "Down" packets to the peer.
 
 ```
 send Down {
@@ -261,7 +261,7 @@ send Down {
 
 ```
 
-### Send "Init" packets to the peer.
+=== Send "Init" packets to the peer.
 
 ```
 send Init {
@@ -270,7 +270,7 @@ send Init {
 
 ```
 
-### Send "Up" packets to the peer.
+=== Send "Up" packets to the peer.
 
 ```
 send Up {

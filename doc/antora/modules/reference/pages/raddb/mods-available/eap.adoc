@@ -17,7 +17,7 @@ then cannot use ANY other authentication method.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 require_identity_realm:: Require the the EAP Identity provided contains
@@ -1274,11 +1274,11 @@ require configuration for each user.
 
 
 
-## Expansions
+== Expansions
 
 The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
 
-### %3gpp_temporary_id.decrypt('...)
+=== %3gpp_temporary_id.decrypt('...)
 
 TODO
 
@@ -1297,7 +1297,7 @@ TODO
 TODO
 ```
 
-### %3gpp_temporary_id.encrypt(...)
+=== %3gpp_temporary_id.encrypt(...)
 
 TODO
 
@@ -1316,7 +1316,7 @@ TODO
 TODO
 ```
 
-### %3gpp_temporary_id.key_index(...)
+=== %3gpp_temporary_id.key_index(...)
 
 TODO
 
@@ -1335,7 +1335,7 @@ TODO
 TODO
 ```
 
-### %aka_sim_id_method(...)
+=== %aka_sim_id_method(...)
 
 TODO
 
@@ -1354,7 +1354,7 @@ TODO
 TODO
 ```
 
-### %aka_sim_id_type(...)
+=== %aka_sim_id_type(...)
 
 TODO
 

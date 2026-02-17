@@ -28,7 +28,7 @@ pieces in smaller chunks. This helps in certain catastrophic
 corner cases.
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 == Default Configuration

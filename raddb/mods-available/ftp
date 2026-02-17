@@ -5,13 +5,13 @@
 
 #######################################################################
 #
-#  # Ftp Module
+#  = Ftp Module
 #
 #  The `ftp` module provides an xlat to retrieve files from FTP URIs.
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  ftp { ... }::
 #
@@ -85,11 +85,11 @@ ftp {
 }
 
 #
-#  ## Expansions
+#  == Expansions
 #
 #  The `rlm_ftp` module provides the following xlat function:
 #
-#  ### %ftp.get(...)
+#  === %ftp.get(...)
 #
 #  Retrieve a file from an FTP URI
 #

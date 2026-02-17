@@ -14,7 +14,7 @@ queries.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 dialect:: The dialect of SQL you want to use, this should usually match

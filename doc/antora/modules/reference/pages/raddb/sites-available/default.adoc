@@ -22,7 +22,7 @@ Then, run the server.  This process will ensure that users can log
 in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
 `radtest` to verify that it works.
 
-## Editing this file
+== Editing this file
 
 Please read "man radiusd" before editing this file.  See the
 section titled DEBUGGING.  It outlines a method where you can
@@ -52,7 +52,7 @@ able to connect to the database, and to authenticate users.
 
 
 
-## The Virtual Server
+== The Virtual Server
 
 This is the `default` virtual server.
 
@@ -829,7 +829,7 @@ here, too.
 
 ```
 
-## Packet Processing sections
+== Packet Processing sections
 
 The sections below are called when a RADIUS packet has been
 received.
@@ -839,7 +839,7 @@ received.
 
 
 
-### Receive Access-Request packets
+=== Receive Access-Request packets
 
 ```
 recv Access-Request {
@@ -1057,7 +1057,7 @@ modules get a chance to set Auth-Type for themselves.
 
 ```
 
-### Receive Status-Server packets
+=== Receive Status-Server packets
 
 
 This section is processed when the server receives a `Status-Server`
@@ -1075,7 +1075,7 @@ We are still here and responding.
 
 ```
 
-## Authentication Sections
+== Authentication Sections
 
 The sub-sections below are called based on the value of the
 `Auth-Type` attribute, which should have been set by the `recv
@@ -1107,7 +1107,7 @@ below, after authentication has completed.
 
 
 
-### PAP Authentication
+=== PAP Authentication
 
 For users who are using PAP authentication. A back-end database
 listed in the "recv Access-Request" section MUST supply a "known
@@ -1121,7 +1121,7 @@ authenticate pap {
 
 ```
 
-### CHAP Authentication
+=== CHAP Authentication
 
 For users who are using CHAP authentication. A back-end database
 listed in the "recv Access-Request" section MUST supply a
@@ -1134,7 +1134,7 @@ authenticate chap {
 
 ```
 
-### MS-CHAP authentication
+=== MS-CHAP authentication
 
 For users who are using MS-CHAP authentication. A back-end
 database listed in the "recv Access-Request" section MUST supply
@@ -1148,7 +1148,7 @@ authenticate mschap {
 
 ```
 
-### SIP Digest Authentication
+=== SIP Digest Authentication
 
 For users who are using SIP Digest authentication.
 
@@ -1162,7 +1162,7 @@ authenticate digest {
 
 ```
 
-### PAM (Pluggable Authentication Modules) Authentication
+=== PAM (Pluggable Authentication Modules) Authentication
 
 Authenticate with PAM (Pluggable Authentication Modules).
 
@@ -1177,7 +1177,7 @@ FreeRADIUS.
 
 ```
 
-### LDAP Authentication
+=== LDAP Authentication
 
 For users who are using PAP, and when you can't get the "known
 good" password from LDAP.  The module binds to the LDAP directory
@@ -1200,7 +1200,7 @@ authenticate ldap {
 
 ```
 
-### EAP Authentication
+=== EAP Authentication
 
 For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 
@@ -1211,7 +1211,7 @@ authenticate eap {
 
 ```
 
-### Proxying
+=== Proxying
 
 Proxying has changed substantially from v3 to v4.  These changes
 are complex, but were necessary in order to support new features.
@@ -1269,11 +1269,11 @@ for more information.
 
 ```
 
-## Send replies to Access-Request packets
+== Send replies to Access-Request packets
 
 
 
-### send Access-Challenge packets
+=== send Access-Challenge packets
 
 
 This section is called when sending an Access-Challenge
@@ -1288,7 +1288,7 @@ send Access-Challenge {
 
 ```
 
-### send Access-Accept packets
+=== send Access-Accept packets
 
 Once we know that the user has been authenticated successfully,
 there are additional things that can be done.
@@ -1444,7 +1444,7 @@ drop the network connection.
 
 ```
 
-### send Access-Reject packets
+=== send Access-Reject packets
 
 This section processes `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` packets before they are sent
 to the NAS.
@@ -1509,7 +1509,7 @@ longer automatic as it was in version 3.
 
 ```
 
-## Accounting
+== Accounting
 
 
 This section deals with receiving Accounting requests and
@@ -1517,7 +1517,7 @@ sending Accounting responses.
 
 
 
-### Receive Accounting-Request packets
+=== Receive Accounting-Request packets
 
 An Accounting-Request packet has been received. Decide which
 accounting type to use.
@@ -1583,9 +1583,9 @@ then process the `send Accounting-Response` section
 
 
 
-## Sections for Acct-Status-Type
+== Sections for Acct-Status-Type
 
-### Session start
+=== Session start
 
 ```
 accounting Start {
@@ -1612,7 +1612,7 @@ it is available for all the accounting sections.
 
 ```
 
-### Session stop
+=== Session stop
 
 ```
 accounting Stop {
@@ -1650,7 +1650,7 @@ Return an address to the IP Pool when we see a stop record.
 
 ```
 
-### Session is still alive
+=== Session is still alive
 
 ```
 accounting Interim-Update {
@@ -1671,7 +1671,7 @@ Refresh leases when we see an alive.
 
 ```
 
-### The NAS has just booted up.
+=== The NAS has just booted up.
 
 ```
 accounting Accounting-On {
@@ -1692,7 +1692,7 @@ Return all addresses related to this NAS to the IP Pool
 
 ```
 
-### The NAS is about to shut down
+=== The NAS is about to shut down
 
 ```
 accounting Accounting-Off {
@@ -1713,7 +1713,7 @@ Return all addresses related to this NAS to the IP Pool
 
 ```
 
-### The user session failed in some way
+=== The user session failed in some way
 
 ```
 accounting Failed {
@@ -1735,7 +1735,7 @@ Some vendors also define their own values, which is a very bad idea.
 
 
 
-### Send Accounting-Response.
+=== Send Accounting-Response.
 
 Log the accounting data before replying. If logging fails then
 the reply will not be sent, which means the NAS will send the
@@ -1787,7 +1787,7 @@ Filter attributes from the accounting response.
 
 ```
 
-## Finally
+== Finally
 
 If a `finally` section is defined, then all packets will be processed
 through it.

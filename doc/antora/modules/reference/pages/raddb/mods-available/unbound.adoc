@@ -12,7 +12,7 @@ internal APIs, and so, instances should be initialized earlier than
 those modules which use them.  Each instance does also provide some
 functions for general use and for troubleshooting.
 
-## Caveats
+== Caveats
 
 There is a potential for a FreeRADIUS server using rlm_unbound to either
 fail to terminate cleanly (leaving zombie processes, failing to clean up
@@ -23,7 +23,7 @@ exact behavior may change in interim releases of libunbound until then.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 filename:: The libunbound configuration file.
@@ -55,7 +55,7 @@ Defaults to not set.
 hosts = "/etc/hosts"
 
 
-## Functions for DNS resolution
+== Functions for DNS resolution
 
 A function based on the instance name can be used to perform DNS lookups.
 

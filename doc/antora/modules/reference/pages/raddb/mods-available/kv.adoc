@@ -31,7 +31,7 @@ This approach causes the module to use multiple mutexes (one for
 each instance), which reduces mutex contention and can improve
 performance.
 
-## Differences from the Cache module
+== Differences from the Cache module
 
 The `cache` module also provides an in-memory key-value store.
 However, the cache module stores _attributes_, and _lists of
@@ -41,29 +41,29 @@ In contrast, the `kv` module stores _values_.  e.g. ipv4addr,
 uint32, etc.  The use-case for the `kv` module is to store a small
 number of simple values that can be shared across multiple threads.
 
-## Functions
+== Functions
 
 The `kv` module exports a number of functions to interact with the
 key-value store.
 
-### %kv.write(key, value)
+=== %kv.write(key, value)
 
 Writes _value_ at _key_.  Any pre-existing value for _key_ is
 discarded.
 
 This function returns nothing.
 
-### %kv.read(key)
+=== %kv.read(key)
 
 Reads a value at _key_.  If the value exists, it is returned.
 Otherwise, nothing is returned.
 
-### %kv.delete(key)
+=== %kv.delete(key)
 
 Deletes the value found at _key_.  If a value was deleted, it is
 returned.  Otherwise, nothing is returned.
 
-## Configuration Settings
+== Configuration Settings
 
 
 key_type:: Data type of the key

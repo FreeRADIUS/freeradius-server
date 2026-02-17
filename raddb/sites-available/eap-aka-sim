@@ -18,7 +18,7 @@
 
 ######################################################################
 #
-#  ## Packet Processing sections
+#  == Packet Processing sections
 #
 #  Sections in this server may behave slightly differently to sections
 #  in other virtual servers, as they're being called directly by the

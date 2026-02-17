@@ -26,7 +26,7 @@
 #  then looked up in the cached CSV file.  The fields are then mapped
 #  to the attributes on the left side of the map.
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 csv {
 	#

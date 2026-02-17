@@ -13,7 +13,7 @@ NOTE: we do NOT use `link:https://freeradius.org/rfc/rfc2865.html#NAS-IP-Address
 from the originating NAS, and NOT from the proxy which actually
 sent us the request.
 
-## Configuration Settings
+== Configuration Settings
 
 
 filename:: The filename used when creating `detail` files.

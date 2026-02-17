@@ -15,7 +15,7 @@
 #  those modules which use them.  Each instance does also provide some
 #  functions for general use and for troubleshooting.
 #
-#  ## Caveats
+#  == Caveats
 #
 #  There is a potential for a FreeRADIUS server using rlm_unbound to either
 #  fail to terminate cleanly (leaving zombie processes, failing to clean up
@@ -26,7 +26,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 unbound dns {
 	#
@@ -60,7 +60,7 @@ unbound dns {
 }
 
 #
-#  ## Functions for DNS resolution
+#  == Functions for DNS resolution
 #
 #  A function based on the instance name can be used to perform DNS lookups.
 #

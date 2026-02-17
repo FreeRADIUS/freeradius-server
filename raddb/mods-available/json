@@ -11,7 +11,7 @@
 #  JSON structures to attributes. It also adds some xlats for processing and
 #  generating JSON documents.
 #
-#  ## JSON 'map' function
+#  == JSON 'map' function
 #
 #  The path through the JSON document's tree is specified with FR jpath,
 #  which is the FreeRADIUS implementation of the jpath grammar described
@@ -44,7 +44,7 @@
 #  ====
 #
 #
-#  ## Sample
+#  == Sample
 #
 #  Assuming that the URL http://example.org/api/user/$username replies with
 #  some JSON content as below.
@@ -75,7 +75,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 json {
 
@@ -158,11 +158,11 @@ json {
 
 
 #
-#  ## Expansions
+#  == Expansions
 #
 #  rlm_json provides the below xlat functions to handle the JSON documents.
 #
-#  ### %json.jpath_validate(...)
+#  === %json.jpath_validate(...)
 #
 #  Determine if a jpath expression is valid.
 #
@@ -185,7 +185,7 @@ json {
 #  Validation of $.my.json.payload[1] is 20:$.my.json.payload[1]
 #  ```
 #
-#  ### %json.quote(...)
+#  === %json.quote(...)
 #
 #  Escapes string for use as a JSON string.
 #
@@ -206,7 +206,7 @@ json {
 #  The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
 #  ```
 #
-#  ### %json.encode(...)
+#  === %json.encode(...)
 #
 #  Generates a JSON document from a given list of attribute templates. The
 #  format of document generated can be controlled with the 'encode' section in
@@ -251,7 +251,7 @@ json {
 #  %json.encode('request[*]', '!reply[*]', 'control.User-Name')
 #  ```
 #
-#  #### Output format modes
+#  ==== Output format modes
 #
 #  There are a number of output modes, each generating a different format of
 #  JSON document.
@@ -269,7 +269,7 @@ json {
 #  Filter-Id += cd
 #  ```
 #
-#  #### Object output mode examples
+#  ==== Object output mode examples
 #
 #  These modes output a JSON object.
 #
@@ -299,7 +299,7 @@ json {
 #  }
 #  ----
 #
-#  #### Array output mode examples
+#  ==== Array output mode examples
 #
 #  The "array" mode is a list of objects, each containing an attribute. If the
 #  "single_value_as_array" value option is set then each attribute will only

@@ -92,7 +92,7 @@ the result of the exec instance call as follows:
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 wait:: Wait for the program to finish.
@@ -212,5 +212,5 @@ exec {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

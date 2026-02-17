@@ -96,7 +96,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 mruby {
 	#

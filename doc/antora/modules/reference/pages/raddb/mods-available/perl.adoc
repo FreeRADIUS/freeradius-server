@@ -73,7 +73,7 @@ to the server.  These codes are defined in `mods-config/example.pl`
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 filename:: Module to load functions from.

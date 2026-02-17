@@ -14,7 +14,7 @@
 #  Standard Unix system authentication or passwords encrypted via `crypt()`
 #  are not compatible with CHAP.
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  This module takes no configuration.
 #

@@ -11,7 +11,7 @@ CHAP authentication requires access to the Password.Cleartext for the user.
 Standard Unix system authentication or passwords encrypted via `crypt()`
 are not compatible with CHAP.
 
-## Configuration Settings
+== Configuration Settings
 
 This module takes no configuration.
 
@@ -24,5 +24,5 @@ chap {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

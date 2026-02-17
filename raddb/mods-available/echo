@@ -40,7 +40,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 exec echo {
 	wait = yes

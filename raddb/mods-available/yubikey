@@ -16,7 +16,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 yubikey {
 	#
@@ -260,11 +260,11 @@ yubikey {
 }
 
 #
-#  ## Expansions
+#  == Expansions
 #
 #  The rlm_yubikey provides the below xlat's functions.
 #
-#  ### %modhextohex(...)
+#  === %modhextohex(...)
 #
 #  Convert Yubikey modhex to standard hex.
 #

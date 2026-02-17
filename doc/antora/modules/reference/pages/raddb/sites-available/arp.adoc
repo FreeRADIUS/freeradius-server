@@ -14,7 +14,7 @@ messages informing the administrator as to what happened.
 
 
 
-## server arp { ... }
+== server arp { ... }
 
 This is the `arp` virtual server.
 
@@ -85,7 +85,7 @@ send an ARP reply.
 
 ```
 
-### Process an ARP request
+=== Process an ARP request
 
 ```
 recv Request {
@@ -94,7 +94,7 @@ recv Request {
 
 ```
 
-### Process an ARP reply before sending it
+=== Process an ARP reply before sending it
 
 ```
 send Reply {
@@ -108,5 +108,5 @@ send Reply {
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -13,7 +13,7 @@ specified, is 'fail'.
 
 
 
-## Syntax
+== Syntax
 
 
 rcode:: Return code.
@@ -52,7 +52,7 @@ simulates the user having multilink sessions.
 
 
 
-## xlat for peeking and poking the status
+== xlat for peeking and poking the status
 
 An xlat based on the instance name can be called to change the status
 returned by the instance.
@@ -77,7 +77,7 @@ current status without affecting it call the xlat with an empty argument:
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 The following default instances allow the use of return codes like
 `reject` or `ok` in `unlang` policies.
@@ -120,5 +120,5 @@ always updated {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -16,7 +16,7 @@
 #  from the originating NAS, and NOT from the proxy which actually
 #  sent us the request.
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 detail {
 	#

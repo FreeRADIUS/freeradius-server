@@ -25,11 +25,11 @@ configuration.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 
-### TLS Session Configuration
+=== TLS Session Configuration
 
 
 driver:: `cache` driver.
@@ -48,7 +48,7 @@ update { ... }::
 
 
 
-### OCSP Session Configuration
+=== OCSP Session Configuration
 
 In addition to TLS sessions, the OCSP queries can be cached.
 
@@ -85,5 +85,5 @@ cache cache_ocsp {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

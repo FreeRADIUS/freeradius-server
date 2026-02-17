@@ -17,7 +17,7 @@
 #  TIP: The module can also be used to introduce artificial jitter into
 #  responses by adding random delays.
 #
-#  ## xlat for delays
+#  == xlat for delays
 #
 #  The module also registers an xlat function for delays
 #
@@ -34,11 +34,11 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 
 #
-#  ### Simple delay
+#  === Simple delay
 #
 delay {
 	#
@@ -90,7 +90,7 @@ delay {
 }
 
 #
-#  ### Delaying Access-Reject packets
+#  === Delaying Access-Reject packets
 #
 #  The `delay_reject` module should be used in a `send Access-Reject`
 #  section, as the last module in that section. When `delay_reject`

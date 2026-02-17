@@ -34,7 +34,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 icmp {
 	#
@@ -67,7 +67,7 @@ icmp {
 }
 
 #
-#  ## Ping for IPv4
+#  == Ping for IPv4
 #
 #  Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
 #
@@ -77,7 +77,7 @@ icmp ping {
 }
 
 #
-#  ## A version for ICMPv6
+#  == A version for ICMPv6
 #
 icmp ping6 {
 	timeout = 1s

@@ -20,7 +20,7 @@ as a string, and is used as the value of the "key".  The key is
 then looked up in the cached CSV file.  The fields are then mapped
 to the attributes on the left side of the map.
 
-## Configuration Settings
+== Configuration Settings
 
 
 filename:: The file which contains the CSV data.
@@ -205,5 +205,5 @@ csv {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

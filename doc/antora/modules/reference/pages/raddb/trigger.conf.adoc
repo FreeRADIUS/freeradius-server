@@ -18,7 +18,7 @@ NOTE: The trigger names should be self-explanatory.
 
 
 
-## SNMP configuration
+== SNMP configuration
 
 For now, this is only for SNMP traps.
 
@@ -89,7 +89,7 @@ This entry should not be edited.  Instead, edit the "trap" section above.
 
 
 
-## Trigger definitions
+== Trigger definitions
 
 The individual triggers are defined here.  You can disable one by
 deleting it, or by commenting it out.  You can disable an entire
@@ -218,7 +218,7 @@ connection_draining_to_free:: A connection is draining its outstanding requests 
 
 
 
-## Creating new triggers
+== Creating new triggers
 
 Triggers are defined in the server source code. Those are the
 only traps which are generated.
@@ -264,5 +264,5 @@ trigger {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

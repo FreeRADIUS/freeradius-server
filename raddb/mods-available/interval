@@ -10,7 +10,7 @@
 #  The `interval` module provides interval limiting functionality via an
 #  xlat function.
 #
-#  ## xlat for interval limiting
+#  == xlat for interval limiting
 #
 #  The module registers an xlat function:
 #
@@ -40,7 +40,7 @@
 #  }
 #  ```
 #
-#  ## Scope
+#  == Scope
 #
 #  The module supports two scopes for interval limit tracking:
 #
@@ -57,7 +57,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 interval interval_global {
 	#
@@ -70,7 +70,7 @@ interval interval_global {
 }
 
 #
-#  ## Thread-scoped instance
+#  == Thread-scoped instance
 #
 #  This instance uses per-thread interval limiting for higher performance.
 #

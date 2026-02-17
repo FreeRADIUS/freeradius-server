@@ -8,7 +8,7 @@ The module `sqlippool` provide configuration for the SQL based IP Pool module.
 
 NOTE: The database schemas are available at `sql/ippool/<DB>/schema.sql`.
 
-## Configuration Settings
+== Configuration Settings
 
 
 sql_module_instance:: SQL instance to use (from xref:reference:raddb/mods-available/sql.adoc[mods-available/sql])

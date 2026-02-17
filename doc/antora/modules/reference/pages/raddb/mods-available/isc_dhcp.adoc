@@ -2,7 +2,7 @@
 
 
 
-= isc_dhcp Module
+= ISC DHCP
 
 The `isc_dhcp` module reads ISC DHCP configuration files.
 
@@ -19,7 +19,7 @@ The module will then apply any matching options to the packet.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 moddir:: Search for files in a subdirectory of mods-config which
@@ -62,12 +62,12 @@ The default is `pedantic = false`
 
 
 
-## Configuration Keywords
+== Configuration Keywords
 
 The following tables list the ISC DHCP configuration file keywords
 which are either supported, not yet implemented, or are ignored.
 
-### Supported Keywords
+=== Supported Keywords
 
 The following keywords are have the same meaning and behavior as ISC DHCP.
 
@@ -87,11 +87,11 @@ The following keywords are have the same meaning and behavior as ISC DHCP.
 | subnet IPADDR netmask IPADDR SECTION | match subnet
 |===
 
-## Remaining Keywords
+== Remaining Keywords
 
 All other keywords are not supported.
 
-## Ignored Keywords
+== Ignored Keywords
 
 The following keywords control ISC DHCP behavior such as network
 IP/port, LDAP access, etc.  These keywords are ignored even when
@@ -149,5 +149,5 @@ isc_dhcp {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

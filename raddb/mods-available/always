@@ -16,7 +16,7 @@
 #
 
 #
-#  ## Syntax
+#  == Syntax
 #
 #always <name> {
 	#
@@ -60,7 +60,7 @@
 #}
 
 #
-#  ## xlat for peeking and poking the status
+#  == xlat for peeking and poking the status
 #
 #  An xlat based on the instance name can be called to change the status
 #  returned by the instance.
@@ -85,7 +85,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 #  The following default instances allow the use of return codes like
 #  `reject` or `ok` in `unlang` policies.

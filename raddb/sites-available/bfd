@@ -24,7 +24,7 @@
 #
 
 #
-#  ## server bfd  { ... }
+#  == server bfd  { ... }
 #
 #  The virtual server which manages BFD.
 #
@@ -161,7 +161,7 @@ peer other {
 }
 
 #
-#  ## Packet Processing sections
+#  == Packet Processing sections
 #
 #  Unlike other protocols, BFD does not follow a "request / reply" process.  Instead, there are two
 #  independent streams of packets.  One where the peer sends us packets (`recv foo { ... }`), and the other
@@ -172,56 +172,56 @@ peer other {
 #
 
 #
-#  ### Receive "Admin-Down" packets from the peer.
+#  === Receive "Admin-Down" packets from the peer.
 #
 recv Admin-Down {
 	ok
 }
 
 #
-#  ### Receive "Down" packets from the peer.
+#  === Receive "Down" packets from the peer.
 #
 recv Down {
 	ok
 }
 
 #
-#  ### Receive "Init" packets from the peer.
+#  === Receive "Init" packets from the peer.
 #
 recv Init {
 	ok
 }
 
 #
-#  ### Receive "Up" packets from the peer.
+#  === Receive "Up" packets from the peer.
 #
 recv Up {
 	ok
 }
 
 #
-#  ### Send "Admin-Down" packets to the peer.
+#  === Send "Admin-Down" packets to the peer.
 #
 send Admin-Down {
 	ok
 }
 
 #
-#  ### Send "Down" packets to the peer.
+#  === Send "Down" packets to the peer.
 #
 send Down {
 	ok
 }
 
 #
-#  ### Send "Init" packets to the peer.
+#  === Send "Init" packets to the peer.
 #
 send Init {
 	ok
 }
 
 #
-#  ### Send "Up" packets to the peer.
+#  === Send "Up" packets to the peer.
 #
 send Up {
 #	octets more-data

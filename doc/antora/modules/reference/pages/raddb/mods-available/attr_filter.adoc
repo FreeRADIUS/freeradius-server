@@ -51,7 +51,7 @@ them, which should be rare). The value field uses standard regular expression sy
 | !~       | Regular Expression Not Equal
 |===
 
-## Syntax
+== Syntax
 
 The configuration items are:
 
@@ -69,13 +69,13 @@ filename:: The `filename` with the attributes to filter.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 The following default instances.
 
 
 
-### pre-proxy
+=== pre-proxy
 
 Filters the attributes in the packets we send to
 the RADIUS home servers.
@@ -84,7 +84,7 @@ Add this before calling rlm_radius for proxying.
 
 
 
-### post-proxy
+=== post-proxy
 
 Filters the attributes received in replies from proxied
 servers, to make sure we send back to our RADIUS client
@@ -94,21 +94,21 @@ Add this after calling `rlm_radius` for proxying.
 
 
 
-### access_reject
+=== access_reject
 
 Enforce RFC requirements on the contents of `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`
 packets. This should be called from `send Access-Reject`.
 
 
 
-### access_challenge
+=== access_challenge
 
 Enforce RFC requirements on the contents of `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
 packets. This is called from `send Access-Challenge`.
 
 
 
-### accounting_response
+=== accounting_response
 
 Enforce RFC requirements on the contents of the
 `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Response[Accounting-Response]` packets. Called from the
@@ -145,5 +145,5 @@ attr_filter attr_filter.accounting_response {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

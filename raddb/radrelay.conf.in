@@ -45,7 +45,7 @@
 #  `radrelay` solves this issue by "relaying" packets from one server to
 #  another, so they both have the same set of accounting data.
 #
-#  ## Overload
+#  == Overload
 #
 #  If the RADIUS server suddenly receives a many accounting packets,
 #  there may be insufficient CPU power to process them all in a timely
@@ -62,7 +62,7 @@
 #
 
 #
-#  ## General definitions
+#  == General definitions
 #
 #  The following options define where the server files are stored
 #  when installed. They are set by 'make' at compile time, and it
@@ -101,7 +101,7 @@ max_request_time = 30
 cleanup_delay = 5
 
 #
-#  ## Logging configuration
+#  == Logging configuration
 #
 #  The following section defines global server logging options.
 #  For more configurable and detailed logging, the logging modules
@@ -169,7 +169,7 @@ security {
 }
 
 #
-#  ## Modules
+#  == Modules
 #
 #  If you need more modules, add them here. The `radrelay`
 #  configuration is very simple, and only includes one module.
@@ -185,7 +185,7 @@ instantiate {
 }
 
 #
-#  ## Home server configuration
+#  == Home server configuration
 #
 #
 #  NOTE: Proxying has changed in v4.  This example is no longer correct.
@@ -243,7 +243,7 @@ realm radrelay {
 }
 
 #
-#  ## Server configuration
+#  == Server configuration
 #
 #  We now define a virtual server to read RADIUS packets from a
 #  'detail' file, and proxy them to the dummy realm above.

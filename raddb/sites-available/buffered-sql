@@ -40,11 +40,11 @@
 #
 
 #
-#  ## Default instance
+#  == Default instance
 #
 
 #
-#  ## server buffered-sql { ... }
+#  == server buffered-sql { ... }
 #
 server buffered-sql {
 	#

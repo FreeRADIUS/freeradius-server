@@ -18,7 +18,7 @@ source IP address to a server at one destination IP/port.  It may
 open multiple source ports, depending on how many packets are being
 proxied.
 
-## Recommendations
+== Recommendations
 
 In most cases, the v3 configuration be moved to v4 without too many
 problems.  For each `home_server foo { ... }` in v3, create a v4
@@ -52,7 +52,7 @@ example.com`, and then have a section `authenticate example.com {
 xref:reference:raddb/sites-available/default.adoc[sites-available/default] for sample configuration which uses this
 pattern.
 
-## Behavior
+== Behavior
 
 The module adds a Proxy-State attribute to all proxied packets.
 This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
@@ -81,7 +81,7 @@ create a child request.  That child request can then be modified
 independently of the parent.  Any reply attributes will have to be
 copied back manually to the parent request.
 
-## Configuration Settings
+== Configuration Settings
 
 The configuration settings of this module are similar to the
 `home_server` settings in v3.
@@ -594,7 +594,7 @@ WARNING: The `Status-Server` packets CANNOT be proxied.
 
 
 
-## Replication of Packets
+== Replication of Packets
 
 The module supports replication of packets to new destinations at
 run time.  In this context, replication means "send the packet, and
@@ -606,7 +606,7 @@ The module can then only be used as a dynamic expansion.  That is,
 you cannot specify the `replicate` module directly in a processing
 section.
 
-### Usage
+=== Usage
 
 This module can only be used as a dynamic expansion.  Since the
 module does not wait for any response, the expansion does not
@@ -665,7 +665,7 @@ along with all per-packet timeouts.
 
 
 
-## Dynamic Proxying
+== Dynamic Proxying
 
 This module supports dynamic proxying via a run-time function:
 
@@ -904,7 +904,7 @@ the connection.
 
 
 
-## Policy Over-rides
+== Policy Over-rides
 
 The proxy policy overrides enables functionality similar to the
 version 3 pre/post-proxy sections.
@@ -1103,5 +1103,5 @@ radius proxy {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

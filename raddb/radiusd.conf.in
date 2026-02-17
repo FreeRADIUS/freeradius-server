@@ -32,7 +32,7 @@
 #  to _post the output of `radiusd -X`_.
 
 #
-#  ## Default instance
+#  == Default instance
 #
 #  The location of other config files and logfiles are declared
 #  in this file.

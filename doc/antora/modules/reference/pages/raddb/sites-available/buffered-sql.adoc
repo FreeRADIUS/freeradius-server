@@ -37,11 +37,11 @@ the data into a long-term SQL database.
 
 
 
-## Default instance
+== Default instance
 
 
 
-## server buffered-sql { ... }
+== server buffered-sql { ... }
 
 ```
 server buffered-sql {
@@ -207,5 +207,5 @@ Cisco VoIP specific bulk accounting.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

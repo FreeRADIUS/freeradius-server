@@ -71,7 +71,7 @@ attribute is the password as typed in by the user on their private machine.
 The two are not the  same, and should be treated very differently. That is, you should
 generally not use the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute anywhere in the RADIUS configuration.
 
-## Configuration Settings
+== Configuration Settings
 
 
 normalise::
@@ -97,5 +97,5 @@ pap {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

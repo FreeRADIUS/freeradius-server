@@ -9,11 +9,11 @@ decompressing data using the Brotli algorithm.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 
-### An example configuration
+=== An example configuration
 
 
 mode:: The compression mode to use.
@@ -66,11 +66,11 @@ The default is `no`.
 
 
 
-## Expansions
+== Expansions
 
 The rlm_ldap provides the below xlat's functions.
 
-### %<inst>.compress(...)
+=== %<inst>.compress(...)
 
 Ingests uncomprssed data and returns the compressed data.
 
@@ -89,7 +89,7 @@ Ingests uncomprssed data and returns the compressed data.
 \0332\000\210\304&G(ɋ\031]\372l\265`\003\016\330\023L\002\332\375\344\b^\241\003\177YԜ浣D\254\223\230\002
 ```
 
-### %<inst>.decompress(...)
+=== %<inst>.decompress(...)
 
 Ingests compressed data and emits the uncompressed data.
 
@@ -125,5 +125,5 @@ brotli {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

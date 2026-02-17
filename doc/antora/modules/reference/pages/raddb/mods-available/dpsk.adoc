@@ -61,7 +61,7 @@ better.  The only thing we've done is to add a cache which can help
 to minimize the amount of brute-force attempts.
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 cache_size::
@@ -279,5 +279,5 @@ dpsk {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

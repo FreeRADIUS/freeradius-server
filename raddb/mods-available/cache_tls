@@ -28,11 +28,11 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 
 #
-#  ### TLS Session Configuration
+#  === TLS Session Configuration
 #
 cache cache_tls_session {
 	#
@@ -59,7 +59,7 @@ cache cache_tls_session {
 }
 
 #
-#  ### OCSP Session Configuration
+#  === OCSP Session Configuration
 #
 #  In addition to TLS sessions, the OCSP queries can be cached.
 #

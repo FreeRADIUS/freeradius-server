@@ -12,7 +12,7 @@ For more information about Yubikey, please see:
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 id_length:: The length (number of ASCII bytes) of the Public-ID portion
@@ -232,11 +232,11 @@ increase lifetime/idle_timeout.
 
 
 
-## Expansions
+== Expansions
 
 The rlm_yubikey provides the below xlat's functions.
 
-### %modhextohex(...)
+=== %modhextohex(...)
 
 Convert Yubikey modhex to standard hex.
 
@@ -286,5 +286,5 @@ yubikey {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

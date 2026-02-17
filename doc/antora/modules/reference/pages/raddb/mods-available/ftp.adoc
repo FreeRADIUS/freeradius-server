@@ -2,13 +2,13 @@
 
 
 
-# Ftp Module
+= Ftp Module
 
 The `ftp` module provides an xlat to retrieve files from FTP URIs.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 ftp { ... }::
 
@@ -70,11 +70,11 @@ The maximum amount of time to wait for a new connection to be established.
 
 
 
-## Expansions
+== Expansions
 
 The `rlm_ftp` module provides the following xlat function:
 
-### %ftp.get(...)
+=== %ftp.get(...)
 
 Retrieve a file from an FTP URI
 
@@ -105,5 +105,5 @@ ftp {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

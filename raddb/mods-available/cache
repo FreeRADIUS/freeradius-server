@@ -29,7 +29,7 @@
 #
 
 #
-#  ## Configuration Settings
+#  == Configuration Settings
 #
 cache {
 	#
@@ -64,7 +64,7 @@ cache {
 	#
 
 #
-#  ### Htrie cache driver
+#  === Htrie cache driver
 #
 #	htrie {
 		#
@@ -82,7 +82,7 @@ cache {
 #	}
 
 #
-#  ### Memcached cache driver
+#  === Memcached cache driver
 #
 #	memcached {
 		#
@@ -108,7 +108,7 @@ cache {
 #	}
 
 #
-#  ### Redis cache driver
+#  === Redis cache driver
 #
 #	redis {
 		#

@@ -6,12 +6,12 @@
 
 The `users` file as located in `mods-config/files/authorize`. (Livingston-style format).
 
-See the raddb/mods-config/files/users.adoc file for information
+See the xref:reference:raddb/mods-config/files/users.adoc[users] file for information
 on the format of the input file, and how it operates.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 moddir:: Search for files in a subdirectory of mods-config which
@@ -24,9 +24,7 @@ key:: The default key attribute to use for matches.
 The content of this attribute is used to match the `name` of the entry.
 
 Note that unlike v4, the key does not have to be a string, but could instead
-be an IP address or netmask!  For more information, see
-
-xref:reference:raddb/mods-config/files/users.adoc[users]
+be an IP address or netmask!
 
 
 
@@ -54,7 +52,7 @@ Default value "false".  Allowed vaues, `true` and `false`.
 
 
 
-## An instance of the `files` module for use in processing accounting packets
+== An instance of the `files` module for use in processing accounting packets
 
 
 == Default Configuration

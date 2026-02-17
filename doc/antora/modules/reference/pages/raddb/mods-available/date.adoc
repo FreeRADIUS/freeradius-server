@@ -19,7 +19,7 @@ how they are defined.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
 format:: Formatting of the output string.
@@ -38,7 +38,7 @@ as UTC, not localtime.
 
 
 
-### ISO format
+=== ISO format
 
 The core `xlat`, `%T` returns the request timestamp in `ISO` format
 including milliseconds. This expansion returns it without the
@@ -48,7 +48,7 @@ Use e.g. `%date_iso(request):`
 
 
 
-### xlat expansions
+=== xlat expansions
 
 The `date` module defines an expansion `%date()` When the
 expansion is not passed an argument, it returns the current date
@@ -117,5 +117,5 @@ date date_iso {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

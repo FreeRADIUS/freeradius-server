@@ -11,7 +11,7 @@ configuration items used here.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 The `csv` module configuration for the /etc/group file.  The module
 adds a `Etc-Group-Name` attribute for every group that the user is
@@ -61,5 +61,5 @@ csv etc_group {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

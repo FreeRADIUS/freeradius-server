@@ -14,7 +14,7 @@ to reflect the attributes returned from sections.
 
 
 
-## Packet Processing sections
+== Packet Processing sections
 
 Sections in this server may behave slightly differently to sections
 in other virtual servers, as they're being called directly by the
@@ -1012,5 +1012,5 @@ You should remove any session information stored against `request.Session-ID`.
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

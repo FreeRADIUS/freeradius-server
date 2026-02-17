@@ -11,10 +11,10 @@ please see the `detail` module.
 
 
 
-## Configuration Settings
+== Configuration Settings
 
 
-### Access-Request
+=== Access-Request
 
 Many people want to log authentication requests. Different
 instances of the `detail` module can be used to log the
@@ -30,7 +30,7 @@ suppress { ... }:: This will stop passwords being written to the log.
 
 
 
-### Access-Accept
+=== Access-Accept
 
 This module logs authentication reply packets sent to a NAS.
 Both `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]` and `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` packets are logged.

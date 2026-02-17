@@ -10,7 +10,7 @@ security, packets from other IP addresses are ignored.
 
 
 
-## Client subsection
+== Client subsection
 
 A client is defined via a section called `client NAME { ... }`.
 The NAME field is mandatory, and is used as the "short name" of the
@@ -249,7 +249,7 @@ We *strongly recommend* that you set an idle timeout.
 
 
 
-## Client examples
+== Client examples
 
 
 
@@ -312,5 +312,5 @@ client localhost_ipv6 {
 #}
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
