@@ -1059,15 +1059,23 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 
 	switch (da->type) {
 	/*
-	 *	For certain STRUCTURAL types, we allow strict duplicates
-	 *	as if the user wants to add extra children in the custom
+	 *	For certain types, we allow strict duplicates as if
+	 *	the user wants to add extra children in the custom
 	 *	dictionary, or wants to avoid ordering issues between
 	 *	multiple dictionaries, we need to support this.
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TLV:
-		if (fr_dict_attr_cmp_fields(da, found) == 0) return -1;
+		if (fr_dict_attr_cmp_fields(da, found) == 0) return 0;
+		break;
+
+	case FR_TYPE_LEAF:
+		/*
+		 *	Leaf types can be duplicated if they are identical.
+		 */
+		if ((da->type == found->type) &&
+		    (fr_dict_attr_cmp_fields(da, found) == 0)) return 0;
 		break;
 
 	default:
@@ -1077,12 +1085,12 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	if (dup_name) {
 		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%d]",
 				   da->name, da->parent->name, dup_name->filename, dup_name->line);
-		return 0;
+		return -1;
 	}
 
 	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%d]",
 				da->attr, da->parent->name, dup_num->filename, dup_num->line);
-	return 0;
+	return -1;
 }
 
 static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)

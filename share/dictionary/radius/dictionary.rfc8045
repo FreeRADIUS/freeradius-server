@@ -26,9 +26,6 @@ ATTRIBUTE	Range-End				.10	uint32
 ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Range				241.6	tlv clone=.IP-Port-Limit-Info
-ATTRIBUTE	Range-Start				.9	uint32
-ATTRIBUTE	Range-End				.10	uint32
-ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv clone=.IP-Port-Range
 
