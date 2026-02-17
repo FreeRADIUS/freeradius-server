@@ -495,7 +495,8 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		return EAP_TLS_RECORD_SEND;
 	}
 
-	if ((tls_session->info.content_type == SSL3_RT_HANDSHAKE) && (tls_session->info.origin == 0)) {
+	if ((tls_session->info.content_type == SSL3_RT_HANDSHAKE) &&
+	    (tls_session->info.origin == TLS_INFO_ORIGIN_RECORD_RECEIVED)) {
 		REDEBUG("Unexpected ACK received:  We sent no previous messages");
 		return EAP_TLS_INVALID;
 	}
@@ -534,7 +535,7 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		/*
 		 *	If the last message was from us, then the session is established
 		 */
-		if (tls_session->info.origin == 1) return EAP_TLS_ESTABLISHED;
+		if (tls_session->info.origin == TLS_INFO_ORIGIN_RECORD_SENT) return EAP_TLS_ESTABLISHED;
 		REDEBUG("Invalid ACK received: %d", tls_session->info.content_type);
 		return EAP_TLS_INVALID;
 	}
