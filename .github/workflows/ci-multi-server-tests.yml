@@ -16,8 +16,8 @@ jobs:
   pre-test:
     runs-on: ubuntu-latest
     outputs:
-      selfhosted: 0
-      #selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
+      #selfhosted: 0
+      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
     steps:
       - run: echo "Pre-test job; checking if using self-hosted runners"
 
@@ -151,8 +151,10 @@ jobs:
     steps:
 
       #  Need git installed for checkout to behave normally
-      - name: Install checkout prerequisites
-        run: apt-get update && apt-get install -y --no-install-recommends git git-lfs ca-certificates
+      #- name: Install checkout prerequisites
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y --no-install-recommends git git-lfs ca-certificates
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
@@ -172,6 +174,7 @@ jobs:
             echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
             exit 1
           fi
+
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
 
       - name: Verify test results
