@@ -2336,7 +2336,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	default:
 		fr_strerror_printf("ENUMs can only be a leaf type, not %s",
 				   fr_type_to_str(da->type));
-		break;
+		goto error;
 	}
 
 	parent = CURRENT_FRAME(dctx)->da;
@@ -3835,15 +3835,17 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 	dctx.stack[0].da = parent;
 	dctx.stack[0].nest = NEST_TOP;
 
-	if (dict_fixup_init(NULL, &dctx.fixup) < 0) return -1;
+	if (dict_fixup_init(NULL, &dctx.fixup) < 0) {
+	error:
+		TALLOC_FREE(dctx.fixup.pool);
+		talloc_free(buf);
+		return -1;
+	}
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
 		if (argc < 4) {
 			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
-		error:
-			TALLOC_FREE(dctx.fixup.pool);
-			talloc_free(buf);
-			return -1;
+			goto error;
 		}
 
 		if (!fr_dict_attr_by_oid(NULL, fr_dict_root(dict), argv[1])) {
