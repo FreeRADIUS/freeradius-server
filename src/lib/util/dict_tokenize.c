@@ -1728,7 +1728,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 *	the VALUE also contains a pointer to the child struct.
 		 */
 		if (key && (dict_attr_enum_add_name(fr_dict_attr_unconst(key), da->name, &box, false, true, da) < 0)) {
-			goto error;
+			return -1;	/* Leaves attr added */
 		}
 
 		/*
@@ -1761,7 +1761,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		fr_assert(parent->parent);
 
 		if (dict_attr_alias_add(parent->parent, da->name, da, false) < 0) {
-			goto error;
+			return -1;	/* Leaves attr added */
 		}
 	}
 
@@ -1980,8 +1980,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		}
 
 		if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
-			talloc_free(new);
-			return -1;
+			return -1; /* leaves attr added */
 		}
 
 		vendor_da = new;
