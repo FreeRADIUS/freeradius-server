@@ -16,8 +16,8 @@ jobs:
   pre-test:
     runs-on: ubuntu-latest
     outputs:
-      #selfhosted: 0
-      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
+      selfhosted: 0
+      #selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
     steps:
       - run: echo "Pre-test job; checking if using self-hosted runners"
 

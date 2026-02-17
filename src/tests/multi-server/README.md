@@ -1,22 +1,61 @@
-Multi-server testcases requires the availability of the "freeradius-multi-server" test framework repo on your system.
+If you are reading this, you are probably wondering how to run a multi-server test.  Here's a quick overview.
 
-freeradius-multi-server repo: https://github.com/InkbridgeNetworks/freeradius-multi-server
+## Run Test With Makefile
 
-Multi-server environment Docker compose environments are based on the fr-build-ubuntu22 image:
+1. Build an image of freeradius-server and tag it as "freeradius-build:latest". All docker compose files for the multi-server tests use "freeradius-build:latest".
 ```bash
-DOCKER_DEFAULT_PLATFORM=linux/amd64 make docker.ubuntu22.build
+% cd ${FREERADIUS-SERVER-LOCAL-REPO}
+% make docker.ubuntu24.build
+% docker tag <your-freeradius-build-tag> freeradius-build:latest
+```
+2. Run make target based on the test name. All testcase config files start with "test-*".
+```bash
+% cd ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+% make -f all.mk test-5hs-autoaccept
+```
+or
+```bash
+% cd ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+% make -f all.mk test-5hs-autoaccept-5min
 ```
 
-### Jinja2 Template Pre-Processing:
+## Run Multi-Server Tests Manually
+### Render Jinja Templates (e.g. test-5hs-autoaccept):
 ```bash
-freeradius-multi-server % python3 src/config_builder.py --listener_type file --aux ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs/freeradius/homeserver/radiusd.conf.j2 --includepath ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+cd ${FREERADIUS-MULTI-SERVER-LOCAL-REPO}
+```
+Homeserver config:
+```bash
+% python3 src/config_builder.py \
+    --vars-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
+    --aux-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/configs/freeradius/homeserver/radiusd.conf.j2" \
+    --include-path "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/"
  ```
+ Load-generator config:
  ```bash
-freeradius-multi-server % python3 src/config_builder.py --listener_type file --aux ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs/freeradius/load-generator/radiusd.conf.j2 --includepath ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server
+ python3 src/config_builder.py \
+    --vars-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
+    --aux-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/configs/freeradius/load-generator/radiusd.conf.j2" \
+    --include-path "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/"
+```
+Docker compose:
+```bash
+ python3 src/config_builder.py \
+    --vars-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
+    --aux-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/docker-compose/env-5hs-autoaccept.yml.j2" \
+    --include-path "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/"
 ```
 
-### Testcase "run" command:
-
+### Run test (e.g. test-5hs-autoaccept):
 ```bash
-(.venv) freeradius-multi-server % DATA_PATH=${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/configs make test-framework -- -x -v --compose ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/environments/docker-compose/env-loadgen-5hs.yml --test ${FREERADIUS-SERVER-LOCAL-REPO}/src/tests/multi-server/test-5hs-autoaccept.yml --use-files --listener-dir --listener-dir ${FREERADIUS-SERVER-LOCAL-REPO}/build/tests/multi-server/freeradius-listener-logs/${TEST_NAME}
+% cd ${FREERADIUS-MULTI-SERVER-LOCAL-REPO}
+
+% source .venv/bin/activate
+
+% DATA_PATH="${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/configs" \
+			make test-framework -- -x -v \
+			--compose "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/docker-compose/env-5hs-autoaccept.yml" \
+			--test "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/test-5hs-autoaccept.yml" \
+			--use-files \
+			--listener-dir "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/build/tests/multi-server/freeradius-listener-logs/test-5hs-autoaccept"
 ```
