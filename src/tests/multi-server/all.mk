@@ -8,6 +8,7 @@ FREERADIUS_SERVER_SRC_PATH_ABS := $(abspath $(FREERADIUS_SERVER_SRC_PATH_REL))
 FREERADIUS_SERVER_BUILD_DIR_PATH_ABS := $(FREERADIUS_SERVER_SRC_PATH_ABS)/build
 FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS := $(FREERADIUS_SERVER_SRC_PATH_ABS)/src/tests/multi-server
 FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS := $(FREERADIUS_SERVER_BUILD_DIR_PATH_ABS)/tests/multi-server
+FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_REPO := https://github.com/InkbridgeNetworks/freeradius-multi-server.git
 
 .PHONY: 5hs-autoaccept-env-setup test-5hs-autoaccept test-5hs-autoaccept-5min test-5hs-autoaccept-full-config-and-run
 
@@ -20,10 +21,11 @@ FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS := $(FREERADIUS_SERVER_BUILD_DIR_PATH
 	echo "INFO: FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS=$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)"; \
 	echo "INFO: FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS=$(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)"; \
 	\
+	mkdir -p "$(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)"; \
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS); \
 	\
 	if [ ! -d freeradius-multi-server/.git ]; then \
-		git clone https://github.com/InkbridgeNetworks/freeradius-multi-server.git; \
+		git clone $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_REPO); \
 	else \
 		( cd freeradius-multi-server && git pull ); \
 	fi; \
