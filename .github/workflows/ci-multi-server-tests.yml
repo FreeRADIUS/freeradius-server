@@ -162,19 +162,29 @@ jobs:
           lfs: false
 
       - name: Get pre-built Docker image for self-hosted runner test
+        shell: bash
+        env:
+          DOCKER_REGISTRY: docker.internal.networkradius.com
+          DOCKER_IMAGE: self-hosted-ubuntu24
         run: |
-          docker pull docker.internal.networkradius.com/self-hosted-ubuntu24
+          docker pull "${DOCKER_REGISTRY}/${DOCKER_IMAGE}"
 
           # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
-          docker tag docker.internal.networkradius.com/self-hosted-ubuntu24 freeradius-build:latest
+          docker tag "${DOCKER_REGISTRY}/${DOCKER_IMAGE}" freeradius-build:latest
+
+          # Display all docker images for debugging purposes
+          docker images --all
 
       - name: Run test-5hs-autoaccept test
+        shell: bash
         run: |
           if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
             echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
             exit 1
           fi
 
+          ls -l
+          which make
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
 
       - name: Verify test results
