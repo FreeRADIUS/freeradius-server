@@ -4721,11 +4721,6 @@ fr_dict_gctx_t *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char
 {
 	fr_dict_gctx_t *new_ctx;
 
-	if (!dict_dir) {
-		fr_strerror_const("No dictionary location provided");
-		return NULL;
-	}
-
 	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
 	if (!new_ctx) {
 		fr_strerror_const("Out of Memory");
@@ -5030,8 +5025,6 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	fr_dict_attr_t const *ref;
 	size_t len, i, start;
 
-	if (!parent || !prev) return NULL;
-
 	ref = fr_dict_attr_ref(parent);
 	if (ref) parent = ref;
 
@@ -5115,8 +5108,6 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t pointer was NULL", file, line);
-
 	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
@@ -5136,7 +5127,7 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		(void) talloc_get_type_abort_const(da_p, fr_dict_attr_t);
 	}
 
-	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
+	for (i = da->depth, da_p = da; i >= 0; i--, da_p = da_p->parent) {
 		if (!da_p) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 					     "Depth indicated there should be a parent, but parent is NULL",

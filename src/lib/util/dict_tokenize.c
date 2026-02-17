@@ -3859,7 +3859,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 		ret = dict_read_process_value(&dctx, argv + 1, argc - 1, &base_flags);
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-		if (parent && (parent != dict->root)) {
+		if (parent != dict->root) {
 			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
 		}
 
@@ -3867,7 +3867,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 						  argv + 1, argc - 1, &base_flags);
 
 	} else if (strcasecmp(argv[0], "DEFINE") == 0) {
-		if (parent && (parent != dict->root)) {
+		if (parent != dict->root) {
 			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
 		}
 
