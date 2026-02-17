@@ -646,6 +646,14 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 	frag_len = this_round->response->length - header_len;
 
 	/*
+	 *	This fragment has no data, but the header says that there is more data!
+	 */
+	if (!frag_len && TLS_MORE_FRAGMENTS(eap_tls_data->flags)) {
+		REDEBUG("Peer sent EAP-TLS with zero-length fragment and 'more' bit set - if there is no data, there should not be more!");
+		return EAP_TLS_INVALID;
+	}
+
+	/*
 	 *	The L bit (length included) is set to indicate the
 	 *	presence of the four octet TLS Message Length field,
 	 *	and MUST be set for the first fragment of a fragmented
