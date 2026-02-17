@@ -1059,8 +1059,11 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 		 *	ACK fragments until we get a complete TLS record.
 		 */
 		if (eap_tls_session->state != EAP_TLS_RECORD_RECV_COMPLETE) {
-			eap_tls_ack(request, eap_session);
-			eap_tls_session->state = EAP_TLS_HANDLED;
+			if (eap_tls_ack(request, eap_session) < 0) {
+				eap_tls_session->state = EAP_TLS_FAIL;
+			} else {
+				eap_tls_session->state = EAP_TLS_HANDLED;
+			}
 			goto done;
 		}
 
