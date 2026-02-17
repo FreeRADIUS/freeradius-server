@@ -272,7 +272,7 @@ static bool dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 {
 	int unsigned ret = 0;
 	int base = 10;
-	static char const *tab = "0123456789";
+	char const *tab = "0123456789";
 
 	if ((str[0] == '0') &&
 	    ((str[1] == 'x') || (str[1] == 'X'))) {
@@ -1862,10 +1862,8 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	/*
 	 *	Add a temporary fixup pool
-	 *
-	 *	@todo - make a nested ctx?
 	 */
-	dict_fixup_init(NULL, &dctx->fixup);
+	if (dict_fixup_init(&dctx->fixup) < 0) return -1;
 
 	/*
 	 *	We're in the middle of loading this dictionary.  Tell
@@ -3469,7 +3467,7 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
-	dict_fixup_init(NULL, &dctx.fixup);
+	if (dict_fixup_init(&dctx.fixup) < 0) return -1;
 	dctx.stack[0].da = dict->root;
 	dctx.stack[0].nest = NEST_TOP;
 
@@ -3835,7 +3833,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 	dctx.stack[0].da = parent;
 	dctx.stack[0].nest = NEST_TOP;
 
-	if (dict_fixup_init(NULL, &dctx.fixup) < 0) {
+	if (dict_fixup_init(&dctx.fixup) < 0) {
 	error:
 		TALLOC_FREE(dctx.fixup.pool);
 		talloc_free(buf);

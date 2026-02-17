@@ -782,13 +782,12 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 
 /** Initialise a fixup ctx
  *
- * @param[in] ctx	to allocate the fixup pool in.
  * @param[in] fctx	to initialise.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
+int dict_fixup_init(dict_fixup_ctx_t *fctx)
 {
 	if (fctx->pool) return 0;
 
@@ -799,7 +798,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
 	fr_dlist_talloc_init(&fctx->alias, dict_fixup_alias_t, common.entry);
 
-	fctx->pool = talloc_pool(ctx, DICT_FIXUP_POOL_SIZE);
+	fctx->pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
 	if (!fctx->pool) return -1;
 
 	return 0;

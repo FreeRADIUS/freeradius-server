@@ -60,7 +60,7 @@ int	dict_fixup_alias_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int l
 				 fr_dict_attr_t *alias_parent, char const *alias,
 				 fr_dict_attr_t *ref_parent, char const *ref);
 
-int	dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx);
+int	dict_fixup_init(dict_fixup_ctx_t *fctx);
 
 int	dict_fixup_apply(dict_fixup_ctx_t *fctx);
 
