@@ -108,11 +108,11 @@ static int eap_wireformat(eap_packet_t *reply)
 	}
 
 	reply->packet = talloc_array(reply, uint8_t, total_length);
-	header = (eap_packet_raw_t *)reply->packet;
-	if (!header) {
+	if (!reply->packet) {
 		return -1;
 	}
 
+	header = (eap_packet_raw_t *)reply->packet;
 	header->code = (reply->code & 0xFF);
 	header->id = (reply->id & 0xFF);
 
