@@ -661,6 +661,11 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 	if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
 		size_t total_len;
 
+		if (eap_tls_data->data[0] || eap_tls_data->data[1]) {
+			REDEBUG("TLS record length is > 65536");
+			return EAP_TLS_INVALID;
+		}
+
 		total_len = eap_tls_data->data[2] * 256 | eap_tls_data->data[3];
 		if (frag_len > total_len) {
 			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)",
