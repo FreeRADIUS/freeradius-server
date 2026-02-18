@@ -455,7 +455,7 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	 *	Note that we don't update any timers if the write succeeded.  That is handled by the caller.
 	 */
 	rcode = next->write(next, item->packet_ctx, item->buffer, item->size);
-	if ((size_t) rcode == size) return rcode;
+	if ((size_t) rcode == item->size) return rcode;
 
 	/*
 	 *	Can't write anything, be sad.
@@ -840,7 +840,7 @@ int fr_bio_retry_entry_init(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, fr
 {
 	fr_assert(item->buffer != NULL);
 
-	if (item->retry.config) return -1;
+	if (item->retry.config) return 0;
 
 	fr_assert(fr_time_delta_unwrap(cfg->irt) != 0);
 
@@ -916,7 +916,11 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	 *	and better reuse of data structures.
 	 */
 	items = talloc_array(my, fr_bio_retry_entry_t, max_saved);
-	if (!items) return NULL;
+	if (!items) {
+	error:
+		talloc_free(my);
+		return NULL;
+	}
 
 	/*
 	 *	Insert the entries into the free list in order.
@@ -930,18 +934,12 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	my->next_tl = fr_timer_list_shared_alloc(my, cfg->el->tl, _next_retry_cmp, fr_bio_retry_next_timer,
 						 offsetof(fr_bio_retry_entry_t, next_retry_node),
 						 offsetof(fr_bio_retry_entry_t, retry.next));
-	if (!my->next_tl) {
-		talloc_free(my);
-		return NULL;
-	}
+	if (!my->next_tl) goto error;
 
 	my->expiry_tl = fr_timer_list_shared_alloc(my, cfg->el->tl, _expiry_cmp, fr_bio_retry_expiry_timer,
 						   offsetof(fr_bio_retry_entry_t, expiry_node),
 						   offsetof(fr_bio_retry_entry_t, retry.end));
-	if (!my->expiry_tl) {
-		talloc_free(my);
-		return NULL;
-	}
+	if (!my->expiry_tl) goto error;
 
 	/*
 	 *	The expiry list is run only when writes are blocked.  We cannot have both lists active at the
