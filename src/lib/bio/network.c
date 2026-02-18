@@ -93,7 +93,6 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 			       fr_bio_read_t discard, fr_bio_t *next)
 {
 	fr_bio_network_t *my;
-	fr_bio_t *fd;
 	fr_bio_fd_info_t const *info;
 
 	/*
@@ -101,21 +100,12 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	 *	want to have an API which allows for two different "offset" values to be passed to two
 	 *	different bios.
 	 */
-	fd = NULL;
+	if (strcmp(talloc_get_name(next), "fr_bio_fd_t") != 0) {
+		fr_strerror_const("Invalid 'next' BIO - must be an FD one");
+		return NULL;
+	}
 
-	/*
-	 *	@todo - add an internal "type" to the bio?
-	 */
-	do {
-		if (strcmp(talloc_get_name(next), "fr_bio_fd_t") == 0) {
-			fd = next;
-			break;
-		}
-	} while ((next = fr_bio_next(next)) != NULL);
-
-	if (!fd) return NULL;
-
-	info = fr_bio_fd_info(fd);
+	info = fr_bio_fd_info(next);
 	fr_assert(info != NULL);
 
 	/*
@@ -134,6 +124,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 
 	case FR_BIO_FD_INVALID:
 	case FR_BIO_FD_CONNECTED:
+		fr_strerror_const("Cannot use network BIO with connected FD BIO");
 		return NULL;
 
 	case FR_BIO_FD_LISTEN:
@@ -143,7 +134,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	my = talloc_zero(ctx, fr_bio_network_t);
 	if (!my) return NULL;
 
-	my->offset = ((fr_bio_fd_t *) fd)->offset;
+	my->offset = ((fr_bio_fd_t *) next)->offset;
 	my->discard = discard;
 
 	my->bio.write = fr_bio_next_write;
@@ -156,6 +147,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	}
 
 	fr_bio_chain(&my->bio, next);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 
 	return (fr_bio_t *) my;
 }
@@ -219,7 +211,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 */
 		if (fr_trie_insert_by_key(trie, &allow[i].addr, allow[i].prefix, FR_BIO_NETWORK_ALLOW) < 0) {
 			fr_strerror_printf("Failed adding 'allow = %pV' to filtering rules", fr_box_ipaddr(allow[i]));
-			return NULL;
+			goto fail;
 		}
 	}
 
@@ -277,7 +269,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 */
 		if (fr_trie_insert_by_key(trie, &deny[i].addr, deny[i].prefix, FR_BIO_NETWORK_DENY) < 0) {
 			fr_strerror_printf("Failed adding 'deny = %pV' to filtering rules", fr_box_ipaddr(deny[i]));
-			return NULL;
+			goto fail;
 		}
 	}
 
