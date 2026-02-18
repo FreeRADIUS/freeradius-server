@@ -594,8 +594,9 @@ BIO *_fr_tls_global_log_bio(char const *file, int line, fr_log_type_t type, fr_l
 		fr_sbuff_marker(&lb->logged_m, &lb->sbuff);
 		return lb->bio;
 	}
-	fr_sbuff_reset_talloc(&request_log_bio->sbuff);	/* Reset to initial size */
-	fr_sbuff_marker(&request_log_bio->logged_m, &request_log_bio->sbuff);
+
+	fr_sbuff_reset_talloc(&global_log_bio->sbuff);	/* Reset to initial size */
+	fr_sbuff_marker(&global_log_bio->logged_m, &global_log_bio->sbuff);
 	global_log_bio->type = type;
 	global_log_bio->lvl = lvl;
 	global_log_bio->file = file;
