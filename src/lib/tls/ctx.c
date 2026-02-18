@@ -111,7 +111,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	}
 
 	ret = SSL_CTX_set0_tmp_dh_pkey(ctx, dh);
-	if (ret < 0) {
+	if (ret == 0) {
 		ERROR("Unable to set DH parameters");
 		return -1;
 	}
@@ -709,7 +709,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 */
 		if (!X509_STORE_load_locations(verify_store, conf->ca_file, conf->ca_path)) {
 			fr_tls_log(NULL, "Failed reading Trusted root CA list \"%s\"",
-				      conf->ca_file);
+				      conf->ca_file ? conf->ca_file : conf->ca_path);
 			goto error;
 		}
 
