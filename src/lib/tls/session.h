@@ -202,7 +202,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *fil
 		request_t *old;
 		old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 		if (old) {
-			(void)talloc_get_type_abort(ssl, request_t);
+			(void)talloc_get_type_abort(old, request_t);
 			fr_assert(0);
 		}
 	}
