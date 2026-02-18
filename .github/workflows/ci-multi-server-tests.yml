@@ -30,6 +30,7 @@ jobs:
     env:
       MULTI_SERVER_ENV_DOCKER_BUILD_OS: ubuntu24
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
+      MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-listener-logs/custom_test-env-5hs-autoaccept.txt.bak
 
     steps:
       # Checkout, but defer pulling LFS objects until we've restored the cache
@@ -102,12 +103,20 @@ jobs:
           if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
             echo "TEST FAILED: Found [Failed] in log"
             grep '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"
+
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
           if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"; then
             echo "TEST FAILED: Found Failures > 0 in log"
             grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"
+
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
@@ -136,6 +145,9 @@ jobs:
             : # PASS
           else
             echo "TEST FAILED: No Matched line found with equal non-zero counts"
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
