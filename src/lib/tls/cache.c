@@ -153,8 +153,8 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 		if (ROPTIONAL_ENABLED(RDEBUG_ENABLED3, DEBUG_ENABLED3)) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "Session ID %pV - Freeing session ID to clear in %s",
 				  fr_box_octets_buffer(cache->clear.id), func);
-			TALLOC_FREE(cache->clear.id);
 		}
+		TALLOC_FREE(cache->clear.id);
 	}
 	cache->clear.state = FR_TLS_CACHE_CLEAR_INIT;
 }
