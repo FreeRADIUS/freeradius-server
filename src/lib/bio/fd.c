@@ -979,6 +979,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 		my->info = (fr_bio_fd_info_t) {
 			.socket = {
 				.af = AF_UNSPEC,
+				.fd = -1,
 			},
 			.type = FR_BIO_FD_UNCONNECTED,
 			.read_blocked = false,
@@ -1087,6 +1088,7 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
  */
 static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, NDEBUG_UNUSED int flags, void *uctx)
 {
+	int rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
 
 	fr_assert(my->info.type == FR_BIO_FD_CONNECTED);
@@ -1122,8 +1124,6 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 			return;
 		}
 
-		fr_assert(error == 0);
-
 		/*
 		 *	There was an error, we call the error handler.
 		 */
@@ -1136,18 +1136,26 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 
 	/*
 	 *	Try to connect it.  Any magic handling is done in the callbacks.
+	 *
+	 *	On WOULD_BLOCK, leave the timers, etc. open.
+	 *
+	 *	Otherwise the try_connect() function has shut down the BIO.
 	 */
-	if (fr_bio_fd_try_connect(my) < 0) return;
+	rcode = fr_bio_fd_try_connect(my);
+	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return;
 
-	fr_assert(my->connect.success);
+	if (rcode < 0) {
+		FR_TIMER_DELETE(&my->connect.ev);
+		my->connect.el = NULL;
+		return;
+	}
+
+	/*
+	 *	my->connect.success was already called from fr_bio_fd_set_open().
+	 */
 
 	FR_TIMER_DELETE(&my->connect.ev);
 	my->connect.el = NULL;
-
-	/*
-	 *	This function MUST change the read/write/error callbacks for the FD.
-	 */
-	my->connect.success(&my->bio);
 }
 
 /**  We have a timeout on the conenction
@@ -1406,6 +1414,7 @@ static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, U
 
 		if (fr_nonblock(fd) < 0) {
 			close(fd);
+			return -1;
 		}
 	}
 
@@ -1465,12 +1474,14 @@ retry:
 
 	rcode = fr_bio_fd_init_common(my);
 	if (rcode < 0) {
+		my->info.socket.fd = -1;
 		close(fd);
 		return rcode;
 	}
 
 	fr_bio_fd_name(my);
 	if (!my->info.name) {
+		my->info.socket.fd = -1;
 		close(fd);
 		return fr_bio_error(OOM);
 	}

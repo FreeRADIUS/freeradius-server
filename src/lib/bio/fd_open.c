@@ -1050,6 +1050,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	my->info = (fr_bio_fd_info_t) {
 		.socket = {
 			.type = cfg->socket_type,
+			.fd = -1,
 		},
 		.cfg = cfg,
 	};
