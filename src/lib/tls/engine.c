@@ -51,8 +51,8 @@ typedef struct {
 	char const			*instance;	//!< Instance identifier for the engine.
 
 	ENGINE				*e;		//!< Engine that was loaded.
-	fr_tls_engine_ctrl_list_t 	*pre_ctrls;	//!< Pre controls applied to the engine.
-	fr_tls_engine_ctrl_list_t	*post_ctrls;	//!< Post controls applied to the engine.
+	fr_tls_engine_ctrl_list_t 	pre_ctrls;	//!< Pre controls applied to the engine.
+	fr_tls_engine_ctrl_list_t	post_ctrls;	//!< Post controls applied to the engine.
 } tls_engine_t;
 
 /** Engines that we've loaded
@@ -202,6 +202,8 @@ static inline CC_HINT(always_inline) fr_tls_engine_ctrl_t *tls_engine_ctrl_dup(T
  */
 static int _tls_engine_free(tls_engine_t *our_e)
 {
+	(void) fr_rb_remove(tls_engines, our_e);
+
 	/*
 	 *	Make memory leaks very explicit
 	 *	so someone will investigate.
@@ -386,6 +388,11 @@ int fr_tls_engine_init(ENGINE **e_out,
 			}
 			fr_dlist_insert_tail(our_e->post_ctrls, n);
 		}
+	}
+
+	if (!fr_rb_insert(tls_engines, our_e)) {
+		talloc_free(our_e);
+		return -1;
 	}
 
 	*e_out = e;
