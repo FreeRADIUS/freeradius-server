@@ -110,6 +110,7 @@ struct fr_schedule_s {
 
 	fr_sem_t	*worker_sem;		//!< for inter-thread signaling
 	fr_sem_t	*network_sem;		//!< for inter-thread signaling
+	fr_sem_t	*coord_sem;		//!< for inter-thread signaling
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	fr_schedule_thread_detach_t		worker_thread_detach;
@@ -492,6 +493,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
+		if (fr_coords_create(sc, el) < 0) {
+			PERROR("Failed creating coordinators");
+			if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+				PERROR("Failed destroying network");
+			}
+			goto pre_instantiate_st_fail;
+		}
+
 		sc->single_worker = fr_worker_alloc(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
@@ -545,11 +554,21 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 
+		if (fr_coord_pre_event_insert(el) < 0) {
+			fr_strerror_const("Failed adding coordinator pre-check to event list");
+			goto st_fail;
+		}
+
 		/*
 		 *	Add the event which processes request_t packets.
 		 */
 		if (fr_event_post_insert(el, fr_worker_post_event, sc->single_worker) < 0) {
 			fr_strerror_const("Failed inserting post-processing event");
+			goto st_fail;
+		}
+
+		if (fr_coord_post_event_insert(el) < 0) {
+			fr_strerror_const("Failed adding coordinator post-processing to event list");
 			goto st_fail;
 		}
 
@@ -567,12 +586,16 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sem_fail:
 		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
 		fr_sem_free(sc->network_sem);
+		fr_sem_free(sc->worker_sem);
 		talloc_free(sc);
 		return NULL;
 	}
 
 	sc->worker_sem = fr_sem_alloc();
 	if (!sc->worker_sem) goto sem_fail;
+
+	sc->coord_sem = fr_sem_alloc();
+	if (!sc->coord_sem) goto sem_fail;
 
 	/*
 	 *	Create the network threads first.
@@ -632,6 +655,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_schedule_destroy(&sc);
 		return NULL;
 	}
+
+	/*
+	 *	Create the coordination threads
+	 */
+	if (fr_coord_start(sc->config->max_workers, sc->coord_sem) < 0) {
+		fr_schedule_destroy(&sc);
+		return NULL;
+	};
 
 	/*
 	 *	Create all of the workers.
@@ -762,6 +793,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 			ERROR("Failed destroying network");
 		}
 		fr_worker_destroy(sc->single_worker);
+		fr_coords_destroy();
 		goto done;
 	}
 
@@ -841,6 +873,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		}
 	}
 
+	fr_sem_free(sc->coord_sem);
 	fr_sem_free(sc->network_sem);
 	fr_sem_free(sc->worker_sem);
 done:
