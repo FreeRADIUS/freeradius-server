@@ -166,9 +166,9 @@ static ssize_t fr_bio_queue_write_next(fr_bio_t *bio, void *packet_ctx, void con
 
 	if (rcode < 0) {
 		/*
-		 *	A non-blocking error: return it back up the chain.
+		 *	IO would block, return it back up the chain.
 		 */
-		if (rcode != fr_bio_error(IO_WOULD_BLOCK)) return rcode;
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
 		/*
 		 *	All other errors are fatal.
@@ -276,7 +276,7 @@ static ssize_t fr_bio_queue_write_flush(fr_bio_queue_t *my, size_t size)
 	/*
 	 *	If we've written all of the saved packets, go back to writing to the "next" bio.
 	 */
-	if (fr_bio_queue_list_head(&my->pending)) my->bio.write = fr_bio_queue_write_next;
+	if (!fr_bio_queue_list_head(&my->pending)) my->bio.write = fr_bio_queue_write_next;
 
 	return written;
 }
@@ -455,7 +455,7 @@ int fr_bio_queue_cancel(fr_bio_t *bio, fr_bio_queue_entry_t *item)
 {
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
 
-	if (!(item >= &my->array[0]) && (item < &my->array[my->max_saved])) {
+	if (!((item >= &my->array[0]) && (item < &my->array[my->max_saved]))) {
 		return -1;
 	}
 
@@ -497,6 +497,7 @@ int fr_bio_queue_cancel(fr_bio_t *bio, fr_bio_queue_entry_t *item)
 	 */
 	(void) fr_bio_queue_list_remove(&my->pending, item);
 	fr_bio_queue_list_insert_head(&my->free, item);
+	item->cancelled = true;
 
 	if (my->cancel) my->cancel(bio, item->packet_ctx, item->buffer, item->size);
 
