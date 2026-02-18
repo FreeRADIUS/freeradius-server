@@ -365,6 +365,9 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	if (fr_dirfd(dirfd, filename, path) == 0) {
 		struct stat buf;
 
+		fr_assert(*filename);
+		fr_assert(*dirfd >= 0);
+
 		if (fstat(*dirfd, &buf) < 0) {
 			fr_strerror_printf("Failed reading parent directory for file %s: %s", path, fr_syserror(errno));
 		fail:
@@ -396,6 +399,9 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 		return 0;
 	}
 
+	/*
+	 *	We have to create the directories.
+	 */
 	dir = talloc_strdup(NULL, path);
 	if (!dir) goto fail;
 
@@ -475,12 +481,14 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownershipt for directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownership for directory %s: %s", dir, fr_syserror(errno));
 		goto close_fd;
 	}
 
+	*dirfd = fd;
+	*filename = strrchr(cfg->path, '/');
+
 	talloc_free(dir);
-	close(fd);
 	close(parent_fd);
 
 	return 0;
