@@ -876,12 +876,12 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 			 *	Returns UNLANG_ACTION_PUSHED_CHILD unless something has failed
 			 */
 			ret = fr_tls_session_async_handshake_push(request, tls_session);
-			if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
-				REDEBUG("TLS receive handshake failed during operation");
-				fr_tls_cache_deny(request, tls_session);
-				eap_tls_session->state = EAP_TLS_FAIL;
-				return ret;
-			}
+			if (ret != UNLANG_ACTION_FAIL) return ret;
+
+			REDEBUG("TLS receive handshake failed during operation");
+			fr_tls_cache_deny(request, tls_session);
+			eap_tls_session->state = EAP_TLS_FAIL;
+			return ret;
 		}
 	}
 #endif
