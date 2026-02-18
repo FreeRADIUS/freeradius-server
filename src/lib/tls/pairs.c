@@ -124,6 +124,12 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 
 	for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
 		dp = sk_DIST_POINT_value(dps, i);
+
+		/*
+		 *	RFC 5280 Section 4.2.1.13 says that the distpoint is optional.
+		 */
+		if (!dp->distpoint) return false;
+
 		names = dp->distpoint->name.fullname;
 
 		/*
@@ -461,6 +467,56 @@ done:
 	return 0;
 }
 
+static int fr_tls_extension_decode(request_t *request, fr_pair_t *container, uint8_t const *extension,
+				   size_t hlen, size_t dlen, size_t total_len, fr_dict_attr_t const *da)
+{
+	size_t i,extension_len;
+	uint8_t const *data;
+
+	fr_assert((hlen == 1) || (hlen == 2));
+	fr_assert((dlen == 1) || (dlen == 2));
+
+	if (total_len < hlen) {
+		REDEBUG("Missing length in %s extension", da->name);
+		return -1;
+	}
+
+	if (hlen == 1) {
+		fr_assert(da->type == FR_TYPE_UINT8);
+		extension_len = extension[0];
+	} else {
+		fr_assert(da->type == FR_TYPE_UINT16);
+		extension_len = (extension[0] << 8) + extension[1];
+	}
+
+	if (extension_len * dlen + hlen > total_len) {
+		REDEBUG("Invalid length in %s extension", da->name);
+		return -1;
+	}
+
+	data = extension + hlen;
+
+	for (i = 0; i < extension_len; i += dlen) {
+		fr_pair_t *vp;
+
+		MEM(fr_pair_append_by_da(container, &vp, &container->vp_group, da) >= 0);
+
+		switch (dlen) {
+		case 1:
+			vp->vp_uint8= data[0];
+			break;
+
+		case 2:
+			vp->vp_uint16 = (data[0] << 8) + data[1];
+			break;
+		}
+
+		data += dlen;
+	}
+
+	return 0;
+}
+
 /** Callback to extract pairs from a Client Hello
  *
  */
@@ -469,7 +525,7 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	request_t		*parent = request->parent;
 	uint8_t	const		*ciphers, *extension;
-	int			*extensions, extension_len, i;
+	int			*extensions, i;
 	size_t			data_size, j;
 	STACK_OF(SSL_CIPHER)	*sk;
 	SSL_CIPHER const	*cipher;
@@ -510,49 +566,40 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 		RPEDEBUG("Failed to fetch client hello extensions");
 		goto fail;
 	}
+
 	for (j = 0; j < data_size; j++) {
-		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, NULL) == 0) {
+		size_t total_len;
+
+		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, &total_len) == 0) {
 			RPDEBUG("Failed getting client hello extension %d", extensions[j]);
 			OPENSSL_free(extensions);
 			goto fail;
 		}
 
 		switch (extensions[j]) {
-		case TLSEXT_TYPE_supported_groups:
-			extension_len = (extension[0] << 8) + extension[1];
-			for (i = 0; i < extension_len; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_supported_group);
-				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
-			}
+		case TLSEXT_TYPE_supported_groups: /* length[2] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 2, 2, total_len,
+						    attr_tls_client_hello_supported_group) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_ec_point_formats:
-			for (i = 0; i < extension[0]; i += 1) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_ec_point_format);
-				vp->vp_uint8 = extension[i + 1];
-			}
+		case TLSEXT_TYPE_ec_point_formats: /* length[1] + data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 1, total_len,
+						    attr_tls_client_hello_ec_point_format) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_signature_algorithms:
-			extension_len = (extension[0] << 8) + extension[1];
-			for (i = 0; i < extension_len; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_sig_algo);
-				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
-			}
+		case TLSEXT_TYPE_signature_algorithms: /* length[2] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 2, 2, total_len,
+						    attr_tls_client_hello_sig_algo) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_supported_versions:
-			for (i = 0; i < extension[0]; i += 2) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
-				tls_version = vp->vp_uint16 = (extension[i + 1] << 8) + extension[i + 2];
-			}
+		case TLSEXT_TYPE_supported_versions: /* length[1] + 2*data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 2, total_len,
+						    attr_tls_client_hello_tls_version) < 0) goto fail;
 			break;
 
-		case TLSEXT_TYPE_psk_kex_modes:
-			for (i = 0; i < extension[0]; i += 1) {
-				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_psk_key_mode);
-				vp->vp_uint8 = extension[i + 1];
-			}
+		case TLSEXT_TYPE_psk_kex_modes: /* length[1] + data */
+			if (fr_tls_extension_decode(request, container, extension, 1, 1, total_len,
+						    attr_tls_client_hello_psk_key_mode) < 0) goto fail;
 			break;
 		}
 	}
