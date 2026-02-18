@@ -749,7 +749,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	/*
 	 *	Mostly to check for memory corruption...
 	 */
-	if (!fr_cond_assert(tls_session->ssl = ssl)) {
+	if (!fr_cond_assert(tls_session->ssl == ssl)) {
 		ROPTIONAL(REDEBUG, ERROR, "fr_tls_session_t and ssl arg do not match in fr_tls_session_msg_cb");
 		tls_session->invalid = true;
 		return;
