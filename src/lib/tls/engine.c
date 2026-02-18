@@ -469,14 +469,21 @@ void fr_tls_engine_load_builtin(void)
 		ENGINE_register_all_RAND();	/* Give rand engines a chance to register */
 
 		/*
-		 *	If OpenSSL settled on Intel's rdrand
+		 *	If OpenSSL settled on Intel's rdrand,
 		 *	unregister it and unload rdrand.
 		 */
 		rand_engine = ENGINE_get_default_RAND();
-		if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) {
-			ENGINE_unregister_RAND(rand_engine);
-			ENGINE_finish(rand_engine);	/* Unload rdrand */
+		if (!rand_engine) break;
+
+		if(strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0) {
+			ENGINE_unregister_RAND(rand_engine); /* unregister it */
 		}
+
+		/*
+		 *	Remove our reference to the engine we found.
+		 */
+		ENGINE_finish(rand_engine);
+		ENGINE_free(rand_engine);
 	}
 	ENGINE_register_all_complete();
 }
