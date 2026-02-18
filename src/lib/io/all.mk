@@ -5,6 +5,7 @@ SOURCES	:= \
 	atomic_queue.c \
 	channel.c \
 	control.c \
+	coord.c \
 	load.c \
 	master.c \
 	message.c \
