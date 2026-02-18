@@ -49,13 +49,16 @@ typedef struct {
  */
 static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 {
-	int af, argc, port;
+	int af, argc;
+	unsigned long port;
 	ssize_t rcode;
 	uint8_t *p, *end;
 	char *eos, *argv[5] = {};
 
 	p = my->buffer.read;
 	end = my->buffer.write;
+
+	fr_assert(fr_bio_buf_used(&my->buffer) >= 9);
 
 	/*
 	 *	We only support v1, and only TCP.
@@ -88,7 +91,7 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 
 			argv[argc++] = (char *) p;
 
-			while ((*p > ' ') && (p < end)) p++;
+			while ((p < end) && (*p > ' ')) p++;
 			continue;
 		}
 
@@ -193,7 +196,7 @@ static ssize_t fr_bio_haproxy_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 
 	fr_assert(fr_bio_buf_write_room(&my->buffer) > 0);
 
-	rcode = next->read(next, NULL, my->buffer.read, fr_bio_buf_write_room(&my->buffer));
+	rcode = next->read(next, NULL, my->buffer.write, fr_bio_buf_write_room(&my->buffer));
 	if (rcode <= 0) return rcode;
 
 	/*
