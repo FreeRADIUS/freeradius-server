@@ -10,7 +10,7 @@ if (rcode > 0) {
 	int error;
 
 	/*
-	 *	We weren't blocked, but we are now.
+	 *	We weren't blocked, but we may be blocked now.
 	 */
 	if (!my->info.write_blocked) {
 		if ((size_t) rcode == size) {
@@ -34,7 +34,7 @@ if (rcode > 0) {
 	 *	We were blocked.  We're still blocked if we wrote _less_ than the amount of requested data.
 	 *	If we wrote all of the data which was requested, then we're unblocked.
 	 */
-	my->info.write_blocked = ((size_t) rcode == size);
+	my->info.write_blocked = ((size_t) rcode < size);
 
 	/*
 	 *	Call the "resume" function if we transitioned to being unblocked.
