@@ -207,7 +207,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 
 			RPERROR("Session ID %pV - Failed serialising session-state list", &sess_id);
 			fr_dbuff_free_talloc(&dbuff);
-			return 0;
+			return 0; /* didn't store data */
 		}
 	}
 
@@ -228,7 +228,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 		return -1;
 	}
 
-	return 0;
+	return 1;		/* successfully stored data */
 }
 
 static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
@@ -491,6 +491,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 {
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
 	size_t			len, ret;
+	int			rcode;
 
 	uint8_t			*p, *data = NULL;
 
@@ -520,7 +521,10 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32) < 0) return UNLANG_ACTION_FAIL;
+	rcode = tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32);
+	if (rcode < 0) return UNLANG_ACTION_FAIL;
+
+	if (rcode == 0) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
