@@ -442,9 +442,11 @@ int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *a
 
 	ret = pthread_create(thread, &attr, func, arg);
 	if (ret != 0) {
+		pthread_attr_destroy(&attr);
 		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
 		return -1;
 	}
+	pthread_attr_destroy(&attr);
 
 	return 0;
 }

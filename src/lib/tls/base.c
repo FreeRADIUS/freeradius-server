@@ -459,6 +459,7 @@ static void fr_openssl_stack_free(void *stack)
  */
 int fr_openssl_init(void)
 {
+	int rcode;
 	pthread_attr_t tattr;
 
 	if (openssl_instance_count > 0) {
@@ -467,7 +468,10 @@ int fr_openssl_init(void)
 	}
 
 	pthread_attr_init(&tattr);
-	if (pthread_attr_getstacksize(&tattr, &openssl_stack_size) != 0) {
+	rcode = pthread_attr_getstacksize(&tattr, &openssl_stack_size);
+	pthread_attr_destroy(&tattr);
+
+	if (rcode < 0) {
 		fr_tls_log(NULL, "Failed getting stack size");
 		return -1;
 	}
