@@ -112,6 +112,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 
 	ret = SSL_CTX_set0_tmp_dh_pkey(ctx, dh);
 	if (ret == 0) {
+		EVP_PKEY_free(dh);
 		ERROR("Unable to set DH parameters");
 		return -1;
 	}
