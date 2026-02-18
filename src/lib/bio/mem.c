@@ -261,7 +261,10 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 		(void) fr_bio_buf_write_alloc(&my->read_buffer, (size_t) rcode);
 
 		want = fr_bio_buf_used(&my->read_buffer);
-		if (size <= want) want = size;
+
+		if (want > size) return fr_bio_error(BUFFER_TOO_SMALL);
+
+		want = size;
 
 		/*
 		 *	See if there are valid packets in the buffer.
@@ -396,7 +399,9 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	 *	The next bio returned an error.  Anything other than WOULD BLOCK is fatal.  We can read from
 	 *	the memory buffer until it's empty, but we can no longer write to the memory buffer.
 	 */
-	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) {
+	if (rcode < 0) {
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
+
 		bio->read = fr_bio_mem_read_eof;
 		bio->write = fr_bio_null_write;
 		return rcode;
@@ -407,10 +412,7 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	 *
 	 *	Note that flushes should never block.
 	 */
-	if (!buffer) {
-		fr_assert(rcode != fr_bio_error(IO_WOULD_BLOCK));
-		return rcode;
-	}
+	if (!buffer) return rcode;
 
 	/*
 	 *	Tell previous BIOs in the chain that they are blocked.
@@ -483,13 +485,13 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	 *	Clamp the amount of data written.  If the caller wants to write everything, it should
 	 *	pass SIZE_MAX.
 	 */
-	if (used < size) used = size;
+	if (used < size) size = used;
 
 	/*
 	 *	Flush the buffer to the next bio in line.  That function will write as much data as possible,
 	 *	but may return a partial write.
 	 */
-	rcode = next->write(next, NULL, my->write_buffer.write, used);
+	rcode = next->write(next, NULL, my->write_buffer.read, size);
 
 	/*
 	 *	We didn't write anything, the bio is blocked.
@@ -672,15 +674,19 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 			 *	Some kind of fatal validation error.
 			 */
 		case FR_BIO_VERIFY_ERROR_CLOSE:
-			break;
+			(void) fr_bio_shutdown(bio);
+			return -1;
 		}
 	}
 
 	/*
-	 *	A fatal error.  Shut down the entire BIO chain.
+	 *	We haven't returned a full packet, partial packet, or error.  We must have discarded
+	 *	everything in the buffer.
 	 */
-	(void) fr_bio_shutdown(bio);
-	return -1;
+	if (my->read_buffer.read == my->read_buffer.write) fr_bio_buf_reset(&my->read_buffer);
+
+	*size = 0;
+	return 0;
 }
 
 /** Allocate a memory buffer bio for either reading or writing.
@@ -1002,7 +1008,10 @@ int fr_bio_mem_write_pause(fr_bio_t *bio)
 
 	if (my->bio.write == fr_bio_mem_write_buffer) return 0;
 
-	if (my->bio.write != fr_bio_mem_write_buffer) return -1;
+	/*
+	 *	Sink only, can't pause.
+	 */
+	if (my->bio.write == fr_bio_mem_write_read_buffer) return -1;
 
 	my->bio.write = fr_bio_mem_write_buffer;
 
