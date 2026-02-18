@@ -78,10 +78,10 @@ int fr_openssl_version_consistent(void)
  * @param v version to convert.
  * @return pointer to a static buffer containing the version string.
  */
-char const *fr_openssl_version_str_from_num(uint32_t v)
+static char const *fr_openssl_version_str_from_num(uint32_t v)
 {
 	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
-	static char buffer[18];
+	static _Thread_local char buffer[18];
 
 	/*
 	 *	OpenSSL major versions >= 3 (which FreeRADIUS requires) use the

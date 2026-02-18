@@ -39,7 +39,6 @@ extern "C" {
  *	be provided.
  */
 int 		fr_openssl_version_consistent(void);
-char const	*fr_openssl_version_str_from_num(uint32_t version);
 char const	*fr_openssl_version_basic(void);
 char const	*fr_openssl_version_range(uint32_t low, uint32_t high);
 char const	*fr_openssl_version_expanded(void);
