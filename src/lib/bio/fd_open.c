@@ -641,6 +641,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 */
 	if (my->cb.shutdown) my->user_shutdown = my->cb.shutdown;
 	my->cb.shutdown = fr_bio_fd_unix_shutdown;
+	if (dirfd != AT_FDCWD) close(dirfd);
 
 	return 0;
 }
@@ -697,7 +698,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 	opt = my->info.socket.inet.ifindex;
 
 	switch (my->info.socket.af) {
-	case AF_LOCAL:
+	case AF_INET:
 		rcode = setsockopt(my->info.socket.fd, IPPROTO_IP, IP_BOUND_IF, &opt, sizeof(opt));
 		break;
 
@@ -740,6 +741,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
 	bool do_suid;
+	int rcode;
 	socklen_t salen;
 	struct sockaddr_storage	salocal;
 
@@ -748,9 +750,16 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	/*
 	 *	Ranges must be a high value.
 	 */
-	if (my->info.cfg->src_port_start && (my->info.cfg->src_port_start < 1024)) {
-		fr_strerror_const("Cannot set src_port_start in the range 1..1023");
-		return -1;
+	if (my->info.cfg->src_port_start) {
+		if (my->info.cfg->src_port_start < 1024) {
+			fr_strerror_const("Cannot set src_port_start in the range 1..1023");
+			return -1;
+		}
+
+		if (my->info.cfg->src_port_end <= my->info.cfg->src_port_start) {
+			fr_strerror_const("Invalid range src_port_end <= src_port_start");
+			return -1;
+		}
 	}
 
 	/*
@@ -787,11 +796,13 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	 *	We don't have a source port range, just bind to whatever source port that we're given.
 	 */
 	if (!my->info.cfg->src_port_start) {
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) < 0) {
+		rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+		if (do_suid) fr_suid_down();
+
+		if (rcode < 0) {
 			fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
 			goto down;
 		}
-		if (do_suid) fr_suid_down();
 
 	} else {
 		uint16_t src_port, current, range;
@@ -815,7 +826,11 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		 *	We've picked a random port in what is hopefully a large range.  If that works, we're
 		 *	done.
 		 */
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
+		rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+		if (rcode == 0) {
+			if (do_suid) fr_suid_down();
+			goto done;
+		}
 
 		/*
 		 *	Hunt & peck.  Which is horrible.
@@ -835,13 +850,18 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 			sin->sin_port = htons(my->info.cfg->src_port_start + current);
 
-			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
+			rcode = bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen);
+			if (rcode == 0) {
+				if (do_suid) fr_suid_down();
+				goto done;
+			}
 		}
 
 		/*
 		 *	The error is a good hint at _why_ we failed to bind.
 		 *	We expect errno to be EADDRINUSE, anything else is a surprise.
 		 */
+		if (do_suid) fr_suid_down();
 		fr_strerror_printf("Failed binding port between 'src_port_start' and 'src_port_end': %s", fr_syserror(errno));
 		return -1;
 	}
@@ -957,11 +977,6 @@ void fr_bio_fd_name(fr_bio_fd_t *my)
  */
 int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 {
-	/*
-	 *	Unix sockets and files are OK.
-	 */
-	if (cfg->path || cfg->filename) return 0;
-
 	/*
 	 *	Sanitize the IP addresses.
 	 *
@@ -1244,7 +1259,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 */
 	switch (cfg->type) {
 	case FR_BIO_FD_INVALID:
-		return -1;
+		goto fail;
 
 		/*
 		 *	Unconnected UDP or datagram AF_LOCAL server sockets.
@@ -1252,7 +1267,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
 			fr_strerror_const("Failed configuring socket: unconnected sockets must be UDP");
-			return -1;
+			goto fail;
 		}
 
 		switch (my->info.socket.af) {
@@ -1313,7 +1328,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			break;
 
 		default:
-			return -1;
+			goto fail;
 		}
 
 		if ((rcode = fr_bio_fd_init_connected(my)) < 0) goto fail;
@@ -1419,6 +1434,8 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 			close(dir_fd);
 			goto failed_open;
 		}
+
+		close(dir_fd);
 	}
 
 	/*
