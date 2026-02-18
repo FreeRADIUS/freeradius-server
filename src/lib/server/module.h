@@ -241,6 +241,8 @@ struct module_s {
 	module_thread_detach_t		thread_detach;		//!< Callback to free thread-specific resources associated
 								///!< with a module.
 
+	module_thread_instantiate_t	coord_attach;		//!< Callback to attach a worker to a coordinator.
+
 	size_t				thread_inst_size;	//!< Size of the module's thread-specific instance data.
 	char const			*thread_inst_type;	//!< talloc type to assign to thread instance data.
 
@@ -516,6 +518,9 @@ int 			module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_even
 			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el)
+			CC_HINT(nonnull) CC_HINT(warn_unused_result);
+
+int			modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
 			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			module_instantiate(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);

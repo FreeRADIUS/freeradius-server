@@ -134,6 +134,8 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
 {
 	if (modules_rlm_thread_instantiate(ctx, el) < 0) return -1;
 
+	if (modules_rlm_coord_attach(el) < 0) return -1;
+
 	if (virtual_servers_thread_instantiate(ctx, el) < 0) return -1;
 
 	if (xlat_thread_instantiate(ctx, el) < 0) return -1;

@@ -975,6 +975,18 @@ int modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 	return modules_thread_instantiate(ctx, rlm_modules_static, el);
 }
 
+/** Runs the coord_attach method of all registered backend modules
+ *
+ * @param[in] el	to register events.
+ * @return
+ *	- 0 if all calls succeeded.
+ *	- -1 if a call failed.
+ */
+int modules_rlm_coord_attach(fr_event_list_t *el)
+{
+	return modules_coord_attach(rlm_modules_static, el);
+}
+
 /** Performs the instantiation phase for all backend modules
  *
  * @return
