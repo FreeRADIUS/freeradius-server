@@ -20,10 +20,17 @@ or
 ```
 
 ## Run Multi-Server Tests Manually
-### Render Jinja Templates (e.g. test-5hs-autoaccept):
+
+### Clone Multi-Server Framework Repo
 ```bash
+git clone git@github.com:InkbridgeNetworks/freeradius-multi-server.git
 cd ${FREERADIUS-MULTI-SERVER-LOCAL-REPO}
+./configure
+source .venv/bin/activate
 ```
+
+### Render Jinja Templates (e.g. test-5hs-autoaccept):
+
 Homeserver config:
 ```bash
 % python3 src/config_builder.py \
@@ -38,7 +45,7 @@ Homeserver config:
     --aux-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/configs/freeradius/load-generator/radiusd.conf.j2" \
     --include-path "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/"
 ```
-Docker compose:
+Test Environment Docker compose:
 ```bash
  python3 src/config_builder.py \
     --vars-file "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
@@ -48,10 +55,6 @@ Docker compose:
 
 ### Run test (e.g. test-5hs-autoaccept):
 ```bash
-% cd ${FREERADIUS-MULTI-SERVER-LOCAL-REPO}
-
-% source .venv/bin/activate
-
 % DATA_PATH="${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/configs" \
 			make test-framework -- -x -v \
 			--compose "${FREERADIUS-SERVER-LOCAL-REPO-PATH-ABS}/src/tests/multi-server/environments/docker-compose/env-5hs-autoaccept.yml" \
