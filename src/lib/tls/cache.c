@@ -207,6 +207,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 
 			RPERROR("Session ID %pV - Failed serialising session-state list", &sess_id);
 			fr_dbuff_free_talloc(&dbuff);
+			fr_pair_delete(&request->session_state_pairs, type_vp);
 			return 0; /* didn't store data */
 		}
 	}
@@ -522,7 +523,10 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	contents to the ssl-data
 	 */
 	rcode = tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32);
-	if (rcode < 0) return UNLANG_ACTION_FAIL;
+	if (rcode < 0) {
+		tls_cache_store_state_reset(request, tls_cache);
+		return UNLANG_ACTION_FAIL;
+	}
 
 	if (rcode == 0) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -552,8 +556,8 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	/*
 	 *	Serialize the session
 	 */
-	len = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */
-	if (len < 1) {
+	ret = i2d_SSL_SESSION(sess, NULL);	/* find out what length data we need */
+	if (ret < 1) {
 		fr_value_box_t	id;
  		fr_tls_cache_id_to_box_shallow(&id, sess);
 
@@ -566,6 +570,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;
 	}
+	len = ret;
 
 	MEM(pair_update_request(&vp, attr_tls_session_data) >= 0);
 	MEM(data = talloc_array(vp, uint8_t, len));
@@ -637,7 +642,6 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->clear.id);
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
-	request = child;
 
 	/*
 	 *	Setup the child request for loading
@@ -1482,12 +1486,14 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed deriving session ticket key");
 
+		key_buff_error:
 			talloc_free(key_buff);
 			goto kdf_error;
 		}
 		EVP_PKEY_CTX_free(pkey_ctx);
 
 		fr_assert(talloc_array_length(key_buff) == key_len);
+
 		/*
 		 *	Ensure the same keys are used across all threads
 		 */
@@ -1495,7 +1501,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 						   key_buff, key_len) != 1) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket keys");
-			return -1;
+			goto key_buff_error;
 		}
 
 		DEBUG3("Derived session-ticket-key:");
@@ -1512,7 +1518,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 							   UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket callbacks");
-			return -1;
+			goto key_buff_error;
 		}
 
 		/*
