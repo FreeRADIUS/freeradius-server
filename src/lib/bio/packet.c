@@ -83,9 +83,10 @@ static int fr_bio_packet_write_resume(fr_bio_t *bio)
 		}
 	}
 
+	if (!my->cb.write_resume) return 0;
+
 	rcode = my->cb.write_resume(my);
 	if (rcode < 0) return rcode;
-
 	my->write_blocked = (rcode == 0);
 
 	return rcode;
@@ -97,6 +98,8 @@ static int fr_bio_packet_read_blocked(fr_bio_t *bio)
 
 	my->read_blocked = true;
 
+	if (!my->cb.read_blocked) return 0;
+
 	return my->cb.read_blocked(my);
 }
 
@@ -106,6 +109,8 @@ static int fr_bio_packet_read_resume(fr_bio_t *bio)
 
 	my->read_blocked = false;
 
+	if (!my->cb.read_resume) return 0;
+	
 	return my->cb.read_resume(my);
 }
 
@@ -142,6 +147,8 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	 *	Stop any connection timeout.
 	 */
 	FR_TIMER_DELETE(&my->ev);
+
+	if (!my->cb.connected) return;
 
 	/*
 	 *	Tell the application that the packet BIO is now usable.
