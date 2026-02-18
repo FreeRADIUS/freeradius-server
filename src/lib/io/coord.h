@@ -28,6 +28,7 @@ RCSIDH(coord_h, "$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/semaphore.h>
 
@@ -58,6 +59,7 @@ typedef struct {
 	fr_coord_cb_reg_t		*inbound_cb;		//!< Callbacks for worker -> coordinator messages.
 	fr_coord_worker_cb_reg_t	*outbound_cb;		//!< Callbacks for coordinator -> worker messages.
 	CONF_SECTION			*cs;			//!< Module conf section.
+	char const			*module_name;		//!< Name of module for this coordinator.
 	size_t				inbound_rb_size;	//!< Initial ring buffer size for worker -> coordinator
 								///< data.  Defaults to 4096 if not set.
 	size_t				outbound_rb_size;	//!< Initial ring buffer size for coordinator -> worker
@@ -84,6 +86,10 @@ int		fr_coord_start(uint32_t num_workers, fr_sem_t *sem);
 
 int		fr_coords_create(TALLOC_CTX *ctx, fr_event_list_t *el);
 
+int		fr_coord_pre_event_insert(fr_event_list_t *el);
+
+int		fr_coord_post_event_insert(fr_event_list_t *el);
+
 void		fr_coords_destroy(void);
 
 fr_coord_worker_t	*fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coord_reg_t *coord_reg);
@@ -94,3 +100,5 @@ int		fr_coord_to_worker_send(fr_coord_t *coord, uint32_t worker_id, uint32_t cb_
 int		fr_coord_to_worker_broadcast(fr_coord_t *coord, uint32_t cb_id, fr_dbuff_t *dbuff);
 
 int		fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *dbuff);
+
+module_instance_t const *fr_coord_process_module(fr_coord_t *coord);

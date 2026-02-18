@@ -41,6 +41,12 @@ RCSID("$Id$")
 #define FR_CONTROL_ID_COORD_WORKER_ACK		(3)	//!< Message sent to worker to acknowledge attach / detach
 #define FR_CONTROL_ID_COORD_CALLBACK		(4)	//!< Worker <-> coordinator message to run a callback
 
+#define CACHE_LINE_SIZE	64
+static _Atomic(uint64_t) request_number = 0;
+
+FR_SLAB_TYPES(request, request_t);
+FR_SLAB_FUNCS(request, request_t);
+
 static fr_dlist_head_t	*coord_regs = NULL;
 static fr_dlist_head_t	*coord_threads = NULL;
 static fr_rb_tree_t	coords = (fr_rb_tree_t){ .num_elements = 0 };
@@ -65,6 +71,16 @@ struct fr_coord_s {
 	fr_message_set_t		**ms;		//!< Message sets for coordinator -> worker messages.
 	fr_control_t			**worker_control;	//!< Control planes for coordinator -> worker messages.
 	fr_atomic_queue_t		**worker_data_aq;	//!< Atomic queues for coordinator -> worker data.
+
+	unlang_interpret_t		*intp;		//!< Interpreter for running requests.
+	fr_heap_t			*runnable;	//!< Current runnable requests.
+
+	fr_timer_list_t			*timeout;	//!< Track when requests timeout using a dlist.
+
+	fr_time_delta_t			predicted;	//!< How long we predict a request will take to execute.
+	fr_time_tracking_t		tracking;	//!< How much time the coordinator has spent doing things.
+	uint64_t			num_active;	//!< Number of active requests.
+	request_slab_list_t		*slab;		//!< slab allocator for request_t
 
 	bool				exiting;	//!< Is this coordinator shutting down.
 	bool				single_thread;	//!< Are we in single thread mode.
@@ -92,6 +108,7 @@ struct fr_coord_reg_s {
 	fr_coord_worker_cb_reg_t	*outbound_cb;		//!< Callbacks for coordinator -> worker messages.
 	size_t				inbound_rb_size;	//!< Initial size for worker -> coordinator ring buffer.
 	size_t				outbound_rb_size;	//!< Initial size for coordinator -> worker ring buffer.
+	module_instance_t		*process_module;	//!< Process module to handle
 	fr_time_delta_t			max_request_time;	//!< Maximum time for coordinator request processing.
 	fr_slab_config_t		reuse;			//!< Request slab allocation config.
 	CONF_SECTION			*server_cs;		//!< Virtual server containing coordinator process sections.
@@ -135,6 +152,13 @@ static int _coord_regs_free(UNUSED fr_dlist_head_t *to_free)
 	return 0;
 }
 
+/** Conf parser to read slab settings from module config
+ */
+static const conf_parser_t request_reuse_config[] = {
+	FR_SLAB_CONFIG_CONF_PARSER
+	CONF_PARSER_TERMINATOR
+};
+
 /** Register a coordinator
  *
  * To be called from mod_instantiate of a module which uses a coordinator
@@ -148,6 +172,10 @@ static int _coord_regs_free(UNUSED fr_dlist_head_t *to_free)
 fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 {
 	fr_coord_reg_t		*coord_reg;
+	CONF_SECTION		*cs;
+	CONF_PAIR		*cp;
+	int			ret;
+	virtual_server_t const	*virtual_server;
 
 	/* Allocate the list of registered coordinators if not already done */
 	if (!coord_regs) {
@@ -168,6 +196,54 @@ fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 			main_config->worker.max_request_time : reg_ctx->max_request_time,
 	};
 
+	cs = cf_section_find(reg_ctx->cs, "reuse", NULL);
+
+	/*
+	 *	Create an empty "reuse" section if one is not found, so defaults are applied
+	 */
+	if (!cs) {
+		cs = cf_section_alloc(reg_ctx->cs, reg_ctx->cs, "reuse", NULL);
+	}
+
+	cf_section_rules_push(cs, request_reuse_config);
+	ret = cf_section_parse(coord_reg, &coord_reg->reuse, cs);
+	if (ret < 0) {
+	fail:
+		talloc_free(coord_reg);
+		return NULL;
+	}
+
+	/*
+	 *	Set defaults for request slab allocation, if not set by conf parsing
+	 */
+	if (coord_reg->reuse.child_pool_size == 0) coord_reg->reuse.child_pool_size = REQUEST_POOL_SIZE;
+	if (coord_reg->reuse.num_children == 0) coord_reg->reuse.num_children = REQUEST_POOL_HEADERS;
+
+	/*
+	 *	If there's no process module, everything is done
+	 */
+	if (!reg_ctx->module_name) goto done;
+
+	cp = cf_pair_find(reg_ctx->cs, "virtual_server");
+	if (!cp) {
+		cf_log_err(reg_ctx->cs, "Missing virtual_server option");
+		goto fail;
+	}
+
+	virtual_server = virtual_server_find(cf_pair_value(cp));
+	if (!virtual_server) {
+		cf_log_err(cp, "Virtual server not found");
+		goto fail;
+	}
+	coord_reg->server_cs = virtual_server_cs(virtual_server);
+	coord_reg->process_module = module_instance_alloc(coord_modules, NULL, DL_MODULE_TYPE_PROCESS,
+							  reg_ctx->module_name, coord_reg->name, 0);
+	if (!coord_reg->process_module) goto fail;
+
+	if (module_bootstrap(coord_reg->process_module) < 0) goto fail;
+	if (module_instantiate(coord_reg->process_module) < 0) goto fail;
+
+done:
 	fr_dlist_insert_tail(coord_regs, coord_reg);
 
 	return coord_reg;
@@ -188,6 +264,8 @@ void fr_coord_deregister(fr_coord_reg_t *coord_reg)
 
 	fr_dlist_remove(coord_regs, coord_reg);
 
+	if (coord_reg->process_module) talloc_free(coord_reg->process_module);
+
 	if (!coord_threads) goto free;
 
 	while ((sc = fr_dlist_next(coord_threads, sc))) {
@@ -207,6 +285,117 @@ free:
 	talloc_free(coord_reg);
 
 	if (fr_dlist_num_elements(coord_regs) == 0) TALLOC_FREE(coord_regs);
+}
+
+/*
+ *	The following set of callbacks for request handling are mirrors of
+ *	their equivalent in worker.c
+ */
+
+/** Signal the unlang interpreter that it needs to stop running the request
+ *
+ * @param[in] request	request to cancel.  The request may still run to completion.
+ */
+static void coord_stop_request(request_t *request)
+{
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+}
+
+/** Enforce max_request_time
+ *
+ * @param[in] tl	the coordinators's timer list.
+ * @param[in] when	the current time
+ * @param[in] uctx	the request_t timing out.
+ */
+static void _coord_request_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx)
+{
+	request_t	*request = talloc_get_type_abort(uctx, request_t);
+
+	REDEBUG("Request has reached max_request_time - signalling it to stop");
+	coord_stop_request(request);
+
+	request->rcode = RLM_MODULE_TIMEOUT;
+}
+
+/** Set, or re-set the request timer
+ *
+ * @param[in] coord	the coordinator containing the timeout lists.
+ * @param[in] request	that we're timing out.
+ * @param[in] timeout	the timeout to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_coord_request_timeout_set(fr_coord_t *coord, request_t *request, fr_time_delta_t timeout)
+{
+	if (unlikely(fr_timer_in(request, coord->timeout, &request->timeout, timeout,
+				 true, _coord_request_timeout, request) < 0)) {
+		RERROR("Failed to create request timeout timer");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Start time tracking for a request, and mark it as runnable.
+ *
+ */
+static int coord_request_time_tracking_start(fr_coord_t *coord, request_t *request, fr_time_t now)
+{
+	fr_assert(!fr_timer_armed(request->timeout));
+
+	if (unlikely(fr_coord_request_timeout_set(coord, request, coord->coord_reg->max_request_time) < 0)) {
+		RERROR("Failed to set request timeout");
+		return -1;
+	}
+
+	RDEBUG3("Time tracking started in yielded state");
+	fr_time_tracking_start(&coord->tracking, &request->async->tracking, now);
+	fr_time_tracking_yield(&request->async->tracking, now);
+	coord->num_active++;
+
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
+	(void) fr_heap_insert(&coord->runnable, request);
+
+	return 0;
+}
+
+static void coord_request_time_tracking_end(fr_coord_t *coord, request_t *request, fr_time_t now)
+{
+	RDEBUG3("Time tracking ended");
+	fr_time_tracking_end(&coord->predicted, &request->async->tracking, now);
+	fr_assert(coord->num_active > 0);
+	coord->num_active--;
+
+	TALLOC_FREE(request->timeout);	/* Disarm the request timer */
+}
+
+
+static inline CC_HINT(always_inline)
+void coord_request_init(fr_event_list_t *el, request_t *request, fr_time_t now, void *packet_ctx)
+{
+	if (!request->packet) MEM(request->packet = fr_packet_alloc(request, false));
+	if (!request->reply) MEM(request->reply = fr_packet_alloc(request, false));
+
+	request->packet->timestamp = now;
+	request->async = talloc_zero(request, fr_async_t);
+	request->async->recv_time = now;
+	request->async->el = el;
+	request->async->packet_ctx = packet_ctx;
+	fr_dlist_entry_init(&request->async->entry);
+}
+
+static inline CC_HINT(always_inline)
+void coord_request_name_number(request_t *request)
+{
+	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);
+	if (request->name) talloc_const_free(request->name);
+	request->name = talloc_asprintf(request, "Coord-%"PRIu64, request->number);
+}
+
+static int _coord_request_deinit( request_t *request, UNUSED void *uctx)
+{
+	return request_slab_deinit(request);
 }
 
 /** Callback for a coordinator receiving a message from a worker
@@ -307,6 +496,162 @@ static void coord_worker_detach(void *ctx, void const *data, NDEBUG_UNUSED size_
 	coord->exiting = true;
 }
 
+static void _coord_request_internal_init(request_t *request, void *uctx)
+{
+	fr_coord_t	*coord = talloc_get_type_abort(uctx, fr_coord_t);
+	fr_time_t	now = fr_time();
+
+	fr_assert(request->packet);
+	fr_assert(request->reply);
+
+	request->packet->timestamp = now;
+	request->async = talloc_zero(request, fr_async_t);
+	request->async->recv_time = now;
+	request->async->el = coord->el;
+	fr_dlist_entry_init(&request->async->entry);
+
+	/*
+	 *	Requests generated by the interpreter
+	 *	are always marked up as internal.
+	 */
+	fr_assert(request_is_internal(request));
+	coord_request_time_tracking_start(coord, request, now);
+}
+
+/** External request is now complete - will never happen with coordinators
+ *
+ */
+static void _coord_request_done_external(UNUSED request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
+{
+	fr_assert(0);
+}
+
+/** Internal request (i.e. one generated by the interpreter) is now complete
+ *
+ * Whatever generated the request is now responsible for freeing it.
+ */
+static void _coord_request_done_internal(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
+{
+	fr_coord_t	*coord = talloc_get_type_abort(uctx, fr_coord_t);
+
+	coord_request_time_tracking_end(coord, request, fr_time());
+
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
+	fr_assert(!fr_timer_armed(request->timeout));
+	fr_assert(!fr_dlist_entry_in_list(&request->async->entry));
+}
+
+/** Detached request (i.e. one generated by the interpreter with no parent) is now complete
+ *
+ * As the request has no parent, then there's nothing to free it
+ * so we have to.
+ */
+static void _coord_request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
+{
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
+
+	TALLOC_FREE(request->timeout);
+
+	fr_assert(!fr_dlist_entry_in_list(&request->async->entry));
+
+	talloc_free(request);
+}
+
+/** Make us responsible for running the request
+ *
+ */
+static void _coord_request_detach(request_t *request, UNUSED void *uctx)
+{
+	fr_coord_t	*coord = talloc_get_type_abort(uctx, fr_coord_t);
+
+	RDEBUG4("%s - Request detaching", __FUNCTION__);
+
+	if (request_is_detachable(request)) {
+		/*
+		*	End the time tracking...  We don't track detached requests,
+		*	because they don't contribute for the time consumed by an
+		*	external request.
+		*/
+		if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
+			RDEBUG3("Forcing time tracking to running state, from yielded, for request detach");
+			fr_time_tracking_resume(&request->async->tracking, fr_time());
+		}
+		coord_request_time_tracking_end(coord, request, fr_time());
+
+		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
+
+		RDEBUG3("Request is detached");
+	} else {
+		fr_assert_msg(0, "Request is not detachable");
+	}
+}
+
+/** Request is now runnable
+ *
+ */
+static void _coord_request_runnable(request_t *request, void *uctx)
+{
+	fr_coord_t	*coord = uctx;
+
+	RDEBUG4("%s - Request marked as runnable", __FUNCTION__);
+	fr_heap_insert(&coord->runnable, request);
+}
+
+/** Interpreter yielded request
+ *
+ */
+static void _coord_request_yield(request_t *request, UNUSED void *uctx)
+{
+	RDEBUG4("%s - Request yielded", __FUNCTION__);
+	if (likely(!request_is_detached(request))) fr_time_tracking_yield(&request->async->tracking, fr_time());
+}
+
+/** Interpreter is starting to work on request again
+ *
+ */
+static void _coord_request_resume(request_t *request, UNUSED void *uctx)
+{
+	RDEBUG4("%s - Request resuming", __FUNCTION__);
+	if (likely(!request_is_detached(request))) fr_time_tracking_resume(&request->async->tracking, fr_time());
+}
+
+/** Check if a request is scheduled
+ *
+ */
+static bool _coord_request_scheduled(request_t const *request, UNUSED void *uctx)
+{
+	return fr_heap_entry_inserted(request->runnable);
+}
+
+/** Update a request's priority
+ *
+ */
+static void _coord_request_prioritise(request_t *request, UNUSED void *uctx)
+{
+	fr_coord_t *coord = talloc_get_type_abort(uctx, fr_coord_t);
+
+	RDEBUG4("%s - Request priority changed", __FUNCTION__);
+
+	/* Extract the request from the runnable queue _if_ it's in the runnable queue */
+	if (fr_heap_extract(&coord->runnable, request) < 0) return;
+
+	/* Reinsert it to re-evaluate its new priority */
+	fr_heap_insert(&coord->runnable, request);
+}
+
+/** Compare two requests by priority and sequence
+ */
+static int8_t coord_runnable_cmp(void const *one, void const *two)
+{
+	request_t const	*a = one, *b = two;
+	int ret;
+
+	ret = CMP(b->priority, a->priority);
+	if (ret != 0) return ret;
+
+	return CMP(a->sequence, b->sequence);
+}
+
 /** Create a coordinator from its registration
  *
  * @param ctx		to allocate the coordinator in
@@ -333,13 +678,25 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 		.max_workers = max_workers
 	};
 
+	coord->runnable = fr_heap_talloc_alloc(coord, coord_runnable_cmp, request_t, runnable, 0);
+	if (!coord->runnable) {
+		fr_strerror_const("Failed creating runnable heap");
+	fail:
+		talloc_free(coord);
+		return NULL;
+	}
+
+	coord->timeout = fr_timer_list_ordered_alloc(coord, el->tl);
+	if (!coord->timeout) {
+		fr_strerror_const("Failed creating timeouts list");
+		goto fail;
+	}
+
 	/* Allocate atomic queue / control for receiving messages from workers */
 	coord->aq = fr_atomic_queue_alloc(coord, FR_CONTROL_MAX_MESSAGES);
 	if (!coord->aq) {
 		fr_strerror_const("Failed creating worker -> coordinator atomic queue");
-	fail:
-		talloc_free(coord);
-		return NULL;
+		goto fail;
 	}
 	coord->control = fr_control_create(coord, el, coord->aq, 5);
 	if (!coord->control) {
@@ -386,7 +743,54 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	MEM(coord->worker_control = talloc_zero_array(coord, fr_control_t *, coord->max_workers));
 	MEM(coord->worker_data_aq = talloc_zero_array(coord, fr_atomic_queue_t *, coord->max_workers));
 
+	/* If there is no configured virtual server, we don't need an interpreter */
+	if (!coord_reg->server_cs) return coord;
+
+	coord->intp = unlang_interpret_init(coord, el,
+					&(unlang_request_func_t){
+						.init_internal = _coord_request_internal_init,
+
+						.done_external = _coord_request_done_external,
+						.done_internal = _coord_request_done_internal,
+						.done_detached = _coord_request_done_detached,
+
+						.detach = _coord_request_detach,
+						.yield = _coord_request_yield,
+						.resume = _coord_request_resume,
+						.mark_runnable = _coord_request_runnable,
+
+						.scheduled = _coord_request_scheduled,
+						.prioritise = _coord_request_prioritise
+					}, coord);
+
+	if (!coord->intp) goto fail;
+
+	if (!(coord->slab = request_slab_list_alloc(coord, el, &coord_reg->reuse, NULL, NULL,
+						    coord, true, false))) {
+		goto fail;
+	}
+
+	if (!coord->single_thread) unlang_interpret_set_thread_default(coord->intp);
+
 	return coord;
+}
+
+static inline CC_HINT(always_inline) void coord_run_request(fr_coord_t *coord, fr_time_t start)
+{
+	request_t	*request;
+	fr_time_t	now;
+
+	now = start;
+
+	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_from_msec(1)) &&
+	((request = fr_heap_pop(&coord->runnable)) != NULL)) {
+		REQUEST_VERIFY(request);
+		fr_assert(!fr_heap_entry_inserted(request->runnable));
+
+		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
+
+		now = fr_time();
+	}
 }
 
 static void fr_coordinate(fr_coord_t *coord)
@@ -420,9 +824,65 @@ static void fr_coordinate(fr_coord_t *coord)
 			DEBUG4("Servicing event(s)");
 			fr_event_service(coord->el);
 		}
+
+		coord_run_request(coord, fr_time());
 	}
 
 	return;
+}
+
+/*
+ *	Pre and post events used in single threaded mode
+ */
+
+static int fr_coord_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
+{
+	fr_coord_t *coord = talloc_get_type_abort(uctx, fr_coord_t);
+	request_t *request;
+
+	request = fr_heap_peek(coord->runnable);
+	return request ? 1 : 0;
+}
+
+static void fr_coord_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_coord_t *coord = talloc_get_type_abort(uctx, fr_coord_t);
+
+	coord_run_request(coord, fr_time());
+}
+
+int fr_coord_pre_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		if (fr_event_pre_insert(el, fr_coord_pre_event, coord) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+int fr_coord_post_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		if (fr_event_post_insert(el, fr_coord_post_event, coord) < 0) {
+			return -1;
+		}
+	}
+	return 0;
 }
 
 /** Entry point for a coordinator thread
@@ -768,4 +1228,9 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 
 	return fr_control_message_send(cw->coord->control, cw->rb, FR_CONTROL_ID_COORD_CALLBACK,
 				       &cm, sizeof(fr_coord_msg_t));
+}
+
+module_instance_t const *fr_coord_process_module(fr_coord_t *coord)
+{
+	return coord->coord_reg->process_module;
 }
