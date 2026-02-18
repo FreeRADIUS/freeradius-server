@@ -6,6 +6,7 @@ SOURCES	:= \
 	channel.c \
 	control.c \
 	coord.c \
+	coord_pair.c \
 	load.c \
 	master.c \
 	message.c \
