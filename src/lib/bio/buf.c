@@ -32,7 +32,10 @@ size_t fr_bio_buf_make_room(fr_bio_buf_t *bio_buf)
 	if (bio_buf->read == bio_buf->start) return fr_bio_buf_write_room(bio_buf);
 
 	used = bio_buf->write - bio_buf->read;
-	if (!used) return fr_bio_buf_write_room(bio_buf);
+	if (!used) {
+		fr_bio_buf_reset(bio_buf);
+		return fr_bio_buf_write_room(bio_buf);
+	}
 
 	memmove(bio_buf->start, bio_buf->read, used);
 
