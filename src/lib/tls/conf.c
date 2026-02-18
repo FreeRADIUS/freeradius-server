@@ -388,7 +388,7 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 	cnt = talloc_array_length(conf->chains);
 	for (i = 0; i < cnt; i++) {
 		char		cmd[256];
-		char		*password;
+		char		*password, *buf;
 		long const	max_password_len = 128;
 		FILE		*cmd_pipe;
 
@@ -416,12 +416,30 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 			return -1;
 		}
 
-		fgets(password, max_password_len, cmd_pipe);
+		buf = fgets(password, max_password_len, cmd_pipe);
 		pclose(cmd_pipe);
 
-		/* Get rid of newline at end of password. */
-		password[strlen(password) - 1] = '\0';
+		if (!buf || ferror(cmd_pipe)) {
+			talloc_free(password);
+			ERROR("%s command failed: Unable to get private_key_password", cmd);
+			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
+			return -1;
+		}
 
+		/* Get rid of newline at end of password. */
+		for (buf = password; buf < (password + max_password_len); buf++) {
+			if (*buf < ' ') {
+				*buf = '\0';
+				goto found;
+			}
+		}
+
+		talloc_free(password);
+		ERROR("%s command failed: Unable to get private_key_password", cmd);
+		ERROR("Error reading private_key_file %s - password is too long", conf->chains[i]->private_key_file);
+		return -1;
+
+	found:
 		DEBUG3("Password from command = \"%s\"", password);
 		talloc_const_free(conf->chains[i]->password);
 		conf->chains[i]->password = password;
