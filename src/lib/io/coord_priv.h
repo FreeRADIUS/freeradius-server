@@ -39,3 +39,15 @@ typedef struct {
 	fr_message_t			m;			//!< Message containing data being sent.
 	uint32_t			coord_cb_id;		//!< Callback ID for this message.
 } fr_coord_data_t;
+
+/** Packet context used when coordinator messages are processed through an interpreter
+ *
+ * Allows access to the coordinator structure and arbitrary data
+ * throughout the state machine.
+ */
+typedef struct {
+	fr_coord_t			*coord;			//!< Coordinator this packet is for.
+	void				*uctx;			//!< Source specific ctx.
+} fr_coord_packet_ctx_t;
+
+void coord_request_bootstrap(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *uctx);

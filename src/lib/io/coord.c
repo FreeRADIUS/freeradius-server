@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/coord_priv.h>
@@ -51,6 +52,7 @@ static fr_dlist_head_t	*coord_regs = NULL;
 static fr_dlist_head_t	*coord_threads = NULL;
 static fr_rb_tree_t	coords = (fr_rb_tree_t){ .num_elements = 0 };
 static module_list_t	*coord_modules;
+static fr_dict_attr_t const	*attr_worker_id = NULL;
 
 /** A coordinator which receives messages from workers
  */
@@ -176,6 +178,15 @@ fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 	CONF_PAIR		*cp;
 	int			ret;
 	virtual_server_t const	*virtual_server;
+
+	/* Resolve the Worker-Id attribute if not already done */
+	if (!attr_worker_id) {
+		attr_worker_id = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), "Worker-Id");
+		if (!attr_worker_id) {
+			ERROR("Failed to resolve Worker-Id attribute");
+			return NULL;
+		}
+	}
 
 	/* Allocate the list of registered coordinators if not already done */
 	if (!coord_regs) {
@@ -396,6 +407,69 @@ void coord_request_name_number(request_t *request)
 static int _coord_request_deinit( request_t *request, UNUSED void *uctx)
 {
 	return request_slab_deinit(request);
+}
+
+void coord_request_bootstrap(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *uctx)
+{
+	request_t		*request;
+	int			ret;
+	fr_dict_attr_t const	*packet_type;
+	fr_pair_t		*vp;
+	fr_coord_packet_ctx_t	*packet_ctx;
+
+	packet_type = virtual_server_packet_type_by_cs(coord->coord_reg->server_cs);
+	fr_assert(packet_type && (packet_type->type == FR_TYPE_UINT32));
+
+	request = request_slab_reserve(coord->slab);
+	if (!request) {
+		ERROR("Coordinator failed allocating new request");
+		return;
+	}
+
+	request_slab_element_set_destructor(request, _coord_request_deinit, coord);
+
+	if (request_init(request, REQUEST_TYPE_INTERNAL,
+			 (&(request_init_args_t){ .namespace = virtual_server_dict_by_cs(coord->coord_reg->server_cs) }))) {
+		ERROR("Coordinator failed initializing new request");
+	error:
+		request_slab_release(request);
+		return;
+	}
+
+	MEM(packet_ctx = talloc(request, fr_coord_packet_ctx_t));
+	*packet_ctx = (fr_coord_packet_ctx_t) {
+		.coord = coord,
+		.uctx = uctx
+	};
+	coord_request_init(coord->el, request, now, packet_ctx);
+	coord_request_name_number(request);
+
+	unlang_interpret_set(request, coord->intp);
+
+	if (fr_pair_append_by_da(request->request_ctx, &vp, &request->request_pairs, attr_worker_id) < 0) goto error;
+	vp->vp_uint32 = worker_id;
+
+	ret = fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
+					   fr_dict_root(request->proto_dict), dbuff, NULL);
+	if (ret < 0) {
+		RERROR("Failed decoding packet");
+		goto error;
+	}
+
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, packet_type);
+	if (!vp) {
+		RERROR("Missing %s attribute", packet_type->name);
+		goto error;
+	}
+
+	request->packet->code = vp->vp_uint32;
+
+	if (unlang_call_push(NULL, request, coord->coord_reg->server_cs, UNLANG_TOP_FRAME) < 0) {
+		RERROR("Protocol failed to set 'process' function");
+		goto error;
+	}
+
+	coord_request_time_tracking_start(coord, request, now);
 }
 
 /** Callback for a coordinator receiving a message from a worker
