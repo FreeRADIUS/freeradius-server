@@ -343,7 +343,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 		if (conf->tls_min_version >= (float)1.3) {
 			cf_log_err(ci, "stateful session-resumption is not supported with tls_min_version >= 1.3. "
 			           "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
-			goto error;
+			goto cache_stateless;
 		}
 		break;
 	}
