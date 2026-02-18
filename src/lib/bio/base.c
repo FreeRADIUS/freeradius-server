@@ -240,9 +240,9 @@ void fr_bio_eof(fr_bio_t *bio)
 		if (!this->priv_cb.eof) continue;
 
 		/*
-		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 *	The EOF handler said it's an error or NOT at EOF, so we stop processing here.
 		 */
-		if (this->priv_cb.eof((fr_bio_t *) this) == 0) break;
+		if (this->priv_cb.eof((fr_bio_t *) this) <= 0) break;
 
 		/*
 		 *	Don't run the EOF callback multiple times, and continue the loop.
