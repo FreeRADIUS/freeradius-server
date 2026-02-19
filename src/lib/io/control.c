@@ -339,8 +339,6 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
-	ssize_t	ret;
-	int	delay = 0;
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
@@ -352,24 +350,25 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-again:
-	if ((ret = write(c->pipe[1], ".", 1)) == 1) return 0;
+redo:
+	if (write(c->pipe[1], ".", 1) >= 0) return 0;
 
-	if ((ret < 0) && (errno != EAGAIN)
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	    && (errno != EWOULDBLOCK)
-#endif
-		) {
-		return -1;
-	}
+	if (errno == EINTR) goto redo;
 
 	/*
-	 *	@todo - this is pretty crap.  We should instead have a better way to deal with things when the
-	 *	pipe gets full.
+	 *	EAGAIN means that the pipe is full, which means that the other end will eventually
+	 *	read from it.
 	 */
-	delay += 10;
-	usleep(delay);
-	goto again;
+	if (errno == EAGAIN) return 0;
+
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+	if (errno == EWOULDBLOCK) return 0;
+#endif
+
+	/*
+	 *	Other error, that's an issue.
+	 */
+	return -1;
 }
 
 
