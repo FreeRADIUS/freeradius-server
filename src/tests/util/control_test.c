@@ -191,8 +191,6 @@ int main(int argc, char *argv[])
 	size_t			i;
 	worker_args_t		*worker_args;
 
-	fr_atexit_global_setup();
-
 	fr_time_start();
 
 	while ((c = getopt(argc, argv, "hm:qw:x")) != -1) switch (c) {
@@ -266,7 +264,5 @@ int main(int argc, char *argv[])
 
 	main_loop_free();
 
-	fr_atexit_global_trigger_all();
-
-	return 0;
+	fr_exit_now(EXIT_SUCCESS);
 }
