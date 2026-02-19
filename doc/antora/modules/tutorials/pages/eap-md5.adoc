@@ -12,6 +12,12 @@ protocol and to send and receive test packets.
 - `sites-enabled/default`
 - `eapol_test.conf`
 
+== Overview: What Is EAP-MD5?
+
+`EAP` (Extensible Authentication Protocol) is a wrapper — it carries other authentication protocols inside it. Think of it like an envelope: the envelope itself doesn't contain the message, it just delivers it. `EAP-MD5` is one of the protocols that gets carried inside that envelope.
+
+When a client wants to authenticate, the server doesn't ask for a password directly. Instead it sends a random challenge, and the client responds with an MD5 hash of that challenge combined with their password. The server runs the same calculation and checks if the results match. The password never crosses the network — only the hash does.
+
 *Diagram:*
 
 image::eap-md5.svg[Fig. EAP-MD5]
