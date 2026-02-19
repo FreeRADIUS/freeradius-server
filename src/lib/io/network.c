@@ -593,18 +593,18 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		for (i = 0; i < nr->num_workers; i++) {
 			DEBUG3("Worker acked our close request");
 			if (nr->workers[i] == w) {
-				nr->workers[i] = NULL;
-
 				if (i == (nr->num_workers - 1)) break;
 
 				/*
 				 *	Close the hole...
 				 */
-				memmove(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
+				memmove(&nr->workers[i], &nr->workers[i + 1],
+					((nr->num_workers - i) - 1) * sizeof(nr->workers[0]));
 				break;
 			}
 		}
 		nr->num_workers--;
+		nr->workers[nr->num_workers] = NULL; /* over-write now unused pointer */
 	}
 		break;
 	}
@@ -820,7 +820,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
  *	- <0 on error
  *	- the number of outstanding packets
 */
-size_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
+ssize_t fr_network_listen_outstanding(fr_network_t *nr, fr_listen_t *li) {
 	fr_network_socket_t *s;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
@@ -1469,7 +1469,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	fr_app_io_t const	*app_io;
 	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
 
-	if (fr_cond_assert(data_size == sizeof(li))) return;
+	if (!fr_cond_assert(data_size == sizeof(li))) return;
 
 	memcpy(&li, data, sizeof(li));
 
