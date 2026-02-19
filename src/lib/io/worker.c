@@ -118,8 +118,6 @@ struct fr_worker_s {
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 
 	fr_timer_list_t		*timeout;		//!< Track when requests timeout using a dlist.
-	fr_timer_list_t		*timeout_custom;	//!< Track when requests timeout using an lst.
-							///< requests must always be in one of these lists.
 	fr_time_delta_t		max_request_time;	//!< maximum time a request can be processed
 
 	fr_rb_tree_t		*dedup;		//!< de-dup tree
@@ -769,7 +767,7 @@ void worker_request_name_number(request_t *request)
 static inline CC_HINT(always_inline)
 uint32_t worker_num_requests(fr_worker_t *worker)
 {
-	return fr_timer_list_num_events(worker->timeout) + fr_timer_list_num_events(worker->timeout_custom);
+	return fr_timer_list_num_events(worker->timeout);
 }
 
 static int _worker_request_deinit(request_t *request, UNUSED void *uctx)
@@ -1043,12 +1041,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		count += ret;
 	}
 
-	ret = fr_timer_list_force_run(worker->timeout_custom);
-	if (unlikely(ret < 0)) {
-		fr_assert_msg(0, "Failed to force run the custom timeout list");
-	} else {
-		count += ret;
-	}
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
 
 	DEBUG("Worker is exiting - stopped %u requests", count);
@@ -1447,12 +1439,6 @@ nomem:
 	worker->timeout = fr_timer_list_ordered_alloc(worker, el->tl);
 	if (!worker->timeout) {
 		fr_strerror_const("Failed creating timeouts list");
-		goto fail;
-	}
-
-	worker->timeout_custom = fr_timer_list_lst_alloc(worker, el->tl);
-	if (!worker->timeout_custom) {
-		fr_strerror_const("Failed creating custom timeouts list");
 		goto fail;
 	}
 
