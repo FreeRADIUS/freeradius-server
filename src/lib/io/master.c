@@ -406,7 +406,6 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	DUP_FIELD(secret);
 	DUP_FIELD(nas_type);
 	DUP_FIELD(server);
-	DUP_FIELD(nas_type);
 
 	COPY_FIELD(require_message_authenticator);
 	COPY_FIELD(require_message_authenticator_is_set);
@@ -476,6 +475,8 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 
 static int _client_free(fr_io_client_t *client)
 {
+	if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+
 	TALLOC_FREE(client->pending);
 
 	return 0;
@@ -976,6 +977,8 @@ static int _client_live_free(fr_io_client_t *client)
 		(void) fr_heap_extract(&client->thread->alive_clients, client);
 	}
 
+	if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+
 	return 0;
 }
 
@@ -1055,6 +1058,7 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 	if (fr_trie_insert_by_key(thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 		ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packets for it.",
 		      inst->app_io->common.name, client->radclient->shortname);
+		if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
 		talloc_free(client);
 		return NULL;
 	}
@@ -1949,9 +1953,13 @@ static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len,
 		return -1;
 	}
 
-	priority = inst->app->priority(inst, buffer, buffer_len);
-	if (priority <= 0) {
-		return -1;
+	if (inst->app->priority) {
+		priority = inst->app->priority(inst->app_instance, buffer, buffer_len);
+		if (priority <= 0) {
+			return -1;
+		}
+	} else {
+		priority = PRIORITY_NORMAL;
 	}
 
 	/*
@@ -2184,7 +2192,7 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 */
 	if (!client->use_connected) {
 		if (!client->packets) {
-			DEBUG("proto_%s - No packets are using unconnected socket %s", inst->app_io->common.name, connection->name);
+			DEBUG("proto_%s - No packets are using unconnected socket", inst->app_io->common.name);
 			goto delete_client;
 		}
 
@@ -2533,7 +2541,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	too.
 		 */
 		if (connection && (inst->ipproto == IPPROTO_UDP)) {
-			connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection);
+			MEM(connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection));
 			client_expiry_timer(el->tl, fr_time_wrap(0), connection->client);
 
 			errno = ECONNREFUSED;
@@ -3303,7 +3311,7 @@ fr_io_track_t *fr_master_io_track_alloc(fr_listen_t *li, fr_client_t *radclient,
 		MEM(client = client_alloc(thread, PR_CLIENT_STATIC, inst, thread, radclient, NULL));
 	}
 
-	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
+	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(*track->address) + 64));
 	MEM(track->address = address = talloc_zero(track, fr_io_address_t));
 
 	track->li = li;
