@@ -8,6 +8,9 @@ protocol and to send and receive test packets.
 *File:*
 
 - `mods-available/eap`
+- `mods-config/files/authorize`
+- `sites-enabled/default`
+- `eapol_test.conf`
 
 *Diagram:*
 
