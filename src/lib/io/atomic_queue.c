@@ -411,7 +411,7 @@ void fr_atomic_queue_debug(FILE * fp, fr_atomic_queue_t *aq)
 	int64_t head, tail;
 
 	head = load(aq->head);
-	tail = load(aq->head);
+	tail = load(aq->tail);
 
 	fprintf(fp, "AQ %p size %zu, head %" PRId64 ", tail %" PRId64 "\n",
 		aq, aq->size, head, tail);
