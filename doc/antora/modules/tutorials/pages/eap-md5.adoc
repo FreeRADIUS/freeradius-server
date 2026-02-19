@@ -22,7 +22,7 @@ When a client wants to authenticate, the server doesn't ask for a password direc
 
 image::eap-md5.svg[Fig. EAP-MD5]
 
-*Programs*: radtest
+In this setup, `EAP` runs inside RADIUS. Instead of the NAS (a switch or access point), `eapol_test` acts as a relay — it wraps `EAP` packets into RADIUS messages and passes them to FreeRADIUS. The real conversation is always between the client and the FreeRADIUS server.
 
 For this exercise, your are assumed to have previously worked
 through and be familiar with the exercise in xref:new_user.adoc[New User] for
