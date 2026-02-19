@@ -600,6 +600,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	memset(&sc->worker_sem, 0, sizeof(sc->worker_sem));
 	if (sem_init(&sc->worker_sem, 0, SEMAPHORE_LOCKED) != 0) {
 		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
+		sem_destroy(&sc->network_sem);
 		talloc_free(sc);
 		return NULL;
 	}
