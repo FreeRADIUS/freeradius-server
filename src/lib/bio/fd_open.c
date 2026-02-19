@@ -1042,7 +1042,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 {
 	int fd;
-	int rcode;
+	int rcode = -1;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	fr_strerror_clear();
@@ -1226,18 +1226,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		return rcode;
 	}
 
-#ifdef FD_CLOEXEC
-	/*
-	 *	We don't want child processes inheriting these file descriptors.
-	 */
-	rcode = fcntl(fd, F_GETFD);
-	if (rcode >= 0) {
-		if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed  setting FD_CLOEXEC: %s", fr_syserror(errno));
-			goto fail;
-		}
-	}
-#endif
+	if (fr_cloexec(fd) < 0) goto fail;
 
 	/*
 	 *	Initialize the bio information before calling the various setup functions.

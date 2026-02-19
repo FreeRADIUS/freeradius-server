@@ -1400,19 +1400,7 @@ static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, U
 {
 	fd = accept(fd, sockaddr, salen);
 	if (fd >= 0) {
-#ifdef FD_CLOEXEC
-		int rcode;
-
-		rcode = fcntl(fd, F_GETFD);
-		if (rcode >= 0) {
-			if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-				close(fd);
-				return -1;
-			}
-		}
-#endif
-
-		if (fr_nonblock(fd) < 0) {
+		if ((fr_nonblock(fd) < 0) || (fr_cloexec(fd) < 0)) {
 			close(fd);
 			return -1;
 		}
@@ -1427,7 +1415,6 @@ static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, U
 #ifndef SOCK_CLOEXEC
 #define SOCK_CLOEXEC 0
 #endif
-
 #endif
 
 /** Accept a stream socket and initialize its flags.

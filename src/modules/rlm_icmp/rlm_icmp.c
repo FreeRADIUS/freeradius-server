@@ -466,11 +466,10 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-#ifndef FD_CLOEXEC
-#define FD_CLOEXEC (0)
-#endif
-
-	(void) fcntl(fd, F_SETFL, O_NONBLOCK | FD_CLOEXEC);
+	if (fr_cloexec(fd) < 0) {
+		close(fd);
+		return -1;
+	}
 
 	if (inst->src_ipaddr.af != AF_UNSPEC) {
 		ipaddr = inst->src_ipaddr;

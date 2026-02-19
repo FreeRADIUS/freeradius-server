@@ -82,32 +82,6 @@ static int socket_port_from_service(int proto, char const *port_name)
 	return ntohs(service->s_port);
 }
 
-#ifdef FD_CLOEXEC
-static int socket_dont_inherit(int sockfd)
-{
-	int ret;
-
-	/*
-	 *	We don't want child processes inheriting these
-	 *	file descriptors.
-	 */
-	ret = fcntl(sockfd, F_GETFD);
-	if (ret >= 0) {
-		if (fcntl(sockfd, F_SETFD, ret | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-
-	return 0;
-}
-#else
-static socket_dont_inherit(UNUSED int sockfd)
-{
-	return 0;
-}
-#endif
-
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 /** Restrict wildcard sockets to v6 only
  *
@@ -917,7 +891,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Don't allow child processes to inherit the socket
 	 */
-	if (socket_dont_inherit(sockfd) < 0) goto error;
+	if (fr_cloexec(sockfd) < 0) goto error;
 
 	/*
 	 *	Initialize udpfromto for UDP sockets.
@@ -1019,7 +993,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Don't allow child processes to inherit the socket
 	 */
-	if (socket_dont_inherit(sockfd) < 0) goto error;
+	if (fr_cloexec(sockfd) < 0) goto error;
 
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.

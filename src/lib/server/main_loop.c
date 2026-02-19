@@ -268,13 +268,8 @@ int main_loop_init(void)
 		ERROR("Error opening self-signal pipe: %s", fr_syserror(errno));
 		return -1;
 	}
-	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
-	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
-		return -1;
-	}
-	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
-	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
+	if ((fr_cloexec(self_pipe[0]) < 0) || (fr_cloexec(self_pipe[1]) < 0) ||
+	    (fr_nonblock(self_pipe[0]) < 0) || (fr_nonblock(self_pipe[1]) < 0)) {
 		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
 		return -1;
 	}
