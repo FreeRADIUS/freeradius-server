@@ -64,7 +64,7 @@ fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
 	fq = talloc_size(ctx, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
 	if (!fq) return NULL;
 
-	talloc_set_name(fq, "fr_queue_t");
+	talloc_set_name_const(fq, "fr_queue_t");
 
 	memset(fq, 0, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
 
