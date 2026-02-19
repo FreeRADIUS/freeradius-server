@@ -353,19 +353,23 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
 again:
-	while ((ret = write(c->pipe[1], ".", 1)) == 0) {
-		/* nothing */
-	}
-	if ((ret < 0) && ((errno == EAGAIN))
+	if ((ret = write(c->pipe[1], ".", 1)) == 1) return 0;
+
+	if ((ret < 0) && (errno != EAGAIN)
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	    || (errno == EWOULDBLOCK)
+	    && (errno != EWOULDBLOCK)
 #endif
-	) {
-		delay += 10;
-		usleep(delay);
-		goto again;
+		) {
+		return -1;
 	}
-	return 0;
+
+	/*
+	 *	@todo - this is pretty crap.  We should instead have a better way to deal with things when the
+	 *	pipe gets full.
+	 */
+	delay += 10;
+	usleep(delay);
+	goto again;
 }
 
 
