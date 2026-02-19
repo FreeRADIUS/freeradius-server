@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/semaphore.h>
 
 #include <sys/event.h>
 #include <stdio.h>
@@ -96,12 +97,13 @@ static void recv_control_callback(void *ctx, void const *data, size_t data_size,
 	master_ctx->num_messages++;
 }
 
-static void *control_master(UNUSED void *arg)
+static void *control_master(void *arg)
 {
 	TALLOC_CTX *ctx;
 	master_ctx_t *master_ctx;
 	size_t i;
 	fr_time_t start;
+	fr_sem_t *master_sem = arg;
 
 	MEM(ctx = talloc_init_const("control_master"));
 
@@ -113,6 +115,8 @@ static void *control_master(UNUSED void *arg)
 		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
 		fr_control_open(control[i]);
 	}
+
+	sem_post(master_sem);
 
 	start = fr_time();
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
@@ -191,6 +195,7 @@ int main(int argc, char *argv[])
 	pthread_t		master_id, *worker_id;
 	size_t			i;
 	worker_args_t		*worker_args;
+	fr_sem_t		*master_sem;
 
 	fr_time_start();
 
@@ -247,7 +252,11 @@ int main(int argc, char *argv[])
 	(void) pthread_attr_init(&attr);
 	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-	(void) pthread_create(&master_id, &attr, control_master, NULL);
+	master_sem = fr_sem_alloc();
+	fr_assert(master_sem != NULL);
+	(void) pthread_create(&master_id, &attr, control_master, master_sem);
+	SEM_WAIT_INTR(master_sem);
+
 	worker_id = talloc_array(autofree, pthread_t, num_workers);
 	worker_args = talloc_array(autofree, worker_args_t, num_workers);
 	for (i = 0; i < num_workers; i++) {
@@ -261,6 +270,7 @@ int main(int argc, char *argv[])
 		(void) pthread_join(worker_id[i], NULL);
 	}
 
+	fr_sem_free(master_sem);
 	talloc_free(control);
 
 	main_loop_free();
