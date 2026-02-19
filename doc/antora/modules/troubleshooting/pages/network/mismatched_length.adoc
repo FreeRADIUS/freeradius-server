@@ -1,6 +1,8 @@
 = Header 'Length' does not match received packet length
 
-The packet is likely not RADIUS.  Block the source IP address.
+The RADIUS protocol defines a header with a 'Length' value to indicate the packet's size. The packet header's 'Length' field shows a size that does not match the actual packet size.  If this value and the packet's actual size do not match, the packet is likely malformed or not a valid RADIUS packet.
+
+Discrepancies can occur because of network errors, misconfigured clients, or malicious activity. To be safe, we recommend blocking the source IP address to prevent any issues or attacks.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

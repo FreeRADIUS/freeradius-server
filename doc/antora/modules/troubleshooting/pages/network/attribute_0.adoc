@@ -1,6 +1,14 @@
 = Attribute 0 is Invalid
 
-Either the client is completely broken, or the packet is not RADIUS.
+This error indicates that a packet can't be processed as expected and means that:
+
+ * the client is completely broken, or
+
+ * the packet doesn't follow the RADIUS standards.
+
+RADIUS packets need to follow a format defined by RADIUS RFCs. These xref:developers:rfc/index.adoc[RFCs] standardise how users are authenticated on a network. If a packet doesn't meet the basic format requirements, it may show a problem with the client or the packet itself. For example, the client could send wrong or incomplete info. The packet might get corrupted during transmission or it could have come from a different protocol.
+
+To fix this issue, check that the client uses the RADIUS protocol. Also, ensure there are no software or hardware problems. Check that the client and server are communicating using the RADIUS protocol. To do this, check the packet capture or network traffic to confirm the packets being sent are properly formatted RADIUS packets.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

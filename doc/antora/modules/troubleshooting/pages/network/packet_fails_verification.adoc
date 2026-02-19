@@ -1,6 +1,11 @@
-= Packet Fails Verification
+= Packet fails verification
 
-The shared secret is wrong.  Fix it.
+include::partial$secret_wrong.adoc[]
+
+If a packet fails verification, the server can't confirm if the packet is authentic, so the authentication process fails. The mismatch can happen during setup or password updates not being the same.
+
+An example is when a network administrator sets up a RADIUS client with a shared secret. But they forget to update the server with the same secret. When the client tries to authenticate, the packet won't be verified, and authentication fails.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
+

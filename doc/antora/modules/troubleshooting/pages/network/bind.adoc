@@ -1,23 +1,10 @@
 = Failed binding to socket
 
-This error message is produced when the server cannot open a socket on
-the specified port.  There are a few reasons why this can happen, but
-the most common one is that there is already another instance of
-FreeRADIUS running.
+The FreeRADIUS server was unable to open a network socket on the specified port. The most common reason for this is that there's another FreeRADIUS instance running in the background.
 
-**Cause:** You are trying to run the server in
-xref:ROOT:debugging/radiusd_X.adoc[debug mode], without stopping the
-server that is running in the background.
+If you start the server in debug mode without stopping the current  process, it can't bind to the port.  To resolve this issue, stop any running FreeRADIUS server before you start it in debug mode.
 
-**Action:** Stop the server which is running in the background, and
-you can then run it in debug mode.
-
-**Cause:** The server does not have permission to open the given socket/port.
-
-**Action:** Check that the server has the correct UID/GID permissions.
-
-**Action:** Check that something like SeLinux is not preventing the
-server from opening sockets.
+Another possibility is that the server doesn't have the correct permissions (UID/GID) to open the socket. Security mechanisms like SeLinux can also block the server from accessing the port. To fix these issues, ensure the server has the correct permissions. Also, check your security settings to confirm that nothing is blocking socket access.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

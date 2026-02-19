@@ -1,6 +1,8 @@
 = Attribute Header Overflows the Packet
 
-The client is either completely broken, or the packet is not RADIUS.
+The server detected a serious issue with the structure of a received packet. The attribute header extends beyond the end of the packet, which is not valid. This occurs when the client sending the packet is broken or has an incorrect setup.
+
+Another possibility is that the server didn't receive a valid RADIUS packet. The server can't process the packet as a RADIUS message because of this structural error(s). Review your configurations and verify the network's stability and congestion.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

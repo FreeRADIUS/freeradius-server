@@ -1,4 +1,4 @@
-= Message-Authenticator has Invalid Length
+= Message-Authenticator has invalid length
 
 This will pretty much never happen.  If it does, it means that the
 client is completely broken, or that the packet is not RADIUS.
