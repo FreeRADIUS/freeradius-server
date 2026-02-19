@@ -543,33 +543,6 @@ static void _worker_request_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t
 	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
-/** Set, or re-set the request timer
- *
- * Automatically moves requests between the timer lists (timeout, custom_timeout).
- *
- * Can be used to set the initial timeout, or extend the timeout of a request.
- *
- * @param[in] worker	the worker containing the timeout lists.
- * @param[in] request	that we're timing out.
- * @param[in] timeout	the timeout to set.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_worker_request_timeout_set(fr_worker_t *worker, request_t *request, fr_time_delta_t timeout)
-{
-	fr_timer_list_t *tl = fr_time_delta_eq(worker->config.max_request_time, timeout) ? worker->timeout : worker->timeout_custom;
-
-	/* No need to disarm fr_timer_in does it for us */
-
-	if (unlikely(fr_timer_in(request, tl, &request->timeout, timeout,
-				 true, _worker_request_timeout, request) < 0)) {
-		RERROR("Failed to create request timeout timer");
-		return -1;
-	}
-
-	return 0;
-}
 
 /** Start time tracking for a request, and mark it as runnable.
  *
@@ -583,8 +556,9 @@ static int worker_request_time_tracking_start(fr_worker_t *worker, request_t *re
 	 */
 	fr_assert(!fr_timer_armed(request->timeout));
 
-	if (unlikely(fr_worker_request_timeout_set(worker, request, worker->config.max_request_time) < 0)) {
-		RERROR("Failed to set request timeout");
+	if (unlikely(fr_timer_in(request, worker->timeout, &request->timeout, worker->config.max_request_time,
+				 true, _worker_request_timeout, request) < 0)) {
+		RERROR("Failed to set request timeout timer");
 		return -1;
 	}
 
@@ -966,7 +940,10 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 		(void) fr_rb_insert(worker->dedup, request);
 	}
 
-	worker_request_time_tracking_start(worker, request, now);
+	if (worker_request_time_tracking_start(worker, request, now) < 0) {
+		if (request->async->listen->track_duplicates) (void) fr_rb_remove(worker->dedup, request);
+		goto fail;
+	}
 
 	{
 		fr_worker_listen_t *wl;
@@ -1114,7 +1091,9 @@ static void _worker_request_internal_init(request_t *request, void *uctx)
 	 *	are always marked up as internal.
 	 */
 	fr_assert(request_is_internal(request));
-	worker_request_time_tracking_start(worker, request, now);
+	if (worker_request_time_tracking_start(worker, request, now) < 0) {
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	}
 }
 
 
