@@ -81,7 +81,7 @@ network={
 
 *Note:* `key_mgmt=NONE` is used here because `EAP-MD5` does not derive encryption keys.
 
-=== Step 5: install the eapol
+=== Step 5: install the eapol_test
 
 Make sure to install `eapol_test` before proceeding. This will download, compile, and print the location of the resulting binary.
 
