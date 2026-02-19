@@ -314,14 +314,14 @@ int fr_cloexec(int fd)
 {
 	int flags;
 
-	flags = fcntl(fd, F_GETFL, NULL);
+	flags = fcntl(fd, F_GETFD, NULL);
 	if (flags < 0)  {
 		fr_strerror_printf("Failed getting fd flags: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	flags |= FD_CLOEXEC;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
+	if (fcntl(fd, F_SETFD, flags) < 0) {
 		fr_strerror_printf("Failed setting fd flags: %s", fr_syserror(errno));
 		return -1;
 	}
