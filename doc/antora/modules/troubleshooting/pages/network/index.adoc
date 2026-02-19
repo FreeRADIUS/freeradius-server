@@ -1,4 +1,4 @@
-= Errors
+= Network Errors
 
 If the server isn't processing packets, this is due to two common
 problems.  Either it is either not receiving packets, or else it

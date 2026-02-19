@@ -1,8 +1,6 @@
-= Packet Too Small
+= Packet too small
 
-RADIUS packets are at least 20 bytes.  If you get this error, then
-something is sending non-RADIUS packets to the RADIUS port.  Update
-any firewall rules to block traffic from that source IP.
+RADIUS packets must be at least 20 bytes in size. If you see this error, it means that non-RADIUS packets are being sent to the RADIUS port. Update your firewall rules to block traffic from that source IP.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

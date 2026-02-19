@@ -1,6 +1,12 @@
-= Proxy-State Missing
+= Proxy-State is missing
 
-this is for the BlastRADIUS stuff.
+This error occurs when the Proxy-State attribute is missing from a RADIUS packet. The Proxy-State attribute is vital for servers to track and manage requests. Without it, servers struggle to manage requests, which impacts authentication and performance.
+
+A missing Proxy-State attribute can pose serious security risks, including the BlastRADIUS attack. This attack can cause a denial-of-service or allow unauthorised network access. Without the Proxy-State attribute, the server is more open to attacks.
+
+The Proxy-State attribute also stops replay attacks. An intruder intercepts a real request and then resends it, thereby gaining unauthorized access. By including this attribute in RADIUS packets, servers can process requests securely.
+
+The Proxy-State attribute is critical for maintaining network security. It ensures RADIUS systems remain secure and reliable, but it requires proper configuration and management to function effectively.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,10 +1,12 @@
 = Unknown Packet Code
 
-The packet code is 0, or is larger than 53.
+This error occurs when the network processes RADIUS packets as part of the user authentication process. Each RADIUS packet has a "code" field that defines its type, like Access-Request or Access-Accept. The Internet Engineering Task Force (IETF) specifies valid codes in their documents. These codes must be between 1 and 53. Any code outside this range, such as 0 or above 53, is invalid and cannot be processed.
 
-The RFCs define a limited number of packet codes.
+When an invalid code appears, it usually means two things. First, the device or client sending the packet may not follow RADIUS rules. This can result in bad packets. It might happen if the manufacturer didn’t implement the protocol correctly or due to a software bug. For instance, a mistake in their RADIUS setup could lead to invalid codes.
 
-This can also mean that something is sending non-RADIUS packets to the RADIUS port.
+Second, the error might show that traffic not meant for RADIUS is sent to the RADIUS port. This often happens because of a misconfigured network or device. A network administrator may have set up a device to send extra traffic to the RADIUS port. This can overwhelm the server with bad packets.
+
+In both cases, the server cannot process the packet. This leads to authentication failures and potential network issues. To fix this, network administrators need to find the source of the problem, whether it's a faulty client or misconfigured settings. They must ensure only valid RADIUS packets reach the server. This may involve updating software, adjusting network settings, or blocking non-RADIUS traffic. By fixing the Unknown Packet Code error, administrators can stabilize the network and prevent future authentication issues.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

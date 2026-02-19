@@ -1,7 +1,8 @@
-= Unexpected Response Code
+= Unexpected response code
 
-Each request which is sent has a small number of valid responses.  A
-next hop can send a bad / wrong response.
+Each request sent has only a few valid responses that can be processed successfully. The next hop, such as a server or device, can send a bad or wrong response. When sending a request within a network protocol, only a limited set of responses is expected from the recipient. The invalid or incorrect response may be due to misconfiguration, software bugs, or unexpected network behavior.
+
+Receiving a bad or wrong response can disrupt normal operations and may need troubleshooting to find the cause and ensure systems communicate properly.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

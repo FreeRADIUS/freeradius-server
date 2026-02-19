@@ -1,6 +1,19 @@
 = IO Error
 
-Some kind of network / OS error.  These are hard to debug.
+Network or OS errors can happen due to hardware failures, network issues, or unexpected system behaviour. These factors make diagnosis and resolution difficult. For example, a company might experience frequent downtime from an unreliable internet provider. Similarly, a website may crash when traffic exceeds the server's capacity.
+
+A small mistake in the network settings can cause many errors which may cause more disruptions including system failure. Also, the lack of standardisation and interoperability between systems makes things difficult. It becomes hard to find and fix the root cause of errors.
+
+Administrators can reduce risks by taking these steps:
+
+* Invest in strong infrastructure.
+* Perform regular maintenance and updates.
+* Develop emergency and/or backup plans.
+
+These actions help minimise downtime and keep operations running smoothly.
+
+To identify the issue, you may need to review logs, check system resources, or talk to network administrators. Fixing network and OS errors requires careful troubleshooting and in-depth knowledge of the FreeRADIUS eco-system.
+
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

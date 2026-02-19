@@ -1,15 +1,20 @@
-= Did not find Request which matches Response
+= Did not find request which matches response
 
-This message is produced by the
-xref:reference:raddb/mods-available/radius.adoc[`radius`] module.  It means that the module:
+The xref:reference:raddb/mods-available/radius.adoc[radius] module shows this error message when it sends packets. The issue may occur when the server:
 
-* sent a request
-* never got a response
-* gave up on the original request
-* finally received a response
+* Sent a request.
+* Never received a response.
+* Timed-out or gave up on the original request.
+* Finally received a response.
 
-This means that packet loss is occurring, or the next hop server is
-taking 30+ seconds to respond.  Fix it so that it responds quickly.
+This often indicates network issues and / or packet loss. Packets may
+be lost or delayed by the next hop server. If the server over 30
+seconds to reply, the original request fails. The late response cannot
+be linked to it.
+
+To resolve this, check the network for reliability and bandwidth
+availibility. Ensure the next hop server responds quickly, with
+minimal packet loss and delays.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
