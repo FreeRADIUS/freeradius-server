@@ -859,13 +859,14 @@ do { \
 		fr_event_list_t *el = NULL;
 		fr_schedule_config_t *schedule;
 
-		schedule = talloc_zero(global_ctx, fr_schedule_config_t);
+		MEM(schedule = talloc_zero(global_ctx, fr_schedule_config_t));
 		schedule->max_workers = config->max_workers;
 		schedule->max_networks = config->max_networks;
 		schedule->stats_interval = config->stats_interval;
 
 		schedule->network.max_outstanding = config->worker.max_requests;
 		schedule->worker = config->worker;
+		schedule->cs = cf_section_find(config->root_cs, "thread", CF_IDENT_ANY);
 
 		/*
 		 *	Single server mode: use the global event list.

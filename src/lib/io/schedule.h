@@ -68,6 +68,8 @@ typedef struct {
 	fr_network_config_t network;		//!< configuration for each network;
 
 	fr_time_delta_t	stats_interval;		//!< print channel statistics
+
+	CONF_SECTION	*cs;			//!< root config section
 } fr_schedule_config_t;
 
 int			fr_schedule_worker_id(void);

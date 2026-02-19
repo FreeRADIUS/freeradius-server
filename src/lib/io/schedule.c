@@ -486,6 +486,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	sc->el = el;
 	sc->log = logger;
 	sc->lvl = lvl;
+	sc->cs = config->cs;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_thread_detach = worker_thread_detach;
