@@ -172,7 +172,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 *	Otherwise, switch to a gated mode where we only send
 	 *	new packets once a reply comes in.
 	 */
-	if (((uint32_t) l->stats.backlog * 1000) < (l->pps * l->config->milliseconds)) {
+	if (((size_t) l->stats.backlog * 1000) < ((size_t) l->pps * l->config->milliseconds)) {
 		l->state = FR_LOAD_STATE_SENDING;
 		l->stats.blocked = false;
 		count = l->config->parallel;
@@ -181,7 +181,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		/*
 		 *	Limit "count" so that it doesn't over-run backlog.
 		 */
-		if (((uint32_t) ((count + l->stats.backlog) * 1000)) > (l->pps * l->config->milliseconds)) {
+		if (((size_t) ((count + l->stats.backlog) * 1000)) > ((size_t) l->pps * l->config->milliseconds)) {
 			count = (count + l->stats.backlog) - ((l->pps * l->config->milliseconds) / 1000);
 		}
 
