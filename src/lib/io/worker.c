@@ -454,8 +454,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	/*
 	 *	Allocate a default message size.
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
-	fr_assert(reply != NULL);
+	MEM(reply = (fr_channel_data_t *) fr_message_reserve(ms, size));
 
 	/*
 	 *	Encode a NAK
@@ -808,7 +807,6 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 {
 	int			ret = -1;
 	request_t		*request;
-	TALLOC_CTX		*ctx;
 	fr_listen_t		*listen = cd->listen;
 
 	if (worker_num_requests(worker) >= (uint32_t) worker->config.max_requests) {
@@ -822,7 +820,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	 */
 	fr_assert(listen != NULL);
 
-	ctx = request = request_slab_reserve(worker->slab);
+	request = request_slab_reserve(worker->slab);
 	if (!request) {
 		RATE_LIMIT_GLOBAL(ERROR, "Worker failed allocating new request");
 		goto nak;
@@ -880,8 +878,10 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	}
 
 	if (ret < 0) {
-		talloc_free(ctx);
-nak:
+	fail:
+		request_slab_release(request);
+
+	nak:
 		worker_nak(worker, cd, now);
 		return;
 	}
@@ -891,8 +891,7 @@ nak:
 	 */
 	if (unlang_call_push(NULL, request, cd->listen->server_cs, UNLANG_TOP_FRAME) < 0) {
 		RERROR("Protocol failed to set 'process' function");
-		worker_nak(worker, cd, now);
-		return;
+		goto fail;
 	}
 
 	/*
@@ -1179,6 +1178,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *	This should never happen otherwise.
 	 */
 	if (unlikely(!fr_channel_active(request->async->channel))) {
+		fr_dlist_entry_unlink(&request->listen_entry);
 		request_slab_release(request);
 		return;
 	}
@@ -1243,6 +1243,7 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 static void _worker_request_detach(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+	fr_time_t	now = fr_time();
 
 	RDEBUG4("%s - Request detaching", __FUNCTION__);
 
@@ -1254,9 +1255,9 @@ static void _worker_request_detach(request_t *request, void *uctx)
 		*/
 		if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
 			RDEBUG3("Forcing time tracking to running state, from yielded, for request detach");
-			fr_time_tracking_resume(&request->async->tracking, fr_time());
+			fr_time_tracking_resume(&request->async->tracking, now);
 		}
-		worker_request_time_tracking_end(worker, request, fr_time());
+		worker_request_time_tracking_end(worker, request, now);
 
 		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
 
@@ -1359,7 +1360,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		 */
 		if (request->async->channel && !fr_channel_active(request->async->channel)) {
 			worker_stop_request(request);
-			return;
+			continue;
 		}
 
 		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
@@ -1635,8 +1636,10 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 
 	fprintf(fp, "\tcalculated (predicted) total CPU time = %" PRIu64 "\n",
 		fr_time_delta_unwrap(worker->predicted) * worker->stats.in);
-	fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
-		fr_time_delta_unwrap(worker->tracking.running_total) / worker->stats.in);
+	if (worker->stats.in) {
+		fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
+			fr_time_delta_unwrap(worker->tracking.running_total) / worker->stats.in);
+	}
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
@@ -1692,7 +1695,7 @@ int fr_worker_listen_cancel(fr_worker_t *worker, fr_listen_t const *li)
 	rb = fr_worker_rb_init();
 	if (!rb) return -1;
 
-	return fr_control_message_send(worker->control, rb, FR_CONTROL_ID_LISTEN, &li, sizeof(li));
+	return fr_control_message_send(worker->control, rb, FR_CONTROL_ID_LISTEN_DEAD, &li, sizeof(li));
 }
 
 #ifdef WITH_VERIFY_PTR
@@ -1764,7 +1767,9 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 		fprintf(fp, "cpu.request_time_rtt\t\t%.9f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		when = worker->tracking.running_total;
-		if (fr_time_delta_ispos(when)) when = fr_time_delta_div(when, fr_time_delta_wrap(worker->stats.in - worker->stats.dropped));
+		if (fr_time_delta_ispos(when) && (worker->stats.in > worker->stats.dropped)) {
+			when = fr_time_delta_div(when, fr_time_delta_wrap(worker->stats.in - worker->stats.dropped));
+		}
 		fprintf(fp, "cpu.average_request_time\t%.9f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		when = worker->tracking.running_total;
