@@ -13,7 +13,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  Ensure that the digest tests are run if the server or rlm_digest module changes
 #
-$(FILES.$(TEST)): $(BUILD_DIR)/lib/rlm_digest.la $(BUILD_DIR)/bin/radiusd$(E) $(BUILD_DIR)/bin/radclient$(E)
+$(FILES.$(TEST)): $(BUILD_DIR)/lib/rlm_digest.la $(BUILD_DIR)/lib/local/rlm_digest.la $(BUILD_DIR)/bin/radiusd$(E) $(BUILD_DIR)/bin/radclient$(E)
 
 #
 #	Config settings
