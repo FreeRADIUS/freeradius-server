@@ -471,7 +471,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	 */
 	reply->m.when = now;
 	reply->reply.cpu_time = worker->tracking.running_total;
-	reply->reply.processing_time = fr_time_delta_from_sec(10); /* @todo - set to something better? */
+	reply->reply.processing_time = fr_time_delta_from_msec(1); /* @todo - set to something better? */
 	reply->reply.request_time = cd->request.recv_time;
 
 	reply->listen = cd->listen;
@@ -867,11 +867,6 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	}
 
 	/*
-	 *	We're done with this message.
-	 */
-	fr_message_done(&cd->m);
-
-	/*
 	 *	Look for conflicting / duplicate packets, but only if
 	 *	requested to do so.
 	 */
@@ -922,6 +917,8 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 			 */
 			unlang_interpret_signal(old, FR_SIGNAL_DUP);
 			worker->stats.dup++;
+
+			fr_message_done(&cd->m);
 			return;
 		}
 
@@ -942,6 +939,11 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 		if (request->async->listen->track_duplicates) (void) fr_rb_remove(worker->dedup, request);
 		goto fail;
 	}
+
+	/*
+	 *	We're done with this message.
+	 */
+	fr_message_done(&cd->m);
 
 	{
 		fr_worker_listen_t *wl;
