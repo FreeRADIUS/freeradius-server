@@ -203,6 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
 	uint8_t hash[16];	/* MD5 output */
+	uint8_t digest[16];
 	VALUE_PAIR *vp, *passwd, *algo;
 	VALUE_PAIR *qop, *nonce;
 
@@ -544,12 +545,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	 *	Get the binary value of Digest-Response
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
-	if (!vp) {
+	if (!vp || (vp->vp_length != 32)) {
 		REDEBUG("No Digest-Response attribute in the request.  Cannot perform digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(&hash[0], sizeof(hash), vp->vp_strvalue, vp->vp_length) != (vp->vp_length >> 1)) {
+	if (fr_hex2bin(&digest[0], sizeof(digest), vp->vp_strvalue, vp->vp_length) != (vp->vp_length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}
@@ -564,7 +565,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 
 		fr_printf_log("RECEIVED ");
 		for (i = 0; i < 16; i++) {
-			fr_printf_log("%02x", hash[i]);
+			fr_printf_log("%02x", digest[i]);
 		}
 		fr_printf_log("\n");
 	}
@@ -573,7 +574,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	/*
 	 *  And finally, compare the digest in the packet with KD.
 	 */
-	if (rad_digest_cmp(&kd[0], &hash[0], 16) == 0) {
+	if (rad_digest_cmp(&kd[0], &digest[0], 16) == 0) {
 		return RLM_MODULE_OK;
 	}
 
