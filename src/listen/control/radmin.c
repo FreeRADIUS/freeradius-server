@@ -133,7 +133,7 @@ typedef struct {
 //static radmin_state_t state;
 
 static bool echo = false;
-static char const *secret = "";
+static char const *secret = NULL;
 static bool unbuffered = false;
 static bool use_readline = true;
 
@@ -440,7 +440,7 @@ static int do_connect(int *out, char const *file, char const *server)
 }
 
 
-static char *readline_buffer[1024];
+static char readline_buffer[1024];
 
 /*
  *	Wrapper around readline which does the "right thing" depending
@@ -700,7 +700,7 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 	subcs = cf_section_find(cs, value, NULL);
 	if (!subcs) {
 		fprintf(stderr, "%s: Failed parsing the '%s {}' section in 'server %s {...}'\n",
-			progname, cf_section_name1(subcs), server);
+			progname, value, server);
 		return -1;
 	}
 
@@ -943,7 +943,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'S':
-			secret = optarg;
+			secret = talloc_strdup(autofree, optarg);
 			break;
 
 		case 'x':
@@ -1006,7 +1006,7 @@ int main(int argc, char **argv)
 		 */
 		if (server) {
 			subcs = cf_section_find(cs, "server", server);
-			if (subcs) {
+			if (!subcs) {
 				fprintf(stderr, "%s: Could not find virtual server %s {}\n", progname, server);
 				goto error;
 			}
@@ -1049,7 +1049,7 @@ int main(int argc, char **argv)
 		}
 
 		if (radmin_log.file) {
-			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
 			if (radmin_log.fd < 0) {
 				fprintf(stderr, "%s: Failed opening %s: %s\n", progname, radmin_log.file, fr_syserror(errno));
 				goto error;
@@ -1083,10 +1083,14 @@ int main(int argc, char **argv)
 
 	if (use_readline) {
 #ifdef USE_READLINE_HISTORY
-		using_history();
-		stifle_history(READLINE_MAX_HISTORY_LINES);
-		snprintf(history_file, sizeof(history_file), "%s/%s", getenv("HOME"), ".radmin_history");
-		read_history(history_file);
+		char const *home = getenv("HOME");
+
+		if (home) {
+			using_history();
+			stifle_history(READLINE_MAX_HISTORY_LINES);
+			snprintf(history_file, sizeof(history_file), "%s/%s", home, ".radmin_history");
+			read_history(history_file);
+		}
 #endif
 #ifdef USE_READLINE
 		rl_attempted_completion_function = radmin_completion;
@@ -1182,7 +1186,7 @@ int main(int argc, char **argv)
 		}
 
 		if (!secret && !stack_depth && (strncmp(line, "secret ", 7) == 0)) {
-			secret = line + 7;
+			secret = talloc_strdup(autofree, line + 7);
 			do_challenge(sockfd);
 			goto next;
 		}
