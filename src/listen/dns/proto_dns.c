@@ -210,7 +210,6 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	if ((buffer_len == 1) ||
 	    (request->reply->code == FR_DNS_DO_NOT_RESPOND) ||
 	    (request->reply->code >= FR_DNS_CODE_MAX)) {
-//		track->do_not_respond = true;
 		return 1;
 	}
 
@@ -229,7 +228,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	data_len = fr_dns_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &packet_ctx);
 	talloc_free(packet_ctx.tmp_ctx);
 	if (data_len < 0) {
-		RPEDEBUG("Failed encoding DHCPv6 reply");
+		RPEDEBUG("Failed encoding DNS reply");
 		return -1;
 	}
 

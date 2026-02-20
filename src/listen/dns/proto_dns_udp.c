@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_dns_udp.c
- * @brief DHCPv6 handler for UDP.
+ * @brief DNS handler for UDP.
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
@@ -86,7 +86,7 @@ static const conf_parser_t udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("interface", proto_dns_udp_t, interface) },
 
-	{ FR_CONF_OFFSET("port", proto_dns_udp_t, port), .dflt = "547"  },
+	{ FR_CONF_OFFSET("port", proto_dns_udp_t, port), .dflt = "53"  },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_dns_udp_t, recv_buff) },
 
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
