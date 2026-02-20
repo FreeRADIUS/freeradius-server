@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_arp.c
- * @brief RADIUS master protocol handler.
+ * @brief ARP protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
@@ -162,7 +162,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	back again.
 	 */
 	li = talloc_zero(inst, fr_listen_t);
-	talloc_set_destructor(li, fr_io_listen_free);
+	talloc_set_destructor(li, fr_io_listen_free); /* frees li->thread_instance */
 
 	li->cs = conf;
 	li->app = &proto_arp;
