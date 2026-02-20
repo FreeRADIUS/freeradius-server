@@ -1,7 +1,5 @@
 = EAP-TTLS: Tunneled authentication
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To configure the server to use the EAP-TTLS authentication
 protocol and to send and receive test packets.
 
@@ -10,6 +8,8 @@ protocol and to send and receive test packets.
 *File:*
 
 - `sites-available/default`
+- `mods-config/files/authorize`
+- `eapol_test/ttls-pap.conf`
 
 *Diagram:*
 
