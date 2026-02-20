@@ -729,6 +729,8 @@ do { \
 		/*
 		 *  Really weird things happen if we leave stdin open and call things like
 		 *  system() later.
+		 *
+		 *  main_config_init() already calls fr_log_init_legacy(), which closes stdout/stderr.
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
@@ -770,7 +772,7 @@ do { \
 			 *  The child writes a 0x01 byte on success, and closes
 			 *  the pipe on error.
 			 */
-			if ((read(from_child[0], &child_ret, 1) < 0)) child_ret = 0;
+			if ((read(from_child[0], &child_ret, 1) <= 0)) child_ret = 0;
 
 			/* For cleanliness... */
 			close(from_child[0]);
@@ -1002,7 +1004,7 @@ do { \
 	 */
 	if (do_mprotect) {
 	    	if (mprotect(pool_page_start, pool_page_len, PROT_READ) < 0) {
-			PERROR("Protecting global memory failed: %s", fr_syserror(errno));
+			ERROR("Protecting global memory failed: %s", fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 		DEBUG("Global memory protected");
@@ -1034,7 +1036,7 @@ do { \
 	if (do_mprotect) {
 		if (mprotect(pool_page_start, pool_page_len,
 			     PROT_READ | PROT_WRITE) < 0) {
-			PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
+			ERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 		DEBUG("Global memory unprotected");
@@ -1213,8 +1215,8 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "Usage: %s [options]\n", program);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
-	fprintf(stderr, "  -d <confdir>  Configuration file directory (defaults to " CONFDIR ").\n");
-	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(output, "  -d <confdir>  Configuration file directory (defaults to " CONFDIR ").\n");
+	fprintf(output, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 #ifndef NDEBUG
 	fprintf(output, "  -e <seconds>  Exit after the specified number of seconds.  Useful for diagnosing \"crash-on-exit\" issues.\n");
 #endif
@@ -1250,7 +1252,7 @@ static NEVER_RETURNS void usage(int status)
  */
 static void sig_fatal(int sig)
 {
-	static int last_sig;
+	static volatile sig_atomic_t last_sig;
 
 	if (getpid() != radius_pid) _exit(sig);
 
