@@ -49,7 +49,7 @@ Optimism is not the most helpful system administrator trait.
 
 It is extremely likely that at some point, your database will encounter a problem. Perhaps because of a new library update, or because someone accidentally typed the wrong thing and deleted all your records. When this happens (and it will), a backup of your database will make recovery trivial. If you don't have a backup, it can be almost impossible to recover from a catastrophic failure.
 
-== Minimize the admin queries against your production database
+== minimise the admin queries against your production database
 We often see clients running into problems when they run complex billing queries against the "live" production database. These queries can be very long lived and resource intensive, which make the database stop responding to FreeRADIUS. This outage can result in "unresponsive child" error messages in the FreeRADIUS logs.
 
 If your system design includes a secondary database which is synchronized with the primary one, all complex queries should be run against the secondary database. If you only have a single primary database, we recommend exporting the data to a backup system and running the complex queries on the backup.

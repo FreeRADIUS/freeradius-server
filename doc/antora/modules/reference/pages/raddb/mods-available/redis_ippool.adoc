@@ -121,7 +121,7 @@ IP address was available for the alloc.
 copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
 `allocated_address_attr` when performing an update/renew.
 
-This behavior is needed for DHCP where we need to send back
+This behaviour is needed for DHCP where we need to send back
 `Your-IP-Address` in ACKs.
 
 

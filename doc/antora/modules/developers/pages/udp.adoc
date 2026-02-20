@@ -27,7 +27,7 @@ This kind of scaling is likely the preferred method.
 
 ## Software equivalents
 
-On systems without RSS, we can get TCP-like behavior with some hacks.
+On systems without RSS, we can get TCP-like behaviour with some hacks.
 
 First, we open a wildcard socket (`INADDR_ANY` + port).  This socket
 tracks *source* addresses, too.  When it receives a packet from an

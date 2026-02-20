@@ -6,7 +6,7 @@ certificates configured. There are two distinct purposes for these certificates:
   * Server certificates are presented to connecting devices for them to validate their trust of the server.
   * Trusted CA certificates are used to validate trust of certificates presented by end devices.
 
-FreeRADIUS uses OpenSSL to handle SSL operations. Some of its behavior depends on the version of the OpenSSL libraries it uses and how the global system configuration for OpenSSL is set up.  
+FreeRADIUS uses OpenSSL to handle SSL operations. Some of its behaviour depends on the version of the OpenSSL libraries it uses and how the global system configuration for OpenSSL is set up.
 
 When upgrading the operating system and OpenSSL libraries it's crucial to understand any version-specific differences relevant to the functionality of the RADIUS service. Some default behaviours that may change include:
 

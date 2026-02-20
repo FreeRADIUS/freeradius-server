@@ -34,9 +34,9 @@ configuration. See also `subrequest` for creating child requests that are
 different from the parent requests.
 
 Unlike v3, the module can do asynchronous proxying. That is, proxying
-where the server controls the retransmission behavior. In v3, the server
+where the server controls the retransmission behaviour. In v3, the server
 retransmitted proxied packets only when it received a retransmission
-from the NAS. That behavior is good, but there are times where
+from the NAS. That behaviour is good, but there are times where
 retransmitting packets at the proxy is better.
 
 === Load Balancing and Redundancy Sections
@@ -47,7 +47,7 @@ probabilistically fair, but not perfectly fair.
 
 In v4, `load-balance` sections track how many requests are in each
 sub-section, and pick the subsection which is used the least. This is
-like the v3 proxy behavior of load balancing across home server pools.
+like the v3 proxy behaviour of load balancing across home server pools.
 
 The `load-balance` and `redundant-load-balance` sections now allow
 for a load-balance key:
@@ -63,7 +63,7 @@ load-balance "%{Calling-Station-Id}" {
 ----
 
 If the key exists, it is hashed, and used to pick one of the
-subsections. This behavior allows for deterministic load-balancing of
+subsections. This behaviour allows for deterministic load-balancing of
 modules, similar to the v3 proxy `keyed-balance` configuration.
 
 == Changed Modules
@@ -319,8 +319,8 @@ send {
 ==== Profiles
 
 The `default_user_profile` has been removed.  No one used it, as that
-behavior was already supported by the group functionality.  See
-rlm_sql and `User-Profile` for new, and superior, behavior.
+behaviour was already supported by the group functionality.  See
+rlm_sql and `User-Profile` for new, and superior, behaviour.
 
 [#rlm_sql_mysql]
 ==== rlm_sql_mysql

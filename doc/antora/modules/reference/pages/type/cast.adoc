@@ -61,7 +61,7 @@ For a full list of data types which can be used in a cast, please see
 the xref:type/all_types.adoc[list of data types] page, and the
 "Basic Type Types" section.
 
-== Casting Behavior
+== Casting behaviour
 
 In general, casting data types of different sizes will fail.  For
 example, casting an `octet` string of length `3` to `uint32` is
@@ -125,7 +125,7 @@ of how double-quoted strings are used.
 === Lists
 
 When a cast is applied to a list, the cast is applied _individually to
-each entry in the list_.  This behavior is most noticeable when calling
+each entry in the list_.  This behaviour is most noticeable when calling
 a function, or looping over a set of attributes.
 
 The following example will first create two `Reply-Message` attributes

@@ -201,7 +201,7 @@ If enabled, OpenSSL will use server cipher list
 (possibly defined by cipher_list option above)
 for choosing right cipher suite rather than
 using client-specified list which is OpenSSl default
-behavior. Having it set to 'yes' is best practice
+behaviour. Having it set to 'yes' is best practice
 for TLS.
 ```
 			cipher_server_preference = yes

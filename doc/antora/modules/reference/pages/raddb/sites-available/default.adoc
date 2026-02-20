@@ -172,10 +172,10 @@ is found, it is deleted.
 
 Setting this configuration item may cause issues if the
 same device uses multiple EAP sessions at the same time.
-But that device behavior should be rare to non-existent.
+But that device behaviour should be rare to non-existent.
 
 The configuration item is commented out so that upgrades
-do not change existing behavior.
+do not change existing behaviour.
 
 ```
 #				dedup_key = Calling-Station-Id
@@ -606,7 +606,7 @@ networks which can be listed here.
 
 deny:: deny some networks.
 
-The default behavior is to only
+The default behaviour is to only
 allow packets from the `allow`
 networks.  The `deny` directive
 allows you to carve out a subset of

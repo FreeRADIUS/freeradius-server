@@ -30,7 +30,7 @@ Note: FreeRADIUS uses macros a lot, in particular macros that expand to multiple
 
 === Function-scope Annotations
 
-Function definitions can be preceded by a comment describing the behavior of a function to indicate actions that the functions take. For example,
+Function definitions can be preceded by a comment describing the behaviour of a function to indicate actions that the functions take. For example,
 
 [source,c]
 ----
@@ -95,7 +95,7 @@ Coverity tends to be stricter than actual compilers, though as gcc and clang imp
 
 * Coverity notices and complains about subexpressions of conditionals that don't affect control flow. This tripped up the initial versions of `SBUFF_PARSE_[U]INT_DEF()`, macros used to generate the `fr_sbuff_out_<integral type>()` functions. They return an error if the parsed integer is out of range for the type, but comparing with the min and max values gives a defect for the widest integer types, because no out of range value is representable. The check was recast as "did the conversion preserve the value", but that will need to change if coverity gets sufficiently smart.
 * In C, something that (transitive closure of has) a member with a const-qualified type can only be set in C via an initialization. (Calling a function semantically is like initializing the parameters.) Currently, at least, one can sneak around it in gcc or clang, but coverity sees through the ruse. `fr_value_box_t` has members that are const-qualified and also has members with members that are const-qualified. Therefore, all one can do about `fr_value_box_init()` is annotate the reported `store_writes_const_field` defect.
-* Coverity considers the result of some pointer casts to be tainted (see below). It calls them "pointer downcasts", an odd term for a non-OOP language like C. The casts in question are from pointers to less aligned types to pointers to more aligned types. Doing that violates some C coding standards, e.g. Carnegie-Mellon's SEI-CERT C Coding Standard, and if at runtime the cast pointer is not sufficiently aligned, dereferencing it is officially undefined behavior in C. In FreeRADIUS, this happened in `fr_dhcpv4_raw_packet_recv()`, though the pointer points to memory allocated with talloc, which guarantees `TALLOC_ALIGN` alignment... but no coverity primitive assures coverity that a pointer is aligned. There is a `__coverity_alloc__()` primitive that is part of the model for `malloc()`, but it's not documented as telling Coverity about alignment.
+* Coverity considers the result of some pointer casts to be tainted (see below). It calls them "pointer downcasts", an odd term for a non-OOP language like C. The casts in question are from pointers to less aligned types to pointers to more aligned types. Doing that violates some C coding standards, e.g. Carnegie-Mellon's SEI-CERT C Coding Standard, and if at runtime the cast pointer is not sufficiently aligned, dereferencing it is officially undefined behaviour in C. In FreeRADIUS, this happened in `fr_dhcpv4_raw_packet_recv()`, though the pointer points to memory allocated with talloc, which guarantees `TALLOC_ALIGN` alignment... but no coverity primitive assures coverity that a pointer is aligned. There is a `__coverity_alloc__()` primitive that is part of the model for `malloc()`, but it's not documented as telling Coverity about alignment.
 
 == Taint
 

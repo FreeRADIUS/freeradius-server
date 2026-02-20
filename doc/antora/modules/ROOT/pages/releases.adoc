@@ -39,7 +39,7 @@ version number is even or odd:
     with stable releases.  "point" releases _may be incompatible_ with
     other point releases, even within the same major/minor sequence.
 +
-    e.g. A 4.1.1 release _may_ have functionality and behavior changed
+    e.g. A 4.1.1 release _may_ have functionality and behaviour changed
     from the 4.1.0 release.
 
 === Stable Versions
@@ -51,7 +51,7 @@ https://inkbridgenetworks.com[InkBridge Networks].
 
 Once a stable version has been released (e.g. 4.0.0), it is feature
 frozen.  The only changes to it will be security fixes, bug fixes,
-etc.  No behavior changes will be made, and no new core features will
+etc.  No behaviour changes will be made, and no new core features will
 be added.
 
 A point release can include new features, where those features do not
@@ -69,11 +69,11 @@ plus 4.0.1 will contain minor fixes.
 
 This guarantee means that all future releases of a stable version will
 be compatible with the initial version.  People can install 4.0, and
-know that its behavior will never change across "point" releases".
+know that its behaviour will never change across "point" releases".
 
 The downside to this approach is that new core features will never be
 added to a stable version, and that existing features will never have
-behavior changes, even to fix bugs.  That's where experimental
+behaviour changes, even to fix bugs.  That's where experimental
 versions come in.
 
 === Experimental Versions
@@ -96,7 +96,7 @@ validated for your systems.
 
 The purpose of an experimental version is to test new features, and to
 allow testing of breaking changes to the server.  Each experimental
-release will note all behavior changes, including breaking changes in
+release will note all behaviour changes, including breaking changes in
 the release notes.
 
 In some limited situations, an experimental version may be supported
@@ -161,7 +161,7 @@ Stable point releases can contain:
 Stable point releases cannot contain:
 
 * new features
-* bug fixes which change the behavior of an existing feature.
+* bug fixes which change the behaviour of an existing feature.
 
 == Developers
 
@@ -197,7 +197,7 @@ The main criteria for requiring peer review are:
 - Major refactoring over 1000 +/- changes LoC
 - Changes to parsing that would break compatibility with previous syntax.
 - Changes to the behaviour of keywords that are not backwards compatible.
-- Any alterations to state machines i.e. new states, and changes to 
+- Any alterations to state machines i.e. new states, and changes to
   pre/post conditions.
 - Changes to async I/O code other than trivial fixes.  Code paths here
   are notoriously undertested and need careful to review to ensure there

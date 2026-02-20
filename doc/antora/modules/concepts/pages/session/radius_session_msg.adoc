@@ -92,14 +92,14 @@ Some servers may not contain all the necessary dictionary files because each ven
 [#server-attr]
 === Server-side attributes
 
-Server-side attributes are attributes that control the server's behavior. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
+Server-side attributes are attributes that control the server's behaviour. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
 gets sent through the network in a RADIUS message. Server-side attributes should not be included in RADIUS messages, since these attributes are internal to server implementation.
 
 Definitions for server-side attributes may vary by server vendor, or may vary even from one version of the same server to another. Only FreeRADIUS definitions for internal attributes are referenced in this document. Those definitions are generally the same across all versions of the server, but other vendors may have different implementations.
 
 Information such as "use LDAP server X", or "remember that the user is in group Y" should be used to create local policy. This information should be stored in server-side attributes (also known as "non-protocol attributes").
 
-Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say "use LDAP server X for this request" and "respond with attribute X, value Y".
+Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behaviour as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say "use LDAP server X for this request" and "respond with attribute X, value Y".
 
 === xref:session/processing.adoc[Processing requests]
 

@@ -536,7 +536,7 @@ cipher_server_preference:: Prefer the server cipher list.
 If enabled, OpenSSL will use the server cipher list (possibly
 defined by the `cipher_list` option above) for choosing right
 cipher suite, instead of using the client-specified list which is
-OpenSSl default behavior. Having it set to 'yes' is best
+OpenSSl default behaviour. Having it set to 'yes' is best
 practice for TLS.
 
 
@@ -1150,7 +1150,7 @@ Setting this value to `yes` makes FreeRADIUS use only the
 "user" portion of the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` for its MS-CHAP
 calculations.
 
-If this behavior seems weird and complicated, we agree.
+If this behaviour seems weird and complicated, we agree.
 There is no reason for the Windows systems to do something so
 unfriendly.  All it does is make life difficult for the
 administrator, who has to figure out why MS-CHAP is magically

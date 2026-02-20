@@ -52,7 +52,7 @@ the requests are proxied to the same home server for "realm2".
 
 The group should then stop the "realm2" server that responded
 to that request, and they should repeat the request to "realm1". The
-group should observe the resulting behavior of the server for "realm1".
+group should observe the resulting behaviour of the server for "realm1".
 
 If time permits, the group may switch roles, so that users have the
 opportunity to set up a proxy and a home server.

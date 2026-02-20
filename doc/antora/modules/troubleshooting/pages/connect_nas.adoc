@@ -2,7 +2,7 @@
 
 Maintaining productivity, ensuring customer satisfaction, improving network performance, and reducing downtime are all key benefits of connectivity troubleshooting. Network outages can halt business operations, preventing employees from accessing critical applications and collaborating effectively. This leads to lost productivity and revenue.
 
-Additionally, these problems can disrupt online services, negatively impacting customer satisfaction and damaging the business's reputation. Troubleshooting helps identify and resolve bottlenecks, congestion, and other issues that affect network performance, ensuring efficient and reliable operations. By quickly identifying and resolving issues, businesses can minimize downtime and reduce the financial impact of connectivity problems. 
+Additionally, these problems can disrupt online services, negatively impacting customer satisfaction and damaging the business's reputation. Troubleshooting helps identify and resolve bottlenecks, congestion, and other issues that affect network performance, ensuring efficient and reliable operations. By quickly identifying and resolving issues, businesses can minimise downtime and reduce the financial impact of connectivity problems.
 
 == Allocating IP netmasks
 
@@ -141,7 +141,7 @@ Verify the connection to a Domain Controller for the Active Directory with the f
 
 802.1X authentication methods like EAP-TLS transmit large UDP packets that need IP fragmentation to reach their destination. If the network used for 802.1X mishandles IP fragments or has an issue with Path MTU Discovery (PMTUD), this issue shows up as unreliable or non-functional 802.1X authentication.
 
-Before attempting to troubleshoot possible IP or EAP fragmentation issues, it's important to have a comprehensive understanding of the normal behavior of IP networks regarding fragmentation and reassembly, forwarding of fragments, and critical network services like PMTUD.
+Before attempting to troubleshoot possible IP or EAP fragmentation issues, it's important to have a comprehensive understanding of the normal behaviour of IP networks regarding fragmentation and reassembly, forwarding of fragments, and critical network services like PMTUD.
 
 Debugging network problems without understanding IP networking usually leads to making mistakes. Often, random changes are made until something appears to work. The final result may have issues or cause network instability.
 

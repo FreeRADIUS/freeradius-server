@@ -5,7 +5,7 @@ of addresses.  It tracks addresses to that it does not issue the same
 leased IP address to multiple devices.
 
 Using FreeRADIUS for IP address allocation has some advantages.
-Centralized pool management means that the pools remains available
+centralised pool management means that the pools remains available
 when one or more of the NASs becomes unavailable.  When pools are
 managed on a NAS, the pools are down when the NAS is down.
 

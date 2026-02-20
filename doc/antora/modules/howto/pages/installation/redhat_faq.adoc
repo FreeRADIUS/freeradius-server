@@ -1,10 +1,10 @@
-= Introduction 
+= Introduction
 
 There are several "Red Hat" distributions which address different
 goals and as a consequence have different philosophies driven by
 different constraints.
 
-== How is FreeRADIUS distributed on Fedora/RHEL/CentOS systems? 
+== How is FreeRADIUS distributed on Fedora/RHEL/CentOS systems?
 
 FreeRADIUS is distributed on Fedora/RHEL/CentOS systems as a set of
 RPM packages. There is a main package called "freeradius" and several
@@ -12,7 +12,7 @@ subpackages whose name is "freeradius-XXX" where XXX is optional
 functionality. For example the support needed for MySQL database
 backend will be found in the package "freeradius-mysql".
 
-=== Why are there optional subpackages instead of just one package? 
+=== Why are there optional subpackages instead of just one package?
 
 The rpm package management tool will not permit installing a
 package unless all of it's dependencies are met on the target system,
@@ -44,7 +44,7 @@ database backends in our example because this is a common case, but
 the subpackages comprise other features as well, e.g. ldap, kerberos,
 python, perl, etc.
 
-=== How can I install a new version of FreeRADIUS on a Fedora/RHEL/CentOS system? 
+=== How can I install a new version of FreeRADIUS on a Fedora/RHEL/CentOS system?
 
 Your best bet and easiest solution is to install a prebuilt RPM
 package if it's available. This relieves you of having to build the
@@ -65,7 +65,7 @@ to install an optional subpackage, for example MySQL support:
 
  % sudo yum install freeradius-mysql
 
-=== How do I update my version of FreeRADIUS to a pre-release testing version for my distribution? 
+=== How do I update my version of FreeRADIUS to a pre-release testing version for my distribution?
 
 Software updates appear in repositories ("repos") for specific
 distributions. Each distribution contains two channels, testing and
@@ -83,7 +83,7 @@ take the time to report whether you had success with the new package
 or not, this helps the maintainer to know if a package is ready to be
 promoted from testing to stable.
 
-=== How do I report success/failure for a package upgrade in Fedora? 
+=== How do I report success/failure for a package upgrade in Fedora?
 
 Use Bodhi, the Fedora Update System
 (https://admin.fedoraproject.org/updates). Locate the package via the
@@ -92,7 +92,7 @@ identifier you installed. Toward the bottom you will see an area for
 comments. Bodhi also lets you see other peoples experiences with the
 package in question.
 
-=== How do I report a bug against the Red Hat packaging of FreeRADIUS? 
+=== How do I report a bug against the Red Hat packaging of FreeRADIUS?
 
 First, please note Red Hat repackages FreeRADIUS from the upstream
 FreeRADIUS project. If you believe the problem you are seeing is not
@@ -116,7 +116,7 @@ ignorant about configuration files it would overwrite the
 configuration files which might have been carefully tailored to the
 installation. If that were the case then upgrading to a new package
 version would erase the careful customizations implemented by the
-system administrator. Clearly this is not desired behavior. To
+system administrator. Clearly this is not desired behaviour. To
 overcome this problem the author of the rpm spec file can mark files
 as being a configuration file. This is done with the %config tag in
 the spec file and causes RPM to process the file specially during an
@@ -153,7 +153,7 @@ be your old modified version. However, that file was marked as
 your old modified version and the new version from the upgrade would
 be /etc/raddb/foo.cfg.rpmnew.
 
-It can be hard to know a priori the optimal behavior, it depends on a
+It can be hard to know a priori the optimal behaviour, it depends on a
 variety of factors the package maintainer may not be privy to such as
 how different the new update is from the existing version, etc. The
 practical solution adopted in most cases is to mark all config files
@@ -171,13 +171,13 @@ warnings during a package upgrade. Alternatively you can go back
 later and search the /etc/raddb tree for the presence of .rpmnew and
 .rpmsave files.
 
-=== How do I determine what prebuilt FreeRADIUS RPM are available for installation? 
+=== How do I determine what prebuilt FreeRADIUS RPM are available for installation?
 
 Use the yum package installer to perform a query.
 
  % yum info freeradius\*
 
-=== How does RPM version naming work? How do I look at an RPM name and understand what FreeRADIUS version it represents? 
+=== How does RPM version naming work? How do I look at an RPM name and understand what FreeRADIUS version it represents?
 
 RPM names are always of the form Name-Version-Release, this is
 often abbreviated NVR. For Fedora/RHEL/CentOS systems the RPM name
@@ -205,14 +205,14 @@ means the RPM was built for version 10 of Fedora. The RHEL disttag is
 usually "el" with a version number appended to it. The "el" stands for
 Enterprise Linux. For example a disttag of "el5" means RHEL 5.
 
-=== How do I determine what version of the FreeRADIUS package(s) I have installed? 
+=== How do I determine what version of the FreeRADIUS package(s) I have installed?
 
 Use the rpm query command, this will list every installed RPM
 package and it's version which begins with "freeradius"
 
  % rpm -qa freeradius\*
 
-=== How do I determine which package owns a (missing) file? 
+=== How do I determine which package owns a (missing) file?
 
 Both rpm and yum are capable of mapping a file path to the RPM package which owns it. However rpm needs to have the package installed to perform the query otherwise it won't be known to the local rpm database.
 
@@ -223,7 +223,7 @@ To perform an rpm query on the local rpm database use the 'f' query option. For 
 
 However if you're trying to determine which package to install because you've got a missing file then you'll have to ask the yum package manager which has knowledge about all possible packages. Note that yum accepts wildcard globbing. So let's say you got a run time error claiming FreeRADIUS could not load /usr/lib/freeradius/rlm_sql_mysql-2.1.1.so then you could ask yum to tell you every package which has a path name like that using the "whatprovides" query, for example:
 
- % yum whatprovides /usr/lib/freeradius/rlm_sql_mysql\*.so  
+ % yum whatprovides /usr/lib/freeradius/rlm_sql_mysql\*.so
  Loaded plugins: refresh-packagekit
  freeradius-mysql-2.1.1-2.fc10.i386 : MySQL support for freeradius
  Matched from:
@@ -244,7 +244,7 @@ From above you'll see that yum has told you there are 3 different packages which
 
  % sudo yum install freeradius-mysql
 
-=== Why should I use Red Hat RPM's instead of the raw FreeRADIUS source? 
+=== Why should I use Red Hat RPM's instead of the raw FreeRADIUS source?
 
 Note, you may want to refer to the FAQ entry [[Red-Hat-FAQ#What-is-the-difference-between-building-from-source-and-building-from-an-SRPM%253F|What is the difference between building from source and building from an SRPM?]]
 
@@ -263,7 +263,7 @@ FreeRADIUS configuration files which tailor it to Red Hat systems. Or you
 might needlessly duplicate facilities that have already been provided
 for you in the Red Hat specific RPM's such as scripts to control the
 service, perform log rotations, etc. Also, the rpm spec files on Red Hat systems are peer reviewed and must conform to a wide range of "good practice"
-policies. 
+policies.
 
 Simply put, it's much more efficient if you don't have to learn all
 the lessons and recreate the results if you just leverage what has
@@ -293,7 +293,7 @@ emitting messages to concerned parties, etc. Let rpm do its job by
 not side stepping its critical functionality by performing installs
 behind its back with a "make install".
 
-=== How do I start and stop the FreeRADIUS service? 
+=== How do I start and stop the FreeRADIUS service?
 
 Nowadays Fedora uses systemd units and older releases of RHEL and CentOS
 still use System V init-scripts to control services. However, on all of them
@@ -335,7 +335,7 @@ Now, verify which run levels it will automatically be started.
  % chkconfig --list radiusd
  radiusd        	0:off	1:off	2:on	3:on	4:on	5:on	6:off
 
-This shows that the FreeRadius service will be automatically 
+This shows that the FreeRadius service will be automatically
 started whenever the system enters run levels 3,4,5 which are the
 defaults.
 
@@ -344,7 +344,7 @@ If you want to turn off automatic starting.
  % sudo chkconfig radiusd off
 
 
-=== How do I determine what files are contained in an RPM? 
+=== How do I determine what files are contained in an RPM?
 
 Use the rpm query command passing it the 'l' flag (i.e. "list")
 
@@ -371,7 +371,7 @@ with the 'p' package flag, e.g.:
 
  % rpm -qlp /usr/src/redhat/RPMS/i386/freeradius-mysql-2.1.1-7.fc10.i386.rpm
 
-=== How do I know which rpm package owns a specific file? 
+=== How do I know which rpm package owns a specific file?
 
 Use the rpm query command with the 'f' file flag. For example
 suppose you want to know what package is responsible for installing
@@ -380,7 +380,7 @@ suppose you want to know what package is responsible for installing
  % rpm -qf /usr/lib/freeradius/rlm_sql_mysql-2.1.1.so
 freeradius-mysql-2.1.1-7.fc10.i686
 
-=== What causes the "cannot open shared object file" error? 
+=== What causes the "cannot open shared object file" error?
 
 Sometimes you might see an error like this:
  radiusd: error while loading shared libraries: foo-1.2.3.so: cannot open shared object file: No such file or directory
@@ -388,7 +388,7 @@ Sometimes you might see an error like this:
 The most likely cause is you have not installed a necessary
 freeradius subpackage which contains the shared library. Please refer to the areas of the FreeRADIUS Red Hat FAQ which discusses subpackages for more explanation. If you install the missing subpackage containing the shared library the problem should go away. Usually it's obvious from the name of the missing shared library which subpackage is necessary. If not please see the section of the FAQ which explains how to determine which package owns a file.
 
-=== What is the difference between building from source and building from an SRPM? 
+=== What is the difference between building from source and building from an SRPM?
 
 When people say "build from source" they usually mean building from
 the sources provided by the upstream FreeRADIUS project, either from
@@ -421,7 +421,7 @@ named "freeradius.spec". In addition the SRPM may contain additional
 items not present in the upstream release such as files specific only
 to Fedora/RHEL/CentOS systems and patches for bugs which have been
 fixed in the SRPM but are not yet available in the upstream source
-release. 
+release.
 
 When FreeRADIUS	is built using a Fedora/RHEL/CentOS specific SRPM all
 the leg work of figuring out how to properly configure the build,
@@ -430,18 +430,18 @@ not present in the upstream source release will have already been done
 for you. Thus it is highly recommended you build from an SRPM instead
 of raw upstream sources.
 
-=== But the FreeRADIUS upstream release contains an RPM .spec file, why can't I just use that instead of the one from Fedora/RHEL/CentOS? 
+=== But the FreeRADIUS upstream release contains an RPM .spec file, why can't I just use that instead of the one from Fedora/RHEL/CentOS?
 
 Because that is a generic spec file and has not been tailored to to
 Fedora/RHEL/CentOS.
 
-=== A prebuilt version of FreeRADIUS in the version I need is not available for the distribution I'm using, how do I build one? 
+=== A prebuilt version of FreeRADIUS in the version I need is not available for the distribution I'm using, how do I build one?
 
 First please read the FAQ entry concerning building from sources
 vs. building from SRPM. To build from an SRPM you will need to execute
 the following sequences of steps described in [[Red-Hat-FAQ#How-to-build-an-SRPM|How to build an SRPM]]
 
-=== FreeRADIUS stopped working after an RPM upgrade. What's wrong? 
+=== FreeRADIUS stopped working after an RPM upgrade. What's wrong?
 
 In this circumstance there is an excellent chance configuration files
 were modified during the upgrade. Please read the section in this FAQ
@@ -449,9 +449,9 @@ which explains how configuration files are handled during an RPM
 upgrade.
 
 
-== How to build an SRPM 
+== How to build an SRPM
 
-=== Obtain a SRPM 
+=== Obtain a SRPM
 
 Because Fedora by definition is the most current of the
 Fedora/RHEL/CentOS distributions you're likely to find a current SRPM
@@ -486,7 +486,7 @@ sub-directory is the most current and is sometimes referred to as
 the command "make srpm", this will produce a .src.rpm (e.g. SRPM)
 equivalent to what you might have downloaded from Koji.
 
-=== Install the SRPM 
+=== Install the SRPM
 
 The RPM package builder, rpmbuild, expects to find a particular
 directory structure containing the following sub-directories under a
@@ -541,7 +541,7 @@ freeradius.spec
  freeradius-pam-conf	       freeradius-server-2.1.1.tar.bz2
  freeradius-radiusd-conf.patch
 
-=== Install all necessary build requirements 
+=== Install all necessary build requirements
 
 When rpmbuild runs the rpm spec file will direct it to run certain
 commands, link against specific libraries, etc. This means those
@@ -564,7 +564,7 @@ scans the BuildRequires and builds a list of packages required to
 build our package, if any of the necessary packages are not installed
 it will install them for you, e.g.:
 
- % sudo yum-builddep freeradius-2.1.1-7.fc10.src.rpm 
+ % sudo yum-builddep freeradius-2.1.1-7.fc10.src.rpm
 
 However yum-builddep does not currently know how to handle conditional
 BuildRequires and will sometimes incorrectly include or exclude a
@@ -582,7 +582,7 @@ In this case yum-builddep is not your friend and you'll just have to manually in
 
 The manual process is straightforward. To discover what build dependencies you might be missing run rpmbuild, if anything is missing it will list the missing packages and exit with an error. Then use yum to install each package rpmbuild listed as missing. For example:
 
- % rpmbuild -ba /usr/src/redhat/SPECS/freeradius.spec 
+ % rpmbuild -ba /usr/src/redhat/SPECS/freeradius.spec
 ----
 error: Failed build dependencies:
 	openldap-devel is needed by freeradius-2.1.1-7.fc10.i386
@@ -590,7 +590,7 @@ error: Failed build dependencies:
 
  % sudo yum install openldap-devel
 
-=== Perform the build 
+=== Perform the build
 
 Now that all your build dependencies have been resolved in Step 3 you
 can perform the build using the rpmbuild command. You want to build
@@ -621,7 +621,7 @@ Wrote: /usr/src/redhat/RPMS/i386/freeradius-unixODBC-2.1.1-7.fc10.i386.rpm
 Wrote: /usr/src/redhat/RPMS/i386/freeradius-debuginfo-2.1.1-7.fc10.i386.rpm
 ----
 
-=== Install the desired rpm's 
+=== Install the desired rpm's
 
 The rpm's under /usr/src/redhat/RPMS are the packages you'll want to
 install. You don't need to install all the subpackages, install only

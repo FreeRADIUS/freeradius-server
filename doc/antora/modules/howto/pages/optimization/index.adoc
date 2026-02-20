@@ -24,7 +24,7 @@ Optimizing resource usage (CPU, memory, disk I/O) allows you to run FreeRADIUS e
 
 === xref:optimization/auditing.adoc[Auditing]
 
-Auditing provides valuable insights into user behavior, policy enforcement, and potential security risks. Auditing is the basis of robust network security and management processes.
+Auditing provides valuable insights into user behaviour, policy enforcement, and potential security risks. Auditing is the basis of robust network security and management processes.
 
 === xref:optimization/monitoring/index.adoc[Monitoring]
 

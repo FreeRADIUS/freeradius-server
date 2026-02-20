@@ -135,7 +135,7 @@ with `if (timeout)` at the start of the `finally` section.
 Request which are being processed in a `finally` section _will
 not stop_ until the `finally` section is done.  The `max_request_time`
 configuration applies only to normal processing of requests, and not
-to `finally` sections.  This behavior is necessary in order for the
+to `finally` sections.  This behaviour is necessary in order for the
 `finally` section to catch a `max_request_time` timeout.
 ====
 

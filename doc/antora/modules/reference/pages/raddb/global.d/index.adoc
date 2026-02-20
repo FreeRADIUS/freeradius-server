@@ -7,7 +7,7 @@ the Python path set once for the server.  Due to how the underlying
 Python APIs are written, this path cannot be configured on a
 per-module basis.  If the configuration items were instead placed in
 each module, then the settings could conflict, and the server would
-have unpredictable behavior.
+have unpredictable behaviour.
 
 As a result, some modules have additional configuration items which
 are in the `global.d` directory.  That way the settings are configured

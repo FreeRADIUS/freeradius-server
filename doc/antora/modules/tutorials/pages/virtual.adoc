@@ -26,7 +26,7 @@ For RADIUS, the common sections are:
 - *accounting <type>* Run policies for a particular value of `Acct-Status-Type`
 - *send Accounting-Response* Run policies when receiving an `Accounting-Response` packet
 
-**Default behavior:**
+**Default behaviour:**
 All site configurations are stored in the `sites-availabl`e directory,
 while only the active (running) sites are present in sites-enabled. To
 activate a site, a symbolic link must be created in sites-enabled that

@@ -8,13 +8,13 @@ importance of RADIUS RFC compliance centers on four key areas:
 
 == Interoperability in Multi-Vendor Environments
 
-* De Facto Standard: RADIUS is the industry standard for centralizing
+* De Facto Standard: RADIUS is the industry standard for centralising
   Authentication, Authorization, and Accounting (AAA). Compliance
   ensures that a RADIUS server can communicate with network access
   servers (NAS) like Wi-Fi access points, VPN gateways, and switches
   from different manufacturers (e.g., Cisco, Aruba, Fortinet).
 
-* Consistent Behavior: RFCs provide documented, predictable behavior,
+* Consistent behaviour: RFCs provide documented, predictable behaviour,
   reducing unexpected issues when integrating new equipment into an
   existing infrastructure.
 
