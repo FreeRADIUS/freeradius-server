@@ -30,6 +30,30 @@ This means the username and password are always protected inside the TLS tunnel.
 ** This guide does not cover configuring EAP-TTLS on a wireless client or access point. Consult your wireless client documentation for that.
 ** For initial testing, PAP is recommended as the tunneled (inner) authentication protocol.
 
+== Files to Change
+
+Add the user entry in `raddb/mods-config/files/authorize`:
+
+[source, text]
+----
+bob    Password.Cleartext := "hello"
+----
+
+Update the following fields in `src/tests/eapol_test/ttls-pap.conf`:
+
+[source, text]
+----
+network={
+	key_mgmt=WPA-EAP
+	eap=TTLS
+	identity="bob"
+	anonymous_identity="anonymous@example.org"
+	ca_cert="raddb/certs/rsa/ca.pem"
+	password="hello"
+	phase2="auth=PAP"
+}
+----
+
 == Questions
 
 1.  How is EAP-TTLS easier to use than EAP-TLS?
