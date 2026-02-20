@@ -142,6 +142,10 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 	qdcount = fr_nbo_to_uint16(packet + 4);
 
 	opcode = (packet[2] >> 3) & 0x0f;
+	if (opcode >= FR_DNS_CODE_MAX) {
+		DECODE_FAIL(UNKNOWN_OPCODE);
+		return false;
+	}
 
 	/*
 	 *	RFC 2136 (DNS update) defines the four "count" fields to have different meanings:

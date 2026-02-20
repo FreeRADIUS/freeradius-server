@@ -360,6 +360,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
 	{ L("none"),						FR_DNS_DECODE_FAIL_NONE		},
+	{ L("unknown opcode"),					FR_DNS_DECODE_FAIL_UNKNOWN_OPCODE	},
 	{ L("packet is smaller than DNS header"),		FR_DNS_DECODE_FAIL_MIN_LENGTH_PACKET	},
 	{ L("packet is larger than 65535"),			FR_DNS_DECODE_FAIL_MAX_LENGTH_PACKET	},
 	{ L("expected query / answer, got answer / query"),	FR_DNS_DECODE_FAIL_UNEXPECTED		},
