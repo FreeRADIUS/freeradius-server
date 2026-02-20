@@ -24,20 +24,11 @@ image::eap-ttls.svg[Fig. TTLS Packet]
 
 This means the username and password are always protected inside the TLS tunnel.
 
+== Notes Before Setup
 
-For the initial testing of EAP-TTLS, we recommend using `PAP` on the
-wireless client as the tunneled authentication protocol.
-
-Once the wireless client has been configured to enable EAP-TTLS,
-you should perform a test authentication to the server. If all goes well,
-the server, AP, and wireless client should exchange multiple RADIUS
-`Access-Request` and `Access-Challenge` packets. This process should take
-a few seconds, and you should wait until it is done. If all goes well,
-the final packet from the server should be an `Access-Accept` and should
-contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
-
-Verify that the authentication succeeded by using the `ping` command to
-see if the wireless client now has network access.
+** During installation, the FreeRADIUS build system automatically creates certificates for use with TTLS. Little or no action is required to enable it.
+** This guide does not cover configuring EAP-TTLS on a wireless client or access point. Consult your wireless client documentation for that.
+** For initial testing, PAP is recommended as the tunneled (inner) authentication protocol.
 
 == Questions
 
