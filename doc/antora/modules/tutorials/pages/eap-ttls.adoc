@@ -15,14 +15,15 @@ protocol and to send and receive test packets.
 
 image::eap-ttls.svg[Fig. TTLS Packet]
 
-During installation the build system automatically creates
-certificates for use with TTLS. In a normal installation, there should
-be little or no action required to enable TTLS.
+== What is EAP-TTLS?
 
-This exercise does not cover how to configure EAP-TTLS on the wireless
-client nor how to set up a wireless access point to perform EAP-TTLS.
-We suggest that you consult the documentation for your wireless
-client software for details on this process.
+`EAP-TTLS` (Extensible Authentication Protocol - Tunneled Transport Layer Security) works in two phases:
+
+** Phase 1 — A TLS tunnel is established using a server-side certificate. This encrypts all further communication.
+** Phase 2 — Inside the encrypted tunnel, the user's credentials are sent using an inner authentication method (e.g. PAP).
+
+This means the username and password are always protected inside the TLS tunnel.
+
 
 For the initial testing of EAP-TTLS, we recommend using `PAP` on the
 wireless client as the tunneled authentication protocol.
