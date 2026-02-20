@@ -347,10 +347,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "Please define 'namespace' in this virtual server");
 		return -1;
 	}
-
+	
 	fr_pair_list_init(&inst->pair_list);
-	inst->client = client = talloc_zero(inst, fr_client_t);
-	if (!inst->client) return 0;
+	MEM(inst->client = client = talloc_zero(inst, fr_client_t));
 
 	client->ipaddr.af = AF_INET;
 	client->src_ipaddr = client->ipaddr;
