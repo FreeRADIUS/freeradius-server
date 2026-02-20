@@ -262,6 +262,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_question, p, end, packet_ctx, packet + 4);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding questions - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	p += slen;
@@ -270,6 +271,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_rr, p, end, packet_ctx, packet + 6);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding RRs - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	p += slen;
@@ -278,6 +280,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_ns, p, end, packet_ctx, packet + 8);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding NS - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	p += slen;
@@ -286,6 +289,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	slen = decode_record(ctx, out, attr_dns_ar, p, end, packet_ctx, packet + 10);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding additional records - %s", fr_strerror());
+		/* coverity[return_overflow] */
 		return slen - (p - packet);
 	}
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of additional records", slen);
