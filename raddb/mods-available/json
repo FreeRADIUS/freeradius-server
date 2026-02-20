@@ -156,6 +156,7 @@ json {
 			#
 			#  Controls the representation of binary data in JSON output.
 			#  - "raw" (default): write bytes directly as a JSON string
+			#  - "base16": base16(hex)-encode the binary data
 			#  - "base64": base64-encode the binary data
 			#
 #			binary_format = raw
