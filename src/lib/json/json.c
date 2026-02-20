@@ -44,6 +44,7 @@ fr_table_num_sorted_t const fr_json_format_table[] = {
 size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
 
 fr_table_num_sorted_t const fr_json_binary_format_table[] = {
+	{ L("base16"),	JSON_BINARY_FORMAT_BASE16 },
 	{ L("base64"),	JSON_BINARY_FORMAT_BASE64 },
 	{ L("raw"),	JSON_BINARY_FORMAT_RAW },
 };
@@ -507,6 +508,23 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 	if (format && format->value.enum_as_int) {
 		is_enum = fr_pair_value_enum_box(&vb, vp);
 		fr_assert(is_enum >= 0);
+	}
+
+	/*
+	 *	Base16-encode octets values when requested.
+	 */
+	if (format && (format->value.binary_format == JSON_BINARY_FORMAT_BASE16) &&
+	    (vp->vp_type == FR_TYPE_OCTETS)) {
+		fr_sbuff_t	*b16_sbuff;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&b16_sbuff, 256, SIZE_MAX);
+
+		fr_base16_encode(b16_sbuff, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length));
+
+		MEM(obj = json_object_new_string_len(fr_sbuff_start(b16_sbuff), fr_sbuff_used(b16_sbuff)));
+		*out = obj;
+
+		return is_enum;
 	}
 
 	/*
