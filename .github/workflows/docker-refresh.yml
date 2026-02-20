@@ -53,21 +53,27 @@ jobs:
 
       - name: Create build dependency package
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
-        uses: addnab/docker-run-action@v3
-        with:
-          options: -v ${{ github.workspace }}:/work
-          image: ${{ matrix.os.base_image }}
-          run: |
-            apt-get update
-            export DEBIAN_FRONTEND=noninteractive
-            apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-            cd /work
-            debian/rules debian/control
-            mk-build-deps debian/control
-            mv freeradius-build-deps_*.deb freeradius-build-deps.deb
-            mk-build-deps scripts/ci/extra-packages.debian.control
-            mv freeradius-build-deps_1*.deb freeradius-build-deps-extra.deb
-            chown $(stat -c'%u:%g' .git) *
+        shell: bash
+        run: |
+          cat > build-dep-pkg.sh << EOF
+          apt-get update
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+          cd /work
+          debian/rules debian/control
+          mk-build-deps debian/control
+          mv freeradius-build-deps_*.deb freeradius-build-deps.deb
+          mk-build-deps scripts/ci/extra-packages.debian.control
+          mv freeradius-build-deps_1*.deb freeradius-build-deps-extra.deb
+          chown $(stat -c'%u:%g' .git) *
+          EOF
+          chmod 755 build-dep-pkg.sh
+          docker run \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            --rm \
+            ${{ matrix.os.base_image }} \
+            sh -c './build-dep-pkg.sh'
 
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
