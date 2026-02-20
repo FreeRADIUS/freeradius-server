@@ -26,10 +26,6 @@ RCSIDH(md5_h, "$Id$")
 
 #  include <string.h>
 
-#ifdef WITH_FIPS
-#undef HAVE_OPENSSL_MD5_H
-#endif
-
 #ifdef HAVE_OPENSSL_MD5_H
 #  include <openssl/md5.h>
 #endif
@@ -86,25 +82,60 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md5_destroy(_x)
 #else
 #include <openssl/evp.h>
+#include <openssl/provider.h>
+
+#include <freeradius-devel/openssl3.h>
 
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
  *	the code too much.
  */
-typedef EVP_MD_CTX* FR_MD5_CTX;
+typedef struct FR_MD5_CTX {
+	EVP_MD_CTX	*ctx;
+	EVP_MD const  	*md;
+	unsigned int	len;
+} FR_MD5_CTX;
 
-#  define fr_md5_init(_ctx) \
-	do { \
-		*_ctx = EVP_MD_CTX_new(); \
-		EVP_MD_CTX_set_flags(*_ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
-		EVP_DigestInit_ex(*_ctx, EVP_md5(), NULL); \
-	} while (0)
-#  define fr_md5_update(_ctx, _str, _len) \
-        EVP_DigestUpdate(*_ctx, _str, _len)
-#  define fr_md5_final(_out, _ctx) \
-	EVP_DigestFinal_ex(*_ctx, _out, NULL)
-#  define fr_md5_destroy(_ctx)	EVP_MD_CTX_destroy(*_ctx)
-#  define fr_md5_copy(_dst, _src) EVP_MD_CTX_copy_ex(_dst, _src)
+static inline void fr_md5_init(FR_MD5_CTX *ctx)
+{
+	ctx->ctx = EVP_MD_CTX_new();
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		OSSL_FIPS_LIBCTX *fips_libctx = fr_thread_local_init(fips_ossl_libctx, _fips_ossl_libctx_free);
+		if (!fips_libctx) {
+			fips_libctx = _fips_ossl_libctx_create();
+			fr_thread_local_set(fips_ossl_libctx, fips_libctx);
+		}
+		if (!fips_libctx->md5)
+			fips_libctx->md5 = EVP_MD_fetch(fips_libctx->libctx, "MD5", NULL);
+		ctx->md = fips_libctx->md5;
+	} else {
+		ctx->md = EVP_md5();
+	}
+	ctx->len = MD5_DIGEST_LENGTH;
+
+	EVP_DigestInit_ex(ctx->ctx, ctx->md, NULL);
+}
+
+static inline void fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
+{
+        EVP_DigestUpdate(ctx->ctx, in, inlen);
+}
+
+static inline void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+{
+	EVP_DigestFinal_ex(ctx->ctx, out, &(ctx->len));
+}
+
+static inline void fr_md5_destroy(FR_MD5_CTX *ctx)
+{
+	EVP_MD_CTX_destroy(ctx->ctx);
+}
+
+static inline void fr_md5_copy(FR_MD5_CTX *dst, FR_MD5_CTX *src)
+{
+	// other fields, too
+	EVP_MD_CTX_copy_ex(dst->ctx, src->ctx);
+}
 #endif	/* OPENSSL3 */
 #endif	/* HAVE_OPENSSL_MD5_H */
 

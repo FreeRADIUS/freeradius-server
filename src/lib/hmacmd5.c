@@ -34,9 +34,13 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif
 #include <freeradius-devel/openssl3.h>
 
-#if defined(HAVE_OPENSSL_EVP_H) && !defined(WITH_FIPS)
+#if defined(HAVE_OPENSSL_EVP_H)
+
 /** Calculate HMAC using OpenSSL's MD5 implementation
  *
  * @param digest Caller digest to be filled in.
@@ -57,7 +61,31 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 	HMAC_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 #endif /* EVP_MD_CTX_FLAG_NON_FIPS_ALLOW */
 
-	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
+	EVP_MD const *md5 = NULL;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/*
+	 *	If we are using OpenSSL >= 3.0 and FIPS mode is
+	 *	enabled, we need to load the default provider in a
+	 *	standalone context in order to access MD5.
+	 */
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		OSSL_FIPS_LIBCTX *fips_libctx = fr_thread_local_init(fips_ossl_libctx, _fips_ossl_libctx_free);
+		if (!fips_libctx) {
+			fips_libctx = _fips_ossl_libctx_create();
+			fr_thread_local_set(fips_ossl_libctx, fips_libctx);
+		}
+		if (!fips_libctx->md5)
+			fips_libctx->md5 = EVP_MD_fetch(fips_libctx->libctx, "MD5", NULL);
+		md5 = fips_libctx->md5;
+	} else
+#else
+	{
+		md5 = EVP_md5();
+	}
+#endif
+
+	HMAC_Init_ex(ctx, key, key_len, md5, NULL);
 	HMAC_Update(ctx, text, text_len);
 	HMAC_Final(ctx, digest, &len);
 	HMAC_CTX_free(ctx);
