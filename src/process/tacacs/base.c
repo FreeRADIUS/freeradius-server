@@ -477,6 +477,7 @@ RESUME(auth_start)
 			break;
 
 		default:
+			fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code));
 			RDEBUG("Reply packet type was set to %s", fr_tacacs_packet_names[request->reply->code]);
 			break;
 		}
@@ -882,10 +883,9 @@ RESUME(autz_request)
 						  author_status_to_packet_code, state, NULL, rcode);
 		if (!request->reply->code) request->reply->code = FR_TACACS_CODE_AUTZ_ERROR;
 
-	} else {
-		fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
-			  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 	}
+	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->reply->code) ||
+		  (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND));
 
 	RDEBUG("Reply packet type set to %s", (request->reply->code == FR_TACACS_CODE_DO_NOT_RESPOND) ? "Do-Not-Respond" : fr_tacacs_packet_names[request->reply->code]);
 
