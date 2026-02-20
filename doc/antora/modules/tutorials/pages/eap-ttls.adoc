@@ -54,6 +54,141 @@ network={
 }
 ----
 
+== Test Steps
+
+Start the server:
+
+[source, text]
+----
+$ radiusd -X
+----
+
+Run the test (separate terminal):
+
+[source, bash]
+----
+eapol_test/ttls-pap.conf -a 127.0.0.1 -p 1812 -s testing123 -n
+----
+
+== Expected result
+
+The server and client exchange multiple `Access-Request` and `Access-Challenge` packets. If successful, the final packet is an `Access-Accept` containing:
+
+** `MS-MPPE-Recv-Key`
+** `MS-MPPE-Send-Key`
+
+=== Expected Client Debug Output (eapol_test)
+
+Phase 1 — Anonymous identity sent:
+
+[source, text]
+----
+RADIUS message: code=1 (Access-Request) identifier=0 length=156
+   Attribute 80 (Message-Authenticator) length=18
+      Value: 3b2a9ea045981b569d1fdd27569ae700
+   Attribute 1 (User-Name) length=23
+      Value: 'anonymous@example.org
+----
+
+TLS tunnel establishing:
+
+[source, text]
+----
+EAP-TTLS: Start (server ver=0, own ver=0)
+SSL: SSL_connect:SSLv3/TLS write client hello
+SSL: SSL_connect:SSLv3/TLS read server hello
+TLS: Trusted root certificate(s) loaded
+EAP: Status notification: remote certificate verification (param=success)
+----
+
+TLS tunnel established:
+
+[source, text]
+----
+OpenSSL: Handshake finished - resumed=0
+EAP-TTLS: TLS done, proceed to Phase 2
+----
+
+Phase 2 — Credentials sent inside tunnel:
+
+[source, text]
+----
+EAP-TTLS: Phase 2 PAP Request
+EAP-TTLS: Encrypting Phase 2 data
+EAP-TTLS: Authentication completed successfully
+----
+
+Final Access-Accept:
+
+[source, text]
+----
+EAP: deinitialize previously used EAP method (21, TTLS) at EAP deinit
+ENGINE: engine deinit
+MPPE keys OK: 0  mismatch: 0
+SUCCESS
+----
+
+=== Expected Server Debug Output (radiusd -X)
+
+Phase 1 — Outer request received:
+
+[source, text]
+----
+Received Access-Request ID 0
+   User-Name = "anonymous@example.org"
+
+eap - New EAP session started
+eap - Calling submodule eap_ttls
+eap.ttls - Initiating new TLS session
+Sending Access-Challenge
+----
+
+TLS handshake (multiple rounds):
+
+[source, text]
+----
+>>> send TLS 1.2, handshake[length 61], server_hello
+>>> send TLS 1.2, handshake[length 1397], certificate
+>>> send TLS 1.2, handshake[length 333], server_key_exchange
+Handshake state - SSL negotiation finished successfully (1)
+Cipher suite: ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2
+----
+
+Phase 2 — Inner tunnel processing:
+
+[source, text]
+----
+eap.ttls - Session established.  Decoding Diameter attributes
+eap.ttls - Running request through virtual server "inner-tunnel"
+
+  User-Name = "bob"
+  User-Password = "hello"
+
+files - Looking for key "bob"
+sql - User found in radcheck table
+sql - Password.Cleartext := hello
+
+pap - User authenticated successfully
+----
+
+Final Access-Accept sent:
+
+[source, text]
+----
+Vendor-Specific {
+         Microsoft {
+    MPPE-Recv-Key = 0x13cb974fc....
+    MPPE-Send-Key = 0x7ad0412ba....
+   }
+}
+EAP-Message = 0x03ab0004
+Message-Authenticator = 0x00000000000000000000000000000000
+Packet-Type = ::Access-Accept
+User-Name = "anonymous@example.org"
+----
+
+You can verify network access on a real client using `ping`.
+
 == Questions
 
 1.  How is EAP-TTLS easier to use than EAP-TLS?
