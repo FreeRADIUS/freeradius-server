@@ -482,11 +482,26 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		return NULL;
 	}
 
-	sc->config = config;
+	/*
+	 *	Parse any scheduler-specific configuration.
+	 */
+	if (!config) {
+		MEM(sc->config = talloc_zero(sc, fr_schedule_config_t));
+		sc->config->max_networks = 1;
+		sc->config->max_workers = 4;
+	} else {
+		sc->config = config;
+
+		if (sc->config->max_networks < 1) sc->config->max_networks = 1;
+		if (sc->config->max_networks > 64) sc->config->max_networks = 64;
+		if (sc->config->max_workers < 1) sc->config->max_workers = 1;
+		if (sc->config->max_workers > 64) sc->config->max_workers = 64;
+	}
+
 	sc->el = el;
 	sc->log = logger;
 	sc->lvl = lvl;
-	sc->cs = config->cs;
+	sc->cs = sc->config->cs;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_thread_detach = worker_thread_detach;
@@ -566,22 +581,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		}
 
 		return sc;
-	}
-
-	/*
-	 *	Parse any scheduler-specific configuration.
-	 */
-	if (!config) {
-		MEM(sc->config = talloc_zero(sc, fr_schedule_config_t));
-		sc->config->max_networks = 1;
-		sc->config->max_workers = 4;
-	} else {
-		sc->config = config;
-
-		if (sc->config->max_networks < 1) sc->config->max_networks = 1;
-		if (sc->config->max_networks > 64) sc->config->max_networks = 64;
-		if (sc->config->max_workers < 1) sc->config->max_workers = 1;
-		if (sc->config->max_workers > 64) sc->config->max_workers = 64;
 	}
 
 	/*
