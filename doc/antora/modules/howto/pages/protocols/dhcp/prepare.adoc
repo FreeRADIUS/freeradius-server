@@ -18,7 +18,7 @@ understood.
 Other DHCP servers may implement implicit assumptions about the requirement of
 your network topology and silently define particular behaviors, such as the
 selection of IP address pool for a request based on a relay address. Some of
-these behaviors must be specifed explicitly when using FreeRADIUS.
+these behaviors must be specified explicitly when using FreeRADIUS.
 
 == Choose a database backend
 

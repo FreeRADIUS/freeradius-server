@@ -1,6 +1,6 @@
 = UUID generation
 
-Two functions are availble to generate UUIDs.
+Two functions are available to generate UUIDs.
 
 `uuid.v4` generates a version 4 UUID and `uuid.v7` generates a
 version 7 UUID.

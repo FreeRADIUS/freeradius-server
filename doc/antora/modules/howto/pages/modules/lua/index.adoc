@@ -71,7 +71,7 @@ Nested attributes are accessed using syntax of the form:
     of `Vendor-Specific.3GPP2.Remote-IP[1].Address`.
 
 Attribute lists and structural attributes have a `pairs` field which can be used to
-return an itterative list of the names and values of the child pairs.
+return an iterative list of the names and values of the child pairs.
 
 ```
 for k, v in fr.request.pairs() do
@@ -98,7 +98,7 @@ fr.reply["Vendor-Specific"]["Cisco"]["AVPair"][1] = "foo=baa"
 ```
 
 If the pair does not exist then it will be created.  Note that you cannot create
-gaps in the instances of an attriute, e.g. if there is a single instance of
+gaps in the instances of an attribute, e.g. if there is a single instance of
 attribute `foo` in the reply list, you can add an additional one by setting
 `fr.reply["foo"][2]` but setting `fr.reply["foo"][3]` is not valid.
 

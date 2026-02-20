@@ -246,7 +246,7 @@ PEAPv1/EAP-GTC was created by Cisco as an alternative to PEAPv0/EAP-MSCHAPv2.  I
 
 Even though Microsoft (along with RSA and Cisco) co-invented the PEAP standard, Microsoft never added support for PEAPv1 in general, which means PEAPv1/EAP-GTC has no native Windows OS support.  Since Cisco has always favored the use of its own less secure proprietary LEAP and EAP-FAST protocols over PEAP and markets them as simpler certificate-less solutions, standardized PEAP is rarely promoted by Cisco. With no interest from Microsoft to support PEAPv1 and little interest from Cisco to promote PEAP in general, PEAPv1 authentication is rarely used.  There is no native OS support for this EAP protocol.
 
-Although there is no in-built support for PEAP-GTC in MS Windows, it is supported by the Cisco CCX extensions program.  CCX compatability is enabled by default on many vendor-provided 802.11A/B/G clients.
+Although there is no in-built support for PEAP-GTC in MS Windows, it is supported by the Cisco CCX extensions program.  CCX compatibility is enabled by default on many vendor-provided 802.11A/B/G clients.
 
 [NOTE]
 ====

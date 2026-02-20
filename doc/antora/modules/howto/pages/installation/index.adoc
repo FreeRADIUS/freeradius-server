@@ -24,7 +24,7 @@ No RADIUS knowledge is required.
 Where possible, while learning the basics, it's recommended that
 beginners use the packaging system that is used by your operating
 system. The version that is supplied by your OS might be out of
-date, but ususally works "out of the box". The only
+date, but usually works "out of the box". The only
 exception to this is if your operating system supplies an older
 major version, as you will then be learning an obsolete
 configuration. See xref:howto:installation/packages.adoc[install from packages] for a more current version.

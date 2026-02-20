@@ -18,7 +18,7 @@ The general order of operations is:
 8. Start the server with ``radiusd -X || freeradius -X``
 9. Check that the ``eapol_test`` files work with *REAL* credentials.
 10. Stop the server.
-11. Replace the dummy certs in the ``certs`` directory (``${confdir}/certs``) with ones issued by [edupki](https://www.edupki.org) or a commerical certification authority.
+11. Replace the dummy certs in the ``certs`` directory (``${confdir}/certs``) with ones issued by [edupki](https://www.edupki.org) or a commercial certification authority.
 12. Alter the ``eapol_test`` files so they specify a certification authority.
 13. Check that the ``eapol_test`` files work with a *REAL* certificate, and *REAL* credentials.
 14. Clone the config onto two servers (or clone the server).
@@ -319,7 +319,7 @@ linelog linelog_recv_proxy_response {
 
 ----
 
-You will also need to configure your local syslog deaemon to log these messages.
+You will also need to configure your local syslog daemon to log these messages.
 
 For rsyslogd you could do that with the following:
 

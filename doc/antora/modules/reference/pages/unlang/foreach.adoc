@@ -216,7 +216,7 @@ foreach string child (TLV-Thing.[*]) {
 }
 ----
 
-When using `foreach` to loop over differnet data types, the values can
+When using `foreach` to loop over different data types, the values can
 be examined, but cannot be changed.  This is a limitation of the
 current interpreter, and may be changed in the future.
 

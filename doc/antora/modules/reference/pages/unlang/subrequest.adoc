@@ -34,7 +34,7 @@ is authorized.
 
 The `subrequest` keyword replaces the "pre-proxy", "post-proxy", and
 "originate CoA" functionality of v3.  Where v3 had a special syntax
-for a small numer of unique cases, v4 provides a general syntax which
+for a small number of unique cases, v4 provides a general syntax which
 is useful in a wide range of situations.
 
 `subrequest` is most commonly used in conjunction with the
@@ -68,7 +68,7 @@ attribute.
 When the _<type>_ field is an attribute reference, it is not
 possible to change the dictionary.
 
-<request-list>:: A reference to a list of attributes which will be used as the childs request list.
+<request-list>:: A reference to a list of attributes which will be used as the child's request list.
 +
 It may be omitted, in which case the child request list is empty.  It
 can be initialized by manually copying attributes from the parent
@@ -77,12 +77,12 @@ If the _<request-list>_ is specified, then the _<reply-list>_ must
 also be specified.
 +
 Note that this is a _reference_, and is not a copy.  Updates to the
-childs request list will be reflected in the named _<request-list>_.
+child's request list will be reflected in the named _<request-list>_.
 
-<reply-list>:: A reference to a list of attributes which will be used as the childs reply list.
+<reply-list>:: A reference to a list of attributes which will be used as the child's reply list.
 +
 Note that this is a _reference_, and is not a copy.  Updates to the
-childs reply list will be reflected in the named _<reply-list>_.
+child's reply list will be reflected in the named _<reply-list>_.
 
 [ statements ]:: The `unlang` commands which will be executed.
 

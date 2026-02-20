@@ -90,7 +90,7 @@ Without the "--allow-mschapv2" setting, you would see "passwordType":"NTLMv1"
 
 == Why use Active Directory?
 
-When FreeRADIUS is integrated with Active Directory, only authorized users gain access to network resources, enhancing the overall security of your network. Active Directory functions as a centralized datastore for user accounts and security policies, simplifying user management and access rights across the network. By integrating with AD, FreeRADIUS can leverage the exisiting infrastructure and be scaled up for larger systems.
+When FreeRADIUS is integrated with Active Directory, only authorized users gain access to network resources, enhancing the overall security of your network. Active Directory functions as a centralized datastore for user accounts and security policies, simplifying user management and access rights across the network. By integrating with AD, FreeRADIUS can leverage the existing infrastructure and be scaled up for larger systems.
 
 For your next steps, see the following:
 

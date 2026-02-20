@@ -233,7 +233,7 @@ needed.
 === xref:howto:modules/python/index.adoc[rlm_python]
 
 Rather than passing a tuple representing attributes in the `request`
-list, an object is passsed to Python functions representing the request.
+list, an object is passed to Python functions representing the request.
 This object has members giving access to all the lists, for both
 accessing and setting attributes.
 

@@ -109,19 +109,19 @@ The `modules` header file defines a few macros:
 
 Which (in turn):
 
-* defines a named yeild point, and updates various other internal macros to be used by `CACHE_DA` and `CREATE_DA`
+* defines a named yield point, and updates various other internal macros to be used by `CACHE_DA` and `CREATE_DA`
 
 * uses the pre-defined `da` inside of an `unlang_yield()` call.  The
   `da` should be cached inside of the module instance struct, so that
   we don't have to do dictionary lookups at run time.
 
-* creates a `fr_dict_attr_t const *da_yeild_point_NAME;` inside of the module instance structure.
+* creates a `fr_dict_attr_t const *da_yield_point_NAME;` inside of the module instance structure.
 
 * in the module `bootstrap()` function, creates all of the relevant
   `da`s and caches them in the module instance.
 
 We should then also have a `module_stats` module, which looks at the
-per-request stats, and auto-creates the bins for each yeild point.
+per-request stats, and auto-creates the bins for each yield point.
 And probably also aggregates the stats up the TLV tree.
 
 Then, once per 1K requests, or every second (whatever is shorter),

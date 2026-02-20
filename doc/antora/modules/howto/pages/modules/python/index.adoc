@@ -122,7 +122,7 @@ config {
 }
 ```
 
-will result in `freeradius.config['name']` having the vaule `value`.
+will result in `freeradius.config['name']` having the value `value`.
 
 === Function
 

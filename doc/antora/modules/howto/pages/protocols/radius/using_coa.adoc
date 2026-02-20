@@ -14,7 +14,7 @@ Using CoA messages within the RADIUS environment:
 
 * Easily perform session resets (disconnect) or grant different access levels to guests.
 
-== Orginating Packets
+== Originating Packets
 
 The RADIUS server and the NAS exchange messages using UDP (default ports 1812/1813). The CoA or Disconnect message is generated and sent from the RADIUS server. The message is a RADIUS-formatted packet with the CoA-Request or Disconnect-Request and one or more attributes.
 

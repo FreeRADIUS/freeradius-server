@@ -52,7 +52,7 @@ counter has wrapped while delivering this service.
 
 |https://datatracker.ietf.org/doc/html/rfc2866#section-5.9[Acct-Output-Packets] |The number of packets sent on the egress port.
 
-|https://datatracker.ietf.org/doc/html/rfc2866#section-5.5[Acct-Session-Id] | An ID assigned to a session and tracked by this ID via log files. Exmple stop and start events are mapped to this ID.
+|https://datatracker.ietf.org/doc/html/rfc2866#section-5.5[Acct-Session-Id] | An ID assigned to a session and tracked by this ID via log files. Example stop and start events are mapped to this ID.
 
 |https://datatracker.ietf.org/doc/html/rfc2866#section-5.7[Acct-Session-Time]   |Indicates how long the user has been granted access.
 

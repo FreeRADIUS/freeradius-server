@@ -22,7 +22,7 @@ configuration files. These variables are used only when the server reads
 the configuration files, and they cannot be updated or edited once the files
 have been read.
 
-Below example shows variables withing `radiusd.conf`
+Below example shows variables within `radiusd.conf`
 
 [source]
 ----

@@ -32,7 +32,7 @@ RADIUS performance to about the same number of packets per second.
 
 The best way to determine the performance of a server is via testing.
 FreeRADIUS comes with a tool called `radclient`, which can be used for
-basic peformance testing. A third party tool called [RadPerf]() is also
+basic performance testing. A third party tool called [RadPerf]() is also
 available. It uses the FreeRADIUS libraries to implement the RADIUS
 portion, and then builds more complex functionality on top of that. It
 can be used to simulate user logins, and can auto-generate accounting

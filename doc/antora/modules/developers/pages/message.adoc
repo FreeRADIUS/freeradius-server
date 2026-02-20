@@ -33,7 +33,7 @@ every message.
 Third, there is a ring buffer for packet data.  This buffer is large
 (64K to 1M+), and contains the raw packet data.
 
-An important part of the message implmentation is that there are
+An important part of the message implementation is that there are
 multiple instances of the message API (i.e. the three items noted
 above).  For example, a network thread may have one instance for each
 socket that it's reading from, and a worker thread may have one for
@@ -45,7 +45,7 @@ is data ownership.  Owning data is cheap, exchanging ownership of data
 is expensive.
 
 In this model, the system that creates messages is the system that
-owns the message.  The message target can (temporily) access the
+owns the message.  The message target can (temporarily) access the
 message, but it does not own the message.
 
 The messages are also ephemeral, and short lived.  If the data is

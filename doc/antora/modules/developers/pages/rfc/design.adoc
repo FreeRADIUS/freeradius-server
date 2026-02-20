@@ -13,7 +13,7 @@ Unfortunately, the RFCs are imperfect, and they have many issues and
 ambiguities. The *Common Remote Authentication Dial In User Service
 (RADIUS) Implementation Issues and Suggested Fixes* document
 (https://datatracker.ietf.org/doc/html/rfc5080[RFC 5080]), resolves
-some of these discrepencies.
+some of these discrepancies.
 
 However, that document does not cover all the known issues with
 RADIUS. The RFCs are unclear in some areas, and does not always

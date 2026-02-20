@@ -10,7 +10,7 @@ Mostly.
 ## Receive Side Steering
 
 We can use Receive Side Steering in hardware, or implemented in
-sofware in the kernel, is called Receive Packet Steering (RPS).  This
+software in the kernel, is called Receive Packet Steering (RPS).  This
 involves opening multiple sockets using the same destination ip/port,
 all using `SO_REUSEPORT`.
 

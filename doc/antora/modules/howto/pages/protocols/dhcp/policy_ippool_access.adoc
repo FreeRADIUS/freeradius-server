@@ -1,6 +1,6 @@
 = Configure Access Restrictions for Pools
 
-We can combine what we have learned in the preceeding sections to provide pools
+We can combine what we have learned in the preceding sections to provide pools
 whose access is restricted in some way, for example to a particular class.
 
 Consider the ISC DHCP configuration snippet:

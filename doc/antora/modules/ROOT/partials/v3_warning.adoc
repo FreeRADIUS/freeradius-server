@@ -1,6 +1,6 @@
 [WARNING]
 ====
-This documentation is a work in progess.  This page is taken from the
+This documentation is a work in progress.  This page is taken from the
 version 3 documentation, and has not yet been updated for version 4.
 
 The general approach of this page is correct, but you will have to

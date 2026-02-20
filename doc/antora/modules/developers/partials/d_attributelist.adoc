@@ -36,7 +36,7 @@ DNS server.
 
 |https://datatracker.ietf.org/doc/html/rfc5090#section-3.14[Digest-Opaque]  | Contains the opaque parameter that is passed to the HTTP-style client.
 
-|https://datatracker.ietf.org/doc/html/rfc5090#section-3.8[Digest-Qop]  |Contins the `Quality of Protection` parameter that impacts the HTTP Digest calculation.
+|https://datatracker.ietf.org/doc/html/rfc5090#section-3.8[Digest-Qop]  |Contains the `Quality of Protection` parameter that impacts the HTTP Digest calculation.
 
 |https://datatracker.ietf.org/doc/html/rfc5090#section-3.2[Digest-Realm]    |Defines a protection space of the RADIUS server.
 

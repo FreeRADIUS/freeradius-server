@@ -135,7 +135,7 @@ made. Describe what you expected to happen and what actually happened.
 
 When filing a bug report, you need to include logs. Please attach the
 relevant debug logs or stack traces, along with any output from
-debugging you did. The following techniques are avaiable to help you
+debugging you did. The following techniques are available to help you
 debug FreeRADIUS:
 
 * xref:bugs/coredumps.adoc[Core Dumps]
