@@ -69,7 +69,7 @@ which are either supported, not yet implemented, or are ignored.
 
 === Supported Keywords
 
-The following keywords are have the same meaning and behavior as ISC DHCP.
+The following keywords are have the same meaning and behaviour as ISC DHCP.
 
 [options="header,autowidth"]
 |===
@@ -93,7 +93,7 @@ All other keywords are not supported.
 
 == Ignored Keywords
 
-The following keywords control ISC DHCP behavior such as network
+The following keywords control ISC DHCP behaviour such as network
 IP/port, LDAP access, etc.  These keywords are ignored even when
 the module is configured with `pedantic = true`
 

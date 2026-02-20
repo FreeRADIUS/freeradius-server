@@ -11,7 +11,7 @@ To use raduat successfully, follow these steps:
 . Create the test files.
 . Create the response filter files.
 . Run the tests.
-. Analyze the results.
+. Analyse the results.
 . Fix any issues and update the relevant files.
 . Re-run the tests.
 
@@ -182,7 +182,7 @@ Command line arguments can be found with ``raduat -h``. They can be used to spec
 | -H <host>[:port]	| Send test packets to specified host and port. Defaults = 127.0.0.1
 | -v			| Verbose mode
 | -p <number>			| Run tests in parallel. Defaults = 20
-| -s <secret>           | Shared secret                        
+| -s <secret>           | Shared secret
 | -c <cluster>		| Specify cluster type one of ($cluster_types)
 | -r <type>		| Specify server role one of ($role_types)
 |===

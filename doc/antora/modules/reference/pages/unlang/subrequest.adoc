@@ -16,7 +16,7 @@ xref:unlang/edit.adoc[editing] statements.
 Similarly, when a `subrequest` is done, attributes from the child
 `reply` list can be copied back to the parent.  Note that this copying
 _must_ be done via xref:unlang/edit.adoc[editing] statements, and is
-not done automatically by the server.  This behavior is necessary in
+not done automatically by the server.  This behaviour is necessary in
 order to provide the simplest and most flexible functionality in the
 server.
 

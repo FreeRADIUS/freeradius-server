@@ -20,7 +20,7 @@ The module has the following return codes:
 | fail        | there was no response to the proxied request
 | reject      | the module received a `nak` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`, `CoA-NAK`, etc.)
 | noop        | the module saw its own `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` attribute,
-                and is will not proxy the request.  This behavior
+                and is will not proxy the request.  This behaviour
                 prevents proxy loops.
 |===
 
@@ -104,7 +104,7 @@ together into a "pool".
 Much of the configuration here is similar to the old
 connection "pool" configuration in v3.  However, there are
 more configuration parameters, and therefore more control
-over the behavior.
+over the behaviour.
 
 
 start:: Connections to create during module instantiation.

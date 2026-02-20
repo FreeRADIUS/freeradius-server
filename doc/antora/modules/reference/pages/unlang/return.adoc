@@ -17,7 +17,7 @@ statement did not exist, then every xref:unlang/if.adoc[if] statement might need
 to have a matching xref:unlang/else.adoc[else] statement.
 
 The `return` statement will also exit a policy which is defined in the
-`policy { ... } ` subsection.  This behavior allows policies to be
+`policy { ... } ` subsection.  This behaviour allows policies to be
 treated as a function call.  Any `return` inside of the policy section
 will only return from that policy.  The `return` will _not_ return
 from the enclosing processing section which called the policy.

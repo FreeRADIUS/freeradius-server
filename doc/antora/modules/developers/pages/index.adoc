@@ -31,7 +31,7 @@ The gcov tool analyzes your programs. It helps you create efficient code and fin
 
 == xref:profile.adoc[Profiling]
 
-The gperftools (Google Performance Tools) help you find memory leaks, analyze performance issues, and optimize your code.
+The gperftools (Google Performance Tools) help you find memory leaks, analyse performance issues, and optimize your code.
 
 == xref:coccinelle.adoc[Semantic Patches]
 

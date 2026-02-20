@@ -31,7 +31,7 @@ independent of any database transactions.
 
 The `transaction` keyword sets its own return codes for `fail`,
 `invalid`, and `disallow` to be set the the priority `1`, instead of
-the default `return`.  This behavior means that a failed `transaction`
+the default `return`.  This behaviour means that a failed `transaction`
 will cause the interpreter to proceed to the next instruction, instead
 of returning.
 

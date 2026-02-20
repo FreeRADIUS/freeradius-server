@@ -157,7 +157,7 @@ When this file is processed, the first `DEFAULT` entry will match, and a `Reply-
 
 Even though the first `DEFAULT` entry matched, the reply _will not_ contain an attribute Reply-Message = "Default matched"`.  That is because on failure, the module will "undo" any changes it made, using the same framework as supported for the xref:reference:unlang/transaction.adoc[transaction] keyword.
 
-This behavior is different from previous versions, where all intermediate changes would remain, even if the module returned `fail`.
+This behaviour is different from previous versions, where all intermediate changes would remain, even if the module returned `fail`.
 
 === Recommendations
 
@@ -202,7 +202,7 @@ The default list for the reply items is `reply`.  Specifying another list means 
 
 ==== Structural Data Types
 
-Structural data types such as `tlv`, `group`, and `struct` are handled somewhat oddly in the `users` file.  The reason for this behavior is due to the limitations of the `users` file format.  In contrast, nested attributes are handled simply and clearly by the new xref:reference:unlang/edit.adoc[edit] functionality.  If there is any confusion or uncertainty about how the `users` file operates, we recommend just using the new xref:reference:unlang/edit.adoc[edit] functionality.
+Structural data types such as `tlv`, `group`, and `struct` are handled somewhat oddly in the `users` file.  The reason for this behaviour is due to the limitations of the `users` file format.  In contrast, nested attributes are handled simply and clearly by the new xref:reference:unlang/edit.adoc[edit] functionality.  If there is any confusion or uncertainty about how the `users` file operates, we recommend just using the new xref:reference:unlang/edit.adoc[edit] functionality.
 
 It is not possible to perform comparisons structural data types.  It is only possible to create and edit them.
 
@@ -295,7 +295,7 @@ As a special case for compatibility with previous versions, the `users` file als
 
 Due to limitations of the `users` file format, a value must be specified for these additional comparison operators.  The best practice is to use a meaningless special value `ANY`, such as `Framed-IP-Address !* ANY`.
 
-The assignment operators follow the behavior of the `user` file, and *do not* follow the new xref:reference:unlang/edit.adoc[editing operators] behavior.  The reason for this mismatch is that we prefer to not break backwards compatibility for the `users` file.  Both because of how how the operators work, and because using the new-style operators in the `users` format would require changing the `users` file format so much that it would be unrecognizable, and likely not usable.
+The assignment operators follow the behaviour of the `user` file, and *do not* follow the new xref:reference:unlang/edit.adoc[editing operators] behaviour.  The reason for this mismatch is that we prefer to not break backwards compatibility for the `users` file.  Both because of how how the operators work, and because using the new-style operators in the `users` format would require changing the `users` file format so much that it would be unrecognizable, and likely not usable.
 
 As a result, the attribute editing operators for the `users` file follow the old-style functionality, as documented below.
 

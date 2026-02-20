@@ -12,8 +12,8 @@ sophisticated.
 The goals for the v4 message API are:
 
 * allow it to handle non-RADIUS traffic,
-* minimize memory copying
-* minimize memory allocation / free
+* minimise memory copying
+* minimise memory allocation / free
 * avoid mutex locks where possible
 * be high performance
 

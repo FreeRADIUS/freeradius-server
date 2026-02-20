@@ -554,7 +554,7 @@ aaa accounting update periodic 15
 
 ### Hints and tips
 * If dual authentication is used with different logoff-period timer values, timer behaviour is unpredictable.
-In older versions of K series firmware, and all other branches, the logoff-period timer for both 802.1X and WMA was implemented using a single H/W timer. If different values were used for the logoff-period timers in 802.1X and WMA, the timer would reflect the value set by the last authenticator to be initialised. For predictable behavior it is highly recommended that the same value be used for both, if either of the authenticator logoff-period timers are changed from their default of 300 seconds.
+In older versions of K series firmware, and all other branches, the logoff-period timer for both 802.1X and WMA was implemented using a single H/W timer. If different values were used for the logoff-period timers in 802.1X and WMA, the timer would reflect the value set by the last authenticator to be initialised. For predictable behaviour it is highly recommended that the same value be used for both, if either of the authenticator logoff-period timers are changed from their default of 300 seconds.
 
 * The use of port-based 802.1X and WMA concurrently is not recommended, not well supported, and not allowed in recent versions of K branch software. It is recommended to set a 802.1X client limit of 1 or more when using concurrent authentication. This puts the port into client-based 802.1X mode.
 

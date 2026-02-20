@@ -53,7 +53,7 @@ catch timeout {
 
 The `timeout` can also be used inside of a
 xref:unlang/redundant.adoc[redundant] block.  This example has
-_almost_ the same behavior as above.  The difference here is that the
+_almost_ the same behaviour as above.  The difference here is that the
 `detail` file here is run on when _either_ the `sql` module fails, or
 the timeout is reached.
 

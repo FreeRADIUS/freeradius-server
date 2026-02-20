@@ -119,7 +119,7 @@ NOT used.
 .SECURITY CONFIGURATION
 
 There may be multiple methods of attacking on the server.  This
-section holds the configuration items which minimize the impact
+section holds the configuration items which minimise the impact
 of those attacks
 
 

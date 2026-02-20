@@ -29,7 +29,7 @@ modules {
         rcode = handled
     }
 }
-  
+
 #  Handle accounting packets
 accounting {
     # always log to detail, stopping if it fails
@@ -168,7 +168,7 @@ Some configurations may require using the same list of modules, in the same orde
 ----
 instantiate {
     ...
-  
+
     redundant sql1_or_2 {
         sql1
         sql2
@@ -222,7 +222,7 @@ authorize {
   }
 ----
 
-This is the same as the first example, with the behavior explicitly spelled out. Each SINGLE becomes its own section, containing a list of RESULTs that it may return and what ACTION should follow from them. So preprocess is called, and if it returns for example RLM_MODULE_REJECT, then the reject=return rule is applied, and the authorize{...} GROUP itself immediately returns RLM_MODULE_REJECT.
+This is the same as the first example, with the behaviour explicitly spelled out. Each SINGLE becomes its own section, containing a list of RESULTs that it may return and what ACTION should follow from them. So preprocess is called, and if it returns for example RLM_MODULE_REJECT, then the reject=return rule is applied, and the authorize{...} GROUP itself immediately returns RLM_MODULE_REJECT.
 
 If preprocess returns RLM_MODULE_NOOP, the corresponding ACTION is "2". An integer ACTION serves two purposes - first, it tells the parent GROUP to go on to the next module. Second, it is a hint as to how desirable this RESULT is as a candidate for the GROUP's own RESULT. So files is called... suppose it returns RLM_MODULE_NOTFOUND. The ACTION for notfound inside the files{...} block is "1". We have now reached the end of the authorize{...} GROUP and we look at the RESULTs we accumulated along the way - there is a noop with preference level 2, and a notfound with preference level 1, so the authorize{...} GROUP as a whole returns RLM_MODULE_NOOP, which makes sense because to say the user was not found at all would be a lie, since preprocess apparently found him, or else it would have returned RLM_MODULE_NOTFOUND too.
 

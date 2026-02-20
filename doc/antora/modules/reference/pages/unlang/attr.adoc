@@ -189,7 +189,7 @@ FreeRADIUS version 3 used the `&` character for attribute references.
 However, the `&` character was sometimes not allowed, such as in the
 xref:reference:raddb/mods-config/files/users.adoc[users] file.  In
 other cases such as conditions, it was allowed by not required.  This
-behavior made the configuration more confusing.
+behaviour made the configuration more confusing.
 
 Version 4 fixes that by dropping the `&` entirely.  It is allowed for
 backwards compatibility, but if used it is ignored.  All of the

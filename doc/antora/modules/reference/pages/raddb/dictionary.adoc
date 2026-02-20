@@ -84,7 +84,7 @@ required, or add your own.
 == v3 Compatibility and Migration
 
 By default, the server does NOT load the v3 names.  While this
-behavior is done to simplify the server configuration, it can also
+behaviour is done to simplify the server configuration, it can also
 make migration more difficult.
 
 If your system is using Vendor-Specific attributes from a

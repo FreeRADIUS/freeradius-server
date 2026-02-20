@@ -85,7 +85,7 @@ if User-Name == "bob" {
 }
 ----
 
-The same behavior applies to conditions with complex statements using
+The same behaviour applies to conditions with complex statements using
 `&` and `||`.  So long as the text between the `if` and the `{` is a
 valid condition, it will be parsed correctly.
 

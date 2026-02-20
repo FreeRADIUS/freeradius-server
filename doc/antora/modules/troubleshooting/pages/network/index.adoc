@@ -54,7 +54,7 @@ elsewhere.  Things you should check include:
 * is the server OS receiving packets?
   * i.e. use `tcpdump` or `wireshark` to verify that the packets are received.
 * does the OS have a firewall which is blocking the application from receiving packets?
-  * packet analyzers like `wireshark` can often see packets before the firewall drops them!
+  * packet analysers like `wireshark` can often see packets before the firewall drops them!
 * is something like SeLinux preventing the application from receiving packets?
 
 All of these should be checked before checking any FreeRADIUS configuration.

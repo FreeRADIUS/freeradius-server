@@ -30,7 +30,7 @@ Unlike version 3, attribute editing can result in a `fail` return
 code.  That is, edits either return `noop` on success, or `fail` on failure.
 
 In most cases, an edit failure will result in the processing section
-exiting, and returning `fail`.  This behavior can be overridden with a xref:unlang/transaction.adoc[transaction], or a xref:unlang/try.adoc[try] / xref:unlang/catch.adoc[catch] block.
+exiting, and returning `fail`.  This behaviour can be overridden with a xref:unlang/transaction.adoc[transaction], or a xref:unlang/try.adoc[try] / xref:unlang/catch.adoc[catch] block.
 
 An edit statement has the following standard syntax:
 

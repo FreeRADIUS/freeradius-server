@@ -9,7 +9,7 @@ The most important thing to know about these guides is that _method is
 more important than memorization_.  That is, there is no one piece of
 information you can remember that will somehow solve all problems.
 FreeRADIUS has extensive documentation, and there is no need to
-memorize it.
+memorise it.
 
 Instead of searching for the one piece of information which will
 somehow fix the problem, you should carefully troubleshoot the issues

@@ -58,7 +58,7 @@ brute-force every PSK.
 
 This is a limitation of how DPSK works.  There is no way to make it
 better.  The only thing we've done is to add a cache which can help
-to minimize the amount of brute-force attempts.
+to minimise the amount of brute-force attempts.
 
 
 == Configuration Settings

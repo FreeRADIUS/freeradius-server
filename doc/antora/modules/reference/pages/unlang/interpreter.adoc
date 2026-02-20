@@ -85,9 +85,9 @@ process that list.
 
 One key difference between normal programming languages and Unlang is
 the concept of xref:unlang/module.adoc[modules].  The modules are
-treated as keywords in the language which contain complex behavior.
+treated as keywords in the language which contain complex behaviour.
 For example, the xref:reference:raddb/mods-available/sql.adoc[sql] module has a
-complex set of pre-defined behavior, depending on what kind of packet
+complex set of pre-defined behaviour, depending on what kind of packet
 it is processing.
 
 The ability to place complex logic into a module means that common
@@ -116,7 +116,7 @@ policies.
 
 The server includes dozens of
 xref:reference:raddb/mods-available/index.adoc[modules], each of which defines a
-complex set of behavior.  Please see the
+complex set of behaviour.  Please see the
 xref:reference:raddb/mods-available/index.adoc[modules] documentation for more
 information.
 

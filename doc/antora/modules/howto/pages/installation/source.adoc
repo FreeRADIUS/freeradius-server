@@ -64,7 +64,7 @@ install.
 If you see a warning message about files that could not be
 installed, then you *must* ensure that the new server is using the
 new configuration files and not the old configuration files, as
-this may cause undesired behavior and failure to operate correctly.
+this may cause undesired behaviour and failure to operate correctly.
 
 The initial output from running in xref:ROOT:debugging/radiusd_X.adoc[debugging mode]
 will tell you which configuration files are being used. See
