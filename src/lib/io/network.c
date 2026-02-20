@@ -1943,7 +1943,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		return NULL;
 	}
 
-	nr->control = fr_control_create(nr, el, nr->aq_control);
+	nr->control = fr_control_create(nr, el, nr->aq_control, 6);
 	if (!nr->control) {
 		fr_strerror_const_push("Failed creating control queue");
 	fail:
@@ -1965,28 +1965,33 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 		goto fail;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
 		fr_strerror_const_push("Failed adding channel callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_LISTEN, nr, fr_network_listen_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_LISTEN, nr, fr_network_listen_callback) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
 		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_started_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_started_callback) < 0) {
 		fr_strerror_const_push("Failed adding worker callback");
 		goto fail2;
 	}
 
-	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
+	if (fr_control_callback_add(&nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
 		fr_strerror_const_push("Failed adding packet injection callback");
+		goto fail2;
+	}
+
+	if (fr_control_open(nr->control) < 0) {
+		fr_strerror_const_push("Failed opening control queue");
 		goto fail2;
 	}
 

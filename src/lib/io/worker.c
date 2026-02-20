@@ -1416,19 +1416,24 @@ nomem:
 		return NULL;
 	}
 
-	worker->control = fr_control_create(worker, el, worker->aq_control);
+	worker->control = fr_control_create(worker, el, worker->aq_control, 7);
 	if (!worker->control) {
 		fr_strerror_const_push("Failed creating control plane");
 		goto fail;
 	}
 
-	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
+	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
 		fr_strerror_const_push("Failed adding control channel");
 		goto fail;
 	}
 
-	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_LISTEN_DEAD, worker, worker_listen_cancel_callback) < 0) {
+	if (fr_control_callback_add(&worker->control, FR_CONTROL_ID_LISTEN_DEAD, worker, worker_listen_cancel_callback) < 0) {
 		fr_strerror_const_push("Failed adding callback for listeners");
+		goto fail;
+	}
+
+	if (fr_control_open(worker->control) < 0) {
+		fr_strerror_const_push("Failed opening control plane");
 		goto fail;
 	}
 
