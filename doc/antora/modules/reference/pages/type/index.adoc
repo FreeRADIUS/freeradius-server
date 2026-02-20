@@ -20,7 +20,7 @@ type assigned to the attribute.
 
 The result is that in most cases, it is not necessary to know the name
 of the data types.  It is possible to write values in the format you
-expect, and he server will do "the right thing" when interpreting the
+expect, and the server will do "the right thing" when interpreting the
 values.
 
 .Attributes with Different Data Types

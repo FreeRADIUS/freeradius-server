@@ -9,7 +9,7 @@ Python module.
 path_include_default::
 
 If "yes", retain the default search path.  Any additional search
-path components will be prepended to the the default search path.
+path components will be prepended to the default search path.
 
 
 == Default Configuration

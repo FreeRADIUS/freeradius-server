@@ -687,7 +687,7 @@ All of the other configuration sections like:
   * `process Access-Request {}`
   * `process Accounting-Request {}`
 
-Have been moved to the the file:
+Have been moved to the file:
 
 `sites-available/default`
 

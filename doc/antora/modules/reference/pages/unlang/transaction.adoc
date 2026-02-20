@@ -30,7 +30,7 @@ For example, any data which was inserted into `sql` during a
 independent of any database transactions.
 
 The `transaction` keyword sets its own return codes for `fail`,
-`invalid`, and `disallow` to be set the the priority `1`, instead of
+`invalid`, and `disallow` to be set the priority `1`, instead of
 the default `return`.  This behaviour means that a failed `transaction`
 will cause the interpreter to proceed to the next instruction, instead
 of returning.

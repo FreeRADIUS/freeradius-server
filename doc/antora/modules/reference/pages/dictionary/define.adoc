@@ -38,7 +38,7 @@ Common flags and meanings
 | `ref=<ref>`  | For `group` types, the referenced attributes will be allowed in the group
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----

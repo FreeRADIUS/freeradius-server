@@ -46,7 +46,7 @@ Common flags and meanings
 | `key`        | This member is a "key" type.  The structure can have different children of type `union`, depending on the value of the key.
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----

@@ -30,7 +30,7 @@ Many sites run multiple radius servers; at least one primary and one
 backup server. When the primary goes down, most NASes will detect that
 and switch to the backup server.
 
-That change will cause your accounting packets to go the the backup
+That change will cause your accounting packets to go the backup
 server - and some NASes will not switch back to the primary server
 when it comes back up.
 
