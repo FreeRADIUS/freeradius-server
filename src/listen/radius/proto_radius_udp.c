@@ -157,8 +157,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	}
 
 	if (packet_len > inst->max_packet_size) {
-		proto_radius_log(li, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
-				 "Received packet length %zu");
+		proto_radius_log(li, FR_RADIUS_FAIL_MAX_LENGTH_PACKET, &address->socket,
+				 "Received packet length %zu", packet_len);
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
@@ -325,6 +325,7 @@ static int mod_open(fr_listen_t *li)
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			close(sockfd);
 			cf_log_err(li->cs, "Failed to set socket 'reuseport': %s", fr_syserror(errno));
 			return -1;
 		}

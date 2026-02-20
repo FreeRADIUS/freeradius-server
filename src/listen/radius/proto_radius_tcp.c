@@ -363,10 +363,11 @@ static int mod_open(fr_listen_t *li)
 	thread->sockfd = sockfd;
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_TCP, 0, &ipaddr, port);
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
 					     NULL, 0,
-					     &inst->ipaddr, inst->port,
+					     &ipaddr, port,
 					     inst->interface);
 
 	return 0;

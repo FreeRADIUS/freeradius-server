@@ -234,7 +234,7 @@ void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason,
 	if (!DEBUG_ENABLED2) return;
 
 	va_start(ap, fmt);
-	if (*fmt) msg = talloc_asprintf(NULL, fmt, ap);
+	if (*fmt) msg = talloc_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	if (sock) {
@@ -867,7 +867,10 @@ static int mod_load(void)
 	}
 
 
-	if (!xlat_func_register(NULL, "radius.packet.vector", packet_vector_xlat, FR_TYPE_OCTETS)) return -1;
+	if (!xlat_func_register(NULL, "radius.packet.vector", packet_vector_xlat, FR_TYPE_OCTETS)) {
+		fr_radius_global_free();
+		return -1;
+	}
 
 	return 0;
 }
