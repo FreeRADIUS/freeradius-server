@@ -265,7 +265,7 @@ int		fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_obje
 
 json_object	*json_object_from_value_box(fr_value_box_t const *data);
 
-fr_slen_t	fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool include_quotes);
+fr_slen_t	fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool include_quotes);
 
 void		fr_json_version_print(void);
 

@@ -289,7 +289,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
  *	- <0 on error.
  *	- >= number of bytes written.
  */
-fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool include_quotes)
+fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t const *vb, bool include_quotes)
 {
 	fr_sbuff_t our_out = FR_SBUFF(out);
 
