@@ -21,7 +21,7 @@ controller.
 These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
 have the unix/md5/sha crypt of your users password.
 
-See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatability chart] for more information.
+See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
 
 == EAP-MSCHAPv2
 

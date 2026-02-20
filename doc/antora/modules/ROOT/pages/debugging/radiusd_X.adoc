@@ -32,7 +32,7 @@ Look for messages like *Error* or *Warning*.  If you are running the server in a
 
 The next sections are huge and have been broken apart into two sections so it's easier for you to read though and understand the steps the RADIUS server goes through.
 
-Essentially, the first section is xref:debugging/startup.adoc[*Startup Text*] where the RADIUS server reads, loads, and initilizes itself through the following processes:
+Essentially, the first section is xref:debugging/startup.adoc[*Startup Text*] where the RADIUS server reads, loads, and initializes itself through the following processes:
 
 . Reads the configuration files.
 . Reads the dictionaries.

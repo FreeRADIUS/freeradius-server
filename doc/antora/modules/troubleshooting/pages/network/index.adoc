@@ -57,7 +57,7 @@ elsewhere.  Things you should check include:
   * packet analyzers like `wireshark` can often see packets before the firewall drops them!
 * is something like SeLinux preventing the application from receiving packets?
 
-All of these should be checked beforing checking any FreeRADIUS configuration.
+All of these should be checked before checking any FreeRADIUS configuration.
 
 == Receiving Packets
 

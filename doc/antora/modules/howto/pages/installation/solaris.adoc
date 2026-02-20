@@ -42,7 +42,7 @@ Then run the following command as root. It may take several minutes to rebuild t
 ----
 
 === Solaris Packages
-Solaris 10 has versions of Openssl and OpenLDAP installed, however they do not fullfill the compile requirements for freeradius functionality.
+Solaris 10 has versions of Openssl and OpenLDAP installed, however they do not fulfill the compile requirements for freeradius functionality.
 You should go to http://sunfreeware.com/ and get the packages there, and also resolve any unmet dependencies.
 
 If you have other modules you are concerned with that are not building correctly, don't trust the OS packages.  Look for equiv packages and try the build with them installed as well.
@@ -68,7 +68,7 @@ The two locations in the above path are for access to the ``libgcc_s.so.1`` libr
 Notes for building on Solaris. (SPARC or x86 shouldn't matter)
 
 === Specific info for this method
-* Many packes are available from [Blastwave](http://www.blastwave.org) which installs everything into the base ``/opt/csw``.
+* Many packages are available from [Blastwave](http://www.blastwave.org) which installs everything into the base ``/opt/csw``.
 * For this MySQL was built and installed in ``/usr/local``.
 * Solaris uses a different runtime link loading method than linux (which uses ldconfig). For this reason, you either set -R (runtime flags) alongside -L flags during compilation and loading OR set ``LD_LIBRARY_PATH`` at runtime, which then defines a pathlike structure for loading libs at runtime. 
 If you build most server software from source, -R is recommended if you want to know what, which and where stuff goes and which versions of of libraries are linked to.
@@ -131,7 +131,7 @@ make install
 ```
 
 #### OpenSSL
-Only needed if you want seperate OpenSSL libraries
+Only needed if you want separate OpenSSL libraries
 Download[ OpenSSL sources](http://openssl.org/source/) and compile with
 ```bash
 ./Configure solaris-sparcv9-cc -m32 shared --openssldir=/usr/local/ssl --prefix=/usr/local/ssl

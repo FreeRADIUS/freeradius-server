@@ -186,9 +186,9 @@ Where xref:unlang/subrequest.adoc[subrequest] calls are used, the
 `finally` section in the parent will not be run until the
 subrequest has finished.  However, a timeout in the parent will cause
 the child xref:unlang/subrequest.adoc[subrequest] to be forcibly
-stopped, but the childs `finally` section will still run.
+stopped, but the child's `finally` section will still run.
 
-Timeouts in `finally` sections of subrequests should therfore
+Timeouts in `finally` sections of subrequests should therefore
 be set extremely short, in order to ensure that the parent request
 isn't cancelled due to an excessively long running subrequest.
 

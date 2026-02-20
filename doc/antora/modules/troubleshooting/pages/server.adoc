@@ -218,10 +218,10 @@ Issue signals to radiusd using the `svc` program as shown by the examples below.
 |To hang-up (HUP) or restart the service and reload the config
 |svc -h /service/radiusd
 
-|To temporarly disable or down the server
+|To temporarily disable or down the server
 |svc -d /service/radiusd
 
-|To reenable or bring the service back online
+|To re-enable or bring the service back online
 |svc -u /service/radiusd
 |===
 

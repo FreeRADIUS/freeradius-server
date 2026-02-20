@@ -82,7 +82,7 @@ If the module thinks has a possibility of authenticating the user, it'll say:
 > but my pal in the Authenticate section can!
 > Hey, set the Auth-Type to me!
 
-TThe module performs no action if it doesn't recognize anything in the request.  If the module knows it doesn't need to do lookups, the module also does nothing.
+The module performs no action if it doesn't recognize anything in the request.  If the module knows it doesn't need to do lookups, the module also does nothing.
 
 == Authenticate a user - authenticate {}
 
@@ -115,7 +115,7 @@ But WAIT! What if the client sends a MSCHAP request? What does the RADIUS server
 > Well, this difficult and not the same as previous request
 > That client has made this difficult. I'm limited by some constraints!
 
-In this case, the mschap module looks at the request, and finds the MS-CHAP attributes.  It sets the *Auth-Type* to itself (mschap).  A database module (such as LDAP, above) gets the "known good" password, and adds it to the request.  The mschap module is then run for authentication.  It looks for either a clear text password or nt-hash. See an explanation for this limitation is explained in the xref:protocol/authproto.adoc#Proto-Password-Compat[Protocol Password Compatibilty] table. If one of those hasn't been added by a database, the mschap module says:
+In this case, the mschap module looks at the request, and finds the MS-CHAP attributes.  It sets the *Auth-Type* to itself (mschap).  A database module (such as LDAP, above) gets the "known good" password, and adds it to the request.  The mschap module is then run for authentication.  It looks for either a clear text password or nt-hash. See an explanation for this limitation is explained in the xref:protocol/authproto.adoc#Proto-Password-Compat[Protocol Password Compatibility] table. If one of those hasn't been added by a database, the mschap module says:
 
 > Sorry, I can't authenticate the user,
 > because I don't have the information I need to validate MSCHAP.

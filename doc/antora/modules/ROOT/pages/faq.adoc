@@ -75,7 +75,7 @@ Packet of Disconnect is the standard and recommended method to disconnect users.
 .SNMP
 [%collapsible]
 ====
-Many NAS support SNMP which can usually (among other things) be used to disconnect users, however implimentation details vary. Read your NAS documentation to find out whether it supports this, and which MIB to use.
+Many NAS support SNMP which can usually (among other things) be used to disconnect users, however implementation details vary. Read your NAS documentation to find out whether it supports this, and which MIB to use.
 ====
 
 .Radkill
@@ -210,7 +210,7 @@ User entry in `users` file example
         Fall-Through = Yes
 ====
 
-.CISCO configuation example
+.CISCO configuration example
 [%collapsible]
 ====
 	aaa authorisation network default radius
@@ -222,7 +222,7 @@ User entry in `users` file example
 The access list 160 gets applied on inbound packets and 161 on outbound packets.
 ====
 
-=== Can I use Privledged Access Management (PAM) with FreeRADIUS?
+=== Can I use Privileged Access Management (PAM) with FreeRADIUS?
 
 Yes. Retrieve the redhat/radiusd.pam file from the distribution and save it as a new file in /etc/pam.d/radiusd.
 

@@ -1,4 +1,4 @@
-= Miscellanous functions
+= Miscellaneous functions
 
 In addition to storing attribute references, the server has a number
 of built-in expansions.  These expansions act largely as functions

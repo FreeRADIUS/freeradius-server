@@ -14,7 +14,7 @@ new features could use 3.2.x.
 We are following a similar release management process with v4, based
 on versions:
 
-Major:: The major version number, e.g. "4" for the forseeable future.
+Major:: The major version number, e.g. "4" for the foreseeable future.
 
 Minor:: The minor version number, e.g. 4.0, 4.1, 4.2, etc.
 
@@ -187,7 +187,7 @@ if peer review is needed.
 The main criteria for requiring peer review are:
 - Will the change break backwards compatibility (this is fine, but
   needs to be understood and documented).
-- Is it a code area with many untested paths, or poorly structed code
+- Is it a code area with many untested paths, or poorly structured code
   that's hard to reason about.
 - Is the code likely to have widespread impacts on the rest of the code
   base, will it be difficult to change later, will it have widespread
@@ -195,7 +195,7 @@ The main criteria for requiring peer review are:
 
 .Examples of peer reviewed changes
 - Major refactoring over 1000 +/- changes LoC
-- Changes to parsing that would break comptibility with previous syntax.
+- Changes to parsing that would break compatibility with previous syntax.
 - Changes to the behaviour of keywords that are not backwards compatible.
 - Any alterations to state machines i.e. new states, and changes to 
   pre/post conditions.

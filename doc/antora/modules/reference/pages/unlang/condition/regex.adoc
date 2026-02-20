@@ -111,7 +111,7 @@ library the server was built with.  Multiple flags may be specified per
 When the `=~` or `!~` operators are used, then parentheses in the regular
 expression will sub capture groups, which contain part of the subject string.
 
-The xref:xlat/misc/misc.adoc#_regex_match[%regex.match()] function expands to the portion of the subject tha
+The xref:xlat/misc/misc.adoc#_regex_match[%regex.match()] function expands to the portion of the subject that
 matched. The expansions +
 `%regex.match(1)`..`%regex.match(32)` expand to the contents of any subcapture groups.
 

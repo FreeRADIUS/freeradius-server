@@ -1,7 +1,7 @@
 = CoA Examples
 
-Upon receiving a CoA or Disconect packet the server identifies all active
-sessions matching the provided User-Name and/or Acct-Session-Id attributes. The server sends a subrequest packet for every identified session to the correponding NAS.
+Upon receiving a CoA or Disconnect packet the server identifies all active
+sessions matching the provided User-Name and/or Acct-Session-Id attributes. The server sends a subrequest packet for every identified session to the corresponding NAS.
 
 To disconnect a specific session of a user:
 ```

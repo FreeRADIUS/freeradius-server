@@ -153,7 +153,7 @@ Received Access-Accept Id 90 from 127.0.0.1:46c9 to 127.0.0.1:57352 length 152
 
 Sending `0x01` requests authentication statistics, and `0x02`
 requests accounting stats. To get both in one result, add them
-together, so we requst `0x03`. In this example we send decimal
+together, so we request `0x03`. In this example we send decimal
 rather than hexadecimal.
 
 [source,shell]

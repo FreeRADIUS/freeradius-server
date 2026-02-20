@@ -8,7 +8,7 @@ of predefined xref:type/index.adoc[data types].
 
 == Limitations
 
-The `unlang` interpreter allows adminstrators to write rules which do
+The `unlang` interpreter allows administrators to write rules which do
 the following:
 
 * look at packet contents, via predefined field names which are
@@ -55,13 +55,13 @@ recv foo {
 The processing sections are defined in
 xref:raddb/sites-available/index.adoc[virtual servers].  The
 xref:raddb/sites-available/index.adoc[virtual server] documentation
-describes the larger context of which packets are recieved, and when
+describes the larger context of which packets are received, and when
 they are received.  This section concentrates on the more narrow topic
 `unlang` itself.
 
 == Receiving Requests
 
-When the server recieves a packet, the data is decoded and placed as
+When the server receives a packet, the data is decoded and placed as
 xref:unlang/attr.adoc[attributes] into the `request`
 xref:unlang/list.adoc[list].  The packet is then run through a
 _processing section_ of a virtual server, which is typically named for
@@ -109,7 +109,7 @@ The benefit of this approach is that the _policies_ are simple:
 "allocate an IP, if that doesn't work, send a reject".  However, the
 _details_ of those policies are hidden behind the
 xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration.
-This abstraction allows the underyling
+This abstraction allows the underlying
 xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration to
 be changed from MySQL to PostgreSQL without affecting any of the
 policies.

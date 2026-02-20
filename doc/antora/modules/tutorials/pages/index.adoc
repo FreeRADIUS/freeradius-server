@@ -1,6 +1,6 @@
 = Tutorials
 
-The tutorials are here to help. They are divided into three main sections so you can pick and choose what exactly you need. Alternatively, you can start on the first tutorial and work you way through each section and tutorial sequentialy.
+The tutorials are here to help. They are divided into three main sections so you can pick and choose what exactly you need. Alternatively, you can start on the first tutorial and work you way through each section and tutorial sequentially.
 
 == xref:basic.adoc[Basic Configuration]
 

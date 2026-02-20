@@ -52,7 +52,7 @@ Review the steps to push or update a release.
 == xref:buffers.adoc[Buffer Management]
 
 FreeRADIUS provides APIs to handle xref:dbuff.adoc[Data] and
-xref:sbuff.adoc[String] buffers enabling devlopers to streamline their coding and processes.
+xref:sbuff.adoc[String] buffers enabling developers to streamline their coding and processes.
 
 == More Information
 

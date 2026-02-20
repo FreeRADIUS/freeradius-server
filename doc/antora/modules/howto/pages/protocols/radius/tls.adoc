@@ -45,7 +45,7 @@ backend service, unless it is otherwise made available. Identifying the
 originator of connections is often necessary for security purposes and for
 request processing.
 
-Whilst many application protcols support headers that allow proxies to preserve
+Whilst many application protocols support headers that allow proxies to preserve
 connection information these are not helpful in the context of Layer 4
 proxying: The process of populating headers requires knowledge of the
 application protocol to re-encode requests as they are transmitted between the

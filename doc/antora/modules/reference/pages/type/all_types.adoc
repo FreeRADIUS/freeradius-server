@@ -117,7 +117,7 @@ The `vendor` can only contain child attributes which have been defined by the ve
 The `vendor` only encodes the child attributes which have been created
 and stored within the `vendor`.  The order of children does not
 matter.  In practice, the `vendor` attributes are usually encoded with
-a 32-bit vendor ID, which identies the vendor.
+a 32-bit vendor ID, which identifies the vendor.
 +
 A `vendor` data type can only be a child of a `vsa` data type.
 

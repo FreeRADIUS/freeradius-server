@@ -283,7 +283,7 @@ change at a time and restart your server.
 == More information
 
 The https://www.inkbridge.io/[InkBridge Networks] FreeRADIUS experts
-are available to help you with your software deplyments,
+are available to help you with your software deployments,
 configurations, and ongoing support. See xref:gethelp.adoc[Get Help]
 for more information and details.
 

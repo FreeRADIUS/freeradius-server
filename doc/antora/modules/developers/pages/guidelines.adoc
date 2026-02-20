@@ -43,7 +43,7 @@ Shorten sentences or break into 2 sentences to ensure conciseness.
 
 All landing pages (H1 top level sections) need introductory paragraph and explanation of what the section contains.
 
-Add xrefs to all the subsections contained in theis section on the top level landing page. Users can select a topic from main page while reading or use the navigation panel on left side.
+Add xrefs to all the subsections contained in this section on the top level landing page. Users can select a topic from main page while reading or use the navigation panel on left side.
 
 === Layout
 
@@ -86,7 +86,7 @@ Only one space at the end of a sentence is required.
 
 === Spelling
 
-International English - s is used instead of z in words like authorisation vs authorization.  By matching/spelling our words the same as supporting docs, e.g. company website or FR software, our readers' comphrehension increases. The reader isn't decoding what terms are if splet the same, or if 2 terms spelt differently mean the same thing. An example is authorise versus authorize.
+International English - s is used instead of z in words like authorisation vs authorization.  By matching/spelling our words the same as supporting docs, e.g. company website or FR software, our readers' comphrehension increases. The reader isn't decoding what terms are if spelt the same, or if 2 terms spelt differently mean the same thing. An example is authorise versus authorize.
 
 === Tables
 

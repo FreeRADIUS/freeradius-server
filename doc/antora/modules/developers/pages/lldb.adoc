@@ -79,7 +79,7 @@ Given all that, you just import the file containing the source. But must one do 
 * https://discourse.llvm.org/c/subprojects/lldb/8[The lldb forum]
 * https://discord.com/invite/xS7Z362[The lldb Discord server]
 
-There are various lldb "cheat sheets", other tutorials, and answered questons on sites such as StackOverflow. Those can be out of date, but may contain useful information. For example, one such answered question mentioned that the `script` command has both a one-line form and a multi-line form.
+There are various lldb "cheat sheets", other tutorials, and answered questions on sites such as StackOverflow. Those can be out of date, but may contain useful information. For example, one such answered question mentioned that the `script` command has both a one-line form and a multi-line form.
 
 
 

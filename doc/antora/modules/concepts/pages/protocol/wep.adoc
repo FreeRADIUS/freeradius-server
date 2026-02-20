@@ -65,7 +65,7 @@ The most widely recommended solution to WEP security problems is to switch to WP
 
 ==External links==
 
-*[http://www.profit42.com/index.php/2006/08/02/92/ This simple but detailled guide describes how to crack wep step by step]
+*[http://www.profit42.com/index.php/2006/08/02/92/ This simple but detailed guide describes how to crack wep step by step]
 *[http://www.isaac.cs.berkeley.edu/isaac/wep-faq.html (In)Security of the WEP algorithm]
 *[http://www.drizzle.com/~aboba/IEEE/rc4_ksaproc.pdf Weaknesses in the Key Scheduling Algorithm of RC4]
 *[http://www.cs.virginia.edu/sammyg/CS551/node12.html WEP Weaknesses]

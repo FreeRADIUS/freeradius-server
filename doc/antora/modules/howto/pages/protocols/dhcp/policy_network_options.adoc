@@ -211,7 +211,7 @@ that has been offered.
 
 Ensure that the DHCP Offer responses contain unique IP addresses. Ensure that
 when these requests are resent within the lifetime of the initial offer that
-the reponses to the subsequent replies contain the original IP address that was
+the responses to the subsequent replies contain the original IP address that was
 in the initial offer to the device.
 
 Additionally, ensure that the DHCP Offers contain any network-specific

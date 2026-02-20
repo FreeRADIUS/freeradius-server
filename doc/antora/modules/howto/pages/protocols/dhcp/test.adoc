@@ -120,7 +120,7 @@ are being generated.
 
 You can now change the content of the sample DHCP request by editing the
 `dhcp-packet.txt` file and re-run the above command to see the server's reply.
-You should examine the DHCP dictionary distrubuted with FreeRADIUS (usually
+You should examine the DHCP dictionary distributed with FreeRADIUS (usually
 `/usr/share/freeradius/dictionary/dhcpv4/`) which provides the list of all of the
 DHCP parameters ("attributes") understood by FreeRADIUS.
 

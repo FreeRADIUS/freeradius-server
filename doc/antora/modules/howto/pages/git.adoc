@@ -87,7 +87,7 @@ Clone the servers remote repository to your local machine:
 
 [source,bash]
 ----
-mkdir <respositories>
+mkdir <repositories>
 cd <repositories>
 git clone ssh://<user>@<server>/<config_dir>/raddb
 ----

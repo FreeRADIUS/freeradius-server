@@ -83,7 +83,7 @@ take the time to report whether you had success with the new package
 or not, this helps the maintainer to know if a package is ready to be
 promoted from testing to stable.
 
-=== How do I report success/failure for a package uprade in Fedora? 
+=== How do I report success/failure for a package upgrade in Fedora? 
 
 Use Bodhi, the Fedora Update System
 (https://admin.fedoraproject.org/updates). Locate the package via the

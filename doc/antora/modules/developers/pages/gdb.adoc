@@ -48,7 +48,7 @@ and set that validity member to indicate whether the invocation succeeded. gdb t
 
 For our immediate purpose, calling existing FreeRADIUS functions to display data structures in a consistent fashion, we build up the command and use the gdb `run` command, because the functions themselves write to stderr.
 
-Before using the new command, gdb will have to execute the commmand
+Before using the new command, gdb will have to execute the command
 
 [source]
 ----

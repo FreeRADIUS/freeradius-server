@@ -5,7 +5,7 @@ should skip this section if you are not using Traefik as your proxy.
 
 Installing Traefik is beyond the scope of this guide. It is typically installed
 as a service mesh router within a Docker or Kubernetes environment using
-offical Docker images.
+official Docker images.
 
 Traefik configuration has two components of interest:
 

@@ -9,7 +9,7 @@ See [[rlm_ldap]] for more details on how to configure the ldap module to do that
 There are a few things that the administrator should watch out for though:
 
 * Add the chap module in the authorize section of radiusd.conf before any other modules which set the Auth-Type attribute. That way the chap module can check if the current request contains a PAP or CHAP password and if it contains the former then it will set the Auth-Type to CHAP.
-* The := operator should not be used in the users file to set the Auth-Type since it will set the Auth-Type regardless of wether it has already being set to some other value.
+* The := operator should not be used in the users file to set the Auth-Type since it will set the Auth-Type regardless of whether it has already being set to some other value.
 * An 'authtype CHAP' subcomponent should be added in the authenticate section of [[radiusd.conf]] which will contain the chap module.
 
 
@@ -87,7 +87,7 @@ WHERE p.expiry_time > now() AND a.acctstoptime IS NULL
 ORDER BY acctupdatetime NULLS FIRST;
 ```
 
-Once you are satisfied that the results represent only those IP addresess not
+Once you are satisfied that the results represent only those IP addresses not
 belonging to a current session that you intend to release, wrap the above query
 in an update:
 

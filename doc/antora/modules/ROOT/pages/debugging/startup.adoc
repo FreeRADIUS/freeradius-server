@@ -286,7 +286,7 @@ The server then creates `Auth-Type`, as set in the virtual servers.  These `Auth
 
 ## Modules
 
-When the server read the module configuration file above (from `mods-enabled`), that meant just reding the contents of the file.  It is now ready to load the dynamic library which reads that configuration, and which parses the configuration to determine what to do with it.
+When the server read the module configuration file above (from `mods-enabled`), that meant just reading the contents of the file.  It is now ready to load the dynamic library which reads that configuration, and which parses the configuration to determine what to do with it.
 
 Each module will print out it's configuration, along with any errors or warnings it sees when it is loading itself.
 

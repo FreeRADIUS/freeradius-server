@@ -59,7 +59,7 @@ In addition:
   * Some supplicants (notable MacOS) require that the certificate include a critical BasicConstraint `CA:FALSE`.
   * Some supplicants store and check the certificate Subject CN. Others use the Subject Alternate Name. Therefore the same (case-sensitive) server name in the form of an FQDN (not necessarily matching the server's hostname) should be used as *both* the CN and as a SAN.
 
-When replacing certificates, ensure that the replacement certificates match any explict requirements that are configured on the supplicants of all end devices.
+When replacing certificates, ensure that the replacement certificates match any explicit requirements that are configured on the supplicants of all end devices.
 
 For example, specific names (or domain suffixes) expected in the CN and/or
 Subject Alternative Names may be part of requirements that have been pinned in
@@ -75,7 +75,7 @@ When using "mutual TLS", FreeRADIUS needs to know which CAs to trust to authenti
 
 The easiest way to manage this is to put any CAs that must be trusted in a single file (named `ca_file`). Alternatively, the trusted certificates can be placed in a directory (named `ca_dir`).
 
-CAs used for signing end device certificates should NOT be public CAs. Trusting public CAs usually means that an end device presenting any certificate signed by that same CA is trusted. If client authentication uses a public CA, the acceptable client certificates must be resticted (using the `check_cert_cn` option or the `check-eap-tls` virtual server).
+CAs used for signing end device certificates should NOT be public CAs. Trusting public CAs usually means that an end device presenting any certificate signed by that same CA is trusted. If client authentication uses a public CA, the acceptable client certificates must be restricted (using the `check_cert_cn` option or the `check-eap-tls` virtual server).
 
 However, a self-signed CA used only for EAP authentication, whose private key is known only to the organization, doesn't have this problem.
 
@@ -145,7 +145,7 @@ FreeRADIUS trusts when checking client certificates. Additionally, any Certifica
 [NOTE]
 ====
 The set of certificates present in `ca_file` determines the list of
-Distingished Names trusted by the server which are sent to an end device when a
+Distinguished Names trusted by the server which are sent to an end device when a
 client certificate is requested. For example during EAP-TLS authentication, or
 during PEAP or EAP-TTLS when mutual authentication is requested. This
 **not** true for trusted certificates within the `ca_path` directory.

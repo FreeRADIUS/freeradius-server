@@ -46,14 +46,14 @@ be broken out into another, separate, commit.
 
 == Submitting patches via GitHub
 
-See the xref:github.adoc[GitHub] page for how to contibute patches via
+See the xref:github.adoc[GitHub] page for how to contribute patches via
 GitHub.
 
 Some additional documentation specific to Github is at https://help.github.com/articles/fork-a-repo
 
 == Submitting patches via email
 
-See the xref:email.adoc[Email] page for how to contibute patches via
+See the xref:email.adoc[Email] page for how to contribute patches via
 email.  In short: don't.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

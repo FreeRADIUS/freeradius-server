@@ -84,7 +84,7 @@ The old ``%{expr:...}` syntax will return an error in v4.  That functionality is
 == Data Types
 
 The new expression parser accepts significantly more data types than
-the old expresisons.  The expression in the previous versions assumed
+the old expressions.  The expression in the previous versions assumed
 that all inputs were signed 64-bit integers.  Any attempt to use other
 data types resulted in an error.
 

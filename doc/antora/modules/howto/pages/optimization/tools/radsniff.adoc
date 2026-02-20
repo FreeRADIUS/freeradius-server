@@ -73,7 +73,7 @@ To view real-time traffic statistics (rate, latency, success rate) continuously,
 |Shows the current rate for accounting packets.
 
 |Retransmits / Loss
-|Shows the number of requests that were sent but did not receive responses indicating that the RADIUS server is overwhelmed, most likely due to an authentication dependancy (e.g. SQL database, LDAP directory, credential cache) not responding in a timely manner.
+|Shows the number of requests that were sent but did not receive responses indicating that the RADIUS server is overwhelmed, most likely due to an authentication dependency (e.g. SQL database, LDAP directory, credential cache) not responding in a timely manner.
 
 |RT(0)
 | means "retransmits 0", i.e. the first time a request was sent it received a response. If requests are retransmitted these appear as RT(1), RT(2), RT(3), ... where the number after the initial RT shows how many times the request was retransmitted before it received a response.
@@ -135,7 +135,7 @@ The attributes in the request filter below can be something like NAS-IP-Address 
 * root@radius# radsniff -r 'User-Name==carol'
 * root@radius# radsniff -r 'User-Name==bob,NAS-IP-Address==2.3.4.5'
 
-Similarly, response attributes can be filtered with -R in which case replies are buffered until a reponse is seen or it times out.
+Similarly, response attributes can be filtered with -R in which case replies are buffered until a response is seen or it times out.
 
 == Displaying specific attributes
 The radsniff output can be amended to display specific attributes using -l:

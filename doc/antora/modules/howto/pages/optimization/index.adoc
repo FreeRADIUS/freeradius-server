@@ -38,7 +38,7 @@ Performance testing helps you figure out what the maximum loads can be without a
 
 === xref:optimization/tools/index.adoc[Tools]
 
-FreeRADIUS is packaged with some useful tools such as radsniff and radclient that are used in testing, monitoring, and gathering statistics. These tools give you a top-level view of the health of your server, clients, and processess.
+FreeRADIUS is packaged with some useful tools such as radsniff and radclient that are used in testing, monitoring, and gathering statistics. These tools give you a top-level view of the health of your server, clients, and processes.
 
 === xref:tuning/tuning_guide.adoc[Tuning Guide]
 

@@ -7,7 +7,7 @@ destination of our choice.
 
 The following steps should be performed on a client system, which we
 will call `radseccli`.  This system should be a new system, with a
-different IP address.  That is, you shoudl not edit the configuration
+different IP address.  That is, you should not edit the configuration
 on the `radsecsvr` host.  Doing so will break the RadSec configuration.
 
 Install FreeRADIUS using the NetworkRADIUS packages by following the
@@ -164,7 +164,7 @@ response, then the output will be as follows:
 Lack of response or an Access-Reject response indicates that the RadSec
 connection is not being established successfully.
 
-There may be serveral reasons for broken connectivity including:
+There may be several reasons for broken connectivity including:
 
   * The client not accepting the certificate presented by the server.
   * The server not accepting the certificate presented by the client.

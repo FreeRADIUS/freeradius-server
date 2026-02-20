@@ -99,7 +99,7 @@ An error response returns if any of the `wbinfo` commands are unsuccessful. Also
 |`Domain not found: WBC_ERR_DOMAIN_NOT_FOUND`
 |Winbind doesn't know which domain to authenticate the user against or the domain name is incorrect.
 
-|No reponse
+|No response
 |Indicates that the winbind service has failed probably due to a configuration issue or lost connectivity.
 
 |===
@@ -266,7 +266,7 @@ indication ("`flags [+]`"). The second fragment has offset 1480 and has ID
 
 ==== Symptoms of bad fragment handling
 
-Take simulataneous captures at both the NAS and the RADIUS server and look for
+Take simultaneous captures at both the NAS and the RADIUS server and look for
 an instances of fragments being generated at source for an IP packet.
 
 If the network is functioning correctly, the capture taken at the destination
@@ -295,7 +295,7 @@ in the network resulting in the operating system failing to reassemble the
 original IP packet --- due to either missing or incorrectly formatted IP
 fragments.
 
-Missing or broken IP fragments always infers the existance of one or more network
+Missing or broken IP fragments always infers the existence of one or more network
 devices that exhibit impaired IP behaviour. **Impaired IP fragment handling is
 a fundamental network issue that should be fixed.**
 
