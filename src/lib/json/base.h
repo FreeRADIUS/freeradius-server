@@ -50,6 +50,16 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 extern fr_table_num_sorted_t const fr_json_format_table[];
 extern size_t fr_json_format_table_len;
 
+/** How to encode FR_TYPE_OCTETS values in JSON output.
+ */
+typedef enum {
+	JSON_BINARY_FORMAT_RAW = 0,	//!< Current behaviour — raw bytes as JSON string.
+	JSON_BINARY_FORMAT_BASE64	//!< Base64-encode octets values.
+} fr_json_binary_format_t;
+
+extern fr_table_num_sorted_t const fr_json_binary_format_table[];
+extern size_t fr_json_binary_format_table_len;
+
 /** List of possible JSON format output modes.
  *
  * @see fr_json_format_s
@@ -145,9 +155,10 @@ typedef struct {
  *
  */
 typedef struct {
-	bool	value_is_always_array;	//!< Use JSON array for multiple attribute values.
-	bool	enum_as_int;	//!< Output enums as value, not their string representation.
-	bool	always_string;	//!< Output all data types as strings.
+	bool				value_is_always_array;	//!< Use JSON array for multiple attribute values.
+	bool				enum_as_int;		//!< Output enums as value, not their string representation.
+	bool				always_string;		//!< Output all data types as strings.
+	fr_json_binary_format_t		binary_format;		//!< How to encode FR_TYPE_OCTETS values.
 } fr_json_format_value_t;
 
 

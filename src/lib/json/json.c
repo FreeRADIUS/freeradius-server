@@ -28,6 +28,7 @@
  */
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
@@ -41,6 +42,12 @@ fr_table_num_sorted_t const fr_json_format_table[] = {
 	{ L("object_simple"),	JSON_MODE_OBJECT_SIMPLE	},
 };
 size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
+
+fr_table_num_sorted_t const fr_json_binary_format_table[] = {
+	{ L("base64"),	JSON_BINARY_FORMAT_BASE64 },
+	{ L("raw"),	JSON_BINARY_FORMAT_RAW },
+};
+size_t fr_json_binary_format_table_len = NUM_ELEMENTS(fr_json_binary_format_table);
 
 static fr_json_format_t const default_json_format = {
 	.attr = { .prefix = NULL },
@@ -57,6 +64,9 @@ static conf_parser_t const json_format_value_config[] = {
 	{ FR_CONF_OFFSET("single_value_as_array", fr_json_format_value_t, value_is_always_array), .dflt = "no" },
 	{ FR_CONF_OFFSET("enum_as_integer", fr_json_format_value_t, enum_as_int), .dflt = "no" },
 	{ FR_CONF_OFFSET("always_string", fr_json_format_value_t, always_string), .dflt = "no" },
+	{ FR_CONF_OFFSET("binary_format", fr_json_format_value_t, binary_format), .dflt = "raw",
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_json_binary_format_table, .len = &fr_json_binary_format_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -497,6 +507,23 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 	if (format && format->value.enum_as_int) {
 		is_enum = fr_pair_value_enum_box(&vb, vp);
 		fr_assert(is_enum >= 0);
+	}
+
+	/*
+	 *	Base64-encode octets values when requested.
+	 */
+	if (format && (format->value.binary_format == JSON_BINARY_FORMAT_BASE64) &&
+	    (vp->vp_type == FR_TYPE_OCTETS)) {
+		fr_sbuff_t	*b64_sbuff;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&b64_sbuff, 256, SIZE_MAX);
+
+		fr_base64_encode(b64_sbuff, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length), true);
+
+		MEM(obj = json_object_new_string_len(fr_sbuff_start(b64_sbuff), fr_sbuff_used(b64_sbuff)));
+		*out = obj;
+
+		return is_enum;
 	}
 
 	if (format && format->value.always_string) {

@@ -180,4 +180,17 @@ group {
 	}
 }
 
+# 7a. binary_format = base64 tests
+group {
+	octets local_octets
+
+	local_octets := 0xdeadbeef
+
+	# With binary_format = base64, octets should be base64 encoded
+	test_string1 := %json_object_b64.encode("local_octets")
+	if !(test_string1 == '{"local_octets":{"type":"octets","value":"3q2+7w=="}}') {
+		test_fail
+	}
+}
+
 test_pass

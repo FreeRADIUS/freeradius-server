@@ -150,6 +150,15 @@ json {
 			#  strings.
 			#
 #			always_string = no
+
+			#
+			#  binary_format:: how to encode octets (binary) values
+			#
+			#  Controls the representation of binary data in JSON output.
+			#  - "raw" (default): write bytes directly as a JSON string
+			#  - "base64": base64-encode the binary data
+			#
+#			binary_format = raw
 		}
 
 	}
