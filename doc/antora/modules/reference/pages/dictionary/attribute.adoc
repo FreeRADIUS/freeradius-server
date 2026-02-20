@@ -60,7 +60,7 @@ Common flags and meanings
 | `secret`       | The server will not print `secret` values in debug mode, and in many other situations.
 |=====
 
-See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+See the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----

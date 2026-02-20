@@ -52,7 +52,7 @@ recv Access-Request {
 ```
 
 The 'copy_request_to_tunnel' option has been removed
-from from v4.0.
+from v4.0.
 
 Individual attributes from the outer request may be
 accessed with:

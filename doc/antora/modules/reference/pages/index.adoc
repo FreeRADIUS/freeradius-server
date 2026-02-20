@@ -14,7 +14,7 @@ attribute "Framed-IP-Address" has data type xref:type/ip.adoc[ipaddr].
 
 == xref:xlat/index.adoc[Dynamic Expansions]
 
-Dynamic expansions may also be referred to as "xlats" for historical reasons.When processing packets, it's possible to call functions or do string
+Dynamic expansions may also be referred to as "xlats" for historical reasons. When processing packets, it's possible to call functions or do string
 manipulation with attribute contents.  The xref:xlat/index.adoc[dynamic expansion] documentation describes how this is done.
 
 == xref:dictionary/index.adoc[Dictionaries]

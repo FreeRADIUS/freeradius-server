@@ -20,7 +20,7 @@ then cannot use ANY other authentication method.
 == Configuration Settings
 
 
-require_identity_realm:: Require the the EAP Identity provided contains
+require_identity_realm:: Require the EAP Identity provided contains
 a realm.
 
 If `require_identity_realm` is `nai`, the EAP identity provided must
@@ -111,7 +111,7 @@ keys or WPA enterprise.
 
 In v4, the "known good" password is taken from the `request.control.Password.Cleartext` list,
 as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
-is no not used.
+is not used.
 
 
 
@@ -316,7 +316,7 @@ root CAs, instead of putting them in the
 
 ca_file::  File which contains the root CA.
 
-THis configuration item allows the server to load
+This configuration item allows the server to load
 additional intermediate CA or Root CA when creating
 certificate chains.  Multiple "ca_file"
 configurations items may be specified in order to
@@ -330,7 +330,7 @@ EAP-TLS with client certificates from multiple Root
 CAs.
 
 If the root CA does not issue client certificates, or
-if only one root CA is , then the `ca_file`
+if only one root CA is, then the `ca_file`
 configuration can be commented out (at least when PEM
 format is used).
 
@@ -612,7 +612,7 @@ whether a trusted chain of certificates can be built
 between the certificates loaded from `ca_file` or
 found in `ca_path`.
 
-The SSL library also checks that the the correct usage
+The SSL library also checks that the correct usage
 OIDs are present in the presented client certificate
 and that none of the certificates have expired.
 
@@ -689,7 +689,7 @@ are missing from the `session-state` list during
 stateful session-resumption.
 
 Certificate attributes will usually be retrieved
-from the the session-ticket in the case of
+from the session-ticket in the case of
 stateless session-resumption.
 ====
 
@@ -718,7 +718,7 @@ allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
 
 Once authentication has completed, the TLS client may be
 provided with a session ticket which it presents
-during the next authentication attemp.
+during the next authentication attempt.
 
 Presenting a session ticket allows the client to skip the
 majority of TLS tunnel setup during its next authentication
@@ -829,7 +829,7 @@ before being passed to OpenSSL.
 
 
 
-lifetime:: The period for which a resumable session remains vali.d
+lifetime:: The period for which a resumable session remains valid
 
 Default is 24hrs in line with https://tools.ietf.org/html/rfc4346[RFC 4346].  https://tools.ietf.org/html/rfc8446[RFC 8446]
 requires that ticket lifetimes must not be more than
@@ -956,7 +956,7 @@ NOTE: To use `EAP-TTLS `you must also configure an `inner` method in
 
 Surprisingly, it works quite well.
 
-When using `PAP`, `GTC`, or `MSCAHPv2` as an inner method, `EAP-TTLS`
+When using `PAP`, `GTC`, or `MSCHAPv2` as an inner method, `EAP-TTLS`
 is only secure if the supplicant validates the server certificate
 presented.  If the client disables certificate validation, then an
 attacker can pretend to be the server, and collect user credentials.
@@ -992,7 +992,7 @@ outer request.  This configuration is NOT RECOMMENDED.
 
 
 
-include_length:: Whether we include a length fiel in the TLS header.
+include_length:: Whether we include a length field in the TLS header.
 
 This has the same meaning, and overwrites, the same field in
 the `tls` configuration, above.  The default value here is
@@ -1205,7 +1205,7 @@ installation.  We suggest using a domain name.
 
 
 
-pac_opaque_key:: Key sued to encrypt the PAC.
+pac_opaque_key:: Key used to encrypt the PAC.
 
 The PAC key must be exactly 32 bytes in size.
 

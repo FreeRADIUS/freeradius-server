@@ -232,7 +232,7 @@ reply := {
 ----
 ====
 
-Aftet this operation, the contents of the `reply` list will be one
+After this operation, the contents of the `reply` list will be one
 attribute: `Filter-Id`.
 
 === Remove attributes from a list
@@ -414,7 +414,7 @@ The operators also apply to variable-sized values.
 | =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
 | :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
 | +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
-| -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_
+| -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_
 | ^=       | For `string`, performs a "prepend" operation.  The contents of the _<rhs>_ are prepended to the _<attribute>_.  This is the opposite of `+=`.
 |          | For `octets`, perform logical "xor".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \|=      | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.

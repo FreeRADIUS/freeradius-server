@@ -40,7 +40,7 @@ the magic numbers into humanly-readable names.  The administrator can
 then write policies of the form `if the User-Name has value "bob",
 then do something ...`.
 
-Policies using descriptive are much simpler to create and understand
+Policies using descriptive names are much simpler to create and understand
 than policies using numbers.
 
 The dictionaries also enable the server to decode protocols using

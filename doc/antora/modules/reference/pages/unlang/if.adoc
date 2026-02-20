@@ -77,7 +77,7 @@ if (User-Name == "bob") {
 
 And without:
 
-.Example Without Brackes
+.Example Without Brackets
 [source,unlang]
 ----
 if User-Name == "bob" {

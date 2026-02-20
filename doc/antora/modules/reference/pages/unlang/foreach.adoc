@@ -74,7 +74,7 @@ different sections.
 
 <reference>::
 
-An xref:unlang/attr.adoc[attribute reference] which will will be looped
+An xref:unlang/attr.adoc[attribute reference] which will be looped
 over.  The reference can be to one attribute, to an array, a child, or
 be a subset of attributes.
 
@@ -137,7 +137,7 @@ into the string value.  e.g. `reply.Reply-Message[3]` When the
 `uint32` data type is used, the index to the current loop iteration is
 placed into the value, e.g. `3`.
 
-For dynamic expansions, The `<key-type> must be a numerical type such
+For dynamic expansions, The `<key-type>` must be a numerical type such
 as `uint32`.  The index to the current loop iteration is placed into
 the value at the beginning of each loop iteration.
 
@@ -158,7 +158,7 @@ foreach string ref, uint32 item (NAS-Port) {
 When the loop is finished, the `total` variable will have the following value:
 
 ----
-"NAS-Port[0] = 1, "NAS-Port[1] = 3, "NAS-Port[2] = 5, "NAS-Port[3] = 11, "
+"NAS-Port[0] = 1, "NAS-Port[1] = 3, "NAS-Port[2] = 5, "NAS-Port[3] = 11"
 ----
 
 .Key variable with attribute index
@@ -222,7 +222,7 @@ current interpreter, and may be changed in the future.
 
 .Example of Looping over children of a structural type.
 
-In this examply, we assume that an attribute `TLV-Thing` has a child
+In this example, we assume that an attribute `TLV-Thing` has a child
 called `Foo`.
 
 [source,unlang]

@@ -25,7 +25,7 @@ policies. Please see the xref:howto:index.adoc[howto] directory for
 more in-depth "how to" guides.
 
 The documentation is organized so that each item is on its own page.
-The page beings with a description of the item, followed by some text
+The page begins with a description of the item, followed by some text
 explaining what the item does.  The page concludes with one or more
 examples of using the item in `unlang` policies.
 

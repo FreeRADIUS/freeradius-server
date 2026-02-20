@@ -85,7 +85,7 @@
 |Gives the reasons why a connection ended.
 
 |https://datatracker.ietf.org/doc/html/rfc2867#section-4.1[Acct-Tunnel-Connection]
-|Gives details of the the tunnel connection such as port, ip address etc.
+|Gives details of the tunnel connection such as port, ip address etc.
 
 |https://datatracker.ietf.org/doc/html/rfc2867#section-4.2[Acct-Tunnel-Packets-Lost]
 |Tracks the number of accounting packets lost during a session.

@@ -42,7 +42,7 @@ literal `%` character can be created by using `%%`.
 Other than within a dynamically expanded string, very little character
 escaping is needed. The rules of the enclosing string context
 determine whether or not a space or `"` character needs to be escaped.
-See the ref:type/string/double.adoc[double-quoted strings] and
+See the xref:type/string/double.adoc[double-quoted strings] and
 xref:type/string/backticks.adoc[back-tick quoted strings] pages for more
 information.
 

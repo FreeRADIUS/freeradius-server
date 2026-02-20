@@ -172,7 +172,7 @@ server implements _variant 1_.
 - If the result shows a attribute containing the name of known group, the LDAP
 server implements _variant 2_.
 
-Perform the the search for group objects (below) using a filter that matches a group
+Perform the search for group objects (below) using a filter that matches a group
 the user is known to be a member of e.g. `(&(objectClass=groupOfNames)(cn=mariner-alert))`.
 
 - If the result shows an attribute containing the DN of a user, the ldap server

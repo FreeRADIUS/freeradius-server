@@ -545,7 +545,7 @@ freeradius.spec
 
 When rpmbuild runs the rpm spec file will direct it to run certain
 commands, link against specific libraries, etc. This means those
-commands, libraries, etc. must be present on the the system or the
+commands, libraries, etc. must be present on the system or the
 build will fail. The spec file lists what it needs in order to perform
 the build by enumerating a list of rpm packages under the
 BuildRequires: tag. Every package listed in the BuildRequires must be

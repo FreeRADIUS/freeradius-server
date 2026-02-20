@@ -19,7 +19,7 @@ The usual approach is as follows:
   the `certs/` directory.
 
 Then, run the server.  This process will ensure that users can log
-in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
+in via PAP, CHAP, MS-CHAP, etc.  You should test the server via
 `radtest` to verify that it works.
 
 == Editing this file
