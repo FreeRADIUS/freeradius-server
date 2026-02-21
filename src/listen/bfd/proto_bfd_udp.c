@@ -188,7 +188,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	wrapper->type = BFD_WRAPPER_RECV_PACKET;
 	wrapper->state_change = state_change;
 
-	return sizeof(wrapper) + packet_len;
+	return sizeof(*wrapper) + packet_len;
 }
 
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,

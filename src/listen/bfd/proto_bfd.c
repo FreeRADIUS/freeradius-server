@@ -434,7 +434,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				}
 
 				if (strlen(c->secret) > 20) {
-					cf_log_err(cs, "Length of 'secret' must be no more than 16 octets for 'auth_type = simple'");
+					cf_log_err(cs, "Length of 'secret' must be no more than 20 octets for 'auth_type = simple'");
 					goto error;
 				}
 				break;
