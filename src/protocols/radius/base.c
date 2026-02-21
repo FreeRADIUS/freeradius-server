@@ -526,7 +526,7 @@ char const *fr_radius_decode_fail_reason[FR_RADIUS_FAIL_MAX + 1] = {
 	[FR_RADIUS_FAIL_MA_INVALID_LENGTH] = "Message-Authenticate has invalid length",
 	[FR_RADIUS_FAIL_MA_MISSING] = "Message-Authenticator is required for this packet, but it is missing",
 	[FR_RADIUS_FAIL_MA_INVALID] = "Message-Authenticator fails verification. shared secret is incorrect",
-	[FR_RADIUS_FAIL_PROXY_STATE_MISSING] = "Proxy-State is required for this request, but it is missing",
+	[FR_RADIUS_FAIL_PROXY_STATE_MISSING] = "The packet contains Proxy-State, but no Message-Authenticator",
 
 	[FR_RADIUS_FAIL_VERIFY] = "packet fails verification, shared secret is incorrect",
 	[FR_RADIUS_FAIL_NO_MATCHING_REQUEST] = "did not find request which matched response",
@@ -869,7 +869,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	if (packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) {
 		if (limit_proxy_state && found_proxy_state && !found_message_authenticator) {
 			fr_strerror_const("Proxy-State is not allowed without Message-Authenticator");
-			return -FR_RADIUS_FAIL_MA_MISSING;
+			return -FR_RADIUS_FAIL_PROXY_STATE_MISSING;
 		}
 
 	    	if (require_message_authenticator && !found_message_authenticator) {
