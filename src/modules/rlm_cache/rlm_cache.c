@@ -958,6 +958,9 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlikely(fr_value_box_copy(vb, vb, tmpl_value(map->rhs)) < 0)) {
 			RPEDEBUG("Failed copying value from cache entry");
 			talloc_free(vb);
+			talloc_free(target);
+			cache_free(inst, &c);
+			cache_release(inst, request, &handle);
 			return XLAT_ACTION_FAIL;
 		}
 		fr_dcursor_append(out, vb);
