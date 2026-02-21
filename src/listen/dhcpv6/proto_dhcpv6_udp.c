@@ -192,6 +192,15 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	} /* else it was multicast... remember that */
 
 	/*
+	 *	@todo - make this take "&packet_len", as the DHCPv4
+	 *	packet may be smaller than the parent UDP packet.
+	 */
+	if (fr_dhcpv6_ok(buffer, data_size, inst->max_attributes) <= 0) {
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring");
+		return 0;
+	}
+
+	/*
 	 *	proto_dhcpv6 sets the priority
 	 */
 
