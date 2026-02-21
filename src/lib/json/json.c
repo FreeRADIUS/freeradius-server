@@ -483,45 +483,32 @@ void fr_json_version_print(void)
 }
 
 
-/** Convert fr_pair_t into a JSON object
+/** Convert a value box into a JSON object
  *
- * If format.value.enum_as_int is set, and the given VP is an enum
- * value, the integer value is returned as a json_object rather
- * than the text representation.
- *
- * If format.value.always_string is set then a numeric value pair
+ * If format.value.always_string is set then a numeric value
  * will be returned as a JSON string object.
  *
  * @param[in] ctx	Talloc context.
  * @param[out] out	returned json object.
- * @param[in] vp	to get the value of.
+ * @param[in] vb	to get the value of.
  * @param[in] format	format definition, or NULL.
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
-static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
-				fr_pair_t *vp, fr_json_format_t const *format)
+static CC_HINT(always_inline)
+int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
+			 fr_value_box_t const *vb, fr_json_format_t const *format)
 {
-	fr_value_box_t const	*vb;
-
-	fr_assert(vp);
-
-	vb = &vp->data;
-
 	if (!format) {
 		MEM(*out = json_object_from_value_box(vb));
 		return 0;
 	}
 
-	if (format->value.enum_as_int) {
-		(void)fr_pair_value_enum_box(&vb, vp);
-	}
-
 	/*
 	 *	Evaluated before "always_string".
 	 */
-	if (vp->vp_type == FR_TYPE_OCTETS) {
+	if (vb->type == FR_TYPE_OCTETS) {
 		switch (format->value.binary_format) {
 		case JSON_BINARY_FORMAT_BASE16:
 		case JSON_BINARY_FORMAT_BASE64:
@@ -534,14 +521,14 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 			 *	Hex encode octets values when requested.
 			 */
 			case JSON_BINARY_FORMAT_BASE16:
-				fr_base16_encode(encoded, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length));
+				fr_base16_encode(encoded, &FR_DBUFF_TMP(vb->vb_octets, vb->vb_length));
 				break;
 
 			/*
 			 *	Base64-encode octets values when requested.
 			 */
 			case JSON_BINARY_FORMAT_BASE64:
-				fr_base64_encode(encoded, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length), true);
+				fr_base64_encode(encoded, &FR_DBUFF_TMP(vb->vb_octets, vb->vb_length), true);
 				break;
 
 			default:
@@ -570,6 +557,39 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 
 	MEM(*out = json_object_from_value_box(vb));
 	return 0;
+}
+
+/** Convert fr_pair_t into a JSON object
+ *
+ * If format.value.enum_as_int is set, and the given VP is an enum
+ * value, the integer value is returned as a json_object rather
+ * than the text representation.
+ *
+ * If format.value.always_string is set then a numeric value
+ * will be returned as a JSON string object.
+ *
+ * @param[in] ctx	Talloc context.
+ * @param[out] out	returned json object.
+ * @param[in] vp	to get the value of.
+ * @param[in] format	format definition, or NULL.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+static int json_afrom_pair(TALLOC_CTX *ctx, json_object **out,
+			   fr_pair_t *vp, fr_json_format_t const *format)
+{
+	fr_value_box_t const	*vb;
+
+	fr_assert(vp);
+
+	vb = &vp->data;
+
+	if (format->value.enum_as_int) {
+		(void)fr_pair_value_enum_box(&vb, vp);
+	}
+
+	return json_afrom_value_box(ctx, out, vb, format);
 }
 
 
@@ -728,7 +748,7 @@ json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps, f
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
 				goto error;
 			}
@@ -898,7 +918,7 @@ static json_object *json_simple_obj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_lis
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
 				goto error;
 			}
@@ -1048,7 +1068,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
 				goto error;
 			}
@@ -1175,7 +1195,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
-			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+			if (json_afrom_pair(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
 			error:
 				json_object_put_assert(obj);
