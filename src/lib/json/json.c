@@ -317,7 +317,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		end = p + vb->vb_length;
 
 		while (p < end) {
-			if (*p < ' ') {
+			if ((*p < ' ') || (*p == '"') || (*p == '\\') || (*p == '/')) {
 				if (p > last_app) FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, last_app, p - last_app);
 
 				switch (*p) {
