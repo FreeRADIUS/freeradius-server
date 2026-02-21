@@ -220,9 +220,9 @@ have_packet:
 	 *	how much we read in leftover.
 	 */
 	if (in_buffer < (size_t) packet_len) {
+		*leftover = in_buffer;
 		DEBUG3("proto_tacacs_tcp - Received packet fragment of %zu bytes (%zu bytes now pending)",
 		       packet_len, *leftover);
-		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -306,15 +306,18 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 			if (pkt->authen_reply.status == FR_TAC_PLUS_AUTHEN_STATUS_ERROR) goto close_it;
 			break;
 
-
 		case FR_TAC_PLUS_AUTHOR:
 			if (pkt->author_reply.status == FR_TAC_PLUS_AUTHOR_STATUS_ERROR) {
 			close_it:
-				ERROR("tavacs %s - Closing connection due to unrecoverable server error response",
+				ERROR("tacacs %s - Closing connection due to unrecoverable server error response",
 					thread->name);
 				errno = ECONNRESET;
 				return -1;
 			}
+			break;
+
+		case FR_TAC_PLUS_ACCT:
+			if (pkt->acct_reply.status == FR_TAC_PLUS_ACCT_STATUS_ERROR) goto close_it;
 			break;
 
 		default:

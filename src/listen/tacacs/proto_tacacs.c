@@ -54,8 +54,6 @@ static conf_parser_t const limit_config[] = {
 static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET("Authentication-Start", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Authentication-Continue", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
 	{ FR_CONF_OFFSET("Authorization-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	{ FR_CONF_OFFSET("Accounting-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
@@ -394,11 +392,13 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	return data_len;
 }
 
-static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t buflen)
 {
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(buffer[1]));
+
+	if (!buflen) return 0;
 
 	/*
 	 *	Disallowed packet
