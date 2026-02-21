@@ -105,7 +105,7 @@ ${2}/radiusd.pid: ${2}
 	$$(eval export OUTPUT	   := ${2})
 	$$(eval export TEST_PORT   := $(PORT))
 	$$(eval export TEST	   := $(subst test.,,$(TEST)))
-	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 300 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+	$$(eval export RADIUSD_RUN := $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -e 600 -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
 
 	${Q}rm -f ${2}/radiusd.log
 	${Q}if test ! -z "$$(PRINT_PORT)"; then \
