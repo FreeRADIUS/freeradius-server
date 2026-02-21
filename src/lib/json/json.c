@@ -380,7 +380,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		break;
 
 	case FR_TYPE_UINT64:
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", vb->vb_uint64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64, vb->vb_uint64);
 		break;
 
 	case FR_TYPE_INT8:
@@ -396,7 +396,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		break;
 
 	case FR_TYPE_INT64:
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%i", vb->vb_int64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64, vb->vb_int64);
 		break;
 
 	case FR_TYPE_SIZE:
