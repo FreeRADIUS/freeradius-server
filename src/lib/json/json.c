@@ -33,6 +33,7 @@
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 #include "base.h"
+#include "lib/util/strerror.h"
 
 fr_table_num_sorted_t const fr_json_format_table[] = {
 	{ L("array"),		JSON_MODE_ARRAY		},
@@ -496,76 +497,79 @@ void fr_json_version_print(void)
  * @param[in] vp	to get the value of.
  * @param[in] format	format definition, or NULL.
  * @return
- *	- 1 if 'out' is the integer enum value, 0 otherwise
+ *	- 0 on success.
  *	- -1 on error.
  */
 static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 				fr_pair_t *vp, fr_json_format_t const *format)
 {
-	struct json_object	*obj;
 	fr_value_box_t const	*vb;
-	fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
-	int			is_enum = 0;
 
 	fr_assert(vp);
 
 	vb = &vp->data;
 
-	if (format && format->value.enum_as_int) {
-		is_enum = fr_pair_value_enum_box(&vb, vp);
-		fr_assert(is_enum >= 0);
+	if (!format) {
+		MEM(*out = json_object_from_value_box(vb));
+		return 0;
+	}
+
+	if (format->value.enum_as_int) {
+		(void)fr_pair_value_enum_box(&vb, vp);
 	}
 
 	/*
-	 *	Base16-encode octets values when requested.
+	 *	Evaluated before "always_string".
 	 */
-	if (format && (format->value.binary_format == JSON_BINARY_FORMAT_BASE16) &&
-	    (vp->vp_type == FR_TYPE_OCTETS)) {
-		fr_sbuff_t	*b16_sbuff;
+	if (vp->vp_type == FR_TYPE_OCTETS) {
+		switch (format->value.binary_format) {
+		case JSON_BINARY_FORMAT_BASE16:
+		case JSON_BINARY_FORMAT_BASE64:
+		{
+			fr_sbuff_t	*encoded;
+			FR_SBUFF_TALLOC_THREAD_LOCAL(&encoded, 256, SIZE_MAX);
 
-		FR_SBUFF_TALLOC_THREAD_LOCAL(&b16_sbuff, 256, SIZE_MAX);
+			switch (format->value.binary_format) {
+			/*
+			 *	Hex encode octets values when requested.
+			 */
+			case JSON_BINARY_FORMAT_BASE16:
+				fr_base16_encode(encoded, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length));
+				break;
 
-		fr_base16_encode(b16_sbuff, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length));
+			/*
+			 *	Base64-encode octets values when requested.
+			 */
+			case JSON_BINARY_FORMAT_BASE64:
+				fr_base64_encode(encoded, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length), true);
+				break;
 
-		MEM(obj = json_object_new_string_len(fr_sbuff_start(b16_sbuff), fr_sbuff_used(b16_sbuff)));
-		*out = obj;
+			default:
+				break;
+			}
 
-		return is_enum;
-	}
-
-	/*
-	 *	Base64-encode octets values when requested.
-	 */
-	if (format && (format->value.binary_format == JSON_BINARY_FORMAT_BASE64) &&
-	    (vp->vp_type == FR_TYPE_OCTETS)) {
-		fr_sbuff_t	*b64_sbuff;
-
-		FR_SBUFF_TALLOC_THREAD_LOCAL(&b64_sbuff, 256, SIZE_MAX);
-
-		fr_base64_encode(b64_sbuff, &FR_DBUFF_TMP(vp->vp_octets, vp->vp_length), true);
-
-		MEM(obj = json_object_new_string_len(fr_sbuff_start(b64_sbuff), fr_sbuff_used(b64_sbuff)));
-		*out = obj;
-
-		return is_enum;
-	}
-
-	if (format && format->value.always_string) {
-		if (fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) < 0) {
-			return -1;
+			MEM(*out = json_object_new_string_len(fr_sbuff_start(encoded), fr_sbuff_used(encoded)));
+			return 0;
 		}
 
-		vb = &vb_str;
+		case JSON_BINARY_FORMAT_RAW:
+			break;
+		}
 	}
 
-	MEM(obj = json_object_from_value_box(vb));
+	if (format->value.always_string) {
+		fr_value_box_t		vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
 
-	if (format && format->value.always_string) {
+		if (unlikely(fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) < 0)) return -1;
+
+		MEM(*out = json_object_from_value_box(&vb_str));
 		fr_value_box_clear(&vb_str);
+
+		return 0;
 	}
 
-	*out = obj;
-	return is_enum;
+	MEM(*out = json_object_from_value_box(vb));
+	return 0;
 }
 
 
