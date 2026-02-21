@@ -101,7 +101,7 @@ static const conf_parser_t peercred_config[] = {
 
 static const conf_parser_t unix_listen_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
-	.dflt = "${run_dir}/radiusd.sock}" },
+	.dflt = "${run_dir}/radiusd.sock" },
 	{ FR_CONF_OFFSET("uid", proto_control_unix_t, uid_name) },
 	{ FR_CONF_OFFSET("gid", proto_control_unix_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", proto_control_unix_t, mode_name) },
@@ -423,7 +423,7 @@ static int mod_open(fr_listen_t *li)
 
 	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
 	if (!thread->fd_bio) {
-		cf_log_err(li->cs, "Failed opening UNIX path %s - ", inst->filename, fr_strerror());
+		cf_log_err(li->cs, "Failed opening UNIX path %s - %s", inst->filename, fr_strerror());
 		return -1;
 	}
 
