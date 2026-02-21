@@ -1,0 +1,200 @@
+name       = load-generator
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+templates {
+	{% include "environments/configs/freeradius/load-generator/template.d/load-generator-templates" %}
+}
+
+security {
+	allow_core_dumps = yes
+}
+
+# logging configuration required for linelog module
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+	# Common linelog module configuration
+	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
+
+	# Test-framework specific linelog module configuration based on OS environment
+	{% if listener_type == "unix" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
+	{% elif listener_type == "file" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
+	{% endif %}
+
+	# Common stats module configuration
+	{% include "environments/configs/freeradius/common/mods-available/stats" %}
+
+	# radius module instance configuration
+	{% for i in range(1, (load_gen_num_of_dst_servers + 1)) %}
+	radius radius-module-dst-server{{ i }} {
+		$template radius-module-dst-server-tmpl
+		udp {
+			ipaddr = {{ load_gen_dst_server_name }}{{ i }}
+		}
+	}
+	{% endfor %}
+
+}
+
+server load-generator {
+
+	namespace = radius
+
+	listen load {
+		handler = load
+		type = Access-Request
+		transport = step
+
+		step {
+
+			# Default packet config to use by the load-generator
+			filename = ${confdir}/load-generator-packets/packet.conf
+
+			csv = ${confdir}/stats/load-generator-client-stats.csv
+
+			max_attributes = 64
+
+			#
+			# The load profile is configured via environment variables set
+			# in the testcase configuration files.
+			#
+			start_pps = $ENV{TEST_CONF_START_PPS}
+			max_pps   = $ENV{TEST_CONF_MAX_PPS}
+			duration  = $ENV{TEST_CONF_DURATION}
+			step = $ENV{TEST_CONF_STEP}
+			max_backlog = $ENV{TEST_CONF_MAX_BACKLOG}
+			parallel = $ENV{TEST_CONF_PARALLEL}
+			num_messages = $ENV{TEST_CONF_NUM_MESSAGES}
+			repeat = no
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		type = Status-Server
+		transport = udp
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+
+		limit {
+			max_clients = 256
+			max_connections = 256
+			idle_timeout = 60.0
+			dynamic_timeout = 600.0
+			nak_lifetime = 30.0
+			cleanup_delay = 5.0
+		}
+
+		udp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		type = Status-Server
+		transport = tcp
+
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	client localhost {
+		shortname = client-localhost
+		ipaddr = *
+		secret = testing123
+	}
+
+	listen statusserver {
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 1820
+		}
+
+		type = Status-Server
+	}
+
+	#
+	#  Receive a Status-Server packet
+	#
+	recv Status-Server {
+		# stats module required to have access to the Status-Server's global statistics
+		stats
+
+		{%raw%}
+		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server: %{reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server || 0}")
+		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request: %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request || 0}")
+		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept: %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept || 0}")
+		%linelog_test_framework("loadgen-recv-status-server - INFO - reply.FreeRADIUS.Stats4.Packet-Counters.Access-Reject: %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Reject || 0}")
+
+		# The Stats Module documentation explicitly states: "When listed in a recv Status-Server section, it will add global server statistics to the packet,
+		# hence the reason "reply.FreeRADIUS.Stats4" is used below.
+		if ((reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept - reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server) != reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request) {
+			%linelog_test_framework("loadgen-recv-status-server - ERROR - expected vs actual stat missmatch, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request}, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept}, reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server: %{reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server}")
+		}
+
+		if (reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request == (reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept - reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server)) {
+			%linelog_test_framework("loadgen-recv-status-server - INFO - %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request} requests processed successfully, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Request}, reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept = %{reply.FreeRADIUS.Stats4.Packet-Counters.Access-Accept}, reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server = %{reply.FreeRADIUS.Stats4.Packet-Counters.Status-Server}")
+		}
+		{%endraw%}
+	}
+
+	recv Access-Request {
+		# Use the load-generator-proxy authenticate logic
+		control.Auth-Type := "load-generator-proxy"
+	}
+
+	authenticate load-generator-proxy {
+		# Use redundant-load-balance to distribute requests to multiple home servers
+		redundant-load-balance {
+			{% for i in range(1, (load_gen_num_of_dst_servers + 1)) %}
+			radius-module-dst-server{{ i }}
+			{% endfor %}
+		}
+	}
+
+	send Access-Accept {
+		stats
+	}
+
+	send Access-Reject {
+		stats
+	}
+
+}
