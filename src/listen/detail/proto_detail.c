@@ -120,8 +120,6 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	char const		*value = cf_pair_value(cp);
 
-	*((char const **) out) = value;
-
 	inst->dict = virtual_server_dict_by_child_ci(ci);
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'namespace' in this virtual server");
@@ -146,6 +144,8 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	}
 
 	inst->code = type_enum->value->vb_uint32;
+	*((char const **) out) = value;
+
 	return 0;
 }
 

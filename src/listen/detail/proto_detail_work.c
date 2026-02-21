@@ -449,6 +449,7 @@ redo:
 		}
 
 		fr_assert(*leftover == 0);
+		packet_len = 0;
 		goto done;
 	}
 
@@ -503,6 +504,8 @@ redo:
 	*packet_ctx = track;
 	*recv_time_p = track->timestamp;
 
+	thread->outstanding++;
+
 done:
 	/*
 	 *	If we're at EOF, mark us as "closing".
@@ -512,8 +515,6 @@ done:
 		thread->closing = (*leftover == 0);
 		MPRINT("AT EOF, BUT CLOSING %d", thread->closing);
 	}
-
-	thread->outstanding++;
 
 	/*
 	 *	Pause reading until such time as we need more packets.
@@ -870,14 +871,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	FR_INTEGER_BOUND_CHECK("limit.max_outstanding", inst->max_outstanding, >=, 1);
 
-	client = inst->client = talloc_zero(inst, fr_client_t);
-	if (!inst->client) return 0;
+	MEM(client = inst->client = talloc_zero(inst, fr_client_t));
 
 	client->ipaddr.af = AF_INET;
 	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 	client->src_ipaddr = client->ipaddr;
 
-	client->longname = client->shortname = client->secret = inst->filename;
+	client->longname = client->shortname = client->secret = inst->filename_work;
 	client->nas_type = talloc_strdup(client, "other");
 
 	return 0;

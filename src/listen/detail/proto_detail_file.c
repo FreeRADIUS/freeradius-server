@@ -360,6 +360,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	if (fr_event_filter_insert(thread, NULL, thread->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, thread) < 0) {
 		PERROR("Failed adding work socket to event loop");
+		close(li->fd);
 		close(fd);
 		talloc_free(li);
 		return -1;
@@ -383,10 +384,6 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 */
 	li->default_message_size = inst->parent->max_packet_size;
 	li->num_messages = inst->parent->num_messages;
-
-	pthread_mutex_lock(&thread->worker_mutex);
-	thread->num_workers++;
-	pthread_mutex_unlock(&thread->worker_mutex);
 
 	/*
 	 *	Open the detail.work file.
@@ -422,6 +419,10 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	Tell the worker to clean itself up.
 	 */
 	work->listen = li;
+
+	pthread_mutex_lock(&thread->worker_mutex);
+	thread->num_workers++;
+	pthread_mutex_unlock(&thread->worker_mutex);
 
 	return 0;
 }
@@ -772,9 +773,9 @@ static int mod_close(fr_listen_t *li)
 		}
 		close(thread->vnode_fd);
 		thread->vnode_fd = -1;
-
-		pthread_mutex_destroy(&thread->worker_mutex);
 	}
+
+	pthread_mutex_destroy(&thread->worker_mutex);
 
 	return 0;
 }
