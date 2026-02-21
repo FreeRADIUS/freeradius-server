@@ -273,6 +273,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 #endif
 
 	case FR_TYPE_STRUCTURAL:
+		fr_strerror_const("Can't convert structural type to JSON");
 		return NULL;
 	}
 }
