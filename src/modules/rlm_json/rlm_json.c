@@ -107,50 +107,70 @@ static xlat_action_t json_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_value_box_list_foreach(&in_head->vb_group, vb_in) {
 		fr_value_box_t	*vb_to_encode = UNCONST(fr_value_box_t *, vb_in);
+		fr_value_box_t	vb_str = FR_VALUE_BOX_INITIALISER_NULL(vb_str);
+		fr_slen_t	slen;
 
-		if (format && (vb_in->type == FR_TYPE_OCTETS)) {
-			switch (format->value.binary_format) {
-			case JSON_BINARY_FORMAT_BASE16:
-			case JSON_BINARY_FORMAT_BASE64:
-			{
-				MEM(vb_out = fr_value_box_alloc_null(ctx));
-				if (quote) fr_sbuff_in_char(agg, '"');
+		if (format) {
+			/*
+			 *	Encode octets as base16 or base64 when requested.
+			 */
+			if (vb_in->type == FR_TYPE_OCTETS) {
 				switch (format->value.binary_format) {
-				/*
-				 *	Hex encode octets values when requested.
-				 */
 				case JSON_BINARY_FORMAT_BASE16:
-					fr_base16_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length));
-					break;
-
-				/*
-				 *	Base64-encode octets values when requested.
-				 */
 				case JSON_BINARY_FORMAT_BASE64:
-					fr_base64_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length), true);
-					break;
+				{
+					MEM(vb_out = fr_value_box_alloc_null(ctx));
+					if (quote) fr_sbuff_in_char(agg, '"');
+					switch (format->value.binary_format) {
+					/*
+					 *	Hex encode octets values when requested.
+					 */
+					case JSON_BINARY_FORMAT_BASE16:
+						fr_base16_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length));
+						break;
 
-				default:
+					/*
+					 *	Base64-encode octets values when requested.
+					 */
+					case JSON_BINARY_FORMAT_BASE64:
+						fr_base64_encode(agg, &FR_DBUFF_TMP(vb_in->vb_octets, vb_in->vb_length), true);
+						break;
+
+					default:
+						break;
+					}
+					if (quote) fr_sbuff_in_char(agg, '"');
+					if (fr_value_box_bstrndup(vb_out, vb_out, NULL, fr_sbuff_start(agg),
+									fr_sbuff_used(agg), vb_in->tainted) < 0) {
+						RPERROR("Failed assigning escaped JSON value to output box");
+						return XLAT_ACTION_FAIL;
+					}
+					fr_sbuff_reset_talloc(agg);
+					fr_dcursor_append(out, vb_out);
+					continue;
+				}
+
+				case JSON_BINARY_FORMAT_RAW:
 					break;
 				}
-				if (quote) fr_sbuff_in_char(agg, '"');
-				if (fr_value_box_bstrndup(vb_out, vb_out, NULL, fr_sbuff_start(agg),
-								fr_sbuff_used(agg), vb_in->tainted) < 0) {
-					RPERROR("Failed assigning escaped JSON value to output box");
-					return XLAT_ACTION_FAIL;
-				}
-				fr_sbuff_reset_talloc(agg);
-				fr_dcursor_append(out, vb_out);
-				continue;
 			}
 
-			case JSON_BINARY_FORMAT_RAW:
-				break;
+			/*
+			 *	Cast to string when always_string is set.
+			 */
+			if (format->value.always_string && (vb_in->type != FR_TYPE_STRING)) {
+				if (unlikely(fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb_to_encode) < 0)) {
+					RPERROR("Failed casting value to string");
+					return XLAT_ACTION_FAIL;
+				}
+				vb_to_encode = &vb_str;
 			}
 		}
 
 		MEM(vb_out = fr_value_box_alloc_null(ctx));
-		if (fr_json_str_from_value(agg, vb_to_encode, quote) < 0) {
+		slen = fr_json_str_from_value(agg, vb_to_encode, quote);
+		fr_value_box_clear(&vb_str);
+		if (slen < 0) {
 			RPERROR("Failed creating escaped JSON value");
 			return XLAT_ACTION_FAIL;
 		}
