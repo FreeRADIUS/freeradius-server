@@ -19,7 +19,7 @@ fail to terminate cleanly (leaving zombie processes, failing to clean up
 other modules, and hanging after a SIGTERM until a SIGKILL is sent) or
 to fail valgrind checks during termination when run with -m.  Likewise this
 problem will rely on upstream enhancements before it can be fixed, and the
-exact behaviour may change in interim releases of libunbound until then.
+exact behavior may change in interim releases of libunbound until then.
 
 
 

@@ -245,7 +245,7 @@ ecc/ocsp.vrfy: ecc/ca.pem ecc/ocsp.pem
 
 ######################################################################
 #
-#  Create a new client certificate, signed by the the above RSA CA.
+#  Create a new client certificate, signed by the above RSA CA.
 #
 ######################################################################
 rsa/client.csr rsa/client.key: client.cnf | $(OUTPUT_DIRS)
@@ -271,7 +271,7 @@ rsa/client.vrfy: rsa/ca.pem rsa/client.pem
 
 ######################################################################
 #
-#  Create a new client certificate, signed by the the above ECC CA.
+#  Create a new client certificate, signed by the above ECC CA.
 #
 ######################################################################
 ecc/client.key: client.cnf | $(OUTPUT_DIRS)

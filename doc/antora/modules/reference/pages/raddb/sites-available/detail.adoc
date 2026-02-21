@@ -80,7 +80,7 @@ Access-Request or Accounting-Request packets from
 the network, they will be processed *before* any
 packets from the detail file.
 
-This behaviour ensures that the detail file is read
+This behavior ensures that the detail file is read
 as fast as possible.  At the same time, it ensures
 that the detail file does not affect higher
 priority packets from the network.
@@ -361,5 +361,5 @@ send Do-Not-Respond {
 ```
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

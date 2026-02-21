@@ -185,7 +185,7 @@ csv {
 	#	map cvs <key> { ... }
 	#
 	#  Where `csv` is the name of the module, and `key` is an expansion
-	#  as given the the key` field above.  For example, the map could
+	#  as given the key` field above.  For example, the map could
 	#  look like this:
 	#
 	#	map csv User-Name {

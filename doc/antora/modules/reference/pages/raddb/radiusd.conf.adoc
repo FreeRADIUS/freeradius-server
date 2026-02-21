@@ -438,7 +438,7 @@ referencing syntax.
 .Security Configuration
 
 There may be multiple methods of attacking on the server.  This
-section holds the configuration items which minimise the impact
+section holds the configuration items which minimize the impact
 of those attacks
 
 
@@ -598,7 +598,7 @@ removed (and made into errors!) in the final release.
 Some of these flags can also be passed on the command line as
 `-S flag=value`.
 
-Dictionary migration instructions can be found in `${confdir}/dictionary`.
+Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
 
 
 
@@ -689,7 +689,7 @@ All of the other configuration sections like:
 
 Have been moved to the file:
 
-`sites-available/default`
+`raddb/sites-available/default`
 
 This is the `default` virtual server that has the same
 configuration as in version 1.0.x and 1.1.x.  The default
@@ -698,21 +698,22 @@ edit it to create policies for your local site.
 
 For more documentation on virtual servers, see:
 
-`sites-available/index.adoc`
+`raddb/sites-available/index.adoc`
 
 
 == Default Configuration
 
 ```
-prefix = /usr/local
+prefix = /Users/alandekok/git/wrapper//install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
 sbindir = ${exec_prefix}/sbin
 logdir = ${localstatedir}/log/radius
-confdir = ${sysconfdir}/raddb
+raddbdir = ${sysconfdir}/raddb
 radacctdir = ${logdir}/radacct
 name = radiusd
+confdir = ${raddbdir}
 modconfdir = ${confdir}/mods-config
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
@@ -721,7 +722,7 @@ db_dir = ${localstatedir}/lib/${name}
 libdir = ${exec_prefix}/lib
 pidfile = ${run_dir}/${name}.pid
 #panic_action = "gdb %e %p"
-#panic_action = "gdb -silent -x ${confdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
+#panic_action = "gdb -silent -x ${raddbdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
 request {
 	max = 16384
 	timeout = 30
@@ -756,7 +757,7 @@ log debug {
 ENV {
 #	FOO = '/bar/baz'
 #	BAR
-#	KRB5_CLIENT_KTNAME = ${confdir}/radiusd.keytab
+#	KRB5_CLIENT_KTNAME = ${raddbdir}/radiusd.keytab
 #	LD_PRELOAD = /path/to/library1.so
 #	LD_PRELOAD = /path/to/library2.so
 }
@@ -794,5 +795,5 @@ policy {
 $INCLUDE sites-enabled/
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

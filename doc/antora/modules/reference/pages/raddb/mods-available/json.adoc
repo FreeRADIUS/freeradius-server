@@ -139,6 +139,15 @@ strings.
 
 
 
+binary_format:: how to encode octets (binary) values
+
+Controls the representation of binary data in JSON output.
+- "raw" (default): write bytes directly as a JSON string
+- "base16": base16(hex)-encode the binary data
+- "base64": base64-encode the binary data
+
+
+
 
 
 == Expansions
@@ -372,6 +381,7 @@ json {
 #			single_value_as_array = no
 #			enum_as_integer = no
 #			always_string = no
+#			binary_format = raw
 		}
 	}
 }

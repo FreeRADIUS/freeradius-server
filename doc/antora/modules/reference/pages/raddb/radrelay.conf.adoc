@@ -15,7 +15,7 @@ packets to a home server.  If you need it to do more than
 just replace `radrelay`, you will need to add additional
 configuration.
 
-See `sites-available/copy-acct-to-home-server` for a
+See `raddb/sites-available/copy-acct-to-home-server` for a
 more complete example.  That example is intended to be run
 as part of a larger RADIUS configuration, where the server
 also listens on ports 1812, etc.  The example given here
@@ -119,7 +119,7 @@ NOT used.
 .SECURITY CONFIGURATION
 
 There may be multiple methods of attacking on the server.  This
-section holds the configuration items which minimise the impact
+section holds the configuration items which minimize the impact
 of those attacks
 
 
@@ -223,7 +223,7 @@ type::
 filename:: The filename here should be the same as the one used by the
 main `radiusd` program.
 
-It writes the file using the `detail` module (see `modules/detail`).
+It writes the file using the `detail` module (see `raddb/modules/detail`).
 
 
 
@@ -235,7 +235,7 @@ This section is called when the server receives an
 Accounting-Request packet (which will be from the
 "detail" reader above.
 
-See also `sites-available/copy-acct-to-home-server`
+See also `raddb/sites-available/copy-acct-to-home-server`
 for additional description.
 
 
@@ -247,15 +247,16 @@ as prefix/suffix stripping, or comparisons.
 == Default Configuration
 
 ```
-prefix = /usr/local
+prefix = /Users/alandekok/git/wrapper//install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
 sbindir = ${exec_prefix}/sbin
 logdir = ${localstatedir}/log/radius
-confdir = ${sysconfdir}/raddb
+raddbdir = ${sysconfdir}/raddb
 radacctdir = ${logdir}/radacct
 name = radrelay
+confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/${name}
 libdir = ${exec_prefix}/lib
 pidfile = ${run_dir}/${name}.pid
@@ -302,5 +303,5 @@ server radrelay {
 }
 ```
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

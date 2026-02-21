@@ -18,7 +18,7 @@ Bind as user::
 The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
 +
 FreeRADIUS uses that password to "bind as the user" to LDAP, using the
-supplied `User-Name` and `User-Password.  If the bind is successful,
+supplied `User-Name` and `User-Password`.  If the bind is successful,
 the user is authenticated.  Otherwise, authentication fails.
 
 CHAP::

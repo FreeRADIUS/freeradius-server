@@ -52,7 +52,7 @@ example.com`, and then have a section `authenticate example.com {
 xref:reference:raddb/sites-available/default.adoc[sites-available/default] for sample configuration which uses this
 pattern.
 
-== behaviour
+== Behavior
 
 The module adds a Proxy-State attribute to all proxied packets.
 This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
@@ -63,8 +63,8 @@ current packet.
 
 WARNING: For security reasons, the module ensures that all proxied
 `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets contain a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`
-attribute.  This behaviour is *NOT* configurable, and *CANNOT* be
-changed.  This behaviour is part of the BlastRADIUS mitigations.
+attribute.  This behavior is *NOT* configurable, and *CANNOT* be
+changed.  This behavior is part of the BlastRADIUS mitigations.
 
 Any proxied packet (including `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`) can
 receive a `Protocol-Error` response packet.  This packet
@@ -100,12 +100,12 @@ The module has the following return codes:
 | fail        | there was no response to the proxied request
 | reject      | the module received a `nak` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`, `CoA-NAK`, etc.)
 | noop        | the module saw its own `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` attribute,
-                and is will not proxy the request.  This behaviour
+                and is will not proxy the request.  This behavior
                 prevents proxy loops.
 |===
 
 
-mode:: What kind of client behaviour is being used.
+mode:: What kind of client behavior is being used.
 
 proxy - forward packets which are received from a NAS
 - each packet has a Proxy-State attribute added.
@@ -217,7 +217,7 @@ in responses.
 
 A server should include Message-Authenticator attribute as
 the first attribute in responses to Access-Request packets.
-This behaviour mitigates against the BlastRADIUS attack.
+This behavior mitigates against the BlastRADIUS attack.
 
 However, not all servers follow this security practice.  As
 a result, this module can be configured to either not
@@ -400,7 +400,7 @@ together into a "pool".
 Much of the configuration here is similar to the old
 connection "pool" configuration in v3.  However, there are
 more configuration parameters, and therefore more control
-over the behaviour.
+over the behavior.
 
 
 start:: Connections to create during module instantiation.
