@@ -244,7 +244,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 
 #ifdef HAVE_JSON_OBJECT_GET_INT64
 	case FR_TYPE_UINT32:
-		return json_object_new_int64((int64_t)data->vb_uint64);	/* uint32_t (max) > int32_t (max) */
+		return json_object_new_int64((int64_t)data->vb_uint32);	/* uint32_t (max) > int32_t (max) */
 
 	case FR_TYPE_UINT64:
 		if (data->vb_uint64 > INT64_MAX) goto do_string;
