@@ -77,7 +77,7 @@ typedef enum {
 
 #define DER_UTC_TIME_LEN 13	 //!< Length of the UTC time string.
 #define DER_GENERALIZED_TIME_LEN_MIN 15	 //!< Minimum length of the generalized time string.
-#define DER_GENERALIZED_TIME_PRECISION_MAX 4 //!< Maximum precision of the generalized time string.
+#define DER_GENERALIZED_TIME_PRECISION_MAX 9 //!< Maximum precision of the generalized time string (nanoseconds).
 
 #define DER_TAG_CLASS_MASK 0xc0	 //!< Mask to extract the class from the tag.
 #define DER_TAG_CONSTRUCTED_MASK 0x20	 //!< Mask to check if the tag is constructed.

@@ -590,6 +590,22 @@ match Generalized time contains null byte
 decode-pair 18 14 32 30 31 39 31 32 31 36 30 33 30 32 31 30 2e 30 30 00 31 5a
 match Generalized time contains null byte in subseconds
 
+# 9-digit fractional seconds (full nanosecond precision)
+decode-pair 181932303139303130323033303430352e3132333435363738395a
+match Test-Date = "2019-01-02T03:04:05Z"
+
+# 10-digit fractional seconds (overflow, truncated to 9 digits)
+decode-pair 181a32303139303130323033303430352e313233343536373839315a
+match Test-Date = "2019-01-02T03:04:05Z"
+
+# 9-digit fractional seconds, maximum subseconds (.999999999)
+decode-pair 181932303135313233313233353935392e3939393939393939395a
+match Test-Date = "2015-12-31T23:59:59Z"
+
+# 10-digit fractional seconds overflow, maximum subseconds (.9999999999)
+decode-pair 181a32303135313233313233353935392e393939393939393939395a
+match Test-Date = "2015-12-31T23:59:59Z"
+
 decode-pair 18 10 32 30 31 39 31 32 31 36 30 33 30 32 31 30 2e 5a
 match Insufficient data for subseconds
 
@@ -972,4 +988,4 @@ match c0 01 01 c1 01 02
 
 
 count
-match 575
+match 583

@@ -1288,7 +1288,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	 */
 	if (timestr[DER_GENERALIZED_TIME_LEN_MIN - 1] == '.') {
 		/*
-		 *	We only support subseconds up to 4 decimal places
+		 *	We only support subseconds up to 9 decimal places (nanoseconds)
 		 */
 		char subsecstring[DER_GENERALIZED_TIME_PRECISION_MAX + 1];
 
@@ -1310,7 +1310,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 			return -1;
 		}
 
-		subsecstring[DER_GENERALIZED_TIME_PRECISION_MAX] = '\0';
+		subsecstring[precision] = '\0';
 
 		/*
 		 *	Convert the subseconds to an unsigned long
@@ -1318,9 +1318,22 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 		subseconds = strtoul(subsecstring, NULL, 10);
 
 		/*
-		 *	Scale to nanoseconds
+		 *	Scale to nanoseconds based on actual precision.
 		 */
-		subseconds *= 1000000;
+		{
+			static const unsigned long nsec_multiplier[] = {
+				[1] = 100000000,
+				[2] = 10000000,
+				[3] = 1000000,
+				[4] = 100000,
+				[5] = 10000,
+				[6] = 1000,
+				[7] = 100,
+				[8] = 10,
+				[9] = 1,
+			};
+			subseconds *= nsec_multiplier[precision];
+		}
 	}
 
 	/*
