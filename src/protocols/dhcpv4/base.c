@@ -280,8 +280,8 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	}
 
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
-	if (!code || (code[1] == 0)) {
-		fr_strerror_const("No message-type option was found in the packet");
+	if (!code || (code[1] != 1)) {
+		fr_strerror_const("No message-type, or invalid option was found in the packet");
 		return false;
 	}
 
