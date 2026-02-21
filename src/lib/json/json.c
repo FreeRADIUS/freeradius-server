@@ -87,7 +87,7 @@ void json_object_put_assert(json_object *obj)
 	ret = json_object_put(obj);
 	if (ret == 1) return;
 
-	fr_assert_fail("json_object_put did not free object (returned %u), likely leaking memory", ret);
+	fr_assert_fail("json_object_put did not free object (returned %d), likely leaking memory", ret);
 }
 
 /** Convert json object to fr_value_box_t
@@ -234,7 +234,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 		return json_object_new_string_len((char const *)data->vb_octets, data->vb_length);
 
 	case FR_TYPE_BOOL:
-		return json_object_new_boolean(data->vb_uint8);
+		return json_object_new_boolean(data->vb_bool);
 
 	case FR_TYPE_UINT8:
 		return json_object_new_int(data->vb_uint8);
@@ -416,7 +416,9 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (unlikely(obj == NULL)) return -1;
 		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
 		json_object_put_assert(obj);
-		return slen;
+
+		if (slen < 0) return slen;
+		break;
 	}
 
 	case FR_TYPE_FLOAT64:
@@ -428,7 +430,9 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (unlikely(obj == NULL)) return -1;
 		slen = fr_sbuff_in_strcpy(&our_out, json_object_to_json_string(obj));
 		json_object_put_assert(obj);
-		return slen;
+
+		if (slen < 0) return slen;
+		break;
 	}
 
 	case FR_TYPE_IPV4_ADDR:
@@ -448,6 +452,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
 		slen = fr_value_box_print(&our_out, vb, NULL);
 		if (include_quotes) FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+		/* Intentionally after writing second dquote, so the buffer is always has a properly terminated string */
 		if (slen < 0) return slen;
 	}
 		break;
@@ -651,7 +656,7 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 do { \
 	fr_assert(0); \
 	fr_strerror_printf("Invalid type %s for attribute %s", fr_type_to_str(vp->vp_type), vp->da->name); \
-	return NULL; \
+	goto error; \
 } while (0)
 
 /** Returns a JSON object representation of a list of value pairs
@@ -686,8 +691,8 @@ do { \
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
-						fr_json_format_t const *format)
+static CC_HINT(warn_unused_result)
+json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps, fr_json_format_t const *format)
 {
 	fr_pair_t		*vp;
 	struct json_object	*obj;
@@ -712,6 +717,8 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -719,10 +726,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		case FR_TYPE_LEAF:
 			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-			error:
-				json_object_put_assert(obj);
-
-				return NULL;
+				goto error;
 			}
 			break;
 		/*
@@ -743,6 +747,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		 */
 		case FR_TYPE_STRUCTURAL:
 			value = json_object_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -853,7 +858,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
+static json_object *json_simple_obj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 						 fr_json_format_t const *format)
 {
 	fr_pair_t		*vp;
@@ -882,6 +887,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -889,9 +896,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		case FR_TYPE_LEAF:
 			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-				json_object_put_assert(obj);
-
-				return NULL;
+				goto error;
 			}
 			break;
 		/*
@@ -911,7 +916,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 *	identical to top level attributes.
 		 */
 		case FR_TYPE_STRUCTURAL:
-			value = json_smplobj_afrom_pair_list(ctx, &vp->vp_group, format);
+			value = json_simple_obj_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -1030,6 +1036,9 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		 */
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(seen_attributes);
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -1037,13 +1046,13 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		case FR_TYPE_LEAF:
 			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
-				json_object_put_assert(obj);
-				return NULL;
+				goto error;
 			}
 			break;
 
 		case FR_TYPE_STRUCTURAL:
 			value = json_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (unlikely(value == NULL)) goto error;
 			break;
 
 		default:
@@ -1164,6 +1173,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 		case FR_TYPE_LEAF:
 			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 				fr_strerror_const("Failed to convert attribute value to JSON object");
+			error:
 				json_object_put_assert(obj);
 				return NULL;
 			}
@@ -1171,6 +1181,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		case FR_TYPE_STRUCTURAL:
 			value = json_value_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (value == NULL) goto error;
 			break;
 
 		default:
@@ -1225,6 +1236,8 @@ static struct json_object *json_attr_array_afrom_pair_list(TALLOC_CTX *ctx, fr_p
 
 		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+		error:
+			json_object_put_assert(obj);
 			return NULL;
 		}
 		value = json_object_new_string(fr_sbuff_start(&attr_name));
@@ -1236,6 +1249,7 @@ static struct json_object *json_attr_array_afrom_pair_list(TALLOC_CTX *ctx, fr_p
 		case FR_TYPE_STRUCTURAL:
 			json_object_array_add(obj, value);
 			value = json_attr_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			if (value == NULL) goto error;
 			break;
 
 		default:
@@ -1295,7 +1309,7 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 		MEM(obj = json_object_afrom_pair_list(ctx, vps, format));
 		break;
 	case JSON_MODE_OBJECT_SIMPLE:
-		MEM(obj = json_smplobj_afrom_pair_list(ctx, vps, format));
+		MEM(obj = json_simple_obj_afrom_pair_list(ctx, vps, format));
 		break;
 	case JSON_MODE_ARRAY:
 		MEM(obj = json_array_afrom_pair_list(ctx, vps, format));
