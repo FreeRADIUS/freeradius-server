@@ -2,9 +2,12 @@
 
 The client is either completely broken, or the packet is not RADIUS.
 
-The server receives a network packet with an attribute that isn't the right length for the RADIUS protocol. The client sending the packet is broken and is sending invalid packets of the wrong size.
+The server receives a network packet with an attribute that isn't the
+right length for the RADIUS protocol. The client sending the packet is
+broken and is sending invalid packets of the wrong size.
 
-Also, the data the server receives may not be a valid RADIUS packet. These packets may be some other network traffic that is unrelated or corrupted. In either case, the server can't process the packet as a valid RADIUS message because the attribute length is incorrect.
+Update the client to stop sending non-RADIUS packets to the RADIUS
+server.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

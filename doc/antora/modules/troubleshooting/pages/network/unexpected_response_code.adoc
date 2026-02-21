@@ -1,8 +1,19 @@
 = Unexpected response code
 
-Each request sent has only a few valid responses that can be processed successfully. The next hop, such as a server or device, can send a bad or wrong response. When sending a request within a network protocol, only a limited set of responses is expected from the recipient. The invalid or incorrect response may be due to misconfiguration, software bugs, or unexpected network behavior.
+Each request sent has only a few valid responses that can be processed
+successfully. The next hop, such as a proxy or home network can,
+however send anything in the response.  This capability means that
+it's possible for the next hop to send (for example) a
+`Accounting-Response` reply the local server sent an `Access-Request`.
 
-Receiving a bad or wrong response can disrupt normal operations and may need troubleshooting to find the cause and ensure systems communicate properly.
+The invalid or incorrect response may be due to misconfiguration, or
+software bugs.  The problem is caused by the next hop server which is
+sending the bad response, not by the local server which is received it.
+
+Receiving a bad or wrong response will cause the server to ignore the
+response, as no valid response was received.  The solution is to
+contact the administrator of the next hop server, and ask them to
+correct the issue.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

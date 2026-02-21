@@ -1,6 +1,13 @@
 = Packet too small
 
-RADIUS packets must be at least 20 bytes in size. If you see this error, it means that non-RADIUS packets are being sent to the RADIUS port. Update your firewall rules to block traffic from that source IP.
+The RADIUS specifications say rhat packets must be at least 20 bytes
+in size. If you see this error, it means that non-RADIUS packets are
+being sent to the RADIUS port.
+
+Find the system which is sending the non-RADIUS traffic, and update it
+so that it does not send traffic to the RADIUS server.  Or, add a
+firewall rule on the RADIUS server to block traffic from that source
+IP address.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,11 +1,16 @@
 = Message-Authenticator is missing
 
-This error happens when the Message-Authenticator attribute is missing from the RADIUS packet. This attribute is used to check the integrity and authenticity of RADIUS messages. The Message-Authenticator stops malicious attacks. Without it, the server faces serious risks, like the BlastRADIUS attack. BlastRADIUS attacks happen when the Message-Authenticator is missing or used incorrectly. Unauthorised users gain access to network resources and services, putting the system's security and integrity at risk.
+This error happens when the Message-Authenticator attribute is missing
+from the packet. This attribute is used to check the integrity
+and authenticity of RADIUS messages.
 
-The Message-Authenticator attribute acts like a digital fingerprint for RADIUS messages. It verifies that the messages are genuine. Sending a packet without it is like not having a tracking number. It's difficult to check who sent it or what's inside. This error indicates a potential security risk when it appears. The packet may not be trustworthy or follow best practices. This highlights the urgency to fix the issue to prevent security breaches.
+The `Message-Authenticator` attribute acts like a digital signature
+for RADIUS messages. It verifies that the messages are
+genuine, and are from a genuine client.
 
+This error can stem from a misconfigured RADIUS client.
 
-This error can stem from a misconfigured RADIUS server or a faulty client. To resolve it and avoid future problems, understanding the cause is important.
+TBD: EAP requires Message-Authenticator, as does BlastRADIUS
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

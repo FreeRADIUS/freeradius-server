@@ -1,16 +1,28 @@
 = Unexpected Request Code
 
-This error occurs when a RADIUS server is set up incorrectly. The listen section specifies which RADIUS packets the server accepts on a port or interface. If a client sends a packet that does not match the configuration, the server rejects it and returns an "Unexpected Request Code" error.
+This error occurs when the RADIUS client and server do not have a
+common configuration.  Each listen section specifies which RADIUS
+requests that the server accepts. If a client sends a request which is
+not listed in the `listen` section configuration, the server will
+reject it and show an "Unexpected Request Code" error.
 
-A key aspect of the RADIUS protocol is that it does not have a negotiation phase between the client and server. This is different from other protocols. For example, HTTP allows a client to send an OPTIONS request to check a server's capabilities. In contrast, a RADIUS client cannot discover which packet types a server will accept. This means someone has to manually adjust settings if there’s a mismatch. These issues cause admin problems. Many forum posts show challenges with RADIUS setups. Support requests also highlight these troubles. For instance, in a university, various departments may use different RADIUS clients. Making sure these clients work with the central RADIUS server can be complex.
+A key aspect of the RADIUS protocol is that it does not have any way
+to negotiation capabilities between the client and server. This is
+different from many other protocols. For example, HTTP allows a client
+to send an OPTIONS request to check a server's capabilities. In
+contrast, a RADIUS client cannot discover which packet types a server
+will accept. This means that an administrator has to manually update
+the configuration if there’s a mismatch.
 
-To fix an Unexpected Request Code error, you have two options. First, change the client to send only the expected packet types. This may involve updating the client’s software or adjusting its configuration files. This ensures the client works within the limits set by the server's listen section.
+To fix an Unexpected Request Code error, you have two options. First,
+reconfigure the client to send only the packet types that the server
+expects. This may involve updating the client’s software or adjusting
+its configuration files. This ensures the client works within the
+limits set by the server's listen section.
 
-You can also change the server's listen section to accept the packet types sent by the client. This may mean adding new sections or adjusting existing ones. This flexibility helps network admins configure the RADIUS server to fit their clients' needs. It ensures smooth communication and authentication.
-
-For example, adding a new listen section for a VPN service lets users access the network securely from remote locations. This does not disrupt existing authentication flows. By fixing the Unexpected Request Code issue, admins can build stronger RADIUS configurations. This improves network security and reliability.
-
-
+You can also change the server's `listen` section to list the packet
+types sent by the client.  See the individual `listen` section for how
+this is done.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

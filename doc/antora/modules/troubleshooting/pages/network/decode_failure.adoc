@@ -1,13 +1,15 @@
 = Failure Decoding the Packet
 
-The message "Failure Decoding the Packet"  means that the server can't interpret a received network packet. This failure may be caused by one of the following:
+The message "Failure Decoding the Packet" means that the server cannot
+process a packet which it has received. This failure may be caused by
+one of the following:
 
-* The server has run out of memory, preventing it from processing the packet.
+* The server has run out of memory,
 * There are malformed Vendor-Specific Attributes (VSAs) within the packet.
 * The Type-Length-Value (TLV) is too deep.
 * Unusual or unexpected packet structures cause packets to be malformed in some weird way.
 
-In all these cases, the server can't process the packet because its format is invalid or corrupt.
+In all these cases, the server discards the packet.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,8 +1,13 @@
 = Packet Too Large
 
-The "Packet Too Large" error occurs when a client sends a RADIUS packet with too much data. The RADIUS protocol limits packet size to 4k, ensuring reliable communication and interoperability between network devices. If a packet exceeds this limit, the server can't process it and reports an error.
+The "Packet Too Large" error occurs when a client sends a RADIUS
+packet with too much data. The RADIUS protocol limits packet size to
+4k.  If a packet exceeds this limit, the server can't process it and
+reports an error.
 
-This error means that the client is broken/misconfigured. Either the client sends too much data or doesn't follow the protocol guidelines. To fix this, check the client's setup and make sure it meets the RADIUS packet size limits.
+This error means that the client is broken or is misconfigured.  To
+fix the error, check the client's configuration and make sure that it
+is sending valid RADIUS packets.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
