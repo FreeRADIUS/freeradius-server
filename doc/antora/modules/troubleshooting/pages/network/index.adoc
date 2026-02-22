@@ -77,7 +77,7 @@ with that error.
 ** xref:network/unexpected_request_code.adoc[Unexpected request code]
 ** xref:network/message_authenticator_missing.adoc[Message-Authenticator is missing]
 ** xref:network/message_authenticator_invalid.adoc[Message-Authenticator fail verification]
-** xref:network/proxy_state_missing.adoc[Proxy-State is missing]
+** xref:network/proxy_state_missing_ma.adoc[Proxy-State without Message-Authenticator]
 ** xref:network/packet_fails_verification.adoc[Packet fails verification]
 ** xref:network/no_matching_request.adoc[Did not find request which matched response]
 

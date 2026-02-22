@@ -212,7 +212,7 @@ static char const *url[FR_RADIUS_FAIL_MAX + 1] = {
 	[FR_RADIUS_FAIL_MA_INVALID_LENGTH]	= "message_authenticator_length",
 	[FR_RADIUS_FAIL_MA_MISSING]		= "message_authenticator_missing",
 	[FR_RADIUS_FAIL_MA_INVALID]		= "message_authenticator_invalid",
-	[FR_RADIUS_FAIL_PROXY_STATE_MISSING]	= "proxy_state_missing",
+	[FR_RADIUS_FAIL_PROXY_STATE_MISSING_MA]	= "proxy_state_missing_ma",
 
 	[FR_RADIUS_FAIL_VERIFY]			= "packet_fails_verification",
 	[FR_RADIUS_FAIL_NO_MATCHING_REQUEST]	= "no_matching_request",
