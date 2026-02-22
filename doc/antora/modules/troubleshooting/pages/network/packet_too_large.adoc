@@ -5,9 +5,7 @@ packet with too much data. The RADIUS protocol limits packet size to
 4k.  If a packet exceeds this limit, the server can't process it and
 reports an error.
 
-This error means that the client is broken or is misconfigured.  To
-fix the error, check the client's configuration and make sure that it
-is sending valid RADIUS packets.
+include::partial$not-radius.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

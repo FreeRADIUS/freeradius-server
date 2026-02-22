@@ -1,0 +1,37 @@
+= Security Best Practices
+
+In general, you should not have your RADIUS server on the public
+Internet.  While the server is secure, placing it on the Internet
+allows all kinds of systems to attack it.
+
+Where possible, keep the RADIUS server on a secure management network,
+where only a small number of systems can send it network taffic.
+
+If you have to place your RADIUS server on the public Internet, you
+should at least take the following actions to protect it:
+
+* use RadSec (RADIUS over TLS) where possible
+* add OS firewall rules to allow traffic only from known source IP addres
+  * if RADIUS clients are using TLS and dynamic discovery, you can't take this step.
+
+For RADIUS/UDP traffic, add firewall rules to perform the following checks:
+
+* discard packets which are less than 20 bytes long
+* discard packets which are more than 4096 bytes long
+  * In general, packets larger than Ethernet MTU are rare.  You may
+    consider limiting the maximum packet size to 1536 or even 500.
+* discard packets where the first byte is not 1 (Access-Request), or 4 (Accounting-Request)
+* discard packets when the system is seeing more than 1000 packets/s
+  * this value will have to be tuned for your local system capability and configuration.
+
+On Linux systems, these checks can be done with the following
+commands.  These commands may need to be tuned for your local system
+and environment:
+
+```
+iptables -A INPUT -p udp -m length --length 20:4096 --dport 1812,1813 -j DROP
+```
+
+If you do RADIUS proxying, you should configure the `radius` module
+with a fixed range for source ports, and add similar firewall rules
+for all packets which are sent to those ports.

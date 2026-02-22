@@ -4,7 +4,7 @@ This message indicates that the packet is likely not RADIUS.  Or, it's
 a RADIUS packet which was somehow truncated and corrupted in the
 network.
 
-Fix the client to stop sending non-RADIUS traffic to the RADIUS server.
+include::partial$not-radius.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

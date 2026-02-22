@@ -2,8 +2,7 @@
 
 The RADIUS packet is malformed, which means that it's not RADIUS.
 
-Fix the client to stop sending non-RADIUS traffic to the RADIUS
-server.
+include::partial$not-radius.adoc[]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

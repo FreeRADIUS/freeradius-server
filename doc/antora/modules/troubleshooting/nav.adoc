@@ -1,6 +1,7 @@
 * xref:index.adoc[Troubleshooting]
 
 ** xref:network/index.adoc[Network Errors]
+*** xref:network/security.adoc[Security Best Practices]
 
 *** Server does not start
 **** xref:network/bind.adoc[Failed binding to socket]

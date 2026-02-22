@@ -24,5 +24,7 @@ You can also change the server's `listen` section to list the packet
 types sent by the client.  See the individual `listen` section for how
 this is done.
 
+include::partial$not-radius.adoc[]
+
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
