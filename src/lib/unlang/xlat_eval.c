@@ -241,20 +241,22 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 			fr_value_box_t *a, *b;
 
 			a = fr_value_box_list_head(args);
+			if (!a) return;
+
 			b = fr_value_box_list_next(args, a);
 
-			RDEBUG2("| (%pR %s %pR)", a, fr_tokens[node->call.func->token], b);
+			if (!b) {
+				RDEBUG2("| ... ??? %pR", a);
 
-#ifndef NDEBUG
-			if (a && b) {
+			} else {
+				RDEBUG2("| (%pR %s %pR)", a, fr_tokens[node->call.func->token], b);
+
 				a = fr_value_box_list_next(args, b);
 				if (a) {
 					RDEBUG2("| ... ??? %pR", a);
 					fr_assert(0);
 				}
 			}
-#endif
-
 		}
 	} else {
 		fr_sbuff_t *agg;
@@ -1673,7 +1675,6 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 	next:
 		vb = fr_value_box_list_next(list, vb);
 		node = xlat_exp_next(head, node);
-
 	} while (node && vb);
 
 	return 0;
@@ -2008,8 +2009,6 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 
 int xlat_eval_init(void)
 {
-	fr_assert(!instance_count);
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;

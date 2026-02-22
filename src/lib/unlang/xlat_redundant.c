@@ -168,7 +168,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Run a single random redundant function.
 	 */
 	case XLAT_LOAD_BALANCE:
-		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
+		rctx->current = rctx->first = &xri->ex[(size_t)fr_rand() % talloc_array_length(xri->ex)];	/* Random start */
 		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 
@@ -177,7 +177,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	starting at a random element.
 	 */
 	case XLAT_REDUNDANT_LOAD_BALANCE:
-		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
+		rctx->current = rctx->first = &xri->ex[(size_t)fr_rand() % talloc_array_length(xri->ex)];	/* Random start */
 		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
 		break;
 

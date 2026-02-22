@@ -471,7 +471,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 			 *	We finally support "default" sections for "switch".
 			 */
 			if (strcmp(name1, "default") == 0) {
-				if (cf_section_name2(subcs) != 0) {
+				if (cf_section_name2(subcs) != NULL) {
 					cf_log_err(subci, "\"default\" sections cannot have a match argument");
 					goto error;
 				}

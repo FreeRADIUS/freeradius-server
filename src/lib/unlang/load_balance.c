@@ -314,8 +314,6 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 			return NULL;
 		}
 
-		ERROR("SHIT %s %d", gext->vpt->name, gext->vpt->type);
-
 		switch (gext->vpt->type) {
 		default:
 			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);

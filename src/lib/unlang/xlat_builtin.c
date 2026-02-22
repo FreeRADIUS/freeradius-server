@@ -794,7 +794,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (len < buf.st_size) {
 		RPERROR("Failed reading all of file %s", filename);
 		talloc_free(dst);
-		goto fail;
+		return XLAT_ACTION_FAIL;
 	}
 
 	fr_dcursor_append(out, dst);
@@ -2729,7 +2729,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			reps = strtol(p, &endptr, 10);
 			if (reps > REPETITION_MAX) {
 				reps = REPETITION_MAX;
-				RMARKER(L_WARN, L_DBG_LVL_2, start, start - p,
+				RMARKER(L_WARN, L_DBG_LVL_2, start, p - start,
 					"Forcing repetition to %u", (unsigned int)REPETITION_MAX);
 			}
 			p = endptr;
@@ -3333,7 +3333,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const xlat_func_str_printable_arg[] = {
-	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING, .required = true, },
 	{ .single = true, .type = FR_TYPE_BOOL },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -4081,7 +4081,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	end = p + vb->vb_length;
 
 	while (p < end) {
-		*(p) = upper ? toupper ((int) *(p)) : tolower((uint8_t) *(p));
+		*(p) = upper ? toupper ((uint8_t) *(p)) : tolower((uint8_t) *(p));
 		p++;
 	}
 
@@ -4254,6 +4254,10 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	while (p < end) {
 		if (*p == '%') {
+			if (!p[1] || !p[2]) {
+				REMARKER(in_head->vb_strvalue, p - in_head->vb_strvalue, "Invalid %% sequence");
+				return XLAT_ACTION_FAIL;
+			}
 			p += 3;
 		} else {
 			p++;
@@ -4396,7 +4400,21 @@ static xlat_action_t xlat_func_subnet_netmask(TALLOC_CTX *ctx, fr_dcursor_t *out
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+
+	switch (subnet->vb_ip.prefix) {
+	case 0:
+		vb->vb_ipv4addr = 0;
+		break;
+
+	case 32:
+		vb->vb_ipv4addr = 0xffffffff;
+		break;
+
+	default:
+		vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+		break;
+	}
+
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4418,7 +4436,7 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
+	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | ((uint32_t)0xffffffff >> subnet->vb_ip.prefix));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4858,6 +4876,7 @@ do { \
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
+	XLAT_REGISTER_ARGS("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
 
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
@@ -4888,7 +4907,6 @@ do { \
 
 	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_PURE("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
-	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
 	XLAT_REGISTER_PURE("hash.md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_PURE("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_NEW("hash.md4");

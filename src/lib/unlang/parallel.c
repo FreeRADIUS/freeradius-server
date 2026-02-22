@@ -96,8 +96,6 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 		return;
 
 	case CHILD_CANCELLED:
-		break;
-
 	case CHILD_FREED:
 		return;
 	}
@@ -233,10 +231,6 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 							      "unlang_parallel_state_t",
 							      num_children,
 							      (talloc_array_length(request->name) * 2)));
-	if (!state) {
-		return UNLANG_ACTION_FAIL;
-	}
-
 	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = UNLANG_RESULT_NOT_SET;
 	state->detach = gext->detach;
@@ -358,6 +352,9 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 			 *	Converts to a detached request
 			 */
 			unlang_interpret_signal(state->children[i].request, FR_SIGNAL_DETACH);
+
+			state->children[i].request = NULL;
+			state->children[i].state = CHILD_DETACHED;
 		}
 
 		/*

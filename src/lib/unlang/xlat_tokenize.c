@@ -54,7 +54,7 @@ static fr_sbuff_unescape_rules_t const xlat_unescape = {
 	.subs = {
 		['a'] = '\a',
 		['b'] = '\b',
-		['e'] = '\\',
+		['e'] = '\\',	/* escape character, not \e */
 		['n'] = '\n',
 		['r'] = '\r',
 		['t'] = '\t',
@@ -297,7 +297,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	 */
 	if (arg_p->type == FR_TYPE_ATTR) {
 		if (node->type != XLAT_TMPL) {
-			fr_strerror_printf("Attribute must be a bare word, not %s", fr_type_to_str(node->data.type));
+			fr_strerror_printf("Attribute must be a bare word");
 			return -1;
 		}
 
@@ -384,12 +384,19 @@ int xlat_validate_function_args(xlat_exp_t *node)
 	 *	The function both has arguments defined, and the user has supplied them.
 	 */
 	for (arg_p = node->call.func->args, i = 0; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		if (!arg_p->required) break;
-
 		if (!arg) {
-			fr_strerror_printf("Missing required argument %u",
-					   (unsigned int)(arg_p - node->call.func->args) + 1);
-			return -1;
+			if (arg_p->required) {
+				fr_strerror_printf("Missing required argument %u",
+						   (unsigned int)(arg_p - node->call.func->args) + 1);
+				return -1;
+			}
+
+			/*
+			 *	No arg and not required, we can stop.
+			 *
+			 *	If there is an arg, we validate it, even if it isn't required.
+			 */
+			break;
 		}
 
 		/*
@@ -505,16 +512,20 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	}
 
 	/*
+	 *	Check for failure.
+	 */
+	if (!func && (!t_rules->attr.allow_unresolved|| t_rules->at_runtime)) {
+		fr_strerror_const("Unresolved expansion functions are not allowed here");
+		fr_sbuff_set(in, &m_s);		/* backtrack */
+		fr_sbuff_marker_release(&m_s);
+		return -1;
+	}
+
+	/*
 	 *	Allocate a node to hold the function
 	 */
 	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
-		if (!t_rules->attr.allow_unresolved|| t_rules->at_runtime) {
-			fr_strerror_const("Unresolved expansion functions are not allowed here");
-			fr_sbuff_set(in, &m_s);		/* backtrack */
-			fr_sbuff_marker_release(&m_s);
-			return -1;
-		}
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
 
 	} else {
@@ -715,6 +726,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		}
 
 		if (!fr_sbuff_is_char(in, '}')) {
+			talloc_free(node);
 			fr_strerror_const("Missing closing brace '}'");
 			return -1;
 		}
@@ -1253,7 +1265,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 *	call it.
 		 */
 		if (node->call.func->print) {
-			slen = node->call.func->print(out, node, node->call.inst->data, e_rules);
+			slen = node->call.func->print(out, node, node->call.inst ? node->call.inst->data : NULL, e_rules);
 			if (slen < 0) return slen;
 			goto done;
 		}

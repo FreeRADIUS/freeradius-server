@@ -75,7 +75,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 {
 	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
 
-	state->original_rcode = request->rcode;;
+	state->original_rcode = request->rcode;
 
 	/*
 	 *	Ensure the request has at least min_time to continue
@@ -85,6 +85,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 		if (unlikely(fr_timer_in(unlang_interpret_frame_talloc_ctx(request),
 			     unlang_interpret_event_list(request)->tl, &request->timeout,
 			     state->min_time, false, unlang_timeout_handler, state) < 0)) {
+		fail:
 			unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 			return UNLANG_ACTION_FAIL;
 		}
@@ -97,7 +98,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	 */
 	if (unlikely(unlang_interpret_push_instruction(&state->result, request, state->instruction,
 						       FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0)) {
-		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
+		goto fail;
 	}
 
 	frame_repeat(frame, unlang_finally_resume);

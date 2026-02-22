@@ -699,9 +699,9 @@ static inline CC_HINT(always_inline) void instruction_done_debug(request_t *requ
 		 */
 		if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 			RDEBUG("# %s %s%s%s", frame->instruction->debug_name,
-				frame->p_result == &frame->section_result ? "(" : "((",
-				fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
-				frame->p_result == &frame->section_result ? "(" : "))");
+			       frame->p_result == &frame->section_result ? "(" : "((",
+			       fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
+			       frame->p_result == &frame->section_result ? ")" : "))");
 		} else {
 			RDEBUG2("} # %s %s%s%s", frame->instruction->debug_name,
 				frame->p_result == &frame->section_result ? "(" : "((",
@@ -1133,6 +1133,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 static unlang_group_t empty_group = {
 	.self = {
 		.type = UNLANG_TYPE_GROUP,
+		.name = "empty-group",
 		.debug_name = "empty-group",
 		.actions = {
 			.actions = {
@@ -1144,9 +1145,19 @@ static unlang_group_t empty_group = {
 				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
 				MOD_ACTION_RETURN
 			},
 			.retry = RETRY_INIT,
+		},
+	},
+	.children = {
+		.head = {
+			.entry = {
+				.prev = &empty_group.children.head.entry,
+				.next = &empty_group.children.head.entry,
+			}
 		},
 	},
 };

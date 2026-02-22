@@ -568,7 +568,7 @@ int xlat_instance_unregister_func(xlat_exp_t *node)
 		}
 
 		talloc_set_destructor(node->call.thread_inst, NULL);
-		TALLOC_FREE(node->call.inst);
+		TALLOC_FREE(node->call.thread_inst);
 	}
 
 	return 0;

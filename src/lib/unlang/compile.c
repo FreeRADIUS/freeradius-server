@@ -940,14 +940,14 @@ invalid_type:
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
+static bool compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
-	if (!value) return 0;
+	if (!value) return true;
 
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
@@ -965,7 +965,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 		if (strlen(value) > 2) {
 		invalid_action:
 			cf_log_err(cp, "Priorities MUST be between 1 and 64.");
-			return 0;
+			return false;
 		}
 
 		action = MOD_PRIORITY(atoi(value));
@@ -975,7 +975,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 	} else {
 		cf_log_err(cp, "Unknown action '%s'.\n",
 			   value);
-		return 0;
+		return false;
 	}
 
 	if (strcasecmp(attr, "default") != 0) {
@@ -986,7 +986,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 			cf_log_err(cp,
 				   "Unknown module rcode '%s'.",
 				   attr);
-			return 0;
+			return false;
 		}
 		actions->actions[rcode] = action;
 
@@ -998,7 +998,7 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 		}
 	}
 
-	return 1;
+	return true;
 }
 
 static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)

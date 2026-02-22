@@ -354,8 +354,6 @@ void xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt)
  */
 static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_exp_head_t *out, xlat_exp_head_t const *in)
 {
-	xlat_exp_head_t *head = NULL;
-
 	xlat_flags_merge(&out->flags, &in->flags);
 
 	/*
@@ -380,7 +378,6 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		case XLAT_INVALID:
 			fr_strerror_printf("Cannot copy xlat node of type \"invalid\"");
 		error:
-			talloc_free(head);
 			return -1;
 
 		case XLAT_BOX:

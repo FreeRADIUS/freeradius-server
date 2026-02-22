@@ -130,6 +130,8 @@ static unlang_action_t unlang_timeout_done(unlang_result_t *p_result, request_t 
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
 
+	if (!box) return UNLANG_ACTION_FAIL;
+
 	/*
 	 *	compile_timeout() ensures that the tmpl is cast to time_delta, so we don't have to do any more work here.
 	 */

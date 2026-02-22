@@ -742,7 +742,7 @@ get_packet_type:
 				if (!tmpl_contains_attr(dst_vpt)) {
 					cf_log_err(cs, "Invalid argument to 'subrequest' dst must be an "
 						   "attr or list, got %s",
-						   tmpl_type_to_str(src_vpt->type));
+						   tmpl_type_to_str(dst_vpt->type));
 					talloc_free(src_vpt);
 					talloc_free(dst_vpt);
 					goto error;

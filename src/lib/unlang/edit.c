@@ -1159,6 +1159,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 		child->ctx = child;
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
+		child->temporary_pair_list = false;
 	} else {
 		fr_assert(fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type));
 

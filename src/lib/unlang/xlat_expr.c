@@ -272,6 +272,7 @@ flags:
 	fr_assert(!arg2->flags.needs_resolving);
 
 	node->call.args->flags.needs_resolving = false;
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
 
 	return 0;
 }
@@ -317,13 +318,15 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_value_box_list_head(in);
 	if (!a) {
 		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+	fail:
+		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
 	}
 
 	b = fr_value_box_list_next(in, a);
 	if (!b) {
 		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 
 	fr_assert(!fr_comparison_op[op]);
@@ -331,14 +334,14 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
 		REDEBUG("Expected one value as the first argument, got %u",
 			fr_value_box_list_num_elements(&a->vb_group));
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 	a = fr_value_box_list_head(&a->vb_group);
 
 	if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
 		REDEBUG("Expected one value as the second argument, got %u",
 			fr_value_box_list_num_elements(&b->vb_group));
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 	b = fr_value_box_list_head(&b->vb_group);
 
@@ -355,8 +358,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	if (rcode < 0) {
 		RPEDEBUG("Failed calculating '%pR %s %pR'", a, fr_tokens[op], b);
-		talloc_free(dst);
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 
 	/*
@@ -590,10 +592,10 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	lhs = xlat_exp_head(xctx->ex->call.args);
 	rhs = xlat_exp_next(xctx->ex->call.args, lhs);
 
-	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
-
 	fr_assert(rhs);
 	fr_assert(rhs->type == XLAT_GROUP);
+	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, rhs);
+
 	regex = xlat_exp_head(rhs->group);
 	fr_assert(tmpl_contains_regex(regex->vpt));
 
@@ -717,10 +719,11 @@ static xlat_action_t xlat_regex_do_op(TALLOC_CTX *ctx, request_t *request, fr_va
 		 *	Evaluate the expression
 		 */
 		ret = regex_exec(*preg, subject, len, regmatch);
+		talloc_free(vb);
+
 		switch (ret) {
 		default:
 			RPEDEBUG("REGEX failed");
-			talloc_free(vb);
 			talloc_free(regmatch);
 			return XLAT_ACTION_FAIL;
 
@@ -730,12 +733,8 @@ static xlat_action_t xlat_regex_do_op(TALLOC_CTX *ctx, request_t *request, fr_va
 
 		case 1:
 			regex_sub_to_request(request, preg, &regmatch, &safety);
-			talloc_free(vb);
 			goto done;
-
 		}
-
-		talloc_free(vb);
 	}
 
 done:
@@ -1238,11 +1237,11 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Nothing to expand, return the final value we saw.
 	 */
 	if (rctx->current >= inst->argc) {
-	done:
 		/*
 		 *	Otherwise we stop on failure, with the boolean
 		 *	we just updated.
 		 */
+	done:
 		if (rctx->box) fr_dcursor_append(out, rctx->box);
 
 		talloc_free(rctx);
@@ -1332,7 +1331,10 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	(a, b, c) && (d, e, f) == a && b && c && d && e && f
 	 */
 	match = xlat_logical_and(rctx, &rctx->list);
-	if (!match) return XLAT_ACTION_DONE;
+	if (!match) {
+		TALLOC_FREE(rctx->box); /* parented from ctx */
+		goto done;
+	}
 
 	fr_value_box_list_talloc_free(&rctx->list);
 
@@ -1349,6 +1351,7 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(rctx->box != NULL);
 		fr_dcursor_append(out, rctx->box);
 
+	done:
 		talloc_free(rctx);
 		return XLAT_ACTION_DONE;
 	}
