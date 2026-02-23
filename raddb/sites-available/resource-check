@@ -121,15 +121,15 @@ recv Status-Server {
 	if ("%sql('SELECT pg_is_in_recovery()')" != "f") {
 
 		#  Fail the db_online module, if it isn't already
-		if (%db_online() != "fail") {
-			%db_online(fail)
+		if (%db_online() != 'fail') {
+			%db_online('fail')
 		}
 
 	} else {
 
 		#  Set the db_online module status to alive, if it isn't already
-		if (%db_online() != "alive") {
-			%db_online(alive)
+		if (%db_online() != 'alive') {
+			%db_online('alive')
 		}
 
 	}

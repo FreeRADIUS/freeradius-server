@@ -70,7 +70,7 @@ static xlat_arg_parser_t const always_xlat_args[] = {
  *
  * Look ma, no locks...
  *
- * Example: %db_status(fail)
+ * Example: %db_status('fail')
  */
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
