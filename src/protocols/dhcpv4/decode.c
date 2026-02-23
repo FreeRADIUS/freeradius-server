@@ -648,6 +648,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx, decode_value);
+		} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(da)) {
+			slen = fr_pair_dns_labels_from_network(ctx, out, da, concat_buffer, concat_buffer,
+							       q - concat_buffer, NULL, true);
 
 		} else {
 			slen = decode_value(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx);
