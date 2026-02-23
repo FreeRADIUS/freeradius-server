@@ -1,0 +1,17 @@
+jinja_templates_to_render:
+  - environments/configs/freeradius/homeserver/radiusd.conf.j2
+  - environments/configs/freeradius/proxy/radiusd.conf.j2
+  - environments/configs/freeradius/load-generator/radiusd.conf.j2
+  - environments/docker-compose/env-1p-2hs-autoaccept.yml.j2
+
+# Docker compose Jinja template vars
+compose_num_of_home_servers: 2
+compose_num_of_proxy_servers: 1
+# Load generator Jinja template vars
+load_gen_num_of_dst_servers: 1
+load_gen_dst_server_name: proxy
+# Proxy server Jinja template vars
+proxy_num_of_dst_servers: 2
+proxy_dst_server_name: homeserver
+# General Jinja template vars
+listener_type: file
