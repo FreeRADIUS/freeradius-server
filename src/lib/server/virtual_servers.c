@@ -1223,6 +1223,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	int				i, found;
 	bool				fail;
 	CONF_SECTION			*subcs = NULL;
+	char const			*name, *name2;
 
 	found = 0;
 
@@ -1237,8 +1238,6 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		fail = false;
 
 		while ((subcs = cf_section_next(server, subcs)) != NULL) {
-			char const *name;
-
 			if (cf_section_name2(subcs) != NULL) continue;
 
 			name = cf_section_name1(subcs);
@@ -1333,8 +1332,6 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		 *	and compile them.
 		 */
 		while ((subcs = cf_section_find_next(server, subcs, list[i].section->name1, CF_IDENT_ANY))) {
-			char const	*name2;
-
 			name2 = cf_section_name2(subcs);
 			if (!name2) {
 				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].section->name1);
@@ -1395,8 +1392,6 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	for (subcs = cf_section_first(server);
 	     subcs != NULL;
 	     subcs = cf_section_next(server, subcs)) {
-		char const *name, *name2;
-
 		if (cf_item_is_parsed(subcs)) continue;
 
 		name = cf_section_name1(subcs);
@@ -1413,21 +1408,58 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		 */
 		if (strcmp(name, "client") == 0) continue;
 
+		name2 = cf_section_name2(subcs);
+
 		/*
 		 *	When checking the configuration, it is an error to have an unused "send FOO" or "recv
 		 *	BAR" section.
 		 */
 		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
-			cf_log_err(subcs, "Unused processing section %s ... {", name);
-			cf_log_err(subcs, "If this is intentional, please rename it to '-%s'", name);
+			if (!name2) {
+				cf_log_err(subcs, "Unused processing section' %s {'", name);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s { ...'", name);
+			} else {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s %s { ...'",
+					   name, name2);
+			}
+
 			fail = true;
 			continue;
 		}
 
+		/*
+		 *	Print warnings if it's unused.  If there's an issue with case sensitivity, then that's
+		 *	an error, even if we're not running check_config.
+		 */
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_warn(subcs, "Ignoring %s { - it is unused", name);
+			cf_log_warn(subcs, "Ignoring '%s {' - it is unused", name);
 		} else {
+			const char *realname = NULL;
+
+			/*
+			 *	See if it's a case-sensitive issue.
+			 *
+			 *	The dictionaries are case insensitive.  The configuration files are
+			 *	case sensitive.
+			 */
+			for (i = 0; list[i].section; i++) {
+				if (list[i].section->name2 == CF_IDENT_ANY) continue;
+
+				if (strcasecmp(list[i].section->name2, name2) == 0) {
+					realname = list[i].section->name2;
+					break;
+				}
+			}
+
+			if (realname) {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "Do you mean '%s %s { ...' ? ", name, realname);
+				fail = true;
+				break;
+			}
+
 			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
 		}
 	}
