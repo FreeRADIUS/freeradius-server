@@ -90,7 +90,7 @@ jobs:
             echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
             exit 1
           fi
-          make -f src/tests/multi-server/all.mk test-5hs-autoaccept
+          make -f src/tests/multi-server/all.mk test-5hs-autoaccept VERBOSE=4
 
       - name: Verify test results
         shell: bash
@@ -159,16 +159,8 @@ jobs:
 
     env:
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
-
+      MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-listener-logs/custom_test-env-5hs-autoaccept.txt.bak
     steps:
-
-      #  Need git installed for checkout to behave normally
-      - name: Install multi-server framework test environment dependencies
-        run: |
-          apt-get update
-          apt-get install -y build-essential
-          apt-get install -y --no-install-recommends git git-lfs ca-certificates
-          make --version
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
@@ -220,12 +212,20 @@ jobs:
           if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
             echo "TEST FAILED: Found [Failed] in log"
             grep '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"
+
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
           if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"; then
             echo "TEST FAILED: Found Failures > 0 in log"
             grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"
+
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
@@ -254,6 +254,10 @@ jobs:
             : # PASS
           else
             echo "TEST FAILED: No Matched line found with equal non-zero counts"
+
+            # Display the framework's listener log for debugging purposes
+            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
