@@ -1261,7 +1261,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		FR_PROTO_TRACE("WiMAX decode concatenated");
 		FR_PROTO_HEX_DUMP(head, wimax_len, "%s", __FUNCTION__ );
-		ret = fr_radius_decode_pair_value(ctx, out,
+		ret = fr_radius_decode_pair_value(vendor, &vendor->vp_group,
 						  da, head, wimax_len, packet_ctx);
 
 		packet_ctx->end = tmp;
