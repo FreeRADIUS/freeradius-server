@@ -317,8 +317,8 @@ static connection_state_t _conn_init(void **h_out, connection_t *conn, UNUSED vo
 	h = talloc_array(conn, int, 2);
 	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
 
-	fr_nonblock(h[0]);
-	fr_nonblock(h[1]);
+	(void) fr_nonblock(h[0]);
+	(void) fr_nonblock(h[1]);
 	connection_signal_on_fd(conn, h[0]);
 	*h_out = h;
 
