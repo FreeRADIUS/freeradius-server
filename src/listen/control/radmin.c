@@ -233,6 +233,8 @@ static ssize_t do_challenge(int fd)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
+	if (!secret) return -1;
+
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
 		    challenge, sizeof(challenge));
 
@@ -1187,7 +1189,15 @@ int main(int argc, char **argv)
 
 		if (!secret && !stack_depth && (strncmp(line, "secret ", 7) == 0)) {
 			secret = talloc_strdup(autofree, line + 7);
-			do_challenge(sockfd);
+			if (!secret) {
+				radmin_free(line);
+				fr_exit_now(EXIT_FAILURE);
+			}
+
+			if (do_challenge(sockfd) < 0) {
+				radmin_free(line);
+				fr_exit_now(EXIT_FAILURE);
+			}
 			goto next;
 		}
 
