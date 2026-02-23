@@ -102,6 +102,10 @@ endif
 $(BUILD_DIR)/tests:
 	${Q}mkdir -p $@
 
+.PHONY: test.multi-server.%
+test.multi-server.%:
+	$(MAKE) -f src/tests/multi-server/all.mk $*
+
 ######################################################################
 #
 #  Generic rules to set up the tests

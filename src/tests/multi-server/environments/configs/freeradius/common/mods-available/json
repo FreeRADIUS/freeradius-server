@@ -1,0 +1,8 @@
+json {
+	encode {
+		output_mode = object_simple
+		value {
+			binary_format = base16
+		}
+	}
+}
