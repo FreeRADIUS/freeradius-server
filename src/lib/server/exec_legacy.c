@@ -360,7 +360,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 	int status;
 	fr_time_t start;
 
-	fr_nonblock(fd);
+	(void) fr_nonblock(fd);
 
 	/*
 	 *	Minimum timeout period is one section
