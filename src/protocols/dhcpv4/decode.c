@@ -420,7 +420,7 @@ next:
 		len = fr_pair_raw_from_network(ctx, out, vendor, p, end - p);
 		if (len < 0) return len;
 
-		return data_len + 2; /* decoded the whole thing */
+		return data_len; /* decoded the whole thing */
 	}
 	p++;
 
@@ -447,7 +447,7 @@ next:
 	/*
 	 *	Tell the caller we read all of it, even if we didn't.
 	 */
-	return data_len + 2;
+	return data_len;
 }
 
 
