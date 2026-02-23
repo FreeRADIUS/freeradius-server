@@ -186,8 +186,10 @@ jobs:
         run: |
           # The multi-server test framework requires the availability of the $BUILD_DIR, hence why
           # the following is needed before running multi-server tests.
+          pwd
+          ls -lrt
           ./configure
-          make -j"$(nproc)" all
+          make
 
       - name: Run test-5hs-autoaccept test
         shell: bash
