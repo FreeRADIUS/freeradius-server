@@ -748,12 +748,10 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_TRACE("Length %u", (unsigned int)data_len);
 
-#ifndef NDEBUG
 	if (data_len <= (dv->type + dv->length)) {
 		fr_strerror_printf("%s: Failure to call fr_radius_decode_tlv_ok", __FUNCTION__);
 		return -1;
 	}
-#endif
 
 	switch (dv->type) {
 	case 4:
@@ -905,7 +903,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fragments++;
 	}
 
-	head = tail = talloc_array(ctx, uint8_t, fraglen);
+	head = tail = talloc_array(packet_ctx->tmp_ctx, uint8_t, fraglen);
 	if (!head) return -1;
 
 	FR_PROTO_TRACE("Fragments %d, total length %d", fragments, (int) fraglen);
@@ -1234,7 +1232,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	head = tail = talloc_array(ctx, uint8_t, wimax_len);
+	head = tail = talloc_array(packet_ctx->tmp_ctx, uint8_t, wimax_len);
 	if (!head) return -1;
 
 	/*
@@ -2105,21 +2103,10 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while (attr < end) {
 		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), &decode_ctx);
 		if (slen < 0) {
-//		fail:
 			talloc_free(decode_ctx.tmp_ctx);
 			talloc_free(decode_ctx.tags);
 			return slen;
 		}
-
-#if 0
-		/*
-		 *	If slen is larger than the room in the packet,
-		 *	all kinds of bad things happen.
-		 */
-		 if (!fr_cond_assert(slen <= (end - attr))) {
-			 goto fail;
-		 }
-#endif
 
 		attr += slen;
 		talloc_free_children(decode_ctx.tmp_ctx);
