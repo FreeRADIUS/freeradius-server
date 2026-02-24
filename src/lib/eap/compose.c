@@ -285,6 +285,15 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 }
 
 /*
+ *	Code to return when we either ignore unknown EAP types (so that they can be proxied), or else we fail,
+ *	so that we reject them.
+ */
+static const rlm_rcode_t rcode_ignore[2] = {
+	RLM_MODULE_FAIL, RLM_MODULE_NOOP,
+};
+
+
+/*
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
@@ -405,20 +414,30 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	}
 
 	/*
-	 *	We've been told to ignore unknown EAP types, AND it's
-	 *	an unknown type.  Return "NOOP", which will cause the
-	 *	mod_authorize() to return NOOP.
-	 *
-	 *	EAP-Identity, Notification, and NAK are all handled
-	 *	internally, so they never have eap_sessions.
+	 *	We handle the signalling types internally (Identity, and NAK).
 	 */
-	if ((eap_msg->vp_octets[4] >= FR_EAP_METHOD_MD5) &&
-	    ignore_unknown_types &&
-	    ((eap_msg->vp_octets[4] == 0) ||
-	     (eap_msg->vp_octets[4] >= FR_EAP_METHOD_MAX) ||
-	     (!methods[eap_msg->vp_octets[4]].submodule))) {
-		RDEBUG2("Ignoring Unknown EAP type");
-		return RLM_MODULE_NOOP;
+	if ((eap_msg->vp_octets[4] != FR_EAP_METHOD_IDENTITY) &&
+	    (eap_msg->vp_octets[4] != FR_EAP_METHOD_NAK)) {
+		/*
+		 *	Invalid or unknown.
+		 */
+		if ((eap_msg->vp_octets[4] == 0) ||
+		    (eap_msg->vp_octets[4] >= FR_EAP_METHOD_MAX)) {
+			RDEBUG2("Ignoring unknown EAP type %d", eap_msg->vp_octets[4]);
+			return rcode_ignore[ignore_unknown_types];
+		}
+
+		/*
+		 *	Known (potentially), but not configured.
+		 */
+		if (!methods[eap_msg->vp_octets[4]].submodule) {
+			RDEBUG2("Ignoring unsupported EAP type %d", eap_msg->vp_octets[4]);
+			return rcode_ignore[ignore_unknown_types];
+		}
+
+		/*
+		 *	Else it is a type that we are configured to support.
+		 */
 	}
 
 	/*
@@ -432,18 +451,29 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	 *	request.  We could either return an EAP-Fail here, but
 	 *	it's not too critical.
 	 *
-	 *	By returning "noop", we can ensure that authorize()
-	 *	returns NOOP, and another module may choose to proxy
-	 *	the request.
+	 *	By returning "noop", we allow another module may to proxy the request.
 	 */
 	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_NAK) &&
-	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
-	    ignore_unknown_types &&
-	    ((eap_msg->vp_octets[5] == 0) ||
-	     (eap_msg->vp_octets[5] >= FR_EAP_METHOD_MAX) ||
-	     (!methods[eap_msg->vp_octets[5]].submodule))) {
-		RDEBUG2("Ignoring NAK with request for unknown EAP type");
-		return RLM_MODULE_NOOP;
+	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2))) {
+		uint8_t type = eap_msg->vp_octets[5];
+
+		/*
+		 *	Can't NAK, and ask for Invalid, Identity, Notification, or NAK.
+		 */
+		if (type < FR_EAP_METHOD_MD5) {
+			RDEBUG2("Ignoring NAK for invalid EAP type %d", type);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (type >= FR_EAP_METHOD_MAX) {
+			RDEBUG2("Ignoring NAK for unknown EAP type %d", type);
+			return rcode_ignore[ignore_unknown_types];
+		}
+
+		if (!methods[type].submodule) {
+			RDEBUG2("Ignoring NAK for unsupported EAP type %d", eap_msg->vp_octets[4]);
+			return rcode_ignore[ignore_unknown_types];
+		}
 	}
 
 	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_TTLS) ||
