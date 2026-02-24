@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'g':
-			if (fr_perm_uid_from_str(autofree, &gid, optarg) < 0) {
+			if (fr_perm_gid_from_str(autofree, &gid, optarg) < 0) {
 				fr_perror("radlock");
 				EXIT_WITH_FAILURE;
 			}
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 		usage(64);
 	}
 
-	if (action == RADLOCK_PERM) {
+	if ((action == RADLOCK_PERM) && !uid_set && !gid_set && !mode_set) {
 		fr_perror("radlock - At least one of -u, -g, -m must be specified");
 		usage(64);
 	}
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 			EXIT_WITH_FAILURE;
 		}
 
-		ret = kill(sem_id, 0);
+		ret = kill(pid, 0);
 		if ((ret < 0) && (errno == ESRCH)) dead = true;
 
 		uid_str = fr_perm_uid_to_str(autofree, info.sem_perm.uid);
@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
 
 		if (semctl(sem_id, 0, IPC_STAT, &info) < 0) {
 			fr_perror("radlock - Failed getting lock info for \"%s\": %s",
-				  fr_syserror(errno), file);
+				  file, fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 
@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
 
 		if (semctl(sem_id, 0, IPC_SET, &info) < 0) {
 			fr_perror("radlock - Failed setting lock permissions for \"%s\": %s",
-				  fr_syserror(errno), file);
+				  file, fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
 	}
