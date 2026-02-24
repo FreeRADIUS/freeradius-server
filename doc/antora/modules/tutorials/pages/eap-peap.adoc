@@ -38,6 +38,12 @@ Once the TLS tunnel is established, the real username `bob` is decrypted from in
 
 Inside the inner-tunnel virtual server, FreeRADIUS runs through the `authorize` section, which calls the `files` module. The `files` module reads `mods-config/files/authorize` line by line, looking for a matching username. When it finds `bob`, it retrieves the stored password and passes it to the `mschapv2` module for verification.
 
+== Before You Begin
+
+** FreeRADIUS automatically generates the server certificates needed for PEAP when it first starts. You do not need to create them manually.
+** You need both the `mschap` module and the `mschapv2` module enabled. The `mschap` module handles MSCHAP authentication in general, while `mschapv2` specifically handles the EAP-MSCHAPv2 exchange inside the PEAP tunnel. Both are required.
+** Make sure the `inner-tunnel` virtual server is enabled. This is what processes the real username and password inside the tunnel.
+
 == Questions
 
 1.  How does EAP-PEAP compare with EAP-TTLS?
