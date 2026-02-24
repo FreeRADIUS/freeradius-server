@@ -228,6 +228,11 @@ static int fr_aka_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_l
 
 	p += 3;	/* Skip header */
 	while ((p + 2) < end) {
+		if (!p[1]) {
+			fr_strerror_const("Malformed field - length zero is invalid");
+			return -1;
+		}
+
 		if (p[0] == FR_MAC) {
 			len = p[1] << 2;
 			if ((p + len) > end) {
@@ -244,6 +249,7 @@ static int fr_aka_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_l
 
 			return 0;
 		}
+
 		p += p[1] << 2;		/* Advance */
 	}
 
