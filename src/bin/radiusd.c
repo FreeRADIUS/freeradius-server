@@ -671,7 +671,7 @@ do { \
 	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
-	if (talloc_config_set(config) < 0) {
+	if (talloc_config_set(config) != 0) {
 		EXIT_WITH_PERROR;
 	}
 
