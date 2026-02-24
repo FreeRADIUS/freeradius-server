@@ -1,13 +1,15 @@
-= EAP-PEAP: Tunneled authentication
+= EAP-PEAP: Tunneled Authentication
 
-*Goal:* To configure the server to use the EAP-PEAP authentication
-protocol and to send and receive test packets.
+*Goal:* Configure the FreeRADIUS server to authenticate users using EAP-PEAP, then verify it works by sending and receiving test packets.
 
-*Time:* 20-35 minutes.
+*Time:* 20–35 minutes.
 
-*File:*
+*Files:*
 
-- `mods-available/eap`
+- `mods-available/eap` — controls which EAP methods are enabled
+- `mods-config/files/authorize` — the flat file where test users like `bob` are defined
+- `sites-available/inner-tunnel` — the virtual server that handles Phase 2 authentication and looks up the user
+- `eapol_test/peap-mschapv2.conf` — configuration for the test client
 
 *Diagram:*
 
