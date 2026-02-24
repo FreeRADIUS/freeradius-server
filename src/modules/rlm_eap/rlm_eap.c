@@ -98,6 +98,7 @@ static fr_dict_attr_t const *attr_module_failure_message;
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_state;
 
 
 extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
@@ -111,6 +112,7 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	DICT_AUTOLOAD_TERMINATOR
 };
@@ -871,8 +873,10 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
+	fr_pair_t		*vp;
 
-	if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message);
+	if (!vp) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		RETURN_UNLANG_INVALID;
 	}
@@ -881,11 +885,40 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 	 *	Reconstruct the EAP packet from the EAP-Message
 	 *	attribute.  The relevant decoder should have already
 	 *	concatenated the fragments into a single buffer.
+	 *
+	 *	If it's not a valid EAP packet, we send back a canned
+	 *	failure, and discard the entire EAP session.
 	 */
 	eap_packet = eap_packet_from_vp(request, &request->request_pairs);
 	if (!eap_packet) {
+		uint8_t buffer[4];
+
 		RPERROR("Malformed EAP Message");
-		RETURN_UNLANG_FAIL;
+
+	fail:
+		fr_pair_delete_by_da(&request->reply_pairs, attr_eap_message);
+		fr_pair_delete_by_da(&request->reply_pairs, attr_state);
+
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_message_authenticator);
+		if (!vp) {
+			static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
+
+			MEM(pair_append_reply(&vp, attr_message_authenticator) >= 0);
+			fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
+		}
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+
+		buffer[0] = FR_EAP_CODE_FAILURE;
+		buffer[1] = (vp->vp_length >= 2) ? vp->vp_octets[1] : 0;
+		buffer[2] = 0;
+		buffer[3] = 4;
+
+		MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
+		fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
+
+		eap_session_discard(request);
+
+		RETURN_UNLANG_HANDLED;
 	}
 
 	/*
@@ -895,7 +928,7 @@ static unlang_action_t mod_authenticate(unlang_result_t *p_result, module_ctx_t 
 	 *	data.
 	 */
 	eap_session = eap_session_continue(inst, &eap_packet, request);
-	if (!eap_session) RETURN_UNLANG_INVALID;	/* Don't emit error here, it will mask the real issue */
+	if (!eap_session) goto fail;
 
 	/*
 	 *	Call an EAP submodule to process the request,
