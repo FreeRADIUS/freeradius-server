@@ -807,7 +807,7 @@ static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 			proto = IPPROTO_TCP;
 
 		} else if (strcmp(info->argv[1], "udp") == 0) {
-			proto = IPPROTO_TCP;
+			proto = IPPROTO_UDP;
 
 		} else {
 			fprintf(fp_err, "Unknown proto '%s'.\n", info->argv[1]);
