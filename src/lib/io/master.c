@@ -526,6 +526,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	fr_listen_t *li;
 	fr_client_t *radclient;
 
+
 	/*
 	 *	Reload the app_io module as a "new" library.  This
 	 *	causes the link count for the library to be correct.
@@ -567,6 +568,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 */
 		inst_name = talloc_asprintf(NULL, "%"PRIu64, thread->client_id++);
 		mi = module_instance_copy(inst->clients, inst->submodule, inst_name);
+		talloc_free(inst_name);
 
 		cs = cf_section_dup(mi, NULL, inst->submodule->conf,
 				    cf_section_name1(inst->submodule->conf),
@@ -590,7 +592,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		/*
 		 *	FIXME - Instantiate the new module?!
 		 */
-		talloc_free(inst_name);
 		fr_assert(mi != NULL);
 	} else {
 		mi = talloc_init_const("nak");
