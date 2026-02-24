@@ -136,6 +136,122 @@ Open a second terminal and run:
 ./eapol_test -c peap-mschapv2.conf -a 127.0.0.1 -p 1812 -s testing123 -n
 ----
 
+== What to Expect
+
+The client and server exchange several packets back and forth as they negotiate the TLS tunnel and verify credentials. This is normal and takes a few seconds.
+
+A successful authentication ends with an `Access-Accept` containing these two keys, which are used to encrypt wireless traffic:
+
+** `MS-MPPE-Recv-Key`
+** `MS-MPPE-Send-Key`
+
+If you see `Access-Reject` instead, the most likely causes are:
+
+** `bob` is not in `mods-config/files/authorize`, or the username/password has a typo
+** The `files` module is missing from the `authorize` section of `inner-tunnel`
+** The `mschapv2` module is not listed in the `authenticate` section of `inner-tunnel`
+
+
+== eapol_test output Explained
+
+*Phase 1 — The anonymous identity is sent to start the TLS handshake. Note that `bob` is not visible here:*
+
+[source, text]
+----
+RADIUS message: code=1 (Access-Request) identifier=0 length=148
+   Attribute 1 (User-Name) length=23
+      Value: 'anonymous@example.org'
+----
+
+*The TLS tunnel is being negotiated:*
+
+[source, text]
+----
+EAP-PEAP: Start (server ver=0, own ver=0)
+SSL: SSL_connect:SSLv3/TLS write client hello
+SSL: SSL_connect:SSLv3/TLS read server hello
+TLS: Trusted root certificate(s) loaded
+EAP: Status notification: remote certificate verification (param=success)
+----
+
+*The tunnel is ready. Phase 2 begins and `bob` is sent inside the tunnel:*
+
+[source, text]
+----
+OpenSSL: Handshake finished - resumed=0
+EAP-PEAP: TLS done, proceed to Phase 2
+EAP-PEAP: Phase 2 EAP-MSCHAPv2 Request
+EAP-PEAP: Encrypting Phase 2 data
+EAP-PEAP: Authentication completed successfully
+----
+
+*Final confirmation:*
+
+[source, text]
+----
+MPPE keys OK: 0  mismatch: 0
+SUCCESS
+----
+
+---
+
+== Server Debug Output Explained
+
+*Phase 1 — The server receives the outer request. Only the anonymous identity is visible:*
+
+[source, text]
+----
+Received Access-Request ID 0
+   User-Name = "anonymous@example.org"
+
+eap - Calling submodule eap_peap
+eap.peap - Initiating new TLS session
+Sending Access-Challenge
+----
+
+*The TLS tunnel is established after several handshake rounds:*
+
+[source, text]
+----
+Handshake state - SSL negotiation finished successfully (1)
+Cipher suite: ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2
+----
+
+*Phase 2 — The inner-tunnel virtual server now handles the real username `bob`. This is where the files module looks up `bob` in `mods-config/files/authorize`:*
+
+[source, text]
+----
+eap.peap - Session established. Decoding inner EAP attributes
+eap.peap - Running request through virtual server "inner-tunnel"
+
+  User-Name = "bob"
+  MS-CHAP-Response = 0x...
+  MS-CHAP-Challenge = 0x...
+
+files - Looking for key "bob"
+files - Found entry for "bob"
+files - Password.Cleartext := "hello"
+
+mschap - User authenticated successfully
+----
+
+*The server sends back an Access-Accept with the session keys:*
+
+[source, text]
+----
+Vendor-Specific {
+    Microsoft {
+        MPPE-Recv-Key = 0x13cb974fc....
+        MPPE-Send-Key = 0x7ad0412ba....
+    }
+}
+Packet-Type = ::Access-Accept
+User-Name = "anonymous@example.org"
+----
+
+Notice that the `User-Name` in the Access-Accept is the *anonymous* identity, not `bob`. This is by design — the outer identity is used for the RADIUS session, while the inner identity is only used for the actual credential check inside the tunnel.
+
+Once you see `Access-Accept` on the server and `SUCCESS` on the client, EAP-PEAP is working correctly. You can verify that a real wireless client has network access using `ping`.
 
 
 
