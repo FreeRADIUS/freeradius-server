@@ -241,7 +241,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result,
 	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, mip_rk, rk_len));
 	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
-	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 12);
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 13);
 	EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 	/*
