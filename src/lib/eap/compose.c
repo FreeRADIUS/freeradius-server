@@ -89,7 +89,7 @@ static char const *eap_codes[] = {
 static int eap_wireformat(eap_packet_t *reply)
 {
 	eap_packet_raw_t	*header;
-	uint16_t total_length = 0;
+	uint16_t		total_length = 0;
 
 	if (!reply) return 0;
 
@@ -100,9 +100,13 @@ static int eap_wireformat(eap_packet_t *reply)
 	if(reply->packet != NULL) return 0;
 
 	total_length = EAP_HEADER_LEN;
-	if (reply->code < 3) {
+	if (reply->code == FR_EAP_CODE_REQUEST) {
 		total_length += 1/* EAP Method */;
-		if (reply->type.data && reply->type.length > 0) {
+		if (reply->type.data && (reply->type.length > 0)) {
+			if (reply->type.length > (size_t) (UINT16_MAX - total_length)) {
+				fr_strerror_const("EAP type data too large for wire format");
+				return -1;
+			}
 			total_length += reply->type.length;
 		}
 	}
