@@ -326,7 +326,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 	 */
 	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha256(), NULL);
 
-	HMAC_Update(hmac, (uint8_t const *) "SPI CMIP PMIP", 12);
+	HMAC_Update(hmac, (uint8_t const *) "SPI CMIP PMIP", 13);
 	rk1_len = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
