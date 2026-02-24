@@ -11,13 +11,13 @@
 - `sites-available/inner-tunnel` — the virtual server that handles Phase 2 authentication and looks up the user
 - `eapol_test/peap-mschapv2.conf` — configuration for the test client
 
+== What is EAP-PEAP?
+
+EAP-PEAP protects user credentials by wrapping the login exchange inside an encrypted TLS tunnel. Think of it like sending a letter inside a locked box — even if someone intercepts it, they cannot read what is inside.
+
 *Diagram:*
 
 image::peap_packet.svg[Fig. PEAP Packet]
-
-When started with the `radiusd -X` command, the server automatically creates
-certificates for use with PEAP. In a normal installation, there should
-be little or no action required to enable PEAP.
 
 Start the server, and verify that the `peap` module was loaded and that
 the server is `Ready to process requests`.
