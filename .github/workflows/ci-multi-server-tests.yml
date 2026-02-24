@@ -163,11 +163,16 @@ jobs:
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        #  Mount the host's internal CA so dind trusts
+        #  docker.internal.networkradius.com for image pulls.
+        volumes:
+          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
 
     env:
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
       MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-listener-logs/custom_test-env-5hs-autoaccept.txt.bak
-      DOCKER_HOST: tcp://dind:2375
 
     container:
       image: docker.internal.networkradius.com/self-hosted
@@ -178,19 +183,31 @@ jobs:
       options: >-
         --privileged
         --memory-swap -1
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind
 
     steps:
 
-      - name: Wait for Docker-in-Docker
+      - name: Install Docker CLI
         run: |
-          for i in $(seq 1 30); do
-            docker info && break || sleep 1
-          done
+          apt-get update && apt-get install -y --no-install-recommends docker.io
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
         with:
           lfs: false
+
+      #  Authenticate to the internal registry via the dind daemon.
+      #  The host Docker daemon is logged in via the runner's
+      #  job-started hook, but dind is a separate daemon with no
+      #  auth config.
+      - name: Login to internal Docker registry
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
 
       - name: Get pre-built Docker image for self-hosted runner test
         shell: bash
