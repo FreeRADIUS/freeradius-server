@@ -40,12 +40,10 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 {
 	fr_ldap_result_t	*self = uctx;
 	fr_pair_list_t		head;
-	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp;
 	int			i;
 
 	fr_pair_list_init(&head);
-	fr_pair_list_init(&tmp_list);
 
 	fr_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
