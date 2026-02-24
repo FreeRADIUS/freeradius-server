@@ -292,10 +292,8 @@ static const rlm_rcode_t rcode_ignore[2] = {
 	RLM_MODULE_FAIL, RLM_MODULE_NOOP,
 };
 
-
 /*
- * Radius criteria, EAP-Message is invalid without Message-Authenticator
- * For EAP_START, send Access-Challenge with EAP Identity request.
+ *	Start or continue an EAP session.
  */
 rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
 {
@@ -319,13 +317,7 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	}
 
 	/*
-	 *	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
-	 *
-	 *	Checks for Message-Authenticator are handled by fr_packet_recv().
-	 */
-
-	/*
-	 *	Check the length before de-referencing the contents.
+	 *	Check the length before dereferencing the contents.
 	 *
 	 *	Lengths of zero are required by the RFC for EAP-Start,
 	 *	but we've never seen them in practice.
@@ -354,24 +346,44 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	} /* end of handling EAP-Start */
 
 	/*
-	 *	Supplicants don't usually send EAP-Failures to the
-	 *	server, but they're not forbidden from doing so.
+	 *	Supplicants don't usually send EAP-Failures to the server, but they're not forbidden from
+	 *	doing so.
+	 *
 	 *	This behaviour was observed with a Spirent Avalanche test server.
 	 */
-	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == FR_EAP_CODE_FAILURE)) {
+	if ((eap_msg->vp_octets[0] == FR_EAP_CODE_FAILURE) &&
+	    (eap_msg->vp_length >= EAP_HEADER_LEN)) {
 		REDEBUG("Peer sent EAP %s (code %i) ID %d length %zu",
 		        eap_codes[eap_msg->vp_octets[0]],
 		        eap_msg->vp_octets[0],
 		        eap_msg->vp_octets[1],
 		        eap_msg->vp_length);
 		return RLM_MODULE_FAIL;
+	}
+
 	/*
-	 *	The EAP packet header is 4 bytes, plus one byte of
-	 *	EAP sub-type.  Short packets are discarded.
+	 *	The EAP packet header is 4 bytes, plus one byte of EAP sub-type.  Short packets are invalid,
+	 *	and are discarded.
 	 */
-	} else if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
+	if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
 		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
-		return RLM_MODULE_FAIL;
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We only get EAP RESPONSE from the supplicant.
+	 *
+	 *	LEAP sent requests from the supplicant, but that has been removed for years.
+	 */
+	if (eap_msg->vp_octets[0] != FR_EAP_CODE_RESPONSE) {
+		RDEBUG2("Ignoring unexpected EAP code %d", eap_msg->vp_octets[0]);
+		return RLM_MODULE_INVALID;
+	}
+
+	if ((eap_msg->vp_octets[4] == 0) ||
+	    (eap_msg->vp_octets[4] == FR_EAP_METHOD_NOTIFICATION)) {
+		RDEBUG2("Ignoring invalid EAP type %d", eap_msg->vp_octets[4]);
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -386,79 +398,53 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	 *	EAP packet.  We better understand it...
 	 */
 
+	RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu Type %d",
+		eap_codes[eap_msg->vp_octets[0]],
+		eap_msg->vp_octets[0],
+		eap_msg->vp_octets[1],
+		eap_msg->vp_length,
+		eap_msg->vp_octets[4]);
+
 	/*
-	 *	We're allowed only a few codes.  Request, Response,
-	 *	Success, or Failure.
+	 *	We return ok in response to EAP identity This means we can write:
+	 *
+	 *		eap {
+	 *			ok = return
+	 *		}
+	 *		ldap
+	 *		sql
+	 *
+	 *	...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups.
 	 */
-	if ((eap_msg->vp_octets[0] == 0) ||
-	    (eap_msg->vp_octets[0] >= FR_EAP_CODE_MAX)) {
-		RDEBUG2("Peer sent EAP packet with unknown code %i", eap_msg->vp_octets[0]);
-	} else {
-		RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu",
-		        eap_codes[eap_msg->vp_octets[0]],
-		        eap_msg->vp_octets[0],
-		        eap_msg->vp_octets[1],
-		        eap_msg->vp_length);
+	if (eap_msg->vp_octets[4] == FR_EAP_METHOD_IDENTITY) {
+		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
+		return RLM_MODULE_OK;
 	}
 
 	/*
-	 *	We handle request and responses.  The only other defined
-	 *	codes are success and fail.  The client SHOULD NOT be
-	 *	sending success/fail packets to us, as it doesn't make
-	 *	sense.
+	 *	They're NAKing the EAP type that we proposed.
+	 *
+	 *	NAK is code + id + length[2] + NAK + requested EAP type(s).
 	 */
-	if ((eap_msg->vp_octets[0] != FR_EAP_CODE_REQUEST) &&
-	    (eap_msg->vp_octets[0] != FR_EAP_CODE_RESPONSE)) {
-		RDEBUG2("Ignoring EAP packet which we don't know how to handle");
-		return RLM_MODULE_FAIL;
-	}
+	if (eap_msg->vp_octets[4] == FR_EAP_METHOD_NAK) {
+		uint8_t type;
 
-	/*
-	 *	We handle the signalling types internally (Identity, and NAK).
-	 */
-	if ((eap_msg->vp_octets[4] != FR_EAP_METHOD_IDENTITY) &&
-	    (eap_msg->vp_octets[4] != FR_EAP_METHOD_NAK)) {
 		/*
-		 *	Invalid or unknown.
+		 *	Empty NAK means we just fail.
 		 */
-		if ((eap_msg->vp_octets[4] == 0) ||
-		    (eap_msg->vp_octets[4] >= FR_EAP_METHOD_MAX)) {
-			RDEBUG2("Ignoring unknown EAP type %d", eap_msg->vp_octets[4]);
-			return rcode_ignore[ignore_unknown_types];
+		if (eap_msg->vp_length == (EAP_HEADER_LEN + 1)) {
+			RDEBUG2("Received NAK with no proposed EAP types");
+			return RLM_MODULE_FAIL;
 		}
 
 		/*
-		 *	Known (potentially), but not configured.
+		 *	@todo - walk over the EAP types to be sure that there is at least one which we
+		 *	support.
 		 */
-		if (!methods[eap_msg->vp_octets[4]].submodule) {
-			RDEBUG2("Ignoring unsupported EAP type %d", eap_msg->vp_octets[4]);
-			return rcode_ignore[ignore_unknown_types];
-		}
+		type = eap_msg->vp_octets[5];
 
 		/*
-		 *	Else it is a type that we are configured to support.
-		 */
-	}
-
-	/*
-	 *	They're NAKing the EAP type we wanted to use, and
-	 *	asking for one which we don't support.
-	 *
-	 *	NAK is code + id + length1 + length + NAK
-	 *	     + requested EAP type(s).
-	 *
-	 *	We know at this point that we can't handle the
-	 *	request.  We could either return an EAP-Fail here, but
-	 *	it's not too critical.
-	 *
-	 *	By returning "noop", we allow another module may to proxy the request.
-	 */
-	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_NAK) &&
-	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2))) {
-		uint8_t type = eap_msg->vp_octets[5];
-
-		/*
-		 *	Can't NAK, and ask for Invalid, Identity, Notification, or NAK.
+		 *	Can't NAK,and ask for Invalid, Identity, Notification, or NAK.
 		 */
 		if (type < FR_EAP_METHOD_MD5) {
 			RDEBUG2("Ignoring NAK for invalid EAP type %d", type);
@@ -474,28 +460,27 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 			RDEBUG2("Ignoring NAK for unsupported EAP type %d", eap_msg->vp_octets[4]);
 			return rcode_ignore[ignore_unknown_types];
 		}
+
+		/*
+		 *	Else the NAK is for a method that we support.
+		 */
+		return RLM_MODULE_OK;
 	}
 
-	if ((eap_msg->vp_octets[4] == FR_EAP_METHOD_TTLS) ||
-	    (eap_msg->vp_octets[4] == FR_EAP_METHOD_PEAP)) {
-		RDEBUG2("Continuing tunnel setup");
-		return RLM_MODULE_OK;
-	}
 	/*
-	 * We return ok in response to EAP identity
-	 * This means we can write:
-	 *
-	 * eap {
-	 *   ok = return
-	 * }
-	 * ldap
-	 * sql
-	 *
-	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
+	 *	Valid, but something we don't implement at all.
 	 */
-	if (eap_msg->vp_octets[4] == FR_EAP_METHOD_IDENTITY) {
-		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
-		return RLM_MODULE_OK;
+	if (eap_msg->vp_octets[4] >= FR_EAP_METHOD_MAX) {
+		RDEBUG2("Ignoring unknown EAP type %d", eap_msg->vp_octets[4]);
+		return rcode_ignore[ignore_unknown_types];
+	}
+
+	/*
+	 *	Known (potentially), but not currently configured.
+	 */
+	if (!methods[eap_msg->vp_octets[4]].submodule) {
+		RDEBUG2("Ignoring unsupported EAP type %d", eap_msg->vp_octets[4]);
+		return rcode_ignore[ignore_unknown_types];
 	}
 
 	/*
