@@ -42,6 +42,16 @@ TEST_BIN := $(BUILD_DIR)/bin/local
 RADDB_PATH := $(top_builddir)/raddb
 
 #
+#   Increase the eapol_test timeout when running under sanitizers, as the
+#   additional overhead can cause EAP conversations to take much longer.
+#
+ifneq "$(findstring sanitize,$(CFLAGS))"  ""
+EAPOL_TEST_TIMEOUT := 30
+else
+EAPOL_TEST_TIMEOUT := 10
+endif
+
+#
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
 EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
@@ -112,7 +122,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	@echo "EAPOL-TEST $(METHOD)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
-	${Q}if ! $(EAPOL_TEST) -t 10 -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
+	${Q}if ! $(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
 		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG)):";	\
 		tail -n 40 "$(EAPOL_TEST_LOG)";							\
 		echo "--------------------------------------------------";		\
