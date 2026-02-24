@@ -44,6 +44,104 @@ Inside the inner-tunnel virtual server, FreeRADIUS runs through the `authorize` 
 ** You need both the `mschap` module and the `mschapv2` module enabled. The `mschap` module handles MSCHAP authentication in general, while `mschapv2` specifically handles the EAP-MSCHAPv2 exchange inside the PEAP tunnel. Both are required.
 ** Make sure the `inner-tunnel` virtual server is enabled. This is what processes the real username and password inside the tunnel.
 
+== Step 1: Create the Test User
+
+Open `raddb/mods-config/files/authorize` and add the following line:
+
+[source, text]
+----
+bob    Password.Cleartext := "hello"
+----
+
+== Step 2: Verify the `sites-enabled/default`
+
+Verify the following entry added.
+
+[source, text]
+----
+authenticate mschap {
+	mschap
+}
+----
+
+This tells FreeRADIUS that when a request arrives for user `bob` inside the inner tunnel, the expected cleartext password is `hello`. The `files` module reads this file top to bottom and stops at the first match. If you have multiple users, each goes on its own line.
+
+== Step 3: Verify the Inner Tunnel Virtual Server
+
+Open `sites-available/inner-tunnel` and confirm the `authorize` and `authenticate` sections look like this:
+
+[source, text]
+----
+recv Access-Request {
+	mschap
+
+	eap {
+		ok = return
+	}
+	files
+}
+----
+
+The `files` entry in `authorize` is what triggers the lookup of `bob` in `mods-config/files/authorize`. If `files` is missing here, the server will never find the user and authentication will always fail.
+
+Ensure the inner-tunnel site is enabled by checking that the symlink exists:
+
+[source, bash]
+----
+$ ls sites-enabled/inner-tunnel
+----
+
+If it does not exist, create it:
+
+[source, bash]
+----
+$ ln -s ../sites-available/inner-tunnel sites-enabled/inner-tunnel
+----
+
+== Step 4: Configure the Test Client
+
+Open `src/tests/eapol_test/peap-mschapv2.conf` and update it with the following:
+
+[source, text]
+----
+network={
+	ssid="example"
+	key_mgmt=WPA-EAP
+	eap=PEAP
+	identity="bob@example.org"
+	anonymous_identity="anonymous@example.org"
+	password="hello"
+	phase2="auth=MSCHAPV2"
+	phase1="peapver=0"
+}
+----
+
+Notice that both `identity` and `anonymous_identity` are set. The `anonymous_identity` is what gets sent in Phase 1 and is visible on the network. The real `identity` (`bob`) is only sent inside the encrypted tunnel in Phase 2. The server looks up `bob` — not `anonymous@example.org` — when checking the password.
+
+== Step 5: Start the Server
+
+Start FreeRADIUS in debug mode so you can watch every step of the authentication:
+
+[source, text]
+----
+$ radiusd -X
+----
+
+== Step 6: Run the Test
+
+Open a second terminal and run:
+
+[source, bash]
+----
+./eapol_test -c peap-mschapv2.conf -a 127.0.0.1 -p 1812 -s testing123 -n
+----
+
+
+
+
+
+
+
 == Questions
 
 1.  How does EAP-PEAP compare with EAP-TTLS?
