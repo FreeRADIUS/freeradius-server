@@ -19,6 +19,11 @@ EAP-PEAP protects user credentials by wrapping the login exchange inside an encr
 
 image::peap_packet.svg[Fig. PEAP Packet]
 
+** *Phase 1* — The server presents its TLS certificate and a secure encrypted tunnel is created between the client and the server. At this point, only the anonymous identity (e.g. `anonymous@example.org`) is visible on the network. The real username is hidden.
+** *Phase 2* — Inside that tunnel, the client sends the real username and password using EAP-MSCHAPv2. The server then looks up the user in its user database, checks the password, and either accepts or rejects the request.
+
+The main advantage over EAP-TLS is that the *client does not need a certificate* — only the server does. This makes deployment much simpler in large environments.
+
 Start the server, and verify that the `peap` module was loaded and that
 the server is `Ready to process requests`.
 
