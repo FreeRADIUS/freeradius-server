@@ -79,10 +79,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
 #define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
 
-#define TLS_CHANGE_CIPHER_SPEC(x) 	(((x) & 0x0014) == 0x0014)
-#define TLS_ALERT(x) 			(((x) & 0x0015) == 0x0015)
-#define TLS_HANDSHAKE(x) 		(((x) & 0x0016) == 0x0016)
-
 #define SET_START(x) 		((x) | (0x20))
 #define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
 #define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
