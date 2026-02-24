@@ -224,7 +224,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 				talloc_free(packet_ctx.tmp_ctx);
 				talloc_free(packet_ctx.tags);
 
-				return FR_RADIUS_CODE_ACCESS_ACCEPT;
+				return FR_RADIUS_CODE_ACCESS_REJECT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
