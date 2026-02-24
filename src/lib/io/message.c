@@ -1258,13 +1258,13 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 *	Manually clean up each message ring.
 	 */
 	for (i = 0; i <= ms->mr_max; i++) {
-		(void) fr_message_ring_gc(ms, ms->mr_array[i], ~0);
+		(void) fr_message_ring_gc(ms, ms->mr_array[i], INT_MAX);
 	}
 
 	/*
 	 *	And then do one last pass to clean up the arrays.
 	 */
-	fr_message_gc(ms, 1 << 24);
+	fr_message_gc(ms, INT_MAX);
 }
 
 /** Print debug information about the message set.
