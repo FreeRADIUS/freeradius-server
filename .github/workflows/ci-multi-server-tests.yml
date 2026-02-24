@@ -157,9 +157,28 @@ jobs:
     runs-on: self-hosted
     if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
 
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+
     env:
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
       MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-listener-logs/custom_test-env-5hs-autoaccept.txt.bak
+      DOCKER_HOST: tcp://dind:2375
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted
+      #  "privileged" is needed for Samba install
+      #  "memory-swap -1" enables full use of host swap and may help
+      #    with containers randomly quitting with "The operation was
+      #    canceled"
+      options: >-
+        --privileged
+        --memory-swap -1
+
     steps:
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
@@ -186,10 +205,8 @@ jobs:
         run: |
           # The multi-server test framework requires the availability of the $BUILD_DIR, hence why
           # the following is needed before running multi-server tests.
-          pwd
-          ls -lrt
           ./configure
-          make
+          make -j"$(nproc)" all
 
       - name: Run test-5hs-autoaccept test
         shell: bash
