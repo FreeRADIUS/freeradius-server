@@ -90,12 +90,13 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *q = in;
-	char *p = out;
-	size_t left = outlen;
+	char *p = out, *end;
+
+	end = out + outlen;
 
 	while (*q) {
 		if (*q != '/') {
-			if (left < 2) break;
+			if ((size_t) (end - p) < 2) break;
 
 			/*
 			 *	Smash control characters and spaces to
@@ -108,7 +109,6 @@ ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outl
 			}
 
 			*(p++) = *(q++);
-			left--;
 			continue;
 		}
 
@@ -120,7 +120,7 @@ ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outl
 		 *	attributes which *may* end up creating
 		 *	sub-directories.
 		 */
-		if (left < 2) break;
+		if ((size_t) (end - p) < 2) break;
 		*(p++) = *(q++);
 
 		/*
