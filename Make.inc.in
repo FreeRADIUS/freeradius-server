@@ -201,12 +201,18 @@ ANALYZE.c       := @clang_path@
 #
 #  Have wrappers for the test tools, so that they run.
 #
-#  We have a hardcoded maximum execution time of 300 seconds
-#  If your test takes > 300 seconds to run, you're doing
-#  something wrong.
+#  We have a default maximum execution time of 300 seconds.
+#  When running under sanitizers, allow 600 seconds due to
+#  the additional overhead.
 #
+ifneq "$(findstring sanitize,$(CFLAGS))" ""
+TEST_TIMEOUT        := 600
+else
+TEST_TIMEOUT        := 300
+endif
+
 TEST_BIN_DIR        = ./$(BUILD_DIR)/bin/local
-TEST_BIN            = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --timeout=300 --mode=execute $(TEST_BIN_DIR)
+TEST_BIN            = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --timeout=$(TEST_TIMEOUT) --mode=execute $(TEST_BIN_DIR)
 TEST_BIN_NO_TIMEOUT = $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $(TEST_BIN_DIR)
 
 #
