@@ -176,7 +176,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 				 tmpl_attr_tail_da(map->lhs)->name);
 
-			talloc_free(vp); /* also frees escaped */
+			talloc_free(vp);
 			continue;
 		}
 
