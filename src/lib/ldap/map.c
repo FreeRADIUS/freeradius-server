@@ -194,6 +194,42 @@ finish:
 	return 0;
 }
 
+/** Callback for map_to_request
+ *
+ * Performs exactly the same job as map_to_vp, but pulls value from the entry DN.
+ *
+ * @see map_to_vp
+ */
+static int fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
+{
+	char const		*dn = uctx;
+	fr_pair_t		*vp;
+
+	fr_assert(map->lhs->type == TMPL_TYPE_ATTR);
+	switch (tmpl_attr_tail_da(map->lhs)->type) {
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		break;
+
+	default:
+		RERROR("Cannot store DN in %s",
+			fr_table_str_by_value(fr_type_table, tmpl_attr_tail_da(map->lhs)->type, "<INVALID>"));
+		return -1;
+	}
+
+	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
+
+	if (fr_pair_value_from_str(vp, dn, strlen(dn), NULL, true) < 0) {
+		RPWDEBUG("Failed parsing value \"%pV\" for attribute %s", dn,
+				 tmpl_attr_tail_da(map->lhs)->name);
+		talloc_free(vp);
+	}
+
+	fr_pair_append(out, vp);
+
+	return 0;
+}
+
 int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 {
 	/*
@@ -411,6 +447,20 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 		 */
 		result.values = ldap_get_values_len(handle, entry, name);
 		if (!result.values) {
+			/*
+			 *  dn is different - it's not (normally) an LDAP attribute
+			 *  so requires special handling.
+			 */
+			if (strcmp(name, "dn") == 0) {
+				char *dn = ldap_get_dn(handle, entry);
+				fr_ldap_util_normalise_dn(dn, dn);
+				ret = map_to_request(request, map, fr_ldap_map_getdn, dn);
+				ldap_memfree(dn);
+				if (ret == -1) return -1;
+				applied++;
+				continue;
+			}
+
 			RDEBUG3("Attribute \"%s\" not found in LDAP object", name);
 
 			goto next;
