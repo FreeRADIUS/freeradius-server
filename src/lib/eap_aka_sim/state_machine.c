@@ -1167,9 +1167,10 @@ static int sim_start_selected_version_check(request_t *request, eap_aka_sim_sess
 		selected_version[0] = (selected_version_vp->vp_uint16 & 0xff00) >> 8;
 		selected_version[1] = (selected_version_vp->vp_uint16 & 0x00ff);
 
-		while (p < end) {
+		while ((p + 2) <= end) {
 			if ((p[0] == selected_version[0]) && (p[1] == selected_version[1])) {
 				found = true;
+
 				/*
 				 *	Update our keying material
 				 */
@@ -1177,6 +1178,7 @@ static int sim_start_selected_version_check(request_t *request, eap_aka_sim_sess
 				eap_aka_sim_session->keys.gsm.version_select[1] = selected_version[1];
 				break;
 			}
+			p += 2;
 		}
 
 		if (!found) {
