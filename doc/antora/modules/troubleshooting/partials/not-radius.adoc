@@ -1,0 +1,32 @@
+== Invalid Packets
+
+RADIUS packets have a long list of requirements that they have to meet
+in order to be accepted by the server.  These requirements include
+(but are not limited to):
+
+* the packet must be at least 20 bytes long
+* the packet can't be too large (more than  4096 bytes)
+* the Code field must be valid (e.g. contain Access-Request, Accounting Request, etc.)
+* The Length field must have a good value (not too small, not too large)
+* The attributes must be well-formed
+  * the attribute number must be value
+  * the attribute length field must have a good value (not too small, not too large) 
+
+If the packet fails any one of these checks, it is invalid, and the
+server discards it.  The server also produces an error in debug mode.
+That error describes the specific reason why the packet was discarded.
+
+Whatever the reason or error message, the underlying cause is the
+same.  **Some system is sending packets to the server which aren't
+valid RADIUS**.  The solution to the problem is to take one of the
+following actions, or all of them:
+
+1. Fix the other system to stop sending non-RADIUS packets to the server
+2. Add a firewall or rules to block traffic from that system at the OS layer,
+   so that FreeRADIUS never sees that traffic.
+
+The exact steps to take for either action depends on third-party
+software, and as such is not documented here.
+
+For more information, see the xref:network/security/html[network
+security] page.
