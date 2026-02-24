@@ -1015,11 +1015,11 @@ static int fr_bio_dedup_shutdown(fr_bio_t *bio)
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 
-	while ((item = fr_bio_dedup_list_head(&my->active)) != NULL) {
+	while ((item = fr_bio_dedup_list_pop_head(&my->active)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 
-	while ((item = fr_bio_dedup_list_head(&my->pending)) != NULL) {
+	while ((item = fr_bio_dedup_list_pop_head(&my->pending)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 
