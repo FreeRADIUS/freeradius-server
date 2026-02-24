@@ -199,6 +199,8 @@ static ssize_t fr_bio_haproxy_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 	rcode = next->read(next, NULL, my->buffer.write, fr_bio_buf_write_room(&my->buffer));
 	if (rcode <= 0) return rcode;
 
+	fr_bio_buf_write_alloc(&my->buffer, rcode);
+
 	/*
 	 *	Not enough room for a full v1 header, tell the caller
 	 *	that no data was read.  The caller should call us
