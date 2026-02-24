@@ -282,15 +282,12 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	eap_packet_raw_t	*eap_packet;
-	unsigned char		*ptr;
 	uint16_t		len;
-	int			total_len;
-	fr_dcursor_t		cursor;
 
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_message);
+	vp = fr_pair_find_by_da(vps, NULL, attr_eap_message);
 	if (!vp) {
 		fr_strerror_const("EAP-Message not found");
 		return NULL;
@@ -319,26 +316,11 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 		return NULL;
 	}
 
-	/*
-	 *	Sanity check the length, BEFORE allocating  memory.
-	 */
-	total_len = 0;
-	for (vp = fr_dcursor_head(&cursor);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		total_len += vp->vp_length;
-
-		if (total_len > len) {
-			fr_strerror_printf("Malformed EAP packet.  Length in packet header %i, "
-					   "does not match actual length %i", len, total_len);
-			return NULL;
-		}
-	}
 
 	/*
-	 *	If the length is SMALLER, die, too.
+	 *	If the data is SMALLER than the requested length, die, too.
 	 */
-	if (total_len < len) {
+	if (vp->vp_length < len) {
 		fr_strerror_printf("Malformed EAP packet.  Length in packet header does not "
 				   "match actual length");
 		return NULL;
@@ -347,22 +329,12 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
-	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
+	eap_packet = (eap_packet_raw_t *) talloc_memdup(ctx, vp->vp_octets, len);
 	if (!eap_packet) return NULL;
 
 	/*
-	 *	Copy the data from EAP-Message's over to our EAP packet.
+	 *	Do more in-depth validity checks.
 	 */
-	ptr = (unsigned char *)eap_packet;
-
-	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = fr_dcursor_head(&cursor);
-	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
-		ptr += vp->vp_length;
-	}
-
 	if (!eap_is_valid(ctx, &eap_packet)) {
 		talloc_free(eap_packet);
 		return NULL;
