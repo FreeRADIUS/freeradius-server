@@ -336,6 +336,9 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 retry:
 	rcode = recvmsg(my->info.socket.fd, &my->msgh, 0);
 	if (rcode > 0) {
+		if (my->msgh.msg_flags == MSG_TRUNC) return 0;
+		if (my->msgh.msg_flags == MSG_CTRUNC) return 0;
+
 		ADDR_INIT;
 
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
