@@ -253,10 +253,22 @@ Notice that the `User-Name` in the Access-Accept is the *anonymous* identity, no
 
 Once you see `Access-Accept` on the server and `SUCCESS` on the client, EAP-PEAP is working correctly. You can verify that a real wireless client has network access using `ping`.
 
+== Further Considerations
 
+Different wireless clients may implement different tunneled authentication protocols inside EAP-PEAP. Not all of these are compatible with every RADIUS server. FreeRADIUS has only been tested using EAP-MSCHAPv2 as the inner tunneled protocol. If you need to use a different inner protocol, be aware that source code changes to FreeRADIUS may be required to support it.
 
+=== Windows Troubleshooting
 
+If EAP-PEAP is not working on a Windows client, you can enable detailed tracing logs to help identify the problem. Add the following registry key:
 
+[source, text]
+----
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Tracing\RASTLS\EnableTracing
+----
+
+Set the value of that key to `1`. Windows will then create a file called `RASTLS.LOG` containing detailed tracing information about the EAP negotiation. This log is one of the most useful tools for diagnosing Windows-specific PEAP failures, as it shows exactly where the handshake breaks down on the client side.
+
+To read the log, open it in any text editor and look for lines containing `ERROR` or `FAIL`. These will point you directly to the step that is failing, such as a certificate validation error or an unsupported inner method.
 
 == Questions
 
