@@ -181,6 +181,12 @@ jobs:
 
     steps:
 
+      - name: Wait for Docker-in-Docker
+        run: |
+          for i in $(seq 1 30); do
+            docker info && break || sleep 1
+          done
+
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
         with:
