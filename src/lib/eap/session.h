@@ -72,6 +72,8 @@ struct eap_session_s {
 	bool		finished;			//!< Whether we consider this session complete.
 };
 
+void		eap_session_discard(request_t *request);
+
 void		eap_session_destroy(eap_session_t **eap_session);
 
 void		eap_session_freeze(eap_session_t **eap_session);

@@ -153,6 +153,29 @@ void eap_session_destroy(eap_session_t **eap_session)
 	*eap_session = NULL;
 }
 
+/** discard and 'destroy' an EAP session and disassociate it from the current request
+ *
+ * @see eap_session_continue
+ * @see eap_session_freeze
+ * @see eap_session_thaw
+ *
+ * @param request to destroy (disassociate and free).
+ */
+void eap_session_discard(request_t *request)
+{
+	eap_session_t *eap_session;
+
+	eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
+	if (!eap_session) return;
+
+	/*
+	 *	Don't print "session didn't finish".
+	 */
+	eap_session->finished = true;
+
+	eap_session_destroy(&eap_session);
+}
+
 /** Freeze an #eap_session_t so that it can continue later
  *
  * Sets the request and pointer to the eap_session to NULL. Primarily here to help track
