@@ -4,12 +4,12 @@ on:
   push:
     branches:
       - master
-    paths:
-      - .github/workflows/docker-refresh.yml
-      - scripts/ci/Dockerfile*
+#    paths:
+#      - .github/workflows/docker-refresh.yml
+#      - scripts/ci/Dockerfile*
   workflow_dispatch:
-  schedule:
-    - cron: '0 1 * * *'
+#  schedule:
+#    - cron: '0 1 * * *'
 
 env:
   DOCKER_REGISTRY: "docker.internal.networkradius.com"
@@ -19,7 +19,8 @@ jobs:
     timeout-minutes: 20
 
     runs-on: self-hosted
-    if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'FreeRADIUS'
+#    if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'FreeRADIUS'
+    if: github.event_name == 'workflow_dispatch'
 
     strategy:
       fail-fast: false
