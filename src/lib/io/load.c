@@ -130,7 +130,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_load_t *l = uctx;
 	fr_time_delta_t delta;
-	int count;
+	uint32_t count;
 
 	/*
 	 *	Keep track of the overall maximum backlog for the
@@ -173,17 +173,19 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 *	new packets once a reply comes in.
 	 */
 	if (((size_t) l->stats.backlog * 1000) < ((size_t) l->pps * l->config->milliseconds)) {
+		uint32_t capacity;
+
 		l->state = FR_LOAD_STATE_SENDING;
 		l->stats.blocked = false;
 		count = l->config->parallel;
 		l->stats.skipped = 0;
 
+		capacity = ((l->pps * l->config->milliseconds) / 1000) - l->stats.backlog;
+
 		/*
-		 *	Limit "count" so that it doesn't over-run backlog.
+		 *	Limit "count" so that it doesn't overflow.
 		 */
-		if (((size_t) ((count + l->stats.backlog) * 1000)) > ((size_t) l->pps * l->config->milliseconds)) {
-			count = (count + l->stats.backlog) - ((l->pps * l->config->milliseconds) / 1000);
-		}
+		if (count > capacity) count = capacity;
 
 	} else {
 
@@ -229,11 +231,21 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
  */
 int fr_load_generator_start(fr_load_t *l)
 {
+	uint32_t max;
+
 	l->stats.start = fr_time();
 	l->step_start = l->stats.start;
 	l->step_end = fr_time_add(l->step_start, l->config->duration);
 
 	l->pps = l->config->start_pps;
+
+	/*
+	 *	Check for numerical overflow.  We later multiply pps*milliseconds, and we don't want overflow.
+	 */
+	max = UINT32_MAX / l->config->milliseconds;
+
+	if (l->pps > max) l->pps = max;
+
 	l->stats.pps = l->pps;
 	l->count = l->config->parallel;
 
