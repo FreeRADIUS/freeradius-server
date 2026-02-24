@@ -2344,6 +2344,41 @@ static void packet_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	}
 }
 
+static void update_client(fr_io_client_t *client, fr_client_t *radclient)
+{
+
+	/*
+	 *	The new client is mostly OK.  Copy the various fields
+	 *	over.
+	 */
+#define COPY_FIELD(_dest, _x) _dest->radclient->_x = radclient->_x
+#define DUP_FIELD(_dest, _x) _dest->radclient->_x = talloc_strdup(_dest->radclient, radclient->_x)
+
+	/*
+	 *	Only these two fields are set.  Other strings in
+	 *	radclient are copies of these ones.
+	 */
+	talloc_const_free(client->radclient->shortname);
+	talloc_const_free(client->radclient->secret);
+
+	DUP_FIELD(client, longname);
+	DUP_FIELD(client, shortname);
+	DUP_FIELD(client, secret);
+	DUP_FIELD(client, nas_type);
+
+	COPY_FIELD(client, ipaddr);
+	COPY_FIELD(client, src_ipaddr);
+	COPY_FIELD(client, require_message_authenticator);
+	COPY_FIELD(client, require_message_authenticator_is_set);
+#ifdef NAS_VIOLATES_RFC
+	COPY_FIELD(client, allow_vulnerable_clients);
+#endif
+	COPY_FIELD(client, limit_proxy_state);
+	COPY_FIELD(client, limit_proxy_state_is_set);
+	COPY_FIELD(client, use_connected);
+	COPY_FIELD(client, cs);
+}
+
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
@@ -2620,36 +2655,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		}
 	}
 
-	/*
-	 *	The new client is mostly OK.  Copy the various fields
-	 *	over.
-	 */
-#define COPY_FIELD(_dest, _x) _dest->radclient->_x = radclient->_x
-#define DUP_FIELD(_dest, _x) _dest->radclient->_x = talloc_strdup(_dest->radclient, radclient->_x)
-
-	/*
-	 *	Only these two fields are set.  Other strings in
-	 *	radclient are copies of these ones.
-	 */
-	talloc_const_free(client->radclient->shortname);
-	talloc_const_free(client->radclient->secret);
-
-	DUP_FIELD(client, longname);
-	DUP_FIELD(client, shortname);
-	DUP_FIELD(client, secret);
-	DUP_FIELD(client, nas_type);
-
-	COPY_FIELD(client, ipaddr);
-	COPY_FIELD(client, src_ipaddr);
-	COPY_FIELD(client, require_message_authenticator);
-	COPY_FIELD(client, require_message_authenticator_is_set);
-#ifdef NAS_VIOLATES_RFC
-	COPY_FIELD(client, allow_vulnerable_clients);
-#endif
-	COPY_FIELD(client, limit_proxy_state);
-	COPY_FIELD(client, limit_proxy_state_is_set);
-	COPY_FIELD(client, use_connected);
-	COPY_FIELD(client, cs);
+	update_client(client, radclient);
 
 	// @todo - fill in other fields?
 
@@ -2693,19 +2699,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		fr_assert(connection->parent->state == PR_CLIENT_PENDING);
 		connection->parent->state = PR_CLIENT_DYNAMIC;
 
-		DUP_FIELD(connection->parent, longname);
-		DUP_FIELD(connection->parent, shortname);
-		DUP_FIELD(connection->parent, secret);
-		DUP_FIELD(connection->parent, nas_type);
-
-		COPY_FIELD(connection->parent, ipaddr);
-		COPY_FIELD(connection->parent, src_ipaddr);
-		COPY_FIELD(connection->parent, require_message_authenticator);
-		COPY_FIELD(connection->parent, require_message_authenticator_is_set);
-		COPY_FIELD(connection->parent, limit_proxy_state);
-		COPY_FIELD(connection->parent, limit_proxy_state_is_set);
-		COPY_FIELD(connection->parent, use_connected);
-		COPY_FIELD(connection->parent, cs);
+		update_client(connection->parent, radclient);
 
 		/*
 		 *	Re-parent the conf section used to build this client
