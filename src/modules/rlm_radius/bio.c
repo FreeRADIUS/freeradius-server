@@ -1304,7 +1304,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 */
 	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len),
 				      &request->request_pairs, &encode_ctx);
-	if (fr_pair_encode_is_error(packet_len)) {
+	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
 
 	error:
@@ -1312,23 +1312,6 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 		return -1;
 	}
 
-	if (packet_len < 0) {
-		size_t have;
-		size_t need;
-
-		have = u->packet_len;
-		need = have - packet_len;
-
-		if (need > RADIUS_MAX_PACKET_SIZE) {
-			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes",
-			       have, need);
-		} else {
-			RERROR("Failed encoding packet.  Have %zu bytes of buffer, need %zu bytes.  "
-			       "Increase 'max_packet_size'", have, need);
-		}
-
-		goto error;
-	}
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
 	 */
@@ -2839,8 +2822,8 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 */
 	packet_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, sizeof(buffer)),
 				      &request->request_pairs, &encode_ctx);
-	if (fr_pair_encode_is_error(packet_len)) {
-		RPERROR("Failed encoding packet");
+	if (packet_len < 0) {
+		RPERROR("Failed encoding replicated packet");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2848,7 +2831,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Sign it.
 	 */
 	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
-		RPERROR("Failed signing packet");
+		RPERROR("Failed signing replicated packet");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2868,7 +2851,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 */
 	packet_len = fr_bio_write(thread->bio.fd, &addr, buffer, packet_len);
 	if (packet_len < 0) {
-		RPERROR("Failed sending packet to %pV:%u", ipaddr, port->vb_uint16);
+		RPERROR("Failed replicating packet to %pV:%u", ipaddr, port->vb_uint16);
 		return XLAT_ACTION_FAIL;
 	}
 
