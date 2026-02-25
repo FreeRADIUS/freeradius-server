@@ -172,7 +172,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 	int			i;
-	char		 	buffer[265];
+	char		 	buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 	char			*p , *q;
 	fr_pair_list_t		cert_vps;
 
@@ -209,6 +209,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 		     cert_attrs = cert_attrs->next) {
 		     	fr_pair_t		*vp;
 		     	fr_dict_attr_t const	*da;
+			size_t			namelen;
 
 		     	q = strchr(cert_attrs->data, ':');
 			if (!q) {
@@ -216,7 +217,15 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 				continue;
 			}
 
-			strlcpy(buffer, cert_attrs->data, (q - cert_attrs->data) + 1);
+			namelen = (size_t)(q - cert_attrs->data);
+			if (namelen >= sizeof(buffer)) {
+				RWDEBUG("Certinfo attribute name too long (%zu) - skipping", namelen);
+				continue;
+			}
+
+			memcpy(buffer, cert_attrs->data, namelen); 
+			buffer[namelen] = '\0';
+
 			for (p = buffer; *p != '\0'; p++) if (*p == ' ') *p = '-';
 
 			da = fr_dict_attr_by_name(NULL, attr_tls_certificate, buffer);
