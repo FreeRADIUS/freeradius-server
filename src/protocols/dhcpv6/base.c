@@ -478,9 +478,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
-		if (!option) goto fail_sid;
-
-		if (!duid_match(option, packet_ctx)) goto fail_match;
+		if (option && !duid_match(option, packet_ctx)) goto fail_match;
 
 		/*
 		 *	IA options are forbidden.
