@@ -52,14 +52,17 @@ static ssize_t fr_bio_network_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 	fr_bio_network_t *my = talloc_get_type_abort(bio, fr_bio_network_t);
 	fr_bio_fd_packet_ctx_t *addr;
 	fr_bio_t *next;
+
+	if (!packet_ctx) {
+		fr_strerror_const("Cannot perform network filtering");
+		return fr_bio_error(GENERIC);
+	}
 	
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
 	rcode = next->read(next, packet_ctx, buffer, size);
 	if (rcode <= 0) return rcode;
-
-	if (!packet_ctx) return rcode;
 
 	addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
