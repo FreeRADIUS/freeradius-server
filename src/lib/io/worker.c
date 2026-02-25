@@ -1111,7 +1111,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *	Only real packets are in the dedup tree.  And even
 	 *	then, only some of the time.
 	 */
-	if (request->async->listen->track_duplicates) {
+	if (request->async->listen->track_duplicates && fr_rb_node_inline_in_tree(&request->dedup_node)) {
 		(void) fr_rb_delete(worker->dedup, request);
 	}
 
