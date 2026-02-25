@@ -37,7 +37,7 @@ static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(unlang_result_t *p_result
 		if (vp->vp_type != FR_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
-			len = fr_utf8_char(&vp->vp_octets[i], -1);
+			len = fr_utf8_char(&vp->vp_octets[i], vp->vp_length - i);
 			if (len == 0) RETURN_UNLANG_FAIL;
 		}
 	}
