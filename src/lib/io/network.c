@@ -409,6 +409,7 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
  */
 int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
 {
+	int rcode;
 	fr_ring_buffer_t *rb;
 	fr_network_inject_t my_inject;
 
@@ -447,11 +448,14 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	if (!rb) return -1;
 
 	my_inject.listen = li;
-	my_inject.packet = talloc_memdup(NULL, packet, packet_len);
+	MEM(my_inject.packet = talloc_memdup(NULL, packet, packet_len));
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
 
-	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
+	rcode = fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
+	if (rcode < 0) talloc_free(my_inject.packet);
+
+	return rcode;
 }
 
 static fr_event_update_t const pause_read[] = {
