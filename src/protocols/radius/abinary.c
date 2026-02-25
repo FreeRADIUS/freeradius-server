@@ -619,7 +619,8 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
 	int		ip[4];
-	int	     masklen;
+	int		masklen;
+	bool		have_netmask = false;
 	uint32_t	netmask = 0;
 
 	/*
@@ -657,6 +658,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 
 			case '/': /* netmask  */
 				str++;
+				have_netmask = true;
 				masklen = atoi(str);
 				if ((masklen < 0) || (masklen > 32)) {
 					fr_strerror_printf("Invalid mask in '%s'", str);
@@ -698,7 +700,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 	/*
 	 *	Set the default netmask.
 	 */
-	if (!netmask) {
+	if (!have_netmask) {
 		if (!*ipaddr) {
 			netmask = 0;
 		} else if ((*ipaddr & 0x80000000) == 0) {
@@ -730,7 +732,7 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 	 */
 	slen = fr_table_value_by_str(filterCompare, compare, -1);
 	if (slen < 0) {
-		fr_strerror_printf("Unknown comparison operator '%s'", str);
+		fr_strerror_printf("Unknown comparison operator '%s'", compare);
 		return slen;
 	}
 
@@ -1453,7 +1455,7 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 		 *	Why is len 16 bits, when the masks are only 6 bytes?
 		 */
 		len = ntohs(filter->generic.len);
-		if (len >= sizeof(filter->generic.mask)) {
+		if (len > sizeof(filter->generic.mask)) {
 			return -size;
 		}
 
