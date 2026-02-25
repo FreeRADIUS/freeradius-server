@@ -445,9 +445,8 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 			return false;
 		}
 
-		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
-		fail_sid:
-			fr_strerror_const("Packet does not contain a Server-Id option");
+		if (fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
+			fr_strerror_const("Packet contains a Server-Id option");
 			return false;
 		}
 		break;
@@ -459,7 +458,11 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
 
 		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
-		if (!option) goto fail_sid;
+		if (!option) {
+		fail_sid:
+			fr_strerror_const("Packet does not contain a Server-Id option");
+			return false;
+		}
 
 		if (!duid_match(option, packet_ctx)) {
 		fail_match:
