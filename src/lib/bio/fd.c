@@ -381,6 +381,7 @@ DIAG_ON(sign-compare)
 			struct in_pktinfo *i = (struct in_pktinfo *) CMSG_DATA(cmsg);
 			struct sockaddr_in to;
 
+			to.sin_family = AF_INET;
 			to.sin_addr = i->ipi_addr;
 
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
@@ -396,6 +397,7 @@ DIAG_ON(sign-compare)
 			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
 			struct sockaddr_in to;
 
+			to.sin_family = AF_INET;
 			to.sin_addr = *i;
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
 						       (struct sockaddr_storage *) &to, sizeof(struct sockaddr_in));
@@ -543,6 +545,7 @@ DIAG_ON(sign-compare)
 			struct in6_pktinfo *i = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 			struct sockaddr_in6 to;
 
+			to.sin6_family = AF_INET6;
 			to.sin6_addr = i->ipi6_addr;
 
 			(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.dst_ipaddr, &addr->socket.inet.dst_port,
@@ -570,7 +573,7 @@ DIAG_ON(sign-compare)
 	return rcode;
 }
 
-/** Send to UDP socket where we can change our IP, IPv4 version.
+/** Send to UDP socket where we can change our IP, IPv6 version.
  */
 static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
 {
