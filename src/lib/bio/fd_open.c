@@ -455,16 +455,16 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 */
 	*slashes[0] = '/';
 	*slashes[1] = '\0';
-	if (mkdirat(parent_fd, dir, 0700) < 0) {
-		fr_strerror_printf("Failed creating directory %s: %s", dir, fr_syserror(errno));
+	if (mkdirat(parent_fd, slashes[0] + 1, 0700) < 0) {
+		fr_strerror_printf("Failed creating directory %s: %s", slashes[0], fr_syserror(errno));
 	close_parent:
 		close(parent_fd);
 		goto fail;
 	}
 
-	fd = openat(parent_fd, dir, O_DIRECTORY);
+	fd = openat(parent_fd, slashes[0] + 1, O_DIRECTORY);
 	if (fd < 0) {
-		fr_strerror_printf("Failed opening directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed opening directory %s: %s", slashes[0] + 1, fr_syserror(errno));
 		goto close_parent;
 	}
 
@@ -486,7 +486,10 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	}
 
 	*dirfd = fd;
-	*filename = strrchr(cfg->path, '/');
+	path = strrchr(cfg->path, '/');
+	if (path) path++;
+
+	*filename = path;
 
 	talloc_free(dir);
 	close(parent_fd);
@@ -801,7 +804,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 		if (rcode < 0) {
 			fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
-			goto down;
+			return -1;
 		}
 
 	} else {
