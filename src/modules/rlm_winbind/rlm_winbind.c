@@ -320,17 +320,18 @@ static xlat_action_t winbind_ping_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RDEBUG2("Ping succeeded to DC %s after %pVms", dc,
 			fr_box_time_delta_msec(fr_time_sub(now, then)));
 
-		MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, "ok", false) == 0);
 	} else {
 		char const *err_str = wbcErrorString(err);
 
-		RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
-		       fr_box_time_delta_msec(fr_time_sub(now, then)),
-		       err_info->display_string ? " - " : "",
-		       err_info->display_string ? err_info->display_string : "");
+		if (err_str) {
+			RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
+			       fr_box_time_delta_msec(fr_time_sub(now, then)),
+			       err_info->display_string ? " - " : "",
+			       err_info->display_string ? err_info->display_string : "");
 
-		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+			MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+		}
 	}
 
 	if (dc) wbcFreeMemory(dc);

@@ -102,8 +102,8 @@ int do_auth_wbclient_pap(request_t *request, winbind_auth_call_env_t *env, rlm_w
 	}
 	wb_ctx = wbctx->ctx;
 
-	RDEBUG2("Sending authentication request user='%s' domain='%s'", authparams.account_name,
-									authparams.domain_name);
+	RDEBUG2("Sending authentication request user='%s' domain='%s'",
+		authparams.account_name, authparams.domain_name ? authparams.domain_name : "");
 
 	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
 
