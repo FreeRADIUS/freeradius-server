@@ -369,9 +369,10 @@ void _fr_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char con
 	       char		*p;
 	       char const	*truncated = "";
 
-#ifndef NDEBUG
-               if (attr[1] < 2) break; /* Coverity */
-#endif
+	       /*
+		*	rad_packet_ok() already checks, but let's do defense in depth.
+		*/
+               if (attr[1] < 2) break;
 
 	       snprintf(buffer, sizeof(buffer), "%02x %02x  ", attr[0], attr[1]);
 	       p = buffer + strlen(buffer);

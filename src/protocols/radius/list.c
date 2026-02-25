@@ -221,6 +221,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	}
 
 	memset(ps, 0, sizeof(*ps));
+	ps->socket.fd = -1;
 	ps->ctx = ctx;
 	ps->socket.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 

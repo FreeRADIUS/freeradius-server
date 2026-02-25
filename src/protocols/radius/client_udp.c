@@ -33,15 +33,11 @@ RCSID("$Id$")
  */
 static int fr_radius_client_udp_bio_write(fr_bio_packet_t *bio, void *pctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
-	ssize_t slen;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
 	if (!packet->data) return fr_radius_client_fd_bio_write(my, pctx, packet, list);
 
-	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
-	if (slen <= 0) return -1;
-
-	return 0;
+	return fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
 }
 
 /** Allocate a RADIUS bio for writing client packets

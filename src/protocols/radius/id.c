@@ -90,6 +90,8 @@ fr_radius_id_ctx_t *fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
 {
 	int id;
 
+	if (track->num_free_ids == 0) return NULL;
+
 	id = track->free_ids[track->free_start];
 	fr_assert(id >= 0);
 	fr_assert(id < 256);
