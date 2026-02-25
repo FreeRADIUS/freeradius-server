@@ -64,40 +64,6 @@ static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name
 }
 
 
-static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Xlat for %attr_by_num(\<number\>)
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
-{
-	fr_dict_attr_t const	*da;
-	fr_value_box_t		*attr = fr_value_box_list_head(in);
-	fr_value_box_t		*vb;
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(request->proto_dict), attr->vb_uint32);
-	if (!da) {
-		REDEBUG("No attribute found with number %pV", attr);
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	if (fr_value_box_bstrndup(vb, vb, NULL, da->name, strlen(da->name), false) < 0) {
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dcursor_append(out, vb);
-	return XLAT_ACTION_DONE;
-}
-
 static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -329,7 +295,6 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	XLAT_REGISTER("dict.attr.by_num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
 	XLAT_REGISTER("dict.attr.by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
 	XLAT_REGISTER("dict.vendor", xlat_vendor, FR_TYPE_STRING, xlat_vendor_args);
 	XLAT_REGISTER("dict.vendor.num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
@@ -342,7 +307,6 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("dict.attr.by_num");
 	xlat_func_unregister("dict.attr.by_oid");
 	xlat_func_unregister("dict.vendor");
 	xlat_func_unregister("dict.vendor.num");

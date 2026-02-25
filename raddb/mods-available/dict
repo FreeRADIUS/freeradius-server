@@ -22,17 +22,6 @@
 #
 #  .Return: _string_
 #
-#  === %dict.attr.by_num(_<uint32>_)
-#
-#  Takes an attribute number, and returns the canonicalized name of the attribute.
-#
-#  If the attribute does not exist, nothing is returned.
-#
-#  This function is useful only for "top level" attributes such as `User-Name`.
-#  Where the attribute is nested, use `%dict.attr.by_oid()` instead.
-#
-#  .Return: _string_
-#
 #  === %dict.attr.by_oid(_<string>_)
 #
 #  Takes a full OID reference (e.g. `26.9.1`), and returns the name of

@@ -2,10 +2,6 @@ Vendor-Specific.FreeRADIUS.Proxied-To := 127.0.0.1
 
 Reply-Message := 'foo'
 
-if (%dict.attr.by_num('1') != 'User-Name') {
-	test_fail
-}
-
 if (%dict.attr('Vendor-Specific.FreeRADIUS.Proxied-To') != 'Proxied-To') {
 	test_fail
 }
