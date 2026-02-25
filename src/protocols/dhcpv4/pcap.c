@@ -150,6 +150,11 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	/* Skip ethernet header */
 	p += link_len;
 
+	if (p >= (data + header->caplen)) {
+		fr_strerror_const("No IP protocol packet after link layer header");
+		return NULL;
+	}
+
 	version = (p[0] & 0xf0) >> 4;
 	switch (version) {
 	case 4:
