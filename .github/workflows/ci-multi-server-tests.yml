@@ -26,8 +26,18 @@ jobs:
           NO_PROXY: "*.networkradius.com,127.0.0.1"
         #  Mount the host's internal CA so dind trusts
         #  docker.internal.networkradius.com for image pulls.
+        #
+        #  Share the runner's workspace with dind so that docker
+        #  compose bind-mounts (radiusd.conf, env-setup.sh, listener
+        #  dirs, etc.) resolve to real files inside the dind daemon.
+        #
+        #  github.workspace is the HOST path to the workspace.
+        #  The runner mounts it into the job container at a
+        #  different path (/__w/...), so we use a fixed mount
+        #  point (/workspace) that both containers agree on.
         volumes:
           - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
+          - ${{ github.workspace }}:/workspace
 
     env:
       MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
@@ -45,6 +55,13 @@ jobs:
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind
+      #  Shared workspace — see dind volumes comment above.
+      volumes:
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
 
     steps:
 
