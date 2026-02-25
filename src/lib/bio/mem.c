@@ -808,7 +808,6 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 	if (!my) return NULL;
 
 	if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) {
-		talloc_free(my);
 		return NULL;
 	}
 
@@ -881,7 +880,6 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 	if (!my) return NULL;
 
 	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
-		talloc_free(my);
 		return NULL;
 	}
 
