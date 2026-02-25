@@ -91,6 +91,10 @@ typedef struct {
 	bool		dont_use;
 
 	uint8_t		id[32];
+
+	uint8_t		*buffer;
+	size_t		bufsize;
+	size_t		used;
 } fr_packet_socket_t;
 
 
@@ -177,6 +181,8 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
 
 	if (ps->num_outgoing != 0) return false;
 
+	TALLOC_FREE(ps->buffer);
+
 	ps->socket.fd = -1;
 	pl->num_sockets--;
 
@@ -252,6 +258,14 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	ps->dst_any = fr_ipaddr_is_inaddr_any(&ps->socket.inet.dst_ipaddr);
 	if (ps->dst_any < 0) return false;
+
+	if (proto == IPPROTO_TCP) {
+		ps->buffer = talloc_array(pl, uint8_t, RADIUS_MAX_PACKET_SIZE);
+		if (ps->buffer) return false;
+
+		ps->bufsize = RADIUS_MAX_PACKET_SIZE;
+		ps->used = 0;
+	}
 
 	/*
 	 *	As the last step before returning.
@@ -679,6 +693,8 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 
 	start = pl->last_recv;
 	do {
+		fr_packet_socket_t *ps;
+
 		start++;
 		start &= SOCKOFFSET_MASK;
 
@@ -687,10 +703,40 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 		if (!FD_ISSET(pl->sockets[start].socket.fd, set)) continue;
 
 		if (pl->sockets[start].socket.type == SOCK_STREAM) {
-			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
-		} else
+			int rcode;
+			ps = &pl->sockets[start];
+
+			rcode = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
+						   &ps->used, max_attributes, require_message_authenticator);
+			if (rcode <= 0) return rcode;
+
+			fr_assert(ps->used >= RADIUS_HEADER_LENGTH);
+
+			packet = fr_packet_alloc(ctx, false);
+			if (!packet) return -1;
+
+			packet->data = talloc_memdup(packet, ps->buffer, rcode);
+			if (!packet->data) {
+				talloc_free(packet);
+				return -1;
+			}
+
+			packet->data_len = rcode;
+			packet->socket = ps->socket;
+
+			if (ps->used == (size_t) rcode) {
+				ps->used = 0;
+			} else {
+				fr_assert(ps->used > (size_t) rcode);
+
+				memmove(ps->buffer, ps->buffer + rcode, ps->used - rcode);
+				ps->used -= rcode;
+			}
+
+		} else {
 			packet = fr_packet_recv(ctx, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
 						       max_attributes, require_message_authenticator);
+		}
 		if (!packet) continue;
 
 		/*

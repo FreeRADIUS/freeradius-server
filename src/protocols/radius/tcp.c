@@ -28,136 +28,44 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include "tcp.h"
 
-fr_packet_t *fr_tcp_recv(int sockfd, int flags)
-{
-	fr_packet_t *packet = fr_packet_alloc(NULL, false);
-
-	if (!packet) return NULL;
-
-	packet->socket.fd = sockfd;
-
-	if (fr_tcp_read_packet(packet, RADIUS_MAX_ATTRIBUTES, flags) != 1) {
-		fr_packet_free(&packet);
-		return NULL;
-	}
-
-	return packet;
-}
-
 /*
- *	Receives a packet, assuming that the fr_packet_t structure
- *	has been filled out already.
- *
- *	This ASSUMES that the packet is allocated && fields
- *	initialized.
- *
  *	This ASSUMES that the socket is marked as O_NONBLOCK, which
  *	the function above does set, if your system supports it.
- *
- *	Calling this function MAY change sockfd,
- *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator)
+ssize_t fr_tcp_read_packet(int sockfd, uint8_t *buffer, size_t size, size_t *total, uint32_t max_attributes, bool require_message_authenticator)
 {
-	ssize_t len;
+	ssize_t slen;
+	size_t packet_len, hdr_len;
+	uint8_t *start, *end;
+
+	fr_assert(*total < size);
+	start = buffer + *total;
+	end = buffer + size;
+
+	slen = recv(sockfd, start, (size_t) (end - start), 0);
+	if (slen <= 0) return -1;
+
+	packet_len = *total + slen;
 
 	/*
-	 *	No data allocated.  Read the 4-byte header into
-	 *	a temporary buffer.
+	 *	Not enough for a header, die.
 	 */
-	if (!packet->data) {
-		int packet_len;
+	if (packet_len < 4) return 0;
 
-		len = recv(packet->socket.fd, packet->vector + packet->data_len,
-			   4 - packet->data_len, 0);
-		if (len == 0) return -2; /* clean close */
+	hdr_len = fr_nbo_to_uint16(buffer + 2);
+	if ((hdr_len < RADIUS_HEADER_LENGTH) || (hdr_len >  RADIUS_MAX_PACKET_SIZE)) return -1;
 
-#ifdef ECONNRESET
-		if ((len < 0) && (errno == ECONNRESET)) { /* forced */
-			return -2;
-		}
-#endif
-
-		if (len < 0) {
-			fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
-			return -1;
-		}
-
-		packet->data_len += len;
-		if (packet->data_len < 4) { /* want more data */
-			return 0;
-		}
-
-		packet_len = fr_nbo_to_uint16(packet->vector + 2);
-
-		if (packet_len < RADIUS_HEADER_LENGTH) {
-			fr_strerror_const("Discarding packet: Smaller than RFC minimum of 20 bytes");
-			return -1;
-		}
-
-		/*
-		 *	If the packet is too big, then the socket is bad.
-		 */
-		if (packet_len > MAX_PACKET_LEN) {
-			fr_strerror_const("Discarding packet: Larger than RFC limitation of 4096 bytes");
-			return -1;
-		}
-
-		packet->data = talloc_array(packet, uint8_t, packet_len);
-		if (!packet->data) {
-			fr_strerror_const("Out of memory");
-			return -1;
-		}
-
-		packet->data_len = packet_len;
-		packet->partial = 4;
-		memcpy(packet->data, packet->vector, 4);	//-V512
-	}
-
-	/*
-	 *	Try to read more data.
-	 */
-	len = recv(packet->socket.fd, packet->data + packet->partial,
-		   packet->data_len - packet->partial, 0);
-	if (len == 0) return -2; /* clean close */
-
-#ifdef ECONNRESET
-	if ((len < 0) && (errno == ECONNRESET)) { /* forced */
-		return -2;
-	}
-#endif
-
-	if (len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	packet->partial += len;
-
-	if (packet->partial < packet->data_len) {
+	if (packet_len < hdr_len) {
+		*total = packet_len;
 		return 0;
 	}
 
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_packet_ok(packet, max_attributes, require_message_authenticator, NULL)) {
+	if (!fr_radius_ok(buffer, &hdr_len, max_attributes, require_message_authenticator, NULL)) {
 		return -1;
 	}
 
-	if (fr_debug_lvl) {
-		char ip_buf[INET6_ADDRSTRLEN], buffer[256];
-
-		if (packet->socket.inet.src_ipaddr.af != AF_UNSPEC) {
-			inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr, ip_buf, sizeof(ip_buf));
-			snprintf(buffer, sizeof(buffer), "host %s port %d", ip_buf, packet->socket.inet.src_port);
-		} else {
-			snprintf(buffer, sizeof(buffer), "socket %d", packet->socket.fd);
-		}
-
-	}
-
-	packet->timestamp = fr_time();
-
-	return 1;		/* done reading the packet */
+	return hdr_len;
 }
