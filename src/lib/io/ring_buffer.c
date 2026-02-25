@@ -468,7 +468,7 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
 	*p_start = rb->buffer + rb->data_start;
 
 	if (rb->write_offset < rb->data_start) {
-		*p_size = rb->write_offset;
+		*p_size = rb->data_end - rb->data_start;
 		return 0;
 	}
 
