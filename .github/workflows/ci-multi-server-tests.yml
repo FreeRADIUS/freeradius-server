@@ -13,149 +13,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  pre-test:
-    runs-on: ubuntu-latest
-    outputs:
-      #selfhosted: 0
-      selfhosted: ${{ (github.repository_owner == 'FreeRADIUS') && '1' || '0' }}
-    steps:
-      - run: echo "Pre-test job; checking if using self-hosted runners"
-
-  # Job only runs on GitHub-hosted runners
-  test-5hs-autoaccept:
-    needs: pre-test
-    runs-on: ubuntu-24.04
-    if: ${{ needs.pre-test.outputs.selfhosted != '1' }}
-
-    env:
-      MULTI_SERVER_ENV_DOCKER_BUILD_OS: ubuntu24
-      MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server/multi_server_test.log
-      MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-listener-logs/custom_test-env-5hs-autoaccept.txt.bak
-
-    steps:
-      # Checkout, but defer pulling LFS objects until we've restored the cache
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-
-      - name: Package manager performance improvements
-        run: |
-          sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-          sudo dpkg-reconfigure man-db
-          sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
-
-      - name: NetworkRADIUS signing key
-        shell: bash
-        run: |
-          sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
-          curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | sudo tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
-
-      - name: Set up NetworkRADIUS extras repository
-        shell: bash
-        run: |
-          DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-          RELEASE=$(lsb_release -cs)
-          sudo /bin/sh -c "echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
-            > /etc/apt/sources.list.d/networkradius-extras.list"
-          sudo apt-get update
-
-      # Remove pre-installed package which conflicts with dependency installation
-      - name: Remove package conflicts
-        run: |
-          sudo apt-get remove -y libhashkit2
-
-      # Installing build dependencies requires a ubuntu-24.04 runner
-      - name: Install build dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-          debian/rules debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
-
-      - name: Build Docker image for multi-server test environment
-        run: |
-          ./configure
-          make docker.${MULTI_SERVER_ENV_DOCKER_BUILD_OS}.build
-
-          # List all images
-          docker images --all
-
-          # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
-          docker tag freeradius4/${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
-
-      - name: Run test-5hs-autoaccept test
-        run: |
-          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
-            echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
-            exit 1
-          fi
-          make -f src/tests/multi-server/all.mk test-5hs-autoaccept VERBOSE=4
-
-      - name: Verify test results
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "============ ${MULTI_SERVER_TEST_LOG} ============"
-          cat "${MULTI_SERVER_TEST_LOG}"
-
-          if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"; then
-            echo "TEST FAILED: Found [Failed] in log"
-            grep '\[Failed\]' "${MULTI_SERVER_TEST_LOG}"
-
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
-            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
-            exit 1
-          fi
-
-          if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"; then
-            echo "TEST FAILED: Found Failures > 0 in log"
-            grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_LOG}"
-
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
-            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
-            exit 1
-          fi
-
-          log="${MULTI_SERVER_TEST_LOG}"
-          if awk '
-            BEGIN { found=0; n1=0; n2=0; line="" }
-            index($0,"Matched:") {
-              orig=$0
-              s=$0
-              gsub(/[[:space:]]/, "", s)
-              sub(/^.*Matched:/, "", s)
-              sub(/\(.*/, "", s)
-              n = split(s, parts, "/")
-              if (n == 2) {
-                a = parts[1] + 0
-                b = parts[2] + 0
-                if (a > 0 && a == b) { found=1; n1=a; n2=b; line=orig }
-              }
-            }
-            END {
-              if (found) { printf "MATCH: %d / %d\nMatched line: %s\n", n1, n2, line; exit 0 }
-              exit 1
-            }
-          ' "$log"
-          then
-            : # PASS
-          else
-            echo "TEST FAILED: No Matched line found with equal non-zero counts"
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
-            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
-            exit 1
-          fi
-
-  # Job only runs on self-hosted runners
   test-5hs-autoaccept-selfhosted:
-    needs: pre-test
     runs-on: self-hosted
-    if: ${{ needs.pre-test.outputs.selfhosted == '1' }}
 
     services:
       dind:
@@ -191,7 +50,7 @@ jobs:
 
       - name: Install Docker CLI
         run: |
-          apt-get update && apt-get install -y --no-install-recommends docker.io
+          apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
@@ -209,38 +68,14 @@ jobs:
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
 
-      - name: Get pre-built Docker image for self-hosted runner test
-        shell: bash
-        env:
-          DOCKER_REGISTRY: docker.internal.networkradius.com
-          DOCKER_IMAGE: self-hosted-ubuntu24
+      - name: Build Docker image from source
         run: |
-          docker pull "${DOCKER_REGISTRY}/${DOCKER_IMAGE}"
-
-          # Tag freeradius build image using using a non-OS specific name to be used with the multi-server docker compose environment.
-          docker tag "${DOCKER_REGISTRY}/${DOCKER_IMAGE}" freeradius-build:latest
-
-          # Display all docker images for debugging purposes
+          make docker.ubuntu24.build
+          docker tag freeradius4/ubuntu24:latest freeradius-build:latest
           docker images --all
 
-      - name: Configure and build freeradius-server from src
-        shell: bash
-        run: |
-          # The multi-server test framework requires the availability of the $BUILD_DIR, hence why
-          # the following is needed before running multi-server tests.
-          ./configure
-          make -j"$(nproc)" all
-
       - name: Run test-5hs-autoaccept test
-        shell: bash
         run: |
-          if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^freeradius-build:latest$"; then
-            echo "Error: freeradius-build:latest Docker image not found and required for multi-server test environment."
-            exit 1
-          fi
-
-          ls -l
-          which make
           make -f src/tests/multi-server/all.mk test-5hs-autoaccept
 
       - name: Verify test results
