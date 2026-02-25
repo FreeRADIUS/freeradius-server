@@ -234,7 +234,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	}
 	encrypted_pass = pwd->pw_passwd;
 
-#ifdef HAVE_GETSPNAM
 	/*
 	 *      See if there is a shadow password.
 	 *
@@ -244,20 +243,27 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	 *	prevents users from using NULL password fields as things
 	 *	stand right now.
 	 */
-	if ((!encrypted_pass) || (strlen(encrypted_pass) < 10)) {
+	if (!encrypted_pass || (strlen(encrypted_pass) < 10)) {
+#ifdef HAVE_GETSPNAM
 		if ((spwd = getspnam(name)) == NULL) {
 			RETURN_UNLANG_NOTFOUND;
 		}
+
 		encrypted_pass = spwd->sp_pwdp;
-	}
+		if (!encrypted_pass || (strlen(encrypted_pass) < 10)) {
+			RETURN_UNLANG_NOTFOUND;
+		}
+#else
+		RETURN_UNLANG_NOTFOUND;
 #endif	/* HAVE_GETSPNAM */
+	}
 
 #ifdef DENY_SHELL
 	/*
 	 *	Users with a particular shell are denied access
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
-		REDEBUG("Invalid shell", name);
+		REDEBUG("[%s]: invalid shell [%s]", name, pwd->pw_shell);
 		RETURN_UNLANG_REJECT;
 	}
 #endif
@@ -315,8 +321,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	 *
 	 *	FIXME: Maybe add Auth-Type := Accept?
 	 */
-	if (encrypted_pass[0] == 0)
+	if (encrypted_pass[0] == 0) {
 		RETURN_UNLANG_NOOP;
+	}
 
 	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
 	fr_pair_value_strdup(vp, encrypted_pass, false);
