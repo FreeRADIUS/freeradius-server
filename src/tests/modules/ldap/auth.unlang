@@ -46,6 +46,21 @@ if !(control.Vendor-Specific.Cisco.AVPair[*] == 'bar') {
 	test_fail
 }
 
+# An instance of control.User-Profile will have been added by each update
+# map applied (it has the += operator)
+if (control.User-Profile != 'uid=john,ou=people,dc=example,dc=com') {
+	test_fail
+}
+if (control.User-Profile[1] != 'cn=radprofile,ou=profiles,dc=example,dc=com') {
+	test_fail
+}
+if (control.User-Profile[2] != 'cn=profile1,ou=profiles,dc=example,dc=com') {
+	test_fail
+}
+if (control.User-Profile[3]) {
+	test_fail
+}
+
 # Attempt a bind authentication
 ldap.authenticate
 
