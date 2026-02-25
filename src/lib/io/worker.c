@@ -930,6 +930,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 		worker_stop_request(old);
 		worker->stats.dropped++;
+		(void) fr_rb_remove(worker->dedup, old); /* remove, but do NOT free it */
 
 	insert_new:
 		(void) fr_rb_insert(worker->dedup, request);
