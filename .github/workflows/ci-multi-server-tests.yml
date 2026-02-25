@@ -48,9 +48,9 @@ jobs:
 
     steps:
 
-      - name: Install Docker CLI
+      - name: Install extra packages
         run: |
-          apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx
+          apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx python3-venv
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
