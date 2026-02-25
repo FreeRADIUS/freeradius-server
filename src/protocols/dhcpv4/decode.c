@@ -434,6 +434,11 @@ fail:
 	}
 	p += sizeof(uint32_t);
 
+	/*
+	 *	No more data, we're done.
+	 */
+	if (p == end) goto done;
+
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor->name);
 
 	option_len = p[0];
