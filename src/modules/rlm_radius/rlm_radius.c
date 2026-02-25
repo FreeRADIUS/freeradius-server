@@ -787,8 +787,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	path, and the conflicts won't affect anything else.  Only the src_port range is special.
 	 */
 
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, <=, fr_time_delta_from_sec(120));
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
