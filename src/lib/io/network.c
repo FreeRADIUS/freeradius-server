@@ -1355,6 +1355,23 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	(void) fr_network_listen_add_self(nr, li);
 }
 
+static void fr_network_limit_ringbuffer(fr_network_socket_t *s, int *num_messages_p, size_t *size_p)
+{
+	int num_messages;
+	size_t size;
+
+	num_messages = s->listen->num_messages;
+	if (num_messages < 8) num_messages = 8;
+	if (num_messages > (1 << 20)) num_messages = (1 << 20);
+
+	size = s->listen->default_message_size * num_messages;
+	if (size < (1 << 17)) size = (1 << 17);
+	if (size > (100 * 1024 * 1024)) size = (100 * 1024 * 1024);
+
+	*num_messages_p = num_messages;
+	*size_p = size;
+}
+
 static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t	*s;
@@ -1401,12 +1418,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 	 *	round it up to the nearest power of 2, which is
 	 *	required by the ring buffer code.
 	 */
-	num_messages = s->listen->num_messages;
-	if (num_messages < 8) num_messages = 8;
-
-	size = s->listen->default_message_size * num_messages;
-	if (size < (1 << 17)) size = (1 << 17);
-	if (size > (100 * 1024 * 1024)) size = (100 * 1024 * 1024);
+	fr_network_limit_ringbuffer(s, &num_messages, &size);
 
 	/*
 	 *	Allocate the ring buffer for messages and packets.
@@ -1471,6 +1483,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 static void fr_network_directory_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	int			num_messages;
+	size_t			size;
 	fr_network_t		*nr = talloc_get_type_abort(ctx, fr_network_t);
 	fr_listen_t		*li = talloc_get_type_abort(*((void * const *)data), fr_listen_t);
 	fr_network_socket_t	*s;
@@ -1496,12 +1509,11 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	/*
 	 *	Allocate the ring buffer for messages and packets.
 	 */
-	num_messages = s->listen->num_messages;
-	if (num_messages < 8) num_messages = 8;
+	fr_network_limit_ringbuffer(s, &num_messages, &size);
 
 	s->ms = fr_message_set_create(s, num_messages,
 				      sizeof(fr_channel_data_t),
-				      s->listen->default_message_size * s->listen->num_messages, false);
+				      size, false);
 	if (!s->ms) {
 		PERROR("Failed creating message buffers for directory IO");
 		talloc_free(s);
