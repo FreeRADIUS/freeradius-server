@@ -8,7 +8,7 @@ case EINTR:
 	 */
 	tries++;
 	if (tries <= my->max_tries) goto retry;
-	return 0;
+	return fr_bio_error(IO);
 
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 case EWOULDBLOCK:
