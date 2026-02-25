@@ -406,12 +406,12 @@ DIAG_ON(sign-compare)
 #endif
 
 #ifdef SO_TIMESTAMPNS
-		if ((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
+		if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
 			when = fr_time_from_timespec((struct timespec *)CMSG_DATA(cmsg));
 		}
 
 #elif defined(SO_TIMESTAMP)
-		if ((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
+		if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
 			when = fr_time_from_timeval((struct timeval *)CMSG_DATA(cmsg));
 		}
 #endif
@@ -555,12 +555,12 @@ DIAG_ON(sign-compare)
 		}
 
 #ifdef SO_TIMESTAMPNS
-		if ((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
+		if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
 			when = fr_time_from_timespec((struct timespec *)CMSG_DATA(cmsg));
 		}
 
 #elif defined(SO_TIMESTAMP)
-		if ((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
+		if ((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
 			when = fr_time_from_timeval((struct timeval *)CMSG_DATA(cmsg));
 		}
 #endif
