@@ -422,7 +422,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	}
 
 	memset(ps, 0, sizeof(*ps));
-	ps->fd = -1;
+	ps->sockfd = -1;
 	ps->ctx = ctx;
 #ifdef WITH_TCP
 	ps->proto = proto;
