@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/id.h>
 
 struct fr_radius_id_s {
-	int			num_free_ids;	//!< number of used IDs
+	int			num_free_ids;	//!< number of free IDs
 
 	int			free_start;
 	int			free_end;
@@ -124,7 +124,6 @@ void fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
 
 	fr_assert(track->id[packet->id].packet == packet);
 	fr_assert(track->num_free_ids < 256);
-	fr_assert(track->free_start != track->free_end);
 	fr_assert(track->free_end >= 0);
 	fr_assert(track->free_end < 256);
 	fr_assert(track->free_ids[track->free_end] == -1);
