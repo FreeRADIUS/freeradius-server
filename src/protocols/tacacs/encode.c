@@ -217,7 +217,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 			 *	Nested attribute: just recurse.
 			 */
 			child_argc = fr_pair_list_num_elements(&vp->vp_group);
-			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt = i;
+			if (child_argc > (arg_cnt - i)) child_argc = arg_cnt - i;
 
 			slen = tacacs_encode_body_arg_n(&work_dbuff, child_argc, &arg_len[i], &vp->vp_group, vp->da);
 			if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
