@@ -614,6 +614,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 1, 1), 1, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 		fr_pair_append(&tmp, vp);
@@ -622,6 +623,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2, 16), 16, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 		fr_pair_append(&tmp, vp);
@@ -630,6 +632,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2 + 16, 16), 16, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 
