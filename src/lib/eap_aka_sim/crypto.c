@@ -857,7 +857,7 @@ int fr_aka_sim_crypto_umts_kdf_1(fr_aka_sim_keys_t *keys)
 	uint8_t *p = s;
 	size_t	s_len;
 
-	ck_ik_prime_derive(keys);
+	if (ck_ik_prime_derive(keys) < 0) return -1;
 
 	if (!fr_cond_assert(keys->vector_type == AKA_SIM_VECTOR_UMTS)) return -1;
 
