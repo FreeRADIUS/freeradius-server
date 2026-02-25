@@ -33,6 +33,8 @@ static fr_table_num_sorted_t mode_names[] = {
 	{ L("read-write"),		O_RDWR		},
 	{ L("ro"),			O_RDONLY       	},
 	{ L("rw"),			O_RDWR		},
+	{ L("wo"),			O_WRONLY       	},
+	{ L("write-only"),		O_WRONLY       	},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
