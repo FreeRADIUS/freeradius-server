@@ -111,22 +111,27 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   request_t *request, fr_value_box_list_t *in)
 {
-	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->proto_dict);
 	fr_dict_attr_t const	*da;
-	ssize_t			ret;
 	fr_value_box_t		*attr_vb = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
-	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, attr_vb->vb_strvalue);
-	if (ret <= 0) {
-		REMARKER(attr_vb->vb_strvalue, -(ret), "%s", fr_strerror());
-		return XLAT_ACTION_FAIL;
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(attr_vb->vb_strvalue, attr_vb->vb_length);
+	fr_dict_attr_err_t	err;
+
+	if (fr_sbuff_next_if_char(&sbuff, '@')) {
+		fr_dict_t const *dict;
+
+		if (fr_dict_by_protocol_substr(NULL, &dict, &sbuff, NULL) < 0) {
+			RPEDEBUG("OID resolution failed");
+			return XLAT_ACTION_FAIL;
+		}
+		parent = fr_dict_root(dict);
 	}
 
-	da = fr_dict_attr_child_by_num(parent, attr);
-	if (!da) {
-		RDEBUG("Parent %s has no child %u", parent->name, attr);
+	(void)fr_dict_attr_by_oid_substr(&err, &da, parent, &sbuff, NULL);
+	if (err != FR_DICT_ATTR_OK) {
+		RPEDEBUG("OID resolution failed");
 		return XLAT_ACTION_FAIL;
 	}
 
