@@ -42,6 +42,8 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("++"),	T_OP_INCRM	},
 	{ L("+="),	T_OP_ADD_EQ	},
 	{ L("-="),	T_OP_SUB_EQ	},
+	{ L("*="),	T_OP_MUL_EQ	},
+	{ L("/="),	T_OP_DIV_EQ	},
 	{ L(":="),	T_OP_SET	},
 	{ L("=*"), 	T_OP_CMP_TRUE	},
 	{ L("!*"), 	T_OP_CMP_FALSE	},

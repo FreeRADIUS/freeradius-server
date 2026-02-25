@@ -18,4 +18,16 @@ if (!("%{Filter-Id[*]}" == "foobarfootest_string1")) {
 	test_fail
 }
 
+Session-Timeout = 4
+Session-Timeout *= 2
+
+if (Session-Timeout != 8) {
+	test_fail
+}
+
+Session-Timeout /= 4
+if (Session-Timeout != 2) {
+	test_fail
+}
+
 success

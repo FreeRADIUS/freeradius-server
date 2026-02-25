@@ -3004,6 +3004,8 @@ operator:
 	switch (name2_token) {
 	case T_OP_ADD_EQ:
 	case T_OP_SUB_EQ:
+	case T_OP_MUL_EQ:
+	case T_OP_DIV_EQ:
 	case T_OP_AND_EQ:
 	case T_OP_OR_EQ:
 	case T_OP_NE:
