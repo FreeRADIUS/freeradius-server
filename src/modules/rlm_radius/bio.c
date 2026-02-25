@@ -671,7 +671,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	/*
 	 *	Not a full packet, we want more data.
 	 */
-	if (want < *size) {
+	if (want > *size) {
 		*size = want;
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
