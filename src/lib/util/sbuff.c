@@ -792,13 +792,18 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			*m.p = '\0';			/* Re-terminate */
 
 			/* Amount remaining in input buffer minus the amount we could have copied */
-			if (len == SIZE_MAX) return -(fr_sbuff_remaining(in) - (chunk_len + copied));
+			if (len == SIZE_MAX) {
+				fr_sbuff_marker_release(&m);
+				return -(fr_sbuff_remaining(in) - (chunk_len + copied));
+			}
 			/* Amount remaining to copy minus the amount we could have copied */
 			fr_sbuff_marker_release(&m);
 			return -(remaining - (chunk_len + copied));
 		}
 		fr_sbuff_advance(&our_in, copied);
 	} while (fr_sbuff_used_total(&our_in) < len);
+
+	fr_sbuff_marker_release(&m);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);	/* in was pinned, so this works */
 }
