@@ -184,30 +184,17 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		}
 
 		/*
-		 *	Duplicates are bad.
+		 *	Catch duplicants, and also catch the case where we insert a /16, and then later try to
+		 *	insert a /24 inside of that.
+		 *
+		 *	If instead we insert a /24, and then later a /16, we won't catch that.
 		 */
-		value = fr_trie_match_by_key(trie, &allow[i].addr, allow[i].prefix);
+		value = fr_trie_lookup_by_key(trie, &allow[i].addr, allow[i].prefix);
 		if (value) {
-			fr_strerror_printf("Cannot add duplicate entry 'allow = %pV'",
+			fr_strerror_printf("Cannot add duplicate / overlapping entry 'allow = %pV'",
 					   fr_box_ipaddr(allow[i]));
 			goto fail;
 		}
-
-#if 0
-		/*
-		 *	Look for overlapping entries.  i.e. the networks MUST be disjoint.
-		 *
-		 *	Note that this catches 192.168.1/24 followed by 192.168/16, but NOT the other way
-		 *	around.  The best fix is likely to add a flag to fr_trie_alloc() saying "we can only
-		 *	have terminal fr_trie_user_t nodes"
-		 */
-		value = fr_trie_lookup_by_key(trie, &allow[i].addr, allow[i].prefix);
-		if (network && (network->prefix <= allow[i].prefix)) {
-			fr_strerror_printf("Cannot add overlapping entry 'allow = %pV'", fr_box_ipaddr(allow[i]));
-			fr_strerror_const("Entry is completely enclosed inside of a previously defined network.");
-			goto fail;
-		}
-#endif
 
 		/*
 		 *	Insert the network into the trie.  Lookups will return a bool ptr of allow / deny.
