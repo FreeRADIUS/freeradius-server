@@ -309,7 +309,7 @@ static ssize_t fr_bio_queue_write_buffer(fr_bio_t *bio, void *packet_ctx, void c
  */
 static ssize_t fr_bio_queue_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
-	int rcode;
+	ssize_t rcode;
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
 	fr_bio_t *next;
 
