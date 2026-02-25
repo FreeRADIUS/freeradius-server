@@ -604,7 +604,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (autn_vp->vp_length > AKA_SIM_VECTOR_UMTS_AUTN_SIZE) {
+	if (autn_vp->vp_length != AKA_SIM_VECTOR_UMTS_AUTN_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_AUTN_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_autn->name, autn_vp->vp_length);
@@ -620,7 +620,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (ck_vp->vp_length > AKA_SIM_VECTOR_UMTS_CK_SIZE) {
+	if (ck_vp->vp_length != AKA_SIM_VECTOR_UMTS_CK_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(EAP_AKA_XRES_MAX_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ck->name, ck_vp->vp_length);
@@ -636,7 +636,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 
-	if (ik_vp->vp_length > AKA_SIM_VECTOR_UMTS_IK_SIZE) {
+	if (ik_vp->vp_length != AKA_SIM_VECTOR_UMTS_IK_SIZE) {
 		REDEBUG("control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ik->name, ik_vp->vp_length);
@@ -691,7 +691,7 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 	sqn_vp = fr_pair_find_by_da(vps, NULL, attr_sim_sqn);
 	if (sqn_vp && (sqn_vp->vp_length != MILENAGE_SQN_SIZE)) {
 		REDEBUG("control.%s incorrect length.  Expected "
-			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
+			STRINGIFY(MILENAGE_SQN_SIZE) " bytes, got %zu bytes",
 			attr_sim_sqn->name, sqn_vp->vp_length);
 		return -1;
 	}
