@@ -68,16 +68,20 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, s
 	pthread_mutex_lock(&my->mutex);
 	rcode = my->next->read(my->next, packet_ctx, buffer, size);
 	if ((rcode == 0) && my->eof) {
+		my->priv_cb.eof = NULL;
 		pthread_mutex_unlock(&my->mutex);
 
 		/*
 		 *	Don't call our EOF function.  But do tell the other BIOs that we're at EOF.
 		 */
-		my->priv_cb.eof = NULL;
 		fr_bio_eof(bio);
 		return 0;
 
-	} else if (rcode > 0) {
+	}
+
+	if (rcode > 0) {
+		pthread_mutex_unlock(&my->mutex);
+
 		/*
 		 *	There is room to write more data.
 		 *
@@ -85,7 +89,6 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, s
 		 */
 		my->signal.writeable(&my->bio);
 	}
-	pthread_mutex_unlock(&my->mutex);
 
 	return rcode;
 }
@@ -116,7 +119,7 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, void *packet_ctx, void const *bu
 		}
 
 	} else {
-		rcode = 0;
+		rcode = fr_bio_error(IO_WOULD_BLOCK);
 	}
 	pthread_mutex_unlock(&my->mutex);
 
