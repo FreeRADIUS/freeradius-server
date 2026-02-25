@@ -751,7 +751,7 @@ fr_slen_t		fr_dict_attr_oid_print(fr_sbuff_t *out,
 					       fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da, bool numeric);
 #define			FR_DICT_ATTR_OID_PRINT_RETURN(...) FR_SBUFF_RETURN(fr_dict_attr_oid_print, ##__VA_ARGS__)
 
-fr_slen_t		fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent,
+fr_slen_t		fr_dict_attr_by_oid_legacy(fr_dict_attr_t const **parent,
 					           unsigned int *attr, char const *oid) CC_HINT(nonnull);
 
 fr_slen_t		fr_dict_oid_component(fr_dict_attr_err_t *err,

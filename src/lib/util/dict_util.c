@@ -1362,7 +1362,7 @@ int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *sr
 #if 1
 		fr_strerror_printf("Cannot clone ALIAS %s.%s to %s.%s", src->name, da->name, dst->name, da->name);
 		return -1;
-		
+
 #else
 		fr_dict_attr_t const *parent, *ref;
 		fr_dict_attr_t const *new_ref;
@@ -2393,8 +2393,6 @@ int fr_dict_oid_component_legacy(unsigned int *out, char const **oid)
  *	maximum depth we managed to resolve to, and attr will be the child
  *	we failed to resolve.
  *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
  * @param[out] attr		Number we parsed.
  * @param[in,out] parent	attribute (or root of dictionary).
  *				Will be updated to the parent directly beneath the leaf.
@@ -2403,7 +2401,7 @@ int fr_dict_oid_component_legacy(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid_legacy(fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -2462,7 +2460,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 		 */
 		*parent = child;
 
-		slen = fr_dict_attr_by_oid_legacy(dict, parent, attr, p);
+		slen = fr_dict_attr_by_oid_legacy(parent, attr, p);
 		if (slen <= 0) return slen - (p - oid);
 		return slen + (p - oid);
 	}

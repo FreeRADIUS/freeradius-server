@@ -1544,7 +1544,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 			}
 
 		} else {
-			slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
+			slen = fr_dict_attr_by_oid_legacy(&parent, &attr, argv[1]);
 			if (slen <= 0) return -1;
 		}
 
@@ -1564,7 +1564,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 
 		parent = dctx->relative_attr;
 
-		slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid_legacy(&parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
 
 		set_relative_attr = false;
@@ -3834,7 +3834,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
-	
+
 	dctx.stack[0].da = parent;
 	dctx.stack[0].nest = NEST_TOP;
 

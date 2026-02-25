@@ -238,7 +238,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid_legacy(conf->dict, &parent, &attr, p);
+		slen = fr_dict_attr_by_oid_legacy(&parent, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
