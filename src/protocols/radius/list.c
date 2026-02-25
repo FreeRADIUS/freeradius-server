@@ -670,12 +670,12 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add socket.fd, if -1, do round-robin, else do socket.fd
  *		IF in fdset.
  */
-fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_message_authenticator)
+int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_packet_t **packet_p, uint32_t max_attributes, bool require_message_authenticator)
 {
 	int start;
 	fr_packet_t *packet;
 
-	if (!pl || !set) return NULL;
+	if (!pl || !set) return 0;
 
 	start = pl->last_recv;
 	do {
@@ -689,7 +689,7 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 		if (pl->sockets[start].socket.type == SOCK_STREAM) {
 			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
 		} else
-			packet = fr_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
+			packet = fr_packet_recv(ctx, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
 						       max_attributes, require_message_authenticator);
 		if (!packet) continue;
 
@@ -700,10 +700,11 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 
 		pl->last_recv = start;
 		packet->socket.type = pl->sockets[start].socket.type;
-		return packet;
+		*packet_p = packet;
+		return 0;
 	} while (start != pl->last_recv);
 
-	return NULL;
+	return 0;
 }
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)

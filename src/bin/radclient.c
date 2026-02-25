@@ -1423,6 +1423,7 @@ static int blast_radius_check(rc_request_t *request, fr_packet_t *reply)
  */
 static int recv_one_packet(fr_time_delta_t wait_time)
 {
+	int			rcode;
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request;
@@ -1465,8 +1466,8 @@ retry:
 	/*
 	 *	Look for the packet.
 	 */
-	reply = fr_packet_list_recv(packet_list, &set, RADIUS_MAX_ATTRIBUTES, false);
-	if (!reply) {
+	rcode = fr_packet_list_recv(packet_list, &set, NULL, &reply, RADIUS_MAX_ATTRIBUTES, false);
+	if (rcode < 0) {
 		ERROR("Received bad packet");
 
 		/*
