@@ -18,6 +18,10 @@ include /usr/share/dpkg/default.mk
 
 .NOTPARALLEL:
 
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+  MAKEFLAGS += -j$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+endif
+
 SHELL           = /bin/bash
 
 package         = freeradius

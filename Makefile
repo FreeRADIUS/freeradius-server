@@ -531,7 +531,7 @@ deb:
 	fi
 	EMAIL="packages@freeradius.org" fakeroot dch -b -v$(PKG_VERSION) ""
 	fakeroot debian/rules debian/control # Clean
-	fakeroot dpkg-buildpackage -b -uc
+	fakeroot dpkg-buildpackage -b -uc -jauto
 
 .PHONY: rpm
 rpmbuild/SOURCES/freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar.bz2
