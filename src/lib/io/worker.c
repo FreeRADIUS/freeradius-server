@@ -851,6 +851,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 	if (ret < 0) {
 	fail:
+		fr_assert(talloc_parent(request->stack) == request);
 		request_slab_release(request);
 
 	nak:
