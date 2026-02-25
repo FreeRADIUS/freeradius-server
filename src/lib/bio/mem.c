@@ -667,7 +667,7 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 			 */
 			fr_assert(want <= used);
 			fr_assert(packet == my->read_buffer.read);
-			my->read_buffer.read += want;
+			packet = my->read_buffer.read += want;
 			continue;
 
 			/*
