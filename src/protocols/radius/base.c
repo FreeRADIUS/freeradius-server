@@ -1266,6 +1266,8 @@ void fr_radius_global_free(void)
 	if (--instance_count != 0) return;
 
 	fr_dict_autofree(libfreeradius_radius_dict);
+
+	instantiated = false;
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
