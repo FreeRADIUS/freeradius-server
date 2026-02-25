@@ -1110,6 +1110,8 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 
 	my_stdout = fdopen(std_fd[STDOUT_FILENO], "w");
 	if (!my_stdout) {
+		fclose(my_stdin);
+		my_stdin = NULL;
 		ERROR("Failed initializing radmin stdout - %s", fr_syserror(errno));
 		return -1;
 	}
@@ -1119,6 +1121,10 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 
 	my_stderr = fdopen(std_fd[2], "w");
 	if (!my_stderr) {
+		fclose(my_stdin);
+		fclose(my_stdout);	
+		my_stdin = NULL;
+		my_stdout = NULL;
 		PERROR("Failed initializing radmin stderr");
 		return -1;
 	}
