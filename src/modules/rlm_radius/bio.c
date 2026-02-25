@@ -600,11 +600,6 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
-
-	/*
-	 *	Save a copy of the header + Authentication Vector for checking the response.
-	 */
-	MEM(u->packet = talloc_memdup(u, u->packet, RADIUS_HEADER_LENGTH));
 }
 
 /** Free a connection handle, closing associated resources
@@ -1306,9 +1301,6 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 				      &request->request_pairs, &encode_ctx);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
-
-	error:
-		TALLOC_FREE(u->packet);
 		return -1;
 	}
 
@@ -1344,8 +1336,10 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
 		RPERROR("Failed signing packet");
-		goto error;
+		return -1;
 	}
+
+	MEM(u->packet = talloc_memdup(u, h->buffer, packet_len));
 
 	return 0;
 }
@@ -1765,11 +1759,6 @@ do_write:
 
 	packet_len += slen;
 	if (packet_len < u->packet_len) {
-		/*
-		 *	The first time around, save a copy of the packet for later writing.
-		 */
-		if (!u->partial) MEM(u->packet = talloc_memdup(u, u->packet, u->packet_len));
-
 		u->partial = packet_len;
 		trunk_request_signal_partial(treq);
 		return;
