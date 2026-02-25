@@ -122,7 +122,7 @@ fr_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 	fr_ipaddr_from_sockaddr(&dst_ipaddr, &dst_port, &dst, sizeof_dst);
 	fr_ipaddr_from_sockaddr(&src_ipaddr, &src_port, &src, sizeof_src);
 
-	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
+	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) goto error;
 
 	packet = fr_dhcpv4_packet_alloc(data, data_len);
 	if (!packet) goto error;
