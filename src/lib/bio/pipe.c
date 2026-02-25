@@ -78,15 +78,14 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, s
 		return 0;
 
 	}
+	pthread_mutex_unlock(&my->mutex);
 
+	/*
+	 *	There is room to write more data.
+	 *
+	 *	@todo - only signal when we transition from BLOCKED to unblocked.
+	 */
 	if (rcode > 0) {
-		pthread_mutex_unlock(&my->mutex);
-
-		/*
-		 *	There is room to write more data.
-		 *
-		 *	@todo - only signal when we transition from BLOCKED to unblocked.
-		 */
 		my->signal.writeable(&my->bio);
 	}
 
