@@ -359,13 +359,18 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 		fr_bio_retry_list_insert_head(&my->free, item);
 	}
 
+	/*
+	 *	Update the write function to allow writes before calling the resume function.  The resume
+	 *	function may flush a partial write.
+	 */
+	my->bio.write = fr_bio_retry_write;
+
 	rcode = fr_bio_retry_write_resume(&my->bio);
 	if (rcode <= 0) return rcode;
 
 	/*
 	 *	Try to write the packet which we were given.
 	 */
-	my->bio.write = fr_bio_retry_write;
 	return fr_bio_retry_write(bio, packet_ctx, buffer, size);
 }
 
@@ -574,7 +579,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 		 *	Grab the first item which can be expired.
 		 */
 		item = fr_timer_uctx_peek(my->expiry_tl);
-		fr_assert(item != NULL);
 
 		/*
 		 *	If the item has no replies, we can't cancel it.  Otherwise, try to cancel it, which
@@ -585,7 +589,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 		 *	blocked, and will stop all of the timers.  Instead, the IO is fine, but we have no way
 		 *	to send more packets.
 		 */
-		if (!item->retry.replies || (fr_bio_retry_entry_cancel(bio, item) < 0)) {
+		if (!item || !item->retry.replies || (fr_bio_retry_entry_cancel(bio, item) < 0)) {
 			/*
 			 *	Note that we're blocked BEFORE running the callback, so that calls to
 			 *	fr_bio_retry_write_blocked() doesn't delete timers and stop retrying packets.
