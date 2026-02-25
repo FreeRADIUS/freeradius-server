@@ -96,8 +96,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 		RETURN_UNLANG_FAIL;
 	}
 
-	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
-		RWARN("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
+	if (user_password->vb_length != inst->totp.otp_length) {
+		RWARN("TOTP.From-User has incorrect length. Expected %u, got %zu",
+		      inst->totp.otp_length, user_password->vb_length);
 		RETURN_UNLANG_FAIL;
 	}
 
