@@ -302,7 +302,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 
 /** Push a control-plane message
  *
- *  This function is called ONLY from the originating thread.
+ *  This function is called ONLY from the originating threads.
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
@@ -343,7 +343,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 /** Send a control-plane message
  *
- *  This function is called ONLY from the originating thread.
+ *  This function is called ONLY from the originating threads.
  *
  * @param[in] c the control structure
  * @param[in] rb the callers ring buffer for message allocation.
