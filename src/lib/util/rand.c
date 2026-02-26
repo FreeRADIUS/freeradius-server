@@ -131,7 +131,7 @@ void fr_rand_buffer(void *start, size_t length)
 	if (buflen > 4) {
 		size_t i;
 
-		for (i = 0; i < buflen; i += 4) {
+		for (i = 0; i < (buflen - 4); i += 4) {
 			x = fr_rand();
 			memcpy(buffer + i, &x, sizeof(x));
 		}
