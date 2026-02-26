@@ -305,6 +305,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		fr_dict_attr_t const *unknown;
 
 		unknown = fr_dict_attr_unknown_copy(vp, da);
+		if (!unknown) return NULL;
 		da = unknown;
 	}
 
@@ -3240,7 +3241,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
 					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-					     fr_fatal_assert_fail("0");
 		}
 	}
 		break;

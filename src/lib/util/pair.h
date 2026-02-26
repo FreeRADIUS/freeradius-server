@@ -349,7 +349,7 @@ do { \
 #define fr_pair_list_append_by_da_parent_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
 do { \
 	_vp = NULL; \
-	if (fr_pair_append_by_da_parent(_ctx, &vp, _list, _attr) < 0) break; \
+	if (fr_pair_append_by_da_parent(_ctx, &_vp, _list, _attr) < 0) break; \
 	fr_value_box_len(_vp, &_vp->data, _val, _len, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
 		fr_pair_delete(_list, _vp); \
@@ -416,7 +416,7 @@ do { \
 #define fr_pair_list_replace_by_da(_vp, _list, _attr, _val, _tainted) \
 do { \
 	fr_pair_update_by_da_parent(fr_pair_list_parent(_list), &_vp, _attr); \
-	if (!vp) break; \
+	if (!_vp) break; \
 	fr_value_box(&_vp->data, _val, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
 		fr_pair_delete(_list, _vp); \
@@ -440,7 +440,7 @@ do { \
 #define fr_pair_list_replace_by_da_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
 do { \
 	fr_pair_t *oldvp = fr_pair_find_by_da(_list, NULL, _attr); \
-	fr_pair_list_append_by_da_len(_ctx, _vp_, _list, _attr, _val, _len, _tainted) \
+	fr_pair_list_append_by_da_len(_ctx, _vp, _list, _attr, _val, _len, _tainted); \
 	if (!vp_da_data_type_check(_vp)) { \
 		fr_pair_delete(_list, _vp); \
 		_vp = NULL; \
