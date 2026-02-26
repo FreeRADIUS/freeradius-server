@@ -55,12 +55,17 @@ static size_t cond_quote_table_len = NUM_ELEMENTS(cond_quote_table);
 #ifdef DEBUG_MAP
 static void map_dump(request_t *request, map_t const *map)
 {
-	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
-	        tmpl_type_to_str(map->lhs->type),
-	        tmpl_type_to_str(map->rhs->type));
-
 	if (map->rhs) {
 		RDEBUG2(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
+
+		RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
+			tmpl_type_to_str(map->lhs->type),
+			tmpl_type_to_str(map->rhs->type));
+	} else {
+		RDEBUG2(">>> MAP NAMES %s", map->lhs->name);
+
+		RDEBUG2(">>> MAP TYPES LHS: %s",
+			tmpl_type_to_str(map->lhs->type));
 	}
 }
 #endif
@@ -1948,6 +1953,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			rcode = -1;
 			goto finish;
 		}
+		talloc_free(attr_str);
 		fr_assert(tmpl_is_attr(exp_lhs));
 
 		memcpy(&exp_map, map, sizeof(exp_map));
@@ -2072,6 +2078,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	being NULL (no attribute at that index).
 	 */
 	dst = tmpl_dcursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
+
 	/*
 	 *	The destination is an attribute
 	 */
@@ -2122,43 +2129,50 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		if (!dst) {
 			fr_pair_list_free(&src_list);
 			goto finish;
-		}
+		} else {
+			fr_pair_list_t free_list;
 
-		/*
-		 *	Instance specific[n] delete
-		 */
-		if (tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC) {
-			fr_pair_list_foreach(&src_list, vp) {
-				vp->op = T_OP_CMP_EQ;
-				rcode = paircmp_pairs(request, vp, dst);
-				if (rcode == 0) {
-					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(dst);
-					found = true;
+			fr_pair_list_init(&free_list);
+
+			/*
+			 *	Instance specific[n] delete
+			 */
+			if (tmpl_attr_tail_num(map->lhs) != NUM_UNSPEC) {
+				fr_pair_list_foreach(&src_list, vp) {
+					vp->op = T_OP_CMP_EQ;
+					rcode = paircmp_pairs(request, vp, dst);
+					if (rcode == 0) {
+						dst = fr_dcursor_remove(&dst_list);
+						fr_pair_append(&free_list, dst);
+						found = true;
+						break;
+					}
+				}
+
+				goto done_subeq;
+			}
+
+			/*
+			 *	All instances[*] delete
+			 */
+			for (dst = fr_dcursor_current(&dst_list);
+			     dst;
+			     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_attr_tail_da(map->lhs))) {
+				fr_pair_list_foreach(&src_list, vp) {
+					vp->op = T_OP_CMP_EQ;
+					rcode = paircmp_pairs(request, vp, dst);
+					if (rcode == 0) {
+						dst = fr_dcursor_remove(&dst_list);
+						fr_pair_append(&free_list, dst);
+						found = true;
+					}
 				}
 			}
-			rcode = 0;
-			fr_pair_list_free(&src_list);
-			if (!found) goto finish;
-			goto update;
+
+		done_subeq:
+			fr_pair_list_free(&free_list);
 		}
 
-		/*
-		 *	All instances[*] delete
-		 */
-		for (dst = fr_dcursor_current(&dst_list);
-		     dst;
-		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_attr_tail_da(map->lhs))) {
-			fr_pair_list_foreach(&src_list, vp) {
-				vp->op = T_OP_CMP_EQ;
-				rcode = paircmp_pairs(request, vp, dst);
-				if (rcode == 0) {
-					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(dst);
-					found = true;
-				}
-			}
-		}
 		rcode = 0;
 		fr_pair_list_free(&src_list);
 		if (!found) goto finish;
