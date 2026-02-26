@@ -92,11 +92,18 @@ Some of the more common issues are covered in the
 xref:ROOT:faq.adoc[FAQ]. The section is divided into the following
 areas:
 
+* xref:network/index.adoc[Network Errors]
 * xref:user.adoc[User Management]
 * xref:server.adoc[Server Configuration]
 * xref:client.adoc[Client Configuration]
 * xref:connect_nas.adoc[Connectivity-NAS]
 * xref:datastore.adoc[Datastores]
+
+== Further Readings
+
+* https://www.inkbridgenetworks.com/blog/blog-10/what-does-unresponsive-child-error-message-mean-116[What does unresponsive child error message mean]
+* https://www.inkbridgenetworks.com/blog/blog-10/common-freeradius-debug-messages-96[Common FreeRADIUS debug messages]
+
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
