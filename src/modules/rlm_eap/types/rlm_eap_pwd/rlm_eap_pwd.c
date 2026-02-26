@@ -686,7 +686,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			return 0;
 		}
 
-		session->in_len = ntohs(in[0] * 256 | in[1]);
+		session->in_len = in[0] * 256 | in[1];
 		if ((session->in = talloc_zero_array(session, uint8_t, session->in_len)) == NULL) {
 			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
 				session->in_len);
