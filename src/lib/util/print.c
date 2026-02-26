@@ -602,15 +602,15 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 			case 'l':
 				if ((*p == 'i') || (*p == 'd')) {
 					if (len[1] == 'l') {
-						(void) va_arg(ap_q, long);		/* long */
-					} else {
 						(void) va_arg(ap_q, long long);		/* long long */
+					} else {
+						(void) va_arg(ap_q, long);		/* long */
 					}
 				} else {
 					if (len[1] == 'l') {
-						(void) va_arg(ap_q, unsigned long);	/* unsigned long */
+						(void) va_arg(ap_q, unsigned long long); /* unsigned long long */
 					} else {
-						(void) va_arg(ap_q, unsigned long long);/* unsigned long long */
+						(void) va_arg(ap_q, unsigned long);	/* unsigned long */
 					}
 				}
 				break;
