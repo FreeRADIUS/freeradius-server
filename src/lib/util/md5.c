@@ -104,6 +104,8 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(void)
  */
 static void fr_md5_openssl_ctx_free(fr_md5_ctx_t **ctx)
 {
+	if (!*ctx) return;
+
 	EVP_MD_CTX_free(*ctx);
 	*ctx = NULL;
 }
@@ -455,7 +457,11 @@ static int _md5_ctx_free_on_exit(void *arg)
 
 		fr_md5_ctx_free(&free_list[i].md_ctx);
 	}
-	return talloc_free(free_list);
+
+	if (talloc_free(free_list) < 0) return -1;
+
+	md5_array = NULL;
+	return 0;
 }
 
 /** @copydoc fr_md5_ctx_alloc
@@ -527,13 +533,42 @@ void fr_md5_ctx_free_from_list(fr_md5_ctx_t **ctx)
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
+static void md5_free_list_reinit(fr_md5_funcs_t *funcs)
+{
+	int i;
+	fr_md5_ctx_t	   *md_ctx;
+	fr_md5_free_list_t *free_list = md5_array;
+
+	if (!free_list) {
+		fr_md5_funcs = funcs;
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		fr_assert(!free_list[i].used);
+
+		fr_md5_ctx_free(&free_list[i].md_ctx);
+	}
+
+	fr_md5_funcs = funcs;
+
+	for (i = 0; i < ARRAY_SIZE; i++) {
+		md_ctx = fr_md5_ctx_alloc();
+		fr_assert(md_ctx != NULL);
+
+		free_list[i].md_ctx = md_ctx;
+	}
+}
+
 void fr_md5_openssl_init(void)
 {
+	fr_assert(fr_md5_funcs == &md5_local_funcs);
+
 	/*
 	 *	If we are in FIPS mode, then we still use the local
 	 *	allocator.
 	 */
-	if (!EVP_default_properties_is_fips_enabled(NULL)) return;
+	if (EVP_default_properties_is_fips_enabled(NULL)) return;
 
 	/*
 	 *	OpenSSL isn't in FIPS mode.  Swap out the functions
@@ -543,11 +578,13 @@ void fr_md5_openssl_init(void)
 	 *	containing the functions, as this prevents possible
 	 *	skew where some threads see a mixture of functions.
 	 */
-	fr_md5_funcs = &md5_openssl_funcs;
+	md5_free_list_reinit(&md5_openssl_funcs);
 }
 
 void fr_md5_openssl_free(void)
 {
-	fr_md5_funcs = &md5_local_funcs;
+	if (fr_md5_funcs == &md5_local_funcs) return; /* not initialized, or FIPS. */
+
+	md5_free_list_reinit(&md5_local_funcs);
 }
 #endif
