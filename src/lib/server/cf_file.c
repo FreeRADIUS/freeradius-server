@@ -2353,7 +2353,7 @@ static int parse_input(cf_stack_t *stack)
 	char const	*value;
 	CONF_SECTION	*css;
 	char const	*ptr = stack->ptr;
-	char const	*ptr2;
+	char const	*name1_ptr, *name2_ptr, *op_ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
@@ -2427,7 +2427,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	Found nothing to get excited over.  It MUST be
 	 *	a key word.
 	 */
-	ptr2 = ptr;
+	name1_ptr = ptr;
 	switch (parent->unlang) {
 	default:
 		/*
@@ -2437,11 +2437,11 @@ static int parse_input(cf_stack_t *stack)
 		if (name1_token == T_EOL) return 0;
 
 		if (name1_token == T_INVALID) {
-			return parse_error(stack, ptr2, fr_strerror());
+			return parse_error(stack, name1_ptr, fr_strerror());
 		}
 
 		if (name1_token != T_BARE_WORD) {
-			return parse_error(stack, ptr2, "Invalid location for quoted string");
+			return parse_error(stack, name1_ptr, "Invalid location for quoted string");
 		}
 
 		fr_skip_whitespace(ptr);
@@ -2476,7 +2476,7 @@ static int parse_input(cf_stack_t *stack)
 			 *	which is wrong.
 			 */
 			if (parent->unlang != CF_UNLANG_ALLOW) {
-				return parse_error(stack, ptr2, "Invalid location for unlang keyword");
+				return parse_error(stack, name1_ptr, "Invalid location for unlang keyword");
 			}
 
 			stack->ptr = ptr;
@@ -2536,7 +2536,7 @@ static int parse_input(cf_stack_t *stack)
 			/*
 			 *	Other structural types are allowed.
 			 */
-			return parse_error(stack, ptr2, "Invalid data type for local variable.  Must be 'tlv' or else a non-structrul type");
+			return parse_error(stack, name1_ptr, "Invalid data type for local variable.  Must be 'tlv' or else a non-structrul type");
 		}
 
 		/*
@@ -2611,7 +2611,7 @@ check_for_eol:
 	/*
 	 *	Parse the thing after the first word.  It can be an operator, or the second name for a section.
 	 */
-	ptr2 = ptr;
+	name2_ptr = ptr;
 	switch (parent->unlang) {
 	default:
 		/*
@@ -2625,25 +2625,27 @@ check_for_eol:
 		 *	Section name2 can only be alphanumeric or UTF-8.
 		 */
 	parse_name2:
+		name2_ptr = ptr;
+
 		if (!(isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr) || (*(uint8_t const *) ptr >= 0x80))) {
 			/*
 			 *	Maybe they missed a closing brace somewhere?
 			 */
 			name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
 			if (fr_assignment_op[name2_token]) {
-				return parse_error(stack, ptr2, "Unexpected operator, was expecting a configuration section.  Is there a missing '}' somewhere?");
+				return parse_error(stack, name2_ptr, "Unexpected operator, was expecting a configuration section.  Is there a missing '}' somewhere?");
 			}
 
-			return parse_error(stack, ptr2, "Invalid second name for configuration section");
+			return parse_error(stack, name2_ptr, "Invalid second name for configuration section");
 		}
 
 		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
 		if (name2_token == T_INVALID) {
-			return parse_error(stack, ptr2, fr_strerror());
+			return parse_error(stack, name2_ptr, fr_strerror());
 		}
 
 		if (name2_token != T_BARE_WORD) {
-			return parse_error(stack, ptr2, "Unexpected quoted string after section name");
+			return parse_error(stack, name2_ptr, "Unexpected quoted string after section name");
 		}
 
 		fr_skip_whitespace(ptr);
@@ -2734,7 +2736,24 @@ check_for_eol:
 	}
 
 	if (*ptr != '{') {
-		return parse_error(stack, ptr, "Expected '{'");
+		fr_type_t type = fr_type_from_str(buff[1]);
+
+		/*
+		 *	Not the name of a data type.
+		 */
+		if (type == FR_TYPE_NULL) {
+			return parse_error(stack, ptr, "Expected '{' after section names");
+		}
+
+		if (parent->unlang == CF_UNLANG_EDIT) {
+			return parse_error(stack, name1_ptr, "Invalid location for local variable - definitions cannot be inside of an assignment");
+		}
+
+		if (parent->unlang == CF_UNLANG_ALLOW) {
+			return parse_error(stack, name1_ptr, "Invalid location for local variable - definitions must go at the start of a section");
+		}
+
+		return parse_error(stack, name1_ptr, "Invalid location for local variable - definitions can only go in a processing section.");
 	}
 	ptr++;
 	value = buff[2];
@@ -2999,7 +3018,7 @@ add_section:
 	 *	token MUST be an operator.
 	 */
 operator:
-	ptr2 = ptr;
+	op_ptr = ptr;
 	name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
 	switch (name2_token) {
 	case T_OP_ADD_EQ:
@@ -3023,7 +3042,7 @@ operator:
 		 *	Allow more operators in unlang statements, edit sections, and old-style "update" sections.
 		 */
 		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT) && (parent->unlang != CF_UNLANG_ASSIGNMENT)) {
-			return parse_error(stack, ptr2, "Invalid operator for assignment");
+			return parse_error(stack, op_ptr, "Invalid operator for assignment");
 		}
 		FALL_THROUGH;
 
@@ -3036,7 +3055,7 @@ operator:
 		break;
 
 	default:
-		return parse_error(stack, ptr2, "Syntax error, the input should be an assignment operator");
+		return parse_error(stack, op_ptr, "Syntax error, the input should be an assignment operator");
 	}
 
 	/*
@@ -3095,7 +3114,7 @@ operator:
 		bool eol;
 		ssize_t slen;
 
-		ptr2 = ptr;
+		name2_ptr = ptr;
 
 		/*
 		 *	If the RHS is an expression (foo) or function %foo(), then mark it up as an expression.
@@ -3103,15 +3122,15 @@ operator:
 		if ((*ptr == '(') || (*ptr == '%')) {
 			/* nothing  */
 
-		} else if (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
+		} else if (cf_get_token(parent, &name2_ptr, &value_token, buff[2], stack->bufsize,
 					frame->filename, frame->lineno) == 0) {
 			/*
 			 *	We have one token (bare word), followed by EOL.  It's just a token.
 			 */
-			fr_skip_whitespace(ptr2);
-			if (terminal_end_line[(uint8_t) *ptr2]) {
+			fr_skip_whitespace(name2_ptr);
+			if (terminal_end_line[(uint8_t) *name2_ptr]) {
 				parent->allow_locals = false;
-				ptr = ptr2;
+				ptr = name2_ptr;
 				value = buff[2];
 				goto alloc_pair;
 			}
