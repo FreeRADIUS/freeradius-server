@@ -951,7 +951,7 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		/*
 		 *  Read from the child
 		 */
-		len = radius_readfrom_program_legacy(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf));
+		len = radius_readfrom_program_legacy(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf) - 1);
 		if (len < 0) {
 			/* radius_readfrom_program_legacy will have closed from_child for us */
 			REDEBUG("Failure reading from child");
@@ -2072,18 +2072,21 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 	MEM(evp_ctx = EVP_CIPHER_CTX_new());
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_rc4(), NULL, auth_ctx->nt_password->vp_octets, NULL) != 1)) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed initialising RC4 ctx");
 		return -1;
 	}
 
 	if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, auth_ctx->nt_password->vp_length)) != 1) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed setting key length");
 		return -1;
 	}
 
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, nt_pass_decrypted, &ntlen, auth_ctx->cpw_ctx->new_nt_encrypted, ntlen) != 1)) {
+		EVP_CIPHER_CTX_free(evp_ctx);
 		fr_tls_strerror_printf(NULL);
 		RPERROR("Failed ingesting new password");
 		return -1;

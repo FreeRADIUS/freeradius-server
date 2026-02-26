@@ -240,7 +240,6 @@ DIAG_OFF(array-bounds)
 unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *env_data)
 {
-	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
 	tDirStatus		status		 = eDSNoErr;
 	tDirReference		dsRef		 = 0;
 	tDirNodeReference	userNodeRef	 = 0;
@@ -270,16 +269,16 @@ unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr
 		RETURN_UNLANG_FAIL;
 	}
 
-	getUserNodeRef(p_result, request, username_string, &short_user_name, &userNodeRef, dsRef);
-	if (rcode != RLM_MODULE_OK) {
-		if (rcode != RLM_MODULE_NOOP) {
+	(void) getUserNodeRef(p_result, request, username_string, &short_user_name, &userNodeRef, dsRef);
+	if (p_result->rcode != RLM_MODULE_OK) {
+		if (p_result->rcode != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
 		}
 		if (username_string != NULL)
 			talloc_free(username_string);
 		if (dsRef != 0)
 			dsCloseDirService(dsRef);
-		RETURN_UNLANG_RCODE(rcode);
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/* We got a node; fill the stepBuffer
