@@ -372,7 +372,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 
 	if (ret != RLM_MODULE_OK) {
 		RDEBUG2("Invalid password: %pV", &username->data);
-		return ret;
+		RETURN_UNLANG_RCODE(ret);
 	}
 
 	RETURN_UNLANG_OK;
