@@ -588,6 +588,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 		}
 		if (slen != sizeof(iterations)) {
 			REDEBUG("Decoded Password.PBKDF2 iterations component is wrong size");
+			goto finish;
 		}
 
 		iterations = ntohl(iterations);
@@ -621,7 +622,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 
 	p = q + 1;
 
-	if ((q - p) == 0) {
+	if ((end - p) == 0) {
 		REDEBUG("Password.PBKDF2 hash component too short");
 		goto finish;
 	}
@@ -766,6 +767,10 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(unlang_result_t *
 			 */
 			if (*p == '{') {
 				q = memchr(p, '}', end - p);
+				if (!q) {
+					REDEBUG("Password.PBKDF2 is missing '}");
+					RETURN_UNLANG_INVALID;
+				}
 				p = q + 1;
 			}
 			return pap_auth_pbkdf2_parse(p_result, request, p, end - p,

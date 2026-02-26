@@ -332,7 +332,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		ERROR("Failed to create cache");
 	error:
 		talloc_free(mutable);
-		goto error;
+		return -1;
 	}
 
 	/*
