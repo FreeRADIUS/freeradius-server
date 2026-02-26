@@ -57,7 +57,7 @@
 *** xref:unlang/return_codes.adoc[Return Codes]
 
 ** xref:type/index.adoc[Data Types]
-*** xref:type/index.adoc[List of Data Types]
+*** xref:type/all_types.adoc[List of Data Types]
 *** xref:type/cast.adoc[Casts]
 *** xref:type/ip.adoc[IP Addresses]
 *** xref:type/numb.adoc[Numbers]
