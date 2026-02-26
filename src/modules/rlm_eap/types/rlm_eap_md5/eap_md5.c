@@ -69,6 +69,16 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 		return NULL;
 	}
 
+	/*
+	 *	Sanity check the EAP-MD5 packet sent to us
+	 *	by the client.
+	 */
+	data = (md5_packet_t *)eap_ds->response->type.data;
+	if (data->value_size > (eap_ds->response->length - MD5_HEADER_LEN)) {
+		ERROR("corrupted data");
+		return NULL;
+	}
+
 	packet = talloc_zero(eap_ds, MD5_PACKET);
 	if (!packet) return NULL;
 
@@ -82,12 +92,6 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	packet->code = eap_ds->response->code;
 	packet->id = eap_ds->response->id;
 	packet->length = eap_ds->response->length - (MD5_HEADER_LEN + 1);
-
-	/*
-	 *	Sanity check the EAP-MD5 packet sent to us
-	 *	by the client.
-	 */
-	data = (md5_packet_t *)eap_ds->response->type.data;
 
 	/*
 	 *	Already checked the size above.
