@@ -47,6 +47,9 @@ typedef struct { \
 							///< number in use has reached max_elements.
 	unsigned int		num_children;		//!< How many child allocations are expected off each element.
 	size_t			child_pool_size;	//!< Size of pool space to be allocated to each element.
+	bool			allow_direct_free;	//!< Allow in-use elements to be freed with talloc_free.
+							///< Normally this is a programming error and triggers an
+							///< assertion.  Only set for testing the destructor path.
 	fr_time_delta_t		interval;		//!< Interval between slab cleanup events being fired.
 } fr_slab_config_t;
 
@@ -96,6 +99,7 @@ typedef struct { \
 		FR_DLIST_ENTRY(_name ## _slab)		entry; \
 		_name ## _slab_list_t			*list; \
 		TALLOC_CTX				*pool; \
+		bool					being_freed; \
 		FR_DLIST_HEAD(_name ## _slab_element)	reserved; \
 		FR_DLIST_HEAD(_name ## _slab_element)	avail; \
 	} _name ## _slab_t; \
@@ -204,11 +208,30 @@ DIAG_OFF(unused-function) \
 		return slab; \
 	} \
 \
+	/** Callback for talloc freeing a slab \
+	 * \
+	 * Sets the being_freed flag so that element destructors know this \
+	 * is a bulk teardown and not an erroneous direct free. \
+	 * talloc calls this destructor before freeing children. \
+	 */ \
+	static int _ ## _name ## _slab_free(_name ## _slab_t *slab) \
+	{ \
+		slab->being_freed = true; \
+		return 0; \
+	} \
+\
 	/** Callback for talloc freeing a slab element \
 	 * \
-	 * Ensure that the element reset and custom destructor is called even if \
-	 * the element is not released before being freed. \
-	 * Also ensure the element is removed from the relevant list. \
+	 * Called during bulk teardown (talloc_free of a slab or slab list). \
+	 * Ensures the element is cleanly removed from whichever dlist it is on. \
+	 * \
+	 * In-use slab elements must NEVER be talloc_free'd directly.  Use \
+	 * the type-specific _slab_release() function instead.  Calling \
+	 * talloc_free permanently frees the element's pool memory,
+	 * progressively degrading slab efficiency.  The talloc pool cannot \
+	 * be fully reclaimed until ALL children are freed, so piecemeal frees \
+	 * fragment the pool and shrink the usable element count on each reallocation
+	 * cycle. \
 	 */ \
 	static int _ ## _type ## _element_free(_name ## _slab_element_t *element) \
 	{ \
@@ -217,6 +240,10 @@ DIAG_OFF(unused-function) \
 		if (!element->slab) return 0; \
 		slab = element->slab; \
 		if (element->in_use) { \
+			fr_assert_msg(slab->being_freed || slab->list->config.allow_direct_free, \
+				      "in-use slab element freed with talloc_free - use _slab_release()"); \
+			slab->list->in_use--; \
+			element->in_use = false; \
 			_name ## _slab_element_remove(&slab->reserved, element); \
 		} else { \
 			_name ## _slab_element_remove(&slab->avail, element); \
@@ -249,6 +276,7 @@ DIAG_OFF(unused-function) \
 			elem_size = slab_list->config.elements_per_slab * (sizeof(_name ## _slab_element_t) + \
 									   slab_list->config.child_pool_size); \
 			MEM(slab = talloc_zero_pooled_object(slab_list, _name ## _slab_t, elems, elem_size)); \
+			talloc_set_destructor(slab, _ ## _name ## _slab_free); \
 			_name ## _slab_element_init(&slab->avail); \
 			_name ## _slab_element_init(&slab->reserved); \
 			_name ## _slab_insert_head(&slab_list->avail, slab); \

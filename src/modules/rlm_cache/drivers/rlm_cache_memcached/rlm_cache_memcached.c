@@ -312,7 +312,7 @@ static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *co
 	rlm_cache_memcached_thread_t	*t = talloc_get_type_abort(module_thread(driver->mi)->data, rlm_cache_memcached_thread_t);
 	rlm_cache_handle_t		*mandle;
 
-	talloc_free(*handle);
+	memcached_slab_release(*handle);
 	mandle = memcached_slab_reserve(t->slab);
 	if (!mandle) {
 		*handle = NULL;

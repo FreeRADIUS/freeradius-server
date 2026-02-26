@@ -317,15 +317,17 @@ static void test_reserve_mru(void)
 }
 
 /** Test that talloc freeing an element results in destructor being called
- *
+ *  and that accounting is correctly updated.
  */
 static void test_free(void)
 {
 	test_slab_list_t	*test_slab_list;
 	test_element_t		*test_element;
 	test_uctx_t		test_uctx;
+	fr_slab_config_t	slab_config = def_slab_config;
 
-	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
+	slab_config.allow_direct_free = true;
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
 	TEST_CHECK(test_slab_list != NULL);
 	if (!test_slab_list) return;
 
@@ -337,8 +339,11 @@ static void test_free(void)
 	if (test_element) test_element->name = talloc_strdup(test_element, "Hello there");
 	if (test_element) test_slab_element_set_destructor(test_element, test_element_free, &test_uctx);
 
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 1);
+
 	if (test_element) talloc_free(test_element);
 	TEST_CHECK(test_uctx.count == 11);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 0);
 
 	talloc_free(test_slab_list);
 }
