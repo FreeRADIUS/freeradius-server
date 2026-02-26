@@ -1016,8 +1016,9 @@ TALLOC_CTX *talloc_autofree_context_thread_local(void)
 
 	if (!af) {
 		af = talloc_init_const("thread_local_autofree_context");
-		talloc_set_destructor(af, _autofree_thread_local_destructor);
 		if (unlikely(!af)) return NULL;
+
+		talloc_set_destructor(af, _autofree_thread_local_destructor);
 
 		fr_atexit_thread_local(thread_local_ctx, _autofree_on_exit, af);
 	}
