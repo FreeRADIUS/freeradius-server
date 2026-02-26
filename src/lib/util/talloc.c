@@ -308,11 +308,13 @@ ssize_t talloc_hdr_size(void)
 TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_len, unsigned int headers, size_t size)
 {
 	size_t		rounded, alloced, page_size = (size_t)getpagesize();
-	size_t		hdr_size;
+	ssize_t		hdr_size;
 	void		*next;
 	TALLOC_CTX	*pool;
 
 	hdr_size = talloc_hdr_size();
+	if (hdr_size < 0) return NULL;
+
 	size += (hdr_size * headers);	/* Add more space for the chunks headers of the pool's children */
 	size += hdr_size;		/* Add one more header to the pool for the padding allocation */
 
@@ -359,7 +361,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 		 *	boundary, just that it comes after one.
 		 */
 		pad_size = ((uintptr_t)next - (uintptr_t)pool);
-		if (pad_size > hdr_size) {
+		if (pad_size > (size_t) hdr_size) {
 			pad_size -= hdr_size;			/* Save ~111 bytes by not over-padding */
 		} else {
 			pad_size = 0;				/* Allocate as few bytes as possible */
