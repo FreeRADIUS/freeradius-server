@@ -61,8 +61,7 @@ static void test_alloc(void)
 	 *	Each slab will contain 2 elements, maximum of 4 elements allocated from slabs.
 	 */
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -133,8 +132,7 @@ static void test_alloc_fail(void)
 	 */
 	slab_config.at_max_fail = true;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -167,8 +165,7 @@ static void test_reuse_reset(void)
 	test_uctx_t		test_uctx;
 
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -227,8 +224,7 @@ static void test_reuse_noreset(void)
 	test_uctx_t		test_uctx;
 
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, false, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -283,8 +279,7 @@ static void test_reserve_mru(void)
 	 *	result in different elements being returned
 	 */
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -301,8 +296,7 @@ static void test_reserve_mru(void)
 	 *	Now use a slab list with reserve_mru = true
 	 */
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, true);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -316,8 +310,8 @@ static void test_reserve_mru(void)
 	talloc_free(test_slab_list);
 }
 
-/** Test that talloc freeing an element results in destructor being called
- *  and that accounting is correctly updated.
+/** Test that freeing an element results in the destructor being called,
+ *  and that all accounting is correctly updated.
  */
 static void test_free(void)
 {
@@ -328,8 +322,7 @@ static void test_free(void)
 
 	slab_config.allow_direct_free = true;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_element = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_element != NULL);
@@ -367,8 +360,7 @@ static void test_init(void)
 
 	slab_config.elements_per_slab = 1;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, test_element_alloc, NULL, &test_conf, false, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -405,8 +397,7 @@ static void test_reserve(void)
 
 	slab_config.elements_per_slab = 1;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, test_element_alloc, &test_conf, false, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -450,8 +441,7 @@ static void test_init_reserve(void)
 
 	slab_config.elements_per_slab = 1;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, test_element_alloc, test_element_reserve, &test_conf, false, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -493,8 +483,7 @@ static void test_clearup_1(void)
 
 	slab_config.max_elements = 6;
 	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	/*
 	 *	Allocate all the slab elements
@@ -548,8 +537,7 @@ static void test_clearup_2(void)
 	slab_config.min_elements = 16;
 	slab_config.max_elements = 20;
 	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	/*
 	 *	Allocate all the slab elements
@@ -613,8 +601,7 @@ static void test_clearup_3(void)
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;
 	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	/*
 	 *	Allocate all the slab elements
@@ -707,8 +694,7 @@ static void test_realloc(void)
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;
 	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	/*
 	 *	Allocate all the slab elements
@@ -754,6 +740,182 @@ static void test_realloc(void)
 	talloc_free(ctx);
 }
 
+/** Test that talloc freeing multiple in-use elements correctly updates accounting
+ */
+static void test_free_multiple(void)
+{
+	test_slab_list_t	*test_slab_list;
+	test_element_t		*test_elements[4];
+	test_uctx_t		test_uctx;
+	fr_slab_config_t	slab_config = def_slab_config;
+	int			i;
+
+	slab_config.allow_direct_free = true;
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
+	TEST_ASSERT(test_slab_list != NULL);
+
+	for (i = 0; i < 4; i++) {
+		test_elements[i] = test_slab_reserve(test_slab_list);
+		TEST_CHECK(test_elements[i] != NULL);
+	}
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 4);
+
+	test_uctx.count = 0;
+	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "first");
+	if (test_elements[0]) test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx);
+
+	/*
+	 *	Free elements one at a time, checking accounting after each
+	 */
+	if (test_elements[0]) talloc_free(test_elements[0]);
+	TEST_CHECK(test_uctx.count == 5);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 3);
+
+	if (test_elements[1]) talloc_free(test_elements[1]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 2);
+
+	if (test_elements[2]) talloc_free(test_elements[2]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 1);
+
+	if (test_elements[3]) talloc_free(test_elements[3]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 0);
+
+	talloc_free(test_slab_list);
+}
+
+/** Test that talloc free of the slab list with in-use elements does not assert.
+ *
+ *  This exercises the being_freed flag path: the slab destructor sets
+ *  being_freed = true before children are freed, so element destructors
+ *  will see the flag and skip the direct-free assertion.
+ */
+static void test_bulk_teardown(void)
+{
+	test_slab_list_t	*test_slab_list;
+	test_element_t		*test_elements[4];
+	test_uctx_t		test_uctx;
+	int			i;
+
+	/*
+	 *	Deliberately do NOT set allow_direct_free.
+	 *	The being_freed flag should suppress the assertion.
+	 */
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &def_slab_config, NULL, NULL, NULL, true, false);
+	TEST_ASSERT(test_slab_list != NULL);
+
+	for (i = 0; i < 4; i++) {
+		test_elements[i] = test_slab_reserve(test_slab_list);
+		TEST_CHECK(test_elements[i] != NULL);
+	}
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 4);
+
+	test_uctx.count = 0;
+	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "bulk teardown");
+	if (test_elements[0]) test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx);
+
+	/*
+	 *	Free the entire slab list with elements still in use.
+	 *	This should NOT assert because the slab destructor sets
+	 *	being_freed = true before children are freed.
+	 */
+	talloc_free(test_slab_list);
+
+	/*
+	 *	The element destructor should have been called during teardown.
+	 */
+	TEST_CHECK(test_uctx.count == 13);
+}
+
+/** Test mixed release and talloc_free of elements from the same slab
+ */
+static void test_free_mixed(void)
+{
+	test_slab_list_t	*test_slab_list;
+	test_element_t		*test_elements[4];
+	test_uctx_t		test_uctx1, test_uctx2;
+	fr_slab_config_t	slab_config = def_slab_config;
+
+	slab_config.allow_direct_free = true;
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
+	TEST_ASSERT(test_slab_list != NULL);
+
+	test_elements[0] = test_slab_reserve(test_slab_list);
+	test_elements[1] = test_slab_reserve(test_slab_list);
+	test_elements[2] = test_slab_reserve(test_slab_list);
+	test_elements[3] = test_slab_reserve(test_slab_list);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 4);
+
+	test_uctx1.count = 0;
+	test_uctx2.count = 0;
+	if (test_elements[0]) test_elements[0]->name = talloc_strdup(test_elements[0], "release me");
+	if (test_elements[0]) test_slab_element_set_destructor(test_elements[0], test_element_free, &test_uctx1);
+	if (test_elements[1]) test_elements[1]->name = talloc_strdup(test_elements[1], "free me");
+	if (test_elements[1]) test_slab_element_set_destructor(test_elements[1], test_element_free, &test_uctx2);
+
+	/*
+	 *	Release element 0 via slab_release, free element 1 via talloc_free
+	 */
+	if (test_elements[0]) test_slab_release(test_elements[0]);
+	TEST_CHECK(test_uctx1.count == 10);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 3);
+
+	if (test_elements[1]) talloc_free(test_elements[1]);
+	TEST_CHECK(test_uctx2.count == 7);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 2);
+
+	/*
+	 *	Release the remaining two normally
+	 */
+	if (test_elements[2]) test_slab_release(test_elements[2]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 1);
+
+	if (test_elements[3]) test_slab_release(test_elements[3]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 0);
+
+	talloc_free(test_slab_list);
+}
+
+/** Test that reserving after talloc_free of an element still works
+ */
+static void test_free_and_reserve(void)
+{
+	test_slab_list_t	*test_slab_list;
+	test_element_t		*test_elements[3];
+	fr_slab_config_t	slab_config = def_slab_config;
+
+	slab_config.allow_direct_free = true;
+	slab_config.at_max_fail = true;
+	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, true, false);
+	TEST_ASSERT(test_slab_list != NULL);
+
+	/*
+	 *	Reserve all four slots
+	 */
+	test_elements[0] = test_slab_reserve(test_slab_list);
+	test_elements[1] = test_slab_reserve(test_slab_list);
+	TEST_CHECK(test_elements[0] != NULL);
+	TEST_CHECK(test_elements[1] != NULL);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 2);
+
+	/*
+	 *	talloc_free an in-use element.  This permanently removes
+	 *	it from the slab (it does NOT return to the available list),
+	 *	so the slab loses capacity.
+	 */
+	if (test_elements[0]) talloc_free(test_elements[0]);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 1);
+
+	/*
+	 *	We should still be able to reserve new elements from the
+	 *	remaining available slots.
+	 */
+	test_elements[2] = test_slab_reserve(test_slab_list);
+	TEST_CHECK(test_elements[2] != NULL);
+	TEST_CHECK_RET(test_slab_num_elements_used(test_slab_list), 2);
+
+	talloc_free(test_slab_list);
+}
+
 static void test_child_alloc(void)
 {
 	test_slab_list_t	*test_slab_list;
@@ -764,8 +926,7 @@ static void test_child_alloc(void)
 	slab_config.num_children = 1;
 	slab_config.child_pool_size = 128;
 	test_slab_list = test_slab_list_alloc(NULL, NULL, &slab_config, NULL, NULL, NULL, false, false);
-	TEST_CHECK(test_slab_list != NULL);
-	if (!test_slab_list) return;
+	TEST_ASSERT(test_slab_list != NULL);
 
 	test_elements[0] = test_slab_reserve(test_slab_list);
 	TEST_CHECK(test_elements[0] != NULL);
@@ -799,6 +960,10 @@ TEST_LIST = {
 	{ "test_reuse_noreset", test_reuse_noreset },
 	{ "test_reserve_mru",	test_reserve_mru },
 	{ "test_free",		test_free },
+	{ "test_free_multiple",	test_free_multiple },
+	{ "test_bulk_teardown",	test_bulk_teardown },
+	{ "test_free_mixed",	test_free_mixed },
+	{ "test_free_and_reserve", test_free_and_reserve },
 	{ "test_init",		test_init },
 	{ "test_reserve",	test_reserve },
 	{ "test_init_reserve",	test_init_reserve },
