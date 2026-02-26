@@ -1,5 +1,3 @@
-bob	Password.Cleartext := "bob"
-
 #
 # 	Configuration file for the rlm_files module.
 # 	Please see rlm_files documentation for more information.
