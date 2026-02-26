@@ -419,14 +419,22 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 		 */
 		if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
 			VALUE_PAIR *cpw;
-			int mschap_id = eap_ds->response->type.data[1];
+			int mschap_id;
 			int copied = 0 ,seq = 1;
+
+			if (eap_ds->response->type.length < 544) {
+				RDEBUG2("Password change has invalid length %zu < 544",
+					eap_ds->response->type.length);
+				return 0;
+			}
 
 			RDEBUG2("Password change packet received");
 
 			challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
 			if (!challenge) return 0;
 			fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+
+			mschap_id = eap_ds->response->type.data[1];
 
 			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
 			cpw->vp_length = 68;
@@ -562,6 +570,12 @@ failure:
 	 *	The MS-Length field is 5 + value_size + length
 	 *	of name, which is put after the response.
 	 */
+	if (eap_ds->response->type.length < (5 + MSCHAPV2_RESPONSE_LEN + 1)) {
+		REDEBUG("MS-CHAPv2 response packet is too short %zu < %d",
+			eap_ds->response->type.length, 5 + MSCHAPV2_RESPONSE_LEN + 1);
+		return 0;
+	}
+
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
