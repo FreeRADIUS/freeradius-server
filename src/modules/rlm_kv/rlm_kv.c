@@ -157,6 +157,7 @@ static xlat_action_t kv_write_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *
 	} else if (rlm_kv_list_num_elements(&inst->list) >= in->max_entries) {
 		old = rlm_kv_list_pop_tail(&inst->list);
 		fr_assert(old != NULL);
+		fr_htrie_remove(inst->tree, old);
 
 		talloc_free(old);
 	}
