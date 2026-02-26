@@ -6,6 +6,7 @@
 *** xref:gethelp.adoc[Get Help]
 ** xref:bestpractices.adoc[Best Practices]
 *** xref:troubleshooting:eap_certificates.adoc[EAP Certificates]
+*** xref:troubleshooting:network/security.adoc[Network Security]
 ** xref:faq.adoc[Frequently Asked Question (FAQ)]
 
 

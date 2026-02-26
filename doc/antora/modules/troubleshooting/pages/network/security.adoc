@@ -1,4 +1,4 @@
-= Security Best Practices
+= Network Security 
 
 In general, you should not have your RADIUS server on the public
 Internet.  While the server is secure, placing it on the Internet
