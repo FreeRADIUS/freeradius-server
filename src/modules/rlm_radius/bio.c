@@ -469,6 +469,12 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 */
 	fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
+	if (!u->packet) {
+		ERROR("%s - Received response to expired status check packet",
+		       h->ctx.module_name);
+		return;
+	}
+
 	if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
 		      h->ctx.module_name, u->id, h->buffer[1]);
