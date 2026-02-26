@@ -1,0 +1,22 @@
+= Patches via GitHub
+
+To create a patch, you will open a pull request for the FreeRADIUS project on GitHub.
+
+Ensure you've followed the previous xref:github.adoc[Using Git] steps by forking the official repository, clone your fork locally, create a branch to make your changes on, and then open a pull request from your branch to the main project.
+
+== Open a Pull Request (PR)
+
+If your code merges cleanly, then it's a couple of clicks to get it merged into the project repository. This is **significantly** easier for core developers, compared with applying mangled patches sent on the mailing lists.
+
+Follow these steps to complete a PR:
+
+* Navigate to your fork on GitHub `https://github.com/ <your-github-username>/freeradius-server`
+* Click the "Compare & pull request" button or navigate to the *Pull Request* tab and click the "New Pull Request" button.
+
+[WARNING]
+====
+Ensure the base branch is the FreeRADIUS project's main branch (usually master or main) and the compare branch is the name-of-your-feature-branch from your fork.
+====
+
+* Add a title and description for your pull request, explaining the changes you made.
+*Click "Create pull request" (or "Create draft pull request") to submit your contribution.
