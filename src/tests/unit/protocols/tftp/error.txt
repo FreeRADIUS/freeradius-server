@@ -1,6 +1,6 @@
 #  Test vectors for TFTP attributes
 #
-#  Copyright 2021 Network RADIUS SARL <legal@networkradius.com>
+#  Copyright 2021 Network RADIUS SARL (legal@networkradius.com)
 #
 proto tftp
 proto-dictionary tftp
