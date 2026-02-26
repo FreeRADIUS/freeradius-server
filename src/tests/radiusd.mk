@@ -68,6 +68,7 @@ $(TEST).radiusd_kill: | ${2}
 		    exit 0; \
 		fi; \
 		if ! kill -9 `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+			rm -f ${2}/radiusd.pid; \
 			exit 1; \
 		fi; \
 		rm -f ${2}/radiusd.pid; \
