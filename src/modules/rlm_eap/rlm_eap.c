@@ -1025,7 +1025,7 @@ static unlang_action_t mod_post_auth(unlang_result_t *p_result, module_ctx_t con
 		 */
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_user_name);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply_ctx, username);
+			MEM(vp = fr_pair_copy(request->reply_ctx, username));
 			fr_pair_append(&request->reply_pairs, vp);
 		}
 	}

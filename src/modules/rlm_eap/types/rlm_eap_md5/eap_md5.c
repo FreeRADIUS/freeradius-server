@@ -68,8 +68,17 @@ MD5_PACKET *eap_md5_extract(request_t *request, eap_round_t *eap_round)
 		return NULL;
 	}
 
-	packet = talloc_zero(eap_round, MD5_PACKET);
-	if (!packet) return NULL;
+	/*
+	 *	Sanity check the EAP-MD5 packet sent to us
+	 *	by the client.
+	 */
+	data = (md5_packet_t *)eap_round->response->type.data;
+	if (data->value_size > (eap_round->response->length - MD5_HEADER_LEN)) {
+		REDEBUG("corrupted data");
+		return NULL;
+	}
+
+	MEM(packet = talloc_zero(eap_round, MD5_PACKET));
 
 	/*
 	 *	Code & id for MD5 & EAP are same
@@ -83,12 +92,6 @@ MD5_PACKET *eap_md5_extract(request_t *request, eap_round_t *eap_round)
 	packet->length = eap_round->response->length - (MD5_HEADER_LEN + 1);
 
 	/*
-	 *	Sanity check the EAP-MD5 packet sent to us
-	 *	by the client.
-	 */
-	data = (md5_packet_t *)eap_round->response->type.data;
-
-	/*
 	 *	Already checked the size above.
 	 */
 	packet->value_size = data->value_size;
@@ -96,11 +99,7 @@ MD5_PACKET *eap_md5_extract(request_t *request, eap_round_t *eap_round)
 	/*
 	 *	Allocate room for the data, and copy over the data.
 	 */
-	packet->value = talloc_array(packet, uint8_t, packet->value_size);
-	if (!packet->value) {
-		talloc_free(packet);
-		return NULL;
-	}
+	MEM(packet->value = talloc_array(packet, uint8_t, packet->value_size));
 	memcpy(packet->value, data->value_name, packet->value_size);
 
 	/*

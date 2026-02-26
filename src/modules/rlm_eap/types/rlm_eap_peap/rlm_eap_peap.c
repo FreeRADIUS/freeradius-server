@@ -659,7 +659,7 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 	} /* else there WAS a t->username */
 
 	if (t->username) {
-		vp = fr_pair_copy(child->request_ctx, t->username);
+		MEM(vp = fr_pair_copy(child->request_ctx, t->username));
 		fr_pair_append(&child->request_pairs, vp);
 		RDEBUG2("Setting request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
@@ -764,7 +764,7 @@ static unlang_action_t process_rcode(unlang_result_t *p_result, module_ctx_t con
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(request, eap_session, &prf_label) > 0) RETURN_UNLANG_FAIL;
+		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 		p_result->rcode = RLM_MODULE_OK;
 
 		/*

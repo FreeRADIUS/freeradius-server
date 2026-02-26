@@ -196,12 +196,11 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_array_length(inst->identity) - 1);
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) return -1;
 		eap_round->request->type.length = length;
 
 		ptr = eap_round->request->type.data;
@@ -234,11 +233,11 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 */
 		RDEBUG2("MS-CHAPv2 Success");
 		length = 46;
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
+
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) return -1;
 		memset(eap_round->request->type.data, 0, length);
 		eap_round->request->type.length = length;
 

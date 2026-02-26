@@ -212,7 +212,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 			RETURN_UNLANG_INVALID;
 		}
 
-		session->in_len = ntohs(in[0] * 256 | in[1]);
+		session->in_len = in[0] * 256 | in[1];
 		if (!session->in_len) {
 			DEBUG("EAP-PWD malformed packet (input length)");
 			RETURN_UNLANG_FAIL;

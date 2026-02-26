@@ -809,7 +809,7 @@ static unlang_action_t eap_ttls_process(unlang_result_t *p_result, module_ctx_t 
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = fr_pair_copy(request->request_ctx, t->username);
+			MEM(vp = fr_pair_copy(request->request_ctx, t->username));
 			fr_pair_append(&request->request_pairs, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
