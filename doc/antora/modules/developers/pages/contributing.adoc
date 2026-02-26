@@ -1,37 +1,25 @@
 = Contributing
 
-== Submitting patches or diff's to the FreeRADIUS project
-
 For a person or company wishing to submit a change to the FreeRADIUS
 project the process can sometimes be daunting if you're not familiar
 with "the system." This text is a collection of suggestions which can
 greatly increase the chances of your change being accepted.
 
-Note: Only trivial patches will be accepted via email. Large patches, or
-patches that modify a number of files MUST be submitted as a
-https://github.com/FreeRADIUS/freeradius-server/pulls[pull-request via GitHub].
+== Submit patches or diff's to the FreeRADIUS project
 
-== Hints and tips
+GitHub is the preferred method for submitting code changes. You can email small diffs for a single change or file. For big changes, like a large patch or modifying several files, submit a pull request to the project’s GitHub repository. This approach helps the FreeRADIUS team manage contributions more effectively. It ensures that large or complex changes are properly tracked and discussed.
 
-=== 1. Describe your changes
+=== *Describe your changes*
 
-Describe the technical detail of the change(s) your patch or commit
-includes.
+Describe the technical details of the changes in your patch or commit.
 
-Be as specific as possible. The WORST descriptions possible include
-things like "update file X", "bug fix for file X", or "this patch
-includes updates for subsystem X. Please apply."
+Be as specific as possible. Avoid using vague descriptions like "update file X", "bug fix for file X", or "this patch updates subsystem X, please apply".
 
-If your description starts to get long, that's a sign that you probably
-need to split up your commit. See the next point.
+If your description gets too long, it may be a sign that you should split your commit, as explained in the next point.
 
-=== 2. Separate your changes
+=== *Separate your changes*
 
-Separate each logical change into its own commit.
-
-For example, if your changes include both bug fixes and performance
-enhancements for a single module, separate those changes into two or
-more patches.
+Separate each logical change into its own commit. For example, if your changes include both bug fixes and performance enhancements for a single module, separate those changes into two or more patches.
 
 On the other hand, if you make a single change to numerous files, group
 those changes into a single commit. Thus a single LOGICAL change is
@@ -44,17 +32,25 @@ the extended commit description.
 If your commit includes significant whitespace changes these should also
 be broken out into another, separate, commit.
 
-== Submitting patches via GitHub
 
-See the xref:github.adoc[GitHub] page for how to contribute patches via
+== Patches via GitHub
+
+See the xref:github.adoc[Using GitHub] page for how to contribute patches via
 GitHub.
 
-Some additional documentation specific to Github is at https://help.github.com/articles/fork-a-repo
+Refer to https://help.github.com/articles/fork-a-repo[Forking GitHub repositories] for additional help on setting up your repository.
 
-== Submitting patches via email
+== Diffs via Email
 
 See the xref:email.adoc[Email] page for how to contribute patches via
-email.  In short: don't.
+email.
+
+[NOTE]
+====
+Only small patches will be accepted via email. Large patches, or
+patches that modify a number of files MUST be submitted as a
+https://github.com/FreeRADIUS/freeradius-server/pulls[pull-request via GitHub].
+====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

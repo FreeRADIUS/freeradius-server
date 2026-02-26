@@ -1,9 +1,9 @@
-= Submitting patches via email
+= Diffs via Email
 
 We _strongly_ prefer to see patches via xref:github.adoc[GitHub].
 Email should only be used when it is impossible to use GitHub.
 
-== 1. diff -u
+== Create the file with diff -u
 
 Use `diff -u` or `diff -urN` to create patches.
 
@@ -37,7 +37,7 @@ tar xvf freeradiusd-version.tar
 diff -urN freeradiusd-version $MYSRC > ~/feature-version.patch
 ```
 
-== 2. Select e-mail destination
+== Select e-mail destination
 
 If you are on the developers mailing list, send the patch there.
 mailto:freeradius-devel@lists.freeradius.org[freeradius-devel@lists.freeradius.org]
@@ -45,7 +45,7 @@ mailto:freeradius-devel@lists.freeradius.org[freeradius-devel@lists.freeradius.o
 Otherwise, send the patch to
 mailto:freeradius-users@freeradius.org[freeradius-users@freeradius.org]
 
-== 3. No MIME, no links, no compression, no attachments. Just plain text
+== No MIME, no links, no compression, no attachments. Just plain text
 
 The developers need to be able to read and comment on the changes you
 are submitting. It is important for a developer to be able to `quote`
@@ -64,13 +64,13 @@ Compressed patches are generally rejected outright. If the developer has
 to do additional work to read your patch, the odds are that it will be
 ignored completely.
 
-== 4. E-mail size
+== E-mail size
 
 Large changes are not appropriate for mailing lists, and some
 maintainers. If your patch, exceeds 5Kb in size, you must submit the
 patch via GitHub instead.
 
-== 5. Name the version of the server
+== Name the version of the server
 
 It is important to note, either in the subject line or in the patch
 description, the server version to which this patch applies.
