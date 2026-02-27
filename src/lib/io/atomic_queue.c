@@ -319,7 +319,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 	for (;;) {
 		int64_t diff;
 
-		entry = &aq->entry[tail % aq->size];
+		entry = &aq->entry[tail & (aq->size - 1)];
 		seq = acquire(entry->seq);
 
 		diff = (seq - (tail + 1));
