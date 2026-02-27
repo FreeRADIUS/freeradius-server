@@ -294,11 +294,10 @@ static void connection_deferred_signal_process(connection_t *conn)
 		}
 
 		/*
-		 *	One of the signal handlers freed the connection
-		 *	return immediately.
+		 *	One of the signal handlers freed the connection,
+		 *	reset the processing signals and return.
 		 */
-		/* coverity[dead_error_line] */
-		if (freed) return;
+		if (freed) break;
 	}
 
 	conn->processing_signals = false;
@@ -918,6 +917,7 @@ static void connection_state_enter_halted(connection_t *conn)
 	fr_assert(conn->is_closed);
 
 	switch (conn->pub.state) {
+	case CONNECTION_STATE_INIT:
 	case CONNECTION_STATE_FAILED:	/* Init failure */
 	case CONNECTION_STATE_CLOSED:
 		break;
@@ -1208,8 +1208,10 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_TIMEOUT:
-	case CONNECTION_STATE_FAILED:
 		connection_state_enter_failed(conn);
+		break;
+
+	case CONNECTION_STATE_FAILED: /* already entered failed, don't re-enter */
 		break;
 
 	case CONNECTION_STATE_MAX:
@@ -1477,6 +1479,8 @@ static int _connection_free(connection_t *conn)
 	 */
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_SHUTDOWN:
+	case CONNECTION_STATE_TIMEOUT:
 		connection_state_enter_closed(conn);
 		FALL_THROUGH;
 
@@ -1558,9 +1562,12 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	/*
 	 *	Pre-allocate a on_halt watcher for deferred signal processing
+	 *
+	 *	Note that we do NOT set "oneshot".  This lets the watcher remain valid after the oneshot
+	 *	watcher fires.  Otherwise the connection is freed out from under the watcher.
 	 */
 	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
-						    _deferred_signal_connection_on_halted, true, NULL);
+						    _deferred_signal_connection_on_halted, false, NULL);
 	connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;
