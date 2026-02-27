@@ -1059,7 +1059,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
 
-		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) goto fail;
+		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+			talloc_free(value);
+			goto fail;
+		}
 		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
@@ -1382,5 +1385,5 @@ int tmpl_global_init(void)
 
 	fr_atexit_global_once_ret(&ret, _tmpl_global_init, _tmpl_global_free, NULL);
 
-	return 0;
+	return ret;
 }
