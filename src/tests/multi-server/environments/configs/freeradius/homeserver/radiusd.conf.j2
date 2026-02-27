@@ -1,0 +1,186 @@
+name        = homeserver
+
+raddbdir    = /etc/freeradius
+confdir     = ${raddbdir}
+modconfdir  = ${confdir}/mods-config
+logdir      = /var/log/freeradius
+radacctdir  = ${logdir}/radacct
+
+security {
+        allow_core_dumps = yes
+}
+
+trigger {
+
+	server {
+		start = "%linelog_test_framework('server_start homeserver starting')"
+
+		stop = "%linelog_test_framework('server_stop homeserver stopping')"
+
+		max_requests = "%linelog_test_framework('server_max_requests homeserver max requests reached')"
+	}
+
+}
+
+# logging configuration required for linelog module
+log {
+	destination = files
+	file = ${logdir}/radius.log
+	syslog_facility = daemon
+	stripped_names = no
+	auth = yes
+	auth_badpass = yes
+	auth_goodpass = yes
+}
+
+modules {
+	# Common linelog module configuration
+	{% include "environments/configs/freeradius/common/mods-available/linelog" %}
+
+	# Test-framework specific linelog module configuration based on OS environment
+	{% if listener_type == "unix" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_socket" %}
+	{% elif listener_type == "file" %}
+        {% include "environments/configs/freeradius/common/mods-available/linelog_file" %}
+	{% endif %}
+
+	# Common always module configuration
+	{% include "environments/configs/freeradius/common/mods-available/always" %}
+
+	# Common attr_filter module configuration
+	{% include "environments/configs/freeradius/common/mods-available/attr_filter" %}
+
+	# Common files module configuration
+	{% include "environments/configs/freeradius/common/mods-available/files" %}
+
+	# Common detail module configuration
+	{% include "environments/configs/freeradius/common/mods-available/detail" %}
+}
+
+policy {
+	# Common control policy configuration
+	{% include "environments/configs/freeradius/common/policy.d/control" %}
+}
+
+server hs-auto-accept {
+
+	namespace = radius
+
+	listen authentication {
+		type = Access-Request
+		type = Status-Server
+		transport = udp
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+		limit {
+			max_clients = 256
+			max_connections = 256
+			idle_timeout = 60.0
+			dynamic_timeout = 600.0
+			nak_lifetime = 30.0
+			cleanup_delay = 5.0
+		}
+		udp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		type = Status-Server
+		transport = tcp
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	listen accounting {
+		type = Accounting-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 1813
+		}
+	}
+
+	client upstream-proxy {
+		ipaddr = $ENV{TEST_SUBNET}
+		secret = testing123
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+	}
+
+	recv Access-Request {
+		{% raw %}
+		%linelog("hs-access-request-received - INFO - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} rx Access-Request src=%{Net.Src.IP}:%{Net.Src.Port} user=%{%{User-Name}} Calling-Station-Id=%{Calling-Station-Id}")
+		{% endraw %}
+		accept
+	}
+
+	send Access-Accept {
+		{% raw %}
+		%linelog("hs-access-accept-sent - INFO - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} tx Access-Accept src=%{Net.Src.IP}:%{Net.Src.Port} dst=%{Net.Dst.IP}:%{Net.Dst.Port}")
+	    	{% endraw %}
+		handled
+	}
+
+	recv Status-Server {
+		ok
+	}
+
+	send Access-Challenge {
+		attr_filter.access_challenge
+	}
+
+	send Access-Reject {
+		{% raw %}
+		%linelog_test_framework("hs-access-reject-sent - ERROR - %Y-%m-%d-%H:%G:%e Homeserver %{Net.Dst.IP}:%{Net.Dst.Port} tx Access-Accept src=%{Net.Src.IP}:%{Net.Src.Port} dst=%{Net.Dst.IP}:%{Net.Dst.Port}")
+		{% endraw %}
+		attr_filter.access_reject
+	}
+
+	recv Accounting-Request {
+		files_accounting
+	}
+
+	accounting Start {
+	}
+
+	accounting Stop {
+	}
+
+	accounting Interim-Update {
+	}
+
+	accounting Accounting-On {
+	}
+
+	accounting Accounting-Off {
+	}
+
+	accounting Failed {
+	}
+
+	send Accounting-Response {
+		detail
+		attr_filter.accounting_response
+	}
+}

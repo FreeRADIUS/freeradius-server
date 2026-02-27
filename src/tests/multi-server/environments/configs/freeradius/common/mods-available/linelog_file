@@ -1,0 +1,10 @@
+
+linelog linelog_test_framework {
+        destination = file
+
+        file {
+                filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.txt
+                permissions = 0644
+                escape_filenames = no
+        }
+}
