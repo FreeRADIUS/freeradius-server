@@ -37,7 +37,7 @@ USES_APPLE_DEPRECATED_API
 
 static const char specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";
-static const bool escapes[UINT8_MAX + 1] = {
+static const bool escapes[SBUFF_CHAR_CLASS] = {
 	[' '] = true,
 	['#'] = true,
 	['='] = true,

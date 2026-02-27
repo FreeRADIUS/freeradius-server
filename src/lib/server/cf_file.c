@@ -1444,11 +1444,11 @@ static int process_template(cf_stack_t *stack)
 static int cf_file_fill(cf_stack_t *stack);
 
 
-static const bool terminal_end_section[UINT8_MAX + 1] = {
+static const bool terminal_end_section[SBUFF_CHAR_CLASS] = {
 	['{'] = true,
 };
 
-static const bool terminal_end_line[UINT8_MAX + 1] = {
+static const bool terminal_end_line[SBUFF_CHAR_CLASS] = {
 	[0] = true,
 
 	['\r'] = true,

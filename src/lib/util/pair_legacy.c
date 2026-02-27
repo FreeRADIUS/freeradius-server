@@ -542,7 +542,7 @@ redo:
 	 */
 	{
 		uint8_t c = fr_sbuff_char(&our_in, '\0');
-		static const bool invalid[UINT8_MAX + 1] = {
+		static const bool invalid[SBUFF_CHAR_CLASS] = {
 			['!'] = true, ['#'] = true, ['$'] = true, ['*'] = true,
 			['+'] = true, ['-'] = true, ['/'] = true, ['<'] = true,
 			['='] = true, ['>'] = true, ['?'] = true, ['|'] = true,

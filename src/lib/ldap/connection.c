@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Lookup of libldap result message types to meaningful strings
  */
-static char const *ldap_msg_types[UINT8_MAX] = {
+static char const *ldap_msg_types[UINT8_MAX + 1] = {
 	[LDAP_RES_BIND]			= "bind response",
 	[LDAP_RES_SEARCH_ENTRY]		= "search entry",
 	[LDAP_RES_SEARCH_REFERENCE]	= "search reference",

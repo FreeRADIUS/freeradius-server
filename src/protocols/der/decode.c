@@ -1074,7 +1074,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[' '] = true, ['\''] = true, ['('] = true, [')'] = true,
 		['+'] = true, [','] = true, ['-'] = true, ['.'] = true,
 		['/'] = true, [':'] = true, ['='] = true, ['?'] = true,
@@ -1088,7 +1088,7 @@ static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *o
 static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[0x08] = true, [0x0A] = true, [0x0C] = true, [0x0D] = true,
 		[0x0E] = true, [0x0F] = true, [0x19] = true, [0x1A] = true,
 		[0x1B] = true, [0x1D] = true, [' '] = true, ['!'] = true,
@@ -1130,7 +1130,7 @@ static ssize_t fr_der_decode_ia5_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
 #if 0
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[0x00 ... 0x7f] = true,
 	};
 #endif
@@ -1372,7 +1372,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					    fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[UINT8_MAX + 1] = {
+	static bool const allowed_chars[SBUFF_CHAR_CLASS] = {
 		[' '] = true,  ['!'] = true,  ['"'] = true, ['#'] = true,
 		['$'] = true,  ['%'] = true,  ['&'] = true, ['\''] = true,
 		['('] = true,  [')'] = true,  ['*'] = true, ['+'] = true,

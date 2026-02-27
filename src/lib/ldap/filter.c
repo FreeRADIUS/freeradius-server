@@ -31,7 +31,7 @@ static fr_table_num_sorted_t const ldap_filter_op_table[] = {
 };
 static size_t ldap_filter_op_table_len = NUM_ELEMENTS(ldap_filter_op_table);
 
-static bool const 	fr_ldap_attr_allowed_chars[UINT8_MAX + 1] = {
+static bool const 	fr_ldap_attr_allowed_chars[SBUFF_CHAR_CLASS] = {
 				['-'] = true,
 				SBUFF_CHAR_CLASS_ALPHA_NUM
 };

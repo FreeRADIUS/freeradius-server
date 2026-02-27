@@ -61,14 +61,14 @@ fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dic
 /** Characters allowed in a single dictionary attribute name
  *
  */
-bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
+bool const fr_dict_attr_allowed_chars[SBUFF_CHAR_CLASS] = {
 	DICT_ATTR_ALLOWED_CHARS
 };
 
 /** Characters allowed in a nested dictionary attribute name
  *
  */
-bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1] = {
+bool const fr_dict_attr_nested_allowed_chars[SBUFF_CHAR_CLASS] = {
 	DICT_ATTR_ALLOWED_CHARS,
 	[ '.' ] = true
 };
@@ -76,7 +76,7 @@ bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1] = {
 /** Characters allowed in enumeration value names
  *
  */
-bool const fr_dict_enum_allowed_chars[UINT8_MAX + 1] = {
+bool const fr_dict_enum_allowed_chars[SBUFF_CHAR_CLASS] = {
 	['+'] = true, ['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,

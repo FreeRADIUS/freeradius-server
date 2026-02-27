@@ -346,7 +346,7 @@ fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
 };
 
-fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1] = {
+fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_unescape_double,
 	['\'']	= &fr_value_unescape_single,
 	['/']	= &fr_value_unescape_solidus,
@@ -451,7 +451,7 @@ fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
 };
 
-fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1] = {
+fr_sbuff_escape_rules_t *fr_value_escape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_escape_double,
 	['\'']	= &fr_value_escape_single,
 	['/']	= &fr_value_escape_solidus,
@@ -519,7 +519,7 @@ fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_unquoted
 };
 
-fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX] = {
+fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[SBUFF_CHAR_CLASS] = {
 	['\0']				= &value_parse_rules_bareword_unquoted,
 	['"']				= &value_parse_rules_double_unquoted,
 	['\'']				= &value_parse_rules_single_unquoted,
@@ -617,7 +617,7 @@ fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_quoted
 };
 
-fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX] = {
+fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[SBUFF_CHAR_CLASS] = {
 	['\0']				= &value_parse_rules_bareword_quoted,
 	['"']				= &value_parse_rules_double_quoted,
 	['\'']				= &value_parse_rules_single_quoted,

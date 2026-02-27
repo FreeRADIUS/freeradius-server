@@ -521,17 +521,17 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 /** Characters allowed in a single dictionary attribute name
  *
  */
-extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
+extern bool const	fr_dict_attr_allowed_chars[SBUFF_CHAR_CLASS];
 
 /** Characters allowed in a nested dictionary attribute name
  *
  */
-extern bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1];
+extern bool const fr_dict_attr_nested_allowed_chars[SBUFF_CHAR_CLASS];
 
 /** Characters that are allowed in dictionary enumeration value names
  *
  */
-extern bool const	fr_dict_enum_allowed_chars[UINT8_MAX + 1];
+extern bool const	fr_dict_enum_allowed_chars[SBUFF_CHAR_CLASS];
 
 /** @name Dictionary structure extensions
  *

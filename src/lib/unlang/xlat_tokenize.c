@@ -151,7 +151,7 @@ int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 }
 #endif
 
-bool const xlat_func_chars[UINT8_MAX + 1] = {
+bool const xlat_func_chars[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['.'] = true, ['-'] = true, ['_'] = true,
 };
@@ -640,7 +640,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	return fr_sbuff_set(in, &our_in);
 }
 
-static bool const tmpl_attr_allowed_chars[UINT8_MAX + 1] = {
+static bool const tmpl_attr_allowed_chars[SBUFF_CHAR_CLASS] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['-'] = true, ['/'] = true, ['_'] = true,			// fr_dict_attr_allowed_chars
 	['.'] = true, ['*'] = true, ['#'] = true,

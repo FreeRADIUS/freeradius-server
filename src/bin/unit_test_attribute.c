@@ -1302,7 +1302,7 @@ static size_t command_attr_children(command_result_t *result, command_file_ctx_t
 		if (slen <= 0) RETURN_OK_WITH_ERROR();
 	}
 
-	fr_sbuff_trim(&out, (bool[UINT8_MAX + 1]){ [' '] = true, [','] = true });
+	fr_sbuff_trim(&out, (bool[SBUFF_CHAR_CLASS]){ [' '] = true, [','] = true });
 
 	RETURN_OK(fr_sbuff_used(&out));
 }
@@ -1364,7 +1364,7 @@ static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc
 	RETURN_OK(slen);
 }
 
-static const fr_token_t token2op[UINT8_MAX + 1] = {
+static const fr_token_t token2op[SBUFF_CHAR_CLASS] = {
 	[ '+' ] = T_ADD,
 	[ '-' ] = T_SUB,
 	[ '*' ] = T_MUL,
@@ -4071,7 +4071,7 @@ static void commands_print(void)
 
 static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *in)
 {
-	static bool		tokens[UINT8_MAX + 1] = { [','] = true , ['-'] = true };
+	static bool		tokens[SBUFF_CHAR_CLASS] = { [','] = true , ['-'] = true };
 	uint32_t		max = 0;
 	command_line_range_t	*lr;
 	fr_sbuff_parse_error_t	err;

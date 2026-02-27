@@ -75,7 +75,7 @@ extern fr_sbuff_unescape_rules_t fr_value_unescape_single;
 extern fr_sbuff_unescape_rules_t fr_value_unescape_solidus;
 extern fr_sbuff_unescape_rules_t fr_value_unescape_backtick;
 extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1];
+extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_double;
 extern fr_sbuff_escape_rules_t fr_value_escape_single;
@@ -83,7 +83,7 @@ extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
 extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
 extern fr_sbuff_escape_rules_t fr_value_escape_secret;
 extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
+extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 
@@ -480,7 +480,7 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_single_unquoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_unquoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_unquoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST];
-extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_double_quoted;
@@ -488,7 +488,7 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_single_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
-extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[SBUFF_CHAR_CLASS];
 
 extern fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted;

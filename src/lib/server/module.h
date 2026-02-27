@@ -526,7 +526,7 @@ int			module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unus
 
 int			modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-extern bool const module_instance_allowed_chars[UINT8_MAX + 1];
+extern bool const module_instance_allowed_chars[SBUFF_CHAR_CLASS];
 
 fr_slen_t		module_instance_name_valid(char const *inst_name) CC_HINT(nonnull);
 

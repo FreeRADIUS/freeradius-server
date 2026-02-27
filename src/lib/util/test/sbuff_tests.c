@@ -205,7 +205,7 @@ static void test_bstrncpy(void)
 	TEST_CHECK(sbuff.p == sbuff.start);
 }
 
-static bool allow_lowercase_and_space[UINT8_MAX + 1] = {
+static bool allow_lowercase_and_space[SBUFF_CHAR_CLASS] = {
 	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
 	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
 	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
@@ -214,7 +214,7 @@ static bool allow_lowercase_and_space[UINT8_MAX + 1] = {
 	['z'] = true, [' '] = true
 };
 
-static bool allow_lowercase_and_space_no_t[UINT8_MAX + 1] = {
+static bool allow_lowercase_and_space_no_t[SBUFF_CHAR_CLASS] = {
 	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
 	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
 	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
@@ -306,7 +306,7 @@ static void test_bstrncpy_allowed(void)
 	TEST_CASE("Zero length token (should still be terminated)");
 	fr_sbuff_set_to_start(&sbuff);
 	slen = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(out, 14), &sbuff, SIZE_MAX,
-					     (bool[UINT8_MAX + 1]){});
+					     (bool[SBUFF_CHAR_CLASS]){});
 	TEST_CHECK_SLEN(slen, 0);
 	TEST_CHECK_STRCMP(out, "");
 }
@@ -1253,32 +1253,32 @@ static void test_adv_past_allowed(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 5);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a         test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init_in(&sbuff, in_ns, sizeof(in_ns) - 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init_in(&sbuff, in, 0);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init_in(&sbuff, in_ws, sizeof(in_ws) - 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 5);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 2);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 2);
 	TEST_CHECK_STRCMP(sbuff.p, "   i am a         test string");
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init_in(&sbuff, in_ns, sizeof(in_ns) - 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[SBUFF_CHAR_CLASS]){ [' '] = true }, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 }
 

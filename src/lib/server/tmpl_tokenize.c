@@ -2806,7 +2806,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	size_t			len;
 	char			*sep_a, *sep_b;
 
-	static bool ipv6_chars[UINT8_MAX + 1] = {
+	static const bool ipv6_chars[SBUFF_CHAR_CLASS] = {
 		['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 		['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
 		['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
@@ -5396,7 +5396,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 }
 #endif
 
-static const bool array_terminal[UINT8_MAX + 1] = {
+static const bool array_terminal[SBUFF_CHAR_CLASS] = {
 	[ ']' ] = true,
 };
 

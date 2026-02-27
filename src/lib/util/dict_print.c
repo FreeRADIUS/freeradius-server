@@ -102,7 +102,7 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 	/*
 	 *	Remove trailing commas.
 	 */
-	fr_sbuff_trim(&our_out, (bool[UINT8_MAX + 1]){ [','] = true });
+	fr_sbuff_trim(&our_out, (bool[SBUFF_CHAR_CLASS]){ [','] = true });
 
 	/*
 	 *	Ensure that the buffer is initialized.

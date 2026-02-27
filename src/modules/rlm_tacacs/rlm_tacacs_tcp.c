@@ -120,7 +120,7 @@ typedef struct {
 
 	int			id;			//!< starts at 1.
 	int			active;			//!< active packets
-	trunk_request_t     	*tracking[UINT8_MAX];	//!< all sequential!
+	trunk_request_t     	*tracking[UINT8_MAX + 1];	//!< all sequential!
 
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.

@@ -307,7 +307,7 @@ fr_dict_attr_t const *xlat_time_res_attr(char const *res);
 /*
  *	xlat_tokenize.c
  */
-extern bool const xlat_func_chars[UINT8_MAX + 1];
+extern bool const xlat_func_chars[SBUFF_CHAR_CLASS];
 
 int		xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m_s) CC_HINT(nonnull);
 

@@ -209,7 +209,7 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 /** Chars that are allowed in a module instance name
  *
  */
-bool const module_instance_allowed_chars[UINT8_MAX + 1] = {
+bool const module_instance_allowed_chars[SBUFF_CHAR_CLASS] = {
 	['-'] = true, ['/'] = true, ['_'] = true, ['.'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
