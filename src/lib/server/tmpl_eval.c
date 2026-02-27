@@ -405,7 +405,7 @@ ssize_t _tmpl_to_type(void *out,
 		/*
 		 *	Copy the data to the buffer, and clear the alloc'd pointer.
 		 */
-		memcpy(buff, to_cast->vb_octets, len);
+		memcpy(buff, from_cast->vb_octets, len);
 		fr_value_box_clear(&value_from_cast);
 
 		/*
