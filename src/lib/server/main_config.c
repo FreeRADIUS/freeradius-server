@@ -519,7 +519,7 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 		 *	mime-encoded equivalents.
 		 */
 		if (in[0] < 32) {
-			snprintf(out, (size_t) (end - escaped), "=%02X", (unsigned char) in[0]);
+			snprintf(out, (size_t) (end - out), "=%02X", (unsigned char) in[0]);
 			out += 3;
 			continue;
 		}
