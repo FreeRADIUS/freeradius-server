@@ -1843,6 +1843,14 @@ have_client:
 		}
 
 		/*
+		 *	Remove cleanup timers for the connection parent.
+		 */
+		if (connection && fr_timer_armed(connection->parent->ev)) {
+			FR_TIMER_DELETE_RETURN(&connection->parent->ev);
+			connection->parent->ready_to_delete = false;
+		}
+
+		/*
 		 *	Return the packet.
 		 */
 		*recv_time_p = track->timestamp;
@@ -2849,6 +2857,15 @@ static int mod_close(fr_listen_t *li)
 	if (connection->in_parent_hash) {
 		connection->in_parent_hash = false;
 		(void) fr_hash_table_delete(connection->parent->ht, connection);
+	}
+
+	/*
+	 *	If this is a dynamic client, and the parent has no more connections
+	 *	set up the timer to expire the dynamic client.
+	 */
+	if ((connection->parent->state == PR_CLIENT_DYNAMIC) &&
+	    ((!connection->parent->ht) || (fr_hash_table_num_elements(connection->parent->ht) == 0))) {
+		client_expiry_timer(connection->el->tl, fr_time_wrap(0), connection->parent);
 	}
 	pthread_mutex_unlock(&connection->parent->mutex);
 
