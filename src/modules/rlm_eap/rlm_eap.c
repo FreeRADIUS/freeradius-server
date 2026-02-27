@@ -234,7 +234,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	unsigned int i, s_i = 0;
 	fr_pair_t *vp = NULL;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
-	eap_type_t sanitised[nak->length];
+	eap_type_t sanitised[FR_EAP_METHOD_MAX];
 
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
@@ -254,7 +254,8 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	 *	Do a loop over the contents of the NAK, only moving entries
 	 *	which are valid to the sanitised array.
 	 */
-	for (i = 0; i < nak->length; i++) {
+	for (i = 0; (i < nak->length) && (i < FR_EAP_METHOD_MAX); i++) {
+
 		/*
 		 *	Type 0 is valid, and means there are no
 		 *	common choices.
@@ -551,7 +552,7 @@ static ssize_t eap_identity_is_nai_with_realm(char const *identity)
 		return identity - end;
 	}
 
-	if ((realm - 1) == p) {
+	if ((realm + 1) == p) {
 		fr_strerror_printf("Identity is not valid.  "
 				   "Realm is missing label between realm separator '@' and label separator '.'");
 		return identity - realm;
