@@ -725,7 +725,7 @@ do { \
 #define IN_REQUEST_CANCEL_MUX(_trunk)	(((_trunk)->funcs.request_cancel_mux) && ((_trunk)->in_handler == (void *)(_trunk)->funcs.request_cancel_mux))
 
 #define IS_SERVICEABLE(_tconn)		((_tconn)->pub.state & TRUNK_CONN_SERVICEABLE)
-#define IS_PROCESSING(_tconn)		((tconn)->pub.state & TRUNK_CONN_PROCESSING)
+#define IS_PROCESSING(_tconn)		((_tconn)->pub.state & TRUNK_CONN_PROCESSING)
 
 /** Remove the current request from the backlog
  *
@@ -1342,7 +1342,7 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 		break;
 
 	default:
-		REQUEST_BAD_STATE_TRANSITION(TRUNK_REQUEST_STATE_SENT);
+		REQUEST_BAD_STATE_TRANSITION(TRUNK_REQUEST_STATE_REAPABLE);
 	}
 
 	REQUEST_STATE_TRANSITION(TRUNK_REQUEST_STATE_REAPABLE);
@@ -1458,7 +1458,7 @@ static void trunk_request_enter_cancel_partial(trunk_request_t *treq)
 	}
 
 	REQUEST_STATE_TRANSITION(TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
-	fr_assert(!tconn->partial);
+	fr_assert(!tconn->cancel_partial);
 	tconn->cancel_partial = treq;
 }
 
@@ -2340,9 +2340,11 @@ void trunk_request_signal_cancel_complete(trunk_request_t *treq)
 void trunk_request_free(trunk_request_t **treq_to_free)
 {
 	trunk_request_t	*treq = *treq_to_free;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t		*trunk;
 
 	if (unlikely(!treq)) return;
+
+	trunk = treq->pub.trunk;
 
 	/*
 	 *	The only valid states a trunk request can be
@@ -2630,7 +2632,7 @@ trunk_enqueue_t trunk_request_enqueue(trunk_request_t **treq_out, trunk_t *trunk
 			treq = *treq_out;
 		} else {
 			*treq_out = treq = trunk_request_alloc(trunk, request);
-			if (!treq) return TRUNK_ENQUEUE_FAIL;
+			if (!treq) return TRUNK_ENQUEUE_NO_CAPACITY;
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
@@ -2649,7 +2651,7 @@ trunk_enqueue_t trunk_request_enqueue(trunk_request_t **treq_out, trunk_t *trunk
 			treq = *treq_out;
 		} else {
 			*treq_out = treq = trunk_request_alloc(trunk, request);
-			if (!treq) return TRUNK_ENQUEUE_FAIL;
+			if (!treq) return TRUNK_ENQUEUE_NO_CAPACITY;
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
@@ -2782,7 +2784,8 @@ trunk_enqueue_t trunk_request_enqueue_on_conn(trunk_request_t **treq_out, trunk_
 	if (*treq_out) {
 		treq = *treq_out;
 	} else {
-		MEM(*treq_out = treq = trunk_request_alloc(trunk, request));
+		*treq_out = treq = trunk_request_alloc(trunk, request);
+		if (!treq) return TRUNK_ENQUEUE_NO_CAPACITY;
 	}
 
 	treq->pub.preq = preq;
@@ -4241,7 +4244,9 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	 *	Process deferred connection freeing
 	 */
 	if (!trunk->in_handler) {
-		while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
+		while ((tconn = fr_dlist_pop_head(&trunk->to_free)) != NULL) {
+			talloc_free(tconn);
+		}
 	}
 
 	/*
