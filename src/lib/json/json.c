@@ -496,7 +496,7 @@ void fr_json_version_print(void)
  *	- 0 on success.
  *	- -1 on error.
  */
-static CC_HINT(always_inline)
+static inline CC_HINT(always_inline)
 int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 			 fr_value_box_t const *vb, fr_json_format_t const *format)
 {
