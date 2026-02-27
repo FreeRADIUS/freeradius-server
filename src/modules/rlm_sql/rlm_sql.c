@@ -1681,7 +1681,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			}
 
 			if (!call_env->group_check_query && !call_env->group_reply_query) {
-				RWARN("Cannot process groups when neither authorize_group_check_query nor authorize_group_check_query are set");
+				RWARN("Cannot process groups when neither authorize_group_check_query nor authorize_group_reply_query are set");
 				break;
 			}
 
@@ -1697,7 +1697,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			RDEBUG3("... falling-through to profile processing");
 
 			if (!call_env->group_check_query && !call_env->group_reply_query) {
-				RWARN("Cannot process profiles when neither authorize_group_check_query nor authorize_group_check_query are set");
+				RWARN("Cannot process profiles when neither authorize_group_check_query nor authorize_group_reply_query are set");
 				break;
 			}
 
