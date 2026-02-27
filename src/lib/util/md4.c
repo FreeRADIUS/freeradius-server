@@ -612,6 +612,8 @@ void fr_md4_openssl_init(void)
 
 void fr_md4_openssl_free(void)
 {
-	md4_free_list_reinit(&md4_openssl_funcs);
+	if (fr_md4_funcs == &md4_local_funcs) return; /* not initialized, or FIPS. */
+
+	md4_free_list_reinit(&md4_local_funcs);
 }
 #endif
