@@ -66,13 +66,15 @@ static inline CC_HINT(always_inline) void tmpl_cursor_nested_push(tmpl_dcursor_c
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
-static inline CC_HINT(always_inline) tmpl_dcursor_nested_t *tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
+static inline CC_HINT(always_inline) bool tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
 
+	if (!ns) return false;
+
 	if (ns != &cc->leaf) talloc_free(ns);
 
-	return ns;
+	return true;		/* at least one leaf */
 }
 
 /** Initialise the evaluation context for traversing a group attribute
@@ -837,6 +839,7 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 	}
 
 	ns = fr_dlist_head(&cc->nested);
+	if (!ns) FR_SBUFF_SET_RETURN(out, &our_out);
 
 	/*
 	 *	This also prints out the things we're looping over in nested?
@@ -862,13 +865,13 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, ns->ar->da->name);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '[');
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zd", ns->num - 1);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zu", ns->num - 1);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
 
 		ns = fr_dlist_next(&cc->nested, ns);
 		if (!ns) break;
 
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
