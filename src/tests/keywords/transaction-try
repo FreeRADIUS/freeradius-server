@@ -1,0 +1,41 @@
+#
+# PRE: transaction try
+#
+#  Transaction inside try/catch - transaction fails,
+#  rollback happens, AND the catch section fires.
+#
+string foo
+string bar
+string caught
+
+try {
+	transaction {
+		foo := "hello"
+		bar := "world"
+
+		fail
+	}
+}
+catch fail {
+	caught := "yes"
+}
+
+#
+#  Transaction failed, so edits should be rolled back
+#
+if (foo) {
+	test_fail
+}
+
+if (bar) {
+	test_fail
+}
+
+#
+#  Catch should have fired
+#
+if (caught != "yes") {
+	test_fail
+}
+
+success

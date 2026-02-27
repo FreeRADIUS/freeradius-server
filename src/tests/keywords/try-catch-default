@@ -1,0 +1,25 @@
+#
+# PRE: try
+#
+#  Bare catch {} catches any previously uncaught rcode
+#
+string foo
+
+try {
+	foo := "hello"
+
+	fail
+}
+catch timeout {
+	test_fail
+}
+catch reject {
+	test_fail
+}
+catch {
+	if (foo != "hello") {
+		test_fail
+	}
+}
+
+success

@@ -1,0 +1,82 @@
+#
+# PRE: local-variable
+#
+#  Multiple local variables of different types nested scopes.
+#
+string result
+
+#
+#  First scope - multiple types
+#
+group {
+	uint32 count
+	string name
+	ipv4addr addr
+
+	count := 42
+	name := "test"
+	addr := 192.168.1.1
+
+	result := "%{name}-%{count}"
+	if (result != "test-42") {
+		test_fail
+	}
+
+	if (addr != 192.168.1.1) {
+		test_fail
+	}
+
+	#
+	#  After the first scope, declare more variables.
+	#
+	group {
+		uint32 count2
+		string name2
+
+		#
+		#  They should still have values from the previous scope
+		#
+		if (count != 42) {
+			test_fail
+		}
+
+		if (name != "test") {
+			test_fail
+		}
+
+		if (count2) {
+			test_fail
+		}
+
+		if (name2) {
+			test_fail
+		}
+
+		count2 = 2112
+		name2 = "rush"
+
+		#
+		#  Earlier variables aren't modified.
+		#
+		if (count != 42) {
+			test_fail
+		}
+
+		if (name != "test") {
+			test_fail
+		}
+
+		#
+		#  New ones still exist
+		#
+		if (count2 != 2112) {
+			test_fail
+		}
+
+		if (name2 != "rush") {
+			test_fail
+		}
+	}
+}
+
+success
