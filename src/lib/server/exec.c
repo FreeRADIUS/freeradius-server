@@ -58,6 +58,10 @@ int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	 */
 	first = fr_value_box_list_head(in);
 	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
+	if (!first) {
+		fr_strerror_const("No program to run");
+		return -1;
+	}
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
 		return -1;
@@ -419,7 +423,7 @@ char **exec_build_env(char **env_in, bool env_inherit)
 	/*
 	 *	No room to copy anything after the environment variables.
 	 */
-	if (((num_environ + 1) == NUM_ELEMENTS(env_exec_arr))) {
+	if (((num_environ + 1) >= NUM_ELEMENTS(env_exec_arr))) {
 		return environ;
 	}
 
@@ -540,7 +544,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 		error1:
 			return -1;
 		}
-		if (fr_nonblock(stdin_pipe[1]) < 0) fr_strerror_const("Error setting stdin to nonblock");
+		if (fr_nonblock(stdin_pipe[1]) < 0) {
+			fr_strerror_const("Error setting stdin to nonblock");
+			goto error2;
+		}
 	}
 
 	if (stdout_fd) {
@@ -552,7 +559,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 			close(stdin_pipe[1]);
 			goto error1;
 		}
-		if (fr_nonblock(stdout_pipe[0]) < 0) fr_strerror_const("Error setting stdout to nonblock");
+		if (fr_nonblock(stdout_pipe[0]) < 0) {
+			fr_strerror_const("Error setting stdout to nonblock");
+			goto error3;
+		}
 	}
 
 	if (stderr_fd) {
@@ -564,7 +574,12 @@ int fr_exec_fork_wait(pid_t *pid_p,
 			close(stdout_pipe[1]);
 			goto error2;
 		}
-		if (fr_nonblock(stderr_pipe[0]) < 0) fr_strerror_const("Error setting stderr to nonblock");
+		if (fr_nonblock(stderr_pipe[0]) < 0) {
+			fr_strerror_const("Error setting stderr to nonblock");
+			close(stderr_pipe[0]);
+			close(stderr_pipe[1]);
+			goto error3;
+		}
 	}
 
 	env = exec_build_env(env_in, env_inherit);
