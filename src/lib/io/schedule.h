@@ -38,6 +38,7 @@ typedef struct fr_schedule_s fr_schedule_t;
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/io/coord.h>
 #include <freeradius-devel/util/log.h>
 
 #ifdef __cplusplus

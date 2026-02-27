@@ -1183,6 +1183,33 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 	return 0;
 }
 
+/**  Call the coordinator attach callback for any modules using a coordinator
+ *
+ * @param ml	List of modules to check
+ * @param el	Event list serviced by this thread
+ * @return
+ *	- 0 on success
+ *	- -1 on failure
+ */
+int modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
+{
+	void			*inst;
+	fr_rb_iter_inorder_t	iter;
+
+	for (inst = fr_rb_iter_init_inorder(ml->name_tree, &iter);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
+		module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t);
+		module_thread_instance_t	*thread;
+		if (!mi->exported->coord_attach) continue;
+
+		thread = ml->thread_data_get(mi);
+		if (mi->exported->coord_attach(MODULE_THREAD_INST_CTX(mi, thread->data, el)) < 0) return -1;
+	}
+
+	return 0;
+}
+
 /** Manually complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.

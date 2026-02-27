@@ -147,6 +147,8 @@ void			modules_rlm_thread_detach(void);
 
 int			modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull(2));
 
+int			modules_rlm_coord_attach(fr_event_list_t *el) CC_HINT(nonnull);
+
 int			modules_rlm_instantiate(void);
 
 int			modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
