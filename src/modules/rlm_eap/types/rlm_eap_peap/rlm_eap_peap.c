@@ -225,6 +225,11 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 	switch (peap_tunnel->status) {
 	case PEAP_STATUS_SENT_TLV_SUCCESS:
 	case PEAP_STATUS_SENT_TLV_FAILURE:
+		if (data_len < 5) {
+			REDEBUG("Peer sent too-short EAP packet in PEAP Extensions exchange (%zu < 5)", data_len);
+			return -1;
+		}
+
 		if (eap_packet->data[0] != FR_PEAP_EXTENSIONS_TYPE) {
 			REDEBUG("Invalid inner tunnel data, expected method (%u), got (%u)",
 				FR_PEAP_EXTENSIONS_TYPE, eap_packet->data[0]);
