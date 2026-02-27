@@ -66,9 +66,11 @@ typedef struct {
 									///< from a single file.
 
 	char const			*certificate_file;		//!< Path to certificate.
+	char const			*certificate_uri;		//!< URI to certificate.
 
-	char const			*password;			//!< Password to decrypt the certificate(s).
-	char const			*private_key_file;		//!< Path to certificate.
+	char const			*password;			//!< Password to decrypt the private key.
+	char const			*private_key_file;		//!< Path to private key.
+	char const			*private_key_uri;		//!< URI to private key.
 
 	char const			**ca_files;			//!< Extra certificates to load.
 	fr_tls_chain_verify_mode_t	verify_mode;			//!< How hard we try to build up a complete certificate
