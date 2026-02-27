@@ -329,6 +329,11 @@ static ssize_t tacacs_encode_chap(fr_dbuff_t *dbuff, fr_tacacs_packet_t *packet,
 		return -1;
 	}
 
+	if (!chap->vp_length) {
+		fr_strerror_printf("%s is empty", da_chap->name);
+		return -1;
+	}
+
 	if ((chap->vp_length + challenge->vp_length) > 255) {
 		fr_strerror_printf("%s and %s are longer than 255 octets", da_chap->name, da_challenge->name);
 		return -1;
