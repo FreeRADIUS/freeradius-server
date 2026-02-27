@@ -129,6 +129,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 
 	fr_pair_list_init(&tmp);
 
+	fr_assert(data_len >= MIN_PACKET_SIZE); /* fr_dhcpv4_ok() MUST be called first */
+
 	if (data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
 		      data[1]);
@@ -413,16 +415,16 @@ int fr_dhcpv4_packet_encode(fr_packet_t *packet, fr_pair_list_t *list)
 	return 0;
 }
 
-fr_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
+fr_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len)
 {
 	fr_packet_t *packet;
 	uint32_t	magic;
 	uint8_t const	*code;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
-	if (!code) return NULL;
+	fr_assert(data_len >= MIN_PACKET_SIZE); /* fr_dhcpv4_ok() MUST be called first */
 
-	if (data_len < MIN_PACKET_SIZE) return NULL;
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
+	if (!code || (code[1] != 1)) return NULL;
 
 	/* Now that checks are done, allocate packet */
 	packet = fr_packet_alloc(NULL, false);

@@ -167,7 +167,7 @@ static inline fr_dhcpv4_attr_flags_t const *fr_dhcpv4_attr_flags(fr_dict_attr_t 
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
 bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
-fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
+fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, size_t data_len);
 bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
 void		*fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *to_eval, void *uctx);
 ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
