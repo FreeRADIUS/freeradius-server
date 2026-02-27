@@ -114,8 +114,8 @@ static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);
 
 static fr_table_num_sorted_t const cipher_cert_verify_mode_table[] = {
 	{ L("hard"),	CIPHER_CERT_VERIFY_HARD	},
-	{ L("none"),	CIPHER_CERT_VERIFY_SOFT	},
-	{ L("soft"),	CIPHER_CERT_VERIFY_NONE	}
+	{ L("none"),	CIPHER_CERT_VERIFY_NONE	},
+	{ L("soft"),	CIPHER_CERT_VERIFY_SOFT	}
 };
 static size_t cipher_cert_verify_mode_table_len = NUM_ELEMENTS(cipher_cert_verify_mode_table);
 
@@ -1089,7 +1089,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_encrypt_init(ti->evp_encrypt_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising encrypt EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 		if (unlikely(cipher_rsa_padding_params_set(ti->evp_encrypt_ctx, inst->rsa) < 0)) {
 			ERROR("%s: Failed setting padding for encrypt EVP_PKEY_CTX", __FUNCTION__);
@@ -1115,7 +1115,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_verify_init(ti->evp_verify_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*
@@ -1131,7 +1131,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_verify_ctx, inst->rsa->sig_digest)) <= 0) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 	}
 
@@ -1155,7 +1155,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_decrypt_init(ti->evp_decrypt_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising decrypt EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 		if (unlikely(cipher_rsa_padding_params_set(ti->evp_decrypt_ctx, inst->rsa) < 0)) {
 			ERROR("%s: Failed setting padding for decrypt EVP_PKEY_CTX", __FUNCTION__);
@@ -1181,7 +1181,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_sign_init(ti->evp_sign_ctx) <= 0)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed initialising sign EVP_PKEY_CTX", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*
@@ -1197,7 +1197,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_sign_ctx, inst->rsa->sig_digest)) <= 0) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
-			return XLAT_ACTION_FAIL;
+			return -1;
 		}
 
 		/*
