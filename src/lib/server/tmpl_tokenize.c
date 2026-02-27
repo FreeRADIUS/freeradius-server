@@ -645,7 +645,7 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TA
 	} else {
 		int depth = 1;
 
-		t_rules = t_rules->parent;
+		if (t_rules) t_rules = t_rules->parent;
 
 		while (fr_sbuff_adv_past_str_literal(&our_in, "parent.")) {
 			if (t_rules) t_rules = t_rules->parent;
@@ -2640,7 +2640,7 @@ static fr_slen_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after bool");
-		FR_SBUFF_ERROR_RETURN(in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
@@ -3724,7 +3724,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 		 if (tmpl_is_regex(vpt)) {
 			vpt->type = TMPL_TYPE_REGEX_UNCOMPILED;
 			if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.reg.src)))) goto error;
-			if (unlikely(tmpl_regex_compile(vpt, vpt->data.reg.subcaptures) < 0)) goto error;
+			if (unlikely(tmpl_regex_compile(vpt, in->data.reg.subcaptures) < 0)) goto error;
 			return vpt;
 		}
 
@@ -5402,6 +5402,8 @@ static const bool array_terminal[UINT8_MAX + 1] = {
 
 #define return_P(_x) fr_strerror_const(_x);goto return_p
 
+#define is_char(_offset, _x) (((p + _offset) < end) && (p[_offset] == _x))
+
 /** Preparse a string in preparation for passing it to tmpl_afrom_substr()
  *
  *  Note that the input string is not modified, which means that the
@@ -5508,17 +5510,15 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			}
 
 			if (*p == '\\') {
-				p++;
-				if (!p[1]) {
+				if (is_char(1, '\0')) {
 					return_P("End of string after escape");
 				}
-
-				p++;
+				p += 2;
 				continue;
 			}
 
-			if ((p[0] == '%') && ((p[1] == '{') || (p[1] == '('))) {
-				if (!p[2]) {
+			if ((p[0] == '%') && (is_char(1, '{') || is_char(1, '('))) {
+				if (is_char(2, '\0')) {
 					return_P("End of string after expansion");
 				}
 
@@ -5572,7 +5572,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	more rigorous check.
 		 */
 	skip_string:
-		if ((inlen > 3) && (p[0] == quote) && (p[1] == quote)) {
+		if (is_char(0, quote) && is_char(1, quote)) {
 			triple = true;
 			p += 2;
 		} else {
@@ -5597,7 +5597,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 				}
 
-				if (((end - p) >= 3) && (p[1] == quote) && (p[2] == quote)) {
+
+				if (is_char(1, quote) && is_char(2, quote)) {
 					*outlen = p - (*out);
 					p += 3;
 					return p - in;
@@ -5608,10 +5609,10 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			}
 
 			if (*p == '\\') {
-				p++;
-				if (!p[1]) {
+				if (is_char(1, '\0')) {
 					return_P("End of string after escape");
 				}
+				p++;
 			}
 			p++;
 		}
