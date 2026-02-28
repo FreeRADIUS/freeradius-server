@@ -380,6 +380,7 @@ int request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool p
 		prev = fr_dlist_remove(&request->data, rd);
 		fr_dlist_insert_tail(out, rd);
 		rd = prev;
+		count++;
 	}
 
 	return count;
@@ -423,6 +424,7 @@ int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, 
 			fr_dlist_insert_tail(&head, new);
 		}
 		rd = prev;
+		count++;
 	}
 
 	if (!out) fr_dlist_move(&request->data, &head);
