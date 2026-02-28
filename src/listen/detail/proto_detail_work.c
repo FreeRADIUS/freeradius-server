@@ -688,7 +688,7 @@ static int mod_open(fr_listen_t *li)
 	 *	Open the file if we haven't already been given one.
 	 */
 	if (thread->fd < 0) {
-		thread->filename_work = talloc_strdup(inst, inst->filename_work);
+		thread->filename_work = talloc_strdup(thread, inst->filename_work);
 
 		li->fd = thread->fd = open(thread->filename_work, inst->mode);
 		if (thread->fd < 0) {
