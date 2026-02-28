@@ -402,7 +402,7 @@ check_item:
 			    (tmpl_regex_compile(new_map->rhs, false) < 0)) {
 				ERROR("%s[%d]: Failed compiling regular expression /%s/ - %s",
 				      file, lineno, new_map->rhs->name, fr_strerror());
-				return -1;
+				goto fail_entry;
 			}
 
 			goto do_insert;
