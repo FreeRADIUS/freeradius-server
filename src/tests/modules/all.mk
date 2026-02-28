@@ -59,7 +59,9 @@ else ifeq "$(wildcard src/tests/modules/${1}/all.mk)" ""
 else
   -include src/tests/modules/${1}/all.mk
 
-  ifdef ${1}_require_test_server
+  ifndef ${1}_require_test_server
+    $(BUILD_DIR)/tests/modules/${2}: $(BUILD_DIR)/lib/local/rlm_${1}.la
+  else
     ifdef TEST_SERVER
       # define and export FOO_TEST_SERVER if it's not already defined
       $(eval export $(toupper ${1})_TEST_SERVER ?= $(TEST_SERVER))
@@ -67,6 +69,8 @@ else
     ifeq "$($(toupper ${1})_TEST_SERVER)" ""
       # the module requires a test server, but we don't have one.  Skip it.
       FILES_SKIP += ${2}
+    else
+      $(BUILD_DIR)/tests/modules/${2}: $(BUILD_DIR)/lib/local/rlm_${1}.la
     endif
   endif
 endif
