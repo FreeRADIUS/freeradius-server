@@ -1666,7 +1666,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		attr = cf_pair_attr(cp);
 		value = cf_pair_value(cp);
 
-		dv = fr_dict_enum_by_name(parent, attr, talloc_array_length(attr) - 1);
+		dv = fr_dict_enum_by_name(da, attr, talloc_array_length(attr) - 1);
 		if (dv) {
 			cf_log_err(cp, "Duplicate value name");
 			return -1;
