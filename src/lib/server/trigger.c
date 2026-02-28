@@ -293,6 +293,8 @@ cp_found:
 
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
+
+		fail:
 			talloc_free(request);
 			return -3;
 		}
@@ -313,10 +315,8 @@ cp_found:
 	/*
 	 *	During shutdown there may be no event list, so nothing much can be done.
 	 */
-	if (unlikely(!el)) {
-		talloc_free(request);
-		return -3;
-	}
+	if (unlikely(!el)) goto fail;
+
 
 	t_rules = (tmpl_rules_t) {
 		.attr = {
@@ -340,8 +340,7 @@ cp_found:
 		cf_log_err(cp, "%s", text);
 		cf_log_perr(cp, "%s^", spaces);
 
-		talloc_free(request);
-		return -3;
+		goto fail;
 	}
 
 	if (!tmpl_is_exec(trigger->vpt) && !tmpl_is_xlat(trigger->vpt)) {
@@ -350,8 +349,7 @@ cp_found:
 		 *	Anything else is an error.
 		 */
 		cf_log_err(cp, "Trigger must be an \"expr\" or `exec`");
-		talloc_free(request);
-		return -3;
+		goto fail;
 	}
 
 	fr_assert(trigger->vpt != NULL);
@@ -364,7 +362,7 @@ cp_found:
 					.timeout = fr_time_delta_from_sec(5),
 					},
 			     }, UNLANG_TOP_FRAME) < 0) {
-		talloc_free(request);
+		goto fail;
 	}
 
 	/*
@@ -382,14 +380,12 @@ cp_found:
 		 */
 		if (unlang_interpret_set_timeout(request, fr_time_delta_from_sec(1)) < 0) {
 			DEBUG("Failed setting timeout on trigger %s", value);
-			talloc_free(request);
-			return -3;
+			goto fail;
 		}
 
 		if (unlang_subrequest_child_push_and_detach(request) < 0) {
 			PERROR("Running trigger failed");
-			talloc_free(request);
-			return -3;
+			goto fail;
 		}
 	} else {
 		/*
