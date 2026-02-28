@@ -83,7 +83,7 @@ static inline int section_name2_match(section_name_t const *a, section_name_t co
  */
 static inline int section_name_match(section_name_t const *a, section_name_t const *b)
 {
-	if ((a->name1 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) goto name2;
+	if ((a->name1 == CF_IDENT_ANY) || (b->name1 == CF_IDENT_ANY)) goto name2;
 
 	if (strcmp(a->name1, b->name1) != 0) return -1;
 
