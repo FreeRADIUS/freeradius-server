@@ -84,7 +84,7 @@ fr_dict_protocol_t *fuzzer_dict_init(void *dl_handle, char const *proto)
 	snprintf(buffer, sizeof(buffer), "libfreeradius_%s_dict_protocol", proto);
 
 	our_dl_proto = dlsym(dl_handle, buffer);
-	if (our_dl_proto && our_dl_proto->init() && (our_dl_proto->init() < 0)) {
+	if (our_dl_proto && our_dl_proto->init && (our_dl_proto->init() < 0)) {
 		fr_perror("fuzzer: Failed initializing library %s", buffer);
 		fr_exit_now(EXIT_FAILURE);
 	}
