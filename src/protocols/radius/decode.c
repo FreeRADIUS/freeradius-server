@@ -2137,8 +2137,8 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	test_ctx = talloc_zero(ctx, fr_radius_decode_ctx_t);
 	test_ctx->common = common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
-	common->secret = talloc_strdup(test_ctx->common, "testing123");
-	common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
+	common->secret = talloc_strdup(common, "testing123");
+	common->secret_length = talloc_strlen(common->secret);
 
 	test_ctx->request_authenticator = vector;
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);

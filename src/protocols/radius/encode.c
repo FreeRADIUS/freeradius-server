@@ -1734,8 +1734,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 	test_ctx->common = common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
-	common->secret = talloc_strdup(test_ctx->common, "testing123");
-	common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
+	common->secret = talloc_strdup(common, "testing123");
+	common->secret_length = talloc_strlen(common->secret);
 
 	/*
 	 *	We don't want to automatically add Message-Authenticator
