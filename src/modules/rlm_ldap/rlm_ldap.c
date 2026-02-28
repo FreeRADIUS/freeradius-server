@@ -2452,7 +2452,7 @@ static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 						     }));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 					 t_rules);
 
@@ -2643,7 +2643,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	Explicitly prevent multiple server definitions
 		 *	being used in the same string.
 		 */
-		for (j = 0; j < talloc_array_length(value) - 1; j++) {
+		for (j = 0; j < talloc_strlen(value); j++) {
 			switch (value[j]) {
 			case ' ':
 			case ',':

@@ -2004,7 +2004,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 
 			if (!fr_cond_assert(a->vp_type == FR_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_array_length(a->vp_strvalue) - 1,
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_strlen(a->vp_strvalue),
 					     NULL, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf_push("Error at offset %zd compiling regex for %s", -slen,
@@ -2020,7 +2020,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 			/*
 			 *	Don't care about substring matches, oh well...
 			 */
-			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL);
+			slen = regex_exec(preg, value, talloc_strlen(value), NULL);
 			talloc_free(preg);
 			talloc_free(value);
 
@@ -3225,7 +3225,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "char but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
-		len = (talloc_array_length(vp->vp_strvalue) - 1);
+		len = (talloc_strlen(vp->vp_strvalue));
 		if (vp->vp_length > len) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" length %zu is greater than "
 					     "char buffer length %zu", file, line, vp->da->name, vp->vp_length, len);

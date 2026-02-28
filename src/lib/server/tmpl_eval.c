@@ -618,7 +618,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			fr_assert(str != NULL);
 			fr_assert(dst_type != FR_TYPE_STRING); /* exec / xlat returned string in 'str' */
 
-			datalen = talloc_array_length(str) - 1;
+			datalen = talloc_strlen(str);
 			slen = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, datalen, NULL);
 			if (slen < 0) {
 				fr_value_box_bstrndup_shallow(&value, NULL, str, datalen, false);
@@ -1148,7 +1148,7 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 		talloc_free(value);
 		return -1;
 	}
-	fr_value_box_bstrndup_shallow(value, NULL, p, talloc_array_length(p) - 1, true);
+	fr_value_box_bstrndup_shallow(value, NULL, p, talloc_strlen(p), true);
 
 	/*
 	 *	Cast the results if necessary.

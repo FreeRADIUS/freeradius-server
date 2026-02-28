@@ -278,7 +278,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	common_ctx = (fr_radius_ctx_t) {
 		.secret = client->secret,
-		.secret_length = talloc_array_length(client->secret) - 1,
+		.secret_length = talloc_strlen(client->secret),
 	};
 
 	request->packet->code = data[0];
@@ -658,7 +658,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 
 	common_ctx = (fr_radius_ctx_t) {
 		.secret = client->secret,
-		.secret_length = talloc_array_length(client->secret) - 1,
+		.secret_length = talloc_strlen(client->secret),
 	};
 	encode_ctx = (fr_radius_encode_ctx_t) {
 		.common = &common_ctx,
@@ -682,7 +682,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 	if (fr_radius_sign(buffer, request->packet->data + 4,
-			   (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1) < 0) {
+			   (uint8_t const *) client->secret, talloc_strlen(client->secret)) < 0) {
 		RPEDEBUG("Failed signing RADIUS reply");
 		return -1;
 	}

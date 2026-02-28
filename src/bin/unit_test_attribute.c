@@ -1589,7 +1589,7 @@ static size_t command_cd(command_result_t *result, command_file_ctx_t *cc,
 
 	strlcpy(data, cc->path, COMMAND_OUTPUT_MAX);
 
-	RETURN_OK(talloc_array_length(cc->path) - 1);
+	RETURN_OK(talloc_strlen(cc->path));
 }
 
 /*

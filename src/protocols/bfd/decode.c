@@ -195,7 +195,7 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	/* coverity[tainted_data] */
 	return fr_bfd_decode(ctx, out, data, data_len,
-			     test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
+			     test_ctx->secret, talloc_strlen(test_ctx->secret));
 }
 
 /*

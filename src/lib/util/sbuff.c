@@ -1511,7 +1511,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 
 	CHECK_SBUFF_WRITEABLE(sbuff);
 
-	len = talloc_array_length(str) - 1;
+	len = talloc_strlen(str);
 
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
@@ -1698,7 +1698,7 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 
 	CHECK_SBUFF_WRITEABLE(sbuff);
 
-	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
+	return fr_sbuff_in_escape(sbuff, in, talloc_strlen(in), e_rules);
 }
 
 /** Concat an array of strings (NULL terminated), with a string separator

@@ -483,7 +483,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 
 	if (strlen(cf_pair_value(to_parse)) > 0) {
 		if (tmpl_afrom_substr(ctx, &parsed_tmpl,
-				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 				      cf_pair_value_quote(to_parse),
 				      NULL, t_rules) < 0) return -1;
 	} else {

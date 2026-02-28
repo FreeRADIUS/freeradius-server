@@ -566,7 +566,7 @@ redo:
 
 			tmpl_init_shallow(&match_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
 			fr_value_box_bstrndup_shallow(&match_map.rhs->data.literal, NULL, pl->name,
-						      talloc_array_length(pl->name) - 1, false);
+						      talloc_strlen(pl->name), false);
 			if (map_to_request(request, &match_map, map_to_vp, NULL) < 0) {
 				RWARN("Failed populating %s with key value %s", env->match_attr->name, pl->name);
 			}
@@ -668,7 +668,7 @@ static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *
 	MEM(files_data = talloc_zero(ctx, rlm_files_data_t));
 
 	if (tmpl_afrom_substr(ctx, &files_data->key_tmpl,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      t_rules) < 0) return -1;
 

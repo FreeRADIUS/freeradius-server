@@ -534,7 +534,7 @@ static unlang_action_t mod_authenticate_result_async(unlang_result_t *p_result, 
 static ssize_t eap_identity_is_nai_with_realm(char const *identity)
 {
 	char const *p = identity;
-	char const *end = identity + (talloc_array_length(identity) - 1);
+	char const *end = identity + (talloc_strlen(identity));
 	char const *realm;
 
 	/*
@@ -651,7 +651,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 					 */
 					MEM(tmp_id = fr_asprint(NULL,
 								eap_session->identity,
-								talloc_array_length(eap_session->identity) - 1,
+								talloc_strlen(eap_session->identity),
 								'"'));
 					slen = eap_identity_is_nai_with_realm(tmp_id);
 
@@ -704,7 +704,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 
 				ret = submodule->type_identity(inst->type_identity_submodule[i]->data,
 							       eap_session->identity,
-							       talloc_array_length(eap_session->identity) - 1);
+							       talloc_strlen(eap_session->identity));
 				if (ret != FR_EAP_METHOD_INVALID) {
 					next = ret;
 					break;

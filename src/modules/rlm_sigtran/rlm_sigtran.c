@@ -246,7 +246,7 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx,
 	if (conf->gt_is_set || conf->gt.address) {
 		int	gti_ind = SCCP_TITLE_IND_NONE;
 		size_t	i;
-		size_t	len = talloc_array_length(conf->gt.address) - 1;
+		size_t	len = talloc_strlen(conf->gt.address);
 
 		if (conf->gt.nai_is_set && (conf->gt.nai & 0x80)) {
 			cf_log_err(cs, "Global title 'nai' must be between 0-127");

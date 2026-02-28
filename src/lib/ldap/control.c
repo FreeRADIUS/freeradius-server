@@ -220,7 +220,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (username) {
 		tracking_id.bv_val = username;
-		tracking_id.bv_len = talloc_array_length(username) - 1;
+		tracking_id.bv_len = talloc_strlen(username);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
@@ -239,7 +239,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (acctsessionid) {
 		tracking_id.bv_val = acctsessionid;
-		tracking_id.bv_len = talloc_array_length(acctsessionid) - 1;
+		tracking_id.bv_len = talloc_strlen(acctsessionid);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
@@ -254,7 +254,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 
 	if (acctmultisessionid) {
 		tracking_id.bv_val = acctmultisessionid;
-		tracking_id.bv_len = talloc_array_length(acctmultisessionid) - 1;
+		tracking_id.bv_len = talloc_strlen(acctmultisessionid);
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,

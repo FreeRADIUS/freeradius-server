@@ -205,7 +205,7 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, prot
 	 */
 	fr_pair_list_init(&sync->trigger_args);
 	fr_pair_list_append_by_da_len(sync, vp, &sync->trigger_args, attr_ldap_sync_base_dn, config->base_dn,
-				      talloc_array_length(config->base_dn) - 1, false);
+				      talloc_strlen(config->base_dn), false);
 
 	/*
 	 *	If the connection is freed, all the sync state is also freed
@@ -1310,7 +1310,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (fr_ldap_server_config_check(&inst->handle_config, server, conf) < 0) return -1;
 	}
 
-	inst->handle_config.server[talloc_array_length(inst->handle_config.server) - 1] = '\0';
+	inst->handle_config.server[talloc_strlen(inst->handle_config.server)] = '\0';
 
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)",
 							 cf_section_name(cf_item_to_section(cf_parent(cf_parent(conf)))));

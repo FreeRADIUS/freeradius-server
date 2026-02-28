@@ -331,7 +331,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 	pac.info.a_id_info.hdr.length = htons(sizeof(pac.info.a_id_info.data));
 
 #define MIN(a,b) (((a)>(b)) ? (b) : (a))
-	alen = MIN(talloc_array_length(t->authority_identity) - 1, sizeof(pac.info.a_id_info.data));
+	alen = MIN(talloc_strlen(t->authority_identity), sizeof(pac.info.a_id_info.data));
 	memcpy(pac.info.a_id_info.data, t->authority_identity, alen);
 
 	pac.info.type.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_info_pac_type->attr);
@@ -1656,7 +1656,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
+	if (talloc_strlen(inst->pac_opaque_key) != 32) {
 		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;
 	}
@@ -1678,7 +1678,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 
 	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
-		    talloc_array_length(inst->authority_identity) - 1);
+		    talloc_strlen(inst->authority_identity));
 
 	return 0;
 }

@@ -891,7 +891,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 				return NULL;
 			}
 			fr_value_box_bstrndup_shallow(&src, NULL, expanded,
-						      talloc_array_length(expanded) - 1, true);
+						      talloc_strlen(expanded), true);
 		} else {
 			fr_value_box_bstrndup_shallow(&src, NULL, value,
 						      json_object_get_string_len(leaf), true);
@@ -2220,5 +2220,5 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, reques
 	MEM(*out);
 	curl_free(scheme);
 
-	return talloc_array_length(*out) - 1;	/* array_length includes \0 */
+	return talloc_strlen(*out);	/* array_length includes \0 */
 }

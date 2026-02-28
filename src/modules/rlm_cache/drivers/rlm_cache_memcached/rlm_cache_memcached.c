@@ -86,7 +86,7 @@ static int memcached_conn_init(rlm_cache_memcached_handle_t *mandle, void *uctx)
 	memcached_st		*sandle;
 	memcached_return_t	ret;
 
-	sandle = memcached(driver->options, talloc_array_length(driver->options) -1);
+	sandle = memcached(driver->options, talloc_strlen(driver->options));
 	if (!sandle) {
 		ERROR("Failed creating memcached connection");
 		return -1;
@@ -126,7 +126,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	char				buffer[256];
 	rlm_cache_t const		*inst = talloc_get_type_abort(mctx->mi->parent->data, rlm_cache_t);
 
-	ret = libmemcached_check_configuration(driver->options, talloc_array_length(driver->options) -1,
+	ret = libmemcached_check_configuration(driver->options, talloc_strlen(driver->options),
 					       buffer, sizeof(buffer));
 	if (ret != MEMCACHED_SUCCESS) {
 		ERROR("%s", buffer);
@@ -233,7 +233,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	ret = memcached_set(mandle->handle, (char const *)c->key.vb_strvalue, c->key.vb_length,
 		            to_store ? to_store : "",
-		            to_store ? talloc_array_length(to_store) - 1 : 0, fr_unix_time_to_sec(c->expires), 0);
+		            to_store ? talloc_strlen(to_store) : 0, fr_unix_time_to_sec(c->expires), 0);
 	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
 		RERROR("Failed storing entry: %s: %s", memcached_strerror(mandle->handle, ret),

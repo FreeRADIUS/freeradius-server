@@ -500,7 +500,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 			return -1;
 		}
 		out[2] = new;
-		out_len[2] = talloc_array_length(new) - 1;
+		out_len[2] = talloc_strlen(new);
 		break;
 	}
 

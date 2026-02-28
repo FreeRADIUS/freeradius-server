@@ -1009,7 +1009,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 		 *	compare to the provided name.
 		 */
 		if (value_name && group_ctx->resolving_value) {
-			if (((talloc_array_length(value_name) - 1) == group->vb_length) &&
+			if (((talloc_strlen(value_name)) == group->vb_length) &&
 			    (memcmp(group->vb_strvalue, value_name, group->vb_length) == 0)) {
 				RDEBUG2("User found in group \"%pV\". Comparison between membership: name "
 				       "(resolved from DN \"%pV\"), check: name", group,
@@ -1081,7 +1081,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 									group_ctx);
 			}
 
-			if (((talloc_array_length(group_ctx->group_name) - 1) == value->bv_len) &&
+			if (((talloc_strlen(group_ctx->group_name)) == value->bv_len) &&
 			    (memcmp(value->bv_val, group_ctx->group_name, value->bv_len) == 0)) {
 				RDEBUG2("User found in group \"%pV\". Comparison between membership: "
 					"name, check: name (resolved from DN \"%pV\")",

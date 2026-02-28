@@ -111,7 +111,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 
 	if (bind_ctx->password) {
 		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
-		cred.bv_len = talloc_array_length(bind_ctx->password) - 1;
+		cred.bv_len = talloc_strlen(bind_ctx->password);
 	} else {
 		cred.bv_val = NULL;
 		cred.bv_len = 0;

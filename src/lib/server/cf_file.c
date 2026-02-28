@@ -331,7 +331,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 					return NULL;
 				}
 
-				flen = talloc_array_length(f) - 1;
+				flen = talloc_strlen(f);
 				if ((p + flen) >= (output + outsize)) goto too_long;
 
 				memcpy(p, f, flen);

@@ -271,7 +271,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 	while ((msg = fr_fring_next(t->fring))) {
 		ssize_t slen;
 
-		slen = write(sock, msg, talloc_array_length(msg) - 1) ;
+		slen = write(sock, msg, talloc_strlen(msg)) ;
 	write_error:
 		if (slen < 0) {
 			switch (errno) {
@@ -646,7 +646,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		break;
 	}
 
-	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
+	inst->delimiter_len = talloc_strlen(inst->delimiter);
 
 	return 0;
 }

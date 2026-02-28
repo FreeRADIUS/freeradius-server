@@ -142,7 +142,7 @@ static unlang_action_t ldap_map_profile_resume(request_t *request, void *uctx)
 
 			RDEBUG3("Parsing fallthrough condition %s", value);
 			if (xlat_tokenize_expression(request, &cond_expr,
-						     &FR_SBUFF_IN(value, talloc_array_length(value) - 1),
+						     &FR_SBUFF_IN(value, talloc_strlen(value)),
 						     NULL, &parse_rules) < 0) {
 				RPEDEBUG("Failed parsing '%s' value \"%s\"", profile_ctx->inst->profile.fallthrough_attr, value);
 				goto free;

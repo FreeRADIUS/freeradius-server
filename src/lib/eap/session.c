@@ -381,10 +381,10 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 			 *	random junk is coming from.
 			 */
 			RHEXDUMP3((uint8_t *const)eap_session->identity,
-				 talloc_array_length(eap_session->identity) - 1,
+				 talloc_strlen(eap_session->identity),
 				 "EAP Identity Response - \"%pV\"",
 				 fr_box_strvalue_len(eap_session->identity,
-						     talloc_array_length(eap_session->identity) - 1));
+						     talloc_strlen(eap_session->identity)));
 			break;
 
 		case FR_EAP_METHOD_INVALID:
@@ -470,7 +470,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 	 *	so if the EAP identity is longer than the max RADIUS attribute length
 	 *	then ignore mismatches.
 	 */
-	} else if ((talloc_array_length(eap_session->identity) - 1) <= RADIUS_MAX_STRING_LENGTH) {
+	} else if ((talloc_strlen(eap_session->identity)) <= RADIUS_MAX_STRING_LENGTH) {
 		/*
 		 *      A little more paranoia.  If the NAS
 		 *      *did* set the User-Name, and it doesn't

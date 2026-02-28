@@ -250,7 +250,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	/*
 	 *	Smush all hyphens to underscores for module names
 	 */
-	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	for (p = module_name, end = module_name + talloc_strlen(module_name);
 	     p < end;
 	     p++) if (*p == '-') *p = '_';
 
@@ -1666,7 +1666,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		attr = cf_pair_attr(cp);
 		value = cf_pair_value(cp);
 
-		dv = fr_dict_enum_by_name(da, attr, talloc_array_length(attr) - 1);
+		dv = fr_dict_enum_by_name(da, attr, talloc_strlen(attr));
 		if (dv) {
 			cf_log_err(cp, "Duplicate value name");
 			return -1;
@@ -1674,7 +1674,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 
 		fr_value_box_init_null(&box);
 
-		len = talloc_array_length(value) - 1;
+		len = talloc_strlen(value);
 
 		/*
 		 *	@todo - unescape for double quoted strings.  Whoops.

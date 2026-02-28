@@ -369,7 +369,7 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		 *	they should all be talloc'd strings.
 		 */
 		MEM(node = xlat_exp_alloc(ctx, p->type,
-					  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
+					  talloc_get_type_abort_const(p->fmt, char), talloc_strlen(p->fmt)));
 
 		node->quote = p->quote;
 		node->flags = p->flags;

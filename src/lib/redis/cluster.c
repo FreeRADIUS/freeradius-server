@@ -2432,7 +2432,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 		server = cf_pair_value(cp);
 		if (fr_inet_pton_port(&node->pending_addr.inet.dst_ipaddr, &node->pending_addr.inet.dst_port, server,
-				 talloc_array_length(server) - 1, af, true, true) < 0) {
+				 talloc_strlen(server), af, true, true) < 0) {
 			PERROR("%s - Failed parsing server \"%s\"", cluster->log_prefix, server);
 			goto error;
 		}

@@ -1549,7 +1549,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->secret = NULL;
 	}
 
-	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
+	if (inst->secret) inst->secretlen = talloc_strlen(inst->secret);
 
 	if (!parent->trunk_conf.conn_triggers) return 0;
 

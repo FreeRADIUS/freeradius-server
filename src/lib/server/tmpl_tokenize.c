@@ -365,7 +365,7 @@ void tmpl_debug(FILE *fp, tmpl_t const *vpt)
 		if (tmpl_needs_resolving(vpt)) {
 			if (tmpl_is_data_unresolved(vpt)) {
 				fprintf(fp, "\tunescaped  : %s\n", vpt->data.unescaped);
-				fprintf(fp, "\tlen        : %zu\n", talloc_array_length(vpt->data.unescaped) - 1);
+				fprintf(fp, "\tlen        : %zu\n", talloc_strlen(vpt->data.unescaped));
 			} else {
 				fprintf(fp, "\tunresolved : %s\n", vpt->name);
 				fprintf(fp, "\tlen        : %zu\n", vpt->len);
@@ -776,7 +776,7 @@ void tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...)
 	va_start(ap, fmt);
 	vpt->name = fr_vasprintf(vpt, fmt, ap);
 	vpt->quote = quote;
-	vpt->len = talloc_array_length(vpt->name) - 1;
+	vpt->len = talloc_strlen(vpt->name);
 	va_end(ap);
 
 	talloc_const_free(old);	/* Free name last so it can be used in the format string */
@@ -814,7 +814,7 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
 	talloc_const_free(vpt->name);
 
 	vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : (size_t)len);
-	vpt->len = talloc_array_length(vpt->name) - 1;
+	vpt->len = talloc_strlen(vpt->name);
 	vpt->quote = quote;
 }
 
@@ -869,7 +869,7 @@ tmpl_t *tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char c
 
 	va_start(ap, fmt);
 	vpt->name = fr_vasprintf(vpt, fmt, ap);
-	vpt->len = talloc_array_length(vpt->name) - 1;
+	vpt->len = talloc_strlen(vpt->name);
 	vpt->quote = quote;
 	va_end(ap);
 
@@ -4036,17 +4036,17 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		 */
 		if (fr_type_is_octets(type)) {
 			if (fr_value_box_memdup(vpt, &vpt->data.literal, enumv,
-					        (uint8_t const *)unescaped, talloc_array_length(unescaped) - 1,
+					        (uint8_t const *)unescaped, talloc_strlen(unescaped),
 					        false) < 0) return -1;
 		} else {
 			if (fr_value_box_from_str(vpt, &vpt->data.literal, type,
 						  enumv,
-						  unescaped, talloc_array_length(unescaped) - 1,
+						  unescaped, talloc_strlen(unescaped),
 						  NULL) < 0) return -1;
 		}
 		vpt->type = TMPL_TYPE_DATA;
 		vpt->quote = tmpl_cast_quote(vpt->quote, type, enumv,
-					     unescaped, talloc_array_length(unescaped) - 1);
+					     unescaped, talloc_strlen(unescaped));
 		talloc_free(unescaped);
 		fr_value_box_mark_safe_for(&vpt->data.literal, vpt->rules.literals_safe_for);
 
@@ -4149,7 +4149,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 							 &da,
 							 dict_def,
 							 &FR_SBUFF_IN(ar->ar_unresolved,
-							 	      talloc_array_length(ar->ar_unresolved) - 1),
+							 	      talloc_strlen(ar->ar_unresolved)),
 							 NULL,
 							 true,
 							 vpt->rules.attr.allow_foreign);
@@ -4204,7 +4204,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 						  &da,
 						  namespace,
 						  &FR_SBUFF_IN(ar->ar_unresolved,
-						  	       talloc_array_length(ar->ar_unresolved) - 1),
+						  	       talloc_strlen(ar->ar_unresolved)),
 						  NULL);
 		/*
 		 *	Still can't resolve, check to see if
@@ -4221,7 +4221,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 								  &da,
 								  fr_dict_root(fr_dict_internal()),
 								  &FR_SBUFF_IN(ar->ar_unresolved,
-									       talloc_array_length(ar->ar_unresolved) - 1),
+									       talloc_strlen(ar->ar_unresolved)),
 								  NULL);
 			}
 			if (!da) return -2;
@@ -4668,7 +4668,7 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 	fr_assert(tmpl_is_regex_uncompiled(vpt));
 
 	slen = regex_compile(vpt, &vpt->data.reg.ex,
-			     unescaped, talloc_array_length(unescaped) - 1,
+			     unescaped, talloc_strlen(unescaped),
 			     &vpt->data.reg_flags, subcaptures, vpt->rules.at_runtime);
 	if (slen <= 0) return vpt->quote != T_BARE_WORD ? slen - 1 : slen;	/* Account for the quoting */
 

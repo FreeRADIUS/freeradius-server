@@ -134,7 +134,7 @@ static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
 	body = *((char **)out);
 
 	fr_sha1_init(&sha1_ctx);
-	fr_sha1_update(&sha1_ctx, (uint8_t const *)body, talloc_array_length(body) - 1);
+	fr_sha1_update(&sha1_ctx, (uint8_t const *)body, talloc_strlen(body));
 	fr_sha1_final(digest, &sha1_ctx);
 	fr_base16_encode(&FR_SBUFF_OUT(func->digest, sizeof(func->digest)), &FR_DBUFF_TMP(digest, sizeof(digest)));
 
@@ -488,7 +488,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			size_t		script_load_arg_len[] = {
 						(sizeof("SCRIPT") - 1),
 						(sizeof("LOAD") - 1),
-						(talloc_array_length(func->body) - 1)
+						(talloc_strlen(func->body))
 					};
 
 			/*
@@ -825,7 +825,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			size_t		script_load_arg_len[] = {
 						(sizeof("SCRIPT") - 1),
 						(sizeof("LOAD") - 1),
-						(talloc_array_length(func->body) - 1)
+						(talloc_strlen(func->body))
 					};
 
 			fr_redis_rcode_t status;

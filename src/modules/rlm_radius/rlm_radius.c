@@ -808,7 +808,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
-		.secret_length = inst->secret ? talloc_array_length(inst->secret) - 1 : 0,
+		.secret_length = inst->secret ? talloc_strlen(inst->secret) : 0,
 		.proxy_state = ((uint64_t) fr_rand()) << 32 | fr_rand(),
 	};
 

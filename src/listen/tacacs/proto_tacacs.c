@@ -208,7 +208,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 			REDEBUG("Expected to see encrypted packet, got unencrypted packet!");
 			return -1;
 		}
-		secretlen = talloc_array_length(client->secret) - 1;
+		secretlen = talloc_strlen(client->secret);
 	}
 
 	/*
@@ -363,7 +363,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 	secret = client->secret;
-	if (secret) secretlen = talloc_array_length(client->secret) - 1;
+	if (secret) secretlen = talloc_strlen(client->secret);
 
 	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    secret, secretlen,

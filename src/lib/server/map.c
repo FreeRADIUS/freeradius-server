@@ -152,7 +152,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
-					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
+					 &FR_SBUFF_IN(attr, talloc_strlen(attr)),
 					 quote,
 					 value_parse_rules_unquoted[quote],	/* We're not searching for quotes */
 					 lhs_rules);
@@ -222,7 +222,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	p_rules = value_parse_rules_unquoted[quote]; /* We're not searching for quotes */
 	if (quote == T_DOUBLE_QUOTED_STRING || quote == T_BACK_QUOTED_STRING) {
 		slen = fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value,
-				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
+				&FR_SBUFF_IN(value, talloc_strlen(value)), SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) {
 			marker_subject = value;
 			goto marker;
@@ -240,7 +240,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 *	See cf_file.c, parse_input() and the use of T_HASH when doing alloc_pair,
 		 *	in order to see what magic is going on here.
 		 */
-		slen = talloc_array_length(value) - 1;
+		slen = talloc_strlen(value);
 
 		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_XLAT, T_BARE_WORD, value, slen));
 
@@ -270,7 +270,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		goto verify;
 
 	} else {
-		slen = talloc_array_length(value) - 1;
+		slen = talloc_strlen(value);
 	}
 
 	/*
@@ -1226,7 +1226,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
-					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
+					 &FR_SBUFF_IN(attr, talloc_strlen(attr)),
 					 type,
 					 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
 					 t_rules);
@@ -1254,7 +1254,7 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 		/*
 		 *	Let the tmpl code determine if it's an attribute reference or else is a raw value.
 		 */
-		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
+		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_strlen(attr)), T_BARE_WORD, NULL, t_rules);
 		if (slen <= 0) goto marker;
 
 		if (tmpl_is_attr(map->lhs) && (tmpl_attr_unknown_add(map->lhs) < 0)) {

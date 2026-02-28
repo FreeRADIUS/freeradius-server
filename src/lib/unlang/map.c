@@ -364,7 +364,7 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 		 *	Try to parse the template.
 		 */
 		(void) tmpl_afrom_substr(gext, &vpt,
-					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
+					 &FR_SBUFF_IN(tmpl_str, talloc_strlen(tmpl_str)),
 					 type,
 					 NULL,
 					 &t_rules);

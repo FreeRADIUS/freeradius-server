@@ -1164,7 +1164,7 @@ static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		to_parse = talloc_asprintf(NULL, "%s: %s", cf_pair_attr(cp), cf_pair_value(cp));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-					 &FR_SBUFF_IN(to_parse, talloc_array_length(to_parse) - 1),
+					 &FR_SBUFF_IN(to_parse, talloc_strlen(to_parse)),
 					 cf_pair_value_quote(cp), value_parse_rules_quoted[cf_pair_value_quote(cp)],
 					 t_rules);
 		talloc_free(to_parse);

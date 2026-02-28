@@ -1577,7 +1577,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 	RULES_VERIFY(unlang_ctx->rules);
 	slen = tmpl_afrom_substr(ut, &vpt,
-				 &FR_SBUFF_IN(p, talloc_array_length(p) - 1),
+				 &FR_SBUFF_IN(p, talloc_strlen(p)),
 				 cf_pair_attr_quote(cp),
 				 NULL,
 				 unlang_ctx->rules);

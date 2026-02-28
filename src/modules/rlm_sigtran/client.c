@@ -444,7 +444,7 @@ unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm
 		goto error;
 	}
 
-	len = talloc_array_length(imsi) - 1;
+	len = talloc_strlen(imsi);
 	if ((len != 16) && (len != 15)) {
 		REDEBUG("IMSI must be 15 or 16 digits got %zu digits", len);
 		goto error;

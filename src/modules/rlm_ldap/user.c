@@ -216,7 +216,7 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
 
 	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, inst->user.obj_access_attr);
 	if (values) {
-		size_t negate_value_len = talloc_array_length(inst->user.access_value_negate) - 1;
+		size_t negate_value_len = talloc_strlen(inst->user.access_value_negate);
 		if (inst->user.access_positive) {
 			if ((values[0]->bv_len >= negate_value_len) &&
 			    (strncasecmp(values[0]->bv_val, inst->user.access_value_negate, negate_value_len) == 0)) {
@@ -233,7 +233,7 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
 			goto done;
 		}
 		{
-			size_t suspend_value_len = talloc_array_length(inst->user.access_value_suspend) - 1;
+			size_t suspend_value_len = talloc_strlen(inst->user.access_value_suspend);
 			if ((values[0]->bv_len == suspend_value_len) &&
 			    (strncasecmp(values[0]->bv_val, inst->user.access_value_suspend, suspend_value_len) == 0)) {
 				RIDEBUG("\"%s\" attribute exists and indicates suspension", inst->user.obj_access_attr);

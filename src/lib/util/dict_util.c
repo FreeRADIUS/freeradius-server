@@ -3910,7 +3910,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	{
 		char *p, *q;
 
-		for (p = sym_name, q = p + (talloc_array_length(sym_name) - 1); p < q; p++) *p = *p == '-' ? '_' : *p;
+		for (p = sym_name, q = p + (talloc_strlen(sym_name)); p < q; p++) *p = *p == '-' ? '_' : *p;
 	}
 
 	proto = dlsym(dict->dl->handle, sym_name);

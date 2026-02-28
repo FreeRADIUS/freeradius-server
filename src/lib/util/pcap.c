@@ -452,7 +452,7 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	for (pcap_p = pcap;
 	     pcap_p;
 	     pcap_p = pcap_p->next) {
-	     	size_t name_len = talloc_array_length(pcap_p->name) - 1;
+	     	size_t name_len = talloc_strlen(pcap_p->name);
 
 		if (!fr_cond_assert(p < end)) {
 			talloc_free(buff);

@@ -735,7 +735,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(unlang_result_t *p_result
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
 		slen = tmpl_afrom_substr(frame_ctx, &vpt,
-					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
+					 &FR_SBUFF_IN(tmpl_str, talloc_strlen(tmpl_str)),
 					 cf_pair_value_quote(cp),
 					 NULL,
 					 &(tmpl_rules_t){
@@ -908,7 +908,7 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	if (tmpl_afrom_substr(ctx, &parsed,
-			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
 			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
 			      &our_rules) < 0) return -1;
 
@@ -1051,7 +1051,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		break;
 	}
 
-	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
+	inst->delimiter_len = talloc_strlen(inst->delimiter);
 	inst->cs = conf;
 
 	return 0;

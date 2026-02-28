@@ -1744,7 +1744,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 	*out = str;
 
-	return talloc_array_length(str) - 1;
+	return talloc_strlen(str);
 }
 
 /** Replace %whatever in a string.

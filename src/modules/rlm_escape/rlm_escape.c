@@ -74,7 +74,7 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	int			i;
 
-	len = talloc_array_length(inst->allowed_chars) - 1;
+	len = talloc_strlen(inst->allowed_chars);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	/*

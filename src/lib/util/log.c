@@ -379,7 +379,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 		char	*str;
 
 		str = talloc_asprintf(pool, "%s:%i", file, line);
-		len = talloc_array_length(str) - 1;
+		len = talloc_strlen(str);
 
 		/*
 		 *	Only increase the indent
@@ -453,7 +453,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 		char	*p, *end;
 
 		p = fmt_msg = fr_vasprintf(pool, fmt, ap);
-		end = p + talloc_array_length(fmt_msg) - 1;
+		end = p + talloc_strlen(fmt_msg);
 
 		/*
 		 *	Filter out control chars and non UTF8 chars
@@ -549,7 +549,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 				 	 fmt_msg,
 				 	 colourise ? VTC_RESET : "");
 
-		len = talloc_array_length(buffer) - 1;
+		len = talloc_strlen(buffer);
 		wrote = write(log->fd, buffer, len);
 		if (wrote < len) return;
 	}

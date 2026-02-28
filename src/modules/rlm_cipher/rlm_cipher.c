@@ -1024,7 +1024,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 
 		if (rsa_inst->oaep->label) {
 			char	*label;
-			size_t	label_len = talloc_array_length(rsa_inst->oaep->label) - 1;
+			size_t	label_len = talloc_strlen(rsa_inst->oaep->label);
 
 			/*
 			 *	OpenSSL does not duplicate the label when

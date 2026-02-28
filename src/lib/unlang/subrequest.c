@@ -630,7 +630,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	 *	Bare words are attribute references.
 	 */
 	slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
-				      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
+				      &FR_SBUFF_IN(name2, talloc_strlen(name2)),
 				      NULL, unlang_ctx->rules);
 	if (slen <= 0) {
 		cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
@@ -713,7 +713,7 @@ get_packet_type:
 			RULES_VERIFY(unlang_ctx->rules);
 
 			(void) tmpl_afrom_substr(parent, &src_vpt,
-						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
+						 &FR_SBUFF_IN(src, talloc_strlen(src)),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (!src_vpt) {
 				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
@@ -732,7 +732,7 @@ get_packet_type:
 				RULES_VERIFY(unlang_ctx->rules);
 
 				(void) tmpl_afrom_substr(parent, &dst_vpt,
-							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
+							 &FR_SBUFF_IN(dst, talloc_strlen(dst)),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
 				if (!dst_vpt) {
 					cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing dst");

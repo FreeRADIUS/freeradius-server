@@ -84,6 +84,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 	}
 finish:
 	talloc_free(value_pool);
+	talloc_set_type(to_store, char);
 	*out = to_store;
 
 	return 0;

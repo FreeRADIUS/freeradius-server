@@ -528,13 +528,13 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	}
 	json_str = json_head->vb_strvalue;
 
-	if ((talloc_array_length(json_str) - 1) == 0) {
+	if ((talloc_strlen(json_str)) == 0) {
 		REDEBUG("JSON map input length must be > 0");
 		RETURN_UNLANG_FAIL;
 	}
 
 	tok = json_tokener_new();
-	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_array_length(json_str) - 1));
+	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_strlen(json_str)));
 	if (!to_eval.root) {
 		REMARKER(json_str, tok->char_offset, "%s", json_tokener_error_desc(json_tokener_get_error(tok)));
 		rcode = RLM_MODULE_FAIL;
@@ -571,7 +571,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
-			slen = fr_jpath_parse(request, &node, to_parse, talloc_array_length(to_parse) - 1);
+			slen = fr_jpath_parse(request, &node, to_parse, talloc_strlen(to_parse));
 			if (slen <= 0) {
 				REMARKER(to_parse, -(slen), "%s", fr_strerror());
 				talloc_free(to_parse);

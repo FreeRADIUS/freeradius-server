@@ -402,7 +402,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			RDEBUG3("Parsing condition %s", value);
 
 			if (xlat_tokenize_expression(request, &cond_expr,
-						     &FR_SBUFF_IN(value, talloc_array_length(value) - 1),
+						     &FR_SBUFF_IN(value, talloc_strlen(value)),
 						     NULL, &parse_rules) < 0) {
 				RPEDEBUG("Failed parsing '%s' value \"%s\"", check_attr, value);
 			fail:

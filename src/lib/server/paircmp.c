@@ -103,7 +103,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 		/*
 		 *	Include substring matches.
 		 */
-		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1,
+		slen = regex_compile(request, &preg, expr_p, talloc_strlen(expr_p),
 				     NULL, true, true);
 		if (slen <= 0) {
 			REMARKER(expr_p, -slen, "%s", fr_strerror());
@@ -118,7 +118,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 		/*
 		 *	Evaluate the expression
 		 */
-		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, regmatch);
+		slen = regex_exec(preg, value_p, talloc_strlen(value_p), regmatch);
 		if (slen < 0) {
 			RPERROR("Invalid regex");
 

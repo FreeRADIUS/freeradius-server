@@ -57,7 +57,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 #endif
 
 	common.secret = secret;
-	common.secret_length = talloc_array_length(secret) - 1;
+	common.secret_length = talloc_strlen(secret);
 
 	packet_ctx = (fr_radius_encode_ctx_t) {
 		.common = &common,
@@ -133,7 +133,7 @@ int fr_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *sec
 	if (!packet->data) return -1;
 
 	if (fr_radius_verify(packet->data, original ? original->data + 4 : NULL,
-			     (uint8_t const *) secret, talloc_array_length(secret) - 1, false, false) < 0) {
+			     (uint8_t const *) secret, talloc_strlen(secret), false, false) < 0) {
 		fr_strerror_printf_push("Received invalid packet from %s",
 					inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						  buffer, sizeof(buffer)));
@@ -153,7 +153,7 @@ int fr_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 	int ret;
 
 	ret = fr_radius_sign(packet->data, original ? original->data + 4 : NULL,
-			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
+			       (uint8_t const *) secret, talloc_strlen(secret));
 	if (ret < 0) return ret;
 
 	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);

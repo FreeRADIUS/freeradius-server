@@ -4644,7 +4644,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_length = talloc_strlen(str);
 
 	return 0;
 }
@@ -4702,7 +4702,7 @@ int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_length = talloc_strlen(str);
 
 	return 0;
 }
@@ -4816,7 +4816,7 @@ int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, 
 
 	fr_assert(dst->type == FR_TYPE_STRING);
 
-	dstlen = talloc_array_length(dst->vb_strvalue) - 1;
+	dstlen = talloc_strlen(dst->vb_strvalue);
 	if (dstlen == len) return 0;	/* No change */
 
 	str = talloc_realloc(ctx, UNCONST(char *, dst->vb_strvalue), char, len + 1);
@@ -5570,18 +5570,21 @@ parse:
 					fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
 								     rules->terminals, rules->escapes);
 
-					if (talloc_array_length(buff) == 1) {
+					if (talloc_strlen(buff) == 0) {
 						talloc_free(buff);
 						goto zero;
 					}
 
-					bin = talloc_realloc(ctx, buff, uint8_t, talloc_array_length(buff) - 1);
+					/*
+					 *	Trim off the trailing '\0', and change the data type.
+					 */
+					bin = talloc_typed_memdup(ctx, (uint8_t *) buff, talloc_strlen(buff));
 					if (unlikely(!bin)) {
 						fr_strerror_const("Failed trimming string buffer");
 						talloc_free(buff);
 						return -1;
 					}
-					talloc_set_type(bin, uint8_t); /* talloc_realloc doesn't do this */
+
 				/*
 				 *	Input data is zero
 				 *

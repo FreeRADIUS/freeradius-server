@@ -1015,7 +1015,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	/*
 	 *	Add in the first value.
 	 */
-	ret = fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, NULL, false);
+	ret = fr_pair_value_from_str(vp, value, talloc_strlen(value), NULL, false);
 	if (ret < 0) {
 		talloc_free(value);
 		return ret;

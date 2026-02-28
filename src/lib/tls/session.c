@@ -1898,7 +1898,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 
 		MEM(md_ctx = EVP_MD_CTX_create());
 		EVP_DigestInit_ex(md_ctx, EVP_sha256(), NULL);
-		EVP_DigestUpdate(md_ctx, context_id, talloc_array_length(context_id) - 1);
+		EVP_DigestUpdate(md_ctx, context_id, talloc_strlen(context_id));
 		EVP_DigestFinal_ex(md_ctx, digest, NULL);
 		EVP_MD_CTX_destroy(md_ctx);
 		talloc_free(context_id);

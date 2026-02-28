@@ -178,7 +178,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
 		if (fr_bfd_decode(request->reply_ctx, &request->reply_pairs,
 				  (uint8_t const *) bfd, bfd->length,
-				  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+				  client->secret, talloc_strlen(client->secret)) < 0) {
 			RPEDEBUG("Failed decoding packet");
 			return -1;
 		}
@@ -190,7 +190,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
 			  (uint8_t const *) bfd, bfd->length,
-			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
+			  client->secret, talloc_strlen(client->secret)) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -404,7 +404,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 					goto error;
 				}
 
-				peer->secret_len = talloc_array_length(c->secret) - 1;
+				peer->secret_len = talloc_strlen(c->secret);
 			}
 
 			switch (peer->auth_type) {

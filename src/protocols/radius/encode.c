@@ -1792,7 +1792,7 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	if (slen <= 0) return slen;
 
 	if (fr_radius_sign(data, request_authenticator,
-			   (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
+			   (uint8_t const *) packet_ctx->common->secret, talloc_strlen(packet_ctx->common->secret)) < 0) {
 		return -1;
 	}
 

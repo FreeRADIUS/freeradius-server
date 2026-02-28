@@ -1711,7 +1711,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (fill) {
 		fill_str = fill->vb_strvalue;
-		fill_len = talloc_array_length(fill_str) - 1;
+		fill_len = talloc_strlen(fill_str);
 	}
 
 	if (fill_len == 0) {
@@ -1720,7 +1720,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	while ((in = fr_value_box_list_pop_head(list))) {
-		size_t			len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t			len = talloc_strlen(in->vb_strvalue);
 		size_t			remaining;
 		char			*buff;
 		fr_sbuff_t		sbuff;
@@ -1805,7 +1805,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (fill) {
 		fill_str = fill->vb_strvalue;
-		fill_len = talloc_array_length(fill_str) - 1;
+		fill_len = talloc_strlen(fill_str);
 	}
 
 	if (fill_len == 0) {
@@ -1814,7 +1814,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	while ((in = fr_value_box_list_pop_head(list))) {
-		size_t		len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t		len = talloc_strlen(in->vb_strvalue);
 		size_t		remaining;
 		char		*buff;
 		fr_sbuff_t	sbuff;

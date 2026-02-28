@@ -92,7 +92,7 @@ uint8_t const is_char_tbcd[] = {
 
 int sigtran_ascii_to_tbcd(TALLOC_CTX *ctx, uint8_t **out, char const *digits)
 {
-	size_t	len = talloc_array_length(digits) - 1;
+	size_t	len = talloc_strlen(digits);
 	size_t 	outlen = (len / 2) + (len & 0x01);
 	uint8_t	*p;
 	size_t	i;
@@ -170,7 +170,7 @@ int sigtran_ascii_to_tbcd(TALLOC_CTX *ctx, uint8_t **out, char const *digits)
 int sigtran_sccp_global_title(TALLOC_CTX *ctx, uint8_t **out, int gt_ind, char const *digits,
 			      uint8_t tt, uint8_t np, uint8_t es, uint8_t nai)
 {
-	size_t	len = talloc_array_length(digits) - 1;
+	size_t	len = talloc_strlen(digits);
 	size_t 	outlen = (len / 2) + (len & 0x01);
 	uint8_t	*p;
 	size_t	i;

@@ -900,7 +900,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		if (slen > 0) {
 		do_value_box:
 			xlat_exp_set_name_shallow(node, str);
-			fr_value_box_bstrndup(node, &node->data, NULL, str, talloc_array_length(str) - 1, false);
+			fr_value_box_bstrndup(node, &node->data, NULL, str, talloc_strlen(str), false);
 			fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);
 
 			if (!escapes) {
@@ -910,7 +910,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 				XLAT_DEBUG("VALUE-BOX (%s) %s <-- %.*s", escapes->name, str,
 					   (int) fr_sbuff_behind(&m_s), fr_sbuff_current(&m_s));
 			}
-			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
+			XLAT_HEXDUMP((uint8_t const *)str, talloc_strlen(str), " VALUE-BOX ");
 
 			xlat_exp_insert_tail(head, node);
 
@@ -1955,7 +1955,7 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head)
 	 */
 	xlat_exp_foreach(*head, node) {
 		if (node->type != XLAT_BOX) return false;
-		len += talloc_array_length(node->fmt) - 1;
+		len += talloc_strlen(node->fmt);
 	}
 
 	fr_sbuff_init_talloc(ctx, &out, &tctx, len, SIZE_MAX);
@@ -2012,7 +2012,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			/*
 			 *	Try to find the function
 			 */
-			func = xlat_func_find(node->fmt, talloc_array_length(node->fmt) - 1);
+			func = xlat_func_find(node->fmt, talloc_strlen(node->fmt));
 			if (!func) {
 				/*
 				 *	FIXME - Produce proper error with marker
@@ -2115,7 +2115,7 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
 	 */
 	if ((tmpl_attr_tail_num(node->vpt) == NUM_COUNT) || (tmpl_attr_tail_num(node->vpt) == NUM_ALL)) return NULL;
 
-	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, node->fmt, talloc_array_length(node->fmt) - 1);
+	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, node->fmt, talloc_strlen(node->fmt));
 	if (!vpt) return NULL;
 
 	tmpl_attr_copy(vpt, node->vpt);

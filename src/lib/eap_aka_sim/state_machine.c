@@ -286,7 +286,7 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 	 *	Process the identity that we received.
 	 */
 	if (fr_aka_sim_id_type(&type, &method,
-			       identity, talloc_array_length(identity) - 1) < 0) {
+			       identity, talloc_strlen(identity)) < 0) {
 		RPWDEBUG2("Failed parsing identity, continuing anyway");
 	}
 
@@ -730,7 +730,7 @@ RESUME(store_pseudonym)
 				break;
 			}
 			fr_rand_str((uint8_t *)identity + 1, inst->ephemeral_id_length, 'a');
-			identity[talloc_array_length(identity) - 1] = '\0';
+			identity[talloc_strlen(identity)] = '\0';
 
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
@@ -861,7 +861,7 @@ static unlang_action_t session_and_pseudonym_store(unlang_result_t *p_result, mo
 			default:
 				break;
 			}
-			identity[talloc_array_length(identity) - 1] = '\0';
+			identity[talloc_strlen(identity)] = '\0';
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
 		MEM(pair_update_request(&new, attr_eap_aka_sim_next_pseudonym) >= 0);
@@ -908,7 +908,7 @@ RESUME(clear_pseudonym)
 		MEM(pair_update_request(&vp, attr_session_id) >= 0);
 		fr_value_box_memdup(vp, &vp->data, NULL,
 				    (uint8_t *)eap_aka_sim_session->fastauth_sent,
-				    talloc_array_length(eap_aka_sim_session->fastauth_sent) - 1, true);
+				    talloc_strlen(eap_aka_sim_session->fastauth_sent), true);
 		TALLOC_FREE(eap_aka_sim_session->fastauth_sent);
 
 		return CALL_SECTION(clear_session);
@@ -3688,7 +3688,7 @@ STATE(init)
 	 */
 	crypto_identity_set(request, eap_aka_sim_session,
 			    (uint8_t const *)eap_session->identity,
-			    talloc_array_length(eap_session->identity) - 1);
+			    talloc_strlen(eap_session->identity));
 
 	return CALL_SECTION(recv_common_identity_response);
 }

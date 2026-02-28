@@ -110,7 +110,7 @@ static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, exfile_tr
 	(void) fr_pair_list_copy(NULL, &args, &ef->trigger_args);
 
 	fr_pair_list_prepend_by_da_len(NULL, vp, &args, da, entry->filename,
-				       talloc_array_length(entry->filename) - 1, false);
+				       talloc_strlen(entry->filename), false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, exfile_trigger_names[ex_trigger]);
 	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args) == -1) {

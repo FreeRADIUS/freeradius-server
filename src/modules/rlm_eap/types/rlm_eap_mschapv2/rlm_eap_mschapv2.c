@@ -195,7 +195,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_array_length(inst->identity) - 1);
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_strlen(inst->identity));
 		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
 		/*
@@ -218,7 +218,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 		 *	Copy the Challenge, success, or error over.
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
-		memcpy((ptr + reply->vp_length), inst->identity, (talloc_array_length(inst->identity) - 1));
+		memcpy((ptr + reply->vp_length), inst->identity, (talloc_strlen(inst->identity)));
 	} else if (reply->da == attr_ms_chap2_success) {
 		/*
 		 *   0                   1                   2                   3

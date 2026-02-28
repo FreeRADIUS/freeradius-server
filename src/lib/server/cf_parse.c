@@ -77,7 +77,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
 	 *	Print the strings with the correct quotation character and escaping.
 	 */
 	if (fr_type_is_string(type)) {
-		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, fr_token_quote[cp->rhs_quote]);
+		value = tmp = fr_asprint(NULL, cp->value, talloc_strlen(cp->value), fr_token_quote[cp->rhs_quote]);
 
 	} else {
 		value = cf_pair_value(cp);
@@ -128,7 +128,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
  */
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
-	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_array_length(cp->value) - 1, NULL) < 0) {
+	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_strlen(cp->value), NULL) < 0) {
 		cf_log_perr(cp, "Invalid value \"%s\" for config item %s",
 			    cp->value, cp->attr);
 
@@ -1430,7 +1430,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 *	xlat expansions should be parseable.
 			 */
 			slen = xlat_tokenize(cs, &xlat,
-					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
+					     &FR_SBUFF_IN(cp->value, talloc_strlen(cp->value)), NULL,
 					     &(tmpl_rules_t) {
 						     .attr = {
 							     .dict_def = dict,

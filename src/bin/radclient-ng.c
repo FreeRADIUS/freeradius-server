@@ -1584,7 +1584,7 @@ int main(int argc, char **argv)
 			}
 			secret = talloc_strdup(autofree, filesecret);
 			client_config.verify.secret = (uint8_t *) secret;
-			client_config.verify.secret_len = talloc_array_length(secret) - 1;
+			client_config.verify.secret_len = talloc_strlen(secret);
 		}
 		       break;
 
@@ -1669,7 +1669,7 @@ int main(int argc, char **argv)
 	if (argv[3]) {
 		secret = talloc_strdup(autofree, argv[3]);
 		client_config.verify.secret = (uint8_t *) secret;
-		client_config.verify.secret_len = talloc_array_length(secret) - 1;
+		client_config.verify.secret_len = talloc_strlen(secret);
 	}
 
 	/***********************************************************************
