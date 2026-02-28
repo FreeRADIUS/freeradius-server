@@ -520,7 +520,7 @@ static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t
 			char const *p;
 			p = (char const *) sqlite3_column_text(conn->statement, i);
 
-			if (p) MEM(row[i] = talloc_typed_strdup(row, p));
+			if (p) MEM(row[i] = talloc_strdup(row, p));
 		}
 			break;
 
@@ -738,7 +738,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			buff = talloc_array(mctx->mi->conf, char, len);
 			strlcpy(buff, inst->filename, len);
 		} else {
-			MEM(buff = talloc_typed_strdup(mctx->mi->conf, inst->filename));
+			MEM(buff = talloc_strdup(mctx->mi->conf, inst->filename));
 		}
 
 		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);

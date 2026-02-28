@@ -190,8 +190,8 @@ static inline CC_HINT(always_inline) fr_tls_engine_ctrl_t *tls_engine_ctrl_dup(T
 	}
 
 	*n = (fr_tls_engine_ctrl_t){
-		.name = talloc_typed_strdup(n, in->name),
-		.value = talloc_typed_strdup(n, in->value)
+		.name = talloc_strdup(n, in->name),
+		.value = talloc_strdup(n, in->value)
 	};
 
 	return n;
@@ -351,8 +351,8 @@ int fr_tls_engine_init(ENGINE **e_out,
 	if (unlikely(!our_e)) goto oom;
 
 	*our_e = (tls_engine_t){
-		.id = talloc_typed_strdup(our_e, id),
-		.instance = talloc_typed_strdup(our_e, instance),
+		.id = talloc_strdup(our_e, id),
+		.instance = talloc_strdup(our_e, instance),
 		.e = e
 	};
 	talloc_set_destructor(our_e, _tls_engine_free);

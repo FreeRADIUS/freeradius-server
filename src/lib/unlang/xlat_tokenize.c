@@ -954,7 +954,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 			if (!fr_sbuff_is_alnum(&our_in)) {
 				if (fr_sbuff_next_if_char(&our_in, '%')) { /* nothing */ }
 
-				str = talloc_typed_strdup(node, "%");
+				str = talloc_strdup(node, "%");
 				goto do_value_box;
 			}
 

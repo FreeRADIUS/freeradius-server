@@ -934,7 +934,7 @@ void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, fr_pai
 	pool->triggers_enabled = true;
 
 	talloc_const_free(pool->trigger_prefix);
-	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
+	MEM(pool->trigger_prefix = trigger_prefix ? talloc_strdup(pool, trigger_prefix) : "");
 
 	fr_pair_list_free(&pool->trigger_args);
 
@@ -1047,7 +1047,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
-	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
+	pool->log_prefix = log_prefix ? talloc_strdup(pool, log_prefix) : "core";
 	pthread_mutex_init(&pool->mutex, NULL);
 	pthread_cond_init(&pool->done_spawn, NULL);
 	pthread_cond_init(&pool->done_reconnecting, NULL);

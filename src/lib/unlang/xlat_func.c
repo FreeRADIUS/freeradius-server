@@ -262,7 +262,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	 */
 	MEM(c = talloc(NULL, xlat_t));
 	*c = (xlat_t){
-		.name = talloc_typed_strdup(c, name),
+		.name = talloc_strdup(c, name),
 		.func = func,
 		.return_type = return_type,
 	};

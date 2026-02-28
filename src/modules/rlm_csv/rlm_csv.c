@@ -351,7 +351,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			fr_value_box_clear(&box);
 		}
 
-		MEM(e->data[inst->field_offsets[i]] = talloc_typed_strdup(e, p));
+		MEM(e->data[inst->field_offsets[i]] = talloc_strdup(e, p));
 	}
 
 	if (i < inst->num_fields) {
@@ -636,7 +636,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Get a writable copy of the fields definition
 	 */
-	MEM(fields = talloc_typed_strdup(inst, inst->fields));
+	MEM(fields = talloc_strdup(inst, inst->fields));
 
 	/*
 	 *	Mark up the field names.  Note that they can be empty,

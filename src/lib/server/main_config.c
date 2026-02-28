@@ -826,7 +826,7 @@ void main_config_name_set_default(main_config_t *config, char const *name, bool 
 		talloc_free(p);
 		config->name = NULL;
 	}
-	if (name) config->name = talloc_typed_strdup(config, name);
+	if (name) config->name = talloc_strdup(config, name);
 
 	config->overwrite_config_name = overwrite_config;
 }
@@ -842,7 +842,7 @@ void main_config_confdir_set(main_config_t *config, char const *name)
 		talloc_const_free(config->confdir);
 		config->confdir = NULL;
 	}
-	if (name) config->confdir = talloc_typed_strdup(config, name);
+	if (name) config->confdir = talloc_strdup(config, name);
 }
 
 /** Clean up the semaphore when the main config is freed
@@ -912,7 +912,7 @@ int main_config_exclusive_proc(main_config_t *config)
 					   config->pid_file, fr_syserror(errno));
 			return -1;
 		}
-		MEM(path = talloc_typed_strdup(config, config->pid_file));
+		MEM(path = talloc_strdup(config, config->pid_file));
 	}  else {
 		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->confdir, config->name));
 	}
@@ -971,7 +971,7 @@ void main_config_dict_dir_set(main_config_t *config, char const *name)
 		talloc_const_free(config->dict_dir);
 		config->dict_dir = NULL;
 	}
-	if (name) config->dict_dir = talloc_typed_strdup(config, name);
+	if (name) config->dict_dir = talloc_strdup(config, name);
 }
 
 /** Allocate a main_config_t struct, setting defaults

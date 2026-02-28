@@ -3064,12 +3064,12 @@ static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char c
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
-	*filename_out = file->filename = talloc_typed_strdup(file, filename);
+	*filename_out = file->filename = talloc_strdup(file, filename);
 	if (unlikely(!*filename_out)) goto oom;
 
 	if (src_file) {
 		file->src_line = src_line;
-		file->src_file = talloc_typed_strdup(file, src_file);
+		file->src_file = talloc_strdup(file, src_file);
 		if (!file->src_file) goto oom;
 	}
 

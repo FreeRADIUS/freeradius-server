@@ -219,7 +219,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, fr_time_delta_t max
 void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
-	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : talloc_typed_strdup(ef, ""));
+	MEM(ef->trigger_prefix = trigger_prefix ? talloc_strdup(ef, trigger_prefix) : talloc_strdup(ef, ""));
 
 	fr_pair_list_free(&ef->trigger_args);
 
@@ -249,7 +249,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		 *	Maybe the directory doesn't exist.  Try to
 		 *	create it.
 		 */
-		dir = talloc_typed_strdup(ef, filename);
+		dir = talloc_strdup(ef, filename);
 		if (!dir) return -1;
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
@@ -402,7 +402,7 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 	i = unused;
 
 	ef->entries[i].hash = hash;
-	ef->entries[i].filename = talloc_typed_strdup(ef->entries, filename);
+	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 
 reopen_reset:
 	ef->entries[i].fd = -1;

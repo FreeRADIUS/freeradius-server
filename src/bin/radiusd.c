@@ -387,8 +387,8 @@ int main(int argc, char *argv[])
 		case 'l':
 			if (strcmp(optarg, "stdout") == 0) goto do_stdout;
 
-			config->log_file = talloc_typed_strdup(global_ctx, optarg);
-			default_log.file = talloc_typed_strdup(global_ctx, optarg);
+			config->log_file = talloc_strdup(global_ctx, optarg);
+			default_log.file = talloc_strdup(global_ctx, optarg);
 			default_log.dst = L_DST_FILES;
 			default_log.fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {

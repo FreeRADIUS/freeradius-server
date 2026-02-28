@@ -163,7 +163,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 			securid_session = securid_session_alloc();
 			securid_session->sdiHandle = sdiHandle; /* save ACE handle for future use */
 			securid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
-			securid_session->identity = talloc_typed_strdup(securid_session, username);
+			securid_session->identity = talloc_strdup(securid_session, username);
 
 			/* Get PIN requirements */
 			acm_ret = AceGetPinParams(sdiHandle, &pin_params);
@@ -204,7 +204,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 			securid_session = securid_session_alloc();
 			securid_session->sdiHandle = sdiHandle;
 			securid_session->securidSessionState = NEXT_CODE_REQUIRED_STATE;
-			securid_session->identity = talloc_typed_strdup(securid_session, username);
+			securid_session->identity = talloc_strdup(securid_session, username);
 
 			/* insert new session in the session list */
 			securid_sessionlist_add(inst, request, securid_session);
@@ -249,7 +249,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 
 			/* save the previous pin */
 			if (securid_session->pin) TALLOC_FREE(securid_session->pin);
-			securid_session->pin = talloc_typed_strdup(securid_session, passcode);
+			securid_session->pin = talloc_strdup(securid_session, passcode);
 
 			strlcpy(replyMsgBuffer, "\r\n		 Please re-enter new PIN:", replyMsgBufferSize);
 
@@ -333,7 +333,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 				/* Save the PIN for the next session
 				 * continuation */
 				if (securid_session->pin) TALLOC_FREE(securid_session->pin);
-				securid_session->pin = talloc_typed_strdup(securid_session, new_pin);
+				securid_session->pin = talloc_strdup(securid_session, new_pin);
 
 				snprintf(replyMsgBuffer, replyMsgBufferSize,
 					 "\r\nYour new PIN is: %s\r\nDo you accept this [y/n]?",

@@ -1291,7 +1291,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	}
 
 	vpt->len = (size_t)slen;
-	vpt->name = talloc_typed_strdup(vpt, attr);
+	vpt->name = talloc_strdup(vpt, attr);
 	vpt->quote = T_BARE_WORD;
 
 	TMPL_ATTR_VERIFY(vpt);

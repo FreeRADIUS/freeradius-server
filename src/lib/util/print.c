@@ -686,7 +686,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 				 *	any pool associated with it.
 				 */
 				if (unlikely(in && in->secret && suppress_secrets)) {
-					subst = talloc_typed_strdup(NULL, "<<< secret >>>");
+					subst = talloc_strdup(NULL, "<<< secret >>>");
 
 				} else if (in) {
 					/*
@@ -695,7 +695,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 					fr_value_box_aprint(NULL, &subst, in, &fr_value_escape_double);
 
 				} else {
-					subst = talloc_typed_strdup(NULL, "(null)");
+					subst = talloc_strdup(NULL, "(null)");
 				}
 
 			do_splice:

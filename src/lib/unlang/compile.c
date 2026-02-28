@@ -1841,7 +1841,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 
 	c = unlang_module_to_generic(m);
 	unlang_type_init(c, parent, UNLANG_TYPE_MODULE);
-	c->name = talloc_typed_strdup(c, name);
+	c->name = talloc_strdup(c, name);
 	c->debug_name = c->name;
 	c->ci = ci;
 

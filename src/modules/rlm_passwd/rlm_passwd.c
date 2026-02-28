@@ -169,7 +169,7 @@ static struct hashtable * build_hash_table (char const * file, int num_fields,
 	char buffer[1024];
 
 	MEM(ht = talloc_zero(NULL, struct hashtable));
-	MEM(ht->filename = talloc_typed_strdup(ht, file));
+	MEM(ht->filename = talloc_strdup(ht, file));
 
 	ht->tablesize = tablesize;
 	ht->num_fields = num_fields;
@@ -404,7 +404,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	lf = talloc_typed_strdup(inst, inst->format);
+	lf = talloc_strdup(inst, inst->format);
 	if (!lf) {
 		ERROR("Memory allocation failed for lf");
 		return -1;

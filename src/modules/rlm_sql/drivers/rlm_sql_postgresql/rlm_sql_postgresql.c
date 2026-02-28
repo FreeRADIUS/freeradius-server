@@ -784,7 +784,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Only append options when not already present
 	 */
 	} else {
-		db_string = talloc_typed_strdup(inst, config->sql_db);
+		db_string = talloc_strdup(inst, config->sql_db);
 
 		if ((config->sql_server[0] != '\0') && !strstr(db_string, "host=")) {
 			db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);

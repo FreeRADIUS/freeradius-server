@@ -535,7 +535,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 
 		fr_strerror_clear();
 
-		ctx = paths = talloc_typed_strdup(NULL, search_path);
+		ctx = paths = talloc_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
 			char *fullpath;
 
@@ -660,7 +660,7 @@ do_symbol_check:
 		return NULL;
 	}
 	*dl = (dl_t){
-		.name = talloc_typed_strdup(dl, name),
+		.name = talloc_strdup(dl, name),
 		.handle = handle,
 		.loader = dl_loader,
 		.uctx = uctx,
@@ -784,7 +784,7 @@ int dl_search_global_path_set(char const *lib_dir)
 {
 	if (dl_global_libdir) TALLOC_FREE(dl_global_libdir);
 
-	dl_global_libdir = talloc_typed_strdup(NULL, lib_dir);
+	dl_global_libdir = talloc_strdup(NULL, lib_dir);
 	if (!dl_global_libdir) {
 		fr_strerror_const("Failed allocating memory for global dl search path");
 		return -1;

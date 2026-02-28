@@ -980,8 +980,8 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    tmpl_pair_list_and_ctx(ctx, head, request, CURRENT_REQUEST, request_attr_request);
    if (!list) return -1; // error
 
-   value.strvalue = talloc_typed_strdup(NULL, "my new username");
-   value.length = talloc_array_length(value.strvalue) - 1;
+   value.strvalue = talloc_strdup(NULL, "my new username");
+   value.length = talloc_strlen(value.strvalue);
  @endcode
  *
  * @param _ctx new #fr_pair_t s should be allocated in for the specified list.

@@ -819,12 +819,12 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 		 *	Set the long name to be the result of a reverse lookup on the IP address.
 		 */
 		fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-		c->longname = talloc_typed_strdup(c, buffer);
+		c->longname = talloc_strdup(c, buffer);
 
 		/*
 		 *	Set the short name to the name2.
 		 */
-		if (!c->shortname) c->shortname = talloc_typed_strdup(c, name2);
+		if (!c->shortname) c->shortname = talloc_strdup(c, name2);
 	/*
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
@@ -910,7 +910,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 				cf_log_warn(cs, "Packets may not be processed correctly!");
 			}
 		} else {
-			c->secret = talloc_typed_strdup(cs, "radsec");
+			c->secret = talloc_strdup(cs, "radsec");
 		}
 	}
 #endif

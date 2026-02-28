@@ -107,8 +107,8 @@ static inline void section_name_dup(TALLOC_CTX *ctx, section_name_t *dst, sectio
 	dst->name1 = src->name1;
 	dst->name2 = src->name2;
 
-	if (dst->name1 && (dst->name1 != CF_IDENT_ANY)) dst->name1 = talloc_typed_strdup(ctx, src->name1);
-	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_typed_strdup(ctx, src->name2);
+	if (dst->name1 && (dst->name1 != CF_IDENT_ANY)) dst->name1 = talloc_strdup(ctx, src->name1);
+	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_strdup(ctx, src->name2);
 }
 
 int8_t section_name_cmp(void const *one, void const *two);

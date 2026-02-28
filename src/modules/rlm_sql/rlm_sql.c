@@ -1119,7 +1119,7 @@ static unlang_action_t sql_get_grouplist_resume(unlang_result_t *p_result, reque
 			entry = entry->next;
 		}
 		entry->next = NULL;
-		entry->name = talloc_typed_strdup(entry, row[0]);
+		entry->name = talloc_strdup(entry, row[0]);
 
 		group_ctx->num_groups++;
 	}

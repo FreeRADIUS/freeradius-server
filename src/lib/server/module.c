@@ -1701,7 +1701,7 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 */
 	MEM(mi = (module_instance_t *)talloc_zero_array(parent ? (void const *)parent : (void const *)ml, uint8_t, ml->type->inst_size));
 	talloc_set_name_const(mi, "module_instance_t");
-	mi->name = talloc_typed_strdup(mi, qual_inst_name);
+	mi->name = talloc_strdup(mi, qual_inst_name);
 	talloc_free(qual_inst_name);	/* Avoid stealing */
 
 	mi->ml = ml;
@@ -1868,7 +1868,7 @@ module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type
 	ml->type = type;
 
 	ml->thread_data_get = type->thread.data_get;	/* Cache for access outside of the compilation unit */
-	MEM(ml->name = talloc_typed_strdup(ml, name));
+	MEM(ml->name = talloc_strdup(ml, name));
 	MEM(ml->name_tree = fr_rb_inline_alloc(ml, module_instance_t, name_node, module_instance_name_cmp, NULL));
 	MEM(ml->data_tree = fr_rb_inline_alloc(ml, module_instance_t, data_node, module_instance_data_cmp, NULL));
 	talloc_set_destructor(ml, _module_list_free);

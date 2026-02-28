@@ -74,7 +74,7 @@ static void exec_pair_to_env_legacy(request_t *request, fr_pair_list_t *input_pa
 					   shell_escape ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 		DEBUG3("export %s", buffer);
-		envp[i++] = talloc_typed_strdup(envp, buffer);
+		envp[i++] = talloc_strdup(envp, buffer);
 	}
 
 	if (request) {

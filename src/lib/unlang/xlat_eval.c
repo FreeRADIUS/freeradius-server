@@ -1738,7 +1738,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 		str = fr_value_box_list_aprint(ctx, &result, NULL, NULL);
 		if (!str) goto fail;
 	} else {
-		str = talloc_typed_strdup(ctx, "");
+		str = talloc_strdup(ctx, "");
 	}
 	talloc_free(pool);	/* Memory should be in new ctx */
 

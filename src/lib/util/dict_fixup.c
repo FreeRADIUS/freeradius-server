@@ -441,7 +441,7 @@ int dict_fixup_clone_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char co
 	}
 	*fixup = (dict_fixup_clone_t) {
 		.da = da,
-		.ref = talloc_typed_strdup(fixup, ref)
+		.ref = talloc_strdup(fixup, ref)
 	};
 
 	return dict_fixup_common(&fctx->clone, &fixup->common);
@@ -593,7 +593,7 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 	}
 	*fixup = (dict_fixup_clone_t) {
 		.da = da,
-		.ref = talloc_typed_strdup(fixup, ref)
+		.ref = talloc_strdup(fixup, ref)
 	};
 
 	return dict_fixup_common(&fctx->clone_enum, &fixup->common);
@@ -747,9 +747,9 @@ int dict_fixup_alias_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int l
 		return -1;
 	}
 	*fixup = (dict_fixup_alias_t) {
-		.alias = talloc_typed_strdup(fixup, alias),
+		.alias = talloc_strdup(fixup, alias),
 		.alias_parent = alias_parent,
-		.ref = talloc_typed_strdup(fixup, ref),
+		.ref = talloc_strdup(fixup, ref),
 		.ref_parent = ref_parent
 	};
 

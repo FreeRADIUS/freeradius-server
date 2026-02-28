@@ -497,7 +497,7 @@ char *fr_perm_uid_to_str(TALLOC_CTX *ctx, uid_t uid)
 	char *out;
 
 	if (fr_perm_getpwuid(ctx, &result, uid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->pw_name);
+	out = talloc_strdup(ctx, result->pw_name);
 	talloc_free(result);
 
 	return out;
@@ -516,7 +516,7 @@ char *fr_perm_gid_to_str(TALLOC_CTX *ctx, uid_t gid){
 	char *out;
 
 	if (fr_perm_getgrgid(ctx, &result, gid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->gr_name);
+	out = talloc_strdup(ctx, result->gr_name);
 	talloc_free(result);
 
 	return out;

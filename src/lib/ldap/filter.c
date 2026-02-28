@@ -63,17 +63,17 @@ static fr_slen_t ldap_filter_parse_logic(ldap_filter_t *node, fr_sbuff_t *sbuff,
 	fr_sbuff_switch(sbuff, '\0') {
 	case '&':
 		node->logic_op = LDAP_FILTER_LOGIC_AND;
-		node->orig = talloc_typed_strdup(node, "&");
+		node->orig = talloc_strdup(node, "&");
 		break;
 
 	case '|':
 		node->logic_op = LDAP_FILTER_LOGIC_OR;
-		node->orig = talloc_typed_strdup(node, "|");
+		node->orig = talloc_strdup(node, "|");
 		break;
 
 	case '!':
 		node->logic_op = LDAP_FILTER_LOGIC_NOT;
-		node->orig = talloc_typed_strdup(node, "!");
+		node->orig = talloc_strdup(node, "!");
 		break;
 	}
 	parsed += fr_sbuff_advance(sbuff, 1);

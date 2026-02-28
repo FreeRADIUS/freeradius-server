@@ -1607,7 +1607,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 		return -1;
 	}
 
-	vendor->name = talloc_typed_strdup(vendor, name);
+	vendor->name = talloc_strdup(vendor, name);
 	if (!vendor->name) {
 		talloc_free(vendor);
 		goto oom;
@@ -2103,7 +2103,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 	talloc_set_type(enumv, fr_dict_enum_value_t);
 
-	enumv->name = talloc_typed_strdup(enumv, name);
+	enumv->name = talloc_strdup(enumv, name);
 	enumv->name_len = len;
 
 	if (key_child_ref) {
@@ -3974,7 +3974,7 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
 		 *	random segfaults if a module forgets to unload
 		 *	a dictionary.
 		 */
-		new->dependent = talloc_typed_strdup(new, dependent);
+		new->dependent = talloc_strdup(new, dependent);
 		fr_rb_insert(dict->dependents, new);
 
 		new->count = 1;

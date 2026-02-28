@@ -4636,7 +4636,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 {
 	char const	*str;
 
-	str = talloc_typed_strdup(ctx, src);
+	str = talloc_strdup(ctx, src);
 	if (!str) {
 		fr_strerror_const("Failed allocating string buffer");
 		return -1;
@@ -6896,7 +6896,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 	 *	allocate a temporary pool.
 	 */
 	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_typed_strdup(pool, delim);
+	if (delim) td = talloc_strdup(pool, delim);
 
 	while ((vb = fr_value_box_list_next(list, vb))) {
 		char *str, *new_aggr;
@@ -6938,7 +6938,7 @@ char *fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const
 	if (!vb) return NULL;
 
 	if (unlikely (fr_value_box_contains_secret(vb))) {
-		aggr = talloc_typed_strdup(ctx, "<<< secret >>>");
+		aggr = talloc_strdup(ctx, "<<< secret >>>");
 	} else {
 		fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	}
@@ -6950,13 +6950,13 @@ char *fr_value_box_list_aprint_secure(TALLOC_CTX *ctx, fr_value_box_list_t const
 	 *	allocate a temporary pool.
 	 */
 	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_typed_strdup(pool, delim);
+	if (delim) td = talloc_strdup(pool, delim);
 
 	while ((vb = fr_value_box_list_next(list, vb))) {
 		char *str, *new_aggr;
 
 		if (unlikely (fr_value_box_contains_secret(vb))) {
-			str = talloc_typed_strdup(pool, "<<< secret >>>");
+			str = talloc_strdup(pool, "<<< secret >>>");
 		} else {
 			fr_value_box_aprint(pool, &str, vb, e_rules);
 		}

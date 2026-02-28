@@ -1000,7 +1000,7 @@ int cf_section_pass2(CONF_SECTION *cs)
 		if (!value) return -1;
 
 		talloc_const_free(cp->value);
-		cp->value = talloc_typed_strdup(cp, value);
+		cp->value = talloc_strdup(cp, value);
 	}
 
 	cf_item_foreach(&cs->item, ci) {
@@ -1371,7 +1371,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			}
 
 			MEM(h = talloc_zero(frame->heap, cf_file_heap_t));
-			MEM(h->filename = talloc_typed_strdup(h, stack->buff[1]));
+			MEM(h->filename = talloc_strdup(h, stack->buff[1]));
 			h->heap_id = FR_HEAP_INDEX_INVALID;
 			(void) fr_heap_insert(&frame->heap, h);
 		}
@@ -1617,7 +1617,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		return NULL;
 	}
 
-	MEM(cs->name2 = talloc_typed_strdup(cs, buff[3]));
+	MEM(cs->name2 = talloc_strdup(cs, buff[3]));
 	cs->name2_quote = T_BARE_WORD;
 
 	stack->ptr = ptr;
@@ -1703,7 +1703,7 @@ alloc_section:
 	css->argc = 0;
 	if (value) {
 		css->argv = talloc_array(css, char const *, 1);
-		css->argv[0] = talloc_typed_strdup(css->argv, value);
+		css->argv[0] = talloc_strdup(css->argv, value);
 		css->argv_quote = talloc_array(css, fr_token_t, 1);
 		css->argv_quote[0] = token;
 		css->argc++;
@@ -1824,7 +1824,7 @@ alloc_section:
 		css->argv_quote = talloc_array(css, fr_token_t, values);
 
 		for (i = 0; i < values; i++) {
-			css->argv[i] = talloc_typed_strdup(css->argv, buff[2 + i]);
+			css->argv[i] = talloc_strdup(css->argv, buff[2 + i]);
 			css->argv_quote[i] = T_BARE_WORD;
 		}
 	}
@@ -1915,7 +1915,7 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 		css->argc = argc;
 
 		for (i = 0; i < argc; i++) {
-			css->argv[i] = talloc_typed_strdup(css->argv, argv[i]);
+			css->argv[i] = talloc_strdup(css->argv, argv[i]);
 			css->argv_quote[i] = T_BARE_WORD;
 		}
 
@@ -2045,7 +2045,7 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 	 *	Deprecated and don't use.
 	 */
 	if (*ptr == '{') {
-		css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+		css->name2 = talloc_strdup(css, stack->buff[1]);
 
 		ptr++;
 		stack->ptr = ptr;
@@ -2095,7 +2095,7 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 		css->argv[2] = fr_type_to_str(type);
 		css->argv_quote[2] = T_BARE_WORD;
 
-		css->argv[3] = talloc_typed_strdup(css->argv, stack->buff[2]);
+		css->argv[3] = talloc_strdup(css->argv, stack->buff[2]);
 		css->argv_quote[3] = T_BARE_WORD;
 
 		ptr++;
@@ -2166,7 +2166,7 @@ parse_expression:
 		return NULL;
 	}
 
-	css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+	css->name2 = talloc_strdup(css, stack->buff[1]);
 
 	/*
 	 *	Add in the extra arguments
@@ -2174,7 +2174,7 @@ parse_expression:
 	css->argv[0] = fr_type_to_str(type);
 	css->argv_quote[0] = T_BARE_WORD;
 
-	css->argv[1] = talloc_typed_strdup(css->argv, stack->buff[2]);
+	css->argv[1] = talloc_strdup(css->argv, stack->buff[2]);
 	css->argv_quote[1] = T_BARE_WORD;
 
 	ptr++;
@@ -2313,7 +2313,7 @@ static CONF_ITEM *process_switch(cf_stack_t *stack)
 		return NULL;
 	}
 
-	css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+	css->name2 = talloc_strdup(css, stack->buff[1]);
 
 	/*
 	 *	Add in the extra argument.
@@ -2678,7 +2678,7 @@ check_for_eol:
 
 			css->argc = 1;
 			css->argv = talloc_array(css, char const *, 1);
-			css->argv[0] = talloc_typed_strdup(css->argv, buff[3]);
+			css->argv[0] = talloc_strdup(css->argv, buff[3]);
 			css->argv_quote = talloc_array(css, fr_token_t, 1);
 			css->argv_quote[0] = value_token;
 			goto setup_section;

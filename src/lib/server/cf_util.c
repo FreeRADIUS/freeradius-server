@@ -816,9 +816,9 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 	cf_item_init(cf_section_to_item(cs), CONF_ITEM_SECTION, cf_section_to_item(parent), filename, lineno);
 
-	MEM(cs->name1 = talloc_typed_strdup(cs, name1));
+	MEM(cs->name1 = talloc_strdup(cs, name1));
 	if (name2) {
-		MEM(cs->name2 = talloc_typed_strdup(cs, name2));
+		MEM(cs->name2 = talloc_strdup(cs, name2));
 		cs->name2_quote = T_BARE_WORD;
 	}
 	talloc_set_destructor(cs, _cf_section_free);
@@ -894,7 +894,7 @@ void _cf_filename_set(CONF_ITEM *ci, char const *filename)
 {
 	talloc_const_free(ci->filename);
 
-	ci->filename = talloc_typed_strdup(ci, filename);
+	ci->filename = talloc_strdup(ci, filename);
 }
 
 /** Set the line number of a #CONF_ITEM
@@ -1280,7 +1280,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->rhs_quote = rhs_quote;
 	cp->op = op;
 
-	cp->attr = talloc_typed_strdup(cp, attr);
+	cp->attr = talloc_strdup(cp, attr);
 	if (!cp->attr) {
 	error:
 		talloc_free(cp);
@@ -1288,7 +1288,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	}
 
 	if (value) {
-		cp->value = talloc_typed_strdup(cp, value);
+		cp->value = talloc_strdup(cp, value);
 		if (!cp->value) goto error;
 	}
 
@@ -1343,7 +1343,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 
 	talloc_const_free(cp->value);
 
-	MEM(cp->value = talloc_typed_strdup(cp, value));
+	MEM(cp->value = talloc_strdup(cp, value));
 
 	return 0;
 }
@@ -1662,10 +1662,10 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 	 *	explosions.
 	 */
 	if (data) {
-		cd->type = talloc_typed_strdup(cd, type);
+		cd->type = talloc_strdup(cd, type);
 		cd->data = data;
 	}
-	if (name) cd->name = talloc_typed_strdup(cd, name);
+	if (name) cd->name = talloc_strdup(cd, name);
 
 	if (do_free) {
 		cd->free = true;
