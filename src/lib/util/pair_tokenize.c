@@ -202,7 +202,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 		return -(in - start);
 	}
 
-	while ((isspace((uint8_t) *p)) && (p < end)) p++;
+	while ((p < end) && isspace((uint8_t) *p)) p++;
 
 	if (p >= end) {
 		fr_strerror_const("No operator found in the input buffer");
@@ -215,7 +215,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	slen = op_to_token(&op, p, (end - p));
 	if (slen <= 0) {
 		fr_strerror_const("Syntax error: expected '='");
-		return slen - -(p - start);
+		return slen - (p - start);
 	}
 	p += slen;
 
