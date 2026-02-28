@@ -99,6 +99,8 @@ static int process_file(char const *filename)
 
 	if ((cf_file_read(config->root_cs, filename, true) < 0) || (cf_section_pass2(config->root_cs) < 0)) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n", filename);
+	fail:
+		talloc_free(config);
 		return EXIT_FAILURE;
 	}
 
@@ -108,10 +110,7 @@ static int process_file(char const *filename)
 	 *	Always has to be an "update" section.
 	 */
 	cs = cf_section_find(config->root_cs, "update", CF_IDENT_ANY);
-	if (!cs) {
-		talloc_free(config->root_cs);
-		return EXIT_FAILURE;
-	}
+	if (!cs) goto fail;
 
 	/*
 	 *	Convert the update section to a list of maps.
@@ -119,11 +118,11 @@ static int process_file(char const *filename)
 	rcode = map_afrom_cs(cs, &list, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
 		cf_log_perr(cs, "map_afrom_cs failed");
-		return EXIT_FAILURE; /* message already printed */
+		goto fail;
 	}
 	if (map_list_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
-		return EXIT_FAILURE;
+		goto fail;
 	}
 
 	buffer[0] = '\t';
@@ -266,7 +265,12 @@ int main(int argc, char *argv[])
 		ret = process_file("-");
 
 	} else {
-		ret = process_file(argv[1]);
+		int i;
+
+		for (i = 1; i < argc; i++) {
+			ret = process_file(argv[i]);
+			if (ret < 0) break;
+		}
 	}
 
 	if (ret < 0) ret = 1; /* internal to Unix process return code */
