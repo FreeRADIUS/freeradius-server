@@ -178,6 +178,8 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	int		loc;
 	char		buff[1024];
 
+	ASN1_INTEGER const *serial = NULL;
+
 	ASN1_TIME const *asn_time;
 	time_t		time;
 
@@ -293,7 +295,6 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 *	Serial number
 	 */
 	{
-		ASN1_INTEGER const *serial = NULL;
 		unsigned char *der;
 		int len;
 
@@ -307,6 +308,46 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_serial) == 0);
 		MEM(fr_pair_value_mem_alloc(vp, &der, len, false) == 0);
 		i2d_ASN1_INTEGER(serial, &der);
+	}
+
+	/*
+	 *	Serial Number and Issuer
+	 */
+	{
+		BIO	*bio;
+		char	*decimal;
+		BIGNUM	*bn;
+
+		bio = fr_tls_bio_dbuff_thread_local(vp, 256, 0);
+
+		BIO_puts("{ serialNumber ");
+
+		if (unlikely(!(bn = ASN1_INTEGER_to_BN(serial, NULL)))) {
+			fr_tls_bio_dbuff_thread_local_clear();
+			fr_tls_log(request, "Failed converting certificate serial to big number");
+		}
+		if (unlikely(!(decimal = BN_bn2dec(bn)))) {
+			BN_free(bn);
+			fr_tls_bio_dbuff_thread_local_clear();
+			fr_tls_log(request, "Failed converting certificate serial to decimal");
+			goto error;
+		}
+		BN_free(bn);
+		BIO_puts(decimal);
+		OPENSSL_free(decimal);
+
+		BIO_puts(", issuer rdnSequence:\"");
+
+		if (unlikely(X509_NAME_print_ex(bio, X509_get_issuer_name(cert), 0, XN_FLAG_RFC2253) < 0)) {
+			fr_tls_bio_dbuff_thread_local_clear();
+			fr_tls_log(request, "Failed retrieving certificate issuer");
+			goto error;
+		}
+
+		BIO_puts("\" }");
+
+		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_serial_number_and_issuer) == 0);
+		fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_dbuff_thread_local_finalise_bstr(), true);
 	}
 
 	/*
