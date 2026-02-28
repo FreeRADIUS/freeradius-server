@@ -737,7 +737,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		snprintf(buffer, sizeof(buffer), "%d", i);
 		if (fr_command_register_hook(NULL, buffer, sw->worker, cmd_worker_table) < 0) {
 			PERROR("Failed adding worker commands");
-			goto st_fail;
+		mt_fail:
+			fr_schedule_destroy(&sc);
+			return NULL;
 		}
 	}
 
@@ -751,7 +753,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		snprintf(buffer, sizeof(buffer), "%d", i);
 		if (fr_command_register_hook(NULL, buffer, sn->nr, cmd_network_table) < 0) {
 			PERROR("Failed adding network commands");
-			goto st_fail;
+			goto mt_fail;
 		}
 	}
 
