@@ -102,6 +102,17 @@ struct fr_talloc_destructor_disarm_s {
 	fr_talloc_destructor_t		*d;	//!< Destructor to disarm.
 };
 
+/*
+ *	talloc portability issues.  'const' is not part of the talloc
+ *	type, but it is part of the pointer type.  But only if
+ *	talloc_get_type_abort() is just a cast.
+ */
+#ifdef TALLOC_GET_TYPE_ABORT_NOOP
+#  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
+#else
+#  define talloc_get_type_abort_const talloc_get_type_abort
+#endif
+
 /** Allocate a top level chunk with a constant name
  *
  * @param[in] name	Must be a string literal.
@@ -121,15 +132,30 @@ static inline TALLOC_CTX *talloc_init_const(char const *name)
 	return ctx;
 }
 
+/** Returns the length of a talloc array containing a string
+ *
+ * @param[in] s	to return the length of.
+ */
+static inline size_t talloc_strlen(char const *s)
+{
+	char const *our_s = talloc_get_type_abort_const(s, char);
+	return talloc_array_length(our_s) - 1;
+}
+#define talloc_strdup(_ctx, _str)	 talloc_typed_strdup((TALLOC_CTX *) (_ctx), _str)
+#define talloc_strndup(_ctx, _str, _len) talloc_typed_strndup((TALLOC_CTX *) (_ctx), _str, _len)
+#define talloc_asprintf 	talloc_typed_asprintf
+
 /** Convert a talloced string to lowercase
  *
  * @param[in] str	to convert.
  */
 static inline void talloc_bstr_tolower(char *str)
 {
-	char *p, *q;
+	char *p, *end;
 
-	for (p = str, q = p + (talloc_array_length(str) - 1); p < q; p++) *p = tolower((uint8_t) *p);
+	end = str + talloc_strlen(str);
+
+	for (p = str; p < end; p++) *p = tolower((uint8_t) *p);
 }
 
 void		talloc_free_data(void *data);
@@ -192,6 +218,8 @@ char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
 char		*talloc_typed_strdup_buffer(TALLOC_CTX *ctx, char const *p);
 
+char		*talloc_typed_strndup(TALLOC_CTX *ctx, char const *p, size_t len);
+
 char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 char		*talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
@@ -232,27 +260,6 @@ static inline int talloc_const_free(void const *ptr)
 	if (!ptr) return 0;
 
 	return talloc_free(UNCONST(void *, ptr));
-}
-
-/*
- *	talloc portability issues.  'const' is not part of the talloc
- *	type, but it is part of the pointer type.  But only if
- *	talloc_get_type_abort() is just a cast.
- */
-#ifdef TALLOC_GET_TYPE_ABORT_NOOP
-#  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
-#else
-#  define talloc_get_type_abort_const talloc_get_type_abort
-#endif
-
-/** Returns the length of a talloc array containing a string
- *
- * @param[in] s	to return the length of.
- */
-static inline size_t talloc_strlen(char const *s)
-{
-	char const *our_s = talloc_get_type_abort_const(s, char);
-	return talloc_array_length(our_s) - 1;
 }
 
 TALLOC_CTX		*talloc_autofree_context_global(void);

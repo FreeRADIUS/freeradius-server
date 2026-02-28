@@ -471,6 +471,7 @@ char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 {
 	char *n;
 
+#undef talloc_strdup
 	n = talloc_strdup(ctx, p);
 	if (unlikely(!n)) return NULL;
 	talloc_set_type(n, char);
@@ -495,7 +496,34 @@ char *talloc_typed_strdup_buffer(TALLOC_CTX *ctx, char const *p)
 {
 	char *n;
 
-	n = talloc_strndup(ctx, p, talloc_array_length(p) - 1);
+	n = talloc_strndup(ctx, p, talloc_strlen(p));
+	if (unlikely(!n)) return NULL;
+	talloc_set_type(n, char);
+
+	return n;
+}
+
+/** Call talloc_strndup, setting the type on the new chunk correctly
+ *
+ * For some bizarre reason the talloc string functions don't set the
+ * memory chunk type to char, which causes all kinds of issues with
+ * verifying fr_pair_ts.
+ *
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] p		The string you want to duplicate.
+ * @param[in] len      	The length of the string
+ * @return
+ *	- Duplicated string.
+ *	- NULL on error.
+ *
+ * @hidecallergraph
+ */
+char *talloc_typed_strndup(TALLOC_CTX *ctx, char const *p, size_t len)
+{
+	char *n;
+
+#undef talloc_strndup
+	n = talloc_strndup(ctx, p, len);
 	if (unlikely(!n)) return NULL;
 	talloc_set_type(n, char);
 
@@ -732,7 +760,7 @@ char *talloc_buffer_append_variadic_buffer(TALLOC_CTX *ctx, char *to, int argc, 
 	va_start(ap_val, argc);
 	va_copy(ap_len, ap_val);
 
-	total_len += to_len = talloc_array_length(to) - 1;
+	total_len += to_len = talloc_strlen(to);
 
 	/*
 	 *	Figure out how much we need to realloc
@@ -743,7 +771,7 @@ char *talloc_buffer_append_variadic_buffer(TALLOC_CTX *ctx, char *to, int argc, 
 		arg = va_arg(ap_len, char *);
 		if (!arg) continue;
 
-		total_len += (talloc_array_length(arg) - 1);
+		total_len += (talloc_strlen(arg));
 	}
 
 	/*
@@ -770,7 +798,7 @@ char *talloc_buffer_append_variadic_buffer(TALLOC_CTX *ctx, char *to, int argc, 
 		arg = va_arg(ap_val, char *);
 		if (!arg) continue;
 
-		len = talloc_array_length(arg) - 1;
+		len = talloc_strlen(arg);
 
 		memcpy(p, arg, len);
 		p += len;
