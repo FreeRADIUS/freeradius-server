@@ -622,12 +622,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sn->id = i;
 		sn->sc = sc;
 		sn->status = FR_CHILD_INITIALIZING;
-		fr_dlist_insert_head(&sc->networks, sn);
 
 		if (fr_schedule_pthread_create(&sn->pthread_id, fr_schedule_network_thread, sn) < 0) {
+			talloc_free(sn);
 			PERROR("Failed creating network %u", i);
 			break;
 		}
+
+		fr_dlist_insert_head(&sc->networks, sn);
 	}
 
 	/*
@@ -681,12 +683,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sw->id = i;
 		sw->sc = sc;
 		sw->status = FR_CHILD_INITIALIZING;
-		fr_dlist_insert_head(&sc->workers, sw);
 
 		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
+			talloc_free(sw);
 			PERROR("Failed creating worker %u", i);
 			break;
 		}
+
+		fr_dlist_insert_head(&sc->workers, sw);
 	}
 
 	/*
