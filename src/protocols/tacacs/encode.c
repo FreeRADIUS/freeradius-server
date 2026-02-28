@@ -1050,12 +1050,13 @@ static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 
-	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), 0, vps);
+	return fr_tacacs_encode(&FR_DBUFF_TMP(data, data_len), NULL, test_ctx->secret,
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, 0, vps);
 }
 
-static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
+static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)
 {
-	talloc_const_free(proto_ctx->secret);
+	talloc_const_free(test_ctx->secret);
 
 	fr_tacacs_global_free();
 

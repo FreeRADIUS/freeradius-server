@@ -1083,13 +1083,13 @@ static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint
 	dv = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), "Test");
 	fr_assert(!dv || (dv->type == FR_TYPE_VENDOR));
 
-	return fr_tacacs_decode(ctx, out, dv, data, data_len, NULL,
-				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), NULL);
+	return fr_tacacs_decode(ctx, out, dv, data, data_len, NULL, test_ctx->secret,
+				test_ctx->secret ? talloc_strlen(test_ctx->secret) : 0, NULL);
 }
 
-static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
+static int _encode_test_ctx(fr_tacacs_ctx_t *test_ctx)
 {
-	talloc_const_free(proto_ctx->secret);
+	talloc_const_free(test_ctx->secret);
 
 	fr_tacacs_global_free();
 
