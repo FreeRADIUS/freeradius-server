@@ -380,8 +380,9 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 
 		if ((st.st_dev != ef->entries[i].st_dev) ||
 		    (st.st_ino != ef->entries[i].st_ino)) {
+		close_reopen:
 			close(ef->entries[i].fd);
-			goto reopen;
+			goto reopen_reset;
 		}
 
 		goto try_lock;
@@ -402,6 +403,8 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 
 	ef->entries[i].hash = hash;
 	ef->entries[i].filename = talloc_typed_strdup(ef->entries, filename);
+
+reopen_reset:
 	ef->entries[i].fd = -1;
 
 reopen:
@@ -454,15 +457,9 @@ try_lock:
 	 *	Maybe someone deleted the file while we were waiting
 	 *	for the lock.  If so, re-open it.
 	 */
-	if (fstat(ef->entries[i].fd, &st) < 0) {
-		fr_strerror_printf("Failed to stat file %s: %s", filename, fr_syserror(errno));
-		goto reopen;
-	}
+	if (fstat(ef->entries[i].fd, &st) < 0) goto close_reopen;
 
-	if (st.st_nlink == 0) {
-		close(ef->entries[i].fd);
-		goto reopen;
-	}
+	if (st.st_nlink == 0) goto close_reopen;
 
 	/*
 	 *	Remember which device and inode this file is
