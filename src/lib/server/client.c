@@ -904,7 +904,14 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	 *	"radsec".  See RFC 6614.
 	 */
 	if (c->tls_required) {
-		c->secret = talloc_typed_strdup(cs, "radsec");
+		if (c->secret) {
+			if (strcmp(c->secret, "radsec") != 0) {
+				cf_log_warn(cs, "'secret' is not 'radsec' for TLS");
+				cf_log_warn(cs, "Packets may not be processed correctly!");
+			}
+		} else {
+			c->secret = talloc_typed_strdup(cs, "radsec");
+		}
 	}
 #endif
 
