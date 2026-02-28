@@ -830,6 +830,8 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 	active = atomic_load(&ch->end[TO_RESPONDER].active);
 	if (!active) return 0;					/* Already signalled to close */
 
+	atomic_store(&ch->end[TO_RESPONDER].active, false);	/* Prevent further requests */
+
 	(void) talloc_get_type_abort(ch, fr_channel_t);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
@@ -838,8 +840,6 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 
 	ret = fr_control_message_send(ch->end[TO_RESPONDER].control,
 				      ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
-
-	atomic_store(&ch->end[TO_RESPONDER].active, false);	/* Prevent further requests */
 
 	return ret;
 }
@@ -861,9 +861,9 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 	active = atomic_load(&ch->end[TO_REQUESTOR].active);
 	if (!active) return 0;					/* Already signalled to close */
 
-	(void) talloc_get_type_abort(ch, fr_channel_t);
-
 	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further responses */
+
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
 	cc.ack = TO_REQUESTOR;
@@ -871,8 +871,6 @@ int fr_channel_responder_ack_close(fr_channel_t *ch)
 
 	ret = fr_control_message_send(ch->end[TO_REQUESTOR].control,
 				      ch->end[TO_REQUESTOR].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
-
-	atomic_store(&ch->end[TO_REQUESTOR].active, false);	/* Prevent further requests */
 
 	return ret;
 }
