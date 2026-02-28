@@ -352,7 +352,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	/*
 	 *	New async listeners
 	 */
-	request->async = talloc_zero(request, fr_async_t);
 	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
@@ -1094,7 +1093,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!do_xlats(el, request, xlat_input_file, fp)) ret = EXIT_FAILURE;
-		if (input_file) fclose(fp);
+		fclose(fp);
 		goto cleanup;
 	}
 
