@@ -193,7 +193,7 @@ static inline void fr_dcursor_copy(fr_dcursor_t *out, fr_dcursor_t const *in)
 {
 	memcpy(out, in, sizeof(*out));
 
-	if (in->copy) fr_dcursor_copy(out, in);
+	if (in->copy) in->copy(out, in);
 }
 
 /** Copy a read-only iterator from a parent to a child cursor
