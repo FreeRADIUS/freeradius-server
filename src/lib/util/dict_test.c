@@ -120,7 +120,7 @@ fr_dict_test_attr_t const fr_dict_test_attrs[] = {
 
 	{ .attr = FR_TEST_ATTR_DATE, .da = &fr_dict_attr_test_date, .name = "Test-Date", .type = FR_TYPE_DATE },
 
-	{ .attr = FR_TEST_ATTR_TIME_DELTA, .da = &fr_dict_attr_test_date, .name = "Test-Time-Delta", .type = FR_TYPE_TIME_DELTA },
+	{ .attr = FR_TEST_ATTR_TIME_DELTA, .da = &fr_dict_attr_test_time_delta, .name = "Test-Time-Delta", .type = FR_TYPE_TIME_DELTA },
 
 	{ .attr = FR_TEST_ATTR_SIZE, .da = &fr_dict_attr_test_size, .name = "Test-Time-Size", .type = FR_TYPE_SIZE },
 
