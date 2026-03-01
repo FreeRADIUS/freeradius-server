@@ -574,7 +574,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	insert_ignore:
 		i = talloc_zero(el, fr_edit_ignore_t);
-		if (!i) return 0;
+		if (!i) return -1;
 
 		i->list = &vp->vp_group;
 		fr_dlist_insert_tail(&el->ignore, i);
