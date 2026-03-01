@@ -281,7 +281,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		/*
 		 *	Skip Net.* if we're not logging src/dst
 		 */
-		if (!inst->log_srcdst && (da == attr_net)) continue;
+		if (!inst->log_srcdst && (vp->da == attr_net)) continue;
 
 		if (fr_type_is_leaf(vp->vp_type)) {
 			if (fr_pair_fprint(out, vp) < 0) {
