@@ -487,8 +487,8 @@ static bool fr_globdir_file_ok(char const *try, fr_globdir_iter_t *iter)
 	 */
 	if ((len > 10) && (strncmp(&try[len - 10], ".dpkg-dist", 10) == 0)) return false;
 	if ((len > 9) && (strncmp(&try[len - 9], ".dpkg-old", 9) == 0)) return false;
-	if ((len > 7) && (strncmp(&try[len - 7], ".rpmnew", 9) == 0)) return false;
-	if ((len > 8) && (strncmp(&try[len - 8], ".rpmsave", 10) == 0)) return false;
+	if ((len > 7) && (strncmp(&try[len - 7], ".rpmnew", 7) == 0)) return false;
+	if ((len > 8) && (strncmp(&try[len - 8], ".rpmsave", 8) == 0)) return false;
 
 	/*
 	 *	When reading all files in a directory, iter->filename points to the directory
