@@ -1748,7 +1748,7 @@ static int calc_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	case T_MOD:
 		if (b->vb_uint64 == 0) return ERR_ZERO;
 
-		result.vb_uint64 = a->vb_uint64 % in2->vb_uint64;
+		result.vb_uint64 = a->vb_uint64 % b->vb_uint64;
 		break;
 
 	case T_AND:
@@ -1835,7 +1835,7 @@ static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const
 	case T_MOD:
 		if (b->vb_int64 == 0) return ERR_ZERO;
 
-		result.vb_int64 = a->vb_int64 % in2->vb_int64;
+		result.vb_int64 = a->vb_int64 % b->vb_int64;
 		break;
 
 	case T_AND:
