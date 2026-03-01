@@ -263,7 +263,7 @@ int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b
 		 *	Order known attributes before unknown / raw ones.
 		 */
 		ret = CMP((a->flags.is_unknown | a->flags.is_raw), (b->flags.is_unknown | b->flags.is_raw));
-		if (ret != 0) return 0;
+		if (ret != 0) return ret;
 
 		return CMP(a->attr, b->attr);
 	}
@@ -343,16 +343,12 @@ static int8_t dict_enum_name_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_value_t const *a = one;
 	fr_dict_enum_value_t const *b = two;
-	size_t len;
 	int ret;
 
-	if (a->name_len >= b->name_len) {
-		len = a->name_len;
-	} else {
-		len = b->name_len;
-	}
+	ret = CMP(a->name_len, b->name_len);
+	if (ret != 0) return ret;
 
-	ret = strncasecmp(a->name, b->name, len);
+	ret = strncasecmp(a->name, b->name, a->name_len);
 	return CMP(ret, 0);
 }
 
