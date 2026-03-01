@@ -87,18 +87,15 @@ static void add_pairs(fr_pair_list_t *local_pairs)
 	fr_pair_list_init(local_pairs);
 
 	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
-	TEST_CHECK(vp != NULL);
-	if (!vp) return;
+	fr_assert(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
 	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets);
-	TEST_CHECK(vp != NULL);
-	if (!vp) return;
+	fr_assert(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
 	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv);
-	TEST_CHECK(vp != NULL);
-	if (!vp) return;
+	fr_assert(vp != NULL);
 	fr_pair_append(local_pairs, vp);
 
 	count = fr_pair_list_num_elements(local_pairs);
@@ -449,8 +446,8 @@ static void test_pair_insert_after_head(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, NULL, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -482,8 +479,8 @@ static void test_pair_insert_after_head_abort(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, NULL, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -518,8 +515,8 @@ static void test_pair_insert_after_middle(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, middle, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -551,8 +548,8 @@ static void test_pair_insert_after_middle_abort(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, middle, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -661,8 +658,8 @@ static void test_pair_insert_after_head_delete(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, NULL, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -697,8 +694,8 @@ static void test_pair_insert_after_head_delete_abort(void)
 	el = fr_edit_list_alloc(NULL, 5, NULL);
 	fr_assert(el != NULL);
 
-	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
-
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
 	rcode = fr_edit_list_insert_pair_after(el, &local_pairs, NULL, vp);
 	TEST_CHECK(rcode == 0);
 
@@ -813,6 +810,560 @@ static void test_pair_edit_child_value_abort(void)
 	expect3(&local_pairs);
 }
 
+static void test_pair_delete_tail(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and delete the tail");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	fr_assert(vp != NULL);
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_pair_delete(el, &local_pairs, vp);
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 2) after deleting the tail");
+	TEST_CHECK(count == 2);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_octets);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_delete_tail_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and delete the tail, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	fr_assert(vp != NULL);
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_pair_delete(el, &local_pairs, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 2);
+
+	fr_edit_list_abort(el);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_delete_by_da(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add pairs and delete all with a matching da");
+
+	add_pairs(&local_pairs);
+
+	/* Add another uint32 at the tail */
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	fr_assert(vp != NULL);
+	vp->vp_uint32 = 42;
+	fr_pair_append(&local_pairs, vp);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 4);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_pair_delete_by_da(el, &local_pairs, fr_dict_attr_test_uint32);
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 2) after deleting all uint32 pairs");
+	TEST_CHECK(count == 2);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_octets);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_delete_by_da_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add pairs and delete all with a matching da, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	fr_assert(vp != NULL);
+	vp->vp_uint32 = 42;
+	fr_pair_append(&local_pairs, vp);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 4);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_pair_delete_by_da(el, &local_pairs, fr_dict_attr_test_uint32);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 2);
+
+	fr_edit_list_abort(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 4) after aborting the delete");
+	TEST_CHECK(count == 4);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 42);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_replace_value(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode;
+	fr_value_box_t	box;
+
+	TEST_CASE("Add 3 pairs and replace the value of the first one");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	fr_value_box_init(&box, FR_TYPE_UINT32, NULL, false);
+	box.vb_uint32 = 42;
+
+	rcode = fr_edit_list_replace_pair_value(el, vp, &box);
+	TEST_CHECK(rcode == 0);
+	TEST_CHECK(vp->vp_uint32 == 42);
+
+	fr_edit_list_commit(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 42);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_replace_value_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode;
+	fr_value_box_t	box;
+
+	TEST_CASE("Add 3 pairs and replace the value of the first one, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	fr_value_box_init(&box, FR_TYPE_UINT32, NULL, false);
+	box.vb_uint32 = 42;
+
+	rcode = fr_edit_list_replace_pair_value(el, vp, &box);
+	TEST_CHECK(rcode == 0);
+	TEST_CHECK(vp->vp_uint32 == 42);
+
+	fr_edit_list_abort(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_replace_pair(void)
+{
+	fr_pair_t	*vp, *new_vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and replace the head with a new pair");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	new_vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	fr_assert(new_vp != NULL);
+	new_vp->vp_uint32 = 99;
+
+	rcode = fr_edit_list_replace_pair(el, &local_pairs, vp, new_vp);
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 3) after replacing a pair");
+	TEST_CHECK(count == 3);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 99);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_replace_pair_abort(void)
+{
+	fr_pair_t	*vp, *new_vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and replace the head, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	new_vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32);
+	fr_assert(new_vp != NULL);
+	new_vp->vp_uint32 = 99;
+
+	rcode = fr_edit_list_replace_pair(el, &local_pairs, vp, new_vp);
+	TEST_CHECK(rcode == 0);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->vp_uint32 == 99);
+
+	fr_edit_list_abort(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_insert_after_tail(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the tail");
+
+	add_pairs(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
+	rcode = fr_edit_list_insert_pair_tail(el, &local_pairs, vp);
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting at the tail");
+	TEST_CHECK(count == 4);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_string);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_insert_after_tail_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the tail, then abort");
+
+	add_pairs(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
+	rcode = fr_edit_list_insert_pair_tail(el, &local_pairs, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 4);
+
+	fr_edit_list_abort(el);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_free_children(void)
+{
+	fr_pair_t	*vp, *child;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add children to a TLV pair and free them");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+
+	child = fr_pair_afrom_da(vp, fr_dict_attr_test_tlv_string);
+	fr_assert(child != NULL);
+	fr_pair_append(&vp->vp_group, child);
+	TEST_CHECK(fr_pair_list_num_elements(&vp->vp_group) == 1);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_free_pair_children(el, vp);
+	TEST_CHECK(rcode == 0);
+	TEST_CHECK(fr_pair_list_empty(&vp->vp_group));
+
+	fr_edit_list_commit(el);
+
+	TEST_CHECK(fr_pair_list_empty(&vp->vp_group));
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 3);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_free_children_abort(void)
+{
+	fr_pair_t	*vp, *child;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add children to a TLV pair, free them, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_tlv);
+
+	child = fr_pair_afrom_da(vp, fr_dict_attr_test_tlv_string);
+	fr_assert(child != NULL);
+	fr_pair_append(&vp->vp_group, child);
+	TEST_CHECK(fr_pair_list_num_elements(&vp->vp_group) == 1);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_free_pair_children(el, vp);
+	TEST_CHECK(rcode == 0);
+	TEST_CHECK(fr_pair_list_empty(&vp->vp_group));
+
+	fr_edit_list_abort(el);
+
+	TEST_CHECK(fr_pair_list_num_elements(&vp->vp_group) == 1);
+
+	child = fr_pair_list_head(&vp->vp_group);
+	TEST_CHECK(child->da == fr_dict_attr_test_tlv_string);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_insert_list_tail(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs, to_insert;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a list of 2 at the tail");
+
+	add_pairs(&local_pairs);
+
+	fr_pair_list_init(&to_insert);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
+	fr_pair_append(&to_insert, vp);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint16);
+	fr_assert(vp != NULL);
+	fr_pair_append(&to_insert, vp);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_insert_list_tail(el, &local_pairs, &to_insert);
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CASE("Expected (count == 5) after inserting a list of 2");
+	TEST_CHECK(count == 5);
+
+	vp = fr_pair_list_tail(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint16);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_insert_list_tail_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs, to_insert;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a list of 2 at the tail, then abort");
+
+	add_pairs(&local_pairs);
+
+	fr_pair_list_init(&to_insert);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string);
+	fr_assert(vp != NULL);
+	fr_pair_append(&to_insert, vp);
+
+	vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint16);
+	fr_assert(vp != NULL);
+	fr_pair_append(&to_insert, vp);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_insert_list_tail(el, &local_pairs, &to_insert);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_num_elements(&local_pairs);
+	TEST_CHECK(count == 5);
+
+	fr_edit_list_abort(el);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_edit_child_commit_parent_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el, *child;
+	int		rcode;
+
+	TEST_CASE("Child commits value change, parent aborts - everything reverted");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5, NULL);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_save_pair_value(el, vp);
+	TEST_CHECK(rcode == 0);
+
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	vp->vp_uint32 = 1;
+	TEST_CHECK(vp->vp_uint32 == 1);
+
+	child = fr_edit_list_alloc(NULL, 5, el);
+	fr_assert(child != NULL);
+
+	rcode = fr_edit_list_save_pair_value(child, vp);
+	TEST_CHECK(rcode == 0);
+
+	vp->vp_uint32 = 2;
+	TEST_CHECK(vp->vp_uint32 == 2);
+
+	fr_edit_list_commit(child); /* does nothing, value stays at 2 */
+	TEST_CHECK(vp->vp_uint32 == 2);
+
+	/* Abort parent - everything should revert */
+	fr_edit_list_abort(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	expect3(&local_pairs);
+}
+
 TEST_LIST = {
 	/*
 	 *	Deletion.
@@ -858,6 +1409,53 @@ TEST_LIST = {
 	 */
 	{ "pair_edit_child_value",		test_pair_edit_child_value },
 	{ "pair_edit_child_value_abort",	test_pair_edit_child_value_abort },
+
+	/*
+	 *	Deletion of tail
+	 */
+	{ "pair_delete_tail",			test_pair_delete_tail },
+	{ "pair_delete_tail_abort",		test_pair_delete_tail_abort },
+
+	/*
+	 *	Deletion by da
+	 */
+	{ "pair_delete_by_da",			test_pair_delete_by_da },
+	{ "pair_delete_by_da_abort",		test_pair_delete_by_da_abort },
+
+	/*
+	 *	Value replacement (fr_edit_list_replace_pair_value)
+	 */
+	{ "pair_replace_value",			test_pair_replace_value },
+	{ "pair_replace_value_abort",		test_pair_replace_value_abort },
+
+	/*
+	 *	Pair replacement (fr_edit_list_replace_pair)
+	 */
+	{ "pair_replace_pair",			test_pair_replace_pair },
+	{ "pair_replace_pair_abort",		test_pair_replace_pair_abort },
+
+	/*
+	 *	Insert at tail
+	 */
+	{ "pair_insert_after_tail",		test_pair_insert_after_tail },
+	{ "pair_insert_after_tail_abort",	test_pair_insert_after_tail_abort },
+
+	/*
+	 *	Free children of structural pair
+	 */
+	{ "pair_free_children",			test_pair_free_children },
+	{ "pair_free_children_abort",		test_pair_free_children_abort },
+
+	/*
+	 *	Insert list at tail
+	 */
+	{ "pair_insert_list_tail",		test_pair_insert_list_tail },
+	{ "pair_insert_list_tail_abort",	test_pair_insert_list_tail_abort },
+
+	/*
+	 *	Child commit + parent abort
+	 */
+	{ "pair_edit_child_commit_parent_abort", test_pair_edit_child_commit_parent_abort },
 
 	TEST_TERMINATOR
 };
