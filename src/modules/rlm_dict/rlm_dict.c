@@ -260,7 +260,7 @@ static xlat_action_t xlat_attr_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_value_box_strdup(vb, vb, NULL, fr_sbuff_start(oid_buff), false);
+	MEM(fr_value_box_strdup(vb, vb, NULL, fr_sbuff_start(oid_buff), false) >= 0);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
