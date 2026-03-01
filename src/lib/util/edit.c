@@ -136,6 +136,15 @@ static int edit_undo(fr_edit_t *e)
 	int rcode;
 #endif
 
+	/*
+	 *	FR_EDIT_CHILD has vp == NULL, handle it
+	 *	before the vp assertions.
+	 */
+	if (e->op == FR_EDIT_CHILD) {
+		fr_edit_list_abort(e->child_edit);
+		return 0;
+	}
+
 	fr_assert(vp != NULL);
 	PAIR_VERIFY(vp);
 
@@ -176,8 +185,8 @@ static int edit_undo(fr_edit_t *e)
 		break;
 
 	case FR_EDIT_CHILD:
-		fr_edit_list_abort(e->child_edit);
-		break;
+		fr_assert(0);	/* handled above */
+		return -1;
 	}
 
 	return 0;
