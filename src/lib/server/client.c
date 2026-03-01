@@ -389,7 +389,7 @@ fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipa
 	return fr_trie_lookup_by_key(trie, &ipaddr->addr, ipaddr->prefix);
 #else
 
-	if (proto == AF_INET) {
+	if (ipaddr->af == AF_INET) {
 		max = 32;
 	} else {
 		max = 128;
@@ -736,7 +736,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
-	if (cf_section_rules_push(cs, client_config) < 0) return NULL;
+	if (cf_section_rules_push(cs, client_config) < 0) goto error;
 
 	if (cf_section_parse(c, c, cs) < 0) {
 		cf_log_err(cs, "Error parsing client section");
@@ -1070,27 +1070,28 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 {
 	char const	*p;
 	fr_client_t	*c;
-	CONF_SECTION	*cs;
+	CONF_SECTION	*root_cs, *cs;
 	char buffer[256];
 
 	if (!filename) return NULL;
 
-	cs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!cs) return NULL;
+	root_cs = cf_section_alloc(NULL, NULL, "main", NULL);
+	if (!root_cs) return NULL;
 
-	if ((cf_file_read(cs, filename, false) < 0) || (cf_section_pass2(cs) < 0)) {
-		talloc_free(cs);
+	if ((cf_file_read(root_cs, filename, false) < 0) || (cf_section_pass2(root_cs) < 0)) {
+	error:
+		talloc_free(root_cs);
 		return NULL;
 	}
 
-	cs = cf_section_find(cs, "client", CF_IDENT_ANY);
+	cs = cf_section_find(root_cs, "client", CF_IDENT_ANY);
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");
-		return NULL;
+		goto error;
 	}
 
 	c = client_afrom_cs(cs, cs, server_cs, 0);
-	if (!c) return NULL;
+	if (!c) goto error;
 	talloc_steal(cs, c);
 
 	p = strrchr(filename, FR_DIR_SEP);
@@ -1108,8 +1109,7 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	if (strcmp(p, buffer) != 0) {
 		ERROR("Invalid client definition in %s: IP address %s does not match name %s", filename, buffer, p);
-		client_free(c);
-		return NULL;
+		goto error;
 	}
 
 	return c;
