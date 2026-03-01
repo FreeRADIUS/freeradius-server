@@ -39,8 +39,6 @@ typedef struct {
 
 	bool		eof;		//!< are we at EOF?
 
-	fr_bio_pipe_cb_funcs_t signal; //!< inform us that the pipe is readable
-
 	pthread_mutex_t mutex;
 } fr_bio_pipe_t;
 
@@ -60,15 +58,30 @@ static int fr_bio_pipe_destructor(fr_bio_pipe_t *my)
  */
 static ssize_t fr_bio_pipe_read(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
+	bool eof = false;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);
 
 	pthread_mutex_lock(&my->mutex);
 	size = fr_bio_buf_read(&my->buf, buffer, size);
 
-	if ((size == 0) && my->eof) my->bio.read = fr_bio_null_read;
+	if (my->eof && (fr_bio_buf_used(&my->buf) == 0)) {
+		eof = true;
+		my->bio.read = fr_bio_null_read;
+	}
 	pthread_mutex_unlock(&my->mutex);
 
-	if (size > 0) my->signal.writeable(&my->bio);
+	if (size > 0) {
+		if (eof) {
+			my->cb.eof(&my->bio);
+			my->cb.eof = NULL;
+
+		} else {
+			(void) my->cb.write_resume(&my->bio);
+		}
+
+	} else {
+		(void) my->cb.read_blocked(&my->bio);
+	}
 
 	return size;
 }
@@ -93,7 +106,11 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, UNUSED void *packet_ctx, void co
 	}
 	pthread_mutex_unlock(&my->mutex);
 
-	if (size > 0) my->signal.readable(&my->bio);
+	if (size > 0) {
+		(void) my->cb.read_resume(&my->bio);
+	} else {
+		(void) my->cb.write_blocked(&my->bio);
+	}
 
 	return size;
 }
@@ -120,19 +137,25 @@ static int fr_bio_pipe_shutdown(fr_bio_t *bio)
  */
 static int fr_bio_pipe_eof(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
+	/*
+	 *	@todo - fr_bio_eof() sets our read to NULL read before this callback is run.  That has to be
+	 *	addressed.
+	 */
 	pthread_mutex_lock(&my->mutex);
 	my->eof = true;	
 	my->bio.write = fr_bio_null_write;
-	if (fr_bio_buf_used(&my->buf) == 0) my->bio.read = fr_bio_null_read;
+	if (fr_bio_buf_used(&my->buf) == 0) {
+		my->bio.read = fr_bio_null_read;
+		rcode = 0;
+	} else {
+		rcode = -1;	/* can't close this BIO yet */
+	}
 	pthread_mutex_unlock(&my->mutex);
 
-	/*
-	 *	We don't know if the other end is at EOF, we have to do a read.  So we tell fr_bio_eof() to
-	 *	stop processing.
-	 */
-	return 0;
+	return rcode;
 }
 
 /** Allocate a thread-safe pipe which can be used for both reads and writes.
@@ -149,12 +172,14 @@ static int fr_bio_pipe_eof(fr_bio_t *bio)
  *
  *  The pipe should be freed only after both ends have set EOF.
  */
-fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t buffer_size)
+fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, size_t buffer_size)
 {
 	fr_bio_pipe_t	*my;
 	uint8_t		*buffer;
 
-	if (!cb->readable || !cb->writeable) return NULL;
+	if (!cb->read_resume  || !cb->write_resume) return NULL;
+	if (!cb->read_blocked || !cb->write_blocked) return NULL;
+	if (!cb->eof) return NULL;
 
 	if (buffer_size < 1024)		buffer_size = 1024;
 	if (buffer_size > (1 << 20))	buffer_size = (1 << 20);
@@ -168,7 +193,7 @@ fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t 
 		return NULL;
 	}
 
-	my->signal = *cb;
+	my->cb = *cb;
 
 	fr_bio_buf_init(&my->buf, buffer, buffer_size);
 

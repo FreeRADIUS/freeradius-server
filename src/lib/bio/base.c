@@ -215,6 +215,17 @@ void fr_bio_eof(fr_bio_t *bio)
 
 	/*
 	 *	This BIO is at EOF.  So we can't call read() any more.
+	 *
+	 *	@todo - we have to fix ordering of priv.cb.eof() versus cb.eof() the application may signal
+	 *	EOF on the BIO, in which case we have to do various things in the right order, so that the
+	 *	various callbacks can be set / updated correctly.  See mem.c and pipe.c for examples.
+	 *
+	 *	What we probably want is to ensure that there is no NEXT bio, OR that the next BIO is already
+	 *	at EOF.  So the FD BIO can call "eof" when it hits EOF, and the various upstream BIOs have
+	 *	their EOF callbacks run when they hit EOF.
+	 *
+	 *	We probably want to also add "bool eof" to fr_bio_common_s.  And perhaps also read/write
+	 *	blocked.
 	 */
 	this->bio.read = fr_bio_null_read;
 
