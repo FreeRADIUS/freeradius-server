@@ -347,7 +347,7 @@ do_timestamp:
 			hours = 0;
 			minutes = negative ? -(integer) : integer;
 
-			if (minutes > 60) {
+			if (minutes >= 60) {
 				fr_strerror_printf("minutes component of time_delta is too large");
 				fr_sbuff_set_to_start(&our_in);
 				FR_SBUFF_ERROR_RETURN(&our_in);
@@ -371,12 +371,12 @@ do_timestamp:
 				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 
-			if (minutes > 60) {
-				fr_strerror_printf("minuts component of time_delta is too large");
+			if (minutes >= 60) {
+				fr_strerror_printf("minutes component of time_delta is too large");
 				FR_SBUFF_ERROR_RETURN(&m1);
 			}
 
-			if (seconds > 60) {
+			if (seconds >= 60) {
 				fr_strerror_printf("seconds component of time_delta is too large");
 				FR_SBUFF_ERROR_RETURN(&m1);
 			}
