@@ -695,6 +695,12 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(unlang_result_t *p_result
 		CONF_PAIR	*cp;
 		char const	*tmpl_str;
 
+		if (call_env->log_ref->vb_length >= (sizeof(buff) - 2)) {
+			REDEBUG("Invalid log_ref - too long (%zu >= %zu)",
+				call_env->log_ref->vb_length, sizeof(buff) - 2);
+			RETURN_UNLANG_FAIL;
+		}
+
 		memcpy(buff + 1, call_env->log_ref->vb_strvalue, call_env->log_ref->vb_length);
 		buff[call_env->log_ref->vb_length + 1] = '\0';
 
