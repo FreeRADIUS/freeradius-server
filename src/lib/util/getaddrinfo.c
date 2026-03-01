@@ -32,6 +32,10 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <pthread.h>
 #include <sys/param.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/errno.h>
+#include <netdb.h>
 
 #ifndef HAVE_GETNAMEINFO
 #  undef LOCAL_GETHOSTBYNAMERSTYLE
@@ -88,58 +92,99 @@ static pthread_mutex_t fr_hostbyaddr_mutex;
  *  ---------------------------------------------------------------
  */
 #if defined(LOCAL_GETHOSTBYNAMER) || defined(LOCAL_GETHOSTBYADDRR)
-#  define BUFFER_OVERFLOW 255
-static int copy_hostent(struct hostent *from, struct hostent *to, char *buffer, int buflen, int *error)
+static int copy_hostent(struct hostent *from, struct hostent *to, char *buffer, size_t buflen, int *error)
 {
-	int i, len;
-	char *ptr = buffer;
+	int i;
+	size_t len;
+	uintptr_t mask;
+	char *ptr = buffer, *end = buffer + buflen;
 
 	*error = 0;
 	to->h_addrtype = from->h_addrtype;
 	to->h_length = from->h_length;
-	to->h_name = (char *)ptr;
+	to->h_name = (char *) ptr;
 
 	/* copy hostname to buffer */
 	len = strlen(from->h_name) + 1;
-	strcpy(ptr, from->h_name);
+	if (len > buflen) {
+	overflow:
+		*error = ERANGE;
+		return -1;
+	}
+	memcpy(ptr, from->h_name, len);
 	ptr += len;
 
-	/* copy aliases to buffer */
-	to->h_aliases = (char**)ptr;
-	for (i = 0; from->h_aliases[i]; i++);
-	ptr += (i+1) * sizeof(char *);
+	mask = ptr;
+	mask &= _Alignof(char **) - 1;	/* 0..7 */
+	mask = _Alignof(char **) - mask; /* 8..1 */
+	mask &= _Alignof(char **) - 1;	/* 0,7..1 */
+
+	if (mask > ((size_t) (end - ptr))) goto overflow;
+
+	ptr += mask;
+
+	/*
+	 *	Copy aliases to buffer
+	 *
+	 *	Aliases are 'char *'
+	 */
+	to->h_aliases = (char **) (uintptr_t) ptr;
+
+	for (i = 0; from->h_aliases[i] != NULL; i++) {
+		/* nothing */
+	}
+
+	len = (i + 1) * sizeof(char *);
+	if (len > (size_t) (end - ptr)) goto overflow;
+	ptr += len;
 
 	for (i = 0; from->h_aliases[i]; i++) {
-		len = strlen(from->h_aliases[i])+1;
-		if ((ptr-buffer) + len < buflen) {
-			to->h_aliases[i] = ptr;
-			strcpy(ptr, from->h_aliases[i]);
-			ptr += len;
-		} else {
-			*error = BUFFER_OVERFLOW;
-			return *error;
-		}
+		len = strlen(from->h_aliases[i]) + 1;
+		if (len > (size_t) (end - ptr)) goto overflow;
+
+		to->h_aliases[i] = ptr;
+		memcpy(ptr, from->h_aliases[i], len);
+		ptr += len;
 	}
 	to->h_aliases[i] = NULL;
 
-	/* copy addr_list to buffer */
-	to->h_addr_list = (char**)ptr;
-	for (i = 0; (int *)from->h_addr_list[i] != 0; i++);
-	ptr += (i + 1) * sizeof(int *);
+	/*
+	 *	Copy addr_list to buffer
+	 *
+	 *	addr_list is an array of 'char *', each of length 'h_length'
+	 */
+	mask = ptr;
+	mask &= _Alignof(char **) - 1;
+	mask = _Alignof(char **) - mask;
+	mask &= _Alignof(char **) - 1;
 
-	for (i = 0; (int *)from->h_addr_list[i] != 0; i++) {
-		len = sizeof(int);
+	if (mask > ((size_t) (end - ptr))) goto overflow;
 
-		if ((ptr-buffer)+len < buflen) {
-			to->h_addr_list[i] = ptr;
-			memcpy(ptr, from->h_addr_list[i], len);
-			ptr += len;
-		} else {
-			*error = BUFFER_OVERFLOW;
-			return *error;
-		}
+	ptr += mask;
+
+	to->h_addr_list = (char **) (uintptr_t) ptr;
+
+	for (i = 0; from->h_addr_list[i] != NULL; i++) {
+		/* nothing */
 	}
-	to->h_addr_list[i] = 0;
+
+	len = (i + 1) * sizeof(uint32_t);
+	if (len > (size_t) (end - ptr)) goto overflow;
+	ptr += len;
+
+	/*
+	 *	Check if there is enough room for all of the addresses.
+	 */
+	len = i * from->h_length;
+	if (len > (size_t) (end - ptr)) goto overflow; /* NOT <=, as we can copy the entire list */
+
+	for (i = 0; from->h_addr_list[i] != NULL; i++) {
+		to->h_addr_list[i] = ptr;
+		memcpy(ptr, from->h_addr_list[i], from->h_length);
+		ptr += from->h_length;
+	}
+	to->h_addr_list[i] = NULL;
+
 	return *error;
 }
 #endif /* (LOCAL_GETHOSTBYNAMER == 1) || (LOCAL_GETHOSTBYADDRR == 1) */
@@ -158,7 +203,7 @@ gethostbyname_r(char const *hostname, struct hostent *result,
 	pthread_mutex_lock(&fr_hostbyname_mutex);
 
 	hp = gethostbyname(hostname);
-	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	if (!hp) {
 		*error = h_errno;
 		hp = NULL;
 	} else {
@@ -186,7 +231,7 @@ static struct hostent *gethostbyaddr_r(char const *addr, int len, int type, stru
 	pthread_mutex_lock(&fr_hostbyaddr_mutex);
 
 	hp = gethostbyaddr(addr, len, type);
-	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	if (!hp) {
 		*error = h_errno;
 		hp = NULL;
 	} else {
