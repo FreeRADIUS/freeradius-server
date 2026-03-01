@@ -207,7 +207,7 @@ struct tm *gmtime_r(time_t const *l_clock, struct tm *result)
 #endif
 
 #ifndef HAVE_VDPRINTF
-int vdprintf (int fd, char const *format, va_list args)
+int vdprintf(int fd, char const *format, va_list args)
 {
 	int     ret;
 	FILE    *fp;
@@ -216,7 +216,7 @@ int vdprintf (int fd, char const *format, va_list args)
 	dup_fd = dup(fd);
 	if (dup_fd < 0) return -1;
 
-	fp = fdopen(fd, "w");
+	fp = fdopen(dup_fd, "w");
 	if (!fp) {
 		close(dup_fd);
 		return -1;
