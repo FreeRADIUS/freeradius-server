@@ -208,7 +208,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		goto encode_neg;
 
 	case FR_TYPE_INT32:
-		neg = vb->vb_int64;
+		neg = vb->vb_int32;
 		goto encode_neg;
 
 	case FR_TYPE_INT64:
