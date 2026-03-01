@@ -138,7 +138,8 @@ static inline TALLOC_CTX *talloc_init_const(char const *name)
  */
 static inline size_t talloc_strlen(char const *s)
 {
-	char const *our_s = talloc_get_type_abort_const(s, char);
+//	char const *our_s = talloc_get_type_abort_const(s, char);
+	char const *our_s = s;
 	return talloc_array_length(our_s) - 1;
 }
 #define talloc_strdup(_ctx, _str)	 talloc_typed_strdup((TALLOC_CTX *) (_ctx), _str)
