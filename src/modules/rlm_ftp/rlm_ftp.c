@@ -124,21 +124,20 @@ global_lib_autoinst_t const * const rlm_ftp_lib[] = {
  */
 static int ftp_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	char	*escaped, *str;
+	char	*escaped;
+	size_t	len;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, vb->vb_length);
 	if (!escaped) return -1;
 
+	len = strlen(escaped);
+
 	/*
 	 *	Returned string the same length - nothing changed
 	 */
-	if (strlen(escaped) == vb->vb_length) {
-		curl_free(escaped);
-		return 0;
+	if (len != vb->vb_length) {
+		MEM(fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false) >= 0);
 	}
-
-	str = talloc_strdup(vb, escaped);
-	fr_value_box_strdup_shallow_replace(vb, str, strlen(str));
 
 	curl_free(escaped);
 
