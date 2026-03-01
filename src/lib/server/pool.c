@@ -432,8 +432,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	Allocate a new top level ctx for the create callback
 	 *	to hang its memory off of.
 	 */
-	ctx = talloc_init("connection_ctx");
-	if (!ctx) return NULL;
+	MEM(ctx = talloc_init("connection_ctx"));
 
 	/*
 	 *	This may take a long time, which prevents other
@@ -445,8 +444,8 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if (!conn) {
 		ERROR("Opening connection failed (%" PRIu64 ")", number);
 
-		pool->state.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
+		pool->state.last_failed = now;
 		pool->pending_window = 1;
 		pool->state.pending--;
 
@@ -478,7 +477,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 		return NULL;
 	}
-	talloc_link_ctx(this, ctx);
+	MEM(talloc_link_ctx(this, ctx) >= 0);
 
 	this->created = now;
 	this->connection = conn;
