@@ -312,19 +312,17 @@ static xlat_action_t brotli_xlat_decompress(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &data_vb);
 
-	pool = brotli_pool_get();
-	MEM(state = BrotliDecoderCreateInstance(brotli_talloc_alloc, brotli_talloc_free, pool));
-
 	MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
-	total_in = data_vb->vb_length;
-	in_buff = data_vb->vb_octets;
 	available_out = (data_vb->vb_length * 2);
-
 	MEM(fr_value_box_mem_alloc(out_vb, &out_buff, out_vb, NULL, available_out, false) == 0);
+
 	pool = brotli_pool_get();
 	MEM(state = BrotliDecoderCreateInstance(brotli_talloc_alloc, brotli_talloc_free, pool));
 
 	BrotliDecoderSetParameter(state, BROTLI_DECODER_PARAM_LARGE_WINDOW, inst->large_window ? BROTLI_TRUE : BROTLI_FALSE);
+
+	total_in = data_vb->vb_length;
+	in_buff = data_vb->vb_octets;
 
 	for (;;) {
 		switch (BrotliDecoderDecompressStream(state, &total_in, &in_buff, &available_out, &out_buff, &total_out)) {
