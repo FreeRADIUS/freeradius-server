@@ -568,8 +568,6 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			PRINT("      accounting-reply");
 			fr_assert(packet_is_acct_reply(packet));
 
-			PRINT("      authentication-reply");
-
 			REQUIRE(5);
 
 			PRINT("      server_msg_len  %04x", fr_nbo_to_uint16(hdr));
