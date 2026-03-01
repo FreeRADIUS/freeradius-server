@@ -730,7 +730,7 @@ fr_time_t fr_timer_when(fr_timer_t *ev)
 fr_time_delta_t fr_timer_remaining(fr_timer_t *ev)
 {
 	if (!fr_timer_armed(ev)) return fr_time_delta_wrap(0);
-	return fr_time_sub(ev->tl->pub.time(), ev->when);
+	return fr_time_sub(ev->when, ev->tl->pub.time());
 }
 
 /** Check if a timer event is armed
@@ -1006,7 +1006,7 @@ static int timer_list_lst_deferred(fr_timer_list_t *tl)
 	fr_timer_t *ev;
 
 	while((ev = timer_pop_head(&tl->deferred))) {
-		if (unlikely(timer_lst_insert_at(tl, ev)) < 0) {
+		if (unlikely(timer_lst_insert_at(tl, ev) < 0)) {
 			timer_insert_head(&tl->deferred, ev);	/* Don't lose track of events we failed to insert */
 			return -1;
 		}
@@ -1070,7 +1070,7 @@ static int timer_list_shared_deferred(fr_timer_list_t *tl)
 		fr_rb_remove_by_inline_node(tl->shared.deferred,
 					    (fr_rb_node_t *) (((uintptr_t) (uctx)) + tl->shared.node_offset));
 
-		fr_rb_insert(tl->shared.deferred, uctx);
+		fr_rb_insert(tl->shared.rb, uctx);
 	}
 
 	return 0;
