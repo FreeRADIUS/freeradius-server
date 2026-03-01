@@ -293,7 +293,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	/*
 	 *  QOP is "auth-int", tack on ": Digest-Attributes.Body-Digest"
 	 */
-	qop = fr_pair_find_by_da_nested(list, NULL, attr_digest_qop);
+	qop = digest_find_vp(request, list, attr_digest_qop);
 	if (qop) {
 		if (strcasecmp(qop->vp_strvalue, "auth-int") == 0) {
 			fr_pair_t *body;
