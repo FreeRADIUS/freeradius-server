@@ -721,6 +721,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
 				config->name, group->gr_name, fr_syserror(errno));
+			talloc_free(group);
 			return -1;
 		}
 	}
