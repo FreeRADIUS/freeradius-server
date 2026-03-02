@@ -1191,7 +1191,7 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 	 *	Compile the default "actions" subsection, which includes retries.
 	 */
 	actions = cf_section_find(mod_conf, "actions", NULL);
-	if (actions && unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY) != 0)) {
+	if (actions && !unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY))) {
 		talloc_free(mi);
 		return -1;
 	}
