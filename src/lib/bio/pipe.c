@@ -130,6 +130,12 @@ static int fr_bio_pipe_shutdown(fr_bio_t *bio)
 	return 0;
 }
 
+static ssize_t fr_bio_pipe_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
+{
+	fr_strerror_const("BIO has been closed");
+	return fr_bio_error(SHUTDOWN);
+}
+
 /** Set EOF.
  *
  *  Either side can set EOF, in which case pending reads are still processed.  Writes return EOF immediately.
@@ -146,7 +152,7 @@ static int fr_bio_pipe_eof(fr_bio_t *bio)
 	 */
 	pthread_mutex_lock(&my->mutex);
 	my->eof = true;	
-	my->bio.write = fr_bio_null_write;
+	my->bio.write = fr_bio_pipe_shutdown_write;
 	if (fr_bio_buf_used(&my->buf) == 0) {
 		my->bio.read = fr_bio_null_read;
 		rcode = 0;
