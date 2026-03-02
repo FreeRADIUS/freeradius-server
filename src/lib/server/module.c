@@ -491,7 +491,8 @@ static module_thread_instance_t *mlg_thread_data_get(module_instance_t const *mi
 	module_thread_instance_t	*ti;
 	void				*ti_p;
 
-	fr_assert_msg(mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
+	fr_assert_msg(fr_heap_entry_inserted(mlg_mi->inst_idx) &&
+		      mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
 		      "module instance index %u must be <= thread local array %zu",
 		      mlg_mi->inst_idx, talloc_array_length(mlg_thread_inst_list));
 
