@@ -749,7 +749,7 @@ static void connection_state_enter_shutdown(connection_t *conn)
 			 *	Can happen when the event loop is exiting
 			 */
 			PERROR("Failed setting connection_timeout timer, closing connection");
-			connection_state_enter_closed(conn);
+			connection_state_enter_failed(conn);
 		}
 	}
 }
