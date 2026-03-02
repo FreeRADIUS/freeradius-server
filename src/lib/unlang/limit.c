@@ -131,7 +131,6 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 	unlang_group_t		*g;
 	unlang_limit_t		*gext;
 	tmpl_t			*vpt = NULL;
-	uint32_t		limit = 0;
 	fr_token_t		token;
 	ssize_t			slen;
 	tmpl_rules_t		t_rules;
@@ -152,6 +151,10 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_LIMIT);
 	if (!g) return NULL;
 
+	c = unlang_group_to_generic(g);
+	c->name = "limit";
+	c->debug_name = talloc_typed_asprintf(c, "limit %s", name2);
+
 	gext = unlang_group_to_limit(g);
 
 	token = cf_section_name2_quote(cs);
@@ -170,24 +173,23 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 				 &t_rules);
 	if (!vpt) {
 	syntax_error:
-		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'limit'", name2);
+	error:
 		talloc_free(g);
-		return NULL;
+		goto print_url;
 	}
+	gext->vpt = vpt;
 
 	/*
 	 *	Fixup the tmpl so that we know it's somewhat sane.
 	 */
 	if (!pass2_fixup_tmpl(gext, &vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	if (tmpl_is_list(vpt)) {
 		cf_log_err(cs, "Cannot use list as argument for 'limit' statement");
-	error:
-		talloc_free(g);
-		goto print_url;
+		goto error;
 	}
 
 	if (tmpl_contains_regex(vpt)) {
@@ -200,11 +202,11 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 
 		if (fr_value_box_cast(NULL, &box, FR_TYPE_UINT32, NULL, tmpl_value(vpt)) < 0) goto syntax_error;
 
-		limit = box.vb_uint32;
+		gext->limit = box.vb_uint32;
 
 	} else {
 		/*
-		 *	Attribute or data MUST be cast to a 32-bit unsigned number.
+		 *	Attribute or xlat MUST be cast to a 32-bit unsigned number.
 		 */
 		if (tmpl_cast_set(vpt, FR_TYPE_UINT32) < 0) {
 			cf_log_perr(cs, "Failed setting cast type");
@@ -212,18 +214,7 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 		}
 	}
 
-	/*
-	 *	Compile the contents of a "limit".
-	 */
-	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_LIMIT);
-	if (!c) return NULL;
-
-	g = unlang_generic_to_group(c);
-	gext = unlang_group_to_limit(g);
-	gext->limit = limit;
-	gext->vpt = vpt;
-
-	return c;
+	return unlang_compile_children(g, unlang_ctx);
 }
 
 void unlang_limit_init(void)
