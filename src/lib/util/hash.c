@@ -497,7 +497,7 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	if (ht->type) (void)_talloc_get_type_abort(data, ht->type, __location__);
 #endif
 
-	if (ht->num_buckets >= TABLE_MAX) return false;
+	if (ht->num_elements >= TABLE_MAX) return false;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -748,11 +748,14 @@ void fr_hash_table_fill(fr_hash_table_t *ht)
 
 	if (!ht->num_buckets) return;
 
+
 	i = ht->num_buckets - 1;
-	do {
+
+	while (true) {
 		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
+		if (!i) break;
 		i--;
-	} while (i > 0);	/* do 0, and then exit. */
+	}
 }
 
 #ifdef TESTING
