@@ -252,6 +252,7 @@ static const call_env_method_t redis_ippool_bulk_release_method_env = {
  * - ARGV[2] Expires in (seconds).
  * - ARGV[3] Lease owner identifier (administratively configured).
  * - ARGV[4] (optional) Gateway identifier.
+ * - ARGV[5] (optional) Requested address.
  *
  * Returns @verbatim { <rcode>[, <ip>][, <range>][, <lease time>][, <counter>] } @endverbatim
  * - IPPOOL_RCODE_SUCCESS lease updated..
@@ -305,15 +306,28 @@ static char lua_alloc_cmd[] =
 	"end" EOL											/* 29 */
 
 	/*
+	 *	If there's a requested address, check if that is available i.e. not statically
+	 *	assigned, nor already allocated.
+	 */
+	"if ARGV[5] and ARGV[5] ~= '' then" EOL
+	"  local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[5]))" EOL
+	"  if expires and tonumber(expires) < wall_time then" EOL
+	"    ip = { ARGV[5] }" EOL
+	"  end" EOL
+	"end" EOL
+
+	/*
 	 *	Else, get the IP address which expired the longest time ago.
 	 */
-	"ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 30 */
-	"if not ip or not ip[1] then" EOL								/* 31 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 32 */
-	"end" EOL											/* 33 */
-	"if tonumber(ip[2]) >= wall_time then" EOL							/* 34 */
-	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 35 */
-	"end" EOL											/* 36 */
+	"if not ip then" EOL
+	"  ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 30 */
+	"  if not ip or not ip[1] then" EOL								/* 31 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 32 */
+	"  end" EOL											/* 33 */
+	"  if tonumber(ip[2]) >= wall_time then" EOL							/* 34 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 35 */
+	"  end" EOL											/* 36 */
+	"end" EOL
 	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 37 */
 
 	/*
@@ -709,16 +723,38 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 
 	now = fr_time_to_timeval(fr_time());
 
-	status = ippool_script(&reply, request, inst->cluster,
-			       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-			       inst->wait_num, inst->wait_timeout,
-			       lua_alloc_digest, lua_alloc_cmd,
-	 		       "EVALSHA %s 1 %b %u %u %b %b",
-	 		       lua_alloc_digest,
-			       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-			       (unsigned int)now.tv_sec, lease_time,
-			       (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
-			       (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length);
+	if ((env->requested_address.datum.ip.af == AF_INET) && inst->ipv4_integer) {
+		status = ippool_script(&reply, request, inst->cluster,
+				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				       inst->wait_num, inst->wait_timeout,
+				       lua_alloc_digest, lua_alloc_cmd,
+		 		       "EVALSHA %s 1 %b %u %u %b %b %u",
+	 			       lua_alloc_digest,
+				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				       (unsigned int)now.tv_sec, lease_time,
+				       (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
+				       (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
+				       htonl(env->requested_address.datum.ip.addr.v4.s_addr));
+	} else {
+		char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
+		if (env->requested_address.type == FR_TYPE_COMBO_IP_ADDR) {
+			IPPOOL_SPRINT_IP(ip_buff, &env->requested_address.datum.ip, env->requested_address.datum.ip.prefix);
+		} else {
+			ip_buff[0] = '\0';
+		}
+
+		status = ippool_script(&reply, request, inst->cluster,
+				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				       inst->wait_num, inst->wait_timeout,
+				       lua_alloc_digest, lua_alloc_cmd,
+		 		       "EVALSHA %s 1 %b %u %u %b %b %s",
+	 			       lua_alloc_digest,
+				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				       (unsigned int)now.tv_sec, lease_time,
+				       (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
+				       (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
+				       ip_buff);
+	}
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
