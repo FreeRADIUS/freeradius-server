@@ -3238,15 +3238,32 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	and then create the full path from dir + filename.
 	 */
 	if (FR_DIR_IS_RELATIVE(filename)) {
-		/*
-		 *	The filename is relative to the input
-		 *	directory.
-		 */
-		strlcpy(filename_buf, dir, sizeof(filename_buf));
-		p = strrchr(filename_buf, FR_DIR_SEP);
-		if (p && !p[1]) *p = '\0';
+		char const *q;
+		bool slash = false;
 
-		snprintf(filename_buf, sizeof(filename_buf), "%s/%s", dir, filename);
+		/*
+		 *	We either have to do strcpy + strrchr(), or manual checks.
+		 */
+		p = filename_buf;
+		for (q = dir; *q != '\0'; q++) {
+			if (*q != '/') {
+				*(p++) = *q;
+				slash = false;
+				continue;
+			}
+
+			/*
+			 *	Suppress multiple consecutive slashes.
+			 */
+			if (slash) continue;
+
+			*(p++) = *q;
+			slash = true;
+		}
+
+		if (!slash) *(p++) = '/';
+		strcpy(p, filename);
+
 		filename = filename_buf;
 	}
 	/*
