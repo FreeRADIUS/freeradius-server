@@ -3343,8 +3343,16 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Deal with explicit casts...
 		 */
-		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
-										    t_rules, true, p_rules);
+		if (!fr_type_is_null(t_rules->cast)) {
+			slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, true, p_rules);
+
+			/*
+			 *	If the string doesn't cast to the destination type
+			 *	parse it as an attribute.
+			 */
+			if (slen < 0) return tmpl_afrom_attr_substr(ctx, NULL, out, in, p_rules, t_rules);
+			return slen;
+		}
 
 		/*
 		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
