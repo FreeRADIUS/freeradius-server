@@ -268,6 +268,8 @@ static char lua_alloc_cmd[] =
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL					/* 6 */
 	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL				/* 7 */
 
+	"local wall_time = tonumber(ARGV[1])" EOL							/* 8* */
+
 	/*
 	 *	Check to see if the client already has a lease,
 	 *	and if it does return that.
@@ -309,7 +311,7 @@ static char lua_alloc_cmd[] =
 	"if not ip or not ip[1] then" EOL								/* 31 */
 	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 32 */
 	"end" EOL											/* 33 */
-	"if ip[2] >= ARGV[1] then" EOL									/* 34 */
+	"if tonumber(ip[2]) >= wall_time then" EOL							/* 34 */
 	"  return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 35 */
 	"end" EOL											/* 36 */
 	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 37 */
