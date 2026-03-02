@@ -1,0 +1,65 @@
+#
+#  Run the "redis" xlat
+#
+$INCLUDE cluster_reset.inc
+
+control.IP-Pool.Name := 'test_alloc_requested'
+
+#
+#  Add IP addresses - with the one we expect to allocate last
+#
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.2/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.3/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+
+#
+#  Check allocation
+#
+redis_ippool
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Framed-IP-Address == 192.168.0.3) {
+	test_fail
+}
+
+#
+#  Release the address
+#
+redis_ippool.release
+
+#
+#  Try requesting an address not in the pool
+#
+Framed-IP-Address := 192.168.0.5
+
+redis_ippool
+if (!updated) {
+	test_fail
+}
+
+if (reply.Framed-IP-Address == 192.168.0.5) {
+	test_fail
+}
+
+#
+#  Now change the MAC address and request the address just given -
+#  a different address should be returned.
+#
+Calling-Station-Id := 'ff:ee:dd:aa:bb:cc'
+Framed-IP-Address := reply.Framed-IP-Address
+reply := {}
+
+redis_ippool
+if (!updated) {
+	test_fail
+}
+
+if (reply.Framed-IP-Address == Framed-IP-Address) {
+	test_fail
+}
+
+reply := {}
+
+test_pass
