@@ -245,11 +245,14 @@ static void list_delete(fr_hash_table_t *ht,
 	last = head;
 
 	for (cur = *head; cur != &ht->null; cur = cur->next) {
-		if (cur == node) break;
+		if (cur == node) {
+			*last = node->next;
+			return;
+		}
 		last = &(cur->next);
 	}
 
-	*last = node->next;
+	fr_assert(0);
 }
 
 static int _fr_hash_table_free(fr_hash_table_t *ht)
@@ -378,22 +381,39 @@ static void fr_hash_table_fixup(fr_hash_table_t *ht, uint32_t entry)
 #define GROW_FACTOR (2)
 
 /*
+ *	Set a maximum number of entries, which lets us avoid overflows
+ *	on next_grow, GROW_FACTOR, etc.
+ */
+#define TABLE_MAX ((uint32_t) 0x20000000)
+
+/*
  *	Grow the hash table.
  */
 static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
 	size_t existing = talloc_get_size(ht->buckets);
+	size_t expanded;
 
-	buckets = talloc_realloc(ht, ht->buckets, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
+	/*
+	 *	Cap the growth, because we need to be able to set a
+	 *	mask, etc.
+	 */
+	if (ht->num_buckets >= TABLE_MAX) return;
+
+	expanded = GROW_FACTOR * ht->num_buckets;
+	if (expanded > TABLE_MAX) expanded = TABLE_MAX;
+
+	buckets = talloc_realloc(ht, ht->buckets, fr_hash_entry_t *, expanded);
 	if (!buckets) return;
 
 	memset(((uint8_t *)buckets) + existing, 0, talloc_get_size(buckets) - existing);
 
 	ht->buckets = buckets;
-	ht->num_buckets *= GROW_FACTOR;
-	ht->next_grow *= GROW_FACTOR;
+	ht->num_buckets = expanded;
 	ht->mask = ht->num_buckets - 1;
+	ht->next_grow *= GROW_FACTOR;
+
 #ifdef TESTING
 	grow = 1;
 	fprintf(stderr, "GROW TO %d\n", ht->num_buckets);
@@ -476,6 +496,8 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (ht->type) (void)_talloc_get_type_abort(data, ht->type, __location__);
 #endif
+
+	if (ht->num_buckets >= TABLE_MAX) return false;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -722,9 +744,15 @@ int fr_hash_table_flatten(TALLOC_CTX *ctx, void **out[], fr_hash_table_t *ht)
  */
 void fr_hash_table_fill(fr_hash_table_t *ht)
 {
-	int i;
+	uint32_t i;
 
-	for (i = ht->num_buckets - 1; i >= 0; i--) if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
+	if (!ht->num_buckets) return;
+
+	i = ht->num_buckets - 1;
+	do {
+		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
+		i--;
+	} while (i > 0);	/* do 0, and then exit. */
 }
 
 #ifdef TESTING
@@ -830,7 +858,7 @@ uint32_t fr_hash(void const *data, size_t size)
 		hash ^= (uint32_t) (*p++);
 
 		/*
-		 *	Multiple by 32-bit magic FNV prime, mod 2^32
+		 *	Multiply by 32-bit magic FNV prime, mod 2^32
 		 */
 		hash *= FNV_MAGIC_PRIME;
 #if 0
@@ -839,9 +867,9 @@ uint32_t fr_hash(void const *data, size_t size)
 		 */
 		hash += (hash<<1) + (hash<<4) + (hash<<7) + (hash<<8) + (hash<<24);
 #endif
-    }
+	}
 
-    return hash;
+	return hash;
 }
 
 /*
@@ -900,8 +928,8 @@ uint32_t fr_hash_case_string(char const *p)
  */
 #undef FNV_MAGIC_INIT
 #undef FNV_MAGIC_PRIME
-#define FNV_MAGIC_INIT ((uint64_t) 0xcbf29ce484222325)
-#define FNV_MAGIC_PRIME ((uint64_t) 0x01000193)
+#define FNV_MAGIC_INIT ((uint64_t)  0xcbf29ce484222325)
+#define FNV_MAGIC_PRIME ((uint64_t) 0x00000100000001B3)
 
 /*
  *	A 64-bit version of the above hash
@@ -920,15 +948,15 @@ uint64_t fr_hash64(void const *data, size_t size)
 		 *	XOR the 8-bit quantity into the bottom of
 		 *	the hash.
 		 */
-		hash ^= (uint32_t) (*p++);
+		hash ^= (uint64_t) (*p++);
 
 		/*
-		 *	Multiple by 32-bit magic FNV prime, mod 2^32
+		 *	Multiply by 64-bit magic FNV prime, mod 2^64
 		 */
 		hash *= FNV_MAGIC_PRIME;
-    }
+	}
 
-    return hash;
+	return hash;
 }
 
 /*
