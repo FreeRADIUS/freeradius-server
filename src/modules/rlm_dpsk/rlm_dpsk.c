@@ -416,13 +416,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	expensive.
 	 */
 	if (inst->cache_size) {
+		pthread_mutex_lock(&inst->mutable->mutex);
 		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), &env->ssid, s_mac);
 		if (entry) {
 			psk_identity = entry->identity;
 			psk = entry->psk;
 			psk_len = entry->psk_len;
+			pthread_mutex_unlock(&inst->mutable->mutex);
 			goto make_digest;
 		}
+		pthread_mutex_unlock(&inst->mutable->mutex);
 	}
 
 	/*
@@ -872,7 +875,7 @@ static void mod_unload(void)
 	xlat_func_unregister("dpsk.pmk");
 }
 
-static int8_t cmp_cache_entry(void const *one, void const *two)
+static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_dpsk_cache_t const *a = (rlm_dpsk_cache_t const *) one;
 	rlm_dpsk_cache_t const *b = (rlm_dpsk_cache_t const *) two;
@@ -887,7 +890,7 @@ static int8_t cmp_cache_entry(void const *one, void const *two)
 	return CMP(memcmp(a->ssid, b->ssid, a->ssid_len), 0);
 }
 
-static void free_cache_entry(void *data)
+static void cache_entry_free(void *data)
 {
 	rlm_dpsk_cache_t *entry = (rlm_dpsk_cache_t *) data;
 
@@ -937,7 +940,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->mutable = talloc_zero(NULL, rlm_dpsk_mutable_t);
 
-	fr_rb_inline_init(&inst->mutable->cache, rlm_dpsk_cache_t, node, cmp_cache_entry, free_cache_entry);
+	fr_rb_inline_init(&inst->mutable->cache, rlm_dpsk_cache_t, node, cache_entry_cmp, cache_entry_free);
 
 	fr_dlist_init(&inst->mutable->head, rlm_dpsk_cache_t, dlist);
 
