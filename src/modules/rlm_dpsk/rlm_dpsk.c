@@ -765,8 +765,8 @@ make_digest:
 		}
 
 	update_entry:
-		pthread_mutex_lock(&inst->mutable->mutex);
 		entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
+		pthread_mutex_lock(&inst->mutable->mutex);
 		if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
 		fr_dlist_insert_tail(&inst->mutable->head, entry);
 		pthread_mutex_unlock(&inst->mutable->mutex);
