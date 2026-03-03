@@ -148,7 +148,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		 */
 		for (i = 0; i < 6; i++) {
 			fr_base16_encode(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1));
-			p[(i * 3) + 2] = '-';
+			if (i < 5) p[(i * 3) + 2] = '-';
 		}
 
 		DEBUG2("Fixing WiMAX binary Calling-Station-Id to %pV", &vp->data);
