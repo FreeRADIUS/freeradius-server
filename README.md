@@ -26,6 +26,22 @@ documentation for version 4.
 Please also see <https://freeradius.org> and <https://www.freeradius.org/documentation/freeradius-server/4.0.0/>
 for additional documentation.
 
+### Use of AI
+
+We do _not_ recommend using AI tools to generate FreeRADIUS
+configurations.  Experience has shown that these configurations are
+largely wrong.
+
+We _do_ recommend using AI tools to analyze your configuration, and
+suggest optimizations or improvements.  However, these suuggestions
+should be viewed with great suspicion.
+
+The benefit of AI is not in creating new content.  The benefit of AI
+is in analyzing large amounts of existing content.  Computers remember
+things better than people, and are better at cross-checking
+configurations for consistency, errors, or things which were missed.
+As such, AI can sometimes be helpful.
+
 ## Installation
 
 To install the server, please see the [installation

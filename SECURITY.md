@@ -1,8 +1,8 @@
 # Security Policy
 
-All security vulnerabilities should be reported to security@freeradius.org
+All security vulnerabilities should be reported to <security@freeradius.org>
 
-All security disclosures are published on the FreeRADIUS web site, at https://www.freeradius.org/security/
+All security disclosures are published on the FreeRADIUS web site, at <https://www.freeradius.org/security/>
 
 ## Supported Versions
 
@@ -50,7 +50,17 @@ those versions, even for security vulnerabilities.
 
 ## Reporting a Vulnerability
 
-All security vulnerabilities should be reported to security@freeradius.org
+All security vulnerabilities should be reported to <security@freeradius.org>
+
+## Use of AI
+
+Security reports must also follow the [AI policy](AI.md).  We are
+happy to accept reports where people have used AI, _provided_ that the
+results have been verified by a person.  Simply forwarding AI results
+to us will likely just get you banned.
+
+You must take personal responsibility for the content and correction
+of any security reports which were generated using AI tools.
 
 ### PGP Key
 
