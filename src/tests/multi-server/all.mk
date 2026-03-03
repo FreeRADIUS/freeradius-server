@@ -7,6 +7,8 @@
 #
 
 # Set required variables for Makefile
+SHELL := /bin/bash
+
 FREERADIUS_SERVER_SRC_PATH_REL := ./
 FREERADIUS_SERVER_SRC_PATH_ABS := $(abspath $(FREERADIUS_SERVER_SRC_PATH_REL))
 FREERADIUS_SERVER_BUILD_DIR_PATH_ABS := $(FREERADIUS_SERVER_SRC_PATH_ABS)/build
@@ -16,12 +18,11 @@ FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_REPO := https://github.com/InkbridgeNetwor
 
 FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS := $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)/freeradius-multi-server-test-runtime-logs
 
-MULTI_SERVER_TEST_RESULTS_LOG := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/multi-server-test-results-combined.log
-MULTI_SERVER_TEST_LISTENER_LOG := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/multi-server-test-listener-combined.log
+MULTI_SERVER_TEST_LOG := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/multi-server-test.log
+MULTI_SERVER_TEST_LINELOG_MSG_OUTPUT := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/multi-server-test-linelog-msg-output.log
 
-# Enable multi-server test framework debug logs if DEBUG is set to 1
-DEBUG ?= 0
-DEBUG_ARG := $(if $(filter 1,$(DEBUG)),-x,)
+# Enable multi-server test framework debug logs
+DEBUG_ARG := -x
 
 # Multi-server test verbosity level
 VERBOSE ?= 1
@@ -32,14 +33,23 @@ VERBOSE_LEVEL_4 := -vvvv
 VERBOSE_ARG := $(VERBOSE_LEVEL_$(VERBOSE))
 
 # Default Multi-server tests (1st target of Makefile)
-multi-server: test-5hs-autoaccept test-1p-2hs-autoaccept combine-test-results
-# Additional multi-server tests for longer runs
-multi-server-5min: test-5hs-autoaccept-5min test-1p-2hs-autoaccept-5min combine-test-results
+multi-server: test-5hs-autoaccept test-1p-2hs-autoaccept combine-linelog-msg-output-logs
 
-.PHONY: 5hs-autoaccept-env-setup test-5hs-autoaccept test-5hs-autoaccept-5min 1p-2hs-autoaccept-env-setup test-1p-2hs-autoaccept test-1p-2hs-autoaccept-5min combine-test-results
+# Clean target to remove all .log and .txt.bak files in the runtime logs directory
+.PHONY: clean
+clean:
+	@echo "INFO: Removing all .log and .txt.bak files in $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)"
+	rm -f $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.log
+	rm -f $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.txt.bak
+
+# Additional multi-server tests for longer runs
+multi-server-5min: test-5hs-autoaccept-5min test-1p-2hs-autoaccept-5min combine-linelog-msg-output-logs
+
+.PHONY: 5hs-autoaccept-env-setup test-5hs-autoaccept test-5hs-autoaccept-5min 1p-2hs-autoaccept-env-setup test-1p-2hs-autoaccept test-1p-2hs-autoaccept-5min combine-linelog-msg-output-logs
 
 5hs-autoaccept-env-setup:
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	echo "INFO: FREERADIUS_SERVER_SRC_PATH_REL=$(FREERADIUS_SERVER_SRC_PATH_REL)"; \
 	echo "INFO: FREERADIUS_SERVER_SRC_PATH_ABS=$(FREERADIUS_SERVER_SRC_PATH_ABS)"; \
@@ -69,6 +79,8 @@ multi-server-5min: test-5hs-autoaccept-5min test-1p-2hs-autoaccept-5min combine-
 	echo "INFO: FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS=$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)"; \
 	echo "INFO: JINJA_RENDERING_SCOPE_PATH_ABS=$$JINJA_RENDERING_SCOPE_PATH_ABS"; \
 	\
+	set -x; \
+	\
 	python3 src/config_builder.py \
 	--vars-file "$$MULTI_SERVER_ENV_VARS_FILE_PATH_ABS" \
 	--aux-file "$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs/freeradius/homeserver/radiusd.conf.j2" \
@@ -83,17 +95,21 @@ multi-server-5min: test-5hs-autoaccept-5min test-1p-2hs-autoaccept-5min combine-
 	--vars-file "$$MULTI_SERVER_ENV_VARS_FILE_PATH_ABS" \
 	--aux-file "$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/docker-compose/env-5hs-autoaccept.yml.j2" \
 	--include-path "$$JINJA_RENDERING_SCOPE_PATH_ABS"; \
-	\
+
 
 test-5hs-autoaccept: 5hs-autoaccept-env-setup
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	TARGET_NAME=test-5hs-autoaccept; \
 	\
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)/freeradius-multi-server; \
 	. .venv/bin/activate; \
 	\
-	echo "INFO: Running test-5hs-autoaccept test using framework"; \
+	echo "INFO: Running test-5hs-autoaccept"; \
+	\
+	set -x; \
+	\
 	DATA_PATH="$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs" \
 	make test-framework \
 		-- $(DEBUG_ARG) $(VERBOSE_ARG) \
@@ -104,14 +120,18 @@ test-5hs-autoaccept: 5hs-autoaccept-env-setup
 		--output "$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/$$TARGET_NAME.log"
 
 test-5hs-autoaccept-5min: 5hs-autoaccept-env-setup
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	TARGET_NAME=test-5hs-autoaccept-5min; \
 	\
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)/freeradius-multi-server; \
 	. .venv/bin/activate; \
 	\
-	echo "INFO: Running test-5hs-autoaccept test using framework"; \
+	echo "INFO: Running test-5hs-autoaccept-5min"; \
+	\
+	set -x; \
+	\
 	DATA_PATH="$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs" \
 	make test-framework \
 		-- $(DEBUG_ARG) $(VERBOSE_ARG) \
@@ -122,7 +142,8 @@ test-5hs-autoaccept-5min: 5hs-autoaccept-env-setup
 		--output "$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/$$TARGET_NAME.log"
 
 1p-2hs-autoaccept-env-setup:
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	echo "INFO: FREERADIUS_SERVER_SRC_PATH_REL=$(FREERADIUS_SERVER_SRC_PATH_REL)"; \
 	echo "INFO: FREERADIUS_SERVER_SRC_PATH_ABS=$(FREERADIUS_SERVER_SRC_PATH_ABS)"; \
@@ -152,6 +173,8 @@ test-5hs-autoaccept-5min: 5hs-autoaccept-env-setup
 	echo "INFO: FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS=$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)"; \
 	echo "INFO: JINJA_RENDERING_SCOPE_PATH_ABS=$$JINJA_RENDERING_SCOPE_PATH_ABS"; \
 	\
+	set -x; \
+	\
 	python3 src/config_builder.py \
 	--vars-file "$$MULTI_SERVER_ENV_VARS_FILE_PATH_ABS" \
 	--aux-file "$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs/freeradius/homeserver/radiusd.conf.j2" \
@@ -171,17 +194,21 @@ test-5hs-autoaccept-5min: 5hs-autoaccept-env-setup
 	--vars-file "$$MULTI_SERVER_ENV_VARS_FILE_PATH_ABS" \
 	--aux-file "$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/docker-compose/env-1p-2hs-autoaccept.yml.j2" \
 	--include-path "$$JINJA_RENDERING_SCOPE_PATH_ABS"; \
-	\
+
 
 test-1p-2hs-autoaccept: 1p-2hs-autoaccept-env-setup
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	TARGET_NAME=test-1p-2hs-autoaccept; \
 	\
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)/freeradius-multi-server; \
 	. .venv/bin/activate; \
 	\
-	echo "INFO: Running test-1p-2hs-autoaccept test using framework"; \
+	echo "INFO: Running test-1p-2hs-autoaccept"; \
+	\
+	set -x; \
+	\
 	DATA_PATH="$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs" \
 	make test-framework \
 		-- $(DEBUG_ARG) $(VERBOSE_ARG) \
@@ -192,14 +219,18 @@ test-1p-2hs-autoaccept: 1p-2hs-autoaccept-env-setup
 		--output "$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/$$TARGET_NAME.log"
 
 test-1p-2hs-autoaccept-5min: 1p-2hs-autoaccept-env-setup
-	@set -e; \
+	@LOG_FILE="$(MULTI_SERVER_TEST_LOG)"; \
+	set -e; exec &> >(tee -a "$${LOG_FILE}"); \
 	\
 	TARGET_NAME=test-1p-2hs-autoaccept-5min; \
 	\
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS)/freeradius-multi-server; \
 	. .venv/bin/activate; \
 	\
-	echo "INFO: Running test-1p-2hs-autoaccept-5min test using framework"; \
+	echo "INFO: Running test-1p-2hs-autoaccept-5min"; \
+	\
+	set -x; \
+	\
 	DATA_PATH="$(FREERADIUS_MULTI_SERVER_TESTS_BASE_PATH_ABS)/environments/configs" \
 	make test-framework \
 		-- $(DEBUG_ARG) $(VERBOSE_ARG) \
@@ -209,8 +240,11 @@ test-1p-2hs-autoaccept-5min: 1p-2hs-autoaccept-env-setup
 		--listener-dir "$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)" \
 		--output "$(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/$$TARGET_NAME.log"
 
-combine-test-results:
-	@echo "INFO: Combining test results into $(MULTI_SERVER_TEST_RESULTS_LOG)"
-	@rm -f $(MULTI_SERVER_TEST_RESULTS_LOG) $(MULTI_SERVER_TEST_LISTENER_LOG)
-	cat $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.log > $(MULTI_SERVER_TEST_RESULTS_LOG)
-	cat $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.txt.bak > $(MULTI_SERVER_TEST_LISTENER_LOG)
+combine-linelog-msg-output-logs:
+	@echo "INFO: Combining multi-server test linelog message output into $(MULTI_SERVER_TEST_LINELOG_MSG_OUTPUT)"
+	@rm -f $(MULTI_SERVER_TEST_LINELOG_MSG_OUTPUT)
+	for f in $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.txt.bak; do \
+	  echo "$$f"; \
+	  cat "$$f"; \
+	  echo ""; \
+	done > $(MULTI_SERVER_TEST_LINELOG_MSG_OUTPUT)
