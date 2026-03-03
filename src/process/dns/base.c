@@ -229,6 +229,8 @@ static void dns_packet_debug(request_t *request, fr_packet_t const *packet, fr_p
 
 	if ((packet->code & 0x0f) >= FR_DNS_CODE_MAX) return;
 
+	if (!fr_dns_packet_names[packet->code & 0x0f]) return;
+
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
 		    received ? "Received" : "Sending",
 		    fr_dns_packet_names[packet->code & 0x0f]);
