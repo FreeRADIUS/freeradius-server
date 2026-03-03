@@ -53,7 +53,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	request_t	*request;
 	fr_sql_query_t	*query_ctx;
 
-	while (trunk_connection_pop_request(&treq, tconn) != 0) {
+	while (trunk_connection_pop_request(&treq, tconn) == 0) {
 		if (!treq) return;
 
 		query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
