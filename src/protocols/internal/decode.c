@@ -151,7 +151,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_printf("%s: Encoding byte invalid, fields overrun input data. "
 				   "%zu byte(s) remaining, need %zu byte(s)",
 				   __FUNCTION__, remaining, needed);
-		return 0;
+		return -needed;
 	}
 
 	/*
@@ -218,12 +218,10 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		FR_PROTO_TRACE("Unknown attribute %" PRIu64, type);
 		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent_da, type);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
+		unknown = true;
 	} else {
 		da = fr_dict_attr_child_by_num(parent_da, type);
-		if (!da) {
-			unknown = true;	/* Be kind, someone may have messed with the dictionaries */
-			goto unknown;
-		}
+		if (!da) goto unknown;
 	}
 
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
