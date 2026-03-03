@@ -188,7 +188,7 @@ int fr_sem_post(int sem_id, char const *file, bool undo_on_exit)
 	if (errno != 0) {
 		fr_strerror_printf("Failed getting value from semaphore bound to \"%s\" - %s", file,
 				   fr_syserror(errno));
-		return 01;
+		return -1;
 	}
 	if (num == 0) return 1;
 
@@ -299,7 +299,7 @@ int fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock)
 		if (unlikely(!uid_str)) goto simple_error;
 
 		gid_str = fr_perm_gid_to_str(NULL, gid);
-		if (unlikely(!uid_str)) {
+		if (unlikely(!gid_str)) {
 			talloc_free(uid_str);
 			goto simple_error;
 		}
