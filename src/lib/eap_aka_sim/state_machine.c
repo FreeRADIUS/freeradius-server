@@ -63,12 +63,6 @@ RCSID("$Id$")
 					    module_ctx_t const *mctx, \
 					    request_t *request)
 
-#define RESUME_NO_RESULT(_x) \
-	static inline unlang_action_t resume_ ## _x(UNUSED unlang_result_t *p_result, \
-						    module_ctx_t const *mctx, \
-						    request_t *request)
-
-
 #define STATE_TRANSITION(_x) guard_ ## _x(p_result, mctx, request)
 
 #define CALL_SECTION(_x)	unlang_module_yield_to_section(&eap_aka_sim_session->section_result, \
