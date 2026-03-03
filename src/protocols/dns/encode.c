@@ -150,10 +150,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	DNS labels get a special encoder.
 		 */
 		if (fr_dns_flag_dns_label_any(da)) {
-			fr_dbuff_marker_t	last_byte, src;
-
-			fr_dbuff_marker(&last_byte, &work_dbuff);
-			fr_dbuff_marker(&src, &work_dbuff);
 			FR_PROTO_TRACE("encode DNS label %s", vp->vp_strvalue);
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, fr_dns_flag_dns_label(da),
 								 &vp->data, packet_ctx->lb);
