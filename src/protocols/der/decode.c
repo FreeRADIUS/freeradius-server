@@ -796,7 +796,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				if ((tag_byte & DER_TAG_CLASS_MASK) == FR_DER_CLASS_UNIVERSAL) {
 				unexpected_class:
-					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					fr_strerror_printf_push("Tag has unexpected class %02x", tag_byte & DER_TAG_CLASS_MASK);
 					goto error;
 				}
 

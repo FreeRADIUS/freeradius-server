@@ -135,7 +135,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_max(_da) 		(fr_der_attr_flags(_da)->max)
 #define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
-#define fr_der_flag_has_default_value(_da) 	((fr_der_attr_flags(_da)->has_default_value) != NULL);
+#define fr_der_flag_has_default_value(_da) 	(fr_der_attr_flags(_da)->has_default_value)
 #define fr_der_flag_leaf(_da) 		(fr_der_attr_flags(_da)->leaf)
 #define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
 
