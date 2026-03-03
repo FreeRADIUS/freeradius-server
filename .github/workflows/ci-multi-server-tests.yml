@@ -177,8 +177,9 @@ jobs:
           - ${{ github.workspace }}:/workspace
 
     env:
-      MULTI_SERVER_TEST_RESULTS_LOG: build/tests/multi-server/freeradius-multi-server-test-runtime-logs/multi-server-test-results-combined.log
-      MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-multi-server-test-runtime-logs/multi-server-test-listener-combined.log
+      MULTI_SERVER_ENV_DOCKER_BUILD_OS: ubuntu24
+      MULTI_SERVER_TEST_LOG: build/tests/multi-server/freeradius-multi-server-test-runtime-logs/multi-server-test.log
+      MULTI_SERVER_TEST_LISTENER_LOG: build/tests/multi-server/freeradius-multi-server-test-runtime-logs/multi-server-test-linelog-msg-output.log
 
     container:
       image: docker.internal.networkradius.com/self-hosted
@@ -224,8 +225,8 @@ jobs:
 
       - name: Build Docker image from source
         run: |
-          make docker.ubuntu24.build
-          docker tag freeradius4/ubuntu24:latest freeradius-build:latest
+          make docker.${MULTI_SERVER_ENV_DOCKER_BUILD_OS}.build
+          docker tag freeradius4/${MULTI_SERVER_ENV_DOCKER_BUILD_OS}:latest freeradius-build:latest
           docker images --all
 
       - name: Run multi-server tests
@@ -242,30 +243,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "============ ${MULTI_SERVER_TEST_RESULTS_LOG} ============"
-          cat "${MULTI_SERVER_TEST_RESULTS_LOG}"
+          echo "${MULTI_SERVER_TEST_LOG}:"
+          cat "${MULTI_SERVER_TEST_LOG}"
 
-          if grep -q '\[Failed\]' "${MULTI_SERVER_TEST_RESULTS_LOG}"; then
-            echo "TEST FAILED: Found [Failed] in log"
-            grep '\[Failed\]' "${MULTI_SERVER_TEST_RESULTS_LOG}"
+          if grep -Eq "\(Failures:[^0-9]*[1-9][0-9]*\)" "${MULTI_SERVER_TEST_LOG}"; then
+            echo "TEST FAILED: Found > 0 failures in log"
 
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            # Display the test's linelog message file
+            echo "${MULTI_SERVER_TEST_LISTENER_LOG}:"
             cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
 
-          if grep -Eq '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_RESULTS_LOG}"; then
-            echo "TEST FAILED: Found Failures > 0 in log"
-            grep -E '\(Failures:[[:space:]]*[1-9][0-9]*[[:space:]]*\)' "${MULTI_SERVER_TEST_RESULTS_LOG}"
-
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
-            cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
-            exit 1
-          fi
-
-          log="${MULTI_SERVER_TEST_RESULTS_LOG}"
+          # Verify that all of the expected linelog results were matched
+          # during the test(s).
+          #
+          # Checking to see that the <actual> value matches <expected> value in lines like:
+          #
+          #   Matched: <actual> / <expected> (Failures: 0)
+          #
           if awk '
             BEGIN { found=0; n1=0; n2=0; line="" }
             index($0,"Matched:") {
@@ -285,14 +281,13 @@ jobs:
               if (found) { printf "MATCH: %d / %d\nMatched line: %s\n", n1, n2, line; exit 0 }
               exit 1
             }
-          ' "$log"
+          ' "${MULTI_SERVER_TEST_LOG}"
           then
             : # PASS
           else
-            echo "TEST FAILED: No Matched line found with equal non-zero counts"
-
-            # Display the framework's listener log for debugging purposes
-            echo "============ ${MULTI_SERVER_TEST_LISTENER_LOG} ============"
+            echo "TEST FAILED: Detected issues with the test's linelog message logs"
+            # Display the test's linelog message file
+            echo "${MULTI_SERVER_TEST_LISTENER_LOG}:"
             cat "${MULTI_SERVER_TEST_LISTENER_LOG}"
             exit 1
           fi
