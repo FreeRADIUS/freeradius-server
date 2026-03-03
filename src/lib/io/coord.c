@@ -53,6 +53,7 @@ struct fr_coord_s {
 	fr_rb_node_t			node;		//!< Entry in the tree of coordinators.
 	fr_coord_cb_reg_t		*callbacks;	//!< Array of callbacks for worker -> coordinator messages.
 	uint32_t			num_callbacks;	//!< Number of callbacks defined.
+	fr_coord_cb_inst_t		**cb_inst;	//!< Array of callback instance specific data.
 
 	uint32_t			max_workers;	//!< Maximum number of workers we expect.
 	uint32_t			num_workers;	//!< How many workers are attached.
@@ -223,7 +224,10 @@ static void coord_data_recv(void *ctx, void const *data, size_t data_size, fr_ti
 	}
 
 	fr_dbuff_init(&dbuff, (uint8_t const *)cd->m.data, cd->m.data_size);
-	coord->callbacks[cd->coord_cb_id].callback(coord, cm.worker, &dbuff, now, coord->callbacks[cd->coord_cb_id].uctx);
+	coord->callbacks[cd->coord_cb_id].callback(coord, cm.worker, &dbuff, now,
+						   coord->cb_inst[cd->coord_cb_id] ?
+						   coord->cb_inst[cd->coord_cb_id]->inst_data : NULL,
+						   coord->callbacks[cd->coord_cb_id].uctx);
 	fr_message_done(&cd->m);
 }
 
@@ -378,6 +382,15 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	MEM(coord->coord_send_control = talloc_zero_array(coord, fr_control_t *, coord->max_workers));
 	MEM(coord->coord_send_aq = talloc_zero_array(coord, fr_atomic_queue_t *, coord->max_workers));
 
+	MEM(coord->cb_inst = talloc_zero_array(coord, fr_coord_cb_inst_t *, coord->num_callbacks));
+
+	for (i = 0; i < coord->num_callbacks; i++) {
+		if (!coord->callbacks[i].inst_create) continue;
+		coord->cb_inst[i] = coord->callbacks[i].inst_create(coord, coord, coord->el, coord->single_thread,
+								    coord->callbacks[i].uctx);
+		if (!coord->cb_inst[i]) goto fail;
+	}
+
 	return coord;
 }
 
@@ -385,6 +398,9 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
  */
 static void fr_coordinate(fr_coord_t *coord)
 {
+	uint32_t		i;
+	fr_coord_cb_inst_t	*cb_inst;
+
 	/*
 	 *	Run until we're told to exit AND the number of
 	 *	workers has dropped to zero.
@@ -413,6 +429,14 @@ static void fr_coordinate(fr_coord_t *coord)
 		if (num_events > 0) {
 			DEBUG4("Servicing event(s)");
 			fr_event_service(coord->el);
+		}
+
+		/*
+		 *	Run any registered instance specific event callbacks
+		 */
+		for (i = 0; i < coord->num_callbacks; i++) {
+			cb_inst = coord->cb_inst[i];
+			if (cb_inst && cb_inst->event_cb) cb_inst->event_cb(coord->el, cb_inst->inst_data);
 		}
 	}
 
@@ -767,4 +791,54 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 
 	return fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
 				       FR_CONTROL_ID_COORD_DATA, &cm, sizeof(fr_coord_msg_t));
+}
+
+/** Insert instance specific pre-event callbacks
+ */
+int fr_coord_pre_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+	fr_coord_cb_inst_t	*cb_inst;
+	uint32_t		i;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		for (i = 0; i < coord->num_callbacks; i++) {
+			cb_inst = coord->cb_inst[i];
+			if (cb_inst && cb_inst->event_pre_cb &&
+			    fr_event_pre_insert(el, cb_inst->event_pre_cb, cb_inst->inst_data) < 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
+
+/** Insert instance specific post-event callbacks
+ */
+int fr_coord_post_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+	fr_coord_cb_inst_t	*cb_inst;
+	uint32_t		i;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		for (i = 0; i < coord->num_callbacks; i++) {
+			cb_inst = coord->cb_inst[i];
+			if (cb_inst && cb_inst->event_post_cb &&
+			    fr_event_post_insert(el, cb_inst->event_post_cb, cb_inst->inst_data) < 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }
