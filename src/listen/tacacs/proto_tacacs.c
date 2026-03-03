@@ -151,7 +151,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 {
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	fr_client_t const		*client;
+	fr_client_t const	*client;
 	int			code = -1;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
 	char const		*secret;
@@ -205,7 +205,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	secret = client->secret;
 	if (secret) {
 		if (!packet_is_encrypted((fr_tacacs_packet_t const *) data)) {
-			REDEBUG("Expected to see encrypted packet, got unencrypted packet!");
+			REDEBUG("Expected to see encrypted packet, got unencrypted packet from %s!", client->longname);
 			return -1;
 		}
 		secretlen = talloc_strlen(client->secret);
@@ -228,7 +228,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	if (fr_tacacs_decode(request->request_ctx, &request->request_pairs, dv,
 			     request->packet->data, request->packet->data_len,
 			     NULL, secret, secretlen, &code) < 0) {
-		RPEDEBUG("Failed decoding packet");
+		RPEDEBUG("Failed decoding packet from %s", client->longname);
 		return -1;
 	}
 
