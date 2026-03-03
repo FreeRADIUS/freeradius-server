@@ -95,3 +95,6 @@ crash-*
 
 # Antora web site generation
 main-site.yml
+
+# Claude AI
+build-2f*
