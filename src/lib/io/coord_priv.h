@@ -39,3 +39,11 @@ typedef struct {
 	fr_message_t			m;			//!< Message containing data being sent.
 	uint32_t			coord_cb_id;		//!< Callback ID for this message.
 } fr_coord_data_t;
+
+typedef void (*fr_coord_inst_event_cb_t)(fr_event_list_t *el, void *uctx);
+struct fr_coord_cb_inst_s {
+	void				*inst_data;		//!< Instance data.
+	fr_event_status_cb_t		event_pre_cb;		//!< Pre-event callback in single thread mode.
+	fr_event_post_cb_t		event_post_cb;		//!< Post-event callback in single thread mode.
+	fr_coord_inst_event_cb_t	event_cb;		//!< Event callback in multi thread mode.
+};
