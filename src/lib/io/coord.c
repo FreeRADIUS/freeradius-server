@@ -53,6 +53,7 @@ struct fr_coord_s {
 	fr_rb_node_t			node;		//!< Entry in the tree of coordinators.
 	fr_coord_cb_reg_t		*callbacks;	//!< Array of callbacks for worker -> coordinator messages.
 	uint32_t			num_callbacks;	//!< Number of callbacks defined.
+	fr_coord_plugin_t		**plugins;	//!< Array of plugins used by callbacks
 
 	uint32_t			max_workers;	//!< Maximum number of workers we expect.
 	uint32_t			num_workers;	//!< How many workers are attached.
@@ -220,7 +221,9 @@ static void coord_recv_message(void *ctx, void const *data, size_t data_size, fr
 	}
 
 	fr_dbuff_init(&dbuff, (uint8_t const *)cd->m.data, cd->m.data_size);
-	coord->callbacks[cd->coord_cb_id].callback(coord, cm.worker, &dbuff, now, coord->callbacks[cd->coord_cb_id].uctx);
+	coord->callbacks[cd->coord_cb_id].callback(coord, cm.worker, &dbuff, now,
+						   coord->plugins[cd->coord_cb_id] ? coord->plugins[cd->coord_cb_id]->plugin_data : NULL,
+						   coord->callbacks[cd->coord_cb_id].uctx);
 	fr_message_done(&cd->m);
 }
 
@@ -375,11 +378,23 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	MEM(coord->coord_send_control = talloc_zero_array(coord, fr_control_t *, coord->max_workers));
 	MEM(coord->coord_send_aq = talloc_zero_array(coord, fr_atomic_queue_t *, coord->max_workers));
 
+	MEM(coord->plugins = talloc_zero_array(coord, fr_coord_plugin_t *, coord->num_callbacks));
+
+	for (i = 0; i < coord->num_callbacks; i++) {
+		if (!coord->callbacks[i].plugin_create) continue;
+		coord->plugins[i] = coord->callbacks[i].plugin_create(coord, coord, coord->el, coord->single_thread,
+								      coord->callbacks[i].uctx);
+		if (!coord->plugins[i]) goto fail;
+	}
+
 	return coord;
 }
 
 static void fr_coordinate(fr_coord_t *coord)
 {
+	uint32_t		i;
+	fr_coord_plugin_t	*plugin;
+
 	/*
 	 *	Run until we're told to exit AND the number of
 	 *	workers has dropped to zero.
@@ -408,6 +423,14 @@ static void fr_coordinate(fr_coord_t *coord)
 		if (num_events > 0) {
 			DEBUG4("Servicing event(s)");
 			fr_event_service(coord->el);
+		}
+
+		/*
+		 *	Run any callbacks registered by plugins
+		 */
+		for (i = 0; i < coord->num_callbacks; i++) {
+			plugin = coord->plugins[i];
+			if (plugin && plugin->event_cb) plugin->event_cb(coord->el, plugin->plugin_data);
 		}
 	}
 
@@ -764,4 +787,54 @@ int fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *d
 
 	return fr_control_message_send(cw->coord->coord_recv_control, cw->worker_send_rb,
 				       FR_CONTROL_ID_COORD_CALLBACK, &cm, sizeof(fr_coord_msg_t));
+}
+
+/** Insert pre-event callbacks used by plugins
+ */
+int fr_coord_pre_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+	fr_coord_plugin_t	*plugin;
+	uint32_t		i;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		for (i = 0; i < coord->num_callbacks; i++) {
+			plugin = coord->plugins[i];
+			if (plugin && plugin->event_pre_cb &&
+			    fr_event_pre_insert(el, plugin->event_pre_cb, plugin->plugin_data) < 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
+
+/** Insert post-event callbacks used by plugins
+ */
+int fr_coord_post_event_insert(fr_event_list_t *el)
+{
+	fr_coord_t		*coord;
+	fr_rb_iter_inorder_t	iter;
+	fr_coord_plugin_t	*plugin;
+	uint32_t		i;
+
+	if (!coord_regs) return 0;
+
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord != NULL;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
+		for (i = 0; i < coord->num_callbacks; i++) {
+			plugin = coord->plugins[i];
+			if (plugin && plugin->event_post_cb &&
+			    fr_event_post_insert(el, plugin->event_post_cb, plugin->plugin_data) < 0) {
+				return -1;
+			}
+		}
+	}
+	return 0;
 }

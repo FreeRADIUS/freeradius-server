@@ -35,13 +35,16 @@ typedef struct fr_coord_reg_s fr_coord_reg_t;
 
 typedef struct fr_coord_s fr_coord_t;
 typedef struct fr_coord_worker_s fr_coord_worker_t;
+typedef struct fr_coord_plugin_s fr_coord_plugin_t;
 
-typedef	void (*fr_coord_cb_t)(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *uctx);
+typedef	void (*fr_coord_cb_t)(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *plugin_data, void *uctx);
 typedef void (*fr_coord_worker_cb_t)(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, void *uctx);
+typedef fr_coord_plugin_t *(*fr_coord_plugin_create_t)(TALLOC_CTX *ctx, fr_coord_t *coord, fr_event_list_t *el, bool single_thread, void *uctx);
 
 typedef struct {
 	char const			*name;
 	fr_coord_cb_t			callback;
+	fr_coord_plugin_create_t	plugin_create;
 	void				*uctx;
 } fr_coord_cb_reg_t;
 
@@ -91,3 +94,7 @@ int		fr_coord_to_worker_send(fr_coord_t *coord, uint32_t worker_id, uint32_t cb_
 int		fr_coord_to_worker_broadcast(fr_coord_t *coord, uint32_t cb_id, fr_dbuff_t *dbuff);
 
 int		fr_worker_to_coord_send(fr_coord_worker_t *cw, uint32_t cb_id, fr_dbuff_t *dbuff);
+
+int		fr_coord_pre_event_insert(fr_event_list_t *el);
+
+int		fr_coord_post_event_insert(fr_event_list_t *el);
