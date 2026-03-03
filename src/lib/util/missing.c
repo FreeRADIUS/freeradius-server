@@ -181,9 +181,14 @@ struct tm *localtime_r(time_t const *l_clock, struct tm *result)
  */
 char *ctime_r(time_t const *l_clock, char *l_buf)
 {
-  strcpy(l_buf, ctime(l_clock));
+	char *p;
 
-  return l_buf;
+	p = ctime(l_clock);
+	if (!p) return NULL:
+
+	strcpy(l_buf, ctime(l_clock));
+
+	return l_buf;
 }
 #endif
 
