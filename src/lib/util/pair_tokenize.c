@@ -219,7 +219,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	}
 	p += slen;
 
-	while ((isspace((uint8_t) *p)) && (p < end)) p++;
+	while ((p < end) && isspace((uint8_t) *p)) p++;
 
 	if (p >= end) {
 		fr_strerror_const("No value found in the input buffer");
