@@ -828,13 +828,11 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	case FR_TLS_RESULT_IN_PROGRESS:
 	default:
 		fr_assert(0);	/* Shouldn't have been called */
-		goto finish;
+		goto fail;
 
 	case FR_TLS_RESULT_ERROR:
 		REDEBUG("TLS receive handshake failed during operation");
-		fr_tls_cache_deny(request, tls_session);
-		eap_tls_session->state = EAP_TLS_FAIL;
-		goto finish;
+		goto fail;
 
 	case FR_TLS_RESULT_SUCCESS:
 		break;
@@ -879,9 +877,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 			if (ret != UNLANG_ACTION_FAIL) return ret;
 
 			REDEBUG("TLS receive handshake failed during operation");
-			fr_tls_cache_deny(request, tls_session);
-			eap_tls_session->state = EAP_TLS_FAIL;
-			return ret;
+			goto fail;
 		}
 	}
 #endif
@@ -892,9 +888,12 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		if (eap_tls_request(request, eap_session) < 0) goto fail;
+		if (eap_tls_request(request, eap_session) < 0) {
+			REDEBUG("TLS failed composing a response");
+			goto fail;
+		}
 		eap_tls_session->state = EAP_TLS_HANDLED;
-		goto finish;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
@@ -914,18 +913,18 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 		 */
 		tls_session->info.content_type = SSL3_RT_APPLICATION_DATA;
 		eap_tls_session->state = EAP_TLS_ESTABLISHED;
-		goto finish;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
 	 *	Who knows what happened...
 	 */
-fail:
 	REDEBUG("TLS failed during operation");
+fail:
+	fr_tls_cache_deny(request, tls_session);
 	eap_tls_session->state = EAP_TLS_FAIL;
 
-finish:
-	return ret;
+	return UNLANG_ACTION_FAIL;
 }
 
 /** Push functions to continue the handshake asynchronously
