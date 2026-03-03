@@ -2341,7 +2341,7 @@ check_syntax:
 	if (!cmd->syntax_argv) {
 		fr_skip_whitespace(word);
 
-		if (*word > 0) goto too_many;
+		if (*(uint8_t const *)word > 0) goto too_many;
 
 		info->runnable = true;
 		info->argc = argc;
@@ -2436,20 +2436,6 @@ static int expand_all(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv, i
 		return count;
 	}
 
-	if (argv->type == FR_TYPE_ALTERNATE) {
-		for (child = argv->child; child != NULL; child = child->next) {
-			fr_cmd_argv_t *sub;
-
-			fr_assert(child->type == FR_TYPE_ALTERNATE_CHOICE);
-			fr_assert(child->child != NULL);
-			sub = child->child;
-
-			count = expand_all(cmd, info, sub, count, max_expansions, expansions);
-		}
-
-		return count;
-	}
-
 	/*
 	 *	@todo - might want to do something smarter here?
 	 */
@@ -2505,7 +2491,7 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 
 			count = expand_syntax(cmd, info, argv->child, text, start, &my_word, count, max_expansions, expansions);
 
-			if (word != my_word) *word_p = word;
+			if (word != my_word) *word_p = my_word;
 			continue;
 		}
 
