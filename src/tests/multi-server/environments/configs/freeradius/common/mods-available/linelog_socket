@@ -1,0 +1,18 @@
+
+linelog linelog_test_framework {
+        destination = unix
+        format = "bar"
+        unix {
+                filename = /var/run/multi-server/$ENV{TEST_PROJECT_NAME}.sock
+                pool {
+                        start = 1
+                        min = 1
+                        max = 1
+                        spare = 0
+                        uses = 0
+                        retry_delay = 30
+                        lifetime = 0
+                        idle_timeout = 0
+                }
+        }
+}
