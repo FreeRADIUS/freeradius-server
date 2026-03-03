@@ -1288,7 +1288,7 @@ static inline void fr_sbuff_marker_release(fr_sbuff_marker_t *m)
 {
 	m->parent->m = m->next;
 
-#ifndef NDEBUF
+#ifndef NDEBUG
 	memset(m, 0, sizeof(*m));	/* Use after release */
 #endif
 }
