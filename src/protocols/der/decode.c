@@ -1071,6 +1071,10 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	return fr_dbuff_set(in, &our_in);
 }
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-designator"
+#endif
+
 static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
