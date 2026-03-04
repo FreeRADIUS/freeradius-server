@@ -844,7 +844,7 @@ static inline void fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
  */
 static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
 {
-	talloc_free(fr_dlist_pop_head(list_head));
+	talloc_free(fr_dlist_pop_tail(list_head));
 }
 
 /** Free the item specified
@@ -1005,7 +1005,7 @@ static inline void *fr_dlist_sort_merge(fr_dlist_head_t *head, void **a, void **
 	}
 
 	result_entry = fr_dlist_item_to_entry(head->offset, result);
-	next_entry = fr_dlist_item_to_entry(head->offset, next);
+	next_entry = next ? fr_dlist_item_to_entry(head->offset, next) : NULL;
 	result_entry->next = next_entry;
 
 	return result;
