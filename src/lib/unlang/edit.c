@@ -1295,7 +1295,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	fr_type_t type;
 	fr_value_box_t *box = fr_value_box_list_head(&current->lhs.list);
 	fr_value_box_t *dst;
-	fr_sbuff_unescape_rules_t *erules = NULL;
+	fr_sbuff_unescape_rules_t const *erules = NULL;
 
 	fr_assert(current->parent);
 

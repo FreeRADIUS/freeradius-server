@@ -269,7 +269,7 @@ static int64_t const fr_value_box_integer_min[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_double = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_double = {
 	.name = "double",
 	.chr = '\\',
 	.subs = {
@@ -288,7 +288,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_double = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_single = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_single = {
 	.name = "single",
 	.chr = '\\',
 	.subs = {
@@ -299,7 +299,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_single = {
 	.do_oct = false
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_solidus = {
 	.name = "solidus",
 	.chr = '\\',
 	.subs = {
@@ -320,7 +320,7 @@ fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
+fr_sbuff_unescape_rules_t const fr_value_unescape_backtick = {
 	.name = "backtick",
 	.chr = '\\',
 	.subs = {
@@ -339,21 +339,21 @@ fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
 	.do_oct = true
 };
 
-fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
+fr_sbuff_unescape_rules_t const *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
 	[T_DOUBLE_QUOTED_STRING]	= &fr_value_unescape_double,
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_unescape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_unescape_solidus,
 	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
 };
 
-fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[SBUFF_CHAR_CLASS] = {
+fr_sbuff_unescape_rules_t const *fr_value_unescape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_unescape_double,
 	['\'']	= &fr_value_unescape_single,
 	['/']	= &fr_value_unescape_solidus,
 	['`']	= &fr_value_unescape_backtick,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_double = {
+fr_sbuff_escape_rules_t const fr_value_escape_double = {
 	.name = "double",
 	.chr = '\\',
 	.subs = {
@@ -384,14 +384,14 @@ fr_sbuff_escape_rules_t fr_value_escape_double = {
  *  The length of the secret still leaks, but that is likely fine.  Fixing that is more work.
  *
  */
-fr_sbuff_escape_rules_t fr_value_escape_secret = {
+fr_sbuff_escape_rules_t const fr_value_escape_secret = {
 	.name = "secret",
 	.subs = {
 		[ 0 ... 255 ] = '.',
 	},
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_single = {
+fr_sbuff_escape_rules_t const fr_value_escape_single = {
 	.name = "single",
 	.chr = '\\',
 	.subs = {
@@ -401,7 +401,7 @@ fr_sbuff_escape_rules_t fr_value_escape_single = {
 	.do_utf8 = true,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+fr_sbuff_escape_rules_t const fr_value_escape_solidus = {
 	.name = "solidus",
 	.chr = '\\',
 	.subs = {
@@ -422,7 +422,7 @@ fr_sbuff_escape_rules_t fr_value_escape_solidus = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+fr_sbuff_escape_rules_t const fr_value_escape_backtick = {
 	.name = "backtick",
 	.chr = '\\',
 	.subs = {
@@ -444,21 +444,21 @@ fr_sbuff_escape_rules_t fr_value_escape_backtick = {
 	.do_oct = true
 };
 
-fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
+fr_sbuff_escape_rules_t const *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_DOUBLE_QUOTED_STRING]	= &fr_value_escape_double,
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_escape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_escape_solidus,
 	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
 };
 
-fr_sbuff_escape_rules_t *fr_value_escape_by_char[SBUFF_CHAR_CLASS] = {
+fr_sbuff_escape_rules_t const *fr_value_escape_by_char[SBUFF_CHAR_CLASS] = {
 	['"']	= &fr_value_escape_double,
 	['\'']	= &fr_value_escape_single,
 	['/']	= &fr_value_escape_solidus,
 	['`']	= &fr_value_escape_backtick,
 };
 
-fr_sbuff_escape_rules_t fr_value_escape_unprintables = {
+fr_sbuff_escape_rules_t const fr_value_escape_unprintables = {
 	.name = "unprintables",
 	.chr = '\\',
 	.subs = {

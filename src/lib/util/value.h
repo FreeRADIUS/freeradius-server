@@ -70,22 +70,22 @@ extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
 
-extern fr_sbuff_unescape_rules_t fr_value_unescape_double;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_single;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_solidus;
-extern fr_sbuff_unescape_rules_t fr_value_unescape_backtick;
-extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[SBUFF_CHAR_CLASS];
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_double;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_single;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_solidus;
+extern fr_sbuff_unescape_rules_t const fr_value_unescape_backtick;
+extern fr_sbuff_unescape_rules_t const *fr_value_unescape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_unescape_rules_t const *fr_value_unescape_by_char[SBUFF_CHAR_CLASS];
 
-extern fr_sbuff_escape_rules_t fr_value_escape_double;
-extern fr_sbuff_escape_rules_t fr_value_escape_single;
-extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
-extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
-extern fr_sbuff_escape_rules_t fr_value_escape_secret;
-extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
-extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[SBUFF_CHAR_CLASS];
+extern fr_sbuff_escape_rules_t const fr_value_escape_double;
+extern fr_sbuff_escape_rules_t const fr_value_escape_single;
+extern fr_sbuff_escape_rules_t const fr_value_escape_solidus;
+extern fr_sbuff_escape_rules_t const fr_value_escape_backtick;
+extern fr_sbuff_escape_rules_t const fr_value_escape_secret;
+extern fr_sbuff_escape_rules_t const *fr_value_escape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_escape_rules_t const *fr_value_escape_by_char[SBUFF_CHAR_CLASS];
 
-extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
+extern fr_sbuff_escape_rules_t const fr_value_escape_unprintables;
 
 #ifndef NDEBUG
 #  define FR_VALUE_BOX_MAGIC RADIUSD_MAGIC_NUMBER
