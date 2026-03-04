@@ -200,8 +200,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
 	FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
 
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->response_window, <=, fr_time_delta_from_sec(120));
 
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
