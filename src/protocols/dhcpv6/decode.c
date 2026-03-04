@@ -269,7 +269,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (data_len < 8) return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
 
 	memcpy(&pen, data, sizeof(pen));
-	pen = htonl(pen);
+	pen = ntohl(pen);
 
 	/*
 	 *	Verify that the parent (which should be a VSA)
