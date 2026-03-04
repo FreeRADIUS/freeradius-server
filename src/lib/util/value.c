@@ -6848,6 +6848,100 @@ int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_es
 	return ret;
 }
 
+typedef struct {
+	TALLOC_CTX			*ctx;
+	fr_sbuff_escape_rules_t const	*erules;
+} fr_value_box_escape_rules_ctx_t;
+
+static int _value_box_escape_rules(fr_value_box_t *vb, void *uctx)
+{
+	fr_value_box_escape_rules_ctx_t *ctx = uctx;
+
+	if (fr_type_is_leaf(vb->type)) {
+		if (fr_value_box_escape_in_place_erules(ctx->ctx, vb, ctx->erules) < 0) return -1;
+
+		return 1;	/* safe_for has been updated */
+	}
+	
+	return fr_value_box_escape_in_place(vb,
+					    &(fr_value_box_escape_t) {
+						    .func = _value_box_escape_rules,
+						    .safe_for = (fr_value_box_safe_for_t) ctx->erules,
+						    .always_escape = true,
+					    },
+					    &(fr_value_box_escape_rules_ctx_t)  {
+						    .ctx = vb,
+						    .erules = ctx->erules,
+					    }
+		);
+}
+
+/** Escape a value-box in place using sbuff escaping rules, and mark it safe-for.
+ *
+ *  If the input type isn't a string, then it is converted to a string.
+ *
+ *  The output type is always #FR_TYPE_STRING
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] vb	which will be escaped
+ * @param[in] erules	escape rules
+ * @return
+ *	- <0 for error, generally OOM
+ *	- 0 for success
+ */
+int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_rules_t const *erules)
+{
+	ssize_t slen;
+	fr_sbuff_t *escaped = NULL;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&escaped, 256, 4096);
+
+	/*
+	 *	Structural types are much more complicated.  :(
+	 */
+	if (!fr_type_is_leaf(vb->type)) {
+		int rcode;
+
+		rcode = fr_value_box_escape_in_place(vb,
+						     &(fr_value_box_escape_t) {
+							     .func = _value_box_escape_rules,
+							     .safe_for = (fr_value_box_safe_for_t) erules,
+							     .always_escape = true,
+						     },
+						     &(fr_value_box_escape_rules_ctx_t)  {
+							     .ctx = ctx,
+							     .erules = erules,
+						     }
+			);
+		if (rcode < 0) return rcode;
+
+		rcode = fr_value_box_list_concat_as_string(NULL, escaped, &vb->vb_group, NULL, 0, NULL,
+							   FR_VALUE_BOX_LIST_FREE,
+							   (fr_value_box_safe_for_t) erules, true);
+		if (rcode < 0) return rcode;
+
+		fr_assert(fr_value_box_list_num_elements(&vb->vb_group) == 0);
+
+		goto set_value;
+	}
+
+	if (vb->type != FR_TYPE_STRING) {
+		if (fr_value_box_cast_in_place(ctx, vb, FR_TYPE_STRING, NULL) < 0) return -1;
+	} else {
+		if (fr_value_box_is_safe_for(vb, erules)) return 0;
+	}
+
+	slen = fr_sbuff_in_escape(escaped, vb->vb_strvalue, vb->vb_length, erules);
+	if (slen < 0) return -1;
+
+set_value:
+	if (fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_start(escaped), fr_sbuff_used(escaped), false) < 0) return -1;
+
+	fr_value_box_mark_safe_for(vb, erules);
+
+	return 0;
+}
+
 /** Removes a single layer of nesting, moving all children into the parent list
  *
  * @param[in] ctx	to reparent children in if steal is true.

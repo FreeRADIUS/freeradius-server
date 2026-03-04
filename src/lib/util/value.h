@@ -683,6 +683,9 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 				 CC_HINT(nonnull(1,2));
 int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t const *escape, void *uctx)
 				      CC_HINT(nonnull(1,2));
+
+int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_rules_t const *erules)
+	CC_HINT(nonnull);
 /** @} */
 
 /** @name Convenience functions
