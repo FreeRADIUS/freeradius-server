@@ -294,9 +294,15 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, fr_value_box
 	/* Check to see if the file attachment is valid, skip it if not */
 	RDEBUG2("Trying to set attachment: %pV", vb);
 
-	if (fr_value_box_escape_in_place_erules(vb, vb, &fr_filename_escape) < 0) {
-		RPEDEBUG2("Failed escaping path");
+	if (vb->type != FR_TYPE_STRING) {
 		return -1;
+	}
+
+	if (!fr_value_box_is_safe_for(vb, (fr_value_box_safe_for_t) rad_filename_box_make_safe)) {
+		if (rad_filename_box_make_safe(vb, NULL) < 0) {
+			RPEDEBUG2("Failed escaping path");
+			return -1;
+		}
 	}
 
 	if (fr_sbuff_in_bstrncpy(path_buffer, vb->vb_strvalue, vb->vb_length) < 0) {
