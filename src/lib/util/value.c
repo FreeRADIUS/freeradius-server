@@ -6867,7 +6867,7 @@ static int _value_box_escape_rules(fr_value_box_t *vb, void *uctx)
 					    &(fr_value_box_escape_t) {
 						    .func = _value_box_escape_rules,
 						    .safe_for = (fr_value_box_safe_for_t) ctx->erules,
-						    .always_escape = true,
+						    .always_escape = false,
 					    },
 					    &(fr_value_box_escape_rules_ctx_t)  {
 						    .ctx = vb,
@@ -6887,7 +6887,8 @@ static int _value_box_escape_rules(fr_value_box_t *vb, void *uctx)
  * @param[in] erules	escape rules
  * @return
  *	- <0 for error, generally OOM
- *	- 0 for success
+ *	- 0 for success (did not set safe_for)
+ *	- 1 for success (did set safe_for)
  */
 int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_sbuff_escape_rules_t const *erules)
 {
@@ -6906,7 +6907,7 @@ int fr_value_box_escape_in_place_erules(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_
 						     &(fr_value_box_escape_t) {
 							     .func = _value_box_escape_rules,
 							     .safe_for = (fr_value_box_safe_for_t) erules,
-							     .always_escape = true,
+							     .always_escape = false,
 						     },
 						     &(fr_value_box_escape_rules_ctx_t)  {
 							     .ctx = ctx,
@@ -6939,8 +6940,27 @@ set_value:
 
 	fr_value_box_mark_safe_for(vb, erules);
 
-	return 0;
+	return 1;
 }
+
+/** Escape a value-box in place using the supplied #fr_sbuff_escape_rules_t in uctx
+ *
+ *  If the input type isn't a string, then it is converted to a string.
+ *
+ *  The output type is always #FR_TYPE_STRING
+ *
+ * @param[in] vb	which will be escaped
+ * @param[in] uctx	escape rules
+ * @return
+ *	- <0 for error, generally OOM
+ *	- 0 for success (did not set safe_for)
+ *	- 1 for success (did set safe_for)
+ */
+int fr_value_box_escape_erules(fr_value_box_t *vb, void *uctx)
+{
+	return fr_value_box_escape_in_place_erules(vb, vb, uctx);
+}
+
 
 /** Removes a single layer of nesting, moving all children into the parent list
  *
