@@ -362,10 +362,18 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		}
 
 		/*
-		 *	@todo - check reconfigure message type, and
-		 *	reject if it doesn't match.
+		 *	Check reconfigure message type, and reject
+		 *	if it is not valid.
 		 */
-
+		switch (option[4]) {
+		case FR_DHCPV6_RENEW:
+		case FR_DHCPV6_REBIND:
+		case FR_DHCPV6_INFORMATION_REQUEST:
+			break;
+		default:
+			fr_strerror_const("Invalid Reconf-Msg option value");
+			return false;
+		}
 		/*
 		 *	@todo - check for authentication option and
 		 *	verify it.
