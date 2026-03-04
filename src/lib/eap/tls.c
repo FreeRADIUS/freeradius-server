@@ -924,7 +924,7 @@ fail:
 	fr_tls_cache_deny(request, tls_session);
 	eap_tls_session->state = EAP_TLS_FAIL;
 
-	return UNLANG_ACTION_FAIL;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Push functions to continue the handshake asynchronously
