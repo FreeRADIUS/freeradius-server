@@ -52,3 +52,9 @@ data 1a c8 00 00 39 e7 42 c2 c5 6f 16 e5 de 2d 2a 2d d3 0e ac 92 12 c5 97 af 8e 
 
 decode -
 data Aruba-MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+#
+#  Vendor of zero - is unknown vendor.
+#
+decode 1a 0d 00 00 00 00 00 02 00 07 66 6f 6f
+Attr-26 = 0x0000000000020007666f6f
