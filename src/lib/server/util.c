@@ -85,71 +85,32 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  * @param outlen Size of the output buffer.
  * @param in string to escape.
  */
-static ssize_t rad_filename_make_safe(char *out, size_t outlen, char const *in)
+static ssize_t rad_filename_make_safe(char *out, char const *in, size_t outlen)
 {
-	char const *q = in;
-	char *p = out, *end;
+	char const *q, *end;
+	char *p = out;
 
-	end = out + outlen;
+	q = in;
+	end = in + outlen;
 
-	while (*q) {
+	while (q < end) {
+		if (*q < ' ') {
+			*(p++) = '_';
+			q++;
+			continue;
+		}
+
 		if (*q != '/') {
-			if ((size_t) (end - p) < 2) break;
-
-			/*
-			 *	Smash control characters and spaces to
-			 *	something simpler.
-			 */
-			if (*q < ' ') {
-				*(p++) = '_';
-				q++;
-				continue;
-			}
-
 			*(p++) = *(q++);
 			continue;
 		}
 
 		/*
-		 *	For now, allow slashes in the expanded
-		 *	filename.  This allows the admin to set
-		 *	attributes which create sub-directories.
-		 *	Unfortunately, it also allows users to send
-		 *	attributes which *may* end up creating
-		 *	sub-directories.
+		 *	Mash slashes, too.
 		 */
-		if ((size_t) (end - p) < 2) break;
-		*(p++) = *(q++);
-
-		/*
-		 *	Get rid of ////../.././///.///..//
-		 */
-	redo:
-		/*
-		 *	Get rid of ////
-		 */
-		if (*q == '/') {
-			q++;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /./././
-		 */
-		if ((q[0] == '.') &&
-		    (q[1] == '/')) {
-			q += 2;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /../../../
-		 */
-		if ((q[0] == '.') && (q[1] == '.') &&
-		    (q[2] == '/')) {
-			q += 3;
-			goto redo;
-		}
+		*(p++) = '_';
+		q++;
+		continue;
 	}
 	*p = '\0';
 
@@ -170,7 +131,7 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 	 */
 	MEM(escaped = talloc_array(vb, char, vb->vb_length + 1));
 
-	len = rad_filename_make_safe(escaped, (vb->vb_length + 1), vb->vb_strvalue);
+	len = rad_filename_make_safe(escaped, vb->vb_strvalue, vb->vb_length);
 
 	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
