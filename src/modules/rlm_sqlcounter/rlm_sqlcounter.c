@@ -239,7 +239,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		tm->tm_mon -= num - 1;
 		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = fr_time_wrap(0);
+		inst->last_reset = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
