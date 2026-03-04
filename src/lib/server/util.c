@@ -178,15 +178,15 @@ ssize_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 
 			switch (utf8_len) {
 			case 2:
-				snprintf(out, freespace, "-%x-%x", (uint8_t)in[0], (uint8_t)in[1]);
+				snprintf(out, freespace, "-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1]);
 				break;
 
 			case 3:
-				snprintf(out, freespace, "-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2]);
+				snprintf(out, freespace, "-%02x-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2]);
 				break;
 
 			case 4:
-				snprintf(out, freespace, "-%x-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2], (uint8_t)in[3]);
+				snprintf(out, freespace, "-%02x-%02x-%02x-%02x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2], (uint8_t)in[3]);
 				break;
 			}
 
@@ -225,12 +225,11 @@ ssize_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 		}
 
 		/*
-		 *	Unsafe chars
+		 *	Unsafe chars get escaped as -XX.
 		 */
-		*out++ = '-';
-		fr_base16_encode(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
+		snprintf(out, freespace, "-%02x", (uint8_t) in[0]);
 		in++;
-		out += 2;
+		out += 3;
 		freespace -= 3;
 	}
 	*out = '\0';
