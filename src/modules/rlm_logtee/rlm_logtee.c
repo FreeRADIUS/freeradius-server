@@ -93,8 +93,6 @@ typedef struct {
 		uint32_t		permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
-		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_legacy_t		escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -133,7 +131,6 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_WRITABLE | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_logtee_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_logtee_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", rlm_logtee_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -600,15 +597,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_logtee_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_logtee_t);
 	CONF_SECTION    *conf = mctx->mi->conf;
 	char		prefix[100];
-
-	/*
-	 *	Escape filenames only if asked.
-	 */
-	if (inst->file.escape) {
-		inst->file.escape_func = rad_filename_escape;
-	} else {
-		inst->file.escape_func = rad_filename_make_safe;
-	}
 
 	inst->log_dst = fr_table_value_by_str(logtee_dst_table, inst->log_dst_str, LOGTEE_DST_INVALID);
 	if (inst->log_dst == LOGTEE_DST_INVALID) {

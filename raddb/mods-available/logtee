@@ -124,15 +124,6 @@ logtee {
 		#  group, otherwise it will not be possible to set the group.
 		#
 #		group = ${security.group}
-
-		#
-		#  escape_filenames::
-		#
-		#  Most file systems can handle nearly the full range of UTF-8
-		#  characters.  Ones that can deal with a limited range should
-		#  set this to `yes`.
-		#
-		escape_filenames = no
 	}
 
 	#
