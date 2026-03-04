@@ -81,13 +81,11 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  *
  * Also sanitizes control chars.
  *
- * @param request Current request (may be NULL).
  * @param out Output buffer.
  * @param outlen Size of the output buffer.
  * @param in string to escape.
- * @param arg Context arguments (unused, should be NULL).
  */
-ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static ssize_t rad_filename_make_safe(char *out, size_t outlen, char const *in)
 {
 	char const *q = in;
 	char *p = out, *end;
@@ -172,7 +170,7 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 	 */
 	MEM(escaped = talloc_array(vb, char, vb->vb_length + 1));
 
-	len = rad_filename_make_safe(NULL, escaped, (vb->vb_length + 1), vb->vb_strvalue, NULL);
+	len = rad_filename_make_safe(escaped, (vb->vb_length + 1), vb->vb_strvalue);
 
 	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
