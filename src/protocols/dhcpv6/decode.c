@@ -366,24 +366,39 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		bool append = false;
 		fr_pair_t *vp;
 
 		vp = fr_pair_find_by_da(out, NULL, da);
 		if (!vp) {
+			fr_pair_list_t staging_list;
+
 			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) return PAIR_DECODE_FATAL_ERROR;
 			PAIR_ALLOCED(vp);
 
-			append = true;
-		}
-
-		slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
-		if (append) {
+			fr_pair_list_init(&staging_list);
+			slen = decode_vsa(vp, &staging_list, da, data + 4, len, decode_ctx);
 			if (slen < 0) {
+				fr_pair_list_free(&staging_list);
 				TALLOC_FREE(vp);
-			} else {
-				fr_pair_append(out, vp);
+				goto raw;
+			}
+			fr_pair_list_append(&vp->vp_group, &staging_list);
+			fr_pair_append(out, vp);
+		} else {
+			fr_pair_t *tail = fr_pair_list_tail(&vp->vp_group);
+
+			slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
+			if (slen < 0) {
+				/* Remove any new options added to the group */
+				fr_pair_t *p = tail ? fr_pair_list_next(&vp->vp_group, tail) : fr_pair_list_head(&vp->vp_group);
+				while (p) {
+					fr_pair_t *next = fr_pair_list_next(&vp->vp_group, p);
+					fr_pair_remove(&vp->vp_group, p);
+					TALLOC_FREE(p);
+					p = next;
+				}
+				goto raw;
 			}
 		}
 
