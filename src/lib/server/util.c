@@ -85,13 +85,24 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  * @param outlen Size of the output buffer.
  * @param in string to escape.
  */
-static ssize_t rad_filename_make_safe(char *out, char const *in, size_t outlen)
+static ssize_t rad_filename_make_safe(char *out, char const *in, size_t len)
 {
 	char const *q, *end;
 	char *p = out;
 
 	q = in;
-	end = in + outlen;
+	end = in + len;
+
+	/*
+	 *	Escape '.foo', as it could be used to either read the local directory, walk back up the
+	 *	directory hierarchy, or else to create "dot" files.
+	 */
+	if (len > 1) {
+		if (*q == '.') {
+			*(p++) = '_';
+			q++;
+		}
+	}
 
 	while (q < end) {
 		if (*q < ' ') {
@@ -135,7 +146,9 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 
 	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
-	return 0;
+	fr_value_box_mark_safe_for(vb, rad_filename_box_make_safe);
+
+	return 1;
 }
 
 /** Escapes the raw string such that it should be safe to use as part of a file path
