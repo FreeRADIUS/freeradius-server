@@ -559,9 +559,9 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 	if (packet_len < DHCPV6_HDR_LEN) return false;
 
 	/*
-	 *	We support up to relaying.
+	 *	We support up to lease query reply.
 	 */
-	if ((packet[0] == 0) || (packet[0] > FR_PACKET_TYPE_VALUE_RELAY_REPLY)) return false;
+	if ((packet[0] == 0) || (packet[0] > FR_DHCPV6_LEASE_QUERY_REPLY)) return false;
 
 	if (!packet_ctx->duid) return false;
 
