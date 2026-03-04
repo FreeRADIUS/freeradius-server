@@ -202,7 +202,7 @@ static void master_process(void)
 
 	MEM(ctx = talloc_init_const("master"));
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);

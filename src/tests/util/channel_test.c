@@ -92,7 +92,7 @@ static void *channel_master(void *arg)
 
 	MEM(ctx = talloc_init_const("channel_master"));
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);
@@ -208,7 +208,7 @@ check_close:
 		MPRINT1("Master kevent returned %d\n", num_events);
 
 		if (num_events < 0) {
-			if (num_events == EINTR) continue;
+			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
 			fr_exit_now(EXIT_FAILURE);
@@ -318,7 +318,7 @@ static void *channel_worker(void *arg)
 
 	MEM(ctx = talloc_init_const("channel_worker"));
 
-	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
+	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024, false);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		fr_exit_now(EXIT_FAILURE);

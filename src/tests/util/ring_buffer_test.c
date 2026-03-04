@@ -102,7 +102,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 	}
 
 	*start += ALLOC_SIZE;
-	if (*start > ARRAY_SIZE) {
+	if (*start >= ARRAY_SIZE) {
 		*start -= ARRAY_SIZE;
 		*end -= ARRAY_SIZE;
 	}

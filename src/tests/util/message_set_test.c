@@ -147,7 +147,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 	}
 
 	*start += my_alloc_size;
-	if (*start > MY_ARRAY_SIZE) {
+	if (*start >= MY_ARRAY_SIZE) {
 		*start -= MY_ARRAY_SIZE;
 		*end -= MY_ARRAY_SIZE;
 		fr_assert(*start <= *end);
