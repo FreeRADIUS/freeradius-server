@@ -147,11 +147,6 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	if (packet->detect_multi == 0) {
-		fr_strerror_const("Packet.detect-multi has invalid value zero");
-		return -1;
-	}
-
 	if (packet->multipoint != 0) {
 		fr_strerror_const("Packet.multipoint has invalid non-zero value");
 		return -1;
@@ -166,7 +161,7 @@ static ssize_t fr_bfd_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	    !((packet->state == BFD_STATE_DOWN) ||
 	      (packet->state == BFD_STATE_ADMIN_DOWN))) {
 		fr_strerror_const("Packet has invalid values for your-discriminator and state");
-		return 0;
+		return -1;
 	}
 
 	/*
