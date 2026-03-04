@@ -1134,7 +1134,8 @@ LDAP *fr_ldap_handle_thread_local(void)
 	if (!ldap_thread_local_handle) {
 		LDAP *handle;
 
-		ldap_initialize(&handle, "");
+		MEM(ldap_initialize(&ldap_thread_local_handle, "") == LDAP_SUCCESS);
+		handle = ldap_thread_local_handle;
 
 		fr_atexit_thread_local(ldap_thread_local_handle, _ldap_handle_thread_local_free, handle);
 	}
