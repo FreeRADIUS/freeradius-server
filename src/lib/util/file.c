@@ -913,3 +913,35 @@ int fr_globdir_iter_free(fr_globdir_iter_t *iter)
 
 	return 0;
 }
+
+const fr_sbuff_escape_rules_t fr_filename_escape = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
+		[ 0x00 ... 0x2d ] = true,		// special characters, but not '.'
+		[ 0x2f ] = true,			// /
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+
+const fr_sbuff_escape_rules_t fr_filename_escape_dots = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
+		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+

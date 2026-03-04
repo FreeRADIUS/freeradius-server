@@ -316,37 +316,6 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 #pragma clang diagnostic ignored "-Wgnu-designator"
 #endif
 
-static const fr_sbuff_escape_rules_t xlat_filename_escape = {
-	.name = "filename",
-	.chr = '_',
-	.do_utf8 = true,
-	.do_hex = true,
-
-	.esc = {
-		[ 0x00 ... 0x2d ] = true,		// special characters, but not '.'
-		[ 0x2f ] = true,			// /
-		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
-		[ 0x5b ... 0x5e ] = true,		// [\]^
-		[ 0x60 ] = true,			// back-tick
-		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
-	},
-};
-
-static const fr_sbuff_escape_rules_t xlat_filename_escape_dots = {
-	.name = "filename",
-	.chr = '_',
-	.do_utf8 = true,
-	.do_hex = true,
-
-	.esc = {
-		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
-		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
-		[ 0x5b ... 0x5e ] = true,		// [\]^
-		[ 0x60 ] = true,			// back-tick
-		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
-	},
-};
-
 #define FR_FILENAME_SAFE_FOR ((uintptr_t) filename_xlat_escape)
 
 static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
@@ -400,7 +369,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		 */
 		if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) return -1;
 
-		fr_value_box_print(out, vb, &xlat_filename_escape);
+		fr_value_box_print(out, vb, &fr_filename_escape);
 		break;
 
 	case FR_TYPE_STRING:
@@ -424,9 +393,9 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 		 *	"log/aland@freeradius.org".
 		 */
 		if (vb->vb_strvalue[0] == '.') {
-			fr_value_box_print(out, vb, &xlat_filename_escape_dots);
+			fr_value_box_print(out, vb, &fr_filename_escape_dots);
 		} else {
-			fr_value_box_print(out, vb, &xlat_filename_escape);
+			fr_value_box_print(out, vb, &fr_filename_escape);
 		}
 
 		break;

@@ -104,6 +104,9 @@ int		fr_globdir_iter_init(char const **filename, char const *dir, char const *pa
 int		fr_globdir_iter_next(char const **filename, fr_globdir_iter_t *iter);
 int		fr_globdir_iter_free(fr_globdir_iter_t *iter);
 
+extern const fr_sbuff_escape_rules_t fr_filename_escape;
+extern const fr_sbuff_escape_rules_t fr_filename_escape_dots;
+
 #ifdef __cplusplus
 }
 #endif
