@@ -92,7 +92,7 @@ typedef enum {
 #define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
 #define IP_HL(ip)       (((ip)->ip_vhl & 0x0f) << 2)
 
-#define IP_VHL(v, hl) ((v & 0x0f) << 4) | (hl & 0x0f)
+#define IP_VHL(v, hl) (((v & 0x0f) << 4) | (hl & 0x0f))
 
 #define	I_DF		0x4000		//!< Dont fragment flag.
 #define IP_MF		0x2000		//!< More fragments flag.
@@ -153,7 +153,7 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
-uint16_t	fr_ip6_pesudo_header_checksum(struct in6_addr const *src, struct in6_addr const *dst, uint16_t ip_len, uint8_t ip_next);
+uint16_t	fr_ip6_pseudo_header_checksum(struct in6_addr const *src, struct in6_addr const *dst, uint16_t ip_len, uint8_t ip_next);
 
 #ifdef __cplusplus
 }

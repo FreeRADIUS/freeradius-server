@@ -234,7 +234,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	Start off with the IPv6 pseudo-header checksum
 	 */
 	if (t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
-		checksum = fr_ip6_pesudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
+		checksum = fr_ip6_pseudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
 							 sizeof(ip_header6_t) + sizeof(icmp), IPPROTO_ICMPV6);
 	}
 
