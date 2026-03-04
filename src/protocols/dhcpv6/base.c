@@ -37,6 +37,7 @@
 
 static uint32_t instance_count = 0;
 static bool	instantiated = false;
+static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 fr_dict_t const *dict_dhcpv6;
 
@@ -910,8 +911,10 @@ void fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 int fr_dhcpv6_global_init(void)
 {
+	pthread_mutex_lock(&init_mutex);
 	if (instance_count > 0) {
 		instance_count++;
+		pthread_mutex_unlock(&init_mutex);
 		return 0;
 	}
 
@@ -920,6 +923,7 @@ int fr_dhcpv6_global_init(void)
 	if (fr_dict_autoload(libfreeradius_dhcpv6_dict) < 0) {
 	fail:
 		instance_count--;
+		pthread_mutex_unlock(&init_mutex);
 		return -1;
 	}
 
@@ -929,19 +933,28 @@ int fr_dhcpv6_global_init(void)
 	}
 
 	instantiated = true;
+	pthread_mutex_unlock(&init_mutex);
 	return 0;
 }
 
 void fr_dhcpv6_global_free(void)
 {
-	if (!instantiated) return;
+	pthread_mutex_lock(&init_mutex);
+	if (!instantiated) {
+		pthread_mutex_unlock(&init_mutex);
+		return;
+	}
 
 	fr_assert(instance_count > 0);
 
-	if (--instance_count > 0) return;
+	if (--instance_count > 0) {
+		pthread_mutex_unlock(&init_mutex);
+		return;
+	}
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 	instantiated = false;
+	pthread_mutex_unlock(&init_mutex);
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
