@@ -378,6 +378,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		return -1;
 	}
 
+	pthread_mutex_init(&t->mutex, NULL);
+
 	pthread_mutex_lock(&inst->mutable->mutex);
 	fr_dlist_insert_head(&inst->mutable->list, t);
 	pthread_mutex_unlock(&inst->mutable->mutex);
