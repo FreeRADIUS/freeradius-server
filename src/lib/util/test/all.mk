@@ -26,4 +26,5 @@ SUBMAKEFILES := \
 	strerror_tests.mk \
 	time_tests.mk \
 	timer_tests.mk  \
-	trie_tests.mk
+	trie_tests.mk \
+	value_tests.mk
