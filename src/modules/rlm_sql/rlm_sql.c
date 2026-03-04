@@ -950,7 +950,7 @@ static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outl
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(arg, rlm_sql_t);
 	size_t			len = 0;
 
-	while (in[0]) {
+	while (*in) {
 		size_t utf8_len;
 
 		/*
@@ -974,46 +974,37 @@ static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outl
 		 *	we're now responsible for escaping all special
 		 *	chars in an xlat expansion or attribute value.
 		 */
-		switch (in[0]) {
+		switch (*in) {
 		case '\n':
 			if (outlen <= 2) break;
 			out[0] = '\\';
 			out[1] = 'n';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
+			goto next;
 
 		case '\r':
 			if (outlen <= 2) break;
 			out[0] = '\\';
 			out[1] = 'r';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
+			goto next;
 
 		case '\t':
 			if (outlen <= 2) break;
 			out[0] = '\\';
 			out[1] = 't';
 
+		next:
 			in++;
 			out += 2;
 			outlen -= 2;
 			len += 2;
-			break;
+			continue;
 		}
 
 		/*
 		 *	Non-printable characters get replaced with their
 		 *	mime-encoded equivalents.
 		 */
-		if ((in[0] < 32) ||
+		if ((*in < 32) ||
 		    strchr(inst->config.allowed_chars, *in) == NULL) {
 			/*
 			 *	Only 3 or less bytes available.
