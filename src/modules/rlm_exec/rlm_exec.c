@@ -87,7 +87,7 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
 
-	if (exec->failed == FR_EXEC_FAIL_TIMEOUT) {
+	if (exec->failed != FR_EXEC_FAIL_NONE) {
 		RPEDEBUG("Execution of external program failed");
 		return XLAT_ACTION_FAIL;
 	}
@@ -126,6 +126,12 @@ static xlat_arg_parser_t const exec_xlat_args[] = {
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID},
 	XLAT_ARG_PARSER_TERMINATOR
 };
+
+static int _exec_free(fr_exec_state_t *exec)
+{
+	fr_exec_oneshot_cleanup(exec, SIGKILL);
+	return 0;
+}
 
 /** Exec programs from an xlat
  *
@@ -174,6 +180,7 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 		talloc_free(exec);
 		return XLAT_ACTION_FAIL;
 	}
+	talloc_set_destructor(exec, _exec_free);
 
 	return unlang_xlat_yield(request, exec_xlat_oneshot_wait_resume, NULL, 0, exec);
 }

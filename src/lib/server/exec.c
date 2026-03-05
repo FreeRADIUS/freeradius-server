@@ -683,7 +683,8 @@ void fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal)
 
 	if (exec->pid >= 0) {
 		RDEBUG3("Cleaning up exec state for PID %u", exec->pid);
-	} else {
+
+	} else if (exec->failed != FR_EXEC_FAIL_NONE) {
 		RDEBUG3("Cleaning up failed exec");
 	}
 
