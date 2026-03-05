@@ -637,7 +637,7 @@ static fr_pair_t *py_freeradius_build_parents(PyObject *obj)
 	if (obj_pair->idx > 0) {
 		unsigned int count = fr_pair_count_by_da(&parent->vp_group, obj_pair->da);
 		if (count < obj_pair->idx) {
-			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", index, count);
+			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", obj_pair->idx, count);
 			return NULL;
 		}
 	}
