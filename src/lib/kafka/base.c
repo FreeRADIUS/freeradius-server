@@ -941,7 +941,7 @@ conf_parser_t const kafka_base_consumer_config[] = {
 	 *	Toggle auto commit
 	 */
 	{ FR_CONF_FUNC("auto_commit", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
-	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable_auto.commit" }},
+	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.auto.commit" }},
 
 	/*
 	 *	Auto commit interval
