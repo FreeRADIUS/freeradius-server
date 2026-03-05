@@ -82,8 +82,8 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  * Also sanitizes control chars.
  *
  * @param out Output buffer.
- * @param outlen Size of the output buffer.
  * @param in string to escape.
+ * @param len Size of the output buffer.
  */
 static ssize_t rad_filename_make_safe(char *out, char const *in, size_t len)
 {
