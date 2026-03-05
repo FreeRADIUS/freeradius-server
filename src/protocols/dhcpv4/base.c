@@ -703,7 +703,7 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 		/*
 		 *	End of options.
 		 */
-		if ((attr[0] == 0) || (attr[1]) == 255) {
+		if ((attr[0] == 0) || (attr[1] == 255)) {
 			fprintf(fp, "%02x\n", attr[0]);
 			break;
 		}
