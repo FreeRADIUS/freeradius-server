@@ -1,39 +1,195 @@
 = A simple pre-paid example
 
-include::ROOT:partial$v3_warning.adoc[]
-
-
 *Goal:* To implement a simple "prepaid" functionality in the server.
 
 *Time:* 15-25 minutes
 
 *Files:*
 
-- `mods-available/counter`
+- `mods-enabled/sqlcounter`
+- `sites-enabled/default`
+- `mods-config/files/authorize`
 
-Many system administrators wish to implement "prepaid" billing for
-their systems. In this exercise, we will configure the server to use a
-simple "prepaid" scheme, wherein all users will be permitted to log in
-for only one hour a day.
+== Overview
 
-Read `mods-available/counter` and look for the `counter daily` instance
-The documentation for the module consists solely of the comments in
-`mods-available/counter`, so those comments should be read carefully.
-Search the rest of the configuration file for references to the `daily` module
-and un-comment any references you find.
+Many system administrators wish to implement `prepaid` billing for their systems. In this exercise, we will configure the server to use a simple `prepaid` scheme, wherein all users will be permitted to log in for only one hour a day using the `sqlcounter` module.
 
-Add an entry that sets the `Max-Daily-Session`
-to have the value 3600 to the top of the file. Start the server, and test it with the `bob.sh`
-script. Note that unlike previous responses from the server, this one
-contains a `Session-Timeout` attribute with value 3600.
+=== SQLCounter Module Configuration
 
-Wait five to ten seconds, and then use the `bob-acct-stop.sh` script to
-tell the server that user "bob" has logged off. Observe that the `counter`
-module is called and that this module updates the user's login time. Now send the
-server another login request (`bob.sh`), and observe that the
-"Session-Timeout" attribute has a value less than 3600. The value
-should be near 3600. This value depends on the length of time passed
-between when the server is started and when the `bob-acct-stop.sh` script is run.
+Create a symbolic link from mods-available/ to mods-enable/:
+
+[source,bash]
+----
+$ cd mods-enabled
+$ ln -s ../mods-available/sqlcounter sqlcounter
+----
+
+Verify the symbolic link was created:
+
+[source,bash]
+----
+$ cat mods-enabled/sqlcounter
+----
+
+The `mods-enabled/sqlcounter` should contain a `daily counter` instance similar to the following:
+
+[source,unlang]
+----
+sqlcounter dailycounter {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+
+#	reset_period_start_name = control.${.:instance}-Reset-Start
+#	reset_period_end_name = control.${.:instance}-Reset-End
+	counter_name = control.Daily-Session-Time
+	check_name = control.Max-Daily-Session
+	reply_name = reply.Session-Timeout
+	auto_extend = yes
+	key="%{Stripped-User-Name || User-Name}"
+	reply_message_name = Reply-Message
+
+	reset = daily
+
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+----
+
+The `sql_module_instance` defines which SQL connection to use, and `dialect = ${modules.sql.dialect}` ensures the correct database type is applied. The `counter_name` is used for identification and logging, while `check_name` specifies the control attribute that holds the usage limit (e.g., Max-Daily-Session). The `reply_name` defines the reply attribute (usually Session-Timeout) sent to the NAS. The `auto_extend` option allows timeout extension until the next reset period. The `key` identifies the lookup attribute (typically User-Name), `reply_message_name` defines the reply message attribute, and `reset` determines when the counter is cleared (daily, weekly, monthly, or never).
+
+== Exercise Steps
+
+=== Add the user to the database
+
+[source,sql]
+----
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
+----
+
+=== Set User Limits
+
+Edit `mods-config/files/authorize` and add following entry to the file :
+
+[source,text]
+----
+DEFAULT &control.Max-Daily-Session := 3600
+----
+
+=== Enable SQLCounter dailycounter
+
+Edit `etc/sites-enabled/default` and add the `dailycounter` module to the `recv Access-Request` section:
+
+[source,unlang]
+----
+recv Access-Request {
+    preprocess
+    chap
+    mschap
+    digest
+    suffix
+    eap
+    files
+    sql
+    dailycounter        # Add this line
+    pap
+}
+----
+
+=== Enabling dailycounter in the Accounting Start Section
+
+Verify accounting start is enabled in `etc/sites-enabled/default`:
+
+[source,unlang]
+----
+accounting Start {
+        -sql
+        dailycounter   # Add this line
+}
+----
+
+=== Enabling dailycounter in the Accounting Stop Section
+
+Verify accounting stop is enabled in `etc/sites-enabled/default`:
+
+[source,unlang]
+----
+accounting Stop {
+        -sql
+        dailycounter   # Add this line
+}
+----
+
+=== Test the Configuration
+
+Start FreeRADIUS in debug mode:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+=== Send Authentication Request
+
+From another terminal, test user authentication:
+
+[source,bash]
+----
+echo 'User-Name = "alice", CHAP-Password = "hello", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Expected Output:
+
+[source,text]
+----
+Received Access-Accept Id 48 from 127.0.0.1:1812 to 0.0.0.0:53031 via lo length 99
+        Message-Authenticator = 0xc8b4a4caa88f7b70217c9ae1d6c91c98
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        Session-Timeout = 3600
+        User-Name = "alice"
+----
+
+Note the `Session-Timeout = 3600` attribute in the response.
+
+=== Simulate Usage
+
+[source,bash]
+----
+echo 'User-Name = "alice", Acct-Status-Type = Start, Acct-Session-Id = "01020304", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 192.168.100.55' | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+Wait 5-10 seconds to simulate usage.
+
+=== Send Accounting Stop
+
+Send an Accounting-Stop to record usage:
+
+[source,bash]
+----
+echo "User-Name = alice, Acct-Session-Id = 'test-session-1', NAS-IP-Address = 127.0.0.1, NAS-Port = 501, Acct-Status-Type = Stop, Acct-Session-Time = 10" | radclient -x 127.0.0.1:1813 acct testing123
+----
+
+=== Test Reduced Session Timeout
+
+Authenticate the user again:
+
+[source,bash]
+----
+echo 'User-Name = "alice", CHAP-Password = "hello", NAS-IP-Address = 127.0.0.1, NAS-Port = 501, NAS-Port-Type = Virtual' | radclient -x 127.0.0.1 auth testing123
+----
+
+Expected Output:
+
+[source,text]
+----
+Received Access-Accept Id 167 from 127.0.0.1:1812 to 0.0.0.0:57205 via lo length 99
+        Message-Authenticator = 0x0e96f55860e0af123286fcb9ccdfd6db
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        Session-Timeout = 3590
+        User-Name = "alice"
+----
+
+The Session-Timeout should now be approximately 3590 seconds (3600 - 10 used).
+
 
 == Questions
 
