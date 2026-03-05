@@ -1740,7 +1740,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (fr_pair_value_from_str(n, map->rhs->name, strlen(map->rhs->name), NULL, false) < 0) {
-			rcode = 0;
+			rcode = -1;
 			goto error;
 		}
 		n->op = map->op;
