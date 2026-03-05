@@ -1538,7 +1538,7 @@ do { \
 			tmp = strtoul(optarg, &q, 10);
 			if (q != (optarg + strlen(optarg))) {
 				ERROR("Prefix must be an integer value");
-
+				usage(64);
 			}
 
 			(p - 1)->prefix = (uint8_t)tmp & 0xff;
