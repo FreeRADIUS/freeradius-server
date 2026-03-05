@@ -832,19 +832,21 @@ static inline CC_HINT(nonnull) int fr_dlist_move_head(fr_dlist_head_t *list_dst,
 /** Free the first item in the list
  *
  * @param[in] list_head		to free head item in.
+ * @return result of talloc_free
  */
-static inline void fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
+static inline int fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
 {
-	talloc_free(fr_dlist_pop_head(list_head));
+	return talloc_free(fr_dlist_pop_head(list_head));
 }
 
 /** Free the last item in the list
  *
  * @param[in] list_head		to free tail item in.
+ * @return result of talloc_free
  */
-static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
+static inline int fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
 {
-	talloc_free(fr_dlist_pop_tail(list_head));
+	return talloc_free(fr_dlist_pop_tail(list_head));
 }
 
 /** Free the item specified
