@@ -472,7 +472,7 @@ static void test_dbuff_out(void)
 	TEST_CHECK(fr_dbuff_in(&dbuff2, *(uint64_t *)&dval1) == 8);
 	fr_dbuff_set_to_start(&dbuff2);
 	TEST_CHECK(fr_dbuff_out(&dval2, &dbuff2) == 8);
-	TEST_CHECK(memcmp(&fval1, &fval2, sizeof(fval1)) == 0);
+	TEST_CHECK(memcmp(&dval1, &dval2, sizeof(dval1)) == 0);
 
 	TEST_CASE("Check variable length uint64_t read");
 	fr_dbuff_set_to_start(&dbuff1);

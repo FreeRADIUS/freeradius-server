@@ -77,6 +77,7 @@ static void populate_values(minmax_heap_thing values[], unsigned int len)
 #define NVALUES	20
 static void minmax_heap_test_basic(void)
 {
+	unsigned int   		i;
 	fr_minmax_heap_t	*hp;
 	minmax_heap_thing	values[NVALUES];
 
@@ -88,12 +89,12 @@ static void minmax_heap_test_basic(void)
 	/*
 	 * minmax heaps can get the minimum value...
 	 */
-	for (unsigned int i = 0; i < NVALUES; i++) {
+	for (i = 0; i < NVALUES; i++) {
 		TEST_CHECK(fr_minmax_heap_insert(hp, &values[i]) >= 0);
 		TEST_CHECK(fr_minmax_heap_entry_inserted(values[i].idx));
 	}
 
-	for (unsigned int i = 0; i < NVALUES; i++) {
+	for (i = 0; i < NVALUES; i++) {
 		minmax_heap_thing	*value = fr_minmax_heap_min_pop(hp);
 
 		TEST_CHECK(value != NULL);
@@ -105,12 +106,12 @@ static void minmax_heap_test_basic(void)
 	/*
 	 * ...or the maximum value.
 	 */
-	for (unsigned int i = 0; i < NVALUES; i++) {
+	for (i = 0; i < NVALUES; i++) {
 		TEST_CHECK(fr_minmax_heap_insert(hp, &values[i]) >= 0);
 		TEST_CHECK(fr_minmax_heap_entry_inserted(values[i].idx));
 	}
 
-	for (unsigned int i = NVALUES; --i > 0; ) {
+	for (i = NVALUES; i-- > 0; ) {
 		minmax_heap_thing	*value = fr_minmax_heap_max_pop(hp);
 
 		TEST_CHECK(value != NULL);
@@ -626,7 +627,7 @@ static void minmax_heap_iter(void)
 	fr_minmax_heap_foreach(hp, minmax_heap_thing, item) {
 		total += item->data;
 	}}
-	TEST_CHECK(total = 190);
+	TEST_CHECK(total == 190);
 
 	talloc_free(hp);
 }

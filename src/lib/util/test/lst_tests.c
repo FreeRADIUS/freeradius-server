@@ -397,7 +397,7 @@ static void lst_iter(void)
 	fr_lst_foreach(lst, lst_thing, item) {
 		total += item->data;
 	}}
-	TEST_CHECK(total = 190);
+	TEST_CHECK(total == 190);
 
 	talloc_free(lst);
 }
