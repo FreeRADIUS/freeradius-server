@@ -4243,11 +4243,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	/*
 	 *	Process deferred connection freeing
 	 */
-	if (!trunk->in_handler) {
-		while ((tconn = fr_dlist_pop_head(&trunk->to_free)) != NULL) {
-			talloc_free(tconn);
-		}
-	}
+	if (!trunk->in_handler) fr_dlist_talloc_free(&trunk->to_free);
 
 	/*
 	 *	Update the state of the trunk
@@ -4921,7 +4917,7 @@ static int _trunk_free(trunk_t *trunk)
 	/*
 	 *	Process any deferred connection frees
 	 */
-	while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
+	fr_dlist_talloc_free(&trunk->to_free);
 
 	/*
 	 *	Free any requests left in the backlog
