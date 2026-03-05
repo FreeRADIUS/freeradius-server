@@ -1974,18 +1974,11 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void
  */
 int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
-	fr_event_pre_t *pre, *next;
-
-	for (pre = fr_dlist_head(&el->pre_callbacks);
-	     pre != NULL;
-	     pre = next) {
-		next = fr_dlist_next(&el->pre_callbacks, pre);
-
+	fr_dlist_foreach(&el->pre_callbacks, fr_event_pre_t, pre) {
 		if ((pre->callback == callback) &&
 		    (pre->uctx == uctx)) {
 			fr_dlist_remove(&el->pre_callbacks, pre);
-			talloc_free(pre);
-			return 0;
+			return talloc_free(pre);
 		}
 	}
 
@@ -2009,6 +2002,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void 
 	fr_event_post_t *post;
 
 	post = talloc(el, fr_event_post_t);
+	if (!post) return -1;
 	post->callback = callback;
 	post->uctx = uctx;
 
@@ -2028,18 +2022,11 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void 
  */
 int fr_event_post_delete(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx)
 {
-	fr_event_post_t *post, *next;
-
-	for (post = fr_dlist_head(&el->post_callbacks);
-	     post != NULL;
-	     post = next) {
-		next = fr_dlist_next(&el->post_callbacks, post);
-
+	fr_dlist_foreach(&el->post_callbacks, fr_event_post_t, post) {
 		if ((post->callback == callback) &&
 		    (post->uctx == uctx)) {
 			fr_dlist_remove(&el->post_callbacks, post);
-			talloc_free(post);
-			return 0;
+			return talloc_free(post);
 		}
 	}
 
@@ -2059,7 +2046,6 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 {
 	fr_time_delta_t		when, *wake;
 	struct timespec		ts_when, *ts_wake;
-	fr_event_pre_t		*pre;
 	int			num_fd_events;
 	bool			timer_event_ready = false;
 	fr_time_t		next;
@@ -2112,9 +2098,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	idle.
 	 */
 	if (wait) {
-		for (pre = fr_dlist_head(&el->pre_callbacks);
-		     pre != NULL;
-		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
+		fr_dlist_foreach(&el->pre_callbacks, fr_event_pre_t, pre) {
 			if (pre->callback(now, wake ? *wake : fr_time_delta_wrap(0), pre->uctx) > 0) {
 				wake = &when;
 				when = fr_time_delta_wrap(0);

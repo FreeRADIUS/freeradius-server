@@ -804,11 +804,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	/*
 	 *	Signal each network thread to exit.
 	 */
-	for (sn = fr_dlist_head(&sc->networks);
-	     sn != NULL;
-	     sn = fr_dlist_next(&sc->networks, sn)) {
-		if (fr_network_exit(sn->nr) < 0) {
-			PERROR("Failed signaling network %i to exit", sn->id);
+	fr_dlist_foreach(&sc->networks, fr_schedule_network_t, sne) {
+		if (fr_network_exit(sne->nr) < 0) {
+			PERROR("Failed signaling network %i to exit", sne->id);
 		}
 	}
 
@@ -826,9 +824,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	}
 	DEBUG2("Scheduler - All networks indicated exit complete");
 
-	while ((sn = fr_dlist_head(&sc->networks)) != NULL) {
-		fr_dlist_remove(&sc->networks, sn);
-
+	while ((sn = fr_dlist_pop_head(&sc->networks)) != NULL) {
 		/*
 		 *	Ensure that the thread has exited before
 		 *	cleaning up the context.
@@ -859,9 +855,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	/*
 	 *	Clean up the exited workers.
 	 */
-	while ((sw = fr_dlist_head(&sc->workers)) != NULL) {
-		fr_dlist_remove(&sc->workers, sw);
-
+	while ((sw = fr_dlist_pop_head(&sc->workers)) != NULL) {
 		/*
 		 *	Ensure that the thread has exited before
 		 *	cleaning up the context.

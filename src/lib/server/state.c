@@ -206,9 +206,9 @@ static int _state_tree_free(fr_state_tree_t *state)
 
 	DEBUG4("Freeing state tree %p", state);
 
-	while ((entry = fr_dlist_head(&state->to_expire))) {
-		DEBUG4("Freeing state entry %p (%"PRIu64")", entry, entry->id);
+	while ((entry = fr_dlist_head(&state->to_expire)) != NULL) {
 		state_entry_unlink(state, entry);
+		DEBUG4("Freeing state entry %p (%" PRIu64 ")", entry, entry->id);
 		talloc_free(entry);
 	}
 
@@ -395,7 +395,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 {
 	fr_time_t		now = fr_time();
 	fr_pair_t		*vp;
-	fr_state_entry_t	*entry, *next;
+	fr_state_entry_t	*entry;
 
 	uint64_t		timed_out = 0;
 	bool			too_many = false;
@@ -436,23 +436,20 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	which have been half-started, and then (many seconds
 	 *	later) haven't seen a "next" packet.
 	 */
-	for (entry = fr_dlist_head(&state->to_expire);
-	     entry != NULL;
-	     entry = next) {
- 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
-		next = fr_dlist_next(&state->to_expire, entry);		/* Advance *before* potential unlinking */
+	fr_dlist_foreach(&state->to_expire, fr_state_entry_t, expires) {
+ 		(void)talloc_get_type_abort(expires, fr_state_entry_t);	/* Allow examination */
 
 		/*
 		 *	It's active (and asserted so above), so it can't be in the expiry list.
 		 */
-		fr_assert(entry != old);
+		fr_assert(expires != old);
 
 		/*
 		 *	Too old, we can delete it.
 		 */
-		if (fr_time_lt(entry->cleanup, now)) {
-			state_entry_unlink(state, entry);
-			fr_dlist_insert_tail(&to_free, entry);
+		if (fr_time_lt(expires->cleanup, now)) {
+			state_entry_unlink(state, expires);
+			fr_dlist_insert_tail(&to_free, expires);
 			timed_out++;
 			continue;
 		}
@@ -507,10 +504,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 *	be freed also, and it may have complex destructors associated
 		 *	with it.
 		 */
-		while ((entry = fr_dlist_head(&to_free)) != NULL) {
-			fr_dlist_remove(&to_free, entry);
-			talloc_free(entry);
-		}
+		fr_dlist_talloc_free(&to_free);
 
 	} else if (too_many) {
 		talloc_const_free(dedup_key);
