@@ -204,6 +204,7 @@ static bool fr_command_valid_name(char const *name)
 		if (fr_utf8_char(p, -1)) continue;
 
 		fr_strerror_const("Invalid non-UTF8 character in name");
+		return false;
 	}
 
 	return true;
@@ -1914,7 +1915,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 {
 	int argc = start_argc;
 	int ret;
-	bool child_done;
+	bool child_done = false;
 	char const *word, *my_word, *p, *q;
 	fr_cmd_argv_t *argv = start;
 	fr_cmd_argv_t *child;
