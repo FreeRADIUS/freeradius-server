@@ -184,7 +184,7 @@ char *ctime_r(time_t const *l_clock, char *l_buf)
 	char *p;
 
 	p = ctime(l_clock);
-	if (!p) return NULL:
+	if (!p) return NULL;
 
 	strcpy(l_buf, p);
 
