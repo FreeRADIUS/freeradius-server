@@ -851,16 +851,16 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
-	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_mysql_conn_t	*conn;
-	char const		*log_prefix = c->name;
+	connection_t		*conn = talloc_get_type_abort(arg, connection_t);
+	rlm_sql_mysql_conn_t	*c;
+	char const		*log_prefix = conn->name;
 
-	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
+	if ((conn->state == CONNECTION_STATE_HALTED) || (conn->state == CONNECTION_STATE_CLOSED)) {
 		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
 		return -1;
 	}
 
-	conn = talloc_get_type_abort(c->h, rlm_sql_mysql_conn_t);
+	c = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
 	/* Check for potential buffer overflow */
 	inlen = strlen(in);
@@ -868,7 +868,7 @@ static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, cha
 	/* Prevent integer overflow */
 	if ((inlen * 2 + 1) <= inlen) return 0;
 
-	return mysql_real_escape_string(&conn->db, out, in, inlen);
+	return mysql_real_escape_string(&c->db, out, in, inlen);
 }
 
 SQL_TRUNK_CONNECTION_ALLOC
