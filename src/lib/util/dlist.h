@@ -889,12 +889,10 @@ static inline void fr_dlist_talloc_free_to_tail(fr_dlist_head_t *head, void *ptr
  */
 static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
 {
-	void *e = NULL, *p;
+	void *e;
 
-	while ((e = fr_dlist_next(head, e))) {
-		p = fr_dlist_remove(head, e);
+	while ((e = fr_dlist_pop_head(head)) != NULL) {
 		talloc_free(e);
-		e = p;
 	}
 }
 
