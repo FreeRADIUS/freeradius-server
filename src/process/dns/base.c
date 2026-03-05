@@ -33,7 +33,7 @@
 
 /** Update this if new rcodes are added
  */
-#define FR_DNS_RCODE_MAX	FR_RCODE_VALUE_BAD_COOKIE
+#define FR_DNS_RCODE_MAX	(FR_RCODE_VALUE_BAD_COOKIE + 1)
 
 static fr_dict_t const *dict_dns;
 
