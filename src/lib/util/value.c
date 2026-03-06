@@ -2337,7 +2337,7 @@ ssize_t fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr
 	default:
 		fr_strerror_printf("Invalid data type '%s' passed to IP address decode function",
 				   fr_type_to_str(type));
-		return 0;
+		return -1;
 	}
 
 	/*
