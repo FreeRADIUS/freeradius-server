@@ -417,14 +417,15 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 		}
 
 		buf = fgets(password, max_password_len, cmd_pipe);
-		pclose(cmd_pipe);
 
 		if (!buf || ferror(cmd_pipe)) {
+			pclose(cmd_pipe);
 			talloc_free(password);
 			ERROR("%s command failed: Unable to get private_key_password", cmd);
 			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
 			return -1;
 		}
+		pclose(cmd_pipe);
 
 		/* Get rid of newline at end of password. */
 		for (buf = password; buf < (password + max_password_len); buf++) {
