@@ -33,14 +33,27 @@ VERBOSE_LEVEL_4 := -vvvv
 VERBOSE_ARG := $(VERBOSE_LEVEL_$(VERBOSE))
 
 # Default Multi-server tests (1st target of Makefile)
+# We purposely do not run all make targets here to run the short
+# tests by default.
 multi-server: test-5hs-autoaccept test-1p-2hs-autoaccept combine-linelog-msg-output-logs
 
+.PHONY: test.multi-server
+test.multi-server: multi-server
+
 # Clean target to remove all .log and .txt.bak files in the runtime logs directory
-.PHONY: clean
-clean:
+.PHONY: clean.test.multi-server
+clean.test.multi-server:
 	@echo "INFO: Removing all .log and .txt.bak files in $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)"
 	rm -f $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.log
 	rm -f $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/*.txt.bak
+
+# Allow standalone use: make -f src/tests/multi-server/all.mk clean
+# Prerequisite-only rule merges safely with the top-level clean target
+.PHONY: clean
+clean: clean.test.multi-server
+
+# Hook into the top-level clean.test when included as a submakefile
+clean.test: clean.test.multi-server
 
 # Additional multi-server tests for longer runs
 multi-server-5min: test-5hs-autoaccept-5min test-1p-2hs-autoaccept-5min combine-linelog-msg-output-logs
