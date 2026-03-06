@@ -1,4 +1,4 @@
-= Configuring a server to proxy requests
+= Proxying
 
 *Goal:* To configure the server to proxy packets to a remote (home)
 RADIUS server and to perform test authentications against both the
@@ -13,9 +13,9 @@ proxy server and the home server.
 
 *Diagram:*
 
-image::access-request-proxy.svg[Fig. Proxy]
+image::proxy.svg[Fig. Proxy]
 
-We assume:
+*Prerequisites:*
 
 * You already have a working *second FreeRADIUS server* (the "home" server) running on another machine / IP.
 * It accepts authentication on port 1812 with a known shared secret.
@@ -41,7 +41,7 @@ The entry for the user "bob" from the xref:new_user.adoc[New User]
 exercise, typically located in `mods-config/files/authorize`, will be
 used here.
 
-You can use the `radclient` commands shown in the testing section to
+You can use the `radclient` commands shown in the <<Testing>> section to
 simulate the authentication requests.
 
 First, you should verify that authentication requests for user "bob"
@@ -53,9 +53,9 @@ Once proxying is verified, the home server will be halted. You should
 then re-attempt to authenticate `bob@realm1.com`, and observe how the
 proxy server behaves when the home server does not respond.
 
-== Step 1. Create the proxy module instance (pointing to your home server)
+== 1. Create the proxy module instance
 
-Create this file: `mods-available/proxy-realm1`
+Create the file: `mods-available/proxy-realm1`. Add the configuration below and verify that your proxy server points to your home server.
 
 [source,text]
 ----
@@ -71,7 +71,7 @@ radius proxy-realm1 {
         secret = testing123secret
     }
 
-    # What packets to proxy
+    # What type of packets to proxy
     type = Access-Request
     type = Accounting-Request
 
@@ -93,7 +93,7 @@ $ cd mods-enabled
 $ ln -s ../mods-available/proxy-realm1 proxy-realm1
 ----
 
-== Step 2. Modify the virtual server to decide when to proxy
+== 2. Modify the virtual server to decide when to proxy
 
 Edit `sites-enabled/default`
 
@@ -127,7 +127,7 @@ authenticate proxy-realm1 {
 ----
 
 
-== Step 3. Verify the config & restart
+== 3. Verify the configuration and restart
 
 [source,text]
 ----
@@ -139,7 +139,7 @@ $ radiusd -X
 ----
 
 
-== Step 4. Testing
+== Testing
 
 Once the configuration is there, you can test each piece of
 functionality, one at a time.
@@ -151,7 +151,7 @@ functionality, one at a time.
 echo 'User-Name = "bob", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-=== Radclient output
+*Radclient output*
 
 [source,text]
 ----
@@ -164,7 +164,7 @@ Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length
         User-Name = "bob"
 ----
 
-=== Server debug output (main / proxy server with a local user)
+*Server debug output (main / proxy server with a local user)*
 
 [source,text]
 ----
@@ -176,6 +176,10 @@ Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length
 (0)        | ({bob} =~ (null))
 (0)        | --> false
 (0)        ...
+----
+[%collapsible]
+====
+----
 (0)      }
 (0)      else {
 (0)          files - | ||
@@ -195,6 +199,7 @@ Received Access-Accept Id 200 from 127.0.0.1:1812 to 0.0.0.0:58423 via lo length
 (0)          files - Password.Cleartext := hello
 (0)        files (ok)
 ----
+====
 
 === Proxied authentication
 
@@ -205,7 +210,7 @@ You can now test a proxied authentication.
 echo 'User-Name = "bob@realm1.com", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
 ----
 
-=== Radclient output
+* Radclient output:
 
 [source,text]
 ----
@@ -218,7 +223,7 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
         User-Name = "bob@realm1.com"
 ----
 
-=== Server debug output (main / proxy server with proxied user)
+* Server debug output (main / proxy server with proxied user):
 
 [source,text]
 ----
@@ -231,6 +236,10 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 (0)        | --> true
 (0)        proxy-realm1 - proxy-realm1 - [1] Trunk connection assigned request 1
 (0)        proxy-realm1 - Sending Access-Request ID 0 length 0 over connection proto udp local 10.0.16.96 port 37726 remote 44.222.160.231 port 1812
+----
+[%collapsible]
+====
+----
 (0)          proxy-realm1 - Message-Authenticator = 0xb8c474a818edf42917887303b3181172
 (0)          proxy-realm1 - User-Name = "bob@realm1.com"
 (0)          proxy-realm1 - User-Password = "hello"
@@ -247,8 +256,9 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 (0)        proxy-realm1 - proxy-realm1 - Resuming execution
 (0)        proxy-realm1 (ok)
 ----
+====
 
-=== Proxy server debug output (when proxied packet arrives)
+* Proxy server debug output (when proxied packet arrives):
 
 [source,text]
 ----
@@ -259,6 +269,10 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 (0) suffix: Adding Realm = "default"
 (0) suffix: Authentication realm is LOCAL
 (0)     [suffix] = ok
+----
+[%collapsible]
+====
+----
 (0) files: users: Matched entry bob at line 2
 (0)     [files] = ok
 (0)     [pap] = updated
@@ -269,6 +283,7 @@ Received Access-Accept Id 130 from 127.0.0.1:1812 to 0.0.0.0:43437 via lo length
 (0)     [ok] = ok
 (0)   } # Auth-Type PAP = ok
 ----
+====
 
 == Questions
 
