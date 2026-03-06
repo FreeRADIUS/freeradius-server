@@ -2512,8 +2512,8 @@ static int expand_syntax(fr_cmd_t *cmd, fr_cmd_info_t *info, fr_cmd_argv_t *argv
 				 *	the input.  If so, use it.
 				 */
 				count = expand_syntax(cmd, info, sub, text, start, &my_word, count, max_expansions, expansions);
-				if (my_word != word) {
-					*word_p = word;
+				if (word != my_word) {
+					*word_p = my_word;
 					break;
 				}
 			}
