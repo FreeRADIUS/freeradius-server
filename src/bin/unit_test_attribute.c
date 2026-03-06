@@ -1783,6 +1783,9 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	size_t		poison_size;
+#endif
 
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
@@ -1832,7 +1835,10 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
-	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	poison_size = COMMAND_OUTPUT_MAX - slen;
+#endif
+	ASAN_POISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	/*
 	 *	Run the input data through the test
@@ -1840,16 +1846,17 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 */
 	while (to_dec < to_dec_end) {
 		slen = tp->func(head, &head->vp_group, cc->tmpl_rules.attr.namespace,
-				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
+				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);	
+
 		cc->last_ret = slen;
 		if (slen <= 0) {
-			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 			CLEAR_TEST_POINT(cc);
 			RETURN_OK_WITH_ERROR();
 		}
 		if ((size_t)slen > (size_t)(to_dec_end - to_dec)) {
 			fr_perror("%s: Internal sanity check failed at %d", __FUNCTION__, __LINE__);
-			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+			ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 			CLEAR_TEST_POINT(cc);
 			RETURN_COMMAND_ERROR();
 		}
@@ -1860,7 +1867,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
-	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	/*
 	 *	Output may be an error, and we ignore
@@ -1884,7 +1891,9 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
-
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	size_t		poison_size;
+#endif
 	fr_dict_attr_t	const *da;
 	fr_pair_t	*head;
 
@@ -1933,13 +1942,16 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	to_dec = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
-	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+	poison_size = COMMAND_OUTPUT_MAX - slen;
+#endif
+	ASAN_POISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	slen = tp->func(head, &head->vp_group,
 			(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 	cc->last_ret = slen;
 	if (slen <= 0) {
-		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1948,7 +1960,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
-	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
+	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 
 	/*
 	 *	Output may be an error, and we ignore
