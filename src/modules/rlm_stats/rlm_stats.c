@@ -204,7 +204,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result,
 
 	stats->last_packet = request->async->recv_time;
 	stats->stats[src_code]++;
-	stats->stats[dst_code]++;
 
 	/*
 	 *	Update destination statistics
@@ -221,7 +220,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result,
 	}
 
 	stats->last_packet = request->async->recv_time;
-	stats->stats[src_code]++;
 	stats->stats[dst_code]++;
 	pthread_mutex_unlock(&t->mutex);
 
