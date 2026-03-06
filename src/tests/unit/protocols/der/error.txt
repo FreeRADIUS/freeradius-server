@@ -1,0 +1,149 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+
+proto der
+proto-dictionary der
+
+load-dictionary dictionary.test
+
+fuzzer-out der
+
+#
+#  ----  Header-level errors (fr_der_decode_hdr / fr_der_decode_pair_dbuff)  ----
+#
+
+#
+#  Truncated header - only 1 byte (need at least 2 for tag + length)
+#
+proto-dictionary-root Test-Boolean
+
+decode-pair 01
+match Truncated header while trying to decode Test-Boolean
+
+#
+#  Multi-byte tags are not supported - tag byte 0x1f has lower 5 bits all set
+#
+decode-pair 1f 01 ff
+match Multi-byte tags are not supported: Failed decoding Test-Boolean header
+
+#
+#  Invalid tag 0 - tag number 0 is reserved/invalid in UNIVERSAL class
+#
+decode-pair 00 01 05
+match Invalid tag 0: Failed decoding Test-Boolean header
+
+#
+#  Tag mismatch - got INTEGER (0x02) when expecting BOOLEAN (0x01)
+#
+decode-pair 02 01 05
+match Failed decoding Test-Boolean - got tag 'integer', expected 'boolean'
+
+#
+#  Constructed flag mismatch - BOOLEAN is primitive but 0x21 = constructed BOOLEAN
+#
+decode-pair 21 01 ff
+match Constructed flag mismatch for tag 1: Failed decoding Test-Boolean header
+
+#
+#  Primitive with indefinite form length - INTEGER (0x02) with 0x80 length byte
+#  Indefinite form is only valid for constructed types
+#
+proto-dictionary-root Test-Integer
+
+decode-pair 02 80 02 01 05 00 00
+match Primitive data with indefinite form length field is invalid: Failed decoding Test-Integer header
+
+#
+#  ----  NULL errors  ----
+#
+
+#
+#  NULL with non-zero length - NULL must have length 0
+#
+proto-dictionary-root Test-NULL
+
+decode-pair 05 01 00
+match Null has non-zero length
+
+#
+#  NULL with length 2
+#
+decode-pair 05 02 00 00
+match Null has non-zero length
+
+#
+#  ----  Bitstring errors  ----
+#
+
+#
+#  Invalid unused bits count - must be 0-7, got 8
+#
+proto-dictionary-root Test-Bitstring
+
+decode-pair 03 02 08 aa
+match Invalid number of unused bits in 'bitstring'
+
+#
+#  Unused bits but no data bytes - claims 3 unused bits but only 1 byte (the count itself)
+#
+decode-pair 03 01 03
+match Insufficient data for 'bitstring'. Missing data bytes
+
+#
+#  ----  UTC Time errors  ----
+#
+
+#
+#  UTC time contains null byte - "24010100\x0000000Z"
+#
+proto-dictionary-root Test-Date
+
+decode-pair 17 0D 32 34 30 31 30 31 30 30 00 30 30 30 5A
+match UTC time contains null byte
+
+#
+#  Invalid UTC time format - month 13 is invalid: "241301000000Z"
+#
+decode-pair 17 0D 32 34 31 33 30 31 30 30 30 30 30 30 5A
+match Invalid UTC time format
+
+#
+#  ----  Generalized Time errors  ----
+#
+
+#
+#  Missing timezone - 15 bytes ending with 'X' instead of 'Z' or '.'
+#  "20240101000000X"
+#
+proto-dictionary-root Test-Generalized-Time
+
+decode-pair 18 0F 32 30 32 34 30 31 30 31 30 30 30 30 30 30 58
+match Incorrect format for generalized time. Missing timezone
+
+#
+#  Invalid generalized time format - month 13: "20241301000000Z"
+#
+decode-pair 18 0F 32 30 32 34 31 33 30 31 30 30 30 30 30 30 5A
+match Invalid generalized time format (strptime)
+
+#
+#  ----  String character validation errors  ----
+#
+
+#
+#  VisibleString with control character - 0x01 is not in range 0x20-0x7E
+#
+proto-dictionary-root Test-String-Visible
+
+decode-pair 1a 01 01
+match Invalid character in a string (1)
+
+#
+#  VisibleString with DEL character (0x7f) - also outside 0x20-0x7E
+#
+decode-pair 1a 01 7f
+match Invalid character in a string (127)
+
+count
+match 43
