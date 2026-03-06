@@ -596,6 +596,28 @@ This plugin provides YubiCloud support for the FreeRADIUS server project.
 %undefine _debugsource_packages
 %undefine _debuginfo_subpackages
 
+# Disable dwz (DWARF compression) for debuginfo packages.
+#
+# RPM's find-debuginfo script runs dwz by default, which deduplicates common DWARF type information across
+# all binaries/libraries into a shared alternate debug file (referenced via .gnu_debugaltlink sections).
+# dwz uses GNU DWARF form extensions DW_FORM_GNU_ref_alt (0x1f20) and DW_FORM_GNU_strp_alt (0x1f21) to
+# reference entries in this shared file.
+#
+# As of lldb 22.1 (March 2026) these GNU extensions are not supported, producing:
+#   warning: (x86_64) unsupported DW_FORM values: 0x1f20 0x1f21
+# and rendering lldb unable to resolve source files, line numbers, or type information.
+#
+# gdb is unaffected as it natively supports these GNU extensions.  This is not specific to FreeRADIUS -
+# all RPM debuginfo packages on Fedora/RHEL/CentOS are affected.
+#
+# References:
+#   https://github.com/llvm/llvm-project/issues/63973
+#   https://reviews.llvm.org/D96237  (incomplete 17-part patch series, never fully upstreamed)
+#   https://lists.llvm.org/pipermail/lldb-dev/2018-August/013977.html
+#
+# Disabling dwz increases debuginfo package size but makes debug symbols usable with both gdb and lldb.
+%define _find_debuginfo_dwz_opts %{nil}
+
 %prep
 %setup -q -n freeradius-server-%{version}
 # Some source files mistakenly have execute permissions set
