@@ -123,6 +123,7 @@ static void _ldap_start_tls_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 		if (ret != LDAP_SUCCESS) {
 			ERROR("ldap_install_tls failed: %s", ldap_err2string(ret));
 			fr_ldap_state_error(c);		/* Restart the connection state machine */
+			break;
 		}
 
 		fr_ldap_state_next(c);			/* onto the next operation */
