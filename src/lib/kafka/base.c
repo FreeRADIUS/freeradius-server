@@ -310,7 +310,6 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *
 			return 0;	/* Not an error */
 		}
 
-		fr_assert(ret == RD_KAFKA_CONF_UNKNOWN);
 		cf_log_err(cs, "Failed retrieving kafka property '%s'", kctx->property);
 		return -1;
 	}
