@@ -294,7 +294,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -306,7 +306,10 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		fr_dict_attr_t const *unknown;
 
 		unknown = fr_dict_attr_unknown_copy(vp, da);
-		if (!unknown) goto oom;
+		if (!unknown) {
+			talloc_free(vp);
+			goto oom;
+		}
 		da = unknown;
 	}
 
