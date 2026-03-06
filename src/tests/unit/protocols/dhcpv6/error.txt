@@ -1,0 +1,129 @@
+#
+#  Test vectors for DHCPv6 error conditions
+#
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+#
+#  ----  Pair-level decode tests (decode_option)  ----
+#
+
+#
+#  Insufficient data - 1 byte (need at least 4 for option header)
+#
+decode-pair 00
+match decode_option: Insufficient data
+
+#
+#  Insufficient data - 3 bytes (need at least 4 for option header)
+#
+decode-pair 00 01 00
+match decode_option: Insufficient data
+
+#
+#  Option overflows input - option header says length 10, but only 2 bytes follow
+#
+decode-pair 00 01 00 0a 01 02
+match decode_option: Option overflows input.  Optional length must be less than 2 bytes, got 10 bytes
+
+#
+#  ----  Packet-level validation tests (fr_dhcpv6_ok)  ----
+#
+
+#
+#  Packet too small for DHCPv6 header - 1 byte
+#
+decode-proto 01
+match Packet is too small for DHCPv6 header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Packet too small for DHCPv6 header - 3 bytes
+#
+decode-proto 01 00 00
+match Packet is too small for DHCPv6 header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Relay Forward too small - need 34 bytes, only have 10
+#  Type 12 = Relay-Forward
+#
+decode-proto 0c 00 00 00 00 00 00 00 00 00
+match Packet is too small for relay header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Relay Reply too small - need 34 bytes, only have 5
+#  Type 13 = Relay-Reply
+#
+decode-proto 0d 00 00 00 00
+match Packet is too small for relay header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Not enough room for option header - normal packet with 2 trailing bytes
+#  Solicit (type 1) + txn_id + 2 bytes (need 4 for option header)
+#
+decode-proto 01 00 00 00 00 01
+match Not enough room for option header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Not enough room for option header - normal packet with 1 trailing byte
+#
+decode-proto 01 00 00 00 ff
+match Not enough room for option header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Option length overflows the packet - option says length 10, only 4 bytes of data
+#  Solicit + txn_id + option_num(0x0001) + option_len(0x000a) + 4 bytes
+#
+decode-proto 01 00 00 00 00 01 00 0a 01 02 03 04
+match Option length overflows the packet: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Not enough room for option header in relay packet
+#  Relay Forward (12) + hop_count + 16-byte link addr + 16-byte peer addr + 2 bytes
+#
+decode-proto 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+match Not enough room for option header: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Option length overflows in relay packet
+#  Relay Forward + hop_count + link_addr(16) + peer_addr(16) + option(0001) + len(00ff) + 2 bytes
+#
+decode-proto 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 ff 01 02
+match Option length overflows the packet: Invalid DHCPv6 packet starting at offset 0
+
+#
+#  Not enough room for second option header - valid first option (8 bytes),
+#  then 2 trailing bytes.  Offset in options = 8, plus 4-byte normal header = 12.
+#  But offset calculation returns 8 (relative to options start) via fr_dhcpv6_options_ok,
+#  then fr_dhcpv6_ok_internal adds 4 for the header -> final offset = 8 in the stacked message.
+#  Solicit + txn_id + option(0x0001, len=4, data=01020304) + 2 bytes
+#
+decode-proto 01 00 00 00 00 01 00 04 01 02 03 04 00 01
+match Not enough room for option header: Invalid DHCPv6 packet starting at offset 12
+
+#
+#  Second option overflows the packet - valid first option (8 bytes),
+#  second option claims length 20 but only 2 bytes available
+#  Solicit + txn_id + option(0x0001, len=4, data=01020304) + option(0x0002, len=0x0014) + 2 bytes
+#
+decode-proto 01 00 00 00 00 01 00 04 01 02 03 04 00 02 00 14 01 02
+match Option length overflows the packet: Invalid DHCPv6 packet starting at offset 12
+
+#
+#  Relay Forward with valid header but relay-message containing too-small packet
+#  Relay Forward + hop=0 + link(16 zeros) + peer(16 zeros) +
+#  Relay-Message option (type 9, 0x0009) with length 2 containing a 2-byte inner packet
+#  Inner packet: type 1 (Solicit) + 1 byte (too small for 4-byte header)
+#
+decode-proto 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 09 00 02 01 00
+match Packet is too small for DHCPv6 header: Invalid DHCPv6 packet starting at offset 38
+
+#
+#  Relay Forward with empty relay-message
+#  Relay-Message option (type 9) with length 0
+#
+decode-proto 0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 09 00 00
+match Packet is empty: Invalid DHCPv6 packet starting at offset 38
+
+count
+match 35
