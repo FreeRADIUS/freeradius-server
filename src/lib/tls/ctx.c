@@ -327,7 +327,12 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, boo
 				fr_tls_log(NULL, "Failed reading certificate file \"%s\"", filename);
 				return -1;
 			}
-			SSL_CTX_add0_chain_cert(ctx, cert);
+
+			if (SSL_CTX_add0_chain_cert(ctx, cert) != 1) {
+				fr_tls_log(NULL, "Failed adding certificate to chain for \"%s\"", filename);
+				X509_free(cert);
+				return -1;
+			}
 		}
 	}
 
