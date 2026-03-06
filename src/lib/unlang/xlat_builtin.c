@@ -3475,7 +3475,8 @@ static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED
 		memcpy(buf, &in->vb_octets[start], len);
 	}
 		break;
-	default:
+
+	default:		/* 'in' was cast to #FR_TYPE_STRING */
 		fr_assert(0);
 	}
 
