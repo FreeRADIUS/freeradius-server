@@ -1,0 +1,239 @@
+#
+#  Test vectors for TACACS+ error conditions
+#
+proto tacacs
+proto-dictionary tacacs
+fuzzer-out tacacs
+
+#
+#  ----  Packet-level header validation tests  ----
+#
+
+#
+#  Packet too small - 5 bytes (minimum is 12)
+#
+decode-proto c0 01 01 01 00
+match Packet is too small (5 < 12) to be TACACS+.
+
+#
+#  Packet too small - 11 bytes
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00
+match Packet is too small (11 < 12) to be TACACS+.
+
+#
+#  Unsupported version 0.0
+#
+decode-proto 00 01 01 01 00 00 00 01 00 00 00 00
+match Unsupported TACACS+ version 0.0 (00)
+
+#
+#  Unsupported version 12.2
+#
+decode-proto c2 01 01 01 00 00 00 01 00 00 00 00
+match Unsupported TACACS+ version 12.2 (c2)
+
+#
+#  Unsupported version 13.0
+#
+decode-proto d0 01 01 01 00 00 00 01 00 00 00 00
+match Unsupported TACACS+ version 13.0 (d0)
+
+#
+#  Packet too large - byte 8 of length field is nonzero (> 64K)
+#
+decode-proto c0 01 01 01 00 00 00 01 01 00 00 00
+match Packet is too large.  Our limit is 64K
+
+#
+#  Packet does not fill buffer - length says 10 but only 0 body bytes
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00 0a
+match Packet does not exactly fill buffer
+
+#
+#  Packet does not fill buffer - length says 0 but 5 extra body bytes
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00 00 01 02 03 04 05
+match Packet does not exactly fill buffer
+
+#
+#  Unknown packet type 0
+#
+decode-proto c0 00 01 01 00 00 00 01 00 00 00 00
+match Unknown packet type 0
+
+#
+#  Unknown packet type 4
+#
+decode-proto c0 04 01 01 00 00 00 01 00 00 00 00
+match Unknown packet type 4
+
+#
+#  Unknown packet type 255
+#
+decode-proto c0 ff 01 01 00 00 00 01 00 00 00 00
+match Unknown packet type 255
+
+#
+#  ----  Authentication Start (type=0x01, seq_no=1)  ----
+#
+
+#
+#  Authentication-Start header too small - body 3 bytes (need 8)
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00 03 01 02 03
+match Header for Authentication-Start is too small (15 < 12)
+
+#
+#  Authentication-Start data overflows - user_len=10 but body only 8 bytes
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00 08 01 00 02 03 0a 00 00 00
+match Data overflows the packet
+
+#
+#  Authentication-Start data underflows - all lengths=0 but 12 extra bytes
+#
+decode-proto c0 01 01 01 00 00 00 01 00 00 00 14 01 00 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+match Data underflows the packet
+
+#
+#  ----  Authentication Continue (type=0x01, seq_no=3)  ----
+#
+
+#
+#  Authentication-Continue header too small - body 2 bytes (need 5)
+#
+decode-proto c0 01 03 01 00 00 00 01 00 00 00 02 01 02
+match Header for Authentication-Continue is too small (14 < 12)
+
+#
+#  Authentication-Continue invalid version 12.1 (must be 12.0)
+#
+decode-proto c1 01 03 01 00 00 00 01 00 00 00 05 00 00 00 00 00
+match Invalid TACACS+ version
+
+#
+#  Authentication-Continue data overflows - user_msg_len=10 but body only 5 bytes
+#
+decode-proto c0 01 03 01 00 00 00 01 00 00 00 05 00 0a 00 00 00
+match Data overflows the packet
+
+#
+#  ----  Authentication Reply (type=0x01, seq_no=2)  ----
+#
+
+#
+#  Authentication-Reply header too small - body 3 bytes (need 6)
+#
+decode-proto c0 01 02 01 00 00 00 01 00 00 00 03 01 02 03
+match Header for Authentication-Reply is too small (15 < 12)
+
+#
+#  Authentication-Reply data overflows - server_msg_len=10 but body only 6 bytes
+#
+decode-proto c0 01 02 01 00 00 00 01 00 00 00 06 01 00 00 0a 00 00
+match Data overflows the packet
+
+#
+#  Authentication-Reply data underflows - all lengths=0 but 10 extra bytes
+#
+decode-proto c0 01 02 01 00 00 00 01 00 00 00 10 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+match Data underflows the packet
+
+#
+#  ----  Authorization Request (type=0x02, seq_no=1)  ----
+#
+
+#
+#  Authorization-Request header too small - body 3 bytes (need 8)
+#
+decode-proto c0 02 01 01 00 00 00 01 00 00 00 03 01 02 03
+match Header for Authorization-Request is too small (15 < 12)
+
+#
+#  Authorization-Request invalid version 12.1 (must be 12.0)
+#
+decode-proto c1 02 01 01 00 00 00 01 00 00 00 08 06 00 02 03 00 00 00 00
+match Invalid TACACS+ version
+
+#
+#  Authorization-Request argument count overflow - arg_cnt=5 but body only 8 bytes
+#
+decode-proto c0 02 01 01 00 00 00 01 00 00 00 08 06 00 02 03 00 00 00 05
+match Argument count 5 overflows the remaining data (8) in the Authorization-Request packet
+
+#
+#  Authorization-Request argument length overflow - arg_len[0]=255 but only 1 byte available
+#
+decode-proto c0 02 01 01 00 00 00 01 00 00 00 0a 06 00 02 03 00 00 00 01 ff 00
+match Argument 0 length 255 overflows packet
+
+#
+#  ----  Authorization Reply (type=0x02, seq_no=2)  ----
+#
+
+#
+#  Authorization-Reply header too small - body 3 bytes (need 6)
+#
+decode-proto c0 02 02 01 00 00 00 01 00 00 00 03 01 02 03
+match Header for Authorization-Reply is too small (15 < 12)
+
+#
+#  Authorization-Reply argument count overflow - arg_cnt=5 but body only 6 bytes
+#
+decode-proto c0 02 02 01 00 00 00 01 00 00 00 06 01 05 00 00 00 00
+match Argument count 5 overflows the remaining data (6) in the Authorization-Reply packet
+
+#
+#  ----  Accounting Request (type=0x03, seq_no=1)  ----
+#
+
+#
+#  Accounting-Request header too small - body 3 bytes (need 9)
+#
+decode-proto c0 03 01 01 00 00 00 01 00 00 00 03 01 02 03
+match Header for Accounting-Request is too small (15 < 12)
+
+#
+#  Accounting-Request invalid version 12.1 (must be 12.0)
+#
+decode-proto c1 03 01 01 00 00 00 01 00 00 00 09 02 06 00 02 03 00 00 00 00
+match Invalid TACACS+ version
+
+#
+#  Accounting-Request data overflows - user_len=255 but body only 9 bytes
+#
+decode-proto c0 03 01 01 00 00 00 01 00 00 00 09 02 06 00 02 03 ff 00 00 00
+match Data overflows the packet
+
+#
+#  Accounting-Request argument length overflow - arg_len[0]=255 but only 1 byte available
+#
+decode-proto c0 03 01 01 00 00 00 01 00 00 00 0b 02 06 00 02 03 00 00 00 01 ff 00
+match Argument 0 length 255 overflows packet
+
+#
+#  ----  Accounting Reply (type=0x03, seq_no=2)  ----
+#
+
+#
+#  Accounting-Reply header too small - body 2 bytes (need 5)
+#
+decode-proto c0 03 02 01 00 00 00 01 00 00 00 02 01 02
+match Header for Accounting-Reply is too small (14 < 12)
+
+#
+#  Accounting-Reply data overflows - server_msg_len=10 but body only 5 bytes
+#
+decode-proto c0 03 02 01 00 00 00 01 00 00 00 05 00 0a 00 00 01
+match Data overflows the packet
+
+#
+#  Accounting-Reply data underflows - all lengths=0 but 10 extra bytes
+#
+decode-proto c0 03 02 01 00 00 00 01 00 00 00 0f 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00
+match Data underflows the packet
+
+count
+match 69
