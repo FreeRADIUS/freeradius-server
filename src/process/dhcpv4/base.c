@@ -154,7 +154,7 @@ RESUME(check_offer_ack_options)
 		int		ret;
 		MEM((ret = pair_update_reply(&reply_vp, attr_dhcp_option_82)) >= 0);
 		if ((ret == 0) && (fr_pair_list_num_elements(&vp->vp_group) > 0)) {
-			MEM(fr_pair_list_copy(reply_vp, &reply_vp->vp_group, &vp->vp_group));
+			MEM(fr_pair_list_copy(reply_vp, &reply_vp->vp_group, &vp->vp_group) >= 0);
 		}
 	}
 
