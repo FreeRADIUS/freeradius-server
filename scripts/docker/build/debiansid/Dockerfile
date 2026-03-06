@@ -65,19 +65,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
 #
-#  We need curl to get the signing key
-#
-RUN apt-get update \
- && apt-get install -y curl \
- && apt-get clean \
- && rm -r /var/lib/apt/lists/*
-
-#
 #  Set up NetworkRADIUS extras repository
+#  Reuse the signing key from the build stage instead of fetching it again
 #
-RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
- && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
- && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/debian/sid sid main" > /etc/apt/sources.list.d/networkradius-extras.list
+COPY --from=build /etc/apt/keyrings/packages.networkradius.com.asc /etc/apt/keyrings/packages.networkradius.com.asc
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/debian/sid sid main" > /etc/apt/sources.list.d/networkradius-extras.list
 
 ARG freerad_uid=101
 ARG freerad_gid=101

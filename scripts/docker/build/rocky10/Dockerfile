@@ -20,14 +20,15 @@ RUN dnf config-manager --set-enabled crb
 #
 #  Set up NetworkRADIUS extras repository
 #
+RUN curl -o /etc/pki/rpm-gpg/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com"
 RUN echo $'[networkradius-extras]\n\
 name=NetworkRADIUS-extras-$releasever\n\
 baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
 enabled=1\n\
 gpgcheck=1\n\
-gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
 > /etc/yum.repos.d/networkradius-extras.repo
-RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
+RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 
 #
 #  Create build directory
@@ -89,15 +90,17 @@ COPY --from=build /root/rpms /tmp/
 
 #
 #  Set up NetworkRADIUS extras repository
+#  Reuse the signing key from the build stage instead of fetching it again
 #
+COPY --from=build /etc/pki/rpm-gpg/packages.networkradius.com.asc /etc/pki/rpm-gpg/packages.networkradius.com.asc
 RUN echo $'[networkradius-extras]\n\
 name=NetworkRADIUS-extras-$releasever\n\
 baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
 enabled=1\n\
 gpgcheck=1\n\
-gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
 > /etc/yum.repos.d/networkradius-extras.repo
-RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
+RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 
 #
 #  Other requirements
