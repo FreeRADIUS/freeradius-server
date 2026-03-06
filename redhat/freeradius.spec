@@ -602,9 +602,21 @@ This plugin provides YubiCloud support for the FreeRADIUS server project.
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
 
 %build
-# Retain CFLAGS from the environment...
+# Start with the standard RPM optimisation flags (includes -g for debug symbols)
+# Replace -g with -g3 to include CPP macro definitions in debug info, useful
+# for debugging with macros like RDEBUG, fr_assert, talloc wrappers etc.
+export CFLAGS="$(echo '%{optflags}' | sed -E 's/(^| )-g( |$)/ -g3 /g')"
+export CXXFLAGS="$CFLAGS"
+
 %if %{with developer}
-export CFLAGS="$CFLAGS -g3 -fpic"
+# Strip flags that interfere with debugging and sanitizers:
+#  -O2                    - optimizes out variables, making GDB useless
+#  -flto*/-ffat-lto*      - LTO breaks backtraces and sanitizer reporting
+#  -D_FORTIFY_SOURCE*     - requires -O1+, conflicts with -O0
+for _flag in -O2 '-flto[^ ]*' '-ffat-lto[^ ]*' '-Wp,-D_FORTIFY_SOURCE[^ ]*'; do
+    CFLAGS="$(echo $CFLAGS | sed -E "s/$_flag//g")"
+done
+export CFLAGS="$CFLAGS -O0 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
 
