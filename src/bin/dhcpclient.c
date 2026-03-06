@@ -316,7 +316,7 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 		int i;
 
 		DEBUG("Received %d DHCP Offer(s):", nb_offer);
-		for (i = 0; i < nb_reply; i++) {
+		for (i = 0; i < nb_offer; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
 			char offered_addr_buf[INET6_ADDRSTRLEN];
 
