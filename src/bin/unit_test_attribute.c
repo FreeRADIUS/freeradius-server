@@ -4020,6 +4020,11 @@ finish:
 		ret = -1;
 	}
 
+	if ((ret == 0) && !cc->test_count) {
+		ERROR("Empty input file is invalid");
+		ret = -1;
+	}
+
 	fr_dict_global_ctx_set(config->dict_gctx);	/* Switch back to the main dict ctx */
 	unload_proto_library();
 	talloc_free(cc);
