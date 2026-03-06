@@ -561,7 +561,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 		 *      the maximum length of a status
 		 *	message.
 		 */
-		fr_sbuff_init_talloc(vp, &sbuff, &tctx, 1024, UINT16_MAX - 2);
+		if (!fr_sbuff_init_talloc(vp, &sbuff, &tctx, 1024, UINT16_MAX - 2)) return;
 
 		do {
 			/*
