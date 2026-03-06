@@ -22,5 +22,150 @@ match DNS packet malformed - no 'questions' in query packet
 decode-proto 2020 A020 0000 2020 2020 2020 012d 0000 0c20 2020 2020 2000 2520 2020 2020 ff20 2020 2020 2020 ff20 2020 2020 2020 20202020 2020 2020 2020 2020 20ff 2020 c00d
 match DNS packet malformed - more resource records than indicated in header
 
+#
+#  Packet too short (exactly 12 bytes = DNS header, need > 12)
+#
+decode-proto 00 00 00 00 00 01 00 00 00 00 00 00
+match DNS packet malformed - packet is smaller than DNS header
+
+#
+#  Even shorter - 6 bytes
+#
+decode-proto 00 00 00 00 00 00
+match DNS packet malformed - packet is smaller than DNS header
+
+#
+#  Unknown opcode (opcode 3 is reserved/unassigned)
+#  byte[2] = 0x18 -> QR=0, opcode=3
+#
+decode-proto 00 00 18 00 00 01 00 00 00 00 00 00 00
+match DNS packet malformed - unknown opcode
+
+#
+#  Unknown opcode 7
+#  byte[2] = 0x38 -> QR=0, opcode=7
+#
+decode-proto 00 00 38 00 00 01 00 00 00 00 00 00 00
+match DNS packet malformed - unknown opcode
+
+#
+#  Unexpected NS records in query packet
+#  QR=0, opcode=0, qdcount=1, ancount=0, nscount=1
+#
+decode-proto 00 00 00 00 00 01 00 00 00 01 00 00 00
+match DNS packet malformed - unexpected NS records in query packet
+
+#
+#  Pointer overflows packet - compressed pointer 0xc0 at end with no second byte
+#  Response with 1 answer. Label "aaaaaaaaaaaaaa" (14 bytes) followed by
+#  a pointer byte 0xc0 with no second byte.  Packet is 28 bytes (>= 23
+#  needed to pass rough estimation for 1 RR).
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 c0
+match DNS packet malformed - pointer overflows packet
+
+#
+#  Pointer to header - pointer offset 0 (points into DNS header)
+#  Pointer c0 00 -> offset 0, which is inside the 12-byte header
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 c0 00
+match DNS packet malformed - pointer points to packet header
+
+#
+#  Pointer to header - pointer c0 05 -> offset 5
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 c0 05
+match DNS packet malformed - pointer points to packet header
+
+#
+#  Pointer creates a loop - pointer offset >= current label start
+#  Pointer c0 0c -> offset 12, which is the start of this very label
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 c0 0c
+match DNS packet malformed - pointer creates a loop
+
+#
+#  Pointer to non-label - pointer points to a position that isn't a label start
+#  Response with 2 answers. First RR: root label "." + type A + class IN +
+#  TTL + rdlength 9 + 9 bytes rdata (34 bytes total, passes estimation for
+#  2 RRs). Second RR's pointer c0 0c points to offset 12 which is the
+#  root label's null terminator (not marked as a label).
+#
+decode-proto 00 00 80 00 00 00 00 02 00 00 00 00 00 00 01 00 01 00 00 00 10 00 09 7f 00 00 01 01 02 03 04 05 c0 0c
+match DNS packet malformed - pointer does not point to a label
+
+#
+#  Invalid pointer - high bits 0b01 (value 0x40-0x7f)
+#  These byte values are reserved and forbidden in DNS labels
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 40
+match DNS packet malformed - invalid pointer
+
+#
+#  Invalid pointer - high bits 0b10 (value 0x80-0xbf)
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 0e 61 61 61 61 61 61 61 61 61 61 61 61 61 61 80
+match DNS packet malformed - invalid pointer
+
+#
+#  Label overflows packet - second label claims 10 bytes but only 3 follow
+#  Two valid label segments "abc" and "def", then a label claiming 10 bytes
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 03 61 62 63 03 64 65 66 0a 61 62 63
+match DNS packet malformed - label overflows the packet
+
+#
+#  Query record header is missing - question label ends but no qtype/qclass
+#  Query with 1 question, label "abc" (03 61 62 63 00), then packet ends
+#
+decode-proto 00 00 00 00 00 01 00 00 00 00 00 00 03 61 62 63 00
+match DNS packet malformed - query record header is missing
+
+#
+#  Missing resource record header - response RR label ends but < 8 bytes
+#  for type(2)+class(2)+TTL(4)
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 03 61 62 63 00 00 01 00 01 00 00
+match DNS packet malformed - missing resource record header
+
+#
+#  Missing resource record length field - RR header present but no rdlength
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 03 61 62 63 00 00 01 00 01 00 00 00 10
+match DNS packet malformed - missing resource record length field
+
+#
+#  Resource record length field is zero - non-OPT RR with rdlength=0
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 03 61 62 63 00 00 01 00 01 00 00 00 10 00 00
+match DNS packet malformed - resource record length field is zero
+
+#
+#  Resource record length overflows packet - rdlength says 10 but only 4 bytes left
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 03 61 62 63 00 00 01 00 01 00 00 00 10 00 0a 01 02 03 04
+match DNS packet malformed - resource record length overflows the packet
+
+#
+#  Fewer resource records than indicated - claims 2 answers but only 1 present
+#  RR has rdlength=0x0b (11 bytes) to pass the rough estimation check
+#
+decode-proto 00 00 80 00 00 00 00 02 00 00 00 00 00 00 01 00 01 00 00 00 10 00 0b 01 02 03 04 05 06 07 08 09 0a 0b
+match DNS packet malformed - fewer resource records than indicated in header
+
+#
+#  Missing TLV header in OPT RR - OPT record (type 41/0x29) with only 2 bytes
+#  of TLV data (need 4 for option code + option length)
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 00 00 29 10 00 00 00 00 00 00 02 00 0a
+match DNS packet malformed - missing TLV header in OPT RR
+
+#
+#  TLV overflows enclosing RR - OPT TLV claims 8 bytes but only 2 available
+#  rdlength=6, TLV header says length=8
+#
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00 00 00 29 10 00 00 00 00 00 00 06 00 0a 00 08 01 02
+match DNS packet malformed - TLV overflows enclosing RR
+
 count
-match 13
+match 55
