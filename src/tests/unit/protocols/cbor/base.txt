@@ -138,5 +138,330 @@ match PMIP6-Home-HN-Prefix = ::/128
 decode-pair 9f a1 1a 19 a1 82 00 da 00 00 03 ea a2 01 1a be 00 00 00 28 1b 70 a1 00 da 00 00 03 ea
 match Invalid attribute number '430014976' - it must be no more than 8 bits in size
 
+#
+#  Integer boundary tests - CBOR uses variable-length encoding
+#
+#  NAS-Port = 0 (inline encoding, info=0)
+encode-pair NAS-Port = 0
+match 9f a1 05 00 ff
+
+decode-pair -
+match NAS-Port = 0
+
+#  NAS-Port = 23 (max inline value, info=23)
+encode-pair NAS-Port = 23
+match 9f a1 05 17 ff
+
+decode-pair -
+match NAS-Port = 23
+
+#  NAS-Port = 24 (first 1-byte encoding)
+encode-pair NAS-Port = 24
+match 9f a1 05 18 18 ff
+
+decode-pair -
+match NAS-Port = 24
+
+#  NAS-Port = 255 (max 1-byte encoding)
+encode-pair NAS-Port = 255
+match 9f a1 05 18 ff ff
+
+decode-pair -
+match NAS-Port = 255
+
+#  NAS-Port = 256 (first 2-byte encoding)
+encode-pair NAS-Port = 256
+match 9f a1 05 19 01 00 ff
+
+decode-pair -
+match NAS-Port = 256
+
+#  NAS-Port = 65535 (max 2-byte encoding)
+encode-pair NAS-Port = 65535
+match 9f a1 05 19 ff ff ff
+
+decode-pair -
+match NAS-Port = 65535
+
+#  NAS-Port = 65536 (first 4-byte encoding)
+encode-pair NAS-Port = 65536
+match 9f a1 05 1a 00 01 00 00 ff
+
+decode-pair -
+match NAS-Port = 65536
+
+#  NAS-Port = 4294967295 (max uint32)
+encode-pair NAS-Port = 4294967295
+match 9f a1 05 1a ff ff ff ff ff
+
+decode-pair -
+match NAS-Port = 4294967295
+
+#
+#  Non-canonical (overlong) CBOR integer encoding.
+#  The decoder accepts these even though they're not preferred serialization.
+#
+decode-pair 9f a1 05 18 05 ff
+match NAS-Port = 5
+
+decode-pair 9f a1 05 19 00 05 ff
+match NAS-Port = 5
+
+#
+#  IPv4 address edge cases
+#
+encode-pair Framed-IP-Address = 0.0.0.0
+match 9f a1 08 d8 34 44 00 00 00 00 ff
+
+decode-pair -
+match Framed-IP-Address = 0.0.0.0
+
+encode-pair Framed-IP-Address = 255.255.255.255
+match 9f a1 08 d8 34 44 ff ff ff ff ff
+
+decode-pair -
+match Framed-IP-Address = 255.255.255.255
+
+encode-pair Framed-IP-Address = 127.0.0.1
+match 9f a1 08 d8 34 44 7f 00 00 01 ff
+
+decode-pair -
+match Framed-IP-Address = 127.0.0.1
+
+#
+#  Decode array-form IPv4 address (array with prefix=32, no scope).
+#  The encoder uses plain octets, but the decoder also accepts the array form.
+#
+decode-pair 9f a1 08 d8 34 82 44 c0 00 02 01 18 20 ff
+match Framed-IP-Address = 192.0.2.1
+
+#
+#  IPv6 address tests
+#
+encode-pair NAS-IPv6-Address = ::1
+match 9f a1 18 5f d8 36 50 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 ff
+
+decode-pair -
+match NAS-IPv6-Address = ::1
+
+encode-pair NAS-IPv6-Address = ::
+match 9f a1 18 5f d8 36 50 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff
+
+decode-pair -
+match NAS-IPv6-Address = ::
+
+encode-pair NAS-IPv6-Address = fe80::1
+match 9f a1 18 5f d8 36 50 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01 ff
+
+decode-pair -
+match NAS-IPv6-Address = fe80::1
+
+#
+#  IPv4 prefix /0 and /32 edge cases
+#
+encode-pair PMIP6-Home-IPv4-HoA = 0.0.0.0/0
+match 9f a1 18 9b d8 34 82 00 40 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 0.0.0.0/0
+
+encode-pair PMIP6-Home-IPv4-HoA = 192.168.1.1/32
+match 9f a1 18 9b d8 34 82 18 20 44 c0 a8 01 01 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 192.168.1.1/32
+
+#
+#  IPv6 prefix /0
+#
+encode-pair PMIP6-Home-HN-Prefix = ::/0
+match 9f a1 18 97 d8 36 82 00 40 ff
+
+decode-pair -
+match PMIP6-Home-HN-Prefix = ::/0
+
+#
+#  Multiple pairs of different types in one packet
+#
+encode-pair User-Name = "alice", NAS-Port = 1234, Framed-IP-Address = 10.0.0.1
+match 9f a1 01 65 61 6c 69 63 65 a1 05 19 04 d2 a1 08 d8 34 44 0a 00 00 01 ff
+
+decode-pair -
+match User-Name = "alice", NAS-Port = 1234, Framed-IP-Address = 10.0.0.1
+
+#
+#  Error: invalid CBOR well-formedness (info values 28-30 are reserved)
+#
+decode-pair 9f a1 05 1c ff
+match Invalid cbor data - input is not 'well formed'
+
+decode-pair 9f a1 05 1d ff
+match Invalid cbor data - input is not 'well formed'
+
+decode-pair 9f a1 05 1e ff
+match Invalid cbor data - input is not 'well formed'
+
+#
+#  Error: info=31 is invalid for integer type (indefinite-length integer)
+#
+decode-pair 9f a1 05 1f ff
+match Invalid cbor data - input is not 'well formed'
+
+#
+#  Error: chunked (indefinite-length) string - not supported
+#
+decode-pair 9f a1 01 7f 63 62 6f 62 ff ff
+match Chunked strings are not supported
+
+#
+#  Error: chunked (indefinite-length) octets - not supported
+#
+decode-pair 9f a1 18 19 5f 43 01 02 03 ff ff
+match Chunked strings are not supported
+
+#
+#  Error: type mismatch - CBOR integer where string expected (User-Name)
+#
+decode-pair 9f a1 01 05 ff
+match Unexpected cbor type 'integer' when decoding data type string
+
+#
+#  Error: type mismatch - CBOR string where integer expected (NAS-Port)
+#
+decode-pair 9f a1 05 63 62 6f 62 ff
+match cbor data contains invalid content 3 for expected data type uint32
+
+#
+#  Error: CBOR negative integer for unsigned type (NAS-Port = uint32)
+#
+decode-pair 9f a1 05 20 ff
+match Unexpected cbor type 'integer' when decoding data type uint32
+
+#
+#  Error: CBOR NULL (simple value 22) for integer type
+#
+decode-pair 9f a1 05 f6 ff
+match Invalid cbor - unexpected 'simple value' 22
+
+#
+#  Error: map header not map-of-1
+#
+decode-pair 9f a2 01 63 62 6f 62 ff
+match Invalid cbor header - expected map of 1 elements, got a2
+
+#
+#  Error: non-integer attribute key (string key instead of integer)
+#
+decode-pair 9f a1 63 62 6f 62 05 ff
+match Invalid cbor - expected 'integer', got major type 3
+
+#
+#  Error: wrong tag for IP address type (tag 54/IPv6 for ipv4addr)
+#
+decode-pair 9f a1 08 d8 36 44 c0 00 02 01 ff
+match Invalid cbor tag 54 for expected data type ipaddr
+
+#
+#  Error: tag for data type that has no tag mapping (NAS-Port = uint32)
+#
+decode-pair 9f a1 05 d8 63 00 ff
+match Unknown cbor tag 99 for expected data type uint32
+
+#
+#  Error: CBOR array where leaf value expected (NAS-Port)
+#
+decode-pair 9f a1 05 82 01 02 ff
+match Invalid data type uint32 for cbor to value-box
+
+#
+#  Error: CBOR map where leaf value expected (NAS-Port)
+#
+decode-pair 9f a1 05 a1 01 02 ff
+match Invalid data type uint32 for cbor to value-box
+
+#
+#  Error: integer where array expected for structural type (Vendor-Specific)
+#
+decode-pair 9f a1 18 1a 05 ff
+match Invalid cbor - expected 'array', got major type 0
+
+#
+#  Error: break marker in definite-length array
+#
+decode-pair 9f a1 18 1a 81 ff ff
+match Unexpected 'break' found in cbor data
+
+#
+#  Error: integer overflow - value exceeds uint32 range
+#
+decode-pair 9f a1 05 1b 00 00 00 01 00 00 00 00 ff
+match cbor value is too large for output data type uint32
+
+#
+#  Error: IPv4 prefix length > 32
+#
+decode-pair 9f a1 18 9b d8 34 82 18 21 40 ff
+match Invalid IPv4 prefix - expected prefix < 32, got 33
+
+#
+#  Error: IPv6 prefix length > 128
+#
+decode-pair 9f a1 18 97 d8 36 82 18 81 40 ff
+match Invalid IPv6 prefix - expected prefix < 128, got 129
+
+#
+#  Error: IPv4 prefix array wrong element count (3 instead of 2)
+#
+decode-pair 9f a1 18 9b d8 34 83 08 41 c0 00 ff
+match Invalid IPv4 prefix - expected array of 2 elements, got 83
+
+#
+#  Error: IPv6 prefix array wrong element count
+#
+decode-pair 9f a1 18 97 d8 36 83 08 41 20 00 ff
+match Invalid IPv6 prefix - expected array of 2 elements, got 83
+
+#
+#  Error: IPv4 address octets too large (5 bytes instead of 4)
+#
+decode-pair 9f a1 08 d8 34 45 c0 00 02 01 ff ff
+match Invalid length for data - expected no more than 4 got 5
+
+#
+#  Error: IPv4 address octets too small (3 bytes instead of 4)
+#
+decode-pair 9f a1 08 d8 34 43 c0 00 02 ff
+match Invalid length for data - expected at least 4 got 3
+
+#
+#  Error: IPv4 array-form with wrong prefix (31 instead of 32)
+#
+decode-pair 9f a1 08 d8 34 82 44 c0 00 02 01 18 1f ff
+match Invalid IPv4 address - expected prefix = 32 got 31
+
+#
+#  Error: invalid time_delta - empty map (count=0)
+#
+decode-pair 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a0 ff
+match Unexpected count 0  for time_delta, expected map of 1-2 elements
+
+#
+#  Error: invalid time_delta - map too large (count=3)
+#
+decode-pair 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a3 ff
+match Unexpected count 3  for time_delta, expected map of 1-2 elements
+
+#
+#  Error: invalid time_delta - wrong key (2 instead of 1)
+#
+decode-pair 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a1 02 19 0e 10 ff
+match Unexpected key 2 for time_delta, expected key 1
+
+#
+#  Error: invalid time_delta - unsupported fractional key (-2)
+#
+decode-pair 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a2 01 19 0e 10 21 1a 1d cd 65 00 ff
+match Unsupported time_delta key -2
+
 count
-match 63
+match 201
