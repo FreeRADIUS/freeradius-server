@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 	int			c;
 	fr_radlock_action_t	action;
 	char const		*file;
+	char			*end;
 	uid_t			uid = geteuid();
 	bool			uid_set = false;
 	gid_t			gid = getegid();
@@ -129,8 +130,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'm':
-			mode = strtol(optarg, NULL, 0);	/* 0 base plus 0 prefix = octal */
-			if (errno == EINVAL) {
+			mode = strtol(optarg, &end, 0);	/* 0 base plus 0 prefix = octal */
+			if (*end || (end == optarg)) {
 				fr_perror("radlock - Bad mode value");
 				EXIT_WITH_FAILURE;
 			}
