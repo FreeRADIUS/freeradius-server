@@ -520,17 +520,17 @@ static int py_freeradius_state_init(PyObject *self, UNUSED PyObject *args, UNUSE
  */
 static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr)
 {
-	long			index;
+	long			idx;
 	py_freeradius_pair_t	*pair, *init_pair = (py_freeradius_pair_t *)self;
 
 	if (!PyLong_CheckExact(attr)) Py_RETURN_NONE;
-	index = PyLong_AsLong(attr);
+	idx = PyLong_AsLong(attr);
 
-	if (index < 0) {
+	if (idx < 0) {
 		PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
 		return NULL;
 	}
-	if (index == 0) return self;
+	if (idx == 0) return self;
 
 	if (fr_type_is_leaf(init_pair->da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
@@ -548,8 +548,8 @@ static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr
 	pair->parent = init_pair->parent;
 	Py_INCREF(init_pair->parent);
 	pair->da = init_pair->da;
-	pair->idx = index;
-	if (init_pair->vp) pair->vp = fr_pair_find_by_da_idx(fr_pair_parent_list(init_pair->vp), pair->da, (unsigned int)index);
+	pair->idx = idx;
+	if (init_pair->vp) pair->vp = fr_pair_find_by_da_idx(fr_pair_parent_list(init_pair->vp), pair->da, (unsigned int)idx);
 	return (PyObject *)pair;
 }
 
@@ -729,10 +729,10 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 	 *	Look for instance n, creating if necessary
 	 */
 	} else if (PyLong_CheckExact(attr)) {
-		long			index = PyLong_AsLong(attr);
+		long			idx = PyLong_AsLong(attr);
 		py_freeradius_pair_t	*parent = (py_freeradius_pair_t *)our_self->parent;
 
-		if (index < 0) {
+		if (idx < 0) {
 			PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
 			return -1;
 		}
@@ -745,7 +745,7 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 
 		list = &parent->vp->vp_group;
 
-		if (index == 0) {
+		if (idx == 0) {
 			if (!our_self->vp) {
 				if (fr_pair_append_by_da(fr_pair_list_parent(list), &our_self->vp, list, our_self->da) < 0) {
 					PyErr_Format(PyExc_MemoryError, "Failed to add attribute %s", our_self->da->name);
@@ -757,12 +757,12 @@ static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* 
 			vp = our_self->vp;
 			if (del) goto del;
 		} else {
-			vp = fr_pair_find_by_da_idx(list, our_self->da, index);
+			vp = fr_pair_find_by_da_idx(list, our_self->da, idx);
 			if (del) goto del;
 			if (!vp) {
 				unsigned int	count = fr_pair_count_by_da(list, our_self->da);
-				if (count < index) {
-					PyErr_Format(PyExc_AttributeError, "Attempt to set instance %ld when only %d exist", index, count);
+				if (count < idx) {
+					PyErr_Format(PyExc_AttributeError, "Attempt to set instance %ld when only %d exist", idx, count);
 					return -1;
 				}
 				if (fr_pair_append_by_da(fr_pair_list_parent(list), &vp, list, our_self->da) < 0) {
