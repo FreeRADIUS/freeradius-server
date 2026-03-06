@@ -1,176 +1,309 @@
 = Communicating with an SQL database
 
-include::ROOT:partial$v3_warning.adoc[]
+*Goal:* Configure the server so that it can communicate with an SQL database and retrieve user authentication and authorisation information directly from that database instead of (or in addition to) the flat `authorize` file.
 
-*Goal:* To configure the server to communicate with an SQL database.
+*Time:* 25–45 minutes
 
-*Time:* 25-40 minutes.
-
-*File:*
+*Files you will need to look at or edit:*
 
 - `mods-available/sql`
-- `mods-config/sql/main/*`
+- `mods-config/sql/main/<dialect>/schema.sql`
+- `mods-config/sql/main/<dialect>/queries.conf`
+- `sites-enabled/default`
 
-In addition to the file, the server may obtain user configuration
-information from an SQL database. In this exercise, you will
-configure the server to communicate with an SQL database. you
-will configure the schema for the SQL server, and will populate that
-schema with a sample entry similar to that for the exercise in
-xref:new_user.adoc[New User].
+Many sites start with user information stored in the classic `authorize` file because it is simple and quick to edit. However, once the number of authorize grows into the thousands — or especially into the tens or hundreds of thousands — maintaining that file becomes impractical. Flat files do not offer fast indexed lookups, concurrent writes from multiple tools become dangerous, and most network management systems or billing platforms cannot easily update a text file safely.
 
-There are a number of reasons why user information may be stored in an
-SQL database, rather than the file. While the file is adequate for a
-small number of users, it does not scale well to millions of users, and
-it may not be updated by general non-RADIUS tools. In contrast, SQL
-databases are designed to store millions of records, to have fast
-queries and retrievals, and there are many third-party tools for
-maintaining and updating the databases.
+This is where SQL databases become very attractive. Modern relational databases are designed to handle millions of records, provide extremely fast indexed searches, support transactions, allow many different applications to read and write data safely, and come with a huge ecosystem of management tools, backup solutions, replication options, and monitoring integrations.
 
-The SQL schema used by FreeRADIUS is designed to mirror the users file.
-Each SQL dialect has its own set of schema and configuration files.
-They are located in the `mods-config/sql/main/<dialect>` directory.
+The schema that freeRADIUS uses is deliberately designed to behave in a very similar way to the `files` module. The tables `radcheck` and `radreply` correspond almost directly to check items and reply items in the `authorize` file. The `radusergroup` table handles group membership, and `radgroupcheck` / `radgroupreply` provide the group-level equivalents. In most cases, if something works in the `authorize` file, the same logic can be made to work in SQL with very little change to your policies.
 
-The schema is defined by the "schema.sql" file, and the queries are
-defined by the `queries.conf` file.
+Each SQL dialect supported by freeRADIUS (sqlite, mysql, postgresql, mssql, oracle, etc.) has its own subdirectory under:
 
-The main configuration for the SQL module is `mods-available/sql`
-it will `$INCLUDE` the appropriate "queries.conf" file for the dialect
-chosen.
+`mods-config/sql/main/<dialect>/`
 
-You should now read the configuration file for the SQL database which you
-use.
+Inside you will find:
 
-[TIP]
-========================================================================
-Unless there is a pre-configured database available we recommend the
-sqlite driver be used. If the sqlite specific stanzas are uncommented
-in `mods-available/sql` it will automatically bootstrap a new
-database using the bundled schema.
-========================================================================
+- `schema.sql` — the schema that create the required tables and indexes
+- `queries.conf` — the actual SQL queries that executes during authorisation, accounting, post-auth, etc.
 
-The first step is to configure the server to use the SQL module, and to
-communicate with the SQL database. Edit the `radiusd.conf` file, and
-look for the `instantiate` section. Inside of that section, add one line
-containing the word `sql`, as follows:
+The main configuration file for the module itself lives in `mods-available/sql`. This file contains the connection parameters, pool settings, dialect selection, and — most importantly — an `$INCLUDE` directive that pulls in the correct dialect-specific `queries.conf`.
 
-------------------------------------------
-instantiate {
-        sql     # start up the SQL module.
+== Step 1 — Enable and configure the sql module
+
+The most common way to activate the SQL module is:
+
+[source,bash]
+----
+$ cd raddb/mods-enabled
+$ ln -s ../mods-available/sql sql
+----
+
+Next, open `mods-available/sql` and configure it for mysql testing. A minimal working configuration looks like this:
+
+[source,unlang]
+----
+sql {
+
+	dialect = "mysql"
+
+	driver = "${dialect}"
+
+	server = "localhost"
+	port = 3306
+	login = "radius"
+	password = "radpass"
+	radius_db = "radius"
+
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+
+	postauth_table = "radpostauth"
+	authcheck_table = "radcheck"
+	groupcheck_table = "radgroupcheck"
+	authreply_table = "radreply"
+	groupreply_table = "radgroupreply"
+	usergroup_table = "radusergroup"
+
+	pool {
+		start = 0
+		min = 1
+		max = 100
+		connecting = 2
+		uses = 0
+		lifetime = 0
+	}
+	group_attribute = "${.:instance}-Group"
+
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
-------------------------------------------
 
-This tells the server to look for, and use, the `sql` module when the
-server starts. Note that since the `sql` module is not listed in any of
-the "authorize", "authenticate", etc. sections, it will not be used
-in to process any authentication requests, or accounting requests. For
-now, we are interested solely in making the FreeRADIUS server
-communicate with the SQL server.
+----
 
-Open `mods-available/sql` verify that the first few configuration
-entries are correct. That is, the "server", "login", and "password"
-entries should be set up correctly for your local SQL database.
+== Step 2 — Make the virtual server use the sql module
 
-If using sqlite, these entries can be left commented out as they're not
-required, but you should uncomment the `sqlite {}` section and the
-configuration items within that section.
+Almost all real deployments use at least one named virtual server. The simplest way to start is to edit the default one.
 
-FreeRADIUS uses the `rlm_sql` module to interface with the SQL
-databases. You should check that this module is installed by doing:
+Open `sites-enabled/default` and locate the `recv Access-Request { … }` section.
 
-[source, bash]
---------------------------------------
-$ ls -l usr/lib64/freeradius/rlm_sql*
---------------------------------------
+A very common and safe pattern is to call the `sql` module early and then check whether it returned useful data:
 
-(Or, the directory wherever the FreeRADIUS libraries were installed.)
+[source,unlang]
+----
+server default {
+    namespace = radius
 
-You should see not only files like "rlm_sql.so", but also
-"rlm_sql_mysql.so", or "rlm_sql_sqlite.so". If you do not see
-"rlm_sql.so", or you do not see the sub-module which interfaces with
-your SQL server, you will have to install it now. You may do this by
-going to the rlm_sql subdirectory, and building the module:
+    recv Access-Request {
+        # If the site already have files, suffix, etc. here — keep them
+        sql
+    }
 
-[source, bash]
-------------------------
-$ cd freeradius-server/src/modules/rlm_sql
-$ ./configure
-$ make
-$ make install
-------------------------
+    recv Accounting-Request {
+        sql
+        ok
+    }
+}
+----
+== Step 3 — Start the server in debug mode to verify startup
 
-This exercise has insufficient room to describe how to debug any
-configuration, build, or installation problems with the SQL drivers. For
-the remainder of this exercise, we will assume that the driver is
-installed in the appropriate library directory.
+Run the server in foreground debug mode so you can watch everything that happens:
 
-Once you have verified that the SQL driver exists, have enabled the module
-by creating a symlink from `mods-available/sql` to
-`mods-enabled/sql` and you have configured the appropriate sql dialect,
-you should start the server as usual:
-
-------------
+[source,bash]
+----
 $ radiusd -X
-------------
+----
 
-If all has gone well, the server should print out the normal "Ready to
-process requests" message. Scroll up in your terminal window, and there
-should be messages from the `sql` module, such as:
+You should see messages similar to these when everything is working correctly:
 
---------------
-rlm_sql_sqlite: Database doesn't exist, creating it and loading schema
-rlm_sql_sqlite: Executing SQL statements from file "/etc/raddb/mods-config/sql/main/sqlite/schema.sql"
-rlm_sql (sql): Driver rlm_sql_sqlite (module rlm_sql_sqlite) loaded and linked
-rlm_sql (sql): Attempting to connect to database "radius"
-rlm_sql (sql): Initialising connection pool
-   pool {
-   	start = 5
-   	min = 4
-   	max = 100
-   	spare = 3
-   	uses = 0
-   	lifetime = 0
-   	cleanup_interval = 30
-   	idle_timeout = 60
-   	retry_delay = 1
-   	spread = no
-   }
-rlm_sql (sql): Opening additional connection (0)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (1)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (2)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (3)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
-rlm_sql (sql): Opening additional connection (4)
-rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
---------------
+[source,text]
+----
+including configuration file ./scripts/bin/../../raddb/mods-enabled/sql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/driver/mysql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/main/mysql/queries.conf
+...
+Loaded module rlm_sql
+    sql {
+      driver = mysql
+rlm_sql_mysql - libmysql version: 3.2.6
+Loaded module rlm_sql_mysql
+      mysql {
+        tls {
+        }
+        warnings = auto
+      }
+      server = "localhost"
+      port = 3306
+      login = "radius"
+      password = <<< secret >>>
+      radius_db = "radius"
+      read_groups = yes
+      group_attribute = "sql-Group"
+      read_profiles = yes
+      safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
+      query_timeout = 5
+      pool {
+        start = 0
+        min = 1
+        max = 100
+        connecting = 2
+        uses = 0
+        lifetime = 0
+        idle_timeout = 0
+        open_delay = 0.2
+        close_delay = 10.0
+        manage_interval = 0.2
+        max_backlog = 1000
+        connection {
+          connect_timeout = 3.0
+          reconnect_delay = 1
+        }
+        request {
+          per_connection_max = 2000
+          per_connection_target = 1000
+          free_delay = 10.0
+        }
+      }
+    }
+...
+Bootstrapping rlm_sql "sql"
+...
+Instantiating rlm_sql "sql"
+Instantiating rlm_sql_mysql "sql.mysql"
+...
+sql - [3] - Signalled to start from HALTED state
+sql - [3] - Connection changed state HALTED -> INIT
+sql - [3] - Starting connect to MySQL server
+sql - [3] - Connecting to database 'radius' on localhost:3306, fd 31
+sql - [3] - Connection changed state INIT -> CONNECTING
+...
+sql - [3] - Connected to database on Localhost via UNIX socket, server version 8.0.44, protocol version 10
+sql - [3] - Signalled connected from CONNECTING state
+sql - [3] - Connection changed state CONNECTING -> CONNECTED
+sql - [3] - Connection established
+Ready to process requests
+----
 
-These messages indicate that the server was able to load the `sql`
-module, and that the `sql` module was able to communicate with the SQL
-server.
+== Step 4 — Add a test user directly into the database (MySQL)
 
-If there is a problem with shared libraries, or with access permissions
-to the SQL database, then an error message will be printed, and the
-server will not start properly. The FreeRADIUS FAQ and the
-`radiusd.conf` file, entry "libdir", contain information as to how to
-fix shared library issues.
+Since we are using MySQL, you will connect to the database server using the `mysql` command-line client.
 
-If there are issues connecting to the database you should verify manually
-that you can connect to the SQL database using the given "server",
-"login", and "password". The SQL database should come with a test
-client which may be used to perform this test.
+First, make sure you can connect to your MySQL server with the credentials you put in `mods-available/sql`:
 
-Now stop the server. The next exercise will be to add the schema to the
-database, and to populate it with a test entry.
+- server   = "127.0.0.1"
+- login    = "radius"
+- password = "your_password_here"
+- radius_db = "radius"
+
+Test the connection manually before proceeding:
+
+[source,bash]
+----
+$ mysql -h 127.0.0.1 -u radius -p
+----
+
+Enter the password when prompted.
+
+Now add the test user.
+
+[source,bash]
+----
+USE radius;
+
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
+
+INSERT INTO radreply (username, attribute, op, value)
+VALUES ('alice', 'Reply-Message', '+', 'Hello! You authenticated via the SQL database.');
+
+-- Optional: confirm the rows were inserted
+SELECT * FROM radcheck WHERE username = 'alice';
+SELECT * FROM radreply WHERE username = 'alice';
+----
+
+These two `INSERT` statements are the direct SQL equivalent of the following classic `authorize` file entry:
+
+[source,text]
+----
+mysql> SELECT * FROM radcheck WHERE username = 'alice';
++----+----------+--------------------+----+------------+
+| id | username | attribute          | op | value      |
++----+----------+--------------------+----+------------+
+|  1 | alice    | Cleartext-Password | := | hello      |
++----+----------+--------------------+----+------------+
+1 row in set (0.00 sec)
+
+mysql> SELECT * FROM radreply WHERE username = 'alice';
++----+----------+---------------+----+------------------------------------------------+
+| id | username | attribute     | op | value                                          |
++----+----------+---------------+----+------------------------------------------------+
+|  1 | alice    | Reply-Message | := | Hello! You authenticated via the SQL database. |
++----+----------+---------------+----+------------------------------------------------+
+1 row in set (0.00 sec)
+----
+
+If you see the rows appear in the `SELECT` output, the test user is correctly stored in the database.
+
+== Step 5 — Test authentication using radclient
+
+Keep the server running in debug mode (`radiusd -X`).
+
+Open a second terminal and send a PAP authentication request:
+
+[source,bash]
+----
+$ echo 'User-Name = "alice", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+A successful response should look similar to this:
+(You should see `Access-Accept` and the `Reply-Message` coming back from the server.)
+
+[source,text]
+----
+Sent Access-Request Id 60 from 0.0.0.0:48774 to 127.0.0.1:1812 length 63
+	Message-Authenticator = 0x
+        User-Name = "alice"
+        User-Password = "hello"
+Received Access-Accept Id 60 from 127.0.0.1:1812 to 0.0.0.0:48774 via lo length 93
+        Message-Authenticator = 0x27b9670734452d218b977f5518b5e1f2
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        User-Name = "alice"
+----
+
+Return to the terminal where the server is running in debug mode.
+
+After the `radclient` command completes, scroll upward in the debug output. Look for the section that corresponds to this request.
+
+Debug output
+
+[source,text]
+----
+(0)      sql - SQL-User-Name set to 'alice'
+(0)        sql - | %{SQL-User-Name}
+(0)        sql - | --> alice
+(0)        sql - | ||
+(0)        sql - | %logical_or()
+(0)          sql - | User-Password
+(0)            sql - | %{User-Password}
+(0)            sql - | --> hello
+(0)          sql - | %logical_or(...)
+(0)          sql - | --> hello
+(0)        sql - | %{reply.Packet-Type}
+(0)        sql - | --> Access-Accept
+(0)        sql - | %S
+(0)        sql - | --> 2026-02-11 11:06:52
+(0)        sql - | %M
+(0)        sql - | --> 374075
+(0)        sql - | %{reply.Class}
+(0)        sql - (null)
+(0)      -sql (ok)
+----
 
 == Questions
 
 1.  Why is it important to test SQL connectivity, independently of
 testing the ability to obtain user configuration from an SQL database?
-2.  Why are there different configuration files for each SQL server?
-3.  What additional benefits, not mentioned here, do SQL databases have
+1.  Why are there different configuration files for each SQL server?
+2.  What additional benefits, not mentioned here, do SQL databases have
 over the files module?
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
