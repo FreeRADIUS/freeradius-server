@@ -1,0 +1,61 @@
+#
+#  Test vectors for internal protocol error conditions
+#
+proto internal
+proto-dictionary radius
+
+#
+#  ----  Insufficient data  ----
+#
+
+#
+#  Only 1 byte - need at least 3 (enc_byte + type_field + len_field)
+#
+decode-pair 00
+match internal_decode_pair: Insufficient data.  Need 2 additional byte(s)
+
+#
+#  ----  Encoding byte field overrun (large type/length fields)  ----
+#
+
+#
+#  enc_byte = 0xe0: type_size=8, len_size=1, not extended
+#  After enc_byte, 2 bytes remain but need 9 (8 + 1)
+#
+decode-pair e0 01 02
+match internal_decode_pair: Encoding byte invalid, fields overrun input data. 2 byte(s) remaining, need 9 byte(s)
+
+#
+#  enc_byte = 0xfc: type_size=8, len_size=8, not extended
+#  After enc_byte, 2 bytes remain but need 16 (8 + 8)
+#
+decode-pair fc 01 02
+match internal_decode_pair: Encoding byte invalid, fields overrun input data. 2 byte(s) remaining, need 16 byte(s)
+
+#
+#  ----  Extension byte errors  ----
+#
+
+#
+#  Third extension byte not in use - ext_byte has extended flag (bit 0) set
+#  enc_byte = 0x01 (type_size=1, len_size=1, extended=true)
+#  ext_byte = 0x01 (extended=true -> error)
+#
+decode-pair 01 01 01 00
+match internal_decode_pair: Third extension byte not in use
+
+#
+#  ----  Internal flag on non-root parent  ----
+#
+
+#
+#  Internal flag can only be set on top level attribute
+#  Outer: Vendor-Specific (attr 26), enc=0x00, type=0x1a, len=0x04
+#  Inner: enc=0x01(extended), ext=0x40(internal), type=0x01, len=0x00
+#  Parent is Vendor-Specific (not root, not group) -> error
+#
+decode-pair 00 1a 04 01 40 01 00
+match internal_decode_pair: Internal flag can only be set on top level attribute
+
+count
+match 12
