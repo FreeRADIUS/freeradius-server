@@ -852,7 +852,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	TALLOC_CTX	*parent_ctx;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
-	TALLOC_CTX	*tmp_ctx = NULL;		/* Temporary context for request lists */
 	tmpl_rules_t	child_rhs_rules = *rhs_rules;
 	tmpl_rules_t const  *our_rhs_rules;
 
@@ -920,7 +919,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	Free in reverse as successive entries have their
 			 *	prececessors as talloc parent contexts
 			 */
-			talloc_free(tmp_ctx);
 			map_list_talloc_reverse_free(out);
 			return -1;
 		}
@@ -1115,7 +1113,6 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		map_list_insert_tail(out, map);
 	}
 
-	talloc_free(tmp_ctx);
 	return 0;
 
 }
@@ -1836,8 +1833,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		return map_exec_to_vp(ctx, out, request, map);
 
 	default:
+		rcode = -1;
 		fr_assert(0);	/* Should have been caught at parse time */
-
 	error:
 		talloc_free(n);
 		return rcode;
@@ -1886,8 +1883,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	fr_dcursor_t		dst_list;
-
-	bool			found = false;
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
@@ -2059,14 +2054,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		case T_OP_ADD_EQ:
 			fr_pair_list_move_op(list, &src_list, T_OP_ADD_EQ);
 			}
-			goto update;
+			goto finish;
 
 		case T_OP_PREPEND:
 			fr_pair_list_move_op(list, &src_list, T_OP_PREPEND);
-			goto update;
+			goto finish;
 
 		default:
-			fr_pair_list_free(&src_list);
 			rcode = -1;
 			goto finish;
 		}
@@ -2112,7 +2106,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Check that the User-Name and User-Password
 		 *	caches point to the correct attribute.
 		 */
-		goto update;
+		goto finish;
 
 	/*
 	 *	-= - Delete attributes in the dst list which match any of the
@@ -2127,7 +2121,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case T_OP_SUB_EQ:
 		/* We didn't find any attributes earlier */
 		if (!dst) {
-			fr_pair_list_free(&src_list);
 			goto finish;
 		} else {
 			fr_pair_list_t free_list;
@@ -2144,7 +2137,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					if (rcode == 0) {
 						dst = fr_dcursor_remove(&dst_list);
 						fr_pair_append(&free_list, dst);
-						found = true;
 						break;
 					}
 				}
@@ -2164,7 +2156,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					if (rcode == 0) {
 						dst = fr_dcursor_remove(&dst_list);
 						fr_pair_append(&free_list, dst);
-						found = true;
 					}
 				}
 			}
@@ -2174,9 +2165,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		rcode = 0;
-		fr_pair_list_free(&src_list);
-		if (!found) goto finish;
-		goto update;
+		goto finish;
 	}
 
 	switch (map->op) {
@@ -2192,7 +2181,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
-			fr_pair_list_free(&src_list);
 			goto finish;
 		}
 
@@ -2232,7 +2220,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		/* Free any we didn't insert */
-		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -2255,8 +2242,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 			fr_pair_reinit_from_da(NULL, dst, src_vp->da);
 			fr_pair_value_copy(dst, src_vp);
-
-			goto op_set_done;
+			break;
 		}
 
 		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
@@ -2276,19 +2262,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			ERROR("Not yet supported");
-
 			goto op_set_error;
-		} else {
-			extent = fr_dlist_head(&leaf);
-			fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 		}
+
+		extent = fr_dlist_head(&leaf);
+		fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_dlist_talloc_free(&leaf);
-
-	op_set_done:
-		/* Free any we didn't insert */
-		fr_pair_list_free(&src_list);
 	}
 		break;
 
@@ -2297,7 +2278,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 */
 	case T_OP_PREPEND:
 		fr_pair_list_prepend(list, &src_list);
-		fr_pair_list_free(&src_list);
 		break;
 
 	/*
@@ -2328,15 +2308,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 				fr_dlist_talloc_free_tail(&leaf);
 			}
-			/* Free all the src vps */
-			fr_pair_list_free(&src_list);
 		} else {
 			extent = fr_dlist_head(&leaf);
 			(void) fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 			fr_dlist_talloc_free_head(&leaf);
 		}
 
-		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -2377,20 +2354,17 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			}
 			if (!a) break;	/* end of the list */
 		}
-		fr_pair_list_free(&src_list);
 	}
 		break;
 
 	default:
 		fr_assert(0);	/* Should have been caught be the caller */
 		rcode = -1;
-		goto finish;
+		break;
 	}
 
-update:
-	fr_assert(fr_pair_list_empty(&src_list));
-
 finish:
+	fr_pair_list_free(&src_list);
 	tmpl_dcursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
@@ -2567,16 +2541,13 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 */
 	if (!bare_word_only) {
 		if (!fr_assignment_op[op]) {
-			fr_assert(0);
 			fr_strerror_printf("Invalid operator '%s' for assignment in reply item", op_str);
 			return -1;
 		}
 
 	} else if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
-		if (!fr_assignment_op[op]) {
-			fr_strerror_printf("Invalid operator '%s' for check item", op_str);
-			return -1;
-		}
+		fr_strerror_printf("Invalid operator '%s' for check item", op_str);
+		return -1;
 	}
 
 	my_rules = *lhs_rules;
@@ -2737,7 +2708,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		if (len == 1) {
 			if (rhs[1] != rhs[0]) {
 				fr_strerror_const("Invalid string on right side");
-				return -1;
+				goto error;
 			}
 
 			rhs = "";
