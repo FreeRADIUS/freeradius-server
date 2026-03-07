@@ -256,6 +256,10 @@ unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr
 #endif
 
 	response = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap2_response));
+	if (!response) {
+		RERROR("No MS-CHAP2-Response in request");
+		RETURN_UNLANG_FAIL;
+	}
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string) RETURN_UNLANG_FAIL;
