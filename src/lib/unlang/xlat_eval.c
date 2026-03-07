@@ -829,17 +829,17 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 	case 'I': /* Request ID */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = request->packet->id;
+		value->vb_uint32 = request->packet->id;
 		break;
 
 	case 'n': /* Request number */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = request->number;
+		value->vb_uint64 = request->number;
 		break;
 
 	case 's': /* First request in this sequence */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = request->seq_start;
+		value->vb_uint64 = request->seq_start;
 		break;
 
 	/*
@@ -848,19 +848,17 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 	case 'c': /* Current epoch time seconds */
 		/*
-		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
-		 *	seconds?
+		 *	Note that this number MUST be an integer,
+		 *	otherwise it will get printed as an actual
+		 *	date!
 		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_sec(fr_time());
+		value->vb_uint64 = (uint64_t)fr_time_to_sec(fr_time());
 		break;
 
 	case 'C': /* Current epoch time microsecond component */
-		/*
-		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
-		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_usec(fr_time()) % 1000000;
+		value->vb_uint64 = (uint64_t)fr_time_to_usec(fr_time()) % 1000000;
 		break;
 
 	/*
@@ -875,7 +873,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		}
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_mday;
+		value->vb_uint8 = ts.tm_mday;
 		break;
 
 	case 'D': /* Request date */
@@ -891,45 +889,43 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_sec;
+		value->vb_uint8 = ts.tm_sec;
 		break;
 
 	case 'G': /* Request minute */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_min;
+		value->vb_uint8 = ts.tm_min;
 		break;
 
 	case 'H': /* Request hour */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_hour;
+		value->vb_uint8 = ts.tm_hour;
 		break;
 
 	case 'l': /* Request timestamp as seconds since the epoch */
 		/*
-		 *	@todo - leave this as FR_TYPE_DATE, but add an enumv which changes the scale to
-		 *	seconds?
+		 *	Note that this number MUST be an integer,
+		 *	otherwise it will get printed as an actual
+		 *	date!
 		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t) now;
+		value->vb_uint64 = (uint64_t) now;
 		break;
 
 	case 'm': /* Request month */
 		if (!localtime_r(&now, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT8, NULL));
-		value->datum.uint8 = ts.tm_mon + 1;
+		value->vb_uint8 = ts.tm_mon + 1;
 		break;
 
 	case 'M': /* Request time microsecond component */
-		/*
-		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
-		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
+		value->vb_uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
@@ -979,7 +975,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL));
 
-		value->datum.uint16 = ts.tm_year + 1900;
+		value->vb_uint16 = ts.tm_year + 1900;
 		break;
 
 	default:
