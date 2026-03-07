@@ -12,7 +12,7 @@ ATTRIBUTE	Acct-Output-Gigawords			53	integer
 
 ATTRIBUTE	Event-Timestamp				55	date
 
-ATTRIBUTE	ARAP-Password				70	octets[16]
+ATTRIBUTE	ARAP-Password				70	octets[16] secret
 ATTRIBUTE	ARAP-Features				71	octets[14]
 ATTRIBUTE	ARAP-Zone-Access			72	integer
 ATTRIBUTE	ARAP-Security				73	integer
