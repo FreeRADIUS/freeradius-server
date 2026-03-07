@@ -264,7 +264,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *
 	 *	In the decoder we add 30 years to any values, so here
 	 *	we need to subtract that time, or if the value is less
-	 *	than that time, just encode a 0x0000000000
+	 *	than that time, just encode a 0x00000000
 	 *	value.
 	 */
 	case FR_TYPE_DATE:

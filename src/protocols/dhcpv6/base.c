@@ -37,6 +37,7 @@
 
 static uint32_t instance_count = 0;
 static bool	instantiated = false;
+static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 fr_dict_t const *dict_dhcpv6;
 
@@ -362,10 +363,18 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		}
 
 		/*
-		 *	@todo - check reconfigure message type, and
-		 *	reject if it doesn't match.
+		 *	Check reconfigure message type, and reject
+		 *	if it is not valid.
 		 */
-
+		switch (option[4]) {
+		case FR_DHCPV6_RENEW:
+		case FR_DHCPV6_REBIND:
+		case FR_DHCPV6_INFORMATION_REQUEST:
+			break;
+		default:
+			fr_strerror_const("Invalid Reconf-Msg option value");
+			return false;
+		}
 		/*
 		 *	@todo - check for authentication option and
 		 *	verify it.
@@ -445,9 +454,8 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 			return false;
 		}
 
-		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
-		fail_sid:
-			fr_strerror_const("Packet does not contain a Server-Id option");
+		if (fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
+			fr_strerror_const("Packet contains a Server-Id option");
 			return false;
 		}
 		break;
@@ -459,7 +467,10 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) goto fail_cid;
 
 		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
-		if (!option) goto fail_sid;
+		if (!option) {
+			fr_strerror_const("Packet does not contain a Server-Id option");
+			return false;
+		}
 
 		if (!duid_match(option, packet_ctx)) {
 		fail_match:
@@ -470,9 +481,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 		option = fr_dhcpv6_option_find(options, end, FR_SERVER_ID);
-		if (!option) goto fail_sid;
-
-		if (!duid_match(option, packet_ctx)) goto fail_match;
+		if (option && !duid_match(option, packet_ctx)) goto fail_match;
 
 		/*
 		 *	IA options are forbidden.
@@ -551,9 +560,9 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 	if (packet_len < DHCPV6_HDR_LEN) return false;
 
 	/*
-	 *	We support up to relaying.
+	 *	We support up to lease query reply.
 	 */
-	if ((packet[0] == 0) || (packet[0] > FR_PACKET_TYPE_VALUE_RELAY_REPLY)) return false;
+	if ((packet[0] == 0) || (packet[0] > FR_DHCPV6_LEASE_QUERY_REPLY)) return false;
 
 	if (!packet_ctx->duid) return false;
 
@@ -614,6 +623,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 1, 1), 1, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 		fr_pair_append(&tmp, vp);
@@ -622,6 +632,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2, 16), 16, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 		fr_pair_append(&tmp, vp);
@@ -630,6 +641,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 		if (!vp) goto fail;
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, NULL,
 					      &FR_DBUFF_TMP(packet + 2 + 16, 16), 16, true) < 0) {
+			talloc_free(vp);
 			goto fail;
 		}
 
@@ -899,8 +911,10 @@ void fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 int fr_dhcpv6_global_init(void)
 {
+	pthread_mutex_lock(&init_mutex);
 	if (instance_count > 0) {
 		instance_count++;
+		pthread_mutex_unlock(&init_mutex);
 		return 0;
 	}
 
@@ -909,6 +923,7 @@ int fr_dhcpv6_global_init(void)
 	if (fr_dict_autoload(libfreeradius_dhcpv6_dict) < 0) {
 	fail:
 		instance_count--;
+		pthread_mutex_unlock(&init_mutex);
 		return -1;
 	}
 
@@ -918,19 +933,28 @@ int fr_dhcpv6_global_init(void)
 	}
 
 	instantiated = true;
+	pthread_mutex_unlock(&init_mutex);
 	return 0;
 }
 
 void fr_dhcpv6_global_free(void)
 {
-	if (!instantiated) return;
+	pthread_mutex_lock(&init_mutex);
+	if (!instantiated) {
+		pthread_mutex_unlock(&init_mutex);
+		return;
+	}
 
 	fr_assert(instance_count > 0);
 
-	if (--instance_count > 0) return;
+	if (--instance_count > 0) {
+		pthread_mutex_unlock(&init_mutex);
+		return;
+	}
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 	instantiated = false;
+	pthread_mutex_unlock(&init_mutex);
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
