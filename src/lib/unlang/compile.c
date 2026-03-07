@@ -898,6 +898,7 @@ static int compile_variable(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, 
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
+			group->variables = NULL;
 			talloc_free(var);
 			return -1;
 		}
@@ -1061,9 +1062,10 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 			CLAMP(max_rtx_time, mrt, 10);
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
-			unsigned long v = strtoul(value, 0, 0);
+			char *end;
+			unsigned long v = strtoul(value, &end, 10);
 
-			if (v > 10) {
+			if (*end || (end == value) || (v > 10)) {
 				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 10",
 					   value);
 				return false;
@@ -2198,7 +2200,6 @@ int unlang_compile(virtual_server_t const *vs,
 		   CONF_SECTION *cs, unlang_mod_actions_t const *actions, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t			*c;
-	tmpl_rules_t			my_rules;
 	char const			*name1, *name2;
 	CONF_DATA const			*cd;
 
@@ -2212,20 +2213,20 @@ int unlang_compile(virtual_server_t const *vs,
 		return 1;
 	}
 
+	/*
+	 *	Ensure that all compile functions get valid rules.
+	 */
+	if (!rules) {
+		cf_log_err(cs, "Failed compiling section - no namespace rules passed");
+		return -1;
+	}
+
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
 
 	if (!name2) name2 = "";
 
 	cf_log_debug(cs, "Compiling policies in - %s %s {...}", name1, name2);
-
-	/*
-	 *	Ensure that all compile functions get valid rules.
-	 */
-	if (!rules) {
-		memset(&my_rules, 0, sizeof(my_rules));
-		rules = &my_rules;
-	}
 
 	c = unlang_compile_section(NULL,
 			    &(unlang_compile_ctx_t){
@@ -2430,9 +2431,9 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 	if (!instruction || !instruction->number) return;
 
 	/*
-	 *	These are generally pushed onto the stack, and therefore ignored.
+	 *	Ignore any non-group instruction.
 	 */
-	if (instruction->type == UNLANG_TYPE_TMPL) return;
+	if (!((instruction->type > UNLANG_TYPE_MODULE) && (instruction->type <= UNLANG_TYPE_POLICY))) return;
 
 	/*
 	 *	Everything else is an unlang_group_t;
