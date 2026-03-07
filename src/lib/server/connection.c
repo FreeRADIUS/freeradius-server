@@ -212,6 +212,16 @@ static inline void connection_deferred_signal_add(connection_t *conn, connection
 {
 	connection_dsignal_entry_t *dsignal, *prev;
 
+	/*
+	 *	We only suppresses consecutive duplicates at the
+	 *	tail. A sequence such as [INIT, HALT, INIT] will push
+	 *	the second INIT, because the tail is HALT. The signal
+	 *	handlers are generally idempotent (they check current
+	 *	state), so redundant signals are harmless.  Avoiding
+	 *	this corner case involves doing more work in the
+	 *	common case, in order to avoid a small amount of work
+	 *	in the rare case.
+	 */
 	prev = fr_dlist_tail(&conn->deferred_signals);
 	if (prev && (prev->signal == signal)) return;		/* Don't insert duplicates */
 
@@ -666,11 +676,11 @@ static void connection_state_enter_closed(connection_t *conn)
 	WATCH_PRE(conn);
 
 	/*
-	 *	is_closed is for pure paranoia.  If everything
-	 *	is working correctly this state should never
-	 *	be entered if the connection is closed.
+	 *	We can reach "is_clised" if a connection is halted,
+	 *	then signaled to INIT, which fails, and then sits in
+	 *	the FAILED state.  Eventually the connection is
+	 *	shutdown, and enter_shutdown calls this function.
 	 */
-	fr_assert(!conn->is_closed);
 	if (conn->close && !conn->is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
@@ -703,7 +713,7 @@ static void _connection_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
  */
 static void connection_state_enter_shutdown(connection_t *conn)
 {
-	connection_state_t ret;
+	connection_state_t ret = CONNECTION_STATE_SHUTDOWN;
 
 	switch (conn->pub.state) {
 	case CONNECTION_STATE_CONNECTED:
@@ -717,7 +727,7 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	STATE_TRANSITION(CONNECTION_STATE_SHUTDOWN);
 
 	WATCH_PRE(conn);
-	{
+	if (conn->shutdown) {
 		HANDLER_BEGIN(conn, conn->shutdown);
 		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		ret = conn->shutdown(conn->pub.el, conn->pub.h, conn->uctx);
@@ -897,6 +907,7 @@ static void connection_state_enter_timeout(connection_t *conn)
 
 	default:
 		BAD_STATE_TRANSITION(CONNECTION_STATE_TIMEOUT);
+		break;
 	}
 
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
@@ -924,6 +935,7 @@ static void connection_state_enter_halted(connection_t *conn)
 
 	default:
 		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
+		break;
 	}
 
 	FR_TIMER_DISARM(conn->ev);
