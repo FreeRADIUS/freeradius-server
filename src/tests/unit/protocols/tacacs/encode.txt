@@ -1,0 +1,219 @@
+#
+#  Tests for TACACS+ encode paths not exercised by other test files.
+#
+proto tacacs
+proto-dictionary tacacs
+fuzzer-out tacacs
+
+#
+#  ----  Authentication Continue  ----
+#
+#  type=1 (Authentication), seq_no=3 (odd, >1) -> Continue
+#  Body: user_msg_len(2) + data_len(2) + flags(1) + user_msg + data
+#
+
+#
+#  Continue with User-Message and Data
+#
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 3, Packet.Flags = None, Packet.Session-Id = 1234, Packet.Length = 0, Packet-Body-Type = Continue, User-Message = "password123", Data = 0xaabb, Authentication-Continue-Flags = 0
+match c0 01 03 01 00 00 04 d2 00 00 00 12 00 0b 00 02 00 70 61 73 73 77 6f 72 64 31 32 33 aa bb
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authentication, Sequence-Number = 3, Flags = ::Unencrypted, Session-Id = 1234, Length = 18 }, Packet-Body-Type = ::Continue, User-Message = "password123", Data = 0xaabb, Authentication-Continue-Flags = ::Unset
+
+#
+#  Continue-Abort
+#
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 3, Packet.Flags = None, Packet.Session-Id = 5678, Packet.Length = 0, Packet-Body-Type = Continue, User-Message = "aborted", Data = 0x, Authentication-Continue-Flags = 1
+match c0 01 03 01 00 00 16 2e 00 00 00 0c 00 07 00 00 01 61 62 6f 72 74 65 64
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authentication, Sequence-Number = 3, Flags = ::Unencrypted, Session-Id = 5678, Length = 12 }, Packet-Body-Type = ::Continue, User-Message = "aborted", Data = 0x, Authentication-Continue-Flags = ::Abort
+
+#
+#  Continue with empty fields
+#
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 3, Packet.Flags = None, Packet.Session-Id = 100, Packet.Length = 0, Packet-Body-Type = Continue, User-Message = "", Data = 0x, Authentication-Continue-Flags = 0
+match c0 01 03 01 00 00 00 64 00 00 00 05 00 00 00 00 00
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authentication, Sequence-Number = 3, Flags = ::Unencrypted, Session-Id = 100, Length = 5 }, Packet-Body-Type = ::Continue, User-Message = "", Data = 0x, Authentication-Continue-Flags = ::Unset
+
+#
+#  ----  Authentication Reply with Fail status  ----
+#
+#  type=1, seq_no=2 (even) -> Reply
+#  Body: status(1) + flags(1) + server_msg_len(2) + data_len(2) + server_msg + data
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 2000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Fail, Authentication-Flags = 0, Server-Message = "bad password", Data = 0x
+match c1 01 02 01 00 00 07 d0 00 00 00 12 02 00 00 0c 00 00 62 61 64 20 70 61 73 73 77 6f 72 64
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 2000, Length = 18 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Fail, Authentication-Flags = 0, Server-Message = "bad password", Data = 0x
+
+#
+#  ----  Authentication Reply with Getdata + No-Echo  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 3000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Getdata, Authentication-Flags = 1, Server-Message = "Enter token:", Data = 0x
+match c1 01 02 01 00 00 0b b8 00 00 00 12 03 01 00 0c 00 00 45 6e 74 65 72 20 74 6f 6b 65 6e 3a
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 3000, Length = 18 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Getdata, Authentication-Flags = ::No-Echo, Server-Message = "Enter token:", Data = 0x
+
+#
+#  ----  Authentication Reply with Getuser  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 4000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Getuser, Authentication-Flags = 0, Server-Message = "Username:", Data = 0x
+match c1 01 02 01 00 00 0f a0 00 00 00 0f 04 00 00 09 00 00 55 73 65 72 6e 61 6d 65 3a
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 4000, Length = 15 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Getuser, Authentication-Flags = 0, Server-Message = "Username:", Data = 0x
+
+#
+#  ----  Authentication Reply with Getpass  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 5000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Getpass, Authentication-Flags = 1, Server-Message = "Password:", Data = 0x
+match c1 01 02 01 00 00 13 88 00 00 00 0f 05 01 00 09 00 00 50 61 73 73 77 6f 72 64 3a
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 5000, Length = 15 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Getpass, Authentication-Flags = ::No-Echo, Server-Message = "Password:", Data = 0x
+
+#
+#  ----  Authentication Reply with Error + Data  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 6000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Error, Authentication-Flags = 0, Server-Message = "error", Data = 0xdeadbeef
+match c1 01 02 01 00 00 17 70 00 00 00 0f 07 00 00 05 00 04 65 72 72 6f 72 de ad be ef
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 6000, Length = 15 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Error, Authentication-Flags = 0, Server-Message = "error", Data = 0xdeadbeef
+
+#
+#  ----  Authentication Reply with Restart  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 7000, Packet.Length = 0, Packet-Body-Type = Reply, Authentication-Status = Restart, Authentication-Flags = 0, Server-Message = "", Data = 0x
+match c1 01 02 01 00 00 1b 58 00 00 00 06 06 00 00 00 00 00
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 7000, Length = 6 }, Packet-Body-Type = ::Reply, Authentication-Status = ::Restart, Authentication-Flags = 0, Server-Message = "", Data = 0x
+
+#
+#  ----  Authentication Start with SENDAUTH action  ----
+#
+#  Tests the SENDAUTH action path (action=3) with PAP type.
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 8000, Packet.Length = 0, Packet-Body-Type = Start, Action = SENDAUTH, Privilege-Level = Root, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "admin", Client-Port = "tty0", Remote-Address = "10.0.0.1", User-Password = "secret"
+match c1 01 01 01 00 00 1f 40 00 00 00 1f 03 0f 02 03 05 04 08 06 61 64 6d 69 6e 74 74 79 30 31 30 2e 30 2e 30 2e 31 73 65 63 72 65 74
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 1, Flags = ::Unencrypted, Session-Id = 8000, Length = 31 }, Packet-Body-Type = ::Start, Action = ::SENDAUTH, Privilege-Level = ::Max, Authentication-Type = ::PAP, Authentication-Service = ::PPP, User-Name = "admin", Client-Port = "tty0", Remote-Address = "10.0.0.1", User-Password = "secret"
+
+#
+#  ----  Authentication Start with CHAP  ----
+#
+#  CHAP data field = id(1) + challenge + hash(chap_len - 1)
+#  CHAP-Password = 0x<id><hash...> (17 bytes: 1 id + 16 hash)
+#  CHAP-Challenge = challenge bytes
+#  Encoded as: id(1) + challenge + hash (remaining chap bytes)
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 1, Packet.Packet-Type = Authentication, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 9000, Packet.Length = 0, Packet-Body-Type = Start, Action = LOGIN, Privilege-Level = Minimum, Authentication-Type = CHAP, Authentication-Service = LOGIN, User-Name = "bob", Client-Port = "tty1", Remote-Address = "10.0.0.1", CHAP-Password = 0x01aabbccddeeff00112233445566778899, CHAP-Challenge = 0xdeadbeefcafebabe
+match c1 01 01 01 00 00 23 28 00 00 00 30 01 00 03 01 03 04 08 19 62 6f 62 74 74 79 31 31 30 2e 30 2e 30 2e 31 01 de ad be ef ca fe ba be aa bb cc dd ee ff 00 11 22 33 44 55 66 77 88 99
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 1, Packet-Type = ::Authentication, Sequence-Number = 1, Flags = ::Unencrypted, Session-Id = 9000, Length = 48 }, Packet-Body-Type = ::Start, Action = ::LOGIN, Privilege-Level = ::Minimum, Authentication-Type = ::CHAP, Authentication-Service = ::LOGIN, User-Name = "bob", Client-Port = "tty1", Remote-Address = "10.0.0.1", CHAP-Password = 0x01aabbccddeeff00112233445566778899, CHAP-Challenge = 0xdeadbeefcafebabe
+
+#
+#  ----  Authorization Reply with Fail (no arguments)  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 10000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Fail, Server-Message = "denied", Data = 0x
+match c0 02 02 01 00 00 27 10 00 00 00 0c 10 00 00 06 00 00 64 65 6e 69 65 64
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 10000, Length = 12 }, Packet-Body-Type = ::Response, Authorization-Status = ::Fail, Server-Message = "denied", Data = 0x
+
+#
+#  ----  Authorization Reply with Error (args skipped per RFC)  ----
+#
+#  When status = Error, arg_cnt MUST be 0 (args ignored).
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 11000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Error, Server-Message = "internal error", Data = 0x
+match c0 02 02 01 00 00 2a f8 00 00 00 14 11 00 00 0e 00 00 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 11000, Length = 20 }, Packet-Body-Type = ::Response, Authorization-Status = ::Error, Server-Message = "internal error", Data = 0x
+
+#
+#  ----  Authorization Reply with Pass-Repl + multiple args  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 12000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Pass-Repl, Server-Message = "", Data = 0x, service = "shell", cmd = "show"
+match c0 02 02 01 00 00 2e e0 00 00 00 1d 02 02 00 00 00 00 0d 08 73 65 72 76 69 63 65 3d 73 68 65 6c 6c 63 6d 64 3d 73 68 6f 77
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 12000, Length = 29 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Repl, Server-Message = "", Data = 0x, service = "shell", cmd = "show"
+
+#
+#  ----  Authorization Request with multiple RFC 8907 args  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 13000, Packet.Length = 0, Packet-Body-Type = Request, Authentication-Method = TACACSPLUS, Privilege-Level = Root, Authentication-Type = PAP, Authentication-Service = LOGIN, User-Name = "root", Client-Port = "console0", Remote-Address = "10.1.1.1", service = "shell", cmd = "configure", cmd-arg = "terminal"
+match c0 02 01 01 00 00 32 c8 00 00 00 49 06 0f 02 01 04 08 08 03 0d 0d 10 72 6f 6f 74 63 6f 6e 73 6f 6c 65 30 31 30 2e 31 2e 31 2e 31 73 65 72 76 69 63 65 3d 73 68 65 6c 6c 63 6d 64 3d 63 6f 6e 66 69 67 75 72 65 63 6d 64 2d 61 72 67 3d 74 65 72 6d 69 6e 61 6c
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 1, Flags = ::Unencrypted, Session-Id = 13000, Length = 73 }, Packet-Body-Type = ::Request, Authentication-Method = ::TACACSPLUS, Privilege-Level = ::Max, Authentication-Type = ::PAP, Authentication-Service = ::LOGIN, User-Name = "root", Client-Port = "console0", Remote-Address = "10.1.1.1", service = "shell", cmd = "configure", cmd-arg = "terminal"
+
+#
+#  ----  Accounting Request with Stop flag  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 14000, Packet.Length = 0, Packet-Body-Type = Request, Accounting-Flags = Stop, Authentication-Method = TACACSPLUS, Privilege-Level = User, Authentication-Type = PAP, Authentication-Service = LOGIN, User-Name = "alice", Client-Port = "tty0", Remote-Address = "10.0.0.2", task_id = "12345", service = "shell", elapsed_time = 300
+match c0 03 01 01 00 00 36 b0 00 00 00 47 04 06 01 02 01 05 04 08 03 0d 0d 10 61 6c 69 63 65 74 74 79 30 31 30 2e 30 2e 30 2e 32 74 61 73 6b 5f 69 64 3d 31 32 33 34 35 73 65 72 76 69 63 65 3d 73 68 65 6c 6c 65 6c 61 70 73 65 64 5f 74 69 6d 65 3d 33 30 30
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Accounting, Sequence-Number = 1, Flags = ::Unencrypted, Session-Id = 14000, Length = 71 }, Packet-Body-Type = ::Request, Accounting-Flags = ::Stop, Authentication-Method = ::TACACSPLUS, Privilege-Level = ::User, Authentication-Type = ::PAP, Authentication-Service = ::LOGIN, User-Name = "alice", Client-Port = "tty0", Remote-Address = "10.0.0.2", task_id = "12345", service = "shell", elapsed_time = 300
+
+#
+#  ----  Accounting Reply with Error status + Server-Message  ----
+#
+#  Body: server_msg_len(2) + data_len(2) + status(1) + server_msg + data
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 15000, Packet.Length = 0, Packet-Body-Type = Reply, Server-Message = "db error", Data = 0xff, Accounting-Status = Error
+match c0 03 02 01 00 00 3a 98 00 00 00 0e 00 08 00 01 02 64 62 20 65 72 72 6f 72 ff
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Accounting, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 15000, Length = 14 }, Packet-Body-Type = ::Reply, Server-Message = "db error", Data = 0xff, Accounting-Status = ::Error
+
+#
+#  ----  Accounting Reply with Server-Message + Data  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 16000, Packet.Length = 0, Packet-Body-Type = Reply, Server-Message = "OK", Data = 0xaabbccdd, Accounting-Status = Success
+match c0 03 02 01 00 00 3e 80 00 00 00 0b 00 02 00 04 01 4f 4b aa bb cc dd
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Accounting, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 16000, Length = 11 }, Packet-Body-Type = ::Reply, Server-Message = "OK", Data = 0xaabbccdd, Accounting-Status = ::Success
+
+#
+#  ----  Authorization Reply with Argument-List fallback  ----
+#
+#  Raw "name=value" strings via Argument-List attribute.
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 17000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, Argument-List = "custom=value1"
+match c0 02 02 01 00 00 42 68 00 00 00 14 01 01 00 00 00 00 0d 63 75 73 74 6f 6d 3d 76 61 6c 75 65 31
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 17000, Length = 20 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Add, Server-Message = "", Data = 0x, Argument-List = "custom=value1"
+
+count
+match 79
