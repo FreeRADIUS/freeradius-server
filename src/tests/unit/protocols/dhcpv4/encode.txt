@@ -1,0 +1,350 @@
+#
+#  Tests for DHCPv4 encode paths not exercised by other test files.
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+#
+#  ----  Scalar type encoding (uint8, uint16, uint32)  ----
+#
+
+#
+#  uint8 - Default-TCP-TTL (37 = 0x25)
+#
+encode-pair Default-TCP-TTL = 64
+match 25 01 40
+
+decode-pair -
+match Default-TCP-TTL = 64
+
+encode-pair Default-TCP-TTL = 0
+match 25 01 00
+
+decode-pair -
+match Default-TCP-TTL = 0
+
+encode-pair Default-TCP-TTL = 255
+match 25 01 ff
+
+decode-pair -
+match Default-TCP-TTL = 255
+
+#
+#  uint16 - Maximum-Msg-Size (57 = 0x39)
+#
+encode-pair Maximum-Msg-Size = 1500
+match 39 02 05 dc
+
+decode-pair -
+match Maximum-Msg-Size = 1500
+
+encode-pair Maximum-Msg-Size = 576
+match 39 02 02 40
+
+decode-pair -
+match Maximum-Msg-Size = 576
+
+#
+#  uint32 - IP-Address-Lease-Time (51 = 0x33)
+#
+encode-pair IP-Address-Lease-Time = 86400
+match 33 04 00 01 51 80
+
+decode-pair -
+match IP-Address-Lease-Time = 86400
+
+encode-pair IP-Address-Lease-Time = 0
+match 33 04 00 00 00 00
+
+decode-pair -
+match IP-Address-Lease-Time = 0
+
+#
+#  uint8 with named values - Message-Type (53 = 0x35)
+#
+encode-pair Message-Type = Discover
+match 35 01 01
+
+decode-pair -
+match Message-Type = ::Discover
+
+encode-pair Message-Type = Offer
+match 35 01 02
+
+decode-pair -
+match Message-Type = ::Offer
+
+#
+#  ----  ipaddr array coalescing  ----
+#
+#  Multiple fixed-size ipaddr values coalesced into one option.
+#
+
+#
+#  Router-Address (3 = 0x03) - ipaddr array
+#
+encode-pair Router-Address = 192.168.1.1, Router-Address = 10.0.0.1
+match 03 08 c0 a8 01 01 0a 00 00 01
+
+decode-pair -
+match Router-Address = 192.168.1.1, Router-Address = 10.0.0.1
+
+#
+#  Single Router-Address
+#
+encode-pair Router-Address = 10.0.0.1
+match 03 04 0a 00 00 01
+
+decode-pair -
+match Router-Address = 10.0.0.1
+
+#
+#  Domain-Name-Server (6 = 0x06) - three DNS servers
+#
+encode-pair Domain-Name-Server = 8.8.8.8, Domain-Name-Server = 8.8.4.4, Domain-Name-Server = 1.1.1.1
+match 06 0c 08 08 08 08 08 08 04 04 01 01 01 01
+
+decode-pair -
+match Domain-Name-Server = 8.8.8.8, Domain-Name-Server = 8.8.4.4, Domain-Name-Server = 1.1.1.1
+
+#
+#  ----  uint16 array  ----
+#
+#  Path-MTU-Plateau-Table (25 = 0x19) - uint16 array
+#
+
+#
+#  Single value
+#
+encode-pair Path-MTU-Plateau-Table = 1500
+match 19 02 05 dc
+
+decode-pair -
+match Path-MTU-Plateau-Table = 1500
+
+#
+#  Multiple values coalesced
+#
+encode-pair Path-MTU-Plateau-Table = 68, Path-MTU-Plateau-Table = 296, Path-MTU-Plateau-Table = 508, Path-MTU-Plateau-Table = 1006, Path-MTU-Plateau-Table = 1492
+match 19 0a 00 44 01 28 01 fc 03 ee 05 d4
+
+decode-pair -
+match Path-MTU-Plateau-Table = 68, Path-MTU-Plateau-Table = 296, Path-MTU-Plateau-Table = 508, Path-MTU-Plateau-Table = 1006, Path-MTU-Plateau-Table = 1492
+
+#
+#  ----  FR_TYPE_ATTR encoding (Parameter-Request-List)  ----
+#
+#  Parameter-Request-List (55 = 0x37) encodes attribute numbers as bytes.
+#
+
+encode-pair Parameter-Request-List = Subnet-Mask, Parameter-Request-List = Router-Address, Parameter-Request-List = Domain-Name-Server
+match 37 03 01 03 06
+
+decode-pair -
+match Parameter-Request-List = ::Subnet-Mask, Parameter-Request-List = ::Router-Address, Parameter-Request-List = ::Domain-Name-Server
+
+#
+#  Longer list
+#
+encode-pair Parameter-Request-List = Subnet-Mask, Parameter-Request-List = Router-Address, Parameter-Request-List = Domain-Name-Server, Parameter-Request-List = Domain-Name, Parameter-Request-List = Broadcast-Address, Parameter-Request-List = IP-Address-Lease-Time
+match 37 06 01 03 06 0f 1c 33
+
+decode-pair -
+match Parameter-Request-List = ::Subnet-Mask, Parameter-Request-List = ::Router-Address, Parameter-Request-List = ::Domain-Name-Server, Parameter-Request-List = ::Domain-Name, Parameter-Request-List = ::Broadcast-Address, Parameter-Request-List = ::IP-Address-Lease-Time
+
+#
+#  ----  String encoding  ----
+#
+
+#
+#  Hostname (12 = 0x0c) - simple string
+#
+encode-pair Hostname = "myhost"
+match 0c 06 6d 79 68 6f 73 74
+
+decode-pair -
+match Hostname = "myhost"
+
+#
+#  Single character string
+#
+encode-pair Hostname = "x"
+match 0c 01 78
+
+decode-pair -
+match Hostname = "x"
+
+#
+#  ----  Octets encoding  ----
+#
+
+#
+#  Vendor-Class-Identifier (60 = 0x3c)
+#
+encode-pair Vendor-Class-Identifier = 0xdeadbeef
+match 3c 04 de ad be ef
+
+decode-pair -
+match Vendor-Class-Identifier = 0xdeadbeef
+
+#
+#  Client-Identifier (61 = 0x3d)
+#
+encode-pair Client-Identifier = 0x01aabbccddeeff
+match 3d 07 01 aa bb cc dd ee ff
+
+decode-pair -
+match Client-Identifier = 0x01aabbccddeeff
+
+#
+#  ----  DNS label encoding  ----
+#
+#  Tests for the FR_TYPE_STRING with dns_label flag
+#  in encode_value().
+#
+
+#
+#  Access-Network-Domain-Name (213 = 0xd5) - single dns_label
+#
+encode-pair Access-Network-Domain-Name = "example.com"
+match d5 0d 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match Access-Network-Domain-Name = "example.com"
+
+#
+#  Longer domain with multiple labels
+#
+encode-pair Access-Network-Domain-Name = "host.sub.example.org"
+match d5 16 04 68 6f 73 74 03 73 75 62 07 65 78 61 6d 70 6c 65 03 6f 72 67 00
+
+decode-pair -
+match Access-Network-Domain-Name = "host.sub.example.org"
+
+#
+#  DNS label array - Domain-Search (119 = 0x77)
+#  Multiple DNS labels concatenated in one option.
+#
+encode-pair Domain-Search = "example.com"
+match 77 0d 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match Domain-Search = "example.com"
+
+#
+#  Multiple DNS label array values
+#
+encode-pair Domain-Search = "example.com", Domain-Search = "test.net"
+match 77 17 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 04 74 65 73 74 03 6e 65 74 00
+
+decode-pair -
+match Domain-Search = "example.com", Domain-Search = "test.net"
+
+#
+#  BCMS-Server-IPv4-FQDN (88 = 0x58) - dns_label,array
+#
+encode-pair BCMS-Server-IPv4-FQDN = "bcms.example.com"
+match 58 12 04 62 63 6d 73 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
+
+decode-pair -
+match BCMS-Server-IPv4-FQDN = "bcms.example.com"
+
+#
+#  ----  IPv4 prefix with split format  ----
+#
+#  Policy-Filter (21 = 0x15) - ipv4prefix with prefix=split,array
+#  Encoded as: ipv4addr(4) + netmask(4) per entry.
+#
+
+#
+#  /8 prefix
+#
+encode-pair Policy-Filter = 10.0.0.0/8
+match 15 08 0a 00 00 00 ff 00 00 00
+
+decode-pair -
+match Policy-Filter = 10.0.0.0/8
+
+#
+#  /24 prefix
+#
+encode-pair Policy-Filter = 192.168.1.0/24
+match 15 08 c0 a8 01 00 ff ff ff 00
+
+decode-pair -
+match Policy-Filter = 192.168.1.0/24
+
+#
+#  /28 prefix
+#
+encode-pair Policy-Filter = 172.16.0.0/28
+match 15 08 ac 10 00 00 ff ff ff f0
+
+decode-pair -
+match Policy-Filter = 172.16.0.0/28
+
+#
+#  /0 prefix (default)
+#
+encode-pair Policy-Filter = 0.0.0.0/0
+match 15 08 00 00 00 00 00 00 00 00
+
+decode-pair -
+match Policy-Filter = 0.0.0.0/0
+
+#
+#  Multiple prefix values (array)
+#
+encode-pair Policy-Filter = 10.0.0.0/8, Policy-Filter = 192.168.0.0/16
+match 15 10 0a 00 00 00 ff 00 00 00 c0 a8 00 00 ff ff 00 00
+
+decode-pair -
+match Policy-Filter = 10.0.0.0/8, Policy-Filter = 192.168.0.0/16
+
+#
+#  ----  IPv4 prefix with bits format (in struct)  ----
+#
+#  Classless-Static-Route (121 = 0x79) struct member Subnet uses prefix=bits.
+#  Encoded as: prefix_len(1) + ceil(prefix/8) bytes of address + router(4)
+#
+
+#
+#  /0 prefix (default route) - no address bytes
+#
+encode-pair Classless-Static-Route = { Destination-Descriptor = { Subnet = 0.0.0.0/0, Router-IP-Address = 10.0.0.1 } }
+match 79 05 00 0a 00 00 01
+
+decode-pair -
+match Classless-Static-Route = { Destination-Descriptor = { Subnet = 0.0.0.0/0, Router-IP-Address = 10.0.0.1 } }
+
+#
+#  /32 host route - full 4 address bytes
+#
+encode-pair Classless-Static-Route = { Destination-Descriptor = { Subnet = 10.0.0.1/32, Router-IP-Address = 10.0.0.254 } }
+match 79 09 20 0a 00 00 01 0a 00 00 fe
+
+decode-pair -
+match Classless-Static-Route = { Destination-Descriptor = { Subnet = 10.0.0.1/32, Router-IP-Address = 10.0.0.254 } }
+
+#
+#  Multiple routes - default + /24
+#
+encode-pair Classless-Static-Route = { Destination-Descriptor = { Subnet = 0.0.0.0/0, Router-IP-Address = 10.0.0.1 }, Destination-Descriptor = { Subnet = 192.168.1.0/24, Router-IP-Address = 10.0.0.2 } }
+match 79 0d 00 0a 00 00 01 18 c0 a8 01 0a 00 00 02
+
+decode-pair -
+match Classless-Static-Route = { Destination-Descriptor = { Subnet = 0.0.0.0/0, Router-IP-Address = 10.0.0.1 }, Destination-Descriptor = { Subnet = 192.168.1.0/24, Router-IP-Address = 10.0.0.2 } }
+
+#
+#  ----  Multiple different options in one encode-pair  ----
+#
+
+encode-pair Message-Type = Discover, Maximum-Msg-Size = 1500
+match 35 01 01 39 02 05 dc
+
+decode-pair -
+match Message-Type = ::Discover, Maximum-Msg-Size = 1500
+
+count
+match 139
