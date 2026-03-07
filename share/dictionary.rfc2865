@@ -9,7 +9,7 @@
 #
 ATTRIBUTE	User-Name				1	string
 ATTRIBUTE	User-Password				2	string encrypt=1
-ATTRIBUTE	CHAP-Password				3	octets
+ATTRIBUTE	CHAP-Password				3	octets secret
 ATTRIBUTE	NAS-IP-Address				4	ipaddr
 ATTRIBUTE	NAS-Port				5	integer
 ATTRIBUTE	Service-Type				6	integer

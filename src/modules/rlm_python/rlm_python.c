@@ -282,7 +282,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		PyObject 	*pOp;
 		int		pairsize;
 		char const	*s1;
-		char const	*s2;
+		char const	*s2, *s2p;
 		FR_TOKEN	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
@@ -348,13 +348,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 		vp->op = op;
 		vp->tag = dst.tmpl_tag;
+		s2p = ATTRIBUTE_SECRET(vp, s2);
 
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2);
+			      fr_int2str(fr_tokens, op, "="), s2p);
 		} else {
 			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2);
+			      fr_int2str(fr_tokens, op, "="), s2p);
 		}
 
 		radius_pairmove(current, vps, vp, false);
