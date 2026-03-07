@@ -1422,6 +1422,16 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	}
 
 	/*
+	 *	Insert into the ether hashes.
+	 */
+	if (!fr_hash_table_insert(state->inst->hosts_by_ether, my_ether)) {
+		fr_strerror_printf("Failed inserting 'host %s' into hash table",
+				   info->argv[0]->vb_strvalue);
+		talloc_free(my_ether);
+		return -1;
+	}
+
+	/*
 	 *	The 'host' entry might not have a client identifier option.
 	 */
 	vp = fr_pair_find_by_da(&info->options, NULL, attr_client_identifier);
@@ -1434,29 +1444,16 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 		if (old_uid) {
 			fr_strerror_printf("'host %s' and 'host %s' contain duplicate 'option client-identifier' fields",
 					   info->argv[0]->vb_strvalue, old_uid->host->argv[0]->vb_strvalue);
-			talloc_free(my_ether);
+		fail:
+			(void) fr_hash_table_delete(state->inst->hosts_by_ether, my_ether);
 			talloc_free(my_uid);
 			return -1;
 		}
-	}
 
-	/*
-	 *	Insert into the ether hashes.
-	 */
-	if (!fr_hash_table_insert(state->inst->hosts_by_ether, my_ether)) {
-		fr_strerror_printf("Failed inserting 'host %s' into hash table",
-				   info->argv[0]->vb_strvalue);
-		talloc_free(my_ether);
-		if (my_uid) talloc_free(my_uid);
-		return -1;
-	}
-
-	if (my_uid) {
 		if (!fr_hash_table_insert(state->inst->hosts_by_uid, my_uid)) {
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
-			talloc_free(my_uid);
-			return -1;
+			goto fail;
 		}
 	}
 
@@ -1499,8 +1496,8 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 			}
 		}
 
-
 		if (!fr_hash_table_insert(parent->hosts_by_uid, my_uid)) {
+			(void) fr_hash_table_remove(parent->hosts_by_ether, my_ether); /* remove and don't free */
 			fr_strerror_printf("Failed inserting 'host %s' into hash table",
 					   info->argv[0]->vb_strvalue);
 			return -1;
@@ -1528,7 +1525,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	/*
 	 *	Check if argv[1] is a valid netmask
 	 */
-	if (!(netmask & (~netmask >> 1))) {
+	if (netmask & (~netmask >> 1)) {
 		fr_strerror_printf("invalid netmask '%pV'", info->argv[1]);
 		return -1;
 	}
@@ -1610,19 +1607,20 @@ static rlm_isc_dhcp_info_t *get_host(request_t *request, fr_hash_table_t *hosts_
 	 *	If that doesn't match, use client hardware
 	 *	address.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_identifier);
-	if (vp) {
-		isc_host_uid_t *client, my_client;
+	if (hosts_by_uid) {
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_identifier);
+		if (vp) {
+			isc_host_uid_t *client, my_client;
 
-		my_client.client = &(vp->data);
+			my_client.client = &(vp->data);
 
-		client = fr_hash_table_find(hosts_by_uid, &my_client);
-		if (client) {
-			host = client->host;
-			goto done;
+			client = fr_hash_table_find(hosts_by_uid, &my_client);
+			if (client) {
+				host = client->host;
+				goto done;
+			}
 		}
 	}
-
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_client_hardware_address);
 	if (!vp) return NULL;
