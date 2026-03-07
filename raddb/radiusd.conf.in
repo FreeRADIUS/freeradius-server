@@ -449,18 +449,21 @@ log {
 	#  configuration puts secrets into other strings, they will
 	#  still get printed.
 	#
-	#  Setting this to "yes" means that the server prints
+	#  Setting this to "yes" (the default) means that the server prints
 	#
 	#	<<< secret >>>
 	#
-	#  instead of the value, for attriburtes which contain secret
-	#  information.  e.g. User-Name, Tunnel-Password, etc.
+	#  instead of the value, for attributes which contain secret
+	#  information.  e.g. User-Password, Tunnel-Password, etc.
 	#
-	#  This configuration is disabled by default.  It is extremely
-	#  important for administrators to be able to debug user logins
-	#  by seeing what is actually being sent.
+	#  This option exists as it is extremely important for administrators
+	#  to be able to debug user logins by seeing what is actually being
+	#  sent.
 	#
-#	suppress_secrets = no
+	#  NOTE: Note that when running the server at debug level 3 or
+	#  higher, this option is ignored.
+	#
+#	suppress_secrets = yes
 
 	#  Add timestamps to debug logs
 	#
