@@ -1,0 +1,289 @@
+#
+#  Tests for RADIUS encode paths not exercised by other test files.
+#
+proto radius
+proto-dictionary radius
+load-dictionary dictionary.test
+fuzzer-out radius
+
+#
+#  ----  Tagged uint32 attributes (completely untested)  ----
+#
+#  The encoder puts the tag value in the MSB of the uint32.
+#  Only 24-bit values (0-16777215) are allowed.
+#
+
+#
+#  Tunnel-Type (64 = 0x40) with tag 1, value PPTP (1)
+#
+encode-pair Tag-1 = { Tunnel-Type = 1 }
+match 40 06 01 00 00 01
+
+decode-pair -
+match Tag-1 = { Tunnel-Type = ::PPTP }
+
+#
+#  Tunnel-Medium-Type (65 = 0x41) with tag 2, value IEEE-802 (6)
+#
+encode-pair Tag-2 = { Tunnel-Medium-Type = 6 }
+match 41 06 02 00 00 06
+
+decode-pair -
+match Tag-2 = { Tunnel-Medium-Type = ::IEEE-802 }
+
+#
+#  Tunnel-Preference (83 = 0x53) - maximum 24-bit value (0xFFFFFF = 16777215)
+#
+encode-pair Tag-1 = { Tunnel-Preference = 16777215 }
+match 53 06 01 ff ff ff
+
+decode-pair -
+match Tag-1 = { Tunnel-Preference = 16777215 }
+
+#
+#  Multiple tagged uint32 attributes in one Tag group
+#
+encode-pair Tag-1 = { Tunnel-Type = 3, Tunnel-Medium-Type = 1, Tunnel-Preference = 100 }
+match 40 06 01 00 00 03 41 06 01 00 00 01 53 06 01 00 00 64
+
+decode-pair -
+match Tag-1 = { Tunnel-Type = ::L2TP, Tunnel-Medium-Type = ::IPv4, Tunnel-Preference = 100 }
+
+#
+#  Two different Tag groups in one encode-pair
+#
+encode-pair Tag-1 = { Tunnel-Type = 1 }, Tag-2 = { Tunnel-Type = 3 }
+match 40 06 01 00 00 01 40 06 02 00 00 03
+
+decode-pair -
+match Tag-1 = { Tunnel-Type = ::PPTP }, Tag-2 = { Tunnel-Type = ::L2TP }
+
+#
+#  Tagged uint32 overflow - value > 16777215 (0xFFFFFF) is silently skipped
+#  because the MSB would conflict with the tag byte.
+#
+encode-pair Tag-1 = { Tunnel-Type = 16777216 }
+match
+
+#
+#  Overflow attribute skipped, valid attribute still encoded
+#
+encode-pair Tag-1 = { Tunnel-Type = 16777216, Tunnel-Preference = 100 }
+match 53 06 01 00 00 64
+
+decode-pair -
+match Tag-1 = { Tunnel-Preference = 100 }
+
+#
+#  Tagged string with tag - tag byte is explicitly written
+#
+encode-pair Tag-1 = { Tunnel-Private-Group-Id = "hello" }
+match 51 08 01 68 65 6c 6c 6f
+
+decode-pair -
+match Tag-1 = { Tunnel-Private-Group-Id = "hello" }
+
+#
+#  Tagged string without tag context - no tag byte when string
+#  doesn't start with a tag-like value (0x01-0x1f)
+#
+encode-pair Tunnel-Private-Group-Id = "hello"
+match 51 07 68 65 6c 6c 6f
+
+decode-pair -
+match Tunnel-Private-Group-Id = "hello"
+
+#
+#  ----  IPv6 address encoding (no scope byte)  ----
+#
+
+encode-pair NAS-IPv6-Address = ::1
+match 5f 12 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match NAS-IPv6-Address = ::1
+
+encode-pair NAS-IPv6-Address = 2001:db8::1
+match 5f 12 20 01 0d b8 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match NAS-IPv6-Address = 2001:db8::1
+
+encode-pair NAS-IPv6-Address = fe80::1
+match 5f 12 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match NAS-IPv6-Address = fe80::1
+
+#
+#  ----  IPv6 prefix encoding (variable length based on prefix)  ----
+#
+#  Format: reserved(1) + prefix_len(1) + address(ceil(prefix/8) bytes)
+#
+
+#
+#  /0 prefix - just reserved byte and prefix length, no address bytes
+#
+encode-pair Framed-IPv6-Prefix = ::/0
+match 61 04 00 00
+
+decode-pair -
+match Framed-IPv6-Prefix = ::/0
+
+#
+#  /1 prefix - 1 byte of address
+#
+encode-pair Framed-IPv6-Prefix = 8000::/1
+match 61 05 00 01 80
+
+decode-pair -
+match Framed-IPv6-Prefix = 8000::/1
+
+#
+#  /32 prefix - 4 bytes of address
+#
+encode-pair Framed-IPv6-Prefix = 2001:db8::/32
+match 61 08 00 20 20 01 0d b8
+
+decode-pair -
+match Framed-IPv6-Prefix = 2001:db8::/32
+
+#
+#  /48 prefix - 6 bytes of address
+#
+encode-pair Framed-IPv6-Prefix = 2001:db8:abcd::/48
+match 61 0a 00 30 20 01 0d b8 ab cd
+
+decode-pair -
+match Framed-IPv6-Prefix = 2001:db8:abcd::/48
+
+#
+#  /64 prefix - 8 bytes of address
+#
+encode-pair Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64
+match 61 0c 00 40 20 01 0d b8 0a 0b 12 f0
+
+decode-pair -
+match Framed-IPv6-Prefix = 2001:db8:a0b:12f0::/64
+
+#
+#  /128 prefix - full 16 bytes of address
+#
+encode-pair Framed-IPv6-Prefix = ::1/128
+match 61 14 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+decode-pair -
+match Framed-IPv6-Prefix = ::1/128
+
+#
+#  ----  Message-Authenticator encoding  ----
+#
+#  The encoder hardcodes Message-Authenticator to 16 zero bytes,
+#  regardless of the input value.
+#
+
+encode-pair Message-Authenticator = 0x00000000000000000000000000000000
+match 50 12 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode-pair -
+match Message-Authenticator = 0x00000000000000000000000000000000
+
+#
+#  ----  Chargeable-User-Identity (CUI) encoding  ----
+#
+#  CUI is one of the few attributes that allows zero-length encoding.
+#
+
+#
+#  Zero-length CUI
+#
+encode-pair Chargeable-User-Identity = 0x
+match 59 02
+
+decode-pair -
+match Chargeable-User-Identity = 0x
+
+#
+#  CUI with data
+#
+encode-pair Chargeable-User-Identity = 0xaabbccdd
+match 59 06 aa bb cc dd
+
+decode-pair -
+match Chargeable-User-Identity = 0xaabbccdd
+
+#
+#  ----  Extended attributes - byte, short, int64, octets types  ----
+#
+#  These exercise the encode_extended path with data types not
+#  covered by unit.txt (which only tests integer and TLV).
+#
+
+#
+#  Byte type in short extended attribute (241)
+#
+encode-pair Extended-Attribute-1.Unit-Ext-241-Byte = 255
+match f1 04 f4 ff
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Byte = 255 }
+
+encode-pair Extended-Attribute-1.Unit-Ext-241-Byte = 0
+match f1 04 f4 00
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Byte = 0 }
+
+#
+#  Short (uint16) type in short extended attribute
+#
+encode-pair Extended-Attribute-1.Unit-Ext-241-Short = 65535
+match f1 05 f5 ff ff
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Short = 65535 }
+
+encode-pair Extended-Attribute-1.Unit-Ext-241-Short = 256
+match f1 05 f5 01 00
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Short = 256 }
+
+#
+#  Integer64 type in short extended attribute
+#
+encode-pair Extended-Attribute-1.Unit-Ext-241-Integer64 = 1234567890123456789
+match f1 0b f6 11 22 10 f4 7d e9 81 15
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Integer64 = 1234567890123456789 }
+
+#
+#  Octets type in short extended attribute
+#
+encode-pair Extended-Attribute-1.Unit-Ext-241-Octets = 0xdeadbeef
+match f1 07 f2 de ad be ef
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Octets = 0xdeadbeef }
+
+#
+#  Long extended EVS octets (246 = Extended-Attribute-6)
+#
+encode-pair Extended-Attribute-6.Vendor-Specific.FreeRADIUS.Unit-EVS-6-Octets = 0xdeadbeefcafebabe
+match f6 11 1a 00 00 00 2c 50 02 de ad be ef ca fe ba be
+
+decode-pair -
+match Extended-Attribute-6 = { Vendor-Specific = { FreeRADIUS = { Unit-EVS-6-Octets = 0xdeadbeefcafebabe } } }
+
+#
+#  Multiple extended attributes of different types
+#
+encode-pair Extended-Attribute-1.Unit-Ext-241-Byte = 42, Extended-Attribute-1.Unit-Ext-241-Short = 1000
+match f1 04 f4 2a f1 05 f5 03 e8
+
+decode-pair -
+match Extended-Attribute-1 = { Unit-Ext-241-Byte = 42, Unit-Ext-241-Short = 1000 }
+
+count
+match 118
