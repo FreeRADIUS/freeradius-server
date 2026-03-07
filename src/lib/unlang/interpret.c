@@ -294,7 +294,7 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction type \"%s\" - args %s %s",
-				    instruction ? instruction->debug_name : "<none>",
+				    instruction->debug_name,
 				    do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
 				    conf->top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
 #endif
@@ -352,6 +352,8 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 	 */
 	vp = fr_pair_list_tail(&ref->request->local_pairs);
 	while (vp) {
+		fr_assert(vp->da->flags.local);
+
 		prev = fr_pair_list_prev(&ref->request->local_pairs, vp);
 		if (vp->da->dict != ref->request->local_dict) {
 			break;
@@ -612,9 +614,10 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		unlang_frame_perf_cleanup(frame);
 		frame_state_init(stack, frame);	/* Don't change p_result */
 		return UNLANG_FRAME_ACTION_RETRY;
+	}
+
 	default:
 		break;
-	}
 	}
 
 finalize:
@@ -1693,7 +1696,7 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	 *	state, assume the caller knows what it's
 	 *	doing and allocate one.
 	 */
-	return (TALLOC_CTX *)(frame->state = talloc_new(request));
+	return (TALLOC_CTX *)(frame->state = talloc_new(stack));
 }
 
 static xlat_arg_parser_t const unlang_cancel_xlat_args[] = {
@@ -1741,6 +1744,8 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
 
+	fr_assert(unlang_interpret_event_list(request) != NULL);
+
 	XLAT_ARGS(args, &timeout);
 
 	/*
@@ -1762,7 +1767,9 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	ev_p = ev_p_og = request_data_get(request, (void *)unlang_cancel_xlat, 0);
 	if (ev_p) {
-		if (*ev_p) when = fr_timer_when(*ev_p);	/* *ev_p should never be NULL, really... */
+		MEM(*ev_p);
+
+		when = fr_timer_when(*ev_p);
 	} else {
 		/*
 		 *	Must not be parented from the request
