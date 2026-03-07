@@ -783,6 +783,9 @@ bool xlat_process_return(request_t *request, xlat_t const *func, fr_value_box_li
 
 			/* We are not forgiving for debug builds */
 			fr_assert_fail("Treating invalid return type as fatal");
+#ifdef NDEBUG
+			return false;
+#endif
 		}
 		fr_value_box_mark_safe_for(pos, func->return_safe_for); /* Always set this */
 		count++;
@@ -817,10 +820,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	switch (letter) {
 	case '%':
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) {
-			talloc_free(value);
-			return XLAT_ACTION_FAIL;
-		}
+		MEM(fr_value_box_strdup(value, value, NULL, "%", false) >= 0);
 		break;
 
 	/*
@@ -884,10 +884,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) {
-			talloc_free(value);
-			goto error;
-		}
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 		break;
 
 	case 'e': /* Request second */
@@ -917,7 +914,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		 *	seconds?
 		 */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
-		value->datum.uint64 = (uint64_t ) now;
+		value->datum.uint64 = (uint64_t) now;
 		break;
 
 	case 'm': /* Request month */
@@ -941,7 +938,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 		break;
 
 	case 't': /* Request timestamp in CTIME format */
@@ -953,7 +950,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		if (p) *p = '\0';
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 	}
 		break;
 
@@ -973,7 +970,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 			 (int) fr_time_to_msec(request->packet->timestamp) % 1000);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(fr_value_box_strdup(value, value, NULL, buffer, false) >= 0);
 	}
 		break;
 
@@ -1275,7 +1272,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			if ((node->quote != T_BARE_WORD) && !head->is_argv) {
 				if (!fr_value_box_list_head(result)) {
 					MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-					fr_value_box_strdup(arg, arg, NULL, "", false);
+					MEM(fr_value_box_strdup(arg, arg, NULL, "", false) >= 0);
 					fr_dcursor_insert(out, arg);
 					break;
 				}
@@ -1371,7 +1368,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
 	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
-	fr_value_box_t		*value;
+	fr_value_box_t		*value = NULL;
 
 	fr_value_box_list_init(&result);
 
@@ -1438,7 +1435,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (unlikely(fr_value_box_copy(value, value, &node->data) < 0)) goto fail;
+			MEM(fr_value_box_copy(value, value, &node->data) >= 0);
 			fr_dcursor_append(out, value);
 			continue;
 
@@ -1785,6 +1782,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 	}
 
 	if ((size_t)slen >= outlen) {
+		talloc_free(buff);
 		fr_strerror_const("Insufficient output buffer space");
 		return -1;
 	}
