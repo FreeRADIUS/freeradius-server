@@ -958,7 +958,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	them for now.  Once the functionality
 			 *	is tested and used, we can allow that.
 			 */
-			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
+			slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
 			if (slen <= 0) {
 				cf_log_err(ci, "Failed parsing attribute reference for list %s - %s",
 					   cf_section_name1(subcs), fr_strerror());
@@ -1479,7 +1479,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	 *	Allocate the LHS
 	 */
 	map->lhs = tmpl_alloc(map, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0);
-	if (!map->lhs) goto oom;
+	if (!map->lhs) {
+		talloc_free(map);
+		goto oom;
+	}
 
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
 
@@ -1493,7 +1496,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	 *	Allocate the RHS
 	 */
 	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, NULL, -1);
-	if (!map->rhs) goto oom;
+	if (!map->rhs) {
+		talloc_free(map);
+		goto oom;
+	}
 
 	switch (vp->vp_type) {
 	case FR_TYPE_QUOTED:
@@ -2409,10 +2415,11 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	}
 
 	/*
-	 *	If there's no child and no RHS then the
-	 *	map was invalid.
+	 *	If there's no RHS but no children, then the map was
+	 *	invalid.
 	 */
-	if (map_list_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
+	if (!map->rhs) {
+		fr_assert(!map_list_empty(&map->child));
 		fr_sbuff_terminate(out);
 		return 0;
 	}
@@ -2626,7 +2633,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *
 		 *	@todo - track relative attributes, which begin with a '.'
 		 */
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, lhs, lhs_rules);
+		slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, lhs, lhs_rules);
 	}
 	if (slen <= 0) {
 	error:
