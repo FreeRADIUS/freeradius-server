@@ -1839,8 +1839,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		return map_exec_to_vp(ctx, out, request, map);
 
 	default:
+		fr_strerror_const("Internal sanity check failure");
 		rcode = -1;
-		fr_assert(0);	/* Should have been caught at parse time */
 	error:
 		talloc_free(n);
 		return rcode;
@@ -2534,7 +2534,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	fr_token_t	quote, op;
 	map_t		*map;
 	map_t		*parent = *parent_p;
-	tmpl_rules_t	my_rules;
+	tmpl_rules_t	my_lhs_rules, my_rhs_rules;
 
 	op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
 	if (op == T_INVALID) {
@@ -2557,8 +2557,8 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		return -1;
 	}
 
-	my_rules = *lhs_rules;
-	lhs_rules = &my_rules;
+	my_lhs_rules = *lhs_rules;
+	lhs_rules = &my_lhs_rules;
 
 	/*
 	 *	We're only called from SQL.  If the default list is request, then we only use that for
@@ -2568,7 +2568,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 *	this flag.  But this function already has parameter overload :(
 	 */
 	if (fr_assignment_op[op] && (lhs_rules->attr.list_def == request_attr_request)) {
-		my_rules.attr.list_def = request_attr_control;
+		my_lhs_rules.attr.list_def = request_attr_control;
 	}
 
 	/*
@@ -2616,7 +2616,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	 */
 	if (parent) {
 		fr_assert(tmpl_is_attr(parent->lhs));
-		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+		my_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN_STR(lhs),
 					      &map_parse_rules_bareword_quoted, lhs_rules);
@@ -2646,17 +2646,17 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		goto error;
 	}
 
-	my_rules = *rhs_rules;
-	my_rules.at_runtime = true;
-	my_rules.xlat.runtime_el = unlang_interpret_event_list(request);
-	my_rules.enumv = tmpl_attr_tail_da(map->lhs);
+	my_rhs_rules = *rhs_rules;
+	my_rhs_rules.at_runtime = true;
+	my_rhs_rules.xlat.runtime_el = unlang_interpret_event_list(request);
+	my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 
 	/*
 	 *	LHS is a structureal type.  The RHS is either empty (create empty LHS), or it's a string
 	 *	containing a list of attributes to create.
 	 */
-	if (!fr_type_is_leaf(my_rules.enumv->type)) {
-		my_rules.enumv = NULL;
+	if (!fr_type_is_leaf(my_rhs_rules.enumv->type)) {
+		my_rhs_rules.enumv = NULL;
 	}
 
 	/*
@@ -2679,14 +2679,14 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	No value, or no enum, parse it as a bare-word string.
 		 */
-		if (!rhs[0] || !my_rules.enumv) goto do_bare_word;
+		if (!rhs[0] || !my_rhs_rules.enumv) goto do_bare_word;
 
-		MEM(vb = fr_value_box_alloc(map, my_rules.enumv->type, my_rules.enumv));
+		MEM(vb = fr_value_box_alloc(map, my_rhs_rules.enumv->type, my_rhs_rules.enumv));
 
 		/*
 		 *	It MUST be the given data type.
 		 */
-		slen = fr_value_box_from_str(map, vb, my_rules.enumv->type, my_rules.enumv,
+		slen = fr_value_box_from_str(map, vb, my_rhs_rules.enumv->type, my_rhs_rules.enumv,
 					     rhs, strlen(rhs), NULL);
 		if (slen <= 0) goto error;
 
@@ -2722,12 +2722,24 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 			goto alloc_empty;
 		}
 
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len - 1),
-					 quote, value_parse_rules_quoted[quote], &my_rules);
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len),
+					 quote, value_parse_rules_quoted[quote], &my_rhs_rules);
 		if (slen < 0) {
 			REDEBUG3("Failed parsing right-hand side as quoted string.");
 		fail_rhs:
-			fr_strerror_printf("Failed parsing right-hand side: %s", fr_strerror());
+			fr_strerror_printf("Failed parsing right-hand side, %s", fr_strerror());
+			goto error;
+		}
+
+		fr_assert((size_t) slen <= (len + 1));
+
+		if (rhs[slen + 1] != rhs[0]) {
+			fr_strerror_printf("Failed parsing right-hand side, missing end quote in ... %s", rhs);
+			goto error;
+		}
+
+		if (rhs[slen + 2]) {
+			fr_strerror_const("Failed parsing right-hand side, unexpected data after end quote");
 			goto error;
 		}
 
@@ -2736,28 +2748,22 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 			goto alloc_empty;
 		}
 
-		/*
-		 *	Ignore any extra data after the string.
-		 *
-		 *	@todo - this should likely be a parse error: we didn't parse the entire string!
-		 */
-
 	} else if (rhs[0] == '&') {
 		/*
 		 *	No enums here.
 		 */
-		fr_assert(my_rules.attr.list_def == request_attr_request);
+		fr_assert(my_rhs_rules.attr.list_def == request_attr_request);
 
 	parse_as_attr:
-		my_rules.enumv = NULL;
+		my_rhs_rules.enumv = NULL;
 
-		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, &my_rules);
+		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, rhs_rules);
 		if (slen <= 0) {
 			REDEBUG3("Failed parsing right-hand side as attribute.");
 			goto fail_rhs;
 		}
 
-	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
+	} else if (!rhs[0] || !my_rhs_rules.enumv || (my_rhs_rules.enumv->type == FR_TYPE_STRING)) {
 	do_bare_word:
 		quote = T_BARE_WORD;
 
@@ -2778,7 +2784,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	Parse it as the given data type.
 		 */
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN_STR(rhs),
-					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
+					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rhs_rules);
 		if (slen <= 0) {
 			goto parse_as_attr;
 		}
