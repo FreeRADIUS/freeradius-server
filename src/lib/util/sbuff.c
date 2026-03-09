@@ -1216,7 +1216,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	if ((errno == ERANGE) && (num == LLONG_MIN)) goto underflow; \
-	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
@@ -1280,7 +1280,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	if (((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) goto overflow; \
-	if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
+	if (no_trailing && ((a_end = in->p + (end - buff)) < in->end)) { \
 		if (isdigit((uint8_t) *a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
 		    ((tolower((uint8_t) *a_end) >= 'a') && (tolower((uint8_t) *a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
