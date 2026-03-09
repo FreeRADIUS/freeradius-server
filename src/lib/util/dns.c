@@ -433,7 +433,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 	 *	The next label is still uncompressed, so we call
 	 *	ourselves recursively in order to compress it.
 	 */
-	if (*next < 63) {
+	if (*next <= 63) {
 		if (!dns_label_compress(packet, start, end, &search, next, label_end)) return false;
 
 		/*
@@ -520,7 +520,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 		 *	If the NEXT label is uncompressed, then skip
 		 *	it unless it's the suffix we're pointing to.
 		 */
-		if (*ptr < 63) {
+		if (*ptr <= 63) {
 			if (ptr != suffix) {
 				q = ptr;
 				continue;
@@ -606,7 +606,7 @@ ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, f
 	size_t			need = 0;
 
 	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value, lb);
-	if (slen < 0) return -1;
+	if (slen < 0) return -need;
 
 	fr_dbuff_advance(dbuff, (size_t) slen);
 	return slen;
@@ -943,7 +943,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		if ((p + 1) >= end) goto overflow;
 
 		/*
-		 *	0b10 and 0b10 are forbidden
+		 *	0b01 and 0b10 are forbidden
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
 			fr_strerror_const("Data with invalid high bits");
@@ -1184,7 +1184,7 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	}
 
 	/*
-	 *	0b10 and 0b10 are forbidden, and pointers can't point to other pointers.
+	 *	0b01 and 0b10 are forbidden, and pointers can't point to other pointers.
 	 */
 	if (*p > 63) return -(p - packet);
 
