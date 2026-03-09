@@ -22,6 +22,12 @@ decode-proto 00 01 00 6f 63 74 65 74 00 62 6c 6b 73 69 7a 65 7d 35 35 35 35 35 3
 match Packet contains malformed attribute
 
 #
+#	Client -> Server (Read-Request) - With invalid block-size. (min is 8)
+#
+decode-proto 00 01 66 00 6f 63 74 65 74 00 62 6c 6b 73 69 7a 65 00 37 00
+match Invalid Block-Size 7 value
+
+#
 #	Client -> Server (Read-Request) - With invalid block-size. (max is 65464)
 #
 decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00 62 6c 6b 73 69 7a 65 00 36 35 34 36 35 00
@@ -49,4 +55,4 @@ decode-proto 00 00 25 88
 match Invalid TFTP opcode 0000
 
 count
-match 19
+match 21

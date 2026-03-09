@@ -43,6 +43,12 @@ encode-proto -
 match 00 03 12 34 31 32 33 34 35
 
 #
+#	Server -> Client (Data) - empty data block signals end-of-file
+#
+decode-proto 00 03 00 01
+match Opcode = ::Data, Block = 1, Data = 0x
+
+#
 #	Client -> Server (Acknowledgement)
 #
 decode-proto 00 04 12 34
@@ -61,4 +67,4 @@ encode-proto -
 match 00 05 00 04 4b 61 6c 6f 73 20 46 61 75 6c 74 00
 
 count
-match 27
+match 29

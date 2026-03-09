@@ -178,7 +178,9 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 			blksize = strtol((const char *)p, &p_end, 10);
 
-			if (p == (const uint8_t *)p_end || blksize > FR_TFTP_BLOCK_MAX_SIZE) {
+			if ((p == (const uint8_t *)p_end) ||
+			    (blksize < FR_TFTP_BLOCK_MIN_SIZE) ||
+			    (blksize > FR_TFTP_BLOCK_MAX_SIZE)) {
 				fr_strerror_printf("Invalid Block-Size %ld value", blksize);
 				goto error;
 			}
@@ -217,7 +219,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 */
 		if (opcode != FR_OPCODE_VALUE_DATA) goto done;
 
-		if ((p + 2) >= end) goto error_malformed;
+		if ((p + 2) > end) goto error_malformed;
 
 		p += 2;
 
