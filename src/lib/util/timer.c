@@ -706,11 +706,11 @@ int fr_timer_delete(fr_timer_t **ev_p)
 	 */
 	if (likely(ret == 0)) {
 		*ev_p = NULL;
-	} else {
-		EVENT_DEBUG("Deleting timer %p failed: %s", ev, fr_strerror_peek());
+		return 0;
 	}
 
-	return 0;
+	EVENT_DEBUG("Deleting timer %p failed: %s", ev, fr_strerror_peek());
+	return -1;
 }
 
 /** Internal timestamp representing when the timer should fire
