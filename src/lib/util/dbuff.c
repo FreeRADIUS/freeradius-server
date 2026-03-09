@@ -337,7 +337,10 @@ int fr_dbuff_reset_talloc(fr_dbuff_t *dbuff)
 
 	fr_dbuff_set_to_start(dbuff);	/* Clear data */
 
-	if (fr_dbuff_used(dbuff) != tctx->init) {
+	/*
+	 *	If someone trimmed the buffer, then increase its size to the minimum required.
+	 */
+	if (fr_dbuff_len(dbuff) < tctx->init) {
 		uint8_t *new_buff;
 
 		new_buff = talloc_realloc(tctx->ctx, dbuff->buff, uint8_t, tctx->init);
