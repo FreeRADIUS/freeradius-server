@@ -675,7 +675,7 @@ int main(int argc, char **argv)
 		}
 
 		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
-			ERROR("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
+			DEBUG("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
 			raw_mode = true;
 		}
 	}
