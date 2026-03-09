@@ -84,6 +84,7 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 	do \
 		git checkout $i; \
 		if [ -e ./debian/control.in ] ; then \
+		        touch -t 202001010000 debian/control; \
 			debian/rules debian/control ; \
 		fi ; \
 		echo 'y' | \
