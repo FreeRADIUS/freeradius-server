@@ -652,8 +652,14 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 	va_start(ap, fmt);
 	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+		va_list copy;
+		va_copy(copy, ap);
+
+		dst_p->func(type, lvl, request, file, line, fmt, copy, dst_p->uctx);
+
+		va_end(copy);
 	}
+
 	if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
 		vlog_module_failure_msg(request, fmt, ap);
 	}
@@ -693,7 +699,12 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 		va_start(ap, fmt);
 		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+			va_list copy;
+			va_copy(copy, ap);
+
 			dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+
+			va_end(copy);
 		}
 		if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
 			vlog_module_failure_msg(request, fmt, ap);
@@ -888,17 +899,24 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 	if (marker_idx < 0) marker_idx = marker_idx * -1;
 
-	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
+	if ((size_t) marker_idx >= sizeof(marker_spaces)) {
 		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+
 		marker_idx -= offset;
-		str += offset;
-		str_len -= offset;
+
+		if (offset >= str_len) {
+			str += str_len;
+			str_len = 0;
+		} else {
+			str += offset;
+			str_len -= offset;
+		}
 
 		ellipses = "... ";
 	}
 
 	/*
-	 *  Don't want format markers being indented
+	 *	Don't want format markers being indented
 	 */
 	indent = request->log.indent;
 	request->log.indent.module = 0;
@@ -908,7 +926,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	error = fr_vasprintf(request, marker_fmt, ap);
 	va_end(ap);
 
-	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int)str_len, str);
+	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int) str_len, str);
 	log_request(type, lvl, request, file, line, "%s%.*s^ %s", ellipses, (int) marker_idx, marker_spaces, error);
 	talloc_free(error);
 
