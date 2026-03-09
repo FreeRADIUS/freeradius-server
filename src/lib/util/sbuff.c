@@ -326,8 +326,16 @@ size_t fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff,
 	/** Check for errors
 	 */
 	if (read < available) {
-		if (!feof(fctx->file)) {	/* It's a real error */
-			fr_strerror_printf("Error extending buffer: %s", fr_syserror(ferror(fctx->file)));
+		if (!feof(fctx->file)) {
+			/*
+			 *	It's an error, but ferror() returns a ??? error number,
+			 *	and not errno.
+			 *
+			 *	Posix says "The ferror() function shall not change the setting of errno if
+			 *	stream is valid".  And the return value is defined to be non-zero, but with no
+			 *	meaning associated with any non-zero values.
+			 */
+			fr_strerror_printf("Error extending buffer: %d", ferror(fctx->file));
 			*status |= FR_SBUFF_FLAG_EXTEND_ERROR;
 			return 0;
 		}
@@ -659,8 +667,8 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 	 *	are defined elsewhere without merging.
 	 */
 #if !defined(NDEBUG) && defined(WITH_VERIFY_PTR)
-	for (i = 0; i < a->len - 1; i++) fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
-	for (i = 0; i < b->len - 1; i++) fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
+	if (a->len) for (i = 0; i < a->len - 1; i++) fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
+	if (b->len) for (i = 0; i < b->len - 1; i++) fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
 #endif
 
 	/*
@@ -686,7 +694,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 			tmp[num++] = &b->elem[j++];
 		}
 
-		fr_assert(num <= UINT8_MAX);
+		fr_assert(num < SBUFF_CHAR_CLASS);
 	}
 
 	/*
@@ -2030,7 +2038,7 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, siz
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
-	if (!needle_len) return 0;
+	if (!needle_len) return NULL;
 
 	/*
 	 *	Needle bigger than haystack
@@ -2083,7 +2091,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle,
 	CHECK_SBUFF_INIT(sbuff);
 
 	if (needle_len == SIZE_MAX) needle_len = strlen(needle);
-	if (!needle_len) return 0;
+	if (!needle_len) return NULL;
 
 	/*
 	 *	Needle bigger than haystack
@@ -2251,7 +2259,7 @@ static char const *sbuff_print_char(char c)
 		if (i >= NUM_ELEMENTS(str)) i = 0;
 
 		if (unprintables[(uint8_t)c]) {
-			snprintf(str[i], sizeof(str[i]), "\\x%x", c);
+			snprintf(str[i], sizeof(str[i]), "\\x%02x", (uint8_t) c);
 			return str[i++];
 		}
 
@@ -2263,7 +2271,7 @@ static char const *sbuff_print_char(char c)
 
 void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 {
-	uint8_t i;
+	int i;
 
 	fprintf(fp, "Escape rules %s (%p)\n", escapes->name, escapes);
 	fprintf(fp, "chr     : %c\n", escapes->chr ? escapes->chr : ' ');
@@ -2271,13 +2279,13 @@ void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 	fprintf(fp, "do_oct  : %s\n", escapes->do_oct ? "yes" : "no");
 
 	fprintf(fp, "substitutions:\n");
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < SBUFF_CHAR_CLASS; i++) {
 		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s\n",
 						   sbuff_print_char((char)i),
 						   sbuff_print_char((char)escapes->subs[i]));
 	}
-	fprintf(fp, "skipes:\n");
-	for (i = 0; i < UINT8_MAX; i++) {
+	fprintf(fp, "skips:\n");
+	for (i = 0; i < SBUFF_CHAR_CLASS; i++) {
 		if (escapes->skip[i]) fprintf(fp, "\t%s\n", sbuff_print_char((char)i));
 	}
 }
