@@ -81,9 +81,7 @@ env-5hs-autoaccept:
 	cd $(FREERADIUS_MULTI_SERVER_BUILD_DIR_PATH_ABS); \
 	\
 	if [ ! -d freeradius-multi-server/.git ]; then \
-		git clone $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_REPO); \
-		cd freeradius-multi-server; \
-		git checkout $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_BRANCH); \
+		( git clone $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_REPO) freeradius-multi-server && cd freeradius-multi-server && git checkout $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_BRANCH) && cd freeradius-multi-server && git checkout $(FREERADIUS_MULTI_SERVER_FRAMEWORK_GIT_BRANCH) ); \
 	else \
 		#( cd freeradius-multi-server && git pull ); \
 		#( cd freeradius-multi-server ); \
