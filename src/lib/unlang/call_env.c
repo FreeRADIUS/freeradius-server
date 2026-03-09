@@ -651,8 +651,6 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 	size_t	pair_count, tmpl_count = 0;
 	CONF_PAIR const	*cp;
 
-	*names_len = 0;
-
 	while (call_env->name) {
 		if (call_env_is_subsection(call_env->flags)) {
 			CONF_SECTION const *subcs;
@@ -803,7 +801,7 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, call_env_ctx_t const *cec)
 {
 	unsigned int	count;
-	size_t		names_len;
+	size_t		names_len = 0;
 	call_env_t	*call_env;
 
 	/*
@@ -837,3 +835,4 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 
 	return call_env;
 }
+
