@@ -551,6 +551,7 @@ static ssize_t encode_data_string(char *buffer, uint8_t *output, size_t outlen)
 			break;
 		}
 
+		p += 2;
 		outlen--;
 		slen++;
 	}
