@@ -466,6 +466,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 			tag = !fastauth ? ID_TAG_AKA_PRIME_PSEUDONYM_B64 : ID_TAG_AKA_PRIME_FASTAUTH_B64;
 		} else {
 			REDEBUG("request.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
+			goto error;
 		}
 
 		id_p = id;
