@@ -391,6 +391,13 @@ ATTRIBUTE	Alc-Onetime-Http-Redirect-Reactivate	185	string
 ATTRIBUTE	Alc-ToServer-Dhcp6-Options		191	octets
 ATTRIBUTE	Alc-ToClient-Dhcp6-Options		192	octets
 
+ATTRIBUTE	Alc-IPv6-Acct-Input-Packets		194	uint32
+ATTRIBUTE	Alc-IPv6-Acct-Input-Octets		195	uint32
+ATTRIBUTE	Alc-IPv6-Acct-Input-Gigawords		196	uint32
+ATTRIBUTE	Alc-IPv6-Acct-Output-Packets		197	uint32
+ATTRIBUTE	Alc-IPv6-Acct-Output-Octets		198	uint32
+ATTRIBUTE	Alc-IPv6-Acct-Output-Gigawords		199	uint32
+
 #
 #  MUST have renew time <= rebind time <= preferred lifetime <= valid lifetime
 #
