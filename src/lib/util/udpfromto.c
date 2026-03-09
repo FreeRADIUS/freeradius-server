@@ -218,7 +218,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	 *	If the recvmsg() flags aren't defined, fall back to
 	 *	using recvfrom().
 	 */
-	to = NULL:
+	to = NULL;
 #endif
 
 	/*
