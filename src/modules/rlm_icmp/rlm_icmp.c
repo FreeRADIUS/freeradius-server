@@ -360,7 +360,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
 			   UNUSED int fd_errno, void *uctx)
 {
-	module_ctx_t const	*mctx = talloc_get_type_abort(uctx, module_ctx_t);
+	module_thread_inst_ctx_t const *mctx = talloc_get_type_abort(uctx, module_thread_inst_ctx_t);
 	rlm_icmp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 
 	ERROR("%s - Failed reading from ICMP socket - Closing it", mctx->mi->name);
