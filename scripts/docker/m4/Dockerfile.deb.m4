@@ -36,6 +36,7 @@ RUN [ -z "$release" ] || git checkout ${release} ; \
 #  Install build dependencies
 #
 RUN if [ -e ./debian/control.in ]; then \
+        touch -t 202001010000 debian/control; \
         debian/rules debian/control; \
     fi; \
     echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control
