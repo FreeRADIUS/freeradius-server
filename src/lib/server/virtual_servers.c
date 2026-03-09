@@ -271,7 +271,10 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		cf_log_perr(ci, "Failed loading process module");
 		return -1;
 	}
-	if (unlikely(module_instance_conf_parse(mi, mi->conf) < 0)) goto error;
+	if (unlikely(module_instance_conf_parse(mi, mi->conf) < 0)) {
+		talloc_free(mi);
+		goto error;
+	}
 
 	process = (fr_process_module_t const *)mi->module->exported;
 	if (!*(process->dict)) {
@@ -488,6 +491,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	}
 
 	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) {
+		talloc_free(mi);
 		cf_log_perr(listener_cs, "Failed parsing listen section");
 		return -1;
 	}
@@ -1822,7 +1826,10 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 		return NULL;
 	}
 
-	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0) return NULL;
+	if (define_server_attrs(cs, dict, UNCONST(fr_dict_attr_t *, fr_dict_root(dict)), fr_dict_root(dict_def)) < 0){
+		talloc_free(dict);
+		return NULL;
+	}
 
 	/*
 	 *	Replace the original dictionary with the new one.
