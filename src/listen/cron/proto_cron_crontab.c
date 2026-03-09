@@ -238,6 +238,7 @@ static int parse_field(CONF_ITEM *ci, char const **start, char const *name,
 		/*
 		 *	We're at the end of the field, stop.
 		 */
+		fields |= ((uint64_t) 1) << num;
 		break;
 	}
 
@@ -485,7 +486,7 @@ static bool get_next(struct tm *tm, cron_tab_t const *tab)
 	 *	Simplified process for "do each thing".
 	 */
 	if (tab->wildcard) {
-		if (num < tab->max) goto done;
+		if (num <= tab->max) goto done;
 		goto next;
 	}
 
