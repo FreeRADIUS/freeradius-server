@@ -1212,7 +1212,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		ERROR("Failed retrieving pool stats: Expected array got %s",
-		      fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		goto error;
 	}
 
