@@ -272,7 +272,7 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 			return NULL;\
 		}\
 		tmpl = &(*tmpl)->next;\
-		ctx = *tmpl;\
+		ctx = last;\
 		} while (0)
 
 
