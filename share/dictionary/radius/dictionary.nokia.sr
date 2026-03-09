@@ -536,7 +536,7 @@ ATTRIBUTE	Onetime-Http-Redirect-Reactivate	185	string
 ATTRIBUTE	ToServer-Dhcp6-Options			191	group ref=@DHCPv6
 ATTRIBUTE	ToClient-Dhcp6-Options			192	group ref=@DHCPv6
 
-ATTRIBUTE	IPv6-Acct-Input-Packet			194	uint32
+ATTRIBUTE	IPv6-Acct-Input-Packets			194	uint32
 ATTRIBUTE	IPv6-Acct-Input-Octets			195	uint32
 ATTRIBUTE	IPv6-Acct-Input-Gigawords		196	uint32
 ATTRIBUTE	IPv6-Acct-Output-Packets		197	uint32
