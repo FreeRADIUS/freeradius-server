@@ -413,7 +413,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Create a fake client.
 	 */
 	client = inst->default_client = talloc_zero(inst, fr_client_t);
-	if (!inst->default_client) return 0;
+	if (!inst->default_client) return -1;
 
 	client->ipaddr = (fr_ipaddr_t ) {
 		.af = AF_INET6,
