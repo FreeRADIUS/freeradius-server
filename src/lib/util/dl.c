@@ -258,7 +258,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 		}
 
 		if (init->func(dl, sym, init->uctx) < 0) {
-			fr_strerror_printf("Initialiser \"%s\" failed", buffer);
+			fr_strerror_printf("Initialiser failed for %s", dl->name);
 			return -1;
 		}
 	}
@@ -830,7 +830,7 @@ int dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir)
 	char *new;
 
 	if (!dl_loader->lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
 			fr_strerror_const("Failed allocating memory for dl search path");
@@ -860,7 +860,7 @@ int dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir)
 	char *new;
 
 	if (!dl_loader->lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
 			fr_strerror_const("Failed allocating memory for dl search path");
@@ -976,11 +976,11 @@ bool dl_loader_set_static(dl_loader_t *dl_loader, bool do_static)
  */
 void dl_loader_debug(FILE *fp, dl_loader_t *dl)
 {
-	fprintf(fp, "dl_loader %p", dl);
+	fprintf(fp, "dl_loader %p\n", dl);
 	fprintf(fp, "lib_dir           : %s\n", dl->lib_dir);
 	fprintf(fp, "do_dlclose        : %s\n", dl->do_dlclose ? "yes" : "no");
 	fprintf(fp, "uctx              : %p\n", dl->uctx);
-	fprintf(fp, "uctx_free         : %s\n", dl->do_dlclose ? "yes" : "no");
+	fprintf(fp, "uctx_free         : %s\n", dl->uctx_free ? "yes" : "no");
 	fprintf(fp, "defer_symbol_init : %s\n", dl->defer_symbol_init ? "yes" : "no");
 
 	fr_dlist_foreach(&dl->sym_init, dl_symbol_init_t, sym) {
