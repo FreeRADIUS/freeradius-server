@@ -1169,7 +1169,7 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	if (*p >= 0xc0) {
 		uint16_t offset;
 
-		if ((end - packet) < 2) {
+		if ((end - p) < 2) {
 			return -(p - packet);
 		}
 
