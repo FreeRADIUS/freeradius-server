@@ -335,6 +335,11 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		       PQdb(c->db), PQhost(c->db), PQserverVersion(c->db), PQprotocolVersion(c->db),
 		       PQbackendPID(c->db));
 		PQsetnonblocking(c->db, 1);
+
+		*h = c;
+		if (sql->config.connect_query) connection_add_watch_post(conn, CONNECTION_STATE_CONNECTED,
+									 _sql_connect_query_run, true, sql);
+		
 		connection_signal_connected(c->conn);
 		return CONNECTION_STATE_CONNECTING;
 
