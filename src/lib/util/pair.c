@@ -619,14 +619,12 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 	unknown = fr_dict_attr_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
 
+	fr_value_box_clear(&vp->data);
+
 	vp->da = unknown;
 	fr_assert(vp->da->type == FR_TYPE_OCTETS);
 
-	fr_value_box_init(&vp->data, FR_TYPE_OCTETS, NULL, true);
-
-	fr_pair_value_memdup(vp, data, data_len, true);
-
-	return 0;
+	return fr_value_box_memdup(vp, &vp->data, NULL, data, data_len, true);
 }
 
 /** Iterate over pairs with a specified da
@@ -1167,7 +1165,7 @@ fr_pair_t *_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
  *
  * @param[in] cursor	to initialise.
  * @param[in] list	to iterate over.
- * @param[in] da	who's decentness to search for.
+ * @param[in] da	who's descendants to search for.
  * @param[in] is_const	whether the fr_pair_list_t is const.
  * @return
  *	- The first matching pair.
@@ -2299,7 +2297,7 @@ bool fr_pair_immutable(fr_pair_t const *vp)
 			continue;
 		}
 
-		fr_assert(fr_type_is_structural(vp->vp_type));
+		fr_assert(fr_type_is_structural(child->vp_type));
 
 		if (fr_pair_immutable(child)) return true;
 	}
@@ -2473,6 +2471,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 {
 	fr_pair_t	*tlv;
 	bool		found = false;
+	fr_pair_list_t	list;
 
 	if (!fr_type_is_structural(parent_da->type)) return -1;
 
@@ -2491,17 +2490,24 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		return 1;
 	}
 
+	fr_pair_list_init(&list);
+
 	fr_pair_list_foreach(from, vp) {
 		fr_pair_t *new_vp;
 
 		if (!fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
 
 		new_vp = fr_pair_copy(ctx, vp);
-		if (unlikely(!new_vp)) return -1;
+		if (unlikely(!new_vp)) {
+			fr_pair_list_free(&list);
+			return -1;
+		}
 
-		fr_pair_append(to, new_vp);
+		fr_pair_append(&list, new_vp);
 		found = true;
 	}
+
+	fr_pair_list_append(to, &list);
 
 	return found;
 }
@@ -2527,6 +2533,9 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	fr_pair_t const	*vp;
 	fr_pair_t	*new_vp;
 	unsigned int	cnt = 0;
+	fr_pair_list_t	list;
+
+	fr_pair_list_init(&list);
 
 	if (!start) start = fr_pair_list_head(from);
 
@@ -2534,10 +2543,17 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	     vp && ((count == 0) || (cnt < count));
 	     vp = fr_pair_list_next(from, vp), cnt++) {
 		PAIR_VERIFY_WITH_LIST(from, vp);
+
 		new_vp = fr_pair_copy(ctx, vp);
-		if (unlikely(!new_vp)) return -1;
-		fr_pair_append(to, new_vp);
+		if (unlikely(!new_vp)) {
+			fr_pair_list_free(&list);
+			return -1;
+		}
+
+		fr_pair_append(&list, new_vp);
 	}
+
+	fr_pair_list_append(to, &list);
 
 	return cnt;
 }
@@ -3122,7 +3138,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		fr_fatal_assert_msg(vp->da->parent == parent_da,
 				    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
 				    "expected parent %s, found different parent %s",
-				    file, line, vp->da->name, vp->da->parent->name, parent_da->name);
+				    file, line, vp->da->name, parent_da->name, vp->da->parent->name);
 	}
 
 	if (list) {
@@ -3258,7 +3274,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		}
 		if (vp->vp_ip.prefix != 32) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address prefix "
-					     "set correctly for IPv4 address.  Expected %i got %i",
+					     "not set correctly for IPv4 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     32, vp->vp_ip.prefix);
 		}
@@ -3324,22 +3340,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	if (vp->da->flags.is_unknown || vp->vp_raw) {
 		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
 
-	} else {
-		fr_dict_attr_t const *da;
-
-		da = vp->da;
-		if (da != vp->da) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t "
-					     "dictionary pointer %p \"%s\" (%s) "
-					     "and global dictionary pointer %p \"%s\" (%s) differ",
-					     file, line, vp->da, vp->da->name,
-					     fr_type_to_str(vp->vp_type),
-					     da, da->name,
-					     fr_type_to_str(da->type));
-		}
-	}
-
-	if (vp->vp_raw || vp->da->flags.is_unknown) {
 		/*
 		 *	Raw or unknown attributes can have specific data types.  See DER and CBOR.
 		 */
