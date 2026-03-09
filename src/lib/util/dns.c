@@ -637,7 +637,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 				    fr_value_box_t const *value, fr_dns_labels_t *lb)
 {
 	uint8_t *label;
-	uint8_t const *end = buf + buf_len;
+	uint8_t const *end;
 	uint8_t const *q, *strend, *last;
 	uint8_t *data;
 	bool underscore = true;
@@ -646,6 +646,8 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 		fr_strerror_const("Invalid input");
 		return -1;
 	}
+
+	end = buf + buf_len;
 
 	/*
 	 *	Don't allow stupidities
