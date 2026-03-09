@@ -519,6 +519,7 @@ static void test_roundtrip_simple(void)
 	enc_len = encode_label(buf, sizeof(buf), buf, "example.com", false, NULL);
 	TEST_CHECK(enc_len > 0);
 	TEST_MSG("encode returned %zd", enc_len);
+	if (enc_len <= 0) return;
 
 	dec_len = fr_dns_label_to_value_box(ctx, &vb_out, buf, enc_len, buf, false, NULL);
 	TEST_CHECK(dec_len > 0);
@@ -541,6 +542,7 @@ static void test_roundtrip_trailing_dot(void)
 
 	enc_len = encode_label(buf, sizeof(buf), buf, "example.com.", false, NULL);
 	TEST_CHECK(enc_len > 0);
+	if (enc_len <= 0) return;
 
 	dec_len = fr_dns_label_to_value_box(ctx, &vb_out, buf, enc_len, buf, false, NULL);
 	TEST_CHECK(dec_len > 0);
@@ -561,6 +563,7 @@ static void test_roundtrip_root(void)
 
 	enc_len = encode_label(buf, sizeof(buf), buf, ".", false, NULL);
 	TEST_CHECK(enc_len == 1);
+	if (enc_len <= 0) return;
 
 	dec_len = fr_dns_label_to_value_box(ctx, &vb_out, buf, enc_len, buf, false, NULL);
 	TEST_CHECK(dec_len > 0);
@@ -600,6 +603,7 @@ static void test_roundtrip_case_preservation(void)
 
 	enc_len = encode_label(buf, sizeof(buf), buf, "WWW.Example.COM", false, NULL);
 	TEST_CHECK(enc_len > 0);
+	if (enc_len <= 0) return;
 
 	dec_len = fr_dns_label_to_value_box(ctx, &vb_out, buf, enc_len, buf, false, NULL);
 	TEST_CHECK(dec_len > 0);
