@@ -5,6 +5,7 @@ SUBMAKEFILES := \
 	dcursor_tests.mk \
 	dcursor_typed_tests.mk \
 	dlist_tests.mk \
+	dns_tests.mk \
 	edit_tests.mk \
 	fifo_tests.mk \
 	hash_tests.mk \
