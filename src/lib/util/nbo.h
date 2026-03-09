@@ -198,33 +198,39 @@ static inline uint64_t fr_nbo_to_uint64v(uint8_t const *data, size_t data_len)
 	uint64_t num = 0;
 	uint64_t nbo;
 
-	if (unlikely(data_len > sizeof(uint64_t))) return 0;
+	if (unlikely(data_len > sizeof(nbo))) return 0;
 
 	/*
 	 *	Copy at an offset into memory
 	 *	allocated for the uin64_t
 	 */
-	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
+	memcpy(((uint8_t *)&num) + (sizeof(nbo) - data_len), data, data_len);	/* aligned */
 	fr_nbo_from_uint64((uint8_t *)&nbo, num);
 
 	return nbo;
 }
 
-static inline uint64_t fr_nbo_to_int64v(uint8_t const *data, size_t data_len)
+/** Read a signed 64bit integer from wire format (big endian) with a variable length encoding
+ *
+ * @param[in] data	Buffer containing the number.
+ * @param[in] data_len	Length of number.
+ * @return a 64 bit signed integer of native endianness.
+ */
+static inline int64_t fr_nbo_to_int64v(uint8_t const *data, size_t data_len)
 {
 	int64_t num = 0;
-	uint64_t nbo;
+	int64_t nbo;
 
-	if (unlikely(data_len > sizeof(uint64_t))) return 0;
+	if (unlikely(data_len > sizeof(nbo))) return 0;
 
 	/*
 	 *	Copy at an offset into memory
 	 *	allocated for the uin64_t
 	 */
-	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
-	if (*data & 0x80) memset(((uint8_t *)&num) + data_len, 0xff, sizeof(num) - data_len);
+	memcpy(((uint8_t *)&num) + (sizeof(nbo) - data_len), data, data_len);	/* aligned */
+	if (*data & 0x80) memset(((uint8_t *)&num), 0xff, sizeof(num) - data_len);
 
-	fr_nbo_from_uint64((uint8_t *)&nbo, num);
+	fr_nbo_from_int64((uint8_t *)&nbo, num);
 
 	return nbo;
 }
