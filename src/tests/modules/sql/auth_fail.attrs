@@ -2,7 +2,7 @@
 #  Input packet
 #
 Packet-Type = Access-Request
-User-Name = "user_auth"
+User-Name = "user_auth_fail"
 User-Password = "password"
 NAS-IP-Address = "1.2.3.4"
 
