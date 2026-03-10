@@ -286,6 +286,8 @@ static void unlang_dump(unlang_t *c, int depth)
 	{
 		unlang_edit_t *edit;
 
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+
 		edit = unlang_generic_to_edit(c);
 		map = NULL;
 		while ((map = map_list_next(&edit->maps, map))) {
