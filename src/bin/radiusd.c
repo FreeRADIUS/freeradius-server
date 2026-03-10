@@ -612,7 +612,10 @@ do { \
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
 
-	if (!config->suppress_secrets) default_log.suppress_secrets = false;
+	/*
+	 *	Suppress secrets if asked, and if at a low debug level.
+	 */
+	default_log.suppress_secrets = config->suppress_secrets && (fr_debug_lvl <= 2);
 
 	/*
 	 *  Check we're the only process using this config.
