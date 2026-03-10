@@ -646,8 +646,7 @@ authenticate:
 					if (!size) {
 						RWDEBUG("Unprintable characters in the password.  Double-check the "
 							"shared secret on the server and the NAS!");
-						if (request->root->suppress_secrets &&
-						    (rad_debug_lvl < 3)) {
+						if (request->root->suppress_secrets) {
 							RWDEBUG("You can see the contents of passwords (instead of <<secret>>) by setting `suppress_secrets=no` in the main configuration file.");
 						}
 

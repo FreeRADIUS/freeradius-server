@@ -617,9 +617,16 @@ int main(int argc, char *argv[])
 	 *	Tell people why secrets are being omitted, in the hope
 	 *	that people will actually read the messages.
 	 */
-	if (main_config.suppress_secrets && (rad_debug_lvl < 3)) {
-		INFO("All secret information will be replaced with the string '<<secret>>'");
-		INFO("To see the contents of passwords, set `suppress_secrets=no` in the main configuration file.");
+	if (main_config.suppress_secrets) {
+		if (rad_debug_lvl && (rad_debug_lvl <= 2)) {
+			INFO("All secret information will be replaced with the string '<<secret>>'");
+			INFO("To see the contents of passwords, set `suppress_secrets=no` in the main configuration file.");
+		} else if (rad_debug_lvl > 2) {
+			/*
+			 *	High debug level: we still print secrets.
+			 */
+			main_config.suppress_secrets = false;
+		}
 	}
 
 	/*
