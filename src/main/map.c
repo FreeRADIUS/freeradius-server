@@ -1190,8 +1190,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			RDEBUG2("No attributes updated for RHS %s", map->rhs->name);
 			return rcode;
 		}
-	} else {
-		if (rad_debug_lvl) map_debug_log(request, map, NULL);
 	}
 
 	/*
@@ -1651,8 +1649,6 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
 
-	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
-
 	switch (map->rhs->type) {
 	/*
 	 *	Just print the value being assigned
@@ -1684,6 +1680,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		char		attr[256];
 		char		quote = '\0';
 		vp_tmpl_t	vpt;
+
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
 		 *	this is a combination of the original list tmpl, and values from
@@ -1732,16 +1729,16 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	switch (map->lhs->type) {
 	case TMPL_TYPE_LIST:
 		RDEBUG("%.*s:%s %s %s", (int)map->lhs->len, map->lhs->name, vp ? vp->da->name : "",
-		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), ATTRIBUTE_SECRET(vp, value));
+		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 
 	case TMPL_TYPE_ATTR:
 		RDEBUG("%s %s %s", map->lhs->name,
-		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), ATTRIBUTE_SECRET(vp, value));
+		       fr_int2str(fr_tokens, vp->op, "<INVALID>"), ATTRIBUTE_SECRET(vp, value));
 		break;
 
 	default:
-		RDEBUG("map %s = %s", fr_int2str(tmpl_names, map->lhs->type, "???"), ATTRIBUTE_SECRET(vp, value));
+		RDEBUG("map %s = %s", fr_int2str(tmpl_names, map->lhs->type, "???"), value);
 		break;
 	}
 
