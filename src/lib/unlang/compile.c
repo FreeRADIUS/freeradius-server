@@ -2267,7 +2267,7 @@ bool unlang_compile_is_keyword(const char *name)
 {
 	if (!name || !*name) return false;
 
-	return (name_to_op(name) != 0);
+	return (name_to_op(name) != NULL);
 }
 
 /*
