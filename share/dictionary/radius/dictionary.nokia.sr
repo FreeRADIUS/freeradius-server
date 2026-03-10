@@ -557,6 +557,9 @@ ATTRIBUTE	Wlan-SSID-VLAN				206	string
 
 ATTRIBUTE	UPnP-Sub-Override-Policy		217	string
 
+ATTRIBUTE	Error-Code				226	uint32
+ATTRIBUTE	Error-Message				227	string
+
 ATTRIBUTE	Trigger-Acct-Interim			228	string
 
 ATTRIBUTE	Acct-Interim-Level			232	uint32	has_tag
