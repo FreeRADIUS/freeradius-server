@@ -415,7 +415,7 @@ static ssize_t fr_der_encode_ipv4_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) ((8 - (vp->vp_ip.prefix & 0x07)) & 0x07));
 
 	len = (vp->vp_ip.prefix + 0x07) >> 3;
 
@@ -486,7 +486,7 @@ static ssize_t fr_der_encode_ipv6_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) ((8 - (vp->vp_ip.prefix & 0x07)) & 0x07));
 
 	len = (vp->vp_ip.prefix + 0x07) >> 3;
 
