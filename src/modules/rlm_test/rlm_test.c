@@ -134,8 +134,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr", FR_TYPE_IPV4_ADDR, 0, rlm_test_t, ipv4_addr), .dflt = "*" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr_m", FR_TYPE_IPV4_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_prefix), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_prefix_m), .dflt = "192.168.0.1/24" },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr", FR_TYPE_IPV6_ADDR, 0, rlm_test_t, ipv6_addr), .dflt = "*" },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr_m", FR_TYPE_IPV6_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
