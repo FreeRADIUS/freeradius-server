@@ -22,6 +22,9 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	* Print log message if the server receives a correct authenticated
 	  proxy response packet, but which has an unexpected code.
 	  e.g. received Access-Accept in response to an Accounting-Request.
+	* New installations now set "suppress_secrets=true" by default.
+	  The server also prints messages in debug mode which explains why
+	  the secrets are being suppressed.
 
 	Bug fixes
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
