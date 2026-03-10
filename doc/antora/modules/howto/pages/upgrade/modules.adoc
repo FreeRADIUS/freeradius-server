@@ -253,6 +253,12 @@ to store session data, instead of radutmp.
 `REST-HTTP-Code` is now inserted into the `request` list instead
 of the `reply.` list.
 
+[#rlm_securid]
+=== rlm_securid
+
+This module has been removed.  The modern way to check SecurID tokens
+is via a REST API.  See the SecurID documentation for examples.
+
 [#rlm_sql]
 === rlm_sql
 

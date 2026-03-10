@@ -29,6 +29,7 @@
 **** xref:howto:upgrade/modules.adoc#rlm_python[Python]
 **** xref:howto:upgrade/modules.adoc#rlm_radutmp[Radutmp]
 **** xref:howto:upgrade/modules.adoc#rlm_rest[REST]
+**** xref:howto:upgrade/modules.adoc#rlm_securid[Securid]
 **** xref:howto:upgrade/modules.adoc#rlm_sql[SQL]
 ***** xref:howto:upgrade/modules.adoc#profiles[Profiles]
 ***** xref:howto:upgrade/modules.adoc#rlm_sql_mysql[MYSQL]

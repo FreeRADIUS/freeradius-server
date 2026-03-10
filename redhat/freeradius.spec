@@ -7,7 +7,6 @@
 %bcond_with rlm_lua
 %bcond_with rlm_mruby
 %bcond_with rlm_opendirectory
-%bcond_with rlm_securid
 %bcond_with rlm_sigtran
 
 #
@@ -712,7 +711,6 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %if 0%{?rhel} < 9
         --with-rlm-python-config-bin=/usr/bin/python3.8-config \
 %endif
-        %{autoconf_mod_with rlm_securid} \
         %{autoconf_mod_with rlm_sigtran} \
         %{autoconf_mod_with rlm_sql_oracle} \
 	%{autoconf_mod_with rlm_unbound} \
