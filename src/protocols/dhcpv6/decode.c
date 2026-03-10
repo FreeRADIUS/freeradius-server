@@ -248,56 +248,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			  fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	uint32_t		pen;
-	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp;
-	fr_dhcpv6_decode_ctx_t	*packet_ctx = decode_ctx;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_vsa");
-
-	if (!fr_cond_assert_msg(parent->type == FR_TYPE_VSA,
-				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'vsa'",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
-
-	/*
-	 *	Enterprise code plus at least one option header
-	 */
-	if (data_len < 8) return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
-
-	memcpy(&pen, data, sizeof(pen));
-	pen = htonl(pen);
-
-	/*
-	 *	Verify that the parent (which should be a VSA)
-	 *	contains a fake attribute representing the vendor.
-	 *
-	 *	If it doesn't then this vendor is unknown, but we know
-	 *	vendor attributes have a standard format, so we can
-	 *	decode the data anyway.
-	 */
-	da = fr_dict_attr_child_by_num(parent, pen);
-	if (!da) {
-		fr_dict_attr_t *n;
-
-		n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, pen);
-		if (!n) return PAIR_DECODE_OOM;
-		da = n;
-	}
-
-	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
-
-	vp = fr_pair_find_by_da(out, NULL, da);
-	if (vp) {
-		return fr_pair_tlvs_from_network(vp, &vp->vp_group, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, false);
-	}
-
-	return fr_pair_tlvs_from_network(ctx, out, da, data + 4, data_len - 4, decode_ctx, decode_option, NULL, true);
-}
-
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx)
@@ -366,26 +316,74 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
-		bool append = false;
-		fr_pair_t *vp;
+		bool			append_vsa = false;
+		bool			append_vp = false;
+		uint32_t		pen;
+		fr_dict_attr_t const	*vendor;
+		fr_pair_t		*vsa, *vp;
+		fr_pair_list_t		list;
 
-		vp = fr_pair_find_by_da(out, NULL, da);
+		/*
+		 *	Insufficient room for a 4-octet enterprise
+		 *	code, plus at least one option header.
+		 */
+		if (len < 8) goto raw;
+
+		pen = fr_nbo_to_uint32(data + 4);
+
+		/*
+		 *	Verify that the VSA contains a vendor.
+		 *
+		 *	If it doesn't then this vendor is unknown, but we know
+		 *	vendor attributes have a standard format, so we can
+		 *	decode the data anyway.
+		 */
+		vendor = fr_dict_attr_child_by_num(da, pen);
+		if (!vendor) {
+			fr_dict_attr_t *n;
+
+			n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, da, pen);
+			if (!n) return PAIR_DECODE_OOM;
+			vendor = n;
+		}
+
+		vsa = fr_pair_find_by_da(out, NULL, da);
+		if (!vsa) {
+			vsa = fr_pair_afrom_da(ctx, da);
+			if (!vsa) return PAIR_DECODE_FATAL_ERROR;
+			PAIR_ALLOCED(vsa);
+
+			append_vsa = true;
+		}
+
+		vp = NULL;
+		if (!append_vsa) vp = fr_pair_find_by_da(&vsa->vp_group, NULL, vendor);
+
 		if (!vp) {
-			vp = fr_pair_afrom_da(ctx, da);
+			vp = fr_pair_afrom_da(vsa, vendor);
 			if (!vp) return PAIR_DECODE_FATAL_ERROR;
 			PAIR_ALLOCED(vp);
 
-			append = true;
+			append_vp = true;
 		}
 
-		slen = decode_vsa(vp, &vp->vp_group, da, data + 4, len, decode_ctx);
-		if (append) {
-			if (slen < 0) {
-				TALLOC_FREE(vp);
-			} else {
-				fr_pair_append(out, vp);
-			}
+		fr_pair_list_init(&list);
+		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, data + 8, len - 4,
+						 decode_ctx, decode_option, NULL, false);
+
+		if (slen < 0) {
+			fr_pair_list_free(&list);
+			if (append_vp) talloc_free(vp);
+			if (append_vsa) talloc_free(vsa);
+			goto raw;
 		}
+
+		/*
+		 *	The child list contains vendors, and we have to merge the vendors 
+		 */
+		fr_pair_list_append(&vp->vp_group, &list);
+		if (append_vp) fr_pair_append(&vsa->vp_group, vp);
+		if (append_vsa) fr_pair_append(out, vsa);
 
 	} else if (da->type == FR_TYPE_TLV) {
 		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
