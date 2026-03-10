@@ -412,6 +412,9 @@ ATTRIBUTE	Alc-Wlan-SSID-VLAN			206	string
 
 ATTRIBUTE	Alc-UPnP-Sub-Override-Policy		217	string
 
+ATTRIBUTE	Alc-Error-Code				226	uint32
+ATTRIBUTE	Alc-Error-Message			227	string
+
 ATTRIBUTE	Alc-Trigger-Acct-Interim		228	string
 
 ATTRIBUTE	Alc-Acct-Interim-Level			232	integer	has_tag
