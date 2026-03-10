@@ -351,7 +351,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			 *	Can't concatenate empty results.
 			 */
 			if (!box) {
-				RWDEBUG("%s %s ... - Assignment failed to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
+				RWDEBUG("%s %s ... - Assignment failed due to having no value on right-hand side", map->lhs->name, fr_tokens[map->op]);
 				return -1;
 			}
 
