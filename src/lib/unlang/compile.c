@@ -1986,13 +1986,13 @@ int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rul
 	/*
 	 *	Copy the children over.
 	 */
+	var->max_attr++;
 	if (fr_type_is_structural(type) && (type != FR_TYPE_GROUP)) {
 		fr_fatal_assert(ref != NULL);
 
 		if (fr_dict_attr_acopy_local(da, ref) < 0) goto fail;
 	}
 
-	var->max_attr++;
 
 	return 0;
 }
