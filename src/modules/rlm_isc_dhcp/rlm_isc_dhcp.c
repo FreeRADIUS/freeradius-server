@@ -313,7 +313,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
 			}
 		}
 
-		if ((size_t) (q - state->string) >= sizeof(state->string)) {
+		if ((size_t) (q - state->string) >= sizeof(state->string) - 1) {
 			fr_strerror_const("string is too long");
 			return -1;
 		}
@@ -1686,7 +1686,7 @@ static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_i
 static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, sname)) {
-		fr_strerror_const("filename is too long");
+		fr_strerror_const("server name is too long");
 		return -1;
 	}
 
