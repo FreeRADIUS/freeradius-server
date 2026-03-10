@@ -614,6 +614,15 @@ int main(int argc, char *argv[])
 	exec_trigger(NULL, NULL, "server.start", false);
 
 	/*
+	 *	Tell people why secrets are being omitted, in the hope
+	 *	that people will actually read the messages.
+	 */
+	if (main_config.suppress_secrets && (rad_debug_lvl < 3)) {
+		INFO("All secret information will be replaced with the string '<<secret>>'");
+		INFO("To see the contents of passwords, set `suppress_secrets=no` in the main configuration file.");
+	}
+
+	/*
 	 *  Inform the parent (who should still be waiting) that the rest of
 	 *  initialisation went OK, and that it should exit with a 0 status.
 	 *  If we don't get this far, then we just close the pipe on exit, and the
