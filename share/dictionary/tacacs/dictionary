@@ -15,5 +15,6 @@ $INCLUDE dictionary.tacacs
 $INCLUDE dictionary.rfc8907
 $INCLUDE dictionary.calix
 $INCLUDE dictionary.juniper
+$INCLUDE dictionary.marconi
 
 END-PROTOCOL TACACS
