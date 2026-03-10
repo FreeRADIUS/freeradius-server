@@ -50,6 +50,21 @@ rest {
 	connect_uri = "http://127.0.0.1"
 
 	#
+	# When set, connects to the server over a UNIX socket which may be
+	# helpful for those with (pseudo)security constraints that make it
+	# easier to use an UNIX socket than explain to an auditor the use of
+	# non-TLS HTTP localhost connections.
+	#
+	# NOTE: This is not allowed to be an xlat as it can lead to security issues.
+	#
+#	connect_uri_socket = "/run/myprogram.sock"
+
+	#
+	# When set, connect_uri_socket is an abstract UNIX socket
+	#
+#	connect_uri_socket_abstract = "no"
+
+	#
 	#  How long before new connection attempts timeout, defaults to 4.0 seconds.
 	#
 #	connect_timeout = 4.0

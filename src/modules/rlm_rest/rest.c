@@ -413,6 +413,12 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		SET_OPTION(CURLOPT_SSL_VERIFYHOST, 0);
 		SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
 		SET_OPTION(CURLOPT_URL, inst->connect_uri);
+		/* libcurl ignores this when connect_uri_socket is NULL */
+		SET_OPTION(
+			inst->connect_uri_socket_abstract
+				? CURLOPT_ABSTRACT_UNIX_SOCKET
+				: CURLOPT_UNIX_SOCKET_PATH,
+			inst->connect_uri_socket);
 		SET_OPTION(CURLOPT_NOSIGNAL, 1);
 
 		DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
@@ -2062,6 +2068,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	Setup any header options and generic headers.
 	 */
 	SET_OPTION(CURLOPT_URL, uri);
+	/* libcurl ignores this when connect_uri_socket is NULL */
+	SET_OPTION(
+		instance->connect_uri_socket_abstract
+			? CURLOPT_ABSTRACT_UNIX_SOCKET
+			: CURLOPT_UNIX_SOCKET_PATH,
+		instance->connect_uri_socket);
 	SET_OPTION(CURLOPT_NOSIGNAL, 1);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 

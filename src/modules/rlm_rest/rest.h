@@ -166,6 +166,8 @@ typedef struct rlm_rest_t {
 
 	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
 						//!< TCP connections.
+	char const		*connect_uri_socket;		//!< UNIX socket path we connect to.
+	bool			connect_uri_socket_abstract;	//!< If the UNIX socket is an abstract socket.
 
 	struct timeval		connect_timeout_tv;	//!< Connection timeout timeval.
 	long			connect_timeout;	//!< Connection timeout ms.
