@@ -521,7 +521,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 				 */
 				call_env_parsed = last;
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
-					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env", name, rule_p->section.func);
+					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env %p", name, rule_p->section.func);
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule_p) < 0) {
 						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s",
 							   rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
