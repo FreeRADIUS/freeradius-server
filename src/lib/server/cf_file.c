@@ -715,6 +715,14 @@ cf_file_check_err_t cf_file_check_effective(char const *filename,
 		if (seteuid(conf_check_uid) < 0) {
 			fr_strerror_printf("Failed setting effective user ID (%d) for file check: %s",
 					   (int) conf_check_uid, fr_syserror(errno));
+
+		restore_gid:
+			if ((conf_check_gid != egid) &&
+			    (setegid(conf_check_gid) < 0)) {
+				fr_strerror_printf_push("Failed resetting effective group ID (%d) for file check: %s",
+							(int) conf_check_gid, fr_syserror(errno));
+			}
+
 			return CF_FILE_OTHER_ERROR;
 		}
 	}
@@ -723,7 +731,7 @@ cf_file_check_err_t cf_file_check_effective(char const *filename,
 		if (seteuid(euid) < 0) {
 			fr_strerror_printf("Failed restoring effective user ID (%d) after file check: %s",
 					   (int) euid, fr_syserror(errno));
-			return CF_FILE_OTHER_ERROR;
+			goto restore_gid;
 		}
 	}
 	if (conf_check_gid != egid) {
@@ -3976,13 +3984,18 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 				return NULL;
 			}
 
-			if (n2) break;
-
 			/*
 			 *	"name1[name2", but not "name1[name2]"
+			 *
+			 *	The inner loop exited because it found *q == '\0',
+			 *	meaning that the closing ']' was never found.
 			 */
-			fr_strerror_printf("Invalid reference after '%s', missing close ']'", n2);
-			return NULL;
+			if (!*q) {
+				fr_strerror_printf("Invalid reference after '%s', missing close ']'", n1);
+				return NULL;
+			}
+
+			break;
 		}
 		p = q;		/* get it ready for the next round */
 
