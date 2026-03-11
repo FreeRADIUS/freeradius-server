@@ -541,7 +541,7 @@ next_reply_item:
 				       &lhs_rules, &rhs_rules, &rhs_term);
 		if (!new_map) {
 			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
-			goto fail;
+			goto fail_entry;
 		}
 
 		fr_assert(new_map->lhs != NULL);
