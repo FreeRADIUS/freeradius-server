@@ -189,7 +189,7 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 		}
 
 		if (!set) {
-			cf_log_err(default_catch, "Invalide 'catch { ... }' - all rcodes had previously been used");
+			cf_log_err(default_catch, "Invalid 'catch { ... }' - all rcodes had previously been used");
 			goto print_catch_url;
 		}
 
