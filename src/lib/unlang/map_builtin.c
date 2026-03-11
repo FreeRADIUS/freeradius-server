@@ -93,11 +93,11 @@ static unlang_action_t mod_list_map_proc(unlang_result_t *p_result, UNUSED map_c
 			goto finish;
 		}
 		if (index > value_count) {
-			RWARN("Asked for index %d when max is %d.", index, value_count);
+			RWARN("Asked for index %u when max is %u.", index, value_count);
 			continue;
 		}
 		if (values[index]->type == FR_TYPE_NULL) {
-			RDEBUG2("Skipping null value for index %d.", index);
+			RDEBUG2("Skipping null value for index %u.", index);
 			continue;
 		}
 
