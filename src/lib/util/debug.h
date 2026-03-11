@@ -25,9 +25,19 @@
 extern "C" {
 #endif
 
+/*
+ *	Default talloc headers have doxygen complaints.
+ */
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
+#include <talloc.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
+
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/fring.h>
 
 #ifdef NO_ASSERT
 # define MEM(x) error "Use of MEM() not allowed in this source file.  Deal with memory allocation failure gracefully"
