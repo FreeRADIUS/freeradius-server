@@ -336,7 +336,7 @@ cp_found:
 
 		fr_canonicalize_error(trigger, &spaces, &text, slen, value);
 
-		cf_log_err(cp, "Failed parsing trigger expresion");
+		cf_log_err(cp, "Failed parsing trigger expression");
 		cf_log_err(cp, "%s", text);
 		cf_log_perr(cp, "%s^", spaces);
 
