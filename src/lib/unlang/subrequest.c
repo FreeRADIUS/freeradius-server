@@ -125,7 +125,7 @@ static unlang_action_t unlang_subrequest_parent_resume(UNUSED unlang_result_t *p
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	RDEBUG3("subrequest completeed with rcode %s",
+	RDEBUG3("subrequest completed with rcode %s",
 		fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"));
 
 	/*
