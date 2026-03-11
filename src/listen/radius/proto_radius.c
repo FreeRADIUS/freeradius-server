@@ -506,7 +506,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 {
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	uint32_t		error_cause;
+	uint32_t		error_cause = 0;
 	ssize_t			data_len;
 	fr_client_t const	*client;
 	fr_radius_ctx_t		common_ctx = {};
