@@ -46,7 +46,8 @@ rest {
 	#
 	# If you wish to disable this pre-caching and reachability check,
 	# comment out the configuration item below.
-	connect_uri = "http://127.0.0.1/"
+	#
+	connect_uri = "http://127.0.0.1"
 
 	#
 	#  How long before new connection attempts timeout, defaults to 4.0 seconds.
