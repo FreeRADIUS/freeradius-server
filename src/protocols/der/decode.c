@@ -924,6 +924,8 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	}
 
 	if (flags->is_set_of) {
+		fr_dbuff_marker_t current_value_marker;
+
 		/*
 		 *	There should only be one child in a "set_of".  We can't check this when we load
 		 *	the dictionaries, because there is no "finalize" callback.
@@ -939,8 +941,9 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			return -1;
 		}
 
+		fr_dbuff_marker(&current_value_marker, &our_in);
+
 		while (fr_dbuff_remaining(&our_in) > 0) {
-			fr_dbuff_marker_t current_value_marker;
 			ssize_t		  ret;
 			uint8_t		  current_tag;
 			uint8_t		 *current_marker = fr_dbuff_current(&our_in);
@@ -956,7 +959,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 				return ret;
 			}
 
-			fr_dbuff_marker(&current_value_marker, &our_in);
+			fr_dbuff_set(&current_value_marker, &our_in);
 
 			/*
 			 *	Ensure that the contents of the tags are sorted.

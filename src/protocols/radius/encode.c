@@ -1380,7 +1380,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, frag_len);
 			fr_dbuff_in(&hdr, (uint8_t) UINT8_MAX);
 
-			fr_dbuff_marker(&hdr, &work_dbuff);
+			fr_dbuff_set(&hdr, &work_dbuff);
 			fr_dbuff_advance(&hdr, 1);
 			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
 			attr_len = 2;
@@ -1416,7 +1416,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 		 *	overflow.  Create a new header with the zero
 		 *	byte already populated, and keep going.
 		 */
-		fr_dbuff_marker(&hdr, &work_dbuff);
+		fr_dbuff_set(&hdr, &work_dbuff);
 		fr_dbuff_advance(&hdr, 1);
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x00, 0x00);
 		attr_len = 3;

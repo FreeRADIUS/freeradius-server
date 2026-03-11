@@ -1121,6 +1121,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	ssize_t		  slen	      = 0;
 	size_t		  is_critical = 0;
 	uint64_t	  max, num;
+	fr_dbuff_marker_t length_start, inner_seq_len_start;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -1172,10 +1173,12 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_pair_dcursor_child_iter_init(&root_cursor, &vp->children, cursor);
 	fr_dcursor_copy(&parent_cursor, &root_cursor);
 
+	fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+	fr_dbuff_marker(&length_start, &our_dbuff);
+
 	while (fr_dcursor_current(&parent_cursor)) {
 		uint64_t	  component;
 		int		  count;
-		fr_dbuff_marker_t length_start, inner_seq_len_start;
 		fr_pair_t	  *child;
 
 		/*
@@ -1194,7 +1197,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+		fr_dbuff_set(&inner_seq_len_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
@@ -1203,7 +1206,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&length_start, &our_dbuff);
+		fr_dbuff_set(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
@@ -1287,7 +1290,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OCTETSTRING, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
 		if (slen < 0) return slen;
 
-		fr_dbuff_marker(&length_start, &our_dbuff);
+		fr_dbuff_set(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
