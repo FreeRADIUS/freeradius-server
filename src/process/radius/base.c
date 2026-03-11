@@ -484,10 +484,10 @@ RESUME(auth_type)
 
 					size = fr_utf8_char(p, -1);
 					if (!size) {
-						REDEBUG("Unprintable characters in the password. "
+						RWDEBUG("Unprintable characters in the password. "
 							"Double-check the shared secret on the server "
 							"and the NAS!");
-						REDEBUG("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/shared_secret.html");
+						RWDEBUG("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/shared_secret.html");
 						break;
 					}
 					p += size;
