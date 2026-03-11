@@ -74,7 +74,7 @@ static int lib_init_call(global_lib_inst_t *lib)
 
 	if ((cf_section_rules_push(cs, lib->autoinit->config)) < 0 ||
 	    (cf_section_parse(lib, lib->autoinit->inst, cs) < 0)) {
-		cf_log_err(cs, "Failed evaluating configuration for libldap");
+		cf_log_err(cs, "Failed evaluating configuration for %s", lib->autoinit->name);
 		return -1;
 	}
 
