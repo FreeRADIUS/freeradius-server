@@ -1246,7 +1246,7 @@ fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
  */
 fr_token_t cf_section_argv_quote(CONF_SECTION const *cs, int argc)
 {
-	if (!cs || !cs->argv_quote || (argc < 0) || (argc > cs->argc)) return T_INVALID;
+	if (!cs || !cs->argv_quote || (argc < 0) || (argc >= cs->argc)) return T_INVALID;
 
 	return cs->argv_quote[argc];
 }
@@ -1877,20 +1877,24 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 {
 	CONF_DATA			*cd;
+	CONF_ITEM			*item;
+	fr_rb_tree_t			*tree;
 	fr_rb_iter_inorder_t	iter;
 	int				ret = 0;
 
 	if (!ci->ident2) return 0;
 
-	for (ci = fr_rb_iter_init_inorder(ci->ident2, &iter);
-	     ci;
-	     ci = fr_rb_iter_next_inorder(ci->ident2, &iter)) {
+	tree = ci->ident2;
+
+	for (item = fr_rb_iter_init_inorder(tree, &iter);
+	     item;
+	     item = fr_rb_iter_next_inorder(tree, &iter)) {
 		/*
 		 *	We're walking ident2, not all of the items will be data
 		 */
-		if (ci->type != CONF_ITEM_DATA) continue;
+		if (item->type != CONF_ITEM_DATA) continue;
 
-		cd = (void *) ci;
+		cd = (void *) item;
 		if ((cd->type != type) && (strcmp(cd->type, type) != 0)) continue;
 
 		ret = cb(UNCONST(void *, cd->data), ctx);
