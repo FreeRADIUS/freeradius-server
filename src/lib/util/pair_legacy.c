@@ -380,6 +380,13 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 		fr_dict_attr_unknown_free(&da_stack.da[i]); \
 	} } } while (0)
 
+	/*
+	 *	Initialize the markers once, before the redo label, so that they are only inserted into the
+	 *	marker linked list once.  After this, use fr_sbuff_set() to update marker positions.
+	 */
+	fr_sbuff_marker(&lhs_m, &our_in);
+	fr_sbuff_marker(&op_m, &our_in);
+	fr_sbuff_marker(&rhs_m, &our_in);
 
 redo:
 	raw = false;
@@ -466,7 +473,7 @@ redo:
 	/*
 	 *	Set the LHS marker to be after any initial '.'
 	 */
-	fr_sbuff_marker(&lhs_m, &our_in);
+	fr_sbuff_set(&lhs_m, &our_in);
 
 	/*
 	 *	STEP 2: Find and check the operator.
@@ -484,7 +491,7 @@ redo:
 	 */
 	if (!components) goto done;
 
-	fr_sbuff_marker(&op_m, &our_in);
+	fr_sbuff_set(&op_m, &our_in);
 	fr_sbuff_adv_past_blank(&our_in, SIZE_MAX, NULL);
 
 	/*
@@ -577,7 +584,9 @@ redo:
 			raw_type = FR_TYPE_OCTETS;
 
 		} else if (fr_sbuff_next_if_char(&our_in, '(')) {
-			fr_sbuff_marker(&rhs_m, &our_in);
+			fr_sbuff_marker_t cast_m;
+
+			fr_sbuff_marker(&cast_m, &our_in);
 
 			fr_sbuff_out_by_longest_prefix(&slen, &raw_type, fr_type_table, &our_in, FR_TYPE_NULL);
 
@@ -586,7 +595,7 @@ redo:
 			 *	TLV.  Instead, the value should just start with '{'.
 			 */
 			if (!fr_type_is_leaf(raw_type)) {
-				fr_sbuff_set(&our_in, &rhs_m);
+				fr_sbuff_set(&our_in, &cast_m);
 				fr_strerror_const("Invalid data type in cast");
 				goto error;
 			}
@@ -607,7 +616,7 @@ redo:
 		}
 	}
 
-	fr_sbuff_marker(&rhs_m, &our_in);
+	fr_sbuff_set(&rhs_m, &our_in);
 
 	fr_sbuff_set(&our_in, &lhs_m);
 
@@ -641,7 +650,7 @@ redo:
 			goto error;
 		}
 
-		fr_sbuff_marker(&lhs_m, &our_in);
+		fr_sbuff_set(&lhs_m, &our_in);
 
 		/*
 		 *	The fr_pair_t parent might be a group, in which case the fr_dict_attr_t parent will be
