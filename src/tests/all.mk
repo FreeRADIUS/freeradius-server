@@ -52,7 +52,6 @@ test: \
 		test.keywords	\
 		test.xlat	\
 		test.modules	\
-		test.multi-server \
 		test.process	\
 		test.radiusd-c	\
 		test.radclient	\
@@ -102,6 +101,10 @@ endif
 .PHONY: $(BUILD_DIR)/tests
 $(BUILD_DIR)/tests:
 	${Q}mkdir -p $@
+
+.PHONY: test.multi-server.%
+test.multi-server.%:
+	$(MAKE) -f src/tests/multi-server/all.mk $*
 
 ######################################################################
 #
