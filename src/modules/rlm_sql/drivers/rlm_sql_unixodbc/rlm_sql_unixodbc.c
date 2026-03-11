@@ -519,7 +519,7 @@ static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
-	SQLSMALLINT		len, i;
+	SQLSMALLINT		len = 0, i;
 	SQLRETURN		ret;
 	char const		**names;
 	char			field[128];
