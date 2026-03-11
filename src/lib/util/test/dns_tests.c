@@ -660,7 +660,7 @@ static void test_decode_to_value_box_label_outside_buf(void)
 {
 	fr_value_box_t vb;
 	ssize_t slen;
-	uint8_t other[16];
+	uint8_t other[16] = {};
 	uint8_t pkt[16] = {};
 
 	slen = fr_dns_label_to_value_box(NULL, &vb, pkt, sizeof(pkt), other, false, NULL);
