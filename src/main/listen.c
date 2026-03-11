@@ -2935,7 +2935,7 @@ static int proxy_socket_decode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST 
 fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_free,
 	  stats_socket_recv, common_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
