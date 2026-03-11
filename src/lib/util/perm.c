@@ -187,6 +187,8 @@ check:
 	return 0;
 }
 
+DIAG_OFF(cast-align)
+
 /** Resolve a uid to a passwd entry
  *
  * Resolves a uid to a passwd entry. The memory to hold the

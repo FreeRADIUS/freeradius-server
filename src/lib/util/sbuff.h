@@ -1860,6 +1860,9 @@ void 	fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules
  */
 #define fr_sbuff_as_percent_s(_sbuff) (int) fr_sbuff_remaining(_sbuff), fr_sbuff_current(_sbuff)
 
+fr_slen_t  fr_sbuff_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep) CC_HINT(nonnull(1,2));
+
+
 #ifdef __cplusplus
 }
 #endif

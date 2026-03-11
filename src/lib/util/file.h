@@ -28,7 +28,7 @@ RCSIDH(util_file_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <stdbool.h>
 
 #ifdef HAVE_DIRENT_H

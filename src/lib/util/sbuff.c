@@ -2317,3 +2317,38 @@ void fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules)
 		fprintf(fp, "<none>\n");
 	}
 }
+
+/** Concat an array of strings (not NULL terminated), with a string separator
+ *
+ * @param[out] out	Where to write the resulting string.
+ * @param[in] array	of strings to concat.
+ * @param[in] sep	to insert between elements.  May be NULL.
+ * @return
+ *      - >= 0 on success - length of the string created.
+ *	- <0 on failure.  How many bytes we would need.
+ */
+fr_slen_t fr_sbuff_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	size_t			len = talloc_array_length(array);
+	char const * const *	p;
+	char const * const *	end;
+	fr_sbuff_escape_rules_t	e_rules = {
+					.name = __FUNCTION__,
+					.chr = '\\'
+				};
+
+	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	for (p = array, end = array + len;
+	     (p < end);
+	     p++) {
+		if (*p) FR_SBUFF_RETURN(fr_sbuff_in_escape, &our_out, *p, strlen(*p), &e_rules);
+
+		if (sep && ((p + 1) < end)) {
+			FR_SBUFF_RETURN(fr_sbuff_in_strcpy, &our_out, sep);
+		}
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}

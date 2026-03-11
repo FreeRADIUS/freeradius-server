@@ -462,7 +462,7 @@ static int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *ba
 			cf_item_mark_parsed(cp_p);
 		}
 
-		slen = talloc_array_concat(agg, array, kctx->string_sep);
+		slen = fr_sbuff_array_concat(agg, array, kctx->string_sep);
 		talloc_free(array);
 		if (slen < 0) return -1;
 

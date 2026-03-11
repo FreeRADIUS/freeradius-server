@@ -222,6 +222,8 @@ static fr_md4_funcs_t md4_openssl_funcs = {
 /* This is the central step in the MD4 algorithm. */
 #define MD4STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
 
+DIAG_OFF(cast-align)
+
 /** The core of the MD4 algorithm
  *
  * This alters an existing MD4 hash to reflect the addition of 16
