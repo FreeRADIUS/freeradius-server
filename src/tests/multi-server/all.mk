@@ -24,7 +24,11 @@ MULTI_SERVER_TEST_COMBINED_LOG := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DI
 MULTI_SERVER_TEST_LINELOG_COMBINED_LOG := $(FREERADIUS_MULTI_SERVER_TEST_RUNTIME_LOGS_DIR_ABS)/multi-server-tests-linelog-combined.log
 
 # Enable multi-server test framework debug logs
-DEBUG_ARG := ""
+DEBUG ?= 0
+DEBUG_LEVEL_0 := ""
+DEBUG_LEVEL_1 := -x
+DEBUG_LEVEL_2 := -xx
+DEBUG_ARG := $(DEBUG_LEVEL_$(DEBUG))
 
 # Multi-server test verbosity level
 VERBOSE ?= 1
