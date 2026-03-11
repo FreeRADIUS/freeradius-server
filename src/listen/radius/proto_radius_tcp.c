@@ -462,7 +462,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		s = getservbyname(inst->port_name, "tcp");
 		if (!s) {
-			cf_log_err(conf, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(conf, "Unknown value for 'port_name = %s'", inst->port_name);
 			return -1;
 		}
 
