@@ -36,9 +36,6 @@ extern "C" {
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/time.h>
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
 #include <sys/time.h>
 
 #ifdef HAVE_SYS_UN_H

@@ -31,7 +31,6 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/interpret.h>
-#include <stdbool.h>
 
 typedef struct {
 	bool		enable;				//!< Whether we should store/restore sessions.

@@ -29,8 +29,6 @@ extern "C" {
 #endif
 
 #include <ctype.h>
-#include <stdbool.h>
-#include <stdint.h>
 
 #ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)

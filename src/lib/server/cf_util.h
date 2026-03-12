@@ -39,9 +39,6 @@ typedef struct cf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator
 typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
 

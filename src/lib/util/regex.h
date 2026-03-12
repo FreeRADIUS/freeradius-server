@@ -33,8 +33,6 @@ extern "C" {
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/value.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <unistd.h>
 
 /*

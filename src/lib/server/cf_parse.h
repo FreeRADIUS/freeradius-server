@@ -27,9 +27,6 @@ RCSIDH(cf_parse_h, "$Id$")
 
 typedef struct conf_parser_s conf_parser_t;
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <freeradius-devel/util/rb.h>

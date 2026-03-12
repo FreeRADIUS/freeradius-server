@@ -31,9 +31,6 @@ extern "C" {
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/dbuff.h>
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <sys/types.h>
 
 /*

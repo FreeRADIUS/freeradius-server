@@ -25,7 +25,6 @@
  */
 RCSIDH(atomic_queue_h, "$Id$")
 
-#include <stdbool.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>

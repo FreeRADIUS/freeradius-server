@@ -34,8 +34,6 @@ extern "C" {
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/nbo.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <sys/types.h>
 
 DIAG_OFF(cast-align)

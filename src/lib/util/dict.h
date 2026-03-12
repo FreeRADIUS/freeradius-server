@@ -39,8 +39,6 @@ extern "C" {
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 
 /*
  *	Avoid circular type references.

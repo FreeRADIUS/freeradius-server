@@ -29,7 +29,6 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/sbuff.h>
-#include <stdbool.h>
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>

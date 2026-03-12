@@ -1339,8 +1339,6 @@ void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 /*
  *  cc crypto.c fips186prf.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_SIM_CRYPTO -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_sim_crypto && ./test_sim_crypto
  */
-#include <stddef.h>
-#include <stdbool.h>
 #include <freeradius-devel/util/test/acutest.h>
 
 /*

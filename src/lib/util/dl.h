@@ -35,7 +35,6 @@ RCSIDH(dl_h, "$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/version.h>
 
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <sys/sem.h>
 #include <sys/stat.h>
 
-#include <stdbool.h>
 #include <signal.h>
 
 #include <freeradius-devel/util/perm.h>

@@ -32,8 +32,6 @@ extern "C" {
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 
 typedef struct fr_trie_s fr_trie_t;

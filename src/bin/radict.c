@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict_priv.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <stdbool.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

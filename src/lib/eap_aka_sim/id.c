@@ -670,8 +670,6 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 /*
  *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_SIM_ID -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_sim_id && ./test_sim_id
  */
-#include <stddef.h>
-#include <stdbool.h>
 #include <freeradius-devel/util/test/acutest.h>
 
 void test_encrypt_decypt_key0(void)

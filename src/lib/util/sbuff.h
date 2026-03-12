@@ -32,10 +32,7 @@ extern "C" {
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/types.h>
 
 /** Represents number of bytes parsed or location of parse error

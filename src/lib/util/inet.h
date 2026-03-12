@@ -31,7 +31,6 @@ RCSIDH(inet_h, "$Id$")
 #include <arpa/inet.h>
 #include <net/if.h>		/* SIOCGIFADDR et al */
 #include <netinet/in.h>		/* in6?_addr */
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

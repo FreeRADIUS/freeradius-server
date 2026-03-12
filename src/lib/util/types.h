@@ -30,7 +30,6 @@ extern "C" {
 
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
-#include <stdbool.h>
 
 /** Internal data types
  */

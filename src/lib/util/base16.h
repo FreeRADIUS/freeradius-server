@@ -31,9 +31,6 @@ extern "C" {
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/dbuff.h>
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <sys/types.h>
 
 extern char const fr_base16_alphabet_encode_lc[SBUFF_CHAR_CLASS];

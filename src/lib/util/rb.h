@@ -29,8 +29,6 @@ extern "C" {
 
 #include <freeradius-devel/util/misc.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 
 /* Red-Black tree description */
 typedef enum {

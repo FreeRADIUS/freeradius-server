@@ -294,9 +294,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <setjmp.h>
-#include <stdbool.h>
 
 #if defined(unix) || defined(__unix__) || defined(__unix) || defined(__APPLE__)
     #define ACUTEST_UNIX_       1

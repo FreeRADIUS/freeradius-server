@@ -26,7 +26,6 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <stdbool.h>
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;

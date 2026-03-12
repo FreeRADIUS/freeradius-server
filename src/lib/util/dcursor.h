@@ -31,8 +31,6 @@ extern "C" {
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <stddef.h>
-#include <stdbool.h>
 
 DIAG_OFF(unused-function)
 typedef struct fr_dcursor_s fr_dcursor_t;

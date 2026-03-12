@@ -25,7 +25,6 @@
  */
 RCSIDH(fr_assert_h, "$Id$")
 
-#include <stdbool.h>
 #include <freeradius-devel/util/debug.h>
 
 #ifdef __cplusplus

@@ -53,7 +53,6 @@ struct fr_event_list_pub_s {
 
 #include <freeradius-devel/util/talloc.h>
 
-#include <stdbool.h>
 #include <sys/event.h>
 
 

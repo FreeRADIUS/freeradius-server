@@ -33,7 +33,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 

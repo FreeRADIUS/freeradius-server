@@ -25,7 +25,6 @@
  */
 RCSIDH(section_h, "$Id$")
 
-#include <stdbool.h>
 #include <freeradius-devel/server/cf_util.h>
 
 #ifdef __cplusplus

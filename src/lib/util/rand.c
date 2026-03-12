@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/hash.h>
 
 #include <fcntl.h>
-#include <stdbool.h>
 
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
