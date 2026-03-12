@@ -2452,7 +2452,7 @@ void trunk_request_free(trunk_request_t **treq_to_free)
 	 *	requests that have been unused for N
 	 *	seconds from the tail.
 	 */
-	fr_dlist_insert_tail(&trunk->free_requests, treq);
+	fr_dlist_insert_head(&trunk->free_requests, treq);
 }
 
 /** Actually free the trunk request
