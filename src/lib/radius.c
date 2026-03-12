@@ -5011,6 +5011,11 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	*ptr++ = id;
 
 	i++;
+
+	if (password->vp_length > MAX_STRING_LEN) {
+		return -1;
+	}
+
 	memcpy(ptr, password->vp_strvalue, password->vp_length);
 	ptr += password->vp_length;
 	i += password->vp_length;
@@ -5021,6 +5026,9 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 */
 	challenge = fr_pair_find_by_num(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 	if (challenge) {
+		if ((i + challenge->vp_length) > sizeof(string)) {
+			return -1;
+		}
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
 	} else {
