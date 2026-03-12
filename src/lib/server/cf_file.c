@@ -1607,9 +1607,9 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	buff[2][slen] = '\0';
 
 	while (slen > 0) {
-		if (!isspace((uint8_t) buff[2][slen])) break;
+		if (!isspace((uint8_t) buff[2][slen - 1])) break;
 
-		buff[2][slen] = '\0';
+		buff[2][slen - 1] = '\0';
 		slen--;
 	}
 
