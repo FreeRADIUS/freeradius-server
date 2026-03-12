@@ -25,14 +25,12 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
 #include <fcntl.h>
-#include <string.h>
 #include <sys/event.h>
 
 #define FR_CONTROL_MAX_TYPES	(32)

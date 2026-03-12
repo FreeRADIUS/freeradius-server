@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/udp_queue.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 
-#include <freeradius-devel/unlang/module.h>
 
 static fr_dict_t const *dict_dhcpv4;
 static fr_dict_t const *dict_freeradius;

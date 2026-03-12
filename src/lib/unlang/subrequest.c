@@ -27,9 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/action.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
 #include "subrequest_priv.h"

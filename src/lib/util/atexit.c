@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 
 #ifdef HAVE_PTHREADS
-#include <pthread.h>
 #endif
 
 #if defined(DEBUG_ATEXIT) && !defined(NDEBUG)

@@ -34,13 +34,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/perm.h>
 
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <grp.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>

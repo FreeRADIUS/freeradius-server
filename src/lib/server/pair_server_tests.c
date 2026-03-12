@@ -29,7 +29,6 @@ static void test_init(void);
 #include <freeradius-devel/util/test/pair_test_helpers.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/dict.h>
 
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request.h>

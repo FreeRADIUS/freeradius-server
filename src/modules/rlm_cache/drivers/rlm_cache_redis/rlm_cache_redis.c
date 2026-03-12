@@ -25,7 +25,6 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/value.h>
 
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>

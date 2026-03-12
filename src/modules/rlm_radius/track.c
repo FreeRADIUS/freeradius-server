@@ -24,10 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/debug.h>
 
 #include "track.h"
 

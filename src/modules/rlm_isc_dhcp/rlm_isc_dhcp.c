@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/skip.h>
 
-#include <freeradius-devel/server/map_proc.h>
 
 static fr_dict_t const *dict_dhcpv4;
 

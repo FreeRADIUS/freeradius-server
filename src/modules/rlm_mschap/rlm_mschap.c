@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/defs.h>
@@ -41,7 +40,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -56,7 +54,6 @@ RCSID("$Id$")
 
 #ifdef WITH_TLS
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
-#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/rc4.h>
 #endif
 

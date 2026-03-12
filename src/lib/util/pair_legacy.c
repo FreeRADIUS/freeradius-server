@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>

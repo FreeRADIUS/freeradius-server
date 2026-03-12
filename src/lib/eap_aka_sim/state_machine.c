@@ -26,11 +26,9 @@
  */
 RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "base.h"

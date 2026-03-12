@@ -24,13 +24,9 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/log.h>
 
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
 typedef struct {

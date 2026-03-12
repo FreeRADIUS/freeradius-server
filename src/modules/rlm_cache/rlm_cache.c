@@ -29,16 +29,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include "rlm_cache.h"
 

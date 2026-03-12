@@ -48,7 +48,6 @@
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/bio/buf.h>
 #include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/dlist.h>
 
 #define _BIO_RETRY_PRIVATE
 #include <freeradius-devel/bio/retry.h>

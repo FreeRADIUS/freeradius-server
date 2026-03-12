@@ -30,20 +30,10 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/exfile.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/table.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/unlang/map.h>
 
 #include <sys/stat.h>

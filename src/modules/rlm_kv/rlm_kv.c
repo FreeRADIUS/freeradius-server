@@ -33,7 +33,6 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 

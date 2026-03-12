@@ -22,9 +22,7 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/value.h>
 #include "../../rlm_cache.h"
 
 typedef struct {

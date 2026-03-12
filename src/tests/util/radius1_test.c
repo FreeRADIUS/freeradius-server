@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/inet.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -36,10 +34,8 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
-#include <pthread.h>
 #include <signal.h>
 
-#include <sys/event.h>
 
 #define MAX_MESSAGES		(2048)
 #define MAX_CONTROL_PLANE	(1024)

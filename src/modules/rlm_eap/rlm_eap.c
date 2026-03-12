@@ -30,10 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 #include "rlm_eap.h"
 
 extern module_rlm_t rlm_eap;

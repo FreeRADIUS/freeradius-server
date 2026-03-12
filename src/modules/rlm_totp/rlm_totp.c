@@ -26,10 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/base32.h>
 
-#include <freeradius-devel/unlang/call_env.h>
 
 #include "totp.h"
 

@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/ring_buffer.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/debug.h>
-#include <string.h>
 
 /*
  *	Ring buffers are allocated in a block.

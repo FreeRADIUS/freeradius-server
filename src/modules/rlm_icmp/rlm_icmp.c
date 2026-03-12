@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <fcntl.h>
-#include <unistd.h>
 
 /*
  *	Define a structure for our module configuration.

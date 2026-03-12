@@ -28,30 +28,23 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
 
 #include <freeradius-devel/util/base64.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
 
-#include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/call_env.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
 
-#include <ctype.h>
 
 #ifdef HAVE_CRYPT_H
 #  include <crypt.h>
 #endif
-#include <unistd.h>	/* Contains crypt function declarations */
 
 #ifdef HAVE_OPENSSL_EVP_H
-#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/evp.h>
 #endif
 

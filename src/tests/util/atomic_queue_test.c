@@ -24,8 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/talloc.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
 

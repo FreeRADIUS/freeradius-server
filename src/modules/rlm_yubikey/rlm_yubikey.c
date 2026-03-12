@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/action.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT

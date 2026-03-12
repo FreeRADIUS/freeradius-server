@@ -28,16 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/section.h>
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/call_env.h>
 
-#include <talloc.h>
 #include "call_env.h"
 
 struct call_env_parsed_s {

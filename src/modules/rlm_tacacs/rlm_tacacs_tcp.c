@@ -26,12 +26,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 
-#include <sys/socket.h>
 #include <sys/uio.h>
 
 #include "rlm_tacacs.h"

@@ -2,7 +2,6 @@
 
 #include <freeradius-devel/util/backtrace.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/fring.h>
 #include <freeradius-devel/util/misc.h>
 
 #ifdef HAVE_BACKTRACE

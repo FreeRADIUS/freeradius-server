@@ -34,21 +34,14 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pool.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/log.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
 
 /** A lua function or stored procedure we make available as an xlat
  *

@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/base16.h>
 
-#include <ctype.h>
 
 static xlat_arg_parser_t const unpack_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },

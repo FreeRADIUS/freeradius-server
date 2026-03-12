@@ -28,7 +28,6 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include "proto_cron.h"
 

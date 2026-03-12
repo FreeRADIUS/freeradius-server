@@ -26,12 +26,9 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/chap.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/call_env.h>
 
 typedef struct {
 	fr_dict_enum_value_t const	*auth_type;

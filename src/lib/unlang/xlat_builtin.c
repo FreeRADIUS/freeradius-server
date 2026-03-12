@@ -30,17 +30,11 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/dcursor.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>

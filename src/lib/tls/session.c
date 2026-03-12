@@ -39,10 +39,8 @@
 
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/subrequest.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 #include <sys/stat.h>
-#include <ctype.h>
 #include <fcntl.h>
 
 #include "attrs.h"

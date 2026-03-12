@@ -25,7 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/server/rcode.h>
 #include "group_priv.h"
 #include "timeout_priv.h"
 #include "mod_action.h"

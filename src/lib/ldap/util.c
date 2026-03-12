@@ -33,7 +33,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/value.h>
 
 #include <stdarg.h>
-#include <ctype.h>
 
 static const char specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";

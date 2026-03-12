@@ -26,11 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/encode.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict_ext.h>
 
 #include <freeradius-devel/io/test_point.h>
 

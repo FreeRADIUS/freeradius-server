@@ -29,7 +29,6 @@
 
 #include <sys/stat.h>
 #include <net/if.h>
-#include <fcntl.h>
 #include <libgen.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>

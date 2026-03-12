@@ -41,7 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
 #include <openssl/evp.h>

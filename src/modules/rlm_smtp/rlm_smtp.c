@@ -27,13 +27,10 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/util/token.h>
 
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 static fr_dict_t const 	*dict_freeradius;

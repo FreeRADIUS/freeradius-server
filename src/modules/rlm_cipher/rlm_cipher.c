@@ -34,16 +34,12 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/tls/utils.h>
 #include <freeradius-devel/tls/strerror.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
 
-#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
-#include <openssl/x509.h>
 
 static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule);

@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 
 #include <ctype.h>
-#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/debug.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */

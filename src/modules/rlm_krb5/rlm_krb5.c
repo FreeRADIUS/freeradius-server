@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/util/debug.h>
 #include "krb5.h"
 
 #ifdef KRB5_IS_THREAD_SAFE

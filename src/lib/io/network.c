@@ -29,20 +29,15 @@ RCSID("$Id$")
 #define LOG_DST nr->log
 
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/queue.h>
-#include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/io/worker.h>
 
 #define MAX_WORKERS 64
 

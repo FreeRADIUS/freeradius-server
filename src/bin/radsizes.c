@@ -1,11 +1,8 @@
 #include <stdio.h>
 
 #include <freeradius-devel/unlang/xlat_priv.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/tlist.h>
 
 int main(UNUSED int argc, UNUSED char **argv)

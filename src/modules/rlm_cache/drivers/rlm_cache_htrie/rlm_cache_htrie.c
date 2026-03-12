@@ -23,13 +23,8 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/htrie.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/tmpl.h>
 #include "../../rlm_cache.h"
 
 static int cf_htrie_type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);

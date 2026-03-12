@@ -28,14 +28,12 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/connection.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 #endif
 
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H

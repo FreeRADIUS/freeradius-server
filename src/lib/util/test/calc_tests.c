@@ -24,7 +24,6 @@
 #include "acutest_helpers.h"
 
 #include <freeradius-devel/util/calc.h>
-#include <freeradius-devel/util/value.h>
 
 static TALLOC_CTX *autofree;
 

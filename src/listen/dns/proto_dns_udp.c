@@ -26,7 +26,6 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>

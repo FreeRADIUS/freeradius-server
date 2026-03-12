@@ -23,10 +23,7 @@
  */
 
 #include <freeradius-devel/kafka/base.h>
-#include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/size.h>
 
 typedef struct {

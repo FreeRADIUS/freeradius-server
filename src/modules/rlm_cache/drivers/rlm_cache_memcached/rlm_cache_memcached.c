@@ -30,7 +30,6 @@
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/slab.h>
-#include <freeradius-devel/util/value.h>
 
 #include "../../rlm_cache.h"
 #include "../../serialize.h"

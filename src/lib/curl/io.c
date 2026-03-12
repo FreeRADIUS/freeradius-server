@@ -22,8 +22,6 @@
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/curl/base.h>
-#include <freeradius-devel/server/module.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 

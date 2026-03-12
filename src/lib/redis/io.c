@@ -28,7 +28,6 @@
 #include <freeradius-devel/redis/io.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <hiredis/async.h>
 
 /** Called by hiredis to indicate the connection is dead
  *

@@ -30,11 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/module.h>
-#include <ctype.h>
 
 /*
  *	Note: When your counter spans more than 1 period (ie 3 months

@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 
 #include "attrs.h"

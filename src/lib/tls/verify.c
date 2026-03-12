@@ -32,7 +32,6 @@
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>

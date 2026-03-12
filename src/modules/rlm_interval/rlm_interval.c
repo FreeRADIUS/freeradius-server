@@ -26,10 +26,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/util/debug.h>

@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <stdio.h>
 
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>
 
 

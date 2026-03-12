@@ -42,15 +42,12 @@ RCSID("$Id$")
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
 #include <freeradius-devel/util/md4.h>
-#include <freeradius-devel/util/md5.h>
 #endif
-#include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
 
-#include <assert.h>
 
 typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 

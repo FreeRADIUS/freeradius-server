@@ -25,8 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/control.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_STDATOMIC_H

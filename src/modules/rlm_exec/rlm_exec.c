@@ -33,14 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/token.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/unlang/module.h>
 
 /*
  *	Define a structure for our module configuration.

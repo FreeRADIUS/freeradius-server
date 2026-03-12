@@ -34,20 +34,15 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/ldap/conf.h>
-#include <freeradius-devel/ldap/base.h>
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/rcode.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/map.h>
 
-#include <ldap.h>
 #include "rlm_ldap.h"
 
 typedef struct {

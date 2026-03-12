@@ -25,7 +25,6 @@
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/queue.h>
 #include <freeradius-devel/bio/null.h>
-#include <freeradius-devel/util/dlist.h>
 
 typedef struct fr_bio_queue_list_s	fr_bio_queue_list_t;
 typedef struct fr_bio_queue_s		fr_bio_queue_t;

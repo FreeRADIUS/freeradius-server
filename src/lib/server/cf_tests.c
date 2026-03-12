@@ -27,7 +27,6 @@ static void test_init(void);
 #include <freeradius-devel/util/test/acutest.h>
 #include <freeradius-devel/util/test/acutest_helpers.h>
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/cf_priv.h>
 
 static TALLOC_CTX	*autofree;

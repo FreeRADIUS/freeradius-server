@@ -152,7 +152,6 @@
 #include <freeradius-devel/util/fifo.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/time.h>
 
 #include "config.h"
 #include "base.h"

@@ -26,9 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <string.h>
 #include <sys/time.h>
 
 #ifdef HAVE_GETOPT_H

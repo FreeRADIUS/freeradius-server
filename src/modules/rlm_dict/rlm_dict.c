@@ -25,11 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /** Return a VP from the specified request.

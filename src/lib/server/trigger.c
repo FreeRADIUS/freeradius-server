@@ -35,7 +35,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/subrequest.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
 

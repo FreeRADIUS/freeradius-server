@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/htrie.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/server/map_proc.h>
 
 static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps);

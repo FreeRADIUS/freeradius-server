@@ -41,7 +41,6 @@
 #ifdef HAVE_SYS_STAT_H
 #endif
 
-#include <fcntl.h>
 #include <libgen.h>
 
 typedef struct {

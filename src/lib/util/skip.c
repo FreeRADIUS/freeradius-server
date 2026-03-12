@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/strerror.h>
 
 /**  Skip a quoted string.
  *

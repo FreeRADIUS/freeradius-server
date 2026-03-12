@@ -31,17 +31,11 @@
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/unlang/module.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/value.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;

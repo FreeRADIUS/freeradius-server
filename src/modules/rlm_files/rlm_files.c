@@ -26,10 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/util/htrie.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/transaction.h>
 

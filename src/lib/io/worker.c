@@ -53,17 +53,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/time_tracking.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/minmax_heap.h>
-#include <freeradius-devel/util/slab.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/timer.h>
 
 #include <stdalign.h>

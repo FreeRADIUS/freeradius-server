@@ -26,14 +26,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
@@ -43,7 +37,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/radius/radius.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

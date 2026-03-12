@@ -28,8 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 static int instance_count = 0;

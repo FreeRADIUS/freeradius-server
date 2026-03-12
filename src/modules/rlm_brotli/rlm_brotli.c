@@ -33,7 +33,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/cf_parse.h>
 
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>

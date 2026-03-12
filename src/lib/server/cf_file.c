@@ -34,7 +34,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
@@ -43,20 +42,16 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/md5.h>
 
 #ifdef HAVE_DIRENT_H
-#  include <dirent.h>
 #endif
 
 #ifdef HAVE_GLOB_H
-#  include <glob.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H
-#  include <sys/stat.h>
 #endif
 
 #include <fcntl.h>

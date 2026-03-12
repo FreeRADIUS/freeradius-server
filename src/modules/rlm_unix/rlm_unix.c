@@ -35,9 +35,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <grp.h>
-#include <pwd.h>
-#include <sys/stat.h>
 
 #include "config.h"
 

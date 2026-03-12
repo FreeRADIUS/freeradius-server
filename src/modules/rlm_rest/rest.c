@@ -31,14 +31,9 @@ RCSID("$Id$")
 #include <time.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/pool.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/value.h>
 
-#include <talloc.h>
 
 #include "rest.h"
 

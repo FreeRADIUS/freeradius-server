@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module_rlm.h>
 
 
 #include <freeradius-devel/unlang/xlat_priv.h>

@@ -28,13 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/skip.h>
-#include <freeradius-devel/util/value.h>
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"

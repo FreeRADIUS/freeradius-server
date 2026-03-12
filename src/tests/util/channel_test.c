@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -33,7 +32,6 @@ RCSID("$Id$")
 #endif
 
 #include <pthread.h>
-#include <sys/event.h>
 
 #define MAX_MESSAGES		(2048)
 #define MAX_CONTROL_PLANE	(1024)

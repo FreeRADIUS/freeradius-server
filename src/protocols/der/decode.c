@@ -31,12 +31,8 @@
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/decode.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict_ext.h>
 
 #include "attrs.h"
 #include "der.h"

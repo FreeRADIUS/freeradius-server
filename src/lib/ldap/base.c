@@ -33,10 +33,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX handle_config->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/util/sbuff.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 

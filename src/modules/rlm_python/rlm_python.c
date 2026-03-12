@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
-#include <freeradius-devel/unlang/action.h>
 
 #include <Python.h>
 #include <structmember.h>

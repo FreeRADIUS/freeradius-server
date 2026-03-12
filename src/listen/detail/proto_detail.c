@@ -28,7 +28,6 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
-#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 

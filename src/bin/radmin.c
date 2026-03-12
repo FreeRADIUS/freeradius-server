@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
 
@@ -40,7 +39,6 @@ RCSID("$Id$")
  *	Readline headers aren't compliant
  */
 DIAG_OFF(strict-prototypes)
-# include <stdio.h>
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)

@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/lst.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/strerror.h>
 

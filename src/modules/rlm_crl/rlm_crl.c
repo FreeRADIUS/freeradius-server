@@ -26,12 +26,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/call_env.h>
 
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/utils.h>
 
-#include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 #include <openssl/asn1.h>

@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
-#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>

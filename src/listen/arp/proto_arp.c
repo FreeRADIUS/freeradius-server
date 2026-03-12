@@ -23,7 +23,6 @@
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_arp.h"

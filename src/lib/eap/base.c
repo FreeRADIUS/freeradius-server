@@ -65,11 +65,9 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/function.h>
 #include "types.h"
 #include "attrs.h"

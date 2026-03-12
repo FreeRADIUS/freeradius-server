@@ -26,13 +26,10 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/rb_expire.h>
 
-#include <sys/socket.h>
 
 //#include "rlm_radius.h"
 #include "track.h"

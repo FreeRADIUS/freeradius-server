@@ -29,27 +29,22 @@ typedef struct request_s request_t;
 
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/tmpl.h>
 #ifdef WITH_TLS
 #  include <freeradius-devel/tls/base.h>
 #endif
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/sha1.h>
@@ -57,7 +52,6 @@ typedef struct request_s request_t;
 
 #include <freeradius-devel/util/dict_priv.h>
 
-#include <ctype.h>
 
 #ifdef __clangd__
 #  undef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -73,7 +67,6 @@ typedef struct request_s request_t;
 #include <assert.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <limits.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>

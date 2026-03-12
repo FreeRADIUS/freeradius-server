@@ -32,7 +32,6 @@
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 

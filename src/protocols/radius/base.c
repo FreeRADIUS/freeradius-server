@@ -34,7 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 

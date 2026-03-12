@@ -29,7 +29,6 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/base64.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 #include "base.h"

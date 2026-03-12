@@ -26,15 +26,10 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_parse.h>
 
-#include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #define FTP_BODY_ALLOC_CHUNK		1024

@@ -29,24 +29,16 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/process_types.h>
-#include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/finally.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
 
 typedef struct {
 	module_instance_t		*proto_mi;			//!< The proto_* module for a listen section.

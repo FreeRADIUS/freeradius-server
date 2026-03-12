@@ -29,7 +29,6 @@
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/encode.h>
 
 #include "dns.h"
 #include "attrs.h"

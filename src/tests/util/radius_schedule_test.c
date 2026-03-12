@@ -32,7 +32,6 @@ RCSID("$Id$")
 
 #include <sys/event.h>
 #include <stdio.h>
-#include <string.h>
 #include <pthread.h>
 
 #ifdef HAVE_GETOPT_H

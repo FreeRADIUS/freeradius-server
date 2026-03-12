@@ -24,22 +24,16 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/perm.h>
 
-#include <ctype.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H
-#  include <grp.h>
 #endif
 
 /** Instance configuration for rlm_detail

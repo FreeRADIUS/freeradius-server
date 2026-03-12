@@ -29,8 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/util/table.h>
 
 #include "action.h"
 #include "interpret.h"

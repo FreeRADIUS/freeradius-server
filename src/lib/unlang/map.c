@@ -28,7 +28,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/map.h>
 

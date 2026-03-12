@@ -62,8 +62,6 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/io/schedule.h>
-#include <unistd.h>
 #include <semaphore.h>
 #include <signal.h>
 

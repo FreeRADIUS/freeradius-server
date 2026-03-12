@@ -26,7 +26,6 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
-#include <stdlib.h>
 #include <ifaddrs.h>
 #include <net/if_arp.h>
 #include <sys/un.h>

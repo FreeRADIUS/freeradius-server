@@ -26,13 +26,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/signal.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
-#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/finally.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/timer.h>
 
 typedef struct {

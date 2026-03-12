@@ -30,16 +30,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/dependency.h>
-#include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/snmp.h>
-#include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/size.h>
-#include <freeradius-devel/util/strerror.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
@@ -54,7 +47,6 @@ RCSID("$Id$")
 #endif
 
 #include <fcntl.h>
-#include <signal.h>
 #include <sys/file.h>
 #include <sys/mman.h>
 

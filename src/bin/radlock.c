@@ -29,10 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sem.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/strerror.h>
 
-#include <ctype.h>
-#include <stdarg.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 

@@ -25,7 +25,6 @@
 #include "acutest_helpers.h"
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/dns.h>
-#include <freeradius-devel/util/talloc.h>
 
 #define DNS_HDR_LEN 12
 

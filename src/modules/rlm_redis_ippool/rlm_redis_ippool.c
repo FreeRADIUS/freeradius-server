@@ -51,7 +51,6 @@ RCSID("$Id$")
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 
-#include <freeradius-devel/unlang/call_env.h>
 
 #include "redis_ippool.h"
 

@@ -31,13 +31,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/rb.h>
 
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-#include <ctype.h>
 
 /*
   Header:		02030075

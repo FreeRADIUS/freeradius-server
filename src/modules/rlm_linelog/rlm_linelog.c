@@ -23,21 +23,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/tmpl.h>
-#include <freeradius-devel/unlang/module.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/iovec.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/types.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -46,11 +38,9 @@ RCSID("$Id$")
 #endif
 
 #ifdef HAVE_UNISTD_H
-#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H
-#  include <grp.h>
 #endif
 
 #ifdef HAVE_SYSLOG_H
@@ -60,7 +50,6 @@ RCSID("$Id$")
 #  endif
 #endif
 
-#include <sys/uio.h>
 
 #include "file.h"
 

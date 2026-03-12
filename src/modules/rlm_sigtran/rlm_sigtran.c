@@ -48,7 +48,6 @@ RCSID("$Id$")
 #include "sigtran.h"
 #include "attrs.h"
 
-#include <assert.h>
 #include <limits.h>
 
 #if !defined(PIPE_BUF) && defined(_POSIX_PIPE_BUF)

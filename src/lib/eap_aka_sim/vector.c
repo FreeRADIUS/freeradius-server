@@ -27,7 +27,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/eap/base.h>
-#include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/sim/common.h>
 #include <freeradius-devel/sim/milenage.h>
 #include <freeradius-devel/sim/ts_34_108.h>
@@ -38,7 +37,6 @@ RCSID("$Id$")
 #include "base.h"
 #include "attrs.h"
 
-#include <freeradius-devel/util/debug.h>
 
 static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
 			      fr_pair_list_t *list, uint8_t const ki[MILENAGE_KI_SIZE])

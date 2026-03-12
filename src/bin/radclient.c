@@ -38,16 +38,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/chap.h>
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
-#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/md4.h>
 #endif
-#include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
 
-#include <assert.h>
 
 typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 
@@ -60,7 +57,7 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 		_attr = fr_pair_find_by_da(&request->request_pairs, NULL, _da); \
 		if (!_attr) { \
 			_attr = fr_pair_afrom_da(request, _da); \
-			assert(_attr != NULL); \
+			fr_assert(_attr != NULL); \
 			fr_pair_append(&request->request_pairs, _attr); \
 		} \
 	} while (0)
@@ -492,7 +489,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	bool		coa_reply_done = false;
 	bool		coa_filter_done = false;
 
-	assert(files->packets != NULL);
+	fr_assert(files->packets != NULL);
 
 	/*
 	 *	Determine where to read the VP's from.
@@ -953,7 +950,7 @@ static void deallocate_id(rc_request_t *request)
  */
 static int send_one_packet(rc_request_t *request)
 {
-	assert(request->done == false);
+	fr_assert(request->done == false);
 
 #ifdef STATIC_ANALYZER
 	if (!secret) fr_exit_now(1);
@@ -973,7 +970,7 @@ static int send_one_packet(rc_request_t *request)
 	if (!request->tries || request->packet->id == -1) {
 		bool rcode;
 
-		assert(request->reply == NULL);
+		fr_assert(request->reply == NULL);
 
 		/*
 		 *	Didn't find a free packet ID, we're not done,
@@ -1018,8 +1015,8 @@ static int send_one_packet(rc_request_t *request)
 			goto retry;
 		}
 
-		assert(request->packet->id != -1);
-		assert(request->packet->data == NULL);
+		fr_assert(request->packet->id != -1);
+		fr_assert(request->packet->data == NULL);
 
 		/*
 		 *	Update the password, so it can be encrypted with the
@@ -1092,7 +1089,7 @@ static int send_one_packet(rc_request_t *request)
 		 *	We're not trying later, maybe the packet is done.
 		 */
 		if (request->tries == retries) {
-			assert(request->packet->id >= 0);
+			fr_assert(request->packet->id >= 0);
 
 			/*
 			 *	Delete the request from the tree of
@@ -1206,7 +1203,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		talloc_free(packet);
 		return 0;
 	}
-	assert(parent->coa);
+	fr_assert(parent->coa);
 
 	request = parent->coa;
 	request->packet = talloc_steal(request, packet);
@@ -2210,8 +2207,8 @@ int main(int argc, char **argv)
 					}
 				}
 			} else { /* haven't sent this packet, we're not done */
-				assert(this->done == false);
-				assert(this->reply == NULL);
+				fr_assert(this->done == false);
+				fr_assert(this->reply == NULL);
 				done = false;
 			}
 		}
