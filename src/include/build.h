@@ -77,6 +77,7 @@ extern "C" {
 /*
  *	Basic headers we want everywhere
  */
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
