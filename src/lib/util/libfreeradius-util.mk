@@ -79,6 +79,7 @@ SOURCES		:= \
 		   retry.c \
 		   sbuff.c \
 		   sem.c \
+		   semaphore.c \
 		   sha1.c \
 		   size.c \
 		   skip.c \

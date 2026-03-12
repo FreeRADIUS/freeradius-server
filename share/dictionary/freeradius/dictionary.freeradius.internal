@@ -255,8 +255,11 @@ ATTRIBUTE	Outer-Realm-Name			1251	string
 ATTRIBUTE	Inner-Realm-Name			1252	string
 ATTRIBUTE	Proto					1254	tlv
 
+# Used for worker <-> coordinator communication
+ATTRIBUTE	Worker-Id				1255	uint32
+
 #
-#	Range:	1255 - 1699
+#	Range:	1256 - 1699
 #		Unused
 #
 
