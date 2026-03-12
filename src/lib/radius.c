@@ -3136,16 +3136,16 @@ static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
 				p++;
 				continue;
 			}
-			*(q++) = *(p++);
 
 			/*
 			 *	Not much reason to have rules which
 			 *	are too long.
 			 */
-			if ((size_t) (q - buffer) > sizeof(buffer)) {
+			if ((size_t) (q - buffer) >= sizeof(buffer)) {
 				fr_strerror_printf("decode NAS-Filter-Rule: decoded attribute is too long");
 				return -1;
 			}
+			*(q++) = *(p++);
 		}
 
 		/*
@@ -3155,7 +3155,7 @@ static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
 		attr = attr_end;
 	}
 
-	if (q == buffer) return attr + attr[2] - start;
+	if (q == buffer) return attr - start;
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
