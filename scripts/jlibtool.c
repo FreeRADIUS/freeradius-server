@@ -886,6 +886,8 @@ static int external_spawn(command_t *cmd, __attribute__((unused)) char const *fi
 			argument++;
 		}
 		puts("");
+
+		fflush(stdout);
 	}
 
 	if (cmd->options.dry_run) {
