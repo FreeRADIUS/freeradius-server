@@ -240,20 +240,16 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 
 			a = fr_value_box_list_head(args);
 			if (!a) return;
-
 			b = fr_value_box_list_next(args, a);
 
-			if (!b) {
-				RDEBUG2("| ... ??? %pR", a);
-
-			} else {
+			if (b) {
 				RDEBUG2("| (%pR %s %pR)", a, fr_tokens[node->call.func->token], b);
-
-				a = fr_value_box_list_next(args, b);
-				if (a) {
-					RDEBUG2("| ... ??? %pR", a);
-					fr_assert(0);
-				}
+			} else {
+				/*
+				 *	@todo - things like regexes "steal" their arguments.  we should really
+				 *	have a way to print those arguments here.
+				 */
+				RDEBUG2("| (%pR %s ...)", a, fr_tokens[node->call.func->token]);
 			}
 		}
 	} else {
