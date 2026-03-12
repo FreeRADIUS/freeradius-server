@@ -1917,6 +1917,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		hdr->id = packet->id;
 
 		memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+		packet->offset = 0;
 	}
 
 	total_length = RADIUS_HDR_LEN;
@@ -1925,7 +1926,6 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Load up the configuration values for the user
 	 */
 	ptr = hdr->data;
-	packet->offset = 0;
 
 	/*
 	 *	FIXME: Loop twice over the reply list.  The first time,
