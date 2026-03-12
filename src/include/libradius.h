@@ -403,6 +403,7 @@ typedef struct radius_packet {
 	size_t			data_len;
 	VALUE_PAIR		*vps;
 	ssize_t			offset;
+	int			salt_offset;
 #ifdef WITH_TCP
 	size_t			partial;
 	int			proto;
@@ -549,7 +550,7 @@ int		rad_pwdecode(char *encpw, size_t len, char const *secret,
 			     uint8_t const *vector);
 
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-ssize_t		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
+ssize_t		rad_tunnel_pwencode(RADIUS_PACKET *packet, char *encpw, size_t *len, char const *secret,
 				    uint8_t const *vector);
 ssize_t		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 				    char const *secret, uint8_t const *vector);
@@ -582,25 +583,25 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 
 ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
 
-int		rad_vp2extended(RADIUS_PACKET const *packet,
+int		rad_vp2extended(RADIUS_PACKET *packet,
 				RADIUS_PACKET const *original,
 				char const *secret, VALUE_PAIR const **pvp,
 				uint8_t *ptr, size_t room);
-int		rad_vp2wimax(RADIUS_PACKET const *packet,
+int		rad_vp2wimax(RADIUS_PACKET *packet,
 			     RADIUS_PACKET const *original,
 			     char const *secret, VALUE_PAIR const **pvp,
 			     uint8_t *ptr, size_t room);
 
-int		rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+int		rad_vp2vsa(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 			   size_t room);
 
-int		rad_vp2rfc(RADIUS_PACKET const *packet,
+int		rad_vp2rfc(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp,
 			   uint8_t *ptr, size_t room);
 
-int		rad_vp2attr(RADIUS_PACKET const *packet,
+int		rad_vp2attr(RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original, char const *secret,
 			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 

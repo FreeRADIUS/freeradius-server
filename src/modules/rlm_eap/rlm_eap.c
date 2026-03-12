@@ -758,7 +758,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	ret = rad_tunnel_pwencode(p + 17, &len, request->client->secret, request->packet->vector);
+	ret = rad_tunnel_pwencode(request->packet, p + 17, &len, request->client->secret, request->packet->vector);
 	if (ret < 0) {
 		REDEBUG("Decoding leap:session-key failed");
 		talloc_free(p);
