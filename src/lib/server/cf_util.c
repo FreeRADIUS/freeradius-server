@@ -1158,7 +1158,7 @@ int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const
 	return 0;
 }
 
-/** Return the second identifier of a #CONF_SECTION
+/** Return the first identifier of a #CONF_SECTION
  *
  * @param[in] cs	to return identifiers for.
  * @return
