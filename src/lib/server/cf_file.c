@@ -763,7 +763,7 @@ cf_file_check_err_t cf_file_check_unix_connect(char const *filename, UNUSED void
 	fr_strerror_clear();
 
 	if (talloc_strlen(filename) >= sizeof(addr.sun_path)) {
-		fr_strerror_printf("Socket path \"%s\" to long", filename);
+		fr_strerror_printf("Socket path \"%s\" too long", filename);
 		return CF_FILE_OTHER_ERROR;
 	}
 
