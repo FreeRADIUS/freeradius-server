@@ -90,7 +90,6 @@ typedef struct radius_packet_t {
 static fr_randctx fr_rand_pool;	/* across multiple calls */
 static int fr_rand_initialized = 0;
 #ifndef WITH_RADIUSV11_ONLY
-static unsigned int salt_offset = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 #endif
 
@@ -603,7 +602,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 }
 
 
-static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
+static void make_tunnel_passwd(RADIUS_PACKET *packet, uint8_t *output, ssize_t *outlen,
 			       uint8_t const *input, size_t inlen, size_t room,
 			       char const *secret, uint8_t const *vector)
 {
@@ -662,7 +661,7 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 	 *	So, we set the high bit, add in a counter, and then
 	 *	add in some CSPRNG data.  should be OK..
 	 */
-	output[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+	output[0] = (0x80 | ( ((packet->salt_offset++) & 0x0f) << 3) |
 		     (fr_rand() & 0x07));
 	output[1] = fr_rand();
 	output[2] = inlen;	/* length of the password string */
@@ -743,13 +742,13 @@ static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
 }
 
 
-static ssize_t vp2data_any(RADIUS_PACKET const *packet,
+static ssize_t vp2data_any(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, int nest,
 			   VALUE_PAIR const **pvp,
 			   uint8_t *start, size_t room);
 
-static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
+static ssize_t vp2attr_rfc(RADIUS_PACKET  *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room);
@@ -759,7 +758,7 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
  * This is really a sub-function of vp2data_any().  It encodes the *data* portion
  * of the TLV, and assumes that the encapsulating attribute has already been encoded.
  */
-static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
+static ssize_t vp2data_tlvs(RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original,
 			    char const *secret, int nest,
 			    VALUE_PAIR const **pvp,
@@ -829,7 +828,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
  *
  * @return -1 on error, or the length of the data portion.
  */
-static ssize_t vp2data_any(RADIUS_PACKET const *packet,
+static ssize_t vp2data_any(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, int nest,
 			   VALUE_PAIR const **pvp,
@@ -995,14 +994,14 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 				return -1;
 			}
 
-			make_tunnel_passwd(ptr + lvalue, &len, data, len,
+			make_tunnel_passwd(packet, ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, original->vector);
 			break;
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
 		case PW_CODE_COA_REQUEST:
-			make_tunnel_passwd(ptr + lvalue, &len, data, len,
+			make_tunnel_passwd(packet, ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, packet->vector);
 			break;
@@ -1105,7 +1104,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 
 /** Encode an "extended" attribute
  */
-int rad_vp2extended(RADIUS_PACKET const *packet,
+int rad_vp2extended(RADIUS_PACKET *packet,
 		    RADIUS_PACKET const *original,
 		    char const *secret, VALUE_PAIR const **pvp,
 		    uint8_t *ptr, size_t room)
@@ -1221,7 +1220,7 @@ int rad_vp2extended(RADIUS_PACKET const *packet,
 /** Encode a WiMAX attribute
  *
  */
-int rad_vp2wimax(RADIUS_PACKET const *packet,
+int rad_vp2wimax(RADIUS_PACKET *packet,
 		 RADIUS_PACKET const *original,
 		 char const *secret, VALUE_PAIR const **pvp,
 		 uint8_t *ptr, size_t room)
@@ -1352,7 +1351,7 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
+static ssize_t vp2attr_rfc(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room)
@@ -1386,7 +1385,7 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
  *
  * If it's in the RFC format, call vp2attr_rfc.  Otherwise, encode it here.
  */
-static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
+static ssize_t vp2attr_vsa(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, unsigned int vendor,
@@ -1513,7 +1512,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 /** Encode a Vendor-Specific attribute
  *
  */
-int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+int rad_vp2vsa(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		char const *secret, VALUE_PAIR const **pvp, uint8_t *ptr,
 		size_t room)
 {
@@ -1580,7 +1579,7 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 /** Encode an RFC standard attribute 1..255
  *
  */
-int rad_vp2rfc(RADIUS_PACKET const *packet,
+int rad_vp2rfc(RADIUS_PACKET *packet,
 	       RADIUS_PACKET const *original,
 	       char const *secret, VALUE_PAIR const **pvp,
 	       uint8_t *ptr, size_t room)
@@ -1737,7 +1736,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 			   ptr, room);
 }
 
-static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
+static ssize_t rad_vp2rfctlv(RADIUS_PACKET *packet,
 			     RADIUS_PACKET const *original,
 			     char const *secret, VALUE_PAIR const **pvp,
 			     uint8_t *start, size_t room)
@@ -1784,7 +1783,7 @@ static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
 /** Parse a data structure into a RADIUS attribute
  *
  */
-int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+int rad_vp2attr(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 		size_t room)
 {
@@ -4974,7 +4973,7 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
  * This is per RFC-2868 which adds a two char SALT to the initial intermediate
  * value MD5 hash.
  */
-ssize_t rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
+ssize_t rad_tunnel_pwencode(RADIUS_PACKET *packet, char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
@@ -5010,7 +5009,7 @@ ssize_t rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret, uin
 	 *	So, we set the high bit, add in a counter, and then
 	 *	add in some CSPRNG data.  should be OK..
 	 */
-	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+	salt[0] = (0x80 | ( ((packet->salt_offset++) & 0x0f) << 3) |
 		   (fr_rand() & 0x07));
 	salt[1] = fr_rand();
 
