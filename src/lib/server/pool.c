@@ -1370,7 +1370,7 @@ void fr_pool_free(fr_pool_t *pool)
 /** Reserve a connection in the connection pool
  *
  * Will attempt to find an unused connection in the connection pool, if one is
- * found, will mark it as in in use increment the number of active connections
+ * found, will mark it as in use increment the number of active connections
  * and return the connection handle.
  *
  * If no free connections are found will attempt to spawn a new one, conditional

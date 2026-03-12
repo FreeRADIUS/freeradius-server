@@ -808,7 +808,7 @@ parse_rhs:
 
 check_for_child:
 	/*
-	 *	Add this map to to the parents list.  Note that the caller
+	 *	Add this map to the parents list.  Note that the caller
 	 *	will have to check for this, but checking if map->parent
 	 *	exists.
 	 */
@@ -1992,7 +1992,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	list_ref = tmpl_list(map->lhs);
 	list = tmpl_list_head(context, list_ref);
 	if (!list) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid list qualifier \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
 			tmpl_list_name(list_ref, "<INVALID>"));
 		rcode = -2;

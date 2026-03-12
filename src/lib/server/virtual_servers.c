@@ -1208,7 +1208,7 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
  *  This function walks down the registration table, compiling each
  *  named section.
  *
- * @param[in] vs	to to compile sections for.
+ * @param[in] vs	to compile sections for.
  * @param[in] rules	to apply for pass1.
  */
 static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t const *rules)

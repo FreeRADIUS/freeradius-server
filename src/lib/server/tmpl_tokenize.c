@@ -5059,7 +5059,7 @@ do { \
 
 /** Verify the attribute reference in a tmpl_t make sense
  *
- * @note If the attribute reference is is invalid, causes the server to exit.
+ * @note If the attribute reference is invalid, causes the server to exit.
  *
  * @param file obtained with __FILE__.
  * @param line obtained with __LINE__.
