@@ -635,13 +635,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, REQUEST
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 {
-	size_t		i;
-	size_t		len;
-	ssize_t		ret;
-	char		*p;
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
-	vp_cursor_t	cursor;
 
 	/*
 	 *	If there was a handler associated with this request,
@@ -719,93 +714,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 		}
 
 		return RLM_MODULE_OK;
-	} else {
-		RDEBUG2("No pre-existing handler found");
 	}
 
-	/*
-	 *	This is allowed.
-	 */
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
-
-	/*
-	 *	There may be more than one Cisco-AVPair.
-	 *	Ensure we find the one with the LEAP attribute.
-	 */
-	fr_cursor_init(&cursor, &request->proxy_reply->vps);
-	for (;;) {
-		/*
-		 *	Hmm... there's got to be a better way to
-		 *	discover codes for vendor attributes.
-		 *
-		 *	This is vendor Cisco (9), Cisco-AVPair
-		 *	attribute (1)
-		 */
-		vp = fr_cursor_next_by_num(&cursor, 1, 9, TAG_ANY);
-		if (!vp) {
-			return RLM_MODULE_NOOP;
-		}
-
-		/*
-		 *	If it's "leap:session-key", then stop.
-		 *
-		 *	The format is VERY specific!
-		 */
-		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) {
-			break;
-		}
-	}
-
-	/*
-	 *	The format is very specific.
-	 */
-	if (vp->vp_length != (17 + 34)) {
-		RDEBUG2("Cisco-AVPair with leap:session-key has incorrect length %zu: Expected %d",
-		       vp->vp_length, 17 + 34);
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Decrypt the session key, using the proxy data.
-	 *
-	 *	Note that the session key is *binary*, and therefore
-	 *	may contain embedded zeros.  So we have to use memdup.
-	 *	However, Cisco-AVPair is a "string", so the rest of the
-	 *	code assumes that it's terminated by a trailing '\0'.
-	 *
-	 *	So... be sure to (a) use memdup, and (b) include the last
-	 *	zero byte.
-	 */
-	i = 34;
-	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
-	talloc_set_type(p, uint8_t);
-	ret = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
-	if (ret < 0) {
-		REDEBUG("Decoding leap:session-key failed");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-	len = i;
-
-	if (i != 16) {
-		REDEBUG("Decoded key length is incorrect, must be 16 bytes");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	Encrypt the session key again, using the request data.
-	 */
-	ret = rad_tunnel_pwencode(p + 17, &len, request->client->secret, request->packet->vector);
-	if (ret < 0) {
-		REDEBUG("Decoding leap:session-key failed");
-		talloc_free(p);
-		return RLM_MODULE_FAIL;
-	}
-
-	fr_pair_value_strsteal(vp, p);
-
-	return RLM_MODULE_UPDATED;
+	RDEBUG2("No pre-existing handler found");
+	return RLM_MODULE_NOOP;
 }
 #endif
 

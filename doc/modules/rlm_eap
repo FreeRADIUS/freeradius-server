@@ -194,12 +194,6 @@ HOW DO I USE IT (FAQ/Examples)
 		eap
 	}
 
-	# If you are proxying EAP-LEAP requests
-	# This is required to make LEAP work.
-        post-proxy {
-		eap
-	}
-
   2. My Userbase is in LDAP and I want to use EAP-MD5 authentication
 
   In radiusd.conf
@@ -309,7 +303,7 @@ HOW DO I USE IT (FAQ/Examples)
 
 
 INSTALLATION
-  EAP, EAP-MD5, and Cisco LEAP do not require any additional packages.
+  EAP, EAP-MD5, and EAP-MSCHAPv2 do not require any additional packages.
   Freeradius contains all the required packages.
 
   For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, <http://www.openssl.org/>,

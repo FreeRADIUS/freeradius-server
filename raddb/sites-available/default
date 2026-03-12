@@ -439,7 +439,7 @@ authorize {
 #	ntdomain
 
 	#
-	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
+	#  This module takes care of EAP-MD5, EAP-TLS, etc.
 	#  authentication.
 	#
 	#  It also sets the EAP-Type attribute in the request
