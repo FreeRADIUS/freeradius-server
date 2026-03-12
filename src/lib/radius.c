@@ -1332,7 +1332,7 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 #ifndef NDEBUG
 		if ((fr_debug_lvl > 3) && fr_log_fp) {
 			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
-			print_hex_data(ptr + 2, len, 3);
+			print_hex_data(ptr + 2, left, 3);
 		}
 #endif
 		ptr[1] += left;
