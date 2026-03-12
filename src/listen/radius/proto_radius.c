@@ -327,7 +327,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		talloc_free(decode_ctx.tmp_ctx);
 
 		proto_radius_log(track->li, decode_ctx.reason, &address->socket,
-				 "decoding failed");
+				 "decoding failed (%s)", fr_strerror());
 		return -1;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
