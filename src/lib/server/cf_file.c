@@ -632,6 +632,8 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	DEBUG2("including configuration file %s", filename);
 
 	if (!fp) {
+		close(fd);
+
 	error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
