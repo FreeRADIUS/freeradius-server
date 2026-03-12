@@ -185,7 +185,7 @@ struct module_method_binding_s {
 									///< type of the rctx.
 
 	fr_dlist_head_t				same_name1;		//!< List of bindings with the same name1.  Only initialised
-									///< for the the first name1 binding.
+									///< for the first name1 binding.
 									///< DO NOT INITIALISE IN THE MODULE.
 	fr_dlist_t				entry;			//!< Linked list of bindings with the same name1.
 									///< Allows us to more quickly iterate over all

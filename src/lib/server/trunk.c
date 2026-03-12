@@ -3326,7 +3326,7 @@ static void trunk_connection_enter_active(trunk_connection_t *tconn)
 	trunk_backlog_drain(trunk);
 }
 
-/** Connection transitioned to the the init state
+/** Connection transitioned to the init state
  *
  * Reflect the connection state change in the lists we use to track connections.
  *

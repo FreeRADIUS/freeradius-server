@@ -588,7 +588,7 @@ typedef void (*trunk_request_cancel_mux_t)(fr_event_list_t *el,
  * the treq.
  *
  * The treq, and any associated resources, should be
- * removed from the the matching structure associated with the
+ * removed from the matching structure associated with the
  * #connection_t or uctx.
  *
  * Which resources should be freed depends on the cancellation reason:

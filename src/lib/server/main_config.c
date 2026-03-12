@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief Handle the the main server's (radiusd) configuration.
+ * @brief Handle the main server's (radiusd) configuration.
  * @file src/lib/server/main_config.c
  *
  * @copyright 2002,2006-2007 The FreeRADIUS server project
