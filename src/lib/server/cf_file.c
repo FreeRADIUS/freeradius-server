@@ -2055,7 +2055,7 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 		ptr++;
 		stack->ptr = ptr;
 
-		cf_log_warn(css, "Using deprecated syntax.  Please use new the new 'foreach' syntax.");
+		cf_log_warn(css, "Using deprecated syntax.  Please use the new 'foreach' syntax.");
 		return cf_section_to_item(css);
 	}
 

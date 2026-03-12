@@ -1353,8 +1353,8 @@ void connection_signal_halt(connection_t *conn)
 /** Receive an error notification when we're connecting a socket
  *
  * @param[in] el	event list the I/O event occurred on.
- * @param[in] fd	the I/O even occurred for.
- * @param[in] flags	from_kevent.
+ * @param[in] fd	the I/O event occurred for.
+ * @param[in] flags	from kevent.
  * @param[in] fd_errno	from kevent.
  * @param[in] uctx	The #connection_t this fd is associated with.
  */
@@ -1369,7 +1369,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 /** Receive a write notification after a socket is connected
  *
  * @param[in] el	event list the I/O event occurred on.
- * @param[in] fd	the I/O even occurred for.
+ * @param[in] fd	the I/O event occurred for.
  * @param[in] flags	from kevent.
  * @param[in] uctx	The #connection_t this fd is associated with.
  */
