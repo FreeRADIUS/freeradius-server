@@ -5236,7 +5236,7 @@ void fr_rand_seed(void const *data, size_t size)
 	if (!fr_rand_initialized) {
 		int fd;
 		uint8_t *p = (uint8_t *) &fr_rand_pool.randrsl[0];
-		uint8_t *end = p + sizeof(&fr_rand_pool.randrsl);
+		uint8_t *end = p + sizeof(fr_rand_pool.randrsl);
 
 		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
 
