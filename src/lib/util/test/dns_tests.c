@@ -279,7 +279,7 @@ static void test_decode_simple_label(void)
 }
 
 static void test_decode_multi_label(void)
-{	
+{
 	ssize_t slen;
 	uint8_t const *next;
 	uint8_t pkt[DNS_HDR_LEN + 17];	/* "www.example.com" */
@@ -584,6 +584,7 @@ static void test_roundtrip_underscore(void)
 
 	enc_len = encode_label(buf, sizeof(buf), buf, "_tcp.example.com", false, NULL);
 	TEST_CHECK(enc_len > 0);
+	if (enc_len <= 0) return;
 
 	dec_len = fr_dns_label_to_value_box(ctx, &vb_out, buf, enc_len, buf, false, NULL);
 	TEST_CHECK(dec_len > 0);
