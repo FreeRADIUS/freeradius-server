@@ -5120,8 +5120,12 @@ set_packet_type:
 	rad_assert(coa->packet != NULL);
 	rad_assert(coa->packet->vps == NULL);
 
-	coa->packet = rad_copy_packet(coa, request->packet);
-	coa->reply = rad_copy_packet(coa, request->reply);
+	if (!coa->packet->vps) {
+		coa->packet->vps = fr_pair_copy(coa->packet, request->packet->vps);
+	}
+	if (!coa->reply->vps) {
+		coa->reply->vps = fr_pair_copy(coa->reply, request->reply->vps);
+	}
 
 	coa->config = fr_pair_list_copy(coa, request->config);
 	coa->num_coa_requests = 0;
