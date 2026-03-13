@@ -3033,11 +3033,11 @@ pick:
 
 		if (!home_server_active(request, home[i])) continue;
 
-		if (found->id <= key[i]) {
-			diff = key[i] - found->id;
+		if (home[i]->id <= key[i]) {
+			diff = key[i] - home[i]->id;
 
 		} else {
-			diff = key[i] + (~((uint32_t) 0) - found->id) + 1;
+			diff = home[i]->id - key[i];
 		}
 
 		if (!found || (diff < found_diff)) {
