@@ -54,6 +54,11 @@ src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
 SUBMAKEFILES += fuzzer_${1}.mk
 endef
 
+#
+#  Enable fuzzer_json
+#
+SUBMAKEFILES += fuzzer_json.mk
+
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 .PHONY: fuzzer.help
