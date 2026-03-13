@@ -846,6 +846,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->ca_file && !inst->ca_path) {
 		cf_log_err(mctx->mi->conf, "Missing ca_file / ca_path option.  One or other (or both) must be specified.");
+	fail:
+		talloc_free(inst->mutable);
 		return -1;
 	}
 
@@ -853,7 +855,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!X509_STORE_load_locations(inst->verify_store, inst->ca_file, inst->ca_path)) {
 		cf_log_err(mctx->mi->conf, "Failed reading Trusted root CA file \"%s\" and path \"%s\"",
 			   inst->ca_file, inst->ca_path);
-		return -1;
+		goto fail;
 	}
 
 	X509_STORE_set_purpose(inst->verify_store, X509_PURPOSE_SSL_CLIENT);
