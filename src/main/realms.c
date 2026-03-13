@@ -674,7 +674,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 	if (!rbtree_insert(home_servers_bynumber, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		if (home->ipaddr.af != AF_UNSPEC) {
-			rbtree_deletebydata(home_servers_byname, home);
+			rbtree_deletebydata(home_servers_byaddr, home);
 		}
 		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
@@ -1250,7 +1250,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 		if (!cp) cp = cf_pair_find(client, "ipv4addr");
 		if (!cp) cp = cf_pair_find(client, "ipv6addr");
 
-		cf_pair_add(server, cf_pair_dup(server, cp));
+		if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
 	}
 
 	if (!cs || !cf_pair_find(cs, "secret")) {
@@ -1986,7 +1986,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		if (!rbtree_insert(home_servers_bynumber, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
 			if (home->ipaddr.af != AF_UNSPEC) {
-				rbtree_deletebydata(home_servers_byname, home);
+				rbtree_deletebydata(home_servers_byaddr, home);
 			}
 			cf_log_err_cs(cs,
 				   "Internal error %d adding home server %s.",
