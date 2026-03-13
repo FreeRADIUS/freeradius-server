@@ -469,7 +469,7 @@ static int trigger_args_validate(map_t *map, UNUSED void *uctx)
 		break;
 
 	default:
-		cf_log_err(map->ci, "Right hand side of trigger_args must be litteral, not %s", tmpl_type_to_str(map->rhs->type));
+		cf_log_err(map->ci, "Right hand side of trigger_args must be literal, not %s", tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 
