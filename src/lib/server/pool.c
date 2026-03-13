@@ -470,8 +470,13 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 	this = talloc_zero(pool, fr_pool_connection_t);
 	if (!this) {
+		pool->state.last_failed = now;
+		pool->state.pending--;
+
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
+
+		ERROR("Memory allocation failed for new connection (%" PRIu64 ")", number);
 
 		talloc_free(ctx);
 
