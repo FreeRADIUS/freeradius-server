@@ -799,6 +799,28 @@ do { \
 	fr_minmax_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
+
+#define FR_TRUNK_LIST_FUNC(_list) \
+static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ## _add(trunk_t *trunk, trunk_request_t *treq) \
+{ \
+	fr_dlist_insert_head(&trunk->_list, treq); \
+} \
+static inline CC_HINT(nonnull, always_inline) trunk_request_t *trunk_list_ ## _list ##_peek(trunk_t *trunk) \
+{ \
+	return fr_dlist_tail(&trunk->_list); \
+} \
+static inline CC_HINT(nonnull, always_inline) trunk_request_t *trunk_list_ ## _list ##_pop(trunk_t *trunk) \
+{ \
+	return fr_dlist_pop_head(&trunk->_list); \
+} \
+static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ##_remove(trunk_t *trunk, trunk_request_t *treq) \
+{ \
+	fr_dlist_remove(&trunk->_list, treq); \
+}
+
+FR_TRUNK_LIST_FUNC(free_requests)
+
+
 /** Call a list of watch functions associated with a state
  *
  */
@@ -2447,12 +2469,14 @@ void trunk_request_free(trunk_request_t **treq_to_free)
 #endif
 	};
 
+
 	/*
 	 *	Insert at the head, so that we can free
 	 *	requests that have been unused for N
 	 *	seconds from the tail.
 	 */
-	fr_dlist_insert_head(&trunk->free_requests, treq);
+	trunk_list_free_requests_add(trunk, treq);
+
 }
 
 /** Actually free the trunk request
@@ -2472,7 +2496,7 @@ static int _trunk_request_free(trunk_request_t *treq)
 		break;
 	}
 
-	fr_dlist_remove(&trunk->free_requests, treq);
+	trunk_list_free_requests_remove(trunk, treq);
 
 	return 0;
 }
@@ -2520,7 +2544,7 @@ trunk_request_t *trunk_request_alloc(trunk_t *trunk, request_t *request)
 	 *
 	 *	If we can't do that, just allocate a new one.
 	 */
-	treq = fr_dlist_pop_head(&trunk->free_requests);
+	treq = trunk_list_free_requests_pop(trunk);
 	if (treq) {
 		fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_INIT);
 		fr_assert(treq->pub.trunk == trunk);
@@ -4198,8 +4222,8 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	 *	Cleanup requests in our request cache which
 	 *	have been reapable for too long.
 	 */
-	while ((treq = fr_dlist_tail(&trunk->free_requests)) &&
-	       fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
+	while ((treq = trunk_list_free_requests_peek(trunk)) &&
+			fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
 
 	/*
 	 *	If we have idle connections, then close them.
@@ -4929,7 +4953,7 @@ static int _trunk_free(trunk_t *trunk)
 	/*
 	 *	Free any requests in our request cache
 	 */
-	while ((treq = fr_dlist_head(&trunk->free_requests))) talloc_free(treq);
+	while ((treq = trunk_list_free_requests_peek(trunk))) talloc_free(treq);
 
 	/*
 	 *	Free any entries in the watch lists
@@ -4997,7 +5021,7 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	talloc_set_destructor(trunk, _trunk_free);
 
 	/*
-	 *	Unused request list...
+	 *	Free request list...
 	 */
 	fr_dlist_talloc_init(&trunk->free_requests, trunk_request_t, entry);
 
