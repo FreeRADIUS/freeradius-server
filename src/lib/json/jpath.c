@@ -649,7 +649,7 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 /** Parse a jpath field
  *
  */
-static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
+static ssize_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
 {
 	char buffer[128];
 
@@ -727,7 +727,7 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 /** parse a jpath selector
  *
  */
-static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
+static ssize_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t inlen)
 {
 	ssize_t slen;
 	char const *p = in, *end = p + inlen;
