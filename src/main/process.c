@@ -2648,7 +2648,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	helps the listen_coa_find() function get a
 		 *	listener which has free IDs.
 		 */
-		if (request->proxy_listener->send_coa) request->proxy_listener->num_ids_used++;
+		if (request->proxy_listener && request->proxy_listener->send_coa) {
+			request->proxy_listener->num_ids_used++;
+		}
 #endif
 
 		/*
@@ -5841,7 +5843,7 @@ static void listener_free_cb(void *ctx)
 #ifdef WITH_TCP
 	fr_event_delete(el, &sock->ev);
 #endif
-	if (this->type != RAD_LISTEN_PROXY) {
+	if (this->type == RAD_LISTEN_PROXY) {
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 		talloc_free(this);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
