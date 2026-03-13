@@ -3035,9 +3035,8 @@ pick:
 
 		if (home[i]->id <= key[i]) {
 			diff = key[i] - home[i]->id;
-
 		} else {
-			diff = key[i] + (~((uint32_t) 0) - home[i]->id) + 1;
+			diff = home[i]->id - key[i];
 		}
 
 		if (!found || (diff < found_diff)) {
