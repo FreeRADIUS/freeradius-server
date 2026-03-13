@@ -1203,7 +1203,8 @@ static void request_dup(REQUEST *request)
 	      "in component %s module %s",
 	      request->number, request->client->shortname,
 	      request->packet->src_port,request->packet->id,
-	      request->component, request->module ? request->module : "");
+	      request->component ? request->component : "",
+	      request->module ? request->module : "");
 }
 
 
@@ -5617,8 +5618,8 @@ static void coa_no_reply(REQUEST *request, int action)
 
 	case FR_ACTION_PROXY_REPLY: /* too late! */
 		RDEBUG2("Reply from CoA server %s port %d  - ID: %d arrived too late.",
-			inet_ntop(request->proxy->src_ipaddr.af,
-				  &request->proxy->src_ipaddr.ipaddr,
+			inet_ntop(request->proxy->dst_ipaddr.af,
+				  &request->proxy->dst_ipaddr.ipaddr,
 				  buffer, sizeof(buffer)),
 			request->proxy->dst_port, request->proxy->id);
 		break;
