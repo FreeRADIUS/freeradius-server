@@ -1953,12 +1953,8 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 	packet->timestamp = now;
 
-#ifdef WITH_ACCOUNTING
-	if (listener->type != RAD_LISTEN_DETAIL)
-#endif
-
-#ifdef WITH_TCP
-	{
+#if defined(WITH_ACCOUNTING) && defined(WITH_TCP)
+	if (listener->type != RAD_LISTEN_DETAIL) {
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
 
