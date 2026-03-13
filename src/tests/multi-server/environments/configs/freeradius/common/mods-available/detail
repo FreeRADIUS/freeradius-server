@@ -1,0 +1,7 @@
+
+detail {
+        filename = "${radacctdir}/%{Net.Src.IP}/detail-%Y-%m-%d"
+        escape_filenames = no
+        permissions = 0600
+        header = "%t"
+}
