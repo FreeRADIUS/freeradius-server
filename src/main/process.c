@@ -3049,6 +3049,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	if (!request->proxy_reply) {
 		decode_fail_t reason;
+		bool require_ma;
+
+		if (!request->home_server) {
+			proxy_reply_too_late(request);
+			return 0;
+		}
 
 		/*
 		 *	If the home server configuration requires a Message-Authenticator, then set the flag,
@@ -3056,12 +3062,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		 *
 		 *	The realms.c file already clears require_ma for TLS connections.
 		 */
-		bool require_ma = (request->home_server->require_ma == FR_BOOL_TRUE) && (request->proxy->code == PW_CODE_ACCESS_REQUEST);
-
-		if (!request->home_server) {
-			proxy_reply_too_late(request);
-			return 0;
-		}
+		require_ma = ((request->home_server->require_ma == FR_BOOL_TRUE) &&
+			      (request->proxy->code == PW_CODE_ACCESS_REQUEST));
 
 		if (!rad_packet_ok(packet, require_ma, &reason)) {
 			DEBUG("Ignoring invalid packet - %s", fr_strerror());
