@@ -909,7 +909,7 @@ void request_done(REQUEST *request, int original)
 #endif
 
 	if (request->packet) {
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d due to %s",
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%u due to %s",
 			request->packet->id,
 			(unsigned int) (request->timestamp - fr_start_time),
 			action_codes[original]);
