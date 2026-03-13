@@ -608,7 +608,12 @@ static int _trigger_init(void *cs_arg)
 								_trigger_last_fired_cmp, _trigger_last_fired_free));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
-	pthread_mutex_init(trigger_mutex, 0);
+	if (pthread_mutex_init(trigger_mutex, 0) != 0) {
+		PERROR("Failed to initialize trigger mutex");
+		talloc_free(trigger_mutex);
+		return -1;
+	}
+
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
 	return 0;
