@@ -282,7 +282,7 @@ static inline void fr_pool_trigger(fr_pool_t *pool, char const *event)
  * @param[in] conn	handle to search for.
  * @return
  *	- Connection containing the specified handle.
- *	- NULL if non if connection was found.
+ *	- NULL if no such connection was found.
  */
 static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
@@ -894,7 +894,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 
 	if (!spawn) return NULL;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You  may need to increase \"spare\"",
+	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
 
 	/*
@@ -923,7 +923,7 @@ do_return:
  *
  * @param[in] pool		to enable triggers for.
  * @param[in] trigger_prefix	prefix to prepend to all trigger names.  Usually a path
- *				to the module's trigger configuration .e.g.
+ *				to the module's trigger configuration e.g.
  *      			@verbatim modules.<name>.pool @endverbatim
  *				@verbatim <trigger name> @endverbatim is appended to form
  *				the complete path.
@@ -1029,7 +1029,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	to maintaining a cache of open connections.
 	 *
 	 *	With libcurl's multihandle, connections can only be reused
-	 *	if all handles that make up the multhandle are done processing
+	 *	if all handles that make up the multihandle are done processing
 	 *	their requests.
 	 *
 	 *	We can't tell when that's happened using libcurl, and even
@@ -1375,7 +1375,7 @@ void fr_pool_free(fr_pool_t *pool)
 /** Reserve a connection in the connection pool
  *
  * Will attempt to find an unused connection in the connection pool, if one is
- * found, will mark it as in use increment the number of active connections
+ * found, will mark it as in use, and increment the number of active connections
  * and return the connection handle.
  *
  * If no free connections are found will attempt to spawn a new one, conditional
