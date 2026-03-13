@@ -620,7 +620,10 @@ void request_free(REQUEST *request)
 void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	if (listener->blocked) return;
+	if (listener->blocked) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return;
+	}
 
 	if (!fr_packet_list_socket_freeze(proxy_list,
 					  listener->fd)) {
@@ -648,7 +651,10 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 void proxy_listener_thaw(rad_listen_t *listener)
 {
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	if (!listener->blocked) return;
+	if (!listener->blocked) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return;
+	}
 
 	if (!fr_packet_list_socket_thaw(proxy_list,
 					  listener->fd)) {
