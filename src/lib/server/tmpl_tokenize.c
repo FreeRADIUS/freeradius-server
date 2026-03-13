@@ -2489,7 +2489,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		tmpl_attr_t *ar;
 
 		/*
-		 *	Ensure that the list is set correctly, so that the returned vpt just doesn't just
+		 *	Ensure that the list is set correctly, so that the returned vpt doesn't just
 		 *	match the input rules, it is also internally consistent.
 		 */
 		ar = tmpl_attr_list_head(tmpl_attr(vpt));
