@@ -656,6 +656,8 @@ static void connection_state_enter_closed(connection_t *conn)
 	switch (conn->pub.state) {
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_SHUTDOWN:
+	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
 		break;
 
