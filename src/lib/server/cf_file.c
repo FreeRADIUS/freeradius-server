@@ -619,9 +619,11 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 			if (my_fd != AT_FDCWD) close(my_fd);
 			return 1;
 		}
+
 		fd = openat(my_fd, r, O_RDONLY, 0);
-		fp = (fd < 0) ? NULL : fdopen(fd, "r");
 		if (my_fd != AT_FDCWD) close(my_fd);
+		if (fd < 0) goto error;
+		fp = fdopen(fd, "r");
 	} else {
 		fp = fopen(filename, "r");
 		if (fp) fd = fileno(fp);
