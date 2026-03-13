@@ -2796,7 +2796,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
  * @param[in] in		sbuff to parse.
  * @param[in] p_rules		formatting rules.
  * @return
- *	- < 0 sbuff does not contain an IPv4 address or prefix.
+ *	- < 0 sbuff does not contain an IPv6 address or prefix.
  *	- > 0 how many bytes were parsed.
  */
 static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
