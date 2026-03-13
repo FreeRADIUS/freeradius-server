@@ -2515,11 +2515,13 @@ trunk_request_t *trunk_request_alloc(trunk_t *trunk, request_t *request)
 	}
 
 	/*
-	 *	Allocate or reuse an existing request
+	 *	Re-use a recently freed request, which might have some
+	 *	better cache locality than getting a request from the tail.
+	 *
+	 *	If we can't do that, just allocate a new one.
 	 */
-	treq = fr_dlist_head(&trunk->free_requests);
+	treq = fr_dlist_pop_head(&trunk->free_requests);
 	if (treq) {
-		fr_dlist_remove(&trunk->free_requests, treq);
 		fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_INIT);
 		fr_assert(treq->pub.trunk == trunk);
 		fr_assert(treq->pub.tconn == NULL);
