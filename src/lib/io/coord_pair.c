@@ -36,8 +36,8 @@ RCSID("$Id$")
 
 static _Atomic(uint64_t) request_number = 0;
 
-FR_SLAB_TYPES(request, request_t);
-FR_SLAB_FUNCS(request, request_t);
+FR_SLAB_TYPES(request, request_t)
+FR_SLAB_FUNCS(request, request_t)
 
 static fr_dlist_head_t	*coord_pair_regs = NULL;
 static module_list_t	*coord_pair_modules;
