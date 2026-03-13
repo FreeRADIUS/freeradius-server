@@ -1203,7 +1203,7 @@ static void request_dup(REQUEST *request)
 	      "in component %s module %s",
 	      request->number, request->client->shortname,
 	      request->packet->src_port,request->packet->id,
-	      request->component, request->module);
+	      request->component, request->module ? request->module : "");
 }
 
 
@@ -5280,14 +5280,6 @@ static void coa_retransmit(REQUEST *request)
 
 	fr_event_now(el, &now);
 
-	/*
-	 *	Home server has gone away.  The request is done.
-	 */
-	if (!request->home_server) {
-		RDEBUG("No home server for CoA packet.  Failing it.");
-		goto fail;
-	}
-
 	if (request->delay == 0) {
 		/*
 		 *	Implement re-transmit algorithm as per RFC 5080
@@ -5330,8 +5322,6 @@ static void coa_retransmit(REQUEST *request)
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
-
-	fail:
 		if (setup_post_proxy_fail(request)) {
 			ASSERT_MASTER;
 			request_queue_or_run(request, coa_no_reply); /* network thread - timer */
