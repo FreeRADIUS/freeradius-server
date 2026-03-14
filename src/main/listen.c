@@ -3651,11 +3651,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 						false
 #endif
 			);
-
-		/*
-		 *	Set max_requests, lifetime, and idle_timeout from the home server.
-		 */
-		sock->limit = home->limit;
 	} else
 #endif
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
@@ -4266,11 +4261,14 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 */
 	if (main_config.myip.af != AF_UNSPEC) {
 		CONF_SECTION *subcs;
-		char const *name2 = cf_section_name2(cs);
+		char const *name2;
 
 		cs = cf_section_sub_find_name2(config, "server",
 					       main_config.name);
 		if (!cs) goto add_sockets;
+
+		name2 = cf_section_name2(cs);
+		if (!name2) goto add_sockets;
 
 		/*
 		 *	Should really abstract this code...
