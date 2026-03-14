@@ -285,9 +285,10 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	type = cf_pair_value_type(cp);
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    map->lhs->tmpl_da->flags.is_unknown &&
-	    !map_cast_from_hex(map, type, value)) {
-		goto error;
+	    map->lhs->tmpl_da->flags.is_unknown) {
+		if (!map_cast_from_hex(map, type, value)) {
+			goto error;
+		}
 
 	} else {
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
@@ -578,11 +579,10 @@ int8_t map_cmp_by_lhs_attr(void const *a, void const *b)
 {
 	vp_tmpl_t const *my_a = ((vp_map_t const *)a)->lhs;
 	vp_tmpl_t const *my_b = ((vp_map_t const *)b)->lhs;
+	uint8_t cmp;
 
 	VERIFY_TMPL(my_a);
 	VERIFY_TMPL(my_b);
-
-	uint8_t cmp;
 
 	rad_assert(my_a->type == TMPL_TYPE_ATTR);
 	rad_assert(my_b->type == TMPL_TYPE_ATTR);
@@ -700,7 +700,6 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
 static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
 {
 	int result;
-	char *expanded = NULL;
 	char answer[1024];
 	VALUE_PAIR **input_pairs = NULL;
 	VALUE_PAIR *output_pairs = NULL;
@@ -727,7 +726,6 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
 				     true, true, EXEC_TIMEOUT);
-	talloc_free(expanded);
 	if (result != 0) {
 		talloc_free(output_pairs);
 		return -1;
@@ -783,7 +781,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 {
 	int rcode = 0;
 	ssize_t len;
-	VALUE_PAIR *vp = NULL, *new, *found = NULL;
+	VALUE_PAIR *vp = NULL, *new = NULL, *found = NULL;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
 	ssize_t slen;
@@ -909,7 +907,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		new->tag = map->lhs->tmpl_tag;
 
 		if (fr_pair_value_from_str(new, map->rhs->name, -1) < 0) {
-			rcode = 0;
+			rcode = -1;
 			goto error;
 		}
 		*out = new;
@@ -1017,7 +1015,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		rad_assert(0);	/* Should have been caught at parse time */
 
 	error:
-		fr_pair_list_free(&vp);
+		fr_pair_list_free(&new);
 		return rcode;
 	}
 
@@ -1054,6 +1052,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	int rcode = 0;
 	int num;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
+	VALUE_PAIR *next;
 	bool found = false;
 	REQUEST *context;
 	TALLOC_CTX *parent;
@@ -1340,7 +1339,9 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 */
 		for (dst = fr_cursor_current(&dst_list);
 		     dst;
-		     dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag)) {
+		     dst = next) {
+			next = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);
+
 			for (vp = fr_cursor_first(&src_list);
 			     vp;
 			     vp = fr_cursor_next(&src_list)) {
