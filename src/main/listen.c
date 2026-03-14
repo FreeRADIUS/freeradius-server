@@ -4528,7 +4528,7 @@ static void coa_entry_free(void *data)
 static int coa_entry_destructor(coa_entry_t *entry)
 {
 	pthread_mutex_lock(&entry->coa_key->mutex);
-	fr_hash_table_delete(entry->coa_key->ht, entry);
+	fr_hash_table_yank(entry->coa_key->ht, entry);
 	pthread_mutex_unlock(&entry->coa_key->mutex);
 
 	return 0;
@@ -4607,8 +4607,8 @@ retry:
 			 *	created the node.  In which case we
 			 *	try again.
 			 */
-			if (tries < 3) goto retry;
 			tries++;
+			if (tries < 3) goto retry;
 			return;
 		}
 
@@ -4648,6 +4648,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 	rad_listen_t *this, *found;
 	listen_socket_t *sock;
 	fr_hash_iter_t iter;
+	coa_entry_t *entry;
 
 	/*
 	 *	Find the key.  If we can't find it, then error out.
@@ -4663,9 +4664,11 @@ int listen_coa_find(REQUEST *request, char const *key)
 	 */
 	found = NULL;
 	pthread_mutex_lock(&coa_key->mutex);
-	for (this = fr_hash_table_iter_init(coa_key->ht, &iter);
-	     this != NULL;
-	     this = fr_hash_table_iter_next(coa_key->ht, &iter)) {
+	for (entry = fr_hash_table_iter_init(coa_key->ht, &iter);
+	     entry != NULL;
+	     entry = fr_hash_table_iter_next(coa_key->ht, &iter)) {
+		this = entry->listener;
+
 		if (this->blocked) continue;
 
 		if (this->dead) continue;
