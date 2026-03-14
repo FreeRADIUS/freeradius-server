@@ -952,7 +952,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 		break;
 	}
 
-	for (i = 0; i < inlen; i += in[0] + 1) {
+	for (i = 0; i < inlen; i += in[i] + 1) {
 		RDEBUG("(TLS) ALPN sent by client is \"%.*s\"", in[i], &in[i + 1]);
 	}
 
