@@ -1027,11 +1027,6 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (unlang_thread_instantiate(thread_ctx) < 0) {
-		fr_perror("%s", config->name);
-		EXIT_WITH_FAILURE;
-	}
-
 	/*
 	 *  Set the panic action (if required)
 	 */

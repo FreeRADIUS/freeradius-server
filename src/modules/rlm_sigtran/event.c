@@ -544,7 +544,7 @@ int sigtran_event_start(void)
 	 */
 	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
-	if (fr_schedule_pthread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
+	if (fr_thread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
 		ERROR("main thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
 		return -1;
 	}

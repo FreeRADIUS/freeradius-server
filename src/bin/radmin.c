@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/thread.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
@@ -1134,7 +1134,7 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 	 *	won't go into la-la-land.  They might find unfinished
 	 *	commands, but they don't crash.
 	 */
-	if (fr_schedule_pthread_create(&cli_pthread_id, fr_radmin, NULL) < 0) {
+	if (fr_thread_create(&cli_pthread_id, fr_radmin, NULL) < 0) {
 		PERROR("Failed creating radmin thread");
 		return -1;
 	}

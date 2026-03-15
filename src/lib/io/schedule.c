@@ -314,45 +314,6 @@ fail:
 	return NULL;
 }
 
-/** Creates a new thread using our standard set of options
- *
- * New threads are:
- * - Joinable, i.e. you can call pthread_join on them to confirm they've exited
- * - Immune to catchable signals.
- *
- * @param[out] thread		handled that was created by pthread_create.
- * @param[in] func		entry point for the thread.
- * @param[in] arg		Argument to pass to func.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_schedule_pthread_create(pthread_t *thread, void *(*func)(void *), void *arg)
-{
-	pthread_attr_t			attr;
-	int				ret;
-
-	/*
-	 *	Set the thread to wait around after it's exited
-	 *	so it can be joined.  This is more of a useful
-	 *	mechanism for the parent to determine if all
-	 *	the threads have exited so it can continue with
-	 *	a graceful shutdown.
-	 */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-	ret = pthread_create(thread, &attr, func, arg);
-	if (ret != 0) {
-		pthread_attr_destroy(&attr);
-		fr_strerror_printf("Failed creating thread: %s", fr_syserror(ret));
-		return -1;
-	}
-	pthread_attr_destroy(&attr);
-
-	return 0;
-}
-
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx				talloc context.
@@ -544,7 +505,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sn->sc = sc;
 		sn->status = FR_CHILD_INITIALIZING;
 
-		if (fr_schedule_pthread_create(&sn->pthread_id, fr_schedule_network_thread, sn) < 0) {
+		if (fr_thread_create(&sn->pthread_id, fr_schedule_network_thread, sn) < 0) {
 			talloc_free(sn);
 			PERROR("Failed creating network %u", i);
 			break;
@@ -558,11 +519,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	they've started, OR there's been a problem and they
 	 *	can't start.
 	 */
-	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
-		DEBUG3("Waiting for semaphore from network %u/%u",
-		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->networks));
-		SEM_WAIT_INTR(sc->network_sem);
-	}
+	fr_thread_wait(sc->network_sem, fr_dlist_num_elements(&sc->networks));
 
 	/*
 	 *	See if all of the networks have started.
@@ -613,7 +570,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sw->sc = sc;
 		sw->status = FR_CHILD_INITIALIZING;
 
-		if (fr_schedule_pthread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
+		if (fr_thread_create(&sw->pthread_id, fr_schedule_worker_thread, sw) < 0) {
 			talloc_free(sw);
 			PERROR("Failed creating worker %u", i);
 			break;
@@ -627,11 +584,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	they've started, OR there's been a problem and they
 	 *	can't start.
 	 */
-	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
-		DEBUG3("Waiting for semaphore from worker %u/%u",
-		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(sc->worker_sem);
-	}
+	fr_thread_wait(sc->worker_sem, fr_dlist_num_elements(&sc->workers));
 
 	/*
 	 *	See if all of the workers have started.

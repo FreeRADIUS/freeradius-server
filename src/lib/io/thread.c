@@ -34,6 +34,54 @@ RCSID("$Id$")
 
 #include <signal.h>
 
+/** Create a joinable thread
+ *
+ * @param[out] thread		handle that was created by pthread_create.
+ * @param[in] func		entry point for the thread.
+ * @param[in] arg		Argument to pass to func.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_thread_create(pthread_t *thread, fr_thread_entry_t func, void *arg)
+{
+	pthread_attr_t			attr;
+	int				rcode;
+
+	/*
+	 *	Set the thread to wait around after it's exited so it
+	 *	can be joined.  This is more of a useful mechanism for
+	 *	the parent to determine if all the threads have exited
+	 *	so it can continue with a graceful shutdown.
+	 */
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+	rcode = pthread_create(thread, &attr, func, arg);
+	if (rcode != 0) {
+		fr_strerror_printf("Failed creating thread: %s", fr_syserror(rcode));
+		pthread_attr_destroy(&attr);
+		return -1;
+	}
+	pthread_attr_destroy(&attr);
+
+	return 0;
+}
+
+/** Wait for multiple threads to signal readiness via a semaphore
+ *
+ * @param[in] sem		semaphore to wait on.
+ * @param[in] count		number of times to wait (once per thread).
+ */
+void fr_thread_wait(fr_sem_t *sem, unsigned int count)
+{
+	unsigned int i;
+
+	for (i = 0; i < count; i++) {
+		SEM_WAIT_INTR(sem);
+	}
+}
+
 /** Common setup for child threads: block signals, allocate a talloc context, and create an event list
  *
  * @param[out] out_ctx	The talloc ctx we allocate
@@ -96,6 +144,9 @@ int fr_thread_setup(TALLOC_CTX **out_ctx, fr_event_list_t **out_el, char const *
 int fr_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
 #ifdef WITH_TLS
+	/*
+	 *	Modules may use thread-specific OpenSSL contexts, so initialize this first.
+	 */
 	if (fr_openssl_thread_init(main_config->openssl_async_pool_init,
 				   main_config->openssl_async_pool_max) < 0) return -1;
 #endif

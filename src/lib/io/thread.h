@@ -30,6 +30,14 @@ RCSIDH(thread_h, "$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/dlist.h>
 
+#include <pthread.h>
+
+typedef void *(*fr_thread_entry_t)(void *);
+
+int	fr_thread_create(pthread_t *thread, fr_thread_entry_t func, void *arg);
+
+void	fr_thread_wait(fr_sem_t *sem, unsigned int count);
+
 int	fr_thread_setup(TALLOC_CTX **ctx, fr_event_list_t **el, char const *name);
 
 int	fr_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el);

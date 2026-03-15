@@ -506,7 +506,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 		sc->max_workers = num_workers;
 		sc->sem = sem;
 
-		if (fr_schedule_pthread_create(&sc->pthread_id, fr_coordinate_thread, sc) < 0) {
+		if (fr_thread_create(&sc->pthread_id, fr_coordinate_thread, sc) < 0) {
 			talloc_free(sc);
 			PERROR("Failed creating coordinator %s", coord_reg->name);
 			return -1;
@@ -516,12 +516,9 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 	}
 
 	/*
-	 *	See if all the coordinators have started.
+	 *	Wait for all the coordinators to start.
 	 */
-	fr_dlist_foreach(coord_threads, fr_schedule_coord_t, sc) {
-		DEBUG3("Waiting for semaphore from coordinator %s", sc->coord_reg->name);
-		SEM_WAIT_INTR(sem);
-	}
+	fr_thread_wait(sem, fr_dlist_num_elements(coord_threads));
 
 	/*
 	 *	Insert the coordinators in the tree
