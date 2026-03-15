@@ -692,7 +692,10 @@ void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr
 	fr_pair_t			*vp;
 
 	fr_pair_list_init(&list);
-	fr_internal_decode_list_dbuff(NULL, &list, coord_pair_reg->root, dbuff, NULL);
+	if (fr_internal_decode_list_dbuff(NULL, &list, coord_pair_reg->root, dbuff, NULL) < 0) {
+		PERROR("Failed to decode data as pair list");
+		goto free;
+	}
 
 	vp = fr_pair_find_by_da_nested(&list, NULL, coord_pair_reg->attr_packet_type);
 
