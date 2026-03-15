@@ -675,7 +675,7 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 }
 
 /*
- *	If we pushed a log destination, we need to pop it/
+ *	If we pushed a log destination, we need to pop it.
  */
 static unlang_action_t server_remove_log_destination(UNUSED unlang_result_t *p_result,
 						     request_t *request, void *uctx)
@@ -1461,7 +1461,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	}
 
 	/*
-	 *	Be nice to people, and complaing about ALL unused processing sections.  That way they don't
+	 *	Be nice to people, and complaining about ALL unused processing sections.  That way they don't
 	 *	have to run the server many, many, times to see all of the errors.
 	 */
 	if (fail) return -1;
