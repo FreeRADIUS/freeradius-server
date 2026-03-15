@@ -759,7 +759,10 @@ int fr_worker_to_coord_pair_send(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coo
 	int			ret;
 
 	if (fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, SIZE_MAX) == NULL) return -1;
-	if (fr_internal_encode_list(&dbuff, list, NULL) < 0) return -1;
+	if (fr_internal_encode_list(&dbuff, list, NULL) < 0) {
+		fr_dbuff_free_talloc(&dbuff);
+		return -1;
+	}
 
 	ret = fr_worker_to_coord_send(cw, coord_pair_reg->cb_id, &dbuff);
 
