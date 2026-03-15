@@ -81,5 +81,8 @@ uint32_t		fr_coord_pair_reg_cb_id(fr_coord_pair_reg_t *coord_pair_reg);
  * @param _out_cb	Array of coordinator -> worker callbacks.
  * @param _reg		Registered coordinator pair list callback data.
  */
-#define FR_COORD_PAIR_CB_CTX_SET(_in_cb, _out_cb, _reg)	_in_cb[fr_coord_pair_reg_cb_id(_reg)].uctx = _reg; \
-	_out_cb[fr_coord_pair_reg_cb_id(_reg)].uctx = _reg;
+#define FR_COORD_PAIR_CB_CTX_SET(_in_cb, _out_cb, _reg)	\
+	do { \
+		_in_cb[fr_coord_pair_reg_cb_id(_reg)].uctx = _reg; \
+		_out_cb[fr_coord_pair_reg_cb_id(_reg)].uctx = _reg; \
+	} while (0)
