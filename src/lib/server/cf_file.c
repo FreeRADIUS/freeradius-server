@@ -570,7 +570,6 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	cf_file_t *file;
 	CONF_SECTION *top;
 	fr_rb_tree_t *tree;
-	int fd = -1;
 	FILE *fp;
 
 	top = cf_root(cs);
@@ -585,7 +584,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	if (from_dir) {
 		cf_file_t my_file;
 		char const *r;
-		int my_fd;
+		int fd, my_fd;
 
 		my_file.cs = cs;
 		my_file.filename = filename;
@@ -626,14 +625,11 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		fp = fdopen(fd, "r");
 	} else {
 		fp = fopen(filename, "r");
-		if (fp) fd = fileno(fp);
 	}
 
 	DEBUG2("including configuration file %s", filename);
 
-	if (!fp) {
-		close(fd);
-
+	if (!fp) {		
 	error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
@@ -645,7 +641,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	file->cs = cs;
 	file->from_dir = from_dir;
 
-	if (fstat(fd, &file->buf) == 0) {
+	if (fstat(fileno(fp), &file->buf) == 0) {
 #ifdef S_IWOTH
 		if ((file->buf.st_mode & S_IWOTH) != 0) {
 			ERROR("Configuration file %s is globally writable.  "
