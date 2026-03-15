@@ -1159,15 +1159,10 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 		 */
 		if (!fr_type_is_integer_except_bool(ev->value->type)) {
 		forbid:
-			if (da) {
-				cf_log_err(subcs, "'finally %s { ... }' section, "
-					"not supported for this protocol.  %s is a %s", packet_type,
-					da->name, fr_type_to_str(ev->value->type));
-			} else {
-
-				cf_log_err(subcs, "'finally %s { ... }' section, "
-					"not supported for this protocol", packet_type);
-			}
+			fr_assert(da);
+			cf_log_err(subcs, "'finally %s { ... }' section, "
+				   "not supported for this protocol.  %s is a %s", packet_type,
+				   da->name, fr_type_to_str(ev->value->type));
 			return -1;
 		}
 
