@@ -546,5 +546,5 @@ void fr_control_wait(fr_control_t *c)
 	fd.fd = c->pipe[0];
 	fd.events = POLLIN;
 
-	poll(&fd, 1, -1);
+	(void) poll(&fd, 1, -1);
 }
