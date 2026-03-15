@@ -130,8 +130,6 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	if (fr_thread_setup(&sw->thread, worker_name) < 0) goto fail;
 
-	INFO("%s - Starting", worker_name);
-
 	sw->worker = fr_worker_alloc(sw->thread.ctx, sw->thread.el, worker_name, sc->log, sc->lvl, &sc->config->worker);
 	if (!sw->worker) {
 		PERROR("%s - Failed creating worker", worker_name);
@@ -156,8 +154,6 @@ static void *fr_schedule_worker_thread(void *arg)
 		}
 	}
 
-	sw->thread.status = FR_THREAD_RUNNING;
-
 	/*
 	 *	Add this worker to all network threads.
 	 */
@@ -170,12 +166,10 @@ static void *fr_schedule_worker_thread(void *arg)
 		}
 	}
 
-	DEBUG3("%s - Started", worker_name);
-
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(sc->worker_sem);
+	fr_thread_start(&sw->thread, sc->worker_sem);
 
 	/*
 	 *	Do all of the work.
@@ -185,30 +179,14 @@ static void *fr_schedule_worker_thread(void *arg)
 	status = FR_THREAD_EXITED;
 
 fail:
-	sw->thread.status = status;
-
 	if (sw->worker) {
 		fr_worker_destroy(sw->worker);
 		sw->worker = NULL;
 	}
 
-	INFO("%s - Exiting", worker_name);
-
 	if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);	/* Fixme once we figure out what uctx should be */
 
-	/*
-	 *	Not looping at this point, but may catch timer/fd
-	 *	insertions being done after the thread should have
-	 *	exited.
-	 */
-	if (sw->thread.el) fr_event_loop_exit(sw->thread.el, 1);
-
-	/*
-	 *	Tell the scheduler we're done.
-	 */
-	sem_post(sc->worker_sem);
-
-	talloc_free(sw->thread.ctx);
+	fr_thread_exit(&sw->thread, status, sc->worker_sem);
 
 	return NULL;
 }
@@ -247,14 +225,10 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->thread.status = FR_THREAD_RUNNING;
-
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(sc->network_sem);
-
-	DEBUG3("%s - Started", network_name);
+	fr_thread_start(&sn->thread, sc->network_sem);
 
 	/*
 	 *	Print out statistics for this network IO handler.
@@ -262,6 +236,7 @@ static void *fr_schedule_network_thread(void *arg)
 	if (fr_time_delta_ispos(sc->config->stats_interval)) {
 		(void) fr_timer_in(sn, sn->thread.el->tl, &sn->ev, sn->sc->config->stats_interval, false, stats_timer, sn);
 	}
+
 	/*
 	 *	Call the main event processing loop of the network
 	 *	thread Will not return until the worker is about
@@ -272,16 +247,7 @@ static void *fr_schedule_network_thread(void *arg)
 	status = FR_THREAD_EXITED;
 
 fail:
-	sn->thread.status = status;
-
-	INFO("%s - Exiting", network_name);
-
-	/*
-	 *	Tell the scheduler we're done.
-	 */
-	sem_post(sc->network_sem);
-
-	talloc_free(sn->thread.ctx);
+	fr_thread_exit(&sn->thread, status, sc->network_sem);
 
 	return NULL;
 }

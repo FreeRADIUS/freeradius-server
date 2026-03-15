@@ -444,13 +444,12 @@ static void *fr_coordinate_thread(void *arg)
 {
 	fr_schedule_coord_t	*sc = talloc_get_type_abort(arg, fr_schedule_coord_t);
 	fr_coord_reg_t		*coord_reg = sc->coord_reg;
+	fr_thread_status_t	status = FR_THREAD_FAIL;
 	char			coordinate_name[64];
 
 	snprintf(coordinate_name, sizeof(coordinate_name), "Coordinate %s", coord_reg->name);
 
 	if (fr_thread_setup(&sc->thread, coordinate_name) < 0) goto fail;
-
-	INFO("%s - Starting", coordinate_name);
 
 	sc->coord = fr_coord_create(sc->thread.ctx, sc->thread.el, coord_reg, false, sc->max_workers);
 	if (!sc->coord) {
@@ -463,16 +462,19 @@ static void *fr_coordinate_thread(void *arg)
 	 */
 	if (fr_thread_instantiate(sc->thread.ctx, sc->thread.el) < 0) goto fail;
 
-	sem_post(sc->sem);
+	/*
+	 *	Tell the originator that the thread has started.
+	 */
+	fr_thread_start(&sc->thread, sc->sem);
 
 	fr_coordinate(sc->coord);
 
-fail:
-	INFO("%s - Exiting", coordinate_name);
+	status = FR_THREAD_EXITED;
 
+fail:
 	fr_thread_detach();
 
-	talloc_free(sc->thread.ctx);
+	fr_thread_exit(&sc->thread, status, sc->sem);
 
 	return NULL;
 }
@@ -487,6 +489,8 @@ fail:
  */
 int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 {
+	int num = 0;
+
 	if (!coord_regs) return 0;
 
 	MEM(coord_threads = talloc(NULL, fr_dlist_head_t));
@@ -498,6 +502,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 
 		MEM(sc = talloc_zero(coord_threads, fr_schedule_coord_t));
 
+		sc->thread.id = num++;
 		sc->coord_reg = coord_reg;
 		sc->max_workers = num_workers;
 		sc->sem = sem;

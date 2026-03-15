@@ -193,3 +193,42 @@ void fr_thread_detach(void)
 	virtual_servers_thread_detach();
 	modules_rlm_thread_detach();
 }
+
+
+/** Signal the parent that we're done.
+ *
+ * @param[out]	thread which is starting
+ * @param[in]	sem semaphore to signal.
+ */
+void fr_thread_start(fr_thread_t *thread, fr_sem_t *sem)
+{
+	thread->status = FR_THREAD_RUNNING;
+
+	INFO("%s - Starting", thread->name);
+
+	sem_post(sem);
+}
+
+/** Signal the parent that we're done.
+ *
+ * @param[out]	thread which is exiting
+ * @param[in]	status to write
+ * @param[in]	sem semaphore to signal.
+ */
+void fr_thread_exit(fr_thread_t *thread, fr_thread_status_t status, fr_sem_t *sem)
+{
+	INFO("%s - Exiting", thread->name);
+
+	thread->status = status;
+
+	/*
+	 *	Not looping at this point, but may catch timer/fd
+	 *	insertions being done after the thread should have
+	 *	exited.
+	 */
+	if (thread->el) fr_event_loop_exit(thread->el, 1);
+
+	TALLOC_FREE(thread->ctx);
+
+	sem_post(sem);
+}

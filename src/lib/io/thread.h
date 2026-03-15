@@ -69,3 +69,7 @@ int	fr_thread_setup(fr_thread_t *out, char const *name) CC_HINT(nonnull);
 int	fr_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
 
 void	fr_thread_detach(void);
+
+void	fr_thread_start(fr_thread_t *thread, fr_sem_t *sem) CC_HINT(nonnull);
+
+void	fr_thread_exit(fr_thread_t *thread, fr_thread_status_t status, fr_sem_t *sem) CC_HINT(nonnull);
