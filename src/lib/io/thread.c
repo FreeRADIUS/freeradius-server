@@ -71,33 +71,48 @@ int fr_thread_create(pthread_t *thread, fr_thread_entry_t func, void *arg)
 /** Wait for multiple threads to signal readiness via a semaphore
  *
  * @param[in] sem		semaphore to wait on.
- * @param[in] count		number of times to wait (once per thread).
+ * @param[in] head		head of the list to wait for
+ * @return
+ *	- 0 for success
+ *	- <0 negative number of threads which failed to start
  */
-void fr_thread_wait(fr_sem_t *sem, unsigned int count)
+int fr_thread_wait(fr_sem_t *sem, fr_dlist_head_t *head)
 {
-	unsigned int i;
+	unsigned int i, count;
+	int rcode = 0;
+
+	count = fr_dlist_num_elements(head);
 
 	for (i = 0; i < count; i++) {
 		SEM_WAIT_INTR(sem);
 	}
+
+	/*
+	 *	See if all of the threads have started.  If a thread fails, it cleans up any context that was
+	 *	allocated for it.
+	 */
+	fr_dlist_foreach(head, fr_thread_t, thread) {
+		if (thread->status != FR_THREAD_RUNNING) {
+			fr_dlist_remove(head, thread);
+			rcode--;
+		}
+	}
+
+	return rcode;
 }
 
 /** Common setup for child threads: block signals, allocate a talloc context, and create an event list
  *
- * @param[out] out_ctx	The talloc ctx we allocate
- * @param[out] out_el	The event list
+ * @param[out] out	structure describing the thread
  * @param[in]  name	Human-readable name used for the talloc context and error messages.
  * @return
  *	- 0 on success.
  *	- <0 on failure
  */
-int fr_thread_setup(TALLOC_CTX **out_ctx, fr_event_list_t **out_el, char const *name)
+int fr_thread_setup(fr_thread_t *out, char const *name)
 {
 	TALLOC_CTX	*ctx;
 	fr_event_list_t	*el;
-
-	*out_ctx = NULL;
-	*out_el = NULL;
 
 #ifndef __APPLE__
 	/*
@@ -127,8 +142,14 @@ int fr_thread_setup(TALLOC_CTX **out_ctx, fr_event_list_t **out_el, char const *
 		return -1;
 	}
 
-	*out_ctx = ctx;
-	*out_el = el;
+	/*
+	 *	Do NOT initialize the entire structure.  Fields like "id" and "entry" have already been
+	 *	initialize and used by the main thread coordinator.
+	 */
+	out->name = name;
+	out->ctx = ctx;
+	out->el = el;
+	out->status = FR_THREAD_INITIALIZING;
 
 	return 0;
 }

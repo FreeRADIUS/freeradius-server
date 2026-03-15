@@ -92,14 +92,12 @@ struct fr_coord_reg_s {
 /** Scheduler specific information for coordinator threads
  */
 typedef struct {
-	TALLOC_CTX			*ctx;			//!< Our allocation ctx
-	fr_event_list_t			*el;			//!< Event list for this coordinator.
-	pthread_t			pthread_id;		//!< the thread of this coordinator
+	fr_thread_t			thread;			//!< common thread information - must be first!
+
 	uint32_t			max_workers;		//!< Maximum number of workers which will connect to this coordinator.
 	fr_coord_reg_t			*coord_reg;		//!< Coordinator registration details.
 	fr_coord_t			*coord;			//!< The coordinator data structure.
 	fr_sem_t			*sem;			//!< For inter-thread signaling.
-	fr_dlist_t			entry;			//!< Entry in list of running coordinator threads.
 } fr_schedule_coord_t;
 
 /** Control plane message used for workers attaching / detaching to coordinators
@@ -179,7 +177,7 @@ void fr_coord_deregister(fr_coord_reg_t *coord_reg)
 
 	fr_dlist_foreach(coord_threads, fr_schedule_coord_t, sc) {
 		if (sc->coord_reg == coord_reg) {
-			if ((ret = pthread_join(sc->pthread_id, NULL)) != 0) {
+			if ((ret = pthread_join(sc->thread.pthread_id, NULL)) != 0) {
 				ERROR("Failed joining coordinator %s: %s", coord_reg->name, fr_syserror(ret));
 			} else {
 				DEBUG2("Coordinator %s joined (cleaned up)", coord_reg->name);
@@ -444,19 +442,17 @@ static void fr_coordinate(fr_coord_t *coord)
  */
 static void *fr_coordinate_thread(void *arg)
 {
-	TALLOC_CTX		*ctx;
 	fr_schedule_coord_t	*sc = talloc_get_type_abort(arg, fr_schedule_coord_t);
 	fr_coord_reg_t		*coord_reg = sc->coord_reg;
 	char			coordinate_name[64];
 
 	snprintf(coordinate_name, sizeof(coordinate_name), "Coordinate %s", coord_reg->name);
 
-	if (fr_thread_setup(&ctx, &sc->el, coordinate_name) < 0) goto fail;
-	sc->ctx = ctx;
+	if (fr_thread_setup(&sc->thread, coordinate_name) < 0) goto fail;
 
 	INFO("%s - Starting", coordinate_name);
 
-	sc->coord = fr_coord_create(ctx, sc->el, coord_reg, false, sc->max_workers);
+	sc->coord = fr_coord_create(sc->thread.ctx, sc->thread.el, coord_reg, false, sc->max_workers);
 	if (!sc->coord) {
 		PERROR("%s - Failed creating coordinator thread", coordinate_name);
 		goto fail;
@@ -465,7 +461,7 @@ static void *fr_coordinate_thread(void *arg)
 	/*
 	 *	Create all the thread specific data for the coordinator thread
 	 */
-	if (fr_thread_instantiate(ctx, sc->el) < 0) goto fail;
+	if (fr_thread_instantiate(sc->thread.ctx, sc->thread.el) < 0) goto fail;
 
 	sem_post(sc->sem);
 
@@ -476,7 +472,7 @@ fail:
 
 	fr_thread_detach();
 
-	talloc_free(ctx);
+	talloc_free(sc->thread.ctx);
 
 	return NULL;
 }
@@ -494,7 +490,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 	if (!coord_regs) return 0;
 
 	MEM(coord_threads = talloc(NULL, fr_dlist_head_t));
-	fr_dlist_init(coord_threads, fr_schedule_coord_t, entry);
+	fr_dlist_init(coord_threads, fr_schedule_coord_t, thread.entry);
 	fr_rb_inline_talloc_init(&coords, fr_coord_t, node, coord_cmp, NULL);
 
 	fr_dlist_foreach(coord_regs, fr_coord_reg_t, coord_reg) {
@@ -506,7 +502,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 		sc->max_workers = num_workers;
 		sc->sem = sem;
 
-		if (fr_thread_create(&sc->pthread_id, fr_coordinate_thread, sc) < 0) {
+		if (fr_thread_create(&sc->thread.pthread_id, fr_coordinate_thread, sc) < 0) {
 			talloc_free(sc);
 			PERROR("Failed creating coordinator %s", coord_reg->name);
 			return -1;
@@ -518,7 +514,10 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 	/*
 	 *	Wait for all the coordinators to start.
 	 */
-	fr_thread_wait(sem, fr_dlist_num_elements(coord_threads));
+	if (fr_thread_wait(sem, coord_threads) < 0) {
+		ERROR("Failed creating coordinator threads");
+		return -1;
+	}
 
 	/*
 	 *	Insert the coordinators in the tree
@@ -544,6 +543,9 @@ void fr_coords_destroy(void)
 		fr_rb_iter_delete_inorder(&coords, &iter);
 		talloc_free(coord);
 	}
+
+	TALLOC_FREE(coord_regs);
+	TALLOC_FREE(coord_threads);
 }
 
 /** Start coordinators in single threaded mode
