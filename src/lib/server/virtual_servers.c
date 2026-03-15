@@ -1063,7 +1063,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 
 			if (!fr_cond_assert_msg(required_dict != NULL,
 						"dict not resolved before virtual server reference")) {
-				goto done;
+				return -1;
 			}
 
 			if (required_dict != *vs->process_module->dict) {
@@ -1077,7 +1077,6 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		}
 	}
 
-done:
 	*((virtual_server_t const **)out) = vs;
 
 	return 0;
