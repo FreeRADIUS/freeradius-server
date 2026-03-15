@@ -176,12 +176,12 @@ fr_coord_pair_reg_t *fr_coord_pair_register(TALLOC_CTX *ctx, fr_coord_pair_reg_c
 		cs = cf_section_alloc(reg_ctx->cs, reg_ctx->cs, "reuse", NULL);
 	}
 
-	cf_section_rules_push(cs, request_reuse_config);
-	if (cf_section_parse(coord_pair_reg, &coord_pair_reg->reuse, cs) < 0) {
+	if (cf_section_rules_push(cs, request_reuse_config) < 0) {
 	fail:
 		talloc_free(coord_pair_reg);
 		return NULL;
 	}
+	if (cf_section_parse(coord_pair_reg, &coord_pair_reg->reuse, cs) < 0) goto fail;
 
 	/*
 	 *	Set defaults for request slab allocation, if not set by conf parsing
