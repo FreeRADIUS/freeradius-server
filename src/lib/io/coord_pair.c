@@ -29,10 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/coord_pair.h>
 #include <freeradius-devel/io/coord_priv.h>
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/interpret.h>
 
 static _Atomic(uint64_t) request_number = 0;
 
