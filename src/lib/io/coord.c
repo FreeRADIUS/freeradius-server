@@ -449,27 +449,12 @@ static void *fr_coordinate_thread(void *arg)
 	fr_coord_reg_t		*coord_reg = sc->coord_reg;
 	char			coordinate_name[64];
 
-#ifndef __APPLE__
-	sigset_t		sigset;
-	sigfillset(&sigset);
-	pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-#endif
-
 	snprintf(coordinate_name, sizeof(coordinate_name), "Coordinate %s", coord_reg->name);
 
+	if (fr_thread_setup(&ctx, &sc->el, coordinate_name) < 0) goto fail;
+	sc->ctx = ctx;
+
 	INFO("%s - Starting", coordinate_name);
-
-	sc->ctx = ctx = talloc_init("%s", coordinate_name);
-	if (!ctx) {
-		ERROR("%s - Failed allocating memory", coordinate_name);
-		goto fail;
-	}
-
-	sc->el = fr_event_list_alloc(ctx, NULL, NULL);
-	if (!sc->el) {
-		PERROR("%s - Failed creating event list", coordinate_name);
-		goto fail;
-	}
 
 	sc->coord = fr_coord_create(ctx, sc->el, coord_reg, false, sc->max_workers);
 	if (!sc->coord) {

@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/thread.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
@@ -147,51 +148,14 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_network_t		*sn;
 	char				worker_name[32];
 
-#ifndef __APPLE__
-	/*
-	 * This ifdef is because macOS doesn't use pthread_signmask in its
-	 * setcontext function, and seems to apply the signal mask of the thread
-	 * to the entire process when setcontext is called.
-	 *
-	 *  * frame #0: 0x00000001934118b0 libsystem_kernel.dylib`sigprocmask
-	 *  frame #1: 0x0000000193481f3c libsystem_platform.dylib`setcontext + 44
-	 *  frame #2: 0x0000000100f27298 libcrypto.3.dylib`async_fibre_swapcontext + 52
-	 *  frame #3: 0x0000000100f274a0 libcrypto.3.dylib`ASYNC_start_job + 496
-	 *  frame #4: 0x0000000100b17884 libssl.3.dylib`ssl_start_async_job + 116
-	 *  frame #5: 0x0000000100b17804 libssl.3.dylib`ssl_read_internal + 356
-	 *  frame #6: 0x0000000100b17a0c libssl.3.dylib`SSL_read + 28
-	 *  frame #7: 0x00000001004f5b94 libfreeradius-tls.dylib`tls_session_async_handshake_cont(p_result=0x0000000112815c7c, priority=0x0000000112815edc, request=0x0000000112815a80, uctx=0x0000000139160060) at session.c:1366:26
-	 */
-	sigset_t			sigset;
-
-	sigfillset(&sigset);
-
-	/*
-	 *	Ensure workers aren't interrupted by signals.
-	 *	The main thread, and main event loop are mostly
-	 *	idle, so they can handle signals.
-	 */
-	pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-#endif
-
 	worker_id = sw->id;		/* Store the current worker ID */
 
 	snprintf(worker_name, sizeof(worker_name), "Worker %d", sw->id);
 
-	sw->ctx = ctx = talloc_init("%s", worker_name);
-	if (!ctx) {
-		ERROR("%s - Failed allocating memory", worker_name);
-		goto fail;
-	}
+	if (fr_thread_setup(&ctx, &sw->el, worker_name) < 0) goto fail;
+	sw->ctx = ctx;
 
 	INFO("%s - Starting", worker_name);
-
-	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
-	if (!sw->el) {
-		PERROR("%s - Failed creating event list", worker_name);
-		goto fail;
-	}
-
 
 	sw->worker = fr_worker_alloc(ctx, sw->el, worker_name, sc->log, sc->lvl, &sc->config->worker);
 	if (!sw->worker) {
@@ -298,48 +262,12 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_event_list_t			*el;
 	char				network_name[32];
 
-#ifndef __APPLE__
-	/*
-	 * This ifdef is because macOS doesn't use pthread_signmask in its
-	 * setcontext function, and seems to apply the signal mask of the thread
-	 * to the entire process when setcontext is called.
-	 *
-	 *  * frame #0: 0x00000001934118b0 libsystem_kernel.dylib`sigprocmask
-	 *  frame #1: 0x0000000193481f3c libsystem_platform.dylib`setcontext + 44
-	 *  frame #2: 0x0000000100f27298 libcrypto.3.dylib`async_fibre_swapcontext + 52
-	 *  frame #3: 0x0000000100f274a0 libcrypto.3.dylib`ASYNC_start_job + 496
-	 *  frame #4: 0x0000000100b17884 libssl.3.dylib`ssl_start_async_job + 116
-	 *  frame #5: 0x0000000100b17804 libssl.3.dylib`ssl_read_internal + 356
-	 *  frame #6: 0x0000000100b17a0c libssl.3.dylib`SSL_read + 28
-	 *  frame #7: 0x00000001004f5b94 libfreeradius-tls.dylib`tls_session_async_handshake_cont(p_result=0x0000000112815c7c, priority=0x0000000112815edc, request=0x0000000112815a80, uctx=0x0000000139160060) at session.c:1366:26
-	 */
-	sigset_t			sigset;
-
-	sigfillset(&sigset);
-
-	/*
-	 *	Ensure workers aren't interrupted by signals.
-	 *	The main thread, and main event loop are mostly
-	 *	idle, so they can handle signals.
-	 */
-	pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-#endif
-
 	snprintf(network_name, sizeof(network_name), "Network %d", sn->id);
 
+	if (fr_thread_setup(&ctx, &el, network_name) < 0) goto fail;
+	sn->ctx = ctx;
+
 	INFO("%s - Starting", network_name);
-
-	sn->ctx = ctx = talloc_init("%s", network_name);
-	if (!ctx) {
-		ERROR("%s - Failed allocating memory", network_name);
-		goto fail;
-	}
-
-	el = fr_event_list_alloc(ctx, NULL, NULL);
-	if (!el) {
-		PERROR("%s - Failed creating event list", network_name);
-		goto fail;
-	}
 
 	sn->nr = fr_network_create(ctx, el, network_name, sc->log, sc->lvl, &sc->config->network);
 	if (!sn->nr) {
