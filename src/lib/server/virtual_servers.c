@@ -2058,11 +2058,11 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	global_lib_instantiate();
 
 	if (modules_bootstrap(process_modules) < 0) {
-		PERROR("Failed instantiating process modules");
+		PERROR("Failed bootstrapping process modules");
 		return -1;
 	}
 	if (modules_bootstrap(proto_modules) < 0) {
-		PERROR("Failed instantiating protocol modules");
+		PERROR("Failed bootstrapping protocol modules");
 		return -1;
 	}
 
