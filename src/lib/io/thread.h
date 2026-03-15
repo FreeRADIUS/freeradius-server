@@ -62,7 +62,7 @@ typedef void *(*fr_thread_entry_t)(void *);
 
 int	fr_thread_create(pthread_t *thread, fr_thread_entry_t func, void *arg) CC_HINT(nonnull(1,2));
 
-int	fr_thread_wait(fr_sem_t *sem, fr_dlist_head_t *head) CC_HINT(nonnull);
+int	fr_thread_wait_list(fr_sem_t *sem, fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int	fr_thread_setup(fr_thread_t *out, char const *name) CC_HINT(nonnull);
 

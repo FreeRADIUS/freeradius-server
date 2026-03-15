@@ -514,7 +514,7 @@ int fr_coord_start(uint32_t num_workers, fr_sem_t *sem)
 	/*
 	 *	Wait for all the coordinators to start.
 	 */
-	if (fr_thread_wait(sem, coord_threads) < 0) {
+	if (fr_thread_wait_list(sem, coord_threads) < 0) {
 		ERROR("Failed creating coordinator threads");
 		return -1;
 	}

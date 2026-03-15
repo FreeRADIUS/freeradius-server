@@ -76,7 +76,7 @@ int fr_thread_create(pthread_t *thread, fr_thread_entry_t func, void *arg)
  *	- 0 for success
  *	- <0 negative number of threads which failed to start
  */
-int fr_thread_wait(fr_sem_t *sem, fr_dlist_head_t *head)
+int fr_thread_wait_list(fr_sem_t *sem, fr_dlist_head_t *head)
 {
 	unsigned int i, count;
 	int rcode = 0;

@@ -491,7 +491,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	they've started, OR there's been a problem and they
 	 *	can't start.
 	 */
-	if (fr_thread_wait(sc->network_sem, &sc->networks) < 0) {
+	if (fr_thread_wait_list(sc->network_sem, &sc->networks) < 0) {
 		fr_schedule_destroy(&sc);
 		return NULL;
 	}
@@ -537,7 +537,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	they've started, OR there's been a problem and they
 	 *	can't start.
 	 */
-	if (fr_thread_wait(sc->worker_sem, &sc->workers) < 0) {
+	if (fr_thread_wait_list(sc->worker_sem, &sc->workers) < 0) {
 		fr_schedule_destroy(&sc);
 		return NULL;
 	}
