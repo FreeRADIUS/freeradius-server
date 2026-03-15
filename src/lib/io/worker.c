@@ -1361,8 +1361,6 @@ nomem:
 
 	worker->name = talloc_strdup(worker, name); /* thread locality */
 
-	unlang_thread_instantiate(worker);
-
 	if (config) worker->config = *config;
 
 #define CHECK_CONFIG(_x, _min, _max) do { \

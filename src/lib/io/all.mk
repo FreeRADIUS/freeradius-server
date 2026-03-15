@@ -14,6 +14,7 @@ SOURCES	:= \
 	queue.c \
 	ring_buffer.c \
 	schedule.c \
+	thread.c \
 	worker.c
 
 TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-internal$(L) $(LIBFREERADIUS_SERVER)

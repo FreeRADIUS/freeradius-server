@@ -26,10 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/thread.h>
 #include <freeradius-devel/io/coord_priv.h>
-#include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -482,14 +480,7 @@ static void *fr_coordinate_thread(void *arg)
 	/*
 	 *	Create all the thread specific data for the coordinator thread
 	 */
-	if (modules_rlm_thread_instantiate(ctx, sc->el) < 0) goto fail;
-	if (virtual_servers_thread_instantiate(ctx, sc->el) < 0) goto fail;
-	if (xlat_thread_instantiate(ctx, sc->el) < 0) goto fail;
-	if (unlang_thread_instantiate(ctx) < 0) goto fail;
-#ifdef WITH_TLS
-	if (fr_openssl_thread_init(main_config->openssl_async_pool_init,
-				   main_config->openssl_async_pool_max) < 0) goto fail;
-#endif
+	if (fr_thread_instantiate(ctx, sc->el) < 0) goto fail;
 
 	sem_post(sc->sem);
 
@@ -498,9 +489,7 @@ static void *fr_coordinate_thread(void *arg)
 fail:
 	INFO("%s - Exiting", coordinate_name);
 
-	xlat_thread_detach();
-	virtual_servers_thread_detach();
-	modules_rlm_thread_detach();
+	fr_thread_detach();
 
 	talloc_free(ctx);
 

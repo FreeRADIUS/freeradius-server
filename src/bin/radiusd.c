@@ -34,6 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/snmp.h>
 #include <freeradius-devel/util/size.h>
 
+#include <freeradius-devel/io/thread.h>
+
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
 
@@ -124,17 +126,10 @@ static int talloc_config_set(main_config_t *config)
  */
 static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void *uctx)
 {
-	if (modules_rlm_thread_instantiate(ctx, el) < 0) return -1;
+	if (fr_thread_instantiate(ctx, el) < 0) return -1;
 
 	if (modules_rlm_coord_attach(el) < 0) return -1;
 
-	if (virtual_servers_thread_instantiate(ctx, el) < 0) return -1;
-
-	if (xlat_thread_instantiate(ctx, el) < 0) return -1;
-#ifdef WITH_TLS
-	if (fr_openssl_thread_init(main_config->openssl_async_pool_init,
-				   main_config->openssl_async_pool_max) < 0) return -1;
-#endif
 	return 0;
 }
 
@@ -143,11 +138,7 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
  */
 static void thread_detach(UNUSED void *uctx)
 {
-	virtual_servers_thread_detach();
-
-	modules_rlm_thread_detach();
-
-	xlat_thread_detach();
+	fr_thread_detach();
 }
 
 #define EXIT_WITH_FAILURE \

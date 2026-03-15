@@ -33,6 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/version.h>
 
+#include <freeradius-devel/io/thread.h>
+
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -1020,10 +1022,15 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate thread specific instantiation
 	 */
-	if (modules_rlm_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	if (virtual_servers_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	if (xlat_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	unlang_thread_instantiate(thread_ctx);
+	if (fr_thread_instantiate(thread_ctx, el) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
+	if (unlang_thread_instantiate(thread_ctx) < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *  Set the panic action (if required)
