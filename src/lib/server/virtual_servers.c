@@ -1199,6 +1199,93 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 	return 0;
 }
 
+/*
+ *	Check for 'send FOO' and 'recv BAR' which are unused.
+ */
+static bool virtual_server_warn_unused(CONF_SECTION *server, virtual_server_compile_t const *list)
+{
+	bool fail = false;
+
+	cf_section_foreach(server, subcs) {
+		char const *name, *name2;
+
+		if (cf_item_is_parsed(subcs)) continue;
+
+		name = cf_section_name1(subcs);
+
+		/*
+		 *	Allow them to "comment out" an entire block by prefixing the name with "-", ala
+		 *	"-sql".
+		 */
+		if (*name == '-') continue;
+
+		/*
+		 *	Local clients are parsed by the listener after the virtual server is bootstrapped.  So
+		 *	we just ignore them here.
+		 */
+		if (strcmp(name, "client") == 0) continue;
+
+		name2 = cf_section_name2(subcs);
+
+		/*
+		 *	When checking the configuration, it is an error to have an unused "send FOO" or "recv
+		 *	BAR" section.
+		 */
+		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
+			if (!name2) {
+				cf_log_err(subcs, "Unused processing section' %s {'", name);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s { ...'", name);
+			} else {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "If this is intentional, please rename it to '-%s %s { ...'",
+					   name, name2);
+			}
+
+			fail = true;
+			continue;
+		}
+
+		/*
+		 *	Print warnings if it's unused.  If there's an issue with case sensitivity, then that's
+		 *	an error, even if we're not running check_config.
+		 */
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			cf_log_warn(subcs, "Ignoring '%s {' - it is unused", name);
+
+		} else if (list) {
+			int i;
+			const char *realname = NULL;
+
+			/*
+			 *	See if it's a case-sensitive issue.
+			 *
+			 *	The dictionaries are case insensitive.  The configuration files are
+			 *	case sensitive.
+			 */
+			for (i = 0; list[i].section; i++) {
+				if (list[i].section->name2 == CF_IDENT_ANY) continue;
+
+				if (strcasecmp(list[i].section->name2, name2) == 0) {
+					realname = list[i].section->name2;
+					break;
+				}
+			}
+
+			if (realname) {
+				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
+				cf_log_err(subcs, "Do you mean '%s %s { ...' ? ", name, realname);
+				fail = true;
+				break;
+			}
+
+			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
+		}
+	}
+
+	return fail;
+}
+
 /** Compile sections for a virtual server.
  *
  *  When the "proto_foo" module calls fr_app_process_instantiate(), it
@@ -1380,85 +1467,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 
 	if (!check_config && !DEBUG_ENABLED) return found;
 
-	fail = false;
-
-	/*
-	 *	Check for 'send FOO' and 'recv BAR' which are unused.
-	 */
-	for (subcs = cf_section_first(server);
-	     subcs != NULL;
-	     subcs = cf_section_next(server, subcs)) {
-		if (cf_item_is_parsed(subcs)) continue;
-
-		name = cf_section_name1(subcs);
-
-		/*
-		 *	Allow them to "comment out" an entire block by prefixing the name with "-", ala
-		 *	"-sql".
-		 */
-		if (*name == '-') continue;
-
-		/*
-		 *	Local clients are parsed by the listener after the virtual server is bootstrapped.  So
-		 *	we just ignore them here.
-		 */
-		if (strcmp(name, "client") == 0) continue;
-
-		name2 = cf_section_name2(subcs);
-
-		/*
-		 *	When checking the configuration, it is an error to have an unused "send FOO" or "recv
-		 *	BAR" section.
-		 */
-		if (check_config && ((strcmp(name, "recv") == 0) || (strcmp(name, "send") == 0))) {
-			if (!name2) {
-				cf_log_err(subcs, "Unused processing section' %s {'", name);
-				cf_log_err(subcs, "If this is intentional, please rename it to '-%s { ...'", name);
-			} else {
-				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
-				cf_log_err(subcs, "If this is intentional, please rename it to '-%s %s { ...'",
-					   name, name2);
-			}
-
-			fail = true;
-			continue;
-		}
-
-		/*
-		 *	Print warnings if it's unused.  If there's an issue with case sensitivity, then that's
-		 *	an error, even if we're not running check_config.
-		 */
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			cf_log_warn(subcs, "Ignoring '%s {' - it is unused", name);
-		} else {
-			const char *realname = NULL;
-
-			/*
-			 *	See if it's a case-sensitive issue.
-			 *
-			 *	The dictionaries are case insensitive.  The configuration files are
-			 *	case sensitive.
-			 */
-			for (i = 0; list[i].section; i++) {
-				if (list[i].section->name2 == CF_IDENT_ANY) continue;
-
-				if (strcasecmp(list[i].section->name2, name2) == 0) {
-					realname = list[i].section->name2;
-					break;
-				}
-			}
-
-			if (realname) {
-				cf_log_err(subcs, "Unused processing section '%s %s {'", name, name2);
-				cf_log_err(subcs, "Do you mean '%s %s { ...' ? ", name, realname);
-				fail = true;
-				break;
-			}
-
-			cf_log_warn(subcs, "Ignoring %s %s { - it is unused", name, name2);
-		}
-	}
+	fail = virtual_server_warn_unused(server, list);
 
 	/*
 	 *	Be nice to people, and complaining about ALL unused processing sections.  That way they don't
@@ -1963,7 +1972,6 @@ int virtual_servers_instantiate(void)
 	}
 
 	for (i = 0; i < server_cnt; i++) {
-		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
 		virtual_server_t		*vs = virtual_servers[i];
@@ -2018,40 +2026,7 @@ int virtual_servers_instantiate(void)
 			}
 		}
 
-		/*
-		 *	Print out warnings for unused "recv" and
-		 *	"send" sections.
-		 *
-		 *	@todo - check against the "compile_list"
-		 *	registered for this virtual server, instead of hard-coding stuff.
-		 */
-		while ((ci = cf_item_next(server_cs, ci))) {
-			char const	*name;
-			CONF_SECTION	*subcs;
-
-			if (!cf_item_is_section(ci)) continue;
-
-			subcs = cf_item_to_section(ci);
-			name = cf_section_name1(subcs);
-
-			/*
-			 *	Skip known "other" sections
-			 */
-			if ((strcmp(name, "listen") == 0) || (strcmp(name, "client") == 0)) continue;
-
-			/*
-			 *	For every other section, warn if it hasn't
-			 *	been compiled.
-			 */
-			if (!cf_data_find(subcs, unlang_group_t, NULL)) {
-				char const *name2;
-
-				name2 = cf_section_name2(subcs);
-				if (!name2) name2 = "";
-
-				cf_log_warn(subcs, "%s %s { ... } section is unused", name, name2);
-			}
-		}
+		(void) virtual_server_warn_unused(server_cs, process->compile_list);
 	}
 
 	if (modules_instantiate(process_modules) < 0) {
