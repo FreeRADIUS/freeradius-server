@@ -1052,7 +1052,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	int rcode = 0;
 	int num;
 	VALUE_PAIR **list, *vp, *dst, *head = NULL;
-	VALUE_PAIR *next;
 	bool found = false;
 	REQUEST *context;
 	TALLOC_CTX *parent;
@@ -1339,9 +1338,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 */
 		for (dst = fr_cursor_current(&dst_list);
 		     dst;
-		     dst = next) {
-			next = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);
-
+		     dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag)) {
 			for (vp = fr_cursor_first(&src_list);
 			     vp;
 			     vp = fr_cursor_next(&src_list)) {
