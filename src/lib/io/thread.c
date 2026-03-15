@@ -146,7 +146,7 @@ int fr_thread_setup(fr_thread_t *out, char const *name)
 	 *	Do NOT initialize the entire structure.  Fields like "id" and "entry" have already been
 	 *	initialize and used by the main thread coordinator.
 	 */
-	out->name = name;
+	out->name = talloc_strdup(ctx, name);
 	out->ctx = ctx;
 	out->el = el;
 	out->status = FR_THREAD_INITIALIZING;
@@ -217,6 +217,11 @@ void fr_thread_start(fr_thread_t *thread, fr_sem_t *sem)
  */
 void fr_thread_exit(fr_thread_t *thread, fr_thread_status_t status, fr_sem_t *sem)
 {
+	/*
+	 *	Maybe nothing was initialized, so we don't need to do anything.
+	 */
+	if (thread->status == FR_THREAD_FREE) return;
+
 	INFO("%s - Exiting", thread->name);
 
 	thread->status = status;

@@ -121,7 +121,6 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t		*sw = talloc_get_type_abort(arg, fr_schedule_worker_t);
 	fr_schedule_t			*sc = sw->sc;
 	fr_thread_status_t		status = FR_THREAD_FAIL;
-	fr_schedule_network_t		*sn;
 	char				worker_name[32];
 
 	worker_id = sw->thread.id;		/* Store the current worker ID */
@@ -157,9 +156,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	/*
 	 *	Add this worker to all network threads.
 	 */
-	for (sn = fr_dlist_head(&sc->networks);
-	     sn != NULL;
-	     sn = fr_dlist_next(&sc->networks, sn)) {
+	fr_dlist_foreach(&sc->networks, fr_schedule_network_t, sn) {
 		if (unlikely(fr_network_worker_add(sn->nr, sw->worker) < 0)) {
 			PERROR("%s - Failed adding worker to network %u", worker_name, sn->thread.id);
 			goto fail;	/* FIXME - Should maybe try to undo partial adds? */
@@ -216,8 +213,6 @@ static void *fr_schedule_network_thread(void *arg)
 	snprintf(network_name, sizeof(network_name), "Network %d", sn->thread.id);
 
 	if (fr_thread_setup(&sn->thread, network_name) < 0) goto fail;
-
-	INFO("%s - Starting", network_name);
 
 	sn->nr = fr_network_create(sn->thread.ctx, sn->thread.el, network_name, sc->log, sc->lvl, &sc->config->network);
 	if (!sn->nr) {
