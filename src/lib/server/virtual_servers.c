@@ -362,9 +362,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	Pull the list of sections we need to compile out of
 	 *	the process module's public struct.
 	 */
-	add_compile_list(server, server->process_mi->conf, server->process_module->compile_list, namespace);
-
-	return 0;
+	return add_compile_list(server, server->process_mi->conf, server->process_module->compile_list, namespace);
 }
 
 /** dl_open a proto_* module
