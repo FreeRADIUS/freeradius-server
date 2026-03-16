@@ -99,7 +99,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 	rlm_cache_rbtree_mutable_t *mutable = driver->mutable;
 	rlm_cache_entry_t find = {};
-
+	int i;
 	rlm_cache_entry_t *c;
 
 	fr_assert(mutable->cache);
@@ -107,8 +107,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Clear out old entries
 	 */
-	c = fr_heap_peek(mutable->heap);
-	if (c && (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)))) {
+	for (i = 0; i < 3; i++) {
+		c = fr_heap_peek(mutable->heap);
+		if (!c) break;
+
+		if (fr_unix_time_gt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) break;
+
 		fr_heap_extract(&mutable->heap, c);
 		fr_rb_delete(mutable->cache, c);
 		talloc_free(c);
