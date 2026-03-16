@@ -325,7 +325,7 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		inst->driver->expire(&inst->config, inst->driver_submodule->data, request, handle, key);
+		inst->driver->expire(&inst->config, inst->driver_submodule->data, request, *handle, key);
 		cache_free(inst, &c);
 		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
