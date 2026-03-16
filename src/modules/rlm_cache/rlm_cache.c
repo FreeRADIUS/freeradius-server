@@ -40,6 +40,7 @@ extern module_rlm_t rlm_cache;
 int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
+static unlang_action_t cache_expire(unlang_result_t *p_result, rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle, fr_value_box_t const *key);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
@@ -318,6 +319,8 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
 	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
+		unlang_result_t tmp;
+
 		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
 			key,
 			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)),
@@ -325,7 +328,7 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		inst->driver->expire(&inst->config, inst->driver_submodule->data, request, *handle, key);
+		cache_expire(&tmp, inst, request, handle, key);
 		cache_free(inst, &c);
 		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -392,7 +395,7 @@ static unlang_action_t cache_insert(unlang_result_t *p_result,
 	TALLOC_CTX		*pool;
 
 	if ((inst->config.max_entries > 0) && inst->driver->count &&
-	    (inst->driver->count(&inst->config, inst->driver_submodule->data, request, handle) > inst->config.max_entries)) {
+	    (inst->driver->count(&inst->config, inst->driver_submodule->data, request, *handle) > inst->config.max_entries)) {
 		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
 		RETURN_UNLANG_FAIL;
 	}
@@ -1187,7 +1190,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 			ttl = fr_time_delta_from_sec(vp->vp_int32);
 		}
 
-		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
+		DEBUG3("Using TTL %pV (%d)", fr_box_time_delta(ttl), vp->vp_int32);
 	}
 
 	/*
