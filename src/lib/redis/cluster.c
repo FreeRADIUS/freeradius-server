@@ -470,7 +470,7 @@ static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_sl
 	}
 	p = q;
 	key = strtoul(p, &q, 10);
-	if (key > KEY_SLOTS) {
+	if (key >= KEY_SLOTS) {
 		fr_strerror_printf("Key %lu outside of redis slot range", key);
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
@@ -939,8 +939,8 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 			goto error;
 		}
 
-		if (map->element[0]->integer > KEY_SLOTS) {
-			fr_strerror_printf("Cluster map %zu key slot start is too high, expected <= "
+		if (map->element[0]->integer >= KEY_SLOTS) {
+			fr_strerror_printf("Cluster map %zu key slot start is too high, expected < "
 					   STRINGIFY(KEY_SLOTS) " got %lli", i, map->element[0]->integer);
 			goto error;
 		}
@@ -960,8 +960,8 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 			goto error;
 		}
 
-		if (map->element[1]->integer > KEY_SLOTS) {
-			fr_strerror_printf("Cluster map %zu key slot end is too high, expected <= "
+		if (map->element[1]->integer >= KEY_SLOTS) {
+			fr_strerror_printf("Cluster map %zu key slot end is too high, expected < "
 					   STRINGIFY(KEY_SLOTS) " got %lli", i, map->element[1]->integer);
 			goto error;
 		}
