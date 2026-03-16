@@ -273,7 +273,7 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 					   linelog_call_env_t const *call_env, request_t *request,
 					   struct iovec *vector_p, size_t vector_len)
 {
-	int 			ret;
+	ssize_t			ret;
 	char const		*path;
 	rlm_linelog_file_t	*file;
 	rlm_linelog_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_linelog_thread_t);
