@@ -1377,7 +1377,11 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
 	if (vp) {
-		if (vp->vp_int32 < 0) {
+		if (vp->vp_int32 == 0) {
+			p_result->rcode = RLM_MODULE_NOOP;
+			goto finish;
+
+		} else if (vp->vp_int32 < 0) {
 			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
 		/* Updating the TTL */
 		} else {
