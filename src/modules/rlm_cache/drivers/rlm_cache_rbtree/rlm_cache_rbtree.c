@@ -239,7 +239,7 @@ static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
-	if (!request) return CACHE_ERROR;
+	if (!request) return 0;	/* can't return an error due to signed   */
 
 	return fr_rb_num_elements(driver->mutable->cache);
 }
