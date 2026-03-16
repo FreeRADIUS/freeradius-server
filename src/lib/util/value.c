@@ -758,41 +758,12 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	 */
 	switch (a->type) {
 	case FR_TYPE_VARIABLE_SIZE:
-	{
-		size_t length;
-
-		if (a->vb_length < b->vb_length) {
-			length = a->vb_length;
-		} else {
-			length = b->vb_length;
-		}
-
-		if (length) {
-			int cmp;
-
-			/*
-			 *	Use constant-time comparisons for secret values.
-			 *
-			 *	@todo - this can leak data about the length of the secret, as the comparison
-			 *	is done only up to the length of the shortest input.  In order to fix this, we
-			 *	would have to do a lot more work.  For now, this is good enough.
-			 */
-			if (a->secret || b->secret) {
-				cmp = fr_digest_cmp(a->datum.ptr, b->datum.ptr, length);
-			} else {
-				cmp = memcmp(a->datum.ptr, b->datum.ptr, length);
-			}
-			if (cmp != 0) return CMP(cmp, 0);
-		}
-
 		/*
-		 *	Contents are the same.  The return code
-		 *	is therefore the difference in lengths.
-		 *
-		 *	i.e. "0x00" is smaller than "0x0000"
+		 *	Note that we do NOT check a->secret or b->secret.  This function is used to sort pairs
+		 *	and sets of value-boxes.  The fr_digest_cmp() function returns 0..255 no matter what
+		 *	the two inputs are.  So it can't be used in a stable sort.
 		 */
-		return CMP(a->vb_length, b->vb_length);
-	}
+		return MEMCMP_FIELDS(a, b, datum.ptr, vb_length);
 
 	/*
 	 *	Short-hand for simplicity.
