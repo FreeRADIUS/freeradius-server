@@ -190,11 +190,11 @@ static void _batch_write(rlm_linelog_file_t *file)
 	write_error = errno;
 	if (ret >= 0) {
 		if (ret < (ssize_t)(header_len)) {
-			ret = ftruncate(fd, 0);
-			if (ret < 0) {
+			if (ftruncate(fd, 0) < 0) {
 				ERROR("Failed truncating file \"%s\" after partial header write - %s",
 				      file->filename, fr_syserror(errno));
 			}
+			errno = write_error;
 
 			PERROR("Failed writing header to \"%s\"", file->filename);
 			goto error;
