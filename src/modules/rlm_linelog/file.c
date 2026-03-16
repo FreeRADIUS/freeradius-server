@@ -115,6 +115,7 @@ void batching_mark_entries_failed(rlm_linelog_file_t *file, rlm_linelog_file_ent
 		entry->failed = true;
 		entry->error = error;
 
+		if (!entry->request) continue;
 		if (unlang_interpret_is_resumable(entry->request)) {
 			unlang_interpret_mark_runnable(entry->request);
 		}
@@ -243,6 +244,7 @@ static void _batch_write(rlm_linelog_file_t *file)
 		 *	Needed because the write function could be called either from a timer, or directly
 		 *	when the buffer is full.  In which case the last entry would not have been yielded
 		 */
+		if (!entry->request) continue;
 		if (unlang_interpret_is_resumable(entry->request)) {
 			unlang_interpret_mark_runnable(entry->request);
 		}
