@@ -281,7 +281,7 @@ linelog_buffer_action_t file_enqueue_write(rlm_linelog_file_entry_t **entry_p, m
 
 	path = call_env->filename->vb_strvalue;
 
-	file = fr_hash_table_find_by_key(thread->file_table, fr_hash_case_string(path),
+	file = fr_hash_table_find_by_key(thread->file_table, fr_hash_string(path),
 					 &(rlm_linelog_file_t){ .filename = path });
 
 	if (!file) {
