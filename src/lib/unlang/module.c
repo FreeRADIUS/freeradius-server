@@ -42,7 +42,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_tim
  * @param[in] mi		Instance of the module to call.
  * @param[in] method		to call.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

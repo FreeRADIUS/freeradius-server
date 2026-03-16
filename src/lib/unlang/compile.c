@@ -381,7 +381,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 	if (tmpl_is_attr(map->lhs)) {
 		/*
-		 *	What exactly where you expecting to happen here?
+		 *	What exactly were you expecting to happen here?
 		 */
 		if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
 		    map->rhs && tmpl_is_list(map->rhs)) {
@@ -1395,7 +1395,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 					cf_section_free_children(subcs);
 
 					cf_log_debug_prefix(ci, "Skipping contents of '%s' due to previous "
-							    "'%s' being always being taken.",
+							    "'%s' always being taken.",
 							    name, skip_else);
 					continue;
 				}

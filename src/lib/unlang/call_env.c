@@ -627,7 +627,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
 		rule_p++;
 	}
 
-	CALL_ENV_DEBUG(cs, "Returning afer processing %u rules", (unsigned int)(rule_p - rule));
+	CALL_ENV_DEBUG(cs, "Returning after processing %u rules", (unsigned int)(rule_p - rule));
 
 	return 0;
 }

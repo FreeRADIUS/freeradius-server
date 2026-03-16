@@ -89,7 +89,7 @@ typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
  */
 typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx);
 
-/** Re-priotise the request in the runnable queue
+/** Re-prioritise the request in the runnable queue
  *
  * The new priority will be available in request->async->priority.
  */
@@ -105,7 +105,7 @@ typedef void (*unlang_request_prioritise_t)(request_t *request, void *uctx);
  * managing requests.
  *
  * Test harnesses (for example) need to perform far less initialisation and
- * request management than FeeRADIUS worker threads.
+ * request management than FreeRADIUS worker threads.
  */
 typedef struct {
 	/*
@@ -126,7 +126,7 @@ typedef struct {
 							///< added back to the runnable queue.
 	unlang_request_scheduled_t	scheduled;	//!< Function to check if a request is already
 							///< scheduled.
-	unlang_request_prioritise_t	prioritise;	//!< Function to re-priotise a request in the
+	unlang_request_prioritise_t	prioritise;	//!< Function to re-prioritise a request in the
 							///< runnable queue.
 } unlang_request_func_t;
 

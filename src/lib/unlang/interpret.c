@@ -368,7 +368,7 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 
 /** Push the children of the current frame onto a new frame onto the stack
  *
- * @param[out] p_result		set to RLM_MOULDE_FAIL if pushing the children fails
+ * @param[out] p_result		set to RLM_MODULE_FAIL if pushing the children fails
  * @param[in] request		to push the frame onto.
  * @param[in] default_rcode	The default result.
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
@@ -930,7 +930,7 @@ pop:
 /** Run the interpreter for a current request
  *
  * This function runs the interpreter for a request.  It deals with popping
- * stack frames, and calaculating the final result for the frame.
+ * stack frames, and calculating the final result for the frame.
  *
  * @param[in] request		to run.  If this is an internal request
  *				the request may be freed by the interpreter.

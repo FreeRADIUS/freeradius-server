@@ -216,7 +216,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	fr_assert(redundant->start != NULL);
 
 	/*
-	 *	Plain "load-balance".  Just do one child, and return the result directly bacl to the caller.
+	 *	Plain "load-balance".  Just do one child, and return the result directly back to the caller.
 	 */
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 		if (unlang_interpret_push(p_result, request, redundant->start,

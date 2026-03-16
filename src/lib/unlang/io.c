@@ -59,7 +59,7 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	((unlang_stack_t *)child->stack)->intp = ((unlang_stack_t *)parent->stack)->intp;
 
 	/*
-	 *	Push the child, and set it's top frame to be true.
+	 *	Push the child, and set its top frame to be true.
 	 */
 	child->log.indent.unlang = parent->log.indent.unlang;
 
