@@ -132,9 +132,10 @@ $(foreach x,$(FILES),$(eval $(call TEST_MODULES_DEPS,$x)))
 $(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x))))) $(patsubst %,$(BUILD_DIR)/lib/local/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
 
 #
-#  sql_foo depends on rlm_sql, too.
+#  sql_foo depends on rlm_sql, too, and the same for rlm_cache.
 #
-$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_sql.la))
+$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_sql.la $(BUILD_DIR)/lib/rlm_sql.la))
+$(foreach x, $(filter cache_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_cache.la $(BUILD_DIR)/lib/rlm_cache.la))
 
 #
 #  Files in the output dir depend on the unit tests
