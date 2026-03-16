@@ -1299,10 +1299,11 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	 *	insert.
 	 */
 	cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+	p_result->rcode = RLM_MODULE_UPDATED;
 
 finish:
 	cache_unref(request, inst, entry, handle);
-	if (p_result->rcode == RLM_MODULE_OK) p_result->rcode = RLM_MODULE_UPDATED;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
