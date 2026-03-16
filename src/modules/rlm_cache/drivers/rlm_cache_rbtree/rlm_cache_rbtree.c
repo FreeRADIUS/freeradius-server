@@ -51,8 +51,7 @@ static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
-	MEMCMP_RETURN(a, b, key.vb_strvalue, key.vb_length);
-	return 0;
+	return MEMCMP_FIELDS(a, b, key.vb_strvalue, key.vb_length);
 }
 
 /** Compare two entries by expiry time

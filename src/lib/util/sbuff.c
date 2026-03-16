@@ -633,8 +633,7 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
  */
 static inline int8_t terminal_cmp(fr_sbuff_term_elem_t const *a, fr_sbuff_term_elem_t const *b)
 {
-	MEMCMP_RETURN(a, b, str, len);
-	return 0;
+	return MEMCMP_FIELDS(a, b, str, len);
 }
 
 #if 0

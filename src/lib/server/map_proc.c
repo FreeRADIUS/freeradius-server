@@ -40,8 +40,7 @@ static int8_t map_proc_cmp(void const *one, void const *two)
 {
 	map_proc_t const *a = one, *b = two;
 
-	MEMCMP_RETURN(a, b, name, length);
-	return 0;
+	return MEMCMP_FIELDS(a, b, name, length);
 }
 
 /** Unregister a map processor

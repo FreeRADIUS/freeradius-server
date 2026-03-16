@@ -160,6 +160,17 @@ do { \
 	if (_ret != 0) return _ret; \
 } while (0)
 
+/** Return the comparison of two opaque fields of a structure
+ *
+ * @param[in] _a		pointer to first structure.
+ * @param[in] _b		pointer to second structure.
+ * @param[in] _field		within the structs to compare.
+ * @param[in] _len_field	within the structs, specifying the length of the data.
+ * @return The result of the comparison.
+ */
+#define MEMCMP_FIELDS(_a, _b, _field, _len_field) \
+	memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field)
+
 /** Remove const qualification from a pointer
  *
  * @param[in] _type	The non-const version of the type.
