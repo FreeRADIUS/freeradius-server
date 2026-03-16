@@ -159,12 +159,13 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 	 */
 	switch (check->vp_type) {
 		case FR_TYPE_OCTETS:
-			ret = CMP(vp->vp_length, check->vp_length);
-			if (ret != 0) return ret;
-
-			return CMP(memcmp(vp->vp_strvalue, check->vp_strvalue, vp->vp_length), 0);
+			return MEMCMP_FIELDS(vp, check, vp_octets, vp_length);
 
 		case FR_TYPE_STRING:
+			/*
+			 *	Do NOT check the secret flag!  This function is used to compare check items,
+			 *	and needs the full comparison, even if it isn't constant time.
+			 */
 			return CMP(strcmp(vp->vp_strvalue, check->vp_strvalue), 0);
 
 		case FR_TYPE_UINT8:
