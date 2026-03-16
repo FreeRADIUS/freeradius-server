@@ -590,6 +590,7 @@ static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, u
 {
 	fr_dbuff_t	our_dbuff;
 	int		i;
+	bool		wrote = false;
 	uint64_t	oid;
 
 	/*
@@ -632,12 +633,16 @@ static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, u
 	for (i = 63; i >= 0; i -= 7) {
 		uint8_t more, part;
 
+		/*
+		 *	Skip leading zeroes, but not intermediate ones.
+		 */
 		part = (oid >> i) & 0x7f;
-		if (!part) continue;
+		if (!part && !wrote && (i > 0)) continue;
 
 		more = ((uint8_t) (i > 0)) << 7;
 
 		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
+		wrote = true;
 	}
 
 	(*count)++;
