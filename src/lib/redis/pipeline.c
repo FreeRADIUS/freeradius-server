@@ -308,7 +308,7 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	 */
 	switch (tolower(cmd_str[0])) {
 	case 'm':
-		if (tolower(cmd_str[1] != 'u')) break;
+		if (tolower(cmd_str[1]) != 'u') break;
 		if (strncasecmp(cmd_str, "multi", sizeof("multi") - 1) != 0) break;
 		/*
 		 *	There should only ever be a difference of
@@ -328,7 +328,7 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 		break;
 
 	case 'e':
-		if (tolower(cmd_str[1] != 'e')) break;
+		if (tolower(cmd_str[1]) != 'e') break;
 		if (strncasecmp(cmd_str, "exec", sizeof("exec") - 1) != 0) break;
 		goto txn_end;
 
@@ -338,7 +338,7 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	 *	executing the commands.
 	 */
 	case 'd':
-		if (tolower(cmd_str[1] != 'i')) break;
+		if (tolower(cmd_str[1]) != 'i') break;
 		if (strncasecmp(cmd_str, "discard", sizeof("discard") - 1) != 0) break;
 	txn_end:
 		if (cmds->txn_start <= cmds->txn_end) {
@@ -350,7 +350,7 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 		break;
 
 	case 'w':
-		if (tolower(cmd_str[1] != 'a')) break;
+		if (tolower(cmd_str[1]) != 'a') break;
 		if (strncasecmp(cmd_str, "watch", sizeof("watch") - 1) != 0) break;
 		if (cmds->txn_watch) {
 			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"WATCH\" commands");
