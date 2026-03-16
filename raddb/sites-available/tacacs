@@ -395,7 +395,7 @@ server tacacs {
 	#
 	#	Replace whatever the user entered with the following arguments
 	#
-	send Authorization-Pass-Reply {
+	send Authorization-Pass-Replace {
 		reply.Server-Message := "authorization-response-server"
 		reply.Data := "authorization-response-data"
 		reply.Argument-List := "key1=var1"
