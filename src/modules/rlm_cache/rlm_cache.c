@@ -1162,11 +1162,23 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
+			/*
+			 *	Expire old one, and insert new one with default TTL.
+			 */
 			expire = true;
+
 		} else if (vp->vp_int32 < 0) {
+			/*
+			 *	Expire old one, and insert new one with this TTL.
+			 */
 			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
-		/* Updating the TTL */
+			/* Updating the TTL */
+			expire = true;
+
 		} else {
+			/*
+			 *	Write entry, and insert new one.
+			 */
 			ttl = fr_time_delta_from_sec(vp->vp_int32);
 		}
 
@@ -1179,6 +1191,22 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
+	/*
+	 *	Expire the entry if it exists.
+	 *
+	 *	Then, we always insert a new entry.
+	 */
+	if (expire && (p_result->rcode == RLM_MODULE_OK)) {
+		DEBUG3("Expiring cache entry");
+
+		cache_expire(p_result, inst, request, &handle, key);
+		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+		goto insert_new;
+	}
+
+	/*
+	 *	If it was found, update it's TTL.
+	 */
 	if (p_result->rcode == RLM_MODULE_OK) {
 		fr_assert(entry != NULL);
 
@@ -1188,28 +1216,19 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 
 		cache_set_ttl(p_result, inst, request, &handle, entry);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-	}
-
-	/*
-	 *	Expire the entry if told to, and we either don't know whether
-	 *	it exists, or we know it does.
-	 *
-	 *	We only expire if we're not inserting, as driver insert methods
-	 *	should perform upserts.
-	 */
-	if (expire) {
-		DEBUG3("Expiring cache entry");
-
-		cache_expire(p_result, inst, request, &handle, key);
+	} else {
+	insert_new:
+		/*
+		 *	Insert a new entry.
+		 */
+		cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 	}
 
 	/*
-	 *	Inserts are upserts, so we don't care about the
-	 *	entry state.
+	 *	We did something, so the result is "updated".
 	 */
-	cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
-	if (p_result->rcode == RLM_MODULE_OK) p_result->rcode = RLM_MODULE_UPDATED;
+	p_result->rcode = RLM_MODULE_UPDATED;
 
 finish:
 	cache_unref(request, inst, entry, handle);

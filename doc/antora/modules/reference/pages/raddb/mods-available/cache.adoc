@@ -246,7 +246,8 @@ control.Cache-TTL:: Sets the TTL of an entry to be created, or
                          (and reset the expiry timer).
 | `Cache-TTL` of < `0` | Expire the existing entry and create a new
                          one with TTL set to `Cache-TTL` * `-1`.
-| `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
+| `Cache-TTL` of `0`   | Expire the existing entry and create a new one
+|                      | which uses the module default TTL.
 |===
 
 
