@@ -751,11 +751,7 @@ static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *one, void const
 	fr_der_encode_set_of_ptr_pairs_t const *a = one;
 	fr_der_encode_set_of_ptr_pairs_t const *b = two;
 
-	if (a->len >= b->len) {
-		return memcmp(a->data, b->data, a->len);
-	}
-
-	return memcmp(a->data, b->data, b->len);
+	return MEMCMP_FIELDS(a, b, data, len);
 }
 
 static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
