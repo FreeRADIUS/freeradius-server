@@ -46,7 +46,7 @@ RCSID("$Id$")
  *
  * We don't free any requests here, we just mark them up so their rcodes are ignored when
  * the parent is resumed, the parent then frees the child, once we're sure its done being
- * run through the intepreter.
+ * run through the interpreter.
  */
 static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_parallel_state_t *state, unlang_child_request_t *cr)
 {
@@ -458,7 +458,7 @@ void unlang_parallel_init(void)
 {
 	unlang_register(&(unlang_op_t){
 			.name = "parallel",
-			.type = UNLANG_TYPE_PARALLEL,	
+			.type = UNLANG_TYPE_PARALLEL,
 			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 
 			.compile = unlang_compile_parallel,

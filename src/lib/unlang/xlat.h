@@ -139,7 +139,7 @@ typedef enum {
 						///< or null boxes.
 } xlat_arg_parser_variadic_t;
 
-/** Definition for a single argument consumend by an xlat function
+/** Definition for a single argument consumed by an xlat function
  *
  */
 typedef struct {
@@ -170,9 +170,9 @@ typedef struct {
 #define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
 					.type = FR_TYPE_NULL, .func = NULL, .uctx = NULL }
 
-/** A callback when the the timeout occurs
+/** A callback when the timeout occurs
  *
- * Used when a xlat needs wait for an event.
+ * Used when a xlat needs to wait for an event.
  * Typically the callback is set, and then the xlat returns unlang_xlat_yield().
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
@@ -184,9 +184,9 @@ typedef struct {
  */
 typedef	void (*fr_unlang_xlat_timeout_t)(xlat_ctx_t const *xctx, request_t *request, fr_time_t fired);
 
-/** A callback when the the timeout occurs
+/** A callback when the timeout occurs
  *
- * Used when a xlat needs wait for an event.
+ * Used when a xlat needs to wait for an event.
  * Typically the callback is set, and then the xlat returns unlang_xlat_yield().
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event

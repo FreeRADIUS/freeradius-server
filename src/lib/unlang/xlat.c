@@ -192,7 +192,7 @@ int unlang_xlat_timeout_add(request_t *request,
  * @param[in] xlat		head of list
  * @param[in] node		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -261,7 +261,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result,
  * @param[in] request		to push xlat onto.
  * @param[in] xlat		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

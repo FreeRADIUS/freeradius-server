@@ -254,7 +254,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	case_gext->vpt = talloc_steal(case_gext, vpt);
 
 	/*
-	 *	Set all of it's codes to return, so that
+	 *	Set all of its codes to return, so that
 	 *	when we pick a 'case' statement, we don't
 	 *	fall through to processing the next one.
 	 */

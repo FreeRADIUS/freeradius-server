@@ -85,7 +85,7 @@ void		_xlat_func_safe_for_set(xlat_t *xlat, uintptr_t escaped);
 /** Set a callback for global instantiation of xlat functions
  *
  * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
- * @param[in] _instantiate	A instantiation callback.
+ * @param[in] _instantiate	An instantiation callback.
  * @param[in] _inst_struct	The instance struct to pre-allocate.
  * @param[in] _detach		A destructor callback.
  * @param[in] _uctx		to pass to _instantiate and _detach callbacks.

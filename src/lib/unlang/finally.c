@@ -106,7 +106,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Push a finally instructtion on the stack, to be evaluated as the stack is unwound
+/** Push a finally instruction on the stack, to be evaluated as the stack is unwound
  *
  * @param[in] request		to push timeout onto
  * @param[in] instruction	to run as we unwind
@@ -116,7 +116,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
  *				a guarantee of a minimum amount of time for the finally
  *				instruction to run.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *				Set to UNLANG_SUB_FRAME if the interpreter should continue.
  *
  * @return
  *	- 0 on success.

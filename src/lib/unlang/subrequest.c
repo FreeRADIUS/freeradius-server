@@ -417,7 +417,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UN
  *					done using the child's stack, and so the parent never needs
  *					to access it.
  * @param[in] top_frame			Set to UNLANG_TOP_FRAME if the interpreter should return.
- *					Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *					Set to UNLANG_SUB_FRAME if the interpreter should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -541,7 +541,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		dict = unlang_ctx->rules->attr.dict_def;
-		packet_name = name2 = unlang_ctx->section_name2;		
+		packet_name = name2 = unlang_ctx->section_name2;
 		attr_packet_type =  virtual_server_packet_type_by_cs(virtual_server_cs(unlang_ctx->vs));
 		goto get_packet_type;
 	}

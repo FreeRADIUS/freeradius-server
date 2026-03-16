@@ -46,7 +46,7 @@ static unlang_action_t unlang_caller(unlang_result_t *p_result, request_t *reque
 	}
 
 	/*
-	 *	The dictionary matches.  Go recurse into its' children.
+	 *	The dictionary matches.  Go recurse into its children.
 	 */
 	return unlang_group(p_result, request, frame);
 }
