@@ -548,9 +548,6 @@ void fr_coords_destroy(void)
 		fr_rb_iter_delete_inorder(&coords, &iter);
 		talloc_free(coord);
 	}
-
-	TALLOC_FREE(coord_regs);
-	TALLOC_FREE(coord_threads);
 }
 
 /** Start coordinators in single threaded mode
