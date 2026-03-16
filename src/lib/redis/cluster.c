@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file redis.c
+ * @file lib/redis/cluster.c
  * @brief conf functions for interacting with Redis cluster via Hiredis.
  *
  * @author Arran Cudbard-Bell
