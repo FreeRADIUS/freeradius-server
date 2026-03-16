@@ -61,7 +61,7 @@ void fr_redis_version_print(void)
  * @param[in] reply to process.
  * @return
  *	- REDIS_RCODE_TRY_AGAIN - If the operation should be retries.
- *	- REDIS_RCODE_MOVED  	- If the key has been permanently moved.
+ *	- REDIS_RCODE_MOVE  	- If the key has been permanently moved.
  *	- REDIS_RCODE_ASK	- If the key has been temporarily moved.
  *	- REDIS_RCODE_SUCCESS   - if no errors.
  *	- REDIS_RCODE_ERROR     - on command/server error.
