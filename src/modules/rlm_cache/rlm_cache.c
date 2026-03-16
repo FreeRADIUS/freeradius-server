@@ -937,6 +937,11 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case RLM_MODULE_OK:		/* found */
 		break;
 
+	case RLM_MODULE_NOTFOUND:      	/* !found is "no data" */
+		talloc_free(target);
+		cache_release(inst, request, &handle);
+		return XLAT_ACTION_DONE;
+
 	default:
 		talloc_free(target);
 		cache_release(inst, request, &handle);
@@ -966,9 +971,9 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	cache_release(inst, request, &handle);
 
 	/*
-	 *	Check if we found a matching map
+	 *	If we found a value, then the output has been updated.
+	 *	Otherwise, there is no output.  Either way, the xlat succeeded.
 	 */
-	if (!map) return XLAT_ACTION_FAIL;
 
 	return XLAT_ACTION_DONE;
 }

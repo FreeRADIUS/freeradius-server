@@ -29,9 +29,31 @@ if (Login-LAT-Node) {
 # Regression test for deadlock on notfound
 Filter-Id := 'testkey0'
 
+#
+#  There is no request.Login-LAT-Port, so the input is empty.
+#
 Login-LAT-Node := %cache(request.Login-LAT-Port)
 
 # Would previously deadlock
 Login-LAT-Port := %cache(request.Login-LAT-Port)
+
+#
+#  Get the value for a key which doesn't exist.  The xlat should succeed, but return no data.
+#
+Filter-Id := 'nosuchkey'
+request.Login-LAT-Service := %cache('request.Callback-Id')
+if request.Login-LAT-Service {
+	test_fail
+}
+
+#
+#  And then verify that the previous cache entry hasn't been deleted
+#
+Filter-Id := 'testkey'
+request.Login-LAT-Service := %cache('request.Callback-Id')
+
+if (Login-LAT-Service != control.Callback-Id) {
+        test_fail
+}
 
 test_pass
