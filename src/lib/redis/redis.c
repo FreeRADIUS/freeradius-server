@@ -382,7 +382,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	}
 
 	if (op->type != REDIS_REPLY_STRING) {
-		REDEBUG("Bad key type, expected string, got %s",
+		REDEBUG("Bad op type, expected string, got %s",
 			fr_table_str_by_value(redis_reply_types, op->type, "<UNKNOWN>"));
 		goto error;
 	}
