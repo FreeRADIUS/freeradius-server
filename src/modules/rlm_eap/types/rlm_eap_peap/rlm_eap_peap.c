@@ -141,12 +141,7 @@ static int eap_peap_failure(request_t *request, eap_session_t *eap_session, fr_t
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
-	/*
-	 *	FIXME: Check the return code.
-	 */
-	fr_tls_session_send(request, tls_session);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 /*
@@ -174,12 +169,7 @@ static int eap_peap_success(request_t *request, eap_session_t *eap_session, fr_t
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
-	/*
-	 *	FIXME: Check the return code.
-	 */
-	fr_tls_session_send(request, tls_session);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 
@@ -194,10 +184,7 @@ static int eap_peap_identity(request_t *request, eap_session_t *eap_session, fr_
 	eap_packet.data[0] = FR_EAP_METHOD_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
-	fr_tls_session_send(request, tls_session);
-	(tls_session->record_init)(&tls_session->clean_in);
-
-	return 1;
+	return fr_tls_session_send(request, tls_session);
 }
 
 /*
@@ -212,7 +199,7 @@ static int eap_peap_verify(request_t *request, peap_tunnel_t *peap_tunnel,
 	/*
 	 *	No data, OR only 1 byte of EAP type.
 	 */
-	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_METHOD_IDENTITY))) return 0;
+	if (!data || !data_len || (data[0] != FR_EAP_METHOD_IDENTITY)) return 0;
 
 	/*
 	 *  Since the full EAP header is sent for the EAP Extensions type (Type 33),
@@ -307,12 +294,13 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 	fr_pair_t *this;
 
 	fr_assert(!fr_pair_list_empty(vps));
-
 	/*
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
 	this = fr_pair_list_head(vps);
+	if (this->vp_length <= EAP_HEADER_LEN) return 1;
+
 	(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
 					this->vp_length - EAP_HEADER_LEN);
 
@@ -364,7 +352,7 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 /*
  *	Use a reply packet to determine what to do.
  */
-static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, UNUSED void *uctx)
+static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -394,13 +382,13 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-		eap_peap_success(request, eap_session, tls_session);
+		if (eap_peap_success(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-		eap_peap_failure(request, eap_session, tls_session);
+		if (eap_peap_failure(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
@@ -497,20 +485,26 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 			t->session_resumption_state = PEAP_RESUMPTION_YES;
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			eap_peap_success(request, eap_session, tls_session);
+			if (eap_peap_success(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 
 		} else {
 			/* send an identity request */
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
-			eap_peap_identity(request, eap_session, tls_session);
+			if (eap_peap_identity(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 		}
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
 
 	case PEAP_STATUS_INNER_IDENTITY_REQ_SENT:
 		/* we're expecting an identity response */
-		if (data[0] != FR_EAP_METHOD_IDENTITY) {
+		if (!data_len || (data[0] != FR_EAP_METHOD_IDENTITY)) {
 			REDEBUG("Expected EAP-Identity, got something else");
 			rcode = RLM_MODULE_REJECT;
 			goto finish;
@@ -555,7 +549,10 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 
-			eap_peap_identity(request, eap_session, tls_session);
+			if (eap_peap_identity(request, eap_session, tls_session) < 0) {
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 			rcode = RLM_MODULE_HANDLED;
 			goto finish;
 		}
