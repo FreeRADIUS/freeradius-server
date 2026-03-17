@@ -138,12 +138,19 @@ do { \
  */
 static inline int8_t memcmp_return(void const *a, void const *b, size_t a_len, size_t b_len)
 {
-	size_t cmp_len = (a_len < b_len) ? a_len : b_len;
-	int8_t l_ret = CMP(a_len, b_len);
+	size_t cmp_len;
 	int8_t ret;
-	ret = CMP(memcmp(a, b, cmp_len), 0);
+
+	if (!a_len && b_len) return -1;
+	if (a_len && !b_len) return +1;
+	if (!a_len && !b_len) return 0;
+
+	cmp_len = (a_len < b_len) ? a_len : b_len;
+
+	ret = CMP(memcmp(a, b, cmp_len), 0); /* memcmp() can't be passed a NULL pointer */
 	if (ret != 0) return ret;
-	return l_ret;
+
+	return CMP(a_len, b_len);
 }
 
 /** Return if the contents of the specified field is not identical between the specified structures
