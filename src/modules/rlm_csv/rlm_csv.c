@@ -953,8 +953,8 @@ redo:
 
 	if (e->next) {
 		e = e->next;
-		goto redo;
 		map = NULL;
+		goto redo;
 	}
 
 finish:
