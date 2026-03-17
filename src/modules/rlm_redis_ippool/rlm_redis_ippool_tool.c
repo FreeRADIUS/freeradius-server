@@ -80,7 +80,7 @@ typedef struct {
 
 typedef struct {
 	uint64_t		total;		//!< Addresses available.
-	uint64_t		free;		//!< Addresses in use.
+	uint64_t		free;		//!< Addresses free (not in use).
 	uint64_t		expiring_1m;	//!< Addresses that expire in the next minute.
 	uint64_t		expiring_30m;	//!< Addresses that expire in the next 30 minutes.
 	uint64_t		expiring_1h;	//!< Addresses that expire in the next hour.
