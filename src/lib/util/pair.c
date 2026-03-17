@@ -2074,10 +2074,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 
 		default:
 			ret = fr_value_box_cmp(&a_p->data, &b_p->data);
-			if (ret != 0) {
-				(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
-				return ret;
-			}
+			if (ret != 0) return ret;
 		}
 
 	}
