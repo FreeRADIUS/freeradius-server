@@ -2079,11 +2079,10 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 
 	}
 
-	if (!a_p && !b_p) return 0;
-	if (!a_p) return -1;
-
-	/* if(!b_p) */
-	return 1;
+	/*
+	 *	If we've run off of the end of one of the lists.
+	 */
+	return CMP(a_p, b_p);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
