@@ -243,7 +243,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	 *	Copy the other fields;
 	 */
 	for (i = 0; i < inst->used_fields; i++) {
-		if (old->data[i]) e->data[i] = old->data[i]; /* no need to dup it, it's never freed... */
+		if (old->data[i]) e->data[i] = talloc_reference(e, old->data[i]);
 	}
 
 	return insert_entry(conf, inst, e, lineno);
@@ -265,14 +265,14 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
 			cf_log_err(conf, "Malformed entry in file %s line %d", inst->filename, lineno);
-			return false;
+			goto fail;
 		}
 
 		if (q) *(q++) = '\0';
 
 		if (i >= inst->num_fields) {
 			cf_log_err(conf, "Too many fields at file %s line %d", inst->filename, lineno);
-			return false;
+			goto fail;
 		}
 
 		/*
@@ -954,6 +954,7 @@ redo:
 	if (e->next) {
 		e = e->next;
 		goto redo;
+		map = NULL;
 	}
 
 finish:
