@@ -54,10 +54,9 @@ test.multi-server: multi-server
 # Clean target to remove all .log and .txt.bak files in the runtime logs directory
 .PHONY: clean.test.multi-server
 clean.test.multi-server:
-	@echo "INFO: Removing all .log and .txt.bak files in $(LOGDIR)"
-	rm -f $(LOGDIR)/*.log
-	rm -f $(LOGDIR)/*.log.bak
-	rm -f $(LOGDIR)/*.txt.bak
+	@rm -f $(LOGDIR)/*.log
+	@rm -f $(LOGDIR)/*.log.bak
+	@rm -f $(LOGDIR)/*.txt.bak
 
 # Allow standalone use: make -f src/tests/multi-server/all.mk clean
 # Prerequisite-only rule merges safely with the top-level clean target
