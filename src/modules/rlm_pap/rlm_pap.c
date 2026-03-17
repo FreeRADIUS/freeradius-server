@@ -355,12 +355,14 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(unlang_result_t *p_resul
 	unsigned int	digest_len;
 
 	ctx = EVP_MD_CTX_create();
+	if (!ctx) return UNLANG_ACTION_FAIL;
+
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, password->vb_octets, password->vb_length);
 	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert((size_t) digest_len == known_good->vp_length);	/* This would be an OpenSSL bug... */
+	if ((size_t) digest_len != known_good->vp_length) return UNLANG_ACTION_FAIL; /* This would be an OpenSSL bug... */
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
@@ -385,13 +387,15 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(unlang_result_t *
 
 	min_len = EVP_MD_size(md);
 	ctx = EVP_MD_CTX_create();
+	if (!ctx) return UNLANG_ACTION_FAIL;
+
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, password->vb_octets, password->vb_length);
 	EVP_DigestUpdate(ctx, known_good->vp_octets + min_len, known_good->vp_length - min_len);
 	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
+	if ((size_t) digest_len != min_len) return UNLANG_ACTION_FAIL;	/* This would be an OpenSSL bug... */
 
 	/*
 	 *	Only compare digest_len bytes, the rest is salt.
@@ -545,8 +549,9 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 	 *	If it's not base64 encoded, assume it's ascii
 	 */
 	if (!iter_is_base64) {
-		char iterations_buff[sizeof("4294967295") + 1];
+		unsigned long iterations_long;
 		char *qq;
+		char iterations_buff[sizeof("4294967295")];
 
 		/*
 		 *	While passwords come from "trusted" sources, we don't trust them too much!
@@ -554,19 +559,24 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 		if ((size_t) (q - p) >= sizeof(iterations_buff)) {
 			REMARKER((char const *) p, q - p,
 				 "Password.PBKDF2 iterations field is too large");
-
 			goto finish;
 		}
 
 		strlcpy(iterations_buff, (char const *)p, (q - p) + 1);
 
-		iterations = strtoul(iterations_buff, &qq, 10);
+		iterations_long = strtoul(iterations_buff, &qq, 10);
 		if (*qq != '\0') {
 			REMARKER(iterations_buff, qq - iterations_buff,
 				 "Password.PBKDF2 iterations field contains an invalid character");
-
 			goto finish;
 		}
+		if (iterations_long > UINT32_MAX) {
+			REMARKER(iterations_buff, qq - iterations_buff,
+				 "Password.PBKDF2 iterations field contains too large iteration count");
+			goto finish;
+		}
+		iterations = iterations_long;
+
 		p = q + 1;
 	/*
 	 *	base64 encoded and big endian
@@ -639,6 +649,14 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 	RDEBUG2("PBKDF2 %s: Iterations %u, salt length %zu, hash length %zd",
 		fr_table_str_by_value(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
 		iterations, salt_len, slen);
+
+	/*
+	 *	Extreme corner case: prevent integer overflow when we change data types via a cast.
+	 */
+	if ((password->vb_length > INT_MAX) || (salt_len > INT_MAX) ||
+	    (iterations > INT_MAX) || (digest_len > INT_MAX)) {
+		return UNLANG_ACTION_FAIL;
+	}
 
 	/*
 	 *	Hash and compare
