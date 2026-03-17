@@ -66,7 +66,7 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
 
 	/*
 	 *	Ignore signals which aren't detached, and
-	 *	and ignore the signal if we have no parent.
+	 *	are ignore the signal if we have no parent.
 	 */
 	switch (action) {
 	case FR_SIGNAL_DETACH:

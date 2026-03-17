@@ -79,7 +79,7 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint64) == 8,
 	      "vb_uint64 has unexpected length");
 
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int8) == 1,
-	      "vb_int16 has unexpected length");
+	      "vb_int8 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int16) == 2,
 	      "vb_int16 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int32) == 4,
@@ -6832,7 +6832,7 @@ static int _value_box_escape_rules(fr_value_box_t *vb, void *uctx)
 
 		return 1;	/* safe_for has been updated */
 	}
-	
+
 	return fr_value_box_escape_in_place(vb,
 					    &(fr_value_box_escape_t) {
 						    .func = _value_box_escape_rules,

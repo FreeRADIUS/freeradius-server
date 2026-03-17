@@ -302,7 +302,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 
 		if (da_is_length_field(da) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
-			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
+			fr_strerror_printf("The 'length' flag cannot be used with type %s",
 					   fr_type_to_str(type));
 			return false;
 		}

@@ -649,7 +649,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	}
 
 	if (!dict_attr_ext_copy(&fixup->da, src, FR_DICT_ATTR_EXT_ENUMV)) {
-		fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
+		fr_strerror_printf("Reference copied no VALUEs from type '%s' at %s[%d]",
 					fr_type_to_str(fixup->da->type),
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
