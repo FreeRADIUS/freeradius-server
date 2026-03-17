@@ -147,7 +147,7 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 	unsigned int remaining = data_len;
 
 	while (remaining > 0) {
-		hdr_len = 12;
+		hdr_len = 8;	/* 4 octet attr + 4 octet length */
 
 		if (remaining < hdr_len) {
 		  RDEBUG2("Diameter attribute is too small (%u) to contain a Diameter header", remaining);
@@ -160,12 +160,12 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 		length = ntohl(length);
 
 		if ((data[4] & 0x80) != 0) {
-			if (remaining < 16) {
+			hdr_len += 4;
+
+			if (remaining < hdr_len) {
 				RDEBUG2("Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
 			}
-
-			hdr_len = 16;
 		}
 
 		/*
@@ -176,7 +176,7 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 		/*
 		 *	Too short or too long is bad.
 		 */
-		if (length <= (hdr_len - 4)) {
+		if (length < hdr_len) {
 			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr,
 				length, hdr_len);
 			return 0;
@@ -240,7 +240,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 	fr_pair_t		*vp = NULL;
 	SSL			*ssl = decode_ctx;
 	fr_dict_attr_t const   	*attr_radius;
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da, *da_unknown;
 	TALLOC_CTX		*tmp_ctx = NULL;
 
 	attr_radius = fr_dict_root(dict_radius);
@@ -283,6 +283,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		 *	Account for the 8 bytes we've already read from the packet.
 		 */
 		if ((p + ((value_len + 0x03) & ~0x03)) - 8 > end) {
+		overflow:
 			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Value length %u overflows input",
 					   p - data, (unsigned int) value_len);
 			goto error;
@@ -296,6 +297,9 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		if (flags & FR_DIAMETER_AVP_FLAG_VENDOR) {
 			vendor = fr_nbo_to_uint32(p);
 			p += 4;
+
+			if (value_len <= 4) goto overflow;
+
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
 			our_parent = fr_dict_vendor_da_by_num(attr_vendor_specific, vendor);
@@ -321,6 +325,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		/*
 		 *	Is the attribute known?
 		 */
+		da_unknown = NULL;
 		da = fr_dict_attr_child_by_num(our_parent, attr);
 		if (!da) {
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
@@ -328,10 +333,12 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 				goto error;
 			}
 
-			MEM(da = fr_dict_attr_unknown_raw_afrom_num(vp, our_parent, attr));
+			MEM(da_unknown = fr_dict_attr_unknown_raw_afrom_num(ctx, our_parent, attr));
+			da = da_unknown;
 		}
 
-		MEM(vp =fr_pair_afrom_da_nested(ctx, out, da));
+		MEM(vp = fr_pair_afrom_da_nested(ctx, out, da));
+		fr_dict_attr_unknown_free(&da_unknown);
 
 		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						&FR_DBUFF_TMP(p, (size_t)value_len), value_len, true);
@@ -443,7 +450,7 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 		/*
 		 *	Too much data: die.
 		 */
-		if ((total + vp->vp_length + 12) >= sizeof(buffer)) {
+		if ((total + vp->vp_length + 12 + 3) >= sizeof(buffer)) {
 			RDEBUG2("output buffer is full!");
 			return 0;
 		}
@@ -454,6 +461,11 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 		 */
 
 		length = vp->vp_length;
+		if (length >= ((1 << 24) - 12)) {
+			RDEBUG2("Attribute is too long!");
+			return 0;
+		}
+
 		vendor = fr_dict_vendor_num_by_da(vp->da);
 		if (vendor != 0) {
 			attr = vp->da->attr & 0xffff;
@@ -610,7 +622,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
-	fr_pair_t		*vp = NULL;
+	fr_pair_t		*vp = NULL, *copy;
 	fr_pair_list_t		tunnel_vps;
 	ttls_tunnel_t		*t = tls_session->opaque;
 	fr_packet_t		*reply = request->reply;
@@ -654,7 +666,8 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		}
 		if (vp) {
 			t->authenticated = true;
-			fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
+			MEM(copy = fr_pair_copy(tls_session, vp));
+			fr_pair_prepend(&tunnel_vps, copy);
 			reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 			break;
 		}
@@ -685,9 +698,11 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		vp = NULL;
 		while ((vp = fr_pair_list_next(&request->reply_pairs, vp))) {
 		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
-				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
+				MEM(copy = fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, copy);
 		     	} else if (vp->da == attr_eap_channel_binding_message) {
-				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
+				MEM(copy = fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, copy);
 		     	}
 		}
 		break;
