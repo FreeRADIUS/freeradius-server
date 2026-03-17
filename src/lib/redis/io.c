@@ -369,7 +369,9 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 		ERROR("Failed setting connected callback: Error %i", ret);
 		goto error;
 	}
-	if (redisAsyncSetDisconnectCallback(h->ac, _redis_disconnected) != REDIS_OK) {
+
+	ret = redisAsyncSetDisconnectCallback(h->ac, _redis_disconnected);
+	if (ret != REDIS_OK) {
 		ERROR("Failed setting disconnected callback: Error %i", ret);
 		goto error;
 	}
