@@ -86,7 +86,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {
 	int rcode = -1;
-	struct wbcContext *wb_ctx = NULL;
+	struct wbcContext *wb_ctx = NULL, *wb_ctx_p;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
 	int len;
@@ -150,11 +150,12 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 	/*
 	 * Send auth request across to winbind
 	 */
-	wb_ctx = fr_connection_get(inst->wb_pool);
-	if (wb_ctx == NULL) {
+	wb_ctx_p = fr_connection_get(inst->wb_pool);
+	if (!wb_ctx_p || !*wb_ctx_p) {
 		RERROR("Unable to get winbind connection from pool");
 		goto done;
 	}
+	wb_ctx = *wb_ctx_p;
 
 	RDEBUG2("sending authentication request user='%s' domain='%s'", authparams.account_name,
 									authparams.domain_name);
@@ -199,7 +200,7 @@ normalised_username_retry_failure:
 		}
 	}
 
-	fr_connection_release(inst->wb_pool, wb_ctx);
+	fr_connection_release(inst->wb_pool, wb_ctx_p);
 
 	/*
 	 * Try and give some useful feedback on what happened. There are only

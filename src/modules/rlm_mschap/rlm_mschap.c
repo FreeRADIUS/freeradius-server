@@ -582,7 +582,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance)
 
 	talloc_set_destructor(wb_ctx, _mod_conn_free);
 
-	return *wb_ctx;
+	return wb_ctx;
 }
 #endif
 
