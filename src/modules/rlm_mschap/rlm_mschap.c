@@ -485,7 +485,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
 		char const *p;
 
-		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
+		p = fmt + 8;	/* 8 is the length of "NT-Hash " */
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
@@ -508,7 +508,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
 		char const *p;
 
-		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
+		p = fmt + 8;	/* 8 is the length of "LM-Hash " */
 		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
@@ -824,8 +824,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		 * Password-Change-Error: blah
 		 */
 
-		int to_child=-1;
-		int from_child=-1;
+		int to_child;
+		int from_child;
 		pid_t pid, child_pid;
 		int status, len;
 		char buf[2048];
@@ -833,6 +833,11 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		char const *emsg;
 
 		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
+
+		if (!inst->ntlm_cpw_username) {
+			RWDEBUG2("No ntlm_auth username set, passchange will not work");
+			return -1;
+		}
 
 		/*
 		 * Start up ntlm_auth with a pipe on stdin and stdout
@@ -847,36 +852,32 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		/*
 		 * write the stuff to the client
 		 */
+		len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_username, NULL, NULL);
+		if (len < 0) {
+		close_all:
+			close(to_child);
+			close(from_child);
+			return -1;
+		}
 
-		if (inst->ntlm_cpw_username) {
-			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_username, NULL, NULL);
-			if (len < 0) {
-				goto ntlm_auth_err;
-			}
+		buf[len++] = '\n';
+		buf[len] = '\0';
 
-			buf[len++] = '\n';
-			buf[len] = '\0';
-
-			if (write_all(to_child, buf, len) != len) {
-				REDEBUG("Failed to write username to child");
-				goto ntlm_auth_err;
-			}
-		} else {
-			RWDEBUG2("No ntlm_auth username set, passchange will definitely fail!");
+		if (write_all(to_child, buf, len) != len) {
+			REDEBUG("Failed to write username to child");
+			goto close_all;
 		}
 
 		if (inst->ntlm_cpw_domain) {
 			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_domain, NULL, NULL);
-			if (len < 0) {
-				goto ntlm_auth_err;
-			}
+			if (len < 0) goto close_all;
 
 			buf[len++] = '\n';
 			buf[len] = '\0';
 
 			if (write_all(to_child, buf, len) != len) {
 				REDEBUG("Failed to write domain to child");
-				goto ntlm_auth_err;
+				goto close_all;
 			}
 		} else {
 			RWDEBUG2("No ntlm_auth domain set, username must be full-username to work");
@@ -890,7 +891,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		len = strlen(buf);
 		if (write_all(to_child, buf, len) != len) {
 			RDEBUG2("failed to write new password blob to child");
-			goto ntlm_auth_err;
+			goto close_all;
 		}
 
 		len = sprintf(buf, "old-nt-hash-blob: ");
@@ -900,7 +901,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		len = strlen(buf);
 		if (write_all(to_child, buf, len) != len) {
 			REDEBUG("Failed to write old hash blob to child");
-			goto ntlm_auth_err;
+			goto close_all;
 		}
 
 		/*
@@ -910,19 +911,18 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		len = sprintf(buf, "new-lm-password-blob: %01032i\n", 0);
 		if (write_all(to_child, buf, len) != len) {
 			REDEBUG("Failed to write dummy LM password to child");
-			goto ntlm_auth_err;
+			goto close_all;
 		}
 		len = sprintf(buf, "old-lm-hash-blob: %032i\n", 0);
 		if (write_all(to_child, buf, len) != len) {
 			REDEBUG("Failed to write dummy LM hash to child");
-			goto ntlm_auth_err;
+			goto close_all;
 		}
 		if (write_all(to_child, ".\n", 2) != 2) {
 			REDEBUG("Failed to send finish to child");
-			goto ntlm_auth_err;
+			goto close_all;
 		}
 		close(to_child);
-		to_child = -1;
 
 		/*
 		 *  Read from the child
@@ -933,8 +933,6 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 			REDEBUG("Failure reading from child");
 			return -1;
 		}
-		close(from_child);
-		from_child = -1;
 
 		buf[len] = 0;
 		RDEBUG2("ntlm_auth said: %s", buf);
@@ -961,12 +959,6 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 			emsg = "could not find error";
 		}
 		REDEBUG("ntlm auth password change failed: %s", emsg);
-
-ntlm_auth_err:
-		/* safe because these either need closing or are == -1 */
-		close(to_child);
-		close(from_child);
-
 		return -1;
 
 	} else if (inst->local_cpw) {
@@ -1013,13 +1005,18 @@ ntlm_auth_err:
 				return -1;
 			}
 
-			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL)) {
+			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, NULL, NULL)) { /* initialize ctx */
 				REDEBUG("Failed setting key value");
-				goto error;;
+				goto error;
 			}
 
-			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
+			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) { /* set length */
 				REDEBUG("Failed setting key length");
+				goto error;
+			}
+
+			if (!EVP_EncryptInit_ex(ctx, NULL, NULL, nt_password->vp_octets, NULL)) { /* add key data */
+				REDEBUG("Failed setting key value");
 				goto error;
 			}
 
@@ -1072,9 +1069,9 @@ ntlm_auth_err:
 		 *  The new NT hash - this should be preferred over the
 		 *  cleartext password as it avoids unicode hassles.
 		 */
-		new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
+		MEM(new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ));
 		new_hash->vp_length = NT_DIGEST_LENGTH;
-		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->vp_length);
+		MEM(new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->vp_length));
 		fr_md4_calc(q, p, passlen);
 
 		/*
@@ -1094,7 +1091,7 @@ ntlm_auth_err:
 		 *
 		 *  First pass: get the length of the converted string.
 		 */
-		new_pass = pair_make_request("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
+		MEM(new_pass = pair_make_request("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ));
 		new_pass->vp_length = 0;
 
 		i = 0;
@@ -1615,6 +1612,33 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 
 	return rcode;
 }
+
+static void debug_hex(REQUEST *request, char const *msg, uint8_t const *data, size_t data_len)
+{
+	char *p;
+	char const *end;
+	char buffer[256];
+
+	if (!data_len) return;
+
+	if (((data_len * 3) + 1) > sizeof(buffer)) data_len = (sizeof(buffer) - 1) / 3;
+
+	p = buffer;
+	end = p + sizeof(buffer);
+
+	while ((size_t) (end - p) >= 4) {
+		sprintf(p, "%02x ", *data);
+		data++;
+		p += 3;
+		data_len--;
+		if (!data_len) break;
+	}
+	p--;
+	*p = '\0';
+
+	RDEBUG3("%s: %s", msg, buffer);
+}
+
 
 /*
  *	mod_authenticate() - authenticate user based on given
