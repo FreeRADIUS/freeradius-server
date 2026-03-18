@@ -44,6 +44,17 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |     Code      |   Identifier  |            Length             |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   MS-Length   |     Data...
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
 
 static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 {
@@ -423,8 +434,8 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 			int mschap_id;
 			int copied = 0 ,seq = 1;
 
-			if (eap_ds->response->type.length < 544) {
-				RDEBUG2("Password change has invalid length %zu < 544",
+			if (eap_ds->response->type.length < 586) {
+				RDEBUG2("Password change has invalid length %zu < 586",
 					eap_ds->response->type.length);
 				return 0;
 			}
@@ -492,19 +503,19 @@ failure:
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
 		/*
-		 * we sent a success to the client; some clients send a
+		 * we <sent a success to the client; some clients send a
 		 * success back as-per the RFC, some send an ACK. Permit
 		 * both, I guess...
 		 */
 
 		switch (ccode) {
 		case PW_EAP_MSCHAPV2_SUCCESS:
+		case PW_EAP_MSCHAPV2_ACK:
 			eap_ds->request->code = PW_EAP_SUCCESS;
 
 			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
 			/* FALL-THROUGH */
 
-		case PW_EAP_MSCHAPV2_ACK:
 #ifdef WITH_PROXY
 			/*
 			 *	It's a success.  Don't proxy it.
@@ -578,8 +589,8 @@ failure:
 	}
 
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
-	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
-		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
+	if ((length < (5 + 49)) || (length > (256 + 5 + 49)) || (length != (eap_ds->response->type.length - 5))) {
+		REDEBUG("Response contains invalid length %zd", length);
 		return 0;
 	}
 
