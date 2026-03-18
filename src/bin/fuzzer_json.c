@@ -22,6 +22,11 @@
  * */
 RCSID("$Id$")
 
+#include <freeradius-devel/build.h>
+
+DIAG_OFF(documentation)
+DIAG_OFF(deprecated)
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -37,6 +42,9 @@ typedef struct fr_jpath_node_s fr_jpath_node_t;
 /* External declarations for functions */
 extern ssize_t fr_jpath_parse(void *ctx, fr_jpath_node_t **head, 
 			      char const *in, size_t inlen);
+
+int LLVMFuzzerInitialize(int *argc, char ***argv);
+int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
@@ -92,7 +100,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		char *str = NULL;
 		fr_jpath_node_t *jpath_head = NULL;
 
-		if (jpath_len > 0) {
+		if (len > 0) {
 			str = talloc_strndup(ctx,
 					     (const char *)(data + split_point + 1), 
 					     len);
