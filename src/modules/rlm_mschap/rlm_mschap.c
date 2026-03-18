@@ -62,7 +62,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 #define ACB_SVRTRUST	0x01000000	//!< Server trust account.
 #define ACB_PWNOEXP	0x02000000	//!< User password does not expire.
 #define ACB_AUTOLOCK	0x04000000	//!< Account auto locked.
-#define ACB_PW_EXPIRED	0x00020000	//!< Password Expired.
+#define ACB_PW_EXPIRED	0x08000000	//!< Password Expired.
 
 static int pdb_decode_acct_ctrl(char const *p)
 {
