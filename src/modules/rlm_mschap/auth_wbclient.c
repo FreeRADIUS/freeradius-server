@@ -86,7 +86,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {
 	int rcode = -1;
-	struct wbcContext *wb_ctx = NULL, *wb_ctx_p;
+	struct wbcContext *wb_ctx = NULL, **wb_ctx_p;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
 	int len;
