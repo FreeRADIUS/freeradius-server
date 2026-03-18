@@ -1041,7 +1041,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			RDEBUG("Phase 2: Continuing with Identity-Type = %s",
-			       (vp->vp_short == 1) ? "User" : "Machine");
+			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 
 			/* RFC3748, Section 2.1 - does not explictly tell us to but we need to eat the EAP-Success */
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
@@ -1068,7 +1068,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 			if (!(t->default_method || t->eap_method[vp->vp_short])) {
 				RDEBUG("Phase 2: No %s EAP methods configured - assuming password",
-				       (vp->vp_short == 1) ? "User" : "Machine");
+				       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 
 				vp = fr_pair_afrom_num(reply, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS);
 				if (vp) {
@@ -1087,7 +1087,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			 *	next round will pick up the next one.
 			 */
 			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-			       (vp->vp_short == 1) ? "User" : "Machine");
+			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 			fr_pair_delete(&request->state, vp);
 
 			/*
@@ -1102,8 +1102,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		 *	Otherwise, it's OK to send it and not get a
 		 *	response.
 		 */
-		if (t->auths[1].sent && !t->auths[1].received) {
-			if (t->auths[1].required) {
+		if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_USER].received) {
+			if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].required) {
 				REDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - rejecting the session");
 				goto fail;
 			}
@@ -1111,8 +1111,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			RWDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - ignoring optional method");
 		}
 
-		if (t->auths[2].sent && !t->auths[2].received) {
-			if (t->auths[1].required) {
+		if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].received) {
+			if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].required) {
 				REDEBUG("Phase 2: We sent Identity-Type = Machine, but we did not see use that method - rejecting the session");
 				goto fail;
 			}
@@ -1298,7 +1298,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 			 *		* otherwise default_eap_type
 			 *		* otherwise ???
 			 */
-			if (vp->vp_short == 1) {
+			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) {
 				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_USER, 0, TAG_ANY);
 				if (teap_type) {
 					eap_method = teap_type->vp_integer;
@@ -1324,7 +1324,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 				}
 			}
 
-			if (vp->vp_short == 2) {
+			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) {
 				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
 				if (teap_type) {
 					eap_method = teap_type->vp_integer;
@@ -1630,9 +1630,9 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 				if (vp_config && (vp_config->vp_short != vp->vp_short)) {
 					RWDEBUG("We requested &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s",
-						(vp_config->vp_short == 1) ? "User" : "Machine");
-					RWDEBUG("But the supplicant returned FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %u",
-						vp->vp_short);
+						(vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+					RWDEBUG("But the supplicant returned FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s (%u)",
+						(vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) ? "Machine" : "UNKNOWN"), vp->vp_short);
 					RWDEBUG("Authentication will likely fail.");
 				}
 
@@ -1827,7 +1827,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		/* RFC7170, Appendix C.6 */
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
-			RDEBUG("Phase 2: Sending Identity-Type = %s", (vp->vp_short == 1) ? "User" : "Machine");
+			RDEBUG("Phase 2: Sending Identity-Type = %s", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
 
 			if (t->num_identities == 2) {
@@ -1838,7 +1838,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			identity_type = t->identity_types[t->num_identities++] = vp->vp_short;
 
 			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-			       (vp->vp_short == 1) ? "User" : "Machine");
+			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 			fr_pair_delete(&request->state, vp);
 			vp = NULL;
 		}
@@ -1850,7 +1850,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 		} else {
 			RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
-			       !identity_type ? "" : (identity_type == 1) ? "User " : "Machine ");
+			       !identity_type ? "" : (identity_type == EAP_TEAP_IDENTITY_TYPE_USER) ? "User " : "Machine ");
 			eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
 		}
 
