@@ -368,7 +368,7 @@ fr_client_t *client_findbynumber(UNUSED const fr_client_list_t *clients, UNUSED 
 
 
 /*
- *	Find a client in the fr_client_tS list.
+ *	Find a client in the fr_client_t list.
  */
 fr_client_t *client_find(fr_client_list_t const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {

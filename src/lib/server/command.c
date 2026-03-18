@@ -111,7 +111,7 @@ static fr_cmd_t *fr_command_find(fr_cmd_t **head, char const *name, fr_cmd_t ***
 	}
 
 	/*
-	 *	Ensure if we exit int he loop insert is initialised
+	 *	Ensure if we exit in the loop insert is initialised
 	 */
 	if (insert) *insert = NULL;
 

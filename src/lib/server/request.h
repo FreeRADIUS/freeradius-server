@@ -159,7 +159,7 @@ extern fr_dict_attr_t const *request_attr_local;
  */
 #define local_pairs	pair_list.local->children
 
-/** Talloc ctx for allocating local variagbles
+/** Talloc ctx for allocating local variables
  */
 #define local_ctx	pair_list.local
 

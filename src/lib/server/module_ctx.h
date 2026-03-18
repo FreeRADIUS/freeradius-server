@@ -175,7 +175,7 @@ DIAG_ON(unused-function)
  */
 #define MODULE_THREAD_INST_CTX(_mi, _thread, _el) &(module_thread_inst_ctx_t){ .mi = _mi, .thread = _thread, .el = _el }
 
-/** Wrapper to create a module_inst_ctx_t as a comound listeral from a module_thread_ctx_t
+/** Wrapper to create a module_inst_ctx_t as a compound literal from a module_thread_ctx_t
  *
  * Extract the module_instance_t from a module_thread_inst_ctx_t.
  *

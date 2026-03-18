@@ -229,7 +229,7 @@ struct module_s {
 								///< After instantiate completes the module instance data
 								///< is mprotected to prevent modification.
 
-	module_detach_t			detach;			//!< Clean up module resources from the instantiation pahses.
+	module_detach_t			detach;			//!< Clean up module resources from the instantiation phases.
 
 	module_detach_t			unstrap;		//!< Clean up module resources from both the bootstrap phase.
 

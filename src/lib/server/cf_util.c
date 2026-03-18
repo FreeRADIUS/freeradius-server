@@ -53,7 +53,7 @@ static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *current, CON
 	return NULL;
 }
 
-/** Return the previos child that's of the specified type
+/** Return the previous child that's of the specified type
  *
  * @param[in] parent	to return children from.
  * @param[in] current	child to start searching from.

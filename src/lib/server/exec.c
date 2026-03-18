@@ -287,7 +287,7 @@ char **fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool e
  *				STDOUT will be set to stdout_pipe[1], stdout_pipe[0]
  *				will be closed.
  * @param[in] stderr_pipe	the pipe used to read error text from the process.
- *				STDERR will be set to stderr_pipe[1], stderr_pip[0]
+ *				STDERR will be set to stderr_pipe[1], stderr_pipe[0]
  *				will be closed.
  */
 static NEVER_RETURNS void exec_child(char **argv, char **envp,
