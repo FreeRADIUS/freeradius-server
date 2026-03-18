@@ -1102,22 +1102,25 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		 *	Otherwise, it's OK to send it and not get a
 		 *	response.
 		 */
+		const char *identity_type;
 		if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_USER].received) {
+			identity_type = t->identity_types[0] == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
 			if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].required) {
-				REDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - rejecting the session");
+				REDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - rejecting the session", identity_type);
 				goto fail;
 			}
 
-			RWDEBUG("Phase 2: We sent Identity-Type = User, but we did not use that method - ignoring optional method");
+			RWDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - ignoring optional method", identity_type);
 		}
 
 		if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].received) {
+			identity_type = t->identity_types[1] == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
 			if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].required) {
-				REDEBUG("Phase 2: We sent Identity-Type = Machine, but we did not see use that method - rejecting the session");
+				REDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - rejecting the session", identity_type);
 				goto fail;
 			}
 
-			RWDEBUG("Phase 2: We sent Identity-Type = Machine, but we did not use that method - ignoring optional method");
+			RWDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - ignoring optional method", identity_type);
 		}
 
 		RDEBUG("Phase 2: All inner authentications have succeeded");
