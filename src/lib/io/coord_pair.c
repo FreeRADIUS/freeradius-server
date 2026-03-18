@@ -832,3 +832,14 @@ fr_coord_cb_inst_t *fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord
 
 	return cb_inst;
 }
+
+/** Return the coord_pair associated with a coord_pair internal request
+ *
+ * @param request	to fetch associated coordinator for.
+ * @return fr_coord_t
+ */
+fr_coord_pair_t *fr_coord_pair_request_coord_pair(request_t *request)
+{
+	fr_coord_packet_ctx_t	*packet_ctx = talloc_get_type_abort(request->async->packet_ctx, fr_coord_packet_ctx_t);
+	return packet_ctx->coord_pair;
+}

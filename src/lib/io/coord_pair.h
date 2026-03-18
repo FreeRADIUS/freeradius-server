@@ -57,6 +57,8 @@ int		fr_coord_to_worker_reply_broadcast(request_t *request);
 
 int		fr_worker_to_coord_pair_send(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coord_pair_reg, fr_pair_list_t *list);
 
+fr_coord_pair_t	*fr_coord_pair_request_coord_pair(request_t *request);
+
 /*
  *	Callbacks used to register coord_pair handling in a coordinator.
  */
