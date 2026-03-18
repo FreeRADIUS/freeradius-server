@@ -172,8 +172,8 @@ struct fr_rb_tree_s {
  * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
  * @return
- *	- A new rbtree on success.
- *	- NULL on failure.
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 #define		fr_rb_inline_init(_tree, _type, _field, _data_cmp, _data_free) \
 		_Generic((((_type *)0)->_field), \
