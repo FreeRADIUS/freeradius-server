@@ -246,6 +246,8 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	unsigned int t;
 #endif
 
+	if (!response) return RLM_MODULE_FAIL;
+
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string)
 		return RLM_MODULE_FAIL;
