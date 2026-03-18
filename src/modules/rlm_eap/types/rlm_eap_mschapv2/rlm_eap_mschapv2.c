@@ -590,7 +590,7 @@ failure:
 
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
-		REDEBUG("Response contains invalid MS-Length %zd");
+		REDEBUG("Response contains invalid MS-Length %zd", length);
 		return 0;
 	}
 
