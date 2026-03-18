@@ -1,6 +1,0 @@
-
-accept {
-        reply.Packet-Type := ::Access-Accept
-
-        handled
-}

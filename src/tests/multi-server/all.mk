@@ -21,35 +21,25 @@ top_srcdir	:= $(abspath ./)
 BUILD_DIR	:= ${top_srcdir}/build
 endif
 
-DIR    := ${top_srcdir}/src/tests/multi-server
-OUTPUT := $(BUILD_DIR)/tests/multi-server
-LOGDIR := $(OUTPUT)/logs
+# abspath is needed because BUILD_DIR is relative ("build") when
+# included from the top-level makefile, but paths are passed to
+# external tools (config_builder.py, docker compose) which need
+# absolute paths.
+DIR    := $(abspath ${top_srcdir}/src/tests/multi-server)
+OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
 
 # FIXME: We should be using packaged versions of the multi-server test framework
 # instead of cloning from git.
 TEST_MULTI_SERVER_GIT_REPO   := https://github.com/InkbridgeNetworks/freeradius-multi-server.git
-TEST_MULTI_SERVER_GIT_BRANCH := logging-rework
-TEST_MULTI_SERVER_FRAMEWORK_DIR := $(OUTPUT)/freeradius-multi-server
-
-TEST_MULTI_SERVER_LOG     := $(LOGDIR)/multi-server-tests-stdout-combined.log
-TEST_MULTI_SERVER_LINELOG := $(LOGDIR)/multi-server-tests-linelog-combined.log
+TEST_MULTI_SERVER_GIT_BRANCH := main
+TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/freeradius-multi-server)
 
 #
 #  Debug and verbosity settings
+#  Pass TEST_MULTI_SERVER_FLAGS to add extra arguments to the test runner
+#  e.g. make test.multi-server TEST_MULTI_SERVER_FLAGS="-x -vvv"
 #
-TEST_MULTI_SERVER_DEBUG ?= 0
-TEST_MULTI_SERVER_DEBUG_LEVEL_0 :=
-TEST_MULTI_SERVER_DEBUG_LEVEL_1 := -x
-TEST_MULTI_SERVER_DEBUG_LEVEL_2 := -xx
-TEST_MULTI_SERVER_DEBUG_ARG := $(TEST_MULTI_SERVER_DEBUG_LEVEL_$(TEST_MULTI_SERVER_DEBUG))
-
-TEST_MULTI_SERVER_VERBOSE ?= 1
-TEST_MULTI_SERVER_VERBOSE_LEVEL_0 :=
-TEST_MULTI_SERVER_VERBOSE_LEVEL_1 := -v
-TEST_MULTI_SERVER_VERBOSE_LEVEL_2 := -vv
-TEST_MULTI_SERVER_VERBOSE_LEVEL_3 := -vvv
-TEST_MULTI_SERVER_VERBOSE_LEVEL_4 := -vvvv
-TEST_MULTI_SERVER_VERBOSE_ARG := $(TEST_MULTI_SERVER_VERBOSE_LEVEL_$(TEST_MULTI_SERVER_VERBOSE))
+TEST_MULTI_SERVER_FLAGS ?=
 
 #
 #  Output directories
@@ -57,22 +47,19 @@ TEST_MULTI_SERVER_VERBOSE_ARG := $(TEST_MULTI_SERVER_VERBOSE_LEVEL_$(TEST_MULTI_
 $(OUTPUT):
 	@mkdir -p $@
 
-$(LOGDIR):
-	@mkdir -p $@
-
 #
 #  Clone and configure the multi-server test framework.
 #  This is a shared prerequisite for all test targets.
 #
-$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT) $(LOGDIR)
+$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT)
 	@set -e; \
-	cd $(OUTPUT); \
-	if [ ! -d freeradius-multi-server/.git ]; then \
-		git clone $(TEST_MULTI_SERVER_GIT_REPO) freeradius-multi-server && \
-		cd freeradius-multi-server && \
+	mkdir -p $(dir $(TEST_MULTI_SERVER_FRAMEWORK_DIR)); \
+	if [ ! -d $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.git ]; then \
+		git clone $(TEST_MULTI_SERVER_GIT_REPO) $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
+		cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
 		git checkout $(TEST_MULTI_SERVER_GIT_BRANCH); \
 	else \
-		cd freeradius-multi-server && \
+		cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
 		git checkout $(TEST_MULTI_SERVER_GIT_BRANCH) && \
 		git pull; \
 	fi; \
@@ -92,9 +79,16 @@ $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT) $(LOGDIR)
 ######################################################################
 
 #
+#  All config source files (templates and static).
+#  Used as prerequisites so that changes to any config file
+#  trigger re-rendering.
+#
+TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f)
+
+#
 #  TEST_MULTI_SERVER_RENDER - render a single .j2 template into the build dir.
 #
-#  Re-renders only when the .j2 source or params file changes.
+#  Re-renders only when the .j2 source, params file, or any config file changes.
 #
 #  ${1} = suite dir name
 #  ${2} = test name (basename of params file)
@@ -102,18 +96,20 @@ $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT) $(LOGDIR)
 #  ${4} = .j2 source path
 #
 define TEST_MULTI_SERVER_RENDER
-$$(OUTPUT)/${1}/${2}/$$(notdir $$(patsubst %.j2,%,${4})): ${4} ${3} | $$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
+$(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
 	@mkdir -p $$(@D)
 	@echo "RENDER	${4} -> $$@"
 	@set -e; \
-	cd $$(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
+	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
 	. .venv/bin/activate; \
 	python3 -m src.config_builder \
 	    "${4}" \
 	    --vars-file "${3}" \
 	    --aux-file \
-	    --include-path "$$(DIR)/configs" \
-	    --output-path "$$@"
+	    --include-path "$(DIR)/configs" \
+	    --output-path "$$@" \
+	    --process-volumes \
+	    --volume-src "$(DIR)/configs"
 endef
 
 #
@@ -125,29 +121,40 @@ endef
 #  ${1} = suite dir name
 #  ${2} = test name
 #  ${3} = params file path
+#  ${4} = test output directory
 #
 define TEST_MULTI_SERVER_INSTANCE
 TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}  := $$(wildcard $$(DIR)/tests/${1}/*.j2)
-TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,$$(OUTPUT)/${1}/${2}/%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))
+TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,${4}/%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
 .PHONY: test.multi-server.${1}.${2}
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
-	@LOG_FILE="$$(TEST_MULTI_SERVER_LOG)"; \
-	set -e; exec &> >(tee -a "$$$$LOG_FILE"); \
-	echo "INFO: Running test.multi-server.${1}.${2}"; \
-	cd $$(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
+	@mkdir -p "${4}/logs"
+	@echo "INFO: Running test.multi-server.${1}.${2}"; \
+	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
 	. .venv/bin/activate; \
-	DATA_PATH="$$(OUTPUT)/${1}/${2}" \
+	DATA_PATH="${4}" \
 	python3 -m src.multi_server_test \
-	    $$(TEST_MULTI_SERVER_DEBUG_ARG) $$(TEST_MULTI_SERVER_VERBOSE_ARG) \
-	    --compose "$$(OUTPUT)/${1}/${2}/compose.yml" \
-	    --test "$$(OUTPUT)/${1}/${2}/template.yml" \
+	    $(TEST_MULTI_SERVER_FLAGS) \
+	    --project-name "${1}-${2}" \
+	    --compose "${4}/environment.yml" \
+	    --test "${4}/template.yml" \
 	    --use-files \
-	    --listener-dir "$$(LOGDIR)" \
-	    --log-dir "$$(LOGDIR)" \
-	    --output "$$(LOGDIR)/test.multi-server.${1}.${2}-result.log"
+	    --listener-dir "${4}/logs" \
+	    --log-dir "${4}/logs" \
+	    --output "${4}/logs/result.log" || \
+	{ \
+	    echo "FAILED: test.multi-server.${1}.${2}"; \
+	    for f in ${4}/logs/*; do \
+	        [ -f "$$$$f" ] || continue; \
+	        echo ""; \
+	        echo "=== $$$$f ==="; \
+	        tail -200 "$$$$f"; \
+	    done; \
+	    exit 1; \
+	}
 endef
 
 #
@@ -159,10 +166,10 @@ endef
 #  ${1} = suite dir name (e.g., 5hs-autoaccept)
 #
 define TEST_MULTI_SERVER
-TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.yml)
-TEST_MULTI_SERVER_TESTS.${1}       := $$(patsubst $$(DIR)/tests/${1}/%.yml,test.multi-server.${1}.%,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}))
+TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
+TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(basename $$(notdir $$p)),$$p)))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################
@@ -186,27 +193,32 @@ TEST_MULTI_SERVER_ALL_TESTS := $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(TEST_MU
 #
 ######################################################################
 
+#
+#  All tests
+#
 .PHONY: test.multi-server
-test.multi-server: $(TEST_MULTI_SERVER_ALL_TESTS) combine-multi-server-test-linelog
+test.multi-server: $(TEST_MULTI_SERVER_ALL_TESTS)
+
+#
+#  CI tests only - matches *.ci.test.yml param files
+#
+TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
+
+.PHONY: test.multi-server.ci
+test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 .PHONY: clean.test.multi-server
 clean.test.multi-server:
-	@rm -f $(LOGDIR)/*.log
-	@rm -f $(LOGDIR)/*.log.bak
-	@rm -f $(LOGDIR)/*.txt.bak
+	rm -rf $(OUTPUT)
+
+.PHONY: distclean.test.multi-server
+distclean.test.multi-server: clean.test.multi-server
+	rm -rf $(TEST_MULTI_SERVER_FRAMEWORK_DIR)
 
 .PHONY: clean
 clean: clean.test.multi-server
 
-clean.test: clean.test.multi-server
+.PHONY: distclean
+distclean: distclean.test.multi-server
 
-.PHONY: combine-multi-server-test-linelog
-combine-multi-server-test-linelog:
-	@echo "INFO: Combining multi-server test linelog message output into $(TEST_MULTI_SERVER_LINELOG)"
-	@rm -f $(TEST_MULTI_SERVER_LINELOG)
-	@for f in $(LOGDIR)/*.txt.bak; do \
-	  [ -f "$$f" ] || continue; \
-	  echo "$$f"; \
-	  cat "$$f"; \
-	  echo ""; \
-	done > $(TEST_MULTI_SERVER_LINELOG)
+clean.test: clean.test.multi-server

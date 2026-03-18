@@ -1,98 +1,82 @@
-If you are reading this, you are probably wondering how to run a multi-server test.  Here's a quick overview.
+# Multi-Server Tests
 
-## Before You Begin
+Integration tests that spin up multiple FreeRADIUS instances in Docker
+containers and verify they can proxy traffic between each other.
 
-Running the multi-server tests requires the availability of a Docker
-image `freeradius-build:latest` to be available on the host running
-the tests.
+## Prerequisites
 
-```bash
-% cd ${FREERADIUS-SERVER-LOCAL-REPO}
-% make docker.ubuntu24.build
-% docker tag <your-freeradius-docker-image-tag> freeradius-build:latest
-```
-
-## Run Test With Makefile
-
-### Run All Tests
-
-2. Run make target based on the test name. All testcase config files
-start with "test-*".
+A `freeradius-build:latest` Docker image must be available locally:
 
 ```bash
-% make -f src/tests/multi-server/all.mk
+make docker.ubuntu24.build
+docker tag freeradius4/ubuntu24:latest freeradius-build:latest
 ```
 
-### Run Specific Tests (Example)
+## Running Tests
+
+### All tests
 
 ```bash
-% make -f src/tests/multi-server/all.mk test-5hs-autoaccept
+make test.multi-server
 ```
 
-or
+### CI tests only (short tests)
 
 ```bash
-% make -f src/tests/multi-server/all.mk test-1p-2hs-autoaccept
+make test.multi-server.ci
 ```
 
-### Optional Debug Logs and Logging Verbosity Level
+### A specific test
 
 ```bash
-% make -f src/tests/multi-server/all.mk test-5hs-autoaccept DEBUG=1 VERBOSE=4
+make test.multi-server.proxy-accept.short.ci
 ```
 
-## Run Multi-Server Tests Manually Without Makefile (Optional)
-
-### Clone Multi-Server Test Framework Repo & Activate Python venv
+### Parallel execution
 
 ```bash
-cd src/tests/multi-server/
-git clone git@github.com:InkbridgeNetworks/freeradius-multi-server.git 
-cd freeradius-multi-server
-./configure
-source .venv/bin/activate
+make -j$(nproc) test.multi-server
 ```
 
-### Render Jinja Templates
+### Extra flags
 
-In this example we render the Jinja templates used by the environment
-configuration used by the `test-5hs-autoaccept` test.
-
-The Docker Compose `env-5hs-autoaccept.yml` file represents the
-`load-generator -> 5 homeserver` test environment used by the test.
-
-Render FreeRADIUS "homeserver" Virtual Server config:
+Pass debug/verbosity flags to the test framework:
 
 ```bash
-% python3 src/config_builder.py \
-    --vars-file "${top_srcdir}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
-    --aux-file "${top_srcdir}/src/tests/multi-server/environments/configs/freeradius/homeserver/radiusd.conf.j2" \
-    --include-path "${top_srcdir}/src/tests/multi-server/"
- ```
- Render FreeRADIUS "load-generator" Virtual Server config:
- ```bash
- python3 src/config_builder.py \
-    --vars-file "${top_srcdir}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
-    --aux-file "${top_srcdir}/src/tests/multi-server/environments/configs/freeradius/load-generator/radiusd.conf.j2" \
-    --include-path "${top_srcdir}/src/tests/multi-server/"
+make test.multi-server TEST_MULTI_SERVER_FLAGS="-xx -vvv"
 ```
 
-Render Docker Compose environment:
+## How It Works
 
-```bash
- python3 src/config_builder.py \
-    --vars-file "${top_srcdir}/src/tests/multi-server/environments/jinja-vars/env-5hs-autoaccept.vars.yml" \
-    --aux-file "${top_srcdir}/src/tests/multi-server/environments/docker-compose/env-5hs-autoaccept.yml.j2" \
-    --include-path "${top_srcdir}/src/tests/multi-server/"
-```
+Each test suite is a directory under `tests/` containing:
 
-### Run the test:
+- `template.yml.j2` - Jinja2 template for test steps (state machine)
+- `environment.yml.j2` - Symlink to a Docker Compose template in `environments/`
+- `*.test.yml` - Parameter files (one per test variant)
 
-```bash
-% DATA_PATH="${top_srcdir}/src/tests/multi-server/environments/configs" \
-			make test-framework -- -x -v \
-			--compose "${top_srcdir}/src/tests/multi-server/environments/docker-compose/env-5hs-autoaccept.yml" \
-			--test "${top_srcdir}/src/tests/multi-server/test-5hs-autoaccept.yml" \
-			--use-files \
-			--listener-dir "${top_srcdir}/build/tests/multi-server/freeradius-multi-server-test-runtime-logs/test-5hs-autoaccept"
-```
+A parameter file is flat YAML defining topology, load profile, and test
+timeouts.  All `.j2` files in the suite directory are rendered using
+these parameters.  The rendered compose file's `${DATA_PATH}` volume
+mounts are scanned and the corresponding config files are copied or
+rendered into the build directory.
+
+Build outputs go to `build/tests/multi-server/<suite>/<test>/`.
+
+## Adding a New Test
+
+1. Create a parameter file in an existing suite directory, e.g.
+   `tests/proxy-accept/heavy.test.yml`.  Name it `*.ci.test.yml` if
+   it should run in CI.
+
+2. Or create a new suite directory with `template.yml.j2`,
+   `environment.yml.j2` (symlink), and parameter files.
+
+The build framework discovers suites automatically by finding
+directories containing `template.yml.j2`, and discovers tests by
+finding `*.test.yml` files within them.
+
+## File Naming Conventions
+
+- `*.test.yml` - Test parameter file (discovered by `make test.multi-server`)
+- `*.ci.test.yml` - CI test parameter file (also discovered by `make test.multi-server.ci`)
+- `*.yml.j2` - Jinja2 template (rendered, not treated as a test)

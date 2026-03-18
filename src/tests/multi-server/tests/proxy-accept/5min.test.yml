@@ -7,14 +7,15 @@ listener_type: file
 load_gen_num_of_dst_servers: 5
 load_gen_dst_server_name: homeserver
 
-# Load profile
-test_conf_start_pps: 5
-test_conf_max_pps: 50
-test_conf_duration: 300
-test_conf_step: 5
-test_conf_parallel: 1
-test_conf_max_backlog: 1000
-test_conf_repeat: "no"
+# Load generator profile
+loadgen:
+  start_pps: 5
+  max_pps: 50
+  duration: 300
+  step: 5
+  parallel: 1
+  max_backlog: 1000
+  repeat: "no"
 
 # Test framework
 test_timeout: 350

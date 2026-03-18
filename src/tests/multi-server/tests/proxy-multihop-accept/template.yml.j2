@@ -4,6 +4,7 @@ states:
   state_1:
     description: >
       Baseline load-generator test for load-generator ->
+      {{ compose_num_of_proxy_servers }} proxy ->
       {{ compose_num_of_home_servers }} home servers. Home servers auto-accept requests.
     host:
       load-generator:
@@ -13,43 +14,27 @@ states:
               #
               # proto_load configuration via environment variables
               #
+              {% for key, value in loadgen.items() %}
+              export TEST_LOADGEN_{{ key | upper }}="{{ value }}"
+              {% endfor %}
 
-              export TEST_CONF_START_PPS={{ test_conf_start_pps }}
-              export TEST_CONF_MAX_PPS={{ test_conf_max_pps }}
-              # Duration must be equal or greater than max pps for proto_load to calculate "pps_accepted" effectively
-              export TEST_CONF_DURATION={{ test_conf_duration }}
-              export TEST_CONF_STEP={{ test_conf_step }}
-              export TEST_CONF_PARALLEL={{ test_conf_parallel }}
-              export TEST_CONF_MAX_BACKLOG={{ test_conf_max_backlog }}
-              export TEST_CONF_REPEAT="{{ test_conf_repeat }}"
-
-              TEST_CONF_NUM_MESSAGES=0
-              for ((pps=$TEST_CONF_START_PPS; pps<=$TEST_CONF_MAX_PPS; pps+=$TEST_CONF_STEP)); do
-                TEST_CONF_NUM_MESSAGES=$((TEST_CONF_NUM_MESSAGES + TEST_CONF_DURATION * pps))
+              TEST_LOADGEN_NUM_MESSAGES=0
+              for ((pps=$TEST_LOADGEN_START_PPS; pps<=$TEST_LOADGEN_MAX_PPS; pps+=$TEST_LOADGEN_STEP)); do
+                TEST_LOADGEN_NUM_MESSAGES=$((TEST_LOADGEN_NUM_MESSAGES + TEST_LOADGEN_DURATION * pps))
               done
-              export TEST_CONF_NUM_MESSAGES
-
-              #
-              # Delay to allow the rest of the environment to startup before starting load generation.
-              #
-              sleep 20
+              export TEST_LOADGEN_NUM_MESSAGES
 
               #
               # Starting load-generator server which will generate traffic based on env configuration
               # from above.
               #
               printf "Starting load-generator with the following configuration:\n"
-              printf "  Start PPS:        %s\n" "$TEST_CONF_START_PPS"
-              printf "  Max PPS:          %s\n" "$TEST_CONF_MAX_PPS"
-              printf "  Duration (secs):  %s\n" "$TEST_CONF_DURATION"
-              printf "  Step PPS:         %s\n" "$TEST_CONF_STEP"
-              printf "  Parallel:         %s\n" "$TEST_CONF_PARALLEL"
-              printf "  Max Backlog:      %s\n" "$TEST_CONF_MAX_BACKLOG"
-              printf "  Num Messages:     %s\n" "$TEST_CONF_NUM_MESSAGES"
+              {% for key, value in loadgen.items() %}
+              printf "  {{ key | upper }}:%s\n" "$TEST_LOADGEN_{{ key | upper }}"
+              {% endfor %}
+              printf "  NUM_MESSAGES:     %s\n" "$TEST_LOADGEN_NUM_MESSAGES"
 
-              freeradius &
-
-              tail -f /dev/null
+              exec freeradius -f -l stdout
 
             detach: true
     verify:
