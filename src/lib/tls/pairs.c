@@ -128,7 +128,10 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 		/*
 		 *	RFC 5280 Section 4.2.1.13 says that the distpoint is optional.
 		 */
-		if (!dp->distpoint) return false;
+		if (!dp->distpoint) {
+			CRL_DIST_POINTS_free(dps);
+			return false;
+		}
 
 		names = dp->distpoint->name.fullname;
 
