@@ -469,7 +469,7 @@ void fr_tls_engine_load_builtin(void)
 		 *	unregister it and unload rdrand.
 		 */
 		rand_engine = ENGINE_get_default_RAND();
-		if (!rand_engine) break;
+		if (!rand_engine) goto done;
 
 		if(strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0) {
 			ENGINE_unregister_RAND(rand_engine); /* unregister it */
@@ -481,6 +481,8 @@ void fr_tls_engine_load_builtin(void)
 		ENGINE_finish(rand_engine);
 		ENGINE_free(rand_engine);
 	}
+
+done:
 	ENGINE_register_all_complete();
 }
 
