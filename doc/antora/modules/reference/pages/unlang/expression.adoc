@@ -22,7 +22,7 @@ NAS-Port = 1 + 2
 
 == Operators in an Expression
 
-The following operators are supported (in order of precedence).
+The following operators are supported (in order).
 
 [options="header,autowidth"]
 |===
@@ -50,8 +50,7 @@ The following unary operators are also supported:
 | !         | unary not
 |===
 
-Operator precedence follows the normal rules.
-Division by zero means that the entire expression is invalid.
+xref:unlang/condition/precedence.adoc[Operator precedence] follows the normal rules. Division by zero means that the entire expression is invalid.
 
 See the xref:unlang/edit.adoc[edit] documentation for a list of attribute editing operators.
 
@@ -116,7 +115,7 @@ example:
 * `ipv4addr` types can be subtracted, and will return a number which is the number of IPs between the two values,
 * two `date` values can be subtracted, and will return a `time_delta`,
 * operations on integers are upgraded to the next largest integer size when necessary,
-* the logical operators `&` and `||` return the value which caused them to succeed, e.g. `Foo := (User-Password || "help")` will return the contents of `User-Name` if it exists, otherwise it will return the string `help`.
+* the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `Foo := (User-Password || "help")` will return the contents of `User-Password` if it exists, otherwise it will return the string `help`.
 
 In most cases, the data types are derived from the attribute
 dictionaries.  However, it is sometimes necessary to force the fields
@@ -130,7 +129,7 @@ syntax.  The old syntax of `<type>` is not accepted.
 
 [source,unlang]
 ----
-NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
+NAS-Port-Id = (uint32) "%sql("SELECT...") + 4"
 ----
 
 == Errors

@@ -41,6 +41,7 @@
 **** xref:unlang/module_builtin.adoc[Built-in Modules]
 
 *** xref:unlang/condition/index.adoc[Conditional Expressions]
+**** xref:unlang/condition/precedence.adoc[Operator Precedence]
 **** xref:unlang/condition/cmp.adoc[Comparisons]
 **** xref:unlang/condition/expression.adoc[Mathematical Expressions]
 **** xref:unlang/condition/operands.adoc[Operands]
