@@ -111,20 +111,21 @@ static BIGNUM *consttime_BN (void)
 /*
  * compute the legendre symbol in constant time
  */
-static int legendre(BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
+static int legendre(bool *fail, BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
 {
 	int		symbol;
 	unsigned int	mask;
 	BIGNUM		*res, *pm1over2;
 
-	pm1over2 = consttime_BN();
-	res = consttime_BN();
+	MEM(pm1over2 = consttime_BN());
+	MEM(res = consttime_BN());
 
 	if (!BN_sub(pm1over2, p, BN_value_one()) ||
 	    !BN_rshift1(pm1over2, pm1over2) ||
 	    !BN_mod_exp_mont_consttime(res, a, pm1over2, p, bnctx, NULL)) {
 		BN_free(pm1over2);
 		BN_free(res);
+		*fail = true;
 		return -2;
 	}
 
@@ -137,6 +138,7 @@ static int legendre(BIGNUM *a, BIGNUM *p, BN_CTX *bnctx)
 	BN_free(pm1over2);
 	BN_free(res);
 
+	*fail = false;
 	return symbol;
 }
 
@@ -144,11 +146,11 @@ static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 {
 	BIGNUM *p, *a, *b, *tmp1, *pm1;
 
-	tmp1 = BN_new();
-	pm1 = BN_new();
-	p = BN_new();
-	a = BN_new();
-	b = BN_new();
+	MEM(tmp1 = BN_new());
+	MEM(pm1 = BN_new());
+	MEM(p = BN_new());
+	MEM(a = BN_new());
+	MEM(b = BN_new());
 	EC_GROUP_get_curve(group, p, a, b, bnctx);
 
 	BN_sub(pm1, p, BN_value_one());
@@ -174,6 +176,7 @@ static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 static int is_quadratic_residue(BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr, BN_CTX *bnctx)
 {
 	int offset, check, ret = 0;
+	bool fail;
 	BIGNUM *r = NULL, *pm1 = NULL, *res = NULL, *qr_or_qnr = NULL;
 	unsigned int mask;
 	unsigned char *qr_bin = NULL, *qnr_bin = NULL, *qr_or_qnr_bin = NULL;
@@ -231,7 +234,7 @@ static int is_quadratic_residue(BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr,
 	BN_mod_mul(res, res, qr_or_qnr, p, bnctx);
 	check = const_time_select_int(mask, -1, 1);
 
-	if ((ret = legendre(res, p, bnctx)) == -2) {
+	if ((ret = legendre(&fail, res, p, bnctx)) == -2) {
 		ret = -1;	/* just say no it's not */
 		goto fail;
 	}
@@ -263,6 +266,7 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	int		nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
 	int		save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
 	unsigned int	skip;
+	bool		error;
 
 	MEM(hmac_ctx = EVP_MD_CTX_new());
 	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
@@ -361,11 +365,13 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	*/
 	do {
 		BN_rand_range(qr, session->prime);
-	} while (legendre(qr, session->prime, bnctx) != 1);
+	} while ((legendre(&error, qr, session->prime, bnctx) != 1) && !error);
+	if (error) goto fail;
 
 	do {
 		BN_rand_range(qnr, session->prime);
-	} while (legendre(qnr, session->prime, bnctx) != -1);
+	} while ((legendre(&error, qnr, session->prime, bnctx) != -1) && !error);
+	if (error) goto fail;
 
 	if (!BN_sub(rnd, session->prime, BN_value_one())) {
 		goto fail;
