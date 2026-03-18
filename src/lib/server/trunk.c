@@ -823,6 +823,7 @@ FR_TRUNK_LIST_FUNC(free_requests, trunk_request_t)
 FR_TRUNK_LIST_FUNC(full, trunk_connection_t)
 FR_TRUNK_LIST_FUNC(inactive, trunk_connection_t)
 FR_TRUNK_LIST_FUNC(inactive_draining, trunk_connection_t)
+FR_TRUNK_LIST_FUNC(draining, trunk_connection_t)
 
 DIAG_ON(unused-function)
 
@@ -3137,7 +3138,7 @@ static void trunk_connection_remove(trunk_connection_t *tconn)
 		return;
 
 	case TRUNK_CONN_DRAINING:
-		fr_dlist_remove(&trunk->draining, tconn);
+		trunk_list_draining_remove(trunk, tconn);
 		return;
 
 	case TRUNK_CONN_DRAINING_TO_FREE:
@@ -3245,7 +3246,7 @@ static void trunk_connection_enter_draining(trunk_connection_t *tconn)
 		CONN_BAD_STATE_TRANSITION(TRUNK_CONN_DRAINING);
 	}
 
-	fr_dlist_insert_head(&trunk->draining, tconn);
+	trunk_list_draining_add(trunk, tconn);
 	CONN_STATE_TRANSITION(TRUNK_CONN_DRAINING, INFO);
 
 	/*
