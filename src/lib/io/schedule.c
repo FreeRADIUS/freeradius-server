@@ -78,6 +78,7 @@ struct fr_schedule_s {
 
 	CONF_SECTION	*cs;			//!< thread pool configuration section
 	fr_event_list_t	*el;			//!< event list for single-threaded mode.
+	bool		single_threaded;	//!< true if running in single-threaded mode.
 
 	fr_log_t	*log;			//!< log destination
 	fr_log_lvl_t	lvl;			//!< log level
@@ -250,6 +251,7 @@ fail:
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx				talloc context.
+ * @param[in] single_threaded			no workers are spawned, everything runs in a common event loop.
  * @param[in] el				event list, only for single-threaded mode.
  * @param[in] logger				destination for all logging messages.
  * @param[in] lvl				log level.
@@ -261,7 +263,9 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
+				  bool single_threaded,
+				  fr_event_list_t *el,
 				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  fr_schedule_thread_detach_t worker_thread_detach,
@@ -295,6 +299,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 	sc->el = el;
+	sc->single_threaded = single_threaded;
 	sc->log = logger;
 	sc->lvl = lvl;
 	sc->cs = sc->config->cs;
@@ -306,7 +311,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	If we're single-threaded, create network / worker, and insert them into the event loop.
 	 */
-	if (el) {
+	if (single_threaded) {
 		sc->single_network = fr_network_create(sc, el, "Network", sc->log, sc->lvl, &sc->config->network);
 		if (!sc->single_network) {
 			PERROR("Failed creating network");
@@ -536,6 +541,18 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	if (sc) INFO("Scheduler created successfully with %u networks and %u workers",
 		     sc->config->max_networks, (unsigned int)fr_dlist_num_elements(&sc->workers));
 
+	/*
+	 *	Instantiate thread-local data for the main thread too.
+	 *	In single-threaded mode this is done above.  In
+	 *	multi-worker mode the main thread also needs module
+	 *	thread data so that triggers can use module xlats.
+	 */
+	if (sc->worker_thread_instantiate &&
+	    unlikely((sc->worker_thread_instantiate(NULL, el, NULL) < 0))) {
+		PERROR("Main thread instantiation failed");
+		goto mt_fail;
+	}
+
 	return sc;
 }
 
@@ -562,10 +579,12 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 
 	sc->running = false;
 
+
+
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
-	if (sc->el) {
+	if (sc->single_threaded) {
 		/*
 		 *	Destroy the network side first.  It tells the
 		 *	workers to close.
@@ -575,7 +594,16 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		}
 		fr_worker_destroy(sc->single_worker);
 		fr_coords_destroy();
+
 		goto done;
+	} else {
+		/*
+		 *	Detach thread-local data for the main thread.
+		 *	Worker threads handle their own detach, but
+		 *	the main thread was instantiated explicitly
+		 *	by fr_schedule_create.
+		 */
+		if (sc->worker_thread_detach) sc->worker_thread_detach(NULL);
 	}
 
 	/*
@@ -651,6 +679,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	fr_sem_free(sc->coord_sem);
 	fr_sem_free(sc->network_sem);
 	fr_sem_free(sc->worker_sem);
+
 done:
 	/*
 	 *	Now that all of the workers are done, we can return to
@@ -676,7 +705,7 @@ fr_network_t *fr_schedule_listen_add(fr_schedule_t *sc, fr_listen_t *li)
 
 	(void) talloc_get_type_abort(sc, fr_schedule_t);
 
-	if (sc->el) {
+	if (sc->single_threaded) {
 		nr = sc->single_network;
 	} else {
 		fr_schedule_network_t *sn;
@@ -708,7 +737,7 @@ fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t *li)
 
 	(void) talloc_get_type_abort(sc, fr_schedule_t);
 
-	if (sc->el) {
+	if (sc->single_threaded) {
 		nr = sc->single_network;
 	} else {
 		fr_schedule_network_t *sn;

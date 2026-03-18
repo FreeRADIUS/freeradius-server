@@ -846,7 +846,6 @@ do { \
 	 *	Start the network / worker threads.
 	 */
 	{
-		fr_event_list_t *el = NULL;
 		fr_schedule_config_t *schedule;
 
 		MEM(schedule = talloc_zero(global_ctx, fr_schedule_config_t));
@@ -859,19 +858,11 @@ do { \
 		schedule->cs = cf_section_find(config->root_cs, "thread", CF_IDENT_ANY);
 
 		/*
-		 *	Single server mode: use the global event list.
-		 *	Otherwise, each network thread will create
-		 *	its own event list.
-		 */
-		if (!config->spawn_workers) {
-			el = main_loop_event_list();
-		}
-
-		/*
 		 *	Fix spurious messages
 		 */
 		fr_strerror_clear();
-		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
+		sc = fr_schedule_create(NULL, !config->spawn_workers, main_loop_event_list(),
+					&default_log, fr_debug_lvl,
 					thread_instantiate, thread_detach, schedule);
 		if (!sc) {
 			PERROR("Failed starting the scheduler");
@@ -1052,7 +1043,9 @@ do { \
 	 *  to exit gracefully.  fr_schedule_destroy only returns once all
 	 *  threads have been joined.
 	 */
-	(void) fr_schedule_destroy(&sc);
+	if (unlikely(fr_schedule_destroy(&sc) < 0)) {
+		EXIT_WITH_PERROR;
+	}
 
 	/*
 	 *  We're exiting, so we can delete the PID file.

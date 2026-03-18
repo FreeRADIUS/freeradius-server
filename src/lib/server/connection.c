@@ -1538,7 +1538,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	connection_t *conn;
 	uint64_t id;
 
-	fr_assert(el);
+	fr_assert_msg(el, "No event list provided");
 
 	MEM(conn = talloc(ctx, connection_t));
 	talloc_set_destructor(conn, _connection_free);
