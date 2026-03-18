@@ -150,6 +150,7 @@ typedef int (*eap_tunnel_callback_t)(eap_handler_t *handler, void *tls_session);
 typedef struct eap_tunnel_data_t {
   void			*tls_session;
   eap_tunnel_callback_t callback;
+  void			*type_inst;
 } eap_tunnel_data_t;
 
 #endif /*_EAP_H*/

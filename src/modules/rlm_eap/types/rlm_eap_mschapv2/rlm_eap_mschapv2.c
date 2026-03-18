@@ -304,11 +304,12 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
  *
  *	Called from rlm_eap.c, eap_postproxy().
  */
-static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
+static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, void *uctx)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
 	REQUEST *request = handler->request;
+	eap_tunnel_data_t *tunnel_data = uctx;
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 	rad_assert(request != NULL);
@@ -347,7 +348,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	eapmschapv2_compose(NULL, handler, response);
+	eapmschapv2_compose(tunnel_data->type_inst, handler, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	/*
@@ -641,6 +642,7 @@ packet_ready:
 
 		tunnel->tls_session = arg;
 		tunnel->callback = mschap_postproxy;
+		tunnel->type_inst = inst;
 
 		/*
 		 *	Associate the callback with the request.
