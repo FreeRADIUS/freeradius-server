@@ -770,14 +770,14 @@ int fr_worker_to_coord_pair_send(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coo
 	return ret;
 }
 
-/** Plugin creation called during coordinator creation.
+/** Instance creation called during coordinator creation.
  *
- * @param ctx		to allocate the plugin in.
- * @param el		Event list for plugin to use.
+ * @param ctx		to allocate the instance in.
+ * @param el		Event list for instance to use.
  * @param single_thread	is the server in single thread mode.
- * @param uctx		configured for the callback this plugin relates to.
+ * @param uctx		configured for the callback this instance relates to.
  * @return
- *	- fr_coord_plugin_t on success
+ *	- fr_coord_cb_inst_t on success
  *	- NULL on failure
  */
 fr_coord_cb_inst_t *fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord, fr_event_list_t *el,
