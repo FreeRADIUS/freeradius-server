@@ -1,0 +1,7 @@
+
+always ok {
+	rcode = ok
+}
+always handled {
+	rcode = handled
+}

@@ -112,7 +112,6 @@ endif
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc \
 		--with-systemd \
 		--enable-reproducible-builds
 

@@ -1,0 +1,25 @@
+# Topology
+compose_num_of_home_servers: 2
+compose_num_of_proxy_servers: 1
+listener_type: file
+
+# Routing
+load_gen_num_of_dst_servers: 1
+load_gen_dst_server_name: proxy
+
+# Proxy routing
+proxy_num_of_dst_servers: 2
+proxy_dst_server_name: homeserver
+
+# Load profile
+test_conf_start_pps: 5
+test_conf_max_pps: 50
+test_conf_duration: 300
+test_conf_step: 5
+test_conf_parallel: 1
+test_conf_max_backlog: 1000
+test_conf_repeat: "no"
+
+# Test framework
+test_timeout: 350
+test_verify_timeout: 340
