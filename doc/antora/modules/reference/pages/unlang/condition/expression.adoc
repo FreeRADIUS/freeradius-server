@@ -1,4 +1,4 @@
-= Mathematical expressions.
+= Mathematical Expressions
 
 It is now possible to use xref:unlang/expression.adoc[expressions] inside of xref:unlang/condition/index.adoc[conditions].
 
