@@ -53,6 +53,8 @@ fr_coord_pair_reg_t	*fr_coord_pair_register(TALLOC_CTX *ctx, fr_coord_pair_reg_c
 
 int		fr_coord_to_worker_reply_send(request_t *request, uint32_t worker_id);
 
+int		fr_coord_to_worker_reply_broadcast(request_t *request);
+
 int		fr_worker_to_coord_pair_send(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coord_pair_reg, fr_pair_list_t *list);
 
 /*

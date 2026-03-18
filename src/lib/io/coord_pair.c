@@ -742,6 +742,34 @@ int fr_coord_to_worker_reply_send(request_t *request, uint32_t worker_id)
 	return ret;
 }
 
+/** Send a reply list from a coordinator to all workers
+ *
+ * @param request	containing the reply to send.
+ * @return
+ *	- 0 on success
+ *	- < 0 on failure
+ */
+int fr_coord_to_worker_reply_broadcast(request_t *request)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+	fr_coord_packet_ctx_t	*packet_ctx = talloc_get_type_abort(request->async->packet_ctx, fr_coord_packet_ctx_t);
+	fr_coord_pair_reg_t	*coord_pair_reg = talloc_get_type_abort(packet_ctx->uctx, fr_coord_pair_reg_t);
+	int			ret;
+
+	if (fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, SIZE_MAX) == NULL) return -1;
+	if (fr_internal_encode_list(&dbuff, &request->reply_pairs, NULL) < 0) {
+		fr_dbuff_free_talloc(&dbuff);
+		return -1;
+	}
+
+	ret = fr_coord_to_worker_broadcast(packet_ctx->coord_pair->coord, coord_pair_reg->cb_id, &dbuff);
+
+	fr_dbuff_free_talloc(&dbuff);
+
+	return ret;
+}
+
 /** Send a pair list from a worker to a coordinator
  *
  * The pair list must include an attribute indicating the packet type
