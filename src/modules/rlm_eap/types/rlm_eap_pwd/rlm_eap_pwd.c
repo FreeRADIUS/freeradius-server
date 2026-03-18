@@ -40,13 +40,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_pwd.h"
 
 typedef struct {
-    BN_CTX *bnctx;
-
-    uint32_t	group;
-    uint32_t	fragment_size;
-    char const	*server_id;
-    char const	*virtual_server;
+	uint32_t	group;
+	uint32_t	fragment_size;
+	char const	*server_id;
+	char const	*virtual_server;
+	CONF_SECTION	*conf;
 } rlm_eap_pwd_t;
+
+typedef struct {
+	rlm_eap_pwd_t const *inst;
+	BN_CTX		*bnctx;
+} rlm_eap_pwd_thread_t;
 
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)
@@ -155,6 +159,7 @@ static int send_pwd_request(request_t *request, pwd_session_t *session, eap_roun
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
+	rlm_eap_pwd_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_eap_pwd_thread_t);
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 
 	pwd_session_t	*session;
@@ -331,7 +336,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 					       known_good->vp_strvalue, known_good->vp_length,
 					       inst->server_id, strlen(inst->server_id),
 					       session->peer_id, strlen(session->peer_id),
-					       &session->token, inst->bnctx);
+					       &session->token, t->bnctx);
 		if (ephemeral) TALLOC_FREE(known_good);
 		if (ret < 0) {
 			REDEBUG("Failed to obtain password element");
@@ -341,7 +346,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		/*
 		 *	Compute our scalar and element
 		 */
-		if (compute_scalar_element(request, session, inst->bnctx)) {
+		if (compute_scalar_element(request, session, t->bnctx)) {
 			REDEBUG("Failed to compute server's scalar and element");
 			RETURN_UNLANG_FAIL;
 		}
@@ -352,7 +357,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		/*
 		 *	Element is a point, get both coordinates: x and y
 		 */
-		if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, inst->bnctx)) {
+		if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, t->bnctx)) {
 			REDEBUG("Server point assignment failed");
 			BN_clear_free(x);
 			BN_clear_free(y);
@@ -393,7 +398,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		/*
 		 *	Process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(request, session, in, in_len, inst->bnctx)) {
+		if (process_peer_commit(request, session, in, in_len, t->bnctx)) {
 			REDEBUG("Failed processing peer's commit");
 			RETURN_UNLANG_FAIL;
 		}
@@ -401,7 +406,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		/*
 		 *	Compute our confirm blob
 		 */
-		if (compute_server_confirm(request, session, session->my_confirm, inst->bnctx)) {
+		if (compute_server_confirm(request, session, session->my_confirm, t->bnctx)) {
 			REDEBUG("Failed computing confirm");
 			RETURN_UNLANG_FAIL;
 		}
@@ -429,7 +434,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 			REDEBUG("PWD exchange is incorrect, not commit");
 			RETURN_UNLANG_INVALID;
 		}
-		if (compute_peer_confirm(request, session, peer_confirm, inst->bnctx)) {
+		if (compute_peer_confirm(request, session, peer_confirm, t->bnctx)) {
 			REDEBUG("Cannot compute peer's confirm");
 			RETURN_UNLANG_FAIL;
 		}
@@ -542,15 +547,6 @@ static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t 
 	RETURN_UNLANG_HANDLED;
 }
 
-static int mod_detach(module_detach_ctx_t const *mctx)
-{
-	rlm_eap_pwd_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
-
-	if (inst->bnctx) BN_CTX_free(inst->bnctx);
-
-	return 0;
-}
-
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
@@ -574,11 +570,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	inst->bnctx = BN_CTX_new();
-	if (!inst->bnctx) {
-		cf_log_err(conf, "Failed to get BN context");
+	inst->conf = conf;
+
+	return 0;
+}
+
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_eap_pwd_t 		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
+	rlm_eap_pwd_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_pwd_thread_t);
+
+	t->inst = inst;
+
+	t->bnctx = BN_CTX_new();
+	if (!t->bnctx) {
+		cf_log_err(inst->conf, "Failed to get BN context");
 		return -1;
 	}
+
+	return 0;
+}
+
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_eap_pwd_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_pwd_thread_t);
+
+	if (t->bnctx) BN_CTX_free(t->bnctx);
 
 	return 0;
 }
@@ -588,10 +605,13 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "eap_pwd",
+		.thread_inst_size	= sizeof(rlm_eap_pwd_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 		.inst_size	= sizeof(rlm_eap_pwd_t),
 		.config		= submodule_config,
 		.instantiate	= mod_instantiate,	/* Create new submodule instance */
-		.detach		= mod_detach
+		
 	},
 	.provides	= { FR_EAP_METHOD_PWD },
 	.session_init	= mod_session_init,	/* Create the initial request */
