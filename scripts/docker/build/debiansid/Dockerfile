@@ -41,6 +41,21 @@ RUN git clean -fdxx \
  && git reset --hard HEAD
 
 #
+#  Build libkqueue from source on non-amd64 architectures.
+#  The NetworkRADIUS extras repository only provides amd64 packages.
+#
+RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
+        apt-get install -y cmake wget && \
+        VERSION=2.6.1 && \
+        wget https://github.com/mheily/libkqueue/archive/v${VERSION}.tar.gz && \
+        tar -xzf v${VERSION}.tar.gz && \
+        cd libkqueue-${VERSION} && \
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib . && \
+        make && cpack -G DEB && dpkg -i *.deb && \
+        cd .. && rm -rf libkqueue-${VERSION} v${VERSION}.tar.gz; \
+    fi
+
+#
 #  Install build dependencies
 #  Debian sid fails if debian/control doesn't exist due to an issue
 #  in one of the included make files, so we create a blank file.
