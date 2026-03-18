@@ -8,6 +8,11 @@ For `Simultaneous-Use` to work. the server needs to know who is
 online, which means that accounting must be configured and working.
 Start off by checking the basics, independent of `Simultaneous-Use`.
 
+If you are using EAP, you may also need to configure the
+`inner-tunnel` virtual server, and the `session` section there.  Be
+also careful to correctly handle the difference between the "outer"
+User-Name, and the "inner-tunnel" User-Name.
+
 As always, start off with reading the debug output, and use that
 information to answer a few questions.
 

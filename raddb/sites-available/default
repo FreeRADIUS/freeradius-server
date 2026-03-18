@@ -794,6 +794,9 @@ accounting {
 #  Session database, used for checking Simultaneous-Use. Either the radutmp
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
+#
+#  For EAP, you may also need to check sites-available/inner-tunnel,
+#  and the "session" section there.
 session {
 #	radutmp
 
