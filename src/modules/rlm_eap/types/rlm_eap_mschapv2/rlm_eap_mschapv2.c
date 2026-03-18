@@ -589,8 +589,16 @@ failure:
 	}
 
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
-	if ((length < (5 + 49)) || (length > (256 + 5 + 49)) || (length != (eap_ds->response->type.length - 5))) {
-		REDEBUG("Response contains invalid length %zd", length);
+	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
+		REDEBUG("Response contains invalid MS-Length %zd");
+		return 0;
+	}
+
+	/*
+	 *	type.length is already updated to remove the EAP header.
+	 */
+	if (length != eap_ds->response->type.length) {
+		REDEBUG("Response contains invalid MS-Length %zd vs %zd", length, eap_ds->response->type.length);
 		return 0;
 	}
 
