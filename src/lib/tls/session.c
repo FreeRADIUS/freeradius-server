@@ -805,6 +805,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	switch (content_type) {
 	case SSL3_RT_ALERT:
 		if (len < 2) {
+		invalid_alert:
 			ROPTIONAL(REDEBUG, ERROR, "Invalid TLS Alert.  Closing connection");
 			tls_session->invalid = true;
 			return;
@@ -816,6 +817,8 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 		break;
 
 	case SSL3_RT_HANDSHAKE:
+		if (!len) goto invalid_alert;
+
 		tls_session->info.handshake_type = buf[0];
 		tls_session->info.alert_level = 0x00;
 		tls_session->info.alert_description = 0x00;
