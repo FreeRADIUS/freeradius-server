@@ -1076,7 +1076,7 @@ static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc
 	if (fr_type_is_null(type)) {
 		RETURN_PARSE_ERROR(0);
 	}
-	fr_assert(match_len < inlen);
+	fr_assert(match_len <= inlen);
 
 	p = in + match_len;
 	fr_skip_whitespace(p);
