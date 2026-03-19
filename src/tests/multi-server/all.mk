@@ -35,6 +35,15 @@ TEST_MULTI_SERVER_GIT_BRANCH := main
 TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/freeradius-multi-server)
 
 #
+#  Suppress command echo unless VERBOSE is set
+#
+ifeq "$(VERBOSE)" ""
+Q := @
+else
+Q :=
+endif
+
+#
 #  Debug and verbosity settings
 #  Pass TEST_MULTI_SERVER_FLAGS to add extra arguments to the test runner
 #  e.g. make test.multi-server TEST_MULTI_SERVER_FLAGS="-x -vvv"
@@ -97,9 +106,9 @@ TEST_MULTI_SERVER_CONFIG_FILES := $(shell find $(DIR)/configs -type f)
 #
 define TEST_MULTI_SERVER_RENDER
 $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SERVER_CONFIG_FILES) | $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured
-	@mkdir -p $$(@D)
-	@echo "RENDER	${4} -> $$@"
-	@set -e; \
+	${Q}mkdir -p $$(@D)
+	${Q}echo "RENDER ${4} -> $$@"
+	${Q}set -e; \
 	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
 	. .venv/bin/activate; \
 	python3 -m src.config_builder \
@@ -109,7 +118,8 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	    --include-path "$(DIR)/configs" \
 	    --output-path "$$@" \
 	    --process-volumes \
-	    --volume-src "$(DIR)/configs"
+	    --volume-src "$(DIR)/configs" \
+	    >> "$$(@D)/config_builder.log" 2>&1
 endef
 
 #
@@ -131,22 +141,13 @@ $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MU
 
 .PHONY: test.multi-server.${1}.${2}
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
-	@mkdir -p "${4}/logs"
-	@echo "INFO: Running test.multi-server.${1}.${2}"; \
-	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
-	. .venv/bin/activate; \
-	DATA_PATH="${4}" \
-	python3 -m src.multi_server_test \
-	    $(TEST_MULTI_SERVER_FLAGS) \
-	    --project-name "${1}-${2}" \
-	    --compose "${4}/environment.yml" \
-	    --test "${4}/template.yml" \
-	    --use-files \
-	    --listener-dir "${4}/logs" \
-	    --log-dir "${4}/logs" \
-	    --output "${4}/logs/result.log" || \
+	$$(eval CMD := cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && DATA_PATH="${4}" python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log")
+	${Q}mkdir -p "${4}/logs" "${4}/listener"
+	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
+	${Q}$$(CMD) > "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
 	{ \
 	    echo "FAILED: test.multi-server.${1}.${2}"; \
+	    echo "$$(CMD)"; \
 	    for f in ${4}/logs/*; do \
 	        [ -f "$$$$f" ] || continue; \
 	        echo ""; \
