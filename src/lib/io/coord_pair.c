@@ -855,3 +855,26 @@ fr_coord_pair_t *fr_coord_pair_request_coord_pair(request_t *request)
 	fr_coord_packet_ctx_t	*packet_ctx = talloc_get_type_abort(request->async->packet_ctx, fr_coord_packet_ctx_t);
 	return packet_ctx->coord_pair;
 }
+
+/** Start a coordinator request to run through a coord_pair process module
+ *
+ * @param coord_pair	with the process module to run the request.
+ * @param list		Pairs to populate the request.
+ * @param now		Request time.
+ * @return
+ *	0 on success
+ *	-1 on failure
+ */
+int fr_coord_pair_coord_request_start(fr_coord_pair_t *coord_pair, fr_pair_list_t *list, fr_time_t now)
+{
+	request_t	*request;
+
+	request = coord_pair_request_bootstrap(coord_pair, now, coord_pair->coord_pair_reg);
+	if (!request) return -1;
+
+	fr_pair_list_steal(request->request_ctx, list);
+	fr_pair_list_append(&request->request_pairs, list);
+
+	coord_pair_request_start(coord_pair, request, now);
+	return 0;
+}
