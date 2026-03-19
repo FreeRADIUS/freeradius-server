@@ -17,6 +17,18 @@ require are not enabled, inspect the configure script
 output to figure out which additional development libraries need
 to be installed.
 
+== From GitHub
+
+This is the recommended approach.
+
+[source,shell]
+----
+git clone https://github.com/FreeRADIUS/freeradius-server/
+cd freeradius-server
+----
+
+=== From a release tarball
+
 Get the FreeRADIUS source from one of the following sites:
 include::partial$get_the_source.adoc[]
 
@@ -35,12 +47,22 @@ tar -zxf freeradius-server-VERSION.tar.gz
 cd freeradius-server-VERSION
 ----
 
+== Building the Source
+
 Take the following steps to build and install the server from source:
 
 [source,shell]
 ----
 ./configure
 make
+----
+
+In general, you should _not_ install it from the source code.  For
+completeness, there is a `make install` target which is used by the
+package builds.
+
+[source,shell]
+----
 sudo make install
 ----
 
@@ -184,5 +206,5 @@ configuration files also contain a lot of documentation.
 
 If you have any additional issues, refer to the xref:ROOT:faq.adoc[FAQ] for more help.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
