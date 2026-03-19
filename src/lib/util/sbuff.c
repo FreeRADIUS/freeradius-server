@@ -47,7 +47,8 @@ fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 	{ L("token format invalid"),	FR_SBUFF_PARSE_ERROR_FORMAT			},
 	{ L("out of space"),		FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE		},
 	{ L("integer overflow"),	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
-	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		}
+	{ L("integer underflow"),	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW		},
+	{ L("empty input is invalid"),	FR_SBUFF_PARSE_ERROR_INPUT_EMPTY		},
 };
 size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
@@ -1199,7 +1200,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
@@ -1266,7 +1267,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	if (buff[0] == '-') { \
@@ -1351,7 +1352,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} else if (len == 0) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
+		if (err) *err = (fr_sbuff_remaining(in) == 0) ? FR_SBUFF_PARSE_ERROR_INPUT_EMPTY : FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \

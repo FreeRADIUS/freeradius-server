@@ -265,7 +265,8 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_FORMAT		= -3,		//!< Format of data was invalid.
 	FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE	= -4,		//!< No space available in output buffer.
 	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -5,		//!< Integer type would overflow.
-	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6,		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_INPUT_EMPTY	= -7,		//!< Input is empty, and should not be empty
 } fr_sbuff_parse_error_t;
 
 extern fr_table_num_ordered_t const sbuff_parse_error_table[];
