@@ -1,49 +1,73 @@
 = FreeRADIUS Development
 
-As the name suggests, FreeRADIUS is developed under the GNU General Public License, Version 2 (GPLv2). We invite anyone to use and contribute code to the project. The following information should be helpful to those who want to contribute.
+As the name suggests, FreeRADIUS is developed under the GNU General
+Public License, Version 2 (GPLv2). We invite anyone to use and
+contribute code to the project. The following information should be
+helpful to those who want to contribute.
 
-The official FreeRADIUS v4 developer guidelines are also online at the https://www.freeradius.org/documentation/freeradius-server/4.0.0[project's website].
+The official FreeRADIUS v4 developer guidelines are also online at the
+https://www.freeradius.org/documentation/freeradius-server/4.0.0[project's
+website].
 
 Key resources for developers include:
 
-* Developers Section: This part of the official documentation covers topics like bug reporting, coding methods, module interfaces, and buffer handling.
+* GitHub Repository: The source code and all documentation files are
+  on [GitHub](https://github.com/FreeRADIUS/freeradius-server/),
+  giving developers access to the latest information and a way to
+  contribute.
 
-* Module Interface Documentation: This resource explains how to develop modules for the FreeRADIUS server.
+* Development mailing list: We encourage everyone who might contribute
+  code to join the
+  http://www.freeradius.org/list/devel.html[FreeRADIUS development
+  list]. This list is technical and isn't for most users of the
+  server. *Only* subscribe to the development list if you are
+  interested in writing software for the new server.  For normal
+  discussion of the server and how to use it, subscribe to the
+  https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS
+  user-list].
 
-* GitHub Repository: The source code and all documentation files are on GitHub, giving developers access to the latest information and a way to contribute.
+The server can be built from source by following the
+xref:howto:installation/source.adoc[install from source] documentation.
 
-* Development mailing list: We encourage everyone who might contribute code to join the http://www.freeradius.org/list/devel.html[FreeRADIUS
-development list]. This list is highly technical and isn't for most users of the server. *Only* subscribe to the development list if you are
-interested in writing software for the new server.
-For normal discussion of the server and how to use it, subscribe to the https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS user-list].
+The rest of this document has various resources for developers.
 
 == xref:bugs/bugs.adoc[Bugs]
 
-If the server crashes due to memory errors, report it to the issue tracker with debugging info. For other issues, discuss them on the users mailing list.
+If the server crashes due to memory errors, report it to the issue
+tracker with debugging info. For other issues, discuss them on the
+users mailing list.
 
 == xref:coding-methods.adoc[Coding Methods]
 
-This is a short set of guidelines to follow when programming. Coding standards focus on function names, code appearance, and consistency.
+This is a short set of guidelines to follow when programming. Coding
+standards focus on function names, code appearance, and consistency.
 
 == xref:coverage.adoc[Code Coverage]
 
-The gcov tool analyzes your programs. It helps you create efficient code and find untested areas.
+The gcov tool analyzes your programs. It helps you create efficient
+code and find untested areas.
 
 == xref:profile.adoc[Profiling]
 
-The gperftools (Google Performance Tools) help you find memory leaks, analyse performance issues, and optimize your code.
+The gperftools (Google Performance Tools) help you find memory leaks,
+analyse performance issues, and optimize your code.
 
 == xref:coccinelle.adoc[Semantic Patches]
 
-Coccinelle analyzes and transforms C code to create Semantic Patch Language (SmPL) patches.
+Coccinelle analyzes and transforms C code to create Semantic Patch
+Language (SmPL) patches.
 
 == xref:contributing.adoc[Contributing]
 
-Development of FreeRADIUS is done using Github. Please submit issues, bugs, patches, etc. there. Additional instructions are online or within this section.
+Development of FreeRADIUS is done using Github. Please submit issues,
+bugs, patches, etc. there. Additional instructions are online or
+within this section.
 
 == xref:module_interface.adoc[Module Interface]
 
-The purpose of modules is to handle small, simple tasks when RADIUS packets arrive. The module framework is built to process incoming RADIUS packets. It is also highly customizable.
+The purpose of modules is to handle small, simple tasks when RADIUS
+packets arrive. The module framework is built to process incoming
+RADIUS packets. It is also highly customizable.
 
 == xref:release-method.adoc[Release Method]
 
@@ -66,5 +90,5 @@ http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
 Also see the  xref:howto:installation/dependencies.adoc[build
 dependencies] page.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
