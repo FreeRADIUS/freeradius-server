@@ -528,7 +528,7 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	request_t		*parent = request->parent;
 	uint8_t	const		*ciphers, *extension;
-	int			*extensions, i;
+	int			i, *extensions = NULL;
 	size_t			data_size, j;
 	STACK_OF(SSL_CIPHER)	*sk;
 	SSL_CIPHER const	*cipher;
@@ -547,6 +547,7 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size, SSL_client_hello_isv2(ssl), &sk, &scsvs) == 0) {
 		RPEDEBUG("Failed to decode cipher list");
 	fail:
+		if (extensions) OPENSSL_free(extensions);
 		talloc_free(container);
 		return SSL_CLIENT_HELLO_ERROR;
 	}
@@ -575,7 +576,6 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 
 		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, &total_len) == 0) {
 			RPDEBUG("Failed getting client hello extension %d", extensions[j]);
-			OPENSSL_free(extensions);
 			goto fail;
 		}
 
