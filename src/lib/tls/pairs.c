@@ -533,7 +533,6 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	STACK_OF(SSL_CIPHER)	*sk;
 	SSL_CIPHER const	*cipher;
 	STACK_OF(SSL_CIPHER)	*scsvs;
-	uint16_t		tls_version = 0;
 	fr_pair_t		*container, *vp;
 
 	fr_assert(parent);
@@ -613,10 +612,8 @@ int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
 	 *	This is the version being negotiated by the client, but tops at	1.2.
 	 *	After that the supported_versions extension is where the real value is.
 	 */
-	if (tls_version == 0) {
-		fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
-		vp->vp_uint16 = SSL_client_hello_get0_legacy_version(ssl);
-	}
+	fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
+	vp->vp_uint16 = SSL_client_hello_get0_legacy_version(ssl);
 
 	fr_pair_append(&parent->session_state_pairs, container);
 
