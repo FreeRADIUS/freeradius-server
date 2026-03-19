@@ -50,6 +50,20 @@ redis_ippool {
 	lease_time = 3600
 
 	#
+	#  association_time:: How long the owner -> IP association should be kept.
+	#
+	#  If this is set, and the value is greater than `lease_time` then the
+	#  association between the "owner" and an IP address will be kept for
+	#  this many seconds after the allocation / most recent renewal.
+	#
+	#  This allows for "sticky" addressing, where a request for an address
+	#  will return the last one allocated to the owner if it is within this
+	#  number of seconds of the allocation / most recent renewal and the
+	#  address has not been allocated to another owner.
+	#
+#	association_time = 7200
+
+	#
 	#  wait_num:: How many slaves we want to acknowledge allocations or updates.
 	#
 #	wait_num = 10
