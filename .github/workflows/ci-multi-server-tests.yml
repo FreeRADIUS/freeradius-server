@@ -24,6 +24,8 @@ jobs:
           DOCKER_TLS_CERTDIR: ""
           #  Bypass the squid proxy for internal registry access.
           NO_PROXY: "*.networkradius.com,127.0.0.1"
+          #  Fix the network pool so TEST_SUBNET is predictable.
+          DOCKER_OPTS: "--default-address-pool base=172.16.0.0/12,size=24"
         #  Mount the host's internal CA so dind trusts
         #  docker.internal.networkradius.com for image pulls.
         #

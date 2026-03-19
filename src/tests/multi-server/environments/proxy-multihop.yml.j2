@@ -12,13 +12,13 @@ x-common-config: &id001
   - SYS_PTRACE
   environment:
     TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
 services:
 {% for i in range(1, (compose_num_of_home_servers + 1)) %}
   homeserver{{ i }}:
     image: freeradius-build:latest
     volumes:
     - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     restart: unless-stopped
     healthcheck:
@@ -27,17 +27,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    entrypoint:
-    - bash
-    - -lc
-    - |
-      set -euo pipefail
-
-      # Detect the Docker network subnet and export TEST_SUBNET.
-      # FreeRADIUS client sections use $ENV{TEST_SUBNET} to allow
-      # traffic from other containers on the compose network.
-      source /tmp/env-setup.sh
-      exec freeradius -f -l stdout
+    command: ["freeradius", "-f", "-l", "stdout"]
     <<: *id001
 {% endfor %}
 {% for i in range(1, (compose_num_of_proxy_servers + 1)) %}
@@ -50,7 +40,6 @@ services:
     {% endfor %}
     volumes:
     - ${DATA_PATH}/freeradius/proxy/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     restart: unless-stopped
     healthcheck:
@@ -59,17 +48,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    entrypoint:
-    - bash
-    - -lc
-    - |
-      set -euo pipefail
-
-      # Detect the Docker network subnet and export TEST_SUBNET.
-      # FreeRADIUS client sections use $ENV{TEST_SUBNET} to allow
-      # traffic from other containers on the compose network.
-      source /tmp/env-setup.sh
-      exec freeradius -f -l stdout
+    command: ["freeradius", "-f", "-l", "stdout"]
     <<: *id001
 {% endfor %}
   load-generator:
@@ -90,17 +69,12 @@ services:
     # load-generator server config
     - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/raddb/radiusd.conf
 
-    - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${DATA_PATH}/freeradius/load-generator/load-generator-packets/:/etc/raddb/load-generator-packets/
     - ${LISTENER_DIR}/:/var/run/multi-server/
     entrypoint:
     - bash
     - -lc
     - |
-      set -euo pipefail
-
-      source /tmp/env-setup.sh
-
       # Keep the container alive.  The test framework starts FreeRADIUS
       # and runs commands via 'docker exec' so it can control timing.
       sleep infinity
