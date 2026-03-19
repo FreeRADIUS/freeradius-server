@@ -336,18 +336,15 @@ static int _coord_pair_request_deinit( request_t *request, UNUSED void *uctx)
 	return request_slab_deinit(request);
 }
 
-static void coord_pair_request_bootstrap(fr_coord_pair_t *coord_pair, uint32_t worker_id, fr_dbuff_t *dbuff,
-					 fr_time_t now, void *uctx)
+static request_t *coord_pair_request_bootstrap(fr_coord_pair_t *coord_pair, fr_time_t now, void *uctx)
 {
 	request_t		*request;
-	int			ret;
-	fr_pair_t		*vp;
 	fr_coord_packet_ctx_t	*packet_ctx;
 
 	request = request_slab_reserve(coord_pair->slab);
 	if (!request) {
 		ERROR("Coordinator failed allocating new request");
-		return;
+		return NULL;
 	}
 
 	request_slab_element_set_destructor(request, _coord_pair_request_deinit, coord_pair);
@@ -357,9 +354,8 @@ static void coord_pair_request_bootstrap(fr_coord_pair_t *coord_pair, uint32_t w
 				.namespace = virtual_server_dict_by_cs(virtual_server_cs(coord_pair->coord_pair_reg->vs))
 			 }))) {
 		ERROR("Coordinator failed initializing new request");
-	error:
 		request_slab_release(request);
-		return;
+		return NULL;
 	}
 
 	MEM(packet_ctx = talloc(request, fr_coord_packet_ctx_t));
@@ -372,20 +368,19 @@ static void coord_pair_request_bootstrap(fr_coord_pair_t *coord_pair, uint32_t w
 
 	unlang_interpret_set(request, coord_pair->intp);
 
-	if (fr_pair_append_by_da(request->request_ctx, &vp, &request->request_pairs, attr_worker_id) < 0) goto error;
-	vp->vp_uint32 = worker_id;
+	return request;
+}
 
-	ret = fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
-					   fr_dict_root(request->proto_dict), dbuff, NULL);
-	if (ret < 0) {
-		RERROR("Failed decoding packet");
-		goto error;
-	}
+static void coord_pair_request_start(fr_coord_pair_t *coord_pair, request_t *request, fr_time_t now)
+{
+	fr_pair_t	*vp;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, coord_pair->coord_pair_reg->attr_packet_type);
 	if (!vp) {
 		RERROR("Missing %s attribute", coord_pair->coord_pair_reg->attr_packet_type->name);
-		goto error;
+	error:
+		request_slab_release(request);
+		return;
 	}
 
 	request->packet->code = vp->vp_uint32;
@@ -667,9 +662,26 @@ void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_db
 {
 	fr_coord_pair_reg_t	*coord_pair_reg = talloc_get_type_abort(uctx, fr_coord_pair_reg_t);
 	fr_coord_pair_t		*coord_pair = talloc_get_type_abort(inst, fr_coord_pair_t);
-	coord_pair_request_bootstrap(coord_pair, worker_id, dbuff, now, coord_pair_reg);
+	request_t		*request;
+	fr_pair_t		*vp;
 
-	return;
+	request = coord_pair_request_bootstrap(coord_pair, now, coord_pair_reg);
+	if (!request) return;
+
+	if (fr_pair_append_by_da(request->request_ctx, &vp, &request->request_pairs, attr_worker_id) < 0) {
+	error:
+		request_slab_release(request);
+		return;
+	};
+	vp->vp_uint32 = worker_id;
+
+	if (fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
+					  fr_dict_root(request->proto_dict), dbuff, NULL) < 0) {
+		RERROR("Failed decoding packet");
+		goto error;
+	}
+
+	coord_pair_request_start(coord_pair, request, now);
 }
 
 /** Callback run when a worker receives pair list data
