@@ -641,6 +641,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->clear.id);
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
 
 	/*
 	 *	Setup the child request for loading
