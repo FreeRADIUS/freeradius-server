@@ -1,0 +1,6 @@
+string test
+
+#
+#  In other cases, a missing environment variable is an error.
+#
+test = $ENV{THIS_VARIABLE_IS_MISSING}   # ERROR

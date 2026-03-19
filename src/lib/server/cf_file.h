@@ -83,7 +83,7 @@ CONF_ITEM		*cf_reference_item(CONF_SECTION const *parentcs, CONF_SECTION const *
 char const		*cf_expand_variables(char const *filename, int lineno,
 				     	     CONF_SECTION *outer_cs,
 					     char *output, size_t outsize,
-					     char const *input, ssize_t inlen, bool *soft_fail);
+					     char const *input, ssize_t inlen, bool *soft_fail, bool soft_fail_env);
 void			cf_section_set_unlang(CONF_SECTION *cs);
 
 #ifdef __cplusplus

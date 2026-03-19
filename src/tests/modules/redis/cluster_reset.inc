@@ -15,7 +15,7 @@ data3 := "3-%str.rand('aaaaaaaa')"
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	clusterctrl := 'scripts/ci/redis-setup.sh'
 } else {
-	clusterctrl := $ENV{REDIS_CLUSTER_CONTROL}
+	clusterctrl := "$ENV{REDIS_CLUSTER_CONTROL}"
 }
 
 #

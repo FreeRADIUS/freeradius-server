@@ -94,6 +94,8 @@ PROCESS_ARGS += -i $(DIR)/test.attrs -f $(DIR)/test.attrs
 $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/unit_test_module.conf
 	$(eval PROTOCOL_NAME=$(lastword $(subst /, ,$(dir $(abspath $@)))))
 	$(eval CMD:=PROCESS=$< PROTOCOL=$(dir $<) $(TEST_BIN)/unit_test_module $(PROCESS_ARGS) -r "$@" -xx)
+	$(eval export OUTPUT:=$(OUTPUT))
+	$(eval export TEST_PORT:=$(TEST_PORT))
 	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \

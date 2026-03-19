@@ -942,7 +942,7 @@ static void test_expand_no_variables(void)
 
 	result = cf_expand_variables("test.conf", 1, cs,
 				     output, sizeof(output),
-				     "hello world", -1, NULL);
+				     "hello world", -1, NULL, false);
 	TEST_CHECK(result != NULL);
 	if (result) {
 		TEST_CHECK(strcmp(result, "hello world") == 0);
@@ -965,7 +965,7 @@ static void test_expand_section_ref(void)
 
 	result = cf_expand_variables("test.conf", 1, cs,
 				     output, sizeof(output),
-				     "${name}", -1, NULL);
+				     "${name}", -1, NULL, false);
 	TEST_CHECK(result != NULL);
 	if (result) {
 		TEST_CHECK(strcmp(result, "testval") == 0);
@@ -991,7 +991,7 @@ static void test_expand_nested_ref(void)
 
 	result = cf_expand_variables("test.conf", 1, root,
 				     output, sizeof(output),
-				     "${server.name}", -1, NULL);
+				     "${server.name}", -1, NULL, false);
 	TEST_CHECK(result != NULL);
 	if (result) {
 		TEST_CHECK(strcmp(result, "myserver") == 0);
@@ -1013,7 +1013,7 @@ static void test_expand_missing_ref(void)
 
 	result = cf_expand_variables("test.conf", 1, cs,
 				     output, sizeof(output),
-				     "${nonexistent}", -1, &soft_fail);
+				     "${nonexistent}", -1, &soft_fail, false);
 	TEST_CHECK(result == NULL);
 	TEST_CHECK(soft_fail == true);
 	TEST_MSG("Expected soft_fail to be set for missing reference");

@@ -183,7 +183,7 @@ static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, 
 char const *cf_expand_variables(char const *cf, int lineno,
 				CONF_SECTION *outer_cs,
 				char *output, size_t outsize,
-				char const *input, ssize_t inlen, bool *soft_fail)
+				char const *input, ssize_t inlen, bool *soft_fail, bool soft_fail_env)
 {
 	char *p;
 	char const *end, *next, *ptr;
@@ -441,7 +441,13 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			 *	If none exists, then make it an empty string.
 			 */
 			env = getenv(name);
-			if (env == NULL) {
+			if (!env) {
+				if (!soft_fail_env) {
+					ERROR("%s[%d]: Invalid reference to missing environment variable $ENV{%s}",
+					      cf, lineno, name);
+					return NULL;
+				}
+
 				*name = '\0';
 				env = name;
 			}
@@ -999,7 +1005,8 @@ int cf_section_pass2(CONF_SECTION *cs)
 			  (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
 			  (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
-		value = cf_expand_variables(ci->filename, ci->lineno, cs, buffer, sizeof(buffer), cp->value, -1, NULL);
+		value = cf_expand_variables(ci->filename, ci->lineno, cs, buffer, sizeof(buffer), cp->value, -1, NULL,
+					    (cp->rhs_quote != T_BARE_WORD));
 		if (!value) return -1;
 
 		talloc_const_free(cp->value);
@@ -1083,7 +1090,7 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	 *	Unescape it or copy it verbatim as necessary.
 	 */
 	if (!cf_expand_variables(filename, lineno, parent, buffer, buflen,
-				 out, outlen, NULL)) {
+				 out, outlen, NULL, (*token != T_BARE_WORD))) {
 		return -1;
 	}
 
@@ -1151,7 +1158,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	if (*value == '$') relative = false;
 
 	value = cf_expand_variables(frame->filename, frame->lineno, parent, stack->buff[1], stack->bufsize,
-				    value, ptr - value, NULL);
+				    value, ptr - value, NULL, false);
 	if (!value) return -1;
 
 	if (!FR_DIR_IS_RELATIVE(value)) relative = false;
@@ -1615,7 +1622,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Expand the variables in the pre-parsed condition.
 	 */
 	if (!cf_expand_variables(frame->filename, frame->lineno, parent,
-				 buff[3], stack->bufsize, buff[2], slen, NULL)) {
+				 buff[3], stack->bufsize, buff[2], slen, NULL, true)) {
 		fr_strerror_const("Failed expanding configuration variable");
 		return NULL;
 	}
@@ -2204,7 +2211,8 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		bool		soft_fail;
 		char const	*expanded;
 
-		expanded = cf_expand_variables(filename, lineno, parent, buff, talloc_array_length(buff), value, -1, &soft_fail);
+		expanded = cf_expand_variables(filename, lineno, parent, buff, talloc_array_length(buff), value, -1, &soft_fail,
+					       (value_token != T_BARE_WORD));
 		if (expanded) {
 			value = expanded;
 

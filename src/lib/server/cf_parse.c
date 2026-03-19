@@ -402,7 +402,8 @@ static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, conf
 		return 0;
 	}
 
-	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), rule->dflt, -1, NULL);
+	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), rule->dflt, -1, NULL,
+				       (dflt_quote != T_BARE_WORD));
 	if (!expanded) {
 		cf_log_err(cs, "Failed expanding variable %s", rule->name1);
 		return -1;
