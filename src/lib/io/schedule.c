@@ -548,7 +548,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 	 *	thread data so that triggers can use module xlats.
 	 */
 	if (sc->worker_thread_instantiate &&
-	    unlikely((sc->worker_thread_instantiate(NULL, el, NULL) < 0))) {
+	    unlikely((sc->worker_thread_instantiate(sc, el, NULL) < 0))) {
 		PERROR("Main thread instantiation failed");
 		goto mt_fail;
 	}
