@@ -1491,6 +1491,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 			goto kdf_error;
 		}
 		EVP_PKEY_CTX_free(pkey_ctx);
+		pkey_ctx = NULL;
 
 		fr_assert(talloc_array_length(key_buff) == key_len);
 
@@ -1506,7 +1507,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 
 		DEBUG3("Derived session-ticket-key:");
 		HEXDUMP3(key_buff, key_len, NULL);
-		talloc_free(key_buff);
+		TALLOC_FREE(key_buff);
 
 		/*
 		 *	These callbacks embed and extract the
@@ -1518,7 +1519,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 							   UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1)) {
 			fr_tls_strerror_printf(NULL);
 			PERROR("Failed setting session ticket callbacks");
-			goto key_buff_error;
+			goto kdf_error;
 		}
 
 		/*
