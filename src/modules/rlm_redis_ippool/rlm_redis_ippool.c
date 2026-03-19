@@ -294,26 +294,24 @@ static char lua_alloc_cmd[] =
 	"  local expires = tonumber(redis.call('ZSCORE', pool_key, exists))" EOL			/* 11 */
 	"  local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL					/* 12 */
 	"  local expires_in = expires - (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0) - ARGV[1]" EOL	/* 13 */
-	"  if expires_in > 0 or static then" EOL							/* 14 */
-	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter', 'gateway')" EOL	/* 15 */
-	"    if ip and (ip[1] == ARGV[3]) then" EOL							/* 16 */
-	"      if expires_in < tonumber(ARGV[2]) then" EOL						/* 17 */
-	"        redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL	/* 18 */
-	"        expires_in = tonumber(ARGV[2])" EOL							/* 19 */
-	"        if not static then" EOL								/* 20 */
-	"          redis.call('EXPIRE', owner_key, ARGV[4])" EOL					/* 21 */
-	"        end" EOL										/* 22 */
-	"      end" EOL											/* 23 */
+	"  ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter', 'gateway')" EOL	/* 15 */
+	"  if ip and (ip[1] == ARGV[3]) then" EOL							/* 16 */
+	"    if expires_in < tonumber(ARGV[2]) then" EOL						/* 17 */
+	"      redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL		/* 18 */
+	"      expires_in = tonumber(ARGV[2])" EOL							/* 19 */
+	"      if not static then" EOL									/* 20 */
+	"        redis.call('EXPIRE', owner_key, ARGV[4])" EOL						/* 21 */
+	"      end" EOL											/* 22 */
+	"    end" EOL											/* 23 */
 
 	/*
 	 *	Ensure gateway is set correctly
 	 */
-	"      if ARGV[5] ~= ip[5] then" EOL								/* 24 */
-	"        redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[5])" EOL	/* 25 */
-	"      end" EOL											/* 26 */
-	"      return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 27 */
-	"    end" EOL											/* 28 */
-	"  end" EOL											/* 29 */
+	"    if ARGV[5] ~= ip[5] then" EOL								/* 24 */
+	"      redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[5])" EOL	/* 25 */
+	"    end" EOL											/* 26 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 27 */
+	"  end" EOL											/* 28 */
 	"end" EOL											/* 30 */
 
 	/*
