@@ -820,6 +820,7 @@ static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ##_remov
 }
 
 FR_TRUNK_LIST_FUNC(free_requests, trunk_request_t)
+FR_TRUNK_LIST_FUNC(full, trunk_connection_t)
 
 DIAG_ON(unused-function)
 
@@ -3122,7 +3123,7 @@ static void trunk_connection_remove(trunk_connection_t *tconn)
 		return;
 
 	case TRUNK_CONN_FULL:
-		fr_dlist_remove(&trunk->full, tconn);
+		trunk_list_full_remove(trunk, tconn);
 		return;
 
 	case TRUNK_CONN_INACTIVE:
@@ -3163,7 +3164,6 @@ static void trunk_connection_enter_full(trunk_connection_t *tconn)
 	default:
 		CONN_BAD_STATE_TRANSITION(TRUNK_CONN_FULL);
 	}
-
 
 	trunk_list_full_add(trunk, tconn);
 	CONN_STATE_TRANSITION(TRUNK_CONN_FULL, DEBUG2);
