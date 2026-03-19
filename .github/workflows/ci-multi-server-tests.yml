@@ -10,6 +10,9 @@ on:
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
       - 'src/tests/multi-server/**'
+  schedule:
+    #  Daily at 2pm EST (7pm UTC) — runs all tests, not just CI subset
+    - cron: '0 19 * * *'
   workflow_dispatch:
 
 jobs:
@@ -89,7 +92,11 @@ jobs:
 
       - name: Run multi-server tests
         run: |
-          make -j$(nproc) test.multi-server.ci
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            make -j$(nproc) test.multi-server
+          else
+            make -j$(nproc) test.multi-server.ci
+          fi
 
       #
       #  If the CI has failed and the branch is ci-debug
