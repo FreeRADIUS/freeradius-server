@@ -1,28 +1,49 @@
 = Using GitHub
 
-GitHub is a social coding site allowing many developers to come together and work on projects simultaneously.
+GitHub is a social coding site allowing many developers to come
+together and work on projects simultaneously.
 
-GitHub is based on the Git version control system. What makes Git different from other version control systems (like CVS and SVN), is that there is no need for a central master repository. When you *clone* (checkout) a repository, you get your own private repository containing all the commits and branches of the original.
+GitHub is based on the Git version control system. What makes Git
+different from other version control systems (like CVS and SVN), is
+that there is no need for a central master repository. When you
+*clone* (checkout) a repository, you get your own private repository
+containing all the commits and branches of the original.
 
-After cloning a repository you can create new branches and commit new revisions completely independently of the *upstream* repository. To distribute and receive changes you can use the `git pull` command (to get new commits from remote repositories), and `git push` command (to send your commits to remote repositories).
+After cloning a repository you can create new branches and commit new
+revisions completely independently of the *upstream* repository. To
+distribute and receive changes you can use the `git pull` command (to
+get new commits from remote repositories), and `git push` command (to
+send your commits to remote repositories).
 
 == Install Git
 
-Before you start using Git, you need to https://git-scm.com/book/en/v2/Getting-Started-Installing-Git[install Git] on your computer. Update to the current version to get the latest features and security patches. Git can be installed as a package, or you can use another installer that simplifies the process.
+Before you start using Git, you need to
+https://git-scm.com/book/en/v2/Getting-Started-Installing-Git[install
+Git] on your computer. Update to the current version to get the latest
+features and security patches. Git can be installed as a package, or
+you can use another installer that simplifies the process.
 
-For windows-based machines, https://git-scm.com/download/win[download] the official build and install Git.
+For windows-based machines, https://git-scm.com/download/win[download]
+the official build and install Git.
 
 == Get a GitHub account
 
-In order to follow or fork a project you must first create a GitHub account. Navigate to the https://github.com/signup/free[signup page] and enter your details to complete this process. After you've signed up, log in and you're good to go.
+In order to follow or fork a project you must first create a GitHub
+account. Navigate to the https://github.com/signup/free[signup page]
+and enter your details to complete this process. After you've signed
+up, log in and you're good to go.
 
-== Authorise your local machine to talk to GitHub
+== Authorize your local machine to talk to GitHub
 
-In order to let your local machine talk to GitHub, you must first lodge the public portion of a RSA keypair with the GitHub servers.
+You should use [GitHub
+Tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+instead of SSH keys.
 
-=== What is a RSA keypair?
+More instructions TBD.
 
-An http://en.wikipedia.org/wiki/RSA[RSA] keypair has two linked keys: a http://en.wikipedia.org/wiki/Public-key_cryptography[public key and a private key]. The public key can be shared openly and it encrypts data and verifies digital signatures. The private key must remain secure and it decrypts data and creates digital signatures. RSA's security depends on the hard task of factoring large numbers. This makes it popular for secure communication.
+== Authorization via SSH
+
+This can be done, but we don't recommend it.
 
 === How do I generate a keypair?
 
@@ -33,7 +54,9 @@ ssh-keygen -t rsa
 
 And save the keys if their default locations (just hit return)
 
-@todo - windows instructions - Currently your only option is to cry yourself to sleep knowing you'll never be able to contribute to FreeRADIUS (or figure it out on your own).
+@todo - windows instructions - Currently your only option is to cry
+yourself to sleep knowing you'll never be able to contribute to
+FreeRADIUS (or figure it out on your own).
 
 === How do I install the public key on GitHub's servers?
 
@@ -50,7 +73,12 @@ cat ~/.ssh/id_rsa.pub
 
 == Linking commits with your GitHub account
 
-Once you've established a history of providing good patches, the FreeRADIUS core developers are more likely to pull your modifications into the project repository. To establish this history it's important to configure your local git client to insert the correct information into commit meta-data. This will mean that your commits are linked to you and your GitHub account.
+Once you've established a history of providing good patches, the
+FreeRADIUS core developers are more likely to pull your modifications
+into the project repository. To establish this history it's important
+to configure your local git client to insert the correct information
+into commit meta-data. This will mean that your commits are linked to
+you and your GitHub account.
 
 To correct the default commit user.name and user.email, enter the following commands:
 ----
