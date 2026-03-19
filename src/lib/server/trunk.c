@@ -799,27 +799,29 @@ do { \
 	fr_minmax_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
+DIAG_OFF(unused-function)
 
-#define FR_TRUNK_LIST_FUNC(_list) \
-static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ## _add(trunk_t *trunk, trunk_request_t *treq) \
+#define FR_TRUNK_LIST_FUNC(_list,_type) \
+static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ## _add(trunk_t *trunk, _type *arg) \
 { \
-	fr_dlist_insert_head(&trunk->_list, treq); \
+	fr_dlist_insert_head(&trunk->_list, arg); \
 } \
-static inline CC_HINT(nonnull, always_inline) trunk_request_t *trunk_list_ ## _list ##_peek(trunk_t *trunk) \
+static inline CC_HINT(nonnull, always_inline) _type *trunk_list_ ## _list ##_peek(trunk_t *trunk) \
 { \
 	return fr_dlist_tail(&trunk->_list); \
 } \
-static inline CC_HINT(nonnull, always_inline) trunk_request_t *trunk_list_ ## _list ##_pop(trunk_t *trunk) \
+static inline CC_HINT(nonnull, always_inline) _type *trunk_list_ ## _list ##_pop(trunk_t *trunk) \
 { \
 	return fr_dlist_pop_head(&trunk->_list); \
 } \
-static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ##_remove(trunk_t *trunk, trunk_request_t *treq) \
+static inline CC_HINT(nonnull, always_inline) void trunk_list_ ## _list ##_remove(trunk_t *trunk, _type *arg) \
 { \
-	fr_dlist_remove(&trunk->_list, treq); \
+	fr_dlist_remove(&trunk->_list, arg); \
 }
 
-FR_TRUNK_LIST_FUNC(free_requests)
+FR_TRUNK_LIST_FUNC(free_requests, trunk_request_t)
 
+DIAG_ON(unused-function)
 
 /** Call a list of watch functions associated with a state
  *
@@ -3162,7 +3164,8 @@ static void trunk_connection_enter_full(trunk_connection_t *tconn)
 		CONN_BAD_STATE_TRANSITION(TRUNK_CONN_FULL);
 	}
 
-	fr_dlist_insert_head(&trunk->full, tconn);
+
+	trunk_list_full_add(trunk, tconn);
 	CONN_STATE_TRANSITION(TRUNK_CONN_FULL, DEBUG2);
 }
 
