@@ -553,6 +553,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	X509_STORE	*cert_vpstore;
 	X509_STORE	*verify_store;
 	int		ctx_options = 0;
+	int		mode= SSL_MODE_ASYNC;
 
 	ctx = SSL_CTX_new(TLS_method());
 	if (!ctx) {
@@ -656,6 +657,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			goto error;
 		}
 
+		SSL_CTX_set_mode(ctx, mode);
 		goto post_ca;
 	}
 #else
@@ -663,29 +665,22 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #endif
 
 	/*
-	 *	Set mode before processing any certifictes
-	 */
-	{
-		int mode = SSL_MODE_ASYNC;
-
-		/*
-		 *	OpenSSL will automatically create certificate chains,
-		 *	unless we tell it to not do that.  The problem is that
-		 *	it sometimes gets the chains right from a certificate
-		 *	signature view, but wrong from the clients view.
-		 *
-		 *	It's better just to have users specify the complete
-		 *	chains.
+	 *	OpenSSL will automatically create certificate chains,
+	 *	unless we tell it to not do that.  The problem is that
+	 *	it sometimes gets the chains right from a certificate
+	 *	signature view, but wrong from the clients view.
+	 *
+	 *	It's better just to have users specify the complete
+	 *	chains.
 		 */
-		mode |= SSL_MODE_NO_AUTO_CHAIN;
+	mode |= SSL_MODE_NO_AUTO_CHAIN;
 
-		if (client) {
-			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
-			mode |= SSL_MODE_AUTO_RETRY;
-		}
-
-		if (mode) SSL_CTX_set_mode(ctx, mode);
+	if (client) {
+		mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
+		mode |= SSL_MODE_AUTO_RETRY;
 	}
+
+	SSL_CTX_set_mode(ctx, mode);
 
 	/*
 	 *	Initialise a separate store for verifying user
