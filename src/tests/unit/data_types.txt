@@ -1,5 +1,4 @@
 fuzzer-out util
-
 #
 #  Parse / print data types
 #
@@ -123,6 +122,77 @@ match -128
 
 value int8 -130
 match integer underflow
+
+#
+#  Empty input is invalid for IP address types.
+#
+#  The "!" is not a valid hostname character, so the parser
+#  consumes zero characters and returns "Empty input is invalid".
+#
+value ipaddr
+match Empty input is invalid
+
+value ipaddr !
+match Empty input is invalid
+
+value ipv4prefix !
+match Empty input is invalid
+
+value ipv6addr !
+match Empty input is invalid
+
+value ipv6prefix !
+match Empty input is invalid
+
+value combo-ip !
+match Empty input is invalid
+
+value combo-prefix !
+match Empty input is invalid
+
+#
+#  Non-numeric input is invalid for integer types
+#
+
+# Note end of string immediately after "uint32"
+value uint32
+match empty input is invalid
+
+value uint8 !
+match Failed parsing string as type 'uint8'
+
+value uint16 !
+match Failed parsing string as type 'uint16'
+
+value uint32 !
+match Failed parsing string as type 'uint32'
+
+value uint64 !
+match Failed parsing string as type 'uint64'
+
+value int8 !
+match Failed parsing string as type 'int8'
+
+value int16 !
+match Failed parsing string as type 'int16'
+
+value int32 !
+match Failed parsing string as type 'int32'
+
+value int64 !
+match Failed parsing string as type 'int64'
+
+value float32 !
+match Failed parsing string as type 'float32'
+
+value float64 !
+match Failed parsing string as type 'float64'
+
+#
+#  Non-boolean input is invalid
+#
+value bool !
+match Invalid boolean value.  Accepted values are "yes", "no", "true", "false" or any unquoted integer
 
 value date Jan  1 1970 12:00:00 UTC
 match 1970-01-01T12:00:00Z
@@ -253,4 +323,4 @@ encode-dns-label www_foo.com
 match Invalid character 0x5f in label
 
 count
-match 126
+match 164

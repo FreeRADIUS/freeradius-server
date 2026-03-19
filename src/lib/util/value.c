@@ -5375,7 +5375,6 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		}
 	}
 
-
 	return slen;
 }
 
@@ -5623,7 +5622,7 @@ parse:
 	case FR_TYPE_IPV4_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton4(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5646,7 +5645,7 @@ parse:
 	case FR_TYPE_IPV4_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5656,7 +5655,7 @@ parse:
 	case FR_TYPE_IPV6_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		/*
 		 *	Parse scope, too.
@@ -5686,7 +5685,7 @@ parse:
 	case FR_TYPE_IPV6_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -5696,7 +5695,7 @@ parse:
 	case FR_TYPE_COMBO_IP_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		/*
 		 *	Parse scope, too.
@@ -5723,7 +5722,7 @@ parse:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
-		if (!name_len) return 0;
+		if (!name_len) goto empty_is_invalid;
 
 		if (fr_inet_pton(&dst->vb_ip, fr_sbuff_current(in), name_len, AF_UNSPEC,
 				  fr_hostname_lookups, true) < 0) return -1;
@@ -5753,7 +5752,7 @@ parse:
 		 *	Quoted boolean values are "yes", "no", "true", "false"
 		 */
 		slen = fr_sbuff_out(NULL, &dst->vb_bool, in);
-		if (slen >= 0) return slen;
+		if (slen > 0) return slen;
 
 		/*
 		 *	For barewords we also allow 0 for false and any other
@@ -5867,6 +5866,11 @@ parse:
 						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
 						 false, rules->terminals);
 		if (slen < 0) return slen;
+		if (!slen) {
+		empty_is_invalid:
+			fr_strerror_const("Empty input is invalid");
+			return -1;
+		}
 		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case FR_TYPE_NULL:

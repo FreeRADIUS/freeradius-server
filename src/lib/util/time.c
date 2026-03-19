@@ -413,6 +413,11 @@ fr_slen_t fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t in
 {
 	fr_slen_t slen;
 
+	if (!*in) {
+		fr_strerror_const("Empty input is invalid");
+		return -1;
+	}
+
 	slen = fr_time_delta_from_substr(out, &FR_SBUFF_IN(in, inlen), hint, true, NULL);
 	if (slen < 0) return slen;
 	if (slen != (fr_slen_t)inlen) {
@@ -802,6 +807,11 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	char		*tail = NULL;
 	unsigned long	l;
 	fr_time_delta_t	gmt_delta = fr_time_delta_wrap(0);
+
+	if (!*date_str) {
+		fr_strerror_const("Empty input is invalid");
+		return -1;
+	}
 
 	/*
 	 *	Test for unix timestamp, which is just a number and
