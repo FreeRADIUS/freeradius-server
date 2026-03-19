@@ -294,65 +294,65 @@ static char lua_alloc_cmd[] =
 	"  local expires = tonumber(redis.call('ZSCORE', pool_key, exists))" EOL			/* 11 */
 	"  local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL					/* 12 */
 	"  local expires_in = expires - (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0) - ARGV[1]" EOL	/* 13 */
-	"  ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter', 'gateway')" EOL	/* 15 */
-	"  if ip and (ip[1] == ARGV[3]) then" EOL							/* 16 */
-	"    if expires_in < tonumber(ARGV[2]) then" EOL						/* 17 */
-	"      redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL		/* 18 */
-	"      expires_in = tonumber(ARGV[2])" EOL							/* 19 */
-	"      if not static then" EOL									/* 20 */
-	"        redis.call('EXPIRE', owner_key, ARGV[4])" EOL						/* 21 */
-	"      end" EOL											/* 22 */
-	"    end" EOL											/* 23 */
+	"  ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range', 'counter', 'gateway')" EOL	/* 14 */
+	"  if ip and (ip[1] == ARGV[3]) then" EOL							/* 15 */
+	"    if expires_in < tonumber(ARGV[2]) then" EOL						/* 16 */
+	"      redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2] + (static and " STRINGIFY(IPPOOL_STATIC_BIT) " or 0), exists)" EOL		/* 17 */
+	"      expires_in = tonumber(ARGV[2])" EOL							/* 18 */
+	"      if not static then" EOL									/* 19 */
+	"        redis.call('EXPIRE', owner_key, ARGV[4])" EOL						/* 20 */
+	"      end" EOL											/* 21 */
+	"    end" EOL											/* 22 */
 
 	/*
 	 *	Ensure gateway is set correctly
 	 */
-	"    if ARGV[5] ~= ip[5] then" EOL								/* 24 */
-	"      redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[5])" EOL	/* 25 */
-	"    end" EOL											/* 26 */
-	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 27 */
-	"  end" EOL											/* 28 */
-	"end" EOL											/* 30 */
+	"    if ARGV[5] ~= ip[5] then" EOL								/* 23 */
+	"      redis.call('HSET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":', 'gateway', ARGV[5])" EOL	/* 24 */
+	"    end" EOL											/* 25 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in, ip[3] }" EOL	/* 26 */
+	"  end" EOL											/* 27 */
+	"end" EOL											/* 28 */
 
 	/*
 	 *	If there's a requested address, check if that is available i.e. not statically
 	 *	assigned, nor already allocated.
 	 */
-	"if ARGV[6] and ARGV[6] ~= '' then" EOL								/* 31 */
-	"  local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[6]))" EOL			/* 32 */
-	"  if expires and tonumber(expires) < wall_time then" EOL					/* 33 */
-	"    ip = { ARGV[6] }" EOL									/* 34 */
-	"  end" EOL											/* 35 */
-	"end" EOL											/* 36 */
+	"if ARGV[6] and ARGV[6] ~= '' then" EOL								/* 29 */
+	"  local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[6]))" EOL			/* 30 */
+	"  if expires and tonumber(expires) < wall_time then" EOL					/* 31 */
+	"    ip = { ARGV[6] }" EOL									/* 32 */
+	"  end" EOL											/* 33 */
+	"end" EOL											/* 34 */
 
 	/*
 	 *	Else, get the IP address which expired the longest time ago.
 	 */
-	"if not ip then" EOL										/* 37 */
-	"  ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 38 */
-	"  if not ip or not ip[1] then" EOL								/* 39 */
-	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 40 */
-	"  end" EOL											/* 41 */
-	"  if tonumber(ip[2]) >= wall_time then" EOL							/* 42 */
-	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 43 */
-	"  end" EOL											/* 44 */
-	"end" EOL											/* 45 */
-	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 46 */
+	"if not ip then" EOL										/* 35 */
+	"  ip = redis.call('ZREVRANGE', pool_key, -1, -1, 'WITHSCORES')" EOL				/* 36 */
+	"  if not ip or not ip[1] then" EOL								/* 37 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 38 */
+	"  end" EOL											/* 39 */
+	"  if tonumber(ip[2]) >= wall_time then" EOL							/* 40 */
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL					/* 41 */
+	"  end" EOL											/* 42 */
+	"end" EOL											/* 43 */
+	"redis.call('ZADD', pool_key, 'XX', ARGV[1] + ARGV[2], ip[1])" EOL				/* 44 */
 
 	/*
 	 *	Set the device/gateway keys
 	 */
-	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ip[1]" EOL			/* 47 */
-	"redis.call('HMSET', address_key, 'device', ARGV[3], 'gateway', ARGV[5])" EOL			/* 48 */
-	"redis.call('SET', owner_key, ip[1])" EOL							/* 49 */
-	"redis.call('EXPIRE', owner_key, ARGV[4])" EOL							/* 50 */
-	"return { " EOL											/* 51 */
-	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL							/* 52 */
-	"  ip[1], " EOL											/* 53 */
-	"  redis.call('HGET', address_key, 'range'), " EOL						/* 54 */
-	"  tonumber(ARGV[2]), " EOL									/* 55 */
-	"  redis.call('HINCRBY', address_key, 'counter', 1)" EOL					/* 56 */
-	"}" EOL;											/* 57 */
+	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ip[1]" EOL			/* 45 */
+	"redis.call('HMSET', address_key, 'device', ARGV[3], 'gateway', ARGV[5])" EOL			/* 46 */
+	"redis.call('SET', owner_key, ip[1])" EOL							/* 47 */
+	"redis.call('EXPIRE', owner_key, ARGV[4])" EOL							/* 48 */
+	"return { " EOL											/* 49 */
+	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL							/* 50 */
+	"  ip[1], " EOL											/* 51 */
+	"  redis.call('HGET', address_key, 'range'), " EOL						/* 52 */
+	"  tonumber(ARGV[2]), " EOL									/* 53 */
+	"  redis.call('HINCRBY', address_key, 'counter', 1)" EOL					/* 54 */
+	"}" EOL;											/* 55 */
 static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Lua script for updating leases
