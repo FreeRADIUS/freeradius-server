@@ -550,8 +550,7 @@ int tls_ctx_version_set(
 SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
-	X509_STORE	*cert_vpstore;
-	X509_STORE	*verify_store;
+	X509_STORE	*verify_store = NULL;
 	int		ctx_options = 0;
 	int		mode= SSL_MODE_ASYNC;
 
@@ -881,16 +880,11 @@ post_ca:
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
 	/*
-	 *	Check the certificates for revocation.
+	 *	Check the certificates for revocation, but not if we're doing PSK.
 	 */
+	if (conf->verify.check_crl && verify_store) {
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->verify.check_crl) {
-		cert_vpstore = SSL_CTX_get_cert_store(ctx);
-		if (cert_vpstore == NULL) {
-			fr_tls_log(NULL, "Error reading Certificate Store");
-	    		goto error;
-		}
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+		X509_STORE_set_flags(verify_store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 #ifdef X509_V_FLAG_USE_DELTAS
 		/*
 		 *	If set, delta CRLs (if present) are used to
@@ -899,10 +893,12 @@ post_ca:
 		 *
 		 *	So it's safe to always set this flag.
 		 */
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_USE_DELTAS);
+		X509_STORE_set_flags(verify_store, X509_V_FLAG_USE_DELTAS);
+#endif
+#else
+		WARN(LOG_PREFIX ": Ignoring 'check_crl = yes' as the OpenSSL libraries do not support the relevant flags");
 #endif
 	}
-#endif
 
 	/*
 	 *	SSL_ctx_set_verify is now called in the session
