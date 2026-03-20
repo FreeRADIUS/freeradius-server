@@ -963,8 +963,8 @@ static void request_cleanup_delay_init(REQUEST *request)
 	rad_assert(request->reply->timestamp.tv_sec != 0);
 	when = request->reply->timestamp;
 
-	request->delay = request->root->cleanup_delay;
-	when.tv_sec += request->delay;
+	request->delay = request->root->cleanup_delay * USEC;
+	when.tv_sec += request->root->cleanup_delay;
 
 	/*
 	 *	Set timer for when we need to clean it up.
@@ -1261,7 +1261,8 @@ static void request_cleanup_delay(REQUEST *request, int action)
 		 */
 		when = request->reply->timestamp;
 		request->delay += request->delay;
-		when.tv_sec += request->delay;
+		if (request->delay > (30 * USEC)) request->delay = 30 * USEC;
+		tv_add(&when, request->delay);
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		break;

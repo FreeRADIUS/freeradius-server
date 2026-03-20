@@ -268,7 +268,7 @@ struct rad_request {
 	char const		*module;	//!< Module the request is currently being processed by.
 	char const		*component; 	//!< Section the request is in.
 
-	int			delay;
+	int			delay;		//!< additional delay in usec.
 
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
