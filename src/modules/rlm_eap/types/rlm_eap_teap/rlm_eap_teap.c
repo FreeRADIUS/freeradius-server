@@ -65,9 +65,7 @@ typedef struct rlm_eap_teap_t {
 	char const *authority_identity;
 
 	uint16_t	identity_type[2];
-
-	bool		required[2];
-
+	bool		identity_type_required[2];
 	char const	*identity_type_name;
 
 	/*
@@ -200,13 +198,13 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 		p = inst->identity_type_name;
 		i = 0;
-		inst->required[0] = inst->required[1] = true;
+		inst->identity_type_required[0] = inst->identity_type_required[1] = true;
 
 		while (*p) {
 			while (isspace((uint8_t) *p)) p++;
 
 			if (*p == '?') {
-				inst->required[i] = false;
+				inst->identity_type_required[i] = false;
 				p++;
 			}
 
@@ -252,13 +250,13 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 
-		if ((i == 1) && !inst->required[0]) {
+		if ((i == 1) && !inst->identity_type_required[0]) {
 			cf_log_err_cs(cs, "Optional value can only be used when two methods are configured in identity_types = '%s'",
 				      inst->identity_type_name);
 			return -1;
 		}
 
-		if ((i == 2) && !inst->required[0] && !inst->required[1]) {
+		if ((i == 2) && !inst->identity_type_required[0] && !inst->identity_type_required[1]) {
 			cf_log_err_cs(cs, "Optional value can only be used for one method in identity_types = '%s'",
 				      inst->identity_type_name);
 			return -1;
@@ -395,8 +393,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		if (vp) {
 			vp->vp_short = inst->identity_type[0];
 			RDEBUG("Setting %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
-			       inst->required[0] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-			t->auths[vp->vp_short].required = inst->required[0];
+			       inst->identity_type_required[0] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+			t->auths[vp->vp_short].required = inst->identity_type_required[0];
 		}
 
 		if (inst->identity_type[1]) {
@@ -404,8 +402,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 			if (vp) {
 				vp->vp_short = inst->identity_type[1];
 				RDEBUG("Followed by %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-				       inst->required[1] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-				t->auths[vp->vp_short].required = inst->required[1];	
+				       inst->identity_type_required[1] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+				t->auths[vp->vp_short].required = inst->identity_type_required[1];
 			}
 		}
 	}
