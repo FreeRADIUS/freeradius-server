@@ -1566,6 +1566,7 @@ static void request_finish(REQUEST *request, int action)
 			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Disconnect-NAK",
 				 request->client->shortname);
 			request->reply->code = PW_CODE_DISCONNECT_NAK;
+			/* FALL_THROUGH */
 
 		not_routable:
 			error_cause = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
@@ -1955,14 +1956,12 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 	packet->timestamp = now;
 
-#if defined(WITH_ACCOUNTING) && defined(WITH_TCP)
 	if (listener->type != RAD_LISTEN_DETAIL) {
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
 
 		packet->proto = sock->proto;
 	}
-#endif
 
 	/*
 	 *	Skip everything if required.
@@ -4412,7 +4411,7 @@ static void ping_home_server(void *ctx)
 			 "Acct-Session-Id", "00000000", T_OP_SET);
 		vp = fr_pair_make(request->proxy, &request->proxy->vps,
 			      "Event-Timestamp", "0", T_OP_SET);
-		vp->vp_date = now.tv_sec;
+		if (vp) vp->vp_date = now.tv_sec;
 #endif
 
 	} else {
@@ -5009,8 +5008,7 @@ static void request_coa_originate(REQUEST *request)
 
 	if (!main_config.proxy_requests) {
 		RWDEBUG("Cannot originate CoA packets unless 'proxy_requests = yes'");
-		TALLOC_FREE(request->coa);
-		return;
+		goto fail;
 	}
 
 	coa = request->coa;
@@ -5029,7 +5027,7 @@ static void request_coa_originate(REQUEST *request)
 		 */
 		if (listen_coa_find(coa, vp->vp_strvalue) < 0) {
 			RWDEBUG("Unknown Originating realm '%s'", vp->vp_strvalue);
-			return;
+			goto fail;
 		}
 
 		goto set_packet_type;
@@ -6500,7 +6498,7 @@ void radius_signal_self(int flag)
 	if (rcode > 0) {
 		ssize_t i;
 
-		for (i = 0; i < rcode; i++) {
+		for (i = 1; i < rcode; i++) {
 			buffer[0] |= buffer[i];
 		}
 	} else {
@@ -6525,7 +6523,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 	/*
 	 *	Merge pending signals.
 	 */
-	for (i = 0; i < rcode; i++) {
+	for (i = 1; i < rcode; i++) {
 		buffer[0] |= buffer[i];
 	}
 
