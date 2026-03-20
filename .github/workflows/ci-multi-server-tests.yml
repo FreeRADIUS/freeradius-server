@@ -15,6 +15,7 @@ on:
 jobs:
   multi-server-tests:
     runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS'
 
     services:
       dind:
