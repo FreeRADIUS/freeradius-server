@@ -13,7 +13,7 @@ jobs:
     if: github.repository_owner == 'FreeRADIUS' || github.ref == 'refs/heads/coverity_scan'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Package manager performance improvements
         run: |
@@ -59,7 +59,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
 
       - name: Cache coverity tool
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-coverity
         with:
           path: coverity_tool.tar.gz
