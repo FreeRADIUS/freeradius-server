@@ -110,6 +110,11 @@ KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
 KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 
 #
+# if-env test.
+#
+export IF_ENV_CONDITION := !test || (test != 'if-env')
+
+#
 #  Files in the output dir depend on the unit tests
 #
 #	src/tests/keywords/FOO		unlang for the test

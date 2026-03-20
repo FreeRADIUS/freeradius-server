@@ -1,0 +1,32 @@
+# PRE: if
+string test
+
+#
+#  Missing environment variables are silently omitted.  This seems
+#  wrong. :(
+#
+if (0 $ENV{THIS_VARIABLE_IS_MISSING} ) {
+	test_fail
+}
+
+if "$ENV{IF_ENV_CONDITION}" != "!test || (test != 'if-env')" {
+   test_fail
+}
+
+#
+#  Environment variables are just macros, and are expanded before the
+#  condition is fully parsed.  We should arguably have the
+#  process_if() function NOT call cf_expand_variables().  Instead, the
+#  xlat_tokenize_condition() function should parse the condition, and
+#  expand the environment variables there.
+#
+#  However, doing that is a bit harder, because it involves walking
+#  the xlat tree after parsing, and re-writing its contents.  But it's
+#  definitely the safer thing to do.
+#
+test = 'if-env'
+if ($ENV{IF_ENV_CONDITION}) {
+	test_fail
+}
+
+success
