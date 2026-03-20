@@ -67,7 +67,7 @@ jobs:
         run: |
           apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx docker-compose-v2 python3-venv
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: false
 
