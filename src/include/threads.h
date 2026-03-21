@@ -82,8 +82,7 @@ static void __fr_thread_local_key_init_##_n(void)\
 static _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
 	__fr_thread_local_destructor_##_n = func;\
-	if (_n) return _n; \
-	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
+	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n); \
 	(void) pthread_setspecific(__fr_thread_local_key_##_n, &(_n));\
 	return _n;\
 }
