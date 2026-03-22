@@ -4596,6 +4596,13 @@ int main(int argc, char *argv[])
 	} else if (argc > 1) {
 		int i;
 
+		if (receipt_file) for (i = 1; i < argc; i++) {
+			if (strcmp(receipt_file, argv[i]) == 0) {
+				ERROR("Receipt file cannot be one of the input files");
+				EXIT_WITH_FAILURE;
+			}
+		}
+
 		/*
 		 *	Read test commands from a list of files in argv[].
 		 */
