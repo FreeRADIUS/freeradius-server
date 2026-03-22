@@ -987,5 +987,63 @@ encode-pair option0 = 1, option1 = 2
 match c0 01 01 c1 01 02
 
 
+proto-dictionary der
+
+#
+#  ----  Integer boundary encode tests  ----
+#
+
+# Integer zero
+encode-pair Test-Integer = 0
+match 02 01 00
+
+# Negative integer -1
+encode-pair Test-Integer = -1
+match 02 01 ff
+
+# Negative integer -128 (minimum 1-byte signed)
+encode-pair Test-Integer = -128
+match 02 01 80
+
+# Negative integer -129 (requires 2 bytes)
+encode-pair Test-Integer = -129
+match 02 02 ff 7f
+
+# Integer 128 (requires leading 0x00 byte)
+encode-pair Test-Integer = 128
+match 02 02 00 80
+
+# Integer 255
+encode-pair Test-Integer = 255
+match 02 02 00 ff
+
+# Integer 256
+encode-pair Test-Integer = 256
+match 02 02 01 00
+
+# Minimum int64 value
+encode-pair Test-Integer = -9223372036854775808
+match 02 08 80 00 00 00 00 00 00 00
+
+#
+#  ----  Empty string encode tests  ----
+#
+
+encode-pair Test-String-UTF8 = ""
+match 0c 00
+
+encode-pair Test-String-Printable = ""
+match 13 00
+
+#
+#  ----  Enumerated boundary tests  ----
+#
+
+encode-pair Test-Enumerated = 0
+match 0a 01 00
+
+encode-pair Test-Enumerated = -1
+match 0a 01 ff
+
 count
-match 583
+match 608

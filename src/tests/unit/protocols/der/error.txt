@@ -145,5 +145,108 @@ match Invalid character in a string (1)
 decode-pair 1a 01 7f
 match Invalid character in a string (127)
 
+#
+#  ----  Boolean value errors  ----
+#
+
+#
+#  Boolean with incorrect length (3 bytes instead of required 1)
+#
+proto-dictionary-root Test-Boolean
+
+decode-pair 01 03 ff ff ff
+match Boolean has incorrect length (3). Must be 1.
+
+#
+#  Boolean with zero length
+#
+decode-pair 01 00
+match Boolean has incorrect length (0). Must be 1.
+
+#
+#  Boolean with non-DER value 0x01 (must be exactly 0x00 or 0xff)
+#
+decode-pair 01 01 01
+match Boolean is not correctly DER encoded (0x00 or 0xff).
+
+#
+#  Boolean with non-DER value 0x7f
+#
+decode-pair 01 01 7f
+match Boolean is not correctly DER encoded (0x00 or 0xff).
+
+#
+#  ----  Integer DER encoding errors  ----
+#
+
+#
+#  Integer too large - 9 bytes exceeds maximum of 8 (sizeof uint64_t)
+#
+proto-dictionary-root Test-Integer
+
+decode-pair 02 09 01 02 03 04 05 06 07 08 09
+match Integer too large (9)
+
+#
+#  Non-DER integer: unnecessary leading zero (0x00 0x01 should be just 0x01)
+#
+decode-pair 02 02 00 01
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+
+#
+#  Non-DER integer: unnecessary sign extension (0xff 0xfe should be just 0xfe)
+#
+decode-pair 02 02 ff fe
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+
+#
+#  ----  OID errors  ----
+#
+
+#
+#  OID with truncated subidentifier - high bit set on last byte indicating
+#  continuation, but no more data available
+#
+proto-dictionary-root Test-Oid
+
+decode-pair 06 02 2b 88
+match OID subidentifier is truncated
+
+#
+#  ----  PrintableString character validation  ----
+#
+
+#
+#  PrintableString with '@' (0x40=64) - not in allowed character set
+#
+proto-dictionary-root Test-String-Printable
+
+decode-pair 13 01 40
+match Invalid character in a string (64)
+
+#
+#  PrintableString with '*' (0x2a=42) - not in allowed character set
+#
+decode-pair 13 01 2a
+match Invalid character in a string (42)
+
+#
+#  ----  Length field errors  ----
+#
+
+#
+#  Multi-byte length field too large - 9 bytes of length exceeds max of 8
+#
+proto-dictionary-root Test-Boolean
+
+decode-pair 01 89 01 02 03 04 05 06 07 08 09
+match Length field too large (9): Failed decoding Test-Boolean header
+
+#
+#  Insufficient data for declared length - header says 4 bytes but only 3 available
+#
+decode-pair 01 04 ff ff ff
+match Insufficient data for length field (4): Failed decoding Test-Boolean header
+
 count
-match 43
+match 72
