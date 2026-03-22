@@ -285,5 +285,89 @@ match f1 04 f4 2a f1 05 f5 03 e8
 decode-pair -
 match Extended-Attribute-1 = { Unit-Ext-241-Byte = 42, Unit-Ext-241-Short = 1000 }
 
+#
+#  ----  Integer (uint32) boundary values  ----
+#
+
+# NAS-Port zero
+encode-pair NAS-Port = 0
+match 05 06 00 00 00 00
+
+decode-pair -
+match NAS-Port = 0
+
+# NAS-Port maximum uint32
+encode-pair NAS-Port = 4294967295
+match 05 06 ff ff ff ff
+
+decode-pair -
+match NAS-Port = 4294967295
+
+# Session-Timeout
+encode-pair Session-Timeout = 3600
+match 1b 06 00 00 0e 10
+
+decode-pair -
+match Session-Timeout = 3600
+
+#
+#  ----  Enum attribute encoding  ----
+#
+
+encode-pair Service-Type = Login-User
+match 06 06 00 00 00 01
+
+decode-pair -
+match Service-Type = ::Login-User
+
+# Unknown enum value - printed as integer
+encode-pair Service-Type = 999
+match 06 06 00 00 03 e7
+
+decode-pair -
+match Service-Type = 999
+
+#
+#  ----  IP address boundary values  ----
+#
+
+encode-pair NAS-IP-Address = 0.0.0.0
+match 04 06 00 00 00 00
+
+decode-pair -
+match NAS-IP-Address = 0.0.0.0
+
+encode-pair NAS-IP-Address = 255.255.255.255
+match 04 06 ff ff ff ff
+
+decode-pair -
+match NAS-IP-Address = 255.255.255.255
+
+#
+#  ----  Octets encoding  ----
+#
+
+encode-pair Class = 0xaabbccdd
+match 19 06 aa bb cc dd
+
+decode-pair -
+match Class = 0xaabbccdd
+
+# Empty Class (zero-length octets) - silently skipped like zero-length strings
+encode-pair Class = 0x
+match
+
+#
+#  ----  Wrong-length fixed attributes decoded as raw  ----
+#
+
+# NAS-IP-Address should be exactly 4 bytes, 5 bytes decodes as raw
+decode-pair 04 07 ab cd ef 01 02
+match raw.NAS-IP-Address = 0xabcdef0102
+
+# Session-Timeout should be exactly 4 bytes, 3 bytes decodes as raw
+decode-pair 1b 05 00 00 01
+match raw.Session-Timeout = 0x000001
+
 count
-match 118
+match 156

@@ -136,5 +136,17 @@ match Packet failed verification - attribute 'length' field contains invalid val
 decode-proto 01 00 00 1a 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 01 04 68 69 04 0a
 match Packet failed verification - attribute 'length' field overflows the packet
 
+#
+#  Attribute length = maximum (255) but only 3 bytes total
+#
+decode-pair 01 ff 00
+match fr_radius_decode_pair: Insufficient data
+
+#
+#  Very large attribute length claims - length 200 but only 5 bytes
+#
+decode-pair 01 c8 ab cd ef
+match fr_radius_decode_pair: Insufficient data
+
 count
-match 45
+match 49
