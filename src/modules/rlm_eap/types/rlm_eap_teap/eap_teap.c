@@ -909,6 +909,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	uint8_t				msk[2 * EAPTLS_MPPE_KEY_LEN] = {0}, emsk[2 * EAPTLS_MPPE_KEY_LEN] = {0};
 	size_t				msklen = 0, emsklen = 0;
 	bool				doing_eap, msk1, msk2;
+	bool				sent_identity_type = false;
 
 	teap_tunnel_t	*t = tls_session->opaque;
 
@@ -1059,6 +1060,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 			/* RFC7170, Appendix C.6 */
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
+			sent_identity_type = true;
 
 			if (t->default_method || t->eap_method[vp->vp_short]) {
 				eap_teap_append_eap_identity_request(request, tls_session, eap_session);
@@ -1186,7 +1188,7 @@ challenge:
 		 */
 		rcode = reply->code == PW_CODE_ACCESS_CHALLENGE ? RLM_MODULE_HANDLED : RLM_MODULE_OK;
 
-		if (!doing_eap) {
+		if (!doing_eap && !sent_identity_type) {
 			vp = fr_pair_find_by_num(reply->vps, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS, TAG_ANY);
 			if (!vp) {
 				RWDEBUG("Phase 2: Not configured to use EAP or passwords.  Authentication will likely fail.");
