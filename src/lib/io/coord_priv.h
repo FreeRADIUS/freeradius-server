@@ -30,7 +30,7 @@ RCSIDH(coord_priv_h, "$Id$")
 /** Generic control message used between workers and coordinators
  */
 typedef struct {
-	uint32_t			worker;			//!< Worker ID
+	int32_t				worker;			//!< Worker ID
 } fr_coord_msg_t;
 
 /** List / data message used between workers and coordinators

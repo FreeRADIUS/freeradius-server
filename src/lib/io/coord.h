@@ -89,7 +89,7 @@ void		fr_coords_destroy(void);
 fr_coord_worker_t	*fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coord_reg_t *coord_reg);
 int		fr_coord_detach(fr_coord_worker_t *cw, bool exiting);
 
-int		fr_coord_to_worker_send(fr_coord_t *coord, uint32_t worker_id, uint32_t cb_id, fr_dbuff_t *dbuff);
+int		fr_coord_to_worker_send(fr_coord_t *coord, int32_t worker_id, uint32_t cb_id, fr_dbuff_t *dbuff);
 
 int		fr_coord_to_worker_broadcast(fr_coord_t *coord, uint32_t cb_id, fr_dbuff_t *dbuff);
 
