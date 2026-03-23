@@ -673,7 +673,7 @@ void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_db
 		request_slab_release(request);
 		return;
 	};
-	vp->vp_uint32 = worker_id;
+	vp->vp_int32 = worker_id;
 
 	if (fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
 					  fr_dict_root(request->proto_dict), dbuff, NULL) < 0) {
