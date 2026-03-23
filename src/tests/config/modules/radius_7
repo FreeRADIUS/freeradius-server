@@ -1,0 +1,45 @@
+#
+#  Test: invalid require_message_authenticator value causes parse error
+#
+radius {
+	mode = proxy
+	transport = udp
+
+	type = Access-Request
+
+	require_message_authenticator = maybe		# ERROR
+	response_window = 15
+	zombie_period = 10
+	revive_interval = 3600
+
+	status_check {
+		type = Status-Server
+	}
+
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+	}
+
+	pool {
+		start = 0
+		min = 1
+		max = 8
+		connecting = 1
+	}
+
+	Access-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+
+	Status-Server {
+		initial_rtx_time = 2
+		max_rtx_time = 5
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+}

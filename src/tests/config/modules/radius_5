@@ -1,0 +1,47 @@
+#
+#  Test: invalid packet type causes parse error
+#
+radius {
+	mode = proxy
+	transport = udp
+
+	type = Foo-Bar		# ERROR
+
+	response_window = 15
+	zombie_period = 10
+	revive_interval = 3600
+
+	status_check {
+		type = Status-Server
+	}
+
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+	}
+
+	pool {
+		start = 0
+		min = 1
+		max = 8
+		connecting = 1
+		uses = 0
+
+		lifetime = 0
+		open_delay = 0.2
+		close_delay = 1.0
+		manage_interval = 0.2
+
+		connection {
+			connection_timeout = 3.0
+			reconnect_delay = 5
+		}
+
+		request {
+			per_connection_max = 255
+			per_connection_target = 255
+			free_delay = 10
+		}
+	}
+}
