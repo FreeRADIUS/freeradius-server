@@ -325,8 +325,12 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	if (!code ||
-	    (code >= FR_RADIUS_CODE_MAX) ||
-	    (!type_interval_config[code].name1)) goto invalid_code;
+	    (code >= FR_RADIUS_CODE_MAX)) goto invalid_code;
+
+	if (!type_interval_config[code].name1) {
+		cf_log_err(ci, "Invalid packet type '%s' - cannot proxy a response packet", type_str);
+		return -1;
+	}
 
 	/*
 	 *	If we're doing async proxying, push the timers for the
