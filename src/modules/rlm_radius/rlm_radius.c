@@ -826,6 +826,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		fr_assert(code > 0);
 		fr_assert(code < FR_RADIUS_CODE_MAX);
 
+		if (inst->allowed[code]) {
+			cf_log_err(conf, "Duplicate 'type = %s'", fr_radius_packet_name[code]);
+			return -1;
+		}
+
 		inst->allowed[code] = true;
 	}
 
