@@ -128,8 +128,8 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_strlen(cp->value), NULL) < 0) {
-		cf_log_perr(cp, "Invalid value \"%s\" for config item %s",
-			    cp->value, cp->attr);
+		cf_log_perr(cp, "Invalid value \"%s\" for config item %s (data type %s)",
+			    cp->value, cp->attr, fr_type_to_str(rule->type));
 
 		return -1;
 	}
