@@ -101,7 +101,7 @@ struct fr_schedule_s {
 	fr_worker_t	*single_worker;		//!< for single-threaded mode
 };
 
-static _Thread_local int worker_id;		//!< Internal ID of the current worker thread.
+static _Thread_local int worker_id = -1;	//!< Internal ID of the current worker thread.
 
 /** Return the worker id for the current thread
  *
