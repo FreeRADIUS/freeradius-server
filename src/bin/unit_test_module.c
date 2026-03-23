@@ -779,10 +779,14 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:d:D:f:hi:I:mMn:o:p:r:S:xXz")) != -1) {
+	while ((c = getopt(argc, argv, "c:Cd:D:f:hi:I:mMn:o:p:r:S:xXz")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
+				break;
+
+			case 'C':
+				check_config = true;
 				break;
 
 			case 'd':
@@ -1010,6 +1014,14 @@ int main(int argc, char *argv[])
 	if (!dict_check || !fr_dict_compatible(dict_check, dict_protocol)) {
 		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
 		EXIT_WITH_FAILURE;
+	}
+
+	/*
+	 *	Everything seems to have loaded OK, exit gracefully.
+	 */
+	if (check_config) {
+		DEBUG("Configuration appears to be OK");
+		goto cleanup;
 	}
 
 	/*
@@ -1348,6 +1360,7 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "Usage: %s [options]\n", config->name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -c <count>         Run packets through the interpreter <count> times\n");
+	fprintf(output, "  -C                 Check configuration and exit.\n");
 	fprintf(output, "  -d <confdir>       Configuration file directory. (defaults to " CONFDIR ").");
 	fprintf(output, "  -D <dict_dir>      Dictionary files are in \"dict_dir/*\".\n");
 	fprintf(output, "  -f <file>          Filter reply against attributes in 'file'.\n");
