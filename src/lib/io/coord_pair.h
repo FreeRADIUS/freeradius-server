@@ -32,7 +32,7 @@ RCSIDH(coord_pair_h, "$Id$")
 typedef struct fr_coord_pair_reg_s fr_coord_pair_reg_t;
 typedef struct fr_coord_pair_s fr_coord_pair_t;
 
-typedef void (*fr_coord_worker_pair_cb_t)(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coord_pair_reg, fr_pair_list_t const *list, fr_time_t now, void *uctx);
+typedef void (*fr_coord_worker_pair_cb_t)(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coord_pair_reg, fr_pair_list_t const *list, fr_time_t now, module_ctx_t *mctx, void *uctx);
 
 typedef struct {
 	uint32_t			packet_type;		//!< Packet type value for this callback
@@ -68,7 +68,7 @@ fr_coord_cb_inst_t	*fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord
 						     bool single_thread, void *uctx);
 void			fr_coord_pair_data_recv(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now,
 						void *parent, void *uctx);
-void			fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, void *uctx);
+void			fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, module_ctx_t *mctx, void *uctx);
 
 uint32_t		fr_coord_pair_reg_cb_id(fr_coord_pair_reg_t *coord_pair_reg);
 

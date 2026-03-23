@@ -258,7 +258,10 @@ static void coord_worker_data_recv(void *ctx, void const *data, size_t data_size
 	}
 
 	fr_dbuff_init(&dbuff, (uint8_t const *)cd->m.data, cd->m.data_size);
-	cw->callbacks[cd->coord_cb_id].callback(cw, &dbuff, now, cw->callbacks[cd->coord_cb_id].uctx);
+	cw->callbacks[cd->coord_cb_id].callback(cw, &dbuff, now,
+						MODULE_CTX(cw->coord->coord_reg->mi,
+							   module_thread(cw->coord->coord_reg->mi)->data, NULL, NULL),
+						cw->callbacks[cd->coord_cb_id].uctx);
 	fr_message_done(&cd->m);
 }
 

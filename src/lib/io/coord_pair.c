@@ -694,7 +694,7 @@ void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_db
  * @param now	Time the data is received.
  * @param uctx	The coord_pair registration.
  */
-void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, void *uctx)
+void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, module_ctx_t *mctx, void *uctx)
 {
 	fr_coord_pair_reg_t		*coord_pair_reg = talloc_get_type_abort(uctx, fr_coord_pair_reg_t);
 	fr_pair_list_t			list;
@@ -718,7 +718,7 @@ void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr
 		goto free;
 	}
 
-	coord_pair_reg->callbacks[vp->vp_uint32]->callback(cw, coord_pair_reg, &list, now,
+	coord_pair_reg->callbacks[vp->vp_uint32]->callback(cw, coord_pair_reg, &list, now, mctx,
 							   coord_pair_reg->callbacks[vp->vp_uint32]->uctx);
 
 free:
