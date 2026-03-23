@@ -89,6 +89,7 @@ struct fr_coord_reg_s {
 	fr_coord_worker_cb_reg_t	*worker_cb;		//!< Callbacks for coordinator -> worker messages.
 	size_t				worker_send_size;	//!< Initial size for worker -> coordinator ring buffer.
 	size_t				coord_send_size;	//!< Initial size for coordinator -> worker ring buffer.
+	module_instance_t const		*mi;			//!< Module instance which registered this coordinator.
 };
 
 /** Scheduler specific information for coordinator threads
@@ -140,6 +141,7 @@ fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 
 	fr_assert(reg_ctx->coord_cb);
 	fr_assert(reg_ctx->worker_cb);
+	fr_assert(reg_ctx->mi);
 
 	/* Allocate the list of registered coordinators if not already done */
 	if (!coord_regs) {
@@ -154,6 +156,7 @@ fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 		.worker_cb = reg_ctx->worker_cb,
 		.worker_send_size = reg_ctx->worker_send_size ? reg_ctx->worker_send_size : 4096,
 		.coord_send_size = reg_ctx->coord_send_size ? reg_ctx->coord_send_size : 4096,
+		.mi = reg_ctx->mi,
 	};
 
 	fr_dlist_insert_tail(coord_regs, coord_reg);

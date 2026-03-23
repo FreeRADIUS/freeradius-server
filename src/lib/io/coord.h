@@ -28,6 +28,7 @@ RCSIDH(coord_h, "$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/semaphore.h>
 
@@ -64,6 +65,7 @@ typedef struct {
 								///< data.  Defaults to 4096 if not set.
 	size_t				coord_send_size;	//!< Initial ring buffer size for coordinator -> worker
 								///< data. Defaults to 4096 of not set.
+	module_instance_t const		*mi;			//!< Module instance registering this coordinator.
 } fr_coord_reg_ctx_t;
 
 typedef struct {
