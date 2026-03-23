@@ -136,6 +136,9 @@ fr_coord_reg_t *fr_coord_register(TALLOC_CTX *ctx, fr_coord_reg_ctx_t *reg_ctx)
 {
 	fr_coord_reg_t		*coord_reg;
 
+	fr_assert(reg_ctx->coord_cb);
+	fr_assert(reg_ctx->worker_cb);
+
 	/* Allocate the list of registered coordinators if not already done */
 	if (!coord_regs) {
 		MEM(coord_regs = talloc_zero(NULL, fr_dlist_head_t));
@@ -206,6 +209,7 @@ static void coord_data_recv(void *ctx, void const *data, size_t data_size, fr_ti
 
 	fr_assert(data_size == sizeof(cm));
 	memcpy(&cm, data, data_size);
+	fr_assert(cm.worker <= coord->max_workers);
 
 	if (unlikely(!fr_atomic_queue_pop(coord->coord_recv_aq, (void **)&cd))) return;
 
