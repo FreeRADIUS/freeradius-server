@@ -328,6 +328,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx,
 			goto pre_instantiate_st_fail;
 		}
 
+		worker_id = 0;
 		sc->single_worker = fr_worker_alloc(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
