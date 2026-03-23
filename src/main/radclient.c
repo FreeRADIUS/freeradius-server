@@ -168,7 +168,9 @@ static int _rc_request_free(rc_request_t *request)
 #  include <openssl/provider.h>
 
 static OSSL_PROVIDER *openssl_default_provider = NULL;
+#ifndef WITH_FIPS
 static OSSL_PROVIDER *openssl_legacy_provider = NULL;
+#endif
 
 static int openssl3_init(void)
 {
@@ -181,6 +183,7 @@ static int openssl3_init(void)
 		return -1;
 	}
 
+#ifndef WITH_FIPS
 	/*
 	 *	Needed for MD4
 	 *
@@ -191,6 +194,7 @@ static int openssl3_init(void)
 		ERROR("(TLS) Failed loading legacy provider");
 		return -1;
 	}
+#endif
 
 	return 0;
 }
@@ -202,10 +206,12 @@ static void openssl3_free(void)
 	}
 	openssl_default_provider = NULL;
 
+#ifndef WITH_FIPS
 	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
 		ERROR("Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
+#endif
 }
 #else
 #define openssl3_init()
