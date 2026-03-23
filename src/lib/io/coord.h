@@ -41,11 +41,13 @@ typedef struct fr_coord_cb_inst_s fr_coord_cb_inst_t;
 typedef	void (*fr_coord_cb_t)(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *inst_data, void *uctx);
 typedef void (*fr_coord_worker_cb_t)(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, module_ctx_t *mctx, void *uctx);
 typedef fr_coord_cb_inst_t *(*fr_coord_cb_inst_create_t)(TALLOC_CTX *ctx, fr_coord_t *coord, fr_event_list_t *el, bool single_thread, void *uctx);
+typedef void (*fr_coord_cb_inst_destroy_t)(fr_coord_t *coord, fr_coord_cb_inst_t *inst, bool single_thread, void *uctx);
 
 typedef struct {
 	char const			*name;
 	fr_coord_cb_t			callback;
 	fr_coord_cb_inst_create_t	inst_create;
+	fr_coord_cb_inst_destroy_t	inst_destroy;
 	void				*uctx;
 } fr_coord_cb_reg_t;
 

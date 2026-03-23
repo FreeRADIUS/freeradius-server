@@ -412,6 +412,16 @@ static fr_coord_t *fr_coord_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coor
 	return coord;
 }
 
+static void fr_coord_destroy(fr_coord_t *coord){
+	uint32_t i;
+
+	for (i = 0; i < coord->num_callbacks; i++) {
+		if (!coord->callbacks[i].inst_destroy) continue;
+		coord->callbacks[i].inst_destroy(coord, coord->cb_inst[i], coord->single_thread,
+						 coord->callbacks[i].uctx);
+	}
+}
+
 /** Run the event loop for a coordinator thread when in multi-threaded mode
  */
 static void fr_coordinate(fr_coord_t *coord)
@@ -457,6 +467,8 @@ static void fr_coordinate(fr_coord_t *coord)
 			if (cb_inst && cb_inst->event_cb) cb_inst->event_cb(coord->el, cb_inst->inst_data);
 		}
 	}
+
+	fr_coord_destroy(coord);
 
 	return;
 }
@@ -569,6 +581,7 @@ void fr_coords_destroy(void)
 
 	while ((coord = fr_rb_iter_init_inorder(&coords, &iter))) {
 		fr_rb_iter_delete_inorder(&coords, &iter);
+		fr_coord_destroy(coord);
 		talloc_free(coord);
 	}
 }
