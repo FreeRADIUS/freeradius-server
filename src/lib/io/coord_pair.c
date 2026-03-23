@@ -549,6 +549,22 @@ static int8_t coord_pair_runnable_cmp(void const *one, void const *two)
 	return CMP(a->sequence, b->sequence);
 }
 
+void fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *inst, bool single_thread, UNUSED void *uctx) {
+	fr_coord_pair_t	*coord_pair = talloc_get_type_abort(inst->inst_data, fr_coord_pair_t);
+	int		ret, count = 0;
+
+	if (!single_thread) unlang_interpret_set_thread_default(NULL);
+
+	ret = fr_timer_list_force_run(coord_pair->timeout);
+	if (unlikely(ret < 0)) {
+		fr_assert_msg(0, "Failed to force run the timeout list");
+	} else {
+		count += ret;
+	}
+
+	DEBUG("Coordinator is exiting - stopped %u requests", count);
+}
+
 /** Create the coord_pair coord instance data
  */
 static fr_coord_pair_t *fr_coord_pair_create(TALLOC_CTX *ctx, fr_coord_t *coord, fr_event_list_t *el,

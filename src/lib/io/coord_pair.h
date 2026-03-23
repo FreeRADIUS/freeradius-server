@@ -66,6 +66,8 @@ fr_coord_pair_t	*fr_coord_pair_request_coord_pair(request_t *request);
  */
 fr_coord_cb_inst_t	*fr_coord_pair_inst_create(TALLOC_CTX *ctx, fr_coord_t *coord, fr_event_list_t *el,
 						     bool single_thread, void *uctx);
+void			fr_coord_pair_inst_destroy(UNUSED fr_coord_t *coord, fr_coord_cb_inst_t *inst, bool single_thread, UNUSED void *uctx);
+
 void			fr_coord_pair_data_recv(fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now,
 						void *parent, void *uctx);
 void			fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, module_ctx_t *mctx, void *uctx);
@@ -75,7 +77,7 @@ uint32_t		fr_coord_pair_reg_cb_id(fr_coord_pair_reg_t *coord_pair_reg);
 /** Set callback for handling worker -> coordinator pair list data
  * @param _id	Callback ID to use
  */
-#define FR_COORD_PAIR_CALLBACK(_id)	[_id] = { .callback = fr_coord_pair_data_recv, .inst_create = fr_coord_pair_inst_create }
+#define FR_COORD_PAIR_CALLBACK(_id)	[_id] = { .callback = fr_coord_pair_data_recv, .inst_create = fr_coord_pair_inst_create, .inst_destroy = fr_coord_pair_inst_destroy }
 
 /** Set callback for handling coordinator -> worker pair list data
  * @param _id	Callback ID to use
