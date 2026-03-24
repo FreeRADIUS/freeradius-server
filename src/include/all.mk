@@ -16,6 +16,7 @@ HEADERS_DY = attributes.h features.h missing.h radpaths.h tls.h
 
 HEADERS	= \
 	autoconf.h \
+	automask.h \
 	build.h \
 	conf.h \
 	conffile.h \
