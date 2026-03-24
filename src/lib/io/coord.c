@@ -763,7 +763,7 @@ int fr_coord_to_worker_broadcast(fr_coord_t *coord, uint32_t cb_id, fr_dbuff_t *
 	int		failed = 0;
 
 	for (i = 0; i < coord->max_workers; i++) {
-		if (!coord->coord_send_control[i]) continue;
+		if (!coord->coord_send_control[i - MIN_WORKER_ID]) continue;
 		if (fr_coord_to_worker_send(coord, i, cb_id, dbuff) < 0) failed++;
 	}
 
