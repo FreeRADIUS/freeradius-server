@@ -56,9 +56,10 @@ jobs:
         --memory-swap -1
       env:
         DOCKER_HOST: tcp://dind:2375
-        NO_PROXY: dind
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
       #  Shared workspace — see dind volumes comment above.
       volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
         - ${{ github.workspace }}:/workspace
 
     defaults:
@@ -66,6 +67,10 @@ jobs:
         working-directory: /workspace
 
     steps:
+
+      - name: Update CA Certificates
+        run: |
+          /usr/sbin/update-ca-certificates
 
       - name: Install extra packages
         run: |
@@ -85,6 +90,10 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+      - name: Wait for Docker to be ready
+        run: |
+          timeout 60 sh -c "while ! docker image ls; do sleep 2 ; done"
 
       - name: Build Docker image from source
         run: |
