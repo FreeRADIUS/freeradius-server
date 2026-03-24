@@ -1,4 +1,4 @@
-= The foreach Statement
+= Foreach 
 
 .Syntax
 [source,unlang]
@@ -16,7 +16,7 @@ current attribute, either as a string reference, or an integer index.
 The loop can be exited early by using the
 xref:unlang/break.adoc[break] keyword.
 
-There is no limit to how many `foreach` statements can be nested.
+There is no explicit limit to how many `foreach` statements can be nested. The `foreach` statement uses the stack of the `unlang` interpreter, which can hold up to 64 frames. Each `foreach` statement takes up two frames on the stack. So, the number of nested loops depends on how much of the stack the interpreter is using.
 
 <key-type>::
 
@@ -24,6 +24,8 @@ The `<key-type>` and `<key-name>` fields are optional.  But if used,
 both must be specified.
 
 The `<key-type>` is the data type for the key or index variable.  The data type can be numeric (e.g. `uint32`) for a `<reference>` which is a dynamic expansion or attribute reference.  The data type can be `string` for an attribute reference.
+
+The `<key-type>` is the data type for the key or index variable. It can be a numeric type, such as `uint32`, when the `<reference>` is a dynamic expansion or attribute reference. Alternatively, the `<key-type>` can be a `string` type for an attribute reference.
 
 <key-name>::
 
@@ -40,7 +42,7 @@ the name of an existing attribute.
 
 <value-type>::
 
-An optional data type for the `<value-name>` local variable.  It must be a 'leaf' data type like `uint32`, or `string`, or `ipv4addr`.  Structural data types like `group` or `tlv` are not allowed.
+An optional data type for the `<value-name>` local variable.  It's usually a 'leaf' data type like `uint32`, or `string`, or `ipv4addr`.  Structural data types like `group` or `tlv` are generally not allowed. However, structural types ARE allowed for attribute references, as long as the structural type exactly matches the attribute's type.
 
 When looping over attributes, the `<value-type>` can be omitted.  The
 data type of the local variable is then taken automatically from the
@@ -158,7 +160,7 @@ foreach string ref, uint32 item (NAS-Port) {
 When the loop is finished, the `total` variable will have the following value:
 
 ----
-"NAS-Port[0] = 1, "NAS-Port[1] = 3, "NAS-Port[2] = 5, "NAS-Port[3] = 11"
+"NAS-Port[0] = 1, NAS-Port[1] = 3, NAS-Port[2] = 5, NAS-Port[3] = 11"
 ----
 
 .Key variable with attribute index
@@ -182,11 +184,11 @@ following example:
 ----
 string total
 
-foreach uint32 index, string data (%sql("SELECT ...") {
+foreach uint32 index, string data (%sql("SELECT ...")) {
 	total += (string) index
 	total += ":"
 	total += data
-	ttoal += ", "
+	total += ", "
 }
 ----
 
