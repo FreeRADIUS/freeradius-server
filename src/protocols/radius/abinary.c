@@ -1364,7 +1364,10 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 		return -1;
 	}
 
-	if (data_len < size) return -size;
+	/*
+	 *	Account for the 4 octet header, too.
+	 */
+	if (data_len < (4 + size)) return -size;
 
 	FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%s %s %s", fr_table_str_by_value(filterType, filter->type, "??"),
 				   direction[filter->direction & 0x01], action[filter->forward & 0x01]);
