@@ -77,10 +77,9 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
 			exit 1; \
-		else \
-			touch "$@"; \
-		fi \
+		fi; \
 	fi
+	touch "$@"
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
