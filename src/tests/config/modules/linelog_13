@@ -1,0 +1,9 @@
+#
+#  Test: destination=file with file section but no filename
+#
+linelog {	# ERROR
+	destination = file
+	file {
+		permissions = 0600
+	}
+}

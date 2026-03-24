@@ -1,0 +1,7 @@
+#
+#  Test: invalid permissions - world-writable 0602
+#
+detail {
+	filename = /tmp/test-detail
+	permissions = 0602		# ERROR
+}

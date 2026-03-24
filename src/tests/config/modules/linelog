@@ -1,0 +1,10 @@
+#
+#  Test: basic linelog with file destination
+#
+linelog {
+	destination = file
+
+	file {
+		filename = /tmp/linelog_test
+	}
+}

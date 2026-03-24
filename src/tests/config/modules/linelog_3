@@ -1,0 +1,6 @@
+#
+#  Test: request destination
+#
+linelog {
+	destination = request
+}

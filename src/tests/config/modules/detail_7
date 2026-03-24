@@ -1,0 +1,10 @@
+#
+#  Test: boolean values with true/false (not just yes/no)
+#
+detail {
+	filename = /tmp/test-detail
+
+	locking = true
+	escape_filenames = false
+	log_packet_header = true
+}

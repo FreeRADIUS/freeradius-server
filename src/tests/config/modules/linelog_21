@@ -1,0 +1,10 @@
+#
+#  Test: invalid permissions text
+#
+linelog {
+	destination = file
+	file {
+		filename = /tmp/linelog_test
+		permissions = hello	# ERROR
+	}
+}

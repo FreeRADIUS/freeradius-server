@@ -1,0 +1,7 @@
+#
+#  Test: invalid log_packet_header boolean
+#
+detail {
+	filename = /tmp/test-detail
+	log_packet_header = hello		# ERROR
+}

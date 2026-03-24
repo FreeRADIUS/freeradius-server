@@ -1,0 +1,7 @@
+#
+#  Test: invalid escape_filenames boolean
+#
+detail {
+	filename = /tmp/test-detail
+	escape_filenames = banana		# ERROR
+}

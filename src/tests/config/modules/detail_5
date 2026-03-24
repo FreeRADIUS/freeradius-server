@@ -1,0 +1,7 @@
+#
+#  Test: no filename (valid at config check time - filename is a call_env)
+#
+detail {
+	permissions = 0600
+	locking = yes
+}

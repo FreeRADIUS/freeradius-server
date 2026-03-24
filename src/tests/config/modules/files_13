@@ -1,0 +1,7 @@
+#
+#  Test: invalid v3_compat boolean
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	v3_compat = maybe		# ERROR
+}

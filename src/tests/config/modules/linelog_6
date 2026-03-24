@@ -1,0 +1,10 @@
+#
+#  Test: "files" is alias for "file" destination
+#
+linelog {
+	destination = files
+
+	file {
+		filename = /tmp/linelog_test
+	}
+}

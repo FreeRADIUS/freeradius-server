@@ -1,0 +1,7 @@
+#
+#  Test: invalid group - non-existent group name
+#
+detail {
+	filename = /tmp/test-detail
+	group = nonexistent_group_xyz_12345		# ERROR
+}

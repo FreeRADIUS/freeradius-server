@@ -1,0 +1,6 @@
+#
+#  Test: invalid destination
+#
+linelog {	# ERROR
+	destination = foobar
+}

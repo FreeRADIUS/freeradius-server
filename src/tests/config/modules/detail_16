@@ -1,0 +1,7 @@
+#
+#  Test: invalid locking boolean
+#
+detail {
+	filename = /tmp/test-detail
+	locking = maybe		# ERROR
+}

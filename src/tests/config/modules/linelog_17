@@ -1,0 +1,10 @@
+#
+#  Test: invalid escape_filenames boolean
+#
+linelog {
+	destination = file
+	file {
+		filename = /tmp/linelog_test
+		escape_filenames = banana	# ERROR
+	}
+}

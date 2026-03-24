@@ -1,0 +1,6 @@
+#
+#  Test: missing destination (required)
+#
+linelog {	# ERROR
+	delimiter = "\n"
+}

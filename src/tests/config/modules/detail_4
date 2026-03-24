@@ -1,0 +1,8 @@
+#
+#  Test: permissions 0640 is valid
+#
+detail {
+	filename = /tmp/test-detail
+
+	permissions = 0640
+}

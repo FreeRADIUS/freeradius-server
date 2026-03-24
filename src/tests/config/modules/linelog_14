@@ -1,0 +1,10 @@
+#
+#  Test: invalid file permissions (non-octal)
+#
+linelog {
+	destination = file
+	file {
+		filename = /tmp/linelog_test
+		permissions = 9999	# ERROR
+	}
+}

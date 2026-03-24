@@ -1,0 +1,7 @@
+#
+#  Test: lookup_type = hash
+#
+files {
+	filename = ${modconfdir}/files/authorize
+	lookup_type = hash
+}

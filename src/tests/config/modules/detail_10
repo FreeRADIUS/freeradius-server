@@ -1,0 +1,7 @@
+#
+#  Test: invalid permissions - non-octal digit '9'
+#
+detail {
+	filename = /tmp/test-detail
+	permissions = 9999		# ERROR
+}
