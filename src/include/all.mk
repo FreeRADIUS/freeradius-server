@@ -16,19 +16,25 @@ HEADERS_DY = attributes.h features.h missing.h radpaths.h tls.h
 
 HEADERS	= \
 	autoconf.h \
+	automask.h \
 	build.h \
+	clients.h \
 	conf.h \
 	conffile.h \
+	connection.h \
 	detail.h \
 	event.h \
 	hash.h \
 	heap.h \
+	log.h \
 	libradius.h \
+	listen.h \
 	md4.h \
 	md5.h \
 	modcall.h \
 	modules.h \
 	packet.h \
+	process.h \
 	rad_assert.h \
 	radius.h \
 	radiusd.h \
@@ -40,8 +46,10 @@ HEADERS	= \
 	sysutmp.h \
 	tcp.h \
 	threads.h \
+	tmpl.h \
 	token.h \
 	udpfromto.h \
+	xlat.h \
 	base64.h \
 	map.h \
 	$(HEADERS_DY)
