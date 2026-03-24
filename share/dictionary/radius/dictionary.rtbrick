@@ -1,0 +1,131 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+##############################################################################
+#
+#	This dictionary applies to RtBrick Full Stack (RBFS)
+#	https://www.rtbrick.com/
+#
+#	https://documents.rtbrick.com/techdocs/current/radiusservices/appendix_a.html
+#
+#	$Id$
+#
+##############################################################################
+
+#
+VENDOR		RtBrick				50058
+
+BEGIN-VENDOR	RtBrick
+
+ATTRIBUTE	RtBrick-Access-Hostname			21	string
+ATTRIBUTE	RtBrick-Access-Port			22	string
+ATTRIBUTE	RtBrick-Access-Stack			23	string
+ATTRIBUTE	RtBrick-Access-MAC-Address		24	string
+
+ATTRIBUTE	RtBrick-Subscriber-Id			25	uint64
+ATTRIBUTE	RtBrick-Subscriber-Ifl			26	string
+
+ATTRIBUTE	RtBrick-Terminate-Code			27	uint32
+
+#
+#  RtBrick-DHCP-Client-Options and RtBrick-DHCPv6-Client-Options carry DHCP options in
+#  an Access-Accept which is sent from the server to the client.
+#
+#  RtBrick-DHCP-Server-Options and RtBrick-DHCPv6-Server-Options carry DHCP options in
+#  an Access-Request, which is sent from the client to the server.
+#
+ATTRIBUTE	RtBrick-DHCPv4-Client-Options		30	group	ref=@DHCPv4
+ATTRIBUTE	RtBrick-DHCPv4-Server-Options		31	group	ref=@DHCPv6
+ATTRIBUTE	RtBrick-DHCPv6-Client-Options		32	group	ref=@DHCPv4
+ATTRIBUTE	RtBrick-DHCPv6-Server-Options		33	group	ref=@DHCPv6
+
+ATTRIBUTE	RtBrick-L2TP-Pool			40	string
+ATTRIBUTE	RtBrick-L2TP-Profile			41	string
+ATTRIBUTE	RtBrick-L2TP-Tx-Connect-Speed		42	uint32
+ATTRIBUTE	RtBrick-L2TP-Rx-Connect-Speed		43	uint32
+
+ATTRIBUTE	RtBrick-QoS-Profile			62	string
+ATTRIBUTE	RtBrick-QoS-Shaper			63	string
+ATTRIBUTE	RtBrick-QoS-Parent-Scheduler		64	string
+ATTRIBUTE	RtBrick-QoS-Policer			65	string
+ATTRIBUTE	RtBrick-QoS-MFC				66	string
+ATTRIBUTE	RtBrick-QoS-Queues			67	string
+
+ATTRIBUTE	RtBrick-AAA-Profile			69	string
+ATTRIBUTE	RtBrick-Service-Profile			70	string
+
+ATTRIBUTE	RtBrick-IGMP-Status			71	uint32
+ATTRIBUTE	RtBrick-IGMP-Profile			72	string
+ATTRIBUTE	RtBrick-IGMP-Version			73	uint32
+ATTRIBUTE	RtBrick-IGMP-Max-Members		74	uint32
+
+ATTRIBUTE	RtBrick-HTTP-Redirect-URL		75	string
+ATTRIBUTE	RtBrick-IPv4-ACL-In			76	string
+ATTRIBUTE	RtBrick-IPv4-ACL-Out			77	string
+ATTRIBUTE	RtBrick-IPv6-ACL-In			78	string
+ATTRIBUTE	RtBrick-IPv6-ACL-Out			79	string
+
+ATTRIBUTE	RtBrick-Class-0-Packets-Out		81	uint64
+ATTRIBUTE	RtBrick-Class-0-Bytes-Out		82	uint64
+ATTRIBUTE	RtBrick-Class-1-Packets-Out		83	uint64
+ATTRIBUTE	RtBrick-Class-1-Bytes-Out		84	uint64
+ATTRIBUTE	RtBrick-Class-2-Packets-Out		85	uint64
+ATTRIBUTE	RtBrick-Class-2-Bytes-Out		86	uint64
+ATTRIBUTE	RtBrick-Class-3-Packets-Out		87	uint64
+ATTRIBUTE	RtBrick-Class-3-Bytes-Out		88	uint64
+ATTRIBUTE	RtBrick-Class-4-Packets-Out		89	uint64
+ATTRIBUTE	RtBrick-Class-4-Bytes-Out		90	uint64
+ATTRIBUTE	RtBrick-Class-5-Packets-Out		91	uint64
+ATTRIBUTE	RtBrick-Class-5-Bytes-Out		92	uint64
+ATTRIBUTE	RtBrick-Class-6-Packets-Out		93	uint64
+ATTRIBUTE	RtBrick-Class-6-Bytes-Out		94	uint64
+ATTRIBUTE	RtBrick-Class-7-Packets-Out		95	uint64
+ATTRIBUTE	RtBrick-Class-7-Bytes-Out		96	uint64
+
+ATTRIBUTE	RtBrick-Policer-L1-Packets-In		97	uint64
+ATTRIBUTE	RtBrick-Policer-L1-Bytes-In		98	uint64
+ATTRIBUTE	RtBrick-Policer-L2-Packets-In		99	uint64
+ATTRIBUTE	RtBrick-Policer-L2-Bytes-In		100	uint64
+ATTRIBUTE	RtBrick-Policer-L3-Packets-In		101	uint64
+ATTRIBUTE	RtBrick-Policer-L3-Bytes-In		102	uint64
+ATTRIBUTE	RtBrick-Policer-L4-Packets-In		103	uint64
+ATTRIBUTE	RtBrick-Policer-L4-Bytes-In		104	uint64
+
+ATTRIBUTE	RtBrick-DNS-Primary			131	ipaddr
+ATTRIBUTE	RtBrick-DNS-Secondary			132	ipaddr
+ATTRIBUTE	RtBrick-DNS-Primary-IPv6		134	ipv6addr
+ATTRIBUTE	RtBrick-DNS-Secondary-IPv6		135	ipv6addr
+
+ATTRIBUTE	RtBrick-Instance			137	string
+ATTRIBUTE	RtBrick-Gateway-Ifl			138	string
+
+ATTRIBUTE	RtBrick-Connection-Status-Message	139	string
+
+ATTRIBUTE	RtBrick-LI-Action			140	uint32	encrypt=Tunnel-Password
+ATTRIBUTE	RtBrick-LI-Identifier			141	uint32	encrypt=Tunnel-Password
+ATTRIBUTE	RtBrick-LI-Direction			142	uint32	encrypt=Tunnel-Password
+ATTRIBUTE	RtBrick-LI-MED-Instance			143	string	encrypt=Tunnel-Password
+ATTRIBUTE	RtBrick-LI-MED-IP			144	ipaddr	encrypt=Tunnel-Password
+ATTRIBUTE	RtBrick-LI-MED-Port			145	uint32	encrypt=Tunnel-Password
+
+#         VALUE MAPS
+#
+#       Attribute               	Name        		Number
+VALUE	RtBrick-LI-Action		NOOP			0
+VALUE	RtBrick-LI-Action		On			1
+VALUE	RtBrick-LI-Action		Off			2
+
+VALUE	RtBrick-LI-Direction		Ingress			1
+VALUE	RtBrick-LI-Direction		Egress			2
+VALUE	RtBrick-LI-Direction		Both			3
+
+VALUE	RtBrick-IGMP-Status		Disabled		0
+VALUE	RtBrick-IGMP-Status		Enabled			1
+
+VALUE	RtBrick-IGMP-Version		V1			1
+VALUE	RtBrick-IGMP-Version		V2			2
+VALUE	RtBrick-IGMP-Version		V3			3
+
+END-VENDOR RtBrick
