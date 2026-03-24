@@ -1,4 +1,4 @@
-= The case Statement
+= The case statement
 
 .Syntax
 [source,unlang]
@@ -17,8 +17,8 @@ cannot be an attribute expansion, or an `xlat`
 xref:xlat/index.adoc[string].
 
 The keyword `default` can be used to specify the default action to
-take inside of a xref:unlang/switch.adoc[switch] statement.  The older
-syntax of using `case { ... }` is deprecated, and will be removed un a
+take inside of a xref:unlang/switch.adoc[switch] statement. The older
+syntax of using `case { ... }` is deprecated, and will be removed in a
 future release.
 
 It is possible to xref:unlang/break.adoc[break] out of `case`
@@ -34,7 +34,7 @@ switch User-Name {
         reject
     }
 
-    case Filter-Id {
+    case "bobby" {
         reject
     }
 
@@ -44,7 +44,7 @@ switch User-Name {
 }
 ----
 
-The last entry in a `case` section can also be an xref:unlang/actions.adoc[actions] subsection.
+The last entry in a `case` section can also be an xref:unlang/actions.adoc[action].
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
