@@ -1,33 +1,41 @@
 = Operator Precedence
 
-The logical operators `&&` and `||` return the value that makes them true, not just true or false. For example, &Foo := (User-Password || "help") returns the value of User-Password if it exists, or the string "help" if it does not.
+The logical operators `&&` and `||` both return the value that makes
+them true, not just a boolean `true` or `false`. For example, &Foo :=
+(User-Password || "help") returns the value of `User-Password` if it
+exists, or else the string "help" if it does not.
 
-If a math operation causes an overflow, underflow, or division by zero, it returns no result. This impacts the rest of the calculation. You can use the `||` operator to replace no result with a different value.
+If a math operation causes an overflow, underflow, or division by
+zero, it returns no result. This impacts the rest of the
+calculation. You can use the `||` operator to replace a missing result
+with a different value.
 
-Use parentheses `( )` to show a condition's result. They also help clarify policies and define the order of conditions.
+Use parentheses `( )` to wrap a nested expression. They also help
+clarify policies and define the order of evaluation.
 
 The following tables summarises the order of precedence of the v4 operators.
-
 
 .Operator Precedence in Conditional Expressions
 [options="header,autowidth"]
 |===
 |Priority       |Operator(s)      |Category               |Notes
-|1 (highest)|`( )`            |Grouping               |Overrides all other precedence.
-|2          |`!` `-`          |Logical NOT / Unary    |Prefix negation; also bitwise `~` for integers.
-|3          |`^`              |XOR            |
-|4          |`*`  `/`  `%`    |Arithmetic             |Standard multiply, divide, modulo.
-|5          |`+`  `-`         |Arithmetic             |Addition/subtraction and also string/octet concatenation.
-|6          |`<<`  `>>`       |Bitwise shift left/right|bit shift
-|8          |`\|`             |Binary OR             |Also string/octet OR
-|7          |`&`              |Binary AND            |Also works on `ipv4addr`/`string`/`octet` types.
-|9          |`==`  `!=`  `<`  `>`  `<=`  `>=`  `=~`  `!~`   |Comparison     |Produces a boolean result. The `=~` and `!~` are produce regex results.
-|10         |&&               |Logical AND    |Short-circuits and also returns the value that caused success.
-|11 (lowest)|`\|\|`           |Logical OR     |Short-circuits and can also be used to replace null results.
+|1 (highest)    |`( )`            |Grouping               |Overrides all other precedence.
+|2              |`!` `-`          |Logical NOT / Unary    |Prefix negation; also bitwise `~` for integers.
+|3              |`^`              |XOR                     |
+|4              |`*`  `/`  `%`    |Arithmetic             |Standard multiply, divide, modulo.
+|5              |`+`  `-`         |Arithmetic             |Addition/subtraction and also string/octet concatenation.
+|6              |`<<`  `>>`       |Bitwise shift left/right|bit shift
+|8              |`\|`             |Binary OR             |Also string/octet OR
+|7              |`&`              |Binary AND            |Also works on `ipv4addr`/`string`/`octet` types.
+|9              |`==`  `!=`  `<`  `>`  `<=`  `>=`  `=~`  `!~`   |Comparison     |Produces a boolean result. The `=~` and `!~` are produce regex results.
+|10             |&&               |Logical AND           |Short-circuits and also returns the value that caused success.
+|11 (lowest)    |`\|\|`           |Logical OR            |Short-circuits and can also be used to replace null results.
 |===
 
 
 [NOTE]
 ====
-The `%{expr:…}` syntax is not supported in v4 and will return an error. You can now use math directly inside conditions and double-quoted strings.
+The `%{expr:…}` syntax is not supported in v4 and will return an
+error. You can now use math directly inside conditions and
+double-quoted strings.
 ====
