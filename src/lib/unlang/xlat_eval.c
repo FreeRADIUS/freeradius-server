@@ -453,6 +453,14 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	fr_assert(node->type == XLAT_GROUP);
 
 	/*
+	 *	Coverity doesn't understand that the previous check for an empty list
+	 *	means that fr_value_box_list_head() will return a box.
+	 */
+#ifdef __COVERITY__
+	if (!vb) return XLAT_ACTION_DONE;
+#endif
+
+	/*
 	 *	Concatenate child boxes, then cast to the desired type.
 	 */
 	if (concat) {
