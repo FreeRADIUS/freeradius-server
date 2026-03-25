@@ -406,6 +406,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *	Copy the data to the buffer, and clear the alloc'd pointer.
 		 */
 		memcpy(buff, from_cast->vb_octets, len);
+		len = from_cast->vb_length;
 		fr_value_box_clear(&value_from_cast);
 
 		/*
@@ -413,7 +414,7 @@ ssize_t _tmpl_to_type(void *out,
 		 */
 		*(uint8_t **) out = buff;
 
-		return from_cast->vb_length;
+		return len;	/* the amount of data we copied above */
 	}
 
 do_copy:
@@ -585,11 +586,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			} else {
 				fr_value_box_steal(vb_out, vb_out, vb_in);
 			}
-			talloc_free(tmp_ctx);
 
 		} else {
 			ret = fr_value_box_cast(vb_out, vb_out, cast_type, NULL, vb_in);
-			talloc_free(tmp_ctx);
 
 			if (ret < 0) {
 				talloc_free(vb_out);
@@ -601,6 +600,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			}
 		}
 
+		talloc_free(tmp_ctx);
 		VALUE_BOX_VERIFY(vb_out);
 		*(fr_value_box_t **) out = vb_out;
 		return 0;
@@ -991,7 +991,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 				ret = -1;
 				goto fail;
 			}
-			value->datum.int32 = 0;
+			value->datum.uint32 = 0;
 			fr_value_box_list_insert_tail(&list, value);
 		} /* Fall through to being done */
 
@@ -1261,6 +1261,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 
 		if (tmpl_escape_pre_concat(vpt)) {
 			uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+
 			/*
 			 *	Sets escaped values, so boxes don't get re-escaped
 			 */
@@ -1315,7 +1316,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	 *	it expects.
 	 */
 	if ((!did_concat && tmpl_escape_pre_concat(vpt)) || tmpl_escape_post_concat(vpt)) {
-		uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+		if (!uctx) uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
 		if (unlikely(fr_value_box_list_escape_in_place(list, &vpt->rules.escape.box_escape, uctx) < 0)) goto error;
 	}
 
