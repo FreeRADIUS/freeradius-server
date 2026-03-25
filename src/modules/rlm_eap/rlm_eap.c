@@ -391,6 +391,14 @@ static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request
 
 	eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
+	/*
+	 *	Normally the unlang_subrequest_signal() function forwards the CANCEL signal to the subrequest,
+	 *	when there's a subrequest frame in the parents stack.  For EAP, this isn't the case.  So we
+	 *	have to forward the signal manually.
+	 *
+	 *	Note that we CANNOT detach the child.  It was created as not detachable.  If we did create it
+	 *	as detachable, then the admin could use the "detach" keyword, which is bad.
+	 */
 	if (eap_session->subrequest) {
 		unlang_interpret_signal(eap_session->subrequest, FR_SIGNAL_CANCEL);
 	}
@@ -787,7 +795,7 @@ static unlang_action_t eap_method_select(unlang_result_t *p_result, module_ctx_t
 	RDEBUG2("Calling submodule %s", method->submodule->common.name);
 
 	/*
-	 *	Allocate a new subrequest
+	 *	Allocate a new subrequest, which is NOT detachable.
 	 */
 	MEM(eap_session->subrequest = unlang_subrequest_alloc(request,
 							      method->submodule->namespace ?
