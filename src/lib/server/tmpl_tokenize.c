@@ -3737,7 +3737,14 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 			if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.reg.src)))) goto error;
 			if (unlikely(tmpl_regex_compile(vpt, in->data.reg.subcaptures) < 0)) goto error;
 			return vpt;
-		}
+		 }
+
+		 /*
+		  *	The regex could also be an xlat.
+		  */
+		 fr_assert(tmpl_contains_xlat(vpt));
+
+		 goto copy_xlat;
 
 	/*
 	 *	Copy the xlat component.
@@ -3747,6 +3754,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	 *	We add an assertion here because nothing allocates the head, and we need it.
 	 */
 	} else if (tmpl_contains_xlat(vpt)) {
+	copy_xlat:
 		fr_assert(in->data.xlat.ex != NULL);
 
 		vpt->data.xlat.ex = xlat_exp_head_alloc(vpt);
@@ -4008,11 +4016,10 @@ fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
 /** Convert #tmpl_t of type #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
- * @note Irrespective of whether the #tmpl_t was #TMPL_TYPE_DATA_UNRESOLVED or #TMPL_TYPE_DATA,
- *	on successful cast it will be #TMPL_TYPE_DATA.
+ * @note For #TMPL_TYPE_DATA_UNRESOLVED, the type will be updated to #TMPL_TYPE_DATA
  *
  * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_DATA_UNRESOLVED
- *			or #TMPL_TYPE_DATA.
+ *			or #TMPL_TYPE_DATA, #TMPL_TYPE_ATTR_UNRESOLVED, or #TMPL_TYPE_ATTR
  * @param[in] type	to cast to.
  * @param[in] enumv	Enumerated dictionary values associated with a #fr_dict_attr_t.
  * @return
@@ -4023,7 +4030,8 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 {
 	TMPL_VERIFY(vpt);
 
-	fr_assert(tmpl_is_data_unresolved(vpt) || tmpl_is_data(vpt));
+	fr_assert(tmpl_is_data_unresolved(vpt) || tmpl_is_data(vpt) ||
+		  tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_DATA_UNRESOLVED:
@@ -4510,7 +4518,7 @@ void tmpl_unresolve(tmpl_t *vpt)
 	}
 
 	memcpy(vpt, &tmp, sizeof(*vpt));
-
+	vpt->data.unescaped = talloc_bstrdup(vpt, vpt->name);
 	TMPL_VERIFY(vpt);
 }
 
