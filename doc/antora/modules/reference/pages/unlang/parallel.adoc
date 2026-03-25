@@ -1,4 +1,4 @@
-= Parallel
+= The parallel Statement
 
 .Syntax
 [source,unlang]
@@ -111,7 +111,7 @@ Unlike the xref:unlang/subrequest.adoc[subrequest] keyword, the child
 requests of a `parallel` section cannot be made asynchronous via the
 xref:unlang/detach.adoc[detach] keyword.
 
-== Parallel Empty
+== The "parallel empty" Statement
 
 The `parallel empty { ... }` syntax creates empty child requests.
 These requests contain no attributes.  Attributes in the child request
@@ -152,7 +152,7 @@ parallel empty {
 }
 ----
 
-== Parallel Detach
+== The "parallel detach" Statement
 
 The `parallel detach { ... }` syntax creates child requests which are
 immediately detached from the parent request.  Each child request
