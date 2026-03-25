@@ -391,6 +391,10 @@ static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request
 
 	eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
+	if (eap_session->subrequest) {
+		unlang_interpret_signal(eap_session->subrequest, FR_SIGNAL_CANCEL);
+	}
+
 	/*
 	 *	This is the only safe thing to do.
 	 *	We have no idea what state the submodule
