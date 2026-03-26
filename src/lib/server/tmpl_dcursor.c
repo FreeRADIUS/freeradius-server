@@ -422,6 +422,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		return NULL;
 	}
 
+	if (err) *err = 0;
 	return vp;
 }
 
@@ -529,15 +530,15 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t
 	 */
 	vp = tmpl_dcursor_init(err, cc, cc, cursor, request, vpt);
 	if (!vp) {
-		if (!err) return NULL;
+		talloc_free(cc);
 
-		if (*err == -1) {
+		if (err && (*err == -1)) {
 			RWDEBUG("Cursor %s returned no attributes", vpt->name);
 			goto set_cursor;
-		} else {
-			RPEDEBUG("Failed initializing cursor");
 		}
 
+		RPEDEBUG("Failed initializing cursor");
+		talloc_free(cursor);
 		return NULL;
 	}
 
@@ -722,6 +723,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		break;
 	}
 
+	tmpl_dcursor_clear(&cc);
 	return 0;
 }
 
