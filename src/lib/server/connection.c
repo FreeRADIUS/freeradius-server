@@ -678,7 +678,7 @@ static void connection_state_enter_closed(connection_t *conn)
 	WATCH_PRE(conn);
 
 	/*
-	 *	We can reach "is_clised" if a connection is halted,
+	 *	We can reach "is_closed" if a connection is halted,
 	 *	then signaled to INIT, which fails, and then sits in
 	 *	the FAILED state.  Eventually the connection is
 	 *	shutdown, and enter_shutdown calls this function.
@@ -689,6 +689,13 @@ static void connection_state_enter_closed(connection_t *conn)
 		conn->close(conn->pub.el, conn->pub.h, conn->uctx);
 		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_CLOSED) return;
 	} else {
 		conn->is_closed = true;
 	}
@@ -734,6 +741,13 @@ static void connection_state_enter_shutdown(connection_t *conn)
 		DEBUG4("Calling shutdown(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		ret = conn->shutdown(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_SHUTDOWN) return;
 	}
 	switch (ret) {
 	case CONNECTION_STATE_SHUTDOWN:
@@ -812,6 +826,13 @@ static void connection_state_enter_failed(connection_t *conn)
 		       fr_table_str_by_value(connection_states, prev, "<INVALID>"), conn->uctx);
 		ret = conn->failed(conn->pub.h, prev, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_FAILED) return;
 	}
 	WATCH_POST(conn);
 
@@ -975,6 +996,13 @@ static void connection_state_enter_connected(connection_t *conn)
 		DEBUG4("Calling open(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		ret = conn->open(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_CONNECTED) return;
 	} else {
 		ret = CONNECTION_STATE_CONNECTED;
 	}
@@ -1089,6 +1117,13 @@ static void connection_state_enter_init(connection_t *conn)
 		DEBUG4("Calling init(h_out=%p, conn=%p, uctx=%p)", &conn->pub.h, conn, conn->uctx);
 		ret = conn->init(&conn->pub.h, conn, conn->uctx);
 		HANDLER_END(conn);
+
+		/*
+		 *	A deferred signal may have moved the connection to a
+		 *	different state.  If so, that signal handler already
+		 *	took care of the transition.
+		 */
+		if (conn->pub.state != CONNECTION_STATE_INIT) return;
 	} else {
 		ret = CONNECTION_STATE_CONNECTING;
 	}
