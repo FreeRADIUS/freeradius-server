@@ -355,6 +355,8 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 	size_t len = 0;
 	static char const disallowed[] = "%{}\\'\"`";
 
+	if (!outlen) return 0;
+
 	while (in[0]) {
 		/*
 		 *	Non-printable characters get replaced with their
@@ -438,10 +440,6 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 	if (!value) {
 		out[0] = '\0';
 		return 0;
-	}
-
-	if (outlen > strlen(value)) {
-		outlen = strlen(value) + 1;
 	}
 
 	strlcpy(out, value, outlen);
@@ -923,7 +921,7 @@ int main_config_init(void)
 #endif
 
 #if 0 && defined(S_IROTH)
-	if (statbuf.st_mode & S_IROTH != 0) {
+	if ((statbuf.st_mode & S_IROTH) != 0) {
 		ERROR("Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 		return -1;
@@ -1260,6 +1258,7 @@ do {\
 			return -1;
 		}
 
+		cp = NULL;
 		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
 		if (fr_bool_auto_parse(cp, &main_config.limit_proxy_state, limit_proxy_state) < 0) {
 			cf_file_free(cs);
@@ -1526,6 +1525,7 @@ void main_config_hup(void)
 	cc = talloc_zero(cs_cache, cached_config_t);
 	if (!cc) {
 		ERROR("Out of memory");
+		talloc_free(cs);
 		return;
 	}
 
