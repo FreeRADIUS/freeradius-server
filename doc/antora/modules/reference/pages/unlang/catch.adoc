@@ -14,13 +14,22 @@ catch [ <return-codes> ] {
 The `catch` statement runs a series of substatements in a block, but
 only if the previous xref:unlang/try.adoc[try] failed.
 
-<return codes>:: Zero or more xref:unlang/condition/return_codes.adoc[return codes].  Multiple return codes are separated by spaces.
+<return codes>:: Zero or more
+xref:unlang/condition/return_codes.adoc[return codes].  Multiple
+return codes are separated by spaces.
 
-[ statements ]:: The `unlang` commands which will be executed.  A `catch` block can be empty.
+[ statements ]:: The `unlang` commands which will be executed.  A
+`catch` block can be empty.
 
-Multiple `catch` statements can be placed one after the other, to `catch` different errors.  Only one of the statements will be executed.  Once a `catch` statement is finished, the interpreter will skip all trailing `catch` statements, and continue execution with the next statement.
+Multiple `catch` statements can be placed one after the other, to
+`catch` different errors.  Only one of the statements will be
+executed.  Once a `catch` statement is finished, the interpreter will
+skip all trailing `catch` statements, and continue execution with the
+next statement.
 
-As a special case, the final 'catch' statement can list no return codes.  i.e `catch { ... }`.  In that case, it will match all return codes which were not listed in previous 'catch' statements.
+As a special case, the final 'catch' statement can list no return
+codes.  i.e `catch { ... }`.  In that case, it will match all return
+codes which were not listed in previous 'catch' statements.
 
 .Example
 
@@ -46,19 +55,30 @@ catch invalid {   # skipped after "catch fail" is run.
 
 [NOTE]
 ====
-The `catch` block executes on all `rcodes` such as `ok`, `noop`, etc., and not just `rcode` failures. Additionally, a bare `catch { }`, i.e. no `rcode`, still runs regardless of success / failure.
+The `catch` block executes on all `rcodes` such as `ok`, `noop`, etc.,
+and not just on failures.
 ====
 
 ## try / catch versus redundant
 
-There is some overlap in functionality between xref:unlang/try.adoc[try] / `catch` and xref:unlang/redundant.adoc[redundant].  The main difference is that a xref:unlang/catch.adoc[catch] statement can catch specific failure codes.
+There is some overlap in functionality between
+xref:unlang/try.adoc[try] / `catch` and
+xref:unlang/redundant.adoc[redundant].  The main difference is that a
+xref:unlang/catch.adoc[catch] statement can catch specific failure
+codes.
 
-The xref:unlang/redundant.adoc[redundant] statement should be used to run
-one of many similar modules.  For example, the xref:unlang/redundant.adoc[redundant] statement could be used to choose one of four different `sql` modules in a fail-over fashion.
+The xref:unlang/redundant.adoc[redundant] statement should be used to
+run one of many similar modules.  For example, the
+xref:unlang/redundant.adoc[redundant] statement could be used to
+choose one of four different `sql` modules in a fail-over fashion.
 
-In contrast, the `try` / `catch` statements should be used for more complex policies, when the intention is to run one policy, and then do something completely different if a failure occurs.
+In contrast, the `try` / `catch` statements should be used for more
+complex policies, when the intention is to run one policy, and then do
+something completely different if a failure occurs.
 
-The `try` / `catch` statements can also run different statements for each failure code, which is not possible with xref:unlang/redundant.adoc[redundant].
+The `try` / `catch` statements can also run different statements for
+each failure code, which is not possible with
+xref:unlang/redundant.adoc[redundant].
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
