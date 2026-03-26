@@ -2481,6 +2481,10 @@ static int parse_input(cf_stack_t *stack)
 			return parse_error(stack, name1_ptr, "Cannot use functions outside of a processing section");
 		}
 
+		if (*buff[1] == '&') {
+			return parse_error(stack, name1_ptr, "Cannot reference attributes outside of a processing section");
+		}
+
 		fr_skip_whitespace(ptr);
 		break;
 
@@ -2493,6 +2497,13 @@ static int parse_input(cf_stack_t *stack)
 		if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
+		}
+
+		/*
+		 *	Complain about old syntax.
+		 */
+		if (check_config && (*buff[1] == '&')) {
+			WARN("%s[%d]: Using '&' is no longer necessary when referencing attributes.  Please delete it.", frame->filename, frame->lineno);
 		}
 		break;
 	}
@@ -2582,7 +2593,7 @@ static int parse_input(cf_stack_t *stack)
 			/*
 			 *	Other structural types are allowed.
 			 */
-			return parse_error(stack, name1_ptr, "Invalid data type for local variable.  Must be 'tlv' or else a non-structrul type");
+			return parse_error(stack, name1_ptr, "Invalid data type for local variable.  Must be 'tlv' or else a non-structural type");
 		}
 
 		/*

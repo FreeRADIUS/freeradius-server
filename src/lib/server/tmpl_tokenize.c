@@ -2292,7 +2292,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	'&' prefix is ignored.
 	 */
 	if (fr_sbuff_next_if_char(&our_name, '&') && check_config && at_rules->ci) {
-		cf_log_warn(at_rules->ci, "Using '&' is no longer necessary when referencing attributes, and should be deleted.");
+		cf_log_warn(at_rules->ci, "Using '&' is no longer necessary when referencing attributes.  Please delete it.");
 	}
 
 	/*
