@@ -4,7 +4,7 @@
 | Return code   | Description
 | `disallow`    | Access to a particular resource is
                   denied. This is similar to `reject` but is the result
-                  of an authorizational check failing, as opposed to
+                  of an authorization check failing, as opposed to
                   credentials being incorrect.
 | `fail`	| The operation failed.  Usually as a result of an
                   external dependency like a database being unavailable
@@ -27,13 +27,13 @@
 | `timeout`     | The operation failed due to a timeout.
 | `updated`     | The operation completed successfully and updated one
                   or more attributes in the request.
+| `notset`      | The operation isn't finished calculating the `rcode` or the
+                `rcode` has not been generated, such as an intial stack state. This internal rcode is used by the interpreter and generally not visible. If this rcode is returned by a module, it usually indicates a bug.
 |=====
 
 [NOTE]
 ====
-In versions before 4.0, the `disallow` rcode was called `userlock`. The terms `disallow` and
-`userlock` have an identical meaning. `disallow` will be returned in any
-instance where `userlock` was returned in v3.0.x or v3.2.x
+In versions before 4.0, the `disallow` rcode was called `userlock`. The terms `disallow` and `userlock` have an identical meaning. `disallow` will be returned in any instance where `userlock` was returned in v3.0.x or v3.2.x
 ====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
