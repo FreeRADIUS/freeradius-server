@@ -398,14 +398,16 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 
 	/*
 	 *	Where VP is not head of the list
-	 */
-	before = *(cursor->first);
-	if (!before) return NULL;
-
-	/*
+	 *
 	 *	Find the VP immediately preceding the one being removed
 	 */
-	while (before->next != vp) before = before->next;
+	for (before = *(cursor->first);
+	     before != NULL;
+	     before = before->next) {
+		if (before->next == vp) break;
+	}
+
+	if (!before) return NULL;
 
 	cursor->next = before->next = vp->next;	/* close the gap */
 	cursor->current = before;		/* current jumps back one, but this is usually desirable */
@@ -442,7 +444,10 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 
 	vp = cursor->current;
 	if (!vp) {
+		fr_assert(!new->next);
+		new->next = *cursor->first;
 		*cursor->first = new;
+		fr_cursor_update(cursor, vp);
 		return NULL;
 	}
 
@@ -456,6 +461,17 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 	*last = new;
 	new->next = vp->next;
 	vp->next = NULL;
+
+	/*
+	 *	Fixup cursor->found if we removed the VP it was referring to,
+	 *	and point to the previous one.
+	 */
+	if (vp == cursor->found) cursor->found = new;
+
+	/*
+	 *	Fixup cursor->last if we removed the VP it was referring to
+	 */
+	if (vp == cursor->last) cursor->last = cursor->current;
 
 	return vp;
 }
