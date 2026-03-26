@@ -131,8 +131,7 @@ with `if (timeout)` at the start of the `finally` section.
 
 [NOTE]
 ====
-
-Request which are being processed in a `finally` section _will
+Requests which are being processed in a `finally` section _will
 not stop_ until the `finally` section is done.  The `max_request_time`
 configuration applies only to normal processing of requests, and not
 to `finally` sections.  This behaviour is necessary in order for the
@@ -161,10 +160,19 @@ will also try to log information to the same slow SQL database.  The
 result will be _doubled_ slow writes to SQL, or requests that never
 complete.
 
+[NOTE]
+====
+If the `finally` section takes more than 5 seconds, it is forcibly
+canceled.  This timeout is hard-coded, and cannot be changed.
+====
+
 In order to ensure that the server remains responsive, the `finally`
-section should contain as little as possible.  Any potentially long
-running module calls or dynamic expansions in a `finally` section
-should be wrapped in a xref:unlang/timeout.adoc[timeout] block:
+section should do as little as possible.  In general, it should be
+limited to updating some attributes, or logging data to files.
+
+Any potentially long running module calls or dynamic expansions in a
+`finally` section should be wrapped in a
+xref:unlang/timeout.adoc[timeout] block:
 
 .Example of using timeout in finally
 [source,unlang]
