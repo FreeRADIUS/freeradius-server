@@ -113,6 +113,8 @@ static void main_loop_signal_process(int flag)
 			fr_event_loop_exit(event_list, 2);
 		}
 
+		close(self_pipe[1]);
+		self_pipe[1] = -1;
 		return;
 	} /* else exit/term flags weren't set */
 
@@ -271,6 +273,10 @@ int main_loop_init(void)
 	if ((fr_cloexec(self_pipe[0]) < 0) || (fr_cloexec(self_pipe[1]) < 0) ||
 	    (fr_nonblock(self_pipe[0]) < 0) || (fr_nonblock(self_pipe[1]) < 0)) {
 		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
+	close_pipe:
+		close(self_pipe[0]);
+		close(self_pipe[1]);
+		self_pipe[0] = self_pipe[1] = -1;
 		return -1;
 	}
 	DEBUG4("Created self-signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
@@ -281,7 +287,7 @@ int main_loop_init(void)
 			       NULL,
 			       event_list) < 0) {
 		PERROR("Failed creating self-signal pipe handler");
-		return -1;
+		goto close_pipe;
 	}
 
 	return 0;
