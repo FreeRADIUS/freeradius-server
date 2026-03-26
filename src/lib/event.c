@@ -420,6 +420,11 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		return 0;
 	}
 
+	if (fd > fr_ev_max_fds) {
+		fprintf(stderr, "FD is larger than MAX FDs");
+		return 0;
+	}
+
 	for (i = 0; i <= el->max_readers; i++) {
 		/*
 		 *	Be fail-safe on multiple inserts.
@@ -480,7 +485,7 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 
 		if (el->readers[j].fd != fd) continue;
 
-		fr_assert(ctx = el->readers[j].ctx);
+		fr_assert(ctx == el->readers[j].ctx);
 
 		/*
 		 *	Tell us when the socket is ready for writing
@@ -511,7 +516,7 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd != fd) continue;
 
-		fr_assert(ctx = el->readers[i].ctx);
+		fr_assert(ctx == el->readers[i].ctx);
 		el->readers[i].write_handler = write_handler;
 
 		if (write_handler) {
@@ -557,7 +562,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		 *	Delete the write handler if it exits.
 		 */
 		if (el->readers[j].write_handler) {
-			EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+			EV_SET(&evset, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
 			(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
 		}
 
@@ -830,7 +835,7 @@ int main(int argc, char **argv)
 			array[i].tv_usec -= 1000000;
 			array[i].tv_sec++;
 		}
-		fr_event_insert(el, print_time, &array[i], &array[i]);
+		fr_event_insert(el, print_time, &array[i], &array[i], NULL);
 	}
 
 	while (fr_event_list_num_elements(el)) {
