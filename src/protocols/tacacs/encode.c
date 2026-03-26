@@ -184,7 +184,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 	fr_pair_t   *vp;
 	uint8_t     i = 0;
 	fr_dbuff_t  work_dbuff = FR_DBUFF(dbuff);
-FR_PROTO_TRACE("Entered with arg cnt %d", arg_cnt);
+
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
