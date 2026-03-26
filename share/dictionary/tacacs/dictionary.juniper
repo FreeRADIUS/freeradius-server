@@ -66,15 +66,15 @@ DEFINE	deny-commands-regexps				string
 #
 #  Regular expression to match allowed configurations
 #
-#	allow-configurations = "(one thing)|(two)|(three thing)"
+#	allow-configuration = "(one thing)|(two)|(three thing)"
 #
-DEFINE	allow-configurations				string
-DEFINE	allow-configurations-regexps			string
+DEFINE	allow-configuration				string
+DEFINE	allow-configuration-regexps			string
 
 #
 #  Regular expression to match denied configurations
 #
-#	deny-configurations = "(one thing)|(two)|(three thing)"
+#	deny-configuration = "(one thing)|(two)|(three thing)"
 #
 DEFINE	deny-configuration				string
 DEFINE	deny-configuration-regexps			string
