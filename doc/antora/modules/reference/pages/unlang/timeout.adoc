@@ -11,7 +11,7 @@ timeout <value> {
 .Description
 The `timeout` statement limits the total time which a section can use
 to process a particular request.  If the request takes more than the
-given time, it returns `fail`.
+given time, it returns `timeout`.
 
 The _<value>_ text can be a number, or a dynamic expansion, or an
 attribute reference.  The contents of _<value>_ are interpreted as a
@@ -64,7 +64,7 @@ your local requirements.
 .Example using redundant
 [source,unlang]
 ----
-redundant
+redundant{
     timeout 4s {
         sql
     }
@@ -72,6 +72,11 @@ redundant
     detail
 }
 ----
+
+[NOTE]
+====
+If a dynamic expansion or attribute reference doesn't produce a value, the entire `timeout` block fails.
+====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
