@@ -44,6 +44,11 @@ catch invalid {   # skipped after "catch fail" is run.
 }
 ----
 
+[NOTE]
+====
+The `catch` block executes on all `rcodes` such as `ok`, `noop`, etc., and not just `rcode` failures. Additionally, a bare `catch { }`, i.e. no `rcode`, still runs regardless of success / failure.
+====
+
 ## try / catch versus redundant
 
 There is some overlap in functionality between xref:unlang/try.adoc[try] / `catch` and xref:unlang/redundant.adoc[redundant].  The main difference is that a xref:unlang/catch.adoc[catch] statement can catch specific failure codes.

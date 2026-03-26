@@ -39,6 +39,11 @@ catch fail {
 }
 ----
 
+[NOTE]
+====
+The `catch` block can be triggered on any rcode and not just failures. A `catch ok { ... }` is valid.
+====
+
 There is some overlap in functionality between `try` / xref:unlang/catch.adoc[catch] and xref:unlang/redundant.adoc[redundant].  See the xref:unlang/catch.adoc[catch] documentation for more details.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
