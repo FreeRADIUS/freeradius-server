@@ -162,6 +162,16 @@ decode-proto -
 match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 12000, Length = 29 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Repl, Server-Message = "", Data = 0x, service = "shell", cmd = "show"
 
 #
+#  ----  Authorization Reply with Pass-Repl + multiple vendor args  ----
+#
+
+encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Authorization, Packet.Sequence-Number = 2, Packet.Flags = None, Packet.Session-Id = 12000, Packet.Length = 0, Packet-Body-Type = Response, Authorization-Status = Pass-Repl, Server-Message = "", Data = 0x, Juniper = { local-user-name = "bob", allow-commands = "configure" }
+match c0 02 02 01 00 00 2e e0 00 00 00 33 02 02 00 00 00 00 13 18 6c 6f 63 61 6c 2d 75 73 65 72 2d 6e 61 6d 65 3d 62 6f 62 61 6c 6c 6f 77 2d 63 6f 6d 6d 61 6e 64 73 3d 63 6f 6e 66 69 67 75 72 65
+
+decode-proto -
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 12000, Length = 51 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Repl, Server-Message = "", Data = 0x, Argument-List = "local-user-name=bob", Argument-List = "allow-commands=configure"
+
+#
 #  ----  Authorization Request with multiple RFC 8907 args  ----
 #
 
@@ -216,4 +226,4 @@ decode-proto -
 match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted, Session-Id = 17000, Length = 20 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Add, Server-Message = "", Data = 0x, Argument-List = "custom=value1"
 
 count
-match 79
+match 83
