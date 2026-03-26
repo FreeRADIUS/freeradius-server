@@ -35,7 +35,7 @@ packets are outstanding, _or_ if the `proxy` module fails, the
 .Example using redundant
 [source,unlang]
 ----
-redundant
+redundant {
     limit 4 {
         proxy
     }
@@ -44,5 +44,22 @@ redundant
 }
 ----
 
+== Limit with catch
+
+In the following example, the configuration limits the concurrent proxy requests to a maximum of `4`. If the limit is hit, catch the fail and write to a detail file instead.
+
+.Example using catch
+recv Access-Request {
+    try {
+        limit 4 {
+            proxy
+        }
+    }
+    catch fail {
+        detail
+    }
+}
+
+----
 // Copyright (C) 2022 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
