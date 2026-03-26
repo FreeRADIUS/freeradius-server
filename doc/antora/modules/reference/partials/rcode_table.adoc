@@ -4,7 +4,7 @@
 | Return code   | Description
 | `disallow`    | Access to a particular resource is
                   denied. This is similar to `reject` but is the result
-                  of an authorizational check failing, as opposed to
+                  of an authorization check failing, as opposed to
                   credentials being incorrect.
 | `fail`	| The operation failed.  Usually as a result of an
                   external dependency like a database being unavailable
@@ -29,11 +29,18 @@
                   or more attributes in the request.
 |=====
 
+There is an additional internal rcode which has a "not set" value.  It
+is used by the interpreter and generally not visible.  You cannot
+check for this value, or use it in any situation where an rcode is
+allowed.  If this rcode is returned by a module, it indicates an
+internal problem in the server.
+
 [NOTE]
 ====
-In versions before 4.0, the `disallow` rcode was called `userlock`. The terms `disallow` and
-`userlock` have an identical meaning. `disallow` will be returned in any
-instance where `userlock` was returned in v3.0.x or v3.2.x
+In versions before 4.0, the `disallow` rcode was called
+`userlock`. The terms `disallow` and `userlock` have an identical
+meaning. `disallow` will be returned in any instance where `userlock`
+was returned in v3.0.x or v3.2.x
 ====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
