@@ -31,9 +31,10 @@ subrequest ::Disconnect-Request {
 
 == Child Lifetime
 
-The lifetime of a child request is controlled by the child's setting.  The default configuration has
-`max_request_time = 30`, so child requests will be cancelled 30
-seconds after the parent request was received.
+The lifetime of a child request is controlled by the child's setting.
+The default configuration has `max_request_time = 30`, so child
+requests will be cancelled 30 seconds after the parent request was
+received.
 
 .Example
 [source,unlang]
@@ -54,5 +55,5 @@ subrequest ::Disconnect-Request {
 The `detach` keyword cannot be used as the last statement in a subrequest.
 ====
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
