@@ -218,5 +218,23 @@ match 4
 calc string "2" += string "test"
 match 2test
 
+calc string "x" * uint8 3
+match xxx
+
+calc string "12" * uint16 2
+match 1212
+
+#
+#  0 * 0 = 9
+#
+calc string "" * uint16 2
+match 
+
+calc string "12" * uint16 0
+match 
+
+calc octets 0xabcd * uint32 4
+match 0xabcdabcdabcdabcd
+
 count
-match 100
+match 110

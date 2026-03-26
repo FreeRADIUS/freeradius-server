@@ -902,8 +902,8 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 
 static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
-	uint8_t *buf;
-	size_t len;
+	uint8_t *buf, *p;
+	size_t i, len;
 	fr_value_box_t one = {};
 	fr_value_box_t two = {};
 
@@ -916,6 +916,11 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 *	Don't touch the RHS.
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
+
+	} else if (op == T_MUL) {
+		fr_assert(fr_type_is_integer_except_bool(b->type));
+
+		COERCE_B(FR_TYPE_UINT64, NULL);
 
 	} else {
 		COERCE_B(FR_TYPE_OCTETS, dst->enumv);
@@ -1034,6 +1039,32 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_safety_copy(dst, a);
 		break;
 
+	case T_MUL:
+		/*
+		 *	0 * 0 = 0
+		 */
+		if (!b->vb_uint64 || !a->vb_length) {
+			fr_value_box_memdup(ctx, dst, dst->enumv, (const uint8_t *) "", 0, false);
+			fr_value_box_safety_copy(dst, a);
+			break;
+		}
+
+		if (b->vb_uint64 > 256) return ERR_OVERFLOW;
+		if (a->vb_length > 16) return ERR_OVERFLOW;
+
+		len = a->vb_length * b->vb_uint64;
+
+		buf = talloc_array(ctx, uint8_t, len);
+		if (!buf) goto oom;
+
+		for (i = 0, p = buf; i < b->vb_uint64; i++, p += a->vb_length) {
+			memcpy(p, a->vb_octets, a->vb_length);
+		}
+
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		break;
+
 	default:
 		return ERR_INVALID;	/* invalid operator */
 	}
@@ -1046,8 +1077,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
-	char *buf;
-	size_t len;
+	char *buf, *p;
+	size_t i, len;
 	fr_value_box_t one = {};
 	fr_value_box_t two = {};
 
@@ -1060,6 +1091,11 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 *	Don't touch the RHS.
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
+
+	} else if (op == T_MUL) {
+		fr_assert(fr_type_is_integer_except_bool(b->type));
+
+		COERCE_B(FR_TYPE_UINT64, NULL);
 
 	} else {
 		COERCE_B(FR_TYPE_STRING, dst->enumv);
@@ -1149,6 +1185,33 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_strvalue + b->vb_uint32, len);
 		buf[len] = '\0';
+
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		break;
+
+	case T_MUL:
+		/*
+		 *	0 * 0 = 0
+		 */
+		if (!b->vb_uint64 || !a->vb_length) {
+			fr_value_box_strdup(ctx, dst, dst->enumv, "", false);
+			fr_value_box_safety_copy(dst, a);
+			break;
+		}
+
+		if (b->vb_uint64 > 256) return ERR_OVERFLOW;
+		if (a->vb_length > 16) return ERR_OVERFLOW;
+
+		len = a->vb_length * b->vb_uint64;
+
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		for (i = 0, p = buf; i < b->vb_uint64; i++, p += a->vb_length) {
+			memcpy(p, a->vb_strvalue, a->vb_length);
+		}
+		*p = '\0';
 
 		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
 		fr_value_box_safety_copy(dst, a);
@@ -2009,6 +2072,16 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			} else if (b->type == FR_TYPE_TIME_DELTA) {
 				hint = upcast_op[a->type][FR_TYPE_FLOAT64];
 				if (hint == FR_TYPE_NULL) hint = upcast_op[FR_TYPE_FLOAT64][a->type];
+			}
+
+			if ((a->type == FR_TYPE_STRING) &&
+			    (fr_type_is_integer_except_bool(b->type))) {
+				hint = FR_TYPE_STRING;
+			}
+
+			if ((a->type == FR_TYPE_OCTETS) &&
+			    (fr_type_is_integer_except_bool(b->type))) {
+				hint = FR_TYPE_OCTETS;
 			}
 
 			if (hint != FR_TYPE_NULL) break;
