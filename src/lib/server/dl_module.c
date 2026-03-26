@@ -605,7 +605,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		}
 		env = getenv("DYLD_LIBRARY_PATH");
 		if (env) {
-			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
+			DEBUG4("DYLD_LIBRARY_PATH          : %s", env);
 		}
 		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
 		if (env) {
