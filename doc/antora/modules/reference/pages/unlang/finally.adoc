@@ -120,7 +120,7 @@ be passed back if it is being called with the xref:unlang/call[call]
 keyword.
 
 This is done to simplify correct handling of `finally` sections in
-nested calls to virtual servers.
+nested calls to virtual servers. The `finally` keyword is used internally or within virtual-servers only.
 
 === Timeouts
 
@@ -131,8 +131,7 @@ with `if (timeout)` at the start of the `finally` section.
 
 [NOTE]
 ====
-
-Request which are being processed in a `finally` section _will
+Requests which are being processed in a `finally` section _will
 not stop_ until the `finally` section is done.  The `max_request_time`
 configuration applies only to normal processing of requests, and not
 to `finally` sections.  This behaviour is necessary in order for the
@@ -160,6 +159,11 @@ fail to log anything to SQL and time out.  When all processing for the
 will also try to log information to the same slow SQL database.  The
 result will be _doubled_ slow writes to SQL, or requests that never
 complete.
+
+[NOTE]
+====
+If processing is slow or delayed, the 'finally' section can terminate after a pre-defined 5-second timeout and cancel all its children.
+====
 
 In order to ensure that the server remains responsive, the `finally`
 section should contain as little as possible.  Any potentially long
