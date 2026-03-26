@@ -6,7 +6,7 @@
 detach
 ----
 
-The `detach` statement is used to separare a child request from a
+The `detach` statement is used to separate a child request from a
 parent request.  The `detach` statement can only be used inside of a
 xref:unlang/subrequest.adoc[subrequest] section.
 
@@ -18,7 +18,7 @@ access any attributes in the parent.
 .Example
 [source,unlang]
 ----
-subrequest Disconnect-Request {
+subrequest ::Disconnect-Request {
     User-Name := parent.request.User-Name
     NAS-IP-Address := parent.request.NAS-IP-Address
     NAS-Port := parent.request.NAS-Port
@@ -31,15 +31,14 @@ subrequest Disconnect-Request {
 
 == Child Lifetime
 
-The lifetime of the child request is normally limited by the lifetime
-of the parent request.  The default configuration has
+The lifetime of a child request is controlled by the child's setting.  The default configuration has
 `max_request_time = 30`, so child requests will be cancelled 30
 seconds after the parent request was received.
 
 .Example
 [source,unlang]
 ----
-subrequest Disconnect-Request {
+subrequest ::Disconnect-Request {
     User-Name := parent.request.User-Name
     NAS-IP-Address := parent.request.NAS-IP-Address
     NAS-Port := parent.request.NAS-Port
@@ -49,6 +48,11 @@ subrequest Disconnect-Request {
     radius
 }
 ----
+
+[NOTE]
+====
+The `detach` keyword cannot be used as the last statement in a subrequest.
+====
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
