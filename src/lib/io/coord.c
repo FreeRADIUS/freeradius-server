@@ -579,7 +579,9 @@ void fr_coords_destroy(void)
 
 	if (fr_rb_num_elements(&coords) == 0) return;
 
-	while ((coord = fr_rb_iter_init_inorder(&coords, &iter))) {
+	for (coord = fr_rb_iter_init_inorder(&coords, &iter);
+	     coord;
+	     coord = fr_rb_iter_next_inorder(&coords, &iter)) {
 		fr_rb_iter_delete_inorder(&coords, &iter);
 		fr_coord_destroy(coord);
 		talloc_free(coord);
