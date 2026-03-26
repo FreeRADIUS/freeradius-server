@@ -224,7 +224,9 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 
 	if (IS_WILDCARD(ident1)) {
 		cf_item_foreach_next(parent, ci, prev) {
-			if (cf_ident2_cmp(ci, find) == 0) return ci;
+			if (find->type != ci->type) continue;
+
+			if (cf_ident2_cmp(find, ci) == 0) return ci;
 		}
 
 		return NULL;
@@ -844,7 +846,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 				for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
 					if ((rule_p->flags & CONF_FLAG_SUBSECTION) &&
-					    rule->on_read &&
+					    rule_p->on_read &&
 					    (strcmp(rule_p->name1, name1) == 0)) {
 						if (_cf_section_rule_push(cs, rule_p,
 									  cd->item.filename, cd->item.lineno) < 0) {
@@ -1151,6 +1153,7 @@ int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const
 			if (!name2) return 0;
 			return 1;
 		}
+		if (!name2) return -1;
 
 		return CMP(strcmp(cs_name2, name2), 0);
 	}
@@ -1530,11 +1533,15 @@ fr_slen_t cf_pair_values_concat(fr_sbuff_t *out, CONF_SECTION const *cs, char co
 	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
 
 	for (cp = cf_pair_find(cs, attr); cp;) {
-		slen = fr_sbuff_in_escape(&our_out, cf_pair_value(cp),
-	     				  strlen(cf_pair_value(cp)), &e_rules);
-		if (slen < 0) return slen;
+		char const *value = cf_pair_value(cp);
 
 		cp = cf_pair_find_next(cs, cp, attr);
+
+		if (!value) continue;
+
+		slen = fr_sbuff_in_escape(&our_out, value, strlen(value), &e_rules);
+		if (slen < 0) return slen;
+
 		if (cp && sep) {
 			slen = fr_sbuff_in_strcpy(&our_out, sep);
 			if (slen < 0) return slen;
