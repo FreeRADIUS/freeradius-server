@@ -2358,6 +2358,28 @@ static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
 typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
 
+/*
+ *	This is fine.  Don't complain.
+ */
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-designator"
+#endif
+
+/** Convert tokens back to a quoting character
+ *
+ * Non-string types convert to '?' to screw ups can be identified easily
+ */
+static const bool cf_name_char1[SBUFF_CHAR_CLASS] = {
+	[ '0' ... '9' ] = true,
+	[ 'A' ... 'Z' ] = true,
+	[ 'a' ... 'z' ] = true,
+	[ '%' ] = true,			// %function() in unlang
+	[ '@' ] = true,			// @policy
+	[ '-' ] = true,			// -sql, but probably only in 'unlang'
+	[ '&' ] = true,			// legacy stuff.
+};
+
+
 static int parse_input(cf_stack_t *stack)
 {
 	fr_token_t	name1_token, name2_token, value_token, op_token;
@@ -2455,6 +2477,10 @@ static int parse_input(cf_stack_t *stack)
 			return parse_error(stack, name1_ptr, "Invalid location for quoted string");
 		}
 
+		if (*buff[1] == '%') {
+			return parse_error(stack, name1_ptr, "Cannot use functions outside of a processing section");
+		}
+
 		fr_skip_whitespace(ptr);
 		break;
 
@@ -2469,6 +2495,15 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 		break;
+	}
+
+	/*
+	 *	Check for bad names.  A section named ".foo" will absolutely break the path hierarchy.
+	 */
+	if (name1_token == T_BARE_WORD) {
+		if (!cf_name_char1[(uint8_t) *buff[1]]) {
+			return parse_error(stack, name1_ptr, "Invalid name");
+		}
 	}
 
 	/*
