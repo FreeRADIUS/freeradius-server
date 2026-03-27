@@ -1,4 +1,4 @@
-= The default Statement
+= Default
 
 .Syntax
 [source,unlang]
@@ -23,7 +23,7 @@ switch User-Name {
         reject
     }
 
-    case Filter-Id {
+    case "bobby" {
         reject
     }
 
