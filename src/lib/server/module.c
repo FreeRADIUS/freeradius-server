@@ -626,7 +626,7 @@ void module_list_debug(module_list_t const *ml)
 	FR_FAULT_LOG("  phase masked:");
 	FR_FAULT_LOG("    bootstrap   : %s", ml->mask & MODULE_INSTANCE_BOOTSTRAPPED ? "yes" : "no");
 	FR_FAULT_LOG("    instantiate : %s", ml->mask & MODULE_INSTANCE_INSTANTIATED ? "yes" : "no");
-	FR_FAULT_LOG("    thread      : %s", ml->mask & MODULE_INSTANCE_INSTANTIATED ? "yes" : "no");
+	FR_FAULT_LOG("    thread      : %s", ml->mask & MODULE_INSTANCE_NO_THREAD_INSTANTIATE ? "yes" : "no");
 	FR_FAULT_LOG("}");
 	/*
 	 *	Modules are printed in the same order
@@ -1202,9 +1202,12 @@ int modules_coord_attach(module_list_t const *ml, fr_event_list_t *el)
 	     inst = fr_rb_iter_next_inorder(ml->name_tree, &iter)) {
 		module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t);
 		module_thread_instance_t	*thread;
+
 		if (!mi->exported->coord_attach) continue;
 
 		thread = ml->thread_data_get(mi);
+		if (!thread) continue;
+
 		if (mi->exported->coord_attach(MODULE_THREAD_INST_CTX(mi, thread->data, el)) < 0) return -1;
 	}
 
