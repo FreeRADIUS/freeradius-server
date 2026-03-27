@@ -305,7 +305,6 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		}
 
 		ERROR("Failed to add duplicate client %s", client->shortname);
-		client_free(client);
 		return false;
 	}
 #undef namecmp
@@ -315,12 +314,10 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (fr_trie_insert_by_key(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
-		client_free(client);
 		return false;
 	}
 #else
 	if (!fr_rb_insert(clients->tree[client->ipaddr.prefix], client)) {
-		client_free(client);
 		return false;
 	}
 #endif
@@ -1092,7 +1089,14 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 
 	c = client_afrom_cs(cs, cs, server_cs, 0);
 	if (!c) goto error;
-	talloc_steal(cs, c);
+
+	/*
+	 *	Detach c from cs (breaking the cs -> c parent link), then make root_cs a child of c.  This
+	 *	avoids a talloc cycle (c -> root_cs -> cs -> c), and ensures that freeing c also frees root_cs
+	 *	and cs.
+	 */
+	(void) talloc_steal(NULL, c);
+	(void) talloc_steal(c, root_cs);
 
 	p = strrchr(filename, FR_DIR_SEP);
 	if (p) {
@@ -1109,7 +1113,8 @@ fr_client_t *client_read(char const *filename, CONF_SECTION *server_cs, bool che
 	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	if (strcmp(p, buffer) != 0) {
 		ERROR("Invalid client definition in %s: IP address %s does not match name %s", filename, buffer, p);
-		goto error;
+		talloc_free(c);	/* also frees root_cs and cs */
+		return NULL;
 	}
 
 	return c;
