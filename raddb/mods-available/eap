@@ -774,6 +774,13 @@ eap {
 			# is not available. Use with caution.
 			#
 		#	softfail = no
+
+			# If you are testing with an OCSP server with a
+			# certificate that does not have the OCSP OID 
+                        # ocspSigning, you can set this flag to no to
+			# disable that verification. 
+		#	verifycert = no
+
 		}
 
 		#
