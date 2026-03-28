@@ -112,7 +112,7 @@ typedef struct teap_imck_t {
 typedef struct {
 	bool		required;		//!< require (or not) if we send it
 	bool		sent;			//!< did we send it?
-	uint8_t		received;		//!< did we receive it?
+	bool		received;		//!< did we receive it?
 } teap_auth_t;
 
 typedef struct teap_tunnel_t {
@@ -128,10 +128,8 @@ typedef struct teap_tunnel_t {
 	int			mode;
 	eap_teap_stage_t	stage;
 
-	int			num_identities;
-	uint16_t		identity_types[2];
-
-	teap_auth_t		auths[3]; /* so we can index by Identity-Type */
+	int			identities_remaining;	//!< how many rounds have we allow
+	teap_auth_t		identity_types[3];	//!< index is identity type (user=1 or machine=2) - zero is unused
 
 	int			imckc;
 	bool			imck_emsk_available;

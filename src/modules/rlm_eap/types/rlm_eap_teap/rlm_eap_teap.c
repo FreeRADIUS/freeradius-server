@@ -65,9 +65,7 @@ typedef struct rlm_eap_teap_t {
 	char const *authority_identity;
 
 	uint16_t	identity_type[2];
-
-	bool		required[2];
-
+	bool		identity_type_required[2];
 	char const	*identity_type_name;
 
 	/*
@@ -200,22 +198,22 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 		p = inst->identity_type_name;
 		i = 0;
-		inst->required[0] = inst->required[1] = true;
+		inst->identity_type_required[0] = inst->identity_type_required[1] = true;
 
 		while (*p) {
 			while (isspace((uint8_t) *p)) p++;
 
 			if (*p == '?') {
-				inst->required[i] = false;
+				inst->identity_type_required[i] = false;
 				p++;
 			}
 
 			if (strncasecmp(p, "user", 4) == 0) {
-				inst->identity_type[i] = 1;
+				inst->identity_type[i] = EAP_TEAP_IDENTITY_TYPE_USER;
 				p += 4;
 
 			} else if (strncasecmp(p, "machine", 7) == 0) {
-				inst->identity_type[i] = 2;
+				inst->identity_type[i] = EAP_TEAP_IDENTITY_TYPE_MACHINE;
 				p += 7;
 
 			} else {
@@ -252,13 +250,13 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 
-		if ((i == 1) && !inst->required[0]) {
+		if ((i == 1) && !inst->identity_type_required[0]) {
 			cf_log_err_cs(cs, "Optional value can only be used when two methods are configured in identity_types = '%s'",
 				      inst->identity_type_name);
 			return -1;
 		}
 
-		if ((i == 2) && !inst->required[0] && !inst->required[1]) {
+		if ((i == 2) && !inst->identity_type_required[0] && !inst->identity_type_required[1]) {
 			cf_log_err_cs(cs, "Optional value can only be used for one method in identity_types = '%s'",
 				      inst->identity_type_name);
 			return -1;
@@ -383,31 +381,24 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		 */
 		t->auto_chain = true;
 
-		/*
-		 *	If we send this method, then it is required.
-		 *	If we didn't send this method, then the
-		 *	"required" field is ignored.
-		 */
-		t->auths[1].required = true;
-		t->auths[2].required = true;
-
 		vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_SET);
 		if (vp) {
-			vp->vp_short = inst->identity_type[0];
 			RDEBUG("Setting %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
-			       inst->required[0] ? "" : "(optional) ", (vp->vp_short == 1) ? "User" : "Machine");
-
-			t->auths[vp->vp_short].required = inst->required[0];
+			       inst->identity_type_required[0] ? "" : "(optional) ", (inst->identity_type[0] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+			vp->vp_short = inst->identity_type[0];
+			t->identity_types[inst->identity_type[0]].required = inst->identity_type_required[0];
 		}
+		t->identities_remaining++;
 
 		if (inst->identity_type[1]) {
 			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
 			if (vp) {
-				vp->vp_short = inst->identity_type[1];
 				RDEBUG("Followed by %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-				       inst->required[1] ? "" : "(optional) ", (vp->vp_short == 1) ? "User" : "Machine");
-				t->auths[vp->vp_short].required = inst->required[1];	
+				       inst->identity_type_required[1] ? "" : "(optional) ", (inst->identity_type[1] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+				vp->vp_short = inst->identity_type[1];
+				t->identity_types[inst->identity_type[1]].required = inst->identity_type_required[1];
 			}
+			t->identities_remaining++;
 		}
 	}
 
