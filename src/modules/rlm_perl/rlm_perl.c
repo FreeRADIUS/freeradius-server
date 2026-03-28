@@ -632,19 +632,33 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 	size_t len;
 	SV *sv;
 	char buffer[1024];
-
+	const char *quote, *value;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, ATTRIBUTE_SECRET(vp, vp->vp_strvalue));
+		if (ATTRIBUTE_IS_SECRET(vp)) {
+			quote = "";
+			value = ATTRIBUTE_SECRET_PLACEHOLDER;
+		} else {
+			quote = "'";
+			value = vp->vp_strvalue;
+		}
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> %s%s%s", hash_name, vp->da->name, *i,
+		       list_name, vp->da->name, quote, value, quote);
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	default:
 		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
+		if (ATTRIBUTE_IS_SECRET(vp)) {
+			quote = "";
+			value = ATTRIBUTE_SECRET_PLACEHOLDER;
+		} else {
+			quote = "'";
+			value = buffer;
+		}
+		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> %s%s%s", hash_name, vp->da->name, *i,
+		       list_name, vp->da->name, quote, value, quote);
 		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
 		break;
 	}
@@ -693,6 +707,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	     	char const *name;
 		size_t len;
 		char namebuf[256];
+		const char *quote, *value;
 
 		/*
 		 *	Tagged attributes are added to the hash with name
@@ -731,15 +746,29 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
-			       vp->da->name, ATTRIBUTE_SECRET(vp, vp->vp_strvalue));
+			if (ATTRIBUTE_IS_SECRET(vp)) {
+				quote = "";
+				value = ATTRIBUTE_SECRET_PLACEHOLDER;
+			} else {
+				quote = "'";
+				value = vp->vp_strvalue;
+			}
+			RDEBUG("$%s{'%s'} = &%s:%s -> %s%s%s", hash_name, vp->da->name, list_name,
+			       vp->da->name, quote, value, quote);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		default:
 			len = vp_prints_value(tbuff, tbufflen, vp, 0);
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
-			       list_name, vp->da->name, ATTRIBUTE_SECRET(vp, tbuff));
+			if (ATTRIBUTE_IS_SECRET(vp)) {
+				quote = "";
+				value = ATTRIBUTE_SECRET_PLACEHOLDER;
+			} else {
+				quote = "'";
+				value = tbuff;
+			}
+			RDEBUG("$%s{'%s'} = &%s:%s -> %s%s%s", hash_name, vp->da->name, list_name,
+			       vp->da->name, quote, value, quote);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(tbuff, truncate_len(len, tbufflen)), 0);
 			break;
@@ -759,39 +788,45 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
 		      const char *hash_name, const char *list_name)
 {
-	char const     	*val = NULL;
+	char const     	*quote, *value = NULL;
 	VALUE_PAIR      *vp;
 	STRLEN len;
 
 	if (!SvOK(sv)) {
 		REDEBUG("Internal failure creating pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
-			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
+			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (value ? value : "undef"));
 		return;
 	}
 
-	val = SvPV(sv, len);
+	value = SvPV(sv, len);
 	vp = fr_pair_make(ctx, vps, key, NULL, op);
 	if (!vp) {
 	fail:
 		REDEBUG("Failed to create pair - %s", fr_strerror());
 		REDEBUG("    &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
-			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
+			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (value ? value : "undef"));
 		return;
 	}
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		fr_pair_value_bstrncpy(vp, val, len);
+		fr_pair_value_bstrncpy(vp, value, len);
 		break;
 
 	default:
 		VERIFY_VP(vp);
 
-		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
+		if (fr_pair_value_from_str(vp, value, len) < 0) goto fail;
 	}
 
-	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
-	       hash_name, key, ATTRIBUTE_SECRET(vp, val));
+	if (ATTRIBUTE_IS_SECRET(vp)) {
+		quote = "";
+		value = ATTRIBUTE_SECRET_PLACEHOLDER;
+	} else {
+		quote = "'";
+	}
+	RDEBUG("&%s:%s %s $%s{'%s'} -> %s%s%s", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
+	       hash_name, key, quote, value, quote);
 }
 
 /*

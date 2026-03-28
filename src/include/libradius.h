@@ -207,7 +207,9 @@ typedef struct attr_flags {
 #define FLAG_ENCRYPT_TUNNEL_PASSWORD (2)
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
 
-#define ATTRIBUTE_SECRET(_vp, _x) ((_vp->da->flags.secret && request->root->suppress_secrets) ? "<<< secret >>>" : _x)
+#define ATTRIBUTE_SECRET_PLACEHOLDER "<<< secret >>>"
+#define ATTRIBUTE_IS_SECRET(_vp) (_vp->da->flags.secret && request->root->suppress_secrets)
+#define ATTRIBUTE_SECRET(_vp, _x) (ATTRIBUTE_IS_SECRET(_vp) ? ATTRIBUTE_SECRET_PLACEHOLDER : _x)
 
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];

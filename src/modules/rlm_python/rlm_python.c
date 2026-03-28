@@ -255,11 +255,12 @@ failed:
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
 			char const *funcname, char const *list_name)
 {
-	int	     i;
-	int	     tuplesize;
-	vp_tmpl_t       dst;
-	VALUE_PAIR      *vp;
-	REQUEST         *current = request;
+	int	   i;
+	int	   tuplesize;
+	vp_tmpl_t  dst;
+	VALUE_PAIR *vp;
+	REQUEST    *current = request;
+	const char *quo;
 
 	memset(&dst, 0, sizeof(dst));
 
@@ -348,15 +349,17 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 		vp->op = op;
 		vp->tag = dst.tmpl_tag;
-		s2p = ATTRIBUTE_SECRET(vp, s2);
 
-		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
-			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2p);
+		if (ATTRIBUTE_IS_SECRET(vp)) {
+			quote = "";
+			s2p = ATTRIBUTE_SECRET_PLACEHOLDER;
 		} else {
-			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2p);
+			quote = "'";
+			s2p = s2;
 		}
+		DEBUG("%s - %s'%s:%s' %s %s%s%s", funcname,
+			fr_pair_value_from_str(vp, s2, -1) < 0 ? "Failed: " : "",
+			list_name, s1, fr_int2str(fr_tokens, op, "="), quote, s2p, quote);
 
 		radius_pairmove(current, vps, vp, false);
 	}
