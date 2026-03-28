@@ -381,30 +381,24 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		 */
 		t->auto_chain = true;
 
-		/*
-		 *	If we send this method, then it is required.
-		 *	If we didn't send this method, then the
-		 *	"required" field is ignored.
-		 */
-		t->auths[EAP_TEAP_IDENTITY_TYPE_USER].required = true;
-		t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].required = true;
-
 		vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_SET);
 		if (vp) {
-			vp->vp_short = inst->identity_type[0];
 			RDEBUG("Setting %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
-			       inst->identity_type_required[0] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-			t->auths[vp->vp_short].required = inst->identity_type_required[0];
+			       inst->identity_type_required[0] ? "" : "(optional) ", (inst->identity_type[0] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+			vp->vp_short = inst->identity_type[0];
+			t->identity_types[inst->identity_type[0]].required = inst->identity_type_required[0];
 		}
+		t->identities_remaining++;
 
 		if (inst->identity_type[1]) {
 			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
 			if (vp) {
-				vp->vp_short = inst->identity_type[1];
 				RDEBUG("Followed by %s&session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-				       inst->identity_type_required[1] ? "" : "(optional) ", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-				t->auths[vp->vp_short].required = inst->identity_type_required[1];
+				       inst->identity_type_required[1] ? "" : "(optional) ", (inst->identity_type[1] == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+				vp->vp_short = inst->identity_type[1];
+				t->identity_types[inst->identity_type[1]].required = inst->identity_type_required[1];
 			}
+			t->identities_remaining++;
 		}
 	}
 
