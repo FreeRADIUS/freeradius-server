@@ -205,9 +205,9 @@ static void eap_teap_append_identity_type(REQUEST *request, tls_session_t *tls_s
 	fr_assert(value <= 2);
 
 	/*
-	 *	We can send something, even if it isn't required.
+	 *      We can send something, even if it isn't required.
 	 */
-	t->auths[value].sent = true;
+	t->identity_types[value].sent = true;
 
 	eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
 }
@@ -1049,24 +1049,17 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			talloc_free(t->username);
 			t->username = NULL;
 
-			if (t->num_identities == 2) {
-				RDEBUG("Phase 2: Configured to send too many identities, failing the session");
-				goto fail;
-			}
-
-			t->identity_types[t->num_identities++] = vp->vp_short;
-
 			/* RFC7170, Appendix C.6 */
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
 			sent_identity_type = true;
 
-			if (t->default_method || t->eap_method[vp->vp_short]) {
+			if (t->default_method || ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) && t->eap_method[vp->vp_short])) {
 				eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 			}
 
 			if (!t->auto_chain) goto challenge;
 
-			if (!(t->default_method || t->eap_method[vp->vp_short])) {
+			if (!(t->default_method || ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) && t->eap_method[vp->vp_short]))) {
 				RDEBUG("Phase 2: No %s EAP methods configured - assuming password",
 				       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 
@@ -1080,47 +1073,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			}
 
 			/*
-			 *	Delete the &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
-			 *	which we found.
-			 *
-			 *	If there are more than one, then the
-			 *	next round will pick up the next one.
-			 */
-			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-			fr_pair_delete(&request->state, vp);
-
-			/*
 			 *	Always challenge, as we're sending EAP-Identity.
 			 */
 			goto challenge;
-		}
-
-		/*
-		 *	We send a method, and didn't receive it.  If
-		 *	the method is required, then complain.
-		 *	Otherwise, it's OK to send it and not get a
-		 *	response.
-		 */
-		const char *identity_type;
-		if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_USER].received) {
-			identity_type = t->identity_types[0] == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
-			if (t->auths[EAP_TEAP_IDENTITY_TYPE_USER].required) {
-				REDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - rejecting the session", identity_type);
-				goto fail;
-			}
-
-			RWDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - ignoring optional method", identity_type);
-		}
-
-		if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].sent && !t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].received) {
-			identity_type = t->identity_types[1] == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
-			if (t->auths[EAP_TEAP_IDENTITY_TYPE_MACHINE].required) {
-				REDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - rejecting the session", identity_type);
-				goto fail;
-			}
-
-			RWDEBUG("Phase 2: We sent Identity-Type = %s, but we did not use that method - ignoring optional method", identity_type);
 		}
 
 		RDEBUG("Phase 2: All inner authentications have succeeded");
@@ -1289,10 +1244,80 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 		 *	check, AND there's not any EAP-Type already set, THEN do it.
 		 */
 		vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (vp) {
-			VALUE_PAIR *teap_type;
+		// GUARD: prevent user/admin provided value for vp_short accessing out of bounds!
+		if (vp && (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE)) {
+			VALUE_PAIR *vp_config, *teap_type;
 
-			t->auths[vp->vp_short].received++;
+repeat:
+			vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
+			// GUARD: prevent user/admin provided value for vp_short accessing out of bounds!
+			if (vp_config && (vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE)) {
+				const char *identity_type = vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
+				uint16_t identity_type_requested = vp_config->vp_short;
+
+				/*
+				 *	We sent a method, and didn't receive it.  If
+				 *	the method is required, then complain.
+				 *	Otherwise, it's OK to send it and not get a
+				 *	response.
+				 */
+				if (t->identity_types[identity_type_requested].sent && vp->vp_short != identity_type_requested) {
+					if (t->identity_types[identity_type_requested].required) {
+						REDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - rejecting the session", identity_type);
+						VALUE_PAIR *vp_auth;
+fail:
+						vp_auth = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
+						if (vp_auth) {
+							fr_pair_add(&fake->config, vp_auth);
+							vp_auth->vp_integer = PW_AUTH_TYPE_REJECT;
+						}
+						goto done;
+					}
+					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - skipping optional method", identity_type);
+					RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s", identity_type);
+					fr_pair_delete(&request->state, vp_config);
+					goto repeat;
+				}
+
+				/*
+				 *      Delete the &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
+				 *      which we found.
+				 *
+				 *      If there are more than one, then the
+				 *      next round will pick up the next one.
+				 */
+				RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+					(identity_type_requested == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
+				fr_pair_delete(&request->state, vp_config);
+
+				/*
+				 * wpa_supplicant continues the authentication even when there are no remaining
+				 * methods configured for it, so we skip only if this is the last round
+				 */
+				if (t->identities_remaining == 1
+						&& !t->identity_types[identity_type_requested].required
+						&& !(fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)
+							|| fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY))) {
+					VALUE_PAIR *vp_auth;
+					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type);
+					vp_auth = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
+					if (vp_auth) {
+						fr_pair_add(&fake->config, vp_auth);
+						vp_auth->vp_integer = PW_AUTH_TYPE_ACCEPT;
+					}
+					goto done;
+				}
+			}
+			vp_config = NULL;
+
+			if (!t->identity_types[vp->vp_short].received) {
+				t->identity_types[vp->vp_short].received = true;
+				if (t->identities_remaining == 0) {
+					RDEBUG("Phase 2: Configured to send too many identities, failing the session");
+					goto fail;
+				}
+				t->identities_remaining--;
+			}
 
 			/*
 			 *	User auth.  Prefer:
@@ -1353,6 +1378,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 				}
 			}
 		}
+		vp = NULL;
 
 		if (eap_method) {
 			/*
@@ -1384,7 +1410,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 			/* else it's User-Password authentication */
 		}
 	}
-
+done:
 	if (t->copy_request_to_tunnel) {
 		eapteap_copy_request_to_tunnel(request, fake);
 	}
@@ -1618,7 +1644,6 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	for (vp = fr_cursor_init(&cursor, &teap_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 		DICT_ATTR const *parent_da = NULL;
-		VALUE_PAIR *vp_config;
 
 		parent_da = dict_parent(vp->da->attr, vp->da->vendor);
 		if (parent_da == NULL || vp->da->vendor != VENDORPEC_FREERADIUS ||
@@ -1630,15 +1655,6 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		case PW_FREERADIUS_EAP_TEAP_TLV:
 			switch (vp->da->attr >> 8) {
 			case EAP_TEAP_TLV_IDENTITY_TYPE:
-				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-				if (vp_config && (vp_config->vp_short != vp->vp_short)) {
-					RWDEBUG("We requested &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s",
-						(vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-					RWDEBUG("But the supplicant returned FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s (%u)",
-						(vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) ? "Machine" : "UNKNOWN"), vp->vp_short);
-					RWDEBUG("Authentication will likely fail.");
-				}
-
 				fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp));
 				break;
 
@@ -1806,7 +1822,6 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
 		char buf[256];
-		int identity_type = 0;
 
 		rad_assert(t->mode == EAP_TEAP_UNKNOWN);
 
@@ -1832,28 +1847,16 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		if (vp) {
 			RDEBUG("Phase 2: Sending Identity-Type = %s", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
-
-			if (t->num_identities == 2) {
-				RDEBUG("Phase 2: Configured to send too many identities, failing the session");
-				goto fail;
-			}
-
-			identity_type = t->identity_types[t->num_identities++] = vp->vp_short;
-
-			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
-			fr_pair_delete(&request->state, vp);
-			vp = NULL;
 		}
 
 		/*
 		 *	We always start off with an EAP-Identity-Request.
 		 */
-		if (t->default_method || (identity_type && t->eap_method[identity_type])) {
+		if (t->default_method || ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) && t->eap_method[vp->vp_short])) {
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 		} else {
 			RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
-			       !identity_type ? "" : (identity_type == EAP_TEAP_IDENTITY_TYPE_USER) ? "User " : "Machine ");
+			       vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User " : (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE ? "Machine " : "UNKNOWN "));
 			eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
 		}
 
@@ -1900,7 +1903,6 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	default:
 		RERROR("Internal sanity check failed in EAP-TEAP at %d", t->stage);
-	fail:
 		code = PW_CODE_ACCESS_REJECT;
 	}
 
