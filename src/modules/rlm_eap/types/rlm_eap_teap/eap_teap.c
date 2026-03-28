@@ -930,8 +930,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		msk1 = msk2 = false;
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
-			debug_pair(vp);
-
 			if (vp->da->vendor == 0) {
 				if (vp->da->attr == PW_EAP_EMSK) {
 					emsklen = MIN(vp->vp_length, sizeof(emsk));
