@@ -295,8 +295,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 				RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
 				RDEBUG3("&request:User-Password := '%s'", request->password->vp_strvalue);
 			} else {
-				RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
-				RDEBUG2("&request:User-Password := <<< secret >>>");
+				RDEBUG2("&request:Yubikey-OTP := " ATTRIBUTE_SECRET_PLACEHOLDER);
+				RDEBUG2("&request:User-Password := " ATTRIBUTE_SECRET_PLACEHOLDER);
 			}
 			REXDENT();
 			/*

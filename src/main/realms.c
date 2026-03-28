@@ -2169,7 +2169,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 
 	if (secret) {
 		if (rad_debug_lvl <= 2) {
-			cf_log_info(cs, "\tsecret = <<< secret >>>");
+			cf_log_info(cs, "\tsecret = " ATTRIBUTE_SECRET_PLACEHOLDER);
 		} else {
 			cf_log_info(cs, "\tsecret = %s", secret);
 		}

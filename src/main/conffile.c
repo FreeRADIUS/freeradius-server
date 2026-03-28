@@ -1737,7 +1737,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	Hide secrets when using "radiusd -X".
 		 */
 		if (secret && (rad_debug_lvl <= 2)) {
-			cf_log_info(cs, "%.*s\t%s = <<< secret >>>",
+			cf_log_info(cs, "%.*s\t%s = " ATTRIBUTE_SECRET_PLACEHOLDER,
 				    cs->depth, parse_spaces, name);
 		} else {
 			cf_log_info(cs, "%.*s\t%s = \"%s\"",

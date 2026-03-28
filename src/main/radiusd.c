@@ -619,7 +619,7 @@ int main(int argc, char *argv[])
 	 */
 	if (main_config.suppress_secrets) {
 		if (rad_debug_lvl && (rad_debug_lvl <= 2)) {
-			INFO("All secret information will be replaced with the string '<<secret>>'");
+			INFO("All secret information will be replaced with the string '" ATTRIBUTE_SECRET_PLACEHOLDER "'");
 			INFO("To see the contents of passwords, set `suppress_secrets=no` in the main configuration file.");
 		} else if (rad_debug_lvl > 2) {
 			/*

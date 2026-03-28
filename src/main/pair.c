@@ -742,8 +742,8 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
-	vp_prints_value(buffer, sizeof(buffer), vp, 0);
-	RDEBUGX(level, "%s%s = '%s'", prefix ? prefix : "", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
+	vp_prints_value(buffer, sizeof(buffer), vp, '"');
+	RDEBUGX(level, "%s%s = %s", prefix ? prefix : "", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
 }
 
 /** Print a list of VALUE_PAIRs.
@@ -766,8 +766,8 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
-		vp_prints_value(buffer, sizeof(buffer), vp, 0);
-		RDEBUGX(level, "%s%s = '%s'", prefix ? prefix : "", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
+		vp_prints_value(buffer, sizeof(buffer), vp, '"');
+		RDEBUGX(level, "%s%s = %s", prefix ? prefix : "", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
 	}
 	REXDENT();
 }
@@ -793,8 +793,8 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
-		vp_prints_value(buffer, sizeof(buffer), vp, 0);
-		RDEBUGX(level, "%s = '%s'", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
+		vp_prints_value(buffer, sizeof(buffer), vp, '"');
+		RDEBUGX(level, "%s = %s", vp->da->name, ATTRIBUTE_SECRET(vp, buffer));
 	}
 	REXDENT();
 }
