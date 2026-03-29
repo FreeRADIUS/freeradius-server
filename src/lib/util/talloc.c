@@ -103,7 +103,7 @@ fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *
 		return NULL;
 	}
 
-	d = talloc(fire_ctx, fr_talloc_destructor_t);
+	d = talloc_zero(fire_ctx, fr_talloc_destructor_t);
 	if (!d) {
 	oom:
 		fr_strerror_const("Out of Memory");
