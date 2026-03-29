@@ -25,6 +25,7 @@ SUBMAKEFILES := \
 	size_tests.mk \
 	slab_tests.mk \
 	strerror_tests.mk \
+	talloc_tests.mk \
 	time_tests.mk \
 	timer_tests.mk  \
 	trie_tests.mk \
