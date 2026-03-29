@@ -1342,11 +1342,6 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	} while ((rcode = fr_globdir_iter_next(&filename, &iter)) == 1);
 	(void) fr_globdir_iter_free(&iter);
 
-	/*
-	 *	Reset the filename and line number.
-	 */
-	dctx->filename = src_file;
-	dctx->line = src_line;
 	return rcode;		/* could be an error! */
 }
 
@@ -3218,6 +3213,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	int			argc;
 
 	int			stack_depth = dctx->stack_depth;
+	char			*old_filename;
+	int			old_line;
 
 	/*
 	 *	Base flags are only set for the current file
@@ -3320,6 +3317,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 #endif
 
+	old_filename = dctx->filename;
+	old_line = dctx->line;
+
 	/*
 	 *	Now that we've opened the file, copy the filename into the dictionary and add it to the ctx
 	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
@@ -3328,6 +3328,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	if (unlikely(dict_filename_add(&dctx->filename, dctx->dict, filename, src_file, src_line) < 0)) {
 		goto perm_error;
 	}
+
+	CURRENT_FRAME(dctx)->filename = dctx->filename;
+	CURRENT_FRAME(dctx)->line = line;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		bool do_begin = false;
@@ -3368,6 +3371,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		error:
 			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(filename), line);
 			fclose(fp);
+
+			dctx->filename = CURRENT_FRAME(dctx)->filename = old_filename;
+			dctx->line = CURRENT_FRAME(dctx)->line = old_line;
 			return -1;
 		}
 
@@ -3476,6 +3482,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 
 	fclose(fp);
+	dctx->filename = CURRENT_FRAME(dctx)->filename = old_filename;
+	dctx->line = CURRENT_FRAME(dctx)->line = old_line;
 
 	return 0;
 }
