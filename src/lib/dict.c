@@ -1775,6 +1775,12 @@ static int process_attribute(char const* fn, int const line,
 				flags.secret = 1;
 
 			} else if (strncmp(key, "secret", 6) == 0) {
+				if ((type != PW_TYPE_STRING) && (type != PW_TYPE_OCTETS)) {
+					fr_strerror_printf("dict_init: %s[%d] Only \"string\" or \"octet\" types can have the "
+							   "\"secret\" flag set", fn, line);
+					return -1;
+				}
+
 				flags.secret = 1;
 
 			} else if (strncmp(key, "array", 6) == 0) {
