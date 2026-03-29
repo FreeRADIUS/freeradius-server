@@ -175,7 +175,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	cs = cf_section_find(module, name, NULL);
 	if (cs) {
 		*out = cs;
-
 		return 0;
 	}
 
@@ -187,7 +186,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 
 	if (cf_data_find(module, CONF_SECTION, FIND_SIBLING_CF_KEY)) {
 		cf_log_err(cp, "Module reference loop found");
-
 		return -1;
 	}
 	cd = cf_data_add(module, module, FIND_SIBLING_CF_KEY, false);
@@ -201,25 +199,10 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	mi = module_instance_by_name(rlm_modules_static, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
-
 		return -1;
 	}
 
 	if (mi->state != MODULE_INSTANCE_INSTANTIATED) {
-		CONF_SECTION *parent = module;
-
-		/*
-		 *	Find the root of the config...
-		 */
-		do {
-			CONF_SECTION *tmp;
-
-			tmp = cf_item_to_section(cf_parent(parent));
-			if (!tmp) break;
-
-			parent = tmp;
-		} while (true);
-
 		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) return -1;
 	}
 
@@ -235,7 +218,6 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	if (strcmp(cf_section_name1(mi->conf), cf_section_name1(module)) != 0) {
 		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
 			      cf_section_name1(mi->conf), cf_section_name1(module));
-
 		return -1;
 	}
 
