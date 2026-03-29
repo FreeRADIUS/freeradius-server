@@ -199,11 +199,14 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	mi = module_instance_by_name(rlm_modules_static, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
+	error:
+		cf_data_remove_by_data(module, cd);
 		return -1;
 	}
 
-	if (mi->state != MODULE_INSTANCE_INSTANTIATED) {
-		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) return -1;
+	if ((mi->state != MODULE_INSTANCE_INSTANTIATED) &&
+	    (module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) {
+		    goto error;
 	}
 
 	/*
@@ -1006,8 +1009,6 @@ static int module_method_group_validate(module_method_group_t *group)
 	for (p = group->bindings; p->section; p++) {
 		if (!fr_cond_assert_msg(p->section->name1,
 					"First section identifier can't be NULL")) return -1;
-		if (!fr_cond_assert_msg(p->section->name1 || p->section->name2,
-					"Section identifiers can't both be null")) return -1;
 
 		/*
 		 *	All the bindings go in a list so we can sort them
