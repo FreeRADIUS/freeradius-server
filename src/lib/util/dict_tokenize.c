@@ -2879,7 +2879,7 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	dctx->relative_attr = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
-		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
+		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <name> <number>");
 		return -1;
 	}
 
