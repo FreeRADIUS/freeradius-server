@@ -691,7 +691,21 @@ static void test_talloc_increase_ref_count(void)
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(talloc_reference_count(str) == 2);
 
-	talloc_free(ctx);
+	/*
+	 *	And then  decrease it to be safe.
+	 */
+	ret = talloc_decrease_ref_count(str);
+	TEST_CHECK(ret == 2);				// WAS 2
+	TEST_CHECK(talloc_reference_count(str) == 1);	// NOW 1
+
+	ret = talloc_decrease_ref_count(str);
+	TEST_CHECK(ret == 1);				// WAS 1, now 0 and freed
+
+	ret = talloc_total_blocks(ctx);
+	TEST_CHECK(ret == 1);				// just ctx itself
+
+	ret = talloc_free(ctx);
+	TEST_CHECK(ret == 0);
 }
 
 /*
