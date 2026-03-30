@@ -62,6 +62,7 @@ jobs:
         run: |
           sudo pkg upgrade -y
           sudo pkg install -y    \
+            bash                 \
             brotli               \
             curl                 \
             cyrus-sasl           \
@@ -90,6 +91,9 @@ jobs:
           echo "#! /bin/sh"        | sudo tee /usr/local/bin/nproc
           echo "sysctl -n hw.ncpu" | sudo tee -a /usr/local/bin/nproc
           sudo chmod +x /usr/local/bin/nproc
+          if [ ! -f /bin/bash ]; then
+            sudo ln -s /usr/local/bin/bash /bin/bash
+          fi
           freebsd-version
           cd freeradius
           ./configure
