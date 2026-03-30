@@ -885,6 +885,7 @@ int talloc_decrease_ref_count(void const *ptr)
 		talloc_free(to_free);
 	} else {
 		talloc_unlink(talloc_parent(ptr), to_free);
+		if (talloc_reference_count(to_free) == 0) talloc_free(to_free);
 	}
 
 	return ref_count;
