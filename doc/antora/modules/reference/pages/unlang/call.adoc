@@ -15,7 +15,9 @@ will continue being processed in the original virtual server.
 <server>::  The virtual server which will process the request.
 +
 The called virtual server must have the same `namespace` value as the
-calling virtual server.
+calling virtual server. Enforcing the same `namespace` prevents calls to a virtual server with an incompatible protocol during compile or run-times.
+
+In some cases, a virtual server with a compatible `namespace` may be called because it is based on the same dictionary as the calling virtual server.
 +
 The called virtual server will execute the request as if it had
 been received from the network.  For example, if the packet is a
@@ -29,7 +31,12 @@ statements]_ from inside of the `call` section are executed.
 The return code of the `call` statement is taken from the final return
 code of the called virtual server.
 
-The `call` keyword will take the _current_ request and send it through
+[NOTE]
+====
+When `call { ... }` contains statements, they execute after the called server returns. Execution of these statements returns an rcode that becomes the `call` rcode, overriding the rcode of the called server.
+====
+
+The `call` keyword takes the _current_ request and sends it through
 the named virtual server.  This means that the called virtual server
 can edit the request list, reply list, session-state list, etc.
 
@@ -48,5 +55,5 @@ subrequest Packet-Type Relay-Message reply.Relay-Message {
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
