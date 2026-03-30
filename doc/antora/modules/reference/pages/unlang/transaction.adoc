@@ -10,28 +10,33 @@ transaction {
 
 The `transaction` statement collects a series of statements into a
 single transaction.  If the block returns an error such as `fail`,
-`reject`, `invalid`, or `disallow`, any attribute changes which have
-been made will be reverted.
+`reject`, `invalid`, `notfound`, `timeout`, or `disallow`, any attribute changes which have been made will be reverted.
 
 [ statements ]:: The `unlang` commands which will be executed.
 
 A `transaction` section should only contain attribute editing which is
 done via the xref:unlang/edit.adoc[edit] statements, or conditions
-(xref:unlang/edit.adoc[if] / xref:unlang/edit.adoc[else] /
-xref:unlang/edit.adoc[elsif]).  It can also contain
+(xref:unlang/if.adoc[if] / xref:unlang/else.adoc[else] /
+xref:unlang/elsif.adoc[elsif]). It can also contain
 xref:unlang/return_codes.adoc[rcodes] such as `fail` or `ok`.
+
+Most simple keywords can be used inside of a transaction, so long as
+they do nothing other than attribute editing and change control flow.
+But it is not possible to create a
+xref:unlang/subrequest.adoc[subrequest], or
+xref:unlang/call.adoc[call] another virtual server.
 
 == Caveats
 
-An Unlang `transaction` cannot undo operations on external databases.
+An unlang `transaction` cannot undo operations on external databases.
 For example, any data which was inserted into `sql` during a
 `transaction` statement will remain in `sql` even if the Unlang
-`transaction` fails.  This is because Unlang transactions are
+`transaction` fails. This is because Unlang transactions are
 independent of any database transactions.
 
 The `transaction` keyword sets its own return codes for `fail`,
 `invalid`, and `disallow` to be set the priority `1`, instead of
-the default `return`.  This behaviour means that a failed `transaction`
+the default `return`. This behaviour means that a failed `transaction`
 will cause the interpreter to proceed to the next instruction, instead
 of returning.
 
@@ -58,25 +63,28 @@ transaction {
 }
 ----
 
-Note that xref:unlang/edit.adoc[edit] statements do not fail if the
-right hand side expression fails.  Instead, you must manually check if
-the assignment failed.  The example above does this with an
+[NOTE]
+====
+The xref:unlang/edit.adoc[edit] statements do not fail if the
+right hand side expression fails. Instead, you must manually check if
+the assignment failed. The example above does this with an
 intermediate variable.
+====
 
 The last entry in a `transaction` section can also be an
-xref:unlang/actions.adoc[actions] subsection.  If set, those actions
+xref:unlang/actions.adoc[actions] subsection. If set, those actions
 over-ride any previously set defaults.
 
 == Grouping Edits
 
 The `transaction` keyword can be used to group multiple
-xref:unlang/edit.adoc[edit] instructions.  When edit instructions are
-grouped, then the edits are done in an atomic transaction.  That is,
+xref:unlang/edit.adoc[edit] instructions. When edit instructions are
+grouped, then the edits are done in an atomic transaction. That is,
 either all of the edits succeed, or none of them do.
 
-For now, the main purpose of `transaction` is to group edits.  None of
+For now, the main purpose of `transaction` is to group edits. None of
 the modules support transactions.  If a module is used inside of a
 transaction, the server will return an error, and will not start.
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
