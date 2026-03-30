@@ -1083,7 +1083,7 @@ TALLOC_CTX		*tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list);
 
 fr_slen_t		tmpl_attr_list_from_substr(fr_dict_attr_t const **da_p, fr_sbuff_t *in) CC_HINT(nonnull);
 
-tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
+tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4)) CC_HINT(format (printf, 4, 5));
 
 tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 					   char const *name, ssize_t len,
@@ -1157,7 +1157,7 @@ fr_slen_t		tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 							   fr_sbuff_t *in);
 /** @} */
 
-void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3));
+void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3)) CC_HINT(format(printf, 3, 4));
 
 void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
