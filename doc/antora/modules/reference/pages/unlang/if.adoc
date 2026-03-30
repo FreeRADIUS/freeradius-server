@@ -14,8 +14,7 @@ _<condition>_ evaluates to `true`, the statements within the subsection
 are executed.  When the _<condition>_ evaluates to `false`, those
 statements are skipped.
 
-An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or
-an xref:unlang/elsif.adoc[elsif] statement.
+An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or an xref:unlang/elsif.adoc[elsif] statement.
 
 .Example
 [source,unlang]
@@ -86,7 +85,7 @@ if User-Name == "bob" {
 ----
 
 The same behaviour applies to conditions with complex statements using
-`&` and `||`.  So long as the text between the `if` and the `{` is a
+`&&` and `||`.  So long as the text between the `if` and the `{` is a
 valid condition, it will be parsed correctly.
 
 === Multi-line conditions
