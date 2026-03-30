@@ -17,7 +17,12 @@ overlap with the name of any other attribute.
 
 <reference>:: An OID by name `Vendor.Cisco.AVPair`, or by number `26.9.1`.
 +
-The full name or number must be given.
+When an `ALIAS` is used at the top of the dictionary, the
+`<reference>` is just a name or number.
++
+When an `ALIAS` is used to point to another attribute inside of `tlv`,
+`struct`, `vsa`, etc., the `<reference>` _must_ begin with a `.`.
+This indicates that the ALIAS is to a ``<reference>` with a shared parent.
 
 .Example
 ----

@@ -1465,11 +1465,13 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 
 	} else if (argv[1][0] == '.') {
-		if (argv[1][1] == '.') goto no_up;
+		if (argv[1][1] == '.') {
+			fr_strerror_const("An ALIAS reference cannot use '..' to go back up to another parent");
+			return -1;
+		}
 
 	} else if (parent != dctx->dict->root) {
-	no_up:
-		fr_strerror_const("An ALIAS reference cannot go back up the tree");
+		fr_strerror_const("An ALIAS reference must use a leading '.' when referring to attributes with the same parent");
 		return -1;
 	}
 
