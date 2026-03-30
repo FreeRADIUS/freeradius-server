@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-if (condition) {
+if <condition> {
     [ statements ]
 }
 else {
@@ -11,9 +11,15 @@ else {
 }
 ----
 
-An xref:unlang/if.adoc[if] statement can have an `else` clause. If _condition_
-evaluates to `false`, the statements in the xref:unlang/if.adoc[if] subsection are skipped
-and the statements within the `else` subsection are executed.
+An xref:unlang/if.adoc[if] statement can have an `else` or `elsif`clause. If _condition_ evaluates to `false`, the statements in the xref:unlang/if.adoc[if] subsection are skipped and the statements within the `else` subsection are executed.
+
+When a xref:xlat/index.adoc[dynamic expansion] fails, and xref:unlang/if.adoc[if] statement is followed by a trailing `else` or
+xref:unlang/elsif.adoc[elsif] statement, then `if` condition is treated
+as "false", and the `else` or `elsif statement is processed.
+
+Otherwise, the failed `if` statement returns the `fail`
+xref:unlang/return_codes.adoc[rcode], which is processed according to
+the rules for the current section.
 
 .Example
 [source,unlang]
@@ -26,7 +32,9 @@ else {
 }
 ----
 
+
+
 The last entry in an `else` section can also be an xref:unlang/actions.adoc[actions] subsection.
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
