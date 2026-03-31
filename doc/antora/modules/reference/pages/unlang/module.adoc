@@ -31,7 +31,7 @@ the source, below:
 .Module Return Codes
 
 The below table describes the purpose of the rcodes that may be returned
-by a module call.  In this case the 'operation' referenced in the table is
+by a module call. In this case the 'operation' referenced in the table is
 the current module call.
 
 include::partial$rcode_table.adoc[]
@@ -55,8 +55,7 @@ if (notfound) {
 [#configurable_failover]
 == Overriding Return Codes
 
-The return codes for a module can be can be modified on a per-call basis.
-These over-rides use the same syntax as theq
+The return codes for a module can be can be modified on a per-call basis. These over-rides use the same syntax as the
 xref:unlang/actions.adoc[actions] subsection.
 
 Module priority overrides are specified in a block inline with the module call.
