@@ -109,6 +109,7 @@ table below.  These operations are based on _set theory_, which is a
 mathematical system which gives consistency to the operations.  All of
 the list operations are simple, and well defined.
 
+[#list-editiing-ops]
 .List Editing Operators
 [options="header"]
 [cols="10%,90%"]
