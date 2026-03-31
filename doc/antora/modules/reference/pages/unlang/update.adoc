@@ -87,7 +87,7 @@ This example should be converted to the following syntax:
 [source,unlang]
 .New Syntax
 ----
-request += {
+reply += {
 	User-Name = "foo"
 	Filter-Id = "bar"
 	NAS-IP-Address = 127.0.0.1
@@ -125,7 +125,7 @@ converted to a one-line edit statement:
 [source,unlang]
 ----
 .New Syntax
-reply.Filter-Id := { "bar", "boo", "baz" }
+reply.Filter-Id := { "bar", "foo", "baz" }
 ----
 
 This functionality makes it much easier to write complex assignments.
