@@ -136,6 +136,7 @@ fr_edit_list_t *unlang_interpret_edit_list(request_t *request)
 
 static fr_table_num_sorted_t transaction_keywords[] = {
 	{ L("case"),		1 },
+	{ L("catch"),	 	1 },
 	{ L("else"),		1 },
 	{ L("elsif"),		1 },
 	{ L("foreach"),		1 },
@@ -143,11 +144,13 @@ static fr_table_num_sorted_t transaction_keywords[] = {
 	{ L("if"),		1 },
 	{ L("limit"),		1 },
 	{ L("load-balance"),	1 },
+	{ L("map"),		1 },
 	{ L("redundant"), 	1 },
 	{ L("redundant-load-balance"), 1 },
 	{ L("switch"),		1 },
 	{ L("timeout"),		1 },
 	{ L("transaction"),	1 },
+	{ L("try"),	 	1 },
 };
 static int transaction_keywords_len = NUM_ELEMENTS(transaction_keywords);
 
