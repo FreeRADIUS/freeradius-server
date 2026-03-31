@@ -7,12 +7,13 @@ continue
 ----
 
 The `continue` statement is used in a
-xref:unlang/foreach.adoc[foreach] loop, and will cause the interpret
+xref:unlang/foreach.adoc[foreach] loop, and will cause the interpreter
 to skip execution of the rest of the statements in current loop
-iteration, and start the next iteration of the loop.  The `continue`
+iteration, and start the next iteration of the loop. The `continue`
 statement cannot be used in any other location.
 
-In this example, a `continue` is used to exit a
+In this example, a `continue` is used with a
+xref:unlang/break.adoc[break] to exit a
 xref:unlang/foreach.adoc[foreach] loop when a particular condition
 matches.
 
@@ -30,7 +31,6 @@ foreach i (%range(10)) {
 	break
 }
 ----
-
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
