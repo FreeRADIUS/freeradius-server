@@ -445,6 +445,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	if (!p) {
 		out->prefix = 128;
 		out->af = AF_INET6;
+		out->scope = 0;
 
 		/*
 		 *	Allow '*' as the wildcard address
@@ -499,6 +500,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 
 	out->prefix = (uint8_t) prefix;
 	out->af = AF_INET6;
+	out->scope = 0;
 
 	return 0;
 }
