@@ -482,8 +482,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 		already_read = (sock->ssn->dirty_in.used > 0);
 	}
 
+	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	if (sock->state == LISTEN_TLS_SETUP) {
 		RDEBUG3("(TLS) Setting connection state to RUNNING");
+
 		sock->state = LISTEN_TLS_RUNNING;
 
 		if (sock->ssn->clean_out.used < 20) {
@@ -494,7 +496,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	RDEBUG3("(TLS) Reading from socket %d", request->packet->sockfd);
-	PTHREAD_MUTEX_LOCK(&sock->mutex);
 
 	/*
 	 *	If there is pending application data, as set up by
