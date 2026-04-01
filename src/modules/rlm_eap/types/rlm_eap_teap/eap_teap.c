@@ -418,18 +418,6 @@ unexpected:
 			return 0;
 		}
 
-		/*
-		 * If the rest of the TLVs are larger than
-		 * this attribute, continue.
-		 *
-		 * Otherwise, if the attribute over-flows the end
-		 * of the TLCs, die.
-		 */
-		if (remaining < length) {
-			REDEBUG2("Phase 2: TLV overflows packet.");
-			return 0;
-		}
-
 		if (attr == EAP_TEAP_TLV_ERROR) {
 			if (length != 4) goto fail_length;
 			error = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
