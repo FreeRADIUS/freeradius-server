@@ -25,6 +25,11 @@ The language is _not_ intended to be a general purpose programming
 language.  It does not permit infinite loops, local variables,
 functions, etc.
 
+[NOTE]
+====
+Certain implementations of xref:unlang/local.adoc[variables] can be used with xref:unlang/keywords.adoc[keywords] within specific processing sections.
+====
+
 Despite these limitations, it has proven to be useful and powerful.
 While the server includes plugins for languages such as
 xref:raddb/mods-available/lua.adoc[lua],
