@@ -137,6 +137,7 @@ static const conf_parser_t xlat_request_config[] = {
 static const conf_parser_t xlat_config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("request", 0, rlm_rest_section_t, request, xlat_request_config) },
 	{ FR_CONF_OFFSET_SUBSECTION("response", 0, rlm_rest_section_t, response, section_response_config) },
+	{ FR_CONF_OFFSET("binary", rlm_rest_section_t, binary) },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },

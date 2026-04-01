@@ -140,6 +140,7 @@ typedef struct {
 	char const			*name;		//!< Section name.
 
 	fr_time_delta_t			timeout;	//!< Timeout timeval.
+	bool				binary;		//!< Do we expect binary data - so xlat will output octets.
 
 	rlm_rest_section_request_t	request;	//!< Request configuration.
 	rlm_rest_section_response_t	response;	//!< Response configuration.
