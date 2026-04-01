@@ -16,7 +16,7 @@ section (i.e. scope), and cannot be sent in a packet over the network.
 }
 ----
 
-<keyword>:: An `unlang` keywords which does not create a subrequest.  i.e.  One of:
+<keyword>:: An `unlang` keyword such as one of the following:
 
 * xref:unlang/case.adoc[case]
 * xref:unlang/else.adoc[else]
@@ -26,15 +26,17 @@ section (i.e. scope), and cannot be sent in a packet over the network.
 * xref:unlang/if.adoc[if]
 * xref:unlang/limit.adoc[limit]
 * xref:unlang/load-balance.adoc[load-balance]
+* xref:raddb/mods-available/doc/policy.adoc[policy]
 * xref:unlang/redundant.adoc[redundant]
 * xref:unlang/redundant-load-balance.adoc[redundant-load-balance]
+* xref:unlang/subrequest.adoc[subrequest]
 * xref:unlang/timeout.adoc[timeout]
 
 Local variables are forbidden in all other locations.
 
-For the xref:unlang/redundant.adoc[redundant] and xref:unlang/redundant-load-balance.adoc[redundant-load-balance] keyword, local variables are keep their value across the different subsections.  This behaviour can be used to track state inside of the xref:unlang/redundant.adoc[redundant] section.
+For the xref:unlang/redundant.adoc[redundant] and xref:unlang/redundant-load-balance.adoc[redundant-load-balance] keyword, local variables  keep their value across the different subsections.  This behaviour can be used to track states inside of the xref:unlang/redundant.adoc[redundant] section.
 
-<data-type>:: A "leaf" xref:type/all_types.adoc[data type].  Structural types such as `group`, `struct`, `tlv`, etc. are not allowed.
+<data-type>:: A "leaf" xref:type/all_types.adoc[data type].  Structural types such as `struct`, `tlv`, VSA, etc. are not allowed.
 
 <name>:: A unique name for the local variable.  This name cannot be the same as any previously-defined local variable in the same scope, and it cannot be the same as any attribute defined in the current protocol dictionary.
 
@@ -83,7 +85,7 @@ if (User-Name == "bob") {
 }
 ----
 
-The variable declaration and assignment must be sepaarted.  Constructions like `uint32 len = %length(%{User-Name})` are not allowed.
+The variable declaration and assignment must be separated.  Constructions like `uint32 len = %length(%{User-Name})` are not allowed.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
