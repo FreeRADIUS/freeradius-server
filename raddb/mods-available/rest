@@ -349,6 +349,17 @@ rest {
 	#
 	xlat {
 		tls = ${..tls}
+
+		#
+		#  binary:: Is the output of %rest() expected to be binary data
+		#
+		#  Setting this to "yes" will result in the %rest() xlat outputting octet
+		#  data rather than string data.
+		#
+		#  When it is "no" then the output type will be determined from the body
+		#  type of the response.
+		#
+#		binary = yes
 	}
 
 	#

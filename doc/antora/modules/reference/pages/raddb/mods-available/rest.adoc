@@ -327,6 +327,16 @@ any calls to this module's `xlat` function.
 
 
 
+binary:: Is the output of %rest() expected to be binary data
+
+Setting this to "yes" will result in the %rest() xlat outputting octet
+data rather than string data.
+
+When it is "no" then the output type will be determined from the body
+type of the response.
+
+
+
 ### recv { ... }
 
 Default action when called in `recv` sections except `recv Accounting-Request`.
@@ -444,6 +454,7 @@ rest {
 #	chunk = 0
 	xlat {
 		tls = ${..tls}
+#		binary = yes
 	}
 	recv {
 		request {
