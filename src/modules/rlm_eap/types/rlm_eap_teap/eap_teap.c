@@ -958,8 +958,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 					return RLM_MODULE_INVALID;
 				}
 
-				RDEBUGHEX("Phase 2: MSCHAP-MPPE-Send-Key", vp->vp_octets, vp->length);
-				msklen += vp->length;
+				RDEBUGHEX("Phase 2: MSCHAP-MPPE-Send-Key", vp->vp_octets, vp->vp_length);
+				msklen += vp->vp_length;
 				break;
 
 			case PW_MSCHAP_MPPE_RECV_KEY:
@@ -979,7 +979,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 				}
 
 				RDEBUGHEX("Phase 2: MSCHAP-MPPE-Recv-Key", vp->vp_octets, vp->vp_length);
-				msklen += vp->length;
+				msklen += vp->vp_length;
 				break;
 
 			case PW_MSCHAP2_SUCCESS:
