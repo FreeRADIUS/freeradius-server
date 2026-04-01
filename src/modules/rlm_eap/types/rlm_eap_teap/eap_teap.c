@@ -33,7 +33,6 @@ do { if (fr_debug_lvl > 2) {\
 	RDEBUG2("%s - hexdump(len=%zu):%s", _label, (size_t)_length, __buf);\
 }} while (0)
 
-#define RANDFILL(x) do { rad_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 #define MIN(a,b) (((a)>(b)) ? (b) : (a))
 
@@ -288,8 +287,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 	RDEBUG("Phase 2: Sending Crypto-Binding Flags=%d", emsklen ? EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_BOTH : EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK);
 
-	rad_assert(sizeof(cbb->binding.nonce) % sizeof(uint32_t) == 0);
-	RANDFILL(cbb->binding.nonce);
+	RAND_bytes(cbb->binding.nonce, sizeof(cbb->binding.nonce));
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
 
 	/*
