@@ -576,7 +576,7 @@ unexpected:
 
 		break;
 	case PROVISIONING:
-		if (present & ~(1 << EAP_TEAP_TLV_RESULT)) {
+		if (present & ~((1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT))) {
 			REDEBUG("Phase 2: Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
