@@ -1847,17 +1847,22 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		if (vp) {
 			RDEBUG("Phase 2: Sending Identity-Type = %s", (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
-		}
 
-		/*
-		 *	We always start off with an EAP-Identity-Request.
-		 */
-		if (t->default_method || ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) && t->eap_method[vp->vp_short])) {
+			/*
+			 *	We always start off with an EAP-Identity-Request.
+			 */
+			if (t->default_method || ((vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) && t->eap_method[vp->vp_short])) {
+				eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+			} else {
+				RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
+				       vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User " : (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE ? "Machine " : "UNKNOWN "));
+				eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
+			}
+		} else if (t->default_method) {
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 		} else {
-			RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
-			       vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User " : (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE ? "Machine " : "UNKNOWN "));
-			eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
+			REDEBUG("Phase 2: No Identity-Type in session-state and no default EAP method configured");
+			return PW_CODE_ACCESS_REJECT;
 		}
 
 		t->stage = AUTHENTICATION;
