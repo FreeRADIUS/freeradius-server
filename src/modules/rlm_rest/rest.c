@@ -1403,12 +1403,15 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			 *  Figure out if the type is supported by one of the decoders.
 			 */
 			} else {
-				ctx->type = http_body_type_supported[type];
-
 				/*
 				 *  No need to check supported types if we accept everything.
 				 */
-				if (ctx->section->response.accept_all) break;
+				if (ctx->section->response.accept_all) {
+					ctx->type = type;
+					break;
+				}
+
+				ctx->type = http_body_type_supported[type];
 
 				switch (ctx->type) {
 				case REST_HTTP_BODY_UNKNOWN:
