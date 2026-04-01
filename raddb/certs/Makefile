@@ -17,6 +17,12 @@ PARTIAL		= -partial_chain
 endif
 
 #
+#  Don't define 'Q', but use it This allows the CI system to quiet the
+#  build by defining it.
+#
+
+
+#
 #	Just to mute the WARNING messages complaining about the missing openssl.cnf
 #
 OPENSSL_CONF := /dev/null
@@ -95,7 +101,7 @@ dh:
 #
 ######################################################################
 %.der: %.pem
-	openssl x509 -inform PEM -outform DER -in $< -out $@
+	${Q}openssl x509 -inform PEM -outform DER -in $< -out $@
 
 ######################################################################
 #
@@ -105,20 +111,20 @@ dh:
 rsa/ca.key rsa/ca.pem: ca.cnf | $(OUTPUT_DIRS)
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS) \
+	${Q}openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS) \
 	-passin pass:$(PASSWORD_CA) -passout pass:$(PASSWORD_CA)
-	chmod g+r rsa/ca.key rsa/ca.pem
+	${Q}chmod g+r rsa/ca.key rsa/ca.pem
 
 rsa/ca.crl: rsa/ca.pem
-	openssl ca -gencrl -keyfile rsa/ca.key -cert $< -config ./ca.cnf -out rsa/ca-crl.pem -key $(PASSWORD_CA)
-	openssl crl -in rsa/ca-crl.pem -outform DER -out $@
+	${Q}openssl ca -gencrl -keyfile rsa/ca.key -cert $< -config ./ca.cnf -out rsa/ca-crl.pem -key $(PASSWORD_CA)
+	${Q}openssl crl -in rsa/ca-crl.pem -outform DER -out $@
 	@rm -f rsa/ca-crl.pem
 
 rsa/ca.csr: ca.cnf
-	openssl req -new -x509 -keyout rsa/ca.key -out $@ -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+	${Q}openssl req -new -x509 -keyout rsa/ca.key -out $@ -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
 rsa/ca.crt: rsa/ca.pem
-	openssl x509 -outform DER -in $< -out $@
+	${Q}openssl x509 -outform DER -in $< -out $@
 
 
 ######################################################################
@@ -127,18 +133,18 @@ rsa/ca.crt: rsa/ca.pem
 #
 ######################################################################
 ecc/ca.key: ca.cnf | $(OUTPUT_DIRS)
-	openssl ecparam -out $@ -name prime256v1 -genkey
+	${Q}openssl ecparam -out $@ -name prime256v1 -genkey
 
 ecc/ca.der: ecc/ca.pem
-	openssl x509 -inform PEM -outform DER -in $< -out $@
+	${Q}openssl x509 -inform PEM -outform DER -in $< -out $@
 
 ecc/ca.pem: ecc/ca.key
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -key $< -out $@ -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+	${Q}openssl req -new -x509 -key $< -out $@ -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
 ecc/ca.crt: ecc/ca.pem
-	openssl x509 -outform DER -in $< -out $@
+	${Q}openssl x509 -outform DER -in $< -out $@
 
 
 ######################################################################
@@ -147,19 +153,19 @@ ecc/ca.crt: ecc/ca.pem
 #
 ######################################################################
 rsa/server.csr rsa/server.key: server.cnf | $(OUTPUT_DIRS)
-	openssl req -new -out rsa/server.csr -keyout rsa/server.key -config ./server.cnf
-	chmod g+r rsa/server.key
+	${Q}openssl req -new -out rsa/server.csr -keyout rsa/server.key -config ./server.cnf
+	${Q}chmod g+r rsa/server.key
 
 rsa/server.crt: rsa/ca.key rsa/ca.pem rsa/server.csr
-	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/server.csr -key $(PASSWORD_CA) -out $@ -config ./server.cnf
+	${Q}openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/server.csr -key $(PASSWORD_CA) -out $@ -config ./server.cnf
 
 rsa/server.p12: rsa/server.crt
-	openssl pkcs12 -export -in $< -inkey rsa/server.key -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey rsa/server.key -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	${Q}chmod g+r $@
 
 rsa/server.pem: rsa/server.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	${Q}chmod g+r $@
 
 .PHONY: rsa/server.vrfy
 rsa/server.vrfy: rsa/ca.pem rsa/server.pem
@@ -171,22 +177,22 @@ rsa/server.vrfy: rsa/ca.pem rsa/server.pem
 #
 ######################################################################
 ecc/server.key: server.cnf | $(OUTPUT_DIRS)
-	openssl ecparam -out $@ -name prime256v1 -genkey
-	chmod g+r $@
+	${Q}openssl ecparam -out $@ -name prime256v1 -genkey
+	${Q}chmod g+r $@
 
 ecc/server.csr: ecc/server.key
-	openssl req -new -out $@ -key $< -config ./server.cnf
+	${Q}openssl req -new -out $@ -key $< -config ./server.cnf
 
 ecc/server.crt: ecc/ca.key ecc/ca.pem ecc/server.csr
-	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/server.csr -key $(PASSWORD_CA) -out $@ -config ./server.cnf
+	${Q}openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/server.csr -key $(PASSWORD_CA) -out $@ -config ./server.cnf
 
 ecc/server.p12: ecc/server.crt
-	openssl pkcs12 -export -in $< -inkey ecc/server.key -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey ecc/server.key -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	${Q}chmod g+r $@
 
 ecc/server.pem: ecc/server.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	${Q}chmod g+r $@
 
 .PHONY: ecc/server.vrfy
 ecc/server.vrfy: ecc/ca.pem ecc/server.pem
@@ -198,19 +204,19 @@ ecc/server.vrfy: ecc/ca.pem ecc/server.pem
 #
 ######################################################################
 rsa/ocsp.csr rsa/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
-	openssl req -new -out rsa/ocsp.csr -keyout rsa/ocsp.key -config ./ocsp.cnf
-	chmod g+r rsa/ocsp.key
+	${Q}openssl req -new -out rsa/ocsp.csr -keyout rsa/ocsp.key -config ./ocsp.cnf
+	${Q}chmod g+r rsa/ocsp.key
 
 rsa/ocsp.crt: rsa/ca.key rsa/ca.pem rsa/ocsp.csr
-	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/ocsp.csr -key $(PASSWORD_CA) -out $@ -config ./ocsp.cnf
+	${Q}openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/ocsp.csr -key $(PASSWORD_CA) -out $@ -config ./ocsp.cnf
 
 rsa/ocsp.p12: rsa/ocsp.crt
-	openssl pkcs12 -export -in $< -inkey rsa/ocsp.key -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey rsa/ocsp.key -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+	${Q}chmod g+r $@
 
 rsa/ocsp.pem: rsa/ocsp.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+	${Q}chmod g+r $@
 
 .PHONY: rsa/ocsp.vrfy
 rsa/ocsp.vrfy: rsa/ca.pem rsa/ocsp.pem
@@ -222,22 +228,22 @@ rsa/ocsp.vrfy: rsa/ca.pem rsa/ocsp.pem
 #
 ######################################################################
 ecc/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
-	openssl ecparam -out $@ -name prime256v1 -genkey
-	chmod g+r $@
+	${Q}openssl ecparam -out $@ -name prime256v1 -genkey
+	${Q}chmod g+r $@
 
 ecc/ocsp.csr: ecc/ocsp.key
-	openssl req -new -out $@ -key ecc/ocsp.key -config ./ocsp.cnf
+	${Q}openssl req -new -out $@ -key ecc/ocsp.key -config ./ocsp.cnf
 
 ecc/ocsp.crt: ecc/ca.key ecc/ca.pem ecc/ocsp.csr
-	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/ocsp.csr -key $(PASSWORD_CA) -out $@ -config ./ocsp.cnf
+	${Q}openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/ocsp.csr -key $(PASSWORD_CA) -out $@ -config ./ocsp.cnf
 
 ecc/ocsp.p12: ecc/ocsp.crt
-	openssl pkcs12 -export -in $< -inkey ecc/ocsp.key -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey ecc/ocsp.key -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+	${Q}chmod g+r $@
 
 ecc/ocsp.pem: ecc/ocsp.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+	${Q}chmod g+r $@
 
 .PHONY: ecc/ocsp.vrfy
 ecc/ocsp.vrfy: ecc/ca.pem ecc/ocsp.pem
@@ -249,25 +255,25 @@ ecc/ocsp.vrfy: ecc/ca.pem ecc/ocsp.pem
 #
 ######################################################################
 rsa/client.csr rsa/client.key: client.cnf | $(OUTPUT_DIRS)
-	openssl req -new -out rsa/client.csr -keyout rsa/client.key -config ./client.cnf
-	chmod g+r rsa/client.key
+	${Q}openssl req -new -out rsa/client.csr -keyout rsa/client.key -config ./client.cnf
+	${Q}chmod g+r rsa/client.key
 
 rsa/client.crt: rsa/ca.pem rsa/ca.key rsa/client.csr
-	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/client.csr -key $(PASSWORD_CA) -out $@ -config ./client.cnf
+	${Q}openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/client.csr -key $(PASSWORD_CA) -out $@ -config ./client.cnf
 
 rsa/client.p12: rsa/client.crt
-	openssl pkcs12 -export -in $< -inkey rsa/client.key -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey rsa/client.key -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	${Q}chmod g+r $@
 
 rsa/client.pem: rsa/client.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	chmod g+r $@
-	cp rsa/client.pem $(USER_NAME).pem
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	${Q}chmod g+r $@
+	${Q}cp rsa/client.pem $(USER_NAME).pem
 
 .PHONY: rsa/client.vrfy
 rsa/client.vrfy: rsa/ca.pem rsa/client.pem
-	c_rehash rsa/
-	openssl verify -CApath rsa/ rsa/client.pem
+	${Q}c_rehash rsa/
+	${Q}openssl verify -CApath rsa/ rsa/client.pem
 
 ######################################################################
 #
@@ -275,28 +281,28 @@ rsa/client.vrfy: rsa/ca.pem rsa/client.pem
 #
 ######################################################################
 ecc/client.key: client.cnf | $(OUTPUT_DIRS)
-	openssl ecparam -out $@ -name prime256v1 -genkey
-	chmod g+r $@
+	${Q}openssl ecparam -out $@ -name prime256v1 -genkey
+	${Q}chmod g+r $@
 
 ecc/client.csr: ecc/client.key
-	openssl req -new -out $@ -key ecc/client.key -config ./client.cnf
+	${Q}openssl req -new -out $@ -key ecc/client.key -config ./client.cnf
 
 ecc/client.crt: ecc/ca.pem ecc/ca.key ecc/client.csr
-	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/client.csr -key $(PASSWORD_CA) -out $@ -config ./client.cnf
+	${Q}openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/client.csr -key $(PASSWORD_CA) -out $@ -config ./client.cnf
 
 ecc/client.p12: ecc/client.crt
-	openssl pkcs12 -export -in $< -inkey ecc/client.key -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey ecc/client.key -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	${Q}chmod g+r $@
 
 ecc/client.pem: ecc/client.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	chmod g+r $@
-	cp ecc/client.pem $(USER_NAME).ecc.pem
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	${Q}chmod g+r $@
+	${Q}cp ecc/client.pem $(USER_NAME).ecc.pem
 
 .PHONY: ecc/client.vrfy
 ecc/client.vrfy: ecc/ca.pem ecc/client.pem
-	c_rehash ecc/
-	openssl verify -CApath ecc/ ecc/client.pem
+	${Q}c_rehash ecc/
+	${Q}openssl verify -CApath ecc/ ecc/client.pem
 
 ######################################################################
 #
@@ -304,19 +310,19 @@ ecc/client.vrfy: ecc/ca.pem ecc/client.pem
 #
 ######################################################################
 rsa/inner-server.csr rsa/inner-server.key: inner-server.cnf | $(OUTPUT_DIRS)
-	openssl req -new -out rsa/inner-server.csr -keyout rsa/inner-server.key -config ./inner-server.cnf
-	chmod g+r rsa/inner-server.key
+	${Q}openssl req -new -out rsa/inner-server.csr -keyout rsa/inner-server.key -config ./inner-server.cnf
+	${Q}chmod g+r rsa/inner-server.key
 
 rsa/inner-server.crt: rsa/ca.key rsa/ca.pem rsa/inner-server.csr
-	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/inner-server.csr -key $(PASSWORD_CA) -out $@ -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
+	${Q}openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/inner-server.csr -key $(PASSWORD_CA) -out $@ -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 rsa/inner-server.p12: rsa/inner-server.crt
-	openssl pkcs12 -export -in $< -inkey rsa/inner-server.key -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey rsa/inner-server.key -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	${Q}chmod g+r $@
 
 rsa/inner-server.pem: rsa/inner-server.p12
-	openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $< -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	${Q}chmod g+r $@
 
 .PHONY: rsa/inner-server.vrfy
 rsa/inner-server.vrfy: rsa/ca.pem
@@ -328,23 +334,23 @@ rsa/inner-server.vrfy: rsa/ca.pem
 #
 ######################################################################
 ecc/inner-server.key: inner-server.cnf | $(OUTPUT_DIRS)
-	openssl ecparam -out ecc/inner-server.key -name prime256v1 -genkey
-	chmod g+r $@
+	${Q}openssl ecparam -out ecc/inner-server.key -name prime256v1 -genkey
+	${Q}chmod g+r $@
 
 ecc/inner-server.csr: ecc/inner-server.key
-	openssl req -new -out $@ -key ecc/inner-server.key -config ./inner-server.cnf
-	chmod g+r $@
+	${Q}openssl req -new -out $@ -key ecc/inner-server.key -config ./inner-server.cnf
+	${Q}chmod g+r $@
 
 ecc/inner-server.crt: ecc/ca.key ecc/ca.pem ecc/inner-server.csr
-	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/inner-server.csr -key $(PASSWORD_CA) -out $@ -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
+	${Q}openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/inner-server.csr -key $(PASSWORD_CA) -out $@ -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 ecc/inner-server.p12: ecc/inner-server.crt
-	openssl pkcs12 -export -in $< -inkey ecc/inner-server.key -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -export -in $< -inkey ecc/inner-server.key -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	${Q}chmod g+r $@
 
 ecc/inner-server.pem: ecc/inner-server.p12
-	openssl pkcs12 -in $<< -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
-	chmod g+r $@
+	${Q}openssl pkcs12 -in $<< -out $@ -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	${Q}chmod g+r $@
 
 .PHONY: ecc/inner-server.vrfy
 ecc/inner-server.vrfy: ecc/ca.pem
@@ -365,12 +371,12 @@ serial:
 	@echo '01' > serial
 
 print:
-	openssl x509 -text -in rsa/server.crt
-	openssl x509 -text -in ecc/server.crt
+	${Q}openssl x509 -text -in rsa/server.crt
+	${Q}openssl x509 -text -in ecc/server.crt
 
 printca:
-	openssl x509 -text -in rsa/ca.pem
-	openssl x509 -text -in ecc/ca.pem
+	${Q}openssl x509 -text -in rsa/ca.pem
+	${Q}openssl x509 -text -in ecc/ca.pem
 
 clean:
 	@rm -f *~ *old rsa/client.* ecc/client.*
@@ -379,4 +385,4 @@ clean:
 #	Make a target that people won't run too often.
 #
 distclean:
-	rm -rf *~ *.pem dh ecc/ rsa/ passwords.mk index.txt* serial*  *\.0 *\.1
+	${Q}rm -rf *~ *.pem dh ecc/ rsa/ passwords.mk index.txt* serial*  *\.0 *\.1

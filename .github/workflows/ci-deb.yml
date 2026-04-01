@@ -270,7 +270,7 @@ jobs:
 
     - name: Run the post-install test target
       run: |
-        make -C raddb/certs
+        make -C raddb/certs Q=@
         touch Make.inc
         mkdir -p build/tests/eapol_test
         echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
