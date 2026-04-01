@@ -164,16 +164,16 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 static void eap_teap_tlv_append(REQUEST *request, tls_session_t *tls_session, int tlv, bool mandatory, int length, const void *data)
 {
 	uint16_t hdr[2];
+	char buf[1024];
 
 	hdr[0] = htons(tlv | (mandatory ? EAP_TEAP_TLV_MANDATORY : 0));
 	hdr[1] = htons(length);
 
-	if ((rad_debug_lvl > 1) && (length < 256)) {
+	if ((rad_debug_lvl > 1) && ((size_t) length < sizeof(buf) / 3)) {
 		DICT_ATTR const *da;
 
 		da = dict_attrbyvalue((tlv << 8) | PW_FREERADIUS_EAP_TEAP_TLV, VENDORPEC_FREERADIUS);
 		if (da) {
-			char buf[1024];
 
 			for (size_t i = 0; i < (size_t) length; i++) {
 				sprintf(&buf[2*i], "%02x", ((const uint8_t *)data)[i]);
