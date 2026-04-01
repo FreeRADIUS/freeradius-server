@@ -7,9 +7,11 @@ return
 ----
 
 The `return` statement is used to exit a processing section such as
-`recv Access-Request`.  It behaves similarly to the
-xref:unlang/break.adoc[break] statement, except that it is not limited to
-being used inside of a xref:unlang/foreach.adoc[foreach] loop.
+`recv Access-Request`.  Unlike the xref:unlang/break.adoc[break]
+statement, which only exits the current
+xref:unlang/foreach.adoc[foreach] loop, `return` unwinds past any
+enclosing `foreach` loop and exits the entire processing section or
+policy.
 
 The `return` statement is not strictly necessary.  It is mainly used
 to simplify the layout of `unlang` policies.  If the `return`
