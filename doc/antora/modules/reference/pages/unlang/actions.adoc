@@ -20,26 +20,38 @@ actions {
 }
 ----
 
-section priority overrides are specified in an `actions` block, which
+Section priority overrides are specified in an `actions` block, which
 _must_ be the last thing in a section.  Actions can be set in blocks for the
 following keywords:
 
 * `case`
-* `if`
+* `catch`
 * `else`
 * `elsif`
 * `foreach`
+* `if`
 * `group`
 * `limit`
 * `switch`
 * `timeout`
 * `transaction`
 
-The `actions` block cannot be used for `redundant`, `redundant-load-balance`, or `load-balance` keywords.  Those sections already have default actions to take for the various return codes.  Allowing the `actions` block to over-ride those default actions would cause those sections to operate incorrectly.
+The `actions` block cannot be used in blocks for the following keywords:
+
+* `redundant`
+* `redundant-load-balance`
+* `load-balance`
+* `parallel`
+
+Those sections already have default actions to take for the various
+return codes.  Allowing the `actions` block to over-ride those default
+actions would cause those sections to behave differently, and
+therefore operate incorrectly.
 
 == Priorities
 
-Higher numbers mean higher priorities.  An rcode of `fail` with priority `3` will over-ride an rcode of `ok` with priority `1`,
+Higher numbers mean higher priorities.  An rcode of `fail` with
+priority `3` will over-ride an rcode of `ok` with priority `1`,
 
 == Override Syntax
 
@@ -51,12 +63,18 @@ a number greater than or equal to 0, or a named action.
 [cols="30%,70%"]
 |=====
 | Action 	| Description
-| break		| "break" out of the parent block and stop processing it.
-| default	| Use the default priority for this rcode.
-| reject	| return a `reject` rcode.
-| retry		| re-run the section, as given by the `retry` subsection.
-| return	| return out of the parent block and stop processing it.
+| `break`	| To "break" out of the parent block and stop processing it.
+| `reject`	| Return a `reject` rcode.
+| `retry`	| Re-run the section, as given by the `retry` subsection.
+| `return`	| Return out of the parent block and stop processing it.
 |=====
+
+You can use the special keyword `default` on the left side to set all
+rcodes that haven't been assigned a priority. For example, `default =
+1` means any rcode without an assigned priority will now have a
+priority of "1". The rcodes that have already been set are not
+affected. The `default` keyword provides a fallback value for
+unspecified rcodes, reducing repetitive setup.
 
 include::partial$rcode_table.adoc[]
 
@@ -70,14 +88,21 @@ right-hand side of an action is `retry`.
 [cols="30%,70%"]
 |=====
 | Configuration		| Description
-| max_rtx_count		| maximum number of times this section is retried.
-| max_rtx_time		| maximum time for one try before it is time out, and another retry made.
-| max_rtx_duration	| maximum time for all retries before the section returns `fail`
+| `max_rtx_count`	| Maximum number of times this section is retried.
+| `max_rtx_time`	| Maximum time for one try before it is time out, and another retry made.
+| `max_rtx_duration`	| Maximum time for all retries before the section returns `fail`.
 |=====
 
 All times and durations are parsed as the data type `time_delta`.
 
 If no value is given, it is assumed to be zero.
+
+[NOTE]
+====
+The `initial_rtx_time` is used for module-level retries, and sets the
+time until the first retransmission attempt. It is not set on
+section-level retries.
+====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
