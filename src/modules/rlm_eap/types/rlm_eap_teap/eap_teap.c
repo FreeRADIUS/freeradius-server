@@ -1021,6 +1021,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
+			if (!vp->vp_short || (vp->vp_short > 2)) {
+				REDEBUG("Invalid value in &session-state.Identity-Type = %d", vp->vp_short);
+				goto fail;
+			}
+
 			RDEBUG("Phase 2: Continuing with Identity-Type = %s",
 			       (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) ? "User" : "Machine");
 
@@ -1226,14 +1231,23 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 		 *	check, AND there's not any EAP-Type already set, THEN do it.
 		 */
 		vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-		// GUARD: prevent user/admin provided value for vp_short accessing out of bounds!
-		if (vp && (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE)) {
+		if (vp && (!vp->vp_short || (vp->vp_short > 2))) {
+			REDEBUG("Invalid value in &request.Identity-Type = %d", vp->vp_short);
+			goto fail;
+		}
+
+		if (vp) {
 			VALUE_PAIR *vp_config, *teap_type;
 
 repeat:
 			vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-			// GUARD: prevent user/admin provided value for vp_short accessing out of bounds!
-			if (vp_config && (vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE)) {
+
+			if (vp_config && !(vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER || vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE)) {
+				REDEBUG("Invalid value in &session-state.Identity-Type = %d", vp_config->vp_short);
+				goto fail;
+			}
+
+			if (vp_config) {
 				const char *identity_type = vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
 				uint16_t identity_type_requested = vp_config->vp_short;
 
@@ -1243,7 +1257,8 @@ repeat:
 				 *	Otherwise, it's OK to send it and not get a
 				 *	response.
 				 */
-				if (t->identity_types[identity_type_requested].sent && vp->vp_short != identity_type_requested) {
+				if (t->identity_types[identity_type_requested].sent &&
+				    (vp->vp_short != identity_type_requested)) {
 					if (t->identity_types[identity_type_requested].required) {
 						REDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - rejecting the session", identity_type);
 						VALUE_PAIR *vp_auth;
@@ -1255,6 +1270,7 @@ fail:
 						}
 						goto done;
 					}
+
 					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - skipping optional method", identity_type);
 					RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s", identity_type);
 					fr_pair_delete(&request->state, vp_config);
@@ -1276,11 +1292,12 @@ fail:
 				 * wpa_supplicant continues the authentication even when there are no remaining
 				 * methods configured for it, so we skip only if this is the last round
 				 */
-				if (t->identities_remaining == 1
-						&& !t->identity_types[identity_type_requested].required
-						&& !(fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)
-							|| fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY))) {
+				if ((t->identities_remaining == 1) &&
+				    !t->identity_types[identity_type_requested].required &&
+				    !(fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY) ||
+				      fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY))) {
 					VALUE_PAIR *vp_auth;
+
 					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type);
 					vp_auth = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
 					if (vp_auth) {
