@@ -16,14 +16,17 @@ processed.  These attributes are never sent in any packet.
 `session-state`:: Attributes which are maintained across multi-packet
 exchanges.
 
-There must be a dot `.` after the list name and before the attribute name.
-This syntax helps the server to distinguish between list names and attribute
-names.
+There must be a dot `.` after the list name, and before the attribute
+name.  This syntax helps the server to distinguish between list names
+and attribute names.
 
-NOTE: In version 3, there were additional lists such as `proxy`,
+[NOTE]
+====
+In version 3, there were additional lists such as `proxy`,
 `proxy-reply`, and `coa`.  These lists have been removed in version 4.
 See the xref:unlang/subrequest.adoc[subrequest] keyword for how to create
 child requests.
+===
 
 With the exception of `session-state`, all of the above lists are
 ephemeral.  That is, they exist for one packet exchange, and only one
@@ -41,9 +44,17 @@ in sequence comes in.  Once the packet exchange has been finished, the
 In some cases, there is a parent-child relationship between requests.
 In those situations, it is possible for the policy rules in the child
 to refer to attributes in the parent.  This reference can be made by
-prefixing the _<list>_ name with the `parent` qualifier.  The key word
-`outer` is also a synonym for `parent`.  If there are multiple
-parent-child relationships, the `parent` qualifier can be repeated.
+prefixing the _<list>_ name with the `parent` qualifier.  If there are
+multiple parent-child relationships, the `parent` qualifier can be
+repeated.
+
+The `outer` key word refers to the outmost request which is usually
+the RADIUS request sent by the NAS.  In an EAP session, `outer` is
+often the same as `parent`, since the outer EAP request is a parent of
+the inner (tunnelled) request. However, `outer` and `parent` are
+distinct and the key words `outer` and `parent` are not synonymous.
+The two lists will be different when one server uses
+xref:unlang/subrequest.adoc[subrequest] to create nested requests.
 
 There is, however, no way for the parent to refer to the child.  When
 the child is running, the parent is suspended.  Once the child
