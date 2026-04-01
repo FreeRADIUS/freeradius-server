@@ -12,7 +12,7 @@ The `redundant-load-balance` section operates as a combination of the
 xref:unlang/redundant.adoc[redundant] and xref:unlang/load-balance.adoc[load-balance]
 sections.
 
-<key>:: An attribute reference or expansion which will be hashed in
+<key>:: An attribute reference or expansion (xlat / exec) which will be hashed in
 order to select the statement to execute.
 +
 The hash will be used to pick a particular statement within the
