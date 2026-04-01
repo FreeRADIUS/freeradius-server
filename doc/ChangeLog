@@ -25,8 +25,14 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	* New installations now set "suppress_secrets=true" by default.
 	  The server also prints messages in debug mode which explains why
 	  the secrets are being suppressed.
+	* Allow parallel build for Debian.  Fixes #5774.
+	* Add RTBrick and other dictionaries.
+	* Set "suppress_secrets = true" by default.
+	* Add documentation for ntlm_auth and spaces in passwords.
+	  Addresses #5654.
 
 	Bug fixes
+	* Many minor bug fixes and cleanups.
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
 	* Disable the PCRE JIT at run time if it can't allocate
 	  executable memory.
@@ -51,6 +57,13 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	* Correct corner case in hash table.  Fixes #5680.
 	* Allow new proxy sockets after reaching "too many sockets", when
 	  we close an existing proxy connection.  Fixes #5964.
+	* fix consistent load balancing.  Fixes #5770.
+	* Address pthread APIs.  Fixes #5772.
+	* install headers needed to build modules.  Fixes #5778.
+	* Initialize scope in IPv6 address lookups.  Fixes #5798.
+	* Don't load legacy provider on  --enable-fips-workaround.
+	  Fixes #5775.
+	* Hoist mutex lock in TLS sockets.  Fixes #5480
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
