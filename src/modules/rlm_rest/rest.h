@@ -92,6 +92,8 @@ extern char const *rest_no_proxy;
  */
 extern const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES];
 
+extern const bool http_body_type_binary[REST_HTTP_BODY_NUM_ENTRIES];
+
 extern const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES];
 
 extern fr_table_num_sorted_t const http_auth_table[];

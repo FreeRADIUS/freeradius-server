@@ -64,6 +64,13 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_CRL
 };
 
+/** Table of which known body types are expected to give binary data
+ */
+const bool http_body_type_binary[REST_HTTP_BODY_NUM_ENTRIES] = {
+	[REST_HTTP_BODY_UNKNOWN] = true,
+	[REST_HTTP_BODY_CRL] = true,
+};
+
 /*
  *	Lib CURL doesn't define symbols for unsupported auth methods
  */
