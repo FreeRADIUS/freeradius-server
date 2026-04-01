@@ -48,9 +48,9 @@ If the _<type>_ field is omitted, then a child request is created
 using the same packet type as the current request.
 +
 If the _<type>_ field contains a protocol reference such as `@dhcpv4`,
-then this creates a new child request of a different protocol.  The
-rest of the _<type>_ field is then parsed to see what kind of packet
-is created.
+`dhcpv4::Discover`, `dhcpv4::Disconnect-Request`, etc., then this
+creates a new child request of a different protocol.  The rest of the
+_<type>_ field is then parsed to see what kind of packet is created.
 +
 The _<type> field is then parsed as an enumerated packet name such as
 `::Access-Request`, Please see the protocol dictionaries for a
