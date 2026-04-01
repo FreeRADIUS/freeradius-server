@@ -14,5 +14,21 @@
 #
 exec ntlm_auth {
 	wait = yes
+
+	#
+	#  NOTE: For security reasons, the password is escaped.  So
+	#  backslashes, $, spaces, etc. will cause issues.  This is
+	#  extremely difficult to fix in v3.  The fix would involve
+	#  large changes throughout the server core.
+	#
+	#  Those changes will be in the "v4" release, but cannot be
+	#  back-ported to v3.  An alternative is to base64 the
+	#  password before passing it to ntlm_auth, and then base64
+	#  decode it in a wrapper script.
+	#
+	#  e.g. /path/to/script %{mschap:User-Name} %{base64:%{mschap:User-Name}}
+	#
+	#  And then have the script run ntlm_auth.
+	#
 	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
 }
