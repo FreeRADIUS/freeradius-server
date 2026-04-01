@@ -22,8 +22,8 @@ the following:
 * update the contents of replies, using a clear and simple syntax.
 
 The language is _not_ intended to be a general purpose programming
-language.  It does not permit infinite loops, local variables,
-functions, etc.
+language.  It does not permit infinite loops, user-defined functions,
+and other general-purpose programming constructs.
 
 Despite these limitations, it has proven to be useful and powerful.
 While the server includes plugins for languages such as
@@ -40,12 +40,13 @@ The `unlang` programming model is simple.  The server receives a
 packet (i.e. request) from the network, runs it through a series of
 policies, and then sends a reply.  Each stage of this process is
 called out in the configuration files as a separate section.  For
-example:
+example, when the server receives an `Access-Request` packet, is runs
+the following processing section:
 
 .Example Unlang
 [source,unlang]
 ----
-recv foo {
+recv Access-Request {
     if (!ok) {
         fail
     }
