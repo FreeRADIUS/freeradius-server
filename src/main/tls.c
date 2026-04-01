@@ -2845,11 +2845,12 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[11][2] = {
+static char const *cert_attr_names[12][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
 	{ "TLS-Client-Cert-Issuer",			"TLS-Cert-Issuer" },
+	{ "TLS-Client-Cert-Serial-Number-And-Issuer",   "TLS-Cert-Serial-Number-And-Issuer" },
 	{ "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
@@ -2863,13 +2864,14 @@ static char const *cert_attr_names[11][2] = {
 #define FR_TLS_EXPIRATION	(1)
 #define FR_TLS_SUBJECT		(2)
 #define FR_TLS_ISSUER		(3)
-#define FR_TLS_CN		(4)
-#define FR_TLS_SAN_EMAIL       	(5)
-#define FR_TLS_SAN_DNS          (6)
-#define FR_TLS_SAN_UPN          (7)
-#define FR_TLS_VALID_SINCE	(8)
-#define FR_TLS_SAN_URI		(9)
-#define FR_TLS_CDP		(10)
+#define FR_TLS_SNAI		(4)
+#define FR_TLS_CN		(5)
+#define FR_TLS_SAN_EMAIL	(6)
+#define FR_TLS_SAN_DNS		(7)
+#define FR_TLS_SAN_UPN		(8)
+#define FR_TLS_VALID_SINCE	(9)
+#define FR_TLS_SAN_URI		(10)
+#define FR_TLS_CDP		(11)
 
 /*
  *	Extract Certification Distribution point URL from the certificate
@@ -2947,6 +2949,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
+	BIO		*snai;
+	BIGNUM		*bn;
+	char		*decimal;
 	VALUE_PAIR	**certs;
 	char **identity;
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2959,6 +2964,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	STACK_OF(DIST_POINT) *crl_dp;
 
 	REQUEST		*request;
+
+	size_t len;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -3079,6 +3086,32 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
+
+	/*
+	 * 	Get Serial Number and Issuer
+	 */
+	snai = BIO_new(BIO_s_mem());
+
+	BIO_puts(snai, "{ serialNumber ");
+	bn = ASN1_INTEGER_to_BN(sn, NULL);
+	decimal = BN_bn2dec(bn);
+	BN_free(bn);
+	BIO_puts(snai, decimal);
+	OPENSSL_free(decimal);
+
+	BIO_puts(snai, ", issuer rdnSequence:\"");
+
+	X509_NAME_print_ex(snai, X509_get_issuer_name(client_cert), 0, XN_FLAG_RFC2253);
+
+	BIO_puts(snai, "\" }");
+
+	len = BIO_read(snai, value, sizeof(value) - 1);
+	if (certs && (lookup <= 1) && len > 0) {
+                value[len] = '\0';
+		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SNAI][lookup], value, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	}
+	BIO_free_all(snai);
 
 	/*
 	 *	Get the Common Name, if there is a subject.
@@ -3226,7 +3259,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	For laziness, we re-use the OpenSSL names
 	 */
 	if (certs && (sk_X509_EXTENSION_num(ext_list) > 0)) {
-		int i, len;
+		int i;
 		EXTENDED_KEY_USAGE *eku;
 		char *p;
 		BIO *out;
