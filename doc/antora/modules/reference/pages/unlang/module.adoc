@@ -55,8 +55,8 @@ if (notfound) {
 [#configurable_failover]
 == Overriding Return Codes
 
-The return codes for a module can be can be modified on a per-call basis.
-These over-rides use the same syntax as theq
+The return codes for a module can be can be modified on a per-call
+basis.  These over-rides use the same syntax as the
 xref:unlang/actions.adoc[actions] subsection.
 
 Module priority overrides are specified in a block inline with the module call.
