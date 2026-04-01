@@ -1636,6 +1636,19 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 	return ctx->response.used;
 }
 
+/** Return the body type of a HTTP response
+ *
+ * @param[in] randle	used for the last request.
+ * @return
+ *	- http_body_type_t
+ */
+http_body_type_t rest_response_body_type_get(fr_curl_io_request_t *randle)
+{
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
+
+	return ctx->response.type;
+}
+
 /** Configures body specific curlopts.
  *
  * Configures libcurl handle to use either chunked mode, where the request

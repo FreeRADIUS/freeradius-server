@@ -334,6 +334,8 @@ void rest_response_debug(request_t *request, fr_curl_io_request_t *handle);
 
 size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
 
+http_body_type_t rest_response_body_type_get(fr_curl_io_request_t *randle);
+
 /*
  *	Helper functions
  */
