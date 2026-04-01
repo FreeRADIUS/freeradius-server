@@ -1825,9 +1825,18 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		if (strstr(SSL_CIPHER_description(SSL_get_current_cipher(tls_session->ssl),
 						  buf, sizeof(buf)), "Au=None")) {
-			/* FIXME enforce MSCHAPv2 - RFC 7170 */
 			RDEBUG2("Phase 2: Using anonymous provisioning");
 			t->mode = EAP_TEAP_PROVISIONING_ANON;
+
+			/*
+			 *	RFC 7170, Section 3.2.1 - anonymous provisioning
+			 *	MUST use EAP-MSCHAPv2 as the inner method.
+			 */
+			if (t->default_method && (t->default_method != PW_EAP_MSCHAPV2)) {
+				REDEBUG("Phase 2: Anonymous provisioning requires EAP-MSCHAPv2, but default_eap_type is %s",
+					eap_type2name(t->default_method));
+				return PW_CODE_ACCESS_REJECT;
+			}
 		} else {
 			if (SSL_session_reused(tls_session->ssl)) {
 				RDEBUG("Phase 2: Outer session was resumed");
