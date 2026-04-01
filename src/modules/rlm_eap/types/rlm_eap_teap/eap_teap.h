@@ -146,6 +146,8 @@ typedef struct teap_tunnel_t {
 	bool			auto_chain;		//!< do we automatically chain identities
 	bool			sent_basic_password;
 
+	uint8_t			crypto_binding_nonce[32]; //!< nonce sent in last Crypto-Binding request
+
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
 							//!< protocol.

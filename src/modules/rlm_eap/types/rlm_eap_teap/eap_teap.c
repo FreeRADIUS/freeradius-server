@@ -293,18 +293,9 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
 
 	/*
-	 *	RFC7170bis:
-	 *
-	 *	> The Nonce field is 32 octets.  It contains a 256-bit nonce that is
-	 *	> temporally unique, used for Compound-MAC key derivation at each
-	 *	> end.  The nonce in a request MUST have its least significant bit
-	 *	> set to zero (0), and the nonce in a response MUST have the same
-	 *	> value as the request nonce except the least significant bit MUST
-	 *	> be set to one (1).
-	 *
-	 *	Uh.... it looks like we don't do this?  The Nonce
-	 *	field is actually not used for anything in RFC7170, either.
+	 *	Save the nonce so we can validate the response.
 	 */
+	memcpy(t->crypto_binding_nonce, cbb->binding.nonce, sizeof(t->crypto_binding_nonce));
 
 	outer_tlvs = &cbb->outer_tlvs[0];
 
@@ -1473,6 +1464,7 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	unsigned int			flags;
 	struct teap_imck_t	 	*imck = NULL;
 	uint8_t				*outer_tlvs;
+	uint8_t				expected_nonce[32];
 
 	/*
 	 *	@todo - put crypto binding calculations into a common function,
@@ -1503,6 +1495,19 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 		return PW_CODE_ACCESS_REJECT;
 	}
 	flags = binding->subtype >> 4;
+
+	/*
+	 *	RFC 7170, Section 4.2.13: The nonce in a response MUST
+	 *	have the same value as the request nonce except the
+	 *	least significant bit MUST be set to one (1).
+	 */
+	memcpy(expected_nonce, t->crypto_binding_nonce, sizeof(expected_nonce));
+	expected_nonce[sizeof(expected_nonce) - 1] |= 0x01;
+
+	if (memcmp(binding->nonce, expected_nonce, sizeof(expected_nonce)) != 0) {
+		RWDEBUG2("Phase 2: Crypto-Binding nonce mis-match (possible replay attack)");
+		return PW_CODE_ACCESS_REJECT;
+	}
 
 	/*
 	 *	The Flags field is 4 bits:
