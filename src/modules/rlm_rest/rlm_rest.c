@@ -467,7 +467,11 @@ error:
 		fr_value_box_t *vb;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
+		if (rctx->section.binary || http_body_type_binary[rest_response_body_type_get(handle)]) {
+			fr_value_box_memdup(vb, vb, NULL, (uint8_t const *)body, len, true);
+		} else {
+			fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
+		}
 		fr_dcursor_insert(out, vb);
 	}
 finish:
@@ -1232,8 +1236,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 
-	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, rest_xlat, FR_TYPE_STRING);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, rest_xlat, inst->xlat.binary ? FR_TYPE_OCTETS : FR_TYPE_VOID);
 	xlat_func_args_set(xlat, rest_xlat_args);
 	xlat_func_call_env_set(xlat, &rest_call_env_xlat);
 
