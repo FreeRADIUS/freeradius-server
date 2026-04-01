@@ -1568,6 +1568,21 @@ do_read:
 					&address.socket.inet.src_ipaddr.addr, address.socket.inet.src_ipaddr.prefix);
 		fr_assert(!client || !client->connection);
 
+		/*
+		 *	Verify the cached client is the most specific match.
+		 *	A broader subnet may have been cached first, shadowing
+		 *	a more specific client definition.
+		 */
+		if (client && (client->state == PR_CLIENT_STATIC)) {
+			fr_client_t *radclient;
+
+			radclient = inst->app_io->client_find(thread->child,
+							      &address.socket.inet.src_ipaddr, inst->ipproto);
+			if (radclient && (radclient->ipaddr.prefix > client->src_ipaddr.prefix)) {
+				client = NULL;
+			}
+		}
+
 	} else {
 		client = connection->client;
 
