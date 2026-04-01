@@ -584,6 +584,11 @@ unexpected:
 		}
 		break;
 	case COMPLETE:
+		/*
+		 *	We allow signalling TLVs in the COMPLETE state.
+		 */
+		present &= ~((1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) |
+			     (1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_ERROR));
 		if (present) {
 			REDEBUG("Phase 2: Unexpected TLVs in complete stage");
 			goto unexpected;
