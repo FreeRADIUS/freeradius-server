@@ -25,13 +25,13 @@ RCSID("$Id$")
 #define EAPTLS_MPPE_KEY_LEN 32
 
 #define RDEBUGHEX(_label, _data, _length) \
-if (fr_debug_lvl > 2) {\
+do { if (fr_debug_lvl > 2) {\
 	char __buf[8192];\
 	for (size_t i = 0; (i < (size_t) _length) && (3*i < sizeof(__buf)); i++) {\
 		sprintf(&__buf[3*i], " %02x", (uint8_t)(_data)[i]);\
 	}\
 	RDEBUG2("%s - hexdump(len=%zu):%s", _label, (size_t)_length, __buf);\
-} while (0)
+}} while (0)
 
 #define RANDFILL(x) do { rad_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
