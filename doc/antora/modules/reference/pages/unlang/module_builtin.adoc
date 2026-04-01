@@ -11,14 +11,25 @@ success or failure can be forced during the processing of a policy.
 
 The names and behaviours of these modules are given below:
 
+`disallow`::
+Causes the request to be rejected due to the user being explicitly denied access.
+
 `fail`::
-Causes the request to be treated as if a database failure had
-occurred.
+Causes the request to be treated as if a database failure had occurred.
+
+`handled`::
+Indicates the request has already been fully handled and the server won't send any further response.
+
+`invalid`::
+Causes the request to be treated as invalid, e.g. due to a malformed or unexpected attribute.
 
 `noop`::
 Do nothing. This also serves as an instruction to the
 configurable failover tracking that nothing was done in the current
 section.
+
+`notfound`::
+Indicates that the user or resource was not found. The server will not send any further response by default.
 
 `ok`::
 Instructs the server that the request was processed properly. This keyword can be used to over-ride earlier failures if the local
@@ -26,6 +37,10 @@ administrator determines that the failures are not catastrophic.
 
 `reject`::
 Causes the request to be immediately rejected.
+
+`updated`::
+Indicates that the module updated the request in some way, but neither approved nor rejected it.
+
 
 .Example
 [source,unlang]
