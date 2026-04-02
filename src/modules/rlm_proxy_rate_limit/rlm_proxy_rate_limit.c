@@ -219,6 +219,9 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 
 	my_entry.key = key;
 	my_entry.key_len = key_len;
+
+	PTHREAD_MUTEX_LOCK(&table->mutex);
+
 	entry = rbtree_finddata(table->tree, &my_entry);
 
 	/*
@@ -228,19 +231,15 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	if (!entry) {
 		time_t now;
 
-		/*
-		 *	We don't really care about mutex locks here.
-		 *	If we get this check wrong and there's only
-		 *	one entry, we can clean it up later after
-		 *	receiving another packet.
-		 */
-		if (rbtree_num_elements(table->tree) == 0) return 0;
+		if (rbtree_num_elements(table->tree) == 0) {
+			PTHREAD_MUTEX_UNLOCK(&table->mutex);
+			return 0;
+		}
 
 		/*
 		 *	We've already cleaned up the list this second,
 		 *	don't do it again.
 		 */
-		PTHREAD_MUTEX_LOCK(&table->mutex);
 		if (table->last_checked == request->timestamp) {
 			PTHREAD_MUTEX_UNLOCK(&table->mutex);
 			return 0;
@@ -262,12 +261,14 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 		/*
 		 *	Delete the entry.
 		 */
-		PTHREAD_MUTEX_UNLOCK(&table->mutex);
+		fr_dlist_entry_unlink(&entry->dlist);
 		goto expires;
 	}
 
 	if (entry->expires <= request->timestamp) {
 		char const *name, *calling_station_id;
+
+		fr_dlist_entry_unlink(&entry->dlist);
 
 	expires:
 		name = entry->key + 6;
@@ -278,8 +279,9 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 		     (int) *calling_station_id, calling_station_id + 1);
 
 		rbtree_deletebydata(table->tree, entry);
+		PTHREAD_MUTEX_UNLOCK(&table->mutex);
 		return 0;
-	};
+	}
 
 	/*
 	 *	@todo - add configurable threshold. For now, it's only one packet.
@@ -290,6 +292,7 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	 *	retransmissions.
 	 */
 	if (!entry->active || entry->last_id == request->packet->id) {
+		PTHREAD_MUTEX_UNLOCK(&table->mutex);
 		return 0;
 	}
 
@@ -310,15 +313,14 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	    (entry->expires < request->timestamp + inst->idle_timeout)) {
 		entry->expires = request->timestamp + inst->idle_timeout;
 
-		PTHREAD_MUTEX_LOCK(&table->mutex);
 		fr_dlist_entry_unlink(&entry->dlist);
 		fr_dlist_insert_tail(&table->expiry_list, &entry->dlist);
-		PTHREAD_MUTEX_UNLOCK(&table->mutex);
 		RDEBUG3("Active rate limit entry %.*s (%d) extended", 6, entry->key, entry->table->id);
 	}
 
 	entry->last_request = request->timestamp;
 	entry->count++;
+	PTHREAD_MUTEX_UNLOCK(&table->mutex);
 	return -1;
 }
 
@@ -382,6 +384,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 	my_entry.key = (char *)key;
 	my_entry.key_len = key_len;
+
+	PTHREAD_MUTEX_LOCK(&table->mutex);
+
 	entry = rbtree_finddata(table->tree, &my_entry);
 	if (!entry) {
 
@@ -389,11 +394,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	Too many entries in the table.  Delete the oldest one.
 		 */
 		if (rbtree_num_elements(table->tree) > inst->max_entries) {
-			PTHREAD_MUTEX_LOCK(&table->mutex);
-			entry = fr_dlist_head(&table->expiry_list);
-			PTHREAD_MUTEX_UNLOCK(&table->mutex);
+			rlm_proxy_rate_limit_entry_t *old;
 
-			rbtree_deletebydata(table->tree, entry);
+			old = fr_dlist_head(&table->expiry_list);
+			if (old) {
+				fr_dlist_entry_unlink(&old->dlist);
+				rbtree_deletebydata(table->tree, old);
+			}
 		}
 
 		MEM(entry = talloc_zero(NULL, rlm_proxy_rate_limit_entry_t));
@@ -421,6 +428,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	Save it.
 		 */
 		if (!rbtree_insert(table->tree, entry)) {
+			PTHREAD_MUTEX_UNLOCK(&table->mutex);
 			talloc_free(entry);
 			return RLM_MODULE_OK;
 		}
@@ -441,7 +449,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			entry->count = 0;
 			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
 
-			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);			
+			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
 
 			name = entry->key + 6;
 			calling_station_id = name + *name + 1;
@@ -466,7 +474,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 	}
 
-	PTHREAD_MUTEX_LOCK(&table->mutex);
 	fr_dlist_entry_unlink(&entry->dlist);
 	fr_dlist_insert_tail(&table->expiry_list, &entry->dlist);
 	PTHREAD_MUTEX_UNLOCK(&table->mutex);
@@ -485,14 +492,20 @@ static int cmp_table_entry(void const *one, void const *two)
 	return memcmp(a->key, b->key, a->key_len);
 }
 
+/*
+ *	Called from rbtree_deletebydata (under table->mutex) or
+ *	rbtree_free during mod_detach (no concurrent access).
+ *
+ *	The caller must have already unlinked the entry from the
+ *	dlist, or be in a context where no mutex is needed (detach).
+ *	The fr_dlist_entry_unlink here handles the detach case and
+ *	is a safe no-op if the entry was already unlinked.
+ */
 static void free_table_entry(void *data)
 {
 	rlm_proxy_rate_limit_entry_t *entry = (rlm_proxy_rate_limit_entry_t *) data;
 
-	PTHREAD_MUTEX_LOCK(&entry->table->mutex);
 	fr_dlist_entry_unlink(&entry->dlist);
-	PTHREAD_MUTEX_UNLOCK(&entry->table->mutex);
-
 	talloc_free(entry);
 }
 
@@ -538,7 +551,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		table->id = i;
 
-		if (!(table->tree = rbtree_create(inst, cmp_table_entry, free_table_entry, RBTREE_FLAG_LOCK))) {
+		if (!(table->tree = rbtree_create(inst, cmp_table_entry, free_table_entry, 0))) {
 			cf_log_err_cs(conf, "Failed creating internal data structure for tracking table %d", i);
 			goto fail;
 		}
