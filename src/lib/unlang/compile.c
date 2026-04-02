@@ -547,7 +547,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 
 	fr_assert(tmpl_is_attr(parent_map->lhs));
 
-	if (parent_map && (parent_map->op == T_OP_SUB_EQ)) {
+	if (parent_map->op == T_OP_SUB_EQ) {
 		if (!edit_list_sub_op[map->op]) {
 			cf_log_err(cp, "Invalid operator '%s' for right-hand side list.  It must be a comparison operator", fr_tokens[map->op]);
 			return -1;
@@ -1088,17 +1088,15 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 	return true;
 }
 
-bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_cs, bool module_retry)
+bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *cs, bool module_retry)
 {
 	int i;
 	bool disallow_retry_action = false;
 	CONF_ITEM *csi;
-	CONF_SECTION *cs;
 
 	/*
 	 *	Over-ride the default return codes of the module.
 	 */
-	cs = cf_item_to_section(cf_section_to_item(action_cs));
 	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
 	     csi=cf_item_next(cs, csi)) {
@@ -1139,7 +1137,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 				return false;
 			}
 
-			subci = cf_reference_item(cs, cf_root(cf_section_to_item(action_cs)), value);
+			subci = cf_reference_item(cs, cf_root(cf_section_to_item(cs)), value);
 			if (!subci) {
 				cf_log_perr(csi, "Failed finding reference '%s'", value);
 				return false;
@@ -1156,12 +1154,12 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 
 	if (module_retry) {
 		if (!fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(action_cs, "initial_rtx_time MUST be non-zero for modules which support retries.");
+			cf_log_err(cs, "initial_rtx_time MUST be non-zero for modules which support retries.");
 			return false;
 		}
 	} else {
 		if (fr_time_delta_ispos(actions->retry.irt)) {
-			cf_log_err(action_cs, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
+			cf_log_err(cs, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
 			return false;
 		}
 
@@ -1178,13 +1176,13 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
 
 		if (module_retry) {
-			cf_log_err(action_cs, "Cannot use a '%s = retry' action for a module which has its own retries",
+			cf_log_err(cs, "Cannot use a '%s = retry' action for a module which has its own retries",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
 
 		if (disallow_retry_action) {
-			cf_log_err(action_cs, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
+			cf_log_err(cs, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1192,7 +1190,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 		if (!fr_time_delta_ispos(actions->retry.irt) &&
 		    !actions->retry.mrc &&
 		    !fr_time_delta_ispos(actions->retry.mrd)) {
-			cf_log_err(action_cs, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
+			cf_log_err(cs, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
 				   fr_table_str_by_value(mod_rcode_table, i, "<INVALID>"));
 			return false;
 		}
@@ -1894,15 +1892,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 
 extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
-static inline CC_HINT(always_inline) unlang_op_t const *name_to_op(char const *name)
-{
-	unlang_op_t const *op;
-
-	op = fr_hash_table_find(unlang_op_table, &(unlang_op_t) { .name = name });
-	if (op) return op;
-
-	return NULL;
-}
+#define name_to_op(name)  fr_hash_table_find(unlang_op_table, &(unlang_op_t) { .name = name })
 
 int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
 				 fr_dict_attr_t const *ref)
@@ -2326,6 +2316,7 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 		talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
 
 		if (op->thread_instantiate && (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0)) {
+			TALLOC_FREE(unlang_thread_array);
 			return -1;
 		}
 	}
@@ -2365,7 +2356,7 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 	now = fr_time();
 
 	fr_time_tracking_start(NULL, &frame->tracking, now);
-	fr_time_tracking_yield(&frame->tracking, fr_time());
+	fr_time_tracking_yield(&frame->tracking, now);
 }
 
 void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
