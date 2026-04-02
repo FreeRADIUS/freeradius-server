@@ -414,39 +414,32 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 		 *	we're now responsible for escaping all special
 		 *	chars in an xlat expansion or attribute value.
 		 */
-		switch (in[0]) {
-		case '\n':
+		if (in[0] == '\n' || in[0] == '\r' || in[0] == '\t') {
 			if (outlen <= 2) break;
+
 			out[0] = '\\';
-			out[1] = 'n';
+			switch (in[0]) {
+			case '\n':
+				out[1] = 'n';
+				break;
+
+			case '\r':
+				out[1] = 'r';
+				break;
+
+			case '\t':
+				out[1] = 't';
+				break;
+
+			default:
+				break;
+			}
 
 			in++;
 			out += 2;
 			outlen -= 2;
 			len += 2;
-			break;
-
-		case '\r':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 'r';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
-
-		case '\t':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 't';
-
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			break;
+			continue;
 		}
 
 		/*
