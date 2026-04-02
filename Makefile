@@ -404,7 +404,7 @@ compile_commands.json:
 #
 .PHONY: certs
 certs:
-	@$(MAKE) -C raddb/certs
+	@$(MAKE) -C raddb/certs Q=@
 
 ######################################################################
 #
