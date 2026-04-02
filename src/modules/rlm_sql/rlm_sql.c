@@ -1679,7 +1679,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 	if (request->simul_count < request->simul_max) {
 		rcode = RLM_MODULE_OK;
-		goto finish;
+		goto release;	/* count query already finished, skip finish label */
 	}
 
 	/*
@@ -1689,7 +1689,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	if (!inst->config->simul_verify_query) {
 		rcode = RLM_MODULE_OK;
 
-		goto finish;
+		goto release;	/* count query already finished, skip finish label */
 	}
 
 	if (radius_axlat(&expanded, request, inst->config->simul_verify_query, inst->sql_escape_func, handle) < 0) {
