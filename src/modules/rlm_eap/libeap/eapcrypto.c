@@ -38,7 +38,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 {
 	fr_sha1_ctx context;
 	uint8_t fk[160];
-	unsigned char buf[256];
+	unsigned char buf[MAX_STRING_LEN + 3 * EAPSIM_KC_SIZE + EAPSIM_NONCEMT_SIZE + MAX_STRING_LEN + 2];
 	unsigned char *p;
 	unsigned int  blen;
 
