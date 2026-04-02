@@ -1173,6 +1173,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	 */
 	if (fr_packet_verify(packet, NULL, secret) < 0) {
 		DEBUG("CoA verification failed");
+		talloc_free(packet);
 		return 0;
 	}
 
@@ -1185,6 +1186,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 				    packet->data, packet->data_len,
 				    NULL, secret) < 0) {
 		DEBUG("Failed decoding CoA packet");
+		talloc_free(packet);
 		return 0;
 	}
 
