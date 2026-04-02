@@ -1098,7 +1098,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	*result = NULL;
 
 	if (!attrs) {
-		memset(&attrs, 0, sizeof(tmp_attrs));
+		attrs = tmp_attrs;
 	}
 
 	/*
