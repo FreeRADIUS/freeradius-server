@@ -206,7 +206,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 	if (prf_size > 128) prf_size = 128;
 	prf_size++;	/* include trailing zero */
 
-	buf = talloc_size(NULL, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
+	MEM(buf = talloc_size(NULL, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1));
 
 	memcpy(buf + SHA1_DIGEST_LENGTH, prf_label, prf_size);
 	if (seed) memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
