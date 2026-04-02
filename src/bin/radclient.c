@@ -1940,14 +1940,9 @@ int main(int argc, char **argv)
 	if (do_coa) {
 		attr_coa_match_attr = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
 		if (!attr_coa_match_attr) {
-			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
+			ERROR("Unknown or invalid CoA filter attribute %s", attr_coa_filter_name);
 			fr_exit_now(1);
 		}
-
-		/*
-		 *	If there's no attribute given to match CoA to requests, use User-Name
-		 */
-		if (!attr_coa_match_attr) attr_coa_match_attr = attr_user_name;
 
 		MEM(coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL));
 	}
