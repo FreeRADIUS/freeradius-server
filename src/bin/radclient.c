@@ -1984,7 +1984,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Add the secret.
 	 */
-	if (argv[3]) secret = talloc_strdup(NULL, argv[3]);
+	if (argv[3]) {
+		talloc_free(secret);
+		secret = talloc_strdup(NULL, argv[3]);
+	}
 
 	/*
 	 *	If no '-f' is specified, we're reading from stdin.
