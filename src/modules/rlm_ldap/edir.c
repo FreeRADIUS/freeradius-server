@@ -215,7 +215,7 @@ int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *pass
 		goto finish;
 	}
 
-	if (bufsize > *passlen) {
+	if (bufsize >= *passlen) {
 		err = NMAS_E_BUFFER_OVERFLOW;
 		goto finish;
 	}
