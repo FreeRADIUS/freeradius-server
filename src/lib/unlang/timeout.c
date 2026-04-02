@@ -136,6 +136,13 @@ static unlang_action_t unlang_timeout_done(unlang_result_t *p_result, request_t 
 	 */
 	state->timeout = box->vb_time_delta;
 
+	/*
+	 *	Negative times, and times less than 1us are treated as "zero".
+	 */
+	if (fr_time_delta_lteq(state->timeout, fr_time_delta_from_usec(1))) {
+		RETURN_UNLANG_TIMEOUT;
+	}
+
 	return unlang_timeout_set(p_result, request, frame);
 }
 
