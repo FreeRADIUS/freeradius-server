@@ -561,7 +561,7 @@ fail:
 	 *  Release what we allocated prior to failure.
 	 *
 	 */
-	for (i--; i > 0; i--) {
+	for (i--; i >= 0; i--) {
 #ifdef HAVE_PTHREAD_H
 		pthread_mutex_destroy(&inst->tables[i].mutex);
 #endif
