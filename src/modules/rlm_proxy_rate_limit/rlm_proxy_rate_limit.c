@@ -150,8 +150,9 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
 
 	/*
 	 *	Should not happen since the buffer we are given is sufficient: 512 = 253 + 253 + 6
+	 *	The actual key uses 6 (hash prefix) + 1 (len) + vp1 + 1 (len) + vp2 = 8 + vp1 + vp2
 	 */
-	if (unlikely(6 + vp1->vp_length + vp2->vp_length > *key_len)) {
+	if (unlikely(8 + vp1->vp_length + vp2->vp_length > *key_len)) {
 		RDEBUG("Not rate limiting a request where the key expansion is too large.");
 		return NULL;
 	}
