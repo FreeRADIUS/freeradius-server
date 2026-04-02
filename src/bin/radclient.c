@@ -2015,7 +2015,10 @@ int main(int argc, char **argv)
 		fr_exit_now(1);
 	}
 
-	openssl3_init();
+	if (openssl3_init() < 0) {
+		fr_perror("radclient");
+		fr_exit_now(EXIT_FAILURE);
+	}
 
 	/*
 	 *	Bind to the first specified IP address and port.
