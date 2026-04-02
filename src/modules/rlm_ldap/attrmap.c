@@ -360,6 +360,8 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 		int		count, i;
 
 		values = ldap_get_values_len(handle, entry, inst->valuepair_attr);
+		if (!values) return applied;
+
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
