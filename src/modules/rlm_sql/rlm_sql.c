@@ -1026,12 +1026,12 @@ do { \
 	 */
 	if (!inst->config->groupmemb_query) {
 		if (inst->config->authorize_group_check_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query "
+			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
 			     "is not configured", inst->name);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
+			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query "
 			     "is not configured", inst->name);
 		}
 
