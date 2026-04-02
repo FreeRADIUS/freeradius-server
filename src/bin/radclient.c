@@ -1073,14 +1073,13 @@ static int send_one_packet(rc_request_t *request)
 		 *	Not time for a retry, do so.
 		 */
 		if (fr_time_delta_lt(fr_time_sub(now, request->timestamp), timeout)) {
-			/*
-			 *	When we walk over the tree sending
-			 *	packets, we update the minimum time
-			 *	required to sleep.
-			 */
+			fr_time_delta_t remaining;
+
+			remaining = fr_time_delta_sub(timeout, fr_time_sub(now, request->timestamp));
+
 			if (fr_time_delta_eq(sleep_time, fr_time_delta_wrap(-1)) ||
-			    fr_time_delta_gt(sleep_time, fr_time_sub(now, request->timestamp))) {
-				sleep_time = fr_time_sub(now, request->timestamp);
+			    fr_time_delta_gt(sleep_time, remaining)) {
+				sleep_time = remaining;
 			}
 			return 0;
 		}
