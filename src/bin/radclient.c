@@ -1279,7 +1279,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
-	fr_rb_remove(coa_tree, request);
+	fr_rb_remove(coa_tree, parent);
 
 	/*
 	 *	No longer waiting for a CoA packet for this request.
