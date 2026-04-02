@@ -294,7 +294,14 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	handle = fr_connection_get(inst->pool);
 	if (!handle) return -1;
 
-	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
+	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) {
+		/*
+		 *	If the handle is still valid (i.e. not set to NULL
+		 *	by a reconnection failure), release it back to the pool.
+		 */
+		if (handle) fr_connection_release(inst->pool, handle);
+		return -1;
+	}
 
 	while ((rlm_sql_fetch_row(inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
 		int num_rows;
