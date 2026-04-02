@@ -634,7 +634,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			if (vp->da == attr_packet_type) {
 				request->packet->code = vp->vp_uint32;
 			} else if (vp->da == attr_request_authenticator) {
-				if (vp->vp_length > sizeof(request->packet->vector)) {
+				if (vp->vp_length >= sizeof(request->packet->vector)) {
 					memcpy(request->packet->vector, vp->vp_octets, sizeof(request->packet->vector));
 				} else {
 					memset(request->packet->vector, 0, sizeof(request->packet->vector));
