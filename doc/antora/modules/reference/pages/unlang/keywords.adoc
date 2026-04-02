@@ -115,7 +115,7 @@ pages for information on configuring and using the modules.
 | Keyword | Description
 | xref:unlang/module.adoc[<module>]                 | Execute a named module, e.g., `sql`.
 | xref:unlang/module_method.adoc[<module>.<method>] | Execute a particular method of a named module, e.g., `pap.authorize`
-| xref:unlang/module_builtin.adoc[reject]           | Built-in modules, e.g., `reject`, or `ok`, etc.
+| xref:unlang/module_rcode.adoc[<rcode>]            | Force return codes, e.g., `reject`, or `ok`, etc.
 |=====
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

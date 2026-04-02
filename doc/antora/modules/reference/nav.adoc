@@ -39,7 +39,7 @@
 
 *** xref:unlang/module.adoc[Modules]
 **** xref:unlang/module_method.adoc[Module Methods]
-**** xref:unlang/module_builtin.adoc[Built-in Modules]
+**** xref:unlang/module_rcode.adoc[Using Return Codes]
 
 *** xref:unlang/condition/index.adoc[Conditional Expressions]
 **** xref:unlang/condition/precedence.adoc[Operator Precedence]

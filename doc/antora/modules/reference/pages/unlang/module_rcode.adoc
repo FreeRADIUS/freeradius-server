@@ -1,0 +1,55 @@
+= Forcing Return Codes
+
+In some cases, it is useful to force a particular return code for a
+section.  Due to the way that the server is designed, these return
+codes are not special keywords, but are instead just instances of the
+xref:reference:raddb/mods-available/always.adoc[always] module/
+
+Forcing a return code allows a policy to reject a request immediately,
+or to perform another action on it.
+
+The return codes which can be forced are:
+
+* `disallow`
+* `fail`
+* `handled`
+* `invalid`
+* `noop`
+* `notfound`
+* `ok`
+* `reject`
+* `updated`
+
+See the next section for the meaning of each return code.
+
+Note that it is not possible to force a `timeout` return code, as
+there is already a xref:unlang/timeout.adoc[timeout] keyword, which
+enforces a timeout on a section.  In order to force a `timeout` rcode,
+you should specify a `timeout` section with `0` as the timeout value.
+
+
+.Example of forcing reject
+[source,unlang]
+----
+if (!User-Name) {
+    reply += {
+        Reply-Message = "We don't know who you are"
+    }
+    reject
+}
+----
+
+.Example of forcing timeout
+[source,unlang]
+----
+timeout 0 {}
+----
+
+## Module Return Codes
+
+The following table defines the meaning of each module return code.
+
+include::partial$rcode_table.adoc[]
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
