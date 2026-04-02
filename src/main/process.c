@@ -3228,29 +3228,64 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	main proxy_*_stats structures are updated once the
 	 *	request is cleaned up.
 	 */
-	request->proxy_listener->stats.total_responses++;
-
 	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
-	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
 
+	/*
+	 *	The listener may have gone away, in which case we
+	 *	can't update the statistics for it.
+	 */
+	if (request->proxy_listener) {
+		request->proxy_listener->stats.total_responses++;
+
+		request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
+
+		switch (request->proxy->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
+
+			if (request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT) {
+				request->proxy_listener->stats.total_access_accepts++;
+
+			} else if (request->proxy_reply->code == PW_CODE_ACCESS_REJECT) {
+				request->proxy_listener->stats.total_access_rejects++;
+
+			} else if (request->proxy_reply->code == PW_CODE_ACCESS_CHALLENGE) {
+				request->proxy_listener->stats.total_access_challenges++;
+			}
+			break;
+
+#ifdef WITH_ACCOUNTING
+		case PW_CODE_ACCOUNTING_REQUEST:
+			request->proxy_listener->stats.total_responses++;
+			break;
+
+#endif
+
+#ifdef WITH_COA
+		case PW_CODE_COA_REQUEST:
+			request->proxy_listener->stats.total_responses++;
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			request->proxy_listener->stats.total_responses++;
+			break;
+
+#endif
+		default:
+			break;
+		}
+	}
+
+	/*
+	 *	Update global stats.
+	 */
 	switch (request->proxy->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
-
-		if (request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT) {
-			request->proxy_listener->stats.total_access_accepts++;
-
-		} else if (request->proxy_reply->code == PW_CODE_ACCESS_REJECT) {
-			request->proxy_listener->stats.total_access_rejects++;
-
-		} else if (request->proxy_reply->code == PW_CODE_ACCESS_CHALLENGE) {
-			request->proxy_listener->stats.total_access_challenges++;
-		}
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		request->proxy_listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
@@ -3258,12 +3293,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
-		request->proxy_listener->stats.total_responses++;
 		proxy_coa_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
-		request->proxy_listener->stats.total_responses++;
 		proxy_dsc_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
@@ -3271,7 +3304,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	default:
 		break;
 	}
-#endif
+#endif	/* WITH_STATS */
+
 
 	/*
 	 *	If we hadn't been sending the home server packets for
