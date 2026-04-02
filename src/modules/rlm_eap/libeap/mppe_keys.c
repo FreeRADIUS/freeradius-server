@@ -201,6 +201,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 {
 	size_t prf_size = strlen(prf_label);
 	size_t pos;
+	uint16_t net_len = htons(out_len);	
 	uint8_t	*buf;
 
 	if (prf_size > 128) prf_size = 128;
@@ -210,7 +211,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 
 	memcpy(buf + SHA1_DIGEST_LENGTH, prf_label, prf_size);
 	if (seed) memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
-	*(uint16_t *)&buf[SHA1_DIGEST_LENGTH + prf_size + seed_len] = htons(out_len);
+	memcpy(&buf[SHA1_DIGEST_LENGTH + prf_size + seed_len], &net_len, sizeof(net_len));
 	buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2] = 1;
 
 	// T1 is just the seed
