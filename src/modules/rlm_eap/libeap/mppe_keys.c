@@ -150,13 +150,13 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 
 		if (!default_provider) {
 			ERROR("Failed loading OpenSSL default provider.");
-			return;
+			goto cleanup;
 		}
 
 		md5_to_free = EVP_MD_fetch(libctx, "MD5", NULL);
 		if (!md5_to_free) {
 			ERROR("Failed loading OpenSSL MD5 function.");
-			return;
+			goto cleanup;
 		}
 
 		md5 = md5_to_free;
@@ -175,11 +175,10 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (libctx) {
-		OSSL_PROVIDER_unload(default_provider);
-		OSSL_LIB_CTX_free(libctx);
-		EVP_MD_free(md5_to_free);
-	}
+cleanup:
+	if (default_provider) OSSL_PROVIDER_unload(default_provider);
+	if (libctx) OSSL_LIB_CTX_free(libctx);
+	if (md5_to_free) EVP_MD_free(md5_to_free);
 #endif
 }
 
