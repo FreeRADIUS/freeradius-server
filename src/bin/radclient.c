@@ -249,7 +249,7 @@ static void openssl3_free(void)
 	fr_md4_openssl_free();
 }
 #else
-#define openssl3_init()
+#define openssl3_init() (0)
 #define openssl3_free()
 #endif
 
