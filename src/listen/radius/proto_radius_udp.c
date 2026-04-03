@@ -149,7 +149,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-	if (data_size < 20) {
+	if (data_size < RADIUS_HEADER_LENGTH) {
 		proto_radius_log(li, FR_RADIUS_FAIL_MIN_LENGTH_PACKET, &address->socket,
 				 "Received packet length %zu", packet_len);
 		thread->stats.total_malformed_requests++;
