@@ -1613,32 +1613,6 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	return rcode;
 }
 
-static void debug_hex(REQUEST *request, char const *msg, uint8_t const *data, size_t data_len)
-{
-	char *p;
-	char const *end;
-	char buffer[256];
-
-	if (!data_len) return;
-
-	if (((data_len * 3) + 1) > sizeof(buffer)) data_len = (sizeof(buffer) - 1) / 3;
-
-	p = buffer;
-	end = p + sizeof(buffer);
-
-	while ((size_t) (end - p) >= 4) {
-		sprintf(p, "%02x ", *data);
-		data++;
-		p += 3;
-		data_len--;
-		if (!data_len) break;
-	}
-	p--;
-	*p = '\0';
-
-	RDEBUG3("%s: %s", msg, buffer);
-}
-
 
 /*
  *	mod_authenticate() - authenticate user based on given
