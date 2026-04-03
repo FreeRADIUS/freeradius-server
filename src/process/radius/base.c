@@ -775,10 +775,10 @@ static xlat_arg_parser_t const xlat_func_radius_secret_verify_args[] = {
         XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Validates a request against a know shared secret
+/** Validates a request against a known shared secret
  *
  * Designed for the specific purpose of verifying dynamic clients
- * against a know shared secret.
+ * against a known shared secret in a `new client` section.
  *
  * Example:
 @verbatim
