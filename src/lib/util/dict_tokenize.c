@@ -102,7 +102,7 @@ struct dict_tokenize_ctx_s {
 };
 
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
-			   char  const *dir_name, char const *filename,
+			   char const *dir_name, char const *filename,
 			   char const *src_file, int src_line);
 
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
@@ -3225,11 +3225,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 	if (!fr_cond_assert(!dctx->dict->root || CURRENT_FRAME(dctx)->da)) return -1;
 
-	if ((strlen(dir) + 2 + strlen(filename)) > sizeof(filename_buf)) {
-		fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
-		return -1;
-	}
-
 	/*
 	 *	The filename is relative to the current directory.
 	 *
@@ -3239,6 +3234,16 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	if (FR_DIR_IS_RELATIVE(filename)) {
 		char const *q;
 		bool slash = false;
+
+		if (!dir) {
+			fr_strerror_printf("Error reading dictionary: No directory was supplied");
+			return -1;
+		}
+
+		if ((strlen(dir) + 2 + strlen(filename)) > sizeof(filename_buf)) {
+			fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
+			return -1;
+		}
 
 		/*
 		 *	We either have to do strcpy + strrchr(), or manual checks.
