@@ -133,7 +133,7 @@ group, otherwise it will not be possible to set the group.
 
 
 
-escape_filenames::
+escape_filenames:: Whether filenames are escaped.
 
 Most file systems can handle nearly the full range
 of UTF-8 characters.  Ones that can only deal with
@@ -141,10 +141,31 @@ a limited range should set this to `yes`.
 
 
 
-fsync::
+fsync:: Forcible sync the data to disk.
 
 Synchronise data written with the file system after every
 write, returning fail when the operation fails.
+
+
+
+buffer_count:: How many lines to buffer before
+writing to disk.
+
+If buffer_count is set, then the module will buffer
+logs in memory before writing them to disk.
+
+Setting this to zero will turn off buffering.
+
+
+
+buffer_delay:: Time delay before writing logs to disk.
+
+If logs are buffered, then they buffered data is
+written to disk when either the buffer_count is
+reached, or when buffer_delay is reached.  The
+combination of the two settings allows much higher
+performance, while still ensuring that logs are
+regularly written to disk.
 
 
 
@@ -394,6 +415,8 @@ linelog {
 #		group = ${security.group}
 		escape_filenames = no
 		fsync = no
+		buffer_count = 0;
+		buffer_delay = 1s
 	}
 	pool {
 		start = 0
