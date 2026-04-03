@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -207,6 +207,11 @@ ATTRIBUTE	Stats-Last-Packet-Recv			184	date
 ATTRIBUTE	Stats-Last-Packet-Sent			185	date
 
 Attribute	Acct-Unique-Session-Id			186	string
+
+ATTRIBUTE	Stats-Error				187	string
+
+ATTRIBUTE	Stats-Client-IPv6-Address		188	ipv6addr
+ATTRIBUTE	Stats-Server-IPv6-Address		189	ipv6addr
 
 END-VENDOR FreeRADIUS
 ALIAS		FreeRADIUS				Vendor-Specific.FreeRADIUS
