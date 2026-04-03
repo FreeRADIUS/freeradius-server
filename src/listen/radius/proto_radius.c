@@ -228,13 +228,20 @@ void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason,
 		      fr_socket_t const *sock, char const *fmt, ...)
 {
 	va_list ap;
-	char *msg = NULL;
+	char const *msg;
+	char *to_free = NULL;
 
 	if (!DEBUG_ENABLED2) return;
 
 	va_start(ap, fmt);
-	if (*fmt) msg = talloc_vasprintf(NULL, fmt, ap);
+	if (*fmt) {
+		msg = to_free = talloc_vasprintf(NULL, fmt, ap);
+	} else {
+		msg = "";
+	}
 	va_end(ap);
+
+	fr_assert(reason <= FR_RADIUS_FAIL_MAX);
 
 	if (sock) {
 		EDEBUG2("proto_radius - discarding packet on socket %s from client %pV port %u - %s (%s)",
@@ -249,7 +256,7 @@ void proto_radius_log(fr_listen_t const *li, fr_radius_decode_fail_t reason,
 
 	EDEBUG2("For more information, please see " DOC_ROOT_URL "/troubleshooting/network/%s.html", url[reason]);
 
-	talloc_free(msg);
+	talloc_free(to_free);
 }
 DIAG_ON(format-nonliteral)
 
