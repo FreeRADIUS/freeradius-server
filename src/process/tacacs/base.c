@@ -27,6 +27,7 @@
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/tacacs/tacacs.h>
@@ -1057,6 +1058,57 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	return state->recv(p_result, mctx, request);
 }
 
+static xlat_arg_parser_t const xlat_func_tacacs_secret_verify_args[] = {
+        { .required = true, .single = true, .type = FR_TYPE_OCTETS },
+        XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Validates a request against a known shared secret
+ *
+ * Designed for the specific purpose of verifying dynamic clients
+ * against a known shared secret in a `new client` section.
+ *
+ * Example:
+@verbatim
+%tacacs.secret.verify(<secret>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_tacacs_secret_verify(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+                                                    request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t  *secret, *vb;
+	int		ret;
+	TALLOC_CTX	*local = talloc_new(NULL);
+	fr_pair_list_t	list;
+
+	XLAT_ARGS(args, &secret);
+
+	if (request->proto_dict != dict_tacacs) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+
+	/*
+	 *	Attempt to decode the packet using the supplied secret.
+	 *	If the decoding fails then the secret is wrong.
+	 */
+	fr_pair_list_init(&list);
+	ret = fr_tacacs_decode(local, &list, NULL, request->packet->data, request->packet->data_len, NULL,
+			       secret->vb_strvalue, secret->vb_length, NULL);
+	talloc_free(local);
+
+	if (ret < 0) {
+		RPEDEBUG("Failed to verify the TACACS secret");
+		vb->vb_bool = false;
+	} else {
+		vb->vb_bool = true;
+	}
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_tacacs_t	*inst = talloc_get_type_abort(mctx->mi->data, process_tacacs_t);
@@ -1084,6 +1136,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
+}
+
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "tacacs.secret.verify", xlat_func_tacacs_secret_verify,
+						 FR_TYPE_BOOL)))) return -1;
+
+	xlat_func_args_set(xlat, xlat_func_tacacs_secret_verify_args);
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("tacacs.secret.verify");
 }
 
 /*
@@ -1505,6 +1574,8 @@ fr_process_module_t process_tacacs = {
 		.config		= config,
 		MODULE_INST(process_tacacs_t),
 		MODULE_RCTX(process_rctx_t),
+		.onload		= mod_load,
+		.unload		= mod_unload,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
