@@ -2115,8 +2115,14 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	return 0;
 }
 
+static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+					  fr_dict_attr_flags_t *base_flags);
+
+static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+					fr_dict_attr_flags_t *base_flags);
+
 static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int argc,
-				 UNUSED fr_dict_attr_flags_t *base_flags)
+				 fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t const *current;
 	fr_dict_attr_t const *da;
@@ -2129,6 +2135,13 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 		fr_strerror_const("Invalid END syntax, expected END <ref>");
 		return -1;
 	}
+
+	/*
+	 *	Allow for the obvious.
+	 */
+	if (strcmp(argv[0], "PROTOCOL") == 0) return dict_read_process_end_protocol(dctx, argv + 1, argc - 1, base_flags);
+
+	if (strcmp(argv[0], "VENDOR") == 0) return dict_read_process_end_vendor(dctx, argv + 1, argc - 1, base_flags);
 
 	/*
 	 *	Unwind until we hit an attribute nesting section
