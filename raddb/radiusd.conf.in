@@ -757,7 +757,7 @@ security {
 	#    this flag to "no", in which case the network will work,
 	#    but will be vulnerable to the attack.
 	#
-	require_message_authenticator = auto
+	require_message_authenticator = yes
 
 	#
 	#  Global configuration for limiting the combination of
