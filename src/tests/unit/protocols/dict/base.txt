@@ -1,0 +1,116 @@
+#
+#  We don't need a protocol dictionary for these tests.
+#
+dictionary-read leaf.dict
+match ok
+
+dictionary-read error.dict
+match Unknown data type 'fail': Failed parsing dictionary at src/tests/unit/protocols/dict/error.dict[2]
+
+dictionary-read leaf.dict
+match ok
+
+#
+#  All leaf data types
+#
+dictionary-read types.dict
+match ok
+
+#
+#  Vendor with BEGIN-VENDOR / END-VENDOR
+#
+dictionary-read vendor.dict
+match ok
+
+#
+#  VALUE definitions
+#
+dictionary-read values.dict
+match ok
+
+#
+#  STRUCT with MEMBER
+#
+dictionary-read struct.dict
+match ok
+
+#
+#  Nested TLVs using BEGIN / END
+#
+dictionary-read tlv-nested.dict
+match ok
+
+#
+#  FLAGS and per-attribute flags
+#
+dictionary-read flags.dict
+match ok
+
+#
+#  ENUM with enum= reference
+#
+dictionary-read enum.dict
+match ok
+
+#
+#  Error: ATTRIBUTE with too few arguments
+#
+dictionary-read error-attr-syntax.dict
+match Invalid ATTRIBUTE syntax: Failed parsing dictionary at src/tests/unit/protocols/dict/error-attr-syntax.dict[2]
+
+#
+#  Error: ATTRIBUTE name is a number
+#
+dictionary-read error-attr-numeric-name.dict
+match Invalid attribute name '123' - the name cannot be an integer: Failed parsing dictionary at src/tests/unit/protocols/dict/error-attr-numeric-name.dict[2]
+
+#
+#  Error: VENDOR with too few arguments
+#
+dictionary-read error-vendor-syntax.dict
+match Invalid VENDOR syntax: Failed parsing dictionary at src/tests/unit/protocols/dict/error-vendor-syntax.dict[2]
+
+#
+#  Error: VALUE with too few arguments
+#
+dictionary-read error-value-syntax.dict
+match Invalid VALUE syntax: Failed parsing dictionary at src/tests/unit/protocols/dict/error-value-syntax.dict[3]
+
+#
+#  Error: MEMBER outside of a struct
+#
+dictionary-read error-member-outside-struct.dict
+match MEMBER can only be used for ATTRIBUTEs of type 'struct', not for data type tlv: Failed parsing dictionary at src/tests/unit/protocols/dict/error-member-outside-struct.dict[4]
+
+#
+#  Error: BEGIN-VENDOR with unknown vendor
+#
+dictionary-read error-unknown-vendor.dict
+match Unknown vendor 'No-Such-Vendor': Failed parsing dictionary at src/tests/unit/protocols/dict/error-unknown-vendor.dict[3]
+
+#
+#  Error: VALUE name is a number
+#
+dictionary-read error-value-numeric-name.dict
+match VALUE name must contain at least one alpha character: Invalid VALUE name '42' for attribute 'foo': Failed parsing dictionary at src/tests/unit/protocols/dict/error-value-numeric-name.dict[3]
+
+#
+#  Error: ENUM with too few arguments
+#
+dictionary-read error-enum-syntax.dict
+match Invalid ENUM syntax: Failed parsing dictionary at src/tests/unit/protocols/dict/error-enum-syntax.dict[2]
+
+#
+#  Error: 'secret' flag on uint32 (only valid for string/octets)
+#
+dictionary-read error-secret-on-uint32.dict
+match The 'secret' flag can only be used with data types 'string' or 'octets': Failed parsing dictionary at src/tests/unit/protocols/dict/error-secret-on-uint32.dict[2]
+
+#
+#  Error: END-VENDOR name doesn't match BEGIN-VENDOR
+#
+dictionary-read error-end-vendor-mismatch.dict
+match END-VENDOR Vendor-B does not match previous BEGIN-VENDOR Vendor-A: Failed parsing dictionary at src/tests/unit/protocols/dict/error-end-vendor-mismatch.dict[7]
+
+count
+match 40

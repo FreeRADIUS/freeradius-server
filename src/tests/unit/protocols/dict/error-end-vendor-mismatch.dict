@@ -1,0 +1,8 @@
+BEGIN PROTOCOL Test-Err-10 209
+ATTRIBUTE	Vendor-Specific 26 vsa
+VENDOR		Vendor-A 100
+VENDOR		Vendor-B 200
+BEGIN-VENDOR	Vendor-A
+ATTRIBUTE	foo 1 string
+END-VENDOR	Vendor-B
+END PROTOCOL Test-Err-10

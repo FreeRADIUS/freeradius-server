@@ -1,0 +1,6 @@
+BEGIN PROTOCOL Test-Err-6 205
+ATTRIBUTE	Vendor-Specific 26 vsa
+BEGIN-VENDOR	No-Such-Vendor
+ATTRIBUTE	foo 1 string
+END-VENDOR	No-Such-Vendor
+END PROTOCOL Test-Err-6

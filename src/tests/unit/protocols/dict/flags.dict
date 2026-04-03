@@ -1,0 +1,8 @@
+BEGIN PROTOCOL Test-Flags 105
+FLAGS	internal
+ATTRIBUTE	internal-attr 1 string
+FLAGS	!internal
+ATTRIBUTE	normal-attr 2 string
+ATTRIBUTE	secret-string 3 string secret
+ATTRIBUTE	secret-octets 4 octets secret
+END PROTOCOL Test-Flags
