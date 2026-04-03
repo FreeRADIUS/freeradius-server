@@ -103,8 +103,7 @@ static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
-extern fr_dict_autoload_t radclient_dict[];
-fr_dict_autoload_t radclient_dict[] = {
+static const fr_dict_autoload_t radclient_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	DICT_AUTOLOAD_TERMINATOR
@@ -131,8 +130,7 @@ static fr_dict_attr_t const *attr_radclient_coa_filter;
 
 static fr_dict_attr_t const *attr_coa_match_attr = NULL;
 
-extern fr_dict_attr_autoload_t radclient_dict_attr[];
-fr_dict_attr_autoload_t radclient_dict_attr[] = {
+static const fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_password, .name = "Password.MS-CHAP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
