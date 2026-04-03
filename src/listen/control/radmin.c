@@ -159,6 +159,26 @@ static char *stack[MAX_STACK];
 
 static fr_cmd_t *local_cmds = NULL;
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static const fr_dict_autoload_t radmin_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+static fr_dict_attr_t const *attr_cleartext_password;
+static fr_dict_attr_t const *attr_user_name;
+
+static const fr_dict_attr_autoload_t radmin_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+
 static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
@@ -985,8 +1005,18 @@ int main(int argc, char **argv)
 			fr_exit_now(64);
 		}
 
-		if (fr_dict_read(dict, confdir, FR_DICTIONARY_FILE) == -1) {
+		if (fr_dict_autoload(radmin_dict) < 0) {
+			fr_perror("radmon");
+			fr_exit_now(64);
+		}
+
+		if (fr_dict_attr_autoload(radmin_dict_attr) < 0) {
 			fr_perror("radmin");
+			fr_exit_now(64);
+		}
+
+		if (fr_dict_read(dict, confdir, FR_DICTIONARY_FILE) == -1) {
+			fr_perror("radmin 2");
 			fr_exit_now(64);
 		}
 
