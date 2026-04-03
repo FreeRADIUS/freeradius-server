@@ -61,7 +61,7 @@ match Invalid length for 'octets[...]'
 dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
 match Attributes of type 'integer' cannot use the integer[...] syntax
 
-dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
+dictionary ATTRIBUTE	Unit-$bad$stuff	241.255		integer
 match Invalid character '$' in attribute name "Unit-$bad$stuff"
 
 #
@@ -73,10 +73,10 @@ match Attributes cannot be more than 253 octets in length
 dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
 match The 'has_tag' flag can only be used with RFC and VSA attributes
 
-dictionary ATTRIBUTE	Unit-Tag	255		date	has_tag
+dictionary ATTRIBUTE	Unit-Tag	240		date	has_tag
 match The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
 
-dictionary ATTRIBUTE	Unit-Tag	255		tlv	encrypt=User-Password
+dictionary ATTRIBUTE	Unit-Tag	240		tlv	encrypt=User-Password
 match The 'encrypt=User-Password' flag can only be used with attributes of type 'string'
 
 #

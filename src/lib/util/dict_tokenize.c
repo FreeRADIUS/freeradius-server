@@ -1048,7 +1048,7 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	if (!da->parent) return 1;	/* no parent no conflicts possible */
 
 	dup_name = fr_dict_attr_by_name(NULL, da->parent, da->name);
-	if (da->flags.name_only) dup_num = fr_dict_attr_child_by_num(da->parent, da->attr);
+	if (!da->flags.name_only) dup_num = fr_dict_attr_child_by_num(da->parent, da->attr);
 
 	/*
 	 *	Not a duplicate...
