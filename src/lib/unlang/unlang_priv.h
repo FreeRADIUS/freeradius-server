@@ -559,12 +559,12 @@ static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang
  *	the request.
  *
  * @param[in] stack	The current stack.
- * @param[in] to_depth	mark all frames below this depth as cancelled.
+ * @param[in] to_depth	mark all frames up to and including this depth as cancelled.
  */
 static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned int to_depth)
 {
 	unlang_stack_frame_t	*frame;
-	unsigned int i, depth = stack->depth;	/* must be signed to avoid underflow */
+	unsigned int i, depth = stack->depth;
 
 	if (!fr_cond_assert(to_depth >= 1)) return UNLANG_ACTION_FAIL;
 

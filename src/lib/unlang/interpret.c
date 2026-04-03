@@ -1497,7 +1497,7 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 	/*
 	 *	Signal all lower frames to exit.
 	 */
-	unlang_stack_signal(request, FR_SIGNAL_CANCEL, retry->depth);
+	unlang_stack_signal(request, FR_SIGNAL_CANCEL, retry->depth + 1);
 
 	retry->state = FR_RETRY_MRD;
 	unlang_interpret_mark_runnable(request);
