@@ -81,9 +81,10 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },
 	{ FR_CONF_OFFSET("max_idle", rlm_linelog_t, file.max_idle), .dflt = "30s" },
-	{ FR_CONF_OFFSET("buffer_count", rlm_linelog_t, file.buffer_count), .dflt = "1000" },
+	{ FR_CONF_OFFSET("buffer_count", rlm_linelog_t, file.buffer_count), .dflt = "0" },
 	{ FR_CONF_OFFSET_IS_SET("buffer_delay", FR_TYPE_TIME_DELTA, 0, rlm_linelog_t, file.buffer_delay), .dflt = "1s" },
 	{ FR_CONF_OFFSET_IS_SET("buffer_expiry", FR_TYPE_TIME_DELTA, CONF_FLAG_HIDDEN, rlm_linelog_t, file.buffer_expiry), .dflt = "30s" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -536,6 +537,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector[i].iov_len = inst->delimiter_len;
 		i++;
 	}
+
 	if (inst->file.buffer_write) {
 		rlm_linelog_file_entry_t	*entry = NULL;
 
@@ -830,8 +832,8 @@ build_vector:
 		if (vector_len == 0) {
 			RDEBUG2("No data to write");
 			rcode = RLM_MODULE_NOOP;
-		}
-		else if (inst->file.buffer_write) {
+
+		} else if (inst->file.buffer_write) {
 			linelog_buffer_action_t		ret;
 			rlm_linelog_file_entry_t	*entry = NULL;
 
@@ -971,7 +973,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			}
 		}
 
-		if (inst->file.buffer_count != 0 || fr_time_delta_unwrap(inst->file.buffer_delay) != 0) {
+		FR_TIME_DELTA_COND_CHECK("buffer_delay", inst->file.buffer_delay,
+					 fr_time_delta_lt(inst->file.buffer_delay, fr_time_delta_wrap(0)), fr_time_delta_wrap(0));
+
+		if ((inst->file.buffer_count != 0) || (fr_time_delta_unwrap(inst->file.buffer_delay) != 0)) {
 			inst->file.buffer_write = true;
 
 			if (inst->file.buffer_delay_is_set && !inst->file.buffer_expiry_is_set) {
@@ -980,6 +985,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				 */
 				inst->file.buffer_expiry = fr_time_delta_mul(inst->file.buffer_delay, 2);
 			}
+
+			FR_INTEGER_BOUND_CHECK("buffer_count", inst->file.buffer_count, >=, 10);
+			FR_INTEGER_BOUND_CHECK("buffer_count", inst->file.buffer_count, <=, 100000);
+
+			FR_TIME_DELTA_COND_CHECK("buffer_delay", inst->file.buffer_delay,
+						 fr_time_delta_lt(inst->file.buffer_delay, fr_time_delta_wrap(USEC/10)), fr_time_delta_wrap(USEC/10));
+
+			FR_TIME_DELTA_COND_CHECK("buffer_delay", inst->file.buffer_delay,
+						 fr_time_delta_gt(inst->file.buffer_delay, fr_time_delta_wrap(5*USEC)), fr_time_delta_wrap(5*USEC));
+
  		} else {
 			inst->file.buffer_write = false;
 		}
