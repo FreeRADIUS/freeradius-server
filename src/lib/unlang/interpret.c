@@ -1049,6 +1049,10 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 
 			/*
 			 *	Close out the section we entered earlier
+			 *
+			 *	@todo - this arguably accesses the
+			 *	frame after it's been popped, but this
+			 *	is usually OK.  :(
 			 */
 			instruction_done_debug(request, frame, frame->instruction);
 
@@ -1738,7 +1742,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*vb;
 	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
 
-	fr_assert(unlang_interpret_event_list(request) != NULL);
+	fr_assert(el != NULL);
 
 	XLAT_ARGS(args, &timeout);
 
@@ -1761,7 +1765,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	ev_p = ev_p_og = request_data_get(request, (void *)unlang_cancel_xlat, 0);
 	if (ev_p) {
-		MEM(*ev_p);
+		fr_assert(*ev_p);
 
 		when = fr_timer_when(*ev_p);
 	} else {
@@ -1855,10 +1859,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Nothing there...
 	 */
-	if (!instruction) {
-		talloc_free(vb);
-		return XLAT_ACTION_DONE;
-	}
+	if (!instruction) goto clear;
 
 	/*
 	 *	How deep the current stack is.
@@ -1872,6 +1873,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The current module
 	 */
 	if (strcmp(fmt, "module") == 0) {
+		if (!request->module) goto clear;
+
 		if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) goto error;
 
 		goto finish;
@@ -1881,6 +1884,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Name of the instruction.
 	 */
 	if (strcmp(fmt, "name") == 0) {
+		if (!instruction->name) goto clear;
+
 		if (fr_value_box_bstrndup(vb, vb, NULL, instruction->name,
 					  strlen(instruction->name), false) < 0) goto error;
 		goto finish;
@@ -1890,6 +1895,8 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The request processing stage.
 	 */
 	if (strcmp(fmt, "processing_stage") == 0) {
+		if (!request->component) goto clear;
+
 		if (fr_value_box_strdup(vb, vb, NULL, request->component, false) < 0) goto error;
 
 		goto finish;
@@ -1972,6 +1979,7 @@ finish:
 	if (vb->type != FR_TYPE_NULL) {
 		fr_dcursor_append(out, vb);
 	} else {
+	clear:
 		talloc_free(vb);
 	}
 
