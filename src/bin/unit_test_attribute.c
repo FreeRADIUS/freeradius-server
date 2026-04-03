@@ -4050,7 +4050,7 @@ static void usage(char const *name)
 	INFO("  -h                 Print help text.");
 	INFO("  -M                 Show talloc memory report.");
 	INFO("  -p                 Allow xlat_purify");
-	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("  -o <receipt_file>  Create the <receipt_file> as a 'success' exit.");
 	INFO("  -w <output_file>   Write 'corrected' output to <output_file>.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
 	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
@@ -4377,7 +4377,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:S:w:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhpo:S:w:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -4407,7 +4407,7 @@ int main(int argc, char *argv[])
 			talloc_enable_leak_report();
 			break;
 
-		case 'r':
+		case 'o':
 			p = strrchr(optarg, '/');
 			if (!p || p[1]) {
 				receipt_file = optarg;
