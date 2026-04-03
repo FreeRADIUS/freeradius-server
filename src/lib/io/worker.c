@@ -366,7 +366,7 @@ static int fr_worker_listen_cancel_self(fr_worker_t *worker, fr_listen_t const *
 	if (!wl) return -1;
 
 	while ((request = fr_dlist_pop_head(&wl->dlist)) != NULL) {
-		RDEBUG("Canceling request due to socket being closed");
+		RERROR("Cancelling request due to socket being closed");
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 	}
 
