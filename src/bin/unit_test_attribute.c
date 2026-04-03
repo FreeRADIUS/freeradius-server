@@ -1985,6 +1985,44 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
 }
 
+/** Read a dictionary from a file, and then free it.
+ *
+ */
+static size_t command_dictionary_read(command_result_t *result, command_file_ctx_t *cc,
+				      char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	int ret;
+	char *filename, *dir = NULL;
+	char *p;
+	fr_dict_t *dict;
+
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
+
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing dictionary name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	p = strchr(in, ' ');
+	if (p) *p = '\0';
+
+	filename = in;
+	if (*filename != '/') {
+		dir = cc->path;
+
+	}
+
+	/*
+	 *	Load the dictionary, and then immediately free it.  This lets each run proceed independently.
+	 */
+	ret = fr_dict_afrom_file(&dict, dir, filename);
+	if (ret < 0) RETURN_OK_WITH_ERROR();
+
+	talloc_free(dict);
+
+	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
+}
+
 /** Print the currently loaded dictionary
  *
  */
@@ -3514,6 +3552,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_dictionary_dump,
 					.usage = "dictionary-dump",
 					.description = "Print the contents of the currently active dictionary to stdout",
+				}},
+	{ L("dictionary-read "),	&(command_entry_t){
+					.func = command_dictionary_read,
+					.usage = "dictionary-read <filename>",
+					.description = "Load the named dictionary file, writing \"ok\" to the data buffer if successful",
 				}},
 	{ L("encode-dns-label "),	&(command_entry_t){
 					.func = command_encode_dns_label,

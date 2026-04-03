@@ -3933,3 +3933,61 @@ int fr_dict_parse_str(fr_dict_t *dict, char const *input, fr_dict_attr_t const *
 
 	return dict_finalise(&dctx);
 }
+
+/** Load one dictionary file.
+ *
+ * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
+ *				dictionary if files have changed and *out is not NULL.
+ * @param[in] dir		directory
+ * @param[in] filename		file to load.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_afrom_file(fr_dict_t **out, char const *dir, char const *filename)
+{
+	fr_dict_t	*dict;
+
+	*out = NULL;
+
+	if (unlikely(!dict_gctx)) {
+		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
+		return -1;
+	}
+
+	if (unlikely(!dict_gctx->internal)) {
+		fr_strerror_const("Internal dictionary must be initialised before loading test dictionaries");
+		return -1;
+	}
+
+	fr_strerror_clear();	/* Ensure we don't report spurious errors */
+
+	dict = dict_alloc(dict_gctx);
+	if (!dict) return -1;
+
+	if (dict_from_file(dict, dir, filename, NULL, 0) < 0) {
+		talloc_free(dict);
+		return -1;
+	}
+
+	/*
+	 *	Finalize the library
+	 *
+	 *	Note that we cannot use this function to test loading of protocol dictionaries without
+	 *	significant changes.  We would have to free up all of the dependencies, etc. which isn't
+	 *	entirely done right now.
+	 */
+	fr_assert(dict->proto);
+	fr_assert(strcmp(dict->proto->name, "default") == 0);
+	fr_assert(!dict->proto->init);
+	fr_assert(!dict->proto->free);
+	fr_assert(!dict->proto->encode);
+	fr_assert(!dict->proto->decode);
+
+	dict->loaded = true;
+	dict->loading = false;
+
+	*out = dict;
+
+	return 0;
+}

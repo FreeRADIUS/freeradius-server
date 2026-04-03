@@ -301,6 +301,8 @@ bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
 int			dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
 					   bool coerce, bool replace, fr_dict_attr_t const *child_struct);
 
+int			fr_dict_afrom_file(fr_dict_t **out, char const *dir, char const *filename) CC_HINT(nonnull(1,3));
+
 #ifdef __cplusplus
 }
 #endif
