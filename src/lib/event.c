@@ -51,9 +51,6 @@ typedef struct fr_event_fd_t {
 
 int fr_ev_max_fds = FR_EV_MAX_EVENTS;
 
-#undef USEC
-#define USEC (1000000)
-
 struct fr_event_list_t {
 	fr_heap_t	*times;
 

@@ -41,8 +41,6 @@ RCSID("$Id$")
 
 #ifdef WITH_DETAIL
 
-#define USEC (1000000)
-
 static FR_NAME_NUMBER state_names[] = {
 	{ "unopened", STATE_UNOPENED },
 	{ "unlocked", STATE_UNLOCKED },

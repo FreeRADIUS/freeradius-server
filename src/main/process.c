@@ -431,9 +431,6 @@ static void coa_separate(REQUEST *request, bool retransmit) CC_HINT(nonnull);
 
 #define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_CANCELLED);return;}} while (0)
 
-#undef USEC
-#define USEC (1000000)
-
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
 static void tv_add(struct timeval *tv, int usec_delay)

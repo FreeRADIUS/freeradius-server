@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #ifdef WITH_STATS
 
-#define USEC (1000000)
 #define EMA_SCALE (100)
 #define F_EMA_SCALE (1000000)
 

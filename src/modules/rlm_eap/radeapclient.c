@@ -51,8 +51,6 @@ extern int sha1_data_problems;
 #define DEBUG2 if ((fr_debug_lvl >= 2) && fr_log_fp) fr_printf_log
 #define ERROR if (fr_debug_lvl && fr_log_fp) fr_printf_log
 
-#define USEC 1000000
-
 static uint32_t parallel = 1;
 static unsigned int retries = 3;
 static float timeout = 5;

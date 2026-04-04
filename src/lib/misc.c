@@ -2174,8 +2174,6 @@ void fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp
 	fr_quick_sort(to_sort, part + 1, max_idx, cmp);
 }
 
-#define USEC 1000000
-
 /** Convert a time specified in milliseconds to a timeval
  *
  * @param[out] out	Where to write the result.

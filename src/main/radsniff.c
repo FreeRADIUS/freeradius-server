@@ -164,7 +164,6 @@ static void rs_daemonize(char const *pidfile)
 	}
 }
 
-#define USEC 1000000
 static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
 {
 	elapsed->tv_sec = end->tv_sec - start->tv_sec;
