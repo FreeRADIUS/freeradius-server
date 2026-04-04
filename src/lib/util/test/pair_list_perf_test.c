@@ -136,7 +136,7 @@ static char const	*test_attrs_75 = \
 	"Test-String-# += \"selamat tinggal\","			/* 12 */
 	"Test-String-# += \"你好\","				/* 13 */
 	"Test-String-# += \"再见\","				/* 14 */
-	"Test-String-# += \"Привет\","				/* 15 */
+	"Test-String-# += \"Я люблю сир\","			/* 15 */
 	"Test-Uint8-# = 255,"					/* 16 */
 	"Test-Int64-# = 85645,"					/* 17 */
 	"Test-Date-# += \"Jan  1 2020 00:00:00 UTC\","		/* 18 */
@@ -158,12 +158,12 @@ static char const	*test_attrs_100 = \
 	"Test-String-# += \"selamat tinggal\","			/* 12 */
 	"Test-String-# += \"你好\","				/* 13 */
 	"Test-String-# += \"再见\","				/* 14 */
-	"Test-String-# += \"Привет\","				/* 15 */
-	"Test-String-# += \"до свидания\","			/* 16 */
-	"Test-String-# += \"вся слава советской россии\","	/* 17 */
-	"Test-String-# += \"у нас есть видео с мочой\","	/* 18 */
-	"Test-String-# += \"Байден заплатит за\","		/* 19 */
-	"Test-String-# += \"приставание к бурундукам\"";	/* 20 */
+	"Test-String-# += \"Я люблю сир\","			/* 15 I love cheese */
+	"Test-String-# += \"Найкращий сир - бринза\","	/* 16 The best cheese is brynza */
+	"Test-String-# += \"Сулугуні чудовий на грилі\","	/* 17 Suluguni is wonderful grilled */
+	"Test-String-# += \"Сирники з домашнього сиру\","	/* 18 Syrnyky from homemade cheese */
+	"Test-String-# += \"Карпатська бринза пахне гірськими травами\","/* 19 (Carpathian brynza smells of mountain herbs */
+	"Test-String-# += \"Вареники з сиром найсмачніші\"";	/* 20 Varenyky with cheese are the tastiest */
 
 static fr_pair_t	**source_vps_0;		//!< List with zero duplicate attributes.
 static fr_pair_t	**source_vps_25;	//!< List with 25% duplicate attributes.
