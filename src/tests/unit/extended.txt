@@ -96,8 +96,30 @@ data Attr-245.26 = 0x0000000106
 decode f5 0a 1a 00 00 00 00 01 06 01
 data Attr-245.26.1.6 = 0x01
 
-decode f5 09 1a 80 00 00 00 01 06 f5 05 1a 80 01
+#
+#  fe		245
+#  09		length
+#  1a		Vendor-Specific
+#  80		"more" data
+#  00 00 00 01	vendor 1
+#  06		attribute 6
+#
+#  f5		245
+#  05		length 5
+#  1a		Vendor-Specific
+#  00		no more data
+#  01		data
+#
+decode f5 09 1a 80 00 00 00 01 06 f5 05 1a 00 01
 data Attr-245.26.1.6 = 0x01
 
-decode f5 0a 1a 80 00 00 00 01 06 01 f5 05 1a 80 01
+decode f5 0a 1a 80 00 00 00 01 06 01 f5 05 1a 00 01
 data Attr-245.26.1.6 = 0x0101
+
+#
+#  Invalid "more" in last attribute.
+#
+#  The attributes are decoded separately as "raw".
+#
+decode f5 0a 1a 80 00 00 00 01 06 01 f5 05 1a 80 01
+data Attr-245 = 0x1a80000000010601, Attr-245 = 0x1a8001

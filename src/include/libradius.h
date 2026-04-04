@@ -571,14 +571,8 @@ void		rad_free(RADIUS_PACKET **);
 #ifndef WITH_RADIUSV11_ONLY
 int		rad_pwencode(char *encpw, size_t *len, char const *secret,
 			     uint8_t const *vector);
-int		rad_pwdecode(char *encpw, size_t len, char const *secret,
-			     uint8_t const *vector);
 
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-ssize_t		rad_tunnel_pwencode(RADIUS_PACKET *packet, char *encpw, size_t *len, char const *secret,
-				    uint8_t const *vector);
-ssize_t		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
-				    char const *secret, uint8_t const *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 #endif

@@ -93,6 +93,9 @@ static int fr_rand_initialized = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 #endif
 
+static int rad_pwdecode(char encpw[static 256],  size_t len, char const *secret, uint8_t const *vector);
+static ssize_t rad_tunnel_pwdecode(uint8_t encpw[static 256], size_t *len, char const *secret, uint8_t const *vector);
+
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",					//!< 0
   "Access-Request",
@@ -527,6 +530,8 @@ static void make_secret(uint8_t *digest, uint8_t const *vector,
 {
 	FR_MD5_CTX context;
 	size_t	     i;
+
+	if (length > AUTH_VECTOR_LEN) length = AUTH_VECTOR_LEN;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
@@ -1015,7 +1020,6 @@ static ssize_t vp2data_any(RADIUS_PACKET *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
-		if (len > AUTH_VECTOR_LEN) len = AUTH_VECTOR_LEN;
 		make_secret(ptr, packet->vector, secret, data, len);
 		len = AUTH_VECTOR_LEN;
 		break;
@@ -1043,11 +1047,13 @@ static ssize_t vp2data_any(RADIUS_PACKET *packet,
 }
 
 static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
-			  uint8_t *ptr, int hdr_len, ssize_t len,
+			  uint8_t *ptr, size_t hdr_len, size_t len,
 			  int flag_offset, int vsa_offset)
 {
-	int check_len = len - ptr[1];
-	int total = len + hdr_len;
+	size_t check_len = len - ptr[1];
+	size_t total = len + hdr_len;
+
+	fr_assert((size_t) (end - start) <= 65536);
 
 	/*
 	 *	Pass 1: Check if the addition of the headers
@@ -1077,7 +1083,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 	 *	RADIUS attributes.
 	 */
 	while (1) {
-		int sublen = 255 - ptr[1];
+		size_t sublen = 255 - ptr[1];
 
 		if (len <= sublen) {
 			break;
@@ -1336,9 +1342,12 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 #endif
 		ptr[1] += left;
 		ptr += ptr[1];
+
 		p += left;
-		room -= left;
 		len -= left;
+
+		room -= 2;
+		room -= left;
 	}
 
 	*pvp = vp->next;
@@ -1679,7 +1688,7 @@ int rad_vp2rfc(RADIUS_PACKET *packet,
 			/*
 			 *	Check for overflow
 			 */
-			if ((attr[1] + vp->vp_length) < 255) {
+			if ((attr[1] + vp->vp_length) <= 255) {
 				memcpy(p, vp->vp_strvalue, vp->vp_length);
 				attr[1] += vp->vp_length;
 				p += vp->vp_length;
@@ -3056,6 +3065,11 @@ int rad_verify(RADIUS_PACKET *packet, RADIUSV11_UNUSED RADIUS_PACKET *original, 
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 #endif
 
+		/*
+		 *	MUST call rad_packet_ok() before calling this function.
+		 */
+		if (length < 2) return -1;
+
 		attrlen = ptr[1];
 
 #ifndef WITH_RADIUSV11_ONLY
@@ -3485,12 +3499,10 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 	VP_TRACE("data2vp_vsa: length %u\n", (unsigned int) length);
 
-#ifndef NDEBUG
 	if (length <= (dv->type + dv->length)) {
 		fr_strerror_printf("data2vp_vsa: Failure to call rad_tlv_ok");
 		return -1;
 	}
-#endif
 
 	switch (dv->type) {
 	case 4:
@@ -3654,7 +3666,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		/*
 		 *	Check the continuation flag.
 		 */
-		more = ((attr[2] & 0x80) != 0);
+		more = ((attr[3] & 0x80) != 0);
 
 		/*
 		 *	Or, there's no more data, in which case we
@@ -4205,14 +4217,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 				goto raw;
 			} else {
 				uint8_t my_digest[AUTH_VECTOR_LEN];
-				size_t secret_len;
-
-				secret_len = datalen;
-				if (secret_len > AUTH_VECTOR_LEN) secret_len = AUTH_VECTOR_LEN;
 
 				make_secret(my_digest,
 					    original->vector,
-					    secret, data, secret_len);
+					    secret, data, datalen);
 				memcpy(buffer, my_digest,
 				       AUTH_VECTOR_LEN );
 				buffer[AUTH_VECTOR_LEN] = '\0';
@@ -4922,9 +4930,13 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 
 /** Decode password
  *
+ *  Passwords in RADIUS packets cannot contain more than MAX_STRING_LEN
+ *  of data.
+ *
+ *  The input buffer is always 256 octets in size.
  */
-int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
-		 uint8_t const *vector)
+static int rad_pwdecode(char passwd[static 256], size_t pwlen, char const *secret,
+		       uint8_t const *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
@@ -4934,7 +4946,10 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 	/*
 	 *	Catch idiots.
 	 */
-	if (pwlen == 0) goto done;
+	if (pwlen == 0) {
+		passwd[0] = 0;
+		return 0;
+	}
 
 	/*
 	 *	Use the secret to setup the decryption digest
@@ -4974,7 +4989,6 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 		}
 	}
 
- done:
 	fr_md5_destroy(&old);
 	fr_md5_destroy(&context);
 
@@ -4983,97 +4997,13 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 }
 
 
-/** Encode Tunnel-Password attributes when sending them out on the wire
- *
- * int *pwlen is updated to the new length of the encrypted
- * password - a multiple of 16 bytes.
- *
- * This is per RFC-2868 which adds a two char SALT to the initial intermediate
- * value MD5 hash.
- */
-ssize_t rad_tunnel_pwencode(RADIUS_PACKET *packet, char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
-{
-	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
-	unsigned char	digest[AUTH_VECTOR_LEN];
-	char*   salt;
-	int	i, n, secretlen;
-	unsigned len, n2;
-
-	len = *pwlen;
-
-	if (len > 127) len = 127;
-
-	/*
-	 *	Shift the password 3 positions right to place a salt and original
-	 *	length, tag will be added automatically on packet send.
-	 */
-	for (n = len ; n >= 0 ; n--) passwd[n + 3] = passwd[n];
-	salt = passwd;
-	passwd += 2;
-
-	/*
-	 *	save original password length as first password character;
-	 */
-	*passwd = len;
-	len += 1;
-
-
-	/*
-	 *	Generate salt.  The RFC's say:
-	 *
-	 *	The high bit of salt[0] must be set, each salt in a
-	 *	packet should be unique, and they should be random
-	 *
-	 *	So, we set the high bit, add in a counter, and then
-	 *	add in some CSPRNG data.  should be OK..
-	 */
-	salt[0] = (0x80 | ( ((packet->salt_offset++) & 0x0f) << 3) |
-		   (fr_rand() & 0x07));
-	salt[1] = fr_rand();
-
-	/*
-	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
-	 */
-	n = len % AUTH_PASS_LEN;
-	if (n) {
-		n = AUTH_PASS_LEN - n;
-		for (; n > 0; n--, len++)
-			passwd[len] = 0;
-	}
-	/* set new password length */
-	*pwlen = len + 2;
-
-	/*
-	 *	Use the secret to setup the decryption digest
-	 */
-	secretlen = strlen(secret);
-	memcpy(buffer, secret, secretlen);
-
-	for (n2 = 0; n2 < len; n2+=AUTH_PASS_LEN) {
-		if (!n2) {
-			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
-			fr_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
-		} else {
-			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);
-			fr_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
-		}
-
-		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			passwd[i + n2] ^= digest[i];
-		}
-	}
-	passwd[n2] = 0;
-	return 0;
-}
-
 /** Decode Tunnel-Password encrypted attributes
  *
  * Defined in RFC-2868, this uses a two char SALT along with the
  * initial intermediate value, to differentiate it from the
  * above.
  */
-ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
+ssize_t rad_tunnel_pwdecode(uint8_t passwd[static 256], size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX  context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
@@ -5277,19 +5207,22 @@ void fr_rand_seed(void const *data, size_t size)
 			close(fd);
 		} else {
 			/*
-			 *	Initialize the pool based on microseconds.
+			 *	Use system randomness, which is maybe
+			 *	at least better than nothing.
+			 */
+			while (p < end) *p++ = rand();
+				
+			/*
+			 *	Add in some more uncertainty based on microseconds.
 			 */
 			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[0], NULL);
-			memcpy(&fr_rand_pool.randrsl[64], &p, sizeof(p));
 
 			/*
-			 *	Churn the pool, so that the next
-			 *	initialization isn't done from a pool
-			 *	which is nearly all zeros.
+			 *	Churn the pool.
 			 */
 			fr_randinit(&fr_rand_pool, 1);
 			memcpy(fr_rand_pool.randrsl, fr_rand_pool.randmem, sizeof(fr_rand_pool.randrsl));
-			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[32], NULL);
+			
 		}
 
 		fr_randinit(&fr_rand_pool, 1);
