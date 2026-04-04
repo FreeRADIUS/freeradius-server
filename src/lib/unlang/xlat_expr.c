@@ -841,8 +841,6 @@ static xlat_action_t xlat_func_regex_search(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*regex;
 	xlat_action_t		action;
 
-	RDEBUG("IN IS %pM", in);
-
 	regex = fr_value_box_list_pop_head(in);
 	fr_assert(regex);
 	fr_assert(regex->type == FR_TYPE_STRING);
