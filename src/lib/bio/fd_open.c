@@ -33,6 +33,20 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 
+/*
+ *	@todo - allow for the server to start when DNS fails at start time.
+ *
+ *	- add a flag indicating whether client DNS failures are fatal.
+ *	  - DNS failures are _always_ fatal for the server side
+ *	- add an internal enum indicating what type of socket it is, so that we don't need to parse it at run time.
+ *	  - move the code in fd_open() doing cross-checks to a new routine, and call that new routine from fd_alloc().
+ *	    so that it can set enum type even if the ipaddr is unset
+ *      - add a dst_hostname field to fr_bio_fd_config_t
+ *	- in fd_config.c, add a custom parser to save the raw value into dst_hostname
+ *	  if the DNS lookup fails, set AF_INET=AF_UNSPEC, and set the enum as appropriate.
+ *	- in fd_open.c, if enum is FR_BIO_FD_IP_UNSET, do DNS lookup, and fail if there's no DNS.
+ */
+
 /** Initialize common datagram information
  *
  */
