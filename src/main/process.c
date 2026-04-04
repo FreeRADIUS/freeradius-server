@@ -147,12 +147,10 @@ static void request_timer(void *ctx);
  * @param line the state machine timer call occurred on.
  * @param request to set add the timer event for.
  * @param when the event should fine.
- * @param action to perform when we resume processing the request.
  */
 static inline void state_machine_timer(char const *file, int line, REQUEST *request,
-				       struct timeval *when, fr_state_action_t action)
+				       struct timeval *when)
 {
-	request->timer_action = action;
 	if (!fr_event_insert(el, request_timer, request, when, &request->ev)) {
 		_rad_panic(file, line, "Failed to insert event");
 	}
@@ -162,7 +160,7 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
  *
  * @param _x the action to perform when we resume processing the request.
  */
-#define STATE_MACHINE_TIMER(_x) state_machine_timer(__FILE__, __LINE__, request, &when, _x)
+#define STATE_MACHINE_TIMER state_machine_timer(__FILE__, __LINE__, request, &when)
 
 /*
  *	We need a different VERIFY_REQUEST macro in process.c
@@ -362,7 +360,8 @@ void radius_update_listener(rad_listen_t *this)
 	event_new_fd(this);
 }
 /*
- *	This is easier than ifdef's throughout the code.
+ *	No pthreads, and no dynamic creation of new listeners for
+ *	outgoing proxies or incoming TCP.  We don't need a mutex lock.
  */
 #  define FD_MUTEX_LOCK(_x)
 #  define FD_MUTEX_UNLOCK(_x)
@@ -394,7 +393,7 @@ static void sd_watchdog_event(void *ctx)
 }
 #endif
 
-static int request_num_counter = 1;
+static uint64_t request_num_counter = 1;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
 static int request_proxy(REQUEST *request) CC_HINT(nonnull);
@@ -584,7 +583,7 @@ static void request_timer(void *ctx)
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 	int action;
 
-	action = request->timer_action;
+	action = FR_ACTION_TIMER;
 
 	TRACE_STATE_MACHINE;
 
@@ -872,7 +871,7 @@ void request_done(REQUEST *request, int original)
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		return;
 	}
 
@@ -995,7 +994,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		 */
 		request_stats_final(request);
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		return;
 	}
 
@@ -1077,7 +1076,7 @@ static bool request_max_time(REQUEST *request)
 	when = now;
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 	return false;
 }
 
@@ -1122,7 +1121,7 @@ static void request_queue_or_run(REQUEST *request,
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 
 #ifdef HAVE_PTHREAD_H
 		if (spawn_flag) {
@@ -1264,7 +1263,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 		if (request->delay > (30 * USEC)) request->delay = 30 * USEC;
 		tv_add(&when, request->delay);
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		break;
 
 #ifdef WITH_PROXY
@@ -1288,7 +1287,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 
 			request_stats_final(request);
 
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		} /* else it's time to clean up */
 
@@ -1362,7 +1361,7 @@ static void request_response_delay(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
 #endif
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		} /* else it's time to send the reject */
 
@@ -3032,6 +3031,16 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	VERIFY_PACKET(packet);
 	ASSERT_MASTER;
 
+	/*
+	 *	These values are checked by the callers in listen.
+	 *
+	 *	Arguably if we were re-architecting v3, we would hoist
+	 *	those checks and the listen/client stats updates into
+	 *	this function.
+	 */
+	fr_assert(packet->code != 0);
+	fr_assert(packet->code < FR_MAX_PACKET_CODE);
+
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	proxy_p = fr_packet_list_find_byreply(proxy_list, packet);
 
@@ -3047,6 +3056,15 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	}
 
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
+
+	/*
+	 *	Check for listener, etc. not existing any more.
+	 */
+	if (!request->proxy_listener || !request->proxy_listener->data) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		proxy_reply_too_late(request);
+		return 0;
+	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -4505,7 +4523,7 @@ static void ping_home_server(void *ctx)
 	DEBUG("PING: Waiting %u seconds for response to ping",
 	      home->ping_timeout);
 
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
@@ -4875,7 +4893,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 
 			if (timercmp(&when, &now, >)) {
 				RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
-				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+				STATE_MACHINE_TIMER;
 				return;
 			}
 		} else
@@ -4902,7 +4920,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 
 				RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
 				       (int) diff.tv_sec, (int) diff.tv_usec);
-				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+				STATE_MACHINE_TIMER;
 				return;
 			}
 		}
@@ -5335,7 +5353,7 @@ static void coa_retransmit(REQUEST *request)
 		tv_add(&when, delay);
 
 		if (timercmp(&when, &now, >)) {
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		}
 	}
@@ -5409,7 +5427,7 @@ static void coa_retransmit(REQUEST *request)
 	if (timercmp(&mrd, &when, <)) {
 		when = mrd;
 	}
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
@@ -5535,7 +5553,7 @@ static bool coa_max_time(REQUEST *request)
 	when = now;
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 	return false;
 }
 
@@ -5906,7 +5924,7 @@ static int proxy_eol_cb(void *ctx, void *data)
 	 */
 	fr_event_now(el, &when);
 	tv_add(&when, fr_rand() % USEC);
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 
 	/*
 	 *	Don't delete it from the list.
