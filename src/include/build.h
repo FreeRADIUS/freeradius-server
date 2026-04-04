@@ -396,11 +396,17 @@ do { \
 #  define likely(_x)		__builtin_expect((_x), 1)
 #  define unlikely(_x)		__builtin_expect((_x), 0)
 #  define unpredictable(_x)	__builtin_unpredictable((_x))
+#  ifdef __clang__
+#    define assume(_x)            __builtin_assume(_x)
+#  else
+#    define assume(_x)		do { if (!_x) __builtin_unreachable(); } while (0)
+#  endif
 #else
 #  define CC_HINT(...)
 #  define likely(_x) _x
 #  define unlikely(_x) _x
 #  define unpredictable(_x) _x
+#  define assume(_x)
 #endif
 
 /*
