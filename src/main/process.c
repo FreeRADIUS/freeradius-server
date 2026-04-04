@@ -553,23 +553,25 @@ static struct timeval *request_response_window(REQUEST *request)
  */
 static int request_init_delay(REQUEST *request)
 {
-	struct timeval half_response_window;
-
 	VERIFY_REQUEST(request);
 
+	/*
+	 *	The delays MUST be less than 1s.  See main_config.c
+	 *
+	 *	They start out at 2/3s, and can only go down from
+	 *	there, based on home server response_window.  The
+	 *	minimum response delay for home servers is 1/10s.
+	 */
+	fr_assert(request->root->init_delay.tv_sec == 0);
+
 	/* Allow client response window to lower initial delay */
-	if (timerisset(&request->client->response_window)) {
-		half_response_window.tv_sec = request->client->response_window.tv_sec >> 1;
-		half_response_window.tv_usec =
-			((request->client->response_window.tv_sec & 1) * USEC +
-				request->client->response_window.tv_usec) >> 1;
-		if (timercmp(&half_response_window, &request->root->init_delay, <))
-			return (int)half_response_window.tv_sec * USEC +
-				(int)half_response_window.tv_usec;
+	if (!request->client->response_window.tv_sec &&
+	    request->client->response_window.tv_usec &&
+	    (request->client->response_window.tv_usec / 2) < request->root->init_delay.tv_usec) {
+		return request->client->response_window.tv_usec / 2;
 	}
 
-	return (int)request->root->init_delay.tv_sec * USEC +
-		(int)request->root->init_delay.tv_usec;
+	return request->root->init_delay.tv_usec;
 }
 
 /*

@@ -568,7 +568,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, >=, 6);
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
-	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, >=, 0, 1000);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, >=, 0, USEC / 10);
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=,
 			       main_config.max_request_time, 0);
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=, 60, 0);
