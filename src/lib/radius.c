@@ -3712,6 +3712,110 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	return end - data;
 }
 
+static size_t wimax_copy(uint8_t *out, size_t outlen,
+			 uint8_t const *data, size_t packetlen, uint8_t const **end_p)
+{
+	size_t wimax_len = 0;
+	uint8_t const *attr, *end;
+#ifndef NDEBUG
+	uint8_t const *outend = out + outlen;
+#endif
+
+	attr = data + 4;
+	end = data + packetlen;
+
+	while (attr < end) {
+		bool more;
+
+		/*
+		 *	Not enough room for Attribute + length +
+		 *	continuation, it's bad.
+		 */
+		if ((end - attr) < 3) return 0;
+
+		/*
+		 *	Must have non-zero data in the attribute.
+		 */
+		if (attr[1] <= 3) return 0;
+
+		/*
+		 *	If the WiMAX attribute overflows the packet,
+		 *	it's bad.
+		 */
+		if ((attr + attr[1]) > end) return 0;
+
+		/*
+		 *	Check the continuation flag.
+		 */
+		more = ((attr[2] & 0x80) != 0);
+
+		/*
+		 *	Or, there's no more data, in which case we
+		 *	shorten "end" to finish at this attribute.
+		 */
+		if (!more) end = attr + attr[1];
+
+		/*
+		 *	There's more data, but we're at the end of the
+		 *	packet.  The attribute is malformed!
+		 */
+		if (more && ((attr + attr[1]) == end)) return 0;
+
+		/*
+		 *	Add in the length of the data we need to
+		 *	concatenate together.
+		 */
+		wimax_len += attr[1] - 3;
+
+		if (out) {
+			fr_assert(wimax_len <= outlen);
+
+			memcpy(out, attr + 3, attr[1] - 3);
+			out += attr[1] - 3;
+
+			fr_assert(out <= outend);
+		}
+
+		/*
+		 *	Go to the next attribute, and stop if there's
+		 *	no more.
+		 */
+		attr += attr[1];
+		if (!more) break;
+
+		/*
+		 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 *	attr = Vendor-Specific VSA-Length VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 */
+
+		/*
+		 *	No room for Vendor-Specific + length +
+		 *	Vendor(4) + attr + length + continuation + data
+		 */
+		if ((end - attr) < 9) break;
+
+		if (attr[0] != PW_VENDOR_SPECIFIC) break;
+		if (attr[1] < 9) break;
+		if ((attr + attr[1]) > end) break;
+		if (memcmp(data, attr + 2, 4) != 0) break; /* not WiMAX Vendor ID */
+
+		if (attr[1] != (attr[7] + 6)) break; /* WiMAX attr doesn't exactly fill the VSA */
+
+		if (data[4] != attr[6]) break; /* different WiMAX attribute */
+
+		/*
+		 *	Skip over the Vendor-Specific header, and
+		 *	continue with the WiMAX attributes.
+		 */
+		attr += 6;
+	}
+
+	if (end_p) *end_p = end;
+	return wimax_len;
+}
+
 /** Convert a Vendor-Specific WIMAX to VPs
  *
  * @note Called ONLY for Vendor-Specific
@@ -3725,9 +3829,8 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 {
 	ssize_t rcode;
 	size_t wimax_len;
-	bool more;
-	uint8_t *head, *tail;
-	uint8_t const *attr, *end;
+	uint8_t *buf;
+	uint8_t const *end;
 	DICT_ATTR const *child;
 
 	/*
@@ -3782,112 +3885,27 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	 *	The first fragment doesn't have a RADIUS attribute
 	 *	header.
 	 */
-	wimax_len = 0;
-	attr = data + 4;
-	end = data + packetlen;
-
-	while (attr < end) {
-		/*
-		 *	Not enough room for Attribute + length +
-		 *	continuation, it's bad.
-		 */
-		if ((end - attr) < 3) goto raw;
-
-		/*
-		 *	Must have non-zero data in the attribute.
-		 */
-		if (attr[1] <= 3) goto raw;
-
-		/*
-		 *	If the WiMAX attribute overflows the packet,
-		 *	it's bad.
-		 */
-		if ((attr + attr[1]) > end) goto raw;
-
-		/*
-		 *	Check the continuation flag.
-		 */
-		more = ((attr[2] & 0x80) != 0);
-
-		/*
-		 *	Or, there's no more data, in which case we
-		 *	shorten "end" to finish at this attribute.
-		 */
-		if (!more) end = attr + attr[1];
-
-		/*
-		 *	There's more data, but we're at the end of the
-		 *	packet.  The attribute is malformed!
-		 */
-		if (more && ((attr + attr[1]) == end)) goto raw;
-
-		/*
-		 *	Add in the length of the data we need to
-		 *	concatenate together.
-		 */
-		wimax_len += attr[1] - 3;
-
-		/*
-		 *	Go to the next attribute, and stop if there's
-		 *	no more.
-		 */
-		attr += attr[1];
-		if (!more) break;
-
-		/*
-		 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
-		 *
-		 *	attr = Vendor-Specific VSA-Length VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
-		 *
-		 */
-
-		/*
-		 *	No room for Vendor-Specific + length +
-		 *	Vendor(4) + attr + length + continuation + data
-		 */
-		if ((end - attr) < 9) goto raw;
-
-		if (attr[0] != PW_VENDOR_SPECIFIC) goto raw;
-		if (attr[1] < 9) goto raw;
-		if ((attr + attr[1]) > end) goto raw;
-		if (memcmp(data, attr + 2, 4) != 0) goto raw; /* not WiMAX Vendor ID */
-
-		if (attr[1] != (attr[7] + 6)) goto raw; /* WiMAX attr doesn't exactly fill the VSA */
-
-		if (data[4] != attr[6]) goto raw; /* different WiMAX attribute */
-
-		/*
-		 *	Skip over the Vendor-Specific header, and
-		 *	continue with the WiMAX attributes.
-		 */
-		attr += 6;
-	}
+	wimax_len = wimax_copy(NULL, 0, data, packetlen, &end);
 
 	/*
 	 *	No data in the WiMAX attribute, make a "raw" one.
 	 */
 	if (!wimax_len) goto raw;
 
-	head = tail = malloc(wimax_len);
-	if (!head) return -1;
+	buf = malloc(wimax_len);
+	if (!buf) return -1;
 
 	/*
-	 *	Copy the data over, this time trusting the attribute
-	 *	contents.
+	 *	Run the same algorithm again, but this time stopping at the end of the WiMAX data, not at the
+	 *	end of the packet.
 	 */
-	attr = data;
-	while (attr < end) {
-		memcpy(tail, attr + 4 + 3, attr[4 + 1] - 3);
-		tail += attr[4 + 1] - 3;
-		attr += 4 + attr[4 + 1]; /* skip VID+WiMax header */
-		attr += 2;		 /* skip Vendor-Specific header */
-	}
+	(void) wimax_copy(buf, wimax_len, data, (size_t) (end - data), NULL);
 
-	VP_HEXDUMP("wimax fragments", head, wimax_len);
+	VP_HEXDUMP("wimax fragments", buf, wimax_len);
 
 	rcode = data2vp(ctx, packet, original, secret, child,
-			head, wimax_len, wimax_len, pvp);
-	free(head);
+			buf, wimax_len, wimax_len, pvp);
+	free(buf);
 	if (rcode < 0) goto raw;
 
 	return end - data;
