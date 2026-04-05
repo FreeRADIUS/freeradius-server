@@ -3729,9 +3729,6 @@ static size_t wimax_copy(uint8_t *out, size_t outlen,
 {
 	size_t wimax_len = 0;
 	uint8_t const *attr, *end;
-#ifndef NDEBUG
-	uint8_t const *outend = out + outlen;
-#endif
 
 	attr = data + 4;
 	end = data + packetlen;
@@ -3783,9 +3780,7 @@ static size_t wimax_copy(uint8_t *out, size_t outlen,
 			fr_assert(wimax_len <= outlen);
 
 			memcpy(out, attr + 3, attr[1] - 3);
-			out += attr[1] - 3;
-
-			fr_assert(out <= outend);
+			out += attr[1] - 3;			
 		}
 
 		/*
@@ -5382,7 +5377,7 @@ RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	/*
 	 *	Bootstrap by copying everything.
 	 */
-	memcpy(out, in, sizeof(*out));
+	*out = *in;
 
 	/*
 	 *	Then reset necessary fields
