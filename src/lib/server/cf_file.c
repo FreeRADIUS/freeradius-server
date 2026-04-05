@@ -153,27 +153,6 @@ typedef struct {
 	cf_stack_frame_t frame[MAX_STACK];	//!< stack frames
 } cf_stack_t;
 
-
-static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, tmpl_rules_t const *rules)
-{
-	if (cf_section_find_parent(cs, "policy", NULL)) {
-		if (!fr_cond_assert_msg(!rules->attr.dict_def || (rules->attr.dict_def == fr_dict_internal()),
-					"Protocol dictionary must be NULL not %s",
-					fr_dict_root(rules->attr.dict_def)->name)) return -1;
-
-	} else {
-		if (!fr_cond_assert_msg(rules->attr.dict_def, "No protocol dictionary set")) return -1;
-		if (!fr_cond_assert_msg(rules->attr.dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
-	}
-
-	if (!fr_cond_assert_msg(!rules->attr.allow_foreign, "rules->allow_foreign must be false")) return -1;
-	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
-
-	return 0;
-}
-
-#define RULES_VERIFY(_cs, _rules) if (cf_tmpl_rules_verify(_cs, _rules) < 0) return NULL
-
 /*
  *	Expand the variables in an input string.
  *
@@ -1473,14 +1452,12 @@ static const bool terminal_end_line[SBUFF_CHAR_CLASS] = {
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
-	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	uint8_t const   *p;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
-	tmpl_rules_t	t_rules;
 
 	/*
 	 *	Short names are nicer.
@@ -1488,18 +1465,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 	buff[3] = stack->buff[3];
-
-	dict = virtual_server_dict_by_child_ci(cf_section_to_item(parent));
-
-	t_rules = (tmpl_rules_t) {
-		.attr = {
-			.dict_def = dict,
-			.list_def = request_attr_request,
-			.allow_unresolved = true,
-			.allow_unknown = true
-		},
-		.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
-	};
 
 	/*
 	 *	Create the CONF_SECTION.  We don't pass a name2, as it
@@ -1512,8 +1477,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	}
 	cf_filename_set(cs, frame->filename);
 	cf_lineno_set(cs, frame->lineno);
-
-	RULES_VERIFY(cs, &t_rules);
 
 	/*
 	 *	Keep "parsing" the condition until we hit EOL.
