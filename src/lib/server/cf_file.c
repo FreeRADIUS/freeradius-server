@@ -612,7 +612,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		fp = fopen(filename, "r");
 	}
 
-	DEBUG2("including configuration file %s", filename);
+	if (DEBUG_ENABLED2) cf_log_debug(cs, "including configuration file %s", filename);
 
 	if (!fp) {		
 	error:
@@ -1251,7 +1251,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		 */
 		directory = talloc_strdup(parent, value);
 
-		cf_log_debug(parent, "Including files in directory \"%s\"", directory);
+		if (DEBUG_ENABLED2) cf_log_debug(parent, "Including files in directory \"%s\"", directory);
 
 		dir = opendir(directory);
 		if (!dir) {
