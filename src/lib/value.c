@@ -1655,12 +1655,17 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 	{
 		time_t t;
 		struct tm s_tm;
+		size_t o = 0;
 
 		t = data->date;
 
 		p = talloc_zero_array(ctx, char, 64);
-		strftime(p, 63, "%b %e %Y %H:%M:%S %Z",
-			 localtime_r(&t, &s_tm));
+		if (!p) return NULL;
+
+		if (quote) { p[o] = quote; o++; }
+		o += strftime(&p[o], 64 - 1 - (quote ? 2 : 0), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
+		if (quote) p[o] = quote;
+
 		break;
 	}
 
