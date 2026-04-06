@@ -890,6 +890,8 @@ static void deallocate_id(rc_request_t *request)
  */
 static int send_one_packet(rc_request_t *request)
 {
+	VALUE_PAIR *vp;
+
 	assert(request->done == false);
 
 	/*
@@ -959,8 +961,6 @@ static int send_one_packet(rc_request_t *request)
 		assert(request->packet->data == NULL);
 
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-			VALUE_PAIR *vp;
-
 			if (((vp = fr_pair_find_by_num(request->packet->vps, PW_PACKET_AUTHENTICATION_VECTOR, 0, TAG_ANY)) != NULL) &&
 			    (vp->vp_length >= 16)) {
 				memcpy(request->packet->vector, vp->vp_octets, 16);
@@ -970,6 +970,7 @@ static int send_one_packet(rc_request_t *request)
 					((uint32_t *) request->packet->vector)[i] = fr_rand();
 				}
 			}
+			vp = NULL;
 		}
 
 		/*
@@ -977,8 +978,6 @@ static int send_one_packet(rc_request_t *request)
 		 *	new authentication vector.
 		 */
 		if (request->password) {
-			VALUE_PAIR *vp;
-
 			if ((vp = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
 
@@ -994,6 +993,7 @@ static int send_one_packet(rc_request_t *request)
 			} else {
 				DEBUG("WARNING: No password in the request");
 			}
+			vp = NULL;
 		}
 
 		request->timestamp = time(NULL);
@@ -1062,9 +1062,21 @@ static int send_one_packet(rc_request_t *request)
 
 	/*
 	 *	Send the packet.
+	 *
+	 *	If there is a Message-Authenticator attribute (not equal to
+	 *	0x00) we call encode+send to bypass the implicit sign in send
 	 */
+	vp = fr_pair_find_by_num(request->packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+	if (!vp || !(vp->vp_length == 1 && vp->vp_octets[0] == 0)) {
+		if (rad_encode(request->packet, NULL, secret) < 0) {
+			REDEBUG("Failed to encode packet for ID %d", request->packet->id);
+			goto error;
+		}
+	}
+	vp = NULL;
 	if (rad_send(request->packet, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
+error:
 		deallocate_id(request);
 		request->done = true;
 		stats.lost++;
