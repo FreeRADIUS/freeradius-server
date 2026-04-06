@@ -302,7 +302,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 		 *	that's marked as the start of the transaction
 		 *	block.
 		 */
-		type = cmds->txn_watch ? FR_REDIS_COMMAND_TRANSACTION_START : FR_REDIS_COMMAND_NORMAL;
+		*type = cmds->txn_watch ? FR_REDIS_COMMAND_TRANSACTION_START : FR_REDIS_COMMAND_NORMAL;
 		cmds->txn_start++;	/* Yes MULTI increments start, not WATCH */
 		break;
 
@@ -324,7 +324,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 			ROPTIONAL(ERROR, REDEBUG, "Transaction not started, missing \"MULTI\" command");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
-		type = FR_REDIS_COMMAND_TRANSACTION_END;
+		*type = FR_REDIS_COMMAND_TRANSACTION_END;
 		cmds->txn_end++;
 		break;
 
