@@ -13,7 +13,8 @@ import radiusd
 def instantiate(p):
   print("*** instantiate ***")
   print(p)
-  # return 0 for success or -1 for failure
+  # return 0 (or radiusd.RLM_MODULE_OK) for success or -1 (or radiusd.RLM_MODULE_FAIL) for failure
+  return 0
 
 
 def authorize(p):

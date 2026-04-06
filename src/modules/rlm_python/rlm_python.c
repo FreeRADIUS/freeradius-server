@@ -1185,7 +1185,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (inst->instantiate.module_name && inst->instantiate.function_name) {
 		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-		if (code == RLM_MODULE_FAIL) {
+		if (code < 0 || code == RLM_MODULE_FAIL) {
 		error:
 			python_error_log();	/* Needs valid thread with GIL */
 			PyEval_SaveThread();
