@@ -669,11 +669,13 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
  *
  * @param[in] cluster_thread	to allocate the trunk for.
  * @param[in] io_conf		Describing the connection to a single REDIS host.
+ * @param[in] trigger_args	Pairs to pass to trigger requests, if triggers are enabled.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
-fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf)
+fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf,
+				       fr_pair_list_t *trigger_args)
 {
 	fr_redis_trunk_t	*rtrunk;
 	trunk_io_funcs_t	io_funcs = {
@@ -688,9 +690,9 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 
 	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
 	rtrunk->io_conf = io_conf;
-	rtrunk->trunk = trunk_alloc(rtrunk, cluster_thread->el,
-				       &io_funcs, cluster_thread->tconf, io_conf->log_prefix, rtrunk,
-				       cluster_thread->delay_start);
+	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_cluster_thread_el(cluster_thread),
+				    &io_funcs, fr_redis_cluster_thread_trunk_conf(cluster_thread),
+				    io_conf->log_prefix, rtrunk, false, trigger_args);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
 		return NULL;
