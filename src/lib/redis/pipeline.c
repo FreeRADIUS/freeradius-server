@@ -71,7 +71,10 @@ struct fr_redis_command_s {
 	fr_redis_command_type_t		type;		//!< Redis command type.
 
 	char const			*str;		//!< The command string.
-	size_t				len;		//!< Length of the command string.
+
+	size_t				argc;		//!< Number of argv arguments.
+	char const			**argv;		//!< Arguments for the redis command.
+	size_t				*argv_len;	//!< Lengths of the arguments.
 
 	uint64_t			sqn;		//!< The sequence number of the command.  This is only
 							///< valid for a specific handle, and is unique within
@@ -272,30 +275,9 @@ redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
 	return cmd->result;
 }
 
-/** Add a preformatted/expanded command to the command set
- *
- * The command must either be entirely static, or parented by the command set.
- *
- * @note Caller should disallow "SUBSCRIBE" et al, if they're not appropriate.
- * 	 As subscribing to a stream where we're not expecting it would break
- * 	 things, badly.
- *
- * @param[in] cmds	Command set to add command to.
- * @param[in] cmd_str	A fully expanded/formatted command to send to redis.
- *			Must be static, or have the same lifetime as the
- *			command set (allocated with the command set as the parent).
- * @param[in] cmd_len	Length of the command.
- * @return
- *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
- *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
- */
-fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
-							     char const *cmd_str, size_t cmd_len)
+static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *request, fr_redis_command_type_t *type,
+								  fr_redis_command_set_t *cmds, char const *cmd)
 {
-	request_t			*request = cmds->request;
-	fr_redis_command_t	*cmd;
-	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
-
 	/*
 	 *	Transaction sanity checks.
 	 *
@@ -306,10 +288,10 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	 *	We try very hard to do this without incurring a performance penalty
 	 *      for non-transactional commands.
 	 */
-	switch (tolower(cmd_str[0])) {
+	switch (tolower(cmd[0])) {
 	case 'm':
-		if (tolower(cmd_str[1]) != 'u') break;
-		if (strncasecmp(cmd_str, "multi", sizeof("multi") - 1) != 0) break;
+		if (tolower(cmd[1]) != 'u') break;
+		if (strncasecmp(cmd, "multi", sizeof("multi") - 1) != 0) break;
 		/*
 		 *	There should only ever be a difference of
 		 *	1 between txn starts and txn ends.
@@ -328,8 +310,8 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 		break;
 
 	case 'e':
-		if (tolower(cmd_str[1]) != 'e') break;
-		if (strncasecmp(cmd_str, "exec", sizeof("exec") - 1) != 0) break;
+		if (tolower(cmd[1]) != 'e') break;
+		if (strncasecmp(cmd, "exec", sizeof("exec") - 1) != 0) break;
 		goto txn_end;
 
 	/*
@@ -338,8 +320,8 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	 *	executing the commands.
 	 */
 	case 'd':
-		if (tolower(cmd_str[1]) != 'i') break;
-		if (strncasecmp(cmd_str, "discard", sizeof("discard") - 1) != 0) break;
+		if (tolower(cmd[1]) != 'i') break;
+		if (strncasecmp(cmd, "discard", sizeof("discard") - 1) != 0) break;
 	txn_end:
 		if (cmds->txn_start <= cmds->txn_end) {
 			ROPTIONAL(ERROR, REDEBUG, "Transaction not started, missing \"MULTI\" command");
@@ -350,8 +332,8 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 		break;
 
 	case 'w':
-		if (tolower(cmd_str[1]) != 'a') break;
-		if (strncasecmp(cmd_str, "watch", sizeof("watch") - 1) != 0) break;
+		if (tolower(cmd[1]) != 'a') break;
+		if (strncasecmp(cmd, "watch", sizeof("watch") - 1) != 0) break;
 		if (cmds->txn_watch) {
 			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"WATCH\" commands");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
@@ -366,12 +348,71 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 		break;
 	}
 
+	return FR_REDIS_PIPELINE_OK;
+}
+
+/** Add a preformatted/expanded command to the command set
+ *
+ * The command must either be entirely static, or parented by the command set.
+ *
+ * @note Caller should disallow "SUBSCRIBE" et al, if they're not appropriate.
+ * 	 As subscribing to a stream where we're not expecting it would break
+ * 	 things, badly.
+ *
+ * @param[in] cmds	Command set to add command to.
+ * @param[in] cmd_str	A fully expanded/formatted command to send to redis.
+ *			Must be static, or have the same lifetime as the
+ *			command set (allocated with the command set as the parent).
+ * @return
+ *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
+ *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
+ */
+fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str)
+{
+	request_t		*request = cmds->request;
+	fr_redis_command_t	*cmd;
+	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+
+	if (redis_command_transaction_check(request, &type, cmds, cmd_str) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+
 	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
 	talloc_set_destructor(cmd, _redis_command_free);
 	cmd->cmds = cmds;
 	cmd->type = type;
 	cmd->str = cmd_str;
-	cmd->len = cmd_len;
+	fr_dlist_insert_tail(&cmds->pending, cmd);
+
+	return FR_REDIS_PIPELINE_OK;
+}
+
+/** Add a command with arguments to the command set
+ *
+ * The command and arguments must either be entirely static, or parented by the command set.
+ *
+ * @param[in] cmds	Command set to add command to.
+ * @param[in] argc	Number of arguments.
+ * @param[in] argv	Redis command arguments.
+ * @param[in] argv_len	Length of the command arguments.
+ * @return
+ *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
+ *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
+ */
+fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
+						     char const **argv, size_t *argv_len)
+{
+	request_t		*request = cmds->request;
+	fr_redis_command_t	*cmd;
+	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+
+	if (redis_command_transaction_check(request, &type, cmds, argv[0]) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+
+	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
+	talloc_set_destructor(cmd, _redis_command_free);
+	cmd->cmds = cmds;
+	cmd->type = type;
+	cmd->argc = argc;
+	cmd->argv = argv;
+	cmd->argv_len = argv_len;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -488,6 +529,7 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 	fr_redis_command_t	*cmd;
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	request_t		*request;
+	int			ret;
 
 	while (trunk_connection_pop_request(&treq, tconn) == 0) {
 		cmds = talloc_get_type_abort(treq->preq, fr_redis_command_set_t);
@@ -498,7 +540,14 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 			 *	is disconnecting, but if that's happening then
 			 *	we shouldn't be enqueueing new requests?
 			 */
-			if (unlikely(redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, "%s", cmd->str) != REDIS_OK)) {
+			if (cmd->argv) {
+				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, cmd->argc,
+							    cmd->argv, cmd->argv_len);
+			} else {
+				ret = redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, cmd->str);
+			}
+
+			if (unlikely(ret != REDIS_OK)) {
 				ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
 
 				while ((cmd = fr_dlist_head(&cmds->sent))) {

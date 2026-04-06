@@ -63,8 +63,10 @@ typedef void (*fr_redis_command_set_complete_t)(request_t *request, fr_dlist_hea
  */
 typedef void (*fr_redis_command_set_fail_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
-fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
-							     	  char const *cmd_str, size_t cmd_len);
+fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str);
+
+fr_redis_pipeline_status_t	fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
+							  char const **argv, size_t *argv_len);
 
 /*
  *	TEMPORARY
