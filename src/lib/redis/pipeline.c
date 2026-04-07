@@ -29,20 +29,9 @@
 #include <freeradius-devel/server/trunk.h>
 
 #include "pipeline.h"
+#include "cluster_async.h"
 #include "io.h"
 
-
-/** Thread local state for a cluster
- *
- * MOVE ME TO NEW ASYNC CLUSTER CODE
- */
-struct fr_redis_cluster_thread_s {
-	fr_event_list_t			*el;
-	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
-	char				*log_prefix;	//!< Common log prefix to use for all cluster related
-							///< messages.
-	bool				delay_start;	//!< Prevent connections from spawning immediately.
-};
 
 /** The thread local free list
  *
@@ -699,27 +688,6 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 	}
 
 	return rtrunk;
-}
-
-/** Allocate per-thread, per-cluster instance
- *
- * This structure represents all the connections for a given thread for a given cluster.
- * The structures holds the trunk connections to talk to each cluster member.
- *
- */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_conf_t const *tconf)
-{
-	fr_redis_cluster_thread_t *cluster_thread;
-	trunk_conf_t *our_tconf;
-
-	MEM(cluster_thread = talloc_zero(ctx, fr_redis_cluster_thread_t));
-	MEM(our_tconf = talloc_memdup(cluster_thread, tconf, sizeof(*tconf)));
-	our_tconf->always_writable = true;
-
-	cluster_thread->el = el;
-	cluster_thread->tconf = our_tconf;
-
-	return cluster_thread;
 }
 
 char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)

@@ -34,6 +34,8 @@ RCSIDH(redis_pipeline_h, "$Id$")
 #include <freeradius-devel/redis/io.h>
 #include <hiredis/async.h>
 
+#include "base.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,7 +48,6 @@ typedef enum {
 	FR_REDIS_PIPELINE_FAIL				//!< Generic failure.
 } fr_redis_pipeline_status_t;
 
-typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
 typedef struct fr_redis_command_s fr_redis_command_t;
 typedef struct fr_redis_command_set_s fr_redis_command_set_t;
 typedef struct fr_redis_trunk_s fr_redis_trunk_t;
@@ -87,10 +88,7 @@ fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 							    void *rctx);
 
 fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
-						      fr_redis_io_conf_t const *conf);
-
-fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-							       trunk_conf_t const *tconf);
+						      fr_redis_io_conf_t const *conf, fr_pair_list_t *trigger_args);
 
 #ifdef __cplusplus
 }

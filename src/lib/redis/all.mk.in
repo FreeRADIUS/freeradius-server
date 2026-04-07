@@ -5,7 +5,7 @@ TARGET		:= $(TARGETNAME)$(L)
 endif
 TGT_CATEGORY	:= lib-util
 
-SOURCES		:= redis.c crc16.c cluster.c
+SOURCES		:= redis.c crc16.c cluster.c cluster_async.c
 
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@

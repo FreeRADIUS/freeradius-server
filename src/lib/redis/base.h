@@ -50,6 +50,7 @@ extern "C" {
 #define REDIS_DEFAULT_PORT		6379
 
 typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
+typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
 
 /** Wrap freeReplyObject so we consistently check for NULL pointers
  *
