@@ -678,7 +678,8 @@ static void fr_coord_pair_event(UNUSED fr_event_list_t *el, void *uctx)
  *
  * Converts the data into a request.
  */
-void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now, void *inst, void *uctx)
+void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_dbuff_t *dbuff, fr_time_t now,
+			     UNUSED module_ctx_t *mctx, void *inst, void *uctx)
 {
 	fr_coord_pair_reg_t	*coord_pair_reg = talloc_get_type_abort(uctx, fr_coord_pair_reg_t);
 	fr_coord_pair_t		*coord_pair = talloc_get_type_abort(inst, fr_coord_pair_t);

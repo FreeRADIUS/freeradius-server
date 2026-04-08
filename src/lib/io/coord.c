@@ -226,6 +226,8 @@ static void coord_data_recv(void *ctx, void const *data, size_t data_size, fr_ti
 
 	fr_dbuff_init(&dbuff, (uint8_t const *)cd->m.data, cd->m.data_size);
 	coord->callbacks[cd->coord_cb_id].callback(coord, cm.worker, &dbuff, now,
+						   MODULE_CTX(coord->coord_reg->mi,
+							      module_thread(coord->coord_reg->mi)->data, NULL, NULL),
 						   coord->cb_inst[cd->coord_cb_id] ?
 						   coord->cb_inst[cd->coord_cb_id]->inst_data : NULL,
 						   coord->callbacks[cd->coord_cb_id].uctx);
