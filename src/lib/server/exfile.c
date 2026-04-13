@@ -234,7 +234,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  *	Try to open the file. It it doesn't exist, try to
  *	create it's parent directories.
  */
-static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions, int flags)
+static int exfile_open_mkdir(char const *filename, mode_t permissions, int flags)
 {
 	int fd;
 
@@ -248,7 +248,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		 *	Maybe the directory doesn't exist.  Try to
 		 *	create it.
 		 */
-		dir = talloc_strdup(ef, filename);
+		dir = talloc_strdup(NULL, filename);
 		if (!dir) return -1;
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
@@ -407,7 +407,7 @@ reopen_reset:
 	ef->entries[i].fd = -1;
 
 reopen:
-	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions, flags);
+	ef->entries[i].fd = exfile_open_mkdir(filename, permissions, flags);
 	if (ef->entries[i].fd < 0) goto error;
 
 	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_OPEN);
@@ -531,7 +531,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flag
 	if (!ef || !filename) return -1;
 
 	if (!ef->locking) {
-		int found = exfile_open_mkdir(ef, filename, permissions, flags);
+		int found = exfile_open_mkdir(filename, permissions, flags);
 		off_t real_offset;
 
 		if (found < 0) return -1;
