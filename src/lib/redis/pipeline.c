@@ -495,6 +495,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	    (fr_dlist_num_elements(&cmds->sent) == 0)) trunk_request_signal_complete(cmds->treq);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
 static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 							 connection_conf_t const *conf,
 							 char const *log_prefix, void *uctx)
@@ -514,6 +515,7 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
  * @param[in] conn		Connection handle containing the fr_redis_handle_t.
  * @param[in] uctx		fr_redis_cluster_t.  Unused.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
 static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				connection_t *conn, UNUSED void *uctx)
 {
