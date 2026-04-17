@@ -942,7 +942,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Phase 2: Got tunneled Access-Accept");
 		msk1 = msk2 = false;
-		t->authenticated = true;
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			if (vp->da->vendor == 0) {
@@ -1038,6 +1037,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 				break;
 			}
 		}
+		if ((msk1 && msk2) || emsklen || t->sent_basic_password) t->authenticated = true;
 
 		if (t->use_tunneled_reply) {
 			/*
@@ -1048,14 +1048,30 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_SESSION_ID, 0, TAG_ANY);
 		}
 
-		// RFC7170 section 5.2 and 5.4, only on a successful inner EAP method do we increment
-		// NOTE: hostapd for now incorrectly derives IMCK when an EAP method is skipped so this
-		//       allows interop with Windows but not with wpa_supplicant
-		if ((msk1 && msk2) || emsklen) eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
+		/*
+		 * RFC7170 section 5.2 and 5.4, only on a successful inner EAP method do we increment
+		 *
+		 * NOTE: hostapd for now incorrectly derives IMCK when an EAP method is skipped so this
+		 *       allows interop with Windows but not with wpa_supplicant
+		 */
+		if ((msk1 && msk2) || emsklen) {
+			eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
+		}
 
-		eap_teap_append_crypto_binding(request, tls_session);
+		if (t->authenticated) {
+			/*
+			 * When skipping the first round, Windows uses an unknown crypto-binding
+			 * calculation if you send it one. So we do not.
+			 */
+			eap_teap_append_crypto_binding(request, tls_session);
 
-		eap_teap_append_result(request, tls_session, reply->code);
+			/*
+			 * The effect of sending an Intermediate-Result (even failure) causes
+			 * Windows to respond with a Error=Unexpected-TLVs and Result=Failure
+			 * so only send this when we include a crypto-binding.
+			 */
+			eap_teap_append_result(request, tls_session, reply->code);
+		}
 
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
@@ -1282,6 +1298,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 
 		if (vp) {
 			VALUE_PAIR *vp_config;
+			uint16_t identity_type_received = vp->vp_short;
 repeat:
 			vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 
@@ -1301,7 +1318,7 @@ repeat:
 				 *	response.
 				 */
 				if (t->identity_types[identity_type_requested].sent &&
-				    (vp->vp_short != identity_type_requested)) {
+				    (identity_type_received != identity_type_requested)) {
 					if (t->identity_types[identity_type_requested].required) {
 						REDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - rejecting the session", identity_type_str);
 fail:
@@ -1338,13 +1355,53 @@ fail:
 				fr_pair_delete(&request->state, vp_config);
 
 				/*
-				 *	wpa_supplicant continues the authentication even when there are no remaining
-				 *	methods configured for it, so we skip only if this is the last round
+				 *	handle differing implementation behaviour around optional methods
 				 */
-				if ((t->identities_remaining == 1) &&
-				    !t->identity_types[identity_type_requested].required &&
-				    !(fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY) ||
-				      fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY))) {
+				if (!t->identity_types[identity_type_requested].required) {
+					vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+
+					/*
+					 * wpa_supplicant continues the authentication even when there are no remaining
+					 * methods configured for it but without providing any credentials, so we finish
+					 */
+					if (t->identities_remaining == 1 && !vp &&
+					    !fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) {
+						RDEBUG("QUIRK: optional inner authentication method workaround for wpa_supplicant");
+						goto quirk_wpa_supplicant;
+					}
+
+					/*
+					 * Win11 returns a non-standard empty (zero length) EAP Identity when it
+					 * does not have suitable credentials for the type being requested. It exhibits
+					 * this behavior for both for the first and second inner methods.
+					 *
+					 * Another observation is moving to the next credential (eg. '?user,machine')
+					 * Windows again returns an empty EAP Identity. It does not seem possible
+					 * to move the authentication beyound this point.
+					 *
+					 * Unfortunately attempting to skip the method causes Windows to return
+					 * Error=Unexpected-TLVs and it also includes a Result=Fail; this seemingly
+					 * is due to our sending of EAP-TEAP-Identity-Type to attempt to start the
+					 * following method.
+					 *
+					 * All this means 'identity_types' may not contain an optional credential for
+					 * the first method (ie. '?machine,user' or '?user,machine') unless you know
+					 * all Windows supplicants are correctly for two inner methods, which then
+					 * makes using an optional method pointless as no other supplicants support
+					 * TEAP (hostapd is behind a 'here be dragons' compile time flag).
+					 */
+					if (vp &&
+					    (vp->vp_length == EAP_HEADER_LEN + 1) &&
+					    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
+					    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY)) {
+						RDEBUG("QUIRK: optional inner authentication method workaround for Microsoft Windows 11");
+						// prevent Auth-Type=eap being added
+						fr_pair_delete(&fake->packet->vps, vp);
+						goto quirk_win11;
+					}
+
+					goto no_quirk;
+quirk_wpa_supplicant:
 					/*
 					 *	If we didn't have at least one authentication success, we fail.
 					 */
@@ -1353,7 +1410,9 @@ fail:
 						goto fail;
 					}
 
+quirk_win11:
 					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type_str);
+
 					vp = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
 					if (vp) {
 						fr_pair_add(&fake->config, vp);
@@ -1367,12 +1426,17 @@ fail:
 					}
 
 					goto done;
+no_quirk:
+					/*
+					 * hush the C compiler
+					 */
+					(void)0;
 				}
 			}
 			vp_config = NULL;
 
-			if (!t->identity_types[vp->vp_short].received) {
-				t->identity_types[vp->vp_short].received = true;
+			if (!t->identity_types[identity_type_received].received) {
+				t->identity_types[identity_type_received].received = true;
 				if (t->identities_remaining == 0) {
 					RDEBUG("Phase 2: Configured to send too many identities, failing the session");
 					goto fail;
@@ -1387,16 +1451,16 @@ fail:
 			 *		* otherwise default_eap_type
 			 *		* otherwise ???
 			 */
-			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) {
-				tvp = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_USER, 0, TAG_ANY);
+			if (identity_type_received == EAP_TEAP_IDENTITY_TYPE_USER) {
+				tvp = fr_pair_find_by_num(request->config, PW_TEAP_TYPE_USER, 0, TAG_ANY);
 				if (tvp) {
 					eap_method = tvp->vp_integer;
 
 					RDEBUG("Phase 2: Setting User EAP-Type = %s from &config:TEAP-Type-User",
 					       eap_type2name(eap_method));
 
-				} else if (t->eap_method[vp->vp_short]) {
-					eap_method = t->eap_method[vp->vp_short];
+				} else if (t->eap_method[identity_type_received]) {
+					eap_method = t->eap_method[identity_type_received];
 
 					RDEBUG("Phase 2: Setting User EAP-Type = %s from TEAP configuration user_eap_type",
 					       eap_type2name(eap_method));
@@ -1413,16 +1477,16 @@ fail:
 				}
 			}
 
-			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) {
-				tvp = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
+			if (identity_type_received == EAP_TEAP_IDENTITY_TYPE_MACHINE) {
+				tvp = fr_pair_find_by_num(request->config, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
 				if (tvp) {
 					eap_method = tvp->vp_integer;
 
 					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
 					       eap_type2name(eap_method));
 
-				} else if (t->eap_method[vp->vp_short]) {
-					eap_method = t->eap_method[vp->vp_short];
+				} else if (t->eap_method[identity_type_received]) {
+					eap_method = t->eap_method[identity_type_received];
 
 					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from TEAP configuration machine_eap_type",
 					       eap_type2name(eap_method));
