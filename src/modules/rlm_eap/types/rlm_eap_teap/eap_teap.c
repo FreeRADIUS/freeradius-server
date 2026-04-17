@@ -325,6 +325,15 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_CRYPTO_BINDING, true, sizeof(cbb->binding), (uint8_t *)&cbb->binding);
 }
 
+/*
+ * We have to be _very_ careful here as it is useful to still decode for debugging
+ * responses but of course there could be _really_ bad data in here so we try to
+ * work through all the errors but for wholely invalid packets we just bail early
+ * with RLM_MODULE_INVALID to indicate "do not decode!"
+ *  - RLM_MODULE_OK: all well
+ *  - RLM_MODULE_REJECT: bad, but safe to call eap_teap_teap2vp
+ *  - RLM_MODULE_INVALID: its terrible, do not touch this packet!
+ */
 static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
 {
 	uint16_t attr;
@@ -339,10 +348,14 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 
 	rad_assert(sizeof(present) * 8 > EAP_TEAP_TLV_MAX);
 
+	/*
+	 * we compromise on debugging by making everything in this
+	 * section return RLM_MODULE_INVALID but it is a *lot* safer
+	 */
 	while (remaining > 0) {
 		if (remaining < 4) {
 			REDEBUG("Phase 2: Data is too small (%u) to contain a TLV header", remaining);
-			return 0;
+			return RLM_MODULE_INVALID;
 		}
 
 		memcpy(&attr, data, sizeof(attr));
@@ -376,7 +389,7 @@ unexpected:
 					}
 				}
 				eap_teap_send_error(request, tls_session, EAP_TEAP_ERR_UNEXPECTED_TLV);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			if (num[EAP_TEAP_TLV_INTERMED_RESULT] > 1) {
@@ -404,7 +417,7 @@ unexpected:
 		if (length > remaining) {
 			REDEBUG2("Phase 2: TLV %u is longer than room remaining in the packet (%u > %u).", attr,
 				length, remaining);
-			return 0;
+			return RLM_MODULE_INVALID;
 		}
 
 		if (attr == EAP_TEAP_TLV_ERROR) {
@@ -421,7 +434,7 @@ unexpected:
 			if (length != 2) {
 			fail_length:
 				REDEBUG("Phase 2: TLV %u is too short.  Expected 2, got %d.", attr, length);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			status = (data[0] << 8) | data[1];
@@ -438,7 +451,7 @@ unexpected:
 
 			if (vlen <= 2) {
 				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is too short.  Expected >2, got %d.", vlen);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			/*
@@ -446,19 +459,19 @@ unexpected:
 			 */
 			if (!p[0] || ((p[0] + 1) >= vlen)) {
 				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  User-Name field has bad lenth %u", p[0]);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			vlen -= p[0] + 1;
 			if (!vlen) {
 				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field is missing");
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			p += p[0] + 1;
 			if (!p[0] || (p[0] >= vlen)) {
 				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field has bad lenth %u", p[0]);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 		}
 
@@ -468,7 +481,7 @@ unexpected:
 			if ((data[0] != 0) || (data[1] == 0) || (data[1] > 2)) {
 				REDEBUG("Phase 2: Identity-Type TLV contains invalid value %02x%02x",
 				       data[0], data[1]);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 		}
 
@@ -478,12 +491,12 @@ unexpected:
 		if (attr == EAP_TEAP_TLV_CRYPTO_BINDING) {
 			if (length != sizeof(eap_tlv_crypto_binding_tlv_t)) {
 				REDEBUG("Phase 2: Crypto-Binding TLV has incorrect length %u", length);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 
 			if (data[1] != EAP_TEAP_VERSION) {
 				REDEBUG("Phase 2: Crypto-Binding TLV has incorrect version %u", data[1]);
-				return 0;
+				return RLM_MODULE_INVALID;
 			}
 		}
 
@@ -495,6 +508,10 @@ unexpected:
 	}
 
 	/*
+	 *	Safe to return RLM_MODULE_REJECT now that calling eap_teap_teap2vp is safe
+	 */
+
+	/*
 	 *	Check status if we have it.
 	 */
 	if (status) {
@@ -504,13 +521,13 @@ unexpected:
 			} else {
 				REDEBUG("Phase 2: Received Result TLV from peer which indicates failure.  Rejecting request.");
 			}
-			return 0;
+			return RLM_MODULE_REJECT;
 		}
 
 		if (status != EAP_TEAP_TLV_RESULT_SUCCESS) {
 		unknown_value:
 			REDEBUG("Phase 2: Received Result TLV from peer with unknown value %u.  Rejecting request.", status);
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 	}
 
@@ -523,7 +540,7 @@ unexpected:
 	if ((error >= 2000) && (error <= 2999)) {
 		REDEBUG("Phase 2: Received Error TLV from peer which indicates fatal error %u.  Rejecting request.",
 			error);
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -531,7 +548,7 @@ unexpected:
 	 */
 	if ((num[EAP_TEAP_TLV_NAK] > 0) && (num[EAP_TEAP_TLV_NAK] != total)) {
 		REDEBUG("Phase 2: NAK TLV was sent along with non-NAK TLVs.  Rejecting request.");
-		goto unexpected;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -545,13 +562,13 @@ unexpected:
 	case TLS_SESSION_HANDSHAKE:
 		if (present) {
 			REDEBUG("Phase 2: Unexpected TLVs in TLS Session Handshake stage");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 		break;
 	case AUTHENTICATION:
 		if (present & ~((1 << EAP_TEAP_TLV_EAP_PAYLOAD) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) | (1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP))) {
 			REDEBUG("Phase 2: Unexpected TLVs in authentication stage");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 
 		/*
@@ -559,7 +576,7 @@ unexpected:
 		 */
 		if (t->sent_basic_password && ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
 			REDEBUG("Phase 2: Sent Basic-Password-Auth-Req but reply does not contain Basic-Password-Auth-Resp");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 
 		/*
@@ -571,14 +588,14 @@ unexpected:
 		    ((present & (1 << EAP_TEAP_TLV_EAP_PAYLOAD)) == 0) &&
 		    ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
 			REDEBUG("Phase 2: Received Identity-Type without EAP-Payload or Basic-Password-Auth-Resp");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 
 		break;
 	case PROVISIONING:
 		if (present & ~((1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT))) {
 			REDEBUG("Phase 2: Unexpected TLVs in provisioning stage");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 		break;
 	case COMPLETE:
@@ -589,18 +606,18 @@ unexpected:
 			     (1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_ERROR));
 		if (present) {
 			REDEBUG("Phase 2: Unexpected TLVs in complete stage");
-			goto unexpected;
+			return RLM_MODULE_REJECT;
 		}
 		break;
 	default:
 		REDEBUG("Phase 2: Internal error, invalid stage %d", t->stage);
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
 	 * We got this far.  It looks OK.
 	 */
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
@@ -1816,6 +1833,7 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE			code;
+	int			verify;
 	VALUE_PAIR		*teap_vps, *vp;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -1836,8 +1854,17 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	/*
 	 * See if the tunneled data is well formed.
+         *  - RLM_MODULE_INVALID means the TLVs are bad so do not decode them and immediately bail
 	 */
-	if (!eap_teap_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
+	verify = eap_teap_verify(request, tls_session, data, data_len);
+	if (verify == RLM_MODULE_INVALID) return PW_CODE_ACCESS_REJECT;
+
+	teap_vps = eap_teap_teap2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
+
+	RDEBUG("Phase 2: Got Tunneled TEAP TLVs");
+	rdebug_pair_list(L_DBG_LVL_1, request, teap_vps, NULL);
+
+	if (verify != RLM_MODULE_OK) return PW_CODE_ACCESS_REJECT;
 
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
 		char buf[256];
@@ -1899,11 +1926,6 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		return PW_CODE_ACCESS_CHALLENGE;
 	}
-
-	teap_vps = eap_teap_teap2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
-
-	RDEBUG("Phase 2: Got Tunneled TEAP TLVs");
-	rdebug_pair_list(L_DBG_LVL_1, request, teap_vps, NULL);
 
 	code = eap_teap_process_tlvs(request, eap_session, tls_session, teap_vps);
 
