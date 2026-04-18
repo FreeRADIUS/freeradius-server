@@ -70,9 +70,9 @@ static void eap_teap_init_keys(REQUEST *request, tls_session_t *tls_session)
 	rad_assert(t->imckc == 0);
 
 	/* S-IMCK[0] = session_key_seed (RFC7170, Section 5.1) */
-	eaptls_gen_keys_only(request, tls_session->ssl, "EXPORTER: teap session key seed", NULL, 0, t->imck_msk.simck, sizeof(t->imck_msk.simck));
-	memcpy(t->imck_emsk.simck, t->imck_msk.simck, sizeof(t->imck_msk.simck));
-	RDEBUGHEX("Phase 2: S-IMCK[0]", t->imck_msk.simck, sizeof(t->imck_msk.simck));
+	eaptls_gen_keys_only(request, tls_session->ssl, "EXPORTER: teap session key seed", NULL, 0, t->imck_msk.simck, EAP_TEAP_SIMCK_LEN);
+	memcpy(t->imck_emsk.simck, t->imck_msk.simck, EAP_TEAP_SIMCK_LEN);
+	RDEBUGHEX("Phase 2: S-IMCK[0]", t->imck_msk.simck, EAP_TEAP_SIMCK_LEN);
 }
 
 /**
@@ -108,13 +108,13 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 	}
 	imck_seed[1].iov_base = imsk_msk;
 	TLS_PRF(tls_session->ssl,
-		t->imck_msk.simck, sizeof(t->imck_msk.simck),
+		t->imck_msk.simck, EAP_TEAP_SIMCK_LEN,
 		imck_seed, ARRAY_SIZE(imck_seed),
 		(uint8_t *)&imck_msk, sizeof(imck_msk));
 
 	/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
-	RDEBUGHEX("Phase 2: MSK S-IMCK[j]", imck_msk.simck, sizeof(imck_msk.simck));
-	RDEBUGHEX("Phase 2: MSK CMK[j]", imck_msk.cmk, sizeof(imck_msk.cmk));
+	RDEBUGHEX("Phase 2: MSK S-IMCK[j]", imck_msk.simck, EAP_TEAP_SIMCK_LEN);
+	RDEBUGHEX("Phase 2: MSK CMK[j]", imck_msk.cmk, EAP_TEAP_CMK_LEN);
 
 	if (emsklen) {
 		uint8_t emsk_label[20] = "TEAPbindkey@ietf.org";
@@ -146,13 +146,13 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 		 */
 		imck_seed[1].iov_base = imsk_emsk;
 		TLS_PRF(tls_session->ssl,
-			t->imck_emsk.simck, sizeof(t->imck_emsk.simck),
+			t->imck_emsk.simck, EAP_TEAP_SIMCK_LEN,
 			imck_seed, ARRAY_SIZE(imck_seed),
 			(uint8_t *)&imck_emsk, sizeof(imck_emsk));
 
 		/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
-		RDEBUGHEX("Phase 2: EMSK S-IMCK[j]", imck_emsk.simck, sizeof(imck_emsk.simck));
-		RDEBUGHEX("Phase 2: EMSK CMK[j]", imck_emsk.cmk, sizeof(imck_emsk.cmk));
+		RDEBUGHEX("Phase 2: EMSK S-IMCK[j]", imck_emsk.simck, EAP_TEAP_SIMCK_LEN);
+		RDEBUGHEX("Phase 2: EMSK CMK[j]", imck_emsk.cmk, EAP_TEAP_CMK_LEN);
 
 		memcpy(&t->imck_emsk, &imck_emsk, sizeof(imck_emsk));
 	}
@@ -313,12 +313,21 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, buflen);
 
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
+
+	/*
+	 *	RFC 7170, section 5.3, both of these require zero'ed out MACs in the CB
+	 *	so do not fold the condition below into this as an 'optimization'
+	 */
 	HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac_msk, &maclen);
 	if (t->imck_emsk_available) {
 		HMAC(md, &t->imck_emsk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac_emsk, &maclen);
 	}
+
+	RDEBUGHEX("Phase 2: Compound MAC (MSK)", mac_msk, sizeof(cbb->binding.msk_compound_mac));
 	memcpy(cbb->binding.msk_compound_mac, &mac_msk, sizeof(cbb->binding.msk_compound_mac));
+
 	if (t->imck_emsk_available) {
+		RDEBUGHEX("Phase 2: Compound MAC (EMSK)", mac_emsk, sizeof(cbb->binding.emsk_compound_mac));
 		memcpy(cbb->binding.emsk_compound_mac, &mac_emsk, sizeof(cbb->binding.emsk_compound_mac));
 	}
 
@@ -1599,7 +1608,8 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	 *	EMSK for the later IMCK deriviation.
 	 */
 	if ((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) != 0) {
-		HMAC(md, &t->imck_msk.cmk, sizeof(t->imck_msk.cmk), buf, buflen, mac, &maclen);
+		RDEBUGHEX("Phase 2: CMK for Compound MAC calculation (MSK)", t->imck_msk.cmk, EAP_TEAP_CMK_LEN);
+		HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac, &maclen);
 		if (memcmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac))) {
 			RWDEBUG2("Phase 2: Crypto-Binding TLV (MSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
@@ -1612,7 +1622,8 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	}
 
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
-		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, buflen, mac, &maclen);
+		RDEBUGHEX("Phase 2: CMK for Compound MAC calculation (EMSK)", t->imck_emsk.cmk, EAP_TEAP_CMK_LEN);
+		HMAC(md, &t->imck_emsk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac, &maclen);
 		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
 			RWDEBUG2("Phase 2: Crypto-Binding TLV (EMSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
