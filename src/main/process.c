@@ -3759,7 +3759,7 @@ static void request_ping(REQUEST *request, int action)
 		 */
 		if (HOME_SERVER_IS_DEAD(home) &&
 		    (home->num_received_pings < home->num_pings_to_alive)) {
-			return;
+			break;
 		}
 
 		/*
