@@ -844,6 +844,15 @@ recv Access-Request {
 	digest
 
 	#
+	#  Uncomment the next four lines for Dynamic PSK / EasyPSK.
+	#  The rewrite policies normalise station identifiers and populate
+	#  `Called-Station-SSID` for the dpsk module.
+	#
+#	rewrite_called_station_id
+#	rewrite_calling_station_id
+#	dpsk
+
+	#
 	#  The `eap` module takes care of all EAP authentication,
 	#  including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
 	#
@@ -980,6 +989,16 @@ recv Status-Server {
 #  below, after authentication has completed.
 #
 ######################################################################
+
+#
+#  === DPSK Authentication
+#
+#  Uncomment this section for Dynamic PSK / EasyPSK.  The `dpsk` line in
+#  the `recv Access-Request` section should also be uncommented.
+#
+#authenticate dpsk {
+#	dpsk
+#}
 
 #
 #  === PAP Authentication
