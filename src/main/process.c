@@ -3349,15 +3349,8 @@ do_home:
 		 */
 		vp = fr_pair_find_by_num(request->proxy->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp_cursor_t cursor;
-			vp = radius_pair_create(NULL, NULL,
-					       PW_USER_NAME, 0);
-			rad_assert(vp != NULL);	/* handled by above function */
-			/* Insert at the START of the list */
-			/* FIXME: Can't make assumptions about ordering */
-			fr_cursor_init(&cursor, &vp);
-			fr_cursor_merge(&cursor, request->proxy->vps);
-			request->proxy->vps = vp;
+			vp = fr_pair_afrom_num(request->proxy, PW_USER_NAME, 0);
+			if (vp) fr_pair_prepend(&request->proxy->vps, vp);
 		}
 		fr_pair_value_strcpy(vp, strippedname->vp_strvalue);
 
