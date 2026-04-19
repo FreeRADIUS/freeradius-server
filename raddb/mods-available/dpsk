@@ -191,4 +191,74 @@ dpsk {
 	#  search space, and thus the CPU requirements.
 	#
 #	filename = "${modconfdir}/${..:name}/psk.csv"
+	#
+	#  Multiple adapters can be defined.  The module picks the
+	#  first adapter whose request layout matches the packet.
+	#
+	adapter standard {
+		request {
+			type = standard_attrs
+			username = User-Name
+			ssid = Called-Station-SSID
+			called_station = Called-Station-MAC
+			anonce = FreeRADIUS-802.1X-Anonce
+			key_msg = FreeRADIUS-802.1X-EAPoL-Key-Msg
+		}
+		reply {
+			mode = standard
+			psk_attr = Pre-Shared-Key
+			psk_identity_attr = PSK-Identity
+		}
+	}
+
+	adapter ruckus {
+		request {
+			type = named_vsa_attrs
+			username = User-Name
+			ssid = Ruckus-SSID
+			called_station = Ruckus-BSSID
+			anonce = Ruckus-DPSK-Anonce
+			key_msg = Ruckus-DPSK-EAPoL-Key-Frame
+		}
+		reply {
+			mode = ms_mppe_recv_key
+			psk_attr = MS-MPPE-Recv-Key
+		}
+	}
+
+	adapter iosxe {
+		request {
+			type = key_value_vsa
+			username = User-Name
+			container_attr = Cisco-AVPair
+			ssid_key = cisco-wlan-ssid
+			called_station_key = cisco-bssid
+			anonce_key = cisco-anonce
+			key_msg_key = cisco-8021x-data
+			value_encoding = radius_escaped
+		}
+		reply {
+			mode = avpair_hex_pmk
+			avpair_attr = Cisco-AVPair
+			pmk_key = psk
+			extra_pairs = psk-mode=hex
+		}
+	}
+
+
+	adapter meraki {
+		request {
+			type = named_vsa_attrs
+			username = User-Name
+			ssid = Meraki-IPSK-SSID
+			called_station = Meraki-IPSK-BSSID
+			anonce = Meraki-IPSK-Anonce
+			key_msg = Meraki-IPSK-EAPOL
+		}
+		reply {
+			mode = tunnel_password
+			psk_attr = Tunnel-Password
+		}
+	}
+
 }

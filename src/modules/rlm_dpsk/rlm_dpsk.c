@@ -31,6 +31,11 @@ RCSID("$Id$")
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/cmac.h>
+#if OPENSSL_VERSION_MAJOR >= 3
+#include <openssl/core_names.h>
+#include <openssl/params.h>
+#endif
 
 #include <ctype.h>
 
@@ -96,6 +101,20 @@ typedef struct eapol_attr_t {
 #endif
 
 typedef struct rlm_dpsk_s rlm_dpsk_t;
+typedef struct dpsk_adapter_s dpsk_adapter_t;
+
+typedef enum {
+	DPSK_REQUEST_ADAPTER_STANDARD_ATTRS = 0,
+	DPSK_REQUEST_ADAPTER_NAMED_VSA_ATTRS,
+	DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA
+} dpsk_request_adapter_type_t;
+
+typedef enum {
+	DPSK_REPLY_MODE_STANDARD = 0,
+	DPSK_REPLY_MODE_TUNNEL_PASSWORD,
+	DPSK_REPLY_MODE_AVPAIR_HEX_PMK,
+	DPSK_REPLY_MODE_MS_MPPE_RECV_KEY
+} dpsk_reply_mode_t;
 
 typedef struct {
 	uint8_t			mac[6];
@@ -109,11 +128,64 @@ typedef struct {
 
 	char			*psk;
 	size_t			psk_len;
+	bool			has_vlan;
+	uint16_t		vlan;
 	time_t			expires;
 
 	fr_dlist_t		dlist;
 	rlm_dpsk_t		*inst;
 } rlm_dpsk_cache_t;
+
+typedef struct {
+	uint8_t akm[4];
+	uint8_t pairwise[4];
+	size_t kck_len;
+	size_t kek_len;
+	size_t tk_len;
+	size_t ptk_len;
+} dpsk_rsn_info_t;
+
+typedef struct {
+	dpsk_rsn_info_t rsn_info;
+	uint8_t descriptor_version;
+	bool use_sha256;
+	bool use_hostap_pmf;
+	uint8_t snonce[32];
+	uint8_t packet_mic[16];
+	uint8_t frame[256];
+	size_t frame_len;
+} dpsk_verify_ctx_t;
+
+struct dpsk_adapter_s {
+	char const		*name;
+	CONF_SECTION		*cs;
+	char const		*request_type_name;
+	char const		*request_username_name;
+	char const		*request_ssid_name;
+	char const		*request_called_station_name;
+	char const		*request_anonce_name;
+	char const		*request_key_msg_name;
+	char const		*request_container_name;
+	char const		*request_ssid_key;
+	char const		*request_called_station_key;
+	char const		*request_anonce_key;
+	char const		*request_key_msg_key;
+	char const		*request_value_encoding_name;
+	dpsk_request_adapter_type_t request_type;
+	char const		*reply_mode_name;
+	char const		*reply_psk_attr_name;
+	char const		*reply_psk_identity_attr_name;
+	char const		*reply_avpair_attr_name;
+	char const		*reply_pmk_key;
+	char const		*reply_extra_pairs;
+	dpsk_reply_mode_t	reply_mode;
+	DICT_ATTR const		*request_container;
+	DICT_ATTR const		*username;
+	DICT_ATTR const		*called_station;
+	DICT_ATTR const		*ssid;
+	DICT_ATTR const		*anonce;
+	DICT_ATTR const		*frame;
+};
 
 struct rlm_dpsk_s {
 	char const		*xlat_name;
@@ -126,16 +198,91 @@ struct rlm_dpsk_s {
 	uint32_t		cache_lifetime;
 
 	char const		*filename;
+	char const		*request_type_name;
+	char const		*request_username_name;
+	char const		*request_ssid_name;
+	char const		*request_called_station_name;
+	char const		*request_anonce_name;
+	char const		*request_key_msg_name;
+	char const		*request_container_name;
+	char const		*request_ssid_key;
+	char const		*request_called_station_key;
+	char const		*request_anonce_key;
+	char const		*request_key_msg_key;
+	char const		*request_value_encoding_name;
+	char const		*reply_mode_name;
+	char const		*reply_psk_attr_name;
+	char const		*reply_psk_identity_attr_name;
+	char const		*reply_avpair_attr_name;
+	char const		*reply_pmk_key;
+	char const		*reply_extra_pairs;
+	dpsk_adapter_t		**adapters;
+	size_t			num_adapters;
+	dpsk_adapter_t		*default_adapter;
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;
 #endif
 	fr_dlist_t		head;
-
-	DICT_ATTR const		*ssid;
-	DICT_ATTR const		*anonce;
-	DICT_ATTR const		*frame;
 	CONF_SECTION		*cs;
+};
+
+static const CONF_PARSER request_config[] = {
+	{ "type", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_type_name), NULL },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_username_name), NULL },
+	{ "ssid", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_ssid_name), NULL },
+	{ "called_station", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_called_station_name), NULL },
+	{ "anonce", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_anonce_name), NULL },
+	{ "key_msg", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_key_msg_name), NULL },
+	{ "container_attr", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_container_name), NULL },
+	{ "ssid_key", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_ssid_key), NULL },
+	{ "called_station_key", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_called_station_key), NULL },
+	{ "anonce_key", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_anonce_key), NULL },
+	{ "key_msg_key", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_key_msg_key), NULL },
+	{ "value_encoding", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, request_value_encoding_name), NULL },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER reply_config[] = {
+	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_mode_name), NULL },
+	{ "psk_attr", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_psk_attr_name), NULL },
+	{ "psk_identity_attr", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_psk_identity_attr_name), NULL },
+	{ "avpair_attr", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_avpair_attr_name), NULL },
+	{ "pmk_key", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_pmk_key), NULL },
+	{ "extra_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, dpsk_adapter_t, reply_extra_pairs), NULL },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER legacy_request_config[] = {
+	{ "type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_type_name), NULL },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_username_name), NULL },
+	{ "ssid", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_ssid_name), NULL },
+	{ "called_station", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_called_station_name), NULL },
+	{ "anonce", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_anonce_name), NULL },
+	{ "key_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_key_msg_name), NULL },
+	{ "container_attr", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_container_name), NULL },
+	{ "ssid_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_ssid_key), NULL },
+	{ "called_station_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_called_station_key), NULL },
+	{ "anonce_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_anonce_key), NULL },
+	{ "key_msg_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_key_msg_key), NULL },
+	{ "value_encoding", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, request_value_encoding_name), NULL },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER legacy_reply_config[] = {
+	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_mode_name), NULL },
+	{ "psk_attr", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_psk_attr_name), NULL },
+	{ "psk_identity_attr", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_psk_identity_attr_name), NULL },
+	{ "avpair_attr", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_avpair_attr_name), NULL },
+	{ "pmk_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_pmk_key), NULL },
+	{ "extra_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_dpsk_t, reply_extra_pairs), NULL },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER adapter_config[] = {
+	{ "request", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) request_config },
+	{ "reply", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) reply_config },
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
@@ -145,6 +292,8 @@ static const CONF_PARSER module_config[] = {
 	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
 
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_STRING,  rlm_dpsk_t, filename), NULL },
+	{ "request", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) legacy_request_config },
+	{ "reply", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) legacy_reply_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -172,6 +321,365 @@ static void rdebug_hex(REQUEST *request, char const *prefix, uint8_t const *data
 	RDEBUG("%s %s", prefix, buffer);
 }
 #define RDEBUG_HEX if (rad_debug_lvl >= 3) rdebug_hex
+
+#define REQUEST_DATA_DPSK_ADAPTER 0
+
+static VALUE_PAIR *dpsk_key_value_find(REQUEST *request, DICT_ATTR const *da, char const *key);
+
+static int dpsk_request_config_defaults(rlm_dpsk_t const *inst, dpsk_adapter_t *adapter)
+{
+	if (!adapter->request_type_name) {
+		adapter->request_type_name = inst->ruckus ? "named_vsa_attrs" : "standard_attrs";
+	}
+
+	if (!adapter->request_username_name) adapter->request_username_name = "User-Name";
+	if (!adapter->request_ssid_name) {
+		adapter->request_ssid_name = inst->ruckus ? "Ruckus-SSID" : "Called-Station-SSID";
+	}
+	if (!adapter->request_called_station_name) {
+		adapter->request_called_station_name = inst->ruckus ? "Ruckus-BSSID" : "Called-Station-MAC";
+	}
+	if (!adapter->request_anonce_name) {
+		adapter->request_anonce_name = inst->ruckus ? "Ruckus-DPSK-Anonce" : "FreeRADIUS-802.1X-Anonce";
+	}
+	if (!adapter->request_key_msg_name) {
+		adapter->request_key_msg_name = inst->ruckus ? "Ruckus-DPSK-EAPoL-Key-Frame" : "FreeRADIUS-802.1X-EAPoL-Key-Msg";
+	}
+	if (!adapter->request_value_encoding_name) adapter->request_value_encoding_name = "radius_escaped";
+
+	if (strcmp(adapter->request_type_name, "standard_attrs") == 0) {
+		adapter->request_type = DPSK_REQUEST_ADAPTER_STANDARD_ATTRS;
+		return 0;
+	}
+
+	if (strcmp(adapter->request_type_name, "named_vsa_attrs") == 0) {
+		adapter->request_type = DPSK_REQUEST_ADAPTER_NAMED_VSA_ATTRS;
+		return 0;
+	}
+
+	if (strcmp(adapter->request_type_name, "key_value_vsa") == 0) {
+		if (!adapter->request_container_name) adapter->request_container_name = "Cisco-AVPair";
+		if (!adapter->request_ssid_key) adapter->request_ssid_key = "cisco-wlan-ssid";
+		if (!adapter->request_called_station_key) adapter->request_called_station_key = "cisco-bssid";
+		if (!adapter->request_anonce_key) adapter->request_anonce_key = "cisco-anonce";
+		if (!adapter->request_key_msg_key) adapter->request_key_msg_key = "cisco-8021x-data";
+		adapter->request_type = DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA;
+		return 0;
+	}
+
+	return -1;
+}
+
+static int dpsk_request_config_resolve(rlm_dpsk_t const *inst, CONF_SECTION *conf, dpsk_adapter_t *adapter)
+{
+	if (dpsk_request_config_defaults(inst, adapter) < 0) {
+		cf_log_err_cs(conf, "Unknown request.type = '%s'", adapter->request_type_name);
+		return -1;
+	}
+
+	adapter->username = dict_attrbyname(adapter->request_username_name);
+	if (!adapter->username) {
+		cf_log_err_cs(conf, "Failed to resolve request attributes from configuration");
+		return -1;
+	}
+
+	if (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) {
+		adapter->request_container = dict_attrbyname(adapter->request_container_name);
+		if (!adapter->request_container ||
+		    !adapter->request_ssid_key ||
+		    !adapter->request_called_station_key ||
+		    !adapter->request_anonce_key ||
+		    !adapter->request_key_msg_key) {
+			cf_log_err_cs(conf, "Failed to resolve key/value request configuration");
+			return -1;
+		}
+		adapter->called_station = NULL;
+		adapter->ssid = NULL;
+		adapter->anonce = NULL;
+		adapter->frame = NULL;
+		return 0;
+	}
+
+	adapter->called_station = dict_attrbyname(adapter->request_called_station_name);
+	adapter->ssid = dict_attrbyname(adapter->request_ssid_name);
+	adapter->anonce = dict_attrbyname(adapter->request_anonce_name);
+	adapter->frame = dict_attrbyname(adapter->request_key_msg_name);
+
+	if (!adapter->called_station || !adapter->ssid || !adapter->anonce || !adapter->frame) {
+		cf_log_err_cs(conf, "Failed to resolve request attributes from configuration");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int dpsk_reply_config_defaults(CONF_SECTION *conf, dpsk_adapter_t *adapter)
+{
+	if (!adapter->reply_mode_name) adapter->reply_mode_name = "standard";
+
+	if (strcmp(adapter->reply_mode_name, "standard") == 0) {
+		adapter->reply_mode = DPSK_REPLY_MODE_STANDARD;
+		if (!adapter->reply_psk_attr_name) adapter->reply_psk_attr_name = "Pre-Shared-Key";
+		if (!adapter->reply_psk_identity_attr_name) adapter->reply_psk_identity_attr_name = "PSK-Identity";
+		return 0;
+	}
+
+	if (strcmp(adapter->reply_mode_name, "tunnel_password") == 0) {
+		adapter->reply_mode = DPSK_REPLY_MODE_TUNNEL_PASSWORD;
+		if (!adapter->reply_psk_attr_name) adapter->reply_psk_attr_name = "Tunnel-Password";
+		return 0;
+	}
+
+	if (strcmp(adapter->reply_mode_name, "avpair_hex_pmk") == 0) {
+		adapter->reply_mode = DPSK_REPLY_MODE_AVPAIR_HEX_PMK;
+		if (!adapter->reply_avpair_attr_name) adapter->reply_avpair_attr_name = "Cisco-AVPair";
+		if (!adapter->reply_pmk_key) adapter->reply_pmk_key = "psk";
+		if (!adapter->reply_extra_pairs) adapter->reply_extra_pairs = "psk-mode=hex";
+		return 0;
+	}
+
+	if (strcmp(adapter->reply_mode_name, "ms_mppe_recv_key") == 0) {
+		adapter->reply_mode = DPSK_REPLY_MODE_MS_MPPE_RECV_KEY;
+		if (!adapter->reply_psk_attr_name) adapter->reply_psk_attr_name = "MS-MPPE-Recv-Key";
+		return 0;
+	}
+
+	cf_log_err_cs(conf, "Unknown reply.mode = '%s'", adapter->reply_mode_name);
+	return -1;
+}
+
+static int dpsk_configure_adapter(rlm_dpsk_t const *inst, CONF_SECTION *conf, dpsk_adapter_t *adapter)
+{
+	if (dpsk_request_config_resolve(inst, conf, adapter) < 0) return -1;
+	if (dpsk_reply_config_defaults(conf, adapter) < 0) return -1;
+	return 0;
+}
+
+static void dpsk_copy_legacy_adapter(rlm_dpsk_t const *inst, dpsk_adapter_t *adapter)
+{
+	adapter->request_type_name = inst->request_type_name;
+	adapter->request_username_name = inst->request_username_name;
+	adapter->request_ssid_name = inst->request_ssid_name;
+	adapter->request_called_station_name = inst->request_called_station_name;
+	adapter->request_anonce_name = inst->request_anonce_name;
+	adapter->request_key_msg_name = inst->request_key_msg_name;
+	adapter->request_container_name = inst->request_container_name;
+	adapter->request_ssid_key = inst->request_ssid_key;
+	adapter->request_called_station_key = inst->request_called_station_key;
+	adapter->request_anonce_key = inst->request_anonce_key;
+	adapter->request_key_msg_key = inst->request_key_msg_key;
+	adapter->request_value_encoding_name = inst->request_value_encoding_name;
+	adapter->reply_mode_name = inst->reply_mode_name;
+	adapter->reply_psk_attr_name = inst->reply_psk_attr_name;
+	adapter->reply_psk_identity_attr_name = inst->reply_psk_identity_attr_name;
+	adapter->reply_avpair_attr_name = inst->reply_avpair_attr_name;
+	adapter->reply_pmk_key = inst->reply_pmk_key;
+	adapter->reply_extra_pairs = inst->reply_extra_pairs;
+}
+
+static int dpsk_register_adapter(rlm_dpsk_t *inst, dpsk_adapter_t *adapter)
+{
+	dpsk_adapter_t **adapters;
+
+	adapters = talloc_realloc(inst, inst->adapters, dpsk_adapter_t *, inst->num_adapters + 1);
+	if (!adapters) return -1;
+
+	inst->adapters = adapters;
+	inst->adapters[inst->num_adapters++] = adapter;
+	if (!inst->default_adapter) inst->default_adapter = adapter;
+	return 0;
+}
+
+static bool dpsk_adapter_matches(REQUEST *request, dpsk_adapter_t const *adapter)
+{
+	VALUE_PAIR *vp;
+
+	if (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) {
+		vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_anonce_key);
+		if (!vp) vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_key_msg_key);
+		return vp != NULL;
+	}
+
+	if (fr_pair_find_by_da(request->packet->vps, adapter->anonce, TAG_ANY)) return true;
+	if (fr_pair_find_by_da(request->packet->vps, adapter->frame, TAG_ANY)) return true;
+	return false;
+}
+
+static dpsk_adapter_t *dpsk_select_adapter(rlm_dpsk_t *inst, REQUEST *request)
+{
+	size_t i;
+
+	for (i = 0; i < inst->num_adapters; i++) {
+		if (dpsk_adapter_matches(request, inst->adapters[i])) return inst->adapters[i];
+	}
+
+	return NULL;
+}
+
+static int dpsk_decode_escaped(uint8_t *out, size_t outlen, char const *in, size_t inlen)
+{
+	size_t i, j;
+
+	for (i = 0, j = 0; (i < inlen) && (j < outlen); i++) {
+		if (in[i] != '\\') {
+			out[j++] = (uint8_t) in[i];
+			continue;
+		}
+
+		if ((i + 1) >= inlen) return -1;
+
+		if ((in[i + 1] >= '0') && (in[i + 1] <= '7')) {
+			unsigned int value = 0;
+			int consumed = 0;
+
+			while (((i + 1 + consumed) < inlen) && (consumed < 3) &&
+			       (in[i + 1 + consumed] >= '0') && (in[i + 1 + consumed] <= '7')) {
+				value = (value * 8) + (unsigned int) (in[i + 1 + consumed] - '0');
+				consumed++;
+			}
+			if (value > UINT8_MAX) return -1;
+			out[j++] = (uint8_t) value;
+			i += consumed;
+			continue;
+		}
+
+		out[j++] = (uint8_t) in[i + 1];
+		i++;
+	}
+
+	return (int) j;
+}
+
+static int dpsk_mac_from_string(uint8_t mac[static 6], char const *value, size_t value_len)
+{
+	char buffer[32];
+	size_t i, j;
+
+	for (i = 0, j = 0; (i < value_len) && (j < (sizeof(buffer) - 1)); i++) {
+		if (isxdigit((uint8_t) value[i])) buffer[j++] = value[i];
+	}
+	buffer[j] = '\0';
+
+	if (j != 12) return -1;
+	if (fr_hex2bin(mac, 6, buffer, j) != 6) return -1;
+
+	return 0;
+}
+
+static VALUE_PAIR *dpsk_key_value_find(REQUEST *request, DICT_ATTR const *da, char const *key)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	size_t key_len = strlen(key);
+
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (vp->da != da) continue;
+		if (vp->vp_length <= key_len) continue;
+		if (memcmp(vp->vp_strvalue, key, key_len) != 0) continue;
+		if (vp->vp_strvalue[key_len] != '=') continue;
+		return vp;
+	}
+
+	return NULL;
+}
+
+static int dpsk_add_reply_pair(REQUEST *request, char const *attr, char const *value)
+{
+	return (fr_pair_make(request->reply, &request->reply->vps, attr, value, T_OP_ADD) != NULL) ? 0 : -1;
+}
+
+static int dpsk_parse_vlan(char const *text, uint16_t *out)
+{
+	char *end = NULL;
+	unsigned long vlan;
+
+	if (!text || !*text) return 0;
+	if (!isdigit((uint8_t) text[0])) return -1;
+
+	vlan = strtoul(text, &end, 10);
+	if (!end || *end) return -1;
+	if ((vlan < 1) || (vlan > 4094)) return -1;
+
+	*out = (uint16_t) vlan;
+	return 1;
+}
+
+static rlm_rcode_t dpsk_add_vlan_reply(REQUEST *request, bool has_vlan, uint16_t vlan)
+{
+	char vlan_buffer[8];
+
+	if (!has_vlan) return RLM_MODULE_OK;
+
+	snprintf(vlan_buffer, sizeof(vlan_buffer), "%u", vlan);
+	if (dpsk_add_reply_pair(request, "Tunnel-Type", "VLAN") < 0) return RLM_MODULE_FAIL;
+	if (dpsk_add_reply_pair(request, "Tunnel-Medium-Type", "IEEE-802") < 0) return RLM_MODULE_FAIL;
+	if (dpsk_add_reply_pair(request, "Tunnel-Private-Group-Id", vlan_buffer) < 0) return RLM_MODULE_FAIL;
+
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t dpsk_emit_reply(REQUEST *request, dpsk_adapter_t const *adapter,
+				   uint8_t const pmk[static 32], char const *psk,
+				   size_t psk_len, char const *psk_identity,
+				   bool has_vlan, uint16_t vlan)
+{
+	char buffer[2 + (32 * 2) + 1];
+	char pair[256];
+	char *extra, *token, *saveptr = NULL;
+	rlm_rcode_t rcode = RLM_MODULE_FAIL;
+
+	switch (adapter->reply_mode) {
+	case DPSK_REPLY_MODE_STANDARD:
+		if (dpsk_add_reply_pair(request, adapter->reply_psk_attr_name, psk) < 0) return RLM_MODULE_FAIL;
+		if (dpsk_add_reply_pair(request, adapter->reply_psk_identity_attr_name, psk_identity) < 0) return RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_OK;
+		break;
+
+	case DPSK_REPLY_MODE_TUNNEL_PASSWORD:
+		if (dpsk_add_reply_pair(request, adapter->reply_psk_attr_name, psk) < 0) return RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_OK;
+		break;
+
+	case DPSK_REPLY_MODE_AVPAIR_HEX_PMK:
+		strcpy(buffer, "0x");
+		fr_bin2hex(buffer + 2, pmk, 32);
+		snprintf(pair, sizeof(pair), "%s=%s", adapter->reply_pmk_key, buffer + 2);
+		if (dpsk_add_reply_pair(request, adapter->reply_avpair_attr_name, pair) < 0) return RLM_MODULE_FAIL;
+		if (!adapter->reply_extra_pairs || !*adapter->reply_extra_pairs) {
+			rcode = RLM_MODULE_OK;
+			break;
+		}
+
+		extra = talloc_typed_strdup(request, adapter->reply_extra_pairs);
+		if (!extra) return RLM_MODULE_FAIL;
+		for (token = strtok_r(extra, ",", &saveptr);
+		     token;
+		     token = strtok_r(NULL, ",", &saveptr)) {
+			while (isspace((uint8_t) *token)) token++;
+			if (!*token) continue;
+			if (dpsk_add_reply_pair(request, adapter->reply_avpair_attr_name, token) < 0) {
+				talloc_free(extra);
+				return RLM_MODULE_FAIL;
+			}
+		}
+		talloc_free(extra);
+		rcode = RLM_MODULE_OK;
+		break;
+
+	case DPSK_REPLY_MODE_MS_MPPE_RECV_KEY:
+		strcpy(buffer, "0x");
+		fr_bin2hex(buffer + 2, pmk, 32);
+		if (dpsk_add_reply_pair(request, adapter->reply_psk_attr_name, buffer) < 0) return RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_OK;
+		break;
+	}
+
+	(void) psk_len;
+	if (rcode != RLM_MODULE_OK) return rcode;
+	return dpsk_add_vlan_reply(request, has_vlan, vlan);
+}
 
 #if 0
 /*
@@ -222,10 +730,13 @@ static bool normalize(rlm_dpsk_t *inst, REQUEST *request)
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *request)
 {
 	rlm_dpsk_t *inst = instance;
+	dpsk_adapter_t *adapter;
 
-	if (!fr_pair_find_by_da(request->packet->vps, inst->anonce, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->packet->vps, inst->frame, TAG_ANY)) {
-		return RLM_MODULE_NOOP;
+	adapter = dpsk_select_adapter(inst, request);
+	if (!adapter) return RLM_MODULE_NOOP;
+
+	if (request_data_add(request, inst, REQUEST_DATA_DPSK_ADAPTER, adapter, false) < 0) {
+		return RLM_MODULE_FAIL;
 	}
 
 	if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY)) {
@@ -233,12 +744,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG2("Found %s.  Setting 'Auth-Type  = %s'", inst->frame->name, inst->xlat_name);
+	RDEBUG2("Found DPSK request via adapter '%s'.  Setting 'Auth-Type  = %s'",
+		adapter->name, inst->xlat_name);
 
 	/*
-	 *	Set Auth-Type to MS-CHAP.  The authentication code
-	 *	will take care of turning cleartext passwords into
-	 *	NT/LM passwords.
+	 *	Set Auth-Type to DPSK.  The authentication code
+	 *	will verify the request against the selected adapter.
 	 */
 	if (!pair_make_config("Auth-Type", inst->xlat_name, T_OP_EQ)) {
 		return RLM_MODULE_FAIL;
@@ -247,13 +758,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, uint8_t const *mac)
+static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen,
+					 uint8_t const *ssid, size_t ssid_len, uint8_t const *mac)
 {
 	rlm_dpsk_cache_t *entry, my_entry;
 
 	memcpy(my_entry.mac, mac, sizeof(my_entry.mac));
-	memcpy(&my_entry.ssid, &ssid->vp_octets, sizeof(my_entry.ssid)); /* const issues */
-	my_entry.ssid_len = ssid->vp_length;
+	memcpy(&my_entry.ssid, &ssid, sizeof(my_entry.ssid)); /* const issues */
+	my_entry.ssid_len = ssid_len;
 
 	entry = rbtree_finddata(inst->cache, &my_entry);
 	if (entry) {
@@ -271,16 +783,435 @@ static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *ins
 }
 
 
-static int generate_pmk(REQUEST *request, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, char const *psk, size_t psk_len)
+static int generate_pmk(REQUEST *request, uint8_t *buffer, size_t buflen, uint8_t const *ssid, size_t ssid_len,
+			char const *psk, size_t psk_len)
 {
 	fr_assert(buflen == 32);
 
-	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, psk_len, (const unsigned char *) ssid->vp_strvalue, ssid->vp_length, 4096, buflen, buffer) == 0) {
+	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, psk_len, (const unsigned char *) ssid, ssid_len, 4096, buflen, buffer) == 0) {
 		RDEBUG("Failed calling OpenSSL to calculate the PMK");
 		return -1;
 	}
 
 	return 0;
+}
+
+static uint16_t dpsk_read_be16(uint8_t const *p)
+{
+	return (uint16_t) (((uint16_t) p[0] << 8) | p[1]);
+}
+
+static uint16_t dpsk_read_le16(uint8_t const *p)
+{
+	return (uint16_t) (((uint16_t) p[1] << 8) | p[0]);
+}
+
+static uint8_t dpsk_eapol_descriptor_version(uint8_t const *eapol_key_msg, size_t eapol_key_msg_len)
+{
+	eapol_attr_t const *eapol;
+
+	if (eapol_key_msg_len < sizeof(eapol_attr_t)) return 0;
+	eapol = (eapol_attr_t const *) eapol_key_msg;
+
+	return (uint8_t) (dpsk_read_be16((uint8_t const *) &eapol->frame.information) & 0x7);
+}
+
+static int dpsk_eapol_first_akm_suite(uint8_t out[4], uint8_t const *eapol_key_msg, size_t eapol_key_msg_len)
+{
+	eapol_attr_t const *eapol;
+	uint8_t const *key_data;
+	size_t key_data_len, pos;
+
+	if (eapol_key_msg_len < sizeof(eapol_attr_t)) return -1;
+	eapol = (eapol_attr_t const *) eapol_key_msg;
+	key_data_len = dpsk_read_be16((uint8_t const *) &eapol->frame.data_len);
+	if ((sizeof(eapol_attr_t) + key_data_len) > eapol_key_msg_len) return -1;
+
+	key_data = eapol_key_msg + sizeof(eapol_attr_t);
+	for (pos = 0; (pos + 2) <= key_data_len; ) {
+		uint8_t id = key_data[pos];
+		uint8_t len = key_data[pos + 1];
+		uint8_t const *p;
+		uint16_t count;
+
+		if ((pos + 2 + len) > key_data_len) break;
+		if (id != 0x30) {
+			pos += 2 + len;
+			continue;
+		}
+
+		p = key_data + pos + 2;
+		if (len < 14) return -1;
+		if (dpsk_read_le16(p) != 1) return -1;
+		p += 2;
+		p += 4;
+		count = dpsk_read_le16(p);
+		p += 2;
+		if ((size_t) (p - (key_data + pos + 2)) + ((size_t) count * 4) + 2 > len) return -1;
+		p += count * 4;
+		count = dpsk_read_le16(p);
+		p += 2;
+		if (!count) return -1;
+		if ((size_t) (p - (key_data + pos + 2)) + 4 > len) return -1;
+		memcpy(out, p, 4);
+		return 0;
+	}
+
+	return -1;
+}
+
+static bool dpsk_akm_suite_uses_sha256(uint8_t const akm[4])
+{
+	if (memcmp(akm, "\x00\x0f\xac", 3) != 0) return false;
+
+	switch (akm[3]) {
+	case 4:
+	case 6:
+	case 9:
+	case 19:
+	case 20:
+	case 25:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static size_t dpsk_rsn_selector_to_tk_len(uint8_t const sel[4])
+{
+	if (memcmp(sel, "\x00\x0f\xac", 3) != 0) return 16;
+
+	switch (sel[3]) {
+	case 4:
+	case 8:
+	case 9:
+	case 10:
+		return 16;
+	case 12:
+	case 13:
+		return 32;
+	default:
+		return 16;
+	}
+}
+
+static void dpsk_akm_lengths(uint8_t const akm[4], size_t *kck_len, size_t *kek_len)
+{
+	*kck_len = 16;
+	*kek_len = 16;
+
+	if (memcmp(akm, "\x00\x0f\xac", 3) != 0) return;
+
+	switch (akm[3]) {
+	case 12:
+	case 13:
+		*kck_len = 24;
+		*kek_len = 32;
+		return;
+	default:
+		return;
+	}
+}
+
+static int dpsk_parse_rsn_info_from_eapol(dpsk_rsn_info_t *info, uint8_t const *eapol_key_msg, size_t eapol_key_msg_len)
+{
+	eapol_attr_t const *eapol;
+	uint8_t const *key_data;
+	size_t key_data_len, pos;
+
+	memset(info, 0, sizeof(*info));
+
+	if (eapol_key_msg_len < sizeof(eapol_attr_t)) return -1;
+	eapol = (eapol_attr_t const *) eapol_key_msg;
+	key_data_len = dpsk_read_be16((uint8_t const *) &eapol->frame.data_len);
+	if ((sizeof(eapol_attr_t) + key_data_len) > eapol_key_msg_len) return -1;
+
+	key_data = eapol_key_msg + sizeof(eapol_attr_t);
+	for (pos = 0; (pos + 2) <= key_data_len; ) {
+		uint8_t id = key_data[pos];
+		uint8_t len = key_data[pos + 1];
+		uint8_t const *p;
+		uint16_t count;
+
+		if ((pos + 2 + len) > key_data_len) break;
+		if (id != 0x30) {
+			pos += 2 + len;
+			continue;
+		}
+
+		p = key_data + pos + 2;
+		if (len < 14) return -1;
+		if (dpsk_read_le16(p) != 1) return -1;
+		p += 2;
+		p += 4;
+		count = dpsk_read_le16(p);
+		p += 2;
+		if (!count) return -1;
+		if ((size_t) (p - (key_data + pos + 2)) + ((size_t) count * 4) + 2 > len) return -1;
+		memcpy(info->pairwise, p, 4);
+		p += count * 4;
+
+		count = dpsk_read_le16(p);
+		p += 2;
+		if (!count) return -1;
+		if ((size_t) (p - (key_data + pos + 2)) + 4 > len) return -1;
+		memcpy(info->akm, p, 4);
+
+		dpsk_akm_lengths(info->akm, &info->kck_len, &info->kek_len);
+		info->tk_len = dpsk_rsn_selector_to_tk_len(info->pairwise);
+		info->ptk_len = info->kck_len + info->kek_len + info->tk_len;
+		return 0;
+	}
+
+	return -1;
+}
+
+static int dpsk_prf_sha1(uint8_t *out, size_t out_len, uint8_t const *key, size_t key_len,
+			 char const *label, uint8_t const *data, size_t data_len)
+{
+	unsigned int md_len;
+	uint8_t md[EVP_MAX_MD_SIZE];
+	uint8_t input[256];
+	size_t label_len, input_len, pos = 0;
+	uint8_t counter = 0;
+
+	label_len = strlen(label);
+	input_len = label_len + 1 + data_len + 1;
+	if (input_len > sizeof(input)) return -1;
+	memcpy(input, label, label_len);
+	input[label_len] = '\0';
+	memcpy(input + label_len + 1, data, data_len);
+
+	while (pos < out_len) {
+		size_t copy;
+		input[input_len - 1] = counter;
+		if (!HMAC(EVP_sha1(), key, key_len, input, input_len, md, &md_len)) return -1;
+		copy = ((out_len - pos) < md_len) ? (out_len - pos) : md_len;
+		memcpy(out + pos, md, copy);
+		pos += copy;
+		counter++;
+	}
+
+	return 0;
+}
+
+static int dpsk_prf_sha256(uint8_t *out, size_t out_len, uint8_t const *key, size_t key_len,
+			   char const *label, uint8_t const *data, size_t data_len)
+{
+	unsigned int md_len;
+	uint8_t md[EVP_MAX_MD_SIZE];
+	uint8_t input[256];
+	size_t label_len, input_len, pos = 0;
+	uint16_t counter = 1;
+	uint16_t out_bits = (uint16_t) (out_len * 8);
+
+	label_len = strlen(label);
+	input_len = 2 + label_len + data_len + 2;
+	if (input_len > sizeof(input)) return -1;
+
+	while (pos < out_len) {
+		size_t copy;
+		input[0] = counter & 0xff;
+		input[1] = (counter >> 8) & 0xff;
+		memcpy(input + 2, label, label_len);
+		memcpy(input + 2 + label_len, data, data_len);
+		input[2 + label_len + data_len] = out_bits & 0xff;
+		input[2 + label_len + data_len + 1] = (out_bits >> 8) & 0xff;
+		if (!HMAC(EVP_sha256(), key, key_len, input, input_len, md, &md_len)) return -1;
+		copy = ((out_len - pos) < md_len) ? (out_len - pos) : md_len;
+		memcpy(out + pos, md, copy);
+		pos += copy;
+		counter++;
+	}
+
+	return 0;
+}
+
+static int dpsk_aes_128_cmac(uint8_t const key[16], uint8_t const *data, size_t data_len, uint8_t out[16])
+{
+#if OPENSSL_VERSION_MAJOR >= 3
+	EVP_MAC *mac = NULL;
+	EVP_MAC_CTX *ctx = NULL;
+	OSSL_PARAM params[2];
+	char cipher_name[] = "AES-128-CBC";
+#else
+	CMAC_CTX *ctx;
+#endif
+	size_t out_len = 0;
+	int ok = -1;
+
+#if OPENSSL_VERSION_MAJOR >= 3
+	mac = EVP_MAC_fetch(NULL, "CMAC", NULL);
+	if (!mac) return -1;
+
+	ctx = EVP_MAC_CTX_new(mac);
+	if (!ctx) goto finish;
+
+	params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_CIPHER, cipher_name, 0);
+	params[1] = OSSL_PARAM_construct_end();
+
+	if (EVP_MAC_init(ctx, key, 16, params) != 1) goto finish;
+	if (EVP_MAC_update(ctx, data, data_len) != 1) goto finish;
+	if (EVP_MAC_final(ctx, out, &out_len, 16) != 1) goto finish;
+#else
+	ctx = CMAC_CTX_new();
+	if (!ctx) return -1;
+	if (CMAC_Init(ctx, key, 16, EVP_aes_128_cbc(), NULL) != 1) goto finish;
+	if (CMAC_Update(ctx, data, data_len) != 1) goto finish;
+	if (CMAC_Final(ctx, out, &out_len) != 1) goto finish;
+#endif
+	if (out_len < 16) goto finish;
+	ok = 0;
+
+finish:
+#if OPENSSL_VERSION_MAJOR >= 3
+	EVP_MAC_CTX_free(ctx);
+	EVP_MAC_free(mac);
+#else
+	CMAC_CTX_free(ctx);
+#endif
+	return ok;
+}
+
+static int dpsk_derive_ptk(uint8_t *ptk, size_t ptk_len, uint8_t const *pmk, size_t pmk_len,
+			   uint8_t const client_mac[6], uint8_t const authenticator_mac[6],
+			   uint8_t const ap_anonce[32], uint8_t const snonce[32], bool use_sha256)
+{
+	uint8_t ptk_data[2 * 6 + 2 * 32];
+	uint8_t const *min_mac, *max_mac;
+	uint8_t const *min_nonce, *max_nonce;
+
+	if (memcmp(client_mac, authenticator_mac, 6) <= 0) {
+		min_mac = client_mac;
+		max_mac = authenticator_mac;
+	} else {
+		min_mac = authenticator_mac;
+		max_mac = client_mac;
+	}
+
+	if (memcmp(snonce, ap_anonce, 32) <= 0) {
+		min_nonce = snonce;
+		max_nonce = ap_anonce;
+	} else {
+		min_nonce = ap_anonce;
+		max_nonce = snonce;
+	}
+
+	memcpy(ptk_data, min_mac, 6);
+	memcpy(ptk_data + 6, max_mac, 6);
+	memcpy(ptk_data + 12, min_nonce, 32);
+	memcpy(ptk_data + 44, max_nonce, 32);
+
+	if (use_sha256) return dpsk_prf_sha256(ptk, ptk_len, pmk, pmk_len, "Pairwise key expansion", ptk_data, sizeof(ptk_data));
+	return dpsk_prf_sha1(ptk, ptk_len, pmk, pmk_len, "Pairwise key expansion", ptk_data, sizeof(ptk_data));
+}
+
+static int dpsk_compute_eapol_mic(uint8_t out[16], uint8_t descriptor_version,
+				  bool use_hostap_pmf, size_t kck_len, uint8_t const *kck,
+				  uint8_t const *frame, size_t frame_len)
+{
+	switch (descriptor_version) {
+	case 2:
+		{
+			unsigned int md_len = 0;
+			uint8_t md[EVP_MAX_MD_SIZE];
+
+			if (!HMAC(EVP_sha1(), kck, 16, frame, frame_len, md, &md_len)) return -1;
+			if (md_len < sizeof(out[0]) * 16) return -1;
+			memcpy(out, md, 16);
+		}
+		return 0;
+
+	case 3:
+		if (use_hostap_pmf && (kck_len != 16)) return -1;
+		if (dpsk_aes_128_cmac(kck, frame, frame_len, out) < 0) return -1;
+		return 0;
+
+	default:
+		return 1;
+	}
+}
+
+static int dpsk_prepare_verify_ctx(REQUEST *request, dpsk_verify_ctx_t *ctx,
+				   uint8_t const *eapol_key_msg, size_t eapol_key_msg_len)
+{
+	eapol_attr_t const *eapol;
+	eapol_attr_t *zeroed;
+	uint8_t akm[4];
+
+	memset(ctx, 0, sizeof(*ctx));
+
+	if (eapol_key_msg_len < sizeof(eapol_attr_t)) return -1;
+	if (eapol_key_msg_len > sizeof(ctx->frame)) return -1;
+
+	ctx->descriptor_version = dpsk_eapol_descriptor_version(eapol_key_msg, eapol_key_msg_len);
+	RDEBUG2("DPSK EAPOL-Key descriptor version=%u", ctx->descriptor_version);
+
+	memset(akm, 0, sizeof(akm));
+	if (dpsk_eapol_first_akm_suite(akm, eapol_key_msg, eapol_key_msg_len) == 0) {
+		RDEBUG2("DPSK AKM suite=%02x-%02x-%02x-%02x", akm[0], akm[1], akm[2], akm[3]);
+		ctx->use_sha256 = dpsk_akm_suite_uses_sha256(akm);
+	} else {
+		RDEBUG2("DPSK AKM suite not found in EAPOL key data");
+	}
+	if (!ctx->use_sha256 && (ctx->descriptor_version == 3)) ctx->use_sha256 = true;
+	RDEBUG2("DPSK PTK KDF=%s", ctx->use_sha256 ? "SHA256" : "SHA1");
+
+	if ((ctx->descriptor_version == 3) && (memcmp(akm, "\x00\x0f\xac\x06", 4) == 0)) {
+		if (dpsk_parse_rsn_info_from_eapol(&ctx->rsn_info, eapol_key_msg, eapol_key_msg_len) == 0) {
+			ctx->use_hostap_pmf = true;
+			RDEBUG2("DPSK PMF branch=hostap-style PTK (kck=%zu kek=%zu tk=%zu total=%zu)",
+				ctx->rsn_info.kck_len, ctx->rsn_info.kek_len,
+				ctx->rsn_info.tk_len, ctx->rsn_info.ptk_len);
+		} else {
+			RDEBUG2("DPSK PMF branch parse_rsn_info_from_eapol failed, using legacy PTK path");
+		}
+	}
+
+	memcpy(ctx->snonce, eapol_key_msg + 17, sizeof(ctx->snonce));
+
+	memcpy(ctx->frame, eapol_key_msg, eapol_key_msg_len);
+	ctx->frame_len = eapol_key_msg_len;
+	zeroed = (eapol_attr_t *) &ctx->frame[0];
+	memset(&zeroed->frame.mic[0], 0, sizeof(zeroed->frame.mic));
+
+	eapol = (eapol_attr_t const *) eapol_key_msg;
+	memcpy(ctx->packet_mic, &eapol->frame.mic[0], sizeof(ctx->packet_mic));
+
+	(void) request;
+	return 0;
+}
+
+static int dpsk_verify_candidate(dpsk_verify_ctx_t const *verify, uint8_t const ap_anonce[32],
+				 uint8_t const client_mac[6], uint8_t const authenticator_mac[6],
+				 uint8_t const pmk[32], uint8_t calc_mic[16])
+{
+	uint8_t ptk[128];
+	uint8_t const *kck;
+
+	if (verify->use_hostap_pmf) {
+		if ((verify->rsn_info.ptk_len == 0) || (verify->rsn_info.ptk_len > sizeof(ptk))) return -1;
+		if (dpsk_derive_ptk(ptk, verify->rsn_info.ptk_len, pmk, 32, client_mac, authenticator_mac,
+				    ap_anonce, verify->snonce, verify->use_sha256) < 0) return -1;
+		kck = ptk;
+	} else {
+		if (dpsk_derive_ptk(ptk, 16, pmk, 32, client_mac, authenticator_mac,
+				    ap_anonce, verify->snonce, verify->use_sha256) < 0) return -1;
+		kck = ptk;
+	}
+
+	switch (dpsk_compute_eapol_mic(calc_mic, verify->descriptor_version, verify->use_hostap_pmf,
+				       verify->rsn_info.kck_len, kck, verify->frame, verify->frame_len)) {
+	case 0:
+		break;
+	case 1:
+		return 1;
+	default:
+		return -1;
+	}
+
+	if (memcmp(verify->packet_mic, calc_mic, sizeof(verify->packet_mic)) == 0) return 0;
+	return 1;
 }
 
 /*
@@ -289,63 +1220,126 @@ static int generate_pmk(REQUEST *request, uint8_t *buffer, size_t buflen, VALUE_
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_dpsk_t *inst = instance;
+	dpsk_adapter_t *adapter;
 	VALUE_PAIR *anonce, *key_msg, *vp, *vp_psk = NULL, *vp_id = NULL, *vp_ssid = NULL;
 	rlm_dpsk_cache_t *entry = NULL;
 	int lineno = 0;
 	int stage = 0;
+	int verify_rc;
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	size_t len, psk_len = 0;
-	unsigned int digest_len, mic_len;
-	eapol_attr_t const *eapol;
-	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
 	char const *filename = inst->filename;
 	char const *psk_identity = NULL, *psk = NULL;
-	uint8_t *p;
-	uint8_t const *snonce, *ap_mac;
-	uint8_t const *min_mac, *max_mac;
-	uint8_t const *min_nonce, *max_nonce;
+	uint8_t const *ap_anonce, *ap_mac;
 	uint8_t pmk[32];
-	uint8_t s_mac[6], message[sizeof("Pairwise key expansion") + 6 + 6 + 32 + 32 + 1], frame[128];
-	uint8_t digest[EVP_MAX_MD_SIZE], mic[EVP_MAX_MD_SIZE];
+	uint8_t s_mac[6], calc_mic[16];
+	uint8_t anonce_buffer[32], key_msg_buffer[256], called_station_buffer[6];
+	char ssid_buffer[256];
+	uint8_t const *ssid_data = NULL;
+	size_t ssid_len = 0, key_msg_len = 0;
 	char token_identity[256];
 	char token_psk[256];
+	char const *vp_value;
+	size_t vp_value_len;
 	char filename_buffer[1024];
+	bool has_vlan = false;
+	uint16_t vlan = 0;
+	dpsk_verify_ctx_t verify;
+
+	adapter = request_data_reference(request, inst, REQUEST_DATA_DPSK_ADAPTER);
+	if (!adapter) adapter = dpsk_select_adapter(inst, request);
+	if (!adapter) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Search for the information in a bunch of attributes.
 	 */
-	anonce = fr_pair_find_by_da(request->packet->vps, inst->anonce, TAG_ANY);
-	if (!anonce) {
-		RDEBUG("No FreeRADIUS-802.1X-Anonce in the request");
-		return RLM_MODULE_NOOP;
-	}
+	if (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) {
+		vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_anonce_key);
+		if (!vp) {
+			RDEBUG("No %s in the request", adapter->request_anonce_key);
+			return RLM_MODULE_NOOP;
+		}
+		vp_value = vp->vp_strvalue + strlen(adapter->request_anonce_key) + 1;
+		vp_value_len = vp->vp_length - strlen(adapter->request_anonce_key) - 1;
+		if (dpsk_decode_escaped(anonce_buffer, sizeof(anonce_buffer), vp_value, vp_value_len) != 32) {
+			RDEBUG("%s has incorrect decoded length", adapter->request_anonce_key);
+			return RLM_MODULE_NOOP;
+		}
 
-	if (anonce->vp_length != 32) {
-		RDEBUG("%s has incorrect length (%zu, not 32)", inst->anonce->name, anonce->vp_length);
-		return RLM_MODULE_NOOP;
-	}
+		vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_key_msg_key);
+		if (!vp) {
+			RDEBUG("No %s in the request", adapter->request_key_msg_key);
+			return RLM_MODULE_NOOP;
+		}
+		vp_value = vp->vp_strvalue + strlen(adapter->request_key_msg_key) + 1;
+		vp_value_len = vp->vp_length - strlen(adapter->request_key_msg_key) - 1;
+		key_msg_len = dpsk_decode_escaped(key_msg_buffer, sizeof(key_msg_buffer), vp_value, vp_value_len);
+		if ((int) key_msg_len < 0) {
+			RDEBUG("%s failed decoding", adapter->request_key_msg_key);
+			return RLM_MODULE_NOOP;
+		}
+		if (key_msg_len < sizeof(eapol_attr_t)) {
+			RDEBUG("%s has incorrect length (%zu < %zu)", adapter->request_key_msg_key, key_msg_len, sizeof(eapol_attr_t));
+			return RLM_MODULE_NOOP;
+		}
 
-	key_msg = fr_pair_find_by_da(request->packet->vps, inst->frame, TAG_ANY);
-	if (!key_msg) {
-		RDEBUG("No %s in the request", inst->frame->name);
-		return RLM_MODULE_NOOP;
-	}
+		vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_ssid_key);
+		if (!vp) {
+			RDEBUG("No %s in the request", adapter->request_ssid_key);
+			return RLM_MODULE_NOOP;
+		}
+		vp_value = vp->vp_strvalue + strlen(adapter->request_ssid_key) + 1;
+		vp_value_len = vp->vp_length - strlen(adapter->request_ssid_key) - 1;
+		if (vp_value_len >= sizeof(ssid_buffer)) {
+			RDEBUG("%s is too long", adapter->request_ssid_key);
+			return RLM_MODULE_NOOP;
+		}
+		memcpy(ssid_buffer, vp_value, vp_value_len);
+		ssid_buffer[vp_value_len] = '\0';
+		ssid_data = (uint8_t const *) ssid_buffer;
+		ssid_len = vp_value_len;
 
-	if (key_msg->vp_length < sizeof(*eapol)) {
-		RDEBUG("%s has incorrect length (%zu < %zu)", inst->frame->name, key_msg->vp_length, sizeof(*eapol));
-		return RLM_MODULE_NOOP;
-	}
+		anonce = NULL;
+		key_msg = NULL;
+		vp_ssid = NULL;
+	} else {
+		anonce = fr_pair_find_by_da(request->packet->vps, adapter->anonce, TAG_ANY);
+		if (!anonce) {
+			RDEBUG("No %s in the request", adapter->anonce->name);
+			return RLM_MODULE_NOOP;
+		}
 
-	if (key_msg->vp_length > sizeof(frame)) {
-		RDEBUG("%s has incorrect length (%zu > %zu)", inst->frame->name, key_msg->vp_length, sizeof(frame));
-		return RLM_MODULE_NOOP;
-	}
+		if (anonce->vp_length != 32) {
+			RDEBUG("%s has incorrect length (%zu, not 32)", adapter->anonce->name, anonce->vp_length);
+			return RLM_MODULE_NOOP;
+		}
 
-	vp_ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
-	if (!vp_ssid) {
-		RDEBUG("No %s in the request", inst->ssid->name);
-		return RLM_MODULE_NOOP;
+		key_msg = fr_pair_find_by_da(request->packet->vps, adapter->frame, TAG_ANY);
+		if (!key_msg) {
+			RDEBUG("No %s in the request", adapter->frame->name);
+			return RLM_MODULE_NOOP;
+		}
+
+		if (key_msg->vp_length < sizeof(eapol_attr_t)) {
+			RDEBUG("%s has incorrect length (%zu < %zu)", adapter->frame->name, key_msg->vp_length, sizeof(eapol_attr_t));
+			return RLM_MODULE_NOOP;
+		}
+
+		if (key_msg->vp_length > sizeof(key_msg_buffer)) {
+			RDEBUG("%s has incorrect length (%zu > %zu)", adapter->frame->name, key_msg->vp_length, sizeof(key_msg_buffer));
+			return RLM_MODULE_NOOP;
+		}
+
+		vp_ssid = fr_pair_find_by_da(request->packet->vps, adapter->ssid, TAG_ANY);
+		if (!vp_ssid) {
+			RDEBUG("No %s in the request", adapter->ssid->name);
+			return RLM_MODULE_NOOP;
+		}
+
+		ssid_data = vp_ssid->vp_octets;
+		ssid_len = vp_ssid->vp_length;
+		key_msg_len = key_msg->vp_length;
 	}
 
 	/*
@@ -353,22 +1347,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	attributes.  The module now should return FAIL for
 	 *	missing / invalid attributes, or REJECT for
 	 *	authentication failure.
-	 *
-	 *	If the entry is found in a VP or a cache, the module
-	 *	returns OK.  This means that the caller should not
-	 *	save &control:Pre-Shared-Key somewhere.
-	 *
-	 *	If the module found a matching entry in the file, it
-	 *	returns UPDATED to indicate that the caller should
-	 *	update the database with the PSK which was found.
 	 */
-
-	/*
-	 *	Get supplicant MAC address from the User-Name
-	 */
-	vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, adapter->username, TAG_ANY);
 	if (!vp) {
-		RDEBUG("Missing &User-Name");
+		RDEBUG("Missing &%s", adapter->username->name);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -378,85 +1360,54 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_FAIL;
 	}
 
-	/*
-	 *	Get the AP MAC address.
-	 */
-	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLED_STATION_MAC, 0, TAG_ANY);
-	if (!vp) {
-		RDEBUG("Missing &Called-Station-MAC");
+	if (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) {
+		vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_called_station_key);
+		if (!vp) {
+			RDEBUG("Missing %s", adapter->request_called_station_key);
+			return RLM_MODULE_FAIL;
+		}
+		vp_value = vp->vp_strvalue + strlen(adapter->request_called_station_key) + 1;
+		vp_value_len = vp->vp_length - strlen(adapter->request_called_station_key) - 1;
+		if (dpsk_mac_from_string(called_station_buffer, vp_value, vp_value_len) < 0) {
+			RDEBUG("%s is not a recognizable MAC address", adapter->request_called_station_key);
+			return RLM_MODULE_FAIL;
+		}
+		ap_mac = called_station_buffer;
+	} else {
+		vp = fr_pair_find_by_da(request->packet->vps, adapter->called_station, TAG_ANY);
+		if (!vp) {
+			RDEBUG("Missing &%s", adapter->called_station->name);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (vp->length != 6) {
+			RDEBUG("&%s is not a recognizable MAC address", adapter->called_station->name);
+			return RLM_MODULE_FAIL;
+		}
+
+		ap_mac = vp->vp_octets;
+	}
+
+	ap_anonce = (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) ? anonce_buffer : anonce->vp_octets;
+	if (dpsk_prepare_verify_ctx(request, &verify,
+				    (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) ? key_msg_buffer : key_msg->vp_octets,
+				    key_msg_len) < 0) {
+		RDEBUG("Failed preparing DPSK verifier state");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (vp->length != 6) {
-		RDEBUG("&Called-Station-MAC is not a recognizable MAC address");
-		return RLM_MODULE_FAIL;
-	}
-
-	ap_mac = vp->vp_octets;
-
-	/*
-	 *	Sort the MACs
-	 */
-	if (memcmp(s_mac, ap_mac, 6) <= 0) {
-		min_mac = s_mac;
-		max_mac = ap_mac;
-	} else {
-		min_mac = ap_mac;
-		max_mac = s_mac;
-	}
-
-	eapol = (eapol_attr_t const *) key_msg->vp_octets;
-
-	/*
-	 *	Get supplicant nonce and AP nonce.
-	 *
-	 *	Then sort the nonces.
-	 */
-	snonce = key_msg->vp_octets + 17;
-	if (memcmp(snonce, anonce->vp_octets, 32) <= 0) {
-		min_nonce = snonce;
-		max_nonce = anonce->vp_octets;
-	} else {
-		min_nonce = anonce->vp_octets;
-		max_nonce = snonce;
-	}
-
-	/*
-	 *	Create the base message which we will hash.
-	 */
-	memcpy(message, "Pairwise key expansion", sizeof("Pairwise key expansion")); /* including trailing NUL */
-	p = &message[sizeof("Pairwise key expansion")];
-
-	memcpy(p, min_mac, 6);
-	memcpy(p + 6, max_mac, 6);
-	p += 12;
-
-	memcpy(p, min_nonce, 32);
-	memcpy(p + 32, max_nonce, 32);
-	p += 64;
-	*p = '\0';
-	fr_assert(sizeof(message) == (p + 1 - message));
-
-	/*
-	 *	If we're caching, then check the cache first, before
-	 *	trying the file.  This check allows us to avoid the
-	 *	PMK calculation in many situations, as that can be
-	 *	expensive.
-	 */
 	if (inst->cache) {
-		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), vp_ssid, s_mac);
+		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), ssid_data, ssid_len, s_mac);
 		if (entry) {
 			psk_identity = entry->identity;
 			psk = entry->psk;
 			psk_len = entry->psk_len;
+			has_vlan = entry->has_vlan;
+			vlan = entry->vlan;
 			goto make_digest;
 		}
 	}
 
-	/*
-	 *	No cache, or no cache entry.  Look for an external PMK
-	 *	taken from a database.
-	 */
 stage1:
 	stage = 1;
 
@@ -472,13 +1423,10 @@ stage1:
 		goto make_digest;
 	}
 
-	/*
-	 *	No external PMK.  Try an external PSK.
-	 */
 	vp_psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
 	if (vp_psk) {
 		RDEBUG("Trying &control:Pre-Shared-Key");
-		if (generate_pmk(request, pmk, sizeof(pmk), vp_ssid, vp_psk->vp_strvalue, vp_psk->vp_length) < 0) {
+		if (generate_pmk(request, pmk, sizeof(pmk), ssid_data, ssid_len, vp_psk->vp_strvalue, vp_psk->vp_length) < 0) {
 			fr_assert(!fp);
 			return RLM_MODULE_FAIL;
 		}
@@ -487,22 +1435,16 @@ stage1:
 		if (vp_id) {
 			psk_identity = vp_id->vp_strvalue;
 		} else {
-			vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, adapter->username, TAG_ANY);
 			if (!vp) return RLM_MODULE_REJECT;
-
 			psk_identity = vp->vp_strvalue;
 		}
 
 		psk = vp_psk->vp_strvalue;
 		psk_len = vp_psk->vp_length;
-
 		goto make_digest;
 	}
 
-	/*
-	 *	No external PSK was found.  If there's no file, then
-	 *	we can't do anything else.
-	 */
 stage2:
 	stage = 2;
 
@@ -511,14 +1453,11 @@ stage2:
 		return RLM_MODULE_FAIL;
 	}
 
-	/*
-	 *	If there's an PSK from an external database, then we
-	 *	never read the filename.
-	 */
 	if (inst->filename) {
 		FR_TOKEN token;
 		char const *q;
 		char token_mac[256];
+		char token_vlan[256];
 		char buffer[1024];
 
 		if (inst->dynamic) {
@@ -548,6 +1487,7 @@ stage2:
 
 stage2a:
 		q = fgets(buffer, sizeof(buffer), fp);
+		lineno++;
 		if (!q) {
 			RDEBUG("Failed to find matching PSK or MAC in %s", filename);
 		fail_file:
@@ -555,9 +1495,6 @@ stage2a:
 			return RLM_MODULE_FAIL;
 		}
 
-		/*
-		 *	Split the line on commas, paying attention to double quotes.
-		 */
 		token = getstring(&q, token_identity, sizeof(token_identity), true);
 		if (token == T_INVALID) {
 			RDEBUG("%s[%d] Failed parsing identity", filename, lineno);
@@ -576,11 +1513,10 @@ stage2a:
 			goto fail_file;
 		}
 
-		/*
-		 *	The MAC is optional.  If there is a MAC, we
-		 *	loop over the file until we find a matching
-		 *	one.
-		 */
+		token_mac[0] = '\0';
+		token_vlan[0] = '\0';
+		has_vlan = false;
+		vlan = 0;
 		if (*q == ',') {
 			q++;
 
@@ -590,92 +1526,75 @@ stage2a:
 				goto fail_file;
 			}
 
-			/*
-			 *	See if the MAC matches.  If not, skip
-			 *	this entry.  That's a basic negative cache.
-			 */
-			if ((strlen(token_mac) != 12) ||
-			    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 12)) {
-				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail_file;
+			if (*q == ',') {
+				int parsed_vlan;
+
+				q++;
+				token = getstring(&q, token_vlan, sizeof(token_vlan), true);
+				if (token == T_INVALID) {
+					RDEBUG("%s[%d] Failed parsing VLAN", filename, lineno);
+					goto fail_file;
+				}
+
+				parsed_vlan = dpsk_parse_vlan(token_vlan, &vlan);
+				if (parsed_vlan < 0) {
+					RDEBUG("%s[%d] Failed parsing VLAN", filename, lineno);
+					goto fail_file;
+				}
+				has_vlan = (parsed_vlan > 0);
 			}
 
-			/*
-			 *	The MAC doesn't match, don't even bother trying to generate the PMK.
-			 */
-			if (memcmp(s_mac, token_mac, 6) != 0) {
-				goto stage2a;
-			}
+			if (token_mac[0]) {
+				if ((strlen(token_mac) != 12) ||
+				    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 6)) {
+					RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
+					goto fail_file;
+				}
 
-			RDEBUG3("Found matching MAC");
-			stage = 3;
+				if (memcmp(s_mac, token_mac, 6) != 0) {
+					goto stage2a;
+				}
+
+				RDEBUG3("Found matching MAC");
+				stage = 3;
+			}
 		}
 
-		/*
-		 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
-		 */
 		psk = token_psk;
 		psk_len = strlen(token_psk);
 		psk_identity = token_identity;
 
 		RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
-		if (generate_pmk(request, pmk, sizeof(pmk), vp_ssid, psk, psk_len) < 0) {
+		if (generate_pmk(request, pmk, sizeof(pmk), ssid_data, ssid_len, psk, psk_len) < 0) {
 			goto fail_file;
 		}
 	}
 
-	/*
-	 *	HMAC = HMAC_SHA1(pmk, message);
-	 *
-	 *	We need the first 16 octets of this.
-	 */
 make_digest:
-	digest_len = sizeof(digest);
-	HMAC(EVP_sha1(), pmk, sizeof(pmk), message, sizeof(message), digest, &digest_len);
+	verify_rc = dpsk_verify_candidate(&verify, ap_anonce, s_mac, ap_mac, pmk, calc_mic);
+	if (verify_rc < 0) {
+		RDEBUG("Failed calculating DPSK MIC");
+		return RLM_MODULE_FAIL;
+	}
 
-	RDEBUG_HEX(request, "message:", message, sizeof(message));
-	RDEBUG_HEX(request, "pmk   :", pmk, sizeof(pmk));
-	RDEBUG_HEX(request, "kck   :", digest, 16);
-
-	/*
-	 *	Create the frame with the middle field zero, and hash it with the KCK digest we calculated from the key expansion.
-	 */
-	memcpy(frame, key_msg->vp_octets, key_msg->vp_length);
-	zeroed = (eapol_attr_t *) &frame[0];
-	memset(&zeroed->frame.mic[0], 0, 16);
-
-	RDEBUG_HEX(request, "zeroed:", frame, key_msg->vp_length);
-
-	mic_len = sizeof(mic);
-	HMAC(EVP_sha1(), digest, 16, frame, key_msg->vp_length, mic, &mic_len);
-
-	/*
-	 *	The MICs don't match.
-	 */
-	if (memcmp(&eapol->frame.mic[0], mic, 16) != 0) {
+	if (verify_rc > 0) {
 		RDEBUG3("Stage %d", stage);
-		RDEBUG_HEX(request, "calculated mic:", mic, 16);
-		RDEBUG_HEX(request, "packet mic    :", &eapol->frame.mic[0], 16);
+		RDEBUG_HEX(request, "calculated mic:", calc_mic, sizeof(calc_mic));
+		RDEBUG_HEX(request, "packet mic    :", verify.packet_mic, sizeof(verify.packet_mic));
 
 		psk_identity = NULL;
 		psk = NULL;
 		psk_len = 0;
+		has_vlan = false;
+		vlan = 0;
 
-		/*
-		 *	Found a cached entry, but it didn't match.  Go
-		 *	check external PMK / PSK.
-		 */
 		if (stage == 0) {
 			fr_assert(entry != NULL);
-			rbtree_deletebydata(inst->cache, entry); /* locks and unlinks the entry */
+			rbtree_deletebydata(inst->cache, entry);
 			entry = NULL;
 			goto stage1;
 		}
 
-		/*
-		 *	Found an external PMK or PSK, but it didn't
-		 *	match.  Go check the file.
-		 */
 		if (stage == 1) {
 			if (vp_psk) RDEBUG("&control:Pre-Shared-Key did not match");
 
@@ -688,75 +1607,37 @@ make_digest:
 			return RLM_MODULE_REJECT;
 		}
 
-		/*
-		 *	The file is open, so we keep reading it until
-		 *	we find a matching entry.
-		 */
 		fr_assert(fp);
-
 		if (stage == 2) goto stage2a;
 
 		fclose(fp);
-
-		/*
-		 *	We found a PSK associated with this MAC in the
-		 *	file.  But it didn't match, so we're done.
-		 */
 		fr_assert(stage == 3);
-
 		RDEBUG("Found matching MAC in %s, but the PSK does not match", inst->filename);
 		return RLM_MODULE_FAIL;
 	}
 
-	/*
-	 *	We found a matching PSK.  If we read it from the file,
-	 *	then close the file, and ensure that we return
-	 *	UPDATED.  This tells the caller to write the entry
-	 *	into the database, so that we don't need to scan the
-	 *	file again.
-	 */
 	if (fp) {
-		rcode = RLM_MODULE_UPDATED;
 		fr_assert(psk == token_psk);
 		fr_assert(psk_identity == token_identity);
 		fclose(fp);
 	}
 
-	/*
-	 *	Extend the lifetime of the cache entry, or add the
-	 *	cache entry if necessary.  We only add / update the
-	 *	cache entry if the PSK was not found in a VP.
-	 *
-	 *	If the caller gave us only a PMK, then don't cache anything.
-	 */
 	if (inst->cache && psk && psk_identity) {
 		rlm_dpsk_cache_t my_entry;
 
-		/*
-		 *	We've found an entry. Just update it.
-		 */
 		if (entry) goto update_entry;
 
-		/*
-		 *	No cached entry, or the PSK in the cached
-		 *	entry didn't match.  We need to create one.
-		 */
 		memcpy(my_entry.mac, s_mac, sizeof(my_entry.mac));
-		memcpy(&my_entry.ssid, &vp_ssid->vp_octets, sizeof(my_entry.ssid)); /* const ptr issues */
-		my_entry.ssid_len = vp_ssid->vp_length;
+		memcpy(&my_entry.ssid, &ssid_data, sizeof(my_entry.ssid));
+		my_entry.ssid_len = ssid_len;
 
 		entry = rbtree_finddata(inst->cache, &my_entry);
 		if (!entry) {
-			/*
-			 *	Maybe there are oo many entries in the
-			 *	cache.  If so, delete the oldest one.
-			 */
 			if (rbtree_num_elements(inst->cache) > inst->cache_size) {
 				PTHREAD_MUTEX_LOCK(&inst->mutex);
 				entry = fr_dlist_head(&inst->head);
 				PTHREAD_MUTEX_UNLOCK(&inst->mutex);
-
-				rbtree_deletebydata(inst->cache, entry); /* locks and unlinks the entry */
+				rbtree_deletebydata(inst->cache, entry);
 			}
 
 			MEM(entry = talloc_zero(inst->cache, rlm_dpsk_cache_t));
@@ -767,21 +1648,17 @@ make_digest:
 			fr_dlist_entry_init(&entry->dlist);
 			entry->inst = inst;
 
-			/*
-			 *	Save the SSID, PSK, and PSK identity in the cache entry.
-			 */
-			MEM(entry->ssid = talloc_memdup(entry, vp_ssid->vp_octets, vp_ssid->vp_length));
-			entry->ssid_len = vp_ssid->vp_length;
+			MEM(entry->ssid = talloc_memdup(entry, ssid_data, ssid_len));
+			entry->ssid_len = ssid_len;
 
-			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
+			MEM(entry->psk = talloc_memdup(entry, psk, psk_len + 1));
 			entry->psk_len = psk_len;
 
 			entry->identity_len = strlen(psk_identity);
-			MEM(entry->identity = talloc_memdup(entry, psk_identity, entry->identity_len));
+			MEM(entry->identity = talloc_memdup(entry, psk_identity, entry->identity_len + 1));
+			entry->has_vlan = has_vlan;
+			entry->vlan = vlan;
 
-			/*
-			 *	Cache it.
-			 */
 			if (!rbtree_insert(inst->cache, entry)) {
 				TALLOC_FREE(entry);
 				goto update_attributes;
@@ -795,42 +1672,17 @@ make_digest:
 		fr_dlist_entry_unlink(&entry->dlist);
 		fr_dlist_insert_tail(&inst->head, &entry->dlist);
 		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
-
-		/*
-		 *	Add the PSK to the reply items, if it was cached.
-		 */
-		if (entry->psk) {
-			MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
-			fr_pair_value_bstrncpy(vp, entry->psk, entry->psk_len);
-
-			fr_pair_add(&request->reply->vps, vp);
-		}
 	}
 
 update_attributes:
-	/*
-	 *	We found a cache entry, or an external PSK.  Don't
-	 *	create new attributes.
-	 */
-	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
-
 	fr_assert(psk != NULL);
 	fr_assert(psk_identity != NULL);
 
-	/*
-	 *	Create the attributes which the caller can then save
-	 *	in the database.
-	 */
-	RDEBUG("Creating &reply:PSK-Identity and &reply:Pre-Shared-Key");
-	MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
-	fr_pair_value_bstrncpy(vp, psk, psk_len);
-	fr_pair_add(&request->reply->vps, vp);
+	if (dpsk_emit_reply(request, adapter, pmk, psk, psk_len, psk_identity, has_vlan, vlan) != RLM_MODULE_OK) {
+		return RLM_MODULE_FAIL;
+	}
 
-	MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
-	fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
-	fr_pair_add(&request->reply->vps, vp);
-
-	return RLM_MODULE_UPDATED;
+	return rcode;
 }
 
 /*
@@ -840,23 +1692,41 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 			 char const *fmt, char *out, size_t outlen)
 {
 	rlm_dpsk_t *inst = instance;
+	dpsk_adapter_t *adapter = inst->default_adapter;
 	char const *p, *ssid, *psk;
 	size_t ssid_len, psk_len;
 	uint8_t buffer[32];
+	char ssid_buffer[256];
+	VALUE_PAIR *vp;
 
-	/*
-	 *	Prefer xlat arguments.  But if they don't exist, use the attributes.
-	 */
+	if (!adapter) return 0;
+
 	p = fmt;
 	while (isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
-		VALUE_PAIR *vp_ssid, *vp_psk;
+		VALUE_PAIR *vp_ssid = NULL, *vp_psk;
 
-		vp_ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
-		if (!vp_ssid) {
-			RDEBUG("No %s in the request", inst->ssid->name);
-			return 0;
+		if (adapter->request_type == DPSK_REQUEST_ADAPTER_KEY_VALUE_VSA) {
+			vp = dpsk_key_value_find(request, adapter->request_container, adapter->request_ssid_key);
+			if (!vp) {
+				RDEBUG("No %s in the request", adapter->request_ssid_key);
+				return 0;
+			}
+			ssid = vp->vp_strvalue + strlen(adapter->request_ssid_key) + 1;
+			ssid_len = vp->vp_length - strlen(adapter->request_ssid_key) - 1;
+			if (ssid_len >= sizeof(ssid_buffer)) return 0;
+			memcpy(ssid_buffer, ssid, ssid_len);
+			ssid_buffer[ssid_len] = '\0';
+			ssid = ssid_buffer;
+		} else {
+			vp_ssid = fr_pair_find_by_da(request->packet->vps, adapter->ssid, TAG_ANY);
+			if (!vp_ssid) {
+				RDEBUG("No %s in the request", adapter->ssid->name);
+				return 0;
+			}
+			ssid = vp_ssid->vp_strvalue;
+			ssid_len = vp_ssid->vp_length;
 		}
 
 		vp_psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
@@ -867,34 +1737,26 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 
 		psk = vp_psk->vp_strvalue;
 		psk_len = vp_psk->vp_length;
-
-		ssid = vp_ssid->vp_strvalue;
-		ssid_len = vp_ssid->vp_length;
 		goto get_pmk;
+	}
 
-	} else {
-		ssid = p;
+	ssid = p;
+	while (*p && !isspace((uint8_t) *p)) p++;
+	ssid_len = p - ssid;
+	if (!*p) {
+		REDEBUG("Found SSID, but no PSK");
+		return 0;
+	}
 
-		while (*p && !isspace((uint8_t) *p)) p++;
+	while (isspace((uint8_t) *p)) p++;
+	psk = p;
+	while (*p && !isspace((uint8_t) *p)) p++;
+	psk_len = p - psk;
 
-		ssid_len = p - ssid;
-
-		if (!*p) {
-			REDEBUG("Found SSID, but no PSK");
-			return 0;
-		}
-
-		psk = p;
-
-		while (*p && !isspace((uint8_t) *p)) p++;
-
-		psk_len = p - psk;
-
-	get_pmk:
-		if (PKCS5_PBKDF2_HMAC_SHA1(psk, psk_len, (const unsigned char *) ssid, ssid_len, 4096, sizeof(buffer), buffer) == 0) {
-			RDEBUG("Failed calling OpenSSL to calculate the PMK");
-			return 0;
-		}
+get_pmk:
+	if (PKCS5_PBKDF2_HMAC_SHA1(psk, psk_len, (const unsigned char *) ssid, ssid_len, 4096, sizeof(buffer), buffer) == 0) {
+		RDEBUG("Failed calling OpenSSL to calculate the PMK");
+		return 0;
 	}
 
 	if (outlen < sizeof(buffer) * 2 + 1) {
@@ -908,37 +1770,62 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	char const *name;
+	CONF_SECTION *adapter_cs;
 	rlm_dpsk_t *inst = instance;
 
-	/*
-	 *	Create the dynamic translation.
-	 */
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
 	xlat_register(inst->xlat_name, dpsk_xlat, NULL, inst);
 
-	if (inst->ruckus) {
-		inst->ssid = dict_attrbyvalue(PW_RUCKUS_BSSID, VENDORPEC_RUCKUS);
-		inst->anonce = dict_attrbyvalue(PW_RUCKUS_DPSK_ANONCE, VENDORPEC_RUCKUS);
-		inst->frame = dict_attrbyvalue(PW_RUCKUS_DPSK_EAPOL_KEY_FRAME, VENDORPEC_RUCKUS);
-	} else {
-		inst->ssid = dict_attrbyvalue(PW_CALLED_STATION_SSID, 0);
-		inst->anonce = dict_attrbyvalue(PW_FREERADIUS_8021X_ANONCE, VENDORPEC_FREERADIUS_EVS5);
-		inst->frame = dict_attrbyvalue(PW_FREERADIUS_8021X_EAPOL_KEY_MSG, VENDORPEC_FREERADIUS_EVS5);
-	}
-
-	if (!inst->ssid || !inst->anonce || !inst->frame) {
-		cf_log_err_cs(conf, "Failed to find attributes in the dictionary.  Please do not edit the default dictionaries!");
-		return -1;
-	}
-
 	inst->dynamic = inst->filename && (strchr(inst->filename, '%') != NULL);
 	inst->cs = conf;
 
-	/*
-	 *	If it's a static file, then check it ourselves.
-	 */
+	for (adapter_cs = cf_subsection_find_next(conf, NULL, "adapter");
+	     adapter_cs != NULL;
+	     adapter_cs = cf_subsection_find_next(conf, adapter_cs, "adapter")) {
+		dpsk_adapter_t *adapter;
+
+		if (!cf_section_name2(adapter_cs)) {
+			cf_log_err_cs(adapter_cs, "Adapter sections must be named");
+			return -1;
+		}
+
+		adapter = talloc_zero(inst, dpsk_adapter_t);
+		if (!adapter) return -1;
+		adapter->name = cf_section_name2(adapter_cs);
+		adapter->cs = adapter_cs;
+
+		if (cf_section_parse(adapter_cs, adapter, adapter_config) < 0) {
+			return -1;
+		}
+		if (dpsk_configure_adapter(inst, adapter_cs, adapter) < 0) {
+			return -1;
+		}
+		if (dpsk_register_adapter(inst, adapter) < 0) {
+			cf_log_err_cs(adapter_cs, "Failed to register adapter '%s'", adapter->name);
+			return -1;
+		}
+	}
+
+	if (!inst->num_adapters) {
+		dpsk_adapter_t *adapter;
+
+		adapter = talloc_zero(inst, dpsk_adapter_t);
+		if (!adapter) return -1;
+		adapter->name = "default";
+		adapter->cs = conf;
+		dpsk_copy_legacy_adapter(inst, adapter);
+		if (dpsk_configure_adapter(inst, conf, adapter) < 0) {
+			cf_log_err_cs(conf, "Failed to resolve legacy request/reply configuration");
+			return -1;
+		}
+		if (dpsk_register_adapter(inst, adapter) < 0) {
+			cf_log_err_cs(conf, "Failed to register default adapter");
+			return -1;
+		}
+	}
+
 	if (inst->filename && !inst->dynamic && !cf_file_check(conf, inst->filename, true)) {
 		return -1;
 	}
