@@ -26,39 +26,34 @@ you can use another installer that simplifies the process.
 For windows-based machines, https://git-scm.com/download/win[download]
 the official build and install Git.
 
-== Get a GitHub account
+== Get a GitHub Account
 
 In order to follow or fork a project you must first create a GitHub
 account. Navigate to the https://github.com/signup/free[signup page]
 and enter your details to complete this process. After you've signed
 up, log in and you're good to go.
 
-== Authorize your local machine to talk to GitHub
+== Authorize your Local Machine
 
-You should use [GitHub
-Tokens](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-instead of SSH keys.
+You need to configure your local machine to communicate with GitHub. We recommend using GitHub personal access tokens for authentication, rather than traditional SSH keys. Personal access tokens are a more secure and flexible way to manage access to your GitHub account.
 
-More instructions TBD.
+For more guidance, refer to https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens[GitHub
+Tokens].
 
-== Authorization via SSH
+=== Authorization via SSH
 
-This can be done, but we don't recommend it.
+Authorization via SSH is possible, but we don't recommend it. The following outlines the basic steps to complete if you want to use SSH keys.
 
-=== How do I generate a keypair?
+*Generate a keypair*
 
 If you're using Mac OSX or Linux use the following command:
 ----
 ssh-keygen -t rsa
 ----
 
-And save the keys if their default locations (just hit return)
+Save the keys to their default locations (just hit return)
 
-@todo - windows instructions - Currently your only option is to cry
-yourself to sleep knowing you'll never be able to contribute to
-FreeRADIUS (or figure it out on your own).
-
-=== How do I install the public key on GitHub's servers?
+*Install the public key on GitHub's servers*
 
 Use the following to output your public key block to the terminal:
 ----
@@ -71,7 +66,7 @@ cat ~/.ssh/id_rsa.pub
 * Paste your public key into the Key field.
 * Click *Add key*.
 
-== Linking commits with your GitHub account
+== Link Commits with your GitHub Account
 
 Once you've established a history of providing good patches, the
 FreeRADIUS core developers are more likely to pull your modifications
@@ -86,11 +81,11 @@ git config --global user.name "<Your real name>"
 git config --global user.email "<Email you used to signup with GitHub>"
 ----
 
-== Forking the FreeRADIUS Server
+== Fork the FreeRADIUS Server
 
 In order to contribute code you must first fork the server. Forking is the process of creating your own copy of the FreeRADIUS repository on GitHub, which you can *clone*, and then *push* your modifications to.
 
-To fork the FreeRADIUS server
+*To fork the FreeRADIUS server*:
 
 * Login to https://github.com[GitHub].
 * Navigate to the https://github.com/FreeRADIUS/freeradius-server[project site].
@@ -98,11 +93,11 @@ To fork the FreeRADIUS server
 
 You'll see the current URL change to ``/<your github username>/freeradius-server`` this means you're now browsing your own copy of the FreeRADIUS source code. From this point on changes to the *upstream* repository won't be reflected in your fork, unless you explicitly pull from the *upstream* repository using the local clone of your fork, and push back to GitHub.
 
-== Using your shiny new fork
+== Use your Shiny New Fork
 
 GitHub doesn't allow you to login to their servers with an interactive prompt. Instead you must use one of the protocols Git supports (SSH, HTTP, or Git (native protocol)) to modify the contents of your fork, and in order to do that you must first *clone* it (create a copy of it on your local machine).
 
-=== Cloning your fork
+=== Clone your fork
 
 * To clone your fork create a directory to house your repositories and navigate to it:
 ----
@@ -122,11 +117,11 @@ git remote add upstream git://github.com/FreeRADIUS/freeradius-server.git
 git fetch upstream
 ----
 
-=== Making modifications
+=== Make modifications
 
 Before you start hacking away you must create a new branch. This branch will serve to group your commits together so that they can be merged back to the project repository later.
 
-==== Branching
+*Branching*
 
 * Think of a descriptive name for your branch, something like 'rlm_foo_segfault_issues'
 * Navigate to your local git repo:
@@ -149,7 +144,7 @@ git push origin <my new branch>
 git checkout <my new branch>
 ----
 
-==== Commits and pushing changes
+*Commits and pushing changes*
 
 * Hack away at the server code or apply a pre-existing patch or set of diffs
 * Tell Git which files you want to include in the commit using ``git add <path>``. If you add subdirectories, all files and directories in that subdirectory will also be added.
@@ -168,9 +163,9 @@ git pull --rebase upstream <development branch>
 git push
 ----
 
-See http://doc.freeradius.org for the current development branch
+See the xref:devbranch.adoc[Development Branch] page for more information and details about the current development branches.
 
-==== Rebasing
+*Rebasing*
 
 Another rather unique feature of Git is the concept of rebasing. Rebase allows you to rewind the state of your repository to an earlier revision, then re-apply ranges of commits.
 
@@ -184,13 +179,13 @@ In the section above the `git pull --rebase` command is used, heres what that co
 
 So long as as there were no *merge conflicts* your branch should now contain the latest version of the source from the upstream branch and your additional modifications.
 
-=== Generating a pull request
+=== Generate a Pull Request
 
 The reason why the FreeRADIUS core developers love GitHub is because of *pull requests*. Once you've committed a set of modifications to your fork, you can generate a *pull request* to let the core developers know you have code to merge.
 
-Go to your fork on GitHub `https://github.com/<your github username>/freeradius-server`. Next, * Click the 'Pull request' button. For more guidance, see xref:gitpr.adoc#Open a Pull Request[Open a Pull Request]
+Go to your fork on GitHub `https://github.com/<your github username>/freeradius-server`. Next, Click the 'Pull request' button. For more guidance, see xref:gitpr.adoc#Open a Pull Request[Open a Pull Request]
 
-==== Signing commits
+*Signing commits*
 
 The FreeRAIDUS project now requires all contributions to be signed. Refer to the following pages for instructions on how to enable this:
 

@@ -1,0 +1,57 @@
+= Development Branch
+
+This page outlines the branching strategy used in the FreeRADIUS
+server project. It details three main branches, each with a specific
+purpose in the development lifecycle. This branching policy helps
+organise development by adding new features to appropriate branches.
+This method keeps older versions stable and secure.
+
+If you want to add new features, you should target either the v3.2.x
+or the v4.0.x branch. The instructions below show how to check out a
+branch if you need to work with it.
+
+== https://github.com/FreeRADIUS/freeradius-server/tree/v4.0.x[4.0.x Feature Branch]
+
+The v4.0.x branch is the main feature branch for ongoing development.
+To add new features or modules, please submit your pull requests to
+this branch. The instructions show how to clone the repository, fetch
+the v4.0.x branch, and check it out for development.
+
+[source, bash]
+----
+git clone git@github.com:FreeRADIUS/freeradius-server.git
+cd freeradius-server
+git fetch origin v4.0.x:v4.0.x
+git checkout v4.0.x
+----
+
+== https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x[3.2.x Stable + Feature Branch]
+
+The v3.2.x branch is both a stable and feature branch. The provided
+commands show you how to clone the repository and switch to this
+branch if you want to work with or contribute to this version.
+
+[source, bash]
+----
+git clone git@github.com:FreeRADIUS/freeradius-server.git
+cd freeradius-server
+git fetch origin v3.2.x:v3.2.x
+git checkout v3.2.x
+----
+
+==  https://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x[3.0.x Stable Branch]
+
+The team has now frozen the v3.0.x branch, meaning they will not
+accept any new features or modules. Only security fixes will be
+applied to it.
+
+[source, bash]
+----
+git clone git@github.com:FreeRADIUS/freeradius-server.git
+cd freeradius-server
+git fetch origin v3.0.x:v3.0.x
+git checkout v3.0.x
+----
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

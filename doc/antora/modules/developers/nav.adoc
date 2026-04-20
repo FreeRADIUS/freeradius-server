@@ -11,6 +11,7 @@
 ** xref:coccinelle.adoc[Semantic Patches]
 ** xref:contributing.adoc[Contributing]
 *** xref:github.adoc[Using GitHub]
+**** xref:devbranch.adoc[Development Branch]
 *** xref:gitpr.adoc[Patches via GitHub]
 *** xref:email.adoc[Diffs via Email]
 ** xref:coverity.adoc[Coverity]
