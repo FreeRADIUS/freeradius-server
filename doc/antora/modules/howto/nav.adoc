@@ -52,6 +52,7 @@
 
 ** xref:modules/configuring_modules.adoc[Configure Modules]
 *** xref:modules/chap/index.adoc[CHAP]
+**** xref:modules/chap/testchap.adoc[Testing]
 *** xref:modules/eap/index.adoc[EAP]
 *** xref:modules/expiration/index.adoc[Expiration]
 *** xref:modules/krb5/index.adoc[KRB5]
