@@ -1,0 +1,139 @@
+name       = profiling-server
+
+raddbdir   = /etc/freeradius
+confdir    = ${raddbdir}
+modconfdir = ${confdir}/mods-config
+logdir     = /var/log/freeradius
+radacctdir = ${logdir}/radacct
+
+security {
+	allow_core_dumps = yes
+}
+
+modules {
+
+	# Common ldap module configuration
+	{% include "freeradius/common/mods-available/ldap" %}
+
+	# Common pap module configuration
+	{% include "freeradius/common/mods-available/pap" %}
+
+	# Common always module configuration, required for the control policy
+	{% include "freeradius/common/mods-available/always" %}
+
+}
+
+policy {
+
+	# Common control policy configuration, needed for accept action
+	{% include "freeradius/common/policy.d/control" %}
+
+}
+
+server profiling-server {
+
+	namespace = radius
+
+	listen load {
+		handler = load
+		type = Access-Request
+		transport = step
+
+		step {
+
+			# Default packet config to use by proto_load module
+			filename = ${confdir}/load-generator-packets/packet.conf
+
+			# Saving proto_load statistics disabled by default, can be enabled for debugging purposes.
+			csv = ${confdir}/stats/load-generator-stats.csv
+
+			max_attributes = 64
+
+			#
+			# The load profile is configured via environment variables set
+			# in the testcase configuration files.
+			#
+			start_pps = $ENV{TEST_LOADGEN_START_PPS}
+			max_pps   = $ENV{TEST_LOADGEN_MAX_PPS}
+			duration  = $ENV{TEST_LOADGEN_DURATION}
+			step = $ENV{TEST_LOADGEN_STEP}
+			max_backlog = $ENV{TEST_LOADGEN_MAX_BACKLOG}
+			parallel = $ENV{TEST_LOADGEN_PARALLEL}
+			num_messages = $ENV{TEST_LOADGEN_NUM_MESSAGES}
+			repeat = no
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		transport = udp
+		require_message_authenticator = auto
+		limit_proxy_state = auto
+
+		limit {
+			max_clients = 256
+			max_connections = 256
+			idle_timeout = 60.0
+			dynamic_timeout = 600.0
+			nak_lifetime = 30.0
+			cleanup_delay = 5.0
+		}
+
+		udp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	listen authentication {
+		type = Access-Request
+		transport = tcp
+
+		tcp {
+			ipaddr = *
+			port = 1812
+			networks {
+				allow = 127/8
+				allow = 192.0.2/24
+			}
+		}
+	}
+
+	client localhost {
+		shortname = client-localhost
+		ipaddr = *
+		secret = testing123
+	}
+
+	recv Access-Request {
+		ldap
+		# pap module always listed last
+		pap
+	}
+
+	authenticate pap {
+		pap
+	}
+
+	send Access-Accept {
+
+	}
+
+	send Access-Reject {
+
+	}
+
+}

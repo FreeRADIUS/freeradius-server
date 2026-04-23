@@ -29,7 +29,7 @@ make test.multi-server.ci
 ### A specific test
 
 ```bash
-make test.multi-server.proxy-accept.short.ci
+make test.multi-server.proxy-accept.short_ci
 ```
 
 ### Parallel execution
@@ -80,3 +80,60 @@ finding `*.test.yml` files within them.
 - `*.test.yml` - Test parameter file (discovered by `make test.multi-server`)
 - `*.ci.test.yml` - CI test parameter file (also discovered by `make test.multi-server.ci`)
 - `*.yml.j2` - Jinja2 template (rendered, not treated as a test)
+
+# Multi-Server Profiling Tests
+
+Four suites instrument FreeRADIUS under Valgrind to collect heap and call-graph profiles:
+
+| Suite | What it exercises |
+| --- | --- |
+| `prof-accept` | Plain RADIUS accept (no external services) |
+| `prof-pap-auth` | PAP authentication |
+| `prof-ldap` | Authentication backed by an LDAP server |
+| `prof-mysql` | Authentication backed by a MySQL database |
+
+Results land in `prof-results/<suite>/<test>/<branch>/<commit>/<run-index>/`.
+
+### Docker image dependencies
+
+Profiling suites require images that are not needed by regular multi-server tests.
+The `freeradius-prof.image` target builds or verifies them automatically before any `prof-*` test runs:
+
+- `freeradius40x-build/ubuntu24:latest` — crossbuild base image
+- `freeradius4-<profile>/ubuntu24:latest` — FreeRADIUS profiling base image
+- `freeradius-prof:latest` — final multi-server profiling image (built by `build_image.sh`)
+
+The `prof-ldap` suite additionally requires:
+
+- `freeradius4/openldap-prof:latest` — built via the `openldap.image` target
+
+To build all profiling images explicitly:
+
+```bash
+make freeradius-prof.image
+make openldap.image   # prof-ldap only
+```
+
+### Running on Linux
+
+Profiling tests run the same way as any other multi-server test:
+
+```bash
+make test.multi-server.prof-mysql.short_ci
+```
+
+### Running on macOS (Apple Silicon)
+
+The profiling image is based on a `crossbuild.<distro>` base image that is built for
+`linux/amd64`. On Apple Silicon you must pass `BUILD_PLATFORM=linux/amd64` so that
+Docker pulls and runs the correct platform variant:
+
+```bash
+make test.multi-server.prof-mysql.short_ci BUILD_PLATFORM=linux/amd64
+```
+
+This applies to all four profiling suites and to the image-build targets as well:
+
+```bash
+make freeradius-prof.image BUILD_PLATFORM=linux/amd64
+```

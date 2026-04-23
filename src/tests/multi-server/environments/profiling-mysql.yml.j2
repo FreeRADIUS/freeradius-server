@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   A single server instance for profiling
+#
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+  mariadb:
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: radius
+      MYSQL_USER: radius
+      MYSQL_PASSWORD: radpass
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${MYSQL_ROOT_PASSWORD} > /dev/null 2>&1"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    volumes:
+    - /tmp/${COMPOSE_PROJECT_NAME}-mariadb-data:/var/lib/mysql
+    - ${DATA_PATH}/mariadb/default/init.sql:/docker-entrypoint-initdb.d/init.sql
+    <<: *id001
+  profiling-server:
+    image: freeradius-prof:latest
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+    # profiling-server server config
+    - ${DATA_PATH}/freeradius/profiling-mysql/radiusd.conf:/etc/freeradius/radiusd.conf
+    # files module configuration
+    - ${DATA_PATH}/freeradius/profiling-mysql/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
+    # proto_load packet configuration and statistics output
+    - ${DATA_PATH}/freeradius/profiling-mysql/proto_load_config.env:/etc/freeradius/proto_load_config.env
+    - ${DATA_PATH}/freeradius/profiling-mysql/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/profiling-mysql/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
+    # Profiling scripts
+    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    # Profiling results directory
+    - ${PROF_RESULTS_PATH}/:/etc/prof-results/
+    # Listener directory
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive.  The test framework starts FreeRADIUS
+      # and runs commands via 'docker exec' so it can control timing.
+      #
+      # Start the server after configuring environment variables from test case's template.yml.j2 file.
+      sleep infinity
+    <<: *id001
+
