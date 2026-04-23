@@ -7,11 +7,15 @@
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                         # run all tests
-#   make -f src/tests/multi-server/all.mk test.multi-server.5hs-autoaccept.short    # run single test
+#   make -f src/tests/multi-server/all.mk test.multi-server.ci                      # run all ci tests
+#   make -f src/tests/multi-server/all.mk test.multi-server.proxy-accept.short_ci   # run single test
 #   make -f src/tests/multi-server/all.mk clean.test.multi-server                   # clean logs
 #
 
 SHELL := /bin/bash
+
+PROFILE ?= default-profiling
+BUILD_PLATFORM ?=
 
 #
 #  Allow for stand-alone builds from the local directory.
@@ -27,6 +31,10 @@ endif
 # absolute paths.
 DIR    := $(abspath ${top_srcdir}/src/tests/multi-server)
 OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
+
+GIT_BRANCH        := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '_'),unknown-branch)
+GIT_COMMIT        := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
+PROF_RESULTS_ROOT := $(abspath $(top_srcdir)/prof-results)
 
 # FIXME: We should be using packaged versions of the multi-server test framework
 # instead of cloning from git.
@@ -139,6 +147,9 @@ TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
+.PHONY: render.test.multi-server.${1}.${2}
+render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
+
 .PHONY: test.multi-server.${1}.${2}
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 	$$(eval CMD := cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && DATA_PATH="${4}" python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log")
@@ -166,18 +177,71 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 endef
 
 #
+#  TEST_MULTI_SERVER_PROF_INSTANCE - like TEST_MULTI_SERVER_INSTANCE but
+#  computes PROF_RESULTS_PATH and exports it to docker compose so valgrind
+#  output lands in:
+#    $(PROF_RESULTS_ROOT)/<suite>/<test>/<branch>/<commit>/<run-index>
+#
+#  ${1} = suite dir name
+#  ${2} = test name
+#  ${3} = params file path
+#  ${4} = test output directory
+#
+define TEST_MULTI_SERVER_PROF_INSTANCE
+TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}  := $$(wildcard $$(DIR)/tests/${1}/*.j2)
+TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,${4}/%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))
+
+$$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
+
+.PHONY: render.test.multi-server.${1}.${2}
+render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
+
+.PHONY: test.multi-server.${1}.${2}
+test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
+	${Q}mkdir -p "${4}/logs" "${4}/listener"
+	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
+	${Q}PROF_BASE="$(PROF_RESULTS_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
+	EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
+	RUN_INDEX=$$$$((EXISTING + 1)); \
+	PROF_RESULTS_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+	mkdir -p "$$$$PROF_RESULTS_PATH" && \
+	echo "PROF_RESULTS_PATH: $$$$PROF_RESULTS_PATH" && \
+	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && \
+	DATA_PATH="${4}" PROF_RESULTS_PATH="$$$$PROF_RESULTS_PATH" \
+	python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log" \
+	> "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
+	{ \
+	    echo "FAILED: test.multi-server.${1}.${2}"; \
+	    for f in ${4}/logs/* ${4}/listener/*; do \
+	        [ -f "$$$$f" ] || continue; \
+	        echo ""; \
+	        echo "=== $$$$f ==="; \
+	        case "$$$$f" in \
+	            */listener/*) \
+	                echo "-- line-type counts --"; \
+	                awk '{print $$$$1}' "$$$$f" | sort | uniq -c; \
+	                echo "-- last 200 lines --"; \
+	                ;; \
+	        esac; \
+	        tail -200 "$$$$f"; \
+	    done; \
+	    exit 1; \
+	}
+endef
+
+#
 #  TEST_MULTI_SERVER - define all test instances for a suite.
 #
 #  Discovers *.yml param files in the suite directory and generates
 #  render + test targets for each.
 #
-#  ${1} = suite dir name (e.g., 5hs-autoaccept)
+#  ${1} = suite dir name (e.g. proxy-accept)
 #
 define TEST_MULTI_SERVER
 TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
 TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call $(if $(filter prof-%,${1}),TEST_MULTI_SERVER_PROF_INSTANCE,TEST_MULTI_SERVER_INSTANCE),${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################
@@ -194,6 +258,8 @@ TEST_MULTI_SERVER_SUITES := $(notdir $(patsubst %/template.yml.j2,%,$(wildcard $
 $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(eval $(call TEST_MULTI_SERVER,$s)))
 
 TEST_MULTI_SERVER_ALL_TESTS := $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(TEST_MULTI_SERVER_TESTS.$(s)))
+
+TEST_MULTI_SERVER_PROF_TESTS := $(foreach s,$(filter prof-%,$(TEST_MULTI_SERVER_SUITES)),$(TEST_MULTI_SERVER_TESTS.$(s)))
 
 ######################################################################
 #
@@ -214,6 +280,70 @@ TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
 
 .PHONY: test.multi-server.ci
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
+
+#
+#  Ensure the freeradius-prof image is present before running
+#  any of the profiling tests.
+#
+
+
+# Crossbuild image
+FREERADIUS_CROSSBUILD_IMAGE := freeradius40x-build/ubuntu24:latest
+# Base profiling image, FreeRADIUS not built on this image
+FREERADIUS_PROF_IMAGE := freeradius4-$(PROFILE)/ubuntu24:latest
+# Multi-server profiling image; FreeRADIUS dev build specifically for profiling
+FREERADIUS_RADENV_PROF_IMAGE := freeradius-prof:latest
+
+.PHONY: freeradius-prof.image
+freeradius-prof.image:
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ]; then \
+		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.regen; \
+		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.build; \
+		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
+	elif [ -z "$$(docker images -q $(FREERADIUS_PROF_IMAGE) 2>/dev/null)" ]; then \
+		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.regen; \
+		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.build; \
+		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
+	elif [ -z "$$(docker images -q $(FREERADIUS_RADENV_PROF_IMAGE) 2>/dev/null)" ]; then \
+		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
+	else \
+		echo "$(FREERADIUS_PROF_IMAGE) and $(FREERADIUS_RADENV_PROF_IMAGE) available, skipping image creation"; \
+	fi
+
+$(TEST_MULTI_SERVER_PROF_TESTS): freeradius-prof.image
+
+#
+#  Copy the valgrind profiling helper script into each prof test's output dir
+#  so it is available alongside the rendered test configs.
+#
+PROFILING_SCRIPT_SRC := $(DIR)/scripts/profiling/start_valgrind_profiling.sh
+
+define TEST_MULTI_SERVER_PROF_SCRIPT
+$(OUTPUT)/${1}/${2}/start_valgrind_profiling.sh: $(PROFILING_SCRIPT_SRC)
+	$${Q}mkdir -p $$(@D)
+	$${Q}cp $$< $$@
+
+test.multi-server.${1}.${2}: $(OUTPUT)/${1}/${2}/start_valgrind_profiling.sh
+endef
+
+$(foreach s,$(filter prof-%,$(TEST_MULTI_SERVER_SUITES)),$(foreach p,$(TEST_MULTI_SERVER_PARAM_FILES.$(s)),$(eval $(call TEST_MULTI_SERVER_PROF_SCRIPT,$(s),$(subst .,_,$(patsubst %.test.yml,%,$(notdir $(p))))))))
+
+#
+#  Ensure the ldap image is present before running prof-ldap tests.
+#  Builds it automatically via docker.openldap.prof if not found.
+#
+OPENLDAP_PROF_IMAGE := freeradius4/openldap-prof:latest
+
+.PHONY: openldap.image
+openldap.image:
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(OPENLDAP_PROF_IMAGE) 2>/dev/null)" ]; then \
+		$(MAKE) -C $(top_srcdir) docker.openldap.prof; \
+	else \
+		echo "$(OPENLDAP_PROF_IMAGE) available, skipping image creation"; \
+	fi
+	${Q}docker tag $(OPENLDAP_PROF_IMAGE) openldap:latest
+
+$(TEST_MULTI_SERVER_TESTS.prof-ldap): openldap.image
 
 .PHONY: clean.test.multi-server
 clean.test.multi-server:
