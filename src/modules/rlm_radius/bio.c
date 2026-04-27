@@ -133,7 +133,7 @@ struct bio_request_s {
 	size_t			partial;		//!< partially sent data
 
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
-	fr_timer_t	*ev;			//!< timer for retransmissions
+	fr_timer_t		*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
