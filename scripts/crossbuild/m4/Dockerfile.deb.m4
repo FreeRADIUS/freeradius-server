@@ -26,7 +26,7 @@ RUN add-apt-repository -y "deb http://apt.llvm.org/OS_CODENAME/ llvm-toolchain-O
 
 RUN apt-get update && \
 #  Development utilities
-    apt-get install -y devscripts equivs git quilt rsync fakeroot && \
+    apt-get install -y devscripts equivs git quilt rsync fakeroot curl && \
 #  Compilers
     apt-get install -y g++ CLANG_PKGS && \
 #  eapol_test dependencies
