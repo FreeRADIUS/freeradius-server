@@ -951,6 +951,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	memcpy(this->data, listener->data, sizeof(*sock));
 	memcpy(this, listener, sizeof(*this));
 	this->next = NULL;
+	this->children = NULL;
 	this->data = sock;	/* fix it back */
 
 	sock->parent = listener->data;
