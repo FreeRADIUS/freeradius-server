@@ -52,7 +52,7 @@ sql_nas_table_bootstrap:
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill sql_nas_table_bootstrap $(TEST).radiusd_start
 	${Q}echo "SQL_NASTABLE-TEST"
 	${Q}mkdir -p $(dir $@)
-	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,sql_nas_table,$(notdir $@),FAIL,); exit 1; fi
 	${Q}if ! $(TESTBIN)/radclient $(ARGV) -xf src/tests/sql_nas_table/auth.txt -D share/ 127.0.0.1:$(PORT) auth $(SECRET) 1> $(SQL_NASTABLE_BUILD_DIR)/radclient.log 2>&1; then \
 		echo "FAILED";                                              \
 		rm -f $(BUILD_DIR)/tests/test.sql_nas_table;		    \
@@ -62,9 +62,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill sql_nas_table_bootstrap $(TEST).rad
 		echo ==============================;			    \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "SQL_NASTABLE: $(TESTBIN)/radclient $(ARGV) -f $< -xF -d src/tests/sql_nas_table/config -D share/ 127.0.0.1:$(PORT) auth $(SECRET)"; \
+		$(call test_record,sql_nas_table,$(notdir $@),FAIL,$(SQL_NASTABLE_BUILD_DIR)/radclient.log); \
 		exit 1;                                                     \
 	fi
-
+	${Q}$(call test_record,sql_nas_table,$(notdir $@),PASS,$(SQL_NASTABLE_BUILD_DIR)/radclient.log)
 	${Q}touch $@
 
 $(TEST):
