@@ -7,7 +7,7 @@
 ##
 #
 include ../../Make.inc
-include $(top_srcdir)/src/tests/test_record.mk
+include test_record.mk
 
 BUILD_PATH := $(top_builddir)/build
 
