@@ -3705,7 +3705,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		if (home->limit.idle_timeout && (home->limit.idle_timeout < sock->limit.idle_timeout)) {
 			sock->limit.idle_timeout = home->limit.idle_timeout;
 
-			if (sock->limit.lifetime && (sock->limit.lifetime > sock->limit.idle_timeout)) {
+			if (sock->limit.lifetime && (sock->limit.idle_timeout > sock->limit.lifetime)) {
 				sock->limit.idle_timeout = 0;
 			}
 
