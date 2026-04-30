@@ -7,6 +7,7 @@
 ##
 #
 include ../../Make.inc
+include $(top_srcdir)/src/tests/test_record.mk
 
 BUILD_PATH := $(top_builddir)/build
 
@@ -239,9 +240,11 @@ $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(
 		tail -10 $(LOG); \
 		echo "===================="; \
 		$(MAKE) radiusd.kill; \
+		$(call test_record,eap,$(notdir $(patsubst %.conf,%,$<)),FAIL,$(LOG)); \
 		exit 1; \
 	fi
 	@echo
+	@$(call test_record,eap,$(notdir $(patsubst %.conf,%,$<)),PASS,$(LOG))
 	@touch $@
 
 #
@@ -271,21 +274,25 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		tail -10 $$(LOG); \
 		echo "===================="; \
 		$(MAKE) radiusd.kill; \
+		$$(call test_record,eap,$$(notdir $$(patsubst %.ok,%,$$@)),FAIL,$$(LOG)); \
 		exit 1; \
 	elif ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo " - " FAILED - not using TLS version ${2}; \
 		echo ">>> cmd -" $$(CMD) -r 1; \
 		echo ">>> log -" $$(LOG); \
 		$(MAKE) radiusd.kill; \
+		$$(call test_record,eap,$$(notdir $$(patsubst %.ok,%,$$@)),FAIL,$$(LOG)); \
 		exit 1; \
 	elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo " - " FAILED - did not use resumption; \
 		echo ">>> cmd -" $$(CMD) -r 1; \
 		echo ">>> log -" $$(LOG); \
 		$(MAKE) radiusd.kill; \
+		$$(call test_record,eap,$$(notdir $$(patsubst %.ok,%,$$@)),FAIL,$$(LOG)); \
 		exit 1; \
 	fi
 	@echo
+	@$$(call test_record,eap,$$(notdir $$(patsubst %.ok,%,$$@)),PASS,$$(LOG))
 	@touch $$@
 
 # EAP-FAST doesn't do TLS 1.3
