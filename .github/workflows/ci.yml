@@ -318,7 +318,35 @@ jobs:
           openssl dhparam -out ./raddb/certs/dh -2 512 || \
           true
 
-        make ci-test
+        # Activate per-test result recording for the summary table.
+        mkdir -p build/tests && touch build/tests/results.tsv
+
+        make -k ci-test
+
+    - name: Test summary
+      if: ${{ always() }}
+      run: |
+        ./scripts/ci/ci-summary.sh build/tests/results.tsv >> "$GITHUB_STEP_SUMMARY" || :
+
+    - name: Stage failed test logs
+      if: ${{ failure() }}
+      run: |
+        mkdir -p build/tests/failed
+        [ -s build/tests/results.tsv ] && cp build/tests/results.tsv build/tests/failed/
+        awk -F'\t' '$3=="FAIL"{print $1"\t"$2"\t"$4}' build/tests/results.tsv 2>/dev/null | \
+        while IFS=$(printf '\t') read -r cat name logf; do
+          [ -n "$logf" ] && [ -f "$logf" ] || continue
+          mkdir -p "build/tests/failed/$cat"
+          cp "$logf" "build/tests/failed/$cat/$name.log"
+        done
+
+    - name: Upload failed test logs
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v6
+      with:
+        name: ci-test-logs-${{ matrix.os.name }}-${{ matrix.env.NAME }}
+        path: build/tests/failed
+        if-no-files-found: ignore
 
     - name: Show debug logs on failure
       if: ${{ failure() }}

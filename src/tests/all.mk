@@ -3,6 +3,8 @@ PORT := 12340
 SECRET := testing123
 DICT_PATH := $(top_srcdir)/share
 
+include $(top_srcdir)/src/tests/test_record.mk
+
 #
 #  Include all of the autoconf definitions into the Make variable space
 #

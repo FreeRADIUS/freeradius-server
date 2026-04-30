@@ -36,10 +36,13 @@ $(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/shar
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/radattr $(TESTBINDIR)/radattr $(BUILD_DIR)/share/dictionary | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
-	@if ! $(TESTBIN)/radattr -D $(BUILD_DIR)/share $<; then \
+	@if ! $(TESTBIN)/radattr -D $(BUILD_DIR)/share $< > $@.log 2>&1; then \
+		cat $@.log; \
 		echo "$(TESTBIN)/radattr -D $(BUILD_DIR)/share $<"; \
+		$(call test_record,unit,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,unit,$(notdir $@),PASS,$@.log)
 	@touch $@
 
 #
