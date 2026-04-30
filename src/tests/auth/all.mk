@@ -9,6 +9,10 @@
 #
 AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
+ifeq "$(OPENSSL_LIBS)" ""
+AUTH_FILES := $(filter-out dpsk-%,$(AUTH_FILES))
+endif
+
 #
 #  Create the output directory
 #
@@ -63,6 +67,9 @@ $(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
 .PRECIOUS: $(BUILD_DIR)/tests/auth/%.attrs raddb/mods-enabled/wimax
 
 AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/radiusd.conf  | sed 's,.*/,,')
+ifeq "$(OPENSSL_LIBS)" ""
+AUTH_MODULES	:= $(filter-out dpsk,$(AUTH_MODULES))
+endif
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
 AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 
