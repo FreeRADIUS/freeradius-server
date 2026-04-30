@@ -14,7 +14,7 @@ DEFAULT_MODULES :=	always attr_filter chap date \
 			radutmp realm replicate soh sradutmp totp unix unpack utf8
 
 ifneq "$(OPENSSL_LIBS)" ""
-DEFAULT_MODULE	+=	dpsk
+DEFAULT_MODULES	+=	dpsk
 endif
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
