@@ -7,7 +7,7 @@
 ##
 #
 include ../../Make.inc
-include $(top_srcdir)/src/tests/test_record.mk
+include test_record.mk
 
 #
 #  You can watch what it's doing by:
