@@ -100,6 +100,7 @@ $(OUTPUT)/%: $(DIR)/% $(OUTPUT)/%.attrs $(TEST_BIN_DIR)/unit_test_module | $(AUT
 			echo "# $@.log"; \
 			echo "TESTDIR=$(notdir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
 			rm -f $(BUILD_DIR)/tests/test.auth; \
+			$(call test_record,auth,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
@@ -109,8 +110,10 @@ $(OUTPUT)/%: $(DIR)/% $(OUTPUT)/%.attrs $(TEST_BIN_DIR)/unit_test_module | $(AUT
 			echo "# $@.log"; \
 			echo "TESTDIR=$(notdir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/auth/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xxx > \"$@.log\" 2>&1"; \
 			rm -f $(BUILD_DIR)/tests/test.auth; \
+			$(call test_record,auth,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+	@$(call test_record,auth,$(notdir $@),PASS,$@.log)

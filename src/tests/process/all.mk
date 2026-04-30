@@ -102,8 +102,10 @@ $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/un
 		cat $@.log; \
 		echo "# $@.log"; \
 		echo $(CMD); \
+		$(call test_record,process,$(PROTOCOL_NAME)/$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,process,$(PROTOCOL_NAME)/$(notdir $@),PASS,$@.log)
 
 $(TEST):
 	$(Q)touch $(BUILD_DIR)/tests/$@

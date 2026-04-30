@@ -56,6 +56,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		cat $(FOUND);                                                                                 \
 		echo "RADSNIFF: TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \
 		rm -f $@;										      \
+		$(call test_record,radsniff,$(notdir $@),FAIL,$(FOUND));                                      \
 		exit 1;                                                                                       \
 	fi
 	${Q}if [ -e "$(EXPECTED)" ]; then                                                                     \
@@ -70,6 +71,7 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 			diff $(EXPECTED).simple $(FOUND);                                                             \
 			echo "diff $(EXPECTED).simple $(FOUND)";                                                      \
 			rm -f $@;										      \
+			$(call test_record,radsniff,$(notdir $@),FAIL,$(FOUND));                                      \
 			exit 1;                                                                                       \
 		fi; \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then                                             \
@@ -78,11 +80,14 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)";                  \
 		echo "If radsniff has been modified, please update the unit tests."; \
 		rm -f $@;										      \
+		$(call test_record,radsniff,$(notdir $@),FAIL,$(FOUND));                                      \
 		exit 1;                                                                                       \
 	else                                                                                                  \
 		echo "ERROR! We should have at least one .txt or .cmd test";                                  \
+		$(call test_record,radsniff,$(notdir $@),FAIL,$(FOUND));                                      \
 		exit 1;                                                                                       \
 	fi
 	${Q}rm -f ${EXPECTED}.simple
+	@$(call test_record,radsniff,$(notdir $@),PASS,$(FOUND))
 	${Q}touch $@
 endif

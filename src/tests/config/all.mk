@@ -67,6 +67,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 			echo "# $@.log"; \
 			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
+			$(call test_record,config,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep 'Error : src/tests/config/' $@.log | egrep -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
@@ -76,9 +77,11 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 			echo "# $@.log"; \
 			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
+			$(call test_record,config,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 	fi
+	@$(call test_record,config,$(notdir $@),PASS,$@.log)
 	touch "$@"
 
 $(TEST):

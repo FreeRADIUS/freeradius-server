@@ -237,10 +237,13 @@ runs:
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
 
-        make -j `nproc` test.keywords test.unit test.auth test.digest
-        make test.modules.redis test.modules.redis_ippool
-        make -j `nproc` test.modules
-        make ci-test
+        # Activate per-test result recording for the summary table.
+        mkdir -p build/tests && touch build/tests/results.tsv
+
+        make -j `nproc` -k test.keywords test.unit test.auth test.digest || :
+        make -k test.modules.redis test.modules.redis_ippool || :
+        make -j `nproc` -k test.modules || :
+        make -k ci-test
 
       env:
         USE_DOCKER: ${{ inputs.use_docker }}
@@ -268,6 +271,33 @@ runs:
         KAFKA_TEST_SERVER: ${{ inputs.kafka_test_server }}
         KAFKA_TEST_SERVER_PORT: ${{ inputs.kafka_test_server_port }}
         CACHE_MEMCACHED_TEST_SERVER: ${{ inputs.memcached_test_server }}
+
+    - name: Test summary
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        ./scripts/ci/ci-summary.sh build/tests/results.tsv >> "$GITHUB_STEP_SUMMARY" || :
+
+    - name: Stage failed test logs
+      if: ${{ failure() }}
+      shell: bash
+      run: |
+        mkdir -p build/tests/failed
+        [ -s build/tests/results.tsv ] && cp build/tests/results.tsv build/tests/failed/
+        awk -F'\t' '$3=="FAIL"{print $1"\t"$2"\t"$4}' build/tests/results.tsv 2>/dev/null | \
+        while IFS=$(printf '\t') read -r cat name logf; do
+          [ -n "$logf" ] && [ -f "$logf" ] || continue
+          mkdir -p "build/tests/failed/$cat"
+          cp "$logf" "build/tests/failed/$cat/$name.log"
+        done
+
+    - name: Upload failed test logs
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v6
+      with:
+        name: ci-test-logs-${{ inputs.use_docker == 'true' && 'docker' || 'host' }}
+        path: build/tests/failed
+        if-no-files-found: ignore
 
     # Restore ucf
     - name: Restore ucf

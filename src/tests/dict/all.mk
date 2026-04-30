@@ -25,8 +25,10 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 		cat "$@.log"; \
 		echo "# $@.log"; \
 		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)
 
 #  And the actual script to run each test.
 #
@@ -43,8 +45,10 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 		cat "$@.log"; \
 		echo "# $@.log"; \
 		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)
 
 #
 #  Tests which are supposed to fail.
@@ -65,6 +69,7 @@ $(OUTPUT)/%.error: $(DIR)/%.error $(TEST_BIN_DIR)/unit_test_attribute
 		cat "$@.log"; \
 		echo "# $@.log"; \
 		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
 	${Q}sed 's,${top_srcdir}/,,g' < "$@.log" > "$@.out"
@@ -72,3 +77,4 @@ $(OUTPUT)/%.error: $(DIR)/%.error $(TEST_BIN_DIR)/unit_test_attribute
 		echo "diff $@.out $(subst .error,,$<).out"; \
 		echo "FAILED"; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)

@@ -26,5 +26,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/packet | build.rad
 		cat $@.log; \
 		echo "./$(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -i $(dir $<)/packet -I \"$<\" -xx "; \
 		rm -f $(BUILD_DIR)/tests/test.xlat; \
+		$(call test_record,xlat,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,xlat,$(notdir $@),PASS,$@.log)

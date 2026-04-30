@@ -57,8 +57,10 @@ $(BUILD_DIR)/tests/bin/%: $(BUILD_DIR)/bin/local/%
 		echo LOG in $@.log; \
 		cat $@.log; \
 		echo $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS); \
+		$(call test_record,bin,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,bin,$(notdir $@),PASS,$@.log)
 	${Q}touch $@
 
 #

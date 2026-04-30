@@ -166,6 +166,7 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 			cat "$@.log"; \
 			echo "# $@.log"; \
 			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< OUTPUT_DIR=$(dir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			$(call test_record,modules,$(lastword $(subst /, ,$(dir $@)))/$(basename $(notdir $@)),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep -E 'Error : $<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
@@ -174,11 +175,13 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 			cat "$@.log"; \
 			echo "# $@.log"; \
 			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< OUTPUT_DIR=$(dir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			$(call test_record,modules,$(lastword $(subst /, ,$(dir $@)))/$(basename $(notdir $@)),FAIL,$@.log); \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+	@$(call test_record,modules,$(lastword $(subst /, ,$(dir $@)))/$(basename $(notdir $@)),PASS,$@.log)
 
 #
 #  Allow running individual tests.

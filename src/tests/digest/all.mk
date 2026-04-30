@@ -48,8 +48,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 			$(MAKE) --no-print-directory test.digest.radiusd_kill; \
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
 			echo "RADCLIENT: $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(digest_port) auth $(SECRET)"; \
+			$(call test_record,digest,$(TARGET)_$${_num},FAIL,$@.out); \
 			exit 1;						\
 		fi;							\
+		$(call test_record,digest,$(TARGET)_$${_num},PASS,$@.out); \
 		touch $@;						\
 	done
 

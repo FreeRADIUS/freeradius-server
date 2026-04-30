@@ -54,7 +54,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 	$(eval RADCLIENT_CLIENT_PORT := $(shell echo $$(($(RADCLIENT_CLIENT_PORT)+1))))
 
 	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
-	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,radclient,$(notdir $@),FAIL,); exit 1; fi
 	${Q}if ! $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
 			echo "FAILED";                                              \
@@ -63,6 +63,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 			echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+			$(call test_record,radclient,$(notdir $@),FAIL,$(FOUND));   \
 			exit 1;                                                     \
 		fi;                                                                 \
 	fi
@@ -99,6 +100,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 		diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND);                                  \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+		$(call test_record,radclient,$(notdir $@),FAIL,$(FOUND));   \
 		exit 1;                                                     \
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
@@ -108,8 +110,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+		$(call test_record,radclient,$(notdir $@),FAIL,$(FOUND));   \
 		exit 1;                                                     \
 	fi
+	@$(call test_record,radclient,$(notdir $@),PASS,$(FOUND))
 	${Q}touch $@
 
 .NO_PARALLEL: $(TEST)

@@ -161,8 +161,10 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 	        esac; \
 	        tail -200 "$$$$f"; \
 	    done; \
+	    $$(call test_record,multi-server,${1}.${2},FAIL,${4}/logs/stderr.log); \
 	    exit 1; \
 	}
+	${Q}$$(call test_record,multi-server,${1}.${2},PASS,${4}/logs/stdout.log)
 endef
 
 #

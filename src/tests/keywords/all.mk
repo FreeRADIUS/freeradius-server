@@ -146,6 +146,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 			echo "# $@.log"; \
 			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
+			$(call test_record,keywords,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep 'Error : src/tests/keywords/' $@.log | egrep -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
@@ -155,11 +156,13 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 			echo "# $@.log"; \
 			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
+			$(call test_record,keywords,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+	@$(call test_record,keywords,$(notdir $@),PASS,$@.log)
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

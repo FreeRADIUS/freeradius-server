@@ -134,9 +134,11 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 		echo "           log is in $(OUT)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
 		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill;			\
+		$(call test_record,eap,$(METHOD),FAIL,$(EAPOL_TEST_LOG)); \
 		exit 1;\
 	fi
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_stop
+	${Q}$(call test_record,eap,$(METHOD),PASS,$(EAPOL_TEST_LOG))
 	${Q}touch $@
 
 $(TEST): $(EAPOL_OK_FILES)

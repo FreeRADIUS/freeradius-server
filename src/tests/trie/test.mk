@@ -12,11 +12,25 @@ $(BUILD_DIR)/tests/trie:
 
 $(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tests/trie
 	@echo TRIE-TEST $(notdir $@)
-	@$(TEST_BIN)/trie $^ > $@
+	@if $(TEST_BIN)/trie $^ > $@ 2> $@.log; then \
+		$(call test_record,trie,$(notdir $@),PASS,$@.log); \
+	else \
+		cat $@.log; \
+		rm -f $@; \
+		$(call test_record,trie,$(notdir $@),FAIL,$@.log); \
+		exit 1; \
+	fi
 
 $(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TEST_BIN_DIR)/nopc | $(BUILD_DIR)/tests/trie
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@$(TEST_BIN)/nopc $^ > $@
+	@if $(TEST_BIN)/nopc $^ > $@ 2> $@.log; then \
+		$(call test_record,trie,$(notdir $@),PASS,$@.log); \
+	else \
+		cat $@.log; \
+		rm -f $@; \
+		$(call test_record,trie,$(notdir $@),FAIL,$@.log); \
+		exit 1; \
+	fi
 
 #
 #  Get all of the unit test output files
