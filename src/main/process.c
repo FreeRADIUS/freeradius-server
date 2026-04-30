@@ -2287,6 +2287,33 @@ static void tcp_socket_timer(void *ctx)
 
 	fr_event_now(el, &now);
 
+#ifdef WITH_TLS
+	/*
+	 *	Enforce connection timeouts.
+	 */
+	if (!sock->ssn->connected) {
+		if (!sock->limit.connect_timeout ||
+		    (sock->limit.connect_timeout > 30)) {
+			end.tv_sec = sock->opened + 5;
+
+		} else {
+			end.tv_sec = sock->opened + sock->limit.connect_timeout;
+			end.tv_usec = 0;
+		}
+
+		end.tv_usec = 0;
+
+		if (sock->ssn->connecting) {
+			listener->print(listener, buffer, sizeof(buffer));
+			DEBUG("Failed to connect after %u seconds to home server %s", (unsigned int) end.tv_sec, buffer);
+			goto do_close;
+		}
+
+		sock->ssn->connecting = true;
+		goto set_timer;
+	}
+#endif
+
 	limit = &sock->limit;
 
 	/*
@@ -2376,6 +2403,9 @@ static void tcp_socket_timer(void *ctx)
 	 */
 	end.tv_usec = USEC / 2;
 
+#ifdef WITH_TLS
+set_timer:
+#endif
 	ASSERT_MASTER;
 	if (!fr_event_insert(el, tcp_socket_timer, listener, &end, &sock->ev)) {
 		rad_panic("Failed to insert event");
