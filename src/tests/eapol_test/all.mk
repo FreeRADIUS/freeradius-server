@@ -115,14 +115,17 @@ test.eap.check: $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/lib/libfreeradius-server.la $(BUILD_DIR)/lib/libfreeradius-util.la) | $(GENERATED_CERT_FILES)
 	$(eval EAPOL_TEST_LOG := $(patsubst %.ok,%.log,$@))
+	$(eval EAPOL_TEST_CMD_FILE := $(patsubst %.ok,%.cmd,$@))
 	$(eval METHOD := $(notdir $(subst _,-,$(patsubst %.conf,%,$<))))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))
+	$(eval CMD := $(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY))
 	@echo "EAPOL-TEST $(METHOD)"
+	@printf '%s\n' '$(CMD)' > $(EAPOL_TEST_CMD_FILE)
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
-	${Q}if ! $(EAPOL_TEST) -t $(EAPOL_TEST_TIMEOUT) -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
+	${Q}if ! $(CMD) > $(EAPOL_TEST_LOG) 2>&1; then	\
 		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG)):";	\
 		tail -n 40 "$(EAPOL_TEST_LOG)";							\
 		echo "--------------------------------------------------";		\

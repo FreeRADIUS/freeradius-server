@@ -21,10 +21,11 @@ $(eval $(call TEST_BOOTSTRAP))
 #  And the actual script to run each test.
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module $(DIR)/packet | build.raddb
+	$(eval CMD := $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i $(dir $<)/packet -I "$<" -xx)
 	@echo "XLAT-TEST $(notdir $@)"
-	${Q}if ! $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r "$@" -i $(dir $<)/packet -I "$<" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
-		echo "./$(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/xlat/ -r \"$@\" -i $(dir $<)/packet -I \"$<\" -xx "; \
 		rm -f $(BUILD_DIR)/tests/test.xlat; \
 		$(call test_record,xlat,$(notdir $@),FAIL,$@.log); \
 		exit 1; \

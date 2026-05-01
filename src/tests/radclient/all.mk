@@ -53,16 +53,17 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 	$(eval IGNORE_ERROR := $(shell grep -q "#.*IGNORE_ERROR:.*1" $< && echo 1 || echo 0))
 	$(eval RADCLIENT_CLIENT_PORT := $(shell echo $$(($(RADCLIENT_CLIENT_PORT)+1))))
 
+	$(eval CMD := $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET))
 	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
+	@printf '%s\n' '$(CMD)' > $(basename $(FOUND)).cmd
 	${Q}if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,radclient,$(notdir $@),FAIL,); exit 1; fi
-	${Q}if ! $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+	${Q}if ! $(CMD) 1> $(FOUND) 2>&1; then \
 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
 			echo "FAILED";                                              \
 			cat $(FOUND);                                               \
 			rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-			echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
 			$(call test_record,radclient,$(notdir $@),FAIL,$(FOUND));   \
 			exit 1;                                                     \
 		fi;                                                                 \

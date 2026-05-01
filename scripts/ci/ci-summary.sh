@@ -44,18 +44,27 @@ END {
         printf("**%d / %d passed**\n\n", total_pass, total)
     }
 
-    # Failure logs as collapsible blocks
+    # Failure logs as expanded-by-default blocks
     if (total_fail > 0) {
         printf("### Failure logs (last 20 lines)\n\n")
         for (k in seen) {
             if (status[k] != "FAIL") continue
-            printf("<details><summary><code>%s/%s</code> &mdash; <code>%s</code></summary>\n\n",
+            printf("<details open><summary><code>%s/%s</code> &mdash; <code>%s</code></summary>\n\n",
                    cat[k], name[k], (logf[k] != "" ? logf[k] : "(no log captured)"))
             if (logf[k] != "") {
-                printf("```\n")
+                # Reproducer comes from a side-car .cmd file the recipe wrote
+                # alongside the log (last extension replaced with .cmd).
+                cmdf = logf[k]; sub(/\.[^.]+$/, ".cmd", cmdf)
+                if ((getline reproducer < cmdf) > 0) {
+                    close(cmdf)
+                    printf("\nReproduce locally:\n```\n%s\n```\n\n", reproducer)
+                }
+                printf("Full log: `build/tests/failed/%s/%s.log` in the uploaded artifact.\n\n", cat[k], name[k])
+                # Embed last 20 lines of the log.
                 n = 0
                 while ((getline line < logf[k]) > 0) buf[++n % 20] = line
                 close(logf[k])
+                printf("```\n")
                 start = (n < 20) ? 1 : n - 19
                 for (j = start; j <= n; j++) print buf[j % 20]
                 delete buf
@@ -89,11 +98,19 @@ END {
         ct = cp + cf
         if (cf > 0)  printf("### %s (%d/%d, %d failed)\n\n", c, cp, ct, cf)
         else         printf("### %s (%d/%d)\n\n", c, cp, ct)
-        printf("| Test | Status |\n|---|---|\n")
-        # FAIL rows first, then PASS, each in test-execution order.
-        for (k in seen) if (cat[k] == c && status[k] == "FAIL") emit(k)
-        for (k in seen) if (cat[k] == c && status[k] == "PASS") emit(k)
-        printf("\n")
+        # FAIL rows visible at the top.  PASS rows hidden in a collapsed
+        # block so reviewers do not have to scroll past walls of green.
+        if (cf > 0) {
+            printf("| Test | Status |\n|---|---|\n")
+            for (k in seen) if (cat[k] == c && status[k] == "FAIL") emit(k)
+            printf("\n")
+        }
+        if (cp > 0) {
+            printf("<details><summary>%d passing test%s</summary>\n\n", cp, (cp == 1 ? "" : "s"))
+            printf("| Test | Status |\n|---|---|\n")
+            for (k in seen) if (cat[k] == c && status[k] == "PASS") emit(k)
+            printf("\n</details>\n\n")
+        }
     }
 }
 

@@ -98,10 +98,10 @@ $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/un
 	$(eval export TEST_PORT:=$(TEST_PORT))
 	@echo PROCESS-TEST $(PROTOCOL_NAME) $(notdir $@)
 	$(Q)mkdir -p $(dir $@)
+	@printf '%s\n' '$(CMD)' > $@.cmd
 	$(Q)if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
 		echo "# $@.log"; \
-		echo $(CMD); \
 		$(call test_record,process,$(PROTOCOL_NAME)/$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi

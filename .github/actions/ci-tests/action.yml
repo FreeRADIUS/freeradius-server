@@ -289,6 +289,8 @@ runs:
           [ -n "$logf" ] && [ -f "$logf" ] || continue
           mkdir -p "build/tests/failed/$cat"
           cp "$logf" "build/tests/failed/$cat/$name.log"
+          cmdf=${logf%.*}.cmd
+          [ -f "$cmdf" ] && cp "$cmdf" "build/tests/failed/$cat/$name.cmd"
         done
 
     - name: Upload failed test logs

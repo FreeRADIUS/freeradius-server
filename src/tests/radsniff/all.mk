@@ -47,11 +47,13 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	$(eval EXPECTED := $<)
 	$(eval ARGV     := $(shell grep "^#.*ARGV:" $< | cut -f2 -d ':'))
 
+	$(eval CMD := TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary)
 	${Q}echo "RADSNIFF-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
+	@printf '%s\n' '$(CMD)' > $(basename $(FOUND)).cmd
 #
 # 	We need that 'TZ=UTC ...' to libpcap pass the same timestamp in anywhere.
 #
-	${Q}if ! TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary 1> $(FOUND); then     \
+	${Q}if ! $(CMD) 1> $(FOUND); then     \
 		echo "FAILED";                                                                                \
 		cat $(FOUND);                                                                                 \
 		echo "RADSNIFF: TZ='UTC' $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary" -xx;  \

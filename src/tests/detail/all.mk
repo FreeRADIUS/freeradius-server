@@ -20,9 +20,10 @@ $(OUTPUT)/%: $(DIR)/% $(addprefix ${BUILD_DIR}/lib/,proto_detail.la proto_detail
 	${Q}echo "DETAIL $(notdir $<)"
 	${Q}cp $< $(dir $@)/detail.txt
 	${Q}rm -f $(dir $@)/processed
-	${Q}if ! $(TEST_BIN)/radiusd -d $(DIR)/config -D ${top_srcdir}/share/dictionary -X > $@.log; then \
+	$(eval CMD := $(TEST_BIN)/radiusd -d $(DIR)/config -D ${top_srcdir}/share/dictionary -X)
+	@printf 'cp %s %s/detail.txt && %s\n' '$<' '$(dir $@)' '$(CMD)' > $@.cmd
+	${Q}if ! $(CMD) > $@.log; then \
 		tail $@.log; \
-		echo "cp $< $(dir $@)/detail.txt; $(TEST_BIN)/radiusd -d $(DIR)/config -D ${top_srcdir}/share/dictionary -X "; \
 		$(call test_record,detail,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi

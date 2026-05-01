@@ -11,8 +11,10 @@ $(BUILD_DIR)/tests/trie:
 	${Q}mkdir -p $@
 
 $(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tests/trie
+	$(eval CMD := $(TEST_BIN)/trie $^)
 	@echo TRIE-TEST $(notdir $@)
-	@if $(TEST_BIN)/trie $^ > $@ 2> $@.log; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	@if $(CMD) > $@ 2> $@.log; then \
 		$(call test_record,trie,$(notdir $@),PASS,$@.log); \
 	else \
 		cat $@.log; \
@@ -22,8 +24,10 @@ $(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tes
 	fi
 
 $(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TEST_BIN_DIR)/nopc | $(BUILD_DIR)/tests/trie
+	$(eval CMD := $(TEST_BIN)/nopc $^)
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@if $(TEST_BIN)/nopc $^ > $@ 2> $@.log; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	@if $(CMD) > $@ 2> $@.log; then \
 		$(call test_record,trie,$(notdir $@),PASS,$@.log); \
 	else \
 		cat $@.log; \

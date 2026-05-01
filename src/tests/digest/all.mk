@@ -35,19 +35,20 @@ $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)$(E)))
+	$(eval CMD := $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(digest_port) auth $(SECRET))
 	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do	\
 		echo "DIGEST-TEST $(TARGET)_$${_num}";			\
 		cp -f $< $@.request;					\
 		echo "Vendor-Specific.Test.Test-Name = \"$(TARGET)\"" >> $@.request;		\
 		echo "Vendor-Specific.Test.Test-Number = \"$${_num}\"" >> $@.request;	\
-		if ! $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(digest_port) auth $(SECRET) > $@.out; then \
+		printf '%s\n' '$(CMD)' > $@.cmd; \
+		if ! $(CMD) > $@.out; then \
 			cat $(DIGEST_RADIUS_LOG);			\
 			echo "FAILED $(TARGET)";			\
 			cat $@.out;					\
 			rm -f $(BUILD_DIR)/tests/test.digest;           \
 			$(MAKE) --no-print-directory test.digest.radiusd_kill; \
 			echo "RADIUSD:   $(RADIUSD_RUN)";		\
-			echo "RADCLIENT: $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(digest_port) auth $(SECRET)"; \
 			$(call test_record,digest,$(TARGET)_$${_num},FAIL,$@.out); \
 			exit 1;						\
 		fi;							\
