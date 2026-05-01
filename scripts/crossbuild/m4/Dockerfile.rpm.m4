@@ -1,5 +1,5 @@
 ARG from=DOCKER_IMAGE
-FROM ${from} as build
+FROM ${from} AS build
 
 ifelse(OS_VER, 7, `dnl
 #

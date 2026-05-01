@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.ubuntu26.regen`
 #
 ARG from=ubuntu:26.04
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

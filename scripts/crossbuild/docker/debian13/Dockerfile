@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.debian13.regen`
 #
 ARG from=debian:trixie
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

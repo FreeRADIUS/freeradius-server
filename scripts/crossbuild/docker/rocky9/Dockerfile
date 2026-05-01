@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.rocky9.regen`
 #
 ARG from=rockylinux/rockylinux:9
-FROM ${from} as build
+FROM ${from} AS build
 
 
 #
