@@ -1263,6 +1263,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->next = NULL;
 	this->children = NULL;
 	this->data = sock;	/* fix it back */
+	this->listen = false;
 #ifdef WITH_TCP
 	this->nonblock = listener->nonblock;
 #endif
