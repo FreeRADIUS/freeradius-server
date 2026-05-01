@@ -1061,7 +1061,7 @@ AC_CHECK_HEADERS( \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h
+  valgrind/valgrind.h
 )
 
 dnl #

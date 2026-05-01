@@ -54,8 +54,8 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #  include <gperftools/profiler.h>
 #endif
 
-#ifdef HAVE_VALGRIND_H
-#  include <valgrind.h>
+#ifdef HAVE_VALGRIND_VALGRIND_H
+#  include <valgrind/valgrind.h>
 #endif
 
 /** Check if the application linking to the library has the correct magic number

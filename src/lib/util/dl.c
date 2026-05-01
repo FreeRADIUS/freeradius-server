@@ -34,8 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 
 
-#ifdef HAVE_VALGRIND_H
-#  include <valgrind.h>
+#ifdef HAVE_VALGRIND_VALGRIND_H
+#  include <valgrind/valgrind.h>
 #else
 #  define RUNNING_ON_VALGRIND 0
 #endif
