@@ -617,6 +617,7 @@ check_for_setup:
 			goto do_close;
 		}
 
+		sock->ssn->connected = true;
 		sock->ssn->is_init_finished = true;
 		if (!listener->check_client_connections) {
 			sock->state = LISTEN_TLS_RUNNING;
@@ -1480,7 +1481,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	}
 
 	rad_assert(sock->ssn != NULL);
-	
+
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	if (!sock->ssn->connected) {
 		rcode = try_connect(listener);
