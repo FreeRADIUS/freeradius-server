@@ -1667,7 +1667,7 @@ int rad_vp2rfc(RADIUS_PACKET *packet,
 		p = ptr + 2;
 
 		while (vp && !vp->da->vendor && (vp->da->attr == PW_NAS_FILTER_RULE)) {
-			if ((p + zero + vp->vp_length) > end) {				
+			if ((p + zero + vp->vp_length) > end) {
 				break;
 			}
 
@@ -3334,7 +3334,7 @@ static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
 		fr_strerror_printf("decode NAS-Filter-Rule: Out of memory");
 		return -1;
 	}
-				
+
 	fr_pair_value_bstrncpy(vp, buffer, q - buffer);
 
 	*pvp = vp;
@@ -3837,7 +3837,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	 *	+ continuation, it's a bad attribute.
 	 */
 	if (attrlen < 8) {
-	raw:		
+	raw:
 		/*
 		 *	It's not a Vendor-Specific, it's unknown...
 		 */
