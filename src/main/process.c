@@ -2291,7 +2291,7 @@ static void tcp_socket_timer(void *ctx)
 	/*
 	 *	Enforce connection timeouts.
 	 */
-	if (!sock->ssn->connected) {
+	if (sock->ssn && !sock->ssn->connected) {
 		if (!sock->limit.connect_timeout ||
 		    (sock->limit.connect_timeout > 30)) {
 			end.tv_sec = sock->opened + 5;
