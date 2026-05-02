@@ -730,6 +730,13 @@ int fr_event_loop(fr_event_list_t *el)
 		for (i = 0; i < rcode; i++) {
 			fr_event_fd_t *ef = el->events[i].udata;
 
+			/*
+			 *	Re-check the fd - a write_handler,
+			 *	timer callback, etc. may have closed
+			 *	it.
+			 */
+			if (ef->fd < 0) continue;
+
 			if (el->events[i].flags & EV_EOF) {
 				/*
 				 *	FIXME: delete the handler
