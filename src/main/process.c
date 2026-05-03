@@ -658,6 +658,7 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 void proxy_listener_thaw(rad_listen_t *listener)
 {
 	int rcode;
+	listen_socket_t *sock = listener->data;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (!listener->blocked) {
@@ -665,10 +666,15 @@ void proxy_listener_thaw(rad_listen_t *listener)
 		return;
 	}
 
-	if (!fr_packet_list_socket_thaw(proxy_list,
-					  listener->fd)) {
-		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
-		fr_exit(1);
+	/*
+	 *	Only thaw if it is connected.
+	 */
+	if (sock->ssn->connected) {
+		if (!fr_packet_list_socket_thaw(proxy_list,
+						listener->fd)) {
+			ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
+			fr_exit(1);
+		}
 	}
 
 	listener->blocked = false;
