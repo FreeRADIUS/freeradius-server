@@ -628,7 +628,7 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	if (!fr_packet_list_socket_freeze(proxy_list,
 					  listener->fd)) {
-		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		ERROR("Fatal error freezing proxy socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
@@ -640,7 +640,7 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 		sock->write_handler = write_handler;
 
 	} else if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
-		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		ERROR("Fatal error freezing proxy socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
@@ -659,14 +659,14 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	if (!fr_packet_list_socket_thaw(proxy_list,
 					  listener->fd)) {
-		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
 	listener->blocked = false;
 
 	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) <= 0) {
-		ERROR("Fatal error freezing socket: %s", fr_strerror());
+		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
