@@ -1146,6 +1146,12 @@ static int try_connect(rad_listen_t *this)
 	}
 
 	sock->ssn->connected = true;
+
+	/*
+	 *	We don't need this any more.
+	 */
+	SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
+
 	return 1;
 }
 

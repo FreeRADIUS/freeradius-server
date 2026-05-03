@@ -3808,6 +3808,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			goto error;
 		}
 
+		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
+
 #ifdef WITH_RADIUSV11
 		/*
 		 *	Must not have alpn_checked yet.  This code only runs for blocking sockets.
