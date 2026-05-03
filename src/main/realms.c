@@ -460,7 +460,11 @@ static CONF_PARSER limit_config[] = {
 	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
+#ifdef WITH_TLS
 	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_timeout), "30" },
+	{ "connect_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.connect_fail_interval), "300" },
+	{ "certificate_fail_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.certificate_fail_interval), "3600" },
+#endif
 #ifdef SO_RCVTIMEO
 	{ "read_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.read_timeout), NULL },
 #endif
@@ -636,6 +640,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->limit.idle_timeout = 30;
 	}
 
+#ifdef WITH_TLS
 	if (home->limit.connect_timeout > 0) {
 		if (home->limit.idle_timeout &&
 		    (home->limit.connect_timeout > home->limit.idle_timeout)) {
@@ -654,6 +659,28 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	} else if (!home->limit.connect_timeout) {
 		home->limit.connect_timeout = 5;
 	}
+
+	if (!home->limit.connect_fail_interval) {
+		home->limit.connect_fail_interval = 300;
+
+	} else if (home->limit.connect_fail_interval < 30) {
+		home->limit.connect_fail_interval = 30;
+
+	} else if (home->limit.connect_fail_interval > 86400) {
+		home->limit.connect_fail_interval = 86400;
+	}
+
+	if (!home->limit.certificate_fail_interval) {
+		home->limit.certificate_fail_interval = 300;
+
+	} else if (home->limit.certificate_fail_interval < 300) {
+		home->limit.certificate_fail_interval = 300;
+
+	} else if (home->limit.certificate_fail_interval > 86400) {
+		home->limit.certificate_fail_interval = 86400;
+	}
+
+#endif
 
 	/*
 	 *	Make sure that this is set.

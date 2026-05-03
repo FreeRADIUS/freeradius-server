@@ -61,6 +61,8 @@ typedef struct fr_socket_limit_t {
 	uint32_t	read_timeout;
 	uint32_t	write_timeout;
 	uint32_t	connect_timeout;
+	uint32_t	connect_fail_interval;
+	uint32_t	certificate_fail_interval;
 } fr_socket_limit_t;
 
 typedef struct home_server {
