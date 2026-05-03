@@ -636,6 +636,9 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	listener->blocked = true;
 
+	/*
+	 *	@todo - we really shouldn't be doing this from the child thread.
+	 */
 	if (listener->status == RAD_LISTEN_STATUS_INIT) {
 		listen_socket_t *sock = listener->data;
 
@@ -679,6 +682,9 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	listener->blocked = false;
 
+	/*
+	 *	@todo - we really shouldn't be doing this from the child thread.
+	 */
 	rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener);
 	if (rcode < 0) {
 		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
