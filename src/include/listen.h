@@ -47,7 +47,7 @@ typedef enum RAD_LISTEN_STATUS {
 	RAD_LISTEN_STATUS_KNOWN,		//!< alive and operating normally
 	RAD_LISTEN_STATUS_PAUSE,		//!< TLS connection checking: don't read normal packets
 	RAD_LISTEN_STATUS_RESUME,		//!< TLS connection checking: resume reading normal packets
-	RAD_LISTEN_STATUS_FROZEN,		//!< alive, but we're not sending any more packets to it
+	RAD_LISTEN_STATUS_DRAINING,		//!< alive, but we're not sending any more packets to it
 	RAD_LISTEN_STATUS_EOL,			//!< we're trying to delete it.
 	RAD_LISTEN_STATUS_REMOVE_NOW		//!< no request is using it, delete the listener.
 } RAD_LISTEN_STATUS;

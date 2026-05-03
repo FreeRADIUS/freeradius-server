@@ -951,7 +951,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	switch (listener->status) {
 	case RAD_LISTEN_STATUS_KNOWN:
-	case RAD_LISTEN_STATUS_FROZEN:
+	case RAD_LISTEN_STATUS_DRAINING: /* we can send existing packets, but no new ones */
 	case RAD_LISTEN_STATUS_PAUSE:
 	case RAD_LISTEN_STATUS_RESUME:
 		break;

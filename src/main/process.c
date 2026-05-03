@@ -909,7 +909,7 @@ void request_done(REQUEST *request, int original)
 		 *	If we're the last one, remove the listener now.
 		 */
 		if ((request->listener->count == 0) &&
-		    (request->listener->status >= RAD_LISTEN_STATUS_FROZEN)) {
+		    (request->listener->status >= RAD_LISTEN_STATUS_DRAINING)) {
 			event_new_fd(request->listener);
 		}
 	}
@@ -2354,7 +2354,7 @@ static void tcp_socket_timer(void *ctx)
 			/*
 			 *	Mark the socket as "don't use if at all possible".
 			 */
-			listener->status = RAD_LISTEN_STATUS_FROZEN;
+			listener->status = RAD_LISTEN_STATUS_DRAINING;
 
 			/*
 			 *	If it's blocked, then push all of the requests to other sockets.
@@ -6216,9 +6216,10 @@ static void event_new_fd(void *ctx)
 
 #ifdef WITH_TCP
 	/*
-	 *	The socket has reached a timeout.  Try to close it.
+	 *	The socket is alive for (re)-sending existing packets.
+	 *	But isn't being used for new packets.
 	 */
-	if (this->status == RAD_LISTEN_STATUS_FROZEN) {
+	if (this->status == RAD_LISTEN_STATUS_DRAINING) {
 		/*
 		 *	Requests are still using the socket.  Wait for
 		 *	them to finish.
