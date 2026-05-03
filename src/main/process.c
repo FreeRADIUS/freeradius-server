@@ -785,7 +785,8 @@ void request_done(REQUEST *request, int original)
 			for (i = 0; i < request->home_pool->num_home_servers; i++) {
 				home_server_t *home = request->home_pool->servers[i];
 
-				if (home->state == HOME_STATE_CONNECTION_FAIL) {
+				if ((home->state == HOME_STATE_CONNECTION_FAIL) ||
+				    (home->state == HOME_STATE_CERTIFICATE_FAIL)) {
 					mark_home_server_dead(home, &now, false);
 				}
 			}
@@ -4713,6 +4714,7 @@ static int eol_home_listener(void *ctx, void *data)
 void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
+	uint32_t revive_interval;
 	char buffer[128];
 
 	PROXY( "Marking home server %s port %d as dead.",
@@ -4776,11 +4778,21 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 		return;
 	}
 
+	revive_interval = home->revive_interval;
+
+	if (previous_state == HOME_STATE_CONNECTION_FAIL) {
+		revive_interval = home->limit.connect_fail_interval;
+		goto do_wait;
+
+	} else if (previous_state == HOME_STATE_CERTIFICATE_FAIL) {
+		revive_interval = home->limit.certificate_fail_interval;
+		goto do_wait;
+	}
+
 	/*
 	 *	Ping it if configured, AND we can ping it.
 	 */
-	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
-	    (previous_state != HOME_STATE_CONNECTION_FAIL)) {
+	if (home->ping_check != HOME_PING_CHECK_NONE) {
 		/*
 		 *	If the control socket marks us dead, start
 		 *	pinging.  Otherwise, we already started
@@ -4793,14 +4805,15 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 		}
 
 	} else {
+	do_wait:
 		/*
 		 *	Revive it after a fixed period of time.  This
 		 *	is very, very, bad.
 		 */
 		home->when = *when;
-		home->when.tv_sec += home->revive_interval;
+		home->when.tv_sec += revive_interval;
 
-		DEBUG("PING: Reviving home server %s in %u seconds", home->log_name, home->revive_interval);
+		DEBUG("PING: Reviving home server %s in %u seconds", home->log_name, revive_interval);
 		ASSERT_MASTER;
 		INSERT_EVENT(revive_home_server, home);
 	}

@@ -47,9 +47,10 @@ typedef enum {
 	HOME_STATE_UNKNOWN,
 	HOME_STATE_ADMIN_DOWN,
 	HOME_STATE_CONNECTION_FAIL,
+	HOME_STATE_CERTIFICATE_FAIL,
 } home_state_t;
 
-#define HOME_SERVER_IS_DEAD(_x) (((_x)->state == HOME_STATE_IS_DEAD) || ((_x)->state == HOME_STATE_ADMIN_DOWN) || ((_x)->state == HOME_STATE_CONNECTION_FAIL))
+#define HOME_SERVER_IS_DEAD(_x) (((_x)->state == HOME_STATE_IS_DEAD) || ((_x)->state == HOME_STATE_ADMIN_DOWN) || ((_x)->state == HOME_STATE_CONNECTION_FAIL) || ((_x)->state == HOME_STATE_CERTIFICATE_FAIL))
 
 typedef struct fr_socket_limit_t {
 	uint32_t	max_connections;
