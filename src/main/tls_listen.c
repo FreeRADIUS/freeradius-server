@@ -174,6 +174,7 @@ static int try_connect(rad_listen_t *listener);
 
 static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 {
+	bool thaw = false;
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
 
@@ -197,12 +198,17 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 		}
 	}
 
-	proxy_listener_thaw(listener);
-
 	if (sock->ssn->dirty_out.used && (tls_socket_write(listener) < 0)) {
 		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return;
 	}
+
+	thaw = (sock->ssn->dirty_out.used == 0);
+
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+
+	if (thaw) proxy_listener_thaw(listener);
 }
 
 
