@@ -620,6 +620,8 @@ void request_free(REQUEST *request)
 #ifdef WITH_TLS
 void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
+	int rcode = 1;
+
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (listener->blocked) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -639,18 +641,24 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 		sock->write_handler = write_handler;
 
-	} else if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
-		ERROR("Fatal error freezing proxy socket: %s", fr_strerror());
-		fr_exit(1);
+	} else {
+		rcode = fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener);
+		if (rcode < 0) {
+			ERROR("Fatal error freezing proxy socket: %s", fr_strerror());
+			fr_exit(1);
+		}
 	}
-
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!rcode) return;	/* listener is likely dead */
 
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 
 void proxy_listener_thaw(rad_listen_t *listener)
 {
+	int rcode;
+
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (!listener->blocked) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -665,12 +673,14 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	listener->blocked = false;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) <= 0) {
+	rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener);
+	if (rcode < 0) {
 		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
 		fr_exit(1);
 	}
-
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!rcode) return;	/* listener is likely dead */
 
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
