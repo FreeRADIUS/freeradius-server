@@ -1,0 +1,113 @@
+# Auto generated for ubuntu24
+# from scripts/docker/m4/profiling.deb.m4
+#
+# Rebuild this file with `make crossbuild.ubuntu24.profile.regen`
+#
+ARG from=freeradius40x-build/ubuntu24
+FROM ${from}
+
+#
+#  Install profiling tools
+#
+#    Valgrind/cachegrind
+#    kcachegrind + KDE/Qt libs
+#    gperftools
+#    heaptrack
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS \
+        libgoogle-perftools-dev \
+        google-perftools \
+        valgrind \
+        heaptrack \
+        psmisc \
+        kcachegrind \
+        kio \
+        libkf5iconthemes5 \
+        libkf5parts5 \
+        libkf5textwidgets5 \
+        libqt5gui5 \
+        libqt5widgets5 && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
+
+#
+#  Set up Ubuntu debug symbol repository and install OS library debug symbols.
+#  These allow profiling tools to resolve system library calls.
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
+    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
+        > /etc/apt/sources.list.d/ddebs.list && \
+    apt-get update && \
+    for pkg in \
+        libc6-dbg \
+        zlib1g-dbgsym \
+        libreadline8t64-dbgsym \
+        libssl3t64-dbgsym \
+        libsasl2-2-dbgsym \
+        libpam0g-dbgsym \
+        libldap2-dbgsym \
+        libtalloc2-dbgsym \
+        libpcre2-8-0-dbgsym \
+        libpcap0.8t64-dbgsym \
+        libunbound8-dbgsym \
+        libsqlite3-0-dbgsym \
+        libpq5-dbgsym \
+        libmariadb3-dbgsym \
+        libgdbm6t64-dbgsym \
+        libjson-c5-dbgsym \
+        libbrotli1-dbgsym \
+        libhiredis1.1.0-dbgsym \
+        librdkafka1-dbgsym \
+        libwbclient0-dbgsym \
+        libcurl4t64-dbgsym; do \
+        apt-get install -y $APT_OPTS $pkg || echo "WARNING: could not install dbgsym package: $pkg"; \
+    done && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
+
+#
+#  Rebuild libkqueue from source with debug symbols.
+#  CMAKE_BUILD_TYPE must be explicitly set to prevent
+#  the libkqueue project from overriding the flags.
+#  libkqueue source currently uses "-O2 -g -DNDEBUG" by default.
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS --no-install-recommends cmake git && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/* && \
+    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+    cd /tmp/libkqueue && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        . && \
+    make && \
+    cpack -G DEB && \
+    dpkg -i *.deb && \
+    cd / && rm -rf /tmp/libkqueue
+
+#
+#  Install FlameGraph
+#
+RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph /opt/flamegraph \
+    && chmod +x /opt/flamegraph/*.pl /opt/flamegraph/*.sh
+
+# Add FlameGraph to path
+ENV PATH="/opt/flamegraph:${PATH}"
+
+#
+#  Install Inferno for callgrind. Inferno is a Rust port of FlameGraph with broader format support
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS --no-install-recommends \
+        cargo && \
+    cargo install inferno --version 0.11.21 --locked --root /usr/local && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
+
+EXPOSE 1812/udp 1813/udp
+CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]

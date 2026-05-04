@@ -37,7 +37,9 @@ divert[]dnl
 [#] Auto generated for D_NAME
 [#] from scripts/docker/m4/D_TYPE.PKG_TYPE.m4
 [#]
-[#] Rebuild this file with `make D_TYPE.D_NAME.regen`
+ifelse(D_TYPE, [profiling],
+    [[#] Rebuild this file with `make crossbuild.D_NAME.profile.regen`],
+    [[#] Rebuild this file with `make D_TYPE.D_NAME.regen`])
 [#]
 changequote([`], ['])dnl
 include(D_TYPE.PKG_TYPE.m4)dnl

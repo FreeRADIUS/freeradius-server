@@ -42,6 +42,8 @@ endif
 CB_IPREFIX:=freeradius40x-build
 CB_CPREFIX:=fr40x-crossbuild-
 
+PROFILE ?= default-profiling
+
 #
 #  This Makefile is included in-line, and not via the "boilermake"
 #  wrapper.  But it's still useful to use the same process for
@@ -91,6 +93,11 @@ crossbuild.help: crossbuild.info
 	@echo "    crossbuild.IMAGE.reset        - remove cache of docker state"
 	@echo "    crossbuild.IMAGE.clean        - stop container and tidy up"
 	@echo "    crossbuild.IMAGE.distclean    - remove Docker image"
+	@echo ""
+	@echo "Profiling targets (currently only for ubuntu24):"
+	@echo "    crossbuild.IMAGE.profile.regen                 - regenerate Dockerfile.prof"
+	@echo "    crossbuild.IMAGE.profile.build                 - build profiling image"
+	@echo "    crossbuild.IMAGE.profile.reset                 - remove profiling stamp to force rebuild"
 	@echo ""
 	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 
@@ -146,6 +153,27 @@ $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
 	${Q}docker build $(DOCKER_BUILD_OPTS) $(if $(CB_FROM_${1}),--build-arg=from=$(CB_FROM_${1})) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
+
+
+#
+#  Build the profiling image
+#
+
+# ubuntu24 profiling target start
+ifeq (${1},ubuntu24)
+
+crossbuild.${1}.profile.build: $(DD)/stamp-image.${1}-profile.build
+
+$(DD)/stamp-image.${1}-profile.build: $(DD)/stamp-image.${1} $(DT)/${1}/Dockerfile.prof
+	${Q}echo "BUILD ${1} (freeradius4-$(PROFILE)/${1}) > $(DD)/build.${1}-profile.build"
+	${Q}docker build $(DOCKER_BUILD_OPTS) . \
+		-f $(DT)/${1}/Dockerfile.prof \
+		-t freeradius4-$(PROFILE)/${1} \
+		>$(DD)/build.${1}-profile.build 2>&1
+	${Q}touch $(DD)/stamp-image.${1}-profile.build
+
+# ubuntu24 profiling target end
+endif
 
 #
 #  Start up the docker container
@@ -255,6 +283,42 @@ crossbuild.${1}.regen: $(DT)/${1}/Dockerfile.cb
 $(DT)/${1}/Dockerfile.cb: $(DOCKER_TMPL) $(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4
 	${Q}echo REGEN ${1}
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=crossbuild $$< > $$@
+
+#
+#  Regenerate Dockerfile.prof from m4 template
+#
+
+# ubuntu24 profiling target start
+ifeq (${1},ubuntu24)
+
+.PHONY: crossbuild.${1}.profile.regen
+crossbuild.${1}.profile.regen: $(DT)/${1}/Dockerfile.prof
+
+$(DT)/${1}/Dockerfile.prof: $(DOCKER_TMPL) $(CB_DIR)/m4/profiling.deb.m4
+	${Q}echo REGEN ${1}
+	${Q}m4 -I $(CB_DIR)/m4 \
+	    -D D_NAME=${1} \
+	    -D D_TYPE=profiling \
+	    -D CB_IMAGE=$(CB_IPREFIX)/${1}
+	    $$< > $$@
+
+# ubuntu24 profiling target end
+endif
+
+#
+#  Remove profiling stamp so next profile.build starts clean
+#
+
+# ubuntu24 profiling target start
+ifeq (${1},ubuntu24)
+
+.PHONY: crossbuild.${1}.profile.reset
+crossbuild.${1}.profile.reset:
+	${Q}echo RESET profiling ${1}
+	${Q}rm -f $(DD)/stamp-image.${1}-profile.build
+
+# ubuntu24 profiling target end
+endif
 
 #
 #  Run the build test
