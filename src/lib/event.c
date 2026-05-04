@@ -501,7 +501,7 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 		}
 		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
 			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
-			return 0;
+			return -1;
 		}
 
 		return 1;
