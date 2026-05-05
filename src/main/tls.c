@@ -2584,7 +2584,7 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type != GEN_URI) continue;
 
-		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
+		if (OCSP_parse_url((const char *) ASN1_STRING_get0_data(ad->location->d.ia5), host_out,
 				   port_out, path_out, is_https)) {
 			ret = 1;
 			break;
@@ -3066,12 +3066,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	we're at the client or issuing certificate.
 	 */
 	if (certs &&
-	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
+	    (lookup <= 1) && sn && ((size_t) ASN1_STRING_length(sn) < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
+		int sn_len = ASN1_STRING_length(sn);
+		const unsigned char *sn_data = ASN1_STRING_get0_data(sn);
 
-		for (i = 0; i < sn->length; i++) {
-			sprintf(p, "%02x", (unsigned int)sn->data[i]);
+		for (i = 0; i < sn_len; i++) {
+			sprintf(p, "%02x", (unsigned int)sn_data[i]);
 			p += 2;
 		}
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
@@ -3084,9 +3086,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
 	if (certs && (lookup <= 1) && asn_time &&
-	    (asn_time->length < (int) sizeof(buf))) {
-		memcpy(buf, (char*) asn_time->data, asn_time->length);
-		buf[asn_time->length] = '\0';
+	    (ASN1_STRING_length(asn_time) < (int) sizeof(buf))) {
+		int time_len = ASN1_STRING_length(asn_time);
+		const unsigned char *time_data = ASN1_STRING_get0_data(asn_time);
+		memcpy(buf, time_data, time_len);
+		buf[time_len] = '\0';
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
@@ -3097,9 +3101,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	asn_time = X509_get_notBefore(client_cert);
 	if (certs && (lookup <= 1) && asn_time &&
-	    (asn_time->length < (int) sizeof(buf))) {
-		memcpy(buf, (char*) asn_time->data, asn_time->length);
-		buf[asn_time->length] = '\0';
+	    (ASN1_STRING_length(asn_time) < (int) sizeof(buf))) {
+		int time_len = ASN1_STRING_length(asn_time);
+		const unsigned char *time_data = ASN1_STRING_get0_data(asn_time);
+		memcpy(buf, time_data, time_len);
+		buf[time_len] = '\0';
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_VALID_SINCE][lookup], buf, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
