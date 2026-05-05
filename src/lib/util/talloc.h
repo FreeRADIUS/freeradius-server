@@ -34,6 +34,10 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
+#ifdef TALLOC_EXTENSIONS
+#include TALLOC_EXTENSIONS
+#else
+
 /*
  *	The default talloc headers have doxygen complaints.
  */
@@ -256,6 +260,7 @@ static inline int talloc_const_free(void const *ptr)
 
 TALLOC_CTX		*talloc_autofree_context_global(void);
 TALLOC_CTX		*talloc_autofree_context_thread_local(void);
+#endif
 
 #ifdef __cplusplus
 }

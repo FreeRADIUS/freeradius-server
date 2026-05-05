@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/syserror.h>
 
+#ifndef TALLOC_EXTENSIONS
 
 static TALLOC_CTX *global_ctx;
 static _Thread_local TALLOC_CTX *thread_local_ctx;
@@ -932,3 +933,4 @@ TALLOC_CTX *talloc_autofree_context_thread_local(void)
 
 	return af;
 }
+#endif

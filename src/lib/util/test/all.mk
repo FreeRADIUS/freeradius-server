@@ -25,8 +25,11 @@ SUBMAKEFILES := \
 	size_tests.mk \
 	slab_tests.mk \
 	strerror_tests.mk \
-	talloc_tests.mk \
 	time_tests.mk \
 	timer_tests.mk  \
 	trie_tests.mk \
 	value_tests.mk
+
+ifeq "$(TALLOC_EXTENSION_LIBS)" ""
+SUBMAKEFILES += talloc_tests.mk
+endif
