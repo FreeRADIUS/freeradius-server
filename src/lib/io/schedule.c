@@ -135,19 +135,15 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	worker_id = sw->thread.id;		/* Store the current worker ID */
 
-#ifdef HAVE_PTHREAD_SETNAME_NP
-	{
-		char os_name[16];
-		snprintf(os_name, sizeof(os_name), "fr_worker_%d", sw->thread.id);
-#  ifdef __APPLE__
-		pthread_setname_np(os_name);
-#  else
-		pthread_setname_np(pthread_self(), os_name);
-#  endif
-	}
-#endif
-
 	snprintf(worker_name, sizeof(worker_name), "Worker %d", sw->thread.id);
+
+#ifdef HAVE_PTHREAD_SETNAME_NP
+#  ifdef __APPLE__
+	pthread_setname_np(worker_name);
+#  else
+	pthread_setname_np(pthread_self(), worker_name);
+#  endif
+#endif
 
 	if (fr_thread_setup(&sw->thread, worker_name) < 0) goto fail;
 
@@ -232,19 +228,15 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_thread_status_t		status = FR_THREAD_FAIL;
 	char				network_name[32];
 
-#ifdef HAVE_PTHREAD_SETNAME_NP
-	{
-		char os_name[16];
-		snprintf(os_name, sizeof(os_name), "fr_network_%d", sn->thread.id);
-#  ifdef __APPLE__
-		pthread_setname_np(os_name);
-#  else
-		pthread_setname_np(pthread_self(), os_name);
-#  endif
-	}
-#endif
-
 	snprintf(network_name, sizeof(network_name), "Network %d", sn->thread.id);
+
+#ifdef HAVE_PTHREAD_SETNAME_NP
+#  ifdef __APPLE__
+	pthread_setname_np(network_name);
+#  else
+	pthread_setname_np(pthread_self(), network_name);
+#  endif
+#endif
 
 	if (fr_thread_setup(&sn->thread, network_name) < 0) goto fail;
 
