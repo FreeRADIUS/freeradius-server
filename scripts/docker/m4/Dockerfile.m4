@@ -26,6 +26,7 @@ ifelse(
 	D_NAME, [debiansid],	[p_SET([deb], [debian],	[99],	[sid],		[debian:sid])],
 	D_NAME, [ubuntu22],	[p_SET([deb], [ubuntu],	[22],	[jammy],	[ubuntu:22.04])],
 	D_NAME, [ubuntu24],	[p_SET([deb], [ubuntu],	[24],	[noble],	[ubuntu:24.04])],
+	D_NAME, [ubuntu26],	[p_SET([deb], [ubuntu],	[26],	[resolute],	[ubuntu:26.04])],
 	D_NAME, [rocky9],	[p_SET([rpm], [rocky],	[9],	[9],		[rockylinux/rockylinux:9])],
 	D_NAME, [rocky10],	[p_SET([rpm], [rocky],	[10],	[10],		[rockylinux/rockylinux:10])],
 	[errprint(error: OS 'D_NAME' not defined[,] see __file__

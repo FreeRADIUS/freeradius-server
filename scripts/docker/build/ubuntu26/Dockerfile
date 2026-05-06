@@ -1,0 +1,106 @@
+# Auto generated for ubuntu26
+# from scripts/docker/m4/docker.deb.m4
+#
+# Rebuild this file with `make docker.ubuntu26.regen`
+#
+ARG from=ubuntu:26.04
+FROM ${from} AS build
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+#
+#  Install build tools
+#
+RUN apt-get update
+RUN apt-get install -y devscripts equivs git quilt gcc curl
+
+#
+#  Set up NetworkRADIUS extras repository
+#
+RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
+ && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
+ && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/resolute resolute main" > /etc/apt/sources.list.d/networkradius-extras.list \
+ && apt-get update
+
+#
+#  Create build directory
+#
+RUN mkdir -p /usr/local/src/repositories/freeradius-server
+WORKDIR /usr/local/src/repositories/freeradius-server/
+
+#
+#  Copy the FreeRADIUS directory in
+#
+COPY . .
+
+#
+#  Clean up tree - we want to build from the latest commit, not from
+#  any cruft left around on the local system
+#
+RUN git clean -fdxx \
+ && git reset --hard HEAD
+
+#
+#  Build libkqueue from source on non-amd64 architectures.
+#  The NetworkRADIUS extras repository only provides amd64 packages.
+#
+RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
+        apt-get install -y cmake && \
+        git clone --depth 1 https://github.com/mheily/libkqueue.git && \
+        cd libkqueue && \
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib . && \
+        make && cpack -G DEB && dpkg -i *.deb && \
+        cp *.deb /usr/local/src/repositories/ && \
+        cd .. && rm -rf libkqueue; \
+    fi
+
+#
+#  Install build dependencies
+#  Debian sid fails if debian/control doesn't exist due to an issue
+#  in one of the included make files, so we create a blank file.
+#
+RUN if [ -e ./debian/control.in ]; then \
+        touch -t 202001010000 debian/control; \
+        debian/rules debian/control; \
+    fi; \
+    echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control
+
+#
+#  Build the server
+#
+RUN make -j$(nproc) deb
+
+#
+#  Clean environment and run the server
+#
+FROM ${from}
+ARG DEBIAN_FRONTEND=noninteractive
+
+COPY --from=build /usr/local/src/repositories/*.deb /tmp/
+
+#
+#  Set up NetworkRADIUS extras repository
+#  Reuse the signing key from the build stage instead of fetching it again
+#
+COPY --from=build /etc/apt/keyrings/packages.networkradius.com.asc /etc/apt/keyrings/packages.networkradius.com.asc
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/resolute resolute main" > /etc/apt/sources.list.d/networkradius-extras.list
+
+ARG freerad_uid=101
+ARG freerad_gid=101
+
+RUN groupadd -g ${freerad_gid} -r freerad \
+ && useradd -u ${freerad_uid} -g freerad -r -M -d /etc/freeradius -s /usr/sbin/nologin freerad \
+ && apt-get update \
+ && apt-get install -y /tmp/*.deb \
+ && apt-get clean \
+ && rm -r /var/lib/apt/lists/* /tmp/*.deb \
+    \
+ && ln -s /etc/freeradius /etc/raddb
+
+WORKDIR /
+COPY scripts/docker/etc/docker-entrypoint.sh.deb docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
+
+EXPOSE 1812/udp 1813/udp
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["freeradius"]
