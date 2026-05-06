@@ -225,7 +225,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	 *	Pull an element out of the free list
 	 *	or allocate a new one.
 	 */
-	cmds = fr_dlist_head(free_list);
+	cmds = fr_dlist_pop_head(free_list);
 	if (!cmds) {
 		MEM(cmds = talloc_zero_pooled_object(NULL, fr_redis_command_set_t,
 						     COMMAND_PRE_ALLOC_COUNT,
@@ -233,8 +233,6 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 						     COMMAND_PRE_ALLOC_LEN)));
 		talloc_set_destructor(cmds, _redis_command_set_free);
 		fr_dlist_entry_init(&cmds->entry);
-	} else {
-		fr_dlist_remove(free_list, cmds);
 	}
 
 	fr_dlist_talloc_init(&cmds->pending, fr_redis_command_t, entry);
