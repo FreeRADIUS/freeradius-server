@@ -1064,7 +1064,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	 *	for insertion into the rbtree.
 	 */
 	if (!ef) {
-		ef = talloc_zero(el, fr_event_fd_t);
+		ef = talloc_zero(el->fds, fr_event_fd_t);
 		if (unlikely(!ef)) {
 			fr_strerror_const("Out of memory");
 			return -1;
