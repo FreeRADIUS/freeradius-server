@@ -1,4 +1,4 @@
-= Test MS-CHAP Authentication
+= Test MS-CHAP
 
 Once the server is started in debugging mode, MS-CHAP authentication can be tested using `radtest`.
 

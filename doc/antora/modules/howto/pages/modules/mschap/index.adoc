@@ -8,7 +8,20 @@ The xref:modules/eap/index.adoc[`eap`] module provides MS-CHAPv2 support as well
 
 == MS-CHAP Authentication Flow
 
-The `mschap` module runs in two phases. In `recv Access-Request { ... }` it detects the MS-CHAP attributes and sets `control.Auth-Type := mschap`. In `authenticate mschap { ... }` it retrieves the known-good password set by a previous module (`files`, `sql`, etc.) and performs the MS-CHAP cryptographic calculations.
+The mschap module in FreeRADIUS functions in two phases. First, it identifies the MS-CHAP attributes within an Access-Request to set the authentication type. Then, it performs a challenge-response exchange to verify the client's identity against a database or external source.
+
+*Phase 1*
+
+The initial phase starts when the server receives an Access-Request. The module checks the request for MS-CHAP attributes and sets Auth-Type to mschap if they are present. This action ensures the session will use MS-CHAP authentication. The mschap module uses a challenge-response mechanism, where the server sends a challenge, and the client responds with a calculated value. This exchange helps establish the client's identity and ensures only authorized users can proceed to the next phase.
+
+*Phase 2*
+
+In the second phase, the module retrieves the user's known-good password during the authenticate mschap step. It usually gets this information from another module that manages user credentials, such as files or SQL. Once the password is ready, the mschap module runs MS-CHAP calculations. It checks the user's credentials. This finishes the second phase of authentication.
+
+
+=== MSCHAP Authentication Flow Diagram
+
+image::mschap-flow-basic.svg[MSCHAP Flow, role=thumb]
 
 
 == Authentication Methods
@@ -26,9 +39,6 @@ See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol com
 === Winbind
 
 You can connect to the `winbind` daemon using the libwbclient API instead of calling `ntlm_auth`. You need libwbclient from Samba 4.2.1 or later and FreeRADIUS compiled with `winbind` support. Within the `mschap` module, configure the winbind subsection and comment out the ntlm_auth lines.
-
-=== MSCHAP Authentication Flow Diagram
-image::mschap-flow-basic.svg[MSCHAP Flow, role=thumb]
 
 == Enable mods-available/mschap
 
@@ -200,7 +210,7 @@ local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Cleartext-Password}
 
 [WARNING]
 ====
-Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
+We recommed using the `MS-CHAP-New-NT-Password`. The
 reason is that cleartext passwords have undergone unicode transformation
 from the client encoding (utf-16) to the server encoding (utf-8) and the
 current code does this in a very ad-hoc way. The reverse transformation
