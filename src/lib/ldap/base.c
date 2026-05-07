@@ -594,7 +594,7 @@ static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t 
 	int			count;
 
 	count = ldap_count_entries(ld, query->result);
-	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "y" : "ies");
+	RDEBUG3("LDAP query returned %d entr%s", count, count > 1 ? "ies" : "y");
 	message = ldap_first_entry(ld, query->result);
 	RINDENT();
 	while (message) {
