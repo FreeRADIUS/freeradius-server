@@ -584,3 +584,13 @@ endif
 ifneq "$(findstring test.multi-server,$(MAKECMDGOALS))" ""
   include src/tests/multi-server/all.mk
 endif
+
+#
+#  There are horrible, stupid, magic commands for submodule.  A normal
+#  "git checkout" doesn't get the submodules.  So we add a Makefile
+#  command to fix it.
+#
+.PHONY: submodule
+submodule:
+	@git submodule init
+	@git submodule update --recursive
