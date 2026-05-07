@@ -134,7 +134,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		/*
 		 *	Just copy the string to the box.
 		 */
-		fr_value_box_bstrndup(out, out, NULL, value, len, tainted);
+		if (fr_value_box_bstrndup(out, out, NULL, value, len, tainted) < 0) return -1;
 	}
 		break;
 
@@ -187,7 +187,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	{
 		char const *value = json_object_to_json_string(object);
 
-		fr_value_box_bstrndup(out, out, NULL, value, strlen(value), tainted);
+		if (fr_value_box_bstrndup(out, out, NULL, value, strlen(value), tainted) < 0) return -1;
 	}
 		break;
 	}
