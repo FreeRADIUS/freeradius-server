@@ -1,44 +1,53 @@
-= PASSWD
+= Passwd
 
-Passwd-like files authorization module.
+This document explains how to use the rlm_module to read passwd-like files
+to complete the user authorization process. The rlm_passwd is a files authorization type module.
 
-== FAQ
+When configuring the passwd module, see the xref:reference:raddb/mods-available/passwd.adoc[mods-available/passwd] configuration file, which describes the configuration parameters accepted and what they do.
 
-Q: Can I use rlm_passwd to authenticate user against Linux shadow
-password file or BSD-style master.passwd? A: Yes, but you need RADIUS
-running as root. Hint: use Password.Crypt attribute. You probably don't
-want to use this module with FreeBSD to authenticate against system
-file, as it already takes care of caching passwd file entries, but it
-may be helpful to authenticate against alternate file.
 
-Q: Can I use rlm_passwd to authenticate user against SAMBA smbpasswd? A:
-Yes, you can. Hint: use Password.LM/Password.NT attribute, set authtype
-= MS-CHAP.
+== Implementation
 
-Q: Can I use rlm_password to authenticate user against
-BLA-BLA-BLApasswd? A: Probably you can, if BLA-BLA-BLA stores password
-in some format supported by RADIUS, for example cleartext, NT/LM hashes,
-crypt, Netscape MD5 format. You have to set authtype to corresponding
-type, for example authtype = NS-MTA-MD5 for Netscape MD5.
+This module can be used to authenticate users against a Linux shadow password file or a BSD-style master.passwd file, but it requires RADIUS to run as root. To do this, you should use the Password.Crypt attribute.
 
-Q: Are where are differences between rlm_passwd and rlm_unix? A:
-rlm_passwd supports passwd files in any format and may be used, for
-example, to parse FreeBSD's master.passwd or SAMBA smbpasswd files, but
-it can't perform system authentication (for example to authenticate NIS
-user, like rlm_unix does). If you need system authentication you need
-rlm_unix, if you have to authenticate against files only under BSD you
-need rlm_passwd, if you need to authenticate against files only under
-Linux, you can choose between rlm_unix and rlm_passwd, probably you will
-have nearly same results in performance (I hope :) ).
+On FreeBSD, it's generally better to avoid using this module for system authentication, since the system already manages passwd file caching. However, it can be useful for alternate files.
 
-Q: How can I say passwd to add attribute even if it's value is empty?
+For example, administrators can use this module to check users against a secondary password file. They can also use the system's built-in caching for the primary passwd file.
 
-A: set `ignore_empty` to `no` in module configuration.
+=== Other Supported File Types
 
-== Acknowledgements
+*smbpasswd*
 
-* ZARAZA, mailto:3APA3A@security.nnov.ru[3APA3A@security.nnov.ru]
-* Michael Chernyakhovsky mailto:mike@mgn.ru[mike@mgn.ru]
+The module can also authenticate users against a SAMBA smbpasswd file. For this, use the Password.LM or Password.NT attribute and set authtype to MS-CHAP.
+
+*custom*
+
+If you have a custom password file, you can use rlm_passwd as long as the file stores passwords in a format supported by RADIUS (such as cleartext, NT/LM hashes, crypt, or Netscape MD5). You must set the authtype to match the password format.
+
+== Difference between `rlm_passwd` and `rlm_unix`
+
+The main difference between rlm_passwd and rlm_unix is that rlm_passwd can parse any passwd-like file, including FreeBSD's master.passwd or SAMBA smbpasswd. However, it cannot perform system authentication such as NIS user authentication. Use rlm_unix for system authentication. For file-based authentication on BSD, use rlm_passwd. On Linux, either module can be used, with similar performance.
+
+== Edit mods-available/passwd
+
+The xref:reference:raddb/mods-available/passwd.adoc[mods-available/passwd] module
+contains no configuration items, and does not need to be edited.
+
+== Enable mods-available/passwd
+
+The `passwd` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/passwd
+----
+
+== Add attributes with no value
+
+If you want the module to add an attribute even when its value is empty, set `ignore_empty=no` in the module configuration file.
+
+
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
