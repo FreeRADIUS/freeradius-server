@@ -97,12 +97,9 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 		 */
 		if (vp->da->flags.internal || (!vp->da->flags.extra && vp->da->flags.subtype) ||
 		    (vp->da == attr_message_authenticator)) {
-		next:
 			fr_dcursor_next(&cursor);
 			continue;
 		}
-
-		if (vp->da == attr_message_authenticator) goto next;
 
 		slen = fr_radius_encode_pair(&FR_DBUFF_TMP(ptr, end), &cursor, NULL);
 		if (slen < 0) {
