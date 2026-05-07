@@ -83,6 +83,11 @@ static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *
 		break;
 	}
 
+	if (!method) {
+		REDEBUG2("No dictionary value name for method hint");
+		return XLAT_ACTION_FAIL;
+	}
+
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	fr_value_box_bstrndup(vb, vb, NULL, method, strlen(method), false);
 	fr_dcursor_append(out, vb);
@@ -137,6 +142,11 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
 						  fr_box_uint32(FR_IDENTITY_TYPE_VALUE_FASTAUTH));
 		break;
+	}
+
+	if (!type) {
+		REDEBUG2("No dictionary value name for identity type");
+		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
