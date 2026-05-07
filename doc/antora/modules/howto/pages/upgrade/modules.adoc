@@ -412,7 +412,7 @@ deprecated in 3.0.16.
 Instead, use `attribute-name`. See `mods-available/sqlippool` for
 more information.
 
-[#unix]
+[#rlm_unix]
 === rlm_unix
 
 The `unix` module uses an expansion `%unix.group(<name>)` instead of
