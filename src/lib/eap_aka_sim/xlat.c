@@ -549,7 +549,10 @@ void fr_aka_sim_xlat_func_unregister(void)
 	xlat_func_unregister("aka_sim_id_method");
 	xlat_func_unregister("aka_sim_id_type");
 	xlat_func_unregister("3gpp_temporary_id_key_index");
+	xlat_func_unregister("3gpp_temporary_id.key_index");
 	xlat_func_unregister("3gpp_temporary_id_decrypt");
+	xlat_func_unregister("3gpp_temporary_id.decrypt");
 	xlat_func_unregister("3gpp_temporary_id_encrypt");
+	xlat_func_unregister("3gpp_temporary_id.encrypt");
 	aka_sim_xlat_refs = 0;
 }
