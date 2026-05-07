@@ -702,6 +702,8 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		}
 	}
 
+	fr_coord_thread_join();
+
 	fr_sem_free(sc->coord_sem);
 	fr_sem_free(sc->network_sem);
 	fr_sem_free(sc->worker_sem);

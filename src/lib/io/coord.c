@@ -167,39 +167,37 @@ fr_coord_reg_t *fr_coord_register(fr_coord_reg_ctx_t *reg_ctx)
  *
  * To be called from mod_detach of a module which uses a coordinator
  *
- * When running in threaded mode, will wait for the coordinator to exit.
- *
  * @param coord_reg	to de-register
  */
 void fr_coord_deregister(fr_coord_reg_t *coord_reg)
 {
-	int			ret;
-
 	fr_dlist_remove(coord_regs, coord_reg);
 
-	/*
-	 *	In single threaded mode just free the registration.
-	 */
-	if (!coord_threads) goto free;
-
-	fr_dlist_foreach(coord_threads, fr_schedule_coord_t, sc) {
-		if (sc->coord_reg == coord_reg) {
-			if ((ret = pthread_join(sc->thread.pthread_id, NULL)) != 0) {
-				ERROR("Failed joining coordinator %s: %s", coord_reg->name, fr_syserror(ret));
-			} else {
-				DEBUG2("Coordinator %s joined (cleaned up)", coord_reg->name);
-			}
-
-			fr_dlist_remove(coord_threads, sc);
-			talloc_free(sc);
-			break;
-		}
-	}
-
-free:
 	talloc_free(coord_reg);
 
 	if (fr_dlist_num_elements(coord_regs) == 0) TALLOC_FREE(coord_regs);
+}
+
+/** Wait for all the coordinator threads to exit
+ *
+ * To be called during the scheduler shutdown in multi-threaded mode.
+ */
+void fr_coord_thread_join(void)
+{
+	int	ret;
+
+	if (!coord_threads) return;
+
+	fr_dlist_foreach(coord_threads, fr_schedule_coord_t, sc) {
+		if ((ret = pthread_join(sc->thread.pthread_id, NULL)) != 0) {
+			ERROR("Failed joining coordinator %s: %s", sc->coord_reg->name, fr_syserror(ret));
+		} else {
+			DEBUG2("Coordinator %s joined (cleaned up)", sc->coord_reg->name);
+		}
+
+		fr_dlist_remove(coord_threads, sc);
+		talloc_free(sc);
+	}
 }
 
 /** Callback for a coordinator receiving data from a worker

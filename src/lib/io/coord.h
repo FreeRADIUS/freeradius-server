@@ -90,6 +90,8 @@ int		fr_coords_create(TALLOC_CTX *ctx, fr_event_list_t *el);
 
 void		fr_coords_destroy(void);
 
+void		fr_coord_thread_join(void);
+
 fr_coord_worker_t	*fr_coord_attach(TALLOC_CTX *ctx, fr_event_list_t *el, fr_coord_reg_t *coord_reg);
 int		fr_coord_detach(fr_coord_worker_t *cw, bool exiting);
 
