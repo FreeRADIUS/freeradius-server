@@ -443,7 +443,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	/*
 	 *	Allocate a default message size.
 	 */
-	MEM(reply = (fr_channel_data_t *) fr_message_reserve(ms, size));
+	MEM(reply = (fr_channel_data_t *) fr_message_and_data_reserve(ms, size));
 
 	/*
 	 *	Encode a NAK
@@ -455,7 +455,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 		size = 1;	/* rely on them to figure it the heck out */
 	}
 
-	(void) fr_message_alloc(ms, &reply->m, size);
+	(void) fr_message_and_data_commit(ms, &reply->m, size);
 
 	/*
 	 *	Fill in the NAK.
@@ -622,7 +622,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	ms = fr_channel_responder_uctx_get(ch);
 	fr_assert(ms != NULL);
 
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
+	reply = (fr_channel_data_t *) fr_message_and_data_reserve(ms, size);
 	fr_assert(reply != NULL);
 
 	/*
@@ -651,7 +651,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 		 *	This will ALWAYS return the same message as we put in.
 		 */
 		fr_assert((size_t) slen <= reply->m.rb_size);
-		(void) fr_message_alloc(ms, &reply->m, slen);
+		(void) fr_message_and_data_commit(ms, &reply->m, slen);
 	}
 
 	/*

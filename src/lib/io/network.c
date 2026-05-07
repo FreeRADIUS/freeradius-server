@@ -807,7 +807,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
-	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, buflen);
+	cd = (fr_channel_data_t *) fr_message_and_data_alloc(s->ms, buflen);
 	if (!cd) return -1;
 
 	cd->listen = parent;
@@ -910,7 +910,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	DEBUG3("Reading data from FD %u", sockfd);
 
 	if (!s->cd) {
-		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
+		cd = (fr_channel_data_t *) fr_message_and_data_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
 			ERROR("Failed allocating message size %zd! - Closing socket",
 			      s->listen->default_message_size);
@@ -998,17 +998,15 @@ next_message:
 	 *	packet.
 	 */
 	if ((cd->m.data_size == 0) && (!s->leftover)) {
-
-		(void) fr_message_alloc(s->ms, &cd->m, data_size);
+		(void) fr_message_and_data_commit(s->ms, &cd->m, data_size);
 		next = NULL;
-
 	} else {
 		/*
 		 *	There are leftover bytes in the buffer, feed
 		 *	them to the next round of reading.
 		 */
 		if (s->leftover) {
-			next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->leftover,
+			next = (fr_channel_data_t *) fr_message_and_data_commit_with_leftover(s->ms, &cd->m, data_size, s->leftover,
 									      s->listen->default_message_size);
 			if (!next) {
 				PERROR("Failed reserving partial packet.");
@@ -1016,6 +1014,7 @@ next_message:
 				fr_assert(0 == 1);
 			}
 		} else {
+			(void) fr_message_and_data_commit(s->ms, &cd->m, data_size);
 			next = NULL;
 		}
 	}
@@ -1077,7 +1076,7 @@ int fr_network_sendto_worker(fr_network_t *nr, fr_listen_t *li, void *packet_ctx
 	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
-	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, data_len);
+	cd = (fr_channel_data_t *) fr_message_and_data_alloc(s->ms, data_len);
 	if (!cd) return -1;
 
 	s->stats.in++;

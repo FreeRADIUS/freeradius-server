@@ -148,7 +148,7 @@ static void *channel_master(void *arg)
 		MPRINT1("Master sending %d messages\n", num_to_send);
 
 		for (i = 0; i < num_to_send; i++) {
-			cd = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
+			cd = (fr_channel_data_t *) fr_message_and_data_alloc(ms, 100);
 			fr_assert(cd != NULL);
 
 			num_outstanding++;
@@ -408,7 +408,7 @@ static void *channel_worker(void *arg)
 					memcpy(&message_id, cd->m.data, sizeof(message_id));
 					MPRINT1("\tWorker got message %d (says %d)\n", worker_messages, message_id);
 
-					reply = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
+					reply = (fr_channel_data_t *) fr_message_and_data_alloc(ms, 100);
 					fr_assert(reply != NULL);
 
 					reply->m.when = fr_time();

@@ -338,7 +338,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			fr_assert(events[i].filter == EVFILT_READ);
 
-			cd = (fr_channel_data_t *) fr_message_reserve(ms, 4096);
+			cd = (fr_channel_data_t *) fr_message_and_data_reserve(ms, 4096);
 			fr_assert(cd != NULL);
 
 			packet_ctx = talloc(ctx, fr_packet_ctx_t);
@@ -391,7 +391,7 @@ static void master_process(TALLOC_CTX *ctx)
 				attr += attr[1];
 			}
 
-			(void) fr_message_alloc(ms, &cd->m, total_len);
+			(void) fr_message_and_data_commit(ms, &cd->m, total_len);
 
 			MPRINT1("Master sending packet size %zd to worker %d\n", cd->m.data_size, which_worker);
 			cd->m.when = fr_time();

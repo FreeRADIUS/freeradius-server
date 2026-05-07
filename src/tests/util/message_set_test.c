@@ -87,10 +87,10 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		array[index] = hash;
 
-		m = fr_message_reserve(ms, reserve_size);
+		m = fr_message_and_data_reserve(ms, reserve_size);
 		if (m == NULL) fr_exit_now(EXIT_FAILURE);
 
-		messages[index] = (fr_test_t *) fr_message_alloc(ms, m, hash);
+		messages[index] = (fr_test_t *) fr_message_and_data_commit(ms, m, hash);
 		if (messages[index] != (void *) m) fr_exit_now(EXIT_FAILURE);
 
 		if (touch_memory) {
@@ -401,4 +401,3 @@ int main(int argc, char *argv[])
 
 	return ret;
 }
-

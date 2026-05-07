@@ -308,7 +308,7 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
  * @param[in] mr the message ring
  * @param[in] max_to_clean maximum number of messages to clean at a time.
  */
-static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_to_clean)
+static int message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_to_clean)
 {
 	int messages_cleaned = 0;
 	size_t size;
@@ -354,7 +354,7 @@ static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int ma
  * @param[in] ms the message set
  * @param[in] max_to_clean the maximum number of messages to clean
  */
-static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
+static void message_gc(fr_message_set_t *ms, int max_to_clean)
 {
 	int i;
 	int arrays_freed, arrays_used, empty_slot;
@@ -373,7 +373,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	for (i = 0; i <= ms->mr_max; i++) {
 		int cleaned;
 
-		cleaned = fr_message_ring_gc(ms, ms->mr_array[i], max_to_clean - total_cleaned);
+		cleaned = message_ring_gc(ms, ms->mr_array[i], max_to_clean - total_cleaned);
 		total_cleaned += cleaned;
 		fr_assert(total_cleaned <= max_to_clean);
 
@@ -614,75 +614,29 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	fr_assert(ms->rb_current <= ms->rb_max);
 }
 
-/** Allocate a message from a message ring.
+typedef uint8_t *(*fr_ring_buffer_op_t)(fr_ring_buffer_t *rb, size_t size);
+
+/** Find a message ring with space, performing GC and expansion as needed.
  *
- * The newly allocated message is zeroed.
+ *  The caller passes in the operation to perform on the ring buffer
+ *  (fr_ring_buffer_alloc or fr_ring_buffer_reserve).  This function
+ *  handles GC, searching across all message rings, and doubling the
+ *  ring size when all are full.
  *
- * @param[in] ms the message set
- * @param[in] mr the message ring to allocate from
- * @param[in] clean whether to clean the message ring
- * @return
- *	- NULL on failed allocation
- *      - fr_message_t* on successful allocation.
- */
-static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_ring_buffer_t *mr, bool clean)
-{
-	fr_message_t *m;
-
-	/*
-	 *	We're at the start of a buffer with data, and there's
-	 *	no room.  Do a quick check to see if we can free up
-	 *	the oldest entry.  If not, return.
-	 *
-	 *	Otherwise, fall through to allocating a entry, of
-	 *	which there must now be at least one free one.
-	 *
-	 *	This check results in a small amount of cache line
-	 *	thrashing.  But if the buffer is full, it's likely
-	 *	that the oldest entry can be freed.  If not, we have a
-	 *	small amount of cache thrashing, which should be
-	 *	extremely rare.
-	 */
-	if (clean) {
-		if (fr_message_ring_gc(ms, mr, 4) == 0) {
-			fr_strerror_const("No free memory after GC attempt");
-			return NULL;
-		}
-
-		/*
-		 *	Else we cleaned up some entries in this array.
-		 *	Go allocate a message.
-		 */
-	}
-
-	/*
-	 *	Grab a new message from the underlying ring buffer.
-	 */
-	m = (fr_message_t *) fr_ring_buffer_alloc(mr, ms->message_size);
-	if (!m) return NULL;
-
-#ifndef NDEBUG
-	memset(m, 0, ms->message_size);
-#endif
-	m->status = FR_MESSAGE_USED;
-	return m;
-}
-
-/**  Allocate a fr_message_t, WITHOUT a ring buffer.
- *
- * @param[in] ms the message set
  * @param[out] p_cleaned a flag to indicate if we cleaned the message array
+ * @param[in] ms the message set
+ * @param[in] op the ring buffer operation (alloc or reserve)
  * @return
- *      - NULL on error
- *	- fr_message_t* on success
+ *	- NULL on error
+ *      - pointer to message-sized region on success
  */
-static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleaned)
+static inline CC_HINT(always_inline)
+uint8_t *_message_ring_find(bool *p_cleaned, fr_message_set_t *ms, fr_ring_buffer_op_t op)
 {
 	int i;
-	fr_message_t *m;
+	uint8_t *p;
 	fr_ring_buffer_t *mr;
 
-	ms->allocated++;
 	*p_cleaned = false;
 
 	/*
@@ -691,12 +645,10 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	 *	buffer.
 	 */
 	mr = ms->mr_array[ms->mr_current];
-	m = (fr_message_t *) fr_ring_buffer_alloc(mr, ms->message_size);
-	if (m) {
-		memset(m, 0, ms->message_size);
-		m->status = FR_MESSAGE_USED;
-		MPRINT("ALLOC normal\n");
-		return m;
+	p = op(mr, ms->message_size);
+	if (p) {
+		MPRINT("RING FIND normal\n");
+		return p;
 	}
 
 	MPRINT("CLEANING UP (%zd - %zd = %zd)\n", ms->allocated, ms->freed,
@@ -705,18 +657,24 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	/*
 	 *	Else the buffer is full.  Do a global cleanup.
 	 */
-	fr_message_gc(ms, 128);
+	message_gc(ms, 128);
 	*p_cleaned = true;
 
 	/*
 	 *	If we're lucky, the cleanup has given us a new
 	 *	"current" buffer, which is empty.  If so, use it.
+	 *
+	 *	Do a small per-ring GC first to free up the oldest
+	 *	entries.  This results in a small amount of cache line
+	 *	thrashing, but if the buffer is full, it's likely
+	 *	that the oldest entry can be freed.
 	 */
 	mr = ms->mr_array[ms->mr_current];
-	m = fr_message_ring_alloc(ms, mr, true);
-	if (m) {
-		MPRINT("ALLOC after cleanup\n");
-		return m;
+	(void) message_ring_gc(ms, mr, 4);
+	p = op(mr, ms->message_size);
+	if (p) {
+		MPRINT("RING FIND after cleanup\n");
+		return p;
 	}
 
 	/*
@@ -735,12 +693,13 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	for (i = ms->mr_max; i >= 0; i--) {
 		mr = ms->mr_array[i];
 
-		m = fr_message_ring_alloc(ms, mr, true);
-		if (m) {
+		(void) message_ring_gc(ms, mr, 4);
+		p = op(mr, ms->message_size);
+		if (p) {
 			ms->mr_current = i;
-			MPRINT("ALLOC from changed ring buffer\n");
+			MPRINT("RING FIND from changed ring buffer\n");
 			MPRINT("SET MR to changed %d\n", ms->mr_current);
-			return m;
+			return p;
 		}
 	}
 
@@ -765,8 +724,8 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 
 	/*
 	 *	Set the new one as current for all new
-	 *	allocations, allocate a message, and go try to
-	 *	reserve room for the raw packet data.
+	 *	allocations, and perform the operation on the
+	 *	entirely empty message ring.
 	 */
 	ms->mr_max++;
 	ms->mr_current = ms->mr_max;
@@ -774,19 +733,89 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 
 	MPRINT("SET MR to doubled %d\n", ms->mr_current);
 
-	/*
-	 *	And we should now have an entirely empty message ring.
-	 */
-	m = fr_message_ring_alloc(ms, mr, false);
+	return op(mr, ms->message_size);
+}
+
+/** Allocate a fr_message_t, WITHOUT a ring buffer
+ *
+ * @param[in] ms the message set
+ * @param[out] p_cleaned a flag to indicate if we cleaned the message array
+ * @return
+ *      - NULL on error
+ *	- fr_message_t* on success
+ */
+static CC_HINT(always_inline) fr_message_t *message_alloc(fr_message_set_t *ms, bool *p_cleaned)
+{
+	fr_message_t *m;
+
+	m = (fr_message_t *)_message_ring_find(p_cleaned, ms, fr_ring_buffer_alloc);
 	if (!m) return NULL;
 
-	MPRINT("ALLOC after doubled message ring\n");
+	memset(m, 0, ms->message_size);
+	m->status = FR_MESSAGE_USED;
+	ms->allocated++;
 
 	return m;
 }
 
+/** Reserve a fr_message_t, WITHOUT a ring buffer
+ *
+ * @note This only _reserves_ the message, i.e. checks there's space, and initialises the message
+ *	 memory, it does not perform the actual allocation.  This is useful if there are error
+ *	 paths which could result in the message needing to be returned to the message set without
+ *	 being used.  Multiple pending reservations are NOT permitted.
+ *
+ * @param[in] ms the message set to reserve the message in.
+ * @param[out] p_cleaned a flag to indicate if we cleaned the message array
+ * @return
+ *      - NULL on error
+ *	- fr_message_t* on success
+ */
+static CC_HINT(always_inline) fr_message_t *message_reserve(fr_message_set_t *ms, bool *p_cleaned)
+{
+	fr_message_t *m;
 
-/** Get a ring buffer for a message
+	m = (fr_message_t *)_message_ring_find(p_cleaned, ms, fr_ring_buffer_reserve);
+	if (!m) return NULL;
+
+	memset(m, 0, ms->message_size);
+	m->status = FR_MESSAGE_USED;
+
+	return m;
+}
+
+/** Finalise a reserved message allocation
+ *
+ * @note This finalises the allocation of a previous message.  No additional reserve calls can be made
+ *	 between the one that initialised memory for m, and this finalise call.
+ *
+ * @param[in] ms the message set to finalise the allocation in.
+ * @param[in] m the message to perform the allocation for.
+ * @return
+ *      - <0 on error
+ *	- 0 on success.
+ */
+static CC_HINT(always_inline) int message_finalise(fr_message_set_t *ms, fr_message_t *m)
+{
+	bool cleaned = false;
+	fr_message_t *nm;
+
+	/*
+	 *	This _should_ use the same ring as before, unless someone has
+	 *	interleaved _another_ reserve call between the initial reserve
+	 *	call and this finalisation.
+	 */
+	nm = (fr_message_t *)_message_ring_find(&cleaned, ms, fr_ring_buffer_alloc);
+	if (!fr_cond_assert_msg(nm == m, "Alloc interleaved between reserving and finalising message allocation %p", m)) {
+		return -1;
+	}
+
+	ms->allocated++;
+
+	return 0;
+}
+
+/** Reserve data in a ring buffer for this message
  *
  * @param[in] ms the message set
  * @param[in] m the message
@@ -795,8 +824,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
  *	- NULL on error, and m is deallocated
  *	- m on success
  */
-static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message_t *m,
-						bool cleaned_up)
+static fr_message_t *message_data_reserve(fr_message_set_t *ms, fr_message_t *m, bool cleaned_up)
 {
 	int i;
 	fr_ring_buffer_t *rb;
@@ -830,7 +858,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 		MPRINT("CLEANED UP BECAUSE OF RING BUFFER (%zd - %zd = %zd)\n", ms->allocated, ms->freed,
 			ms->allocated - ms->freed);
 
-		fr_message_gc(ms, 128);
+		message_gc(ms, 128);
 
 		/*
 		 *	Try to allocate the packet from the newly current ring buffer.
@@ -922,16 +950,15 @@ cleanup:
 
 /** Reserve a message
  *
- *  A later call to fr_message_alloc() will allocate the correct
- *  packet ring buffer size.  This call just allocates a message
- *  header, and reserves space for the packet.
+ *  A later call to fr_message_and_data_commit() will commit the reservation.
+ *  This call just reserves a message header and space for the packet data.
  *
  *  If the caller later decides that the message is not needed, he
  *  should call fr_message_free() to free the message.
  *
- *  We assume that the caller will call fr_message_reserve(), and then
- *  almost immediately fr_message_alloc().  Multiple calls in series
- *  to fr_message_reserve() MUST NOT be done.  The caller could also
+ *  We assume that the caller will call fr_message_and_data_reserve(), and then
+ *  almost immediately fr_message_and_data_commit().  Multiple calls in series
+ *  to fr_message_and_data_reserve() MUST NOT be done.  The caller could also
  *  just call fr_ring_buffer_alloc(m->rb, size) if they wanted, and
  *  then update m->data_size by hand...
  *
@@ -943,7 +970,7 @@ cleanup:
  *      - NULL on error
  *	- fr_message_t* on success
  */
-fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
+fr_message_t *fr_message_and_data_reserve(fr_message_set_t *ms, size_t reserve_size)
 {
 	bool cleaned_up;
 	fr_message_t *m;
@@ -956,9 +983,9 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	}
 
 	/*
-	 *	Allocate a bare message.
+	 *	Reserve a bare message.
 	 */
-	m = fr_message_get_message(ms, &cleaned_up);
+	m = message_reserve(ms, &cleaned_up);
 	if (!m) {
 		MPRINT("Failed to reserve message\n");
 		return NULL;
@@ -979,58 +1006,54 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	CACHE_ALIGN(reserve_size);
 	m->rb_size = reserve_size;
 
-	return fr_message_get_ring_buffer(ms, m, cleaned_up);
+	return message_data_reserve(ms, m, cleaned_up);
 }
 
-/** Allocate packet data for a message
+/** Commit a previously reserved message, allocating exactly total_size bytes of packet data.
  *
- *  The caller will normally call fr_message_reserve() before calling
- *  this function, and pass the resulting message 'm' here.  If 'm' is
- *  NULL, however, this function will call fr_message_reserve() of
- *  'actual_packet_size'.  This capability is there for callers who
- *  know the size of the message in advance.
+ *  Commits both the message ring slot and the data ring buffer.  total_size is the
+ *  final packet size; it may be less than the original reservation.  For streaming
+ *  reads where m->data_size is already non-zero (leftover bytes from a prior read),
+ *  total_size must include those bytes.
  *
  * @param[in] ms the message set
- * @param[in] m the message message to allocate packet data for
- * @param[in] actual_packet_size to use
+ * @param[in] m the previously reserved message (m is NOT talloc'd)
+ * @param[in] total_size final packet size in bytes
  * @return
- *      - NULL on error, and input message m is left alone
- *	- fr_message_t* on success.  Will always be input message m.
+ *      - NULL on error, input message m is left alone
+ *	- m on success
  */
-fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
+fr_message_t *fr_message_and_data_commit(fr_message_set_t *ms, fr_message_t *m, size_t total_size)
 {
 	uint8_t *p;
-	size_t reserve_size;
+	size_t align_size;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
-
 	if (!m) {
-		m = fr_message_reserve(ms, actual_packet_size); /* will cache align it */
+		m = fr_message_and_data_reserve(ms, total_size);
 		if (!m) return NULL;
 	}
 
 	fr_assert(m->status == FR_MESSAGE_USED);
-	fr_assert(m->rb != NULL);
-	fr_assert(m->data != NULL);
-	fr_assert(m->data_size == 0);
-	fr_assert(m->rb_size >= actual_packet_size);
+	fr_assert(m->rb_size >= total_size);
 
-	/*
-	 *	No data to send?  Just send a bare message;
-	 */
-	if (actual_packet_size == 0) {
+	if (total_size == 0) {
 		m->data = NULL;
 		m->rb = NULL;
 		m->data_size = m->rb_size = 0;
+		message_finalise(ms, m);
 		return m;
 	}
 
-	reserve_size = actual_packet_size;
-	CACHE_ALIGN(reserve_size);
+	fr_assert(m->rb != NULL);
+	fr_assert(m->data != NULL);
 
-	p = fr_ring_buffer_alloc(m->rb, reserve_size);
+	align_size = total_size;
+	CACHE_ALIGN(align_size);
+
+	p = fr_ring_buffer_alloc(m->rb, align_size);
 	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_const_push("Failed allocating from ring buffer");
@@ -1039,10 +1062,32 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 
 	fr_assert(p == m->data);
 
-	m->data_size = actual_packet_size;
-	m->rb_size = reserve_size;
+	m->data_size = total_size;
+	m->rb_size = align_size;
+	message_finalise(ms, m);
 
 	return m;
+}
+
+/** Reserve and commit a message atomically.
+ *
+ *  Combines fr_message_and_data_reserve() and fr_message_and_data_commit() into a
+ *  single call for callers that know the exact packet size upfront.
+ *
+ * @param[in] ms the message set
+ * @param[in] size packet size in bytes
+ * @return
+ *      - NULL on error
+ *	- fr_message_t* on success
+ */
+fr_message_t *fr_message_and_data_alloc(fr_message_set_t *ms, size_t size)
+{
+	fr_message_t *m;
+
+	m = fr_message_and_data_reserve(ms, size);
+	if (!m) return NULL;
+
+	return fr_message_and_data_commit(ms, m, size);
 }
 
 /** Allocate packet data for a message, and reserve a new message
@@ -1050,10 +1095,10 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
  *  This function allocates a previously reserved message, and then
  *  reserves a new message.
  *
- *  The application should call fr_message_reserve() with a large
+ *  The application should call fr_message_and_data_reserve() with a large
  *  buffer, and then read data into the buffer.  If the buffer
  *  contains multiple packets, the application should call
- *  fr_message_alloc_reserve() repeatedly to allocate the full
+ *  fr_message_and_data_commit_with_leftover() repeatedly to allocate the full
  *  packets, while reserving room for the partial packet.
  *
  *  When the application is determines that there is only one full
@@ -1086,7 +1131,8 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
  *      - NULL on error, and input message m is left alone
  *	- fr_message_t* on success.  Will always be a new message.
  */
-fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,
+fr_message_t *fr_message_and_data_commit_with_leftover(fr_message_set_t *ms, fr_message_t *m,
+				       size_t actual_packet_size,
 				       size_t leftover, size_t reserve_size)
 {
 	bool cleaned_up;
@@ -1116,9 +1162,9 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	fr_assert(p == m->data);
 
 	m_rb_size = m->rb_size;	/* for ring buffer cleanups */
-
 	m->data_size = actual_packet_size;
 	m->rb_size = align_size;
+	message_finalise(ms, m);
 
 	/*
 	 *	If we've allocated all of the reserved ring buffer
@@ -1126,12 +1172,12 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *
 	 *	This will be automatically cache aligned.
 	 */
-	if (!leftover) return fr_message_reserve(ms, reserve_size);
+	if (!leftover) return fr_message_and_data_reserve(ms, reserve_size);
 
 	/*
-	 *	Allocate a new message.
+	 *	Reserve a new message.
 	 */
-	m2 = fr_message_get_message(ms, &cleaned_up);
+	m2 = message_reserve(ms, &cleaned_up);
 	if (!m2) return NULL;
 
 	/*
@@ -1176,7 +1222,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	succeed, ensure that the old message will properly
 	 *	clean up the old ring buffer.
 	 */
-	if (!fr_message_get_ring_buffer(ms, m2, false)) {
+	if (!message_data_reserve(ms, m2, false)) {
 		m->rb_size = m_rb_size;
 		return NULL;
 	}
@@ -1257,13 +1303,13 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 *	Manually clean up each message ring.
 	 */
 	for (i = 0; i <= ms->mr_max; i++) {
-		(void) fr_message_ring_gc(ms, ms->mr_array[i], INT_MAX);
+		(void) message_ring_gc(ms, ms->mr_array[i], INT_MAX);
 	}
 
 	/*
 	 *	And then do one last pass to clean up the arrays.
 	 */
-	fr_message_gc(ms, INT_MAX);
+	message_gc(ms, INT_MAX);
 }
 
 /** Print debug information about the message set.

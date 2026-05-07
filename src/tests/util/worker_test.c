@@ -274,7 +274,7 @@ static void master_process(void)
 		MPRINT1("Master sending %d messages\n", num_to_send);
 
 		for (i = 0; i < num_to_send; i++) {
-			cd = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
+			cd = (fr_channel_data_t *) fr_message_and_data_alloc(ms, 100);
 			fr_assert(cd != NULL);
 
 			num_outstanding++;
