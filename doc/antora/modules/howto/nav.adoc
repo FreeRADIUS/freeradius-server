@@ -33,7 +33,7 @@
 **** xref:howto:upgrade/modules.adoc#rlm_sql[SQL]
 ***** xref:howto:upgrade/modules.adoc#profiles[Profiles]
 ***** xref:howto:upgrade/modules.adoc#rlm_sql_mysql[MYSQL]
-***** xref:howto:upgrade/modules.adoc#PostgreSQL[PostgreSQL]
+***** xref:howto:upgrade/modules.adoc#rlm_sql_postgresql[PostgreSQL]
 **** xref:howto:upgrade/modules.adoc#rlm_sqlcounter[SQL-Counter]
 **** xref:howto:upgrade/modules.adoc#rlm_sqlippool[SQL-IP-POOL]
 **** xref:howto:upgrade/modules.adoc#rlm_unix[Unix]
