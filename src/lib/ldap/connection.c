@@ -236,7 +236,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 				      NUM_ELEMENTS(our_clientctrls),
 				      c, NULL, NULL);
 
-		DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
+		DEBUG3("Closing connection %p libldap handle %p", c, c->handle);
 		ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
 	}
 
