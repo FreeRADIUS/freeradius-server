@@ -52,13 +52,16 @@ unit_test_module.ARGS = -h
 #  that we're running
 #
 $(BUILD_DIR)/tests/bin/%: $(BUILD_DIR)/bin/local/%
+	$(eval CMD := $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS))
 	@echo "BIN-TEST $(notdir $@)"
-	${Q}if ! $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS) > $@.log 2>&1; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if ! $(CMD) > $@.log 2>&1; then \
 		echo LOG in $@.log; \
 		cat $@.log; \
-		echo $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS); \
+		$(call test_record,bin,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,bin,$(notdir $@),PASS,$@.log)
 	${Q}touch $@
 
 #

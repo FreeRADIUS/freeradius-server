@@ -140,12 +140,13 @@ export IF_ENV_CONDITION := !test || (test != 'if-env')
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx )
 	@echo "KEYWORD-TEST $(notdir $@)"
+	@printf '%s\n' '$(CMD)' > $@.cmd
 	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
+			$(call test_record,keywords,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep 'Error : src/tests/keywords/' $@.log | egrep -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
@@ -153,13 +154,14 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
+			$(call test_record,keywords,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+	@$(call test_record,keywords,$(notdir $@),PASS,$@.log)
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

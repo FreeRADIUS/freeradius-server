@@ -52,4 +52,5 @@ POST_INSTALL_RADIUSD_BIN_ARG:=RADIUSD_BIN=$(RADIUSD_BIN)
 .PHONY: package-test
 package-test: test.eap
 
+include $(top_srcdir)/src/tests/test_record.mk
 include $(DIR)/all.mk

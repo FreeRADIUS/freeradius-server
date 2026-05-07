@@ -52,15 +52,17 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
+	$(eval CMD      := $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV))
 	${Q}echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
-	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
-	${Q}if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
+	@printf '%s\n' '$(CMD)' > $(basename $(FOUND)).cmd
+	${Q}if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,tacacs,$(notdir $@),FAIL,); exit 1; fi
+	${Q}if ! $(CMD) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
+		$(call test_record,tacacs,$(notdir $@),FAIL,$(FOUND));      \
 		exit 1;                                                     \
 	fi
 #
@@ -78,8 +80,10 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/libfreeradius-tacacs.la $(BUILD_DIR)/lib/
 		diff $(EXPECTED) $(FOUND);                                  \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
+		$(call test_record,tacacs,$(notdir $@),FAIL,$(FOUND));      \
 		exit 1;                                                     \
 	fi
+	@$(call test_record,tacacs,$(notdir $@),PASS,$(FOUND))
 	${Q}touch $@
 
 $(TEST):

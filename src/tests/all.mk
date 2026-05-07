@@ -6,6 +6,8 @@ PORT := $(if $(PORT),$(PORT),12340)
 SECRET := $(if $(SECRET),$(SECRET),testing123)
 DICT_PATH := $(top_srcdir)/share/dictionary
 
+include $(top_srcdir)/src/tests/test_record.mk
+
 #
 #	We need the 'git-lfs' installed to fetch some binary files.
 #

@@ -61,12 +61,13 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 	@mkdir -p $(dir $@)
 	$(eval CMD:=CONFIG_FILE=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_CONFIG_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/config/ -xxC )
 	@echo "CONFIG-TEST $(notdir $@)"
+	@printf '%s\n' '$(CMD)' > $@.cmd
 	${Q}if ! $(CMD) > "$@.log" 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
+			$(call test_record,config,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep 'Error : src/tests/config/' $@.log | egrep -v -- '-->' | head -1 | sed 's/]:.*//;s/.*\[//;s/\].*//'); \
@@ -74,11 +75,12 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(CONFIG_LIBS)
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo $(CMD); \
 			rm -f $(BUILD_DIR)/tests/test.config; \
+			$(call test_record,config,$(notdir $@),FAIL,$@.log); \
 			exit 1; \
 		fi; \
 	fi
+	@$(call test_record,config,$(notdir $@),PASS,$@.log)
 	touch "$@"
 
 $(TEST):

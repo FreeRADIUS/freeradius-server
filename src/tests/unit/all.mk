@@ -94,8 +94,17 @@ $(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
+	$(eval CMD := $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o "$@" $<)
 	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o \"$@\" $<)
-	${Q}$(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -o "$@" $<
+	${Q}mkdir -p $(dir $@)
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if $(CMD) > $@.log 2>&1; then \
+		$(call test_record,unit,$(patsubst $(BUILD_DIR)/tests/unit/%,%,$@),PASS,$@.log); \
+	else \
+		cat $@.log; \
+		$(call test_record,unit,$(patsubst $(BUILD_DIR)/tests/unit/%,%,$@),FAIL,$@.log); \
+		exit 1; \
+	fi
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@

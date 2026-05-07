@@ -54,19 +54,21 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 #
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	@echo "RADMIN-TEST $(notdir $@)"
-	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q} if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,radmin,$(notdir $@),FAIL,); exit 1; fi
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)$(E)))
+	$(eval CMD      := $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND))
+	@printf '%s\n' '$(CMD)' > $(basename $(FOUND)).cmd
 	${Q}if ! $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND) 2>&1; then\
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADMIN_RADIUS_LOG)):"; \
 		echo "--------------------------------------------------"; \
 		echo "RADIUSD: $(RADIUSD_RUN)"; \
-		echo "RADMIN : $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND)"; \
 		rm -f $(BUILD_DIR)/tests/test.radmin; \
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
+		$(call test_record,radmin,$(notdir $@),FAIL,$(FOUND)); \
 		exit 1; \
 	fi; \
 	sed -i.bak -e '$${/Executing: /d;}' $(FOUND); \
@@ -80,8 +82,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		diff $(EXPECTED) $(FOUND); \
 		rm -f $(BUILD_DIR)/tests/test.radmin; \
 		$(MAKE) --no-print-directory test.radmin.radiusd_kill; \
+		$(call test_record,radmin,$(notdir $@),FAIL,$(FOUND)); \
 		exit 1; \
 	else \
+		$(call test_record,radmin,$(notdir $@),PASS,$(FOUND)); \
 		touch $@;\
 	fi
 

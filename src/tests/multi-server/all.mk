@@ -144,6 +144,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 	$$(eval CMD := cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && DATA_PATH="${4}" python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log")
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
 	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
+	@printf '%s\n' '$$(CMD)' > "${4}/logs/stderr.cmd"
 	${Q}$$(CMD) > "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
 	{ \
 	    echo "FAILED: test.multi-server.${1}.${2}"; \
@@ -161,8 +162,10 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 	        esac; \
 	        tail -200 "$$$$f"; \
 	    done; \
+	    $$(call test_record,multi-server,${1}.${2},FAIL,${4}/logs/stderr.log); \
 	    exit 1; \
 	}
+	${Q}$$(call test_record,multi-server,${1}.${2},PASS,${4}/logs/stdout.log)
 endef
 
 #

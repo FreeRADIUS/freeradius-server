@@ -32,7 +32,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 	$(eval OUT_DIR  := $(BUILD_DIR)/tests/ldap_sync/active_directory)
 
 	${Q}echo "LDAPSYNC-TEST active_directory $(TARGET)"
-	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
+	${Q}if ! [ -f $(dir $@)/radiusd.pid ]; then $(call test_record,ldap_sync,active_directory/$(TARGET),FAIL,$(OUT_DIR)/radiusd.log); exit 1; fi
 	${Q}rm -f $(OUT_DIR)/$(OUT).out
 
 #	Wait for the sync to start before applying changes
@@ -60,6 +60,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET) - expected output file not produced";	\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/active_directory;	\
+		$(call test_record,ldap_sync,active_directory/$(TARGET),FAIL,$(OUT_DIR)/radiusd.log); \
 		exit 1;								\
 	fi
 	${Q}mv $(OUT_DIR)/$(OUT).out $(FOUND)
@@ -69,8 +70,10 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 		cat $(OUT_DIR)/radiusd.log;					\
 		echo "LDAP_SYNC FAILED $(TARGET)";				\
 		rm -rf $(BUILD_DIR)/tests/test.ldap_sync/active_directory;	\
+		$(call test_record,ldap_sync,active_directory/$(TARGET),FAIL,$(FOUND)); \
 		exit 1;								\
 	fi
+	@$(call test_record,ldap_sync,active_directory/$(TARGET),PASS,$(FOUND))
 	${Q}touch $@
 
 $(TEST):

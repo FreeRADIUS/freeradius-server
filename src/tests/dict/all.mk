@@ -16,17 +16,20 @@ $(eval $(call TEST_BOOTSTRAP))
 #  "foo_dir" directory, and copy "foo" into "foo_dir/dictionary"
 #
 $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
+	$(eval CMD := $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt")
 	@echo "DICT-TEST $(notdir $@)"
 	@cp $< $@
 	@cp src/tests/dict/base.txt $@.txt
 	@echo "load-dictionary $(top_srcdir)/$<" >> $@.txt
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		rm -f $@; \
 		cat "$@.log"; \
 		echo "# $@.log"; \
-		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)
 
 #  And the actual script to run each test.
 #
@@ -34,17 +37,20 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 #  "foo_dir" directory, and copy "foo" into "foo_dir/dictionary"
 #
 $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
+	$(eval CMD := $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt")
 	@echo "DICT-TEST $(notdir $@)"
 	@cp $< $@
 	@cp src/tests/dict/base.txt $@.txt
 	@echo "load-dictionary $(top_srcdir)/$<" >> $@.txt
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" "$@.txt" > "$@.log" 2>&1 || ! test -f "$@"; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		rm -f $@; \
 		cat "$@.log"; \
 		echo "# $@.log"; \
-		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -o "$@" -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)
 
 #
 #  Tests which are supposed to fail.
@@ -56,15 +62,17 @@ $(OUTPUT)/%.dict: $(DIR)/%.dict $(TEST_BIN_DIR)/unit_test_attribute
 #  See if the current output and the expected output are the same.
 #
 $(OUTPUT)/%.error: $(DIR)/%.error $(TEST_BIN_DIR)/unit_test_attribute
+	$(eval CMD := $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary "$@.txt")
 	@echo "DICT-TEST $(notdir $@)"
 	@cp $< $@
 	@cp src/tests/dict/base.txt $@.txt
 	@echo "load-dictionary $(top_srcdir)/$<" >> $@.txt
-	${Q}if $(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary "$@.txt" > "$@.log" 2>&1 ; then \
+	@printf '%s\n' '$(CMD)' > $@.cmd
+	${Q}if $(CMD) > "$@.log" 2>&1 ; then \
 		rm -f $@; \
 		cat "$@.log"; \
 		echo "# $@.log"; \
-		echo "$(TEST_BIN)/unit_test_attribute -D $(top_srcdir)/share/dictionary -xx '$@.txt'"; \
+		$(call test_record,dict,$(notdir $@),FAIL,$@.log); \
 		exit 1; \
 	fi
 	${Q}sed 's,${top_srcdir}/,,g' < "$@.log" > "$@.out"
@@ -72,3 +80,4 @@ $(OUTPUT)/%.error: $(DIR)/%.error $(TEST_BIN_DIR)/unit_test_attribute
 		echo "diff $@.out $(subst .error,,$<).out"; \
 		echo "FAILED"; \
 	fi
+	@$(call test_record,dict,$(notdir $@),PASS,$@.log)
