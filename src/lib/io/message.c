@@ -1015,6 +1015,11 @@ fr_message_t *fr_message_and_data_reserve(fr_message_set_t *ms, size_t reserve_s
  *  Clearing the message fields is sufficient: the next reserve overwrites the
  *  slot, and the data ring's reserved field is replaced by the new reservation size.
  *
+ *  Callers MUST verify m->data_size == 0 before calling this.  If a concurrent
+ *  fr_message_and_data_alloc() aliased this reservation (same ring slot, same
+ *  data address), m->data_size will be non-zero and the slot is already committed;
+ *  calling this function in that case corrupts the committed message.
+ *
  * @param[in] ms  the message set the reservation was made against.
  * @param[in] m   the previously reserved message to cancel.
  */

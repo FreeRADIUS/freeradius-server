@@ -954,15 +954,27 @@ next_message:
 		 *	must be handed back on the next call so the
 		 *	stream can append to it.
 		 *
-		 *	Without leftover bytes the reservation is
-		 *	discarded; the next call makes a fresh one.
-		 *	Holding an uncommitted reservation is unsafe:
-		 *	any allocation on the same message set (e.g.
-		 *	from a callback inside app_io->read) returns
-		 *	the same ring-buffer slot and zeroes it out.
+		 *	When app_io->read() calls fr_network_listen_send_packet()
+		 *	internally, that function calls fr_message_and_data_alloc()
+		 *	on the same message set.  Because the message ring uses
+		 *	fr_ring_buffer_reserve() (which does not advance write_offset),
+		 *	the new alloc returns the same ring slot as our reservation.
+		 *	The memset inside message_reserve zeroes our struct, then the
+		 *	new message commits into that slot.  We can detect this
+		 *	because cd->m.data_size is non-zero after the alloc commits.
+		 *
+		 *	In the aliased case, cd now refers to the already-committed
+		 *	message that was dispatched to a worker.  We must not reset
+		 *	or modify it; just clear s->cd so the next call reserves fresh.
+		 *
+		 *	When neither leftover nor aliasing applies, the reservation
+		 *	is clean and unused; reset it explicitly so its ring-buffer
+		 *	slot is immediately reusable.
 		 */
 		if (s->leftover) {
 			s->cd = cd;
+		} else if (cd->m.data_size != 0) {
+			s->cd = NULL;
 		} else {
 			fr_message_and_data_reset(s->ms, &cd->m);
 			s->cd = NULL;
