@@ -675,6 +675,7 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 typedef struct {
 	fr_dict_t const	*old_dict;     	//!< the previous dictionary for the request
+	fr_dict_t const	*to_free_dict;	//!< Free entries matching this dictionary
 	request_t	*request;	//!< the request
 } unlang_variable_ref_t;
 
@@ -691,7 +692,7 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 		fr_assert(vp->da->flags.local);
 
 		prev = fr_pair_list_prev(&ref->request->local_pairs, vp);
-		if (vp->da->dict != ref->request->local_dict) {
+		if (vp->da->dict != ref->to_free_dict) {
 			break;
 		}
 
@@ -762,6 +763,7 @@ unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, reques
 	 */
 	ref->request = request;
 	ref->old_dict = request->local_dict;
+	ref->to_free_dict = g->variables->dict;
 	request->local_dict = g->variables->dict;
 	talloc_set_destructor(ref, _local_variables_free);
 
