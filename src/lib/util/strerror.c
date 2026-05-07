@@ -205,13 +205,6 @@ static fr_log_entry_t *strerror_vprintf_push(char const *file, int line,
 
 	if (!fmt) return NULL;
 
-	/*
-	 *	Address pathological case where we could leak memory
-	 *	if only a combination of fr_strerror and
-	 *	fr_strerror_printf_push are used.
-	 */
-	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
-
 	entry = talloc(pool_alt(buffer), fr_log_entry_t);
 	if (unlikely(!entry)) {
 	oom:
@@ -223,6 +216,18 @@ static fr_log_entry_t *strerror_vprintf_push(char const *file, int line,
 	entry->msg = fr_vasprintf(entry, fmt, ap_p);
 	va_end(ap_p);
 	if (unlikely(!entry->msg)) goto oom;
+
+	/*
+	 *	Address pathological case where we could leak memory
+	 *	if only a combination of fr_strerror and
+	 *	fr_strerror_printf_push are used.
+	 *
+	 *	Must run AFTER fr_vasprintf, otherwise pointer args
+	 *	referencing the old pool (e.g. from fr_strerror())
+	 *	would be freed before being consumed.
+	 */
+	if (!fr_dlist_num_elements(&buffer->entries)) pool_alt_free_children(buffer);
+
 	entry->subject = NULL;
 	entry->offset = 0;
 	entry->file = file;
