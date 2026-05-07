@@ -568,12 +568,13 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			char c = '\0';
 
 			/*
-			 *	Double backslashes get processed specially
+			 *	Double backslashes get passed through as-is.
+			 *	Copy both and let the for loop advance past the second.
 			 */
 			if (p[1] == '\\') {
-				p += 1;
 				*o++ = p[0];
 				*o++ = p[1];
+				p++;
 				continue;
 			}
 
@@ -622,7 +623,7 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
 
 	if ((f_len < p_len) || !f_len) return -1;
 
-	for (i = 0; i < p_len; i++) if (part[p_len - i] != full[f_len - i]) return -1;
+	for (i = 0; i < p_len; i++) if (part[p_len - 1 - i] != full[f_len - 1 - i]) return -1;
 
 	return f_len - p_len;
 }
