@@ -495,7 +495,7 @@ int radius_exec_program_legacy(char *out, size_t outlen,
 		return 0;
 	}
 
-	len = radius_readfrom_program_legacy(stdout_pipe, pid, timeout, answer, sizeof(answer));
+	len = radius_readfrom_program_legacy(stdout_pipe, pid, timeout, answer, sizeof(answer) - 1);
 	if (len < 0) {
 		/*
 		 *	Failure - radius_readfrom_program_legacy will
