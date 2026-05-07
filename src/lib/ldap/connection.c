@@ -781,7 +781,8 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 		request = query->treq->request;
 
 		ROPTIONAL(RDEBUG2, DEBUG2, "Got %s response for message %d",
-			  ldap_msg_types[msgtype], query->msgid);
+			  ((unsigned int)msgtype < NUM_ELEMENTS(ldap_msg_types) && ldap_msg_types[msgtype]) ?
+			  ldap_msg_types[msgtype] : "unknown", query->msgid);
 		rcode = fr_ldap_error_check(NULL, ldap_conn, result, query->dn);
 
 		switch (rcode) {
