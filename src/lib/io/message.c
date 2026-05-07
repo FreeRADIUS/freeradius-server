@@ -1009,6 +1009,26 @@ fr_message_t *fr_message_and_data_reserve(fr_message_set_t *ms, size_t reserve_s
 	return message_data_reserve(ms, m, cleaned_up);
 }
 
+/** Cancel a reservation made by fr_message_and_data_reserve(), returning the slot to the set.
+ *
+ *  Both rings are uncommitted at this point (write_offset was not advanced).
+ *  Clearing the message fields is sufficient: the next reserve overwrites the
+ *  slot, and the data ring's reserved field is replaced by the new reservation size.
+ *
+ * @param[in] ms  the message set the reservation was made against.
+ * @param[in] m   the previously reserved message to cancel.
+ */
+void fr_message_and_data_reset(fr_message_set_t *ms, fr_message_t *m)
+{
+	(void) talloc_get_type_abort(ms, fr_message_set_t);
+	fr_assert(m->status == FR_MESSAGE_USED);
+	m->status = FR_MESSAGE_FREE;
+	m->rb = NULL;
+	m->data = NULL;
+	m->data_size = 0;
+	m->rb_size = 0;
+}
+
 /** Commit a previously reserved message, allocating exactly total_size bytes of packet data.
  *
  *  Commits both the message ring slot and the data ring buffer.  total_size is the

@@ -54,6 +54,7 @@ typedef struct {
 fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t message_size, size_t ring_buffer_size, bool unlimited_size) CC_HINT(nonnull);
 
 fr_message_t *fr_message_and_data_reserve(fr_message_set_t *ms, size_t reserve_size) CC_HINT(nonnull);
+void          fr_message_and_data_reset(fr_message_set_t *ms, fr_message_t *m) CC_HINT(nonnull);
 fr_message_t *fr_message_and_data_commit(fr_message_set_t *ms, fr_message_t *m, size_t total_size) CC_HINT(nonnull(1));
 fr_message_t *fr_message_and_data_alloc(fr_message_set_t *ms, size_t size) CC_HINT(nonnull);
 fr_message_t *fr_message_and_data_commit_with_leftover(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,

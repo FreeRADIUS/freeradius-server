@@ -949,17 +949,24 @@ next_message:
 					    cd->m.data, cd->m.rb_size, &s->leftover);
 	if (data_size == 0) {
 		/*
-		 *	Cache the message for later.  This is
-		 *	important for stream sockets, which can do
-		 *	partial reads into the current buffer.  We
-		 *	need to be able to give the same buffer back
-		 *	to the stream socket for subsequent reads.
+		 *	Cache the message only when there are leftover
+		 *	bytes from a partial stream read.  The buffer
+		 *	must be handed back on the next call so the
+		 *	stream can append to it.
 		 *
-		 *	Since we have a message set for each
-		 *	fr_io_socket_t, no "head of line"
-		 *	blocking issues can happen for stream sockets.
+		 *	Without leftover bytes the reservation is
+		 *	discarded; the next call makes a fresh one.
+		 *	Holding an uncommitted reservation is unsafe:
+		 *	any allocation on the same message set (e.g.
+		 *	from a callback inside app_io->read) returns
+		 *	the same ring-buffer slot and zeroes it out.
 		 */
-		s->cd = cd;
+		if (s->leftover) {
+			s->cd = cd;
+		} else {
+			fr_message_and_data_reset(s->ms, &cd->m);
+			s->cd = NULL;
+		}
 		return;
 	}
 
