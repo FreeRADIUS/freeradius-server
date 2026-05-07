@@ -113,11 +113,6 @@ static fr_dict_protocol_t dict_proto_default = {
 #define FNV_MAGIC_INIT (0x811c9dc5)
 #define FNV_MAGIC_PRIME (0x01000193)
 
-static void hash_pool_free(void *to_free)
-{
-	talloc_free(to_free);
-}
-
 /** Apply a simple (case insensitive) hashing function to the name of an attribute, vendor or protocol
  *
  * @param[in] name	of the attribute, vendor or protocol.
@@ -2072,7 +2067,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 */
 	if (!ext->value_by_name || !ext->name_by_value) {
 		ext->value_by_name = fr_hash_table_talloc_alloc(da, fr_dict_enum_value_t, dict_enum_name_hash,
-								dict_enum_name_cmp, hash_pool_free);
+								dict_enum_name_cmp, NULL);
 		if (!ext->value_by_name) {
 			fr_strerror_printf("Failed allocating \"value_by_name\" table");
 			return -1;
@@ -4213,7 +4208,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	Create the table of vendor by name.   There MAY NOT
 	 *	be multiple vendors of the same name.
 	 */
-	dict->vendors_by_name = fr_hash_table_alloc(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
+	dict->vendors_by_name = fr_hash_table_alloc(dict, dict_vendor_name_hash, dict_vendor_name_cmp, NULL);
 	if (!dict->vendors_by_name) {
 		fr_strerror_printf("Failed allocating \"vendors_by_name\" table");
 		goto error;
