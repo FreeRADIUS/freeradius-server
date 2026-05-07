@@ -592,6 +592,10 @@ int fr_exec_fork_wait(pid_t *pid_p,
 	if (pid < 0) {
 		fr_strerror_printf("Couldn't fork %s", argv_in[0]);
 		*pid_p = -1;	/* Ensure the PID is set even if the caller didn't check the return code */
+		if (stderr_fd) {
+			close(stderr_pipe[0]);
+			close(stderr_pipe[1]);
+		}
 		goto error3;
 	}
 
