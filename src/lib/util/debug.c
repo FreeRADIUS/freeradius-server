@@ -158,6 +158,9 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:_dl_init\n"			/* dl startup leak - reported by heaptrack */
 		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
 		"leak:kqueue\n"
+		/* libdigestmd5 (cyrus-sasl) calls EVP_CIPHER_fetch on OpenSSL 3.x
+		 * but never calls EVP_CIPHER_free.  Third-party bug; not ours to fix. */
+		"leak:libdigestmd5\n"
 #endif
 		;
 }
