@@ -110,7 +110,7 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBU
 {
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	fr_value_box_asprintf(ctx, out, NULL, false, "FreeRADIUS %s", radiusd_version_short);
+	if (fr_value_box_asprintf(ctx, out, NULL, false, "FreeRADIUS %s", radiusd_version_short) < 0) return -1;
 
 	return 0;
 }
@@ -197,6 +197,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 
 	fr_assert(!snmp_ctx_in);
 
+	if (index_num == 0) return 1;				/* SNMP indices start from 1; 0 is invalid */
 	client = client_findbynumber(NULL, index_num - 1);	/* Clients indexed from 0 */
 	if (!client) return 1;		/* No more clients */
 
@@ -246,7 +247,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 	fr_assert(client);
 	fr_assert(map->da->type == FR_TYPE_STRING);
 
-	fr_value_box_bstrdup_buffer(ctx, out, NULL, client->longname, false);
+	if (fr_value_box_bstrdup_buffer(ctx, out, NULL, client->longname, false) < 0) return -1;
 
 	return 0;
 }
@@ -652,6 +653,10 @@ static ssize_t snmp_process_index_attr(fr_dcursor_t *out, request_t *request,
 	 *	Get the index from the index attribute's value.
 	 */
 	vp = fr_dcursor_current(cursor);
+	if (!vp) {
+		fr_strerror_const("Invalid OID: No index attribute in request");
+		goto error;
+	}
 	index_num = vp->vp_uint32;
 
 	/*
@@ -765,7 +770,7 @@ static ssize_t snmp_process_leaf(fr_dcursor_t *out, request_t *request,
 		if (map_p == map[0].last) {
 			return 1;	/* findNext at lower level */
 		}
-		if (map_p->da == vp->da) {		/* Next unless we faked part of the stack */
+		if (vp && (map_p->da == vp->da)) {		/* Next unless we faked part of the stack */
 			map_p++;
 
 			/*
