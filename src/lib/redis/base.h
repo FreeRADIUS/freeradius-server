@@ -31,6 +31,7 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/trunk.h>
 
 //DIAG_OFF(extra-semi-stmt)
 #include <hiredis/hiredis.h>
@@ -131,6 +132,8 @@ typedef struct {
 	char const		*log_prefix;
 
 	bool			triggers;	//!< Do we run triggers.
+
+	trunk_conf_t		trunk_conf;	//!< Configuration for trunk connections.
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
@@ -144,7 +147,8 @@ typedef struct {
 	{ FR_CONF_OFFSET("max_nodes", fr_redis_conf_t, max_nodes), .dflt = "20" }, \
 	{ FR_CONF_OFFSET("max_alt", fr_redis_conf_t, max_alt), .dflt = "3" }, \
 	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }, \
-	{ FR_CONF_OFFSET("triggers", fr_redis_conf_t, triggers) }
+	{ FR_CONF_OFFSET("triggers", fr_redis_conf_t, triggers) }, \
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, fr_redis_conf_t, trunk_conf, trunk_config) }
 
 void		fr_redis_version_print(void);
 
