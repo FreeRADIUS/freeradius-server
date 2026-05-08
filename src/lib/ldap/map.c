@@ -486,7 +486,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 		applied++;
 
 	next:
-		ldap_value_free_len(result.values);
+		if (result.values) ldap_value_free_len(result.values);
 	}
 
 
