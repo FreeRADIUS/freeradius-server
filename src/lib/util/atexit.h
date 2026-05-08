@@ -216,7 +216,7 @@ do { \
 	static bool _init_done = false; \
 	void * _our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
 	if (unlikely(!_init_done)) { \
-		_init(_our_uctx); \
+		if (_init) _init(_our_uctx); \
 		fr_atexit_global(_free, _our_uctx); \
 		_init_done = true; \
 	} \
