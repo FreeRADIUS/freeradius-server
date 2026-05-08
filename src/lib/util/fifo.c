@@ -52,7 +52,7 @@ static int _fifo_free(fr_fifo_t *fi)
 			unsigned int element;
 
 			element = i + fi->first;
-			if (element > fi->max) {
+			if (element >= fi->max) {
 				element -= fi->max;
 			}
 
