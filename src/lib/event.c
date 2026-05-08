@@ -752,6 +752,17 @@ int fr_event_loop(fr_event_list_t *el)
 			}
 
 			if (el->events[i].filter == EVFILT_WRITE) {
+				/*
+				 *	A concurrent proxy_listener_thaw() (or any caller of
+				 *	fr_event_fd_write_handler() with a NULL handler) may have NULL'd this
+				 *	field after kevent() already returned the EVFILT_WRITE entry to us.
+				 *	The matching EV_DELETE only stops future events, so the
+				 *	already-delivered one is still in el->events[].  Calling a NULL
+				 *	function pointer would SIGSEGV the master and (since it was holding
+				 *	sock->mutex / proxy_mutex from earlier in this dispatch batch) hang
+				 *	the rest of the server on those mutexes.
+				 */
+				if (!ef->write_handler) continue;
 				ef->write_handler(el, ef->fd, ef->ctx);
 				continue;
 			}
