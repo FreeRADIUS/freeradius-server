@@ -558,12 +558,24 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	io.write = write_stdout;
 
 	thread->stdout_fp = fopencookie(thread, "w", io);
+	if (!thread->stdout_fp) {
+		fr_strerror_printf("Failed to open stdout cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	io.write = write_stderr;
 	thread->stderr_fp = fopencookie(thread, "w", io);
+	if (!thread->stderr_fp) {
+		fr_strerror_printf("Failed to open stderr cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	io.write = write_misc;
 	thread->misc = fopencookie(thread, "w", io);
+	if (!thread->misc) {
+		fr_strerror_printf("Failed to open misc cookie: %s", fr_syserror(errno));
+		return -1;
+	}
 
 	talloc_set_destructor(thread, _close_cookies);
 
