@@ -433,7 +433,10 @@ static xlat_action_t sql_escape_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	while ((vb = fr_value_box_list_pop_head(in))) {
 		if (fr_value_box_is_safe_for(vb, inst->driver)) goto append;
 		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
-		sql_box_escape(vb, escape_uctx);
+		if (sql_box_escape(vb, escape_uctx) < 0) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 	append:
 		fr_dcursor_append(out, vb);
 	}
@@ -890,7 +893,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	while ((vb = fr_value_box_list_next(query, vb))) {
 		if (fr_value_box_is_safe_for(vb, inst->driver)) continue;
 		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
-		sql_box_escape(vb, escape_uctx);
+		if (sql_box_escape(vb, escape_uctx) < 0) RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(request,

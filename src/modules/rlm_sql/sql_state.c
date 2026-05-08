@@ -161,11 +161,12 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 		sql_state_entry_t	*entry;
 
 		state = cf_pair_attr(cp);
-		len = strlen(state) * 8;
+		len = strlen(state);
 		if (len < 2) {
 			cf_log_err(cp, "Expected state to have a length between 2-5 chars, got %zu", len);
 			return -1;
 		}
+		len *= 8;
 
 		/*
 		 *	Resolve value to sql_rcode_t
