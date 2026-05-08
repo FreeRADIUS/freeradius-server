@@ -146,7 +146,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (count == repeat) break;
 
 		offset += used;
-		if (offset + used > input_len) break;
+		if (offset >= input_len) break;
 		count++;
 	}
 
