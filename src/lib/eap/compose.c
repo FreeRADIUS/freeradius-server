@@ -516,7 +516,6 @@ rlm_rcode_t eap_fail(eap_session_t *eap_session)
 	 *	Delete any previous replies.
 	 */
 	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_eap_message);
-	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_state);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
