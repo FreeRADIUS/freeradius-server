@@ -44,6 +44,9 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 
 	case 1:
 		break;	/* Don't change */
+
+	default:
+		RETURN_UNLANG_FAIL;
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
