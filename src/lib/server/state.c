@@ -258,11 +258,13 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, f
 		     !tmpl_is_xlat(config->dedup_key)) ||
 		    tmpl_needs_resolving(config->dedup_key)) {
 			fr_strerror_const("Invalid value for \"dedup_key\" - it must be an attribute reference or a simple expansion");
+			talloc_free(state);
 			return NULL;
 		}
 
 		if (tmpl_async_required(config->dedup_key)) {
 			fr_strerror_const("Invalid value for \"dedup_key\" - it must be a simple expansion, and cannot query external systems such as databases");
+			talloc_free(state);
 			return NULL;
 		}
 	}
