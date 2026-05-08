@@ -1,0 +1,4 @@
+type = aka
+aka {
+	virtual_server = "eap-aka"
+}

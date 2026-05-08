@@ -165,7 +165,15 @@ void eap_session_discard(request_t *request)
 {
 	eap_session_t *eap_session;
 
-	eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
+	/*
+	 *	Unlink the request_data_t entry as we pull the
+	 *	eap_session out.  Using _reference here would leave
+	 *	the entry in place with rd->opaque pointing at the
+	 *	chunk we're about to free, and the destructor's
+	 *	own request_data_get cleanup is skipped when the
+	 *	session is frozen (request == NULL).
+	 */
+	eap_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 	if (!eap_session) return;
 
 	/*
