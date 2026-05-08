@@ -210,7 +210,7 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, unla
 	char const	*keyname = NULL;
 
 	/* The key expanded to nothing - use DEFAULT */
-	if (env_data->key->type != FR_TYPE_STRING) {
+	if (!env_data->key || env_data->key->type != FR_TYPE_STRING) {
 		keyname = "DEFAULT";
 	} else {
 		keyname = env_data->key->vb_strvalue;
