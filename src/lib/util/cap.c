@@ -68,7 +68,7 @@ bool fr_cap_is_enabled(cap_value_t cap, cap_flag_t set)
 		goto done;
 	}
 
-	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &state) < 0) {
+	if (cap_get_flag(caps, cap, set, &state) < 0) {
 		char *cap_name = cap_to_name(cap);
 		fr_strerror_printf("Failed getting %s %s state from working set: %s",
 				   cap_name,
