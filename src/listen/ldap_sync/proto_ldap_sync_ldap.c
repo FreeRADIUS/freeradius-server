@@ -922,7 +922,7 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 		 *	If the received packet ID is greater than the number of syncs
 		 *	we have then something very bad has happened
 		 */
-		fr_assert (packet_id <= talloc_array_length(inst->parent->sync_config));
+		fr_assert (packet_id < talloc_array_length(inst->parent->sync_config));
 
 		/*
 		 *	Look for the returned cookie.
