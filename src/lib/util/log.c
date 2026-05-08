@@ -921,8 +921,8 @@ DIAG_ON(format-nonliteral)
 static int _restore_std_legacy(UNUSED int sig)
 {
 	if ((stderr_fd > 0) && (stdout_fd > 0)) {
-		dup2(stderr_fd, STDOUT_FILENO);
-		dup2(stdout_fd, STDERR_FILENO);
+		dup2(stdout_fd, STDOUT_FILENO);
+		dup2(stderr_fd, STDERR_FILENO);
 		return 0;
 	}
 
@@ -1329,7 +1329,7 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 		goto error_3;
 	}
 
-	if (unlikely(dup2(stderr_pipe[0], STDOUT_FILENO) < 0)) {
+	if (unlikely(dup2(stderr_pipe[0], STDERR_FILENO) < 0)) {
 		fr_strerror_printf("Failed copying pipe end over stderr: %s", fr_syserror(errno));
 	error_5:
 		close(stderr_pipe[0]);
@@ -1339,10 +1339,10 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 		goto error_4;
 	}
 
-	stdout_ctx.dst = &default_log;
-	stdout_ctx.prefix = "(stderr)";
-	stdout_ctx.type = L_ERR;
-	stdout_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
+	stderr_ctx.dst = &default_log;
+	stderr_ctx.prefix = "(stderr)";
+	stderr_ctx.type = L_ERR;
+	stderr_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
 
 	if (unlikely(fr_event_fd_insert(NULL, NULL, el, stderr_pipe[1], fr_log_fd_event, NULL, NULL, &stderr_ctx) < 0)) {
 		fr_strerror_const_push("Failed adding stdout handler to event loop");
