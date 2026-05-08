@@ -2712,6 +2712,11 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 	parse_quoted:
 		len = strlen(rhs + 1);
+		if (len == 0) {
+			fr_strerror_const("Unclosed quote on right side");
+			return -1;
+		}
+
 		if (len == 1) {
 			if (rhs[1] != rhs[0]) {
 				fr_strerror_const("Invalid string on right side");
