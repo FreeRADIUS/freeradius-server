@@ -190,7 +190,10 @@ int fr_atexit_global_setup(void)
 
 #ifdef HAVE_PTHREADS
 	fr_atexit_threads = talloc_zero(NULL, fr_atexit_list_t);
-	if (unlikely(!fr_atexit_threads)) return -1;
+	if (unlikely(!fr_atexit_threads)) {
+		TALLOC_FREE(fr_atexit_global);
+		return -1;
+	}
 
 	ATEXIT_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
 
@@ -581,7 +584,7 @@ unsigned int fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, vo
 	fr_atexit_entry_t 	*e = NULL;
 	unsigned int		count = 0;
 
-	if (!fr_atexit_thread_local) return -1;
+	if (!fr_atexit_thread_local) return 0;
 
 	while ((e = fr_dlist_next(&fr_atexit_thread_local->head, e))) {
 		fr_atexit_entry_t *disarm;
