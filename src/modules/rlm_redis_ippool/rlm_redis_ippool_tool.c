@@ -384,7 +384,7 @@ static NEVER_RETURNS void usage(int ret) {
 static uint32_t uint32_gen_mask(uint8_t bits)
 {
 	if (bits >= 32) return 0xffffffff;
-	return (1 << bits) - 1;
+	return (1U << bits) - 1;
 }
 
 /** Iterate over range of IP addresses
