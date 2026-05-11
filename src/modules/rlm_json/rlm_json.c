@@ -529,6 +529,10 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	}
 
 	tok = json_tokener_new();
+	if (!tok) {
+		REDEBUG("Failed allocating JSON tokeniser");
+		RETURN_UNLANG_FAIL;
+	}
 	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_strlen(json_str)));
 	if (!to_eval.root) {
 		REMARKER(json_str, tok->char_offset, "%s", json_tokener_error_desc(json_tokener_get_error(tok)));
@@ -582,6 +586,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 				goto finish;
 			}
 			talloc_free(node);
+			talloc_free(to_parse);
 		}
 			break;
 		}
