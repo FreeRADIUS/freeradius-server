@@ -311,7 +311,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		pcap->dumper = pcap_dump_open(pcap->handle, pcap->name);
 		if (!pcap->dumper) {
 			fr_strerror_printf("%s", pcap_geterr(pcap->handle));
-
+			pcap_close(pcap->handle);
+			pcap->handle = NULL;
 			return -1;
 		}
 		break;
@@ -336,10 +337,15 @@ int fr_pcap_open(fr_pcap_t *pcap)
 #ifdef HAVE_PCAP_DUMP_FOPEN
 	case PCAP_STDIO_OUT:
 		pcap->handle = pcap_open_dead(DLT_EN10MB, SNAPLEN);
+		if (!pcap->handle) {
+			fr_strerror_const("Unknown error occurred opening dead PCAP handle");
+			return -1;
+		}
 		pcap->dumper = pcap_dump_fopen(pcap->handle, stdout);
 		if (!pcap->dumper) {
 			fr_strerror_printf("%s", pcap_geterr(pcap->handle));
-
+			pcap_close(pcap->handle);
+			pcap->handle = NULL;
 			return -1;
 		}
 		break;
