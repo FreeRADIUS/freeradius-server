@@ -240,7 +240,7 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 	/*
 	 *	Ensure that there's enough room in the buffer for all of the data that we need to write.
 	 */
-	needed = ROUND_UP(total, FTP_BODY_ALLOC_CHUNK);
+	needed = ROUND_UP(total + 1, FTP_BODY_ALLOC_CHUNK);
 	if (needed > ctx->alloc) {
 		MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed));
 		ctx->alloc = needed;
