@@ -231,7 +231,7 @@ parse_reply:
 		fr_redis_reply_free(&reply);	/* There could be a response we need to free */
 		fr_redis_reply_free(reply_out);
 		*reply_out = reply;
-		*status_out = status;
+		*status_out = REDIS_RCODE_ERROR;
 
 		return -2;
 	}
