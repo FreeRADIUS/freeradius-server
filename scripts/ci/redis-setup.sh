@@ -1,5 +1,14 @@
 #!/bin/bash -e
 
+while getopts 'a:' opt; do
+    case "$opt" in
+    a)
+	PASSWORD="$OPTARG"
+	;;
+    esac
+done
+shift $((OPTIND - 1))
+
 TMP_REDIS_DIR='/tmp/redis'
 REDIS_MAJOR_VERSION="$(redis-server -v | grep -o 'v=[0-9.]*' | cut -d= -f2 | cut -d. -f1)"
 
@@ -29,6 +38,10 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
     if [ "${REDIS_MAJOR_VERSION}" -ge 7 ]; then
         echo "ADDITIONAL_OPTIONS=\"--enable-debug-command local\"" > "${TMP_REDIS_DIR}/config.sh"
     fi
+    if [ "x$PASSWORD" != "x" ]; then
+	echo "AUTH_OPTIONS=\"--masterauth ${PASSWORD} --requirepass ${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
+	echo "export REDISCLI_AUTH=\"${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
+    fi
 fi
 
 # Fix hardcoded paths in the test script
@@ -41,6 +54,8 @@ if [ "${REDIS_MAJOR_VERSION}" -lt 7 ]; then
     # Fix cleanup to match option change above
     sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
 fi
+
+sed -ie "s#\${ADDITIONAL_OPTIONS}#\${ADDITIONAL_OPTIONS} \${AUTH_OPTIONS}#" "${TMP_REDIS_DIR}/create-cluster"
 
 # Ensure all nodes are accessible before creating cluster
 if [ "$1" == "create" ]; then
