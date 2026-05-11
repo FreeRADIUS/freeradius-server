@@ -559,6 +559,10 @@ again:
 			}
 			buff_len = actual_len;	/* The length we get passed back includes the \0 */
 			buff = talloc_array(ctx, char, buff_len);
+			if (!buff) {
+				fr_strerror_const("Out of memory");
+				return -1;
+			}
 			goto again;
 		}
 
