@@ -2085,13 +2085,12 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t));
+	enumv = talloc_zero(da, fr_dict_enum_value_t);
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
-	talloc_set_type(enumv, fr_dict_enum_value_t);
 
 	enumv->name = talloc_strdup(enumv, name);
 	enumv->name_len = len;
