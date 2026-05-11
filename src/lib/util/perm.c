@@ -42,7 +42,7 @@ char const *fr_perm_mode_to_str(char out[static 10], mode_t mode)
 	strcpy(&out[6], rwx[(mode & 7)]);
 	if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
 	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
-	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
+	if (mode & S_ISVTX) out[8] = (mode & 0001) ? 't' : 'T';
 	out[9] = '\0';
 
 	return out;
@@ -286,7 +286,7 @@ int fr_perm_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
 #else
-		sc_len = 1024;
+		len = 1024;
 #endif
 	}
 
@@ -349,7 +349,7 @@ int fr_perm_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
 #else
-		sc_len = 1024;
+		len = 1024;
 #endif
 	}
 
