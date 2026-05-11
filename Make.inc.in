@@ -64,7 +64,7 @@ INCLUDE		= -I. -Isrc \
 		  -include src/freeradius-devel/build.h \
 		  -include src/freeradius-devel/features.h \
 		  -include src/freeradius-devel/radpaths.h
-CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
+CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@ $(TALLOC_CFLAGS)
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
 
