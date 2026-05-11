@@ -409,6 +409,8 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 			(void) li->app_io->close(li);
 			thread->listen = NULL;
 			li = NULL;
+		} else {
+			close(li->fd);
 		}
 
 		talloc_free(li);
@@ -612,7 +614,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	 */
 	if (fr_timer_in(thread, thread->el->tl, &thread->ev,
 			fr_time_delta_from_sec(1), false, work_retry_timer, thread) < 0) {
-		ERROR("Failed inserting poll timer for %s", thread->filename_work);
+		ERROR("Failed inserting poll timer for %s", inst->filename_work);
 	}
 }
 
