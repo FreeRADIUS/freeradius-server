@@ -146,10 +146,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
 
 	inst->mi = UNCONST(module_instance_t *, mctx->mi);
-	if (!inst->mi) {
-		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
-		return -1;
-	}
 
 	/*
 	 *	Allocate this outside of the module instance data,
@@ -163,6 +159,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->mutable->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
 	if (inst->mutable->rcode == RLM_MODULE_NOT_SET) {
 		cf_log_err(mctx->mi->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		talloc_free(inst->mutable);
 		return -1;
 	}
 
