@@ -1,14 +1,22 @@
 #!/bin/bash -e
 
 PORT=30000
+NODES=6
+REPLICAS=1
 
-while getopts 'a:p:' opt; do
+while getopts 'a:p:n:r:' opt; do
     case "$opt" in
     a)
 	PASSWORD="$OPTARG"
 	;;
     p)
         PORT="$OPTARG"
+        ;;
+    n)
+        NODES="$OPTARG"
+        ;;
+    r)
+        REPLICAS="$OPTARG"
         ;;
     esac
 done
@@ -48,6 +56,8 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
 	echo "export REDISCLI_AUTH=\"${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
     fi
     echo "PORT=$PORT" >> "${TMP_REDIS_DIR}/config.sh"
+    echo "NODES=$NODES" >> "${TMP_REDIS_DIR}/config.sh"
+    echo "REPLICAS=$REPLICAS" >> "${TMP_REDIS_DIR}/config.sh"
 fi
 
 # Fix hardcoded paths in the test script
@@ -67,7 +77,7 @@ sed -ie "s#\${ADDITIONAL_OPTIONS}#\${ADDITIONAL_OPTIONS} \${AUTH_OPTIONS}#" "${T
 if [ "$1" == "create" ]; then
         waits=0
         STARTPORT=$((PORT+1))
-        ENDPORT=$((STARTPORT+6))
+        ENDPORT=$((STARTPORT+NODES))
         for node in {$STARTPORT..$ENDPORT}; do
                 while [ $waits -lt 10 ]; do
                         redis-cli -p $node quit > /dev/null && break
