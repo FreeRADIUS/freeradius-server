@@ -1314,9 +1314,9 @@ static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED 
 	 *	"authenticate" sections use a different rules with defaults set for username and password
 	 */
 	if (strcmp(cec->asked->name1, "authenticate") == 0) {
-		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_authenticate_env);
+		if (call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_authenticate_env) < 0) return -1;
 	} else {
-		call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_common_env);
+		if (call_env_parse(ctx, out, cec->mi->name, t_rules, sect, cec, rest_section_common_env) < 0) return -1;
 	}
 	parsed = call_env_parsed_add(ctx, out,
 				     &(call_env_parser_t) {
