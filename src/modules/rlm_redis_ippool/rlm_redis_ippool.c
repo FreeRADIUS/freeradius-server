@@ -1340,6 +1340,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_release_cmd, sizeof(lua_release_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
 		fr_base16_encode(&FR_SBUFF_OUT(lua_release_digest, sizeof(lua_release_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)));
+		done_hash = true;
 	}
 
 	return 0;
