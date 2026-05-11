@@ -492,6 +492,7 @@ static XS(XS_pairlist_FIRSTKEY)
 	if (!pair_data->vp) XSRETURN_EMPTY;
 
 	vp = fr_pair_dcursor_init(&pair_data->cursor, &pair_data->vp->vp_group);
+	if (!vp) XSRETURN_EMPTY;
 	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
 	XSRETURN(1);
 }
