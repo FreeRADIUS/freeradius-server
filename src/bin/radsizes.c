@@ -22,6 +22,7 @@ int main(UNUSED int argc, UNUSED char **argv)
 
 	SIZEOF(fr_ipaddr_t);
 
+	SIZEOF(fr_packet_t);
 	SIZEOF(fr_pair_t);
 	SIZEOF(fr_pair_list_t);
 	SIZEOF(FR_TLIST_ENTRY(fr_pair_order_list));
