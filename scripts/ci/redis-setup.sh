@@ -1,10 +1,15 @@
 #!/bin/bash -e
 
-while getopts 'a:' opt; do
+PORT=30000
+
+while getopts 'a:p:' opt; do
     case "$opt" in
     a)
 	PASSWORD="$OPTARG"
 	;;
+    p)
+        PORT="$OPTARG"
+        ;;
     esac
 done
 shift $((OPTIND - 1))
@@ -42,6 +47,7 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
 	echo "AUTH_OPTIONS=\"--masterauth ${PASSWORD} --requirepass ${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
 	echo "export REDISCLI_AUTH=\"${PASSWORD}\"" >> "${TMP_REDIS_DIR}/config.sh"
     fi
+    echo "PORT=$PORT" >> "${TMP_REDIS_DIR}/config.sh"
 fi
 
 # Fix hardcoded paths in the test script
@@ -60,7 +66,9 @@ sed -ie "s#\${ADDITIONAL_OPTIONS}#\${ADDITIONAL_OPTIONS} \${AUTH_OPTIONS}#" "${T
 # Ensure all nodes are accessible before creating cluster
 if [ "$1" == "create" ]; then
         waits=0
-        for node in 30001 30002 30003 30004 30005 30006; do
+        STARTPORT=$((PORT+1))
+        ENDPORT=$((STARTPORT+6))
+        for node in {$STARTPORT..$ENDPORT}; do
                 while [ $waits -lt 10 ]; do
                         redis-cli -p $node quit > /dev/null && break
                         sleep 0.5
