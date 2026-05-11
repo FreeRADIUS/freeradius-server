@@ -539,8 +539,8 @@ static int bfd_verify_sequence(bfd_session_t *session, uint32_t sequence_no,
 		}
 
 	} else {	/* start is ~2^32, stop is ~10 */
-		if ((sequence_no > start) &&
-		    (sequence_no < stop)) {
+		if ((sequence_no < start) &&
+		    (sequence_no > stop)) {
 			return 0;
 		}
 	}

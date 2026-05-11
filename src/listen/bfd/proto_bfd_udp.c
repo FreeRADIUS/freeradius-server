@@ -269,6 +269,7 @@ static int mod_open(fr_listen_t *li)
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
 			cf_log_err(li->cs, "Failed to set socket 'reuseport' - %s", fr_syserror(errno));
+			close(sockfd);
 			return -1;
 		}
 	}

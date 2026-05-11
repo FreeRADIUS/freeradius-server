@@ -198,10 +198,9 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	/*
 	 *	Initialize the reply.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_bfd_packet);
-	if (!vp) return -1;
-
-	reply = fr_pair_copy(request->reply_ctx, vp);
+	MEM(vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_bfd_packet));
+	
+	MEM(reply = fr_pair_copy(request->reply_ctx, vp));
 	fr_pair_append(&request->reply_pairs, reply);
 
 	my = fr_pair_find_by_da_nested(&reply->vp_group, NULL, attr_my_discriminator);
