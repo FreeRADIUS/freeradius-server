@@ -93,6 +93,7 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 {
 	teap_tunnel_t *t = tls_session->opaque;
 
+	t->imck_emsk_available = emsklen > 0;
 	t->imckc++;
 	RDEBUG2("Phase 2: Calculating ICMK for round (j = %d)", t->imckc);
 
@@ -264,9 +265,7 @@ static void eap_teap_append_eap_identity_request(REQUEST *request, tls_session_t
  * so just do what hostapd does...which the IETF probably agree with anyway:
  * https://mailarchive.ietf.org/arch/msg/emu/mXzpSGEn86Zx_fa4f1uULYMhMoM/
  */
-static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_session,
-					   uint8_t *msk, size_t msklen,
-					   uint8_t *emsk, size_t emsklen)
+static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_session)
 {
 	teap_tunnel_t			*t = tls_session->opaque;
 	uint8_t				mac_msk[EVP_MAX_MD_SIZE], mac_emsk[EVP_MAX_MD_SIZE];
@@ -275,10 +274,6 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	size_t				olen, buflen;
 	struct crypto_binding_buffer	*cbb;
 	uint8_t				*outer_tlvs;
-
-	eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
-
-	t->imck_emsk_available = emsklen > 0;
 
 	olen = tls_session->outer_tlvs_octets_server ? talloc_array_length(tls_session->outer_tlvs_octets_server) : 0;
 	olen += tls_session->outer_tlvs_octets_peer ? talloc_array_length(tls_session->outer_tlvs_octets_peer) : 0;
@@ -294,9 +289,9 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	cbb->binding.version = EAP_TEAP_VERSION;
 	cbb->binding.received_version = t->received_version;
 
-	cbb->binding.subtype = ((emsklen ? EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_BOTH : EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) << 4) | EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST;
+	cbb->binding.subtype = ((t->imck_emsk_available ? EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_BOTH : EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) << 4) | EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST;
 
-	RDEBUG("Phase 2: Sending Crypto-Binding Flags=%d", emsklen ? EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_BOTH : EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK);
+	RDEBUG("Phase 2: Sending Crypto-Binding Flags=%d", t->imck_emsk_available ? EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_BOTH : EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK);
 
 	RAND_bytes(cbb->binding.nonce, sizeof(cbb->binding.nonce));
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
@@ -1053,8 +1048,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_SESSION_ID, 0, TAG_ANY);
 		}
 
+		// RFC7170 section 5.2 and 5.4, only on a successful inner EAP method do we increment
+		// NOTE: hostapd for now incorrectly derives IMCK when an EAP method is skipped so this
+		//       allows interop with Windows but not with wpa_supplicant
+		if ((msk1 && msk2) || emsklen) eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
+
+		eap_teap_append_crypto_binding(request, tls_session);
+
 		eap_teap_append_result(request, tls_session, reply->code);
-		eap_teap_append_crypto_binding(request, tls_session, msk, msklen, emsk, emsklen);
 
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
@@ -1108,8 +1109,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 		RDEBUG("Phase 2: All inner authentications have succeeded");
 
-		t->result_final = true;
 		t->sent_basic_password = false;
+
+		t->result_final = true;
 		eap_teap_append_result(request, tls_session, reply->code);
 
 		tls_session->authentication_success = true;
