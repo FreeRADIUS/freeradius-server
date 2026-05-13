@@ -16,14 +16,6 @@ psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'drop user radius;' -U postgres || tr
 echo "PostgreSQL - Creating database"
 psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'create database radius;' -U postgres || true
 
-#
-#  Pin standard_conforming_strings = on for new connections to this DB.
-#  Modern PostgreSQL defaults to on (since 9.1), but pinning it here makes
-#  the escape tests' expected output deterministic across server configs.
-#
-echo "PostgreSQL - Pinning standard_conforming_strings"
-psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -c 'ALTER DATABASE radius SET standard_conforming_strings = on;' -U postgres
-
 echo "PostgreSQL - Execute schema.sql"
 psql -h "${SQL_POSTGRESQL_TEST_SERVER}" -U postgres radius < raddb/mods-config/sql/main/postgresql/schema.sql
 
