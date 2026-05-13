@@ -29,7 +29,6 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
-#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/server/module_rlm.h>
 
 #include "attrs.h"
