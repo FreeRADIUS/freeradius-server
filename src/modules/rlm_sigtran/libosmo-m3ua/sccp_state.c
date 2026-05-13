@@ -345,7 +345,7 @@ static void handle_rlsd(struct ss7_application *app, struct sccp_connection_rele
 				 &rlsd->source_local_reference);
 		}
 	} else {
-		unsigned int sls = -1;
+		int sls = -1;
 		con = find_con_by_src_dest_ref(app, &rlsd->source_local_reference,
 					       &rlsd->destination_local_reference);
 		if (con) {
@@ -575,7 +575,7 @@ void msc_dispatch_sccp(struct msc_connection *msc, struct msgb *msg)
 		} else if (rc == BSS_FILTER_CLEAR_COMPL) {
 			LOGP(DMSC, LOGL_ERROR, "Clear Complete from the network.\n");
 		} else if (set->sccp_up) {
-			unsigned int sls;
+			int sls;
 
 			update_con_state(msc->app, rc, &result, msg, 1, 0);
 			sls = sls_for_src_ref(msc->app, result.destination_local_reference);

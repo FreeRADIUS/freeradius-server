@@ -67,7 +67,7 @@ struct active_sccp_con *find_con_by_dest_ref(struct ss7_application *, struct sc
 struct active_sccp_con *find_con_by_src_ref(struct ss7_application *,struct sccp_source_reference *src_ref);
 struct active_sccp_con *find_con_by_src_dest_ref(struct ss7_application *, struct sccp_source_reference *src_ref,
 						 struct sccp_source_reference *dst_ref);
-unsigned int sls_for_src_ref(struct ss7_application *, struct sccp_source_reference *ref);
+int sls_for_src_ref(struct ss7_application *, struct sccp_source_reference *ref);
 
 void app_resources_released(struct ss7_application *ss7);
 void app_clear_connections(struct ss7_application *ss7);
