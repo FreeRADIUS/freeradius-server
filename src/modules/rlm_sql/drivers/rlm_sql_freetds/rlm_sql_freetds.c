@@ -47,7 +47,7 @@ typedef struct {
 	char		**results;	//!< Result strings from statement execution.
 	CS_SMALLINT	*ind;		//!< Indicators of data length / NULL.
 	char		*error;		//!< The last error string created by one of the call backs.
-	bool		established;	//!< Set to false once the connection has been properly established.
+	bool		established;	//!< Set to true once the connection has been properly established.
 	CS_INT		rows_affected;	//!< Rows affected by last INSERT / UPDATE / DELETE.
 } rlm_sql_freetds_conn_t;
 
@@ -802,6 +802,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	snprintf(database, sizeof(database), "USE %s;", config->sql_db);
 	if (sql_query(NULL, c, database) != RLM_SQL_OK) goto error;
 
+	c->established = true;
 	*h = c;
 	return CONNECTION_STATE_CONNECTED;
 }
