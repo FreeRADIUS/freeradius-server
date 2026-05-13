@@ -153,7 +153,7 @@ int mtp_link_slta(struct mtp_link *link, uint16_t l3_len,
 	}
 
 	if (l3_len != 16) {
-		LOGP(DINP, LOGL_ERROR, "Wrongly sized SLTA: %u\n", mng->length);
+		LOGP(DINP, LOGL_ERROR, "Wrongly sized SLTA: %u\n", l3_len);
 		return -1;
 	}
 
