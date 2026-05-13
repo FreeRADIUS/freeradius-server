@@ -1,23 +1,24 @@
 = PAM
 
-PAM support was done by Jeph Blaize. Miguel a.l. Paraz
-mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS'
-parent, Cistron-Radius. Chris Dent
-mailto:cdent@kiva.net[cdent@kiva.net] added the Pam-Auth
-attribute.
+FreeRADIUS integrates with PAM (Pluggable Authentication Modules) to manage user authentication. PAM is a secure method for user authentication and is widely used on Linux systems.
 
-== Usage
+== Edit `users` file
 
-Use Auth-Type = Pam in the users file. You cannot use
-`User-Password = PAM` as in other radius servers. Sorry.
+Start by editing the users file with the following configuration items.
+
+Use `Auth-Type = PAM` in the users file. You cannot use
+`User-Password = PAM` as in other radius servers.
 
 You can also use `Pam-Auth = somestring` to specify an entry in
-/etc/pam.d. The default is `radius`.
+/etc/pam.d directory. The default entry is `radius`, but you can change this to suit your needs.
 
-Compile and install freeradius with pam support (./configure -help will
-tell you how)
+== Compile FreeRADIUS with PAM
 
-Within your radiusd.conf file, in the `modules' section, make sure that
+To compile and install FreeRADIUS with PAM support, you need to run the `./configure` command with the `--with-pam` flag. For more guidance enter the command `./configure -help` to review more flag options and details.
+
+== Edit `radisd.conf`
+
+Within your `radiusd.conf` file, in the `modules' section, make sure that
 the pam section is enabled:
 
 ```
@@ -42,8 +43,7 @@ process Access-Request { # Uncomment this if you want to use PAM
 ```
 
 In your /etc/pam.d/ directory create a file called radiusd with the
-following contents (or whatever you want for your pam configuration,
-this seems to work for me):
+following configuration items (or whatever you need for your pam configuration):
 
 ```
 #%PAM-1.0 auth required /lib/security/pam_unix_auth.so shadow md5 nullok
@@ -70,23 +70,17 @@ And in the radiusd.conf file:
 ```
 # On systems with shadow passwords, you might have to set `group = shadow`
 # for the server to be able to read the shadow password file.
-# Change below to suit your setup. user = radius group = shadow
+# Change below to suit your setup.
+
+`user = radius group = shadow`
+
 ```
+[NOTE]
+====
+Granting read access to the /etc/shadow file can be a security risk; use this option with caution. Generally, only root read permissions are safe.
+====
 
-Please understand that giving anything except root read permissions to
-the /etc/shadow file is something that you want to think a bit upon!!
-
-[arabic, start=2]
-. NOTES
-+
-None.
-. TODO:
-+
-Real PAM support, figure out how we can write a module that will make it
-blend in with PAM more seamlessly. With this, we can replace the
-DENY_SHELL with something more flexible such as a database.
-
-.EXAMPLE:
+== Worked Example
 
 ```
 DEFAULT Auth-Type = Pam, NAS-IP-Address = 206.97.64.5 Service-Type =
