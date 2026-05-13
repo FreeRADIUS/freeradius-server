@@ -254,13 +254,13 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx,
 
 		if (conf->gt.tt_is_set) {
 			if ((conf->gt.np_is_set && !conf->gt.es_is_set) ||
-			    (!conf->gt.np_is_set && conf->gt.np_is_set)) {
+			    (!conf->gt.np_is_set && conf->gt.es_is_set)) {
 				cf_log_err(cs, "Global title 'np' and 'es' must be "
 					      "specified together");
 				return -1;
 			}
 
-			if (conf->gt.np) {
+			if (conf->gt.np > 0x0f) {
 				cf_log_err(cs, "Global title 'np' must be between 0-15");
 				return -1;
 			}
