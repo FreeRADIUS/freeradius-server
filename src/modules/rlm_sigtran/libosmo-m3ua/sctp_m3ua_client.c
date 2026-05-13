@@ -881,7 +881,7 @@ static void m3ua_send_reg_req(struct mtp_m3ua_client_link *link, struct mtp_m3ua
 		entry = NULL;
 
 		len = 0;
-		llist_for_each(entry, &route->si) len++;
+		llist_for_each(entry, &route->opc) len++;
 
 		p = val = talloc_zero_array(regreq, uint32_t, len);
 		if (!p) {
@@ -892,7 +892,7 @@ static void m3ua_send_reg_req(struct mtp_m3ua_client_link *link, struct mtp_m3ua
 
 		llist_for_each_entry(opc_ptr, &route->opc, list) *p++ = htonl(opc_ptr->opc);
 
-		xua_msg_add_data(regreq, M3UA_TAG_ORIG_PC_LIST, 4, (uint8_t *) val);	/* Packed as an array */
+		xua_msg_add_data(regreq, M3UA_TAG_ORIG_PC_LIST, len * sizeof(uint32_t), (uint8_t *) val);	/* Packed as an array */
 		talloc_free(val);
 	}
 
