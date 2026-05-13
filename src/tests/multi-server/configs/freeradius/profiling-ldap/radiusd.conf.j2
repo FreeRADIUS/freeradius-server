@@ -34,35 +34,9 @@ server profiling-server {
 
 	namespace = radius
 
-	listen load {
-		handler = load
-		type = Access-Request
-		transport = step
-
-		step {
-
-			# Default packet config to use by proto_load module
-			filename = ${confdir}/load-generator-packets/packet.conf
-
-			# Saving proto_load statistics disabled by default, can be enabled for debugging purposes.
-			csv = ${confdir}/stats/load-generator-stats.csv
-
-			max_attributes = 64
-
-			#
-			# The load profile is configured via environment variables set
-			# in the testcase configuration files.
-			#
-			start_pps = $ENV{TEST_LOADGEN_START_PPS}
-			max_pps   = $ENV{TEST_LOADGEN_MAX_PPS}
-			duration  = $ENV{TEST_LOADGEN_DURATION}
-			step = $ENV{TEST_LOADGEN_STEP}
-			max_backlog = $ENV{TEST_LOADGEN_MAX_BACKLOG}
-			parallel = $ENV{TEST_LOADGEN_PARALLEL}
-			num_messages = $ENV{TEST_LOADGEN_NUM_MESSAGES}
-			repeat = no
-		}
-	}
+	# proto_load listen config
+	{% set packet_conf_path = '/etc/freeradius/common/packet.conf' %}
+	{% include "freeradius/common/listen/load" %}
 
 	listen authentication {
 		type = Access-Request
@@ -126,14 +100,6 @@ server profiling-server {
 
 	authenticate pap {
 		pap
-	}
-
-	send Access-Accept {
-
-	}
-
-	send Access-Reject {
-
 	}
 
 }
