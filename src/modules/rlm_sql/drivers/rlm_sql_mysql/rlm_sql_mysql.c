@@ -848,11 +848,13 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return mysql_affected_rows(conn->sock);
 }
 
-static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static int sql_escape_func(request_t *request, fr_value_box_t *vb, void *arg)
 {
-	size_t			inlen;
 	connection_t		*conn = talloc_get_type_abort(arg, connection_t);
 	rlm_sql_mysql_conn_t	*c;
+	char			*out;
+	size_t			inlen = vb->vb_length;
+	unsigned long		real_len;
 	char const		*log_prefix = conn->name;
 
 	if (!((conn->state == CONNECTION_STATE_CONNECTING) || (conn->state == CONNECTION_STATE_CONNECTED))) {
@@ -862,13 +864,19 @@ static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, cha
 
 	c = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
-	/* Check for potential buffer overflow */
-	inlen = strlen(in);
-	if ((inlen * 2 + 1) > outlen) return 0;
-	/* Prevent integer overflow */
-	if ((inlen * 2 + 1) <= inlen) return 0;
+	/* Prevent integer overflow on (inlen * 2 + 1) */
+	if (inlen > (SIZE_MAX - 1) / 2) {
+		ROPTIONAL(RERROR, ERROR, "Input too large to escape");
+		return -1;
+	}
 
-	return mysql_real_escape_string(&c->db, out, in, inlen);
+	MEM(out = talloc_array(vb, char, inlen * 2 + 1));
+	real_len = mysql_real_escape_string(&c->db, out, vb->vb_strvalue, inlen);
+
+	if ((size_t)real_len + 1 < inlen * 2 + 1) MEM(out = talloc_realloc(vb, out, char, real_len + 1));
+	fr_value_box_strdup_shallow_replace(vb, out, real_len);
+
+	return 0;
 }
 
 SQL_TRUNK_CONNECTION_ALLOC

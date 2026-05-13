@@ -322,20 +322,11 @@ static sql_fall_through_t fall_through(map_list_t *maps)
 	return  FALL_THROUGH_DEFAULT;
 }
 
-/*
- *	Yucky prototype.
- */
-static ssize_t sql_escape_func(request_t *, char *out, size_t outlen, char const *in, void *arg);
-
 /** Escape a tainted VB used as an xlat argument
  *
  */
 static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 {
-	fr_sbuff_t			sbuff;
-	fr_sbuff_uctx_talloc_t		sbuff_ctx;
-
-	ssize_t				len;
 	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
@@ -399,23 +390,14 @@ check_escape_arg:
 	}
 
 	/*
-	 *	Escaping functions work on strings - ensure the box is a string
+	 *	The escape function works with the bytes already in the box
+	 *	(using vb_length, not strlen()) so binary data containing NUL
+	 *	bytes survives the escape.  Cast non-string boxes to a string
+	 *	first - the cast preserves the underlying bytes.
 	 */
 	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) goto error;
 
-	/*
-	 *	Maximum escaped length is 3 * original - if every character needs escaping
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->vb_length * 3, vb->vb_length * 3)) {
-		fr_strerror_printf_push("Failed to allocate buffer for escaped sql argument");
-		return -1;
-	}
-
-	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, arg);
-	if (len < 0) goto error;
-
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
+	if (inst->sql_escape_func(request, vb, arg) < 0) goto error;
 
 	/*
 	 *	Different databases have slightly different ideas as
@@ -932,29 +914,37 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 						query_ctx);
 }
 
-/** xlat escape function for drivers which do not provide their own
+/** Default escape function for drivers which do not provide their own
  *
+ * Multi-byte UTF-8 characters pass through unchanged, `\n` / `\r` / `\t` become
+ * their backslash-escaped equivalents, and anything else outside
+ * `allowed_chars` is replaced with `=XX` (mime-style hex).
  */
-static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static int sql_escape_func(UNUSED request_t *request, fr_value_box_t *vb, void *arg)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(arg, rlm_sql_t);
+	char const		*in = vb->vb_strvalue;
+	char const		*end = in + vb->vb_length;
+	char			*out, *p;
+	size_t			outlen = vb->vb_length * 3 + 1;
 	size_t			len = 0;
 
-	while (*in) {
+	/*
+	 *	Worst case: every input byte expands to `=XX` (3 chars), plus a NUL.
+	 */
+	MEM(p = out = talloc_array(vb, char, outlen));
+
+	while (in < end) {
 		size_t utf8_len;
 
 		/*
 		 *	Allow all multi-byte UTF8 characters.
 		 */
-		utf8_len = fr_utf8_char((uint8_t const *) in, -1);
+		utf8_len = fr_utf8_char((uint8_t const *) in, end - in);
 		if (utf8_len > 1) {
-			if (outlen <= utf8_len) break;
-
-			memcpy(out, in, utf8_len);
+			memcpy(p, in, utf8_len);
 			in += utf8_len;
-			out += utf8_len;
-
-			outlen -= utf8_len;
+			p += utf8_len;
 			len += utf8_len;
 			continue;
 		}
@@ -966,69 +956,55 @@ static ssize_t sql_escape_func(UNUSED request_t *request, char *out, size_t outl
 		 */
 		switch (*in) {
 		case '\n':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 'n';
+			p[0] = '\\';
+			p[1] = 'n';
 			goto next;
 
 		case '\r':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 'r';
+			p[0] = '\\';
+			p[1] = 'r';
 			goto next;
 
 		case '\t':
-			if (outlen <= 2) break;
-			out[0] = '\\';
-			out[1] = 't';
+			p[0] = '\\';
+			p[1] = 't';
 
 		next:
 			in++;
-			out += 2;
-			outlen -= 2;
+			p += 2;
 			len += 2;
 			continue;
 		}
 
 		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
+		 *	Non-printable characters (including embedded NULs) get
+		 *	replaced with their mime-encoded equivalents.
 		 */
-		if ((*in < 32) ||
+		if (((unsigned char)*in < 32) ||
 		    strchr(inst->config.allowed_chars, *in) == NULL) {
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (outlen <= 3) {
-				break;
-			}
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			snprintf(p, 4, "=%02X", (unsigned char) in[0]);
 			in++;
-			out += 3;
-			outlen -= 3;
+			p += 3;
 			len += 3;
 			continue;
 		}
 
 		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
 		 *	Allowed character.
 		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
+		*p++ = *in++;
 		len++;
 	}
-	*out = '\0';
-	return len;
+	*p = '\0';
+
+	/*
+	 *	Shrink the buffer to fit the actual escaped length, then
+	 *	hand it to the box.
+	 */
+	if (len + 1 < outlen) MEM(out = talloc_realloc(vb, out, char, len + 1));
+	fr_value_box_strdup_shallow_replace(vb, out, len);
+
+	return 0;
 }
 
 /*

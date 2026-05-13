@@ -217,7 +217,7 @@ typedef struct {
 	sql_rcode_t	(*sql_finish_query)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 	sql_rcode_t	(*sql_finish_select_query)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 
-	xlat_escape_legacy_t	sql_escape_func;
+	xlat_escape_func_t	sql_escape_func;
 	void		*(*sql_escape_arg_alloc)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 	void		(*sql_escape_arg_free)(void *uctx);
 
@@ -234,7 +234,7 @@ struct sql_inst {
 	module_instance_t		*driver_submodule;	//!< Driver's submodule.
 	rlm_sql_driver_t const		*driver;		//!< Driver's exported interface.
 
-	xlat_escape_legacy_t		sql_escape_func;
+	xlat_escape_func_t		sql_escape_func;
 	fr_value_box_escape_t		box_escape;
 	void				*sql_escape_arg;	//!< Instance specific argument to be passed to escape function.
 
