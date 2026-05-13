@@ -1,10 +1,10 @@
 #
 #  PostgreSQL escape function (via PQescapeStringConn).
 #
-#  With standard_conforming_strings = on (the default since 9.1)
-#  PQescapeStringConn only doubles single quotes.  Backslashes and
-#  other byte values pass through unchanged - the SQL string literal
-#  grammar treats them as literal characters.
+#  Assumes standard_conforming_strings = on on the test server.  Under that
+#  mode PQescapeStringConn only doubles single quotes - backslashes and
+#  other byte values pass through unchanged.  The CI postgres setup script
+#  pins this on the test database.
 #
 #  String literals in unlang are marked "safe for any escape" so we wrap
 #  each input in %taint(...) to force the escape to actually run.
@@ -29,8 +29,7 @@ if (%sql.escape(%taint("''")) != "''''") {
 }
 
 #
-#  Backslash passes through (assumes standard_conforming_strings = on
-#  on the test server, which is the default in modern PostgreSQL).
+#  Backslash passes through unchanged.
 #
 if (%sql.escape(%taint("back\\slash")) != "back\\slash") {
 	test_fail
