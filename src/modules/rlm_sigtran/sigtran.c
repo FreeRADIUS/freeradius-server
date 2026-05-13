@@ -181,7 +181,7 @@ int sigtran_sccp_global_title(TALLOC_CTX *ctx, uint8_t **out, int gt_ind, char c
 	 *	Nature of address indicator bit 8
 	 *	gets set high on odd number of digits.
 	 */
-	if (len & 0x01) nai |= 0xf0;
+	if (len & 0x01) nai |= 0x80;
 
 	switch (gt_ind) {
 	default:
@@ -200,13 +200,13 @@ int sigtran_sccp_global_title(TALLOC_CTX *ctx, uint8_t **out, int gt_ind, char c
 		break;
 
 	case SCCP_TITLE_IND_TRANS_NUM_ENC:
-		*out = p = talloc_array(ctx, uint8_t, (outlen + 3));
+		*out = p = talloc_array(ctx, uint8_t, (outlen + 2));
 		(*p++) = tt;
 		(*p++) = ((np & 0x0f) << 4) | (es & 0x0f);
 		break;
 
 	case SCCP_TITLE_IND_TRANS_NUM_ENC_NATURE:
-		*out = p = talloc_array(ctx, uint8_t, (outlen + 4));
+		*out = p = talloc_array(ctx, uint8_t, (outlen + 3));
 		(*p++) = tt;
 		(*p++) = ((np & 0x0f) << 4) | (es & 0x0f);
 		(*p++) = nai;
