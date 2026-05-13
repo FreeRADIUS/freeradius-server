@@ -131,7 +131,7 @@ static fr_pair_t *digest_find_vp(request_t *request, fr_pair_list_t *list, fr_di
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	size_t a1_len, a2_len, kd_len;
+	size_t a1_len = 0, a2_len = 0, kd_len = 0;
 	uint8_t a1[(FR_MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
 	uint8_t a2[(FR_MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(FR_MAX_STRING_LEN + 1) * 5];
