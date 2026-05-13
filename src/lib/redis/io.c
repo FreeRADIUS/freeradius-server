@@ -365,7 +365,7 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 	 *      machine, to let it handle
 	 *	reconnecting.
 	 */
-	ret = redisAsyncSetConnectCallback(h->ac, _redis_connected);
+	ret = redisAsyncSetConnectCallbackNC(h->ac, _redis_connected);
 	if (ret != REDIS_OK) {
 		ERROR("Failed setting connected callback: Error %i", ret);
 		goto error;
