@@ -2328,7 +2328,8 @@ static void tcp_socket_timer(void *ctx)
 
 		if (sock->ssn->connecting) {
 			listener->print(listener, buffer, sizeof(buffer));
-			DEBUG("Failed to connect after %u seconds to home server %s", (unsigned int) end.tv_sec, buffer);
+			DEBUG("Failed to connect after %u seconds to home server %s",
+			      (unsigned int) (end.tv_sec - sock->opened), buffer);
 			goto do_close;
 		}
 
