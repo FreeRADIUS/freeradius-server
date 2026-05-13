@@ -253,7 +253,7 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 		return NULL;
 	}
 
-	if (message_size <= sizeof(fr_message_t)) {
+	if (message_size < sizeof(fr_message_t)) {
 		fr_strerror_const("Message size is too small");
 		return NULL;
 	}
