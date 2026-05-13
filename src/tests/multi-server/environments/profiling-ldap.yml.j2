@@ -31,10 +31,6 @@ services:
     - ${DATA_PATH}/freeradius/profiling-ldap/radiusd.conf:/etc/freeradius/radiusd.conf
     # files module configuration
     - ${DATA_PATH}/freeradius/profiling-ldap/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
-    # proto_load packet configuration and statistics output
-    - ${DATA_PATH}/freeradius/profiling-ldap/proto_load_config.env:/etc/freeradius/proto_load_config.env
-    - ${DATA_PATH}/freeradius/profiling-ldap/load-generator-packets/:/etc/freeradius/load-generator-packets/
-    - ${DATA_PATH}/freeradius/profiling-ldap/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
     # Profiling scripts
     - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
     # Profiling results directory
