@@ -129,7 +129,7 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
 	case FR_SUBTYPE_VALUE_SIM_START:
-		if (RDEBUG_ENABLED2) break;
+		if (!RDEBUG_ENABLED2) break;
 
 		/*
 		 *	Figure out if the state machine is
