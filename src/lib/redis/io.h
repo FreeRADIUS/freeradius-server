@@ -43,6 +43,7 @@ typedef struct {
 	uint16_t		port;
 	uint32_t		database;	//!< number on Redis server.
 
+	char const		*username;	//!< to authenticate to Redis.
 	char const		*password;	//!< to authenticate to Redis.
 	char const		*log_prefix;
 } fr_redis_io_conf_t;
