@@ -39,7 +39,10 @@ static void send_reset(struct ss7_application *app, int endp, int range)
 			"RSIP 2 %s/%d@127.0.0.1 MGCP 1.0\r\n"
 			"R: %d\n", app->trunk_name, endp, range);
 	buf[sizeof(buf) - 1] = '\0';
-	abort();
+
+	LOGP(DISUP, LOGL_NOTICE,
+         "MGCP reset not implemented: app %s endp %d range %d\n",
+         app->trunk_name, endp, range);
 /*
 	mgcp_forward(&app->bsc->mgcp_agent,
 			(const uint8_t *) buf, strlen(buf));
