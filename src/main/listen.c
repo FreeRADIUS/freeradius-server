@@ -3808,6 +3808,11 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			goto error;
 		}
 
+		/*
+		 *	MTU limits don't apply to RadSec - just use 32k so there's plenty of headroom
+		 */
+		sock->ssn->mtu = 1 << 15;
+
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_HOME, sock->home);
 
 #ifdef WITH_RADIUSV11
