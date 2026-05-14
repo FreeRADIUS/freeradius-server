@@ -61,6 +61,7 @@ struct fr_redis_cluster_thread_s {
 	fr_redis_ct_key_slot_t		key_slot[KEY_SLOTS];
 
 	fr_redis_ct_state_t		state;		//!< State of the cluster.
+	fr_dlist_head_t			pending;	//!< Commands awaiting cluster map.
 };
 
 struct fr_redis_ct_node_s {
@@ -76,6 +77,21 @@ struct fr_redis_ct_node_s {
 	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this node belongs to
 	fr_redis_io_conf_t		ioconf;		//!< Connection config for this node.
 	fr_redis_trunk_t		*trunk;		//!< Trunk connection to this node.
+};
+
+/** Structure for holding the state of an async redis command set.
+ *
+ */
+struct fr_redis_async_cmd_s {
+	request_t			*request;	//!< Request this command set relates to.
+	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this command set is running on.
+	fr_redis_command_set_t		*cmds;		//!< Command set to run.
+	uint8_t const			*key;		//!< Key used to identify key slot.
+	size_t				key_len;	//!< Length of key.
+	fr_redis_ct_key_slot_t const	*key_slot;	//!< Key slot identified from the command key.
+	bool				read_only;	//!< Should this command be run read only.
+	uint8_t				replica_no;	//!< Current replica number being used.
+	fr_dlist_t			entry;		//!< Entry in the list of commands waiting for a cluster remap.
 };
 
 /** Allocate per-thread, per-cluster instance

@@ -36,6 +36,7 @@ RCSIDH(redis_cluster_async_h, "$Id$")
 
 typedef struct fr_redis_ct_key_slot_s fr_redis_ct_key_slot_t;
 typedef struct fr_redis_ct_node_s fr_redis_ct_node_t;
+typedef struct fr_redis_async_cmd_s fr_redis_async_cmd_t;
 
 fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 							       trunk_conf_t const *tconf);
