@@ -17,15 +17,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Update CA Certificates
-      shell: bash
-      run: /usr/sbin/update-ca-certificates
-
-    - name: Install docker CLI and extras
+    - name: Install docker CLI, ca-certificates, and extras
       shell: bash
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends docker.io docker-buildx ${{ inputs.packages }}
+        apt-get install -y --no-install-recommends ca-certificates docker.io docker-buildx ${{ inputs.packages }}
+
+    - name: Refresh CA trust store
+      shell: bash
+      run: /usr/sbin/update-ca-certificates
 
     - name: Wait for Docker daemon
       shell: bash
