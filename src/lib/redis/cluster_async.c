@@ -100,19 +100,49 @@ struct fr_redis_async_cmd_s {
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_conf_t const *tconf)
+fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf)
 {
-	fr_redis_cluster_thread_t *cluster_thread;
-	trunk_conf_t *our_tconf;
+	fr_redis_cluster_thread_t	*rtcluster;
+	trunk_conf_t			*our_tconf;
+	uint8_t				i;
 
-	MEM(cluster_thread = talloc_zero(ctx, fr_redis_cluster_thread_t));
-	MEM(our_tconf = talloc_memdup(cluster_thread, tconf, sizeof(*tconf)));
+	MEM(rtcluster = talloc_zero(ctx, fr_redis_cluster_thread_t));
+	MEM(our_tconf = talloc_memdup(rtcluster, &conf->trunk_conf, sizeof(conf->trunk_conf)));
 	our_tconf->always_writable = true;
 
-	cluster_thread->el = el;
-	cluster_thread->tconf = our_tconf;
+	rtcluster->el = el;
+	rtcluster->tconf = our_tconf;
+	rtcluster->conf = conf;
+	fr_dlist_talloc_init(&rtcluster->pending, fr_redis_async_cmd_t, entry);
 
-	return cluster_thread;
+	if (conf->max_nodes == UINT8_MAX) {
+		ERROR("%s - Maximum number of connected nodes allowed is %i", conf->log_prefix, UINT8_MAX - 1);
+		talloc_free(rtcluster);
+		return NULL;
+	}
+
+	if (conf->max_nodes == 0) {
+		ERROR("%s - Minimum number of nodes allowed is 1", conf->log_prefix);
+		talloc_free(rtcluster);
+		return NULL;
+	}
+
+	MEM(rtcluster->node = talloc_zero_array(rtcluster, fr_redis_ct_node_t, conf->max_nodes + 1));
+	MEM(rtcluster->free_nodes = fr_fifo_create(rtcluster, conf->max_nodes, NULL));
+
+	/*
+	 *	Node id 0 is reserved, so we can detect misconfigured
+	 *	clusters.
+	 */
+	for (i = 1; i <= conf->max_nodes; i++) {
+		rtcluster->node[i].id = i;
+		rtcluster->node[i].rtcluster = rtcluster;
+
+		/* Push them all into the queue */
+		fr_fifo_push(rtcluster->free_nodes, &rtcluster->node[i]);
+	}
+
+	return rtcluster;
 }
 
 fr_event_list_t *fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread)
