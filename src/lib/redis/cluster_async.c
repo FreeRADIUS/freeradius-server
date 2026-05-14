@@ -27,6 +27,7 @@
 
 #include <freeradius-devel/util/debug.h>
 
+#include "attrs.h"
 #include "cluster_async.h"
 #include "crc16.h"
 
@@ -93,6 +94,22 @@ struct fr_redis_async_cmd_s {
 	uint8_t				replica_no;	//!< Current replica number being used.
 	fr_dlist_t			entry;		//!< Entry in the list of commands waiting for a cluster remap.
 };
+
+#define CONFIGURE_NODE(_node, _addr) \
+do {  \
+char buff [FR_IPADDR_STRLEN]; \
+	_node->addr = _addr; \
+	_node->ioconf = (fr_redis_io_conf_t) { \
+		.port = _node->addr.inet.dst_port, \
+		.username = rtcluster->conf->username, \
+		.password = rtcluster->conf->password, \
+	}; \
+	_node->ioconf.log_prefix = talloc_asprintf(rtcluster, "%s %s:%d", rtcluster->conf->log_prefix, \
+						   fr_inet_ntop(buff, sizeof(buff), &_node->addr.inet.dst_ipaddr), \
+						   _node->ioconf.port); \
+	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, NULL); \
+	if (!_node->trunk) goto error; \
+} while (0)
 
 /** Resolve key to key slot index
  *
@@ -267,4 +284,227 @@ fr_event_list_t *fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *rtcluster
 trunk_conf_t const *fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *rtcluster)
 {
 	return rtcluster->tconf;
+}
+
+/** Update a Redis cluster map from a pair list returned from a coordinator
+ *
+ * @param rtcluster	Cluster to update
+ * @param list		pairs sent by a coordinator
+ * @return
+ *	- 0 om success
+ *	- -1 on error
+ */
+int fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *rtcluster, fr_pair_list_t const *list)
+{
+	fr_pair_t	*vp, *shard = NULL, *slot, *start, *end, *node, *role, *node_ip, *node_port;
+	uint16_t	i;
+	uint8_t		r = 0;
+	uint8_t		rollback[UINT8_MAX];		// Set of nodes to re-add to the queue on failure.
+	bool		active[UINT8_MAX];		// Set of nodes active in the new cluster map.
+	bool		master[UINT8_MAX];		// Master nodes.
+
+	fr_redis_ct_node_t	find, *cluster_node;
+	fr_redis_ct_key_slot_t	tmp_slot;
+	fr_redis_ct_key_slot_t	key_slot_pending[KEY_SLOTS];
+
+#define SET_INACTIVE(_node) \
+do { \
+	(_node)->is_active = false; \
+	(_node)->is_master = false; \
+	talloc_const_free((_node)->ioconf.log_prefix); \
+	(_node)->ioconf.log_prefix = NULL; \
+	TALLOC_FREE((_node)->trunk); \
+	fr_rb_delete(rtcluster->used_nodes, _node); \
+	fr_fifo_push(rtcluster->free_nodes, _node); \
+} while (0)
+
+#define SET_ACTIVE(_node) \
+do { \
+	fr_rb_insert(rtcluster->used_nodes, _node); \
+	fr_fifo_pop(rtcluster->free_nodes); \
+	(_node)->is_active = true; \
+	active[(_node)->id] = true; \
+	rollback[r++] = (_node)->id; \
+} while (0)
+
+	vp = fr_pair_find_by_da(list, NULL, attr_redis_cluster_id);
+	if (unlikely(!vp)) {
+		ERROR("Missing cluster ID");
+		return -1;
+	}
+	if (rtcluster->cluster_id == 0) rtcluster->cluster_id = vp->vp_uint16;
+
+	if (rtcluster->cluster_id != vp->vp_uint16) {
+		ERROR("Got map for cluster ID %d, expected ID %d", vp->vp_uint16, rtcluster->cluster_id);
+		return -1;
+	}
+
+	DEBUG3("Updating cluster %d", rtcluster->cluster_id);
+
+	memset(&key_slot_pending, 0, sizeof(key_slot_pending));
+	memset(active, 0, sizeof(active));
+	memset(master, 0, sizeof(master));
+
+	while ((shard = fr_pair_find_by_da(list, shard, attr_redis_shard))) {
+		cluster_node = NULL;
+		memset(&tmp_slot, 0, sizeof(fr_redis_ct_key_slot_t));
+		node = NULL;
+		while ((node = fr_pair_find_by_da(&shard->vp_group, node, attr_redis_node))) {
+			role = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_role);
+			if (unlikely(!role)) continue;
+			if (role->vp_uint8 == 1) {
+				DEBUG3("Master node %pP", node);
+
+				node_ip = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_endpoint);
+				if (unlikely(!node_ip)) continue;
+				fr_inet_pton(&find.addr.inet.dst_ipaddr, node_ip->vp_strvalue, node_ip->vp_length, AF_UNSPEC, true, true);
+				node_port = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_port);
+				if (unlikely(!node_port)) continue;
+				find.addr.inet.dst_port = node_port->vp_uint16;
+
+				cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
+				break;
+			}
+		}
+
+		if (!node) {
+			ERROR("Missing master node");
+		error:
+			for (i = 0; i < r; i++) SET_INACTIVE(&rtcluster->node[rollback[i]]);
+			return -1;
+		}
+
+		if (!cluster_node) {
+			cluster_node = fr_fifo_peek(rtcluster->free_nodes);
+			if (!cluster_node) {
+			out_of_nodes:
+				fr_strerror_const("Reached maximum connected nodes");
+				goto error;
+			}
+			CONFIGURE_NODE(cluster_node, find.addr);
+			SET_ACTIVE(cluster_node);
+		} else {
+			active[cluster_node->id] = true;
+		}
+		master[cluster_node->id] = true;
+		tmp_slot.master = cluster_node->id;
+
+		node = NULL;
+		while ((node = fr_pair_find_by_da(&shard->vp_group, node, attr_redis_node))) {
+			role = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_role);
+			if (tmp_slot.num_replicas >= MAX_REPLICAS) break;
+			if (role->vp_uint8 != 2) continue;
+
+			DEBUG3("Replica node %pP", node);
+			node_ip = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_endpoint);
+			fr_inet_pton(&find.addr.inet.dst_ipaddr, node_ip->vp_strvalue, node_ip->vp_length, AF_UNSPEC, true, true);
+			node_port = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_port);
+			find.addr.inet.dst_port = node_port->vp_uint16;
+
+			cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
+
+			if (cluster_node) {
+				tmp_slot.replica[tmp_slot.num_replicas++] = cluster_node->id;
+				active[cluster_node->id] = true;
+				continue;
+			}
+
+			cluster_node = fr_fifo_peek(rtcluster->free_nodes);
+			if (!cluster_node) goto out_of_nodes;
+
+			CONFIGURE_NODE(cluster_node, find.addr);
+			tmp_slot.replica[tmp_slot.num_replicas++] = cluster_node->id;
+			SET_ACTIVE(cluster_node);
+		}
+
+		slot = NULL;
+		while ((slot = fr_pair_find_by_da(&shard->vp_group, slot, attr_redis_slot))) {
+			start = fr_pair_find_by_da(&slot->vp_group, NULL, attr_redis_slot_start);
+			if (unlikely(!start)) {
+				ERROR("Missing slot start");
+				goto error;
+			}
+			if (unlikely(start->vp_uint16 >= KEY_SLOTS)) {
+				ERROR("Value of %d for slot start greater than expected maximum %d",
+				      start->vp_uint16, KEY_SLOTS);
+				goto error;
+			}
+			end = fr_pair_find_by_da(&slot->vp_group, NULL, attr_redis_slot_end);
+			if (unlikely(!end)) {
+				ERROR("Missing slot end");
+				goto error;
+			}
+			if (unlikely(end->vp_uint16 >= KEY_SLOTS)) {
+				ERROR("Value of %d for slot end greater than expected maximum %d",
+				      end->vp_uint16, KEY_SLOTS);
+				goto error;
+			}
+			if (unlikely(end->vp_uint16 < start->vp_uint16)) {
+				ERROR("Value of %d for slot end less than value of %d for slot start",
+				      end->vp_uint16, start->vp_uint16);
+				goto error;
+			}
+			DEBUG4("Setting nodes for slots %d to %d", start->vp_uint16, end->vp_uint16);
+			for (i = start->vp_uint16; i <= end->vp_uint16; i++) {
+				memcpy(&key_slot_pending[i], &tmp_slot, sizeof(*key_slot_pending));
+			}
+		}
+	}
+
+	/*
+	 *	Check for holes in the pending_addr key_slot array
+	 *
+	 *	The cluster specification says that upon
+	 *	detecting a 'NULL' key_slot we should
+	 *	check again to see if the cluster error has
+	 *	been resolved, but seeing as we're in the
+	 *	middle of updating the cluster from very
+	 *	recent output of 'cluster slots' it's best to
+	 *	error out.
+	 */
+	for (i = 0; i < KEY_SLOTS; i++) {
+		if (key_slot_pending[i].master == 0) {
+			fr_strerror_printf("Cluster is misconfigured, no node assigned for key %d", i);
+			goto error;
+		}
+	}
+
+	memcpy(&rtcluster->key_slot, &key_slot_pending, sizeof(rtcluster->key_slot));
+
+	/*
+	 *	Anything not in the active set of nodes gets
+	 *	added back into the queue, to be re-used.
+	 *
+	 *	We start at 1, as node 0 is reserved.
+	 */
+	for (i = 1; i <= rtcluster->conf->max_nodes; i++) {
+#ifndef NDEBUG
+		fr_redis_ct_node_t *found;
+
+		if (rtcluster->node[i].is_active) {
+			/* Sanity check for duplicates that are active */
+			found = fr_rb_find(rtcluster->used_nodes, &rtcluster->node[i]);
+			fr_assert(found);
+			fr_assert(found->is_active);
+			fr_assert(found->id == i);
+		}
+#endif
+
+		if (!active[i] && rtcluster->node[i].is_active) {
+			SET_INACTIVE(&rtcluster->node[i]);
+
+		/*
+		 *	Only change the masters once we've successfully
+		 *	remapped the cluster.
+		 */
+		} else if (master[i]) {
+			rtcluster->node[i].is_master = true;
+		} else {
+			rtcluster->node[i].is_master = false;
+		}
+	}
+
+	rtcluster->state = CLUSTER_READY;
+
+	return 0;
 }

@@ -52,3 +52,5 @@ fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 fr_event_list_t			*fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread);
 
 trunk_conf_t const		*fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *thread);
+int				fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *thread, fr_pair_list_t const *list);
+
