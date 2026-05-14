@@ -94,6 +94,24 @@ struct fr_redis_async_cmd_s {
 	fr_dlist_t			entry;		//!< Entry in the list of commands waiting for a cluster remap.
 };
 
+/** Compare two redis nodes to check equality
+ *
+ * @param[in] one first node.
+ * @param[in] two second node.
+ * @return CMP(one, two)
+ */
+static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
+{
+	fr_redis_ct_node_t const *a = one;
+	fr_redis_ct_node_t const *b = two;
+	int ret;
+
+	ret = fr_ipaddr_cmp(&a->addr.inet.dst_ipaddr, &b->addr.inet.dst_ipaddr);
+	if (ret != 0) return ret;
+
+	return CMP(a->addr.inet.dst_port, b->addr.inet.dst_port);
+}
+
 /** Allocate per-thread, per-cluster instance
  *
  * This structure represents all the connections for a given thread for a given cluster.
@@ -128,6 +146,7 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 	}
 
 	MEM(rtcluster->node = talloc_zero_array(rtcluster, fr_redis_ct_node_t, conf->max_nodes + 1));
+	MEM(rtcluster->used_nodes = fr_rb_inline_alloc(rtcluster, fr_redis_ct_node_t, rbnode, _cluster_thread_node_cmp, NULL));
 	MEM(rtcluster->free_nodes = fr_fifo_create(rtcluster, conf->max_nodes, NULL));
 
 	/*
