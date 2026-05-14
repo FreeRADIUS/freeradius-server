@@ -467,7 +467,6 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 */
 	if (!fr_redis_connection_process_response(h)) {
 		DEBUG4("Ignoring response with SQN %"PRIu64, (h->rsp_sqn - 1));	/* Already incremented */
-		fr_redis_reply_free((redisReply **)&reply);
 		return;
 	}
 
