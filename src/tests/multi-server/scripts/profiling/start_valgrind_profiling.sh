@@ -12,8 +12,17 @@ exec > /etc/prof-results/valgrind_profiling.log 2>&1
 # which would otherwise kill this script before it can touch .profiling_complete
 trap '' SIGTERM
 
-# Load proto_load config to get packet settings
-source /etc/freeradius/proto_load_config.env
+# Echo env variables required for proto_load configuration and test load generation — these should be set by the testcase template
+echo "proto_load configuration environment variables:"
+echo "TEST_LOADGEN_START_PPS=$TEST_LOADGEN_START_PPS"
+echo "TEST_LOADGEN_MAX_PPS=$TEST_LOADGEN_MAX_PPS"
+echo "TEST_LOADGEN_DURATION=$TEST_LOADGEN_DURATION"
+echo "TEST_LOADGEN_STEP=$TEST_LOADGEN_STEP"
+echo "TEST_LOADGEN_PARALLEL=$TEST_LOADGEN_PARALLEL"
+echo "TEST_LOADGEN_MAX_BACKLOG=$TEST_LOADGEN_MAX_BACKLOG"
+echo "TEST_LOADGEN_REPEAT=$TEST_LOADGEN_REPEAT"
+echo "TEST_LOADGEN_NUM_MESSAGES=$TEST_LOADGEN_NUM_MESSAGES"
+echo ""
 
 # Calculate approximate send duration
 SEND_DURATION=$(( TEST_LOADGEN_NUM_MESSAGES / TEST_LOADGEN_START_PPS ))
@@ -61,23 +70,55 @@ echo "Freeradius PID: ${FR_PID}"
 # Wait for approximate send duration
 sleep ${SEND_DURATION}
 
-# Stop instrumentation before shutdown so valgrind only flushes already-collected data
-echo "INFO: disabling callgrind instrumentation"
-CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
-printf '%s\n' "$CTRL_OUT"
+## Stop instrumentation before shutdown so valgrind only flushes already-collected data
+#echo "INFO: disabling callgrind instrumentation"
+#CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
+#printf '%s\n' "$CTRL_OUT"
+#
+## Graceful shutdown (equivalent to Ctrl+C)
+#if [ -z "${FR_PID}" ]; then
+#  echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind pipeline instead"
+#  kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
+#else
+#  echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
+#  kill -SIGINT ${FR_PID}
+#fi
+#
+## Give valgrind time to write callgrind output after freeradius exits
+#echo "INFO: sleeping for 5s"
+#sleep 5
 
-# Graceful shutdown (equivalent to Ctrl+C)
+# Graceful shutdown (equivalent to Ctrl+C) — keep instrumentation on so shutdown
+# transitions are captured before we stop profiling
 if [ -z "${FR_PID}" ]; then
   echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind pipeline instead"
   kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
 else
   echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
   kill -SIGINT ${FR_PID}
+
+  # Wait for freeradius to finish its graceful shutdown before stopping instrumentation
+  SHUTDOWN_TIMEOUT=60
+  SHUTDOWN_ELAPSED=0
+  while kill -0 "${FR_PID}" 2>/dev/null; do
+    sleep 1
+    SHUTDOWN_ELAPSED=$(( SHUTDOWN_ELAPSED + 1 ))
+    if [ ${SHUTDOWN_ELAPSED} -ge ${SHUTDOWN_TIMEOUT} ]; then
+      echo "WARNING: freeradius did not exit within ${SHUTDOWN_TIMEOUT}s after SIGINT"
+      break
+    fi
+  done
+  echo "INFO: freeradius exited after ${SHUTDOWN_ELAPSED}s"
 fi
 
-# Give valgrind time to write callgrind output after freeradius exits
-echo "INFO: sleeping for 5s"
-sleep 5
+# Stop instrumentation after graceful shutdown so all shutdown transitions are captured
+echo "INFO: disabling callgrind instrumentation"
+CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
+printf '%s\n' "$CTRL_OUT"
+
+# Wait for valgrind to finish writing callgrind output
+echo "INFO: waiting for valgrind to exit"
+wait ${VALGRIND_PID} 2>/dev/null || true
 
 # Signal that valgrind has finished writing all profiling data
 echo "INFO: Profiling complete at $(date)"
