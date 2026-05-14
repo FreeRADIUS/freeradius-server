@@ -408,6 +408,7 @@ int fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *rtcluster, fr_
 	fr_redis_ct_node_t	find, *cluster_node;
 	fr_redis_ct_key_slot_t	tmp_slot;
 	fr_redis_ct_key_slot_t	key_slot_pending[KEY_SLOTS];
+	fr_redis_async_cmd_t	*cmd;
 
 #define SET_INACTIVE(_node) \
 do { \
@@ -607,6 +608,13 @@ do { \
 	}
 
 	rtcluster->state = CLUSTER_READY;
+
+	/*
+	 *	Enqueue any commands which were waiting for the cluster remap.
+	 */
+	while ((cmd = fr_dlist_pop_head(&rtcluster->pending))) {
+		fr_redis_async_cmd_enqueue(cmd);
+	}
 
 	return 0;
 }
