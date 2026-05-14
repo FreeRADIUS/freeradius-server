@@ -29,10 +29,13 @@
 RCSIDH(redis_cluster_async_h, "$Id$")
 
 #include <freeradius-devel/server/trunk.h>
+#include "base.h"
+#include "pipeline.h"
 
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
 typedef struct fr_redis_ct_key_slot_s fr_redis_ct_key_slot_t;
+typedef struct fr_redis_ct_node_s fr_redis_ct_node_t;
 
 fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 							       trunk_conf_t const *tconf);

@@ -27,7 +27,6 @@
 
 #include <freeradius-devel/util/debug.h>
 
-#include "base.h"
 #include "cluster_async.h"
 #include "crc16.h"
 
@@ -48,8 +47,27 @@ struct fr_redis_cluster_thread_s {
 	fr_event_list_t			*el;
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
+	fr_redis_ct_node_t		*node;		//!< Array of nodes in this cluster.
+	fr_fifo_t			*free_nodes;	//!< Nodes not currently active.
+	fr_rb_tree_t			*used_nodes;	//!< Active nodes.
+
 	fr_redis_ct_key_slot_t		key_slot[KEY_SLOTS];
 
+};
+
+struct fr_redis_ct_node_s {
+	fr_rb_node_t			rbnode;		//!< Entry in the tree of used nodes
+	char				name[INET6_ADDRSTRLEN];
+	uint8_t				id;		//!< Array offset in the array of available nodes.
+
+	bool				is_active;	//!< Is this node currently active.
+	bool				is_master;	//!< Is this node currently a master.
+
+	fr_socket_t			addr;		//!< IP address and port
+
+	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this node belongs to
+	fr_redis_io_conf_t		ioconf;		//!< Connection config for this node.
+	fr_redis_trunk_t		*trunk;		//!< Trunk connection to this node.
 };
 
 /** Allocate per-thread, per-cluster instance
