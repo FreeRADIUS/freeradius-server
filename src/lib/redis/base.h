@@ -97,6 +97,13 @@ typedef enum {
 	REDIS_RCODE_NO_SCRIPT = -6,		//!< Script doesn't exist.
 } fr_redis_rcode_t;
 
+typedef enum {
+	REDIS_ASYNC_RCODE_SUCCESS = 0,		//!< Operation was successful.
+	REDIS_ASYNC_RCODE_ERROR = -1,		//!< Unrecoverable error.
+	REDIS_ASYNC_RCODE_BOOTSTRAP = -2,	//!< The caller should issue a request to bootstrap the cluster map.
+	REDIS_ASYNC_RCODE_GETMAP = -3,		//!< The caller should issue a request to update the cluster map.
+} fr_redis_async_rcode_t;
+
 /** Connection handle, holding a redis context
  */
 typedef struct {
