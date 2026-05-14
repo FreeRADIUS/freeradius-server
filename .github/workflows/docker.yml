@@ -38,19 +38,17 @@ jobs:
         echo matrix=$M >> $GITHUB_OUTPUT
 
   #
-  #  Run docker target for each given OS. This will build the
-  #  Docker image.
+  #  Self-hosted variant: runs on the FreeRADIUS Proxmox fleet inside
+  #  the internal CI base image, with the internal CA mounted into
+  #  both dind and the job container so internal registry pulls work.
   #
-  #  Runs inside an ephemeral DinD sidecar so the runner's docker
-  #  daemon is untouched. Both the dind service and the job container
-  #  use public images so the same shape works on the self-hosted
-  #  Proxmox fleet (for org pushes) and GitHub-hosted runners (forks).
-  #
-  docker:
+  docker-selfhosted:
     needs:
       - gen-matrix
 
-    runs-on: ${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-latest' }}
+    if: github.repository_owner == 'FreeRADIUS'
+
+    runs-on: self-hosted
 
     strategy:
       fail-fast: false
@@ -66,9 +64,78 @@ jobs:
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
-        #  Share the runner's workspace so the build context is visible
-        #  from inside dind. github.workspace is the HOST path; both
-        #  containers agree on /workspace as the in-container path.
+          #  Bypass the squid proxy for internal hosts.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        volumes:
+          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+        lfs: false
+
+    - uses: ./.github/actions/setup-dind
+      with:
+        packages: m4 make
+
+    - name: Regenerate Dockerfile
+      run: |
+        rm scripts/docker/build/$OS/Dockerfile || true
+        make docker.$OS.regen
+
+    - name: Build docker image
+      run: |
+        make docker.$OS.build
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+  #
+  #  Public variant: runs on GitHub-hosted runners (fork pushes). Uses
+  #  the public docker:dind sidecar and a plain ubuntu:24.04 job
+  #  container - no internal registry or CA involvement.
+  #
+  docker-public:
+    needs:
+      - gen-matrix
+
+    if: github.repository_owner != 'FreeRADIUS'
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.gen-matrix.outputs.matrix) }}
+
+    env: ${{ matrix.env }}
+
+    name: "v4.0.x-${{ matrix.env.OS }}"
+
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
         volumes:
           - ${{ github.workspace }}:/workspace
 
@@ -103,10 +170,6 @@ jobs:
       run: |
         make docker.$OS.build
 
-    #
-    #  If the CI has failed and the branch is ci-debug then start a tmate
-    #  session. SSH rendezvous point is emited continuously in the job output.
-    #
     - name: "Debug: Start tmate"
       uses: mxschmitt/action-tmate@v3
       with:
