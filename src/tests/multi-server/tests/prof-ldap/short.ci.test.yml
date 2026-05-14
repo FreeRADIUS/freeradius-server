@@ -1,0 +1,17 @@
+# Topology - N/A for profiling test
+
+# Routing - N/A for profiling test
+
+# Load generator configuration
+loadgen:
+  start_pps: 100
+  max_pps: 100
+  duration: 60
+  step: 100
+  parallel: 1
+  max_backlog: 1000
+  repeat: "no"
+
+# Test framework
+test_timeout: 125
+test_state1_verify_timeout: 120

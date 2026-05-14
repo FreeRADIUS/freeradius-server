@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   A single server instance for profiling
+#
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+  openldap:
+    image: bitnamilegacy/openldap:latest
+    environment:
+      LDAP_PORT_NUMBER: "389"
+      LDAP_ROOT: "dc=example,dc=com"
+      LDAP_ADMIN_USERNAME: "admin"
+      LDAP_ADMIN_PASSWORD: "adminpassword"
+      LDAP_CONFIG_ADMIN_ENABLED: "yes"
+      LDAP_CONFIG_ADMIN_USERNAME: "admin"
+      LDAP_CONFIG_ADMIN_PASSWORD: "adminpassword"
+      LDAP_USERS: "testuser"
+      LDAP_PASSWORDS: "testpass"
+      LDAP_ENABLE_SYNCPROV: "true"
+      LDAP_CUSTOM_SCHEMA_DIR: "/bitnami/openldap/schema.d"
+      BITNAMI_DEBUG: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/bitnami/openldap/bin/ldapsearch -x -H ldap://localhost -D 'cn=admin,dc=example,dc=com' -w adminpassword -b 'dc=example,dc=com' > /dev/null 2>&1"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    <<: *id001
+  profiling-server:
+    image: freeradius-prof:{{ git_commit }}
+    depends_on:
+      openldap:
+        condition: service_healthy
+    volumes:
+    # profiling-server server config
+    - ${DATA_PATH}/freeradius/profiling-ldap/radiusd.conf:/etc/freeradius/radiusd.conf
+    # load generator packet configuration
+    - ${DATA_PATH}/freeradius/common/load-generator/packet.conf:/etc/freeradius/common/packet.conf
+    # Profiling scripts
+    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    # Profiling results directory
+    - ${PROF_RESULTS_PATH}/:/etc/prof-results/
+    # Listener directory
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive.  The test framework starts FreeRADIUS
+      # and runs commands via 'docker exec' so it can control timing.
+      #
+      # Start the server after configuring environment variables from test case's template.yml.j2 file.
+      sleep infinity
+    <<: *id001
+
