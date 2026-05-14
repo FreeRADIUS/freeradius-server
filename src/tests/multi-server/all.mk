@@ -4,6 +4,9 @@
 # Makefile arguments:
 # - TEST_MULTI_SERVER_DEBUG=<0-2>  debug level for multi-server test framework
 # - TEST_MULTI_SERVER_VERBOSE=<0-4> verbosity level
+# - PROF_MODE=<ci|dev>             profiling results path mode (default: ci)
+#                                    ci:  PROF_RESULTS_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
+#                                    dev: PROF_RESULTS_ROOT/<suite>/<test>  (flat, overwrites each run)
 #
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                         # run all tests
@@ -35,6 +38,7 @@ OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
 GIT_BRANCH        := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '_'),unknown-branch)
 GIT_COMMIT        := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
 PROF_RESULTS_ROOT := $(abspath $(top_srcdir)/prof-results)
+PROF_MODE         ?= ci
 
 # FIXME: We should be using packaged versions of the multi-server test framework
 # instead of cloning from git.
@@ -180,7 +184,8 @@ endef
 #  TEST_MULTI_SERVER_PROF_INSTANCE - like TEST_MULTI_SERVER_INSTANCE but
 #  computes PROF_RESULTS_PATH and exports it to docker compose so valgrind
 #  output lands in:
-#    $(PROF_RESULTS_ROOT)/<suite>/<test>/<branch>/<commit>/<run-index>
+#    ci mode (default): $(PROF_RESULTS_ROOT)/<suite>/<test>/<branch>/<commit>/<run-index>
+#    dev mode:          $(PROF_RESULTS_ROOT)/<suite>/<test>
 #
 #  ${1} = suite dir name
 #  ${2} = test name
@@ -200,10 +205,14 @@ render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
 	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
-	${Q}PROF_BASE="$(PROF_RESULTS_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-	EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-	RUN_INDEX=$$$$((EXISTING + 1)); \
-	PROF_RESULTS_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+	${Q}if [ "$(PROF_MODE)" = "dev" ]; then \
+		PROF_RESULTS_PATH="$(PROF_RESULTS_ROOT)/${1}/${2}"; \
+	else \
+		PROF_BASE="$(PROF_RESULTS_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
+		EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
+		RUN_INDEX=$$$$((EXISTING + 1)); \
+		PROF_RESULTS_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+	fi; \
 	mkdir -p "$$$$PROF_RESULTS_PATH" && \
 	echo "PROF_RESULTS_PATH: $$$$PROF_RESULTS_PATH" && \
 	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && \
