@@ -98,8 +98,6 @@ jobs:
 
       - name: Build base profiling image
         run: |
-          make crossbuild.ubuntu24.reset
-          make crossbuild.ubuntu24.regen
           make crossbuild.ubuntu24
           make crossbuild.ubuntu24.profile.regen
           make crossbuild.ubuntu24.profile.build
