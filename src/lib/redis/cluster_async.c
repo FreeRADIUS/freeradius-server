@@ -164,12 +164,12 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 	return rtcluster;
 }
 
-fr_event_list_t *fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread)
+fr_event_list_t *fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *rtcluster)
 {
-	return thread->el;
+	return rtcluster->el;
 }
 
-trunk_conf_t const *fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *thread)
+trunk_conf_t const *fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *rtcluster)
 {
-	return thread->tconf;
+	return rtcluster->tconf;
 }
