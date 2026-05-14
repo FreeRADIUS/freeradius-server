@@ -6,6 +6,14 @@
 ARG from=rockylinux/rockylinux:10
 FROM ${from} AS build
 
+#
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly. Stall detection
+#  (minrate) stays on so a stalled in-flight download still gets killed.
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
 
 #
@@ -20,7 +28,9 @@ RUN dnf config-manager --set-enabled crb
 #
 #  Set up NetworkRADIUS extras repository
 #
-RUN curl -o /etc/pki/rpm-gpg/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+        -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+        "https://packages.networkradius.com/pgp/packages%40networkradius.com"
 RUN echo $'[networkradius-extras]\n\
 name=NetworkRADIUS-extras-$releasever\n\
 baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
@@ -85,6 +95,11 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 #  Clean environment and run the server
 #
 FROM ${from}
+
+#
+#  Retry transient package-repo failures (same config as the build stage).
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
 
 COPY --from=build /root/rpms /tmp/
 

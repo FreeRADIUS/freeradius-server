@@ -29,19 +29,40 @@ concurrency:
 
 jobs:
   diagnose:
-    if: |
-      github.repository == 'FreeRADIUS/freeradius-server' &&
-      github.event.workflow_run.conclusion == 'failure' &&
-      github.event.workflow_run.head_branch == 'master' &&
-      github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write   # post commit comment via gh api
-      actions: read     # download failed-job logs
+      actions: write    # also lets the job delete its own run when nothing to do
       id-token: write
 
     steps:
+      # GitHub has no event-level conclusion filter for workflow_run, so the
+      # alternative to using a job-level `if:` (which leaves "Skipped" entries
+      # in the Actions tab) is to start the job, check the conclusion, and
+      # delete the run if there's nothing to diagnose. Trade-off: if the gating
+      # ever breaks, there's no skipped-run trail to debug from.
+      - name: Gate or delete
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [[ "$REPO" == "FreeRADIUS/freeradius-server" \
+                && "$CONCLUSION" == "failure" \
+                && "$BRANCH" == "master" \
+                && "$EVENT" == "push" ]]; then
+            echo "Master CI failure detected - proceeding to diagnose."
+            exit 0
+          fi
+          echo "Nothing to diagnose (repo=$REPO branch=$BRANCH event=$EVENT conclusion=$CONCLUSION). Deleting own run."
+          gh api -X DELETE "/repos/$REPO/actions/runs/$RUN_ID"
+          # The DELETE terminates this job; the next line is just a safety net.
+          exit 0
+
       - name: Checkout failing commit
         uses: actions/checkout@v6
         with:
