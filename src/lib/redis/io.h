@@ -40,6 +40,7 @@ extern "C" {
 
 typedef struct {
 	char			*hostname;
+	fr_ipaddr_t		ipaddr;
 	uint16_t		port;
 	uint32_t		database;	//!< number on Redis server.
 

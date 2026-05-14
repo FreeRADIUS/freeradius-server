@@ -111,6 +111,15 @@ typedef struct {
 	fr_redis_cluster_node_t	*node;		//!< Node this connection is to.
 } fr_redis_conn_t;
 
+typedef enum {
+	FR_REDIS_INVALID = 0,
+	FR_REDIS_CLUSTER_MAP_BOOTSTRAP,
+	FR_REDIS_CLUSTER_MAP_GET,
+	FR_REDIS_CLUSTER_MAP_UPDATE,
+	FR_REDIS_CODE_MAX,
+	FR_REDIS_DO_NOT_RESPOND = 255
+} fr_redis_packet_code_t;
+
 /** Configuration parameters for a redis connection
  *
  * @note should be passed as instance data to #module_rlm_connection_pool_init.
