@@ -54,14 +54,71 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
+/** Callback for verifying the results of AUTH
+ *
+ */
+static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED void *privdata)
+{
+	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
+	redisReply		*reply = data;
+
+	if (!reply) {
+		ERROR("Failed authenticating: %s", ac->errstr);
+	error:
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		return;
+	}
+
+	switch (reply->type) {
+	case REDIS_REPLY_STATUS:
+		if (strcmp(reply->str, "OK") != 0) {
+			ERROR("Failed authenticating: %s", reply->str);
+			goto error;
+		}
+		break;	/* else it's OK */
+
+	case REDIS_REPLY_ERROR:
+		ERROR("Failed authenticating: %s", reply->str);
+		goto error;
+
+	default:
+		ERROR("Unexpected reply of type %s to AUTH",
+		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+		goto error;
+	}
+
+	connection_signal_connected(conn);
+}
+
 /** Called by hiredis to indicate the connection is live
  *
  */
-static void _redis_connected(redisAsyncContext const *ac, UNUSED int status)
+static void _redis_connected(redisAsyncContext *ac, UNUSED int status)
 {
 	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
+	fr_redis_io_conf_t	*io_conf = connection_uctx_get(conn);
 
 	DEBUG4("Signalled by hiredis, connection is open");
+
+	/*
+	 *	If auth is configured, send the appropriate AUTH command
+	 *	before marking the connection as connected.
+	 */
+	if (io_conf->password) {
+		if (io_conf->username) {
+			DEBUG3("Executing: AUTH %s %s", io_conf->username, io_conf->password);
+			if (redisAsyncCommand(ac, _redis_auth_result, NULL, "AUTH %s %s",
+					      io_conf->username, io_conf->password) != REDIS_OK) {
+			error:
+				ERROR("Failed executing command");
+				return connection_signal_reconnect(conn, CONNECTION_FAILED);
+			}
+			return;
+		}
+		DEBUG3("Executing: AUTH %s", io_conf->password);
+		if (redisAsyncCommand(ac, _redis_auth_result, NULL, "AUTH %s", io_conf->password) != REDIS_OK) goto error;
+		return;
+	}
 
 	connection_signal_connected(conn);
 }
