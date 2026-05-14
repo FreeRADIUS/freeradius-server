@@ -68,17 +68,13 @@ jobs:
 
     steps:
 
-      - name: Update CA Certificates
-        run: |
-          /usr/sbin/update-ca-certificates
-
-      - name: Install extra packages
-        run: |
-          apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx docker-compose-v2 python3-venv
-
       - uses: actions/checkout@v6
         with:
           lfs: false
+
+      - uses: ./.github/actions/setup-dind
+        with:
+          packages: docker-compose-v2 python3-venv
 
       #  Authenticate to the internal registry via the dind daemon.
       #  The host Docker daemon is logged in via the runner's
@@ -90,10 +86,6 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
-
-      - name: Wait for Docker to be ready
-        run: |
-          timeout 60 sh -c "while ! docker image ls; do sleep 2 ; done"
 
       - name: Build Docker image from source
         run: |

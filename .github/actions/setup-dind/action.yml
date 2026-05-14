@@ -1,0 +1,32 @@
+name: 'Set up DinD inside a job'
+description: |
+  Common setup for jobs that run inside a debian/ubuntu container and
+  talk to a docker:dind service sidecar.
+
+  Trusts the internal NetworkRADIUS CA so image pulls from
+  docker.internal.networkradius.com succeed, installs the docker CLI
+  (docker.io, docker-buildx) plus any caller-supplied extras, and
+  blocks until the dind daemon accepts connections.
+
+inputs:
+  packages:
+    description: 'Extra apt packages to install alongside the docker CLI (whitespace-separated)'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Update CA Certificates
+      shell: bash
+      run: /usr/sbin/update-ca-certificates
+
+    - name: Install docker CLI and extras
+      shell: bash
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends docker.io docker-buildx ${{ inputs.packages }}
+
+    - name: Wait for Docker daemon
+      shell: bash
+      run: timeout 60 sh -c 'while ! docker image ls; do sleep 2; done'
