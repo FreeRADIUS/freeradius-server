@@ -29,6 +29,16 @@
 
 #include "base.h"
 #include "cluster_async.h"
+#include "crc16.h"
+
+#define MAX_REPLICAS		5			//!< Maximum number of replicas associated
+							//!< with a keyslot.
+struct fr_redis_ct_key_slot_s {
+	uint8_t		replica[MAX_REPLICAS];		//!< Array of ids of replica nodes
+	uint8_t		num_replicas;			//!< Number of replica nodes
+	uint8_t		master;				//!< id of the master node.
+};
+
 
 /** Thread local state for a cluster
  *
@@ -37,6 +47,8 @@ struct fr_redis_cluster_thread_s {
 	fr_event_list_t			*el;
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
+	fr_redis_ct_key_slot_t		key_slot[KEY_SLOTS];
+
 };
 
 /** Allocate per-thread, per-cluster instance
