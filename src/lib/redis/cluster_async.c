@@ -206,6 +206,108 @@ fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_cluster_thread_t *rtclust
 	return &rtcluster->node[key_slot->replica[replica_num]];
 }
 
+/** Enqueue a command set on a node identified by the key.
+ *
+ */
+static fr_redis_async_rcode_t fr_redis_async_cmd_enqueue(fr_redis_async_cmd_t *cmd)
+{
+	fr_redis_cluster_thread_t	*rtcluster = cmd->rtcluster;
+	fr_redis_trunk_t		*trunk;
+	fr_redis_pipeline_status_t	ret;
+	bool				dst_unavail = false;
+
+	cmd->key_slot = fr_redis_ct_slot_by_key(rtcluster, cmd->request, cmd->key, cmd->key_len);
+
+	/*
+	 *	Read only commands start on the first replica, if there are any.
+	 */
+	if (cmd->read_only && cmd->key_slot->num_replicas) {
+		trunk = rtcluster->node[cmd->key_slot->replica[0]].trunk;
+	} else {
+		trunk = rtcluster->node[cmd->key_slot->master].trunk;
+	}
+
+again:
+	ret = redis_command_set_enqueue(trunk, cmd->cmds);
+
+	switch (ret) {
+	case FR_REDIS_PIPELINE_OK:
+		return dst_unavail ? REDIS_ASYNC_RCODE_GETMAP : REDIS_ASYNC_RCODE_SUCCESS;
+
+	case FR_REDIS_PIPELINE_DST_UNAVAILABLE:
+		dst_unavail = true;
+		if (cmd->replica_no < cmd->key_slot->num_replicas) {
+			trunk = rtcluster->node[cmd->key_slot->replica[cmd->replica_no]].trunk;
+			cmd->replica_no++;
+			goto again;
+		}
+		/*
+		 *	Read only commands can also try the master node.
+		 *	Non-read only first tried the master.
+		 */
+		if (cmd->read_only && (trunk != rtcluster->node[cmd->key_slot->master].trunk)) {
+			trunk = rtcluster->node[cmd->key_slot->master].trunk;
+			goto again;
+		}
+		return REDIS_ASYNC_RCODE_ERROR;
+
+	default:
+		return REDIS_ASYNC_RCODE_ERROR;
+	}
+
+}
+
+/** Start running a command set on an async redis cluster
+ *
+ * @param ctx		to allocate tracking structure.
+ * @param request	current request.
+ * @param rcode		Where to write the result code.
+ * @param rtcluster	to start the command set on
+ * @param key		to identify the cluster slot.
+ * @param key_len	Length of key.
+ * @param cmds		Command set to run.
+ * @param read_only	Should the command set be run on read only nodes.
+ * @return The async redis command
+ */
+fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,
+					       fr_redis_cluster_thread_t *rtcluster, uint8_t const *key, size_t key_len,
+					       fr_redis_command_set_t *cmds, bool read_only)
+{
+	fr_redis_async_cmd_t		*cmd;
+
+	MEM(cmd = talloc(ctx, fr_redis_async_cmd_t));
+
+	*cmd = (fr_redis_async_cmd_t) {
+		.request = request,
+		.rtcluster = rtcluster,
+		.cmds = cmds,
+		.read_only = read_only,
+		.key = key,
+		.key_len = key_len,
+	};
+
+	switch (rtcluster->state) {
+	case CLUSTER_INIT:
+		/*
+		 *	If the cluster has not bootstrapped, that must be done first.
+		 */
+		fr_dlist_insert_tail(&rtcluster->pending, cmd);
+		*rcode = REDIS_ASYNC_RCODE_BOOTSTRAP;
+		break;
+
+	case CLUSTER_MAP_FETCHING:
+		fr_dlist_insert_tail(&rtcluster->pending, cmd);
+		*rcode = REDIS_ASYNC_RCODE_SUCCESS;
+		break;
+
+	default:
+		*rcode = fr_redis_async_cmd_enqueue(cmd);
+		break;
+	}
+
+	return cmd;
+}
+
 /** Compare two redis nodes to check equality
  *
  * @param[in] one first node.

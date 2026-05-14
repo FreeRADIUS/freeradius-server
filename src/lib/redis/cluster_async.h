@@ -54,3 +54,6 @@ fr_event_list_t			*fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread)
 trunk_conf_t const		*fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *thread);
 int				fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *thread, fr_pair_list_t const *list);
 
+fr_redis_async_cmd_t		*fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,
+							  fr_redis_cluster_thread_t *rtcluster, uint8_t const *key, size_t key_len,
+							  fr_redis_command_set_t *cmds, bool read_only);
