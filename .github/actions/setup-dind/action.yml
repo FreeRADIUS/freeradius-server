@@ -30,3 +30,14 @@ runs:
     - name: Wait for Docker daemon
       shell: bash
       run: timeout 60 sh -c 'while ! docker image ls; do sleep 2; done'
+
+    #
+    #  Tell git to trust any workspace path. The job container runs as
+    #  root but bind-mounted workspace files are owned by the runner
+    #  user; without this, git refuses with "dubious ownership" the
+    #  first time anything (e.g. a Makefile's `git rev-parse --git-dir`)
+    #  touches the repo from inside the container.
+    #
+    - name: Mark all directories safe for git
+      shell: bash
+      run: git config --global --add safe.directory '*'
