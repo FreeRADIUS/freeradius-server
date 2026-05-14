@@ -917,6 +917,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 		RDEBUG2("(TLS) %s - Connection Established", ssn->conf->name);
 		ssn->is_init_finished = true;
+		ssn->connected = true;
 
 		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_CIPHER_SUITE, 0);
 		if (vp) {
