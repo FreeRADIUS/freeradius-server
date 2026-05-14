@@ -157,6 +157,38 @@ fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t 
 	return &rtcluster->key_slot[0];
 }
 
+/** Return the master node that would be used for a particular key slot
+ *
+ * @param[in] rtcluster		To resolve key slot in.
+ * @param[in] key_slot		to resolve to node.
+ * @return
+ *      - The current master node.
+ *	- NULL if no master node is currently assigned to a particular key slot.
+ */
+fr_redis_ct_node_t const *fr_redis_ct_master(fr_redis_cluster_thread_t *rtcluster,
+					     fr_redis_ct_key_slot_t const *key_slot)
+{
+	return &rtcluster->node[key_slot->master];
+}
+
+/** Return the replica node that would be used for a particular key slot
+ *
+ * @param[in] rtcluster		To resolve key slot in.
+ * @param[in] key_slot		To resolve to node.
+ * @param[in] replica_num		0..n.
+ * @return
+ *	- A replica node.
+ *	- NULL if no replica node is assigned, or is at the specific key slot.
+ *
+ */
+fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_cluster_thread_t *rtcluster,
+					      fr_redis_ct_key_slot_t const *key_slot, uint8_t replica_num)
+{
+	if (replica_num >= key_slot->num_replicas) return NULL;	/* No replica available */
+
+	return &rtcluster->node[key_slot->replica[replica_num]];
+}
+
 /** Compare two redis nodes to check equality
  *
  * @param[in] one first node.
