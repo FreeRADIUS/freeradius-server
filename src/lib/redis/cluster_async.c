@@ -44,6 +44,7 @@ struct fr_redis_ct_key_slot_s {
  *
  */
 struct fr_redis_cluster_thread_s {
+	uint16_t			cluster_id;	//!< Number assigned to the cluster by coordinator.
 	fr_event_list_t			*el;
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
