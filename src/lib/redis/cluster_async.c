@@ -47,6 +47,8 @@ struct fr_redis_cluster_thread_s {
 	fr_event_list_t			*el;
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
+	fr_redis_conf_t const		*conf;		//!< Redis configuration for the cluster.
+
 	fr_redis_ct_node_t		*node;		//!< Array of nodes in this cluster.
 	fr_fifo_t			*free_nodes;	//!< Nodes not currently active.
 	fr_rb_tree_t			*used_nodes;	//!< Active nodes.
