@@ -1626,3 +1626,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	return conn;
 }
+
+void *connection_uctx_get(connection_t *conn) {
+	return conn->uctx;
+}

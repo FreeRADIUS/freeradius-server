@@ -283,6 +283,8 @@ connection_t		*connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     char const *log_prefix, void const *uctx);
 /** @} */
 
+void			*connection_uctx_get(connection_t *conn);
+
 #undef _CONST
 
 #ifdef __cplusplus
