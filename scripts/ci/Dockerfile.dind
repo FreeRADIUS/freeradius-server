@@ -1,0 +1,32 @@
+FROM docker:24-dind
+
+#
+#  Pre-bake the registry-mirror config so the dockerd inside this
+#  container pulls public base images via the internal NetworkRADIUS
+#  registry (which acts as a Docker Hub pull-through cache). Without
+#  this, every CI job's fresh dockerd anonymously pulls from
+#  registry-1.docker.io and the 31 self-hosted runners share egress
+#  IPs that quickly blow through Docker Hub's 100/6h anonymous limit.
+#
+RUN mkdir -p /etc/docker && cat > /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": ["https://docker.internal.networkradius.com"]
+}
+EOF
+
+#
+#  Trust the internal CA so dockerd can talk HTTPS to the mirror at
+#  docker.internal.networkradius.com. The base docker:dind image only
+#  has Alpine's default CA bundle, which doesn't include the internal
+#  NR root.
+#
+#  The cert file is staged into the build context by docker-refresh.yml
+#  from /usr/local/share/ca-certificates/networkradius.com.crt on the
+#  runner host before this image is built.
+#
+COPY scripts/ci/networkradius.com.crt /usr/local/share/ca-certificates/networkradius.com.crt
+RUN apk add --no-cache ca-certificates && \
+    update-ca-certificates && \
+    mkdir -p /etc/docker/certs.d/docker.internal.networkradius.com && \
+    cp /usr/local/share/ca-certificates/networkradius.com.crt \
+       /etc/docker/certs.d/docker.internal.networkradius.com/ca.crt

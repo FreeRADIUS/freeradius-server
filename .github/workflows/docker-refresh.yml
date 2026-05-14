@@ -32,6 +32,18 @@ jobs:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/Dockerfile
 
+          #
+          #  Custom dind image used as the services: sidecar by the
+          #  dind-based workflows (docker.yml, crossbuild.yml, multi-
+          #  server-tests). Bakes in registry-mirror -> internal cache
+          #  and trusts the internal CA, so per-job apt-installing and
+          #  daemon.json wiring goes away.
+          #
+          - base_image: docker:24-dind
+            image_name: docker.internal.networkradius.com/fr-dind
+            dockerfile: scripts/ci/Dockerfile.dind
+            needs_internal_ca: true
+
           - base_image: mariadb
           - base_image: postgres
           - base_image: 4teamwork/389ds
@@ -75,6 +87,20 @@ jobs:
             --rm \
             ${{ matrix.os.base_image }} \
             sh -c './build-dep-pkg.sh'
+
+      #
+      #  Stage the internal CA cert into the build context for any
+      #  matrix entry that asks for it (currently the dind sidecar
+      #  image, which needs to trust docker.internal.networkradius.com).
+      #  The cert lives on the self-hosted runner host outside the
+      #  repo, so we copy it in just before the build.
+      #
+      - name: Stage internal CA into build context
+        if: ${{ matrix.os.needs_internal_ca }}
+        shell: bash
+        run: |
+          cp /usr/local/share/ca-certificates/networkradius.com.crt \
+             scripts/ci/networkradius.com.crt
 
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
