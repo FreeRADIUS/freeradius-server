@@ -1,0 +1,121 @@
+name: Claude CI Failure Diagnosis
+
+# Fires after a CI workflow finishes on master. If it failed, Claude reads the
+# job logs, classifies the failure (regression / flake / infra / unknown), and
+# posts a diagnostic comment on the offending commit. Diagnosis only - no PRs,
+# no pushes, no edits to the repo.
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - CI DEB
+      - CI FreeBSD
+      - CI macOS
+      - CI RPM
+      - CI-Sanitizers
+      - Multi-Server CI Tests
+      - Check Crossbuild
+      - Coverity
+      - Documentation
+    types: [completed]
+
+# Serialize per-SHA: if several CI workflows fail on the same commit, queue
+# their diagnoses one at a time rather than spawning concurrent Claude sessions
+# against the same head. Each queued workflow still gets its own comment.
+concurrency:
+  group: claude-ci-diagnosis-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: |
+      github.repository == 'FreeRADIUS/freeradius-server' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write   # post commit comment via gh api
+      actions: read     # download failed-job logs
+      id-token: write
+
+    steps:
+      - name: Checkout failing commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Run Claude Code diagnosis
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          FAILED_WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          FAILED_WORKFLOW_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          FAILING_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          additional_permissions: |
+            actions: read
+          claude_args: >-
+            --allowed-tools
+            "Bash(gh run view:*),Bash(gh run download:*),Bash(gh api:*),Bash(gh issue view:*),Bash(git log:*),Bash(git show:*),Bash(git diff:*),Bash(git blame:*),Read,Grep,Glob"
+          prompt: |
+            CI workflow "${{ github.event.workflow_run.name }}" failed on master at commit ${{ github.event.workflow_run.head_sha }}.
+
+              Run URL: ${{ github.event.workflow_run.html_url }}
+              Repo:    ${{ github.repository }}
+
+            Your job: diagnose the failure and post exactly one commit comment with your findings. Do not open a PR, do not push, do not edit any file in the repo.
+
+            The following env vars are exported for use in `gh`/`git` commands:
+              FAILED_WORKFLOW_RUN_ID   - the run that failed
+              FAILED_WORKFLOW_RUN_URL  - link to that run
+              FAILED_WORKFLOW_NAME     - workflow name
+              FAILING_SHA              - commit under test
+              REPO                     - owner/repo
+
+            Steps:
+
+            1. Read the failing job logs:
+                 gh run view "$FAILED_WORKFLOW_RUN_ID" --repo "$REPO" --log-failed
+               If the output is too large, list jobs first and view one job at a time:
+                 gh run view "$FAILED_WORKFLOW_RUN_ID" --repo "$REPO" --json jobs --jq '.jobs[] | {id, name, conclusion}'
+                 gh run view --job "<job id>" --repo "$REPO" --log
+
+            2. Inspect the commit under test:
+                 git show --stat "$FAILING_SHA"
+                 git show "$FAILING_SHA" -- <files of interest>
+
+            3. Classify the failure as exactly one of:
+                 REGRESSION  - this commit (or one of its files) caused the failure; cite file:line.
+                 FLAKE       - intermittent failure unrelated to the change (timing, network, ordering).
+                 INFRA       - runner / mirror / image / dependency-fetch failure outside the codebase.
+                 UNKNOWN     - logs are insufficient to classify; say what's missing.
+
+            4. Write the commit-comment body to /tmp/comment.md with this shape (keep under ~120 lines total):
+
+                 **Classification:** <one of the four above>
+                 **Failed workflow:** [<name>](<run url>)
+
+                 **Summary:** one or two sentences.
+
+                 **Evidence:** the smallest relevant log excerpt (fenced code block) plus file:line refs.
+
+                 **Suggested next step:** for REGRESSION, a minimal unified diff in a ```diff block if the fix is small and obvious; otherwise the area to investigate. For FLAKE/INFRA, the indicator that justifies the label so a human can confirm.
+
+                 ---
+                 _Posted automatically by Claude CI Failure Diagnosis._
+
+            5. Post the comment via the GitHub API (jq -Rs is the safe way to escape multi-line bodies with backticks):
+
+                 jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
+                 gh api -X POST \
+                   "repos/$REPO/commits/$FAILING_SHA/comments" \
+                   --input /tmp/comment.json
+
+            Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess.
