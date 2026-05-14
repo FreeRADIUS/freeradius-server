@@ -16,7 +16,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  profiling-tests:
+
+  build-profiling-image:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
@@ -95,15 +96,98 @@ jobs:
         run: |
           timeout 60 sh -c "while ! docker image ls; do sleep 2 ; done"
 
-      # TODO: Check if this is really necessary.  We might have base crossbuilds updated ever night.
       - name: Build base profiling image
         run: |
           make crossbuild.ubuntu24.reset
           make crossbuild.ubuntu24.regen
           make crossbuild.ubuntu24
-          make crossbuild.ubuntu24
           make crossbuild.ubuntu24.profiling.regen
           make crossbuild.ubuntu24.profiling.build
+
+      - name: Push profiling images to registry
+        env:
+          REGISTRY: docker.internal.networkradius.com
+        run: |
+          docker tag freeradius40x-build/ubuntu24:latest           $REGISTRY/freeradius40x-build/ubuntu24:latest
+          docker push                                              $REGISTRY/freeradius40x-build/ubuntu24:latest
+          docker tag freeradius4-default-profiling/ubuntu24:latest $REGISTRY/freeradius4-default-profiling/ubuntu24:latest
+          docker push                                              $REGISTRY/freeradius4-default-profiling/ubuntu24:latest
+
+  profiling-tests:
+    needs: build-profiling-image
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS'
+
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+          #  Fix the network pool so TEST_SUBNET is predictable.
+          DOCKER_OPTS: "--default-address-pool base=172.16.0.0/12,size=24"
+        volumes:
+          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted
+      options: >-
+        --privileged
+        --memory-swap -1
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+      - name: Update CA Certificates
+        run: |
+          /usr/sbin/update-ca-certificates
+
+      - name: Install extra packages
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends docker.io docker-buildx docker-compose-v2 python3-venv
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      #  Authenticate to the internal registry via the dind daemon.
+      #  The host Docker daemon is logged in via the runner's
+      #  job-started hook, but dind is a separate daemon with no
+      #  auth config.
+      - name: Login to internal Docker registry
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+      - name: Wait for Docker to be ready
+        run: |
+          timeout 60 sh -c "while ! docker image ls; do sleep 2 ; done"
+
+      #  Pull the pre-built crossbuild images from the registry so that
+      #  freeradius-prof.image skips the crossbuild step and only runs
+      #  build_image.sh to produce the final freeradius-prof image.
+      - name: Pull profiling images from registry
+        env:
+          REGISTRY: docker.internal.networkradius.com
+        run: |
+          docker pull $REGISTRY/freeradius40x-build/ubuntu24:latest
+          docker tag  $REGISTRY/freeradius40x-build/ubuntu24:latest freeradius40x-build/ubuntu24:latest
+          docker pull $REGISTRY/freeradius4-default-profiling/ubuntu24:latest
+          docker tag  $REGISTRY/freeradius4-default-profiling/ubuntu24:latest freeradius4-default-profiling/ubuntu24:latest
 
       #  Profiling RadEnv tests will automatically build a FreeRADIUS
       #  image with debug symbols using
