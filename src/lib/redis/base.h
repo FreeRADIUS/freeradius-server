@@ -152,6 +152,8 @@ typedef struct {
 
 void		fr_redis_version_print(void);
 
+int		redis_dict_init(void);
+
 /*
  *	Command and resulting parsing
  */

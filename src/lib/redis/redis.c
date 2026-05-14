@@ -26,6 +26,7 @@
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/value.h>
+#include "attrs.h"
 
 fr_table_num_sorted_t const redis_reply_types[] = {
 	{ L("array"),		REDIS_REPLY_ARRAY	},
@@ -47,12 +48,92 @@ fr_table_num_sorted_t const redis_rcodes[] = {
 };
 size_t redis_rcodes_len = NUM_ELEMENTS(redis_rcodes);
 
+fr_dict_t const *dict_redis;
+
+extern fr_dict_autoload_t redis_base_dict[];
+fr_dict_autoload_t redis_base_dict[] = {
+	{ .out = &dict_redis, .proto = "redis" },
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+fr_dict_attr_t const *attr_redis_packet_type;
+fr_dict_attr_t const *attr_redis_log_prefix;
+fr_dict_attr_t const *attr_redis_max_nodes;
+fr_dict_attr_t const *attr_redis_bootstrap_node;
+fr_dict_attr_t const *attr_redis_bootstrap_port;
+fr_dict_attr_t const *attr_redis_username;
+fr_dict_attr_t const *attr_redis_password;
+fr_dict_attr_t const *attr_redis_cluster_id;
+fr_dict_attr_t const *attr_redis_shard;
+fr_dict_attr_t const *attr_redis_slot;
+fr_dict_attr_t const *attr_redis_slot_start;
+fr_dict_attr_t const *attr_redis_slot_end;
+fr_dict_attr_t const *attr_redis_node;
+fr_dict_attr_t const *attr_redis_node_endpoint;
+fr_dict_attr_t const *attr_redis_node_port;
+fr_dict_attr_t const *attr_redis_node_role;
+
+extern fr_dict_attr_autoload_t redis_base_dict_attr[];
+fr_dict_attr_autoload_t redis_base_dict_attr[] = {
+	{ .out = &attr_redis_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_redis },
+	{ .out = &attr_redis_log_prefix, .name = "Log-Prefix", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_max_nodes, .name = "Max-Nodes", .type = FR_TYPE_UINT8, .dict = &dict_redis },
+	{ .out = &attr_redis_bootstrap_node, .name = "Bootstrap-Node", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_bootstrap_port, .name = "Bootstrap-Port", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_username, .name = "Username", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_password, .name = "Password", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_cluster_id, .name = "Cluster-Id", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_shard, .name = "Shard", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_slot, .name = "Shard.Slot", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_slot_start, .name = "Shard.Slot.Start", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_slot_end, .name = "Shard.Slot.End", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_node, .name = "Shard.Node", .type = FR_TYPE_TLV, .dict = &dict_redis },
+	{ .out = &attr_redis_node_endpoint, .name = "Shard.Node.Endpoint", .type = FR_TYPE_STRING, .dict = &dict_redis },
+	{ .out = &attr_redis_node_port, .name = "Shard.Node.Port", .type = FR_TYPE_UINT16, .dict = &dict_redis },
+	{ .out = &attr_redis_node_role, .name = "Shard.Node.Role", .type = FR_TYPE_UINT8, .dict = &dict_redis },
+
+	DICT_AUTOLOAD_TERMINATOR
+};
+
 /** Print the version of libhiredis the server was built against
  *
  */
 void fr_redis_version_print(void)
 {
 	INFO("libfreeradius-redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
+}
+
+static int _redis_dict_init(UNUSED void *uctx)
+{
+	if (fr_dict_autoload(redis_base_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(redis_base_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(redis_base_dict);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int _redis_dict_free(UNUSED void *uctx)
+{
+	fr_dict_autofree(redis_base_dict);
+	return 0;
+}
+
+/** Load the Redis dictionaries
+ *
+ */
+int redis_dict_init(void)
+{
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _redis_dict_init, _redis_dict_free, NULL);
+
+	return ret;
 }
 
 /** Check the reply for errors
