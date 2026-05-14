@@ -291,6 +291,20 @@ TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 #
+#  Profiling tests only - all prof-* suites
+#
+.PHONY: test.multi-server.profiling
+test.multi-server.profiling: $(TEST_MULTI_SERVER_PROF_TESTS)
+
+#
+#  Profiling CI tests only - *.ci.test.yml param files in prof-* suites
+#
+TEST_MULTI_SERVER_PROF_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_PROF_TESTS))
+
+.PHONY: test.multi-server.profiling.ci
+test.multi-server.profiling.ci: $(TEST_MULTI_SERVER_PROF_CI_TESTS)
+
+#
 #  Ensure the freeradius-prof image is present before running
 #  any of the profiling tests.
 #
