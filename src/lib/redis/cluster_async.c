@@ -38,6 +38,11 @@ struct fr_redis_ct_key_slot_s {
 	uint8_t		master;				//!< id of the master node.
 };
 
+typedef enum {
+	CLUSTER_INIT = 0,				//!< Cluster has been initialised.
+	CLUSTER_MAP_FETCHING,				//!< The cluster map is currently being fetched.
+	CLUSTER_READY					//!< The cluster is available to handle requests.
+} fr_redis_ct_state_t;
 
 /** Thread local state for a cluster
  *
@@ -55,6 +60,7 @@ struct fr_redis_cluster_thread_s {
 
 	fr_redis_ct_key_slot_t		key_slot[KEY_SLOTS];
 
+	fr_redis_ct_state_t		state;		//!< State of the cluster.
 };
 
 struct fr_redis_ct_node_s {
