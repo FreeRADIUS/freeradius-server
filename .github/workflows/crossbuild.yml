@@ -99,6 +99,16 @@ jobs:
 
     steps:
 
+    #
+    #  actions/checkout falls back to a tarball download (no .git) when
+    #  git isn't on PATH; the Dockerfile's `git clean -fdxx` then fails
+    #  inside the build. ubuntu:24.04 ships without git, so install it
+    #  before checkout. Harmless on the self-hosted CI image where git
+    #  is already present.
+    #
+    - name: Ensure git is available for checkout
+      run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
@@ -190,6 +200,16 @@ jobs:
         working-directory: /workspace
 
     steps:
+
+    #
+    #  actions/checkout falls back to a tarball download (no .git) when
+    #  git isn't on PATH; the Dockerfile's `git clean -fdxx` then fails
+    #  inside the build. ubuntu:24.04 ships without git, so install it
+    #  before checkout. Harmless on the self-hosted CI image where git
+    #  is already present.
+    #
+    - name: Ensure git is available for checkout
+      run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
 
     - uses: actions/checkout@v6
       with:
