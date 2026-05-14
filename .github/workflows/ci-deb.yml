@@ -142,6 +142,7 @@ jobs:
 
     - name: Collect DEBs
       run: |
+        rm -rf debs
         mkdir debs
         mv *.deb debs
 

@@ -118,6 +118,7 @@ jobs:
 
     - name: Collect RPMs
       run: |
+        rm -rf rpms
         mkdir rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
