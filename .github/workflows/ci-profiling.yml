@@ -101,8 +101,8 @@ jobs:
           make crossbuild.ubuntu24.reset
           make crossbuild.ubuntu24.regen
           make crossbuild.ubuntu24
-          make crossbuild.ubuntu24.profiling.regen
-          make crossbuild.ubuntu24.profiling.build
+          make crossbuild.ubuntu24.profile.regen
+          make crossbuild.ubuntu24.profile.build
 
       - name: Push profiling images to registry
         env:
