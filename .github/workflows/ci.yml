@@ -84,16 +84,16 @@ jobs:
             imageos: "ubuntu24"
 
         env:
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-lean      }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc           }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-O2-g3     }
-          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-ndebug    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
-          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -g3",     LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
+          - { CC: gcc,   BUILD_CFLAGS: "",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-O2 -g3",  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-O2 -g3",  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "-g3",      LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 
