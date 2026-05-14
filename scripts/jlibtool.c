@@ -157,6 +157,12 @@ typedef struct {
 
 	char const			*pic_flag;
 	char const			*rpath;
+	char const			*rpath_link;	//!< Link-time-only search path flag, if the toolchain supports one.
+						//!< Emitted alongside rpath so the linker can resolve transitively
+						//!< NEEDED shared libraries during symbol verification without
+						//!< pulling them into the output's own NEEDED entries. Set this
+						//!< for GNU ld toolchains; leave NULL on linkers that lack the
+						//!< concept (ld64, Sun ld, etc.).
 	char const			*shared_opts;
 	char const			*module_opts;
 	char const			*linker_flag_prefix;
@@ -213,6 +219,7 @@ static const target_t target_linux_and_bsd = {
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
 	.rpath				= "-rpath",
+	.rpath_link			= "-rpath-link",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",
@@ -234,6 +241,7 @@ static const target_t target_solaris_gnu = {
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
 	.rpath				= "-rpath",
+	.rpath_link			= "-rpath-link",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",
@@ -1744,27 +1752,45 @@ static void add_dynamic_link_opts(command_t *cmd, count_chars *args)
 	}
 }
 
-/* Read the final install location and add it to runtime library search path. */
-static void add_rpath(count_chars *cc, char const *path)
+/* Build a "<prefix><flag>[=]<path>" argument and append it to cc. */
+static void push_path_flag(count_chars *cc, char const *flag, char const *path)
 {
 	int size = 0;
 	char *tmp;
 
 	if (target->linker_flag_prefix) size = strlen(target->linker_flag_prefix);
-	size = size + strlen(path) + strlen(target->rpath) + 2;
+	size = size + strlen(path) + strlen(flag) + 2;
 	tmp = lt_malloc(size);
 
 	if (target->linker_flag_prefix) {
 		strcpy(tmp, target->linker_flag_prefix);
-		strcat(tmp, target->rpath);
+		strcat(tmp, flag);
 	} else {
-		strcpy(tmp, target->rpath);
+		strcpy(tmp, flag);
 	}
 
 	if (!target->linker_flag_no_equals) strcat(tmp, "=");
 	strcat(tmp, path);
 
 	push_count_chars(cc, tmp);
+}
+
+/* Read the final install location and add it to runtime library search path. */
+static void add_rpath(count_chars *cc, char const *path)
+{
+	push_path_flag(cc, target->rpath, path);
+
+	/*
+	 *	Modern GNU ld defaults to --no-copy-dt-needed-entries, so
+	 *	transitively-NEEDED shared libraries of libraries on the link
+	 *	line aren't searched via the consumer's command-line -L paths.
+	 *	-rpath-link tells the linker where to find those at link time
+	 *	for symbol verification, without affecting what ends up in the
+	 *	output's own DT_NEEDED.
+	 */
+	if (target->rpath_link) {
+		push_path_flag(cc, target->rpath_link, path);
+	}
 }
 
 static void add_rpath_file(count_chars *cc, char const *arg)

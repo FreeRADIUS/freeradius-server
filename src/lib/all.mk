@@ -41,7 +41,7 @@ endef
 #  And then get the rest by wildcard, and ensure unsure that they're
 #  all unique.
 #
-SUBMAKEFILES := $(sort $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(wildcard ${top_srcdir}/src/lib/*/all.mk))))
+SUBMAKEFILES := $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(sort $(wildcard ${top_srcdir}/src/lib/*/all.mk))))
 
 #
 #  Add library-specific rules to link include files, etc.
