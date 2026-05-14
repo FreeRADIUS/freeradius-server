@@ -38,6 +38,9 @@ typedef struct fr_redis_ct_key_slot_s fr_redis_ct_key_slot_t;
 typedef struct fr_redis_ct_node_s fr_redis_ct_node_t;
 typedef struct fr_redis_async_cmd_s fr_redis_async_cmd_t;
 
+fr_redis_ct_key_slot_t const	*fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t *rtcluster, request_t *request,
+							 uint8_t const *key, size_t key_len);
+
 fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf);
 
 fr_event_list_t			*fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread);

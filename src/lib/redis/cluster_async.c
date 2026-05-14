@@ -94,6 +94,69 @@ struct fr_redis_async_cmd_s {
 	fr_dlist_t			entry;		//!< Entry in the list of commands waiting for a cluster remap.
 };
 
+/** Resolve key to key slot index
+ *
+ * Identical to the example implementation, except it uses memchr which will
+ * be faster, and isn't so needlessly complex.
+ *
+ * @param[in] key to resolve.
+ * @param[in] key_len length of key.
+ * @return key slot index for the key.
+ */
+static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
+{
+	uint8_t *p, *q;
+
+	p = memchr(key, '{', key_len);
+	if (!p) {
+	all:
+		return fr_crc16_xmodem(key, key_len) & (KEY_SLOTS - 1);
+	}
+
+	q = memchr(p, '}', key_len - (p - key)); /* look for } after { */
+	if (!q || (q == p + 1)) goto all; /* no } or {}, hash everything */
+
+	p++;	/* skip '{' */
+
+    	return fr_crc16_xmodem(p, q - p) & (KEY_SLOTS - 1);	/* hash stuff between { and } */
+}
+
+/** Resolve key to key slot
+ *
+ * @param[in] rtcluster	to resolve the key slot in.
+ * @param[in] request Current request (for debugging).
+ * @param[in] key to resolve.
+ * @param[in] key_len length of key.
+ * @return key slot for the key.
+ */
+fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t *rtcluster, request_t *request,
+						      uint8_t const *key, size_t key_len)
+{
+	fr_redis_ct_key_slot_t *key_slot;
+
+	if (!key || (key_len == 0)) {
+		key_slot = &rtcluster->key_slot[(uint16_t)(fr_rand() & (KEY_SLOTS - 1))];
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key rand() -> slot %zu", key_slot - rtcluster->key_slot);
+
+		return key_slot;
+	}
+
+	/*
+	 *	Avoid CRC16 if we're operating with one cluster node or
+	 *	without clustering.
+	 */
+	if (fr_rb_num_elements(rtcluster->used_nodes) > 1) {
+		key_slot = &rtcluster->key_slot[cluster_key_hash(key, key_len)];
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key \"%pV\" -> slot %zu",
+			  fr_box_strvalue_len((char const *)key, key_len), key_slot - rtcluster->key_slot);
+
+		return key_slot;
+	}
+	ROPTIONAL(RDEBUG3, DEBUG3, "Single node available, skipping key selection");
+
+	return &rtcluster->key_slot[0];
+}
+
 /** Compare two redis nodes to check equality
  *
  * @param[in] one first node.
