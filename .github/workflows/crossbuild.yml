@@ -38,12 +38,115 @@ jobs:
         echo matrix=$M >> $GITHUB_OUTPUT
 
   #
-  #  Run crossbuild target for each given OS. This will build the
-  #  Docker image and run `make test` inside.
+  #  Self-hosted variant: runs on the FreeRADIUS Proxmox fleet inside
+  #  the internal CI base image, with the internal CA mounted into
+  #  both dind and the job container so internal registry pulls work.
   #
-  crossbuild:
+  crossbuild-selfhosted:
     needs:
       - gen-matrix
+
+    if: github.repository_owner == 'FreeRADIUS'
+
+    runs-on: self-hosted
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.gen-matrix.outputs.matrix) }}
+
+    env: ${{ matrix.env }}
+
+    name: "v4.0.x-${{ matrix.env.OS }}"
+
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        #  Mount the host's internal CA so dind trusts
+        #  docker.internal.networkradius.com for image pulls.
+        #
+        #  Share the runner's workspace with dind so the build
+        #  context resolves to real files inside the dind daemon
+        #  and the inner `docker run --mount=type=bind,source=...`
+        #  bind-mount of the source tree resolves the same way in
+        #  both containers.
+        #
+        #  github.workspace is the HOST path to the workspace. The
+        #  runner mounts it into the job container at a different
+        #  path (/__w/...), so we use a fixed mount point
+        #  (/workspace) that both containers agree on.
+        volumes:
+          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      #  Shared workspace — see dind volumes comment above.
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
+        lfs: false
+
+    - uses: ./.github/actions/setup-dind
+      with:
+        packages: m4 make
+
+    - name: Run crossbuild tests
+      run: |
+        make crossbuild.$OS
+
+    - name: Show build log
+      if: ${{ success() || failure() }}
+      run: |
+        cat scripts/docker/crossbuild/build.$OS
+
+    - name: Show configure log
+      if: ${{ success() || failure() }}
+      run: |
+        cat scripts/docker/crossbuild/configure.$OS
+
+    - name: Show test log
+      if: ${{ success() || failure() }}
+      run: |
+        cat scripts/docker/crossbuild/log.$OS
+
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+  #
+  #  Public variant: runs on GitHub-hosted runners (fork pushes). Uses
+  #  the public docker:dind sidecar and a plain ubuntu:24.04 job
+  #  container - no internal registry or CA involvement.
+  #
+  crossbuild-public:
+    needs:
+      - gen-matrix
+
+    if: github.repository_owner != 'FreeRADIUS'
 
     runs-on: ubuntu-latest
 
@@ -55,11 +158,47 @@ jobs:
 
     name: "v4.0.x-${{ matrix.env.OS }}"
 
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+        #  Share the runner's workspace with dind so the build
+        #  context resolves to real files inside the dind daemon
+        #  and the inner `docker run --mount=type=bind,source=...`
+        #  bind-mount of the source tree resolves the same way in
+        #  both containers.
+        #
+        #  github.workspace is the HOST path to the workspace. The
+        #  runner mounts it into the job container at a different
+        #  path (/__w/...), so we use a fixed mount point
+        #  (/workspace) that both containers agree on.
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: ubuntu:24.04
+      env:
+        DOCKER_HOST: tcp://dind:2375
+      #  Shared workspace — see dind volumes comment above.
+      volumes:
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
     steps:
 
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
+        lfs: false
+
+    - uses: ./.github/actions/setup-dind
+      with:
+        packages: m4 make
 
     - name: Run crossbuild tests
       run: |
