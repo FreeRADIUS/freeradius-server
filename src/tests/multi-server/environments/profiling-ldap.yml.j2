@@ -29,6 +29,8 @@ services:
     volumes:
     # profiling-server server config
     - ${DATA_PATH}/freeradius/profiling-ldap/radiusd.conf:/etc/freeradius/radiusd.conf
+    # load generator packet configuration
+    - ${DATA_PATH}/freeradius/profiling-ldap/common/packet.conf:/etc/freeradius/common/packet.conf
     # files module configuration
     - ${DATA_PATH}/freeradius/profiling-ldap/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
     # Profiling scripts

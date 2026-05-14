@@ -9,6 +9,9 @@ states:
         actions:
         - execute_command:
             command: |
+              # Create an empty stats file for proto_load to write to.
+              touch /etc/freeradius/load-generator-stats.csv
+
               #
               # proto_load configuration via environment variables
               #
