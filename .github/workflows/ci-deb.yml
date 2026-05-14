@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     steps:
     - id: set-matrix
       name: Setup the matrix
@@ -67,7 +68,7 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
       image: ${{ matrix.env.OS }}
@@ -198,7 +199,7 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
 
     container:
       image: ${{ matrix.env.OS }}
