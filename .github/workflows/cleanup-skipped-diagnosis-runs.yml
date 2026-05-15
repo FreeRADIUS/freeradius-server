@@ -14,7 +14,7 @@ name: Cleanup Skipped Diagnosis Runs
 
 on:
   schedule:
-    - cron: '17 5 * * *'   # daily at 05:17 UTC
+    - cron: '17 * * * *'   # hourly at :17
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       actions: write       # required to delete workflow runs
 
     steps:
-      - name: Delete skipped Claude CI Failure Diagnosis runs
+      - name: Delete skipped Claude CI Failure Diagnosis runs older than 1h
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -40,22 +40,19 @@ jobs:
             exit 0
           fi
 
-          deleted=0
-          # status=skipped covers both "if: false" skips and any other
-          # skipped completions. Page through up to a few hundred at a
-          # time; daily run keeps that bounded.
+          # 1h grace window so anything mid-investigation isn't yanked
+          # out from under whoever's looking at it.
+          CUTOFF=$(date -u -d "-1 hour" '+%Y-%m-%dT%H:%M:%SZ')
+          echo "Cutoff: $CUTOFF"
+
           gh api --paginate \
             "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=skipped&per_page=100" \
-            --jq '.workflow_runs[].id' \
+            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
             | while read -r id; do
                 [ -z "$id" ] && continue
-                if gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
-                  deleted=$((deleted + 1))
-                else
-                  echo "  skip $id (delete failed)"
-                fi
+                gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || \
+                  echo "  $id: delete failed"
               done
-          echo "Deleted skipped diagnosis runs (count below; subshell var lost on pipe exit)"
 
       - name: Self-clean - delete this workflow's own old completed runs
         env:
