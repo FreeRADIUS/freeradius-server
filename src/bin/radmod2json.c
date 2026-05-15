@@ -300,14 +300,31 @@ static int dump_module(struct json_object *modules, char const *bare_name)
 
 		close(fds[0]);
 		entry = build_module(bare_name);
-		if (entry) {
+		if (!entry) {
+			fprintf(stderr, "rlm_%s: build_module failed\n", bare_name);
+			_exit(1);
+		}
+
+		{
 			char const *s = json_object_to_json_string_ext(entry, JSON_C_TO_STRING_PLAIN |
 										      JSON_C_TO_STRING_NOSLASHESCAPE);
-			(void)write(fds[1], s, strlen(s));
-			json_object_put(entry);
+			size_t	remaining = strlen(s);
+			ssize_t	n;
+
+			while (remaining > 0) {
+				n = write(fds[1], s, remaining);
+				if (n < 0) {
+					fprintf(stderr, "rlm_%s: write to pipe failed: %s\n",
+						bare_name, fr_syserror(errno));
+					_exit(1);
+				}
+				s += n;
+				remaining -= n;
+			}
 		}
+		json_object_put(entry);
 		close(fds[1]);
-		_exit(entry ? 0 : 1);
+		_exit(0);
 	}
 
 	close(fds[1]);
