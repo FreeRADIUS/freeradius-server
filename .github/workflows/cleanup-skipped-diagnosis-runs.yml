@@ -54,11 +54,10 @@ jobs:
                   echo "  $id: delete failed"
               done
 
-      - name: Self-clean - delete this workflow's own old completed runs
+      - name: Self-clean - delete this workflow's previous runs older than 1h
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          KEEP_DAYS: 7
         run: |
           set -euo pipefail
 
@@ -68,7 +67,10 @@ jobs:
             exit 0
           fi
 
-          CUTOFF=$(date -u -d "-${KEEP_DAYS} days" '+%Y-%m-%dT%H:%M:%SZ')
+          # Match the 1h grace window used for the diagnosis cleanup above.
+          # At hourly cadence this keeps at most 1-2 of our own runs visible
+          # in the Actions tab at any moment.
+          CUTOFF=$(date -u -d "-1 hour" '+%Y-%m-%dT%H:%M:%SZ')
 
           gh api --paginate \
             "/repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?status=completed&per_page=100" \
