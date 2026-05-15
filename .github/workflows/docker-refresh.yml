@@ -65,6 +65,20 @@ jobs:
         with:
           lfs: false
 
+      #
+      #  Authenticate the host docker daemon to Docker Hub up-front so
+      #  every subsequent `docker pull` (and the implicit FROM-pulls
+      #  triggered by `docker build`) uses the higher per-user rate
+      #  limit instead of anonymous 100/6h. Without this, refreshing
+      #  6+ images in parallel from the same egress IP burns through
+      #  the limit and the run fails partway through.
+      #
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_READ_USER }}
+          password: ${{ secrets.DOCKER_HUB_READ_KEY }}
+
       - name: Fetch and label image
         shell: bash
         env:
