@@ -152,6 +152,19 @@ extern const char *fr_tokens[T_TOKEN_LAST];
  *		of range / has no symbolic entry.
  */
 char const *fr_token_to_enum_str(fr_token_t t);
+
+/** Look up a quote token by its source-identifier name.
+ *
+ * Inverse of `fr_token_to_enum_str` restricted to the five quote-typed
+ * tokens (`T_BARE_WORD`, `T_DOUBLE_QUOTED_STRING`, ...) - the only
+ * forms radconf2json emits as `lhs_quote` / `rhs_quote` JSON values.
+ *
+ * @param[in] s		enum-identifier name (e.g. `"T_DOUBLE_QUOTED_STRING"`),
+ *			or `NULL`.
+ * @param[in] dflt	value to return if `s` is `NULL` or unrecognised.
+ * @return		the matching `fr_token_t`, or `dflt`.
+ */
+fr_token_t fr_token_from_quote_enum_str(char const *s, fr_token_t dflt);
 extern const char fr_token_quote[T_TOKEN_LAST];
 extern const bool fr_assignment_op[T_TOKEN_LAST];
 extern const bool fr_comparison_op[T_TOKEN_LAST];

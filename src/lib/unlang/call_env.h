@@ -456,6 +456,26 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 			   tmpl_rules_t const *rules, CONF_SECTION *cs, call_env_ctx_t const *cec) CC_HINT(nonnull(3,4,5));
 /** @} */
 
+/** @name Stringify call_env enum / flag values
+ *
+ * Used by tooling (radmod2json) that emits call_env definitions as
+ * source-identifier names ("CALL_ENV_FLAG_REQUIRED", ...).
+ * @{
+ */
+/** Return the source-identifier name for a single `CALL_ENV_FLAG_*` bit.
+ *
+ * @param[in] mask	single-bit `CALL_ENV_FLAG_*` value.
+ * @return		the enum-identifier name, or `NULL` if unknown.
+ */
+char const *call_env_flag_to_enum_str(call_env_flags_t mask);
+
+/** Return the source-identifier name for a `call_env_parse_type_t` value. */
+char const *call_env_parse_type_to_enum_str(call_env_parse_type_t t);
+
+/** Return the source-identifier name for a `call_env_result_type_t` value. */
+char const *call_env_result_type_to_enum_str(call_env_result_type_t t);
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif

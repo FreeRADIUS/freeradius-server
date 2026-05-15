@@ -119,6 +119,27 @@ char const *fr_token_to_enum_str(fr_token_t t)
 	return fr_table_str_by_value(fr_token_to_enum_str_table, t, "T_INVALID");
 }
 
+/** Quote-token names that radconf2json's JSON output uses.
+ *
+ * Only the five quote-typed tokens, kept sorted by name so the
+ * `fr_table_value_by_str` binary search can find them.  Used by
+ * radjson2conf when rebuilding a CF tree from JSON.
+ */
+static fr_table_num_sorted_t const fr_token_from_quote_enum_str_table[] = {
+	{ L("T_BACK_QUOTED_STRING"),	T_BACK_QUOTED_STRING	},
+	{ L("T_BARE_WORD"),		T_BARE_WORD		},
+	{ L("T_DOUBLE_QUOTED_STRING"),	T_DOUBLE_QUOTED_STRING	},
+	{ L("T_SINGLE_QUOTED_STRING"),	T_SINGLE_QUOTED_STRING	},
+	{ L("T_SOLIDUS_QUOTED_STRING"),	T_SOLIDUS_QUOTED_STRING	},
+};
+static size_t fr_token_from_quote_enum_str_table_len = NUM_ELEMENTS(fr_token_from_quote_enum_str_table);
+
+fr_token_t fr_token_from_quote_enum_str(char const *s, fr_token_t dflt)
+{
+	if (!s) return dflt;
+	return fr_table_value_by_str(fr_token_from_quote_enum_str_table, s, dflt);
+}
+
 /*
  *  String versions for all of the tokens.
  */

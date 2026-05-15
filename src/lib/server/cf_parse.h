@@ -725,6 +725,18 @@ int		cf_parse_permissions(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 int		cf_null_on_read(TALLOC_CTX *ctx, void *out, void *parent,
 				CONF_ITEM *ci, conf_parser_t const *rule);
 
+/** Return the source-identifier name for a single CONF_FLAG_* bit.
+ *
+ * `mask` MUST be a single-bit mask from `conf_parser_flags_t`
+ * (e.g. `CONF_FLAG_REQUIRED`).  Used by tooling that wants to
+ * stringify a flag set bit-by-bit (radmod2json).
+ *
+ * @param[in] mask	single-bit `CONF_FLAG_*` value.
+ * @return		the enum-identifier name, or `NULL` if `mask`
+ *			is not a known flag bit.
+ */
+char const	*cf_parser_flag_to_enum_str(conf_parser_flags_t mask);
+
 #ifdef __cplusplus
 }
 #endif

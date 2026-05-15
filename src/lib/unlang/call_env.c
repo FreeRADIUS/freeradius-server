@@ -831,3 +831,48 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 	return call_env;
 }
 
+/** Bit-pos indexed table of `CALL_ENV_FLAG_*` names. */
+static fr_table_num_indexed_bit_pos_t const call_env_flag_table[] = {
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_REQUIRED),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_CONCAT),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SINGLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_MULTI),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_NULLABLE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_FORCE_QUOTE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_PARSE_ONLY),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_ATTRIBUTE),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SUBSECTION),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_PARSE_MISSING),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_SECRET),
+	FR_TABLE_INDEXED_BIT_POS_ENTRY(CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE),
+};
+static size_t call_env_flag_table_len = NUM_ELEMENTS(call_env_flag_table);
+
+char const *call_env_flag_to_enum_str(call_env_flags_t mask)
+{
+	return fr_table_str_by_value(call_env_flag_table, mask, NULL);
+}
+
+static fr_table_num_indexed_t const call_env_parse_type_table[] = {
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_TMPL),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_VALUE_BOX),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_PARSE_TYPE_VOID),
+};
+static size_t call_env_parse_type_table_len = NUM_ELEMENTS(call_env_parse_type_table);
+
+char const *call_env_parse_type_to_enum_str(call_env_parse_type_t t)
+{
+	return fr_table_str_by_value(call_env_parse_type_table, t, "CALL_ENV_PARSE_TYPE_VOID");
+}
+
+static fr_table_num_indexed_t const call_env_result_type_table[] = {
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_RESULT_TYPE_VALUE_BOX),
+	FR_TABLE_INDEXED_ENTRY(CALL_ENV_RESULT_TYPE_VALUE_BOX_LIST),
+};
+static size_t call_env_result_type_table_len = NUM_ELEMENTS(call_env_result_type_table);
+
+char const *call_env_result_type_to_enum_str(call_env_result_type_t t)
+{
+	return fr_table_str_by_value(call_env_result_type_table, t, "CALL_ENV_RESULT_TYPE_VALUE_BOX");
+}
+
