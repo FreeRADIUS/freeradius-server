@@ -100,6 +100,20 @@ Recommends: libtemplate-perl, libdbi-perl, libyaml-libyaml-perl, libdbd-pg-perl,
 Description: FreeRADIUS Perl utilities
   This package contains utilities for managing IP pools in SQL databases
 
+Package: freeradius-utils-json
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, libfreeradius3 (= ${binary:Version})
+Description: FreeRADIUS JSON conversion utilities
+ This package contains utilities that bridge between FreeRADIUS configuration
+ and JSON:
+  - radconf2json: render a parsed server configuration as JSON
+  - radmod2json: dump the CONF_PARSER definitions of installed modules as JSON
+  - raddict2json: dump the parsed dictionary tree as JSON
+ .
+ These utilities are intended for tooling that needs to inspect or transform
+ FreeRADIUS configuration programmatically (config migration, schema
+ documentation, third-party integrations).
+
 Package: libfreeradius3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}

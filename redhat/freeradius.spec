@@ -170,6 +170,24 @@ Requires: perl-Net-IP
 This package provides Perl utilities for managing IP pools stored in
 SQL databases.
 
+%package utils-json
+Summary: FreeRADIUS configuration <-> JSON conversion utilities
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: json-c >= 0.10
+BuildRequires: json-c-devel >= 0.10
+
+%description utils-json
+Utilities that bridge between FreeRADIUS configuration and JSON:
+
+  radconf2json   render a parsed server configuration as JSON
+  radmod2json    dump the CONF_PARSER definitions of installed modules as JSON
+  raddict2json   dump the parsed dictionary tree as JSON
+
+These utilities are intended for tooling that needs to inspect or
+transform FreeRADIUS configuration programmatically (config migration,
+schema documentation, third-party integrations).
+
 %if %{!?_without_ldap:1}%{?_without_ldap:0}
 %package ldap
 Summary: LDAP support for FreeRADIUS
@@ -907,6 +925,12 @@ fi
 /usr/bin/rlm_sqlippool_tool
 #man-pages
 %doc %{_mandir}/man8/rlm_sqlippool_tool.8.gz
+
+%files utils-json
+%defattr(-,root,root)
+/usr/bin/radconf2json
+/usr/bin/radmod2json
+/usr/bin/raddict2json
 
 %if %{?_with_rlm_cache_memcached:1}%{!?_with_rlm_cache_memcached:0}
 %files memcached
