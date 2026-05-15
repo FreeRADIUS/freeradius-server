@@ -494,16 +494,16 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	for (attr = packet + 8, end = packet + packet_len;
 	     attr < end;
-	     attr += length) {
+	     attr += (6 + length)) {
+		if ((end - attr) < 6) break;
 		memcpy(&id, attr, 4);
 		id = ntohl(id);
-
 		length = fr_nbo_to_uint16(attr + 4);
-		if (length > (end - attr)) break;
+		if ((size_t)(end - attr) < (6 + (size_t)length)) break;
 
 		fprintf(fp, "\t\t%08x  %04x  ", id, length);
 
-		print_hex_data(attr + 6, length - 6, 3);
+		print_hex_data(attr + 6, length, 3);
 	}
 }
 
