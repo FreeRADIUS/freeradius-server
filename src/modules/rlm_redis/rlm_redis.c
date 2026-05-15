@@ -33,15 +33,25 @@ RCSID("$Id$")
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
+#include <freeradius-devel/redis/cluster_async.h>
 
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/io/coord_pair.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
+
+static fr_dict_t const *dict_redis;
+
+extern fr_dict_autoload_t rlm_redis_dict[];
+fr_dict_autoload_t rlm_redis_dict[] = {
+	{ .out = &dict_redis, .proto = "redis" },
+	DICT_AUTOLOAD_TERMINATOR
+};
 
 /** A lua function or stored procedure we make available as an xlat
  *
@@ -76,7 +86,19 @@ typedef struct {
 	rlm_redis_lua_t		lua;					//!< Array of functions to register.
 
 	fr_redis_cluster_t	*cluster;				//!< Redis cluster.
+
+	fr_coord_reg_t		*coord_reg;				//!< Coordinator registration.
+	fr_coord_pair_reg_t	*coord_pair_reg;			//!< Coord pair registration.
 } rlm_redis_t;
+
+typedef struct {
+	fr_redis_cluster_thread_t	*rtcluster;			//!< Per thread Redis cluster.
+	fr_coord_worker_t		*cw;				//!< Coord-worker for fetching cluster map.
+} rlm_redis_thread_t;
+
+typedef enum {
+	REDIS_COORD_PAIR_CALLBACK_ID = 0,
+} rlm_redis_coord_t;
 
 static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
@@ -779,11 +801,89 @@ finish:
 	return action;
 }
 
+
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
+	rlm_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
+
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf);
+	if (!t->rtcluster) return -1;
+
+	return 0;
+}
+
+static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
+	rlm_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
+
+	t->cw = fr_coord_attach(t, mctx->el, inst->coord_reg);
+
+	if (!t->cw) {
+		ERROR("Failed to attach to coordinator");
+		return -1;
+	}
+
+	if ((inst->conf.trunk_conf.start == 0) || (fr_schedule_worker_id() != 0)) return 0;
+
+	return fr_redis_cluster_thread_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
+}
+
+/** Callback for worker receiving Fetch-OK packet from coordinator
+ */
+static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
+			       fr_pair_list_t const *list, UNUSED fr_time_t now,
+			       module_ctx_t *mctx, UNUSED void *uctx)
+{
+	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
+	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	return;
+}
+
+static fr_coord_cb_reg_t coord_callbacks[] = {
+	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_cb_reg_t worker_callbacks[] = {
+	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
+	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_redis_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 	fr_socket_t *nodes;
 	int ret, i;
+
+	inst->conf.log_prefix = mctx->mi->name;
+
+	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.worker_cb = worker_pair_callbacks,
+			.cb_id = REDIS_COORD_PAIR_CALLBACK_ID,
+			.root = fr_dict_root(dict_redis),
+			.cs = mctx->mi->conf,
+		}
+	);
+	if (!inst->coord_pair_reg) return -1;
+
+	FR_COORD_PAIR_CB_CTX_SET(coord_callbacks, worker_callbacks, inst->coord_pair_reg);
+
+	inst->coord_reg = fr_coord_register(&(fr_coord_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.coord_cb = coord_callbacks,
+			.worker_cb = worker_callbacks,
+			.mi = mctx->mi
+		});
+
+	if (!inst->coord_reg) return -1;
 
 	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
@@ -862,6 +962,26 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
+
+	if (!t->cw) return 0;
+
+	fr_coord_detach(t->cw, true);
+	t->cw = NULL;
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_redis_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
+
+	fr_coord_deregister(inst->coord_reg);
+	talloc_free(inst->coord_pair_reg);
+	return 0;
+}
+
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_redis_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
@@ -896,7 +1016,7 @@ static int mod_load(void)
 {
 	fr_redis_version_print();
 
-	return 0;
+	return redis_dict_init();
 }
 
 extern module_rlm_t rlm_redis;
@@ -908,6 +1028,11 @@ module_rlm_t rlm_redis = {
 		.config		= module_config,
 		.onload		= mod_load,
 		.bootstrap	= mod_bootstrap,
-		.instantiate	= mod_instantiate
+		.instantiate	= mod_instantiate,
+		.coord_attach	= mod_coord_attach,
+		.detach		= mod_detach,
+		MODULE_THREAD_INST(rlm_redis_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 	}
 };
