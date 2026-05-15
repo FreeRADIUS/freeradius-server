@@ -39,11 +39,11 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # defined in the environment.  This lets us define a separate
     # compiler to build the toolchain and
     ifdef BUILD_CC
-        JLIBTOOL_DEFS += -DBUILD_CC=\"${BUILD_CC}\" -DHOST_LINK_C=\"${BUILD_CC}\"
+        JLIBTOOL_DEFS += -DBUILD_CC='"${BUILD_CC}"' -DHOST_LINK_C='"${BUILD_CC}"'
     endif
 
     ifdef BUILD_RANLIB
-        JLIBTOOL_DEFS += -DBUILD_RANLIB=\"${BUILD_RANLIB}\"
+        JLIBTOOL_DEFS += -DBUILD_RANLIB='"${BUILD_RANLIB}"'
     endif
 
     ifndef TARGET_CC
@@ -53,11 +53,11 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     endif
 
     ifdef TARGET_CC
-        JLIBTOOL_DEFS += -DTARGET_CC=\"${TARGET_CC}\" -DTARGET_LINK_C=\"${TARGET_CC}\"
+        JLIBTOOL_DEFS += -DTARGET_CC='"${TARGET_CC}"' -DTARGET_LINK_C='"${TARGET_CC}"'
     endif
 
     ifdef TARGET_RANLIB
-        JLIBTOOL_DEFS += -DTARGET_RANLIB=\"${TARGET_RANLIB}\"
+        JLIBTOOL_DEFS += -DTARGET_RANLIB='"${TARGET_RANLIB}"'
     endif
 
     # clang on OSX sometimes doesn't know where things are. <sigh>
