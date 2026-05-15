@@ -182,9 +182,9 @@ typedef int (*build_fn_t)(CONF_SECTION *parent, struct json_object *item);
 static int build_item(CONF_SECTION *parent, struct json_object *item)
 {
 	static fr_table_ptr_sorted_t const item_builders[] = {
-		{ L("comment"), build_comment },
-		{ L("pair"), build_pair },
-		{ L("section"), build_section_into },
+		{ L("comment"),	(void *) build_comment },
+		{ L("pair"),	(void *) build_pair },
+		{ L("section"), (void *) build_section_into },
 	};
 	static size_t item_builders_len = NUM_ELEMENTS(item_builders);
 
