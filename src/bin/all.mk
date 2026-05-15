@@ -1,6 +1,9 @@
 SUBMAKEFILES := \
     radclient.mk \
     radclient-ng.mk \
+    radconf2json.mk \
+    radjson2conf.mk \
+    radmod2json.mk \
     radict.mk \
     radiusd.mk \
     radlock.mk \
