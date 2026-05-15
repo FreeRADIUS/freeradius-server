@@ -28,29 +28,29 @@ jobs:
         os:
           #
           #  Standard CI base image. After building, this entry also
-          #  builds and pushes the dind-builder variant (extends this
-          #  base with docker CLI + buildx + m4) since that variant
-          #  FROMs this image and so needs it in the local docker
-          #  daemon's cache before its own build runs.
+          #  builds and pushes the self-hosted-docker-cli variant
+          #  (extends this base with docker CLI + buildx + m4) since
+          #  that variant FROMs this image and so needs it in the
+          #  local docker daemon's cache before its own build runs.
           #
           - base_image: ubuntu:24.04
             image_name: docker.internal.networkradius.com/self-hosted-ubuntu24
             extra_tags:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/Dockerfile
-            builder_dockerfile: scripts/ci/Dockerfile.builder
-            builder_image_name: docker.internal.networkradius.com/self-hosted-builder
+            cli_dockerfile: scripts/ci/Dockerfile.docker-cli
+            cli_image_name: docker.internal.networkradius.com/self-hosted-docker-cli
 
           #
-          #  Custom dind image used as the services: sidecar by the
-          #  dind-based workflows (docker.yml, crossbuild.yml, multi-
-          #  server-tests). Bakes in registry-mirror -> internal cache
-          #  and trusts the internal CA, so per-job apt-installing and
-          #  daemon.json wiring goes away.
+          #  Custom dind sidecar image used by the dind-based
+          #  workflows (docker.yml, crossbuild.yml, multi-server-tests).
+          #  Bakes in registry-mirror -> internal cache and trusts the
+          #  internal CA, so per-job apt-installing and daemon.json
+          #  wiring goes away.
           #
           - base_image: docker:24-dind
-            image_name: docker.internal.networkradius.com/fr-dind
-            dockerfile: scripts/ci/Dockerfile.dind
+            image_name: docker.internal.networkradius.com/self-hosted-docker-dind
+            dockerfile: scripts/ci/Dockerfile.docker-dind
             needs_internal_ca: true
 
           - base_image: mariadb
@@ -156,27 +156,27 @@ jobs:
           done
 
       #
-      #  Build the dind-builder variant if this matrix entry declared
-      #  one. The builder Dockerfile FROMs the just-built main image,
+      #  Build the docker-cli variant if this matrix entry declared
+      #  one. The CLI Dockerfile FROMs the just-built main image,
       #  which is now in the local docker daemon's cache, so we don't
       #  have to wait on the registry round-trip.
       #
-      - name: Build dind-builder variant
-        if: ${{ matrix.os.builder_dockerfile && matrix.os.builder_image_name }}
+      - name: Build docker-cli variant
+        if: ${{ matrix.os.cli_dockerfile && matrix.os.cli_image_name }}
         shell: bash
         env:
-          BUILDER_IMAGE_NAME: ${{ matrix.os.builder_image_name }}
-          BUILDER_DOCKERFILE: ${{ matrix.os.builder_dockerfile }}
+          CLI_IMAGE_NAME: ${{ matrix.os.cli_image_name }}
+          CLI_DOCKERFILE: ${{ matrix.os.cli_dockerfile }}
         run: |
           docker build --no-cache \
-                       -f "$BUILDER_DOCKERFILE" \
-                       -t "$BUILDER_IMAGE_NAME" \
+                       -f "$CLI_DOCKERFILE" \
+                       -t "$CLI_IMAGE_NAME" \
                        --label preserve=true .
 
-      - name: Push dind-builder variant
-        if: ${{ matrix.os.builder_dockerfile && matrix.os.builder_image_name }}
+      - name: Push docker-cli variant
+        if: ${{ matrix.os.cli_dockerfile && matrix.os.cli_image_name }}
         shell: bash
         env:
-          BUILDER_IMAGE_NAME: ${{ matrix.os.builder_image_name }}
+          CLI_IMAGE_NAME: ${{ matrix.os.cli_image_name }}
         run: |
-          docker push "$BUILDER_IMAGE_NAME"
+          docker push "$CLI_IMAGE_NAME"
