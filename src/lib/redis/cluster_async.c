@@ -714,3 +714,10 @@ fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t
 
 	return REDIS_ASYNC_RCODE_SUCCESS;
 }
+
+fr_redis_ct_node_t *fr_redis_cluster_thread_node_by_addr(fr_redis_cluster_thread_t *rtcluster, fr_socket_t *addr)
+{
+	fr_redis_ct_node_t find;
+	find.addr = *addr;
+	return fr_rb_find(rtcluster->used_nodes, &find);
+}
