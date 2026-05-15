@@ -1570,9 +1570,14 @@ static PyObject *python_module_init(void)
 	 *	variables.
 	 */
 	p_state = PyObject_CallObject((PyObject *)&py_freeradius_state_def, NULL);
+	if (unlikely(!p_state)) {
+		Py_DECREF(module);
+		goto error;
+	}
 	Py_INCREF(&py_freeradius_state_def);
 
 	if (PyModule_AddObject(module, "__State", p_state) < 0) {
+		Py_DECREF(p_state);
 		Py_DECREF(&py_freeradius_state_def);
 		Py_DECREF(module);
 		goto error;
