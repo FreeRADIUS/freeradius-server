@@ -4233,7 +4233,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	char const	*p, *end;
 	char		*buff_p;
-	char		*c1, *c2;
+	char const	*c1, *c2;
 	size_t		outlen = 0;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head;

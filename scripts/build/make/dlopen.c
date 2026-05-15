@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <errno.h>
 #include <dlfcn.h>
@@ -35,6 +36,8 @@ RCSID("$Id$")
 #include <gnumake.h>
 
 #include "log.h"
+
+#define UNCONST(_type, _ptr)	((_type)((uintptr_t)(_ptr)))
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
 #include <link.h>
@@ -932,7 +935,7 @@ found:
 	 *	If the library is just "m" instead of "libm", allow
 	 *	it.
 	 */
-	q = strrchr(name, '/');
+	q = UNCONST(char *, strrchr(name, '/'));
 	if (!q) {
 		size_t len = strlen(name);
 

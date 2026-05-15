@@ -143,7 +143,8 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 			 char const *file, int lineno, bool v3_compat, int *order)
 {
 	size_t		len;
-	char		*newfile, *p, c;
+	char		*newfile, c;
+	char const	*p;
 	fr_sbuff_marker_t name;
 
 	fr_sbuff_advance(sbuff, 8);

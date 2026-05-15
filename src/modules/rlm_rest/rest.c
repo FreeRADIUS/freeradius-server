@@ -1253,7 +1253,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	request_t		*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
-	char			*q;
+	char const		*q;
 	size_t			len;
 
 	http_body_type_t	type;
@@ -1349,12 +1349,16 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		}
 
 		/*
-		 *  Convert status code into an integer value
+		 *  Convert status code into an integer value.  strtoul needs
+		 *  a writable endptr, so shadow q in a local scope.
 		 */
-		q = NULL;
-		ctx->code = (int)strtoul(p, &q, 10);
-		fr_assert(q == (p + 3));	/* We check this above */
-		p = q;
+		{
+			char *qq = NULL;
+
+			ctx->code = (int)strtoul(p, &qq, 10);
+			fr_assert(qq == (p + 3));	/* We check this above */
+			p = qq;
+		}
 
 		/*
 		 *  Process reason_phrase (if present).
@@ -1475,7 +1479,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
-	char			*q;
+	char const		*q;
 
 	size_t			needed;
 
@@ -1554,7 +1558,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
-	char		*q;
+	char const	*q;
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
@@ -1579,7 +1583,7 @@ void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 void rest_response_debug(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
-	char		*q;
+	char const	*q;
 	size_t len;
 
 	len = rest_get_handle_data(&p, handle);
@@ -1684,7 +1688,7 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0L);
 		return 0;
 	}
 
@@ -1835,7 +1839,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTP_VERSION, (long)inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.

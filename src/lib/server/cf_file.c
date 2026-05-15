@@ -3715,8 +3715,9 @@ int cf_file_read(CONF_SECTION *cs, char const *filename, bool root)
 	 *	Only add the default config directory if we're loading a top-level configuration file.
 	 */
 	if (root) {
-		char	  *p;
-		CONF_PAIR *cp;
+		char const	*p;
+		char		*confdir = NULL;
+		CONF_PAIR	*cp;
 
 		/*
 		 *	For compatibility, this goes first.  And we don't care if there are too many '/'.
@@ -3726,12 +3727,19 @@ int cf_file_read(CONF_SECTION *cs, char const *filename, bool root)
 
 		/*
 		 *	This goes second, and we try to be nice about too many '/'.
+		 *
+		 *	"confdir" is the directory portion of filename, so trim everything
+		 *	from the final path separator onwards before storing it.
 		 */
-		cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		p = strrchr(filename, FR_DIR_SEP);
+		if (p) {
+			confdir = talloc_bstrndup(cs, filename, p - filename);
+			cp = cf_pair_alloc(cs, "confdir", confdir, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+			talloc_free(confdir);
+		} else {
+			cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		}
 		if (!cp) return -1;
-
-		p = strrchr(cp->value, FR_DIR_SEP);
-		if (p) *p = '\0';
 	}
 
 	MEM(tree = fr_rb_inline_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL));

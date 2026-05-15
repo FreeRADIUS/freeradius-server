@@ -297,7 +297,7 @@ size_t fr_redis_cluster_rcodes_table_len = NUM_ELEMENTS(fr_redis_cluster_rcodes_
  */
 static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
 {
-	uint8_t *p, *q;
+	uint8_t const *p, *q;
 
 	p = memchr(key, '{', key_len);
 	if (!p) {

@@ -58,7 +58,7 @@ size_t fr_aka_sim_id_user_len(char const *nai, size_t nai_len)
 {
 	char const *p;
 
-	p = (char *)memchr((uint8_t const *)nai, '@', nai_len);
+	p = memchr(nai, '@', nai_len);
 	if (!p) return nai_len;
 
 	return p - nai;
@@ -76,7 +76,7 @@ char const *fr_aka_sim_domain(char const *nai, size_t nai_len)
 {
 	char const *p;
 
-	p = (char *)memchr((uint8_t const *)nai, '@', nai_len);
+	p = memchr(nai, '@', nai_len);
 	if (!p) return NULL;
 
 	return p + 1;

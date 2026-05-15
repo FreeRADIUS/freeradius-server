@@ -556,7 +556,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	This is the full domain name, not just the name after host/
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "Domain-Name", 11) == 0) {
-		char *p;
+		char const *p;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -591,12 +591,8 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				return XLAT_ACTION_FAIL;
 			}
 
-			/*
-			 *	Hack.  This is simpler than the alternatives.
-			 */
-			*p = '\0';
-			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
-			*p = '\\';
+			fr_value_box_bstrndup(ctx, vb, NULL, user_name->vp_strvalue,
+					      p - user_name->vp_strvalue, user_name->vp_tainted);
 		}
 
 		fr_dcursor_append(out, vb);
@@ -606,7 +602,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Pull the NT-Domain out of the User-Name, if it exists.
 	 */
 	} else if (strncasecmp(arg->vb_strvalue, "NT-Domain", 9) == 0) {
-		char *p, *q;
+		char const *p, *q;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -631,13 +627,11 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			} else {
 				p++;	/* skip the period */
 				q = strchr(p, '.');
-				/*
-				 * use the same hack as below
-				 * only if another period was found
-				 */
-				if (q) *q = '\0';
-				fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
-				if (q) *q = '.';
+				if (q) {
+					fr_value_box_bstrndup(ctx, vb, NULL, p, q - p, user_name->vp_tainted);
+				} else {
+					fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
+				}
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
@@ -647,12 +641,8 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				return XLAT_ACTION_FAIL;
 			}
 
-			/*
-			 *	Hack.  This is simpler than the alternatives.
-			 */
-			*p = '\0';
-			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
-			*p = '\\';
+			fr_value_box_bstrndup(ctx, vb, NULL, user_name->vp_strvalue,
+					      p - user_name->vp_strvalue, user_name->vp_tainted);
 		}
 
 		fr_dcursor_append(out, vb);

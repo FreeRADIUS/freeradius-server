@@ -431,16 +431,16 @@ void dependency_version_print(void)
 
 		DEBUG2("Compilation flags:");
 #ifdef BUILT_WITH_CPPFLAGS
-		DEBUG2("  cppflags : " BUILT_WITH_CPPFLAGS);
+		DEBUG2("  cppflags : %s", BUILT_WITH_CPPFLAGS);
 #endif
 #ifdef BUILT_WITH_CFLAGS
-		DEBUG2("  cflags   : " BUILT_WITH_CFLAGS);
+		DEBUG2("  cflags   : %s", BUILT_WITH_CFLAGS);
 #endif
 #ifdef BUILT_WITH_LDFLAGS
-		DEBUG2("  ldflags  : " BUILT_WITH_LDFLAGS);
+		DEBUG2("  ldflags  : %s", BUILT_WITH_LDFLAGS);
 #endif
 #ifdef BUILT_WITH_LIBS
-		DEBUG2("  libs     : " BUILT_WITH_LIBS);
+		DEBUG2("  libs     : %s", BUILT_WITH_LIBS);
 #endif
 		DEBUG2("  ");
 	}

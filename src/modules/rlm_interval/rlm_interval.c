@@ -436,11 +436,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	case INTERVAL_SCOPE_THREAD:
 		xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, interval_xlat_thread, FR_TYPE_BOOL);
 		if (!xlat) goto registration_error;
-		if (xlat) {
-			xlat_func_thread_instantiate_set(xlat, interval_xlat_thread_instantiate,
-							 rlm_interval_xlat_thread_inst_t, NULL, NULL);
-		}
+		xlat_func_thread_instantiate_set(xlat, interval_xlat_thread_instantiate,
+						 rlm_interval_xlat_thread_inst_t, NULL, NULL);
 		break;
+
+	default:
+		fr_assert(0);
+		return -1;
 	}
 
 	xlat_func_args_set(xlat, interval_xlat_args);

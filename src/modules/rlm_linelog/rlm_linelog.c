@@ -312,7 +312,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 		int		fd = -1;
 		char const	*path;
 		off_t		offset;
-		char		*p;
+		char const	*p;
 
 		if (!call_env->filename) {
 			RERROR("Missing filename");
@@ -323,13 +323,9 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 
 		/* check path and eventually create subdirs */
 		p = strrchr(path, '/');
-		if (p) {
-			*p = '\0';
-			if (fr_mkdir(NULL, path, -1, 0700, NULL, NULL) < 0) {
-				RERROR("Failed to create directory %pV: %s", call_env->filename, fr_syserror(errno));
-				return -1;
-			}
-			*p = '/';
+		if (p && (fr_mkdir(NULL, path, p - path, 0700, NULL, NULL) < 0)) {
+			RERROR("Failed to create directory %pV: %s", call_env->filename, fr_syserror(errno));
+			return -1;
 		}
 
 		fd = exfile_open(inst->file.ef, path, inst->file.permissions, 0, &offset);

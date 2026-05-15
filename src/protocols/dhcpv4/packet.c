@@ -166,7 +166,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			 *	We don't trust everyone to abide by the RFC, though.
 			 */
 			if (*p != '\0') {
-				uint8_t *q;
+				uint8_t const *q;
 
 				q = memchr(p, '\0', dhcp_header_sizes[i]);
 				fr_pair_value_bstrndup(vp, (char const *)p, q ? q - p : dhcp_header_sizes[i], true);

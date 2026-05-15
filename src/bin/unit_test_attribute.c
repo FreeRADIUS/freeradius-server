@@ -591,7 +591,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 	uint8_t		*out_p = out, *out_end = out_p + outlen;
 
 	while (p < end) {
-		char *c1, *c2;
+		char const *c1, *c2;
 
 		if (out_p >= out_end) {
 			fr_strerror_const("Would overflow output buffer");
@@ -1016,7 +1016,7 @@ static fr_dict_t *dictionary_current(command_file_ctx_t *cc)
 static int dictionary_load_common(command_result_t *result, command_file_ctx_t *cc, char const *in, char const *default_subdir)
 {
 	char const	*dir;
-	char		*q;
+	char const	*q;
 	char const	*name;
 	char		*tmp = NULL;
 	int		ret;

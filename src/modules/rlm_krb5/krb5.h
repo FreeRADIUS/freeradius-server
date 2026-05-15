@@ -59,7 +59,7 @@ typedef struct {
 	char const		*service_princ;	//!< The service name provided by the
 						//!< config parser.
 
-	char			*hostname;	//!< The hostname component of
+	char const		*hostname;	//!< The hostname component of
 						//!< service_princ, or NULL.
 	char			*service;	//!< The service component of service_princ, or NULL.
 

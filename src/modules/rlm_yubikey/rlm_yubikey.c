@@ -104,7 +104,7 @@ static char const hextab[] = "0123456789abcdef";
 static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 {
 	size_t i;
-	char *c1, *c2;
+	char const *c1, *c2;
 
 	for (i = 0; i < len; i += 2) {
 		if (modhex[i] == '\0') {

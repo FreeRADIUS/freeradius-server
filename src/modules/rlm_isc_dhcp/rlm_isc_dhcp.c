@@ -728,15 +728,18 @@ redo_multi:
 static int parse_include(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	int ret;
-	char *p, pathname[8192];
+	char pathname[8192];
+	char const *sep;
 	char const *name = info->argv[0]->vb_strvalue;
 
 	IDEBUG("%.*s include %s ;", state->braces, spaces, name);
 
-	p = strrchr(state->filename, '/');
-	if (p) {
+	sep = strrchr(state->filename, '/');
+	if (sep) {
+		char *p;
+
 		strlcpy(pathname, state->filename, sizeof(pathname));
-		p = pathname + (p - state->filename) + 1;
+		p = pathname + (sep - state->filename) + 1;
 		strlcpy(p, name, sizeof(pathname) - (p - pathname));
 
 		name = pathname;

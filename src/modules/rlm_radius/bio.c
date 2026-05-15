@@ -2664,6 +2664,10 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	timeout_retry:
 		retry_config = &inst->timeout_retry;
 		break;
+
+	default:
+		fr_assert(0);
+		return -1;
 	}
 
 	/*

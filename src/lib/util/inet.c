@@ -480,7 +480,7 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
  */
 int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
 {
-	char		*p;
+	char const	*p;
 	unsigned int	mask;
 	char const	*end;
 	char		*eptr;
@@ -666,7 +666,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	buffer[inlen] = '\0';
 	value = buffer;
 
-	p = strchr(value, '/');
+	p = UNCONST(char *, strchr(value, '/'));
 	if (!p) {
 		out->prefix = 128;
 		out->af = AF_INET6;
@@ -674,7 +674,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		/*
 		 *	Allow scopes for non-prefix values.
 		 */
-		p = strchr(value, '%');
+		p = UNCONST(char *, strchr(value, '%'));
 		if (p) *(p++) = '\0';
 
 		/*

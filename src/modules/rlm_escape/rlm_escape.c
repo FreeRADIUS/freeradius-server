@@ -141,7 +141,8 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*arg = fr_value_box_list_head(in);
 	char const	*p, *end;
 	char		*out_p;
-	char		*c1, *c2, c3;
+	char const	*c1, *c2;
+	char		c3;
 	fr_sbuff_t	sbuff;
 	fr_value_box_t	*vb;
 

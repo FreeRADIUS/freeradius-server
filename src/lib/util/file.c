@@ -325,7 +325,7 @@ ssize_t fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mod
 	fd = open(filename, O_WRONLY | O_CREAT, mode);
 	if (fd < 0) {
 		ssize_t slen = 0;
-		char	*q;
+		char const *q;
 
 		if (mkdir && (errno == ENOENT) && (q = strrchr(filename, FR_DIR_SEP))) {
 			int dir_fd = -1;
@@ -383,7 +383,7 @@ int fr_unlink(char const *filename) {
 char const *fr_cwd_strip(char const *filename)
 {
 	static char our_wd[MAXPATHLEN];
-	char *found;
+	char const *found;
 
 	if (!getcwd(our_wd, sizeof(our_wd))) return filename;
 

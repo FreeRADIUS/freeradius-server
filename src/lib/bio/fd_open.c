@@ -1422,7 +1422,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 		/*
 		 *	We make the parent directory if told to, AND if there's a '/' in the path.
 		 */
-		char *p = strrchr(cfg->filename, '/');
+		char const *p = strrchr(cfg->filename, '/');
 		int dir_fd;
 
 		if (!p) goto do_open;

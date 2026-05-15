@@ -338,10 +338,22 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	return 0;
 }
 
-static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, fr_dict_attr_t **da_p)
+static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name_in, fr_dict_attr_t **da_p)
 {
+	char name_buff[128];
+	char *name;
 	char *p;
 	fr_type_t type;
+
+	/*
+	 *	Work on a writable copy so we can split the type name and length
+	 *	in place without modifying the caller's buffer.
+	 */
+	if (strlcpy(name_buff, name_in, sizeof(name_buff)) >= sizeof(name_buff)) {
+		fr_strerror_printf("Type field '%s' is too long", name_in);
+		return -1;
+	}
+	name = name_buff;
 
 	/*
 	 *	Some types can have fixed length

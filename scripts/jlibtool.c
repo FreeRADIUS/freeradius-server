@@ -1092,7 +1092,7 @@ static void add_runtime_dir_lib(char const *arg, command_t *cmd)
 
 static int parse_long_opt(char const *arg, command_t *cmd)
 {
-	char *equal_pos = strchr(arg, '=');
+	char const *equal_pos = strchr(arg, '=');
 	char var[50];
 	char value[500];
 	static bool toolset_set = false;
@@ -1866,8 +1866,8 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 static void add_minus_l(count_chars *cc, char const *arg)
 {
 	char *newarg;
-	char *name = strrchr(arg, '/');
-	char *file = strrchr(arg, '.');
+	char *name = UNCONST(char *, strrchr(arg, '/'));
+	char *file = UNCONST(char *, strrchr(arg, '.'));
 
 	/*
 	 * Most linkers require the -l argument value
@@ -2498,7 +2498,7 @@ static void link_fixup(command_t *cmd)
 
 				{
 					char *tmp = lt_malloc(PATH_MAX + 30);
-					char *suffix;
+					char const *suffix;
 
 					if (cmd->install_path) {
 						strcpy(tmp, cmd->install_path);

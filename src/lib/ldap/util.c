@@ -227,7 +227,8 @@ int fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 size_t fr_ldap_uri_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p;
-	char *c1, *c2, c3;
+	char const *c1, *c2;
+	char c3;
 	size_t	freespace = outlen;
 
 	if (outlen <= 1) return 0;
@@ -728,7 +729,8 @@ int fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server
 	LDAPURLDesc	*ldap_url;
 	bool		set_port_maybe = true;
 	int		default_port = LDAP_PORT;
-	char		*p, *url;
+	char const	*p;
+	char		*url;
 	CONF_ITEM	*ci = (CONF_ITEM *)cf_pair_find(cs, "server");
 
 	if (ldap_url_parse(server, &ldap_url)) {
