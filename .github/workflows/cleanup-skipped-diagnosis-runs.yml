@@ -1,20 +1,21 @@
 name: Cleanup Skipped Diagnosis Runs
 
 #
-#  Periodically delete completed-but-skipped runs of the Claude CI
-#  Failure Diagnosis workflow. That workflow fires on every CI
-#  completion (it has to - workflow_run has no event-level conclusion
-#  filter) but its job-level if: gates out anything that isn't a
-#  push-failure on master/developer/*, so non-failures leave "Skipped"
-#  entries in the Actions tab. This sweeps them up.
+#  Periodically delete completed runs of the Claude CI Failure
+#  Diagnosis workflow. That workflow fires on every CI completion
+#  (it has to - workflow_run has no event-level conclusion filter)
+#  and uses a job-level if: to skip non-master/developer failures,
+#  which leaves "Skipped" entries in the Actions tab. We don't keep
+#  successful diagnosis runs either - the useful output is the commit
+#  comment they posted, which lives on the commit, not the run record.
 #
-#  Also cleans up its own old completed runs so the cleanup itself
-#  doesn't become the new source of tab clutter.
+#  Also cleans up its own completed runs on the same pass so the
+#  cleanup itself doesn't become the new source of tab clutter.
 #
 
 on:
   schedule:
-    - cron: '17 * * * *'   # hourly at :17
+    - cron: '*/10 * * * *'   # every 10 minutes
   workflow_dispatch:
 
 jobs:
@@ -26,7 +27,7 @@ jobs:
       actions: write       # required to delete workflow runs
 
     steps:
-      - name: Delete skipped Claude CI Failure Diagnosis runs older than 1h
+      - name: Delete every completed Claude CI Failure Diagnosis run
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -40,21 +41,16 @@ jobs:
             exit 0
           fi
 
-          # 1h grace window so anything mid-investigation isn't yanked
-          # out from under whoever's looking at it.
-          CUTOFF=$(date -u -d "-1 hour" '+%Y-%m-%dT%H:%M:%SZ')
-          echo "Cutoff: $CUTOFF"
-
           gh api --paginate \
-            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=skipped&per_page=100" \
-            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
+            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs[].id' \
             | while read -r id; do
                 [ -z "$id" ] && continue
                 gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || \
                   echo "  $id: delete failed"
               done
 
-      - name: Self-clean - delete this workflow's previous runs older than 1h
+      - name: Self-clean - delete every completed run of this workflow
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -67,14 +63,9 @@ jobs:
             exit 0
           fi
 
-          # Match the 1h grace window used for the diagnosis cleanup above.
-          # At hourly cadence this keeps at most 1-2 of our own runs visible
-          # in the Actions tab at any moment.
-          CUTOFF=$(date -u -d "-1 hour" '+%Y-%m-%dT%H:%M:%SZ')
-
           gh api --paginate \
             "/repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?status=completed&per_page=100" \
-            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
+            --jq '.workflow_runs[].id' \
             | while read -r id; do
                 [ -z "$id" ] && continue
                 # Skip the current run so we don't delete ourselves mid-flight.
