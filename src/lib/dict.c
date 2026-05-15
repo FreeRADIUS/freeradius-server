@@ -3523,3 +3523,14 @@ int dict_walk(fr_hash_table_walk_t callback, void *context)
 {
 	return fr_hash_table_walk(attributes_byname, callback, context);
 }
+
+/** Walk every DICT_VALUE (enum value) defined in the loaded dictionaries.
+ *
+ *  Mirrors dict_walk() above.  Used by tooling that needs to enumerate
+ *  every (attribute, value-name, value-number) tuple.
+ */
+int dict_value_walk(fr_hash_table_walk_t callback, void *context)
+{
+	if (!values_byname) return 0;
+	return fr_hash_table_walk(values_byname, callback, context);
+}

@@ -508,6 +508,7 @@ void		dict_free(void);
 int		dict_read(char const *dir, char const *filename);
 size_t		dict_print_oid(char *buffer, size_t buflen, DICT_ATTR const *da);
 int		dict_walk(fr_hash_table_walk_t callback, void *context);
+int		dict_value_walk(fr_hash_table_walk_t callback, void *context);
 
 void 		dict_attr_free(DICT_ATTR const **da);
 int		dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vendor);
