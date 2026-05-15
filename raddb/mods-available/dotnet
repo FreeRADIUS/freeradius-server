@@ -1,0 +1,92 @@
+#
+#  rlm_dotnet — host .NET 8+ policy assemblies via hostfxr / nethost.
+#
+#  Managed sources and publish output:
+#    ${modconfdir}/dotnet/          (raddb/mods-config/dotnet/ in the source tree)
+#
+#  Before enabling this module, publish the interop DLL, e.g. from the FreeRADIUS tree:
+#
+#    dotnet publish -c Release \
+#      ${top_srcdir}/raddb/mods-config/dotnet/FreeRadius.Dotnet.Interop/FreeRadius.Dotnet.Interop.csproj \
+#      -o ${modconfdir}/${.:name}/publish/Release --no-self-contained
+#
+#  Then symlink into mods-enabled and reference in a virtual-server section:
+#
+#    cd raddb/mods-enabled && ln -s ../mods-available/dotnet .
+#
+#    authorize {
+#        dotnet
+#    }
+#
+#  The bundled ExamplePolicy (FreeRadius.Interop.ExamplePolicy) logs request
+#  attributes at L_DBG, similar to rlm_python example.py and
+#  mods-config/perl/example.pl. Use radiusd -X to see output.
+#
+#  See src/modules/rlm_dotnet/README.md for RDb1/RDr1 blobs, IAsyncRadiusPolicy,
+#  return codes, and troubleshooting.
+#
+dotnet {
+	#
+	#  Path to the managed interop assembly (must include FreeRadius.Dotnet.Interop.dll
+	#  and FreeRadius.Dotnet.Interop.runtimeconfig.json in the same directory, or set
+	#  runtime_config_path explicitly).
+	#
+	assembly_path = ${modconfdir}/${.:name}/publish/Release/FreeRadius.Dotnet.Interop.dll
+
+	#
+	#  Optional. Defaults to <dirname(assembly_path)>/<stem>.runtimeconfig.json.
+	#  May be the full path to the .runtimeconfig.json file, or a directory containing it.
+	#
+#	runtime_config_path = ${modconfdir}/${.:name}/publish/Release
+
+	#
+	#  hostfxr export type: "Namespace.Type, AssemblyName" (required).
+	#
+	native_exports_type = "FreeRadius.Interop.NativeExports, FreeRadius.Dotnet.Interop"
+
+	#
+	#  Policy class loaded from the same assembly (or another DLL on the probing path):
+	#  "Namespace.Class, AssemblyName"
+	#
+	policy_type = "FreeRadius.Interop.ExamplePolicy, FreeRadius.Dotnet.Interop"
+
+	#
+	#  shared     — one policy instance for all worker threads (default).
+	#  per_thread — factory + one policy per RADIUS worker (HttpClient, caches, etc.).
+	#
+#	policy_instance_mode = shared
+
+	#
+	#  JSON object merged into boot "extra" (passed to policy ctor as JsonElement).
+	#
+	extra_config = "{\"note\":\"sample dotnet module metadata\"}"
+
+	#
+	#  Reply pair-list or RDr1 blob buffer (bytes). Increase for very large reply lists.
+	#
+#	reply_buffer_size = 65536
+
+	#
+	#  Max size of structured error JSON on RLM_MODULE_FAIL.
+	#
+#	error_buffer_size = 8192
+
+	#
+	#  Timeout for IAsyncRadiusPolicy (milliseconds). 0 = no timeout.
+	#
+#	async_timeout_ms = 0
+
+	#
+	#  Per-instance counters (calls, failures, latency). Logged on detach and optionally
+	#  every stats_log_interval seconds.
+	#
+#	stats = yes
+#	stats_log_interval = 60
+
+	#
+	#  Example: custom policy in a separate assembly (after publishing MyPolicy.dll beside
+	#  the interop DLL):
+	#
+#	assembly_path = ${modconfdir}/${.:name}/MyPolicy.dll
+#	policy_type = "MyCompany.Radius.MyPolicy, MyPolicy"
+}

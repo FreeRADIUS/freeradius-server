@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <AssemblyName>FreeRadius.Dotnet.Interop</AssemblyName>
+    <RootNamespace>FreeRadius.Interop</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Managed SDK for FreeRADIUS rlm_dotnet policy assemblies (RDb1 request blobs, pair-list and RDr1 replies).</Description>
+  </PropertyGroup>
+</Project>
