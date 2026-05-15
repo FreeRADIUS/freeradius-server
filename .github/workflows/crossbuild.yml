@@ -115,6 +115,19 @@ jobs:
 
     - uses: ./.github/actions/setup-dind
 
+    #
+    #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
+    #  registry-mirrors -> docker.internal.networkradius.com baked
+    #  in, but our internal registry isn't actually a Hub pull-
+    #  through cache, so the inner crossbuild's FROM-pulls fall back
+    #  to docker.io and would otherwise hit anonymous rate limits.
+    #
+    - name: Login to Docker Hub (via dind)
+      uses: docker/login-action@v4
+      with:
+        username: ${{ vars.DOCKERHUB_READ_USER }}
+        password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
     - name: Run crossbuild tests
       run: |
         make crossbuild.$OS
