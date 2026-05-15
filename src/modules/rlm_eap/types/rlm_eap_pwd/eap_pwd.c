@@ -469,11 +469,28 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	if ( !BN_add(exp, session->prime, BN_value_one()) ||
 		 !BN_rshift(exp, exp, 2) ||
 		 !BN_mod_exp_mont_consttime(y1, y_sqrd, exp, session->prime, session->bnctx, NULL) ||
-		 !BN_sub(y2, session->prime, y1) ||
-		 !BN_bn2bin(y1, y1buf) ||
-		 !BN_bn2bin(y2, y2buf)) {
+		 !BN_sub(y2, session->prime, y1)) {
 		DEBUG("unable to compute y");
 		goto fail;
+	}
+	/*
+	 *	y1 / y2 are mod-prime values uniformly distributed in [0, p-1]; either may
+	 *	have leading zero bytes (~1/256 per byte). We need fixed-width big-endian
+	 *	encoding for the const_time_select_bin / BN_bin2bn round-trip below, so
+	 *	pad with leading zeros rather than letting BN_bn2bin shift bytes to the
+	 *	front of the buffer.
+	 */
+	{
+		size_t	y1_pad = primebytelen - BN_num_bytes(y1);
+		size_t	y2_pad = primebytelen - BN_num_bytes(y2);
+
+		memset(y1buf, 0, y1_pad);
+		memset(y2buf, 0, y2_pad);
+		if ((BN_bn2bin(y1, y1buf + y1_pad) < 0) ||
+		    (BN_bn2bin(y2, y2buf + y2_pad) < 0)) {
+			DEBUG("unable to write y to buffer");
+			goto fail;
+		}
 	}
 	mask = const_time_eq(save_is_odd, BN_is_odd(y1));
 	const_time_select_bin(mask, y1buf, y2buf, primebytelen, ybuf);
