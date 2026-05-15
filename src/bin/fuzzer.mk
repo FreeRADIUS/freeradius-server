@@ -58,7 +58,11 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 		if which flock > /dev/null 2>&1; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
 		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; fi; \
 		cd src/tests/fuzzer-corpus; \
-		tar -xf $(PROTOCOL).tar; \
+		if [ -f $(PROTOCOL).tar ]; then \
+			tar -xf $(PROTOCOL).tar; \
+		else \
+			mkdir -p $(PROTOCOL); \
+		fi; \
 		touch "$(PROTOCOL)/.extracted"; \
 	fi
 
