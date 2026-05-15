@@ -21,13 +21,7 @@ RUN apt-get update && \
 	apt-get dist-upgrade -y
 
 #
-#  Install packages needed by the build.
-#
-#  docker.io, docker-buildx and m4 are needed when this image is used
-#  as the job container of a dind-based workflow (docker.yml,
-#  crossbuild.yml, multi-server-tests): the in-container docker CLI
-#  talks to the dind sidecar over DOCKER_HOST, and m4 regenerates the
-#  per-distro Dockerfiles from the m4 templates.
+#  Install packages needed by the build
 #
 RUN apt-get install -y --no-install-recommends \
 	apt-transport-https \
@@ -35,8 +29,6 @@ RUN apt-get install -y --no-install-recommends \
 	ca-certificates \
 	curl \
 	devscripts \
-	docker-buildx \
-	docker.io \
 	equivs \
 	gawk \
 	git \
@@ -44,7 +36,6 @@ RUN apt-get install -y --no-install-recommends \
 	gnupg \
 	libasan6 \
 	lsb-release \
-	m4 \
 	python3-pip \
 	quilt \
 	ruby-dev \

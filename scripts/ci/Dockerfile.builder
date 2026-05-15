@@ -1,0 +1,24 @@
+#
+#  CI-builder image: extends the standard self-hosted CI base with the
+#  tools needed when the image is used as the JOB container of a
+#  dind-based workflow (docker.yml, crossbuild.yml, multi-server-tests).
+#
+#  The in-container docker CLI talks to the dind sidecar over
+#  DOCKER_HOST, and m4 regenerates per-distro Dockerfiles from the m4
+#  templates in scripts/docker/m4/.
+#
+#  ci.yml and ci-sanitizers.yml don't need these and continue to use
+#  the plain self-hosted image - this avoids bloating the base for
+#  workflows that never call docker.
+#
+
+FROM docker.internal.networkradius.com/self-hosted
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        docker-buildx \
+        docker.io \
+        m4 \
+    && rm -rf /var/lib/apt/lists/*
