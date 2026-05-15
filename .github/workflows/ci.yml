@@ -26,13 +26,6 @@ env:
   DEBIAN_FRONTEND: noninteractive
   CI: 1
   GH_ACTIONS: 1
-  #
-  #  Force Node.js actions onto Node 24 ahead of GH's Sep 2026 removal
-  #  of Node 20 from the runners. fkirc/skip-duplicate-actions and
-  #  mxschmitt/action-tmate haven't shipped Node 24 versions yet;
-  #  remove this when every action we reference has caught up.
-  #
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   pre-ci:
