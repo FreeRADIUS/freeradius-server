@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 	bool		    strip_root	= false;
 	FILE		   *out;
 	TALLOC_CTX	   *autofree;
-	struct json_object *root_json;
+	struct json_object *root_json = NULL;
 	CONF_SECTION	   *root_cs;
 	int		    rcode = EXIT_SUCCESS;
 
@@ -309,7 +309,6 @@ int main(int argc, char *argv[])
 	} else {
 		/* Slurp stdin and parse */
 		char		     buf[65536];
-		size_t		     used = 0;
 		ssize_t		     n;
 		struct json_tokener *tok = json_tokener_new();
 
@@ -324,7 +323,6 @@ int main(int argc, char *argv[])
 			}
 			break;
 		}
-		(void)used;
 		json_tokener_free(tok);
 
 		if (!root_json) {

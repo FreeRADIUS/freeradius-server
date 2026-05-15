@@ -494,7 +494,7 @@ int main(int argc, char *argv[])
 		if (discover_modules(autofree, module_dir, &names, &n_names) < 0) {
 			exit(EXIT_FAILURE);
 		}
-		qsort(names, n_names, sizeof(names[0]), compare_str);
+		if (n_names > 0) qsort(names, n_names, sizeof(names[0]), compare_str);
 	}
 
 	{
