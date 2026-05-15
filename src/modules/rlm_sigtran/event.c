@@ -478,9 +478,18 @@ static void *sigtran_event_loop(UNUSED void *instance)
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, ctrl_pipe) < 0) {
 		ERROR("osmocom thread - Failed creating ctrl_pipe: %s", fr_syserror(errno));
+		talloc_free(ctx);
+		sem_post(&event_thread_running);
 		return NULL;
 	}
-	if (!ofd_create(ctx, ctrl_pipe[1], event_process_request, ctx)) return NULL;
+	if (!ofd_create(ctx, ctrl_pipe[1], event_process_request, ctx)) {
+		close(ctrl_pipe[0]);
+		close(ctrl_pipe[1]);
+		ctrl_pipe[0] = ctrl_pipe[1] = -1;
+		talloc_free(ctx);
+		sem_post(&event_thread_running);
+		return NULL;
+	}
 
 	DEBUG2("osmocom thread - Entering event loop, listening on fd %i (client fd %i)", ctrl_pipe[1], ctrl_pipe[0]);
 
@@ -550,6 +559,12 @@ int sigtran_event_start(void)
 	}
 
 	sem_wait(&event_thread_running);
+
+	if (ctrl_pipe[0] < 0) {
+		ERROR("main thread - Event thread failed to initialize");
+		pthread_join(event_thread, NULL);
+		return -1;
+	}
 
 #ifndef NDEBUG
 	{
