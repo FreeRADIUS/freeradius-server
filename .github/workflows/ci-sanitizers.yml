@@ -37,7 +37,7 @@ jobs:
       docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.1
 
   ci-sanitizers:
     timeout-minutes: 150

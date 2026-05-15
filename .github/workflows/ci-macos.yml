@@ -23,6 +23,13 @@ env:
   HOSTAPD_GIT_TAG: hostap_2_11
   DEBIAN_FRONTEND: noninteractive
   CI: 1
+  #
+  #  Force Node.js actions onto Node 24 ahead of GH's Sep 2026 removal
+  #  of Node 20 from the runners. fkirc/skip-duplicate-actions and
+  #  mxschmitt/action-tmate haven't shipped Node 24 versions yet;
+  #  remove this when every action we reference has caught up.
+  #
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   GH_ACTIONS: 1
 
 jobs:
@@ -33,7 +40,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
+        uses: fkirc/skip-duplicate-actions@v5.3.1
 
   ci:
     timeout-minutes: 90
