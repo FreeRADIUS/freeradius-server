@@ -76,8 +76,8 @@ jobs:
       - name: Docker Hub login
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_HUB_READ_USER }}
-          password: ${{ secrets.DOCKER_HUB_READ_KEY }}
+          username: ${{ secrets.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
       - name: Fetch and label image
         shell: bash
