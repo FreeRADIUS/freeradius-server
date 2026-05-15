@@ -71,24 +71,24 @@ crossbuild.info_header:
 crossbuild.help: crossbuild.info
 	@echo ""
 	@echo "Make targets:"
-	@echo "    crossbuild               - build and test all images"
-	@echo "    crossbuild.common        - build and test common images"
-	@echo "    crossbuild.info          - list images"
-	@echo "    crossbuild.down          - stop all containers"
-	@echo "    crossbuild.reset         - remove cache of docker state"
-	@echo "    crossbuild.clean         - down and reset all targets"
-	@echo "    crossbuild.wipe          - destroy all crossbuild Docker images"
+	@echo "    crossbuild                    - build and test all images"
+	@echo "    crossbuild.common             - build and test common images"
+	@echo "    crossbuild.info               - list images"
+	@echo "    crossbuild.down               - stop all containers"
+	@echo "    crossbuild.reset              - remove cache of docker state"
+	@echo "    crossbuild.clean              - down and reset all targets"
+	@echo "    crossbuild.distclean          - destroy all crossbuild Docker images"
 	@echo ""
 	@echo "Per-image targets:"
-	@echo "    crossbuild.IMAGE         - build and test image <IMAGE>"
-	@echo "    crossbuild.IMAGE.log     - show latest build log"
-	@echo "    crossbuild.IMAGE.up      - start container"
-	@echo "    crossbuild.IMAGE.down    - stop container"
-	@echo "    crossbuild.IMAGE.sh      - shell in container"
-	@echo "    crossbuild.IMAGE.refresh - push latest commits into container"
-	@echo "    crossbuild.IMAGE.reset   - remove cache of docker state"
-	@echo "    crossbuild.IMAGE.clean   - stop container and tidy up"
-	@echo "    crossbuild.IMAGE.wipe    - remove Docker image"
+	@echo "    crossbuild.IMAGE              - build and test image <IMAGE>"
+	@echo "    crossbuild.IMAGE.log          - show latest build log"
+	@echo "    crossbuild.IMAGE.up           - start container"
+	@echo "    crossbuild.IMAGE.down         - stop container"
+	@echo "    crossbuild.IMAGE.sh           - shell in container"
+	@echo "    crossbuild.IMAGE.refresh      - push latest commits into container"
+	@echo "    crossbuild.IMAGE.reset        - remove cache of docker state"
+	@echo "    crossbuild.IMAGE.clean        - stop container and tidy up"
+	@echo "    crossbuild.IMAGE.distclean    - remove Docker image"
 	@echo ""
 	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 
@@ -110,7 +110,7 @@ crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 #
 #  Remove all images
 #
-crossbuild.wipe: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.wipe)
+crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 
 #
 #  Regenerate all Dockerfiles from m4 templates
@@ -227,8 +227,8 @@ crossbuild.${1}.reset:
 #  Clean down images. Means on next run we'll rebuild the
 #  container (rather than just starting it).
 #
-.PHONY: crossbuild.${1}.wipe
-crossbuild.${1}.wipe:
+.PHONY: crossbuild.${1}.distclean
+crossbuild.${1}.distclean:
 	${Q}echo CLEAN ${1}
 	${Q}docker image rm $(CB_IPREFIX)/${1} >/dev/null 2>&1 || true
 	${Q}rm -f $(DD)/stamp-image.${1}
