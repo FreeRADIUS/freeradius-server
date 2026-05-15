@@ -116,10 +116,10 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 		attrlen = fr_nbo_to_uint16(ptr + 4);
 
 		/*
-		 *	Total of attribute lengths shouldn't exceed *packet_len - header length,
-		 *	which happens iff at some point, attrlen exceeds data_lan.
+		 *	Each attribute occupies a 6-byte header (4 type + 2 length) plus
+		 *	attrlen bytes of data.  Verify the full TLV fits in remaining data.
 		 */
-		if (attrlen > data_len) {
+		if ((attrlen + 6) > data_len) {
 			fr_strerror_printf("Packet attributes cause total length "
 					   "plus header length to exceed packet length %lx",
 					   *packet_len);
