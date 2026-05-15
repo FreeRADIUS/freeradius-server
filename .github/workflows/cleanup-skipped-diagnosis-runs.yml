@@ -1,16 +1,19 @@
 name: Cleanup Skipped Diagnosis Runs
 
 #
-#  Periodically delete completed runs of the Claude CI Failure
-#  Diagnosis workflow. That workflow fires on every CI completion
-#  (it has to - workflow_run has no event-level conclusion filter)
-#  and uses a job-level if: to skip non-master/developer failures,
-#  which leaves "Skipped" entries in the Actions tab. We don't keep
-#  successful diagnosis runs either - the useful output is the commit
-#  comment they posted, which lives on the commit, not the run record.
+#  Periodically tidy the Actions tab.
 #
-#  Also cleans up its own completed runs on the same pass so the
-#  cleanup itself doesn't become the new source of tab clutter.
+#  Claude CI Failure Diagnosis fires on every CI completion (the
+#  workflow_run event has no conclusion filter) but its job-level if:
+#  skips anything that isn't a master/developer-* push failure, so
+#  non-failures pile up as "Skipped" entries. Delete those, keep
+#  failures and successes (they're useful: failures explain why a
+#  diagnosis itself broke, successes pair with the commit comment
+#  they posted).
+#
+#  This cleanup workflow's own successful runs are just noise after
+#  they've done their job - delete those too. Failures stay so we can
+#  see if the cleanup itself has broken.
 #
 
 on:
@@ -27,7 +30,7 @@ jobs:
       actions: write       # required to delete workflow runs
 
     steps:
-      - name: Delete every completed Claude CI Failure Diagnosis run
+      - name: Delete skipped Claude CI Failure Diagnosis runs
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -42,7 +45,7 @@ jobs:
           fi
 
           gh api --paginate \
-            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=completed&per_page=100" \
+            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=skipped&per_page=100" \
             --jq '.workflow_runs[].id' \
             | while read -r id; do
                 [ -z "$id" ] && continue
@@ -50,7 +53,7 @@ jobs:
                   echo "  $id: delete failed"
               done
 
-      - name: Self-clean - delete every completed run of this workflow
+      - name: Self-clean - delete successful and skipped runs of this workflow
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -63,14 +66,19 @@ jobs:
             exit 0
           fi
 
-          gh api --paginate \
-            "/repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?status=completed&per_page=100" \
-            --jq '.workflow_runs[].id' \
-            | while read -r id; do
-                [ -z "$id" ] && continue
-                # Skip the current run so we don't delete ourselves mid-flight.
-                if [ "$id" = "$GITHUB_RUN_ID" ]; then
-                  continue
-                fi
-                gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || true
-              done
+          # Iterate over the two conclusions we want gone. Failures stay.
+          for status in success skipped; do
+            gh api --paginate \
+              "/repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?status=$status&per_page=100" \
+              --jq '.workflow_runs[].id' \
+              | while read -r id; do
+                  [ -z "$id" ] && continue
+                  # Skip the current run so we don't delete ourselves
+                  # mid-flight (its status isn't "completed" yet, but
+                  # belt-and-braces).
+                  if [ "$id" = "$GITHUB_RUN_ID" ]; then
+                    continue
+                  fi
+                  gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || true
+                done
+          done
