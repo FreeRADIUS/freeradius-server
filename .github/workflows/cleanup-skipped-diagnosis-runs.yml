@@ -1,0 +1,86 @@
+name: Cleanup Skipped Diagnosis Runs
+
+#
+#  Periodically delete completed-but-skipped runs of the Claude CI
+#  Failure Diagnosis workflow. That workflow fires on every CI
+#  completion (it has to - workflow_run has no event-level conclusion
+#  filter) but its job-level if: gates out anything that isn't a
+#  push-failure on master/developer/*, so non-failures leave "Skipped"
+#  entries in the Actions tab. This sweeps them up.
+#
+#  Also cleans up its own old completed runs so the cleanup itself
+#  doesn't become the new source of tab clutter.
+#
+
+on:
+  schedule:
+    - cron: '17 5 * * *'   # daily at 05:17 UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.repository == 'FreeRADIUS/freeradius-server'
+
+    permissions:
+      actions: write       # required to delete workflow runs
+
+    steps:
+      - name: Delete skipped Claude CI Failure Diagnosis runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          WORKFLOW_ID=$(gh api "/repos/$REPO/actions/workflows" \
+            --jq '.workflows[] | select(.name == "Claude CI Failure Diagnosis") | .id')
+          if [ -z "$WORKFLOW_ID" ]; then
+            echo "Diagnosis workflow not found; nothing to do."
+            exit 0
+          fi
+
+          deleted=0
+          # status=skipped covers both "if: false" skips and any other
+          # skipped completions. Page through up to a few hundred at a
+          # time; daily run keeps that bounded.
+          gh api --paginate \
+            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=skipped&per_page=100" \
+            --jq '.workflow_runs[].id' \
+            | while read -r id; do
+                [ -z "$id" ] && continue
+                if gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
+                  deleted=$((deleted + 1))
+                else
+                  echo "  skip $id (delete failed)"
+                fi
+              done
+          echo "Deleted skipped diagnosis runs (count below; subshell var lost on pipe exit)"
+
+      - name: Self-clean - delete this workflow's own old completed runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEP_DAYS: 7
+        run: |
+          set -euo pipefail
+
+          SELF_WORKFLOW_ID=$(gh api "/repos/$REPO/actions/workflows" \
+            --jq '.workflows[] | select(.name == "Cleanup Skipped Diagnosis Runs") | .id')
+          if [ -z "$SELF_WORKFLOW_ID" ]; then
+            exit 0
+          fi
+
+          CUTOFF=$(date -u -d "-${KEEP_DAYS} days" '+%Y-%m-%dT%H:%M:%SZ')
+
+          gh api --paginate \
+            "/repos/$REPO/actions/workflows/$SELF_WORKFLOW_ID/runs?status=completed&per_page=100" \
+            --jq ".workflow_runs[] | select(.created_at < \"$CUTOFF\") | .id" \
+            | while read -r id; do
+                [ -z "$id" ] && continue
+                # Skip the current run so we don't delete ourselves mid-flight.
+                if [ "$id" = "$GITHUB_RUN_ID" ]; then
+                  continue
+                fi
+                gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || true
+              done
