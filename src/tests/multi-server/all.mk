@@ -30,9 +30,9 @@ OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
 
 # FIXME: We should be using packaged versions of the multi-server test framework
 # instead of cloning from git.
-TEST_MULTI_SERVER_GIT_REPO   := https://github.com/InkbridgeNetworks/freeradius-multi-server.git
+TEST_MULTI_SERVER_GIT_REPO   := https://github.com/InkbridgeNetworks/radenv.git
 TEST_MULTI_SERVER_GIT_BRANCH := main
-TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/freeradius-multi-server)
+TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/radenv)
 
 #
 #  Suppress command echo unless VERBOSE is set
