@@ -681,8 +681,8 @@ static int vsnprintf(char *str, size_t n, char const *fmt, va_list ap)
 
 	res = vfprintf(f, fmt, ap);
 
-	if ((res > 0) && (res < n)) {
-		res = vsprintf( str, fmt, ap );
+	if ((res > 0) && (res < (int)n)) {
+		str[res] = '\0';
 	}
 	return res;
 }
@@ -821,7 +821,7 @@ static char const *flatten_count_chars(count_chars *cc, char delim)
 
 	for (i = 0; i < cc->num; i++) {
 		if (cc->vals[i]) {
-			strcat(newval, cc->vals[i]);
+			snprintf(newval + strlen(newval), (size_t)(size + 1) - strlen(newval), "%s", cc->vals[i]);
 			if (delim) {
 				size_t len = strlen(newval);
 				newval[len] = delim;
@@ -1098,15 +1098,13 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	static bool toolset_set = false;
 
 	if (equal_pos) {
-		strncpy(var, arg, equal_pos - arg);
-		var[equal_pos - arg] = 0;
-		if (strlen(equal_pos + 1) >= sizeof(var)) {
+		snprintf(var, sizeof(var), "%.*s", (int)(equal_pos - arg), arg);
+		if (strlen(equal_pos + 1) >= sizeof(value)) {
 			return 0;
 		}
-		strcpy(value, equal_pos + 1);
+		snprintf(value, sizeof(value), "%s", equal_pos + 1);
 	} else {
-		strncpy(var, arg, sizeof(var) - 1);
-		var[sizeof(var) - 1] = '\0';
+		snprintf(var, sizeof(var), "%s", arg);
 
 		value[0] = '\0';
 	}
@@ -1409,8 +1407,7 @@ static char const *file_name_stripped(char const *path, bool *allocated)
 		char *trimmed;
 
 		trimmed = lt_malloc(ext - name + 1);
-		strncpy(trimmed, name, ext - name);
-		trimmed[ext-name] = 0;
+		snprintf(trimmed, ext - name + 1, "%.*s", (int)(ext - name), name);
 
 		*allocated = true;
 		return trimmed;
@@ -1485,10 +1482,10 @@ static char *gen_library_name(char const *name, enum lib_type genlib)
 	}
 
 	if (genlib == TYPE_MODULE_LIB) {
-		strcpy(newarg, file_name(name));
+		snprintf(newarg, strlen(name) + 11, "%s", file_name(name));
 	}
 	else {
-		strcpy(newarg, name);
+		snprintf(newarg, strlen(name) + 11, "%s", name);
 	}
 
 	newext = strrchr(newarg, '.');
@@ -1502,15 +1499,15 @@ static char *gen_library_name(char const *name, enum lib_type genlib)
 
 	switch (genlib) {
 	case TYPE_STATIC_LIB:
-		strcpy(newext, target->static_lib_ext);
+		snprintf(newext, 10, "%s", target->static_lib_ext);
 		break;
 
 	case TYPE_DYNAMIC_LIB:
-		strcpy(newext, target->dynamic_lib_ext);
+		snprintf(newext, 10, "%s", target->dynamic_lib_ext);
 		break;
 
 	case TYPE_MODULE_LIB:
-		strcpy(newext, target->module_lib_ext);
+		snprintf(newext, 10, "%s", target->module_lib_ext);
 		break;
 
 	default:
@@ -1552,7 +1549,7 @@ static char const *check_object_exists(command_t *cmd, char const *arg, int argl
 	newarg[arglen] = 0;
 	ext = newarg + arglen;
 
-	strcpy(ext, target->object_ext);
+	snprintf(ext, 10, "%s", target->object_ext);
 
 	DEBUG("Checking (obj): %s\n", newarg);
 	if (stat(newarg, &sb) == 0) {
@@ -1575,7 +1572,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 	int pass, rv, newpathlen;
 
 	newarg = (char *)lt_malloc(strlen(arg) + 10);
-	strcpy(newarg, arg);
+	snprintf(newarg, strlen(arg) + 10, "%s", arg);
 	newarg[pathlen] = '\0';
 
 	newpathlen = pathlen;
@@ -1584,7 +1581,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 		newpathlen += sizeof(".libs/") - 1;
 	}
 
-	strcpy(newarg + newpathlen, arg + pathlen);
+	snprintf(newarg + newpathlen, strlen(arg) + 10 - newpathlen, "%s", arg + pathlen);
 	ext = strrchr(newarg, '.');
 	if (!ext || ext == newarg) {
 		ERROR("Error: Library path does not have an extension\n");
@@ -1603,7 +1600,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 		case 0:
 			if (cmd->options.pic_mode != PIC_AVOID &&
 				cmd->options.shared != SHARE_STATIC) {
-				strcpy(ext, target->dynamic_lib_ext);
+				snprintf(ext, 10, "%s", target->dynamic_lib_ext);
 				*libtype = TYPE_DYNAMIC_LIB;
 				break;
 			}
@@ -1611,15 +1608,15 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 			FALL_THROUGH;
 
 		case 1:
-			strcpy(ext, target->static_lib_ext);
+			snprintf(ext, 10, "%s", target->static_lib_ext);
 			*libtype = TYPE_STATIC_LIB;
 			break;
 		case 2:
-			strcpy(ext, target->module_lib_ext);
+			snprintf(ext, 10, "%s", target->module_lib_ext);
 			*libtype = TYPE_MODULE_LIB;
 			break;
 		case 3:
-			strcpy(ext, target->object_ext);
+			snprintf(ext, 10, "%s", target->object_ext);
 			*libtype = TYPE_OBJECT;
 			break;
 		default:
@@ -1661,7 +1658,7 @@ static char * load_install_path(char const *arg)
 		if ((p = strstr(line, token))) {
 			p += strlen(token);
 			path = lt_malloc(PATH_MAX);
-			strncpy(path, p, PATH_MAX);
+			snprintf(path, PATH_MAX, "%s", p);
 
 			/* fgets reads newline */
 			if (path[strlen(path)-1] == '\n') {
@@ -1699,11 +1696,11 @@ static char *load_noinstall_path(char const *arg, int pathlen)
 	int newpathlen;
 
 	newarg = (char *)lt_malloc(strlen(arg) + 10);
-	strcpy(newarg, arg);
+	snprintf(newarg, strlen(arg) + 10, "%s", arg);
 	newarg[pathlen] = 0;
 
 	newpathlen = pathlen;
-	strcat(newarg, ".libs");
+	snprintf(newarg + newpathlen, strlen(arg) + 10 - newpathlen, "%s", ".libs");
 	newpathlen += sizeof(".libs") - 1;
 	newarg[newpathlen] = 0;
 
@@ -1763,14 +1760,13 @@ static void push_path_flag(count_chars *cc, char const *flag, char const *path)
 	tmp = lt_malloc(size);
 
 	if (target->linker_flag_prefix) {
-		strcpy(tmp, target->linker_flag_prefix);
-		strcat(tmp, flag);
+		snprintf(tmp, size, "%s%s", target->linker_flag_prefix, flag);
 	} else {
-		strcpy(tmp, flag);
+		snprintf(tmp, size, "%s", flag);
 	}
 
-	if (!target->linker_flag_no_equals) strcat(tmp, "=");
-	strcat(tmp, path);
+	if (!target->linker_flag_no_equals) snprintf(tmp + strlen(tmp), size - strlen(tmp), "%s", "=");
+	snprintf(tmp + strlen(tmp), size - strlen(tmp), "%s", path);
 
 	push_count_chars(cc, tmp);
 }
@@ -1840,21 +1836,22 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 								  (dyext_len*2) + 2);
 
 	cur_len = 0;
-	strcpy(exp_argument, install_path);
+	memcpy(exp_argument, install_path, i_p_len);
 	cur_len += i_p_len;
 	exp_argument[cur_len++] = '/';
-	strncpy(exp_argument+cur_len, name, extlen-pathlen);
+	memcpy(exp_argument+cur_len, name, name_len);
 	cur_len += name_len;
-	strcpy(exp_argument+cur_len, target->dynamic_lib_ext);
+	memcpy(exp_argument+cur_len, target->dynamic_lib_ext, dyext_len);
 	cur_len += dyext_len;
 	exp_argument[cur_len++] = ':';
-	strcpy(exp_argument+cur_len, current_path);
+	memcpy(exp_argument+cur_len, current_path, c_p_len);
 	cur_len += c_p_len;
 	exp_argument[cur_len++] = '/';
-	strncpy(exp_argument+cur_len, name, extlen-pathlen);
+	memcpy(exp_argument+cur_len, name, name_len);
 	cur_len += name_len;
-	strcpy(exp_argument+cur_len, target->dynamic_lib_ext);
+	memcpy(exp_argument+cur_len, target->dynamic_lib_ext, dyext_len);
 	cur_len += dyext_len;
+	exp_argument[cur_len] = '\0';
 
 	push_count_chars(cc, exp_argument);
 	lt_const_free(install_path);
@@ -1883,8 +1880,7 @@ static void add_minus_l(count_chars *cc, char const *arg)
 		push_count_chars(cc, arg);
 		/* we need one argument like -lapr-1 */
 		newarg = lt_malloc(strlen(file) + 3);
-		strcpy(newarg, "-l");
-		strcat(newarg, file);
+		snprintf(newarg, strlen(file) + 3, "-l%s", file);
 		push_count_chars(cc, newarg);
 	}
 	/*
@@ -1898,8 +1894,7 @@ static void add_minus_l(count_chars *cc, char const *arg)
 		push_count_chars(cc, arg);
 		/* we need one argument like -lapr-1 */
 		newarg = lt_malloc(strlen(file) + 4);
-		strcpy(newarg, "-l:");
-		strcat(newarg, file);
+		snprintf(newarg, strlen(file) + 4, "-l:%s", file);
 		push_count_chars(cc, newarg);
 	} else {
 		push_count_chars(cc, arg);
