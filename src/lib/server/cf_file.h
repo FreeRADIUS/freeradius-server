@@ -75,6 +75,8 @@ void			cf_md5_final(uint8_t *digest);
  *	Config file writing
  */
 int			cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
+int			cf_section_write_children(FILE *fp, CONF_SECTION *cs, int depth);
+int			cf_pair_write(FILE *fp, CONF_PAIR *cp);
 
 /*
  *	Misc

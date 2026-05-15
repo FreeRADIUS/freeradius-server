@@ -145,9 +145,14 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	}
 
 	/*
-	 *	No ident2, use the ident1 tree.
+	 *	No ident2, use the ident1 tree.  The tree itself may be
+	 *	NULL when the parent has only had non-indexed children
+	 *	added (e.g. CONF_COMMENT items don't populate the rbtree).
 	 */
-	if (IS_WILDCARD(ident2)) return fr_rb_find(parent->ident1, find);
+	if (IS_WILDCARD(ident2)) {
+		if (!parent->ident1) return NULL;
+		return fr_rb_find(parent->ident1, find);
+	}
 
 	/*
 	 *	Only sections have an ident2 tree.
@@ -155,8 +160,10 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	if (parent->type != CONF_ITEM_SECTION) return NULL;
 
 	/*
-	 *	Both ident1 and ident2 use the ident2 tree.
+	 *	Both ident1 and ident2 use the ident2 tree.  As above,
+	 *	the tree may be NULL when only non-indexed children exist.
 	 */
+	if (!parent->ident2) return NULL;
 	return fr_rb_find(parent->ident2, find);
 }
 
@@ -759,6 +766,102 @@ CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 	return UNCONST(CONF_ITEM *, cd);
 }
 
+/** Determine if #CONF_ITEM is a #CONF_COMMENT.
+ */
+bool cf_item_is_comment(CONF_ITEM const *ci)
+{
+	if (!ci) return false;
+	return ci->type == CONF_ITEM_COMMENT;
+}
+
+/** Cast a #CONF_ITEM to a #CONF_COMMENT (asserts on type mismatch).
+ */
+CONF_COMMENT *cf_item_to_comment(CONF_ITEM const *ci)
+{
+	if (ci == NULL) return NULL;
+	fr_assert(ci->type == CONF_ITEM_COMMENT);
+	return UNCONST(CONF_COMMENT *, ci);
+}
+
+/** Cast a #CONF_COMMENT back to a #CONF_ITEM.
+ */
+CONF_ITEM *cf_comment_to_item(CONF_COMMENT const *c)
+{
+	if (c == NULL) return NULL;
+	return UNCONST(CONF_ITEM *, c);
+}
+
+char const *cf_comment_text(CONF_COMMENT const *c)
+{
+	if (c == NULL) return NULL;
+	return c->text;
+}
+
+/*
+ *	Off by default - the runtime server parser drops comments as it
+ *	always has.  Utilities call cf_preserve_comments_set() before
+ *	cf_file_read() when they want the round-trip.
+ */
+static bool cf_preserve_comments = false;
+
+void cf_preserve_comments_set(bool preserve)
+{
+	cf_preserve_comments = preserve;
+}
+
+/*
+ *	Private getter declared in cf_priv.h for cf_file.c's parser hook.
+ *	Keeps cf_preserve_comments truly private to cf_util.c; the public
+ *	API is the setter.
+ */
+bool _cf_preserve_comments(void)
+{
+	return cf_preserve_comments;
+}
+
+/*
+ *	On by default - the runtime parser always wants `${foo}` resolved
+ *	to the value of `foo`.  Tools like radjson2conf, which build a
+ *	tree from JSON and write it back out, flip this off so values
+ *	containing `${...}` round-trip verbatim instead of being resolved
+ *	against an incomplete fragment tree.  $INCLUDE is a separate code
+ *	path and is unaffected.
+ */
+static bool cf_expand_vars = true;
+
+void cf_expand_variables_set(bool expand)
+{
+	cf_expand_vars = expand;
+}
+
+bool _cf_expand_variables(void)
+{
+	return cf_expand_vars;
+}
+
+CONF_COMMENT *cf_comment_alloc(CONF_SECTION *parent, char const *text)
+{
+	CONF_COMMENT *c;
+
+	if (!parent) return NULL;
+
+	c = talloc_zero(parent, CONF_COMMENT);
+	if (!c) return NULL;
+
+	cf_item_init(cf_comment_to_item(c), CONF_ITEM_COMMENT,
+		     cf_section_to_item(parent), NULL, 0);
+
+	c->text = text ? talloc_strdup(c, text) : NULL;
+
+	/*
+	 *	Append to the parent's ordered children list, but do NOT
+	 *	insert into ident1 / ident2 trees - comments aren't
+	 *	name-keyed and shouldn't show up in cf_pair_find / cf_section_find.
+	 */
+	fr_dlist_insert_tail(&parent->item.children, &c->item);
+	return c;
+}
+
 /** Free a section and associated trees
  *
  * @param[in] cs	to free.
@@ -965,6 +1068,22 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			break;
 
 		case CONF_ITEM_DATA: /* Skip data */
+			break;
+
+		case CONF_ITEM_COMMENT:
+			/*
+			 *	Preserve comment lines when duplicating a section -
+			 *	it costs almost nothing and round-tripping utilities
+			 *	stay correct.
+			 */
+			{
+				CONF_COMMENT const *src = cf_item_to_comment(ci);
+				CONF_COMMENT *dup = cf_comment_alloc(new, src->text);
+				if (dup) {
+					cf_filename_set(dup, src->item.filename);
+					cf_lineno_set(dup, src->item.lineno);
+				}
+			}
 			break;
 
 		case CONF_ITEM_INVALID:
@@ -2396,7 +2515,9 @@ void cf_section_debug(CONF_SECTION *cs)
  */
 void cf_item_free_children(CONF_ITEM *ci)
 {
-	cf_item_foreach(ci, child) {
+	CONF_ITEM *child;
+
+	while ((child = cf_item_next(ci, NULL)) != NULL) {
 		_cf_item_remove(ci, child);
 	}
 }

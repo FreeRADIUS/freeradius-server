@@ -38,6 +38,9 @@ typedef struct cf_section CONF_SECTION;	//!< #CONF_ITEM used to group multiple #
 typedef struct cf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator and a value.
 typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
+typedef struct cf_comment CONF_COMMENT;	//!< #CONF_ITEM holding a literal `# ...` comment line.
+					///< Only created when the parser is asked to preserve
+					///< comments (utilities opt in; the runtime parser does not).
 
 #include <unistd.h>
 #include <sys/time.h>
@@ -67,6 +70,8 @@ _Generic((_cf), \
 	CONF_PAIR const *		: cf_pair_to_item((CONF_PAIR const *)_cf), \
 	CONF_DATA *			: cf_data_to_item((CONF_DATA const *)_cf), \
 	CONF_DATA const *		: cf_data_to_item((CONF_DATA const *)_cf), \
+	CONF_COMMENT *			: cf_comment_to_item((CONF_COMMENT const *)_cf), \
+	CONF_COMMENT const *		: cf_comment_to_item((CONF_COMMENT const *)_cf), \
 	default: _cf \
 )
 
@@ -89,6 +94,21 @@ CONF_ITEM	*_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child);
 #define		cf_item_next(_parent, _curr) _cf_item_next(CF_TO_ITEM(_parent), _curr)
 CONF_ITEM	*_cf_item_next(CONF_ITEM const *parent, CONF_ITEM const *curr);
 
+/** Iterate over every child item of a CONF_SECTION (or any CONF_ITEM that has
+ *  children).
+ *
+ * @param[in] _parent	to iterate over.  Any type CF_TO_ITEM() accepts.
+ * @param[in] _iter	Name of the iteration variable.  Declared in the
+ *			scope of the loop with type `CONF_ITEM *`.
+ *
+ * Example:
+ *  cf_item_foreach(my_section, ci) {
+ *      if (cf_item_is_pair(ci)) { ... }
+ *  }
+ */
+#define cf_item_foreach(_parent, _iter) \
+	for (CONF_ITEM *_iter = cf_item_next(_parent, NULL); _iter != NULL; _iter = cf_item_next(_parent, _iter))
+
 #define		cf_item_prev(_parent, _curr) _cf_item_prev(CF_TO_ITEM(_parent), _curr)
 CONF_ITEM	*_cf_item_prev(CONF_ITEM const *parent, CONF_ITEM const *prev);
 
@@ -107,6 +127,7 @@ char const	*_cf_filename(CONF_ITEM const *ci);
 bool		cf_item_is_section(CONF_ITEM const *ci);
 bool		cf_item_is_pair(CONF_ITEM const *ci);
 bool		cf_item_is_data(CONF_ITEM const *ci);
+bool		cf_item_is_comment(CONF_ITEM const *ci);
 
 /** @hidecallergraph */
 CONF_PAIR	*cf_item_to_pair(CONF_ITEM const *ci);
@@ -114,6 +135,8 @@ CONF_PAIR	*cf_item_to_pair(CONF_ITEM const *ci);
 CONF_SECTION	*cf_item_to_section(CONF_ITEM const *ci);
 /** @hidecallergraph */
 CONF_DATA	*cf_item_to_data(CONF_ITEM const *ci);
+/** @hidecallergraph */
+CONF_COMMENT	*cf_item_to_comment(CONF_ITEM const *ci);
 
 /** @hidecallergraph */
 CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
@@ -121,6 +144,41 @@ CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
 CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
 /** @hidecallergraph */
 CONF_ITEM	*cf_data_to_item(CONF_DATA const *cs);
+/** @hidecallergraph */
+CONF_ITEM	*cf_comment_to_item(CONF_COMMENT const *c);
+
+/** Allocate a new comment item attached to `parent`.
+ *
+ * Inserted into the parent's ordered children list so it appears between
+ * the surrounding pairs/sections at output time.  Not indexed by name -
+ * comment lookup isn't meaningful.
+ *
+ * `text` is `talloc_strdup`ed onto the new node so the caller can free their
+ * copy.  Returns NULL if allocation fails.
+ */
+CONF_COMMENT	*cf_comment_alloc(CONF_SECTION *parent, char const *text);
+
+/** @hidecallergraph */
+char const	*cf_comment_text(CONF_COMMENT const *c);
+
+/** Control whether the CF parser preserves `# ...` comments.
+ *
+ * Defaults to off (historical behaviour: comments are dropped at parse
+ * time).  Utilities that want comments to round-trip through the CF tree
+ * should call the setter before `cf_file_read()`.  The runtime server
+ * parser never opts in.
+ */
+void		cf_preserve_comments_set(bool preserve);
+
+/** Opt out of `${var}` expansion when reading config (default: enabled).
+ *
+ * Utilities that round-trip the source - e.g. radjson2conf rebuilding
+ * a fragment from JSON - call this with `false` so values containing
+ * `${...}` survive verbatim instead of being resolved against an
+ * incomplete tree.  $INCLUDE handling is a separate parser path and
+ * is unaffected.
+ */
+void		cf_expand_variables_set(bool expand);
 
 #define		cf_filename_set(_ci, _filename) _cf_filename_set(CF_TO_ITEM(_ci), _filename)
 void		_cf_filename_set(CONF_ITEM *cs, char const *filename);

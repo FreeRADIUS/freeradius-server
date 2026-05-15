@@ -172,6 +172,20 @@ char const *cf_expand_variables(char const *cf, int lineno,
 	if (soft_fail) *soft_fail = false;
 
 	/*
+	 *	Utilities (radjson2conf rebuilding a fragment from JSON)
+	 *	can opt out of variable resolution so values containing
+	 *	`${...}` round-trip verbatim instead of failing against
+	 *	an incomplete tree.
+	 */
+	if (!_cf_expand_variables()) {
+		size_t want = inlen >= 0 ? (size_t)inlen : strlen(input);
+		if (want >= outsize) want = outsize - 1;
+		memcpy(output, input, want);
+		output[want] = '\0';
+		return output;
+	}
+
+	/*
 	 *	Find the master parent conf section.
 	 *	We can't use main_config->root_cs, because we're in the
 	 *	process of re-building it, and it isn't set up yet...
@@ -3431,8 +3445,44 @@ read_continuation:
 	/*
 	 *	Nothing left, or just a comment.  Go read
 	 *	another line of text.
+	 *
+	 *	If the caller asked us to preserve comments (utilities like
+	 *	radconf2json round-trip them as CONF_COMMENT items), capture
+	 *	the comment text on the current section before continuing.
 	 */
-	if (!*ptr || (*ptr == '#')) goto read_more;
+	if (!*ptr || (*ptr == '#')) {
+		if (_cf_preserve_comments() && frame->current) {
+			char const	*text;
+			CONF_COMMENT	*c;
+			char		*p;
+
+			/*
+			 *	`#` line: keep everything after the marker
+			 *	verbatim (whitespace included; operators use
+			 *	leading indent to format banners).  Empty
+			 *	line: emit a blank marker (NULL text) so the
+			 *	writer round-trips the visual separator, and
+			 *	downstream tooling can tell two comment blocks
+			 *	separated by a blank line apart from one long
+			 *	block.
+			 */
+			text = (*ptr == '#') ? ptr + 1 : NULL;
+			c = cf_comment_alloc(frame->current, text);
+			if (c) {
+				/* Trim trailing CR/LF off the talloc'd copy */
+				p = UNCONST(char *, c->text);
+				if (p) {
+					size_t l = strlen(p);
+					while (l > 0 && (p[l - 1] == '\n' || p[l - 1] == '\r')) {
+						p[--l] = '\0';
+					}
+				}
+				cf_filename_set(c, frame->filename);
+				cf_lineno_set(c, frame->lineno);
+			}
+		}
+		goto read_more;
+	}
 
 	return 1;
 }
@@ -3768,7 +3818,7 @@ static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, fr_toke
 	return 1;
 }
 
-static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
+int cf_pair_write(FILE *fp, CONF_PAIR *cp)
 {
 	if (!cp->value) {
 		fprintf(fp, "%s\n", cp->attr);
@@ -3817,14 +3867,45 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 
 	fputs(" {\n", fp);
 
-	/*
-	 *	Loop over the children.  Either recursing, or opening
-	 *	a new file.
-	 */
+	cf_section_write_children(fp, cs, depth + 1);
+
+	fwrite(parse_tabs, depth, 1, fp);
+	fputs("}\n\n", fp);
+
+	return 1;
+}
+
+/** Emit the children of a section at `depth` without an enclosing `{ ... }`.
+ *
+ * cf_section_write wraps a section in `name { ... }`; this helper writes only
+ * the children at the requested indent, which is what tools like
+ * `radjson2conf -r` need: rendering a synthetic-root section as a file-scope
+ * fragment ready to be `$INCLUDE`d at any depth.
+ *
+ * Blank lines in the source come back through as NULL-text CONF_ITEM_COMMENT
+ * markers, so the writer doesn't have to synthesise its own separators - just
+ * emit what's there.  Consecutive blank markers collapse to a single blank
+ * line on output so artifacts from upstream tooling (deletes that left their
+ * preceding blank behind, splits that introduced extra spacers) don't
+ * accumulate as visible whitespace.
+ */
+int cf_section_write_children(FILE *fp, CONF_SECTION *cs, int depth)
+{
+	bool prev_was_blank = false;
+
+	if (!fp || !cs) return -1;
+
 	cf_item_foreach(&cs->item, ci) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
-			cf_section_write(fp, cf_item_to_section(ci), depth + 1);
+			cf_section_write(fp, cf_item_to_section(ci), depth);
+			/*
+			 *	Sections close with `}\n\n` so the trailing
+			 *	blank line is already in the stream; flag it
+			 *	so a NULL-text comment immediately after
+			 *	doesn't double it up.
+			 */
+			prev_was_blank = true;
 			break;
 
 		case CONF_ITEM_PAIR:
@@ -3833,17 +3914,37 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 			 */
 			if (!ci->filename || (ci->filename[0] == '<')) break;
 
-			fwrite(parse_tabs, depth + 1, 1, fp);
+			fwrite(parse_tabs, depth, 1, fp);
 			cf_pair_write(fp, cf_item_to_pair(ci));
+			prev_was_blank = false;
 			break;
+
+		case CONF_ITEM_COMMENT: {
+			CONF_COMMENT const *c = cf_item_to_comment(ci);
+
+			/*
+			 *	NULL text == blank line.  Collapse
+			 *	runs of blanks to a single one.
+			 */
+			if (c->text == NULL) {
+				if (!prev_was_blank) {
+					fputc('\n', fp);
+					prev_was_blank = true;
+				}
+				break;
+			}
+
+			fwrite(parse_tabs, depth, 1, fp);
+			fputc('#', fp);
+			fputs(c->text, fp);
+			fputc('\n', fp);
+			prev_was_blank = false;
+		} break;
 
 		default:
 			break;
 		}
 	}
-
-	fwrite(parse_tabs, depth, 1, fp);
-	fputs("}\n\n", fp);
 
 	return 1;
 }
