@@ -39,8 +39,8 @@ jobs:
 
   #
   #  Self-hosted variant: runs on the FreeRADIUS Proxmox fleet inside
-  #  the internal CI base image, with the internal CA mounted into
-  #  both dind and the job container so internal registry pulls work.
+  #  the self-hosted-docker-cli image and talks to a self-hosted-docker-dind
+  #  sidecar (registry-mirror -> internal NR cache, internal CA pre-trusted).
   #
   docker-selfhosted:
     needs:
