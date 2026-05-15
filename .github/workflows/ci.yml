@@ -291,7 +291,7 @@ jobs:
           git push origin HEAD:master
 
       - name: "Fast forward upstream"
-        if: endsWith(github.ref, "/${{ github.actor }}") || endsWith(github.ref, '/ff')
+        if: endsWith(github.ref, format('/{0}', github.actor)) || endsWith(github.ref, '/ff')
         run: |
           git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
 
