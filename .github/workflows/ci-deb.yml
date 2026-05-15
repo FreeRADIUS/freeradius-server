@@ -72,6 +72,14 @@ jobs:
 
     container:
       image: ${{ matrix.env.OS }}
+      #
+      #  Authenticate the host docker daemon's pull of the job
+      #  container so we don't hit Docker Hub's anonymous 100/6h
+      #  rate limit when 31 self-hosted runners share egress IPs.
+      #
+      credentials:
+        username: ${{ vars.DOCKERHUB_READ_USER }}
+        password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
@@ -204,6 +212,9 @@ jobs:
 
     container:
       image: ${{ matrix.env.OS }}
+      credentials:
+        username: ${{ vars.DOCKERHUB_READ_USER }}
+        password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
     name: "DEB install test"
 

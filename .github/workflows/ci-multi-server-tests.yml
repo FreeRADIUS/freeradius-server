@@ -22,7 +22,13 @@ jobs:
 
     services:
       dind:
-        image: docker:dind
+        #
+        #  Custom dind image with /etc/docker/daemon.json baked in
+        #  pointing at the internal NR registry as a Docker Hub
+        #  pull-through mirror, and the internal CA pre-trusted.
+        #  Built by docker-refresh.yml from scripts/ci/Dockerfile.docker-dind.
+        #
+        image: docker.internal.networkradius.com/self-hosted-docker-dind
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
@@ -30,8 +36,6 @@ jobs:
           NO_PROXY: "*.networkradius.com,127.0.0.1"
           #  Fix the network pool so TEST_SUBNET is predictable.
           DOCKER_OPTS: "--default-address-pool base=172.16.0.0/12,size=24"
-        #  Mount the host's internal CA so dind trusts
-        #  docker.internal.networkradius.com for image pulls.
         #
         #  Share the runner's workspace with dind so that docker
         #  compose bind-mounts (radiusd.conf, env-setup.sh, listener
@@ -41,12 +45,17 @@ jobs:
         #  The runner mounts it into the job container at a
         #  different path (/__w/...), so we use a fixed mount
         #  point (/workspace) that both containers agree on.
+        #
         volumes:
-          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: docker.internal.networkradius.com/self-hosted
+      #
+      #  Custom CI image with docker CLI / buildx / m4 baked on top
+      #  of the self-hosted base. Built by docker-refresh.yml from
+      #  scripts/ci/Dockerfile.docker-cli.
+      #
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
       #  "privileged" is needed for Samba install
       #  "memory-swap -1" enables full use of host swap and may help
       #    with containers randomly quitting with "The operation was
@@ -57,7 +66,11 @@ jobs:
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
-      #  Shared workspace — see dind volumes comment above.
+      #
+      #  CA cert mount lets the in-container apt and curl talk HTTPS
+      #  to docker.internal.networkradius.com. Shared workspace - see
+      #  dind volumes comment above.
+      #
       volumes:
         - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
         - ${{ github.workspace }}:/workspace
@@ -76,10 +89,17 @@ jobs:
         with:
           packages: docker-compose-v2 python3-venv
 
-      #  Authenticate to the internal registry via the dind daemon.
-      #  The host Docker daemon is logged in via the runner's
-      #  job-started hook, but dind is a separate daemon with no
-      #  auth config.
+      #
+      #  Authenticate dind to the internal registry so docker compose
+      #  can pull mariadb / postgres / 389ds etc. tagged under
+      #  docker.internal.networkradius.com. The host docker daemon is
+      #  logged in via the runner's job-started hook, but dind is a
+      #  separate daemon with no auth config.
+      #
+      #  Note: Docker Hub auth is no longer needed here - the dind
+      #  daemon's registry-mirror config (baked into the image) routes
+      #  all public-image pulls through the internal registry.
+      #
       - name: Login to internal Docker registry
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}

@@ -60,14 +60,17 @@ jobs:
 
     services:
       dind:
-        image: docker:dind
+        #
+        #  Custom dind image with /etc/docker/daemon.json baked in
+        #  pointing at the internal NR registry as a Docker Hub
+        #  pull-through mirror, and the internal CA pre-trusted.
+        #
+        image: docker.internal.networkradius.com/self-hosted-docker-dind
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
           #  Bypass the squid proxy for internal registry access.
           NO_PROXY: "*.networkradius.com,127.0.0.1"
-        #  Mount the host's internal CA so dind trusts
-        #  docker.internal.networkradius.com for image pulls.
         #
         #  Share the runner's workspace with dind so the build
         #  context resolves to real files inside the dind daemon
@@ -79,16 +82,22 @@ jobs:
         #  runner mounts it into the job container at a different
         #  path (/__w/...), so we use a fixed mount point
         #  (/workspace) that both containers agree on.
+        #
         volumes:
-          - /usr/local/share/ca-certificates/networkradius.com.crt:/etc/docker/certs.d/docker.internal.networkradius.com/ca.crt:ro
           - ${{ github.workspace }}:/workspace
 
     container:
-      image: docker.internal.networkradius.com/self-hosted
+      #
+      #  Custom CI image with docker CLI / buildx / m4 baked on top
+      #  of the self-hosted base.
+      #
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
       env:
         DOCKER_HOST: tcp://dind:2375
         NO_PROXY: dind,*.networkradius.com,127.0.0.1
-      #  Shared workspace — see dind volumes comment above.
+      #  CA cert mount lets the in-container apt and curl talk HTTPS
+      #  to docker.internal.networkradius.com. Shared workspace - see
+      #  dind volumes comment above.
       volumes:
         - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
         - ${{ github.workspace }}:/workspace
@@ -99,24 +108,12 @@ jobs:
 
     steps:
 
-    #
-    #  actions/checkout falls back to a tarball download (no .git) when
-    #  git isn't on PATH; the Dockerfile's `git clean -fdxx` then fails
-    #  inside the build. ubuntu:24.04 ships without git, so install it
-    #  before checkout. Harmless on the self-hosted CI image where git
-    #  is already present.
-    #
-    - name: Ensure git is available for checkout
-      run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
-
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
         lfs: false
 
     - uses: ./.github/actions/setup-dind
-      with:
-        packages: m4 make
 
     - name: Run crossbuild tests
       run: |
@@ -171,6 +168,15 @@ jobs:
     services:
       dind:
         image: docker:dind
+        #
+        #  Authenticate the host docker daemon's pull of the dind
+        #  service container so we don't hit Docker Hub's anonymous
+        #  rate limit. Goes away once we switch to the internal
+        #  self-hosted-docker-dind image.
+        #
+        credentials:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
