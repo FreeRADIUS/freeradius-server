@@ -8,6 +8,15 @@ on:
       - debug-fuzzer-**
   pull_request:
 
+#
+#  Cancel any in-flight or queued run of this workflow on the same
+#  ref when a new commit lands. Replaces fkirc/skip-duplicate-actions
+#  for the "don't waste CI on a stale push" use case.
+#
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   ASAN_OPTIONS: symbolize=1 detect_leaks=0 detect_stack_use_after_return=1
   LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
@@ -26,19 +35,8 @@ env:
   GH_ACTIONS: 1
 
 jobs:
-  pre-ci:
-    runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.1
-
   ci:
     timeout-minutes: 90
-    needs: pre-ci
-    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
     runs-on: ${{ matrix.env.OS }}
 

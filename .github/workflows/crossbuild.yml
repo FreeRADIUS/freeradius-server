@@ -169,14 +169,14 @@ jobs:
       dind:
         image: docker:dind
         #
-        #  Authenticate the host docker daemon's pull of the dind
-        #  service container so we don't hit Docker Hub's anonymous
-        #  rate limit. Goes away once we switch to the internal
-        #  self-hosted-docker-dind image.
+        #  No credentials: block here - this variant runs on fork CI
+        #  where the org-level DOCKERHUB_READ_* vars/secrets aren't
+        #  available, and a credentials: block with empty values fails
+        #  workflow template validation. The host docker daemon does
+        #  an anonymous pull of docker:dind here; GH-hosted runners
+        #  have many egress IPs so the per-IP Hub limit is rarely an
+        #  issue for fork builds.
         #
-        credentials:
-          username: ${{ vars.DOCKERHUB_READ_USER }}
-          password: ${{ secrets.DOCKERHUB_READ_KEY }}
         options: --privileged
         env:
           DOCKER_TLS_CERTDIR: ""
