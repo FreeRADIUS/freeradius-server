@@ -232,7 +232,7 @@ static void test_fips186prf(void)
 {
 	uint8_t res[160];
 
-	fr_sim_fips186_2prf(res, xkey);
+	fr_aka_sim_fips186_2prf(res, xkey);
 
 	TEST_CHECK(memcmp(exp, res, sizeof(exp)) == 0);
 }
