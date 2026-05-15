@@ -1812,14 +1812,14 @@ int main(int argc, char **argv)
 				/*
 				 *	Look for CoA filename
 				 */
-				q = strchr(files->filters, c);
+				q = UNCONST(char *, strchr(files->filters, c));
 				if (q) {
 					do_coa = true;
 
 					*(q++) = '\0';
 					files->coa_reply = q;
 
-					q = strchr(files->coa_reply, c);
+					q = UNCONST(char *, strchr(files->coa_reply, c));
 					if (q) {
 						*(q++) = '\0';
 						files->coa_filter = q;

@@ -4264,11 +4264,11 @@ static int process_path(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	 */
 	if ((receipt_dir || receipt_file) &&
 	    (strncmp(path, "src/tests/unit/", 15) == 0)) {
-		p = strchr(path + 15, '/');
+		p = UNCONST(char *, strchr(path + 15, '/'));
 		if (!p) {
 			printf("UNIT-TEST %s\n", path + 15);
 		} else {
-			char *q = strchr(p + 1, '/');
+			char *q = UNCONST(char *, strchr(p + 1, '/'));
 
 			*p = '\0';
 
