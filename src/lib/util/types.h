@@ -456,6 +456,21 @@ static inline char const *fr_type_to_str(fr_type_t type)
 	return fr_table_str_by_value(fr_type_table, type, "<INVALID>");
 }
 
+/** Return the source-identifier name for a type (e.g. "FR_TYPE_STRING").
+ *
+ * Counterpart to fr_type_to_str() which returns the short config-file
+ * form ("string", "ipv4addr", ...).  This is what tooling that wants
+ * to grep the v4 source tree by enum identifier should emit (radmod2json
+ * in particular).
+ *
+ * @param[in] t	type to look up.
+ * @return	the enum-identifier name, or "FR_TYPE_NULL" if `t` is
+ *		out of range.
+ *
+ * @hidecallergraph
+ */
+char const *fr_type_to_enum_str(fr_type_t t);
+
 /** Return the constant value representing a type
  *
  * @param[in] type to return the constant value for.

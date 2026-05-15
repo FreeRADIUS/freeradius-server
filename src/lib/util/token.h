@@ -139,6 +139,19 @@ extern size_t fr_tokens_table_len;
 extern fr_table_num_sorted_t const fr_token_quotes_table[];
 extern size_t fr_token_quotes_table_len;
 extern const char *fr_tokens[T_TOKEN_LAST];
+
+/** Return the source-identifier name for a token (e.g. "T_BARE_WORD", "T_OP_SET").
+ *
+ * Counterpart to `fr_tokens[]` which returns the operator-character /
+ * human-display form (":=", "<BARE-WORD>", ...).  Tooling that wants
+ * to emit grep-friendly enum identifiers (radconf2json, radmod2json)
+ * uses this.
+ *
+ * @param[in] t	token to look up.
+ * @return	the enum-identifier name, or "T_INVALID" if `t` is out
+ *		of range / has no symbolic entry.
+ */
+char const *fr_token_to_enum_str(fr_token_t t);
 extern const char fr_token_quote[T_TOKEN_LAST];
 extern const bool fr_assignment_op[T_TOKEN_LAST];
 extern const bool fr_comparison_op[T_TOKEN_LAST];

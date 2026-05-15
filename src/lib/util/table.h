@@ -94,6 +94,21 @@ typedef struct {
 	unsigned int		value;
 } fr_table_num_indexed_t;
 
+/** Build a single fr_table_num_indexed_t entry from an enum identifier.
+ *
+ * Expands to `[FOO] = { L("FOO"), FOO }` so the identifier doesn't have
+ * to be written three times.  Use with a typed
+ * `fr_table_num_indexed_t const []` initialiser to map enum-value-to-name
+ * lookups via fr_table_str_by_value().
+ *
+ *  static fr_table_num_indexed_t const my_table[] = {
+ *      FR_TABLE_INDEXED_ENTRY(FR_TYPE_STRING),
+ *      FR_TABLE_INDEXED_ENTRY(FR_TYPE_OCTETS),
+ *      ...
+ *  };
+ */
+#define FR_TABLE_INDEXED_ENTRY(_v)	[_v] = { L(STRINGIFY(_v)), _v }
+
 /** Macro to use as dflt
  *
  */

@@ -74,6 +74,51 @@ fr_table_num_sorted_t const fr_token_quotes_table[] = {
 };
 size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 
+/** Map each `fr_token_t` to the C identifier of its enum constant.
+ *
+ * Complement of `fr_tokens[]` (the operator-character / human-display
+ * form like ":=" / "<BARE-WORD>") - this one returns the source-identical
+ * `T_OP_SET` / `T_BARE_WORD` form so tooling (radconf2json, etc.) can
+ * round-trip enum names through a JSON intermediate.
+ */
+static fr_table_num_indexed_t const fr_token_to_enum_str_table[] = {
+	FR_TABLE_INDEXED_ENTRY(T_BARE_WORD),
+	FR_TABLE_INDEXED_ENTRY(T_DOUBLE_QUOTED_STRING),
+	FR_TABLE_INDEXED_ENTRY(T_SINGLE_QUOTED_STRING),
+	FR_TABLE_INDEXED_ENTRY(T_BACK_QUOTED_STRING),
+	FR_TABLE_INDEXED_ENTRY(T_SOLIDUS_QUOTED_STRING),
+	FR_TABLE_INDEXED_ENTRY(T_OP_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_NE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_GE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_GT),
+	FR_TABLE_INDEXED_ENTRY(T_OP_LE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_LT),
+	FR_TABLE_INDEXED_ENTRY(T_OP_CMP_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_CMP_EQ_TYPE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_CMP_NE_TYPE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_ADD_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_SUB_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_MUL_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_DIV_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_AND_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_OR_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_RSHIFT_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_LSHIFT_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_SET),
+	FR_TABLE_INDEXED_ENTRY(T_OP_PREPEND),
+	FR_TABLE_INDEXED_ENTRY(T_OP_REG_EQ),
+	FR_TABLE_INDEXED_ENTRY(T_OP_REG_NE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_CMP_TRUE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_CMP_FALSE),
+	FR_TABLE_INDEXED_ENTRY(T_OP_INCRM),
+};
+static size_t fr_token_to_enum_str_table_len = NUM_ELEMENTS(fr_token_to_enum_str_table);
+
+char const *fr_token_to_enum_str(fr_token_t t)
+{
+	return fr_table_str_by_value(fr_token_to_enum_str_table, t, "T_INVALID");
+}
+
 /*
  *  String versions for all of the tokens.
  */
