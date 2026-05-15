@@ -1,4 +1,4 @@
-FROM docker:24-dind
+FROM docker:27-dind
 
 #
 #  Pre-bake the registry-mirror config so the dockerd inside this
