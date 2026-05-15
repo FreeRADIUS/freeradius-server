@@ -9,3 +9,4 @@ SOURCES		:= redis.c crc16.c cluster.c cluster_async.c io.c pipeline.c
 
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
+TGT_PREREQS	:= libfreeradius-io$(L)

@@ -29,6 +29,7 @@
 RCSIDH(redis_cluster_async_h, "$Id$")
 
 #include <freeradius-devel/server/trunk.h>
+#include <freeradius-devel/io/coord_pair.h>
 #include "base.h"
 #include "pipeline.h"
 
@@ -52,6 +53,15 @@ fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 fr_event_list_t			*fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread);
 
 trunk_conf_t const		*fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *thread);
+
+int				fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster,
+								      fr_coord_worker_t *cw,
+								      fr_coord_pair_reg_t *coord_pair_reg);
+
+fr_redis_async_rcode_t		fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster,
+								fr_coord_worker_t *cw,
+								fr_coord_pair_reg_t *coord_pair_reg);
+
 int				fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *thread, fr_pair_list_t const *list);
 
 fr_redis_async_cmd_t		*fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,

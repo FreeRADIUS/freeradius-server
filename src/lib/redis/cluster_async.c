@@ -618,3 +618,99 @@ do { \
 
 	return 0;
 }
+
+/** Initiate bootstrapping of the cluster map
+ *
+ * To be used when a module first wants to fetch a cluster map
+ *
+ * @param rtcluster		Cluster to fetch map for
+ * @param cw			Coord worker to launch request
+ * @param coord_pair_reg	Coord pair registration
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster, fr_coord_worker_t *cw,
+					  fr_coord_pair_reg_t *coord_pair_reg)
+{
+	fr_redis_conf_t const	*conf = rtcluster->conf;
+	fr_pair_list_t		list;
+	fr_pair_t		*vp;
+	TALLOC_CTX		*local = talloc_new(NULL);
+	int			ret;
+	size_t			i;
+
+	fr_pair_list_init(&list);
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_packet_type, (uint32_t)FR_REDIS_CLUSTER_MAP_BOOTSTRAP, false);
+	if (!vp) {
+	error:
+		talloc_free(local);
+		return -1;
+	}
+
+	if (fr_pair_append_by_da(local, &vp, &list, attr_redis_log_prefix) < 0) goto error;
+	if (fr_value_box_strdup(vp, &vp->data, NULL, conf->log_prefix, false) < 0) goto error;
+
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_max_nodes, conf->max_nodes, false);
+	if (!vp) goto error;
+
+	for (i = 0; i < talloc_array_length(conf->hostname); i++) {
+		if (fr_pair_append_by_da(local, &vp, &list, attr_redis_bootstrap_node) < 0) goto error;
+		if (fr_value_box_strdup(vp, &vp->data, NULL, conf->hostname[i], false) < 0) goto error;
+	}
+
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_bootstrap_port, conf->port, false);
+	if (!vp) goto error;
+
+	if (conf->password) {
+		if (fr_pair_append_by_da(local, &vp, &list, attr_redis_password) < 0) goto error;
+		if (fr_value_box_strdup(vp, &vp->data, NULL, conf->password, false) < 0) goto error;
+		if (conf->username) {
+			if (fr_pair_append_by_da(local, &vp, &list, attr_redis_username) < 0) goto error;
+			if (fr_value_box_strdup(vp, &vp->data, NULL, conf->username, false) < 0) goto error;
+		}
+	}
+
+	ret = fr_worker_to_coord_pair_send(cw, coord_pair_reg, &list);
+	talloc_free(local);
+
+	if (ret < 0) return -1;
+	rtcluster->state = CLUSTER_MAP_FETCHING;
+
+	return 0;
+}
+
+/** Initiate updating of the cluster map
+ *
+ * To be used when a command returns MOVED
+ */
+fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster, fr_coord_worker_t *cw,
+						       fr_coord_pair_reg_t *coord_pair_reg)
+{
+	fr_pair_list_t		list;
+	fr_pair_t		*vp;
+	TALLOC_CTX		*local;
+	int			ret;
+
+	if (rtcluster->cluster_id == 0) return REDIS_ASYNC_RCODE_BOOTSTRAP;
+
+	local = talloc_new(NULL);
+	fr_pair_list_init(&list);
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_packet_type, (uint32_t)FR_REDIS_CLUSTER_MAP_GET, false);
+	if (!vp) {
+	error:
+		talloc_free(local);
+		return REDIS_ASYNC_RCODE_ERROR;
+	}
+
+	fr_pair_list_append_by_da(local, vp, &list, attr_redis_cluster_id, rtcluster->cluster_id, false);
+	if (!vp) goto error;
+
+	ret = fr_worker_to_coord_pair_send(cw, coord_pair_reg, &list);
+	talloc_free(local);
+
+	if (ret < 0) return REDIS_ASYNC_RCODE_ERROR;
+	rtcluster->state = CLUSTER_MAP_FETCHING;
+
+	return REDIS_ASYNC_RCODE_SUCCESS;
+}
