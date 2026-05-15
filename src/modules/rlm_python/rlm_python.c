@@ -1391,11 +1391,14 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 
 			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config section '%s'", key);
+				Py_DECREF(p_key);
 				continue;
 			}
 
 			MEM(sub_dict = PyDict_New());
 			(void)PyDict_SetItem(dict, p_key, sub_dict);
+			Py_DECREF(p_key);
+			Py_DECREF(sub_dict);
 
 			ret = python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
 			if (ret < 0) break;
@@ -1414,10 +1417,12 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 			p_value = PyUnicode_FromString(value);
 			if (!p_key) {
 				ERROR("Failed converting config key \"%s\" to python string", key);
+				Py_XDECREF(p_value);
 				return -1;
 			}
 			if (!p_value) {
 				ERROR("Failed converting config value \"%s\" to python string", value);
+				Py_DECREF(p_key);
 				return -1;
 			}
 
@@ -1427,10 +1432,14 @@ static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int l
 			 */
 			if (PyDict_Contains(dict, p_key)) {
 				WARN("Ignoring duplicate config item '%s'", key);
+				Py_DECREF(p_key);
+				Py_DECREF(p_value);
 				continue;
 			}
 
 			(void)PyDict_SetItem(dict, p_key, p_value);
+			Py_DECREF(p_key);
+			Py_DECREF(p_value);
 
 			DEBUG("%*s%s = \"%s\"", indent_item, " ", key, value);
 		}
