@@ -52,45 +52,14 @@ RCSID("$Id$")
 char const *radiusd_version = RADIUSD_VERSION_BUILD("radconf2json");
 
 /*
- *	Symbolic names for the quote tokens.  v4's own `fr_tokens[]` table
- *	gives "<BARE-WORD>" / "<\"STRING\">" / etc. - good for human
- *	error messages, not useful when the rule layer wants to grep the
- *	JSON for `T_BARE_WORD`.  Indexed by `fr_token_t` for O(1) lookup;
- *	an unset entry (or out-of-range token) falls back to `T_BARE_WORD`,
- *	the same default the parser uses when no quoting was recorded.
+ *	Token-name look-ups.  `fr_token_to_enum_str()` (src/lib/util/token.c)
+ *	returns the source-identifier form ("T_BARE_WORD", "T_OP_SET", ...)
+ *	which is what the converter's rule layer greps for.  `fr_tokens[]`
+ *	gives the operator-character form (":=", "=", "==", ...) for the
+ *	operator side; we emit that as `op`.
  */
-static char const *const quote_names[T_TOKEN_LAST] = {
-	[T_BARE_WORD]		  = "T_BARE_WORD",
-	[T_DOUBLE_QUOTED_STRING]  = "T_DOUBLE_QUOTED_STRING",
-	[T_SINGLE_QUOTED_STRING]  = "T_SINGLE_QUOTED_STRING",
-	[T_BACK_QUOTED_STRING]	  = "T_BACK_QUOTED_STRING",
-	[T_SOLIDUS_QUOTED_STRING] = "T_SOLIDUS_QUOTED_STRING",
-};
-
-static inline char const *quote_name(fr_token_t t)
-{
-	char const *s;
-
-	if ((unsigned int)t >= T_TOKEN_LAST) return "T_BARE_WORD";
-	s = quote_names[t];
-	if (!s) return "T_BARE_WORD";
-	return s;
-}
-
-/*
- *	v4 already maintains an `fr_token_t -> operator string` table
- *	(fr_tokens[] in src/lib/util/token.c).  Use it instead of
- *	rolling our own.
- */
-static inline char const *op_name(fr_token_t op)
-{
-	char const *s;
-
-	if ((unsigned int)op >= T_TOKEN_LAST) return "?";
-	s = fr_tokens[op];
-	if (!s) return "?";
-	return s;
-}
+#define quote_name(_t) fr_token_to_enum_str(_t)
+#define op_name(_op) (((unsigned int)(_op) < T_TOKEN_LAST && fr_tokens[(_op)]) ? fr_tokens[(_op)] : "?")
 
 static struct json_object *build_location(char const *filename, int lineno)
 {

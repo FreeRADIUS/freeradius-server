@@ -36,30 +36,16 @@ RCSID("$Id$")
 char const *radiusd_version = RADIUSD_VERSION_BUILD("radjson2conf");
 
 /*
- *	Symbolic quote-token names (the strings radconf2json emits).  A
- *	small sorted table - fr_table_value_by_str is happy with five
- *	entries and lets us inherit the rest of v4's table machinery.
+ *	`fr_token_from_quote_enum_str()` (src/lib/util/token.c) inverts
+ *	`fr_token_to_enum_str` for the five quote-typed tokens - i.e.
+ *	the exact strings radconf2json emits for `lhs_quote` / `rhs_quote`.
+ *
+ *	`fr_tokens_table` already maps operator strings ("=", ":=", "+=", ...)
+ *	to their `fr_token_t` value, which is what the CF parser itself
+ *	uses; reuse it for the `op` field.
  */
-static fr_table_num_sorted_t const quote_names_table[] = {
-	{ L("T_BACK_QUOTED_STRING"), T_BACK_QUOTED_STRING },
-	{ L("T_BARE_WORD"), T_BARE_WORD },
-	{ L("T_DOUBLE_QUOTED_STRING"), T_DOUBLE_QUOTED_STRING },
-	{ L("T_SINGLE_QUOTED_STRING"), T_SINGLE_QUOTED_STRING },
-	{ L("T_SOLIDUS_QUOTED_STRING"), T_SOLIDUS_QUOTED_STRING },
-};
-static size_t quote_names_table_len = NUM_ELEMENTS(quote_names_table);
+#define quote_token(_s) fr_token_from_quote_enum_str((_s), T_BARE_WORD)
 
-static inline fr_token_t quote_token(char const *s)
-{
-	if (!s) return T_BARE_WORD;
-	return fr_table_value_by_str(quote_names_table, s, T_BARE_WORD);
-}
-
-/*
- *	v4's `fr_tokens_table` already maps operator strings to their
- *	fr_token_t value (it's what the CF parser itself uses).  Reuse
- *	instead of rolling our own.
- */
 static inline fr_token_t op_token(char const *s)
 {
 	if (!s) return T_OP_EQ;
