@@ -368,6 +368,23 @@ Requires: freeradius-libfreeradius-json = %{version}-%{release}
 %description json
 This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
 
+%package utils-json
+Summary: FreeRADIUS configuration <-> JSON conversion utilities
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-json = %{version}-%{release}
+
+%description utils-json
+Utilities that bridge between FreeRADIUS configuration and JSON:
+
+  radconf2json   render a parsed server configuration as JSON
+  radjson2conf   render a JSON configuration tree back to .conf form
+  radmod2json    dump the parser definitions of installed modules as JSON
+
+These utilities are intended for tooling that needs to inspect or
+transform FreeRADIUS configuration programmatically (config migration,
+schema documentation, third-party integrations).
+
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
 Group: System Environment/Daemons
@@ -1260,6 +1277,12 @@ fi
 %files json
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_json.so
+
+%files utils-json
+%defattr(-,root,root)
+/usr/bin/radconf2json
+/usr/bin/radjson2conf
+/usr/bin/radmod2json
 
 %files libfreeradius-curl
 %defattr(-,root,root)
