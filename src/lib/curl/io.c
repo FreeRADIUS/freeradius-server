@@ -106,7 +106,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 
 		default:
 #ifndef NDEBUG
-			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", msg_queued);
+			DEBUG4("Got unknown msg (%i) when dequeueing curl responses", m->msg);
 #endif
 			break;
 		}
