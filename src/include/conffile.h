@@ -27,6 +27,9 @@ typedef struct conf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operat
 typedef struct conf_part CONF_SECTION;	//!< #CONF_ITEM used to group multiple #CONF_PAIR and #CONF_SECTION, together.
 typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
+typedef struct conf_comment CONF_COMMENT;//!< #CONF_ITEM holding a literal `# ...` comment line.
+					///< Only created when the parser is asked to preserve comments
+					///< (utilities opt in; the runtime parser does not).
 
 
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
@@ -275,10 +278,40 @@ CONF_SECTION *cf_item_parent(CONF_ITEM const *ci);
 bool cf_item_is_section(CONF_ITEM const *item);
 bool cf_item_is_pair(CONF_ITEM const *item);
 bool cf_item_is_data(CONF_ITEM const *item);
+bool cf_item_is_comment(CONF_ITEM const *item);
 CONF_PAIR *cf_item_to_pair(CONF_ITEM const *item);
 CONF_SECTION *cf_item_to_section(CONF_ITEM const *item);
+CONF_COMMENT *cf_item_to_comment(CONF_ITEM const *item);
 CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp);
 CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs);
+CONF_ITEM *cf_comment_to_item(CONF_COMMENT const *c);
+
+/** Allocate a `# ...` comment item and attach it to `parent`.
+ *
+ * Only useful when the parser was asked to preserve comments (set
+ * `cf_preserve_comments = true` before `cf_file_read`).  Returns NULL on
+ * allocation failure.
+ */
+CONF_COMMENT *cf_comment_alloc(CONF_SECTION *parent, char const *text);
+char const *cf_comment_text(CONF_COMMENT const *c);
+char const *cf_comment_filename(CONF_COMMENT const *c);
+int cf_comment_lineno(CONF_COMMENT const *c);
+
+/** Control whether `# ...` lines are kept as CONF_COMMENT items in the
+ * config tree.  Defaults to off (historical behaviour); the runtime
+ * server parser leaves it that way.  Utilities call the setter before
+ * cf_file_include() / main_config_init() to opt in.
+ */
+void cf_preserve_comments_set(bool preserve);
+
+/** Opt out of `${var}` expansion when reading config (default: enabled).
+ *
+ * Utilities that round-trip the source - e.g. radconf2json - call this
+ * with `false` before cf_file_include() so the parser stores values
+ * verbatim instead of resolving `${var}` references.  `$INCLUDE` handling
+ * is a separate parser path and is unaffected.
+ */
+void cf_expand_variables_set(bool expand);
 
 void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));

@@ -62,7 +62,10 @@ typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
-	CONF_ITEM_DATA
+	CONF_ITEM_DATA,
+	CONF_ITEM_COMMENT			//!< Preserved `# ...` line.  Only created
+						///< when `cf_preserve_comments` is set before
+						///< parsing.
 } CONF_ITEM_TYPE;
 
 struct conf_item {
@@ -85,6 +88,18 @@ struct conf_pair {
 	FR_TOKEN	rhs_type;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 	bool		pass2;		//!< do expansion in pass2.
 	bool		parsed;		//!< Was this item used during parsing?
+};
+
+/** A literal `# ...` comment line.
+ *
+ * Only constructed when `cf_preserve_comments` is set before parsing.
+ * Added to the parent section's children list in source order but NOT
+ * indexed by name in any of the rbtree's - comments aren't name-keyed.
+ */
+struct conf_comment {
+	CONF_ITEM	item;
+	char const	*text;			//!< Comment text, with the leading `#` and any
+						//!< surrounding whitespace stripped.
 };
 
 /** Internal data that is associated with a configuration section
@@ -130,6 +145,36 @@ typedef struct cf_file_t {
 CONF_SECTION *root_config = NULL;
 bool cf_new_escape = true;
 
+/*
+ *	Off by default - the runtime server parser drops comments as it
+ *	always has.  Utilities call cf_preserve_comments_set() before
+ *	cf_file_include() / main_config_init() to opt in.
+ */
+static bool cf_preserve_comments = false;
+
+void cf_preserve_comments_set(bool preserve)
+{
+	cf_preserve_comments = preserve;
+}
+
+
+/*
+ *	On by default - the runtime parser always wants `${foo}` resolved
+ *	to the value of `foo`.  Tools like radconf2json that want to round-
+ *	trip the source verbatim flip this off via cf_expand_variables_set()
+ *	before reading the config; cf_expand_variables() then copies its
+ *	input through unchanged so the JSON output preserves `${...}`
+ *	references rather than baking in whatever the parser would have
+ *	resolved them to at conversion time.  $INCLUDE handling is a
+ *	separate code path and is unaffected.
+ */
+static bool cf_expand_vars = true;
+
+void cf_expand_variables_set(bool expand)
+{
+	cf_expand_vars = expand;
+}
+
 
 static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
 					     void (*data_free)(void *), int flag);
@@ -148,6 +193,78 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in, bool from_
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
+
+/** Determine if a CONF_ITEM is a CONF_COMMENT.
+ */
+bool cf_item_is_comment(CONF_ITEM const *ci)
+{
+	if (!ci) return false;
+	return ci->type == CONF_ITEM_COMMENT;
+}
+
+/** Cast a CONF_ITEM to a CONF_COMMENT (asserts on type mismatch).
+ */
+CONF_COMMENT *cf_item_to_comment(CONF_ITEM const *ci)
+{
+	CONF_COMMENT *out;
+
+	if (ci == NULL) return NULL;
+	rad_assert(ci->type == CONF_ITEM_COMMENT);
+	memcpy(&out, &ci, sizeof(out));
+	return out;
+}
+
+/** Cast a CONF_COMMENT back to a CONF_ITEM.
+ */
+CONF_ITEM *cf_comment_to_item(CONF_COMMENT const *c)
+{
+	CONF_ITEM *out;
+
+	if (c == NULL) return NULL;
+	memcpy(&out, &c, sizeof(out));
+	return out;
+}
+
+char const *cf_comment_text(CONF_COMMENT const *c)
+{
+	if (c == NULL) return NULL;
+	return c->text;
+}
+
+char const *cf_comment_filename(CONF_COMMENT const *c)
+{
+	if (c == NULL) return NULL;
+	return c->item.filename;
+}
+
+int cf_comment_lineno(CONF_COMMENT const *c)
+{
+	if (c == NULL) return 0;
+	return c->item.lineno;
+}
+
+/** Allocate a CONF_COMMENT and attach it to `parent`'s ordered children list.
+ *
+ * Comments are not added to any rbtree (they don't have a search key), so
+ * cf_pair_find / cf_section_sub_find ignore them entirely.
+ */
+CONF_COMMENT *cf_comment_alloc(CONF_SECTION *parent, char const *text)
+{
+	CONF_COMMENT *c;
+
+	if (!parent) return NULL;
+
+	c = talloc_zero(parent, CONF_COMMENT);
+	if (!c) return NULL;
+
+	c->item.type   = CONF_ITEM_COMMENT;
+	c->item.parent = parent;
+	c->item.next   = NULL;
+	c->text        = text ? talloc_strdup(c, text) : NULL;
+
+	cf_item_add(parent, &c->item);
+	return c;
+}
 
 /** Cast a CONF_ITEM to a CONF_PAIR
  *
@@ -745,6 +862,20 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 		case CONF_ITEM_DATA: /* Skip data */
 			break;
 
+		case CONF_ITEM_COMMENT: {
+			/*
+			 *	Preserve comments through section dup so
+			 *	round-tripping utilities don't lose them.
+			 */
+			CONF_COMMENT const *src = cf_item_to_comment(ci);
+			CONF_COMMENT *dup = cf_comment_alloc(new, src->text);
+			if (dup) {
+				dup->item.filename = src->item.filename;
+				dup->item.lineno = src->item.lineno;
+			}
+			break;
+		}
+
 		case CONF_ITEM_INVALID:
 			rad_assert(0);
 		}
@@ -1064,6 +1195,17 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 	char name[8192];
 
 	if (soft_fail) *soft_fail = false;
+
+	/*
+	 *	Utilities can opt out of `${...}` resolution and have the
+	 *	parser copy values through verbatim - the JSON output then
+	 *	preserves the source's references instead of inlining the
+	 *	values at conversion time.
+	 */
+	if (!cf_expand_vars) {
+		strlcpy(output, input, outsize);
+		return output;
+	}
 
 	/*
 	 *	Find the master parent conf section.
@@ -2434,6 +2576,50 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			ptr = buf;
 			while (*ptr && isspace((uint8_t) *ptr)) ptr++;
+
+			/*
+			 *	When asked to preserve comments, capture
+			 *	`# ...` lines as CONF_COMMENT items on the
+			 *	current section so the v3-to-v4 tooling can
+			 *	round-trip them.  The runtime parser leaves
+			 *	cf_preserve_comments at false and these lines
+			 *	are skipped as they always were.
+			 */
+			if (cf_preserve_comments && this && (*ptr == '#' || !*ptr)) {
+				char const	*text;
+				CONF_COMMENT	*c;
+
+				/*
+				 *	`#` line: keep everything after the
+				 *	marker verbatim (whitespace included;
+				 *	operators use leading indent to format
+				 *	banners).  Empty line: emit a blank
+				 *	marker (NULL text) so the writer can
+				 *	round-trip the visual separator, and
+				 *	downstream tooling can tell two comment
+				 *	blocks separated by a blank line apart
+				 *	from one long block.
+				 */
+				text = (*ptr == '#') ? ptr + 1 : NULL;
+				c = cf_comment_alloc(this, text);
+				if (c) {
+					/*
+					 *	Trim trailing CR/LF off the talloc'd copy in
+					 *	place; safe because cf_comment_alloc strdup'd it.
+					 *	Cast through memcpy to silence -Wcast-qual.
+					 */
+					char *p;
+					memcpy(&p, &c->text, sizeof(p));
+					if (p) {
+						size_t l = strlen(p);
+						while (l > 0 && (p[l - 1] == '\n' || p[l - 1] == '\r')) {
+							p[--l] = '\0';
+						}
+					}
+					c->item.filename = talloc_typed_strdup(c, filename);
+					c->item.lineno = *lineno;
+				}
+			}
 
 			if (!*ptr || (*ptr == '#')) continue;
 
