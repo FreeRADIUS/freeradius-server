@@ -2692,7 +2692,7 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 	fr_dict_attr_t const *parent = fr_dict_attr_by_name(NULL, fr_dict_root(dict_der), "Certificate");
 
 	if (unlikely(parent == NULL)) {
-		fr_strerror_printf_push("DER fuzzing: Certificate attribute not found in der dictionary");
+		fr_strerror_printf_push("Invalid dictionary. DER decoding requires a specific dictionary.");
 		return -1;
 	}
 
