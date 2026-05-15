@@ -15,6 +15,11 @@ env:
   DOCKER_REGISTRY: "docker.internal.networkradius.com"
 
 jobs:
+  #
+  #  Refresh / build the base set of images. Each matrix entry produces
+  #  one image. Images here must not depend on any other image we're
+  #  building - those go in process-derived-images below.
+  #
   process-images:
     timeout-minutes: 20
 
@@ -26,20 +31,11 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          #
-          #  Standard CI base image. After building, this entry also
-          #  builds and pushes the self-hosted-docker-cli variant
-          #  (extends this base with docker CLI + buildx + m4) since
-          #  that variant FROMs this image and so needs it in the
-          #  local docker daemon's cache before its own build runs.
-          #
           - base_image: ubuntu:24.04
             image_name: docker.internal.networkradius.com/self-hosted-ubuntu24
             extra_tags:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/Dockerfile
-            cli_dockerfile: scripts/ci/Dockerfile.docker-cli
-            cli_image_name: docker.internal.networkradius.com/self-hosted-docker-cli
 
           #
           #  Custom dind sidecar image used by the dind-based
@@ -125,6 +121,12 @@ jobs:
           cp /usr/local/share/ca-certificates/networkradius.com.crt \
              scripts/ci/networkradius.com.crt
 
+      #
+      #  docker build's "exporting to image" phase occasionally trips a
+      #  containerd snapshot-store lock race (transient, ~ms-scale).
+      #  Three attempts with a short sleep is enough to absorb this
+      #  without masking real failures.
+      #
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
         shell: bash
@@ -132,7 +134,12 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
         run: |
-          docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true .
+          for attempt in 1 2 3; do
+            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            echo "Build attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
 
       - name: Docker login
         uses: docker/login-action@v3
@@ -146,7 +153,12 @@ jobs:
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
-          docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE"
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
 
       - name: Push main image to local registry
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
@@ -155,7 +167,12 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
-          docker push "$DOCKER_IMAGE_NAME"
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_IMAGE_NAME" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
 
       - name: Create and push alternative tags
         if: ${{ matrix.os.image_name && matrix.os.extra_tags }}
@@ -164,33 +181,96 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
-          for TAG in $DOCKER_TAGS; do \
-            docker image tag "$DOCKER_IMAGE_NAME" "$TAG"; \
-            docker push "$TAG"; \
+          for TAG in $DOCKER_TAGS; do
+            docker image tag "$DOCKER_IMAGE_NAME" "$TAG"
+            for attempt in 1 2 3; do
+              docker push "$TAG" && break
+              if [ "$attempt" = "3" ]; then exit 1; fi
+              echo "Push of $TAG attempt $attempt failed; retrying..."
+              sleep 10
+            done
           done
 
-      #
-      #  Build the docker-cli variant if this matrix entry declared
-      #  one. The CLI Dockerfile FROMs the just-built main image,
-      #  which is now in the local docker daemon's cache, so we don't
-      #  have to wait on the registry round-trip.
-      #
-      - name: Build docker-cli variant
-        if: ${{ matrix.os.cli_dockerfile && matrix.os.cli_image_name }}
-        shell: bash
-        env:
-          CLI_IMAGE_NAME: ${{ matrix.os.cli_image_name }}
-          CLI_DOCKERFILE: ${{ matrix.os.cli_dockerfile }}
-        run: |
-          docker build --no-cache \
-                       -f "$CLI_DOCKERFILE" \
-                       -t "$CLI_IMAGE_NAME" \
-                       --label preserve=true .
+  #
+  #  Refresh / build images that FROM one of the images produced by
+  #  process-images. Runs after that job completes so the parent images
+  #  are guaranteed to be in the internal registry. Each derived entry
+  #  pulls its parent, builds, pushes - all with retries.
+  #
+  process-derived-images:
+    needs: process-images
+    timeout-minutes: 15
 
-      - name: Push docker-cli variant
-        if: ${{ matrix.os.cli_dockerfile && matrix.os.cli_image_name }}
+    runs-on: self-hosted
+    if: github.event_name == 'workflow_dispatch'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          #
+          #  self-hosted-docker-cli: extends self-hosted with docker
+          #  CLI/buildx/m4. Used as the JOB container of the dind-based
+          #  workflows.
+          #
+          - parent_image: docker.internal.networkradius.com/self-hosted
+            image_name: docker.internal.networkradius.com/self-hosted-docker-cli
+            dockerfile: scripts/ci/Dockerfile.docker-cli
+
+    name: "process-derived-images"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: Docker login (internal registry)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      #
+      #  Pull the parent image from the internal registry. process-images
+      #  pushed it in the previous job, but this job almost certainly runs
+      #  on a different self-hosted runner whose docker daemon doesn't
+      #  have it cached locally.
+      #
+      - name: Pull parent image
         shell: bash
         env:
-          CLI_IMAGE_NAME: ${{ matrix.os.cli_image_name }}
+          PARENT_IMAGE: ${{ matrix.os.parent_image }}
         run: |
-          docker push "$CLI_IMAGE_NAME"
+          for attempt in 1 2 3; do
+            docker pull "$PARENT_IMAGE" && exit 0
+            echo "Pull attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Build derived image
+        shell: bash
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKERFILE: ${{ matrix.os.dockerfile }}
+        run: |
+          for attempt in 1 2 3; do
+            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            echo "Build attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Push derived image
+        shell: bash
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+        run: |
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_IMAGE_NAME" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
