@@ -11,6 +11,12 @@ name: Cleanup Skipped Diagnosis Runs
 #  diagnosis itself broke, successes pair with the commit comment
 #  they posted).
 #
+#  Cancelled diagnosis runs also pile up: when several CI workflows
+#  fail on the same commit, the concurrency group queues their
+#  diagnoses and any pending duplicates get cancelled. Those are
+#  noise too - the diagnosis was never going to add anything beyond
+#  what the run that did execute already posted - so delete them.
+#
 #  This cleanup workflow's own successful runs are just noise after
 #  they've done their job - delete those too. Failures stay so we can
 #  see if the cleanup itself has broken.
@@ -30,7 +36,7 @@ jobs:
       actions: write       # required to delete workflow runs
 
     steps:
-      - name: Delete skipped Claude CI Failure Diagnosis runs
+      - name: Delete skipped and cancelled Claude CI Failure Diagnosis runs
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -44,14 +50,16 @@ jobs:
             exit 0
           fi
 
-          gh api --paginate \
-            "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=skipped&per_page=100" \
-            --jq '.workflow_runs[].id' \
-            | while read -r id; do
-                [ -z "$id" ] && continue
-                gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || \
-                  echo "  $id: delete failed"
-              done
+          for status in skipped cancelled; do
+            gh api --paginate \
+              "/repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=$status&per_page=100" \
+              --jq '.workflow_runs[].id' \
+              | while read -r id; do
+                  [ -z "$id" ] && continue
+                  gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1 || \
+                    echo "  $id: delete failed"
+                done
+          done
 
       - name: Self-clean - delete successful and skipped runs of this workflow
         env:
