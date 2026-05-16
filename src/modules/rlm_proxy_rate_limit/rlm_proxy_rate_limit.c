@@ -94,7 +94,7 @@ typedef struct {
 	 *	Rough count of number of times the rate has been
 	 *	exceeded since suppression began.
 	 */
-	int				count;
+	uint32_t       			count;
 
 	/*
 	 *	Table containing this entry so we can lookup relevant
@@ -110,6 +110,7 @@ struct rlm_proxy_rate_limit_s {
 	uint32_t			max_entries;
 	uint32_t			idle_timeout;
 	uint32_t			num_subtables;
+	uint32_t			count;
 	uint32_t			window;
 	rlm_proxy_rate_limit_table_t	tables[MAX_NUM_SUBTABLES];
 };
@@ -119,6 +120,7 @@ static const CONF_PARSER module_config[] = {
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, idle_timeout), "2" },
 	{ "num_subtables", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, num_subtables), "256" },
 	{ "window", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, window), "1"},
+	{ "count", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, count), "2"},
 	CONF_PARSER_TERMINATOR
 };
 
@@ -284,14 +286,32 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	}
 
 	/*
-	 *	@todo - add configurable threshold. For now, it's only one packet.
-	 */
-
-	/*
-	 *	Limit only when active and for new requests, not
+	 *	Limit only when active and for new requests, not for
 	 *	retransmissions.
 	 */
-	if (!entry->active || entry->last_id == request->packet->id) {
+	if (!entry->active || (entry->last_id == request->packet->id)) {
+		PTHREAD_MUTEX_UNLOCK(&table->mutex);
+		return 0;
+	}
+
+	/*
+	 *	Don't rate limit packets which are outside of the window.
+	 */
+	if ((request->timestamp - entry->last_request) > inst->window) {
+		entry->last_request = request->timestamp;
+		entry->active = false;
+		entry->count = 0;
+		PTHREAD_MUTEX_UNLOCK(&table->mutex);
+		return 0;
+	}
+
+	entry->last_request = request->timestamp;
+
+	/*
+	 *	Don't rate limit until we get enough hits.
+	 */
+	entry->count++;
+	if (entry->count < inst->count) {
 		PTHREAD_MUTEX_UNLOCK(&table->mutex);
 		return 0;
 	}
@@ -309,8 +329,7 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	 *	long as the end stations continues to periodically
 	 *	retry, which is likely not what we want.
 	 */
-	if ((request->timestamp - entry->last_request) < inst->window &&
-	    (entry->expires < request->timestamp + inst->idle_timeout)) {
+	if (entry->expires < (request->timestamp + inst->idle_timeout)) {
 		entry->expires = request->timestamp + inst->idle_timeout;
 
 		fr_dlist_entry_unlink(&entry->dlist);
@@ -318,8 +337,6 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 		RDEBUG3("Active rate limit entry %.*s (%d) extended", 6, entry->key, entry->table->id);
 	}
 
-	entry->last_request = request->timestamp;
-	entry->count++;
 	PTHREAD_MUTEX_UNLOCK(&table->mutex);
 	return -1;
 }
@@ -422,7 +439,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	maintain list in order of expiry time, without
 		 *	requiring two lists.)
 		 */
-		entry->expires = request->timestamp + 1;
+		entry->expires = request->timestamp + inst->window * inst->count;
 
 		/*
 		 *	Save it.
@@ -446,18 +463,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			char const *name, *calling_station_id;
 
 			entry->active = true;
-			entry->count = 0;
+			entry->count++;
 
-			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
-			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
+			if (entry->count >= inst->count) {
+				RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
+				(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
 
-			name = entry->key + 6;
-			calling_station_id = name + *name + 1;
+				name = entry->key + 6;
+				calling_station_id = name + *name + 1;
 
-			INFO("Proxy-Rate-Limit enabled for User-Name = %.*s, Calling-Station-Id = %.*s",
-			     (int) *name, name + 1,
-			     (int) *calling_station_id, calling_station_id + 1);
-
+				INFO("Proxy-Rate-Limit enabled for User-Name = %.*s, Calling-Station-Id = %.*s",
+				     (int) *name, name + 1,
+				     (int) *calling_station_id, calling_station_id + 1);
+			}
 		} else {
 			RDEBUG3("Rate limit entry %.*s (%d) updated", 6, entry->key, entry->table->id);
 		}
@@ -524,6 +542,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->window = 1;
 	} else {
 		FR_INTEGER_BOUND_CHECK("window", inst->window, <=, 5);
+	}
+
+	if (!inst->count) {
+		inst->count = 1;
+	} else {
+		FR_INTEGER_BOUND_CHECK("count", inst->count, <=, 5);
 	}
 
 	/* Undocumented. Intended to simplify testing. */

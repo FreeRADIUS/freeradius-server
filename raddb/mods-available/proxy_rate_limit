@@ -120,8 +120,16 @@ proxy_rate_limit {
 	idle_timeout = 10
 
 	#
-	#  The suppression period.  If a client retransmits during this time,
-	#  the rate limiting will start, and the proxy will send a reject.
+	#  The suppression period.  If a client retransmits more than
+	#  "count" packets during this time, rate limiting will start,
+	#  and the proxy will send a reject for subsequent packets.
 	#
 	window = 1
+
+	#
+	#  The suppression count.  If a client retransmits more than
+	#  this many packets during "window", rate limiting will
+	#  start, and the proxy will send a reject for subsequent packets.
+	#
+	count = 1
 }
