@@ -226,9 +226,6 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	}
 
 	if (preg) talloc_free(rreg);
-#ifdef HAVE_PCRE2
-	talloc_free(rxmatch);
-#endif
 
 	return ret;
 }

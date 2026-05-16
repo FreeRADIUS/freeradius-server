@@ -129,7 +129,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		}
 
 #ifdef HAVE_PCRE2
-		rxmatch = regex_match_data_alloc(request, nmatch);
+		rxmatch = regex_match_data_alloc(request, REQUEST_MAX_REGEX + 1);
 #endif
 
 		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
@@ -153,9 +153,6 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		talloc_free(preg);
 		talloc_free(expr);
 		talloc_free(value);
-#ifdef HAVE_PCRE2
-		talloc_free(rxmatch);
-#endif
 		goto finish;
 	}
 #endif
