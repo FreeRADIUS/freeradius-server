@@ -62,6 +62,11 @@ endef
 #
 SUBMAKEFILES += fuzzer_json.mk
 
+#
+#  Enable fuzzer_value
+#
+SUBMAKEFILES += fuzzer_value.mk
+
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 .PHONY: fuzzer.help
