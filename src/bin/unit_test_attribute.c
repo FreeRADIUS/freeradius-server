@@ -39,6 +39,7 @@ typedef struct request_s request_t;
 #endif
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/util/lsan.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/calc.h>
@@ -52,14 +53,6 @@ typedef struct request_s request_t;
 
 #include <freeradius-devel/util/dict_priv.h>
 
-
-#ifdef __clangd__
-#  undef HAVE_SANITIZER_LSAN_INTERFACE_H
-#endif
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  include <sanitizer/asan_interface.h>
-#endif
-
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
@@ -70,11 +63,6 @@ typedef struct request_s request_t;
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-
-#ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  define ASAN_POISON_MEMORY_REGION(_start, _end)
-#  define ASAN_UNPOISON_MEMORY_REGION(_start, _end)
-#endif
 
 #define EXIT_WITH_FAILURE \
 do { \
