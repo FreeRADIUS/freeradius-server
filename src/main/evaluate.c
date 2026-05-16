@@ -162,7 +162,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	regex_t		*preg, *rreg = NULL;
 #ifdef HAVE_PCRE2
-	regmatch_t	*rxmatch;
+	regmatch_t	*rxmatch = NULL;
 	size_t		nmatch = REQUEST_MAX_REGEX + 1;
 #else
 	regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
@@ -226,6 +226,9 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	}
 
 	if (preg) talloc_free(rreg);
+#ifdef HAVE_PCRE2
+	talloc_free(rxmatch);
+#endif
 
 	return ret;
 }

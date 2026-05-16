@@ -73,8 +73,20 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		ssize_t		slen;
 		regex_t		*preg = NULL;
+#ifdef HAVE_PCRE2
+		/*
+		 *	With PCRE2, regmatch_t holds a pcre2_match_data pointer.
+		 *
+		 *	A stack-allocated array could leave that pointer uninitialized, and regex_exec() would
+		 *	dereference it, and then crash inside pcre2_match() (intermittently.  The solution is
+		 *	to allocate the match below, via regex_match_data_alloc().  That's what evaluate.c does.
+		 */
+		regmatch_t	*rxmatch = NULL;
+		size_t		nmatch = REQUEST_MAX_REGEX + 1;
+#else
 		regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 		size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
+#endif
 
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
@@ -100,6 +112,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			talloc_free(preg);
 			talloc_free(expr);
 			talloc_free(value);
+#ifdef HAVE_PCRE2
+			talloc_free(rxmatch);
+#endif
 			return -2;
 		}
 
@@ -112,6 +127,10 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 
 			goto regex_error;
 		}
+
+#ifdef HAVE_PCRE2
+		rxmatch = regex_match_data_alloc(request, nmatch);
+#endif
 
 		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
 		if (slen < 0) {
@@ -134,6 +153,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		talloc_free(preg);
 		talloc_free(expr);
 		talloc_free(value);
+#ifdef HAVE_PCRE2
+		talloc_free(rxmatch);
+#endif
 		goto finish;
 	}
 #endif
