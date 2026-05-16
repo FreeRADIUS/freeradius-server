@@ -5,4 +5,4 @@
 </dl>
 
 ## Summary
-SQL driver for MySQL.
+SQL driver for MySQL and MariaDB.

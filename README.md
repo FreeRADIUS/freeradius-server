@@ -13,7 +13,7 @@ be done when adding or deleting new users to a network.
 
 FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
-databases such as MySQL, PostgreSQL, Oracle, Microsoft Active
+databases such as MySQL, MariaDB, PostgreSQL, Oracle, Microsoft Active
 Directory, Apache Cassandra, Redis, OpenLDAP, and many more.  It is
 used daily to authenticate the Internet access for hundreds of millions
 of people, in sites ranging from 10 to 10 million+ users.
