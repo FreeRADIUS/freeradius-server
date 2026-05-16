@@ -439,16 +439,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		/*
 		 *	Trigger suppression after two Access-Rejects from a home server
 		 *	for different requests (not retransmissions) are received within
-		 *	the same second.
+		 *	the same window.
 		 */
-		if (!entry->active && entry->last_id != request->packet->id &&
-		    request->timestamp - entry->last_reject < 1) {
+		if (!entry->active && (entry->last_id != request->packet->id) &&
+		    ((request->timestamp - entry->last_reject) < inst->window)) {
 			char const *name, *calling_station_id;
 
 			entry->active = true;
 			entry->count = 0;
-			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
 
+			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
 			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
 
 			name = entry->key + 6;
