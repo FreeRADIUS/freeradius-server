@@ -38,10 +38,32 @@ RCSID("$Id$")
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 
+#ifdef __clangd__
+#  undef HAVE_SANITIZER_LSAN_INTERFACE_H
+#endif
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  include <sanitizer/asan_interface.h>
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  define ASAN_POISON_MEMORY_REGION(_start, _size)
+#  define ASAN_UNPOISON_MEMORY_REGION(_start, _size)
+#endif
+
+/*
+ *	Poison gutters either side of the input string and the value
+ *	box. __asan_poison_memory_region() rounds to 8-byte granules,
+ *	so reads more than ~7 bytes past either end of the live region
+ *	will be reported by ASan. 64 bytes per side is plenty without
+ *	bloating each iteration noticeably.
+ */
+#define POISON_START 64
+#define POISON_END   64
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -88,30 +110,52 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	TALLOC_CTX	*ctx;
 	fr_value_box_t	*dst;
 	fr_type_t	type;
+	uint8_t		*raw_str = NULL, *raw_box = NULL;
 	char		*str;
+	size_t		inlen;
 
 	if (size < 1) return 0;
 	if (size > 8192) return 0; /* keep iterations fast */
 
+	inlen = size - 1;
 	type = fuzz_types[data[0] % (sizeof(fuzz_types) / sizeof(fuzz_types[0]))];
 
 	ctx = talloc_init_const("fuzzer_value");
 	if (!ctx) return 0;
 
 	/*
-	 *	Pass the rest of the buffer as the string. NUL-terminate to be
-	 *	defensive even though the API takes (in, inlen).
+	 *	Input string with poison gutters either side. We deliberately
+	 *	do NOT NUL-terminate: if fr_value_box_from_str() reads past
+	 *	the declared inlen, the poison (or talloc redzone) should
+	 *	flag it under ASan rather than the read landing on a
+	 *	convenient stop byte.
 	 */
-	str = talloc_array(ctx, char, size); /* size bytes; index 0 unused payload */
-	if (!str) goto out;
-	if (size > 1) memcpy(str, (char const *)(data + 1), size - 1);
-	str[size - 1] = '\0';
+	raw_str = talloc_array(ctx, uint8_t, POISON_START + inlen + POISON_END);
+	if (!raw_str) goto out;
+	str = (char *)(raw_str + POISON_START);
+	if (inlen) memcpy(str, data + 1, inlen);
+	ASAN_POISON_MEMORY_REGION(raw_str, POISON_START);
+	ASAN_POISON_MEMORY_REGION(raw_str + POISON_START + inlen, POISON_END);
 
-	dst = talloc_zero(ctx, fr_value_box_t);
-	if (!dst) goto out;
+	/*
+	 *	Value box with poison gutters around the struct. Catches
+	 *	per-type sub-parsers that write past the end (or before
+	 *	the start) of the destination box.
+	 */
+	raw_box = talloc_zero_array(ctx, uint8_t,
+				    POISON_START + sizeof(fr_value_box_t) + POISON_END);
+	if (!raw_box) goto out;
+	dst = (fr_value_box_t *)(raw_box + POISON_START);
+	ASAN_POISON_MEMORY_REGION(raw_box, POISON_START);
+	ASAN_POISON_MEMORY_REGION(raw_box + POISON_START + sizeof(fr_value_box_t), POISON_END);
 
-	(void) fr_value_box_from_str(ctx, dst, type, NULL,
-				     str, size - 1, NULL);
+	(void) fr_value_box_from_str(ctx, dst, type, NULL, str, inlen, NULL);
+
+	/*
+	 *	Unpoison before talloc_free walks the chunks.
+	 */
+	ASAN_UNPOISON_MEMORY_REGION(raw_str, POISON_START + inlen + POISON_END);
+	ASAN_UNPOISON_MEMORY_REGION(raw_box, POISON_START + sizeof(fr_value_box_t) + POISON_END);
 
 out:
 	talloc_free(ctx);
