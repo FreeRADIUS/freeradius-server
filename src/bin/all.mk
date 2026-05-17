@@ -67,6 +67,12 @@ SUBMAKEFILES += fuzzer_json.mk
 #
 SUBMAKEFILES += fuzzer_value.mk
 
+#
+#  Enable fuzzer_cf
+#
+SUBMAKEFILES += fuzzer_cf.mk
+
+
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 .PHONY: fuzzer.help
