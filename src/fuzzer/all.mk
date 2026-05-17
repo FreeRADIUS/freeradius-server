@@ -47,7 +47,7 @@ clean: clean.fuzzer
 #
 #  Add other fuzzers
 #
-SUBMAKEFILES += fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk
+SUBMAKEFILES += fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk fuzzer_xlat.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
