@@ -37,23 +37,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
-
-#ifdef __clangd__
-#  undef HAVE_SANITIZER_LSAN_INTERFACE_H
-#endif
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  include <sanitizer/asan_interface.h>
-#endif
+#include <freeradius-devel/util/lsan.h>
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  define ASAN_POISON_MEMORY_REGION(_start, _size)
-#  define ASAN_UNPOISON_MEMORY_REGION(_start, _size)
-#endif
 
 /*
  *	Poison gutters either side of the input string and the value
