@@ -52,11 +52,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat.h>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
@@ -179,12 +174,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 *	tree (which trips the per-node tmpl_needs_resolving assert
 	 *	in xlat_frame_eval, see xlat_eval.c:1475).
 	 */
-	memset(&t_rules, 0, sizeof(t_rules));
-	t_rules.attr.dict_def	      = dict_internal;
-	t_rules.attr.list_def	      = request_attr_request;
-	t_rules.attr.allow_unresolved = false;
-	t_rules.attr.allow_unknown    = false;
-	t_rules.attr.allow_wildcard   = true;
+	t_rules = (tmpl_rules_t) {
+		.attr = (tmpl_attr_rules_t) {
+			.dict_def	      = dict_internal,
+			.list_def	      = request_attr_request,
+			.allow_unresolved = false,
+			.allow_unknown    = false,
+			.allow_wildcard   = true,
+		},
+	};
 
 	sbuff = FR_SBUFF_IN(fmt, fmt_len);
 
@@ -252,6 +250,7 @@ done:
 	if (raw_fmt) {
 		ASAN_UNPOISON_MEMORY_REGION(raw_fmt, POISON_START + fmt_len + POISON_END);
 	}
+
 	talloc_free(ctx);
 	fr_strerror_clear();
 	return 0;
