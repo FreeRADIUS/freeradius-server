@@ -1762,7 +1762,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_test_point_pair_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
 	char		*p;
-	uint8_t		*to_dec;
+	uint8_t		*to_dec, *to_dec_start;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -1814,7 +1814,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_PARSE_ERROR(-(slen));
 	}
 
-	to_dec = (uint8_t *)data;
+	to_dec = to_dec_start = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -1845,6 +1845,11 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		to_dec += slen;
 	}
 
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec_end - to_dec_start)) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
+
 	/*
 	 *	Clear any spurious errors
 	 */
@@ -1870,7 +1875,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	fr_test_point_proto_decode_t	*tp = NULL;
 	void		*decode_ctx = NULL;
 	char		*p;
-	uint8_t		*to_dec;
+	uint8_t		*to_dec, *to_dec_start;
 	uint8_t		*to_dec_end;
 	ssize_t		slen;
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -1921,7 +1926,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_PARSE_ERROR(-(slen));
 	}
 
-	to_dec = (uint8_t *)data;
+	to_dec = to_dec_start = (uint8_t *)data;
 	to_dec_end = to_dec + slen;
 
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -1936,6 +1941,11 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
+	}
+
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec_end - to_dec_start)) < 0)) {
+		RETURN_COMMAND_ERROR();
 	}
 
 	/*
