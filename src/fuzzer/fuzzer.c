@@ -45,6 +45,7 @@ static TALLOC_CTX		*autofree = NULL;
 static bool			do_encode = false;
 
 static fr_dict_t		*dict = NULL;
+static fr_dict_attr_t const	*root_da = NULL;
 
 extern fr_test_point_proto_decode_t XX_PROTOCOL_XX_tp_decode_proto;
 extern fr_test_point_proto_encode_t XX_PROTOCOL_XX_tp_encode_proto;
@@ -97,6 +98,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
 	char const		*panic_action	= getenv("PANIC_ACTION");
+	char const		*root_attr	= getenv("FR_FUZZER_ROOT_ATTR");
 	char const		*p;
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	char			*dict_dir_to_free = NULL;
@@ -227,6 +229,14 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
+	if (root_attr) {
+		root_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), root_attr);
+		if (!root_da) {
+			fr_perror("Failed to find root attribute '%s'", root_attr);
+			fr_exit_now(EXIT_FAILURE);
+		}
+	}
+
 	/*
 	 *	Disable hostname lookups, so we don't produce spurious DNS
 	 *	queries, and there's no chance of spurious failures if
@@ -270,12 +280,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	fr_pair_list_init(&vps);
 	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
-	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, NULL) < 0)) {
+	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, root_da) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point decode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, NULL) < 0)) {
+	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, root_da) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point encode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}
