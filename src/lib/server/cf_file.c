@@ -3600,6 +3600,7 @@ do_frame:
 			if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 				ptr += 8;
 
+				stack->ptr = ptr;
 				if (process_include(stack, parent, ptr, true, true) < 0) return -1;
 				goto do_frame;
 			}
@@ -3607,6 +3608,7 @@ do_frame:
 			if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 				ptr += 9;
 
+				stack->ptr = ptr;
 				rcode = process_include(stack, parent, ptr, false, true);
 				if (rcode < 0) return -1;
 				if (rcode == 0) continue;
@@ -3625,6 +3627,7 @@ do_frame:
 				continue;
 			}
 
+			stack->ptr = ptr;
 			return parse_error(stack, ptr, "Unknown $... keyword");
 		}
 
