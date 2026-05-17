@@ -2688,10 +2688,10 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 				   void *proto_ctx)
 {
 	fr_dbuff_t our_in = FR_DBUFF_TMP(data, data_len);
+	fr_der_decode_ctx_t *der_ctx = proto_ctx;
+	fr_dict_attr_t const *parent = der_ctx->root;
 
-	fr_dict_attr_t const *parent = fr_dict_root(dict_der);
-
-	if (unlikely(parent == fr_dict_root(dict_der))) {
+	if (!parent || (parent == fr_dict_root(dict_der))) {
 		fr_strerror_printf_push("Invalid dictionary. DER decoding requires a specific dictionary.");
 		return -1;
 	}
@@ -2727,14 +2727,15 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
  *	Test points
  */
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
-			   UNUSED fr_dict_attr_t const *root_da)
+			   fr_dict_attr_t const *root_da)
 {
 	fr_der_decode_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_der_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx	  = talloc_new(test_ctx);
+	test_ctx->tmp_ctx = talloc_new(test_ctx);
+	test_ctx->root = root_da;	 
 
 	*out = test_ctx;
 

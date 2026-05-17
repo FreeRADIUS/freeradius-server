@@ -207,7 +207,10 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			fr_tls_log(request, "Failed retrieving certificate");
 			return -1;
 		}
-		der_ctx.tmp_ctx = talloc_new(ctx);
+		der_ctx = (fr_der_decode_ctx_t) {
+			.tmp_ctx = talloc_new(ctx),
+			.root = attr_der_certificate,
+		};
 		cert_der = cd = talloc_array(der_ctx.tmp_ctx, uint8_t, der_len);
 		i2d_X509(cert, &cd);
 		fr_pair_list_init(&tmp_list);
