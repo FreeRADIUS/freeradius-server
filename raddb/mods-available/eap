@@ -1228,6 +1228,11 @@ eap {
 		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
 		#  manually, but doing that is substantially more complicated.
 		#
+		#  &session-state:TEAP-Type-{Machine,User} will be set
+		#  with the EAP type used (set to 'NAK' if skipped and
+		#  'None' for Basic Password Authentication) as each
+		#  method completes allowing you to determine with
+		#  unlang within post-auth what happened.
 	#	identity_types = "machine,user"
 
 		#

@@ -130,6 +130,7 @@ typedef struct teap_tunnel_t {
 
 	int			identities_remaining;	//!< how many rounds have we allow
 	teap_auth_t		identity_types[3];	//!< index is identity type (user=1 or machine=2) - zero is unused
+	int			identity_type;		//!< which identity type is being currently processed
 
 	int			imckc;
 	bool			imck_emsk_available;
