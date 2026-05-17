@@ -1845,16 +1845,16 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		to_dec += slen;
 	}
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec_end - to_dec_start)) < 0)) {
-		RETURN_COMMAND_ERROR();
-	}
-
 	/*
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
+
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec - to_dec_start)) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
 
 	/*
 	 *	Output may be an error, and we ignore
@@ -1943,16 +1943,16 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_OK_WITH_ERROR();
 	}
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec_end - to_dec_start)) < 0)) {
-		RETURN_COMMAND_ERROR();
-	}
-
 	/*
 	 *	Clear any spurious errors
 	 */
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
+
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, slen) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
 
 	/*
 	 *	Output may be an error, and we ignore
