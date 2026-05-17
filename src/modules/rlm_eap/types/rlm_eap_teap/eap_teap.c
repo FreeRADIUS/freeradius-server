@@ -22,6 +22,12 @@ RCSID("$Id$")
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 
+/*
+ * TEAP-Type-{Machine,User} values from dictionary.freeradius.internal
+ */
+#define TEAP_TYPE_NONE		0
+#define TEAP_TYPE_NAK		3
+
 #define EAPTLS_MPPE_KEY_LEN 32
 
 #define RDEBUGHEX(_label, _data, _length) \
@@ -207,6 +213,11 @@ static void eap_teap_append_identity_type(REQUEST *request, tls_session_t *tls_s
 	 *      We can send something, even if it isn't required.
 	 */
 	t->identity_types[value].sent = true;
+
+	/*
+	 *	We use this to populate &session-state:TEAP-Type-{Machine,User}
+	 */
+	t->identity_type = value;
 
 	eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
 }
@@ -1062,6 +1073,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			talloc_free(t->username);
 			t->username = NULL;
 
+			t->sent_basic_password = false;
+
 			/* RFC7170, Appendix C.6 */
 			eap_teap_append_identity_type(request, tls_session, vp->vp_short);
 			sent_identity_type = true;
@@ -1078,7 +1091,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 				vp = fr_pair_afrom_num(reply, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS);
 				if (vp) {
+					RDEBUG("Phase 2: Sending Basic-Password-Auth-Req");
 					fr_pair_add(&reply->vps, vp);
+					t->sent_basic_password = true;
 				} else {
 					RERROR("Failed adding attribute &reply:FreeRADIUS-EAP-TEAP-Basic-Password-Auth-Req");
 					goto fail;
@@ -1184,13 +1199,12 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 {
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp;
-	teap_tunnel_t		*t;
+	VALUE_PAIR		*tvp;
+	teap_tunnel_t		*t = (teap_tunnel_t *)tls_session->opaque;
 	int			eap_method = 0;
+	uint16_t		result_attr = t->identity_type == EAP_TEAP_IDENTITY_TYPE_MACHINE ? PW_TEAP_TYPE_MACHINE : PW_TEAP_TYPE_USER;
 
 	RDEBUG3("Phase 2: Processing received EAP Payload");
-
-	t = (teap_tunnel_t *) tls_session->opaque;
 
 	RDEBUG("Phase 2: Got tunneled request");
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
@@ -1205,19 +1219,19 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 	 * an EAP-Identity, and pull it out of there.
 	 */
 	if (!t->username) {
-		vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-		if (vp &&
-		    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-		    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
-		    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
-		    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
+		tvp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		if (tvp &&
+		    (tvp->vp_length >= EAP_HEADER_LEN + 2) &&
+		    (tvp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
+		    (tvp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
+		    (tvp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 			/*
 			 * Create & remember a User-Name
 			 */
 			t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
+			fr_pair_value_bstrncpy(t->username, tvp->vp_octets + 5, tvp->vp_length - 5);
 
 			RDEBUG("Phase 2: Got tunneled identity of %s", t->username->vp_strvalue);
 
@@ -1232,21 +1246,23 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 	} /* else there WAS a t->username */
 
 	if (t->username && !fake->username) {
-		vp = fr_pair_list_copy(fake->packet, t->username);
-		fr_pair_add(&fake->packet->vps, vp);
-		fake->username = vp;
+		tvp = fr_pair_list_copy(fake->packet, t->username);
+		if (tvp) {
+			fr_pair_add(&fake->packet->vps, tvp);
+			fake->username = tvp;
+		}
 	}
 
 	/*
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		vp = fr_pair_list_copy(fake->packet, t->state);
-		if (vp) fr_pair_add(&fake->packet->vps, vp);
+		tvp = fr_pair_list_copy(fake->packet, t->state);
+		if (tvp) fr_pair_add(&fake->packet->vps, tvp);
 	}
 
 	if (t->stage == AUTHENTICATION) {
-		VALUE_PAIR *tvp;
+		VALUE_PAIR *vp;
 
 		eap_method = t->default_method;
 
@@ -1263,8 +1279,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 		}
 
 		if (vp) {
-			VALUE_PAIR *vp_config, *teap_type;
-
+			VALUE_PAIR *vp_config;
 repeat:
 			vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 
@@ -1274,7 +1289,7 @@ repeat:
 			}
 
 			if (vp_config) {
-				const char *identity_type = vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
+				const char *identity_type_str = vp_config->vp_short == EAP_TEAP_IDENTITY_TYPE_USER ? "User" : "Machine";
 				uint16_t identity_type_requested = vp_config->vp_short;
 
 				/*
@@ -1286,7 +1301,7 @@ repeat:
 				if (t->identity_types[identity_type_requested].sent &&
 				    (vp->vp_short != identity_type_requested)) {
 					if (t->identity_types[identity_type_requested].required) {
-						REDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - rejecting the session", identity_type);
+						REDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - rejecting the session", identity_type_str);
 fail:
 						vp = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
 						if (vp) {
@@ -1296,9 +1311,16 @@ fail:
 						goto done;
 					}
 
-					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - skipping optional method", identity_type);
-					RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s", identity_type);
+					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not use that method - skipping optional method", identity_type_str);
+					RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s", identity_type_str);
 					fr_pair_delete(&request->state, vp_config);
+
+					tvp = fr_pair_afrom_num(request->state_ctx, result_attr, 0);
+					if (tvp) {
+						fr_pair_add(&request->state, tvp);
+						tvp->vp_integer = TEAP_TYPE_NAK;
+					}
+
 					goto repeat;
 				}
 
@@ -1329,12 +1351,19 @@ fail:
 						goto fail;
 					}
 
-					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type);
+					RWDEBUG("Phase 2: We sent Identity-Type = %s, but the supplicant did not send any authentication material - skipping optional method", identity_type_str);
 					vp = fr_pair_afrom_num(fake, PW_AUTH_TYPE, 0);
 					if (vp) {
 						fr_pair_add(&fake->config, vp);
 						vp->vp_integer = PW_AUTH_TYPE_ACCEPT;
 					}
+
+					tvp = fr_pair_afrom_num(request->state_ctx, result_attr, 0);
+					if (tvp) {
+						fr_pair_add(&request->state, tvp);
+						tvp->vp_integer = TEAP_TYPE_NAK;
+					}
+
 					goto done;
 				}
 			}
@@ -1357,9 +1386,9 @@ fail:
 			 *		* otherwise ???
 			 */
 			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_USER) {
-				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_USER, 0, TAG_ANY);
-				if (teap_type) {
-					eap_method = teap_type->vp_integer;
+				tvp = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_USER, 0, TAG_ANY);
+				if (tvp) {
+					eap_method = tvp->vp_integer;
 
 					RDEBUG("Phase 2: Setting User EAP-Type = %s from &config:TEAP-Type-User",
 					       eap_type2name(eap_method));
@@ -1383,9 +1412,9 @@ fail:
 			}
 
 			if (vp->vp_short == EAP_TEAP_IDENTITY_TYPE_MACHINE) {
-				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
-				if (teap_type) {
-					eap_method = teap_type->vp_integer;
+				tvp = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
+				if (tvp) {
+					eap_method = tvp->vp_integer;
 
 					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
 					       eap_type2name(eap_method));
@@ -1416,12 +1445,16 @@ fail:
 			 */
 			if (eap_method == PW_EAP_MSCHAPV2 && t->mode == EAP_TEAP_PROVISIONING_ANON) {
 				tvp = fr_pair_afrom_num(fake, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
-				//fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
-				fr_pair_add(&fake->config, tvp);
+				if (tvp) {
+					//fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
+					fr_pair_add(&fake->config, tvp);
+				}
 
 				tvp = fr_pair_afrom_num(fake, PW_MS_CHAP_PEER_CHALLENGE, 0);
-				//fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
-				fr_pair_add(&fake->config, tvp);
+				if (tvp) {
+					//fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
+					fr_pair_add(&fake->config, tvp);
+				}
 			}
 
 			/*
@@ -1445,8 +1478,8 @@ done:
 		eapteap_copy_request_to_tunnel(request, fake);
 	}
 
-	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
-		fake->server = vp->vp_strvalue;
+	if ((tvp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+		fake->server = tvp->vp_strvalue;
 
 	} else if (t->virtual_server) {
 		fake->server = t->virtual_server;
@@ -1464,8 +1497,8 @@ done:
 	 */
 	switch (fake->reply->code) {
 	case 0:
-		vp = fr_pair_find_by_num(fake->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
-		if (vp && (vp->vp_integer == PW_CODE_ACCESS_CHALLENGE)) {
+		tvp = fr_pair_find_by_num(fake->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+		if (tvp && (tvp->vp_integer == PW_CODE_ACCESS_CHALLENGE)) {
 			fake->reply->code = PW_CODE_ACCESS_CHALLENGE;
 			goto do_reply;
 		}
@@ -1473,6 +1506,18 @@ done:
 		RDEBUG("Phase 2: No tunneled reply was found, rejecting the user.");
 		code = PW_CODE_ACCESS_REJECT;
 		break;
+
+	case PW_CODE_ACCESS_ACCEPT:
+		tvp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
+		if (tvp) {
+			eap_method = tvp->vp_integer;
+			tvp = fr_pair_afrom_num(request->state_ctx, result_attr, 0);
+			if (tvp) {
+				fr_pair_add(&request->state, tvp);
+				tvp->vp_integer = t->sent_basic_password ? TEAP_TYPE_NONE : eap_method;
+			}
+		}
+		/* FALL-THROUGH */
 
 	default:
 	do_reply:
