@@ -458,6 +458,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	ef->fd = fd;
 	ef->handler = handler;
+	ef->write_handler = NULL; /* new, so not set */
 	ef->ctx = ctx;
 
 	return 1;
@@ -563,6 +564,21 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		}
 
 		el->readers[j].fd = -1;
+
+		/*
+		 *	Clear handler/ctx/write_handler too.  Slots get
+		 *	reused via fr_event_fd_insert(), which only resets
+		 *	fd / handler / ctx.  A stale write_handler causes
+		 *	fr_event_fd_write_handler()'s idempotency check at
+		 *	line 490 to wrongly conclude the kqueue write filter
+		 *	is already installed and return 1 without doing the
+		 *	EV_ADD -- the next thaw then issues an EV_DELETE for
+		 *	a filter that doesn't exist and kevent returns
+		 *	ENOENT, which proxy_listener_thaw() treats as fatal.
+		 */
+		el->readers[j].handler = NULL;
+		el->readers[j].write_handler = NULL;
+		el->readers[j].ctx = NULL;
 		el->num_readers--;
 
 		return 1;
@@ -572,6 +588,9 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd == fd) {
 			el->readers[i].fd = -1;
+			el->readers[j].handler = NULL;
+			el->readers[j].write_handler = NULL;
+			el->readers[j].ctx = NULL;
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
