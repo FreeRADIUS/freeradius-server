@@ -116,19 +116,23 @@ jobs:
     - uses: ./.github/actions/setup-dind
 
     #
-    #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
-    #  registry-mirrors -> docker.internal.networkradius.com baked
-    #  in, but our internal registry isn't actually a Hub pull-
-    #  through cache, so the inner crossbuild's FROM-pulls fall back
-    #  to docker.io and would otherwise hit anonymous rate limits.
+    #  Run the per-distro crossbuild. CB_FROM_<distro> overrides the
+    #  `from` build-arg in scripts/docker/crossbuild.mk so the inner
+    #  docker build FROMs an internal base image instead of docker.io,
+    #  killing the Hub pull (and the anonymous rate-limit headache) on
+    #  every CI run. Local `make crossbuild.<distro>` ignores these
+    #  and uses the upstream image baked into Dockerfile.cb by m4.
     #
-    - name: Login to Docker Hub (via dind)
-      uses: docker/login-action@v4
-      with:
-        username: ${{ vars.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_KEY }}
-
     - name: Run crossbuild tests
+      env:
+        CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-deb-debian12
+        CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-deb-debian13
+        CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-deb-debiansid
+        CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-deb-ubuntu22
+        CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-deb-ubuntu24
+        CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-deb-ubuntu26
+        CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
+        CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
       run: |
         make crossbuild.$OS
 

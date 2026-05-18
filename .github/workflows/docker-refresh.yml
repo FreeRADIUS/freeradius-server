@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - master
-#    paths:
-#      - .github/workflows/docker-refresh.yml
-#      - scripts/ci/Dockerfile*
+    paths:
+      - .github/workflows/docker-refresh.yml
+      - scripts/ci/docker/Dockerfile*
+      - debian/control
+      - redhat/freeradius.spec
   workflow_dispatch:
-#  schedule:
-#    - cron: '0 1 * * *'
+  schedule:
+    - cron: '0 1 * * *'
 
 env:
   DOCKER_REGISTRY: "docker.internal.networkradius.com"
@@ -24,8 +26,7 @@ jobs:
     timeout-minutes: 20
 
     runs-on: self-hosted
-#    if: github.event_name == 'workflow_dispatch' || github.repository_owner == 'FreeRADIUS'
-    if: github.event_name == 'workflow_dispatch'
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
 
     strategy:
       fail-fast: false
@@ -35,7 +36,61 @@ jobs:
             image_name: docker.internal.networkradius.com/self-hosted-ubuntu24
             extra_tags:
               - docker.internal.networkradius.com/self-hosted
-            dockerfile: scripts/ci/Dockerfile
+            dockerfile: scripts/ci/docker/Dockerfile
+
+          - base_image: rockylinux/rockylinux:9
+            image_name: docker.internal.networkradius.com/self-hosted-rocky9
+            dockerfile: scripts/ci/docker/Dockerfile.rocky
+            build_args:
+              from: rockylinux/rockylinux:9
+
+          - base_image: rockylinux/rockylinux:10
+            image_name: docker.internal.networkradius.com/self-hosted-rocky10
+            dockerfile: scripts/ci/docker/Dockerfile.rocky
+            build_args:
+              from: rockylinux/rockylinux:10
+
+          #
+          #  Slim deb-build bases for ci-deb.yml. Distinct from the
+          #  full self-hosted-ubuntu24 testbed above - these only carry
+          #  the build-essential toolchain and the debian/control
+          #  build-dep closure, no integration-test services.
+          #
+          - base_image: debian:bookworm
+            image_name: docker.internal.networkradius.com/self-hosted-deb-debian12
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: debian:bookworm
+
+          - base_image: debian:trixie
+            image_name: docker.internal.networkradius.com/self-hosted-deb-debian13
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: debian:trixie
+
+          - base_image: debian:sid
+            image_name: docker.internal.networkradius.com/self-hosted-deb-debiansid
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: debian:sid
+
+          - base_image: ubuntu:22.04
+            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu22
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: ubuntu:22.04
+
+          - base_image: ubuntu:24.04
+            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu24
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: ubuntu:24.04
+
+          - base_image: ubuntu:26.04
+            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu26
+            dockerfile: scripts/ci/docker/Dockerfile.debian
+            build_args:
+              from: ubuntu:26.04
 
           #
           #  Custom dind sidecar image used by the dind-based
@@ -46,7 +101,7 @@ jobs:
           #
           - base_image: docker:24-dind
             image_name: docker.internal.networkradius.com/self-hosted-docker-dind
-            dockerfile: scripts/ci/Dockerfile.docker-dind
+            dockerfile: scripts/ci/docker/Dockerfile.docker-dind
             needs_internal_ca: true
 
           - base_image: mariadb
@@ -133,9 +188,14 @@ jobs:
         env:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
+          BUILD_ARGS_JSON: ${{ toJson(matrix.os.build_args) }}
         run: |
+          build_args=()
+          while IFS=$'\t' read -r key value; do
+            [ -n "$key" ] && build_args+=(--build-arg "${key}=${value}")
+          done < <(printf '%s' "$BUILD_ARGS_JSON" | jq -r 'to_entries[]? | [.key, .value] | @tsv')
           for attempt in 1 2 3; do
-            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true "${build_args[@]}" . && exit 0
             echo "Build attempt $attempt failed; retrying after backoff..."
             sleep 10
           done
@@ -202,7 +262,7 @@ jobs:
     timeout-minutes: 15
 
     runs-on: self-hosted
-    if: github.event_name == 'workflow_dispatch'
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
 
     strategy:
       fail-fast: false
@@ -215,7 +275,7 @@ jobs:
           #
           - parent_image: docker.internal.networkradius.com/self-hosted
             image_name: docker.internal.networkradius.com/self-hosted-docker-cli
-            dockerfile: scripts/ci/Dockerfile.docker-cli
+            dockerfile: scripts/ci/docker/Dockerfile.docker-cli
 
     name: "process-derived-images"
 

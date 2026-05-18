@@ -1,0 +1,68 @@
+ARG from=rockylinux/rockylinux:10
+FROM ${from}
+
+#
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly.
+#
+RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  EPEL + CRB give us freetds, hiredis, and the rest of the long tail of
+#  build deps the spec pulls in.
+#
+RUN dnf install -y dnf-utils dnf-plugins-core epel-release && \
+	dnf config-manager --enable crb
+
+#
+#  procps-ng is for pkill, used by the test harness. xz is for the tmate
+#  debug step on ci-debug. Tools below are the union of "Install common
+#  tools" and "Build eapol_test" in ci-rpm.yml.
+#
+RUN dnf install -y \
+	gcc \
+	git-core \
+	libnl3-devel \
+	make \
+	openssl \
+	perl \
+	procps-ng \
+	rpm-build \
+	which \
+	xz
+
+#
+#  Set up NetworkRADIUS extras repository
+#
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+		-o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+		"https://packages.networkradius.com/pgp/packages%40networkradius.com" && \
+	rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
+
+RUN printf '[networkradius-extras]\n\
+name=NetworkRADIUS-extras-$releasever\n\
+baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc\n' \
+	> /etc/yum.repos.d/networkradius-extras.repo
+
+#
+#  Pre-install the build-dep closure for the FreeRADIUS spec. The spec
+#  is baked in at image-build time; ci-rpm.yml still runs `dnf builddep`
+#  per job as a top-up so newly added deps are picked up without an
+#  image rebuild.
+#
+COPY redhat/freeradius.spec /tmp/freeradius.spec
+RUN dnf builddep -y /tmp/freeradius.spec && \
+	dnf builddep -y /tmp/freeradius.spec && \
+	rm /tmp/freeradius.spec
+
+#
+#  Trust any workspace path. The job container runs as root but the
+#  bind-mounted runner workspace is owned by the runner user; without
+#  this, git refuses with "dubious ownership" the moment a Makefile
+#  runs `git rev-parse`. system-level so it applies to every shell.
+#
+RUN git config --system --add safe.directory '*'

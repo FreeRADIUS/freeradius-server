@@ -26,7 +26,7 @@ jobs:
         #  Custom dind image with /etc/docker/daemon.json baked in
         #  pointing at the internal NR registry as a Docker Hub
         #  pull-through mirror, and the internal CA pre-trusted.
-        #  Built by docker-refresh.yml from scripts/ci/Dockerfile.docker-dind.
+        #  Built by docker-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
         #
         image: docker.internal.networkradius.com/self-hosted-docker-dind
         options: --privileged
@@ -53,7 +53,7 @@ jobs:
       #
       #  Custom CI image with docker CLI / buildx / m4 baked on top
       #  of the self-hosted base. Built by docker-refresh.yml from
-      #  scripts/ci/Dockerfile.docker-cli.
+      #  scripts/ci/docker/Dockerfile.docker-cli.
       #
       image: docker.internal.networkradius.com/self-hosted-docker-cli
       #  "privileged" is needed for Samba install

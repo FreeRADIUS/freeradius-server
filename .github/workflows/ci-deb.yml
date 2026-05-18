@@ -6,6 +6,7 @@ on:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
+  pull_request:
   schedule:
     - cron: '0 20 * * *'
 
@@ -22,12 +23,18 @@ jobs:
   #  This job builds the matrix based on the event that trigger this run which
   #  the next job consumes.
   #
+  #  Gated to the main repo: the deb-build container is a BUILD_IMAGE on the
+  #  internal NetworkRADIUS registry, which forks can't reach. PRs targeting
+  #  the main repo run in the base-repo context and pass the gate. Pushes to
+  #  forks short-circuit here so set-matrix never runs and downstream jobs
+  #  are skipped via their `needs:` dependency.
+  #
   set-matrix:
     name: Setup build matrix
+    if: github.repository_owner == 'FreeRADIUS'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     steps:
     - id: set-matrix
       name: Setup the matrix
@@ -36,12 +43,12 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04"    },
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04"    },
-              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04"    },
-              { "NAME": "debian-12",    "OS": "debian:bookworm" },
-              { "NAME": "debian-13",    "OS": "debian:trixie"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid"      }
+              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu22"   },
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu24"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu26"   },
+              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian12"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian13"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debiansid"  }
             ]
           }
         EOF
@@ -50,7 +57,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-12",    "OS": "debian:bookworm" }
+              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian12" }
             ]
           }
         EOF
@@ -68,18 +75,10 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: self-hosted
 
     container:
-      image: ${{ matrix.env.OS }}
-      #
-      #  Authenticate the host docker daemon's pull of the job
-      #  container so we don't hit Docker Hub's anonymous 100/6h
-      #  rate limit when 31 self-hosted runners share egress IPs.
-      #
-      credentials:
-        username: ${{ vars.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_KEY }}
+      image: ${{ matrix.env.BUILD_IMAGE }}
 
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
@@ -89,58 +88,20 @@ jobs:
 
     steps:
 
-    - name: Package manager performance and stability improvements
-      run: |
-        if [ -f "/etc/apt/sources.list" ]; then
-        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
-        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
-        fi
-        echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries
-        echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/02speedup
-        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
-        apt-get update
-
-    #
-    #  Required so that the checkout action uses git protocol rather than the GitHub REST API.
-    #  make rpm requires the FR directory to be a git repository.
-    #
-    - name: Install recent git
-      run: |
-        apt-get install -y --no-install-recommends git-core ca-certificates
-
-    - name: Install build tools
-      run: |
-        apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2 lsb-release
-
-    - name: NetworkRADIUS signing key
-      run: |
-        install -d -o root -g root -m 0755 /etc/apt/keyrings
-        curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
-
-    - name: Set up NetworkRADIUS extras repository
-      run: |
-        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-        RELEASE=$(lsb_release -cs)
-        if [ "$RELEASE" = "n/a" ]; then
-            RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
-        fi
-        [ "$RELEASE" != "forky" ] || RELEASE=sid
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
-          > /etc/apt/sources.list.d/networkradius-extras.list
-
-    - name: Update apt repository lists
-      run: apt-get update
-
     - uses: actions/checkout@v6
       with:
         path: freeradius
 
+    #
+    #  Top-up build-deps against the just-checked-out debian/control in
+    #  case the image was baked before a recent control change. No-op
+    #  when the image is current.
+    #
     - name: Install build dependencies
       run: |
-        apt-get install -y --no-install-recommends build-essential devscripts quilt fakeroot
         touch -t 202001010000 debian/control
         debian/rules debian/control
-        mk-build-deps -irt"apt-get -y" debian/control
+        mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
       working-directory: freeradius
 
     - name: Build DEBs
@@ -164,7 +125,6 @@ jobs:
     # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
-        apt-get install -y libnl-3-dev libnl-genl-3-dev
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../debs
       working-directory: freeradius
@@ -180,11 +140,6 @@ jobs:
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
     #
-    - name: "Debug: Package dependancies for tmate"
-      run: |
-        apt-get install -y --no-install-recommends xz-utils
-      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
-
     - name: "Debug: Start tmate"
       uses: mxschmitt/action-tmate@v3
       with:
@@ -208,10 +163,16 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: self-hosted
 
     container:
       image: ${{ matrix.env.OS }}
+      #
+      #  deb-test intentionally runs on a stock distro image (pulled from
+      #  Docker Hub) so the install test exercises a clean OS. Auth the
+      #  pull to dodge the anonymous 100/6h rate limit shared across
+      #  self-hosted runners.
+      #
       credentials:
         username: ${{ vars.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_KEY }}

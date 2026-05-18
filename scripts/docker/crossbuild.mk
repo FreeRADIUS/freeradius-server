@@ -135,9 +135,14 @@ crossbuild.${1}.status:
 #
 #  Build the docker image
 #
+#  CB_FROM_${1} overrides the `from` build-arg for this target. Empty by
+#  default so local builds use the upstream image baked into Dockerfile.cb
+#  by m4. CI exports CB_FROM_<distro> to point at internal base images
+#  (see .github/workflows/crossbuild.yml).
+#
 $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	${Q}docker build $(DOCKER_BUILD_OPTS) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}docker build $(DOCKER_BUILD_OPTS) $(if $(CB_FROM_${1}),--build-arg=from=$(CB_FROM_${1})) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
 
 #

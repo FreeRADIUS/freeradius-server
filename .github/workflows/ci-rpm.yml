@@ -6,6 +6,7 @@ on:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
+  pull_request:
   schedule:
     - cron: '0 20 * * *'
 
@@ -19,12 +20,18 @@ jobs:
   #  This job builds the matrix based on the event that trigger this run which
   #  the next job consumes.
   #
+  #  Gated to the main repo: the rpm-build container is a BUILD_IMAGE on the
+  #  internal NetworkRADIUS registry, which forks can't reach. PRs targeting
+  #  the main repo run in the base-repo context and pass the gate. Pushes to
+  #  forks short-circuit here so set-matrix never runs and downstream jobs
+  #  are skipped via their `needs:` dependency.
+  #
   set-matrix:
     name: Setup build matrix
+    if: github.repository_owner == 'FreeRADIUS'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
     steps:
     - id: set-matrix
       name: Setup the matrix
@@ -33,8 +40,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   },
-              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10",      "DIST": "rocky",   "VERSION": 10  },
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky9",  "DIST": "rocky", "VERSION": 9  },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky10", "DIST": "rocky", "VERSION": 10 }
             ]
           }
         EOF
@@ -43,7 +50,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky9",  "DIST": "rocky", "VERSION": 9 }
             ]
           }
         EOF
@@ -61,18 +68,10 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: self-hosted
 
     container:
-      image: ${{ matrix.env.OS }}
-      #
-      #  Authenticate the host docker daemon's pull of the job
-      #  container so we don't hit Docker Hub's anonymous 100/6h
-      #  rate limit when 31 self-hosted runners share egress IPs.
-      #
-      credentials:
-        username: ${{ vars.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_KEY }}
+      image: ${{ matrix.env.BUILD_IMAGE }}
 
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
@@ -81,37 +80,15 @@ jobs:
     name: "RPM build"
 
     steps:
-    - name: Enable EPEL and CRB
-      run: |
-        dnf install -y dnf-utils dnf-plugins-core epel-release
-        dnf config-manager --enable crb
-
-    # For pkill
-    - name: Enable procps-ng
-      run: |
-        dnf install -y procps-ng
-
-    - name: Set up NetworkRADIUS extras repository
-      run: |
-        echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
-        echo 'name=NetworkRADIUS-extras-$releasever'                                                >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'baseurl=http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/$releasever/' >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'enabled=1'                                                                            >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
-        echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
-        rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
-
-    - name: Install common tools
-      run: |
-        dnf install -y rpm-build openssl make gcc perl git-core
-
     - uses: actions/checkout@v6
       with:
         path: freeradius
 
     #
-    #  It has been observed that sometimes not all the dependencies are
-    #  installed on the first go.  Give it a second chance.
+    #  Top-up builddep against the just-checked-out spec in case the
+    #  image was baked before a recent dep change. No-op when the image
+    #  is current. Run twice; occasionally dnf misses something first
+    #  time round.
     #
     - name: Install build dependencies
       run: |
@@ -140,7 +117,6 @@ jobs:
     # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
-        dnf install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../rpms
@@ -159,7 +135,6 @@ jobs:
     #
     - name: "Debug: Package dependancies for tmate"
       run: |
-        dnf install -y xz
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
@@ -186,10 +161,16 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
-    runs-on: ${{ needs.set-matrix.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: self-hosted
 
     container:
       image: ${{ matrix.env.OS }}
+      #
+      #  rpm-test intentionally runs on a stock distro image (pulled from
+      #  Docker Hub) so the install test exercises a clean OS. Auth the
+      #  pull to dodge the anonymous 100/6h rate limit shared across
+      #  self-hosted runners.
+      #
       credentials:
         username: ${{ vars.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
