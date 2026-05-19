@@ -140,7 +140,7 @@ struct fr_redis_trunk_s {
 							///< to the host this trunk is used to communicate with.
 	trunk_t				*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
-	fr_redis_cluster_thread_t	*cluster;	//!< Cluster this trunk belongs to.
+	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this trunk belongs to.
 };
 
 /** Free any free requests when the thread is joined
@@ -655,14 +655,14 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 
 /** Allocate a new trunk
  *
- * @param[in] cluster_thread	to allocate the trunk for.
+ * @param[in] rtcluster		to allocate the trunk for.
  * @param[in] io_conf		Describing the connection to a single REDIS host.
  * @param[in] trigger_args	Pairs to pass to trigger requests, if triggers are enabled.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
-fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf,
+fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_redis_io_conf_t const *io_conf,
 				       fr_pair_list_t *trigger_args)
 {
 	fr_redis_trunk_t	*rtrunk;
@@ -676,10 +676,10 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 					.request_free		= _redis_pipeline_command_set_free
 				};
 
-	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
+	MEM(rtrunk = talloc_zero(rtcluster, fr_redis_trunk_t));
 	rtrunk->io_conf = io_conf;
-	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_cluster_thread_el(cluster_thread),
-				    &io_funcs, fr_redis_cluster_thread_trunk_conf(cluster_thread),
+	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_cluster_thread_el(rtcluster),
+				    &io_funcs, fr_redis_cluster_thread_trunk_conf(rtcluster),
 				    io_conf->log_prefix, rtrunk, false, trigger_args);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
