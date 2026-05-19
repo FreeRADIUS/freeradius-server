@@ -34,10 +34,13 @@ RUN apt-get install -y --no-install-recommends \
 	git \
 	git-lfs \
 	gnupg \
+	jq \
 	libasan6 \
 	lsb-release \
+	openssh-client \
 	python3-pip \
 	quilt \
+	rsync \
 	ruby-dev \
 	software-properties-common \
 	wget
