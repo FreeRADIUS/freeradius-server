@@ -240,7 +240,7 @@ jobs:
         done
         echo "commit_id=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         make -j `nproc`
-        make test.unit
+        make -j `nproc` test.unit
 
     - name: Run fuzzer tests
       run: |
