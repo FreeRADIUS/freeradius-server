@@ -838,6 +838,63 @@ static int listener_cmp(void const *one, void const *two)
 }
 #endif
 
+static int home_server_map_verify(vp_map_t *map, UNUSED void *instance)
+{
+	/*
+	 *	Destinations where we can put the VALUE_PAIRs we
+	 *	create using LDAP values.
+	 */
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->lhs->tmpl_unknown_name);
+		return -1;
+
+	default:
+		cf_log_err(map->ci, "Left hand side of map must be an attribute, not a %s",
+			   fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Sources we can use to get the name of the attribute
+	 *	we're setting.
+	 */
+	switch (map->rhs->type) {
+	case TMPL_TYPE_LITERAL:
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->rhs->tmpl_unknown_name);
+		return -1;
+
+	default:
+		cf_log_err(map->ci, "Right hand side of map must be a literal value, not a %s",
+			   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Only =, :=, and += aoperators are supported for home server mappings.
+	 */
+	switch (map->op) {
+	case T_OP_SET:
+	case T_OP_EQ:
+	case T_OP_ADD:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Operator \"%s\" not allowed for home_server 'update' section",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /** Alloc a new home server defined by a CONF_SECTION
  *
  * @param ctx to allocate home_server_t in.
@@ -1246,6 +1303,32 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 #endif
 	} /* end of parse home server */
 
+	/*
+	 *	Allow the admin to specify the contents of status check packets.
+	 */
+	if (home->ping_check != HOME_PING_CHECK_NONE) {
+		CONF_SECTION *update;
+
+		/*
+		 *	Build the attribute map
+		 */
+		update = cf_section_sub_find(cs, "update");
+		if (!update) goto sanitize;
+
+		if (cf_section_name2(update)) {
+			cf_log_err_cs(cs, "Cannot specify a list name for home_server 'update' section");
+			goto error;
+		}
+
+		if (map_afrom_cs(&home->attr_map, update,
+				 PAIR_LIST_PROXY_REQUEST, PAIR_LIST_PROXY_REQUEST, home_server_map_verify, home,
+				 64) < 0) {
+			cf_log_err_cs(cs, "Failed defining attributes for status_check packets");
+			goto error;
+		}
+	}
+
+sanitize:
 	realm_home_server_sanitize(home, cs);
 
 	return home;

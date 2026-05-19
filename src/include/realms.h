@@ -17,6 +17,8 @@ extern "C" {
 
 extern bool home_servers_udp;	//!< Whether there are any UDP home servers
 
+typedef struct vp_map vp_map_t;	//! forward definition for home server 'update' sections.
+
 typedef enum {
 	HOME_TYPE_INVALID = 0,
 	HOME_TYPE_AUTH,		//!< Authentication server
@@ -128,6 +130,8 @@ typedef struct home_server {
 
 	char const		*ping_user_name;
 	char const		*ping_user_password;
+
+	vp_map_t		*attr_map;		//!< Additional attributes for status check packets
 
 	uint32_t		ping_interval;
 	uint32_t		num_pings_to_alive;

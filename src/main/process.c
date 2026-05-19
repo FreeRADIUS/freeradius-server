@@ -4529,6 +4529,17 @@ static void ping_home_server(void *ctx)
 			    home->num_sent_pings);
 	}
 
+	/*
+	 *	Expand the map, ignoring any errors.
+	 */
+	if (home->attr_map) {
+		vp_map_t const 	*map;
+
+		for (map = home->attr_map; map != NULL; map = map->next) {
+			(void) map_to_request(request, home->attr_map, map_to_vp, NULL);
+		}
+	}
+
 #ifdef WITH_TCP
 	request->proxy->proto = home->proto;
 #endif
