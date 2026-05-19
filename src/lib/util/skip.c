@@ -110,13 +110,26 @@ ssize_t fr_skip_string(char const *start, char const *end)
 	return -(p - start);
 }
 
-/** Skip a generic {...} or (...) arguments
- *
+/*
+ *	Recursion cap shared by fr_skip_brackets and fr_skip_xlat, which
+ *	are mutually recursive. Real configs nest far below this; the
+ *	cap exists so untrusted input (config-file fuzzer) can't exhaust
+ *	the C stack via `((((...` or `${${${...`.
  */
-ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
+#define SKIP_MAX_DEPTH		64
+
+static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth);
+static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth);
+
+static ssize_t skip_brackets(char const *start, char const *end, char end_quote, unsigned int depth)
 {
 	ssize_t slen;
 	char const *p = start;
+
+	if (depth >= SKIP_MAX_DEPTH) {
+		fr_strerror_const("Nesting too deep");
+		return -(p - start);
+	}
 
 	while ((end && (p < end)) || *p) {
 		if (*p == end_quote) {
@@ -132,7 +145,7 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 		 */
 		if (*p == '(') {
 			p++;
-			slen = fr_skip_brackets(p, end, ')');
+			slen = skip_brackets(p, end, ')', depth + 1);
 			if (slen <= 0) return slen - (p - start);
 
 		next:
@@ -164,7 +177,7 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 			}
 
 			if ((p[1] == '{') || (p[1] == '(')) {
-				slen = fr_skip_xlat(p, end);
+				slen = skip_xlat(p, end, depth + 1);
 				goto next;
 			}
 
@@ -199,24 +212,15 @@ ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 	return -(p - start);
 }
 
-/**  Skip an xlat expression.
- *
- *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
- *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
- *  But it also rejects all malformed expressions.
- *
- *  It's used as a quick hack because the full parser isn't always available.
- *
- *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @return
- *	>0 length of the string which was parsed
- *	<=0 on error
- */
-ssize_t fr_skip_xlat(char const *start, char const *end)
+static ssize_t skip_xlat(char const *start, char const *end, unsigned int depth)
 {
 	ssize_t slen;
 	char const *p = start;
+
+	if (depth >= SKIP_MAX_DEPTH) {
+		fr_strerror_const("Nesting too deep");
+		return -(p - start);
+	}
 
 	/*
 	 *	At least %{1} or $(.)
@@ -236,11 +240,11 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
 
 	if (*p == '(') {
 		p++;		/* skip the '(' */
-		slen = fr_skip_brackets(p, end, ')');
+		slen = skip_brackets(p, end, ')', depth + 1);
 
 	} else if (*p == '{') {
 		p++;		/* skip the '{' */
-		slen = fr_skip_brackets(p, end, '}');
+		slen = skip_brackets(p, end, '}', depth + 1);
 
 	} else {
 		char const *q = p;
@@ -259,11 +263,38 @@ ssize_t fr_skip_xlat(char const *start, char const *end)
 
 		p = q + 1;
 
-		slen = fr_skip_brackets(p, end, ')');
+		slen = skip_brackets(p, end, ')', depth + 1);
 	}
 
 	if (slen <= 0) return slen - (p - start);
 	return slen + (p - start);
+}
+
+/** Skip a generic {...} or (...) arguments
+ *
+ */
+ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
+{
+	return skip_brackets(start, end, end_quote, 0);
+}
+
+/**  Skip an xlat expression.
+ *
+ *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
+ *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
+ *  But it also rejects all malformed expressions.
+ *
+ *  It's used as a quick hack because the full parser isn't always available.
+ *
+ *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @return
+ *	>0 length of the string which was parsed
+ *	<=0 on error
+ */
+ssize_t fr_skip_xlat(char const *start, char const *end)
+{
+	return skip_xlat(start, end, 0);
 }
 
 /**  Skip a conditional expression.
