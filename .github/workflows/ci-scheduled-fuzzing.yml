@@ -200,7 +200,7 @@ jobs:
       uses: ./.github/actions/freeradius-deps
       with:
         use_docker: true
-        cc: ${{ matrix.env.CC }}
+        cc: ${{ env.CC }}
         llvm_ver: 18
 
     - name: Show versions
