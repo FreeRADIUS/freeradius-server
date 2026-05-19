@@ -115,14 +115,14 @@ crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 
 #
-#  Regenerate all Dockerfile.cb files from m4 templates. Depends on
+#  Regenerate all Dockerfile.crossbuild files from m4 templates. Depends on
 #  the file targets directly; no per-image phony aliases.
 #
 .PHONY: docker.crossbuild.regen docker.crossbuild.regen.check
-docker.crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
+docker.crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.crossbuild)
 
 #
-#  Verify every committed Dockerfile.cb matches a fresh render of its
+#  Verify every committed Dockerfile.crossbuild matches a fresh render of its
 #  m4 source. Fails with a diff if a contributor edited the m4 but
 #  forgot to regen+commit.
 #
@@ -130,8 +130,8 @@ docker.crossbuild.regen.check:
 	@failed=0; for IMG in $(CB_IMAGES); do \
 		tmp=$$(mktemp); \
 		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=crossbuild $(DOCKER_TMPL) > $$tmp; \
-		if ! diff -u $(DT)/$$IMG/Dockerfile.cb $$tmp; then \
-			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.cb"; failed=1; \
+		if ! diff -u $(DT)/$$IMG/Dockerfile.crossbuild $$tmp; then \
+			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.crossbuild"; failed=1; \
 		fi; \
 		rm $$tmp; \
 	done; \
@@ -156,13 +156,13 @@ crossbuild.${1}.status:
 #  Build the docker image
 #
 #  CB_FROM_${1} overrides the `from` build-arg for this target. Empty by
-#  default so local builds use the upstream image baked into Dockerfile.cb
+#  default so local builds use the upstream image baked into Dockerfile.crossbuild
 #  by m4. CI exports CB_FROM_<distro> to point at internal base images
 #  (see .github/workflows/crossbuild.yml).
 #
 $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	${Q}docker build $(DOCKER_BUILD_OPTS) $(if $(CB_FROM_${1}),--build-arg=from=$(CB_FROM_${1})) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}docker build $(DOCKER_BUILD_OPTS) $(if $(CB_FROM_${1}),--build-arg=from=$(CB_FROM_${1})) $(DT)/${1} -f $(DT)/${1}/Dockerfile.crossbuild -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
 
 #
@@ -265,10 +265,10 @@ crossbuild.${1}.distclean:
 crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
 
 #
-#  Image Dockerfile.cb rule. Regen via the bundle target above; no
+#  Image Dockerfile.crossbuild rule. Regen via the bundle target above; no
 #  per-image variant.
 #
-$(DT)/${1}/Dockerfile.cb: $(DOCKER_TMPL) $(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4
+$(DT)/${1}/Dockerfile.crossbuild: $(DOCKER_TMPL) $(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4
 	${Q}echo REGEN ${1}
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=crossbuild $$< > $$@
 

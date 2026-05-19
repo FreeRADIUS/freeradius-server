@@ -137,7 +137,7 @@ jobs:
     #  docker build FROMs an internal base image instead of docker.io,
     #  killing the Hub pull (and the anonymous rate-limit headache) on
     #  every CI run. Local `make crossbuild.<distro>` ignores these
-    #  and uses the upstream image baked into Dockerfile.cb by m4.
+    #  and uses the upstream image baked into Dockerfile.crossbuild by m4.
     #
     - name: Run crossbuild tests
       env:

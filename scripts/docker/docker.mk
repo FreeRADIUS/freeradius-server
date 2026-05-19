@@ -86,11 +86,11 @@ docker.help:
 #  on the file targets directly; no per-image phony aliases.
 #
 .PHONY: docker.service.regen docker.ci.regen docker.service.regen.check docker.ci.regen.check
-docker.service.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile)
+docker.service.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.service)
 docker.ci.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.ci)
 
 #
-#  Verify every committed Dockerfile / Dockerfile.ci matches a fresh
+#  Verify every committed Dockerfile.service / Dockerfile.ci matches a fresh
 #  render of its m4 source. Fails with a diff if a contributor edited
 #  the m4 but forgot to regen+commit.
 #
@@ -98,8 +98,8 @@ docker.service.regen.check:
 	@failed=0; for IMG in $(IMAGES); do \
 		tmp=$$(mktemp); \
 		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=service $(DOCKER_TMPL) > $$tmp; \
-		if ! diff -u $(DT)/$$IMG/Dockerfile $$tmp; then \
-			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile"; failed=1; \
+		if ! diff -u $(DT)/$$IMG/Dockerfile.service $$tmp; then \
+			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.service"; failed=1; \
 		fi; \
 		rm $$tmp; \
 	done; \
@@ -130,22 +130,22 @@ docker.${1}.status:
 #
 .PHONY: docker.${1}.build
 docker.${1}.build:
-	${Q}echo "BUILD ${1} ($(D_IPREFIX)/${1}) from $(DT)/${1}/Dockerfile"
+	${Q}echo "BUILD ${1} ($(D_IPREFIX)/${1}) from $(DT)/${1}/Dockerfile.service"
 
 	${Q}docker buildx build \
 		$(DOCKER_BUILD_OPTS) \
 		--progress=plain \
 		. \
-		-f $(DT)/${1}/Dockerfile \
+		-f $(DT)/${1}/Dockerfile.service \
 		-t $(D_IPREFIX)/${1}
 
 #
-#  Production image Dockerfile rule. The CI base Dockerfile.ci is
-#  consumed by docker-refresh.yml to build the self-hosted-* base
+#  Production image Dockerfile.service rule. The CI base Dockerfile.ci
+#  is consumed by docker-refresh.yml to build the self-hosted-* base
 #  images that ci-deb.yml / ci-rpm.yml run their build jobs inside.
 #  Both regen via the bundle targets above; no per-image variants.
 #
-$(DT)/${1}/Dockerfile: $(DOCKER_TMPL) $(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4 $(M4_SHARED)
+$(DT)/${1}/Dockerfile.service: $(DOCKER_TMPL) $(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4 $(M4_SHARED)
 	${Q}echo REGEN ${1} "->" $$@
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=service $$< > $$@
 
