@@ -18,10 +18,18 @@ RUN apt-get install -y --no-install-recommends \
 include(`common.deb.nr-extras.m4')dnl
 
 #
-#  Pre-install the build-dep closure derived from debian/control. The
-#  source-tree debian/ subtree is baked in at image-build time; ci-deb.yml
+#  Pre-install the build-dep closure derived from debian/control plus the
+#  CI-only extras in scripts/ci/extra-packages.debian.control. The source
+#  tree's debian/ subtree is baked in at image-build time; ci-deb.yml
 #  still runs mk-build-deps per job as a top-up so newly added deps are
 #  picked up without an image rebuild.
+#
+#  Both control files declare `Source: freeradius` so both mk-build-deps
+#  passes produce a meta-package named freeradius-build-deps. Purge the
+#  meta-package after each install - apt keeps the transitively-pulled
+#  build deps around (they're marked auto-installed but no autoremove
+#  ever runs), so the second pass installs cleanly without colliding
+#  with the first.
 #
 COPY debian/ /tmp/freeradius-debian/
 COPY scripts/ci/extra-packages.debian.control /tmp/freeradius-debian-extras.control
@@ -29,8 +37,10 @@ RUN cd /tmp/freeradius-debian && \
 	touch -t 202001010000 control && \
 	./rules control && \
 	mk-build-deps -irt"apt-get -y --no-install-recommends" control && \
+	apt-get -y --purge remove freeradius-build-deps && \
 	cd / && \
 	mk-build-deps -irt"apt-get -y --no-install-recommends" /tmp/freeradius-debian-extras.control && \
+	apt-get -y --purge remove freeradius-build-deps && \
 	rm -rf /tmp/freeradius-debian /tmp/freeradius-debian-extras.control \
 		/freeradius-build-deps_*.deb /freeradius-build-deps_*.buildinfo /freeradius-build-deps_*.changes
 
