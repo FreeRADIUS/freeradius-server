@@ -56,7 +56,7 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "v4.0.x-${{ matrix.env.OS }}"
+    name: "${{ github.workflow }}-${{ matrix.env.OS }}"
 
     services:
       dind:
@@ -196,7 +196,7 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "v4.0.x-${{ matrix.env.OS }}"
+    name: "${{ github.workflow }}-${{ matrix.env.OS }}"
 
     services:
       dind:
