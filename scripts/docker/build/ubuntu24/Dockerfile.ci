@@ -40,12 +40,20 @@ RUN apt-get install -y --no-install-recommends \
 		quilt
 
 #
-#  Extras the CI base needs on top of the common toolchain. xz-utils
-#  feeds the tmate debug step; file is occasionally invoked from
-#  debian/rules.
+#  Extras the CI base needs on top of the common toolchain. libnl deps
+#  feed the eapol_test build; xz-utils feeds the tmate debug step; file
+#  is occasionally invoked from debian/rules.
+#
+#  Note: scripts/ci/extra-packages.debian.control is intentionally NOT
+#  consumed here. That file is for the self-hosted-ubuntu24 integration
+#  testbed (dovecot, freetds, firebird, etc.) and several of its entries
+#  don't exist on older ubuntu/debian releases. The deb-build job only
+#  needs debian/control's closure plus libnl for eapol_test.
 #
 RUN apt-get install -y --no-install-recommends \
 		file \
+		libnl-3-dev \
+		libnl-genl-3-dev \
 		xz-utils
 
 #
@@ -62,30 +70,19 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http:
 	apt-get update
 
 #
-#  Pre-install the build-dep closure derived from debian/control plus the
-#  CI-only extras in scripts/ci/extra-packages.debian.control. The source
-#  tree's debian/ subtree is baked in at image-build time; ci-deb.yml
+#  Pre-install the build-dep closure derived from debian/control. The
+#  source-tree debian/ subtree is baked in at image-build time; ci-deb.yml
 #  still runs mk-build-deps per job as a top-up so newly added deps are
 #  picked up without an image rebuild.
 #
-#  Both control files declare `Source: freeradius` so both mk-build-deps
-#  passes produce a meta-package named freeradius-build-deps. Purge the
-#  meta-package after each install - apt keeps the transitively-pulled
-#  build deps around (they're marked auto-installed but no autoremove
-#  ever runs), so the second pass installs cleanly without colliding
-#  with the first.
-#
 COPY debian/ /tmp/freeradius-debian/
-COPY scripts/ci/extra-packages.debian.control /tmp/freeradius-debian-extras.control
 RUN cd /tmp/freeradius-debian && \
 	touch -t 202001010000 control && \
 	./rules control && \
 	mk-build-deps -irt"apt-get -y --no-install-recommends" control && \
 	apt-get -y --purge remove freeradius-build-deps && \
 	cd / && \
-	mk-build-deps -irt"apt-get -y --no-install-recommends" /tmp/freeradius-debian-extras.control && \
-	apt-get -y --purge remove freeradius-build-deps && \
-	rm -rf /tmp/freeradius-debian /tmp/freeradius-debian-extras.control \
+	rm -rf /tmp/freeradius-debian \
 		/freeradius-build-deps_*.deb /freeradius-build-deps_*.buildinfo /freeradius-build-deps_*.changes
 
 #
