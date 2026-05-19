@@ -17,7 +17,10 @@ extern "C" {
 
 extern bool home_servers_udp;	//!< Whether there are any UDP home servers
 
+#ifndef VP_MAP_T
+#define VP_MAP_T
 typedef struct vp_map vp_map_t;	//! forward definition for home server 'update' sections.
+#endif
 
 typedef enum {
 	HOME_TYPE_INVALID = 0,

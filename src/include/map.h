@@ -44,7 +44,12 @@ extern "C" {
  *
  * @see vp_tmpl_t
  */
-typedef struct vp_map {
+#ifndef VP_MAP_T
+#define VP_MAP_T
+typedef struct vp_map vp_map_t;
+#endif
+
+struct vp_map {
 	vp_tmpl_t		*lhs;	//!< Typically describes the attribute to add, modify or compare.
 	vp_tmpl_t		*rhs;   //!< Typically describes a literal value or a src attribute to copy or compare.
 
@@ -54,7 +59,7 @@ typedef struct vp_map {
 					//!< logging validation errors.
 
 	struct vp_map		*next;	//!< The next valuepair map.
-} vp_map_t;
+};
 
 #ifndef WITH_VERIFY_PTR
 #  define VERIFY_MAP(_x) rad_assert((_x)->lhs)
