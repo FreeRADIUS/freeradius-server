@@ -28,6 +28,9 @@ jobs:
     runs-on: self-hosted
     container:
       image: docker.internal.networkradius.com/self-hosted
+    defaults:
+      run:
+        shell: bash
 
     steps:
     - uses: actions/checkout@v6
@@ -84,6 +87,9 @@ jobs:
     runs-on: self-hosted
     container:
       image: docker.internal.networkradius.com/self-hosted
+    defaults:
+      run:
+        shell: bash
 
     # Permissions needed to deploy on GitHub Pages
     permissions:
@@ -130,6 +136,9 @@ jobs:
     runs-on: self-hosted
     container:
       image: docker.internal.networkradius.com/self-hosted
+    defaults:
+      run:
+        shell: bash
 
     # Ensure only one job is attempting to update the docs repo
     concurrency:

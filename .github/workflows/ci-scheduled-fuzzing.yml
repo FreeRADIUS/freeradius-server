@@ -143,6 +143,10 @@ jobs:
     container:
       image: docker.internal.networkradius.com/self-hosted
 
+    defaults:
+      run:
+        shell: bash
+
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
