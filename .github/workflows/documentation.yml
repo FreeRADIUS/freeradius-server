@@ -146,6 +146,9 @@ jobs:
       cancel-in-progress: true
 
     steps:
+    - name: Install ssh client
+      run: apt-get install -y --no-install-recommends openssh-client
+
     - name: Setup SSH for git access
       uses: shimataro/ssh-key-action@v2
       with:
