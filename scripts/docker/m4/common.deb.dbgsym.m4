@@ -21,14 +21,14 @@ ifelse(OS_NAME, [ubuntu], [dnl
 RUN apt-get update && \
     apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
     printf 'deb http://ddebs.ubuntu.com OS_CODENAME main restricted universe multiverse\ndeb http://ddebs.ubuntu.com OS_CODENAME-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list && \
-    apt-get update && \],
+        > /etc/apt/sources.list.d/ddebs.list],
        OS_NAME, [debian], [dnl
-RUN printf 'deb http://debian-debug.debian.net/debian-debug OS_CODENAME-debug main\n' \
-        > /etc/apt/sources.list.d/debian-debug.list && \
-    apt-get update && \],
+RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug main\n' \
+        > /etc/apt/sources.list.d/debian-debug.list],
        [errprint([common.deb.dbgsym.m4: unsupported OS_NAME=]OS_NAME[
-])m4exit(1)])dnl
+])m4exit(1)])
+
+RUN apt-get update && \
     apt-get install -y $APT_OPTS \
         libc6-dbg \
         zlib1g-dbgsym \

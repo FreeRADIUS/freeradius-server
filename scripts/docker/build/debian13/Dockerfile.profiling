@@ -1,9 +1,9 @@
-# Auto generated for ubuntu24
+# Auto generated for debian13
 # from scripts/docker/m4/profiling.deb.m4
 #
 # Rebuild this file with `make dockerfile.profiling`
 #
-ARG from=ubuntu:24.04
+ARG from=debian:trixie
 FROM ${from}
 
 #
@@ -47,10 +47,8 @@ RUN apt-get update && \
 #  caught at image-build time, not in production when a profiler
 #  tries to resolve a symbol that isn't there.
 #
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list
+RUN printf 'deb http://debug.mirrors.debian.org/debian-debug trixie-debug main\n' \
+        > /etc/apt/sources.list.d/debian-debug.list
 
 RUN apt-get update && \
     apt-get install -y $APT_OPTS \

@@ -82,8 +82,10 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http:
 RUN apt-get update && \
     apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
     printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list && \
-    apt-get update && \    apt-get install -y $APT_OPTS \
+        > /etc/apt/sources.list.d/ddebs.list
+
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS \
         libc6-dbg \
         zlib1g-dbgsym \
         libreadline8t64-dbgsym \

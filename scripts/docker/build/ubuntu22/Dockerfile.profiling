@@ -1,9 +1,9 @@
-# Auto generated for ubuntu24
+# Auto generated for ubuntu22
 # from scripts/docker/m4/profiling.deb.m4
 #
 # Rebuild this file with `make dockerfile.profiling`
 #
-ARG from=ubuntu:24.04
+ARG from=ubuntu:22.04
 FROM ${from}
 
 #
@@ -49,32 +49,32 @@ RUN apt-get update && \
 #
 RUN apt-get update && \
     apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
+    printf 'deb http://ddebs.ubuntu.com jammy main restricted universe multiverse\ndeb http://ddebs.ubuntu.com jammy-updates main restricted universe multiverse\n' \
         > /etc/apt/sources.list.d/ddebs.list
 
 RUN apt-get update && \
     apt-get install -y $APT_OPTS \
         libc6-dbg \
         zlib1g-dbgsym \
-        libreadline8t64-dbgsym \
-        libssl3t64-dbgsym \
+        libreadline8-dbgsym \
+        libssl3-dbgsym \
         libsasl2-2-dbgsym \
         libpam0g-dbgsym \
         libldap2-dbgsym \
         libtalloc2-dbgsym \
         libpcre2-8-0-dbgsym \
-        libpcap0.8t64-dbgsym \
+        libpcap0.8-dbgsym \
         libunbound8-dbgsym \
         libsqlite3-0-dbgsym \
         libpq5-dbgsym \
         libmariadb3-dbgsym \
-        libgdbm6t64-dbgsym \
+        libgdbm6-dbgsym \
         libjson-c5-dbgsym \
         libbrotli1-dbgsym \
         libhiredis1.1.0-dbgsym \
         librdkafka1-dbgsym \
         libwbclient0-dbgsym \
-        libcurl4t64-dbgsym && \
+        libcurl4-dbgsym && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 

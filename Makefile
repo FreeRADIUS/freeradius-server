@@ -572,8 +572,7 @@ whitespace:
 #  requested so cross-references resolve cleanly.
 #
 ifneq "$(or $(findstring docker,$(MAKECMDGOALS)),$(findstring dockerfile,$(MAKECMDGOALS)),$(findstring crossbuild,$(MAKECMDGOALS)))" ""
-  include scripts/docker/dockerfile.mk
-  include scripts/docker/docker.mk
+  include scripts/docker/crossbuild.mk
 endif
 
 #

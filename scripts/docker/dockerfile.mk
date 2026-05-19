@@ -27,9 +27,6 @@ DOCKERFILE_M4_SHARED := $(wildcard $(CB_DIR)/m4/common.*.m4) $(wildcard $(CB_DIR
 # Every distro under build/ is an image we generate Dockerfiles for.
 IMAGES := $(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
 
-# Profiling is ubuntu24-only (ddebs.ubuntu.com + dbgsym names assume
-# debian-derivative + recent t64 transition).
-PROFILING_IMAGES := $(filter ubuntu24,$(IMAGES))
 
 # $(Q) silences recipe lines unless VERBOSE is set. Defined here so
 # the macros below work whether dockerfile.mk is included alone or
@@ -96,20 +93,18 @@ endef
 $(foreach IMG,$(IMAGES),\
   $(eval $(call DOCKERFILE_RULE,$(IMG),service,$(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4)) \
   $(eval $(call DOCKERFILE_RULE,$(IMG),ci,$(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4)) \
-  $(eval $(call DOCKERFILE_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)))
-
-$(foreach IMG,$(PROFILING_IMAGES),\
-  $(eval $(call DOCKERFILE_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4)))
+  $(eval $(call DOCKERFILE_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)) \
+  $(eval $(call DOCKERFILE_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4 $(CB_DIR)/m4/profiling.rpm.m4)))
 
 $(eval $(call DOCKERFILE_ALL,dockerfile.service,service,$(IMAGES)))
 $(eval $(call DOCKERFILE_ALL,dockerfile.ci,ci,$(IMAGES)))
 $(eval $(call DOCKERFILE_ALL,dockerfile.crossbuild,crossbuild,$(IMAGES)))
-$(eval $(call DOCKERFILE_ALL,dockerfile.profiling,profiling,$(PROFILING_IMAGES)))
+$(eval $(call DOCKERFILE_ALL,dockerfile.profiling,profiling,$(IMAGES)))
 
 $(eval $(call DOCKERFILE_CHECK,dockerfile.service.check,service,$(IMAGES),dockerfile.service))
 $(eval $(call DOCKERFILE_CHECK,dockerfile.ci.check,ci,$(IMAGES),dockerfile.ci))
 $(eval $(call DOCKERFILE_CHECK,dockerfile.crossbuild.check,crossbuild,$(IMAGES),dockerfile.crossbuild))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.profiling.check,profiling,$(PROFILING_IMAGES),dockerfile.profiling))
+$(eval $(call DOCKERFILE_CHECK,dockerfile.profiling.check,profiling,$(IMAGES),dockerfile.profiling))
 
 .PHONY: dockerfile dockerfile.check
 dockerfile:       dockerfile.ci       dockerfile.crossbuild       dockerfile.profiling       dockerfile.service
@@ -123,7 +118,7 @@ define DOCKER_HELP_TYPES
 	@echo "    service     production runtime image"
 	@echo "    ci          slim toolchain base for ci-deb.yml / ci-rpm.yml"
 	@echo "    crossbuild  full toolchain for crossbuild.yml"
-	@echo "    profiling   ubuntu24-only, layered on the crossbuild image"
+	@echo "    profiling   crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
 endef
 
 .PHONY: dockerfile.help

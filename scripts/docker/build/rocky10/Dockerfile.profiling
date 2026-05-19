@@ -1,0 +1,104 @@
+# Auto generated for rocky10
+# from scripts/docker/m4/profiling.rpm.m4
+#
+# Rebuild this file with `make dockerfile.profiling`
+#
+ARG from=rockylinux/rockylinux:10
+FROM ${from}
+
+#
+#  Install profiling tools
+#
+#    Valgrind/cachegrind
+#    kcachegrind
+#    gperftools
+#    heaptrack
+#
+#  EPEL is enabled by common.rpm.toolchain.m4 in the crossbuild base;
+#  heaptrack / gperftools / kcachegrind live there. CRB is also on for
+#  development headers.
+#
+RUN dnf install -y \
+        gperftools-devel \
+        gperftools \
+        valgrind \
+        heaptrack \
+        psmisc \
+        kcachegrind && \
+    dnf clean all
+
+#
+#  Debug symbols for the FreeRADIUS runtime library closure. We use
+#  `dnf debuginfo-install` (from dnf-plugins-core) because Rocky's
+#  debug repo naming has shifted between versions; the plugin walks
+#  the package metadata and enables whichever *-debug repo provides
+#  the matching debuginfo rpm.
+#
+#  Failure is fatal -- a renamed or split debuginfo package gets
+#  caught at image-build time rather than silently producing an
+#  image without symbols.
+#
+RUN dnf install -y dnf-plugins-core && \
+    dnf debuginfo-install -y \
+        glibc \
+        zlib \
+        readline \
+        openssl-libs \
+        cyrus-sasl-lib \
+        pam \
+        openldap \
+        libtalloc \
+        pcre2 \
+        libpcap \
+        unbound-libs \
+        sqlite-libs \
+        libpq \
+        mariadb-connector-c \
+        gdbm-libs \
+        json-c \
+        brotli \
+        hiredis \
+        librdkafka \
+        libcurl && \
+    dnf clean all
+
+#
+#  Rebuild libkqueue from source with debug symbols.
+#  CMAKE_BUILD_TYPE must be explicitly set to prevent
+#  the libkqueue project from overriding the flags.
+#  libkqueue source currently uses "-O2 -g -DNDEBUG" by default.
+#
+RUN dnf install -y cmake git rpm-build && \
+    dnf clean all && \
+    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+    cd /tmp/libkqueue && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib64 \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        . && \
+    make && \
+    cpack -G RPM && \
+    rpm -i --force *.rpm && \
+    cd / && rm -rf /tmp/libkqueue
+
+#
+#  Install FlameGraph
+#
+RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph /opt/flamegraph \
+    && chmod +x /opt/flamegraph/*.pl /opt/flamegraph/*.sh
+
+# Add FlameGraph to path
+ENV PATH="/opt/flamegraph:${PATH}"
+
+#
+#  Install Inferno for callgrind. Inferno is a Rust port of FlameGraph
+#  with broader format support.
+#
+RUN dnf install -y cargo && \
+    cargo install inferno --version 0.11.21 --locked --root /usr/local && \
+    dnf clean all
+
+EXPOSE 1812/udp 1813/udp
+CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]

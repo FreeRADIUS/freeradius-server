@@ -1,9 +1,9 @@
-# Auto generated for ubuntu24
+# Auto generated for ubuntu26
 # from scripts/docker/m4/profiling.deb.m4
 #
 # Rebuild this file with `make dockerfile.profiling`
 #
-ARG from=ubuntu:24.04
+ARG from=ubuntu:26.04
 FROM ${from}
 
 #
@@ -49,7 +49,7 @@ RUN apt-get update && \
 #
 RUN apt-get update && \
     apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
+    printf 'deb http://ddebs.ubuntu.com resolute main restricted universe multiverse\ndeb http://ddebs.ubuntu.com resolute-updates main restricted universe multiverse\n' \
         > /etc/apt/sources.list.d/ddebs.list
 
 RUN apt-get update && \

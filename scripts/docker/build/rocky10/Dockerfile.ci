@@ -68,40 +68,38 @@ gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
 > /etc/yum.repos.d/networkradius-extras.repo
 RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 #
-#  Enable the Rocky debug repos and install debuginfo packages for
-#  the FreeRADIUS runtime library closure. Failure is fatal so a
-#  renamed or split debuginfo package gets caught at image-build
-#  time rather than silently producing an image without symbols.
+#  Debug symbols for the FreeRADIUS runtime library closure. We use
+#  `dnf debuginfo-install` (from dnf-plugins-core) because Rocky's
+#  debug repo naming has shifted between versions; the plugin walks
+#  the package metadata and enables whichever *-debug repo provides
+#  the matching debuginfo rpm.
 #
-#  The *-debug repos exist on Rocky 9 and 10; gpgcheck stays on so
-#  a mirror compromise can't smuggle in unsigned debuginfo.
+#  Failure is fatal -- a renamed or split debuginfo package gets
+#  caught at image-build time rather than silently producing an
+#  image without symbols.
 #
 RUN dnf install -y dnf-plugins-core && \
-    dnf config-manager --set-enabled crb && \
-    dnf config-manager --set-enabled baseos-debug && \
-    dnf config-manager --set-enabled appstream-debug && \
-    dnf config-manager --set-enabled crb-debug && \
-    dnf install -y \
-        glibc-debuginfo \
-        zlib-debuginfo \
-        readline-debuginfo \
-        openssl-libs-debuginfo \
-        cyrus-sasl-lib-debuginfo \
-        pam-debuginfo \
-        openldap-debuginfo \
-        libtalloc-debuginfo \
-        pcre2-debuginfo \
-        libpcap-debuginfo \
-        unbound-libs-debuginfo \
-        sqlite-libs-debuginfo \
-        libpq-debuginfo \
-        mariadb-connector-c-debuginfo \
-        gdbm-libs-debuginfo \
-        json-c-debuginfo \
-        brotli-debuginfo \
-        hiredis-debuginfo \
-        librdkafka-debuginfo \
-        libcurl-debuginfo && \
+    dnf debuginfo-install -y \
+        glibc \
+        zlib \
+        readline \
+        openssl-libs \
+        cyrus-sasl-lib \
+        pam \
+        openldap \
+        libtalloc \
+        pcre2 \
+        libpcap \
+        unbound-libs \
+        sqlite-libs \
+        libpq \
+        mariadb-connector-c \
+        gdbm-libs \
+        json-c \
+        brotli \
+        hiredis \
+        librdkafka \
+        libcurl && \
     dnf clean all
 
 #

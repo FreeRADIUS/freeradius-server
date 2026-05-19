@@ -79,9 +79,11 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http:
 #  caught at image-build time, not in production when a profiler
 #  tries to resolve a symbol that isn't there.
 #
-RUN printf 'deb http://debian-debug.debian.net/debian-debug bookworm-debug main\n' \
-        > /etc/apt/sources.list.d/debian-debug.list && \
-    apt-get update && \    apt-get install -y $APT_OPTS \
+RUN printf 'deb http://debug.mirrors.debian.org/debian-debug bookworm-debug main\n' \
+        > /etc/apt/sources.list.d/debian-debug.list
+
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS \
         libc6-dbg \
         zlib1g-dbgsym \
         libreadline8-dbgsym \

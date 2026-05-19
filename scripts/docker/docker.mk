@@ -1,8 +1,10 @@
 #
 #  Docker image + container lifecycle. Pulls Dockerfile generation
 #  in via dockerfile.mk; this file owns building images from those
-#  Dockerfiles plus per-image container up/down/sh/log/reset and
-#  the crossbuild test cycle.
+#  Dockerfiles plus per-image container up / down / sh / log / reset
+#  and an in-container test cycle. Type-agnostic: targets for every
+#  declared TYPE come from one set of macros. Legacy crossbuild.*
+#  command aliases live in crossbuild.mk.
 #
 
 ifeq ($(shell which docker 2> /dev/null),)
@@ -12,11 +14,10 @@ docker docker.help:
 else
 
 #
-#  Short list of common-case images: 'make docker' / 'make crossbuild'
-#  without further qualification fall back to these.
+#  Short list of common-case images: `make docker` without further
+#  qualification falls back to this set.
 #
 DOCKER_COMMON := ubuntu22
-CB_COMMON     := rocky9 debian12 ubuntu24
 
 # dockerfile.mk owns CB_DIR / DT / IMAGES / PROFILING_IMAGES / Q.
 include scripts/docker/dockerfile.mk
@@ -160,51 +161,48 @@ docker.${2}.${1}.reset:
 endef
 
 #
-#  Crossbuild-specific extras: refresh the source into a writable
-#  build tree inside the container, then run configure + make test.
-#  crossbuild.<image> stays as a legacy alias for the test target.
+#  Per-image test cycle: refresh the source into a writable build tree
+#  inside the running container, then run configure + make + make test.
+#  Generic across types -- applied selectively by callers (e.g. the
+#  crossbuild test workflow only wants this for the crossbuild type).
 #
-define CROSSBUILD_TEST
-.PHONY: docker.crossbuild.${1}.refresh docker.crossbuild.${1}.test crossbuild.${1}
+define DOCKER_TEST
+.PHONY: docker.${2}.${1}.refresh docker.${2}.${1}.test
 
-docker.crossbuild.${1}.refresh: docker.crossbuild.${1}.up
-	$${Q}echo "REFRESH $(DOCKER_IMAGE_PREFIX)-crossbuild-${1}"
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'rsync -a /srv/src/ /srv/local-src/'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config -f /srv/local-src/config core.bare true'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config -f /srv/local-src/config --unset core.worktree || true'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config --global --add safe.directory /srv/local-src'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '(cd /srv/build && git pull --rebase)'
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DOCKER_STATE)/configure.${1} 2>&1
+docker.${2}.${1}.refresh: docker.${2}.${1}.up
+	$${Q}echo "REFRESH $(DOCKER_IMAGE_PREFIX)-${2}-${1}"
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc 'rsync -a /srv/src/ /srv/local-src/'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc 'git config -f /srv/local-src/config core.bare true'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc 'git config -f /srv/local-src/config --unset core.worktree || true'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc 'git config --global --add safe.directory /srv/local-src'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc '(cd /srv/build && git pull --rebase)'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DOCKER_STATE)/configure.${1}.${2} 2>&1
 
-docker.crossbuild.${1}.test crossbuild.${1}: docker.crossbuild.${1}.refresh
-	$${Q}echo "TEST  $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} > $(DOCKER_STATE)/test.${1}"
-	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '(cd /srv/build && make && make test)' > $(DOCKER_STATE)/test.${1} 2>&1 || (echo FAIL ${1} && false)
+docker.${2}.${1}.test: docker.${2}.${1}.refresh
+	$${Q}echo "TEST  $(DOCKER_IMAGE_PREFIX)-${2}-${1} > $(DOCKER_STATE)/test.${1}.${2}"
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -lc '(cd /srv/build && make && make test)' > $(DOCKER_STATE)/test.${1}.${2} 2>&1 || (echo FAIL ${1}.${2} && false)
 endef
+
 
 $(DOCKER_STATE):
 	@mkdir -p $@
 
 #
 #  Wire build + phony + clean + lifecycle for every (image, type)
-#  combo. Profiling is gated to PROFILING_IMAGES because it FROMs
-#  the crossbuild image and only has an ubuntu24 source template.
+#  combo. Profiling FROMs the crossbuild image of the same distro,
+#  so its build depends on the corresponding crossbuild stamp.
 #
 $(foreach IMG,$(IMAGES),\
   $(eval $(call DOCKER_BUILD,$(IMG),service,,)) \
   $(eval $(call DOCKER_BUILD,$(IMG),ci,,)) \
   $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)) \
-  $(foreach T,service ci crossbuild, \
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
+  $(foreach T,service ci crossbuild profiling, \
     $(eval $(call DOCKER_PHONY,$(IMG),$(T))) \
     $(eval $(call DOCKER_CLEAN,$(IMG),$(T))) \
-    $(eval $(call DOCKER_LIFECYCLE,$(IMG),$(T)))) \
-  $(eval $(call CROSSBUILD_TEST,$(IMG))))
-
-$(foreach IMG,$(PROFILING_IMAGES),\
-  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
-  $(eval $(call DOCKER_PHONY,$(IMG),profiling)) \
-  $(eval $(call DOCKER_CLEAN,$(IMG),profiling)) \
-  $(eval $(call DOCKER_LIFECYCLE,$(IMG),profiling)))
+    $(eval $(call DOCKER_LIFECYCLE,$(IMG),$(T))) \
+    $(eval $(call DOCKER_TEST,$(IMG),$(T)))))
 
 #
 #  Per-type umbrellas. .clean / .up / .down / .reset fan out to the
@@ -222,7 +220,7 @@ endef
 $(eval $(call DOCKER_TYPE_UMBRELLAS,service,$(IMAGES)))
 $(eval $(call DOCKER_TYPE_UMBRELLAS,ci,$(IMAGES)))
 $(eval $(call DOCKER_TYPE_UMBRELLAS,crossbuild,$(IMAGES)))
-$(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(PROFILING_IMAGES)))
+$(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(IMAGES)))
 
 #
 #  Across-type umbrellas. 'docker' stays as a legacy alias for the
@@ -243,26 +241,16 @@ docker.info: docker.info_header $(foreach IMG,$(IMAGES),docker.service.$(IMG).st
 docker.info_header:
 	@echo Built images:
 
-#
-#  Crossbuild legacy aliases: `crossbuild` runs the test cycle for
-#  every crossbuild image; `crossbuild.common` does just the common
-#  subset.
-#
-.PHONY: crossbuild crossbuild.common crossbuild.help
-crossbuild:        $(foreach IMG,$(IMAGES),crossbuild.$(IMG))
-crossbuild.common: $(foreach IMG,$(CB_COMMON),crossbuild.$(IMG))
-crossbuild.help:   docker.help
-
 .PHONY: docker.help
 docker.help:
 	@echo ""
 	@echo "Image builds ($(DOCKER_IMAGE_PREFIX)-TYPE/IMAGE:SHA):"
-	@echo "    docker                            - build all service images (alias for docker.service)"
-	@echo "    docker.common                     - build common service images ($(DOCKER_COMMON))"
-	@echo "    docker.info                       - list images and their build status"
-	@echo "    docker.TYPE                       - build every image of one type"
-	@echo "    docker.TYPE.IMAGE                 - build a single image"
-	@echo "    docker.TYPE.IMAGE.status          - show whether the local image is built"
+	@echo "    docker                            - build every service IMAGE (alias for docker.service)"
+	@echo "    docker.common                     - build common service IMAGEs ($(DOCKER_COMMON))"
+	@echo "    docker.info                       - list IMAGEs and their build status"
+	@echo "    docker.TYPE                       - build every IMAGE of one TYPE"
+	@echo "    docker.TYPE.IMAGE                 - build a single IMAGE"
+	@echo "    docker.TYPE.IMAGE.status          - show whether the local IMAGE is built"
 	@echo ""
 	@echo "Container lifecycle (sleeping container, /srv/src bind-mounted from host git):"
 	@echo "    docker.TYPE.IMAGE.up              - start container"
@@ -270,20 +258,23 @@ docker.help:
 	@echo "    docker.TYPE.IMAGE.sh              - interactive shell in container"
 	@echo "    docker.TYPE.IMAGE.log             - page the last build log"
 	@echo "    docker.TYPE.IMAGE.reset           - rm stamps so the next build re-runs"
-	@echo "    docker.TYPE.up / .down / .reset   - per-type umbrellas"
-	@echo "    docker.up / .down / .reset        - every type"
+	@echo "    docker.TYPE.up                    - start a container for every IMAGE of one TYPE"
+	@echo "    docker.TYPE.down                  - stop every container of one TYPE"
+	@echo "    docker.TYPE.reset                 - rm stamps for every IMAGE of one TYPE"
+	@echo "    docker.up                         - start a container for every (TYPE, IMAGE)"
+	@echo "    docker.down                       - stop every container across every TYPE"
+	@echo "    docker.reset                      - rm stamps for every IMAGE, every TYPE"
 	@echo ""
-	@echo "Cleanup (removes the docker image + stamp; image-in-use is a no-op):"
-	@echo "    docker.clean                      - remove every locally-built image"
-	@echo "    docker.TYPE.clean                 - remove every image of one type"
-	@echo "    docker.TYPE.IMAGE.clean           - remove a single image"
+	@echo "Cleanup (removes the docker IMAGE + stamp; IMAGE-in-use is a no-op):"
+	@echo "    docker.clean                      - remove every locally-built IMAGE"
+	@echo "    docker.TYPE.clean                 - remove every IMAGE of one TYPE"
+	@echo "    docker.TYPE.IMAGE.clean           - remove a single IMAGE"
 	@echo ""
-	@echo "Crossbuild test cycle (configure + make + make test inside the container):"
-	@echo "    crossbuild                        - run the test cycle for every image"
-	@echo "    crossbuild.common                 - run the test cycle for $(CB_COMMON)"
-	@echo "    crossbuild.IMAGE                  - run the test cycle for one image"
-	@echo "                                        (alias: docker.crossbuild.IMAGE.test)"
-	@echo "    docker.crossbuild.IMAGE.refresh   - rsync src + git pull inside the container"
+	@echo "Test cycle (configure + make + make test inside a running container):"
+	@echo "    docker.TYPE.IMAGE.refresh         - rsync src + git pull inside the container"
+	@echo "    docker.TYPE.IMAGE.test            - run configure + make + make test in container"
+	@echo ""
+	@echo "Run 'make crossbuild.help' for the legacy crossbuild.* command aliases."
 	@echo ""
 	$(DOCKER_HELP_TYPES)
 	@echo ""
