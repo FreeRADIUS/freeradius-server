@@ -89,6 +89,33 @@ docker.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile)
 ci-base.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.ci)
 
 #
+#  Verify every committed Dockerfile / Dockerfile.ci matches a fresh
+#  render of its m4 source. Fails with a diff if a contributor edited
+#  the m4 but forgot to regen+commit.
+#
+docker.regen.check:
+	@failed=0; for IMG in $(IMAGES); do \
+		tmp=$$(mktemp); \
+		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=docker $(DOCKER_TMPL) > $$tmp; \
+		if ! diff -u $(DT)/$$IMG/Dockerfile $$tmp; then \
+			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile"; failed=1; \
+		fi; \
+		rm $$tmp; \
+	done; \
+	[ $$failed -eq 0 ] || { echo; echo "Run 'make docker.regen' and commit the result."; exit 1; }
+
+ci-base.regen.check:
+	@failed=0; for IMG in $(IMAGES); do \
+		tmp=$$(mktemp); \
+		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=ci-base $(DOCKER_TMPL) > $$tmp; \
+		if ! diff -u $(DT)/$$IMG/Dockerfile.ci $$tmp; then \
+			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.ci"; failed=1; \
+		fi; \
+		rm $$tmp; \
+	done; \
+	[ $$failed -eq 0 ] || { echo; echo "Run 'make ci-base.regen' and commit the result."; exit 1; }
+
+#
 #  Define rules for building a particular image
 #
 define CROSSBUILD_IMAGE_RULE

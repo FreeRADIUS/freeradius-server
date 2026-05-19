@@ -120,6 +120,22 @@ crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 #
 crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
 
+#
+#  Verify every committed Dockerfile.cb matches a fresh render of its
+#  m4 source. Fails with a diff if a contributor edited the m4 but
+#  forgot to regen+commit.
+#
+crossbuild.regen.check:
+	@failed=0; for IMG in $(CB_IMAGES); do \
+		tmp=$$(mktemp); \
+		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=crossbuild $(DOCKER_TMPL) > $$tmp; \
+		if ! diff -u $(DT)/$$IMG/Dockerfile.cb $$tmp; then \
+			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.cb"; failed=1; \
+		fi; \
+		rm $$tmp; \
+	done; \
+	[ $$failed -eq 0 ] || { echo; echo "Run 'make crossbuild.regen' and commit the result."; exit 1; }
+
 
 #
 #  Define rules for building a particular image

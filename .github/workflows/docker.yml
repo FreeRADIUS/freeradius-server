@@ -128,6 +128,9 @@ jobs:
         username: ${{ vars.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
+    - name: Verify Dockerfiles match m4 templates
+      run: make docker.regen.check
+
     - name: Build docker image
       run: |
         make docker.$OS.build
@@ -222,6 +225,9 @@ jobs:
       uses: ./.github/actions/setup-dind
       with:
         packages: m4 make
+
+    - name: Verify Dockerfiles match m4 templates
+      run: make docker.regen.check
 
     - name: Build docker image
       run: |
