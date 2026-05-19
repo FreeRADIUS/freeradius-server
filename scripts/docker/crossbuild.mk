@@ -13,8 +13,10 @@ else
 #
 CB_COMMON:=rocky9 debian12 ubuntu24
 
-# Top level of where all crossbuild and docker files are
-CB_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+# Top level of where all crossbuild and docker files are. `$(dir ...)`
+# would leave a trailing slash that doubles up when concatenated with
+# `/build` etc., so strip it here once.
+CB_DIR:=$(patsubst %/,%,$(dir $(realpath $(lastword $(MAKEFILE_LIST)))))
 
 # Where the docker directories are
 DT:=$(CB_DIR)/build

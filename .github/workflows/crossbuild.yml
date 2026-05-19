@@ -116,6 +116,21 @@ jobs:
     - uses: ./.github/actions/setup-dind
 
     #
+    #  The dind sidecar has its own dockerd that's not pre-authenticated
+    #  to docker.internal.networkradius.com (the host docker daemon on
+    #  the self-hosted runner is, via the runner's job-started hook,
+    #  but that auth doesn't propagate into the dind container). Log in
+    #  explicitly so the inner crossbuild's FROM-pull of self-hosted-*
+    #  works instead of 401-ing.
+    #
+    - name: Login to internal Docker registry (via dind)
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+    #
     #  Run the per-distro crossbuild. CB_FROM_<distro> overrides the
     #  `from` build-arg in scripts/docker/crossbuild.mk so the inner
     #  docker build FROMs an internal base image instead of docker.io,
