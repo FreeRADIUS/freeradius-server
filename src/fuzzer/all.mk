@@ -1,20 +1,28 @@
 #
-#  Add the list of protocols to be fuzzed here Each protocol needs to
-#  have a test point for packet decoding.  See
-#  src/protocols/radius/decode.c for an example.
+#  Wire protocol fuzzers. Each one needs a test point for packet
+#  decoding (see src/protocols/radius/decode.c for an example) and
+#  a libfreeradius-<name> library to load. The per-protocol fuzzer
+#  source / makefile are generated from src/fuzzer/fuzzer.c and
+#  src/fuzzer/fuzzer.mk via FUZZ_PROTOCOL below.
 #
-#  The fuzzer binary needs special magic to run, as it doesn't parse
-#  command-line options.  See fuzzer.mk for details.
-#
-FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp util bfd cbor der arp
+FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
 
 #
-#  Non-protocol fuzzers - these have their own .mk / .c files (not
-#  generated from fuzzer.c) and don't take the -D share/dictionary
-#  flag the per-protocol fuzzers do. Listed separately so the
-#  scheduled fuzzing workflow can pick them up.
+#  Standalone fuzzer targets - each has a hand-written fuzzer_<name>.c
+#  and fuzzer_<name>.mk under src/fuzzer/. Listed separately so the
+#  scheduled fuzzing workflow can pick them up alongside the wire
+#  protocols. util uses the same test_point / dictionary machinery
+#  as a wire protocol (see src/lib/util/fuzzer.c) but isn't itself
+#  a network protocol, so it lives here too.
 #
-FUZZER_NON_PROTOCOL_TARGETS = json cf value xlat
+FUZZER_NON_PROTOCOL_TARGETS = util json cf value xlat
+
+#
+#  Per-target extra arguments passed to the fuzzer binary. util uses
+#  the per-protocol fuzzer.c shape and needs -D to find the dictionary;
+#  json / cf / value / xlat are standalone parsers that don't.
+#
+FUZZER_util_ARGS  := -D share/dictionary
 
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
@@ -53,19 +61,20 @@ clean.fuzzer:
 clean: clean.fuzzer
 
 #
-#  Add other fuzzers
+#  Standalone fuzzers' build mks
 #
-SUBMAKEFILES += fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk fuzzer_xlat.mk
+SUBMAKEFILES += fuzzer_util.mk fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk fuzzer_xlat.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
 #
-#  test.fuzzer.X / .merge for the non-protocol fuzzers. Mirrors the
-#  per-protocol rules in fuzzer.mk minus the `-D share/dictionary` flag.
-#  Corpus directories are created on first run; no .tar files are
-#  shipped with the source tree for these yet.
+#  test.fuzzer.X / .merge rules for the standalone targets. Mirrors
+#  the per-protocol shape in fuzzer.mk; per-target extra args come
+#  from $(FUZZER_<name>_ARGS) so util can request -D and the others
+#  can stay silent. Corpus directories are created on demand; .tar
+#  files don't exist for these yet so first runs cold-start.
 #
-define FUZZ_NON_PROTOCOL_TEST
+define FUZZ_TEST
 $$(FUZZER_ARTIFACTS)/${1}: ; @mkdir -p $$@
 
 src/tests/fuzzer-corpus/${1}: ; @mkdir -p $$@
@@ -77,6 +86,7 @@ test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(F
 		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
 		-max_len=512 $$(FUZZER_ARGUMENTS) \
 		-max_total_time=$$(FUZZER_TIMEOUT) \
+		$$(FUZZER_${1}_ARGS) \
 		src/tests/fuzzer-corpus/${1}
 else
 test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(FUZZER_ARTIFACTS)/${1}
@@ -86,6 +96,7 @@ test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(F
 		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
 		-max_len=512 $$(FUZZER_ARGUMENTS) \
 		-max_total_time=$$(FUZZER_TIMEOUT) \
+		$$(FUZZER_${1}_ARGS) \
 		src/tests/fuzzer-corpus/${1} > $$(BUILD_DIR)/fuzzer/${1}.log 2>&1; then \
 		tail -20 $$(BUILD_DIR)/fuzzer/${1}.log; \
 		echo FAILED; \
@@ -107,7 +118,7 @@ test.fuzzer.${1}.merge: $$(TEST_BIN_DIR)/fuzzer_${1} | src/tests/fuzzer-corpus/$
 	$${Q}rm -rf "src/tests/fuzzer-corpus/${1}_new"
 endef
 
-$(foreach X,${FUZZER_NON_PROTOCOL_TARGETS},$(eval $(call FUZZ_NON_PROTOCOL_TEST,${X})))
+$(foreach X,${FUZZER_NON_PROTOCOL_TARGETS},$(eval $(call FUZZ_TEST,${X})))
 
 .PHONY: fuzzer.help
 fuzzer.help:
