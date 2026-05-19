@@ -146,9 +146,10 @@ static ssize_t skip_brackets(char const *start, char const *end, char end_quote,
 		if (*p == '(') {
 			p++;
 			slen = skip_brackets(p, end, ')', depth + 1);
-			if (slen <= 0) return slen - (p - start);
 
 		next:
+			if (slen <= 0) return slen - (p - start);
+
 			fr_assert((size_t) slen <= (size_t) (end - p));
 			p += slen;
 			continue;
