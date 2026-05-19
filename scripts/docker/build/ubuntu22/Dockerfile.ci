@@ -1,0 +1,87 @@
+# Auto generated for ubuntu22
+# from scripts/docker/m4/ci-base.deb.m4
+#
+# Rebuild this file with `make ci-base.ubuntu22.regen`
+#
+ARG from=ubuntu:22.04
+FROM ${from}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+#  Retry transient apt repo failures. apt does no retries out of the box;
+#  turn that on and shorten the connect timeout so a hung mirror fails
+#  fast and the retry kicks in quickly. Belt-and-braces dpkg / debconf
+#  tweaks save a few seconds per image build.
+#
+RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::https::ConnectTimeout "5";\n' \
+		> /etc/apt/apt.conf.d/80-retries && \
+	printf 'force-unsafe-io\n' > /etc/dpkg/dpkg.cfg.d/02speedup && \
+	echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+#
+#  Refresh apt lists, upgrade in place, install the build toolchain.
+#  Shared by the production, crossbuild, and CI base templates - each
+#  adds whatever extras they specifically need on top.
+#
+RUN apt-get update && apt-get dist-upgrade -y
+
+RUN apt-get install -y --no-install-recommends \
+		apt-transport-https \
+		build-essential \
+		ca-certificates \
+		curl \
+		devscripts \
+		equivs \
+		fakeroot \
+		git-core \
+		gnupg2 \
+		lsb-release \
+		make \
+		quilt
+
+#
+#  Extras the CI base needs on top of the common toolchain. xz-utils
+#  feeds the tmate debug step; file is occasionally invoked from
+#  debian/rules.
+#
+RUN apt-get install -y --no-install-recommends \
+		file \
+		xz-utils
+
+#
+#  Set up NetworkRADIUS extras repository. OS_NAME and OS_CODENAME are
+#  substituted by the dispatcher (Dockerfile.m4) per-distro.
+#
+RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
+	curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+		-o /etc/apt/keyrings/packages.networkradius.com.asc \
+		"https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/jammy jammy main" \
+		> /etc/apt/sources.list.d/networkradius-extras.list && \
+	apt-get update
+
+#
+#  Pre-install the build-dep closure derived from debian/control. The
+#  source-tree debian/ subtree is baked in at image-build time; ci-deb.yml
+#  still runs mk-build-deps per job as a top-up so newly added deps are
+#  picked up without an image rebuild.
+#
+COPY debian/ /tmp/freeradius-debian/
+COPY scripts/ci/extra-packages.debian.control /tmp/freeradius-debian-extras.control
+RUN cd /tmp/freeradius-debian && \
+	touch -t 202001010000 control && \
+	./rules control && \
+	mk-build-deps -irt"apt-get -y --no-install-recommends" control && \
+	cd / && \
+	mk-build-deps -irt"apt-get -y --no-install-recommends" /tmp/freeradius-debian-extras.control && \
+	rm -rf /tmp/freeradius-debian /tmp/freeradius-debian-extras.control \
+		/freeradius-build-deps_*.deb /freeradius-build-deps_*.buildinfo /freeradius-build-deps_*.changes
+
+#
+#  Trust any workspace path. The job container runs as root but the
+#  bind-mounted runner workspace is owned by the runner user; without
+#  this, git refuses with "dubious ownership" the moment a Makefile
+#  runs `git rev-parse`. System-wide so it applies to every shell.
+#
+RUN git config --system --add safe.directory '*'

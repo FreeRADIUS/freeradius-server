@@ -9,28 +9,47 @@ FROM ${from} AS build
 ARG DEBIAN_FRONTEND=noninteractive
 
 #
-#  Retry transient package-repo failures. apt does no retries out of the
-#  box; turn that on and shorten the per-request timeout so a hung mirror
-#  fails fast and the retry kicks in quickly.
+#  Retry transient apt repo failures. apt does no retries out of the box;
+#  turn that on and shorten the connect timeout so a hung mirror fails
+#  fast and the retry kicks in quickly. Belt-and-braces dpkg / debconf
+#  tweaks save a few seconds per image build.
 #
-RUN printf 'Acquire::Retries "3";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' \
-        > /etc/apt/apt.conf.d/80-retries
+RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::https::ConnectTimeout "5";\n' \
+		> /etc/apt/apt.conf.d/80-retries && \
+	printf 'force-unsafe-io\n' > /etc/dpkg/dpkg.cfg.d/02speedup && \
+	echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+#
+#  Refresh apt lists, upgrade in place, install the build toolchain.
+#  Shared by the production, crossbuild, and CI base templates - each
+#  adds whatever extras they specifically need on top.
+#
+RUN apt-get update && apt-get dist-upgrade -y
 
+RUN apt-get install -y --no-install-recommends \
+		apt-transport-https \
+		build-essential \
+		ca-certificates \
+		curl \
+		devscripts \
+		equivs \
+		fakeroot \
+		git-core \
+		gnupg2 \
+		lsb-release \
+		make \
+		quilt
 #
-#  Install build tools
+#  Set up NetworkRADIUS extras repository. OS_NAME and OS_CODENAME are
+#  substituted by the dispatcher (Dockerfile.m4) per-distro.
 #
-RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt gcc curl
+RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
+	curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+		-o /etc/apt/keyrings/packages.networkradius.com.asc \
+		"https://packages.networkradius.com/pgp/packages%40networkradius.com"
 
-#
-#  Set up NetworkRADIUS extras repository
-#
-RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
- && curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
-        -o /etc/apt/keyrings/packages.networkradius.com.asc \
-        "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
- && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/jammy jammy main" > /etc/apt/sources.list.d/networkradius-extras.list \
- && apt-get update
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/jammy jammy main" \
+		> /etc/apt/sources.list.d/networkradius-extras.list && \
+	apt-get update
 
 #
 #  Create build directory
@@ -87,10 +106,15 @@ FROM ${from}
 ARG DEBIAN_FRONTEND=noninteractive
 
 #
-#  Retry transient package-repo failures (same config as the build stage).
+#  Retry transient apt repo failures. apt does no retries out of the box;
+#  turn that on and shorten the connect timeout so a hung mirror fails
+#  fast and the retry kicks in quickly. Belt-and-braces dpkg / debconf
+#  tweaks save a few seconds per image build.
 #
-RUN printf 'Acquire::Retries "3";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' \
-        > /etc/apt/apt.conf.d/80-retries
+RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::https::ConnectTimeout "5";\n' \
+		> /etc/apt/apt.conf.d/80-retries && \
+	printf 'force-unsafe-io\n' > /etc/dpkg/dpkg.cfg.d/02speedup && \
+	echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 

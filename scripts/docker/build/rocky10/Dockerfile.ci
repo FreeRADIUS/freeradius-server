@@ -1,10 +1,10 @@
-# Auto generated for rocky9
-# from scripts/docker/m4/crossbuild.rpm.m4
+# Auto generated for rocky10
+# from scripts/docker/m4/ci-base.rpm.m4
 #
-# Rebuild this file with `make crossbuild.rocky9.regen`
+# Rebuild this file with `make ci-base.rocky10.regen`
 #
-ARG from=rockylinux/rockylinux:9
-FROM ${from} AS build
+ARG from=rockylinux/rockylinux:10
+FROM ${from}
 
 #
 #  Retry transient package-repo failures. dnf retries 10 times by default;
@@ -19,7 +19,7 @@ RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
 #  the build-dep closure pulls packages that live there. OS_VER is
 #  substituted by the dispatcher (Dockerfile.m4) per Rocky major version.
 #
-RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
 
 RUN dnf update -y
 RUN dnf install -y \
@@ -33,6 +33,23 @@ RUN dnf install -y \
 		rsync
 
 RUN dnf config-manager --set-enabled crb
+
+#
+#  Extras the CI base needs on top of the common toolchain. libnl3-devel
+#  and which feed the eapol_test build; xz feeds the tmate debug step;
+#  gcc / make / perl / rpm-build are pulled by dnf builddep anyway but
+#  installing them eagerly keeps the layer cache stable when freeradius.spec
+#  changes.
+#
+RUN dnf install -y \
+		gcc \
+		libnl3-devel \
+		make \
+		perl \
+		rpm-build \
+		which \
+		xz
+
 #
 #  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
 #  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
@@ -52,45 +69,20 @@ gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
 RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
 
 #
-#  Setup a src dir in /usr/local
+#  Pre-install the build-dep closure for the FreeRADIUS spec. The spec
+#  is baked in at image-build time; ci-rpm.yml still runs dnf builddep
+#  per job as a top-up so newly added deps are picked up without an
+#  image rebuild. Run twice; occasionally dnf misses something first time.
 #
-RUN mkdir -p /usr/local/src/repositories
-WORKDIR /usr/local/src/repositories
+COPY redhat/freeradius.spec /tmp/freeradius.spec
+RUN dnf builddep -y /tmp/freeradius.spec && \
+	dnf builddep -y /tmp/freeradius.spec && \
+	rm /tmp/freeradius.spec
 
 #
-#  Shallow clone the FreeRADIUS source
+#  Trust any workspace path. The job container runs as root but the
+#  bind-mounted runner workspace is owned by the runner user; without
+#  this, git refuses with "dubious ownership" the moment a Makefile
+#  runs `git rev-parse`. System-wide so it applies to every shell.
 #
-WORKDIR /usr/local/src/repositories
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-RUN git clone --depth 1 --no-single-branch ${source}
-
-#
-#  Install build dependencies for all branches from v3 onwards
-#  Nodesource has issues (no SRPMS in some repos) and is not needed here
-#
-WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master)$");\
-	do \
-		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && dnf builddep -y redhat/freeradius.spec; \
-	done
-
-#
-#  A few extra packages needed for tests
-#
-RUN dnf install -y \
-    libnl3-devel \
-    libyubikey-devel \
-    oathtool \
-    which
-
-#
-#  We test with TLS1.1, but that is disabled by default on some
-#  newer systems.
-#
-RUN update-crypto-policies --set LEGACY
-
-#
-#  Create the RPM build tree
-#
-RUN rpmdev-setuptree
+RUN git config --system --add safe.directory '*'

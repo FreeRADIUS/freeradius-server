@@ -572,9 +572,10 @@ ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 endif
 
 #
-#  Conditionally include the docker make file
+#  Conditionally include the docker make file. Also triggered by the
+#  ci-base.* family of targets defined inside docker.mk.
 #
-ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
+ifneq "$(or $(findstring docker,$(MAKECMDGOALS)),$(findstring ci-base,$(MAKECMDGOALS)))" ""
   include scripts/docker/docker.mk
 endif
 

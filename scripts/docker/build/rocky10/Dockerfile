@@ -13,24 +13,35 @@ FROM ${from} AS build
 #  (minrate) stays on so a stalled in-flight download still gets killed.
 #
 RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
-
+#
+#  Refresh dnf metadata and install the build toolchain shared by the
+#  production, crossbuild, and CI base templates. CRB is enabled because
+#  the build-dep closure pulls packages that live there. OS_VER is
+#  substituted by the dispatcher (Dockerfile.m4) per Rocky major version.
+#
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
 
-#
-#  Install build tools
-#
 RUN dnf update -y
-RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
-	rsync dnf-plugins-core
+RUN dnf install -y \
+		dnf-plugins-core \
+		dnf-utils \
+		epel-release \
+		git \
+		openssl \
+		procps \
+		rpmdevtools \
+		rsync
 
 RUN dnf config-manager --set-enabled crb
-
 #
-#  Set up NetworkRADIUS extras repository
+#  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
+#  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
+#  same repo file works on rocky9 and rocky10.
 #
 RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
         -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
         "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
 RUN echo $'[networkradius-extras]\n\
 name=NetworkRADIUS-extras-$releasever\n\
 baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\
@@ -97,7 +108,10 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 
 #
-#  Retry transient package-repo failures (same config as the build stage).
+#  Retry transient package-repo failures. dnf retries 10 times by default;
+#  cap that at 3 and shorten the per-request timeout from 30s to 15s so a
+#  hung mirror fails fast and the retry kicks in quickly. Stall detection
+#  (minrate) stays on so a stalled in-flight download still gets killed.
 #
 RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
 

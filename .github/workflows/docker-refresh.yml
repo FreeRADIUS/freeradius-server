@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/docker-refresh.yml
       - scripts/ci/docker/Dockerfile*
+      - scripts/docker/build/*/Dockerfile.ci
       - debian/control
       - redhat/freeradius.spec
   workflow_dispatch:
@@ -38,59 +39,44 @@ jobs:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/docker/Dockerfile
 
+          #
+          #  Slim build bases for ci-rpm.yml / ci-deb.yml. Generated from
+          #  scripts/docker/m4/ci-base.{rpm,deb}.m4 - regenerate with
+          #  `make ci-base.<distro>.regen` after editing the m4. The
+          #  generated Dockerfile.ci hardcodes the per-distro FROM, so
+          #  no build_args are needed here.
+          #
           - base_image: rockylinux/rockylinux:9
             image_name: docker.internal.networkradius.com/self-hosted-rocky9
-            dockerfile: scripts/ci/docker/Dockerfile.rocky
-            build_args:
-              from: rockylinux/rockylinux:9
+            dockerfile: scripts/docker/build/rocky9/Dockerfile.ci
 
           - base_image: rockylinux/rockylinux:10
             image_name: docker.internal.networkradius.com/self-hosted-rocky10
-            dockerfile: scripts/ci/docker/Dockerfile.rocky
-            build_args:
-              from: rockylinux/rockylinux:10
+            dockerfile: scripts/docker/build/rocky10/Dockerfile.ci
 
-          #
-          #  Slim deb-build bases for ci-deb.yml. Distinct from the
-          #  full self-hosted-ubuntu24 testbed above - these only carry
-          #  the build-essential toolchain and the debian/control
-          #  build-dep closure, no integration-test services.
-          #
           - base_image: debian:bookworm
             image_name: docker.internal.networkradius.com/self-hosted-deb-debian12
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: debian:bookworm
+            dockerfile: scripts/docker/build/debian12/Dockerfile.ci
 
           - base_image: debian:trixie
             image_name: docker.internal.networkradius.com/self-hosted-deb-debian13
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: debian:trixie
+            dockerfile: scripts/docker/build/debian13/Dockerfile.ci
 
           - base_image: debian:sid
             image_name: docker.internal.networkradius.com/self-hosted-deb-debiansid
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: debian:sid
+            dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
 
           - base_image: ubuntu:22.04
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu22
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: ubuntu:22.04
+            dockerfile: scripts/docker/build/ubuntu22/Dockerfile.ci
 
           - base_image: ubuntu:24.04
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu24
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: ubuntu:24.04
+            dockerfile: scripts/docker/build/ubuntu24/Dockerfile.ci
 
           - base_image: ubuntu:26.04
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu26
-            dockerfile: scripts/ci/docker/Dockerfile.debian
-            build_args:
-              from: ubuntu:26.04
+            dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
 
           #
           #  Custom dind sidecar image used by the dind-based

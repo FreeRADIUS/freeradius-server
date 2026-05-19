@@ -7,36 +7,23 @@ ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recomme
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+include(`common.apt.retries.m4')dnl
+include(`common.deb.toolchain.m4')dnl
 
 #
-#  Install add-apt-repository (may be needed for clang) and
-#  package development utilities
+#  Crossbuild-specific extras on top of the common toolchain.
 #
-RUN apt-get update && \
-    apt-get install $APT_OPTS \
-        devscripts \
-        equivs \
-        git \
-        gnupg2 \
-        lsb-release \
+RUN apt-get install $APT_OPTS \
         procps \
-        quilt \
         rsync \
-        wget && \
-    apt-get clean && \
-    rm -r /var/lib/apt/lists/*
+        wget
 
-
-#
-#  Set up NetworkRADIUS extras repository
-#
-RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
-    wget -O /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com" && \
-    echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/OS_NAME/OS_CODENAME OS_CODENAME main" > /etc/apt/sources.list.d/networkradius-extras.list && \
-    apt-get update
+include(`common.deb.nr-extras.m4')dnl
 
 dnl
-dnl  Work out what clang packages we want to install
+dnl  Work out what clang packages we want to install. Older distros pin
+dnl  a specific clang version and pull it from apt.llvm.org; newer ones
+dnl  take whatever the distro ships.
 dnl
 define(`CLANG_PKGS', `llvm clang lldb')dnl
 ifelse(D_NAME, `debian10', `dnl

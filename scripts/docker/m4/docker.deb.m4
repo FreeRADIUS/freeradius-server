@@ -3,29 +3,9 @@ FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-#
-#  Retry transient package-repo failures. apt does no retries out of the
-#  box; turn that on and shorten the per-request timeout so a hung mirror
-#  fails fast and the retry kicks in quickly.
-#
-RUN printf 'Acquire::Retries "3";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' \
-        > /etc/apt/apt.conf.d/80-retries
-
-#
-#  Install build tools
-#
-RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt gcc curl
-
-#
-#  Set up NetworkRADIUS extras repository
-#
-RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
- && curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
-        -o /etc/apt/keyrings/packages.networkradius.com.asc \
-        "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
- && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/OS_NAME/OS_CODENAME OS_CODENAME main" > /etc/apt/sources.list.d/networkradius-extras.list \
- && apt-get update
+include(`common.apt.retries.m4')dnl
+include(`common.deb.toolchain.m4')dnl
+include(`common.deb.nr-extras.m4')dnl
 
 #
 #  Create build directory
@@ -81,11 +61,7 @@ RUN make -j$(nproc) deb
 FROM ${from}
 ARG DEBIAN_FRONTEND=noninteractive
 
-#
-#  Retry transient package-repo failures (same config as the build stage).
-#
-RUN printf 'Acquire::Retries "3";\nAcquire::http::Timeout "15";\nAcquire::https::Timeout "15";\n' \
-        > /etc/apt/apt.conf.d/80-retries
+include(`common.apt.retries.m4')dnl
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 

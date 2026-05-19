@@ -1,34 +1,15 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} AS build
 
-#
-#  Install devtools like make and git and the EPEL
-#  repository for freetds and hiredis
-#
-RUN dnf update -y
-RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
-	rsync dnf-plugins-core
-
-RUN dnf config-manager --set-enabled crb
+include(`common.dnf.retries.m4')dnl
+include(`common.rpm.toolchain.m4')dnl
+include(`common.rpm.nr-extras.m4')dnl
 
 #
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
-
-changequote([{,}])dnl
-#
-#  Set up NetworkRADIUS extras repository for latest libkqueue
-#
-RUN echo $'[networkradius-extras]\n\
-name=NetworkRADIUS-extras-$releasever\n\
-baseurl=http://packages.networkradius.com/extras/OS_NAME/$releasever/\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'\
-> /etc/yum.repos.d/networkradius-extras.repo
-RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
 #
 #  Shallow clone the FreeRADIUS source
