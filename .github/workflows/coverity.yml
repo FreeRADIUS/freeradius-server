@@ -6,6 +6,7 @@ on:
       - coverity_scan
   schedule:
     - cron: '0 20 * * *'
+  workflow_dispatch:
 
 jobs:
   coverity:
