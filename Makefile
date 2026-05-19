@@ -565,16 +565,12 @@ whitespace:
 	@perl -p -i -e 'trim' $$(git ls-files src/)
 
 #
-#  Include the crossbuild make file only if we're cross building
+#  Docker / crossbuild make files. Both share the same m4 template
+#  pipeline and macros (scripts/docker/m4-macros.mk) so they're
+#  included together whenever either family of targets is invoked.
 #
-ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+ifneq "$(or $(findstring crossbuild,$(MAKECMDGOALS)),$(findstring docker,$(MAKECMDGOALS)))" ""
   include scripts/docker/crossbuild.mk
-endif
-
-#
-#  Conditionally include the docker make file.
-#
-ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
   include scripts/docker/docker.mk
 endif
 

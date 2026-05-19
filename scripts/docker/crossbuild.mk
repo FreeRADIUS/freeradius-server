@@ -133,6 +133,25 @@ $(foreach IMG,$(CB_IMAGES),\
 $(eval $(call M4_REGEN_BUNDLE,docker.crossbuild.regen,crossbuild,$(CB_IMAGES)))
 $(eval $(call M4_REGEN_CHECK,docker.crossbuild.regen.check,crossbuild,$(CB_IMAGES),docker.crossbuild.regen))
 
+#
+#  Profiling image: ubuntu24-only extra layer on top of the crossbuild
+#  image. There's no profiling.rpm.m4 (the dbgsym repo and apt-based
+#  install steps are debian/ubuntu specific), so the regen+build are
+#  filtered to ubuntu24 only. The image FROMs freeradius4-crossbuild/
+#  ubuntu24:<sha>, so the build also depends on the crossbuild stamp.
+#
+PROFILING_IMAGES := $(filter ubuntu24,$(CB_IMAGES))
+
+$(foreach IMG,$(PROFILING_IMAGES),\
+  $(eval $(call M4_REGEN_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=freeradius4-crossbuild/$(IMG):$(GIT_SHA),$(DD)/stamp-image.$(IMG).crossbuild)))
+
+$(eval $(call M4_REGEN_BUNDLE,docker.profiling.regen,profiling,$(PROFILING_IMAGES)))
+$(eval $(call M4_REGEN_CHECK,docker.profiling.regen.check,profiling,$(PROFILING_IMAGES),docker.profiling.regen))
+
+.PHONY: docker.profiling.build
+docker.profiling.build: $(foreach IMG,$(PROFILING_IMAGES),$(DD)/stamp-image.$(IMG).profiling)
+
 
 #
 #  Define rules for building a particular image. The stamp-image
