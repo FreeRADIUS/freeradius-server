@@ -113,7 +113,8 @@ jobs:
         fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
         lfs: false
 
-    - uses: ./.github/actions/setup-dind
+    - name: setup-dind
+      uses: ./.github/actions/setup-dind
 
     #
     #  The dind sidecar has its own dockerd that's not pre-authenticated
@@ -254,7 +255,8 @@ jobs:
         fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
         lfs: false
 
-    - uses: ./.github/actions/setup-dind
+    - name: setup-dind
+      uses: ./.github/actions/setup-dind
       with:
         packages: m4 make
 

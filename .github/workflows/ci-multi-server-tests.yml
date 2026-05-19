@@ -85,7 +85,8 @@ jobs:
         with:
           lfs: false
 
-      - uses: ./.github/actions/setup-dind
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
         with:
           packages: docker-compose-v2 python3-venv
 

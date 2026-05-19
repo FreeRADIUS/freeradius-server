@@ -111,7 +111,8 @@ jobs:
         fetch-depth: 1
         lfs: false
 
-    - uses: ./.github/actions/setup-dind
+    - name: setup-dind
+      uses: ./.github/actions/setup-dind
 
     #
     #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
@@ -222,7 +223,8 @@ jobs:
         fetch-depth: 1
         lfs: false
 
-    - uses: ./.github/actions/setup-dind
+    - name: setup-dind
+      uses: ./.github/actions/setup-dind
       with:
         packages: m4 make
 
