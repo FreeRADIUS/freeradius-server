@@ -588,9 +588,9 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd == fd) {
 			el->readers[i].fd = -1;
-			el->readers[j].handler = NULL;
-			el->readers[j].write_handler = NULL;
-			el->readers[j].ctx = NULL;
+			el->readers[i].handler = NULL;
+			el->readers[i].write_handler = NULL;
+			el->readers[i].ctx = NULL;
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
