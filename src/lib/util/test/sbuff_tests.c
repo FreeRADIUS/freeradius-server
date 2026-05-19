@@ -759,6 +759,38 @@ static void test_eof_terminal(void)
 	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt) == false);
 }
 
+/*
+ *	fr_sbuff_terminal_search() is called with a `p` that walks
+ *	forward independently of in->p (see fr_sbuff_out_bstrncpy_until).
+ *	`remaining` must be measured from `p`, not from `in->p` — otherwise
+ *	memcmp() can read past in->end when matching a multi-byte terminal
+ *	near the visible end of the buffer.
+ *
+ *	The underlying C string is "abc}xyz" but the sbuff is initialised
+ *	to only see the first 4 bytes ("abc}").  With a "}xyz" terminal,
+ *	the (buggy) code would happily compare 4 bytes from p='}' against
+ *	"}xyz" — reading the "xyz" tail past in->end and reporting a false
+ *	match.  The fix clamps the compare to (in->end - p) = 1 byte, so
+ *	the partial-prefix match correctly falls through.
+ */
+static void test_terminal_search_past_visible_end(void)
+{
+	char const		in[] = "abc}xyz";
+	fr_sbuff_t		sbuff;
+	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
+					L("}xyz")
+				);
+	char			out[16];
+	ssize_t			slen;
+
+	fr_sbuff_init_in(&sbuff, in, (size_t)4);	/* Only "abc}" is visible */
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt, NULL);
+
+	TEST_CHECK_SLEN(slen, 4);
+	TEST_CHECK_STRCMP(out, "abc}");
+}
+
 static void test_terminal_merge(void)
 {
 	size_t i;
@@ -1604,6 +1636,7 @@ TEST_LIST = {
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
 	{ "fr_sbuff_terminal_eof",		test_eof_terminal },
+	{ "terminal search past visible end",	test_terminal_search_past_visible_end },
 	{ "terminal merge",			test_terminal_merge },
 
 	/*

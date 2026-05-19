@@ -553,7 +553,7 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
  */
 static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 					    uint8_t idx[static SBUFF_CHAR_CLASS],
-					    fr_sbuff_term_t const *term, size_t needle_len)
+					    fr_sbuff_term_t const *term, UNUSED size_t needle_len)
 {
 	uint8_t 	term_idx;
 
@@ -570,23 +570,20 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	term_idx = idx[(uint8_t)*p];			/* Fast path */
 	if (!term_idx) return false;
 
+	if (p > in->end) return false; /* paranoia */
+
+	/*
+	 *	"p" may be ahead of "in->p", as the caller can scan forward without advancing "in->p`".  So we
+	 *	need to measure bytes available from "p".  Othwrwise using fr_sbuff_remaining(in) would
+	 *	over-state the available bytes by (p - in->p) and read past in->end.
+	 */
+	remaining = (size_t)(in->end - p);
+
 	/*
 	 *	Special case for EOFlike states
 	 */
-	remaining = fr_sbuff_remaining(in);
-	if ((remaining == 0) && !fr_sbuff_is_extendable(in)) {
-		if (idx['\0'] != 0) return true;
-		return false;
-	}
-
-	if (remaining < needle_len) {
-		fr_assert_msg(!fr_sbuff_is_extendable(in),
-			      "Caller failed to extend buffer by %zu bytes before calling fr_sbuff_terminal_search",
-			      needle_len);
-		/*
-		 *	We can't search for the needle if we don't have
-		 *	enough data to match it.
-		 */
+	if (remaining == 0) {
+		if (!fr_sbuff_is_extendable(in) && (idx['\0'] != 0)) return true;
 		return false;
 	}
 
