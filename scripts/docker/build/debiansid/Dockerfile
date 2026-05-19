@@ -1,7 +1,7 @@
 # Auto generated for debiansid
-# from scripts/docker/m4/docker.deb.m4
+# from scripts/docker/m4/service.deb.m4
 #
-# Rebuild this file with `make docker.debiansid.regen`
+# Rebuild this file with `make docker.service.regen`
 #
 ARG from=debian:sid
 FROM ${from} AS build

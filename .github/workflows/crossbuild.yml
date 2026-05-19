@@ -150,7 +150,7 @@ jobs:
         CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
         CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
       run: |
-        make crossbuild.regen.check
+        make docker.crossbuild.regen.check
         make crossbuild.$OS
 
     - name: Show build log
@@ -263,7 +263,7 @@ jobs:
 
     - name: Run crossbuild tests
       run: |
-        make crossbuild.regen.check
+        make docker.crossbuild.regen.check
         make crossbuild.$OS
 
     - name: Show build log

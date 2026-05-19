@@ -1,7 +1,7 @@
 # Auto generated for debian13
-# from scripts/docker/m4/docker.deb.m4
+# from scripts/docker/m4/service.deb.m4
 #
-# Rebuild this file with `make docker.debian13.regen`
+# Rebuild this file with `make docker.service.regen`
 #
 ARG from=debian:trixie
 FROM ${from} AS build

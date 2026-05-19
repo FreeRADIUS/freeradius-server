@@ -1,7 +1,7 @@
 # Auto generated for debiansid
 # from scripts/docker/m4/crossbuild.deb.m4
 #
-# Rebuild this file with `make crossbuild.debiansid.regen`
+# Rebuild this file with `make docker.crossbuild.regen`
 #
 ARG from=debian:sid
 FROM ${from} AS build

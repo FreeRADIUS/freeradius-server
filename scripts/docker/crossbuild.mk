@@ -118,15 +118,15 @@ crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 #  Regenerate all Dockerfile.cb files from m4 templates. Depends on
 #  the file targets directly; no per-image phony aliases.
 #
-.PHONY: crossbuild.regen crossbuild.regen.check
-crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
+.PHONY: docker.crossbuild.regen docker.crossbuild.regen.check
+docker.crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
 
 #
 #  Verify every committed Dockerfile.cb matches a fresh render of its
 #  m4 source. Fails with a diff if a contributor edited the m4 but
 #  forgot to regen+commit.
 #
-crossbuild.regen.check:
+docker.crossbuild.regen.check:
 	@failed=0; for IMG in $(CB_IMAGES); do \
 		tmp=$$(mktemp); \
 		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=crossbuild $(DOCKER_TMPL) > $$tmp; \
@@ -135,7 +135,7 @@ crossbuild.regen.check:
 		fi; \
 		rm $$tmp; \
 	done; \
-	[ $$failed -eq 0 ] || { echo; echo "Run 'make crossbuild.regen' and commit the result."; exit 1; }
+	[ $$failed -eq 0 ] || { echo; echo "Run 'make docker.crossbuild.regen' and commit the result."; exit 1; }
 
 
 #

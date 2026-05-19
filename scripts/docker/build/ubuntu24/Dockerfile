@@ -1,7 +1,7 @@
 # Auto generated for ubuntu24
-# from scripts/docker/m4/docker.deb.m4
+# from scripts/docker/m4/service.deb.m4
 #
-# Rebuild this file with `make docker.ubuntu24.regen`
+# Rebuild this file with `make docker.service.regen`
 #
 ARG from=ubuntu:24.04
 FROM ${from} AS build

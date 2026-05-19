@@ -8,7 +8,7 @@ dnl  they use are different - see the m4 directories for each.
 dnl
 dnl  Two macros must be defined for this template:
 dnl    D_NAME - the OS codename, see the table below, e.g. debian11
-dnl    D_TYPE - the type of template, 'docker' or 'crossbuild'
+dnl    D_TYPE - the type of template: 'service', 'ci' or 'crossbuild'
 dnl
 divert(`-1')
 changequote(`[', `]')
@@ -37,7 +37,7 @@ divert[]dnl
 [#] Auto generated for D_NAME
 [#] from scripts/docker/m4/D_TYPE.PKG_TYPE.m4
 [#]
-[#] Rebuild this file with `make D_TYPE.D_NAME.regen`
+[#] Rebuild this file with `make docker.D_TYPE.regen`
 [#]
 changequote([`], ['])dnl
 include(D_TYPE.PKG_TYPE.m4)dnl

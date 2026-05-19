@@ -1,7 +1,7 @@
 # Auto generated for rocky9
-# from scripts/docker/m4/ci-base.rpm.m4
+# from scripts/docker/m4/ci.rpm.m4
 #
-# Rebuild this file with `make ci-base.rocky9.regen`
+# Rebuild this file with `make docker.ci.regen`
 #
 ARG from=rockylinux/rockylinux:9
 FROM ${from}

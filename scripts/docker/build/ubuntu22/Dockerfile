@@ -1,7 +1,7 @@
 # Auto generated for ubuntu22
-# from scripts/docker/m4/docker.deb.m4
+# from scripts/docker/m4/service.deb.m4
 #
-# Rebuild this file with `make docker.ubuntu22.regen`
+# Rebuild this file with `make docker.service.regen`
 #
 ARG from=ubuntu:22.04
 FROM ${from} AS build
