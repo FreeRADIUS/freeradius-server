@@ -9,6 +9,14 @@
 FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp util bfd cbor der arp
 
 #
+#  Non-protocol fuzzers - these have their own .mk / .c files (not
+#  generated from fuzzer.c) and don't take the -D share/dictionary
+#  flag the per-protocol fuzzers do. Listed separately so the
+#  scheduled fuzzing workflow can pick them up.
+#
+FUZZER_NON_PROTOCOL_TARGETS = json cf value xlat
+
+#
 #  Add the fuzzer only if everything was built with the fuzzing flags.
 #
 ifneq "$(findstring fuzzer,${CFLAGS})" ""
@@ -51,6 +59,56 @@ SUBMAKEFILES += fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk fuzzer_xlat.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
+#
+#  test.fuzzer.X / .merge for the non-protocol fuzzers. Mirrors the
+#  per-protocol rules in fuzzer.mk minus the `-D share/dictionary` flag.
+#  Corpus directories are created on first run; no .tar files are
+#  shipped with the source tree for these yet.
+#
+define FUZZ_NON_PROTOCOL_TEST
+$$(FUZZER_ARTIFACTS)/${1}: ; @mkdir -p $$@
+
+src/tests/fuzzer-corpus/${1}: ; @mkdir -p $$@
+
+ifeq "$$(CI)" ""
+test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(FUZZER_ARTIFACTS)/${1}
+	@echo TEST-FUZZER ${1} for $$(FUZZER_TIMEOUT)s
+	$${Q}$$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
+		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
+		-max_len=512 $$(FUZZER_ARGUMENTS) \
+		-max_total_time=$$(FUZZER_TIMEOUT) \
+		src/tests/fuzzer-corpus/${1}
+else
+test.fuzzer.${1}: $$(TEST_BIN_DIR)/fuzzer_${1} src/tests/fuzzer-corpus/${1} $$(FUZZER_ARTIFACTS)/${1}
+	@echo TEST-FUZZER ${1} for $$(FUZZER_TIMEOUT)s
+	@mkdir -p $$(BUILD_DIR)/fuzzer
+	$${Q}if ! $$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
+		-artifact_prefix="$$(FUZZER_ARTIFACTS)/${1}/" \
+		-max_len=512 $$(FUZZER_ARGUMENTS) \
+		-max_total_time=$$(FUZZER_TIMEOUT) \
+		src/tests/fuzzer-corpus/${1} > $$(BUILD_DIR)/fuzzer/${1}.log 2>&1; then \
+		tail -20 $$(BUILD_DIR)/fuzzer/${1}.log; \
+		echo FAILED; \
+		exit 1; \
+	fi
+endif
+
+test.fuzzer.${1}.merge: $$(TEST_BIN_DIR)/fuzzer_${1} | src/tests/fuzzer-corpus/${1}
+	@echo MERGE-FUZZER-CORPUS ${1}
+	$${Q}[ -e "src/tests/fuzzer-corpus/${1}_new" ] || mkdir "src/tests/fuzzer-corpus/${1}_new"
+	$${Q}$$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
+		-max_len=512 $$(FUZZER_ARGUMENTS) \
+		-merge=1 \
+		"src/tests/fuzzer-corpus/${1}_new" "src/tests/fuzzer-corpus/${1}"
+	$${Q}[ ! -e "src/tests/fuzzer-corpus/${1}.tar" ] || rm "src/tests/fuzzer-corpus/${1}.tar"
+	$${Q}rm -rf "src/tests/fuzzer-corpus/${1}"
+	$${Q}mv "src/tests/fuzzer-corpus/${1}_new" "src/tests/fuzzer-corpus/${1}"
+	$${Q}tar -C "src/tests/fuzzer-corpus" -c -f "src/tests/fuzzer-corpus/${1}.tar" "${1}"
+	$${Q}rm -rf "src/tests/fuzzer-corpus/${1}_new"
+endef
+
+$(foreach X,${FUZZER_NON_PROTOCOL_TARGETS},$(eval $(call FUZZ_NON_PROTOCOL_TEST,${X})))
+
 .PHONY: fuzzer.help
 fuzzer.help:
 	@git-lfs env > /dev/null 2>&1 || echo "Please install 'git-lfs' in order to use the fuzzer corpus files."
@@ -59,11 +117,11 @@ fuzzer.help:
 	@for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
 	@echo
 
-test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS))
+test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS))
 
 test.fuzzer.crash: $(addsuffix .crash,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
 
-test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
+test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS)))
 
 else
 .PHONY: fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X})
