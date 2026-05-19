@@ -101,7 +101,7 @@ jobs:
         #
         TOTAL_RUNTIME=20000
         SLOT_SPREAD=3  # secs
-        read -r -a PROTOS <<< $(sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk)
+        read -r -a PROTOS <<< $(sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/fuzzer/all.mk)
         #
         if [[ "$GITHUB_REF" = refs/heads/run-fuzzer-*-* ]]; then
           PROTOS=${GITHUB_REF#refs/heads/run-fuzzer-}
