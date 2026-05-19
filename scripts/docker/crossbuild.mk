@@ -118,6 +118,7 @@ crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 #  Regenerate all Dockerfile.cb files from m4 templates. Depends on
 #  the file targets directly; no per-image phony aliases.
 #
+.PHONY: crossbuild.regen crossbuild.regen.check
 crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
 
 #

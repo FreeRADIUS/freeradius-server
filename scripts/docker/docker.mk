@@ -85,6 +85,7 @@ docker.help:
 #  Regenerate all Dockerfiles from m4 templates. Both bundles depend
 #  on the file targets directly; no per-image phony aliases.
 #
+.PHONY: docker.regen ci-base.regen docker.regen.check ci-base.regen.check
 docker.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile)
 ci-base.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.ci)
 
