@@ -120,7 +120,7 @@ jobs:
 
       - name: Build Docker image from source
         run: |
-          make docker.ubuntu24.build
+          make docker.service.ubuntu24
           docker tag freeradius4/ubuntu24:latest freeradius-build:latest
 
       - name: Run multi-server tests

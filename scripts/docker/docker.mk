@@ -1,70 +1,242 @@
 #
-#  Docker targets to create Docker images that run FreeRADIUS
+#  Docker image + container lifecycle. Pulls Dockerfile generation
+#  in via dockerfile.mk; this file owns building images from those
+#  Dockerfiles plus per-image container up/down/sh/log/reset and
+#  the crossbuild test cycle.
 #
+
 ifeq ($(shell which docker 2> /dev/null),)
 .PHONY: docker docker.help
-docker docker.help :
+docker docker.help:
 	@echo docker targets require Docker to be installed
 else
 
 #
-#  Short list of common builds
+#  Short list of common-case images: 'make docker' / 'make crossbuild'
+#  without further qualification fall back to these.
 #
-DOCKER_COMMON:=ubuntu22
+DOCKER_COMMON := ubuntu22
+CB_COMMON     := rocky9 debian12 ubuntu24
 
-# Top level of where all crossbuild and docker files are. Strip the
-# trailing slash that $(dir ...) leaves, and the leading project-root
-# prefix so the path is relative -- shorter command lines, friendlier
-# log output, and `docker build` still resolves it against CWD.
-CB_DIR:=$(patsubst $(CURDIR)/%,%,$(patsubst %/,%,$(dir $(realpath $(lastword $(MAKEFILE_LIST))))))
+# dockerfile.mk owns CB_DIR / DT / IMAGES / PROFILING_IMAGES / Q.
+include scripts/docker/dockerfile.mk
 
-# Where the docker directories are
-DT:=$(CB_DIR)/build
+#
+#  Short commit hash used as the dev-local image tag. Hub-pushed
+#  images use :latest in the publish workflow and aren't subject to
+#  the local prune.
+#
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null)
 
-# Where stamp files and per-build logs land. Shared with crossbuild.mk
-# so the periodic prune workflow only has one tree to look at.
-DD:=$(CB_DIR)/crossbuild
+#
+#  Go-style duration string controlling how long an image survives
+#  on a CI host before the periodic prune workflow removes it.
+#  Image-level label, so any tag pointing at the image carries it.
+#
+CI_TTL ?= 60m
 
-# Location of top-level m4 template
-DOCKERFILE_TMPL:=$(CB_DIR)/m4/Dockerfile.m4
+#
+#  Image tag namespace. Every locally-built image lives under
+#  $(DOCKER_IMAGE_PREFIX)-<type>/<image>:<sha>. Override per
+#  invocation if a downstream needs a different namespace.
+#
+DOCKER_IMAGE_PREFIX ?= freeradius4
 
-# Shared m4 snippets included by every content template. Changes here
-# invalidate every generated Dockerfile.
-DOCKERFILE_M4_SHARED:=$(wildcard $(CB_DIR)/m4/common.*.m4) $(wildcard $(CB_DIR)/m4/_*.m4)
+#
+#  Per-build state directory. Stamps and build/test logs live under
+#  build/ so everything pipeline-related is in one place; the hidden
+#  name keeps `ls scripts/docker/build/` tidy.
+#
+DOCKER_STATE := $(DT)/.state
 
-# List of all the docker images (sorted for "docker.info")
-IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
+# Absolute path to the .git dir (may differ for submodules). Bind-
+# mounted read-only into lifecycle containers so they see the source.
+GITDIR := $(shell perl -MCwd -e 'print Cwd::abs_path shift' $$(git rev-parse --git-dir))
 
-# Don't use the Docker cache if asked
+# Pass NOCACHE=1 on the make line to disable docker's build cache.
 ifneq "$(NOCACHE)" ""
-    DOCKER_BUILD_OPTS += " --no-cache"
+    DOCKER_BUILD_OPTS += --no-cache
 endif
 
 #
-#  This Makefile is included in-line, and not via the "boilermake"
-#  wrapper.  But it's still useful to use the same process for
-#  seeing commands that are run.
+#  Per-image build rule. Tags $(DOCKER_IMAGE_PREFIX)-<type>/<image>:<sha>,
+#  labels ci-ttl=$(CI_TTL), logs to $(DOCKER_STATE)/build.<image>.<type>,
+#  and touches $(DOCKER_STATE)/stamp-image.<image>.<type> so a second
+#  invocation is a no-op until a dep changes.
 #
-ifeq "${VERBOSE}" ""
-    Q=@
-else
-    Q=
-endif
+#  $(1) image name
+#  $(2) type
+#  $(3) extra docker build args (e.g. --build-arg=from=...)
+#  $(4) extra stamp-file prerequisites (e.g. base image stamp)
+#
+define DOCKER_BUILD
+$(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKER_STATE)
+	$${Q}echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"
+	$${Q}docker build $$(DOCKER_BUILD_OPTS) ${3} \
+		--label ci-ttl=$(CI_TTL) \
+		-f $(DT)/${1}/Dockerfile.${2} \
+		-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
+		. >$(DOCKER_STATE)/build.${1}.${2} 2>&1
+	$${Q}touch $$@
+endef
 
-include $(CB_DIR)/m4-macros.mk
+#
+#  Per-image phony shorthand. docker.<type>.<image> as a build alias,
+#  docker.<type>.<image>.status to query whether the local image is
+#  built.
+#
+define DOCKER_PHONY
+.PHONY: docker.${2}.${1} docker.${2}.${1}.status
+docker.${2}.${1}: $(DOCKER_STATE)/stamp-image.${1}.${2}
+
+docker.${2}.${1}.status:
+	$${Q}docker image ls --format "\t{{.Repository}}:{{.Tag}} \t{{.CreatedAt}}" $(DOCKER_IMAGE_PREFIX)-${2}/${1}
+endef
 
 #
-#  Enter here: This builds everything
+#  Per-image full-clean rule. Tries to remove the docker image; only
+#  nukes the stamp + log if the rmi succeeded, so a failed clean
+#  (image still in use by a running container) leaves the state
+#  coherent for retry.
 #
-.PHONY: docker docker.common
-docker:        docker.info $(foreach IMG,${IMAGES},docker.service.${IMG})
-docker.common: docker.info $(foreach IMG,${DOCKER_COMMON},docker.service.${IMG})
+define DOCKER_CLEAN
+.PHONY: docker.${2}.${1}.clean
+docker.${2}.${1}.clean:
+	$${Q}if docker image rm $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) >/dev/null 2>&1; then \
+		rm -f $(DOCKER_STATE)/stamp-image.${1}.${2} $(DOCKER_STATE)/build.${1}.${2}; \
+		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
+	else \
+		if docker image inspect $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) >/dev/null 2>&1; then \
+			echo "FAIL clean $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA): image still present (in use?)"; \
+			exit 1; \
+		fi; \
+		rm -f $(DOCKER_STATE)/stamp-image.${1}.${2} $(DOCKER_STATE)/build.${1}.${2}; \
+		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) (no image, stamp only)"; \
+	fi
+endef
 
 #
-#  Dump out some useful information on what images we're going to test
+#  Per-image container lifecycle. The container sleeps forever with
+#  /srv/src bind-mounted to the host git tree (read-only) so an
+#  operator can drop into any image and run the project's tooling
+#  against the working source.
 #
-.PHONY: docker.info docker.info_header docker.help dockerfile.help
-docker.info: docker.info_header $(foreach IMG,${IMAGES},docker.service.${IMG}.status)
+#  Container name pattern: $(DOCKER_IMAGE_PREFIX)-<type>-<image>.
+#
+define DOCKER_LIFECYCLE
+.PHONY: docker.${2}.${1}.up docker.${2}.${1}.down docker.${2}.${1}.sh \
+        docker.${2}.${1}.log docker.${2}.${1}.reset
+
+docker.${2}.${1}.up: $(DOCKER_STATE)/stamp-image.${1}.${2} | $(DOCKER_STATE)
+	$${Q}docker container inspect $(DOCKER_IMAGE_PREFIX)-${2}-${1} >/dev/null 2>&1 || { \
+		echo "START $(DOCKER_IMAGE_PREFIX)-${2}-${1}"; \
+		docker run -d --rm \
+			--privileged --cap-add=ALL \
+			--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
+			--name $(DOCKER_IMAGE_PREFIX)-${2}-${1} \
+			$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
+			/bin/sh -c 'while true; do sleep 60; done' >/dev/null; \
+		touch $(DOCKER_STATE)/stamp-up.${1}.${2}; \
+	}
+
+docker.${2}.${1}.down:
+	$${Q}docker container kill $(DOCKER_IMAGE_PREFIX)-${2}-${1} >/dev/null 2>&1 || true
+	$${Q}rm -f $(DOCKER_STATE)/stamp-up.${1}.${2}
+	$${Q}echo "STOP  $(DOCKER_IMAGE_PREFIX)-${2}-${1}"
+
+docker.${2}.${1}.sh: docker.${2}.${1}.up
+	$${Q}docker exec -it $(DOCKER_IMAGE_PREFIX)-${2}-${1} sh -c 'cd /; cd /srv/build 2>/dev/null; bash' || true
+
+docker.${2}.${1}.log:
+	@if   [ ! -e $(DOCKER_STATE)/build.${1}.${2} ]; then \
+	         echo "no build log for $(DOCKER_IMAGE_PREFIX)-${2}/${1} (try 'make docker.${2}.${1}' first)"; \
+	elif which less >/dev/null 2>&1; then less +G $(DOCKER_STATE)/build.${1}.${2}; \
+	elif which more >/dev/null 2>&1; then more  $(DOCKER_STATE)/build.${1}.${2}; \
+	else cat $(DOCKER_STATE)/build.${1}.${2}; fi
+
+docker.${2}.${1}.reset:
+	$${Q}rm -f $(DOCKER_STATE)/stamp-image.${1}.${2} $(DOCKER_STATE)/stamp-up.${1}.${2} $(DOCKER_STATE)/build.${1}.${2}
+	$${Q}echo "RESET $(DOCKER_IMAGE_PREFIX)-${2}/${1}"
+endef
+
+#
+#  Crossbuild-specific extras: refresh the source into a writable
+#  build tree inside the container, then run configure + make test.
+#  crossbuild.<image> stays as a legacy alias for the test target.
+#
+define CROSSBUILD_TEST
+.PHONY: docker.crossbuild.${1}.refresh docker.crossbuild.${1}.test crossbuild.${1}
+
+docker.crossbuild.${1}.refresh: docker.crossbuild.${1}.up
+	$${Q}echo "REFRESH $(DOCKER_IMAGE_PREFIX)-crossbuild-${1}"
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'rsync -a /srv/src/ /srv/local-src/'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config -f /srv/local-src/config core.bare true'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config -f /srv/local-src/config --unset core.worktree || true'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc 'git config --global --add safe.directory /srv/local-src'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '(cd /srv/build && git pull --rebase)'
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DOCKER_STATE)/configure.${1} 2>&1
+
+docker.crossbuild.${1}.test crossbuild.${1}: docker.crossbuild.${1}.refresh
+	$${Q}echo "TEST  $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} > $(DOCKER_STATE)/test.${1}"
+	$${Q}docker container exec $(DOCKER_IMAGE_PREFIX)-crossbuild-${1} sh -lc '(cd /srv/build && make && make test)' > $(DOCKER_STATE)/test.${1} 2>&1 || (echo FAIL ${1} && false)
+endef
+
+$(DOCKER_STATE):
+	@mkdir -p $@
+
+#
+#  Wire build + phony + clean + lifecycle for every (image, type)
+#  combo. Profiling is gated to PROFILING_IMAGES because it FROMs
+#  the crossbuild image and only has an ubuntu24 source template.
+#
+$(foreach IMG,$(IMAGES),\
+  $(eval $(call DOCKER_BUILD,$(IMG),service,,)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),ci,,)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)) \
+  $(foreach T,service ci crossbuild, \
+    $(eval $(call DOCKER_PHONY,$(IMG),$(T))) \
+    $(eval $(call DOCKER_CLEAN,$(IMG),$(T))) \
+    $(eval $(call DOCKER_LIFECYCLE,$(IMG),$(T)))) \
+  $(eval $(call CROSSBUILD_TEST,$(IMG))))
+
+$(foreach IMG,$(PROFILING_IMAGES),\
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
+  $(eval $(call DOCKER_PHONY,$(IMG),profiling)) \
+  $(eval $(call DOCKER_CLEAN,$(IMG),profiling)) \
+  $(eval $(call DOCKER_LIFECYCLE,$(IMG),profiling)))
+
+#
+#  Per-type umbrellas. .clean / .up / .down / .reset fan out to the
+#  per-image variants; the bare docker.TYPE alias builds them all.
+#
+define DOCKER_TYPE_UMBRELLAS
+.PHONY: docker.${1} docker.${1}.clean docker.${1}.up docker.${1}.down docker.${1}.reset
+docker.${1}:       $(foreach IMG,${2},docker.${1}.$(IMG))
+docker.${1}.clean: $(foreach IMG,${2},docker.${1}.$(IMG).clean)
+docker.${1}.up:    $(foreach IMG,${2},docker.${1}.$(IMG).up)
+docker.${1}.down:  $(foreach IMG,${2},docker.${1}.$(IMG).down)
+docker.${1}.reset: $(foreach IMG,${2},docker.${1}.$(IMG).reset)
+endef
+
+$(eval $(call DOCKER_TYPE_UMBRELLAS,service,$(IMAGES)))
+$(eval $(call DOCKER_TYPE_UMBRELLAS,ci,$(IMAGES)))
+$(eval $(call DOCKER_TYPE_UMBRELLAS,crossbuild,$(IMAGES)))
+$(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(PROFILING_IMAGES)))
+
+#
+#  Across-type umbrellas. 'docker' stays as a legacy alias for the
+#  service set so existing muscle memory keeps working.
+#
+.PHONY: docker docker.common docker.clean docker.up docker.down docker.reset docker.info docker.info_header
+docker:        docker.info docker.service
+docker.common: docker.info $(foreach IMG,$(DOCKER_COMMON),docker.service.$(IMG))
+docker.clean:  docker.ci.clean docker.crossbuild.clean docker.profiling.clean docker.service.clean
+docker.up:     docker.ci.up    docker.crossbuild.up    docker.profiling.up    docker.service.up
+docker.down:   docker.ci.down  docker.crossbuild.down  docker.profiling.down  docker.service.down
+docker.reset:  docker.ci.reset docker.crossbuild.reset docker.profiling.reset docker.service.reset
+
+docker.info: docker.info_header $(foreach IMG,$(IMAGES),docker.service.$(IMG).status)
 	@echo All images: $(IMAGES)
 	@echo Common images: $(DOCKER_COMMON)
 
@@ -72,28 +244,16 @@ docker.info_header:
 	@echo Built images:
 
 #
-#  Glossary of type identifiers, shared by docker.help and
-#  dockerfile.help so each can be read standalone without bouncing
-#  to the other for the meaning of "service" / "ci" / etc.
+#  Crossbuild legacy aliases: `crossbuild` runs the test cycle for
+#  every crossbuild image; `crossbuild.common` does just the common
+#  subset.
 #
-define DOCKER_HELP_TYPES
-	@echo "Types:"
-	@echo "    service     production runtime image"
-	@echo "    ci          slim toolchain base for ci-deb.yml / ci-rpm.yml"
-	@echo "    crossbuild  full toolchain for crossbuild.yml (see 'make crossbuild.help')"
-	@echo "    profiling   ubuntu24-only, layered on the crossbuild image"
-endef
+.PHONY: crossbuild crossbuild.common crossbuild.help
+crossbuild:        $(foreach IMG,$(IMAGES),crossbuild.$(IMG))
+crossbuild.common: $(foreach IMG,$(CB_COMMON),crossbuild.$(IMG))
+crossbuild.help:   docker.help
 
-dockerfile.help:
-	@echo ""
-	@echo "Dockerfile generation (m4 templates -> scripts/docker/build/IMAGE/Dockerfile.TYPE):"
-	@echo "    dockerfile                        - regenerate every Dockerfile across every type"
-	@echo "    dockerfile.check                  - fail if any Dockerfile is stale"
-	@echo "    dockerfile.TYPE                   - regenerate every Dockerfile of one type"
-	@echo "    dockerfile.TYPE.check             - fail if any Dockerfile of one type is stale"
-	@echo ""
-	$(DOCKER_HELP_TYPES)
-
+.PHONY: docker.help
 docker.help:
 	@echo ""
 	@echo "Image builds ($(DOCKER_IMAGE_PREFIX)-TYPE/IMAGE:SHA):"
@@ -104,61 +264,30 @@ docker.help:
 	@echo "    docker.TYPE.IMAGE                 - build a single image"
 	@echo "    docker.TYPE.IMAGE.status          - show whether the local image is built"
 	@echo ""
+	@echo "Container lifecycle (sleeping container, /srv/src bind-mounted from host git):"
+	@echo "    docker.TYPE.IMAGE.up              - start container"
+	@echo "    docker.TYPE.IMAGE.down            - stop container"
+	@echo "    docker.TYPE.IMAGE.sh              - interactive shell in container"
+	@echo "    docker.TYPE.IMAGE.log             - page the last build log"
+	@echo "    docker.TYPE.IMAGE.reset           - rm stamps so the next build re-runs"
+	@echo "    docker.TYPE.up / .down / .reset   - per-type umbrellas"
+	@echo "    docker.up / .down / .reset        - every type"
+	@echo ""
 	@echo "Cleanup (removes the docker image + stamp; image-in-use is a no-op):"
 	@echo "    docker.clean                      - remove every locally-built image"
 	@echo "    docker.TYPE.clean                 - remove every image of one type"
 	@echo "    docker.TYPE.IMAGE.clean           - remove a single image"
+	@echo ""
+	@echo "Crossbuild test cycle (configure + make + make test inside the container):"
+	@echo "    crossbuild                        - run the test cycle for every image"
+	@echo "    crossbuild.common                 - run the test cycle for $(CB_COMMON)"
+	@echo "    crossbuild.IMAGE                  - run the test cycle for one image"
+	@echo "                                        (alias: docker.crossbuild.IMAGE.test)"
+	@echo "    docker.crossbuild.IMAGE.refresh   - rsync src + git pull inside the container"
 	@echo ""
 	$(DOCKER_HELP_TYPES)
 	@echo ""
 	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 	@echo "Run 'make dockerfile.help' for Dockerfile generation targets."
 
-#
-#  Per-image m4 -> Dockerfile.<type> regen rules and stamp-tracked
-#  build rules, plus bundle / drift-detector targets per type.
-#
-$(foreach IMG,$(IMAGES),\
-  $(eval $(call DOCKERFILE_RULE,$(IMG),service,$(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4)) \
-  $(eval $(call DOCKERFILE_RULE,$(IMG),ci,$(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),service,,)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),ci,,)) \
-  $(eval $(call DOCKER_PHONY,$(IMG),service)) \
-  $(eval $(call DOCKER_PHONY,$(IMG),ci)) \
-  $(eval $(call DOCKER_CLEAN,$(IMG),service)) \
-  $(eval $(call DOCKER_CLEAN,$(IMG),ci)))
-
-$(eval $(call DOCKERFILE_ALL,dockerfile.service,service,$(IMAGES)))
-$(eval $(call DOCKERFILE_ALL,dockerfile.ci,ci,$(IMAGES)))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.service.check,service,$(IMAGES),dockerfile.service))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.ci.check,ci,$(IMAGES),dockerfile.ci))
-
-#
-#  Umbrellas across the whole image set.
-#
-.PHONY: docker.service docker.ci docker.service.clean docker.ci.clean
-docker.service:       $(foreach IMG,$(IMAGES),docker.service.$(IMG))
-docker.ci:            $(foreach IMG,$(IMAGES),docker.ci.$(IMG))
-docker.service.clean: $(foreach IMG,$(IMAGES),docker.service.$(IMG).clean)
-docker.ci.clean:      $(foreach IMG,$(IMAGES),docker.ci.$(IMG).clean)
-
-#
-#  Regenerate every Dockerfile.<type> across every image (or fail
-#  the check across the lot). crossbuild / profiling come from
-#  crossbuild.mk, which loads alongside docker.mk.
-#
-.PHONY: dockerfile dockerfile.check
-dockerfile:       dockerfile.ci       dockerfile.crossbuild       dockerfile.profiling       dockerfile.service
-dockerfile.check: dockerfile.ci.check dockerfile.crossbuild.check dockerfile.profiling.check dockerfile.service.check
-
-#
-#  Wipe every locally-built image (and its stamp) across every type.
-#  Each per-image clean only nukes its stamp if the docker rmi
-#  succeeded; this umbrella inherits that behaviour.
-#
-.PHONY: docker.clean
-docker.clean: docker.ci.clean docker.crossbuild.clean docker.profiling.clean docker.service.clean
-
-
-# if docker is defined
 endif

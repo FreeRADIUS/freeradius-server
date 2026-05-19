@@ -133,7 +133,7 @@ jobs:
 
     - name: Build docker image
       run: |
-        make docker.$OS.build
+        make docker.service.$OS
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
@@ -231,7 +231,7 @@ jobs:
 
     - name: Build docker image
       run: |
-        make docker.$OS.build
+        make docker.service.$OS
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate

@@ -565,12 +565,14 @@ whitespace:
 	@perl -p -i -e 'trim' $$(git ls-files src/)
 
 #
-#  Docker / crossbuild make files. Both share the same m4 template
-#  pipeline and macros (scripts/docker/m4-macros.mk) so they're
-#  included together whenever either family of targets is invoked.
+#  Docker pipeline. dockerfile.mk owns m4 -> Dockerfile.<type>
+#  generation; docker.mk owns image + container lifecycle. Both
+#  pull in _common.mk for shared variables and macros. We include
+#  both whenever any docker / dockerfile / crossbuild target is
+#  requested so cross-references resolve cleanly.
 #
-ifneq "$(or $(findstring crossbuild,$(MAKECMDGOALS)),$(findstring docker,$(MAKECMDGOALS)))" ""
-  include scripts/docker/crossbuild.mk
+ifneq "$(or $(findstring docker,$(MAKECMDGOALS)),$(findstring dockerfile,$(MAKECMDGOALS)),$(findstring crossbuild,$(MAKECMDGOALS)))" ""
+  include scripts/docker/dockerfile.mk
   include scripts/docker/docker.mk
 endif
 
