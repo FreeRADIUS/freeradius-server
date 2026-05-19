@@ -16,7 +16,7 @@ env:
 jobs:
   freebsd-build:
 
-    runs-on: ${{ github.repository_owner == 'FreeRADIUS' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
 
     name: "FreeBSD build"
 
