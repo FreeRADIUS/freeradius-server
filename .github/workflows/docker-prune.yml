@@ -1,0 +1,80 @@
+name: Prune CI Docker images
+
+#
+#  Periodic cleanup for locally-built CI images. The scripts/docker
+#  pipeline tags every image it builds with a ci-ttl=<duration>
+#  label (see scripts/docker/m4-macros.mk). This workflow walks
+#  each self-hosted runner host, reads the label, and removes any
+#  image whose age exceeds its declared TTL.
+#
+#  Cadence is every 30 minutes, which gives a worst-case overrun
+#  of one cron interval past the per-image deadline. Tighten the
+#  schedule if disk pressure becomes a problem; lengthen it if the
+#  prune itself starts to interfere with concurrent CI jobs.
+#
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  prune:
+    if: github.repository_owner == 'FreeRADIUS'
+    runs-on: self-hosted
+
+    steps:
+      - name: Remove expired ci-ttl images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          #
+          #  Convert a go-style duration string into seconds.
+          #  Accepts <number><unit> where unit is one of s / m / h / d.
+          #  Anything else exits non-zero so the caller can skip the image.
+          #
+          ttl_to_seconds() {
+            local v=$1
+            local n=${v%[a-zA-Z]*}
+            local u=${v##*[0-9]}
+            case "$u" in
+              s) echo "$n" ;;
+              m) echo "$(( n * 60 ))" ;;
+              h) echo "$(( n * 3600 ))" ;;
+              d) echo "$(( n * 86400 ))" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          now=$(date +%s)
+          removed=0
+          kept=0
+
+          while IFS=$'\t' read -r id ttl created; do
+            [ -n "$id" ] || continue
+
+            if ! ttl_secs=$(ttl_to_seconds "$ttl"); then
+              echo "skip $id: unparseable ci-ttl=$ttl"
+              kept=$(( kept + 1 ))
+              continue
+            fi
+
+            #  docker inspect emits RFC 3339 with nanoseconds; trim to
+            #  whole seconds before handing to date.
+            created_trimmed=${created%.*}
+            created_secs=$(date -u -d "$created_trimmed" +%s 2>/dev/null || \
+                           date -ju -f "%Y-%m-%dT%H:%M:%S" "$created_trimmed" +%s)
+            age=$(( now - created_secs ))
+
+            if [ "$age" -gt "$ttl_secs" ]; then
+              echo "remove $id (age ${age}s > ttl ${ttl_secs}s)"
+              docker image rm -f "$id" >/dev/null
+              removed=$(( removed + 1 ))
+            else
+              kept=$(( kept + 1 ))
+            fi
+          done < <(docker image ls --filter "label=ci-ttl" --format '{{.ID}}' | \
+                   xargs -r -I{} docker inspect {} --format '{{.Id}}{{"\t"}}{{ index .Config.Labels "ci-ttl" }}{{"\t"}}{{.Created}}')
+
+          echo "summary: removed=$removed kept=$kept"
