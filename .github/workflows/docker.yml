@@ -128,11 +128,6 @@ jobs:
         username: ${{ vars.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
-    - name: Regenerate Dockerfile
-      run: |
-        rm scripts/docker/build/$OS/Dockerfile || true
-        make docker.$OS.regen
-
     - name: Build docker image
       run: |
         make docker.$OS.build
@@ -227,11 +222,6 @@ jobs:
       uses: ./.github/actions/setup-dind
       with:
         packages: m4 make
-
-    - name: Regenerate Dockerfile
-      run: |
-        rm scripts/docker/build/$OS/Dockerfile || true
-        make docker.$OS.regen
 
     - name: Build docker image
       run: |
