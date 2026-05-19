@@ -99,7 +99,7 @@ jobs:
           ./configure
           gmake -j `nproc`
           gmake -j `nproc` test.keywords test.unit test.modules test.auth test.digest
-          gmake test
+          gmake -j `nproc` test
 
     #
     #  If the CI has failed and the branch is ci-debug then we start a tmate
