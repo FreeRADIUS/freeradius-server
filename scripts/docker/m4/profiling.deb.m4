@@ -26,41 +26,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 
-#
-#  Set up Ubuntu debug symbol repository and install OS library debug symbols.
-#  These allow profiling tools to resolve system library calls.
-#
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com OS_CODENAME main restricted universe multiverse\ndeb http://ddebs.ubuntu.com OS_CODENAME-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list && \
-    apt-get update && \
-    for pkg in \
-        libc6-dbg \
-        zlib1g-dbgsym \
-        libreadline8t64-dbgsym \
-        libssl3t64-dbgsym \
-        libsasl2-2-dbgsym \
-        libpam0g-dbgsym \
-        libldap2-dbgsym \
-        libtalloc2-dbgsym \
-        libpcre2-8-0-dbgsym \
-        libpcap0.8t64-dbgsym \
-        libunbound8-dbgsym \
-        libsqlite3-0-dbgsym \
-        libpq5-dbgsym \
-        libmariadb3-dbgsym \
-        libgdbm6t64-dbgsym \
-        libjson-c5-dbgsym \
-        libbrotli1-dbgsym \
-        libhiredis1.1.0-dbgsym \
-        librdkafka1-dbgsym \
-        libwbclient0-dbgsym \
-        libcurl4t64-dbgsym; do \
-        apt-get install -y $APT_OPTS $pkg || echo "WARNING: could not install dbgsym package: $pkg"; \
-    done && \
-    apt-get clean && \
-    rm -r /var/lib/apt/lists/*
+include(`common.deb.dbgsym.m4')dnl
 
 #
 #  Rebuild libkqueue from source with debug symbols.

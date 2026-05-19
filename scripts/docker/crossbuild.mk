@@ -13,10 +13,11 @@ else
 #
 CB_COMMON:=rocky9 debian12 ubuntu24
 
-# Top level of where all crossbuild and docker files are. `$(dir ...)`
-# would leave a trailing slash that doubles up when concatenated with
-# `/build` etc., so strip it here once.
-CB_DIR:=$(patsubst %/,%,$(dir $(realpath $(lastword $(MAKEFILE_LIST)))))
+# Top level of where all crossbuild and docker files are. Strip the
+# trailing slash that $(dir ...) leaves, and the leading project-root
+# prefix so the path is relative -- shorter command lines, friendlier
+# log output, and `docker build` still resolves it against CWD.
+CB_DIR:=$(patsubst $(CURDIR)/%,%,$(patsubst %/,%,$(dir $(realpath $(lastword $(MAKEFILE_LIST))))))
 
 # Where the docker directories are
 DT:=$(CB_DIR)/build
@@ -25,7 +26,7 @@ DT:=$(CB_DIR)/build
 DD:=$(CB_DIR)/crossbuild
 
 # Location of top-level m4 template
-DOCKER_TMPL:=$(CB_DIR)/m4/Dockerfile.m4
+DOCKERFILE_TMPL:=$(CB_DIR)/m4/Dockerfile.m4
 
 # List of all the docker images (sorted for "crossbuild.info")
 CB_IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
@@ -39,14 +40,14 @@ ifneq "$(NOCACHE)" ""
 endif
 
 # Docker container name prefix. Image tags now derive from type via
-# DOCKER_BUILD (freeradius4-crossbuild/<image>:<sha>); the container
+# DOCKER_BUILD ($(DOCKER_IMAGE_PREFIX)-crossbuild/<image>:<sha>); the container
 # name still has its own prefix because it has to be valid in
 # `docker run --name` (no slashes / colons) and disambiguate from
 # any service-image containers.
 CB_CPREFIX:=fr40x-crossbuild-
 
 # Shared m4 snippets included by every content template.
-M4_SHARED:=$(wildcard $(CB_DIR)/m4/common.*.m4)
+DOCKERFILE_M4_SHARED:=$(wildcard $(CB_DIR)/m4/common.*.m4) $(wildcard $(CB_DIR)/m4/_*.m4)
 
 #
 #  This Makefile is included in-line, and not via the "boilermake"
@@ -127,36 +128,50 @@ include $(CB_DIR)/m4-macros.mk
 #  build rules, plus bundle and drift-detector targets.
 #
 $(foreach IMG,$(CB_IMAGES),\
-  $(eval $(call M4_REGEN_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)))
+  $(eval $(call DOCKERFILE_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)) \
+  $(eval $(call DOCKER_PHONY,$(IMG),crossbuild)) \
+  $(eval $(call DOCKER_CLEAN,$(IMG),crossbuild)))
 
-$(eval $(call M4_REGEN_BUNDLE,docker.crossbuild.regen,crossbuild,$(CB_IMAGES)))
-$(eval $(call M4_REGEN_CHECK,docker.crossbuild.regen.check,crossbuild,$(CB_IMAGES),docker.crossbuild.regen))
+$(eval $(call DOCKERFILE_ALL,dockerfile.crossbuild,crossbuild,$(CB_IMAGES)))
+$(eval $(call DOCKERFILE_CHECK,dockerfile.crossbuild.check,crossbuild,$(CB_IMAGES),dockerfile.crossbuild))
+
+#
+#  Build-only umbrella (image, no test run). `crossbuild.IMAGE` and
+#  `crossbuild` go further and run the configure / make / make test
+#  cycle inside the container.
+#
+.PHONY: docker.crossbuild docker.crossbuild.clean
+docker.crossbuild:       $(foreach IMG,$(CB_IMAGES),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)
+docker.crossbuild.clean: $(foreach IMG,$(CB_IMAGES),docker.crossbuild.$(IMG).clean)
 
 #
 #  Profiling image: ubuntu24-only extra layer on top of the crossbuild
 #  image. There's no profiling.rpm.m4 (the dbgsym repo and apt-based
 #  install steps are debian/ubuntu specific), so the regen+build are
-#  filtered to ubuntu24 only. The image FROMs freeradius4-crossbuild/
+#  filtered to ubuntu24 only. The image FROMs $(DOCKER_IMAGE_PREFIX)-crossbuild/
 #  ubuntu24:<sha>, so the build also depends on the crossbuild stamp.
 #
 PROFILING_IMAGES := $(filter ubuntu24,$(CB_IMAGES))
 
 $(foreach IMG,$(PROFILING_IMAGES),\
-  $(eval $(call M4_REGEN_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=freeradius4-crossbuild/$(IMG):$(GIT_SHA),$(DD)/stamp-image.$(IMG).crossbuild)))
+  $(eval $(call DOCKERFILE_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
+  $(eval $(call DOCKER_PHONY,$(IMG),profiling)) \
+  $(eval $(call DOCKER_CLEAN,$(IMG),profiling)))
 
-$(eval $(call M4_REGEN_BUNDLE,docker.profiling.regen,profiling,$(PROFILING_IMAGES)))
-$(eval $(call M4_REGEN_CHECK,docker.profiling.regen.check,profiling,$(PROFILING_IMAGES),docker.profiling.regen))
+$(eval $(call DOCKERFILE_ALL,dockerfile.profiling,profiling,$(PROFILING_IMAGES)))
+$(eval $(call DOCKERFILE_CHECK,dockerfile.profiling.check,profiling,$(PROFILING_IMAGES),dockerfile.profiling))
 
-.PHONY: docker.profiling.build
-docker.profiling.build: $(foreach IMG,$(PROFILING_IMAGES),$(DD)/stamp-image.$(IMG).profiling)
+.PHONY: docker.profiling docker.profiling.clean
+docker.profiling:       $(foreach IMG,$(PROFILING_IMAGES),$(DOCKER_STATE)/stamp-image.$(IMG).profiling)
+docker.profiling.clean: $(foreach IMG,$(PROFILING_IMAGES),docker.profiling.$(IMG).clean)
 
 
 #
 #  Define rules for building a particular image. The stamp-image
 #  file target and the Dockerfile.crossbuild target are generated by
-#  DOCKER_BUILD / M4_REGEN_RULE above (see m4-macros.mk); this block
+#  DOCKER_BUILD / DOCKERFILE_RULE above (see m4-macros.mk); this block
 #  only defines the per-image lifecycle targets (status / up / down
 #  / sh / refresh / log / reset / clean / distclean) that don't
 #  generalise across types.
@@ -167,7 +182,7 @@ define CROSSBUILD_IMAGE_RULE
 crossbuild.${1}.status:
 	${Q}printf "%s" "`echo \"  ${1}                    \" | cut -c 1-20`"
 	${Q}if [ -e "$(DD)/stamp-up.${1}" ]; then echo "running"; \
-		elif [ -e "$(DD)/stamp-image.${1}.crossbuild" ]; then echo "built"; \
+		elif [ -e "$(DOCKER_STATE)/stamp-image.${1}.crossbuild" ]; then echo "built"; \
 		else echo "-"; fi
 
 #
@@ -176,13 +191,13 @@ crossbuild.${1}.status:
 #  to point at internal base images (see .github/workflows/crossbuild.yml).
 #
 .PHONY: $(DD)/docker.up.${1}
-$(DD)/docker.up.${1}: $(DD)/stamp-image.${1}.crossbuild
+$(DD)/docker.up.${1}: $(DOCKER_STATE)/stamp-image.${1}.crossbuild
 	${Q}echo "START ${1} ($(CB_CPREFIX)${1})"
 	${Q}docker container inspect $(CB_CPREFIX)${1} >/dev/null 2>&1 || \
 		docker run -d --rm \
 		--privileged --cap-add=ALL \
 		--mount=type=bind,source="$(GITDIR)",destination=/srv/src,ro \
-		--name $(CB_CPREFIX)${1} freeradius4-crossbuild/${1}:$(GIT_SHA) \
+		--name $(CB_CPREFIX)${1} $(DOCKER_IMAGE_PREFIX)-crossbuild/${1}:$(GIT_SHA) \
 		/bin/sh -c 'while true; do sleep 60; done' >/dev/null
 
 $(DD)/stamp-up.${1}: $(DD)/docker.up.${1}
@@ -239,10 +254,10 @@ crossbuild.${1}.sh: crossbuild.${1}.up
 .PHONY: crossbuild.${1}.log
 crossbuild.${1}.log:
 	@if which less >/dev/null; then \
-		less +G $(DD)/build.${1}.crossbuild;\
+		less +G $(DOCKER_STATE)/build.${1}.crossbuild;\
 	elif which more >/dev/null; then \
-		more $(DD)/build.${1}.crossbuild;\
-	else cat $(DD)/build.${1}.crossbuild; fi
+		more $(DOCKER_STATE)/build.${1}.crossbuild;\
+	else cat $(DOCKER_STATE)/build.${1}.crossbuild; fi
 
 #
 #  Tidy up stamp files. This means on next run we'll do
@@ -253,7 +268,7 @@ crossbuild.${1}.log:
 crossbuild.${1}.reset:
 	${Q}echo RESET ${1}
 	${Q}rm -f $(DD)/stamp-up.${1}
-	${Q}rm -f $(DD)/stamp-image.${1}.crossbuild
+	${Q}rm -f $(DOCKER_STATE)/stamp-image.${1}.crossbuild
 
 #
 #  Clean down images. Means on next run we'll rebuild the
@@ -262,8 +277,8 @@ crossbuild.${1}.reset:
 .PHONY: crossbuild.${1}.distclean
 crossbuild.${1}.distclean:
 	${Q}echo CLEAN ${1}
-	${Q}docker image rm freeradius4-crossbuild/${1}:$(GIT_SHA) >/dev/null 2>&1 || true
-	${Q}rm -f $(DD)/stamp-image.${1}.crossbuild
+	${Q}docker image rm $(DOCKER_IMAGE_PREFIX)-crossbuild/${1}:$(GIT_SHA) >/dev/null 2>&1 || true
+	${Q}rm -f $(DOCKER_STATE)/stamp-image.${1}.crossbuild
 
 #
 #  Refresh git repository within the docker image

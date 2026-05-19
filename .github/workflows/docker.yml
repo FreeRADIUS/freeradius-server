@@ -129,7 +129,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
     - name: Verify Dockerfiles match m4 templates
-      run: make docker.service.regen.check
+      run: make dockerfile.service.check
 
     - name: Build docker image
       run: |
@@ -227,7 +227,7 @@ jobs:
         packages: m4 make
 
     - name: Verify Dockerfiles match m4 templates
-      run: make docker.service.regen.check
+      run: make dockerfile.service.check
 
     - name: Build docker image
       run: |

@@ -21,6 +21,7 @@ RUN dnf install -y \
 		xz
 
 include(`common.rpm.nr-extras.m4')dnl
+include(`common.rpm.debuginfo.m4')dnl
 
 #
 #  Pre-install the build-dep closure for the FreeRADIUS spec. The spec

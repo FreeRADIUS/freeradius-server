@@ -42,7 +42,7 @@ jobs:
           #
           #  Slim build bases for ci-rpm.yml / ci-deb.yml. Generated from
           #  scripts/docker/m4/ci.{rpm,deb}.m4 - regenerate with
-          #  `make docker.ci.regen` after editing the m4. The
+          #  `make dockerfile.ci` after editing the m4. The
           #  generated Dockerfile.ci hardcodes the per-distro FROM, so
           #  no build_args are needed here.
           #

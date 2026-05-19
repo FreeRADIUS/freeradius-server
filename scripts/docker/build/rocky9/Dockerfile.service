@@ -1,7 +1,7 @@
 # Auto generated for rocky9
 # from scripts/docker/m4/service.rpm.m4
 #
-# Rebuild this file with `make docker.service.regen`
+# Rebuild this file with `make dockerfile.service`
 #
 ARG from=rockylinux/rockylinux:9
 FROM ${from} AS build
@@ -118,10 +118,14 @@ RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
 COPY --from=build /root/rpms /tmp/
 
 #
-#  Set up NetworkRADIUS extras repository
-#  Reuse the signing key from the build stage instead of fetching it again
+#  Set up NetworkRADIUS extras repository. OS_NAME is substituted by the
+#  dispatcher (Dockerfile.m4); $releasever resolves at dnf runtime so the
+#  same repo file works on rocky9 and rocky10.
 #
-COPY --from=build /etc/pki/rpm-gpg/packages.networkradius.com.asc /etc/pki/rpm-gpg/packages.networkradius.com.asc
+RUN curl --retry 3 --retry-delay 10 --retry-connrefused --fail \
+        -o /etc/pki/rpm-gpg/packages.networkradius.com.asc \
+        "https://packages.networkradius.com/pgp/packages%40networkradius.com"
+
 RUN echo $'[networkradius-extras]\n\
 name=NetworkRADIUS-extras-$releasever\n\
 baseurl=http://packages.networkradius.com/extras/rocky/$releasever/\n\

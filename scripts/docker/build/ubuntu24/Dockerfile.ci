@@ -1,7 +1,7 @@
 # Auto generated for ubuntu24
 # from scripts/docker/m4/ci.deb.m4
 #
-# Rebuild this file with `make docker.ci.regen`
+# Rebuild this file with `make dockerfile.ci`
 #
 ARG from=ubuntu:24.04
 FROM ${from}
@@ -68,6 +68,50 @@ RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
 RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/noble noble main" \
 		> /etc/apt/sources.list.d/networkradius-extras.list && \
 	apt-get update
+#
+#  Debug symbols for the FreeRADIUS runtime library closure.
+#
+#  Repo source depends on derivative:
+#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
+#    debian     debian-debug.debian.net via the existing debian-archive
+#               keyring (no extra keyring install)
+#
+#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
+#  13. T64 expands accordingly; `[]' breaks the surrounding token so
+#  m4 actually expands the macro mid-package-name.
+#
+#  Failure is fatal -- a renamed or retired -dbgsym package gets
+#  caught at image-build time, not in production when a profiler
+#  tries to resolve a symbol that isn't there.
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
+    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
+        > /etc/apt/sources.list.d/ddebs.list && \
+    apt-get update && \    apt-get install -y $APT_OPTS \
+        libc6-dbg \
+        zlib1g-dbgsym \
+        libreadline8t64-dbgsym \
+        libssl3t64-dbgsym \
+        libsasl2-2-dbgsym \
+        libpam0g-dbgsym \
+        libldap2-dbgsym \
+        libtalloc2-dbgsym \
+        libpcre2-8-0-dbgsym \
+        libpcap0.8t64-dbgsym \
+        libunbound8-dbgsym \
+        libsqlite3-0-dbgsym \
+        libpq5-dbgsym \
+        libmariadb3-dbgsym \
+        libgdbm6t64-dbgsym \
+        libjson-c5-dbgsym \
+        libbrotli1-dbgsym \
+        libhiredis1.1.0-dbgsym \
+        librdkafka1-dbgsym \
+        libwbclient0-dbgsym \
+        libcurl4t64-dbgsym && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
 
 #
 #  Pre-install the build-dep closure derived from debian/control. The

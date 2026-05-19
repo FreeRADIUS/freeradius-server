@@ -24,6 +24,7 @@ RUN apt-get install -y --no-install-recommends \
 		xz-utils
 
 include(`common.deb.nr-extras.m4')dnl
+include(`common.deb.dbgsym.m4')dnl
 
 #
 #  Pre-install the build-dep closure derived from debian/control. The

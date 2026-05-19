@@ -1,7 +1,7 @@
 # Auto generated for ubuntu24
 # from scripts/docker/m4/profiling.deb.m4
 #
-# Rebuild this file with `make docker.profiling.regen`
+# Rebuild this file with `make dockerfile.profiling`
 #
 ARG from=ubuntu:24.04
 FROM ${from}
@@ -32,15 +32,26 @@ RUN apt-get update && \
     rm -r /var/lib/apt/lists/*
 
 #
-#  Set up Ubuntu debug symbol repository and install OS library debug symbols.
-#  These allow profiling tools to resolve system library calls.
+#  Debug symbols for the FreeRADIUS runtime library closure.
+#
+#  Repo source depends on derivative:
+#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
+#    debian     debian-debug.debian.net via the existing debian-archive
+#               keyring (no extra keyring install)
+#
+#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
+#  13. T64 expands accordingly; `[]' breaks the surrounding token so
+#  m4 actually expands the macro mid-package-name.
+#
+#  Failure is fatal -- a renamed or retired -dbgsym package gets
+#  caught at image-build time, not in production when a profiler
+#  tries to resolve a symbol that isn't there.
 #
 RUN apt-get update && \
     apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
     printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
         > /etc/apt/sources.list.d/ddebs.list && \
-    apt-get update && \
-    for pkg in \
+    apt-get update && \    apt-get install -y $APT_OPTS \
         libc6-dbg \
         zlib1g-dbgsym \
         libreadline8t64-dbgsym \
@@ -61,9 +72,7 @@ RUN apt-get update && \
         libhiredis1.1.0-dbgsym \
         librdkafka1-dbgsym \
         libwbclient0-dbgsym \
-        libcurl4t64-dbgsym; do \
-        apt-get install -y $APT_OPTS $pkg || echo "WARNING: could not install dbgsym package: $pkg"; \
-    done && \
+        libcurl4t64-dbgsym && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 

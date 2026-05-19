@@ -19,6 +19,7 @@ RUN apt-get install $APT_OPTS \
         wget
 
 include(`common.deb.nr-extras.m4')dnl
+include(`common.deb.dbgsym.m4')dnl
 
 dnl
 dnl  Work out what clang packages we want to install. Older distros pin

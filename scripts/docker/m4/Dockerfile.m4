@@ -37,7 +37,7 @@ divert[]dnl
 [#] Auto generated for D_NAME
 [#] from scripts/docker/m4/D_TYPE.PKG_TYPE.m4
 [#]
-[#] Rebuild this file with `make docker.D_TYPE.regen`
+[#] Rebuild this file with `make dockerfile.D_TYPE`
 [#]
 changequote([`], ['])dnl
 include(D_TYPE.PKG_TYPE.m4)dnl

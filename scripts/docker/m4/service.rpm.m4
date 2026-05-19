@@ -65,21 +65,7 @@ include(`common.dnf.retries.m4')dnl
 
 COPY --from=build /root/rpms /tmp/
 
-#
-#  Set up NetworkRADIUS extras repository
-#  Reuse the signing key from the build stage instead of fetching it again
-#
-changequote([{,}])dnl
-COPY --from=build /etc/pki/rpm-gpg/packages.networkradius.com.asc /etc/pki/rpm-gpg/packages.networkradius.com.asc
-RUN echo $'[networkradius-extras]\n\
-name=NetworkRADIUS-extras-$releasever\n\
-baseurl=http://packages.networkradius.com/extras/OS_NAME/$releasever/\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/packages.networkradius.com.asc'\
-> /etc/yum.repos.d/networkradius-extras.repo
-RUN rpm --import /etc/pki/rpm-gpg/packages.networkradius.com.asc
-changequote(`,')dnl
+include(`common.rpm.nr-extras.m4')dnl
 
 #
 #  Other requirements
