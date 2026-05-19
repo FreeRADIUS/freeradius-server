@@ -20,6 +20,10 @@ CB_DIR:=$(patsubst %/,%,$(dir $(realpath $(lastword $(MAKEFILE_LIST)))))
 # Where the docker directories are
 DT:=$(CB_DIR)/build
 
+# Where stamp files and per-build logs land. Shared with crossbuild.mk
+# so the periodic prune workflow only has one tree to look at.
+DD:=$(CB_DIR)/crossbuild
+
 # Location of top-level m4 template
 DOCKER_TMPL:=$(CB_DIR)/m4/Dockerfile.m4
 
@@ -35,9 +39,6 @@ ifneq "$(NOCACHE)" ""
     DOCKER_BUILD_OPTS += " --no-cache"
 endif
 
-# Docker image name prefix
-D_IPREFIX:=freeradius4
-
 #
 #  This Makefile is included in-line, and not via the "boilermake"
 #  wrapper.  But it's still useful to use the same process for
@@ -48,6 +49,8 @@ ifeq "${VERBOSE}" ""
 else
     Q=
 endif
+
+include $(CB_DIR)/m4-macros.mk
 
 #
 #  Enter here: This builds everything
@@ -70,96 +73,48 @@ docker.info_header:
 docker.help:
 	@echo ""
 	@echo "Make targets:"
-	@echo "    docker                   - build all images"
-	@echo "    docker.common            - build and test common images"
-	@echo "    docker.info              - list images"
-	@echo "    docker.service.regen     - regenerate all production Dockerfiles"
-	@echo "    docker.ci.regen          - regenerate all CI base Dockerfile.ci files"
+	@echo "    docker                       - build all images"
+	@echo "    docker.common                - build and test common images"
+	@echo "    docker.info                  - list images"
+	@echo "    docker.service.regen         - regenerate all Dockerfile.service files"
+	@echo "    docker.ci.regen              - regenerate all Dockerfile.ci files"
+	@echo "    docker.service.regen.check   - fail if any Dockerfile.service is stale"
+	@echo "    docker.ci.regen.check        - fail if any Dockerfile.ci is stale"
 	@echo ""
 	@echo "Per-image targets:"
-	@echo "    docker.IMAGE.build       - build image as $(D_IPREFIX)/<IMAGE>"
+	@echo "    docker.IMAGE.build           - build image as freeradius4-service/<IMAGE>:$(GIT_SHA)"
 	@echo ""
 	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 
 #
-#  Regenerate all Dockerfiles from m4 templates. Both bundles depend
-#  on the file targets directly; no per-image phony aliases.
+#  Per-image m4 -> Dockerfile.<type> regen rules and stamp-tracked
+#  build rules, plus bundle / drift-detector targets per type.
 #
-.PHONY: docker.service.regen docker.ci.regen docker.service.regen.check docker.ci.regen.check
-docker.service.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.service)
-docker.ci.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.ci)
+$(foreach IMG,$(IMAGES),\
+  $(eval $(call M4_REGEN_RULE,$(IMG),service,$(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4)) \
+  $(eval $(call M4_REGEN_RULE,$(IMG),ci,$(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),service,,)))
+
+$(eval $(call M4_REGEN_BUNDLE,docker.service.regen,service,$(IMAGES)))
+$(eval $(call M4_REGEN_BUNDLE,docker.ci.regen,ci,$(IMAGES)))
+$(eval $(call M4_REGEN_CHECK,docker.service.regen.check,service,$(IMAGES),docker.service.regen))
+$(eval $(call M4_REGEN_CHECK,docker.ci.regen.check,ci,$(IMAGES),docker.ci.regen))
 
 #
-#  Verify every committed Dockerfile.service / Dockerfile.ci matches a fresh
-#  render of its m4 source. Fails with a diff if a contributor edited
-#  the m4 but forgot to regen+commit.
+#  Phony status / build wrappers for the per-image targets. The
+#  stamp file (produced by DOCKER_BUILD) is the real work; the
+#  phony just gives operators a stable name to type.
 #
-docker.service.regen.check:
-	@failed=0; for IMG in $(IMAGES); do \
-		tmp=$$(mktemp); \
-		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=service $(DOCKER_TMPL) > $$tmp; \
-		if ! diff -u $(DT)/$$IMG/Dockerfile.service $$tmp; then \
-			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.service"; failed=1; \
-		fi; \
-		rm $$tmp; \
-	done; \
-	[ $$failed -eq 0 ] || { echo; echo "Run 'make docker.service.regen' and commit the result."; exit 1; }
-
-docker.ci.regen.check:
-	@failed=0; for IMG in $(IMAGES); do \
-		tmp=$$(mktemp); \
-		m4 -I $(CB_DIR)/m4 -D D_NAME=$$IMG -D D_TYPE=ci $(DOCKER_TMPL) > $$tmp; \
-		if ! diff -u $(DT)/$$IMG/Dockerfile.ci $$tmp; then \
-			echo "OUT OF SYNC: $(DT)/$$IMG/Dockerfile.ci"; failed=1; \
-		fi; \
-		rm $$tmp; \
-	done; \
-	[ $$failed -eq 0 ] || { echo; echo "Run 'make docker.ci.regen' and commit the result."; exit 1; }
-
-#
-#  Define rules for building a particular image
-#
-define CROSSBUILD_IMAGE_RULE
-
+define DOCKER_SERVICE_PHONY
 .PHONY: docker.${1}.status
 docker.${1}.status:
-	${Q}docker image ls --format "\t{{.Repository}} \t{{.CreatedAt}}" $(D_IPREFIX)/${1}
+	$${Q}docker image ls --format "\t{{.Repository}}:{{.Tag}} \t{{.CreatedAt}}" freeradius4-service/${1}
 
-#
-#  Build the docker image
-#
 .PHONY: docker.${1}.build
-docker.${1}.build:
-	${Q}echo "BUILD ${1} ($(D_IPREFIX)/${1}) from $(DT)/${1}/Dockerfile.service"
-
-	${Q}docker buildx build \
-		$(DOCKER_BUILD_OPTS) \
-		--progress=plain \
-		. \
-		-f $(DT)/${1}/Dockerfile.service \
-		-t $(D_IPREFIX)/${1}
-
-#
-#  Production image Dockerfile.service rule. The CI base Dockerfile.ci
-#  is consumed by docker-refresh.yml to build the self-hosted-* base
-#  images that ci-deb.yml / ci-rpm.yml run their build jobs inside.
-#  Both regen via the bundle targets above; no per-image variants.
-#
-$(DT)/${1}/Dockerfile.service: $(DOCKER_TMPL) $(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4 $(M4_SHARED)
-	${Q}echo REGEN ${1} "->" $$@
-	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=service $$< > $$@
-
-$(DT)/${1}/Dockerfile.ci: $(DOCKER_TMPL) $(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4 $(M4_SHARED)
-	${Q}echo REGEN ${1} "->" $$@
-	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=ci $$< > $$@
-
+docker.${1}.build: $(DD)/stamp-image.${1}.service
 endef
 
-#
-#  Add all the image building rules
-#
-$(foreach IMAGE,$(IMAGES),\
-  $(eval $(call CROSSBUILD_IMAGE_RULE,$(IMAGE))))
+$(foreach IMG,$(IMAGES),$(eval $(call DOCKER_SERVICE_PHONY,$(IMG))))
 
 
 # if docker is defined
