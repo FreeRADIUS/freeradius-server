@@ -53,8 +53,8 @@ endif
 #  Enter here: This builds everything
 #
 .PHONY: docker docker.common
-docker: docker.info $(foreach IMG,${IMAGES},docker.${IMG})
-docker.common: docker.info $(foreach IMG,${DOCKER_COMMON},docker.${IMG})
+docker: docker.info $(foreach IMG,${IMAGES},docker.${IMG}.build)
+docker.common: docker.info $(foreach IMG,${DOCKER_COMMON},docker.${IMG}.build)
 
 #
 #  Dump out some useful information on what images we're going to test
@@ -78,18 +78,15 @@ docker.help:
 	@echo ""
 	@echo "Per-image targets:"
 	@echo "    docker.IMAGE.build       - build image as $(D_IPREFIX)/<IMAGE>"
-	@echo "    docker.IMAGE.regen       - regenerate Dockerfile from template"
 	@echo ""
 	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 
 #
-#  Regenerate all Dockerfiles from m4 templates. ci-base.regen bundles
-#  all eight images - no per-image variant; the rendering is fast enough
-#  that there's no value in regenerating one at a time.
+#  Regenerate all Dockerfiles from m4 templates. Both bundles depend
+#  on the file targets directly; no per-image phony aliases.
 #
-docker.regen: $(foreach IMG,${IMAGES},docker.${IMG}.regen)
+docker.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile)
 ci-base.regen: $(foreach IMG,${IMAGES},$(DT)/${IMG}/Dockerfile.ci)
-.PHONY: ci-base.regen
 
 #
 #  Define rules for building a particular image
@@ -115,21 +112,15 @@ docker.${1}.build:
 		-t $(D_IPREFIX)/${1}
 
 #
-#  Regenerate the production image Dockerfile from the m4 templates
+#  Production image Dockerfile rule. The CI base Dockerfile.ci is
+#  consumed by docker-refresh.yml to build the self-hosted-* base
+#  images that ci-deb.yml / ci-rpm.yml run their build jobs inside.
+#  Both regen via the bundle targets above; no per-image variants.
 #
-.PHONY: docker.${1}.regen
-docker.${1}.regen: $(DT)/${1}/Dockerfile
-
 $(DT)/${1}/Dockerfile: $(DOCKER_TMPL) $(CB_DIR)/m4/docker.deb.m4 $(CB_DIR)/m4/docker.rpm.m4 $(M4_SHARED)
 	${Q}echo REGEN ${1} "->" $$@
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
 
-#
-#  Regenerate the CI base Dockerfile.ci from the m4 templates. Consumed
-#  by docker-refresh.yml to build the self-hosted-* base images that
-#  ci-deb.yml / ci-rpm.yml run their build jobs inside. No per-image
-#  .regen target - call `make ci-base.regen` to refresh all eight.
-#
 $(DT)/${1}/Dockerfile.ci: $(DOCKER_TMPL) $(CB_DIR)/m4/ci-base.deb.m4 $(CB_DIR)/m4/ci-base.rpm.m4 $(M4_SHARED)
 	${Q}echo REGEN ${1} "->" $$@
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=ci-base $$< > $$@

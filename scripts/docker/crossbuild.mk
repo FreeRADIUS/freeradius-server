@@ -115,9 +115,10 @@ crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 crossbuild.distclean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.distclean)
 
 #
-#  Regenerate all Dockerfiles from m4 templates
+#  Regenerate all Dockerfile.cb files from m4 templates. Depends on
+#  the file targets directly; no per-image phony aliases.
 #
-crossbuild.regen: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.regen)
+crossbuild.regen: $(foreach IMG,${CB_IMAGES},$(DT)/${IMG}/Dockerfile.cb)
 
 
 #
@@ -247,11 +248,9 @@ crossbuild.${1}.distclean:
 crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
 
 #
-#  Regenerate the image Dockerfile from the m4 templates
+#  Image Dockerfile.cb rule. Regen via the bundle target above; no
+#  per-image variant.
 #
-.PHONY: crossbuild.${1}.regen
-crossbuild.${1}.regen: $(DT)/${1}/Dockerfile.cb
-
 $(DT)/${1}/Dockerfile.cb: $(DOCKER_TMPL) $(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4
 	${Q}echo REGEN ${1}
 	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=crossbuild $$< > $$@
