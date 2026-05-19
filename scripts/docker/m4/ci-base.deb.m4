@@ -31,14 +31,14 @@ include(`common.deb.nr-extras.m4')dnl
 #  still runs mk-build-deps per job as a top-up so newly added deps are
 #  picked up without an image rebuild.
 #
-COPY debian/ /tmp/freeradius-debian/
-RUN cd /tmp/freeradius-debian && \
-	touch -t 202001010000 control && \
-	./rules control && \
-	mk-build-deps -irt"apt-get -y --no-install-recommends" control && \
+COPY debian/ /tmp/freeradius-build/debian/
+RUN cd /tmp/freeradius-build && \
+	touch -t 202001010000 debian/control && \
+	debian/rules debian/control && \
+	mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control && \
 	apt-get -y --purge remove freeradius-build-deps && \
 	cd / && \
-	rm -rf /tmp/freeradius-debian \
+	rm -rf /tmp/freeradius-build \
 		/freeradius-build-deps_*.deb /freeradius-build-deps_*.buildinfo /freeradius-build-deps_*.changes
 
 #
