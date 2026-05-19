@@ -9,45 +9,13 @@ on:
 
 jobs:
   coverity:
-    runs-on: ubuntu-24.04
-    if: github.repository_owner == 'FreeRADIUS' || github.ref == 'refs/heads/coverity_scan'
+    if: github.repository_owner == 'FreeRADIUS'
+    runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Package manager performance improvements
-        run: |
-          sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-          sudo dpkg-reconfigure man-db
-          sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
-
-      - name: NetworkRADIUS signing key
-        shell: bash
-        run: |
-          sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
-          curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | sudo tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
-
-      - name: Set up NetworkRADIUS extras repository
-        shell: bash
-        run: |
-          DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-          RELEASE=$(lsb_release -cs)
-          sudo /bin/sh -c "echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
-            > /etc/apt/sources.list.d/networkradius-extras.list"
-          sudo apt-get update
-
-      # Remove pre-installed package which conflicts with dependency installation
-      - name: Remove package conflicts
-        run: |
-          sudo apt-get remove -y libhashkit2
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
-          debian/rules debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
-          sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
       - name: Download coverity tool MD5
         run: |
@@ -90,7 +58,7 @@ jobs:
 
       - name: Display build result
         run: |
-          cat /home/runner/work/freeradius-server/freeradius-server/cov-int/build-log.txt
+          cat cov-int/build-log.txt
 
       - name: Submit result
         run: |

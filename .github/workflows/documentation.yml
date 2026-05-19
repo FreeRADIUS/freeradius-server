@@ -24,24 +24,25 @@ on:
 
 jobs:
   build-docs:
-    runs-on: ubuntu-latest
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name != 'schedule'
+    if: github.repository_owner == 'FreeRADIUS'
+    runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
 
     steps:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: Install common build dependencies
+    #
+    #  The self-hosted testbed image carries the build toolchain but not
+    #  the documentation-specific tools - install those here. apt indexes
+    #  are already refreshed in the image; just install.
+    #
+    - name: Install documentation tools
       run: |
-        sudo apt-get install -y --no-install-recommends \
-        asciidoctor \
-        doxygen \
-        graphviz
-
-    - name: Install Antora
-      run: |
-        sudo npm i -g @antora/cli@3.1 @antora/site-generator@3.1;
+        apt-get install -y --no-install-recommends asciidoctor doxygen graphviz nodejs npm
+        npm i -g @antora/cli@3.1 @antora/site-generator@3.1
 
     - name: Show versions
       run: |
@@ -80,7 +81,9 @@ jobs:
     needs:
       - build-docs
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
 
     # Permissions needed to deploy on GitHub Pages
     permissions:
@@ -124,7 +127,9 @@ jobs:
     needs:
       - build-docs
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    container:
+      image: docker.internal.networkradius.com/self-hosted
 
     # Ensure only one job is attempting to update the docs repo
     concurrency:

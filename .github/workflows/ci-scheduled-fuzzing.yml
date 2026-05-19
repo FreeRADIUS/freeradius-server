@@ -134,7 +134,12 @@ jobs:
     needs:
       - set-matrix
 
-    runs-on: ubuntu-24.04
+    if: github.repository_owner == 'FreeRADIUS'
+
+    runs-on: self-hosted
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted
 
     strategy:
       fail-fast: false
@@ -188,7 +193,7 @@ jobs:
     - name: Install build dependencies
       uses: ./.github/actions/freeradius-deps
       with:
-        use_docker: false
+        use_docker: true
         cc: ${{ matrix.env.CC }}
         llvm_ver: 18
 
