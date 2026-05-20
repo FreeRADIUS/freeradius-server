@@ -1212,7 +1212,14 @@ AC_ARG_WITH(libbacktrace,
     else
       WITH_BACKTRACE=no
     fi
-  esac ]
+  esac ],
+[ dnl  Default behaviour when --with-libbacktrace is omitted: yes if
+  dnl  the submodule has been checked out, no otherwise.
+  if test -f src/lib/backtrace/configure; then
+    WITH_BACKTRACE=yes
+  else
+    WITH_BACKTRACE=no
+  fi ]
 )
 
 dnl #
@@ -1225,6 +1232,16 @@ dnl #  gracefully.
 dnl #
 if test "x$WITH_BACKTRACE" = xyes; then
   AC_MSG_NOTICE([building with libbacktrace, this will be statically linked])
+  dnl #
+  dnl #  Regenerate the submodule's configure against the host autoconf
+  dnl #  so it accepts --runstatedir. Falls back silently to the shipped
+  dnl #  configure when autoreconf isn't installed.
+  dnl #
+  if test -f src/lib/backtrace/configure.ac && \
+     command -v autoreconf > /dev/null 2>&1; then
+    AC_MSG_NOTICE([regenerating libbacktrace configure against host autoconf])
+    (cd src/lib/backtrace && autoreconf -fi)
+  fi
   AC_DEFINE(HAVE_BACKTRACE, 1,
     [Define to 1 if you have the `backtrace' library (-lbacktrace).]
   )

@@ -9034,12 +9034,27 @@ then :
     fi
   esac
 
+else $as_nop
+   if test -f src/lib/backtrace/configure; then
+    WITH_BACKTRACE=yes
+  else
+    WITH_BACKTRACE=no
+  fi
 fi
 
 
 if test "x$WITH_BACKTRACE" = xyes; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: building with libbacktrace, this will be statically linked" >&5
 printf "%s\n" "$as_me: building with libbacktrace, this will be statically linked" >&6;}
+  # Regenerate the submodule's configure against the host autoconf so
+  # it accepts --runstatedir. Falls back silently to the shipped
+  # configure when autoreconf isn't installed.
+  if test -f src/lib/backtrace/configure.ac && \
+     command -v autoreconf > /dev/null 2>&1; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: regenerating libbacktrace configure against host autoconf" >&5
+printf "%s\n" "$as_me: regenerating libbacktrace configure against host autoconf" >&6;}
+    (cd src/lib/backtrace && autoreconf -fi)
+  fi
 
 printf "%s\n" "#define HAVE_BACKTRACE 1" >>confdefs.h
 
