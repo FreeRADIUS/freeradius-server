@@ -47,7 +47,12 @@ typedef struct fr_event_fd_t {
 	void			*ctx;
 } fr_event_fd_t;
 
-#define FR_EV_MAX_EVENTS (512)
+
+#ifndef HAVE_KQUEUE
+#define FR_EV_MAX_EVENTS (1024)
+#else
+#define FR_EV_MAX_EVENTS (2048)
+#endif
 
 int fr_ev_max_fds = FR_EV_MAX_EVENTS;
 
