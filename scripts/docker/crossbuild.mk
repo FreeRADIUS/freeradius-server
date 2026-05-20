@@ -299,7 +299,7 @@ $(DT)/${1}/Dockerfile.prof: $(DOCKER_TMPL) $(CB_DIR)/m4/profiling.deb.m4
 	${Q}m4 -I $(CB_DIR)/m4 \
 	    -D D_NAME=${1} \
 	    -D D_TYPE=profiling \
-	    -D CB_IMAGE=$(CB_IPREFIX)/${1}
+	    -D CB_IMAGE=$(CB_IPREFIX)/${1} \
 	    $$< > $$@
 
 # ubuntu24 profiling target end
