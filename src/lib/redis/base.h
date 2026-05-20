@@ -102,6 +102,11 @@ typedef enum {
 	REDIS_ASYNC_RCODE_ERROR = -1,		//!< Unrecoverable error.
 	REDIS_ASYNC_RCODE_BOOTSTRAP = -2,	//!< The caller should issue a request to bootstrap the cluster map.
 	REDIS_ASYNC_RCODE_GETMAP = -3,		//!< The caller should issue a request to update the cluster map.
+
+	REDIS_ASYNC_RCODE_TRY_AGAIN = -4,	//!< Try the operation again
+	REDIS_ASYNC_RCODE_ASK = -5,		//!< Attempt operation on an alternative node.
+	REDIS_ASYNC_RCODE_MOVE = -6,		//!< Attempt operation on an alternative node with remap.
+	REDIS_ASYNC_RCODE_NO_SCRIPT = -7,	//!< Script doesn't exist.
 } fr_redis_async_rcode_t;
 
 /** Connection handle, holding a redis context
