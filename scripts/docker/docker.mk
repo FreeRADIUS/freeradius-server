@@ -72,7 +72,7 @@ endif
 #
 define DOCKER_BUILD
 $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKER_STATE)
-	$${Q}echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"
+	$${Q}echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"
 	$${Q}docker build $$(DOCKER_BUILD_OPTS) ${3} \
 		--label ci-ttl=$(CI_TTL) \
 		-f $(DT)/${1}/Dockerfile.${2} \

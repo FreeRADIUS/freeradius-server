@@ -40,29 +40,43 @@ RUN apt-get install -y --no-install-recommends \
 		quilt
 
 #
-#  Build libkqueue from source as proper .debs (libkqueue, libkqueue-dev,
+#  Build libkqueue from source as proper .debs (libkqueue0, libkqueue-dev,
 #  libkqueue-dbg) so downstream dpkg-checkbuilddeps / Build-Depends steps
 #  find -dev and so a debugger sees symbols.
+#
+#  Gated to architectures the NetworkRADIUS extras repo doesn't carry
+#  (currently anything that isn't amd64). On amd64 we install libkqueue
+#  from NR's extras repo via common.deb.nr-extras.m4, which keeps the
+#  shlibs version in lockstep with what NR's freeradius packages were
+#  built against -- otherwise libfreeradius4's `(= <ver>)` libkqueue
+#  dep rejects the source-built version at runtime install time.
 #
 #  cpack's DEB generator emits a -dbg package whenever the build produces
 #  unstripped objects; RelWithDebInfo with explicit C flags overrides
 #  libkqueue's default -O2 -g -DNDEBUG so the symbols actually survive.
 #
-RUN apt-get install -y --no-install-recommends cmake git build-essential file && \
-    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
-    cd /tmp/libkqueue && \
-    cmake -G "Unix Makefiles" \
-        -DCMAKE_INSTALL_PREFIX=/usr \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
-        -DCPACK_DEBIAN_PACKAGE_NAME=libkqueue0 \
-        . && \
-    make && \
-    cpack -G DEB && \
-    dpkg -i libkqueue*.deb && \
-    mkdir -p /opt/libkqueue-debs && cp libkqueue*.deb /opt/libkqueue-debs/ && \
-    cd / && rm -rf /tmp/libkqueue
+RUN mkdir -p /opt/libkqueue-debs && \
+    case "$(dpkg --print-architecture)" in \
+        amd64) \
+            echo "libkqueue: skipping source build, NetworkRADIUS extras ships amd64" ;; \
+        *) \
+            apt-get install -y --no-install-recommends cmake git build-essential file && \
+            git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+            cd /tmp/libkqueue && \
+            cmake -G "Unix Makefiles" \
+                -DCMAKE_INSTALL_PREFIX=/usr \
+                -DCMAKE_INSTALL_LIBDIR=lib \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+                -DCPACK_DEBIAN_PACKAGE_NAME=libkqueue0 \
+                . && \
+            make && \
+            cpack -G DEB && \
+            dpkg -i libkqueue*.deb && \
+            cp libkqueue*.deb /opt/libkqueue-debs/ && \
+            cd / && rm -rf /tmp/libkqueue \
+            ;; \
+    esac
 #
 #  Set up NetworkRADIUS extras repository. OS_NAME and OS_CODENAME are
 #  substituted by the dispatcher (Dockerfile.m4) per-distro.
@@ -130,12 +144,13 @@ RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
 #
-#  libkqueue isn't in every distro archive (and NetworkRADIUS's extras
-#  repo only ships amd64); the build stage built it from source via
-#  common.deb.libkqueue.m4. Ferry the runtime .deb across so freeradius's
-#  libkqueue dep resolves at install time.
+#  NetworkRADIUS's extras repo only ships libkqueue for amd64; on every
+#  other arch the build stage source-built it via common.deb.libkqueue.m4
+#  and left the .debs in /opt/libkqueue-debs/. The directory is always
+#  created (empty on amd64) so this COPY succeeds regardless; the
+#  apt-get install below picks up whatever's there.
 #
-COPY --from=build /opt/libkqueue-debs/libkqueue0_*.deb /tmp/
+COPY --from=build /opt/libkqueue-debs/ /tmp/
 
 #
 #  Set up NetworkRADIUS extras repository

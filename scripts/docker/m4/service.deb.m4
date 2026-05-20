@@ -52,12 +52,13 @@ include(`common.apt.retries.m4')dnl
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
 #
-#  libkqueue isn't in every distro archive (and NetworkRADIUS's extras
-#  repo only ships amd64); the build stage built it from source via
-#  common.deb.libkqueue.m4. Ferry the runtime .deb across so freeradius's
-#  libkqueue dep resolves at install time.
+#  NetworkRADIUS's extras repo only ships libkqueue for amd64; on every
+#  other arch the build stage source-built it via common.deb.libkqueue.m4
+#  and left the .debs in /opt/libkqueue-debs/. The directory is always
+#  created (empty on amd64) so this COPY succeeds regardless; the
+#  apt-get install below picks up whatever's there.
 #
-COPY --from=build /opt/libkqueue-debs/libkqueue0_*.deb /tmp/
+COPY --from=build /opt/libkqueue-debs/ /tmp/
 
 #
 #  Set up NetworkRADIUS extras repository
