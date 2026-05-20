@@ -885,6 +885,16 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 #define fr_sbuff_char(_sbuff_or_marker, _eob) \
 	(fr_sbuff_current(_sbuff_or_marker) >= fr_sbuff_end(_sbuff_or_marker) ? _eob : *fr_sbuff_current(_sbuff_or_marker))
 
+/** Return the current char as a uint8_t, pointed to by the sbuff or '\0' if no more chars remain
+ *
+ * @note  Should be used in place of #fr_sbuff_char when using the char as an index to an array
+ *
+ * @param[in] _sbuff_or_marker	to return the current char from.
+ * @param[in] _eob		char used to indicate End of Buffer, usually '\0'.
+ * @return The current char pointed to be the sbuff.
+ */
+#define fr_sbuff_uint8(_sbuff_or_marker, _eob) ((uint8_t) fr_sbuff_char(_sbuff_or_marker, _eob))
+
 /** Start a switch block over the current sbuff char
  *
  * @note '\0' is used to indicate EOB.

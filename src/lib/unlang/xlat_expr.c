@@ -2043,7 +2043,7 @@ static const int precedence[T_TOKEN_LAST] = {
 
 #define fr_sbuff_skip_whitespace(_x) \
 	do { \
-		while (isspace((uint8_t) fr_sbuff_char(_x, '\0'))) fr_sbuff_advance(_x, 1); \
+		while (isspace(fr_sbuff_uint8(_x, '\0'))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
@@ -2384,7 +2384,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (slen <= 0) return 0;
 
 	if (!fr_sbuff_is_terminal(&our_in, terminals)) {
-		if (!fr_dict_attr_allowed_chars[(uint8_t) fr_sbuff_char(&our_in, '\0')]) {
+		if (!fr_dict_attr_allowed_chars[fr_sbuff_uint8(&our_in, '\0')]) {
 			fr_strerror_const("Unexpected text after return code");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}

@@ -1945,7 +1945,7 @@ static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
 		if (!at_rules->allow_oid) {
-			uint8_t c = fr_sbuff_char(name, '\0');
+			uint8_t c = fr_sbuff_uint8(name, '\0');
 
 			/*
 			 *	This extra test is to give the user better errors.  The string "3G" is parsed

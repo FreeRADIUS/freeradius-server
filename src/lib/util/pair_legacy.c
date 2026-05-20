@@ -546,7 +546,7 @@ redo:
 	 *	messages.  i.e. We allow "=", but the user enters "==".
 	 */
 	{
-		uint8_t c = fr_sbuff_char(&our_in, '\0');
+		uint8_t c = fr_sbuff_uint8(&our_in, '\0');
 		static const bool invalid[SBUFF_CHAR_CLASS] = {
 			['!'] = true, ['#'] = true, ['$'] = true, ['*'] = true,
 			['+'] = true, ['-'] = true, ['/'] = true, ['<'] = true,
