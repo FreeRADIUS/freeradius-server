@@ -45,7 +45,7 @@ endif
 #
 #  Multi-server tests use Docker and don't need a local build.
 #
-ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% dockerfile.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
   $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
   include Make.inc
 else
@@ -117,7 +117,7 @@ PROTOCOLS    := \
 #  If we're building packages, crossbuilding, or running Docker-based
 #  tests, just do that.  Don't try to do a local build.
 #
-ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% dockerfile.% freeradius-server-% test.multi-server%,$(MAKECMDGOALS))" ""
 
 #
 #  Include all of the autoconf definitions into the Make variable space
