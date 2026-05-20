@@ -256,17 +256,6 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	return cmds;
 }
 
-/** Free any result associated with the command
- *
- * @param[in] cmd to free.  Frees any redis results associated with the command.
- */
-static int _redis_command_free(UNUSED fr_redis_command_t *cmd)
-{
-	//if (cmd->result) fr_redis_reply_free(&cmd->result);
-
-	return 0;
-}
-
 static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *request, fr_redis_command_type_t *type,
 								  fr_redis_command_set_t *cmds, char const *cmd)
 {
@@ -369,7 +358,6 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	if (redis_command_transaction_check(request, &type, cmds, cmd_str) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
 
 	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
-	talloc_set_destructor(cmd, _redis_command_free);
 	cmd->cmds = cmds;
 	cmd->type = type;
 	cmd->str = cmd_str;
@@ -403,7 +391,6 @@ fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmd
 	if (redis_command_transaction_check(request, &type, cmds, argv[0]) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
 
 	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
-	talloc_set_destructor(cmd, _redis_command_free);
 	cmd->cmds = cmds;
 	cmd->type = type;
 	cmd->argc = argc;
