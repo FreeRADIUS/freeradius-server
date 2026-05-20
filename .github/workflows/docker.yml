@@ -135,6 +135,10 @@ jobs:
       run: |
         make docker.service.$OS
 
+    - name: Show docker build log
+      if: failure()
+      run: cat build/docker/build.$OS.service
+
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
@@ -232,6 +236,10 @@ jobs:
     - name: Build docker image
       run: |
         make docker.service.$OS
+
+    - name: Show docker build log
+      if: failure()
+      run: cat build/docker/build.$OS.service
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
