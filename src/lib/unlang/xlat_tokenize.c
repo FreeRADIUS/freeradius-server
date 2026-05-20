@@ -469,14 +469,14 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	 *	And even then only if the character after them is a terminal character.
 	 */
 	if (strchr("cCdDeGHIlmMnSstTY", c) != NULL) {
-		char n;
+		uint8_t n;
 
 		fr_sbuff_next(in);
 
 		/*
 		 *	End of buffer == one letter expansion.
 		 */
-		n = fr_sbuff_char(in, '\0');
+		n = fr_sbuff_uint8(in, '\0');
 		if (!n) goto one_letter;
 
 		/*
@@ -496,7 +496,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		/*
 		 *	%M. or %Y- is a one-letter expansion followed by the other character.
 		 */
-		if (!sbuff_char_alpha_num[(unsigned int) n]) {
+		if (!sbuff_char_alpha_num[n]) {
 		one_letter:
 			XLAT_DEBUG("ONE-LETTER <-- %c", c);
 			node = xlat_exp_alloc_null(head);
