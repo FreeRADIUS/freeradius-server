@@ -767,3 +767,10 @@ char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
 	if (cmd->argv) return cmd->argv[0];
 	return cmd->str;
 }
+
+/** Extract the rcode from a command set
+ */
+fr_redis_async_rcode_t fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
+{
+	return cmds->rcode;
+}
