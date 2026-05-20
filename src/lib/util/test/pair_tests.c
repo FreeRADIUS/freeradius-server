@@ -45,6 +45,7 @@ static void test_init(void);
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/sbuff.h>
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 #  include <gperftools/profiler.h>
@@ -1297,7 +1298,61 @@ static void test_fr_pair_value_enum_box(void)
 	TEST_MSG("Expected vb->vb_uint32 == 123");
 }
 
+/*
+ *	Regression test: fr_dict_by_protocol_substr() used to dereference
+ *	our_name.p without a bounds check after fr_sbuff_out_bstrncpy_allowed()
+ *	had consumed every byte.  If the input sbuff was bounded by length
+ *	(rather than a NUL sentinel), that read was one byte past in->end.
+ *
+ *	The buggy code:
+ *	    if (*(our_name.p) && (*(our_name.p) != '.')) { return 0 with dict_def; }
+ *
+ *	With the bug, an OOB byte equal to '.' or NUL would let execution
+ *	fall through to the hash lookup; an OOB byte of any other value
+ *	would take the early-return path and yield slen=0.  Either way,
+ *	the read past in->end is undefined.
+ *
+ *	We construct a sbuff where in->end points one byte before a known
+ *	non-NUL, non-'.' sentinel.  Then we run the function with
+ *	`fr_dict_test`, which has been added to the protocol table so the
+ *	hash lookup will succeed when the bounds check is honoured.
+ *
+ *	Bug:  reads buf[4]='X', early-returns 0 with *out = dict_def (NULL).
+ *	Fix:  bounds check trips, hash lookup finds "test", returns slen=4
+ *	      with *out = fr_dict_test.
+ */
+extern int dict_protocol_add(fr_dict_t *dict);
+
+static void test_fr_dict_by_protocol_substr_no_overflow(void)
+{
+	char			buf[8];
+	fr_sbuff_t		sbuff;
+	fr_dict_t const		*out_dict = NULL;
+	fr_slen_t		slen;
+
+	if (dict_protocol_add(test_dict) < 0) {
+		TEST_CHECK_(0, "dict_protocol_add failed: %s", fr_strerror());
+		return;
+	}
+
+	memcpy(buf, "testXXXX", 8);			/* "test" then sentinel bytes the buggy code would read */
+	fr_sbuff_init_in(&sbuff, buf, (size_t)4);	/* Only "test" is visible */
+
+	slen = fr_dict_by_protocol_substr(NULL, &out_dict, &sbuff, NULL);
+
+	TEST_CHECK(slen == 4);
+	TEST_MSG("Expected slen=4 (matched 'test' protocol), got %zd", (ssize_t)slen);
+
+	TEST_CHECK(out_dict == test_dict);
+	TEST_MSG("Expected out_dict==test_dict; OOB read of sentinel byte made the buggy code early-return with dict_def (NULL)");
+}
+
 TEST_LIST = {
+	/*
+	 *	Regression tests
+	 */
+	{ "fr_dict_by_protocol_substr no overflow", test_fr_dict_by_protocol_substr_no_overflow },
+
 	/*
 	 *	Allocation and management
 	 */

@@ -2716,8 +2716,11 @@ fr_slen_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	/*
 	 *	If what we stopped at wasn't a '.', then there
 	 *	can't be a protocol name in this string.
+	 *
+	 *	Bounds-check before dereferencing: bstrncpy_allowed may
+	 *	have consumed the entire input, leaving our_name.p == end.
 	 */
-	if (*(our_name.p) && (*(our_name.p) != '.')) {
+	if (fr_sbuff_remaining(&our_name) && (*(our_name.p) != '.')) {
 		memcpy(out, &dict_def, sizeof(*out));
 		return 0;
 	}
