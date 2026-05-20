@@ -80,7 +80,7 @@ jobs:
               Run URL: ${{ github.event.workflow_run.html_url }}
               Repo:    ${{ github.repository }}
 
-            Your job: diagnose the failure and post exactly one commit comment with your findings. Do not open a PR, do not push, do not edit any file in the repo.
+            Your job: diagnose the failure, decide whether it's the same thing the bot already flagged on a recent earlier commit, and either skip the comment or post a single new one. Do not open a PR, do not push, do not edit any file in the repo.
 
             The following env vars are exported for use in `gh`/`git` commands:
               FAILED_WORKFLOW_RUN_ID   - the run that failed
@@ -107,7 +107,24 @@ jobs:
                  INFRA       - runner / mirror / image / dependency-fetch failure outside the codebase.
                  UNKNOWN     - logs are insufficient to classify; say what's missing.
 
-            4. Write the commit-comment body to /tmp/comment.md with this shape (keep under ~120 lines total):
+            4. Check whether this is a repeat of the bot's most recent diagnosis on this branch. Walk back from $FAILING_SHA along the first-parent history until you find a commit that has a Claude diagnosis comment for the same workflow, or until you've covered the last 20 commits:
+
+                 for sha in $(git rev-list --first-parent --max-count=20 "$FAILING_SHA"); do
+                   gh api "repos/$REPO/commits/$sha/comments" \
+                     --jq '.[] | select(.body | contains("Posted automatically by Claude CI Failure Diagnosis")) | select(.body | contains("'"$FAILED_WORKFLOW_NAME"'")) | {sha: "'"$sha"'", body: .body, url: .html_url}' \
+                     | head -1
+                 done | head -1 > /tmp/prev.json
+
+               If /tmp/prev.json is non-empty, read its body and compare it to the failure you're about to report. "Substantially the same" means:
+                 - same Classification, AND
+                 - same failing job / step, AND
+                 - the key Evidence quote matches (same package name / error string / file path / linker message).
+
+               If substantially the same, exit without posting. Print "duplicate of <previous sha>" to stdout so the run log records the decision and stop. Do not post a new comment.
+
+               If different (different classification, different failing step, different root-cause evidence), proceed to step 5.
+
+            5. Write the commit-comment body to /tmp/comment.md with this shape (keep under ~120 lines total):
 
                  **Classification:** <one of the four above>
                  **Failed workflow:** [<name>](<run url>)
@@ -121,11 +138,11 @@ jobs:
                  ---
                  _Posted automatically by Claude CI Failure Diagnosis._
 
-            5. Post the comment via the GitHub API (jq -Rs is the safe way to escape multi-line bodies with backticks):
+            6. Post the comment via the GitHub API (jq -Rs is the safe way to escape multi-line bodies with backticks):
 
                  jq -Rs '{body: .}' < /tmp/comment.md > /tmp/comment.json
                  gh api -X POST \
                    "repos/$REPO/commits/$FAILING_SHA/comments" \
                    --input /tmp/comment.json
 
-            Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess.
+            Do not speculate beyond what the logs support. UNKNOWN is a useful signal - prefer it over a guess. Skipping a duplicate is preferred over re-posting the same diagnosis on every subsequent commit while the underlying issue is being worked on.
