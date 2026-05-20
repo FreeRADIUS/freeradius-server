@@ -81,6 +81,11 @@ struct fr_redis_command_s {
 struct fr_redis_command_set_s {
 	fr_dlist_t			entry;
 
+	fr_redis_async_rcode_t		rcode;		//!< Code from last error returned.
+
+	fr_ipaddr_t			next_node_addr;	//!< IP address of node from MOVED / ASK reply
+	uint16_t			next_node_port; //!< Port of node from MOVED / ASK reply
+
 	/** @name Command state lists
 	 * @{
  	 */
@@ -440,6 +445,47 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 	}
 }
 
+/** Convert a MOVED / ASK reply into an address and port
+ *
+ */
+static int redis_addr_from_redirect(fr_ipaddr_t *addr, uint16_t *port, redisReply *redirect)
+{
+	unsigned long	key;
+	fr_sbuff_t	sbuff;
+
+	if (!redirect || (redirect->type != REDIS_REPLY_ERROR)) return -1;
+
+	fr_sbuff_init_in(&sbuff, redirect->str, redirect->len);
+
+	if (!((fr_sbuff_adv_past_str_literal(&sbuff, REDIS_ERROR_MOVED_STR " ")) ||
+	    (fr_sbuff_adv_past_str_literal(&sbuff, REDIS_ERROR_MOVED_STR " ")))) {
+		fr_strerror_const("No '-MOVED' or '-ASK' log_prefix");
+		return -1;
+	}
+
+	if (fr_sbuff_out(NULL, &key, &sbuff) < 0) {
+		fr_strerror_const("Failed to parse key slot from MOVED / ASK reply");
+		return -1;
+	};
+	if (key >= KEY_SLOTS) {
+		fr_strerror_printf("Key %lu outside of redis slot range", key);
+		return -1;
+	}
+
+	if (!fr_sbuff_next_if_char(&sbuff, ' ')) {
+		fr_strerror_const("Missing key/host separator");
+		return -1;
+	}
+
+	if (fr_inet_pton_port(addr, port, fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
+			      AF_UNSPEC, true, true) < 0) {
+		return -1;
+	}
+	fr_assert(addr->af);
+
+	return 0;
+}
+
 /** Callback for for receiving Redis replies
  *
  * This is called by hiredis for each response is receives.  privData is set to the
@@ -470,18 +516,55 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 		return;
 	}
 
-	/*
-	 *	FIXME - Need to check TRYAGAIN, MOVED etc...
-	 *	I guess we might want to wait for the end of
-	 *	the command set to do that.
-	 */
 	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
 	cmds = cmd->cmds;
 
-	if (cmd->complete) cmd->complete(cmds->request, cmd, reply, cmd->rctx);
-
 	fr_dlist_remove(&cmds->sent, cmd);
 	fr_dlist_insert_tail(&cmds->completed, cmd);
+
+	/*
+	 *	If the reply was an error, look for known types.
+	 */
+	if (reply->type == REDIS_REPLY_ERROR) {
+		request_t	*request = cmds->request;
+
+		fr_assert_msg(reply->str, "Error response contained no error string");
+
+		if (strncmp(REDIS_ERROR_MOVED_STR, reply->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_MOVE;
+			goto redirect;
+		} else if (strncmp(REDIS_ERROR_ASK_STR, reply->str, sizeof(REDIS_ERROR_ASK_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_ASK;
+		redirect:
+			if (redis_addr_from_redirect(&cmds->next_node_addr, &cmds->next_node_port, reply) < 0) {
+				cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+			}
+			cmds->redirected++;
+		} else if (strncmp(REDIS_ERROR_TRY_AGAIN_STR, reply->str, sizeof(REDIS_ERROR_TRY_AGAIN_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_TRY_AGAIN;
+		} else if (strncmp(REDIS_ERROR_NO_SCRIPT_STR, reply->str, sizeof(REDIS_ERROR_NO_SCRIPT_STR) - 1) == 0) {
+			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_NO_SCRIPT;
+		} else {
+			fr_strerror_printf("Server error: %s", reply->str);
+			cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+		}
+
+		/*
+		 *	Mark remaining sent commands to be ignored and fail the treq
+		 */
+		fr_dlist_foreach(&cmds->sent, fr_redis_command_t, sent_cmd) {
+			fr_redis_connection_ignore_response(h, sent_cmd->sqn);
+		}
+		trunk_request_signal_fail(cmds->treq);
+		return;
+	}
+
+	if (cmd->complete) cmd->complete(cmds->request, cmd, reply, cmd->rctx);
+	cmds->rcode = REDIS_ASYNC_RCODE_SUCCESS;
 
 	/*
 	 *	Check is the command set is complete,
