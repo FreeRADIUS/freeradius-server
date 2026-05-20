@@ -1144,6 +1144,18 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		return -1;
 	}
 
+
+#ifndef HAVE_KQUEUE
+	/*
+	 *	If there are too many FDs overall (incoming, outgoing,
+	 *	etc.), then we can't accept a new FD.
+	 */
+	if (radius_event_fd_full()) {
+		close(newfd);
+		return 0;
+	}
+#endif
+
 	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
 		close(newfd);
 		DEBUG2(" ... unknown address family");

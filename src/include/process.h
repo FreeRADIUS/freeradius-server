@@ -74,6 +74,8 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
 void request_inject(REQUEST *request);
 
+bool radius_event_fd_full(void);
+
 #ifdef WITH_PROXY
 int request_proxy_reply(RADIUS_PACKET *packet);
 
