@@ -86,29 +86,27 @@ ${1}:
 endef
 
 #
-#  Wire each (image, type) Dockerfile rule plus the per-type regen
-#  and drift-check umbrellas. Profiling is filtered to PROFILING_IMAGES
-#  because it doesn't have an rpm template.
+#  Build types. Per-type m4 prereqs follow the <type>.deb.m4 /
+#  <type>.rpm.m4 naming convention so DOCKERFILE_RULE picks them up
+#  from $(T) alone.
 #
-$(foreach IMG,$(IMAGES),\
-  $(eval $(call DOCKERFILE_RULE,$(IMG),service,$(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4)) \
-  $(eval $(call DOCKERFILE_RULE,$(IMG),ci,$(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4)) \
-  $(eval $(call DOCKERFILE_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)) \
-  $(eval $(call DOCKERFILE_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4 $(CB_DIR)/m4/profiling.rpm.m4)))
+DOCKERFILE_TYPES := ci crossbuild profiling service
 
-$(eval $(call DOCKERFILE_ALL,dockerfile.service,service,$(IMAGES)))
-$(eval $(call DOCKERFILE_ALL,dockerfile.ci,ci,$(IMAGES)))
-$(eval $(call DOCKERFILE_ALL,dockerfile.crossbuild,crossbuild,$(IMAGES)))
-$(eval $(call DOCKERFILE_ALL,dockerfile.profiling,profiling,$(IMAGES)))
+#
+#  Wire each (image, type) Dockerfile rule plus the per-type regen
+#  and drift-check umbrellas.
+#
+$(foreach IMG,$(IMAGES), \
+  $(foreach T,$(DOCKERFILE_TYPES), \
+    $(eval $(call DOCKERFILE_RULE,$(IMG),$(T),$(CB_DIR)/m4/$(T).deb.m4 $(CB_DIR)/m4/$(T).rpm.m4))))
 
-$(eval $(call DOCKERFILE_CHECK,dockerfile.service.check,service,$(IMAGES),dockerfile.service))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.ci.check,ci,$(IMAGES),dockerfile.ci))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.crossbuild.check,crossbuild,$(IMAGES),dockerfile.crossbuild))
-$(eval $(call DOCKERFILE_CHECK,dockerfile.profiling.check,profiling,$(IMAGES),dockerfile.profiling))
+$(foreach T,$(DOCKERFILE_TYPES), \
+  $(eval $(call DOCKERFILE_ALL,dockerfile.$(T),$(T),$(IMAGES))) \
+  $(eval $(call DOCKERFILE_CHECK,dockerfile.$(T).check,$(T),$(IMAGES),dockerfile.$(T))))
 
 .PHONY: dockerfile dockerfile.check
-dockerfile:       dockerfile.ci       dockerfile.crossbuild       dockerfile.profiling       dockerfile.service
-dockerfile.check: dockerfile.ci.check dockerfile.crossbuild.check dockerfile.profiling.check dockerfile.service.check
+dockerfile:       $(foreach T,$(DOCKERFILE_TYPES),dockerfile.$(T))
+dockerfile.check: $(foreach T,$(DOCKERFILE_TYPES),dockerfile.$(T).check)
 
 #
 #  Glossary of type identifiers, shared by docker.help / dockerfile.help.

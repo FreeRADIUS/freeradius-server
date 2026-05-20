@@ -189,16 +189,34 @@ $(DOCKER_STATE):
 	@mkdir -p $@
 
 #
-#  Wire build + phony + clean + lifecycle for every (image, type)
-#  combo. Profiling FROMs the crossbuild image of the same distro,
-#  so its build depends on the corresponding crossbuild stamp.
+#  Build types, and the per-type knobs DOCKER_BUILD needs. Anything
+#  type-specific (extra --build-arg, extra stamp deps) lives here so
+#  the per-(image,type) wiring stays a plain double foreach.
 #
-$(foreach IMG,$(IMAGES),\
-  $(eval $(call DOCKER_BUILD,$(IMG),service,,)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),ci,,)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
-  $(foreach T,service ci crossbuild profiling, \
+#  $(IMG) in these values is resolved at $(eval) time inside the
+#  foreach below, so each image sees its own substituted form.
+#
+DOCKER_TYPES := ci crossbuild profiling service
+
+DOCKER_BUILD_ARGS_service    :=
+DOCKER_BUILD_ARGS_ci         :=
+DOCKER_BUILD_ARGS_crossbuild  = $(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG)))
+DOCKER_BUILD_ARGS_profiling   = --build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA)
+
+DOCKER_BUILD_DEPS_service    :=
+DOCKER_BUILD_DEPS_ci         :=
+DOCKER_BUILD_DEPS_crossbuild :=
+DOCKER_BUILD_DEPS_profiling   = $(DOCKER_STATE)/stamp-image.$(IMG).crossbuild
+
+#
+#  Wire build + phony + clean + lifecycle + test for every (image,
+#  type) combo. Profiling FROMs the crossbuild image of the same
+#  distro, so its build depends on the corresponding crossbuild
+#  stamp (see DOCKER_BUILD_DEPS_profiling above).
+#
+$(foreach IMG,$(IMAGES), \
+  $(foreach T,$(DOCKER_TYPES), \
+    $(eval $(call DOCKER_BUILD,$(IMG),$(T),$(DOCKER_BUILD_ARGS_$(T)),$(DOCKER_BUILD_DEPS_$(T)))) \
     $(eval $(call DOCKER_PHONY,$(IMG),$(T))) \
     $(eval $(call DOCKER_CLEAN,$(IMG),$(T))) \
     $(eval $(call DOCKER_LIFECYCLE,$(IMG),$(T))) \
@@ -217,10 +235,7 @@ docker.${1}.down:  $(foreach IMG,${2},docker.${1}.$(IMG).down)
 docker.${1}.reset: $(foreach IMG,${2},docker.${1}.$(IMG).reset)
 endef
 
-$(eval $(call DOCKER_TYPE_UMBRELLAS,service,$(IMAGES)))
-$(eval $(call DOCKER_TYPE_UMBRELLAS,ci,$(IMAGES)))
-$(eval $(call DOCKER_TYPE_UMBRELLAS,crossbuild,$(IMAGES)))
-$(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(IMAGES)))
+$(foreach T,$(DOCKER_TYPES),$(eval $(call DOCKER_TYPE_UMBRELLAS,$(T),$(IMAGES))))
 
 #
 #  Across-type umbrellas. 'docker' stays as a legacy alias for the
@@ -229,10 +244,12 @@ $(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(IMAGES)))
 .PHONY: docker docker.common docker.clean docker.up docker.down docker.reset docker.info docker.info_header
 docker:        docker.info docker.service
 docker.common: docker.info $(foreach IMG,$(DOCKER_COMMON),docker.service.$(IMG))
-docker.clean:  docker.ci.clean docker.crossbuild.clean docker.profiling.clean docker.service.clean
-docker.up:     docker.ci.up    docker.crossbuild.up    docker.profiling.up    docker.service.up
-docker.down:   docker.ci.down  docker.crossbuild.down  docker.profiling.down  docker.service.down
-docker.reset:  docker.ci.reset docker.crossbuild.reset docker.profiling.reset docker.service.reset
+
+define DOCKER_VERB_UMBRELLA
+docker.${1}: $(foreach T,$(DOCKER_TYPES),docker.$(T).${1})
+endef
+
+$(foreach V,clean up down reset,$(eval $(call DOCKER_VERB_UMBRELLA,$(V))))
 
 docker.info: docker.info_header $(foreach IMG,$(IMAGES),docker.service.$(IMG).status)
 	@echo All images: $(IMAGES)
