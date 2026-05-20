@@ -297,8 +297,9 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_value_box_t *out_vb, request_t 
 		p = lua_touserdata(L, -1);
 		if (!p) {
 			REDEBUG("Unmarshalling failed, user data was NULL");
+			return -1;
 		}
-		fr_value_box_memdup(ctx, out_vb, da, p, len, true);
+		if (fr_value_box_memdup(ctx, out_vb, da, p, len, true) < 0) return -1;
 	}
 		break;
 
