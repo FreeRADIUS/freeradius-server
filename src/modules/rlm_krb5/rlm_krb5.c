@@ -263,13 +263,14 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, KRB5_UNUSED rlm_krb5_
 		return RLM_MODULE_FAIL;
 	}
 
-	krb5_unparse_name(context, *client, &princ_name);
-	RDEBUG2("Using client principal \"%s\"", princ_name);
+	if (krb5_unparse_name(context, *client, &princ_name) == 0) {
+		RDEBUG2("Using client principal \"%s\"", princ_name);
 #ifdef HEIMDAL_KRB5
-	free(princ_name);
+		free(princ_name);
 #else
-	krb5_free_unparsed_name(context, princ_name);
+		krb5_free_unparsed_name(context, princ_name);
 #endif
+	}
 	return RLM_MODULE_OK;
 }
 
