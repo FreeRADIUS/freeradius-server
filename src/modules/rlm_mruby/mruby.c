@@ -196,6 +196,7 @@ static mrb_value mruby_pair_list_keys(mrb_state *mrb, mrb_value self)
 	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
 
 	keys = mrb_ary_new(mrb);
+	if (!pair->vp) return keys;
 	for (vp = fr_pair_list_head(&pair->vp->vp_group); vp; vp = fr_pair_list_next(&pair->vp->vp_group, vp)) {
 		key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
 		mrb_ary_push(mrb, keys, key);
@@ -253,10 +254,11 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 	case FR_TYPE_ATTR:
 	{
 		char		*in;
-		size_t		len;
+		fr_slen_t	len;
 		mrb_value	value;
 
 		len = fr_value_box_aprint(request, &in, &vp->data, NULL);
+		if (len < 0) return mrb_nil_value();
 		value = mrb_str_new(mrb, in, len);
 		talloc_free(in);
 		return value;
