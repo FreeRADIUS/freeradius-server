@@ -44,11 +44,11 @@ CI_TTL ?= 60m
 DOCKER_IMAGE_PREFIX ?= freeradius4
 
 #
-#  Per-build state directory. Stamps and build/test logs live under
-#  build/ so everything pipeline-related is in one place; the hidden
-#  name keeps `ls scripts/docker/build/` tidy.
+#  Per-build state directory. Stamps and build/test logs land in the
+#  top-level build/ tree alongside every other generated artifact;
+#  the dir is created on demand and the whole build/ is gitignored.
 #
-DOCKER_STATE := $(DT)/.state
+DOCKER_STATE := build/docker
 
 # Absolute path to the .git dir (may differ for submodules). Bind-
 # mounted read-only into lifecycle containers so they see the source.

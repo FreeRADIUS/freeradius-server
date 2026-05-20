@@ -156,17 +156,17 @@ jobs:
     - name: Show build log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/build.$OS.crossbuild
+        cat build/docker/build.$OS.crossbuild
 
     - name: Show configure log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/configure.$OS.crossbuild
+        cat build/docker/configure.$OS.crossbuild
 
     - name: Show test log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/test.$OS.crossbuild
+        cat build/docker/test.$OS.crossbuild
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
@@ -269,17 +269,17 @@ jobs:
     - name: Show build log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/build.$OS.crossbuild
+        cat build/docker/build.$OS.crossbuild
 
     - name: Show configure log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/configure.$OS.crossbuild
+        cat build/docker/configure.$OS.crossbuild
 
     - name: Show test log
       if: ${{ success() || failure() }}
       run: |
-        cat scripts/docker/build/.state/test.$OS.crossbuild
+        cat build/docker/test.$OS.crossbuild
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
