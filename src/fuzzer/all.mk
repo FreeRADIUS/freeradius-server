@@ -15,7 +15,9 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
 #  as a wire protocol (see src/lib/util/fuzzer.c) but isn't itself
 #  a network protocol, so it lives here too.
 #
-FUZZER_NON_PROTOCOL_TARGETS = util json cf value xlat
+FUZZER_NON_PROTOCOL_TARGETS = util json value xlat
+
+# cf
 
 #
 #  Per-target extra arguments passed to the fuzzer binary. util uses
@@ -63,7 +65,9 @@ clean: clean.fuzzer
 #
 #  Standalone fuzzers' build mks
 #
-SUBMAKEFILES += fuzzer_util.mk fuzzer_json.mk fuzzer_cf.mk fuzzer_value.mk fuzzer_xlat.mk
+SUBMAKEFILES += fuzzer_util.mk fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk
+
+# fuzzer_cf.mk 
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
