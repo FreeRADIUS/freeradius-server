@@ -457,7 +457,7 @@ static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t
  * It's only called for trees that are a single nonempty bucket;
  * if it's a subtree, it is thus necessarily the leftmost.
  */
-static void partition(fr_lst_t *lst, stack_index_t stack_index)
+static bool partition(fr_lst_t *lst, stack_index_t stack_index)
 {
 	fr_lst_index_t	low = bucket_lwb(lst, stack_index);
 	fr_lst_index_t	high = bucket_upb(lst, stack_index);
@@ -470,8 +470,7 @@ static void partition(fr_lst_t *lst, stack_index_t stack_index)
 	 * Hoare partition doesn't do the trivial case, so catch it here.
 	 */
 	if (is_equivalent(lst, low, high)) {
-		stack_push(lst, &lst->s, low);
-		return;
+		return (stack_push(lst, &lst->s, low) >= 0);
 	}
 
 	pivot_index = low + (fr_fast_rand(&lst->rand_ctx) % (high + 1 - low));
@@ -521,7 +520,7 @@ static void partition(fr_lst_t *lst, stack_index_t stack_index)
 		lst_move(lst, h, pivot);
 	}
 
-	stack_push(lst, &lst->s, h);
+	return (stack_push(lst, &lst->s, h) >= 0);
 }
 
 /*
@@ -580,7 +579,7 @@ static void bucket_delete(fr_lst_t *lst, stack_index_t stack_index, void *data)
  */
 static inline CC_HINT(nonnull) void *_fr_lst_pop(fr_lst_t *lst, stack_index_t stack_index)
 {
-	if (is_bucket(lst, stack_index)) partition(lst, stack_index);
+	if (is_bucket(lst, stack_index) && !partition(lst, stack_index)) return NULL;
 	++stack_index;
 	if (lst_size(lst, stack_index) == 0) {
 		void *min = pivot_item(lst, stack_index);
@@ -604,7 +603,7 @@ static inline CC_HINT(nonnull) void *_fr_lst_pop(fr_lst_t *lst, stack_index_t st
  */
 static inline CC_HINT(nonnull) void *_fr_lst_peek(fr_lst_t *lst, stack_index_t stack_index)
 {
-	if (is_bucket(lst, stack_index)) partition(lst, stack_index);
+	if (is_bucket(lst, stack_index) && !partition(lst, stack_index)) return NULL;
 	++stack_index;
 	if (lst_size(lst, stack_index) == 0) return pivot_item(lst, stack_index);
 	return _fr_lst_peek(lst, stack_index);
