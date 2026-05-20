@@ -174,8 +174,8 @@ int active_directory_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, UNU
 	sync_op_t	op = SYNC_OP_MODIFY;
 	struct berval	**values;
 
-	fr_assert(sync->conn);
 	fr_assert(sync);
+	fr_assert(sync->conn);
 	fr_assert(msg);
 
 	/*
