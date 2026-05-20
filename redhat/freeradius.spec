@@ -111,11 +111,9 @@ Obsoletes: freeradius < %{version}-%{release}%{?dist}
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-# autoconf + automake are needed so the parent configure can regenerate
-# src/lib/backtrace's shipped configure to accept --runstatedir from
-# %%configure.
+# Needed so the parent configure can regenerate src/lib/backtrace's
+# shipped configure to accept --runstatedir from %%configure.
 BuildRequires: autoconf
-BuildRequires: automake
 BuildRequires: gdbm-devel
 %if %{with freeradius_openssl}
 BuildRequires: freeradius-openssl, freeradius-openssl-devel

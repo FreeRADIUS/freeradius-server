@@ -1,10 +1,8 @@
-# autoconf + automake are needed so configure can regenerate
-# src/lib/backtrace's shipped configure to accept --runstatedir
-# from dh_auto_configure.
+# autoconf is needed so configure can regenerate src/lib/backtrace's
+# shipped configure to accept --runstatedir from dh_auto_configure.
 Source: freeradius
 Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  autoconf,
- automake,
  autotools-dev,
  dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
  dpkg-dev (>= 1.13.19),

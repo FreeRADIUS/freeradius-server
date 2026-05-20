@@ -1234,13 +1234,15 @@ if test "x$WITH_BACKTRACE" = xyes; then
   AC_MSG_NOTICE([building with libbacktrace, this will be statically linked])
   dnl #
   dnl #  Regenerate the submodule's configure against the host autoconf
-  dnl #  so it accepts --runstatedir. Falls back silently to the shipped
-  dnl #  configure when autoreconf isn't installed.
+  dnl #  so it accepts --runstatedir. We invoke autoconf directly rather
+  dnl #  than autoreconf so libtoolize stays out of the loop -- the
+  dnl #  submodule's aclocal.m4 is shipped and the autoconf 2.70+ output
+  dnl #  is enough to fix the --runstatedir handling.
   dnl #
   if test -f src/lib/backtrace/configure.ac && \
-     command -v autoreconf > /dev/null 2>&1; then
+     command -v autoconf > /dev/null 2>&1; then
     AC_MSG_NOTICE([regenerating libbacktrace configure against host autoconf])
-    (cd src/lib/backtrace && autoreconf -fi)
+    (cd src/lib/backtrace && autoconf -f)
   fi
   AC_DEFINE(HAVE_BACKTRACE, 1,
     [Define to 1 if you have the `backtrace' library (-lbacktrace).]
