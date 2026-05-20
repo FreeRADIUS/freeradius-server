@@ -38,6 +38,31 @@ RUN apt-get install -y --no-install-recommends \
 		lsb-release \
 		make \
 		quilt
+
+#
+#  Build libkqueue from source as proper .debs (libkqueue, libkqueue-dev,
+#  libkqueue-dbg) so downstream dpkg-checkbuilddeps / Build-Depends steps
+#  find -dev and so a debugger sees symbols.
+#
+#  cpack's DEB generator emits a -dbg package whenever the build produces
+#  unstripped objects; RelWithDebInfo with explicit C flags overrides
+#  libkqueue's default -O2 -g -DNDEBUG so the symbols actually survive.
+#
+RUN apt-get install -y --no-install-recommends cmake git build-essential file && \
+    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+    cd /tmp/libkqueue && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        -DCPACK_DEBIAN_PACKAGE_NAME=libkqueue0 \
+        . && \
+    make && \
+    cpack -G DEB && \
+    dpkg -i libkqueue*.deb && \
+    mkdir -p /opt/libkqueue-debs && cp libkqueue*.deb /opt/libkqueue-debs/ && \
+    cd / && rm -rf /tmp/libkqueue
 #
 #  Set up NetworkRADIUS extras repository. OS_NAME and OS_CODENAME are
 #  substituted by the dispatcher (Dockerfile.m4) per-distro.
@@ -68,20 +93,6 @@ COPY . .
 #
 RUN git clean -fdxx \
  && git reset --hard HEAD
-
-#
-#  Build libkqueue from source on non-amd64 architectures.
-#  The NetworkRADIUS extras repository only provides amd64 packages.
-#
-RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
-        apt-get install -y cmake && \
-        git clone --depth 1 https://github.com/mheily/libkqueue.git && \
-        cd libkqueue && \
-        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib . && \
-        make && cpack -G DEB && dpkg -i *.deb && \
-        cp *.deb /usr/local/src/repositories/ && \
-        cd .. && rm -rf libkqueue; \
-    fi
 
 #
 #  Install build dependencies
@@ -117,6 +128,14 @@ RUN printf 'Acquire::Retries "3";\nAcquire::http::ConnectTimeout "5";\nAcquire::
 	echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
+
+#
+#  libkqueue isn't in every distro archive (and NetworkRADIUS's extras
+#  repo only ships amd64); the build stage built it from source via
+#  common.deb.libkqueue.m4. Ferry the runtime .deb across so freeradius's
+#  libkqueue dep resolves at install time.
+#
+COPY --from=build /opt/libkqueue-debs/libkqueue0_*.deb /tmp/
 
 #
 #  Set up NetworkRADIUS extras repository

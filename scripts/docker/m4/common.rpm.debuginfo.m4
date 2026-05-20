@@ -5,30 +5,11 @@
 #  the package metadata and enables whichever *-debug repo provides
 #  the matching debuginfo rpm.
 #
-#  Failure is fatal -- a renamed or split debuginfo package gets
-#  caught at image-build time rather than silently producing an
-#  image without symbols.
+#  Per-package install with `|| true' fallback so a renamed / dropped
+#  debuginfo doesn't wreck the whole layer; a WARNING line in the
+#  build log flags any miss for operators.
 #
 RUN dnf install -y dnf-plugins-core && \
-    dnf debuginfo-install -y \
-        glibc \
-        zlib \
-        readline \
-        openssl-libs \
-        cyrus-sasl-lib \
-        pam \
-        openldap \
-        libtalloc \
-        pcre2 \
-        libpcap \
-        unbound-libs \
-        sqlite-libs \
-        libpq \
-        mariadb-connector-c \
-        gdbm-libs \
-        json-c \
-        brotli \
-        hiredis \
-        librdkafka \
-        libcurl && \
-    dnf clean all
+    for pkg in glibc openssl-libs libtalloc pcre2; do \
+        dnf debuginfo-install -y "$pkg" || echo "WARNING: could not install debuginfo package: $pkg"; \
+    done

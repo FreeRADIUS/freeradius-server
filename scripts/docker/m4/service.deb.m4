@@ -26,20 +26,6 @@ RUN git clean -fdxx \
  && git reset --hard HEAD
 
 #
-#  Build libkqueue from source on non-amd64 architectures.
-#  The NetworkRADIUS extras repository only provides amd64 packages.
-#
-RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
-        apt-get install -y cmake && \
-        git clone --depth 1 https://github.com/mheily/libkqueue.git && \
-        cd libkqueue && \
-        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib . && \
-        make && cpack -G DEB && dpkg -i *.deb && \
-        cp *.deb /usr/local/src/repositories/ && \
-        cd .. && rm -rf libkqueue; \
-    fi
-
-#
 #  Install build dependencies
 #  Debian sid fails if debian/control doesn't exist due to an issue
 #  in one of the included make files, so we create a blank file.
@@ -64,6 +50,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 include(`common.apt.retries.m4')dnl
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
+
+#
+#  libkqueue isn't in every distro archive (and NetworkRADIUS's extras
+#  repo only ships amd64); the build stage built it from source via
+#  common.deb.libkqueue.m4. Ferry the runtime .deb across so freeradius's
+#  libkqueue dep resolves at install time.
+#
+COPY --from=build /opt/libkqueue-debs/libkqueue0_*.deb /tmp/
 
 #
 #  Set up NetworkRADIUS extras repository

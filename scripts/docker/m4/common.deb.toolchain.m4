@@ -18,3 +18,5 @@ RUN apt-get install -y --no-install-recommends \
 		lsb-release \
 		make \
 		quilt
+
+include(`common.deb.libkqueue.m4')dnl

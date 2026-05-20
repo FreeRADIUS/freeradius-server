@@ -24,7 +24,6 @@ RUN apt-get install -y --no-install-recommends \
 		xz-utils
 
 include(`common.deb.nr-extras.m4')dnl
-include(`common.deb.dbgsym.m4')dnl
 
 #
 #  Pre-install the build-dep closure derived from debian/control. The
@@ -36,7 +35,7 @@ COPY debian/ /tmp/freeradius-build/debian/
 RUN cd /tmp/freeradius-build && \
 	touch -t 202001010000 debian/control && \
 	debian/rules debian/control && \
-	mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control && \
+	mk-build-deps -irt"apt-get -y" debian/control && \
 	apt-get -y --purge remove freeradius-build-deps && \
 	cd / && \
 	rm -rf /tmp/freeradius-build \

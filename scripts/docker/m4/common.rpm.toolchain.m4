@@ -18,3 +18,5 @@ RUN dnf install -y \
 		rsync
 
 RUN dnf config-manager --set-enabled crb
+
+include(`common.rpm.libkqueue.m4')dnl

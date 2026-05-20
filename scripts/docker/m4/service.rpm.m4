@@ -65,6 +65,13 @@ include(`common.dnf.retries.m4')dnl
 
 COPY --from=build /root/rpms /tmp/
 
+#
+#  libkqueue isn't in the Rocky archives; the build stage built it from
+#  source (via common.rpm.libkqueue.m4). Ferry the runtime rpm across so
+#  freeradius's `Requires: libkqueue` resolves at install time.
+#
+COPY --from=build /opt/libkqueue-rpms/libkqueue-[0-9]*.rpm /tmp/
+
 include(`common.rpm.nr-extras.m4')dnl
 
 #

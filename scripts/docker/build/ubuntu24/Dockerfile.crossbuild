@@ -44,6 +44,31 @@ RUN apt-get install -y --no-install-recommends \
 		quilt
 
 #
+#  Build libkqueue from source as proper .debs (libkqueue, libkqueue-dev,
+#  libkqueue-dbg) so downstream dpkg-checkbuilddeps / Build-Depends steps
+#  find -dev and so a debugger sees symbols.
+#
+#  cpack's DEB generator emits a -dbg package whenever the build produces
+#  unstripped objects; RelWithDebInfo with explicit C flags overrides
+#  libkqueue's default -O2 -g -DNDEBUG so the symbols actually survive.
+#
+RUN apt-get install -y --no-install-recommends cmake git build-essential file && \
+    git clone --depth 1 https://github.com/mheily/libkqueue.git /tmp/libkqueue && \
+    cd /tmp/libkqueue && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g3 -O1 -fno-omit-frame-pointer -DNDEBUG" \
+        -DCPACK_DEBIAN_PACKAGE_NAME=libkqueue0 \
+        . && \
+    make && \
+    cpack -G DEB && \
+    dpkg -i libkqueue*.deb && \
+    mkdir -p /opt/libkqueue-debs && cp libkqueue*.deb /opt/libkqueue-debs/ && \
+    cd / && rm -rf /tmp/libkqueue
+
+#
 #  Crossbuild-specific extras on top of the common toolchain.
 #
 RUN apt-get install $APT_OPTS \
@@ -63,52 +88,6 @@ RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
 RUN echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/noble noble main" \
 		> /etc/apt/sources.list.d/networkradius-extras.list && \
 	apt-get update
-#
-#  Debug symbols for the FreeRADIUS runtime library closure.
-#
-#  Repo source depends on derivative:
-#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
-#    debian     debian-debug.debian.net via the existing debian-archive
-#               keyring (no extra keyring install)
-#
-#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
-#  13. T64 expands accordingly; `[]' breaks the surrounding token so
-#  m4 actually expands the macro mid-package-name.
-#
-#  Failure is fatal -- a renamed or retired -dbgsym package gets
-#  caught at image-build time, not in production when a profiler
-#  tries to resolve a symbol that isn't there.
-#
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list
-
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS \
-        libc6-dbg \
-        zlib1g-dbgsym \
-        libreadline8t64-dbgsym \
-        libssl3t64-dbgsym \
-        libsasl2-2-dbgsym \
-        libpam0g-dbgsym \
-        libldap2-dbgsym \
-        libtalloc2-dbgsym \
-        libpcre2-8-0-dbgsym \
-        libpcap0.8t64-dbgsym \
-        libunbound8-dbgsym \
-        libsqlite3-0-dbgsym \
-        libpq5-dbgsym \
-        libmariadb3-dbgsym \
-        libgdbm6t64-dbgsym \
-        libjson-c5-dbgsym \
-        libbrotli1-dbgsym \
-        libhiredis1.1.0-dbgsym \
-        librdkafka1-dbgsym \
-        libwbclient0-dbgsym \
-        libcurl4t64-dbgsym && \
-    apt-get clean && \
-    rm -r /var/lib/apt/lists/*
 
 
 #

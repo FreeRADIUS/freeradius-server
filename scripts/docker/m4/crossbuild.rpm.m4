@@ -4,7 +4,6 @@ FROM ${from} AS build
 include(`common.dnf.retries.m4')dnl
 include(`common.rpm.toolchain.m4')dnl
 include(`common.rpm.nr-extras.m4')dnl
-include(`common.rpm.debuginfo.m4')dnl
 
 #
 #  Setup a src dir in /usr/local
