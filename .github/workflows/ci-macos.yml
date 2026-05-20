@@ -1,6 +1,7 @@
 name: CI macOS
 
 on:
+  workflow_dispatch:
   push:
     branches-ignore:
       - coverity_scan
