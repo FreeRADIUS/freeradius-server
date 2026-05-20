@@ -2669,6 +2669,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	etc.), then we can't accept a new FD.
 		 */
 		if (fr_event_fd_full(el)) {
+			RATE_LIMIT(INFO("Cannot open new connection to home_server %s as there are too many connections are open", request->home_server->name));
 			break;
 		}
 #endif
