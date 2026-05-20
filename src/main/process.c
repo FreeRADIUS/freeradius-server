@@ -73,7 +73,6 @@ fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
 	return el;
 }
 
-#ifndef HAVE_KQUEUE
 /*
  *	For src/main/listen.c
  */
@@ -81,7 +80,6 @@ bool radius_event_fd_full(void)
 {
 	return  fr_event_fd_full(el);
 }
-#endif
 
 static char const *action_codes[] = {
 	"INVALID",
@@ -2663,7 +2661,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 
-#ifndef HAVE_KQUEUE
 		/*
 		 *	If there are too many FDs overall (incoming, outgoing,
 		 *	etc.), then we can't accept a new FD.
@@ -2672,7 +2669,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 			RATE_LIMIT(INFO("Cannot open new connection to home_server %s as too many connections are open", request->home_server->name));
 			break;
 		}
-#endif
 
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {

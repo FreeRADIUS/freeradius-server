@@ -1161,13 +1161,15 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		return 0;
 	}
 
+	if (radius_event_fd_full()
 #ifndef HAVE_KQUEUE
-	if ((newfd >= FD_SETSIZE) || radius_event_fd_full()) {
+	    || (newfd >= FD_SETSIZE)
+#endif
+		) {
 		RATE_LIMIT(INFO("Ignoring new connection from client %s too many connections are open", client->shortname));
 		close(newfd);
 		return 0;
 	}
-#endif
 
 #ifdef WITH_TLS
 	/*
