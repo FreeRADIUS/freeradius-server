@@ -1,16 +1,11 @@
-
-== Test the Server
-
-include::howto:partial$post_test.adoc[]
-
-== Test CHAP Authentication
+= Test CHAP Authentication
 
 Once the server is started in debugging mode, CHAP authentication can
 be performed via the following command:
 
 [source,shell]
 ----
-cat <<'EOF' | radclient -x localhost auth testing123
+radclient -x localhost auth testing123 <<EOF
 User-Name = "bob"
 CHAP-Password = "hello"
 EOF
@@ -18,8 +13,8 @@ EOF
 
 The `radclient` program is smart enough to see that the
 `CHAP-Password` attribute is a cleartext password.  It then performs
-CHAP calculations in order to put the correct `CHAP-Password` value
-into the packet.
+the correct CHAP calculations in order to put the hashed
+`CHAP-Password` value into the packet.
 
 [NOTE]
 ====
@@ -29,7 +24,7 @@ assume that the server knows about a user `bob` with password `hello`.
 ====
 
 The output of `radclient` should look like the following.  Some of the
-numbers may be different, but the general format should be the same.
+numbers may be different, but the general output should be the same.
 
 [source,log]
 ----
@@ -43,8 +38,11 @@ Received Access-Accept Id 47 from 127.0.0.1:1812 to 127.0.0.1:52132 length 25
 
 This output indicates that the authentication request was accepted.
 
-Next, read the server output.  The goal here is to look for messages
-containing `ERROR` or `WARNING`, or the `chap` module name.
+NNext, read the server output.  If CHAP authentication succeeds, you
+will see that reflected in the output.  Look for lines containing
+`chap`.  If CHAP authentication fails, then look for lines containing
+`ERROR`, `WARNING`, or `chap`.  Those messages will describe what went
+wrong.
 
 [source,log]
 ----
@@ -87,13 +85,12 @@ calculations.  If the calculated CHAP values match the CHAP values in
 the request packet, then the user is authenticated.  Otherwise,
 authentication fails and the user is rejected.
 
-This two-phase processing of CHAP ensures that the `chap` module is
-independent of any database.  That is, the "known good" password can
-be obtained from any other module, such as `ldap`, `sql`, `files`,
-etc.  The `chap` module only needs to know that it handles CHAP, and
-that it has been given a `Password.Cleartext` in order to authenticate
-the user.  The source of that `Password.Cleartext` is unimportant.
-
+This two-phase processing of CHAP ensures that the `chap` module works
+with any database.  That is, the "known good" password can be obtained
+from any other module, such as `ldap`, `sql`, `files`, etc.  The
+`chap` module only needs to know that it handles CHAP, and that it has
+been given a `Password.Cleartext` in order to authenticate the user.
+The source of that `Password.Cleartext` is unimportant.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

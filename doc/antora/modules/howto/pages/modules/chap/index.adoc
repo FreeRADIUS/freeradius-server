@@ -1,37 +1,29 @@
-:module_name:
-
 = CHAP
 
-The Challenge Handshake Authentication Protocol (CHAP) authenticates PPP clients without sending the user's password over the wire.  The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap] configuration file specifies the parameters used by the CHAP module.  This document explains how to configure and test CHAP authentication in FreeRADIUS.
+The Challenge Handshake Authentication Protocol (CHAP) authenticates
+PPP clients without sending the user's password over the wire.  The
+xref:reference:raddb/mods-available/chap.adoc[mods-available/chap]
+configuration file specifies the parameters used by the CHAP module.
+This document explains how to configure and test CHAP authentication
+in FreeRADIUS.
 
 == CHAP Authentication Flow
 
-CHAP authentication happens in three stages. The NAS sends a challenge to the client. The client responds with a hashed password and challenge. FreeRADIUS checks the hash and returns an accept or reject message to the NAS, which then grants or denies the session. More details are shown in the net section.
+CHAP authentication happens in three stages. The NAS sends a challenge
+to the client via PPP.  The client responds with a hash of the
+password and the challenge.  The NAS then sends the hash and challenge
+to the RADIUS server in an Access-Request.
 
-*Phase 1*
-
-The NAS sends a random challenge to the supplicant.  The client performs some computations and returns the result.  The plaintext password never travels on the wire. The NAS packages the result into an `Access-Request` (UDP/1812) containing`User-Name`, `CHAP-Challenge`, and `CHAP-Password`, and forwards it to the FreeRADIUS server.
-
-*Phase 2*
-
-FreeRADIUS processes the request in two steps.  During `recv Access-Request`, the `chap` module detects `CHAP-Password` and sets `Auth-Type := CHAP`.
-
-A database module (such as `files`, `sql`, or `ldap`) looks up the user and adds `Password.Cleartext` into the control list. During `authenticate chap` process, the `chap` module recomputes the hash `MD5(id ∥ cleartext ∥ challenge)` locally and byte-compares the result against `CHAP-Password`. The module returns `ok` for a match and `reject` for a mismatch.
-
-*Phase 3*
-
-The NAS receives a single RADIUS reply: `Access-Accept` on success, or `Access-Reject` on failure.  The NAS then accepts or rejects the supplicant's session accordingly.
-
+FreeRADIUS reads the clear-text password from a database, and then
+hashes that using the same challenge.  If the two hashes match, then
+the user has used the correct password.  Otherwise, a reject is
+returned.
 
 === CHAP Authentication Flow Diagram
-
-
 
 .
 
 image::CHAP-Flow.svg[CHAP Flow, role=thumb]
-
-
 
 
 == Verify the Server Configuration
@@ -45,6 +37,9 @@ contains no configuration items, and does not need to be edited.
 
 == Enable mods-available/chap
 
+The default installation will automatically enable the `chap` module.
+In most circumstances, no additional work is required.
+
 The `chap` module is enabled by creating a soft link from the
 `mods-enabled/` directory to the `mods-available/` directory.
 
@@ -53,10 +48,7 @@ The `chap` module is enabled by creating a soft link from the
 cd raddb/mods-enabled && ln -s ../mods-available/chap
 ----
 
-The default installation will automatically enable the `chap` module.
-In most circumstances, no additional work is required.
-
-== Configure the Virtual Server
+== Configure the CHAP module in a Virtual Server
 
 The `chap` module must be referenced in two sections of the virtual
 server.  Both sections are present in the default
@@ -66,9 +58,11 @@ server.  Both sections are present in the default
 
 The `chap` module must be called in the `recv Access-Request { ... }`
 section.  When a request arrives containing a `CHAP-Password`
-attribute, the module sets `Auth-Type := ::CHAP`, which causes the
-server to call the `authenticate chap { ... }` section later in
-processing.
+attribute, the module looks for `CHAP-Password` in the request.  If
+that attribute exists, the module sets `Auth-Type := ::CHAP`.
+
+The server then calls the `authenticate chap { ... }` section later in
+processing, in order to authenticate the user.
 
 [source,unlang]
 ----
@@ -79,13 +73,25 @@ recv Access-Request {
 }
 ----
 
+You must also configure a database module which retreives the "known
+good" password for the user.  This password must be placed into the
+`Password.Cleartext` attribute.
+
+Due to the limitations of CHAP, other password formats are not
+supported.  For example, "salted" or "crypted" passwords are not
+compatible with CHAP authentication.
+
+See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+
 === Configure `authenticate chap`
 
 The `chap` module must also appear in the `authenticate chap { ... }`
 section.  This section is called when `Auth-Type` is set to `CHAP`.
+
 The module retrieves the `Password.Cleartext` that has been placed
 into the request by a database module (such as `files`, `sql`, or
-`ldap`), and verifies the CHAP credentials.
+`ldap`), and then verifies the CHAP data which was supplied in the
+`Access-Request` packet.
 
 [source,unlang]
 ----
@@ -94,27 +100,39 @@ authenticate chap {
 }
 ----
 
-The `chap` module requires access to a cleartext password.
-`Password.Cleartext` must be set by a prior module in the
-`recv Access-Request { ... }` section before the `authenticate chap {
-... }` section is reached.  Standard Unix system authentication or passwords  are not compatible with CHAP.
+`Password.Cleartext` must be set before the `authenticate chap {
+... }` section is run, otherwise authentication will fail.
 
-See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatibility chart] for more information.
+== Disabling CHAP
 
-== Disable CHAP
+You can disable the `chap` module by removing the soft link from the
+`mods-enabled/` directory.  You must then also remove all references
+to `chap` from the virtual servers.
 
-The local system requirements may be that CHAP authentication is
-forbidden.  In that case, the `chap` module should be removed from the
-`recv Access-Request { ... }` section, and the `authenticate chap {
-... }` section should be deleted.  The server will then be unable to
-process CHAP authentication requests.  All `Access-Request` packets
-that contain a `CHAP-Password` attribute will then result in an
-`Access-Reject`.
+The `chap` module should be removed from the `recv Access-Request {
+... }` section, and the `authenticate chap { ... }` section should be
+deleted.
+
+The server will then refuse to do CHAP authentication.  All
+`Access-Request` packets that contain a `CHAP-Password` attribute will
+then result in an `Access-Reject`.
+
+== Security
+
+We do _not_ recommend enabling the CHAP module.  If the
+`CHAP-Password` and `CHAP-Challenge` attributes are sent in
+RADIUS/UDP, then they are vulnerable to off-line dictionary attacks.
+Anyone who can see the CHAP data can discover the users clear-text
+password in a few milliseconds.
+
+In contrast, PAP (`User-Password`) is significantly more secure.
 
 == Testing
 
-Confirm that your server configuration is accurate before proceeding to test CHAP functionality. For more details and guidance, please refer to xref:modules/chap/testchap.adoc[testing].
-
+Confirm that your server configuration works before proceeding to test
+CHAP functionality.  Then, see the
+xref:modules/chap/testing.adoc[testing] page for specific instructions
+on how to test the `chap` module.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
