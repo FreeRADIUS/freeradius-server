@@ -645,7 +645,11 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 # Start with the standard RPM optimisation flags (includes -g for debug symbols)
 # Replace -g with -g3 to include CPP macro definitions in debug info, useful
 # for debugging with macros like RDEBUG, fr_assert, talloc wrappers etc.
-export CFLAGS="$(echo '%{optflags}' | sed -E 's/(^| )-g( |$)/ -g3 /g')"
+# Add -fPIC because the freeradius libraries are shared objects -- the
+# default RPM CFLAGS pull -fPIE (for executables), and at -shared link
+# time binutils ld rejects ADRP-against-externally-bound symbols
+# emitted in PIE codegen on aarch64.
+export CFLAGS="$(echo '%{optflags}' | sed -E 's/(^| )-g( |$)/ -g3 /g') -fPIC"
 export CXXFLAGS="$CFLAGS"
 
 %if %{with developer}
