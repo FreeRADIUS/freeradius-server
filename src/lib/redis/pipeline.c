@@ -774,3 +774,11 @@ fr_redis_async_rcode_t fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
 {
 	return cmds->rcode;
 }
+
+/** Extract the next node address and port from a command set
+ */
+void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t *addr)
+{
+	addr->inet.dst_ipaddr = cmds->next_node_addr;
+	addr->inet.dst_port = cmds->next_node_port;
+}
