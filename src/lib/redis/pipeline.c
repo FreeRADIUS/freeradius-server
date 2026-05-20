@@ -782,3 +782,32 @@ void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t *a
 	addr->inet.dst_ipaddr = cmds->next_node_addr;
 	addr->inet.dst_port = cmds->next_node_port;
 }
+
+/** Reset a command set to it's state before enqueuing
+ *
+ * For use when handling MOVED / ASK where the command set needs to be sent
+ * to another node.
+ */
+int fr_redis_command_set_reset(fr_redis_command_set_t *cmds)
+{
+	fr_redis_command_t	*cmd;
+
+	/*
+	 *	Move sent and completed commands back to the pending list
+	 *	Popping from the tail of sent, then completed and inserting
+	 *	into the head of pending ensures pending is back in the
+	 *	original sequence.
+	 */
+	while ((cmd = fr_dlist_pop_tail(&cmds->sent))) {
+		fr_dlist_insert_head(&cmds->pending, cmd);
+	}
+	while ((cmd = fr_dlist_pop_tail(&cmds->completed))) {
+		fr_dlist_insert_head(&cmds->pending, cmd);
+	}
+
+	cmds->next_node_addr = (fr_ipaddr_t){};
+	cmds->next_node_port = 0;
+	cmds->treq = NULL;
+
+	return 0;
+}

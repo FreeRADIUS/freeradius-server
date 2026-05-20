@@ -91,6 +91,8 @@ fr_redis_async_rcode_t		fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
 
 void				fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t *addr);
 
+int				fr_redis_command_set_reset(fr_redis_command_set_t *cmds);
+
 fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
 						      fr_redis_io_conf_t const *conf, fr_pair_list_t *trigger_args);
 
