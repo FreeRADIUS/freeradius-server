@@ -332,6 +332,11 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
 }
 
 
+bool fr_event_fd_full(fr_event_list_t *el)
+{
+	return (el->num_readers >= fr_ev_max_fds);
+}
+
 int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		       fr_event_fd_handler_t handler, void *ctx)
 {
