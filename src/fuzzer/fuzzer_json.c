@@ -107,7 +107,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		}
         
 		if (str) {
-			(void) fr_jpath_parse(ctx, &jpath_head, str, len);
+			/*
+			 *	the strdup functions stop at the first 0.  So we need to pass the actual
+			 *	length of "str", and not the input "len".
+			 *
+			 *	Since the json code also stops at the first NUL, character, there's no benefit
+			 *	to passing any more than that.
+			 */
+			(void) fr_jpath_parse(ctx, &jpath_head, str, talloc_strlen(str));
 		}
 	}
 
