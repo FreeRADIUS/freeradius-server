@@ -679,5 +679,11 @@ match (User-Name == "bob \"quoted\" ")
 condition !(&Service-Type == ::Framed-User)
 match !(Service-Type == ::Framed-User)
 
+#
+#  Non-ASCII characters are unsigned indexes into a character array.
+#
+condition (ok�)
+match ERROR offset 3: Unexpected text after return code
+
 count
-match 308
+match 310
