@@ -1,6 +1,8 @@
 = PAM
 
-FreeRADIUS integrates with PAM (Pluggable Authentication Modules) to manage user authentication. PAM is a secure method for user authentication and is widely used on Linux systems.
+FreeRADIUS integrates with PAM (Pluggable Authentication Modules) to
+manage user authentication. PAM is a secure method for user
+authentication and is widely used on Linux systems.
 
 == Edit `users` file
 
@@ -14,15 +16,17 @@ You can also use `Pam-Auth = somestring` to specify an entry in
 
 == Compile FreeRADIUS with PAM
 
-To compile and install FreeRADIUS with PAM support, you need to run the `./configure` command with the `--with-pam` flag. For more guidance enter the command `./configure -help` to review more flag options and details.
+The `pam` module should be automatically built and included with the
+server.  If it is not, you will need to install the relevant PAM
+development headers, then re-run `configure`, and re-compile FreeRADIUS.
 
-== Edit `radisd.conf`
+== Edit `radiusd.conf`
 
-Within your `radiusd.conf` file, in the `modules' section, make sure that
-the pam section is enabled:
+Ensure that the `pam` module is linked into `sites-enabled/pam`.
+
 
 ```
- pam {
+pam {
          #
          #  The name to use for PAM authentication.
          #  PAM looks in /etc/pam.d/${pam_auth_name}
@@ -32,17 +36,18 @@ the pam section is enabled:
          #  file over-rides this one.
          #
          pam_auth = radiusd
- }
+}
 ```
 
-In the `authenticate` section, do the same:
+In the `authenticate pam` section, do the same:
 
 ```
-process Access-Request { # Uncomment this if you want to use PAM
-(Auth-Type = PAM) pam ,
+#authenticate pam {
+#	pam
+#}
 ```
 
-In your /etc/pam.d/ directory create a file called radiusd with the
+In your `/etc/pam.d/` directory create a file called `radiusd` with the
 following configuration items (or whatever you need for your pam configuration):
 
 ```
@@ -56,8 +61,8 @@ required /lib/security/pam_unix_session.so
 
 If you don't want to run your freeradius server in debug mode as root
 (ie, run as an unprivileged user) you will need to run freeradius with
-a group membership that is able to read the /etc/shadow file - otherwise
-pam will be unable to read the /etc/shadow file and will fail. I suggest
+a group membership that is able to read the `/etc/shadow` file - otherwise
+pam will be unable to read the `/etc/shadow` file and will fail. We suggest
 a group called `shadow' or the like.
 
 ```
@@ -65,31 +70,32 @@ $ chgrp /etc/shadow shadow
 $ chmod g+w /etc/shadow
 ```
 
-And in the radiusd.conf file:
+And in the `radiusd.conf` file:
 
 ```
 # On systems with shadow passwords, you might have to set `group = shadow`
 # for the server to be able to read the shadow password file.
 # Change below to suit your setup.
 
-`user = radius group = shadow`
-
+user = radius
+group = shadow
 ```
+
 [NOTE]
 ====
-Granting read access to the /etc/shadow file can be a security risk; use this option with caution. Generally, only root read permissions are safe.
+Granting read access to the `/etc/shadow` file can be a security risk;
+use this option with caution. Generally, only root read permissions
+are safe.
 ====
 
 == Worked Example
 
 ```
-DEFAULT Auth-Type = Pam, NAS-IP-Address = 206.97.64.5 Service-Type =
-Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 255.255.255.254,
-Filter-Id = std.ppp, Framed-MTU = 1500, Framed-Compression =
-Van-Jacobson-TCP-IP DEFAULT Auth-Type = Pam, Pam-Auth = radius2,
-NAS-IP-Address = 127.0.0.1 Service-Type = Framed-User, Framed-Protocol =
-PPP, Framed-IP-Address = 255.255.255.254, Filter-Id = std.ppp,
-Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
+DEFAULT Auth-Type = Pam, ..
+	...
+
+DEFAULT Auth-Type = Pam, Pam-Auth = radius2, ..
+	...
 ```
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
