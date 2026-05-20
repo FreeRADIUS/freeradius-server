@@ -484,7 +484,10 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	 */
 	dst = request->log.dst;
 	request->log.dst = NULL;
-	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) goto finish;
+	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) {
+		request->log.dst = dst;
+		goto finish;
+	}
 	request->log.dst = dst;
 
 	fr_fring_overwrite(t->fring, exp);	/* Insert it into the buffer */
