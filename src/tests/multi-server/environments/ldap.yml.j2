@@ -16,18 +16,24 @@ x-common-config: &id001
     TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
 services:
   openldap:
-    image: osixia/openldap:1.5.0
+    image: dinkel/openldap:latest
     environment:
-      LDAP_ORGANISATION: "Example"
-      LDAP_DOMAIN: "example.com"
-      LDAP_ADMIN_PASSWORD: "adminpassword"
+      SLAPD_DOMAIN: "example.com"
+      SLAPD_PASSWORD: "adminpassword"
+      SLAPD_ORGANIZATION: "Example"
     volumes:
-    - ${DATA_PATH}/openldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    # dinkel's entrypoint slapadds any *.ldif under /etc/ldap/prepopulate
+    # on first start. It iterates the files via slapadd directly, no
+    # in-place sed/chown/rm shenanigans, so a read-only bind-mount of the
+    # parent dir survives the init unscathed.
+    - ${DATA_PATH}/openldap/bootstrap:/etc/ldap/prepopulate:ro
     healthcheck:
-      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -D 'cn=admin,dc=example,dc=com' -w adminpassword -b 'dc=example,dc=com' > /dev/null 2>&1"]
+      # dinkel doesn't ship ldap-utils; probe the listener via bash's
+      # built-in /dev/tcp so we don't need ldapsearch in the image.
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/389'"]
       interval: 2s
       timeout: 5s
-      retries: 10
+      retries: 15
       start_period: 15s
     <<: *id001
   freeradius:
