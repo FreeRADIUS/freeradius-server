@@ -53,7 +53,7 @@ foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if (%redis.remap("%{redisserver}:30001") == 'success') {
+	if (%redis.remap() == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
 		if ((%redis('SET', 'b', %{data1}) == 'OK') && \
 		    (%redis('SET', 'c', %{data2}) == 'OK') && \

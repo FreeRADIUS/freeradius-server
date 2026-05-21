@@ -293,65 +293,96 @@ parse_reply:
 	return 0;
 }
 
-static xlat_arg_parser_t const redis_remap_xlat_args[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
+/** Callback to check redis replied with "PONG" when expected.
+ */
+static void redis_xlat_ping_check(request_t *request, fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_redis_xlat_rctx_t	*xlat_rctx = talloc_get_type_abort(rctx, rlm_redis_xlat_rctx_t);
+
+	if (reply->type  != REDIS_REPLY_STATUS) {
+		RWARN("Did not receive expected redis status reply");
+		return;
+	}
+
+	if (strcmp(reply->str, "PONG") != 0) {
+		RERROR("Running \"%s\" returned %s", fr_redis_command_get_cmd(cmd), reply->str);
+		return;
+	}
+	xlat_rctx->action = XLAT_ACTION_DONE;
+}
+
+static xlat_action_t redis_remap_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	rlm_redis_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_xlat_rctx_t);
+	fr_value_box_t		*vb = NULL;
+
+	if (rctx->action != XLAT_ACTION_DONE) {
+		RPERROR("PING after cluter remap failed");
+		return rctx->action;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	switch (fr_redis_command_set_rcode(rctx->cmds)) {
+	case REDIS_ASYNC_RCODE_SUCCESS:
+		fr_value_box_strdup(vb, vb, NULL, "success", false);
+		break;
+	default:
+		fr_value_box_strdup(vb, vb, NULL, "fail", false);
+	}
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 /** Force a redis cluster remap
  *
 @verbatim
-%redis.remap(<redis server ip>:<redis server port>)
+%redis.remap()
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
-				      request_t *request, fr_value_box_list_t *in)
+				      request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	rlm_redis_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
+	rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
+	rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-	fr_socket_t			node_addr;
-	fr_pool_t			*pool;
-	fr_redis_conn_t			*conn;
-	fr_redis_cluster_rcode_t	rcode;
-	fr_value_box_t			*vb;
-	fr_value_box_t			*in_head = fr_value_box_list_head(in);
+	fr_redis_command_set_t	*cmds;
+	rlm_redis_xlat_rctx_t	*rctx;
+	fr_redis_async_rcode_t	ret;
 
-	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, in_head->vb_strvalue, in_head->vb_length,
-			      AF_UNSPEC, true, true) < 0) {
-		RPEDEBUG("Failed parsing node address");
+	if (fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+					    inst->coord_pair_reg) == REDIS_ASYNC_RCODE_ERROR) {
+		RPEDEBUG("Failed to initiate cluster remap");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &node_addr, true) < 0) {
-		RPEDEBUG("Failed locating cluster node");
-		return XLAT_ACTION_FAIL;
-	}
+	/*
+	 *	Since cluster remap is out of band, using the coordinator thread, queue up
+	 *	a "PING" command which will run after the remap.
+	 *	In addition, if the cluster map has not been previously fetched, this will
+	 *	bootstrap the cluster map fetching.
+	 *	The xlat will return after the remap has completed.
+	 */
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_redis_xlat_rctx_t));
+	rctx->ctx = ctx;
+	rctx->action = XLAT_ACTION_FAIL;
 
-	conn = fr_pool_connection_get(pool, request);
-	if (!conn) {
-		REDEBUG("No connections available for cluster node");
-		return XLAT_ACTION_FAIL;
-	}
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	fr_redis_command_preformatted_add(cmds, "PING", redis_xlat_ping_check, rctx);
 
-	rcode = fr_redis_cluster_remap(request, inst->cluster, conn);
-	switch (rcode) {
-	case FR_REDIS_CLUSTER_RCODE_NO_CONNECTION:
-		fr_pool_connection_close(pool, request, conn);
-		break;
+	rctx->cmd = fr_redis_async_cmd_start(unlang_interpret_frame_talloc_ctx(request), request, &ret,
+					     thread->rtcluster, NULL, 0, cmds, rctx->read_only, NULL);
 
-	default:
-		fr_pool_connection_release(pool, request, conn);
-		break;
-	}
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
+					"Failed to enqueue redis PING", XLAT_ACTION_FAIL)
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
-	fr_dcursor_append(out, vb);
-
-	return XLAT_ACTION_DONE;
+	return unlang_xlat_yield(request, redis_remap_xlat_resume, NULL, 0, rctx);
 }
 
 static xlat_arg_parser_t const redis_node_xlat_args[] = {
@@ -968,7 +999,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, redis_node_xlat_args);
 
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "remap", redis_remap_xlat, FR_TYPE_STRING)) == NULL)) return -1;
-	xlat_func_args_set(xlat, redis_remap_xlat_args);
 
 	/*
 	 *	Loop over the lua functions, registering an xlat
