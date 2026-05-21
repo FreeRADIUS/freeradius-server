@@ -1,11 +1,18 @@
 name: Multi-Server CI Tests
 
 on:
-  push:
-    branches-ignore:
-      - coverity_scan
-      - run-fuzzer**
-      - debug-fuzzer-**
+  #
+  #  Triggered indirectly via Check Crossbuild completion: the
+  #  crossbuild workflow publishes freeradius4-crossbuild/<image>:<sha>
+  #  to the internal registry on success, which the multi-server tests
+  #  then pull through (via DOCKER_REGISTRY in scripts/docker/docker.mk)
+  #  instead of rebuilding crossbuild from scratch. workflow_run only
+  #  fires after Check Crossbuild has actually finished for this SHA,
+  #  so we never race against the image not being in the registry yet.
+  #
+  workflow_run:
+    workflows: ["Check Crossbuild"]
+    types: [completed]
   pull_request:
     paths:
       - '.github/workflows/ci-multi-server-tests.yml'
@@ -23,7 +30,16 @@ on:
 jobs:
   multi-server-tests:
     runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS'
+    #
+    #  Skip the workflow_run instance when Check Crossbuild didn't
+    #  succeed - we'd just rebuild from a known-broken base. Other
+    #  triggers (PR / schedule / manual dispatch) don't carry a
+    #  workflow_run conclusion so the second clause keeps them firing.
+    #
+    if: |
+      github.repository_owner == 'FreeRADIUS' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.conclusion == 'success')
 
     strategy:
       fail-fast: false
@@ -91,8 +107,16 @@ jobs:
 
     steps:
 
+      #
+      #  On the workflow_run path, github.sha is the default branch's
+      #  tip; we want the commit the upstream Check Crossbuild run was
+      #  fired against. event.workflow_run.head_sha carries that value
+      #  for workflow_run events and is empty otherwise, so the ||
+      #  fallback covers PR / schedule / manual dispatch.
+      #
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           lfs: false
 
       - name: setup-dind

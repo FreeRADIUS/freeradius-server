@@ -170,6 +170,21 @@ jobs:
     #  ...) can pull rather than rebuild. Only on success - a broken
     #  image shouldn't be published for the next workflow to trust.
     #
+    #
+    #  Re-login to dind with the push-capable creds. The earlier login
+    #  step uses DOCKER_REPO_USERNAME / DOCKER_REPO_PASSWORD which only
+    #  carry read access (enough for pulling base images and pulling
+    #  the crossbuild image via DOCKER_REGISTRY); pushing the built
+    #  service + profiling images needs DOCKER_REPO_UPDATE_*.
+    #
+    - name: Login to internal Docker registry for push (via dind)
+      if: ${{ success() }}
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
     - name: Push docker images to internal registry
       if: ${{ success() }}
       env:

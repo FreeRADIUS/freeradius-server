@@ -160,6 +160,20 @@ jobs:
     #  run. Only on success - we don't want to publish a broken image
     #  that the next workflow then trusts.
     #
+    #
+    #  Re-login to dind with the push-capable creds. The earlier login
+    #  step uses DOCKER_REPO_USERNAME / DOCKER_REPO_PASSWORD which only
+    #  carry read access (enough for pulling self-hosted base images);
+    #  pushing the built crossbuild image needs DOCKER_REPO_UPDATE_*.
+    #
+    - name: Login to internal Docker registry for push (via dind)
+      if: ${{ success() }}
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
     - name: Push crossbuild image to internal registry
       if: ${{ success() }}
       env:
