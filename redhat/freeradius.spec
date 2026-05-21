@@ -714,6 +714,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %configure \
         --libdir=%{_libdir}/freeradius \
         --sysconfdir=%{_sysconfdir} \
+        --with-raddbdir=%{_sysconfdir}/freeradius \
         --disable-ltdl-install \
         --with-gnu-ld \
         --with-threads \
@@ -803,7 +804,7 @@ make -f redhat/selinux/Makefile
 make install R=$RPM_BUILD_ROOT
 
 # modify default configuration
-RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
+RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/freeradius
 %__sed -ie 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
 %__sed -ie 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 
@@ -834,20 +835,20 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
 
 %if %{without rlm_idn}
-%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
+%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-available/idn
 %endif
 
 %if %{without rlm_lua}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/lua
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-config/lua
 %endif
 
 %if %{without rlm_mruby}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/mruby
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-config/mruby
 %endif
 %if %{without rlm_sql_oracle}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-config/sql/ippool/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-config/sql/main/oracle
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/mods-config/sql/driver/oracle
 %endif
 %__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
 
@@ -856,7 +857,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -rf $RPM_BUILD_ROOT/%{_includedir}
 
 # remove unsupported config files
-%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
+%__rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/freeradius/experimental.conf
 
 # install doc files omitted by standard install
 for f in COPYRIGHT ; do
@@ -907,8 +908,8 @@ fi
 
 %post config
 if [ $1 = 1 ]; then
-  if [ ! -e %{_sysconfdir}/raddb/certs/server.pem ]; then
-    /sbin/runuser -g radiusd -c 'umask 007; %{_sysconfdir}/raddb/certs/bootstrap' > /dev/null 2>&1 || :
+  if [ ! -e %{_sysconfdir}/freeradius/certs/server.pem ]; then
+    /sbin/runuser -g radiusd -c 'umask 007; %{_sysconfdir}/freeradius/certs/bootstrap' > /dev/null 2>&1 || :
   fi
 fi
 
@@ -1137,111 +1138,111 @@ fi
 %doc %{_mandir}/man5/dictionary.5.gz
 
 %files config
-%dir %attr(755,root,radiusd) %{_sysconfdir}/raddb
+%dir %attr(755,root,radiusd) %{_sysconfdir}/freeradius
 %defattr(640,root,radiusd,750)
-%attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/dictionary
-%config(noreplace) %{_sysconfdir}/raddb/clients.conf
-%config(noreplace) %{_sysconfdir}/raddb/panic.gdb
-%config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
-%config(noreplace) %{_sysconfdir}/raddb/trigger.conf
-%config(noreplace) %{_sysconfdir}/raddb/proxy.conf
-%config(noreplace) %{_sysconfdir}/raddb/users
+%attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/freeradius/dictionary
+%config(noreplace) %{_sysconfdir}/freeradius/clients.conf
+%config(noreplace) %{_sysconfdir}/freeradius/panic.gdb
+%config(noreplace) %{_sysconfdir}/freeradius/radiusd.conf
+%config(noreplace) %{_sysconfdir}/freeradius/trigger.conf
+%config(noreplace) %{_sysconfdir}/freeradius/proxy.conf
+%config(noreplace) %{_sysconfdir}/freeradius/users
 
-%config(noreplace) %{_sysconfdir}/raddb/certs
-%attr(755,root,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
+%config(noreplace) %{_sysconfdir}/freeradius/certs
+%attr(755,root,radiusd) %{_sysconfdir}/freeradius/certs/bootstrap
 
-%config(noreplace) %{_sysconfdir}/raddb/sites-available
+%config(noreplace) %{_sysconfdir}/freeradius/sites-available
 
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/sites-enabled
-%config(noreplace) %{_sysconfdir}/raddb/sites-enabled
-%config(noreplace) %{_sysconfdir}/raddb/policy.d
-%config(noreplace) %{_sysconfdir}/raddb/global.d
-%config(noreplace) %{_sysconfdir}/raddb/template.d
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/sites-enabled
+%config(noreplace) %{_sysconfdir}/freeradius/sites-enabled
+%config(noreplace) %{_sysconfdir}/freeradius/policy.d
+%config(noreplace) %{_sysconfdir}/freeradius/global.d
+%config(noreplace) %{_sysconfdir}/freeradius/template.d
 
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config
-%config(noreplace) %{_sysconfdir}/raddb/mods-config/attr_filter
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config
+%config(noreplace) %{_sysconfdir}/freeradius/mods-config/attr_filter
 
-%config(noreplace) %{_sysconfdir}/raddb/mods-config/csv
-%config(noreplace) %{_sysconfdir}/raddb/mods-config/files
-%config(noreplace) %{_sysconfdir}/raddb/mods-config/isc_dhcp
+%config(noreplace) %{_sysconfdir}/freeradius/mods-config/csv
+%config(noreplace) %{_sysconfdir}/freeradius/mods-config/files
+%config(noreplace) %{_sysconfdir}/freeradius/mods-config/isc_dhcp
 
-%config(noreplace) %{_sysconfdir}/raddb/mods-enabled
-%config(noreplace) %{_sysconfdir}/raddb/mods-available
+%config(noreplace) %{_sysconfdir}/freeradius/mods-enabled
+%config(noreplace) %{_sysconfdir}/freeradius/mods-available
 
 #
 #  SQL Databases - generic
 #
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/counter
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/driver
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool
-%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/main
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql/counter
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql/cui
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql/driver
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql/ippool
+%dir %attr(750,root,radiusd) %{_sysconfdir}/freeradius/mods-config/sql/main
 
 #
 #  MySQL/MariaDB
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/mysql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/mysql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/driver/mysql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/mysql
 
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/counter/mysql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/mysql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/mysql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/counter/mysql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/cui/mysql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/mysql
 
 #
 #  NDB
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/ndb
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/ndb
 
 #
 #  PostgreSQL
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/postgresql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/postgresql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/driver/postgresql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/postgresql
 
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/counter/postgresql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/postgresql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/counter/postgresql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/cui/postgresql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/postgresql
 
 #
 #  SQLite
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/sqlite
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/sqlite
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/driver/sqlite
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/sqlite
 
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/counter/sqlite
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/cui/sqlite
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/counter/sqlite
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/cui/sqlite
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/sqlite
 
 #
 #  Cassandra
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/cassandra
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/cassandra
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/driver/cassandra
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/cassandra
 
 #
 #  MS-SQL (Sybase / FreeTDS)
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/mssql
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/mssql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/mssql
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/mssql
 
 #
 #  Oracle
 #
 %if %{with rlm_sql_oracle}
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/oracle
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
-%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/oracle
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/oracle
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/driver/oracle
 %endif
 
 #
 #  Firebird / InterBase
 #
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/firebird
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/firebird
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/main/firebird
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/sql/ippool/firebird
 
 %if %{with rlm_unbound}
-%config(noreplace)	%{_sysconfdir}/raddb/mods-config/unbound/default.conf
+%config(noreplace)	%{_sysconfdir}/freeradius/mods-config/unbound/default.conf
 %endif
 
 %files utils
@@ -1326,13 +1327,13 @@ fi
 
 %files perl
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/perl
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/freeradius/mods-config/perl
 %{_libdir}/freeradius/rlm_perl.so
 
 %if %{with rlm_python}
 %files python
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/python
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/freeradius/mods-config/python
 %{_libdir}/freeradius/rlm_python.so
 %endif
 
@@ -1390,14 +1391,14 @@ fi
 %if %{with rlm_lua}
 %files lua
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/freeradius/mods-config/lua
 %{_libdir}/freeradius/rlm_lua.so
 %endif
 
 %if %{with rlm_mruby}
 %files ruby
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/mruby
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/freeradius/mods-config/mruby
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 
