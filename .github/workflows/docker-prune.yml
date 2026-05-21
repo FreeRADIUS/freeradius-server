@@ -51,11 +51,17 @@ jobs:
           removed=0
           kept=0
 
-          while IFS=$'\t' read -r id ttl created; do
+          while IFS=$'\t' read -r id ttl created tags; do
             [ -n "$id" ] || continue
 
+            #  RepoTags is empty / "<none>:<none>" for dangling images
+            #  (e.g. when a buildkit cache layer survives the prune of
+            #  its parent). Fall back to the short ID so the log line
+            #  still identifies something the operator can chase.
+            label="${tags:-<dangling>} (${id:0:19})"
+
             if ! ttl_secs=$(ttl_to_seconds "$ttl"); then
-              echo "skip $id: unparseable ci-ttl=$ttl"
+              echo "skip   $label: unparseable ci-ttl=$ttl"
               kept=$(( kept + 1 ))
               continue
             fi
@@ -68,13 +74,15 @@ jobs:
             age=$(( now - created_secs ))
 
             if [ "$age" -gt "$ttl_secs" ]; then
-              echo "remove $id (age ${age}s > ttl ${ttl_secs}s)"
+              echo "remove $label (age ${age}s > ttl ${ttl_secs}s [ci-ttl=$ttl])"
               docker image rm -f "$id" >/dev/null
               removed=$(( removed + 1 ))
             else
+              echo "keep   $label (age ${age}s <= ttl ${ttl_secs}s [ci-ttl=$ttl])"
               kept=$(( kept + 1 ))
             fi
           done < <(docker image ls --filter "label=ci-ttl" --format '{{.ID}}' | \
-                   xargs -r -I{} docker inspect {} --format '{{.Id}}{{"\t"}}{{ index .Config.Labels "ci-ttl" }}{{"\t"}}{{.Created}}')
+                   xargs -r -I{} docker inspect {} \
+                       --format '{{.Id}}{{"\t"}}{{ index .Config.Labels "ci-ttl" }}{{"\t"}}{{.Created}}{{"\t"}}{{join .RepoTags ","}}')
 
           echo "summary: removed=$removed kept=$kept"
