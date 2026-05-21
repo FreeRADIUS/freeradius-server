@@ -1,7 +1,7 @@
 # Dockerfile for multi-server profiling tests.
 # Builds off of "base" profiling image, configures FreeRADIUS and builds it.
 ARG BASE_TAG=latest
-FROM freeradius4-default-profiling/ubuntu24:${BASE_TAG}
+FROM freeradius4-profiling/ubuntu24:${BASE_TAG}
 
 # CFLAGS used for profiling build:
 #   -g3                          Maximum debug info for callgrind symbol resolution
