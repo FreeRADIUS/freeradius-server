@@ -1,2 +1,7 @@
 scripts/docker/build/
 scripts/docker/m4/
+# Host build artefacts shouldn't be copied into containers that re-run
+# configure/make from a clean state; stale Makefile fragments pin
+# absolute host paths into the in-container install rules.
+build/
+prof-results/

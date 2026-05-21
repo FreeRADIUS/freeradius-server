@@ -75,7 +75,7 @@ services:
         condition: service_healthy
     volumes:
     - ${DATA_PATH}/freeradius/kafka-producer1/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/kafka-producer1/load-generator-packets/:/etc/raddb/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/raddb/load-generator-packets/
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     #

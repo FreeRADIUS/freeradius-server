@@ -69,7 +69,7 @@ services:
     # load-generator server config
     - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/raddb/radiusd.conf
 
-    - ${DATA_PATH}/freeradius/load-generator/load-generator-packets/:/etc/raddb/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/raddb/load-generator-packets/
     - ${LISTENER_DIR}/:/var/run/multi-server/
     entrypoint:
     - bash
