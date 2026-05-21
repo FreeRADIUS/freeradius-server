@@ -35,7 +35,15 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug m
        [errprint([common.deb.dbgsym.m4: unsupported OS_NAME=]OS_NAME[
 ])m4exit(1)])
 
-RUN apt-get update && \
+#
+# ddebs.ubuntu.com and debug.mirrors.debian.org are notoriously flaky
+# (slow timeouts and occasional 5xx/404 storms). Acquire::Retries=3
+# from the toolchain template doesn't always cover it. Let `apt-get
+# update` fail soft so the per-package install loop still runs against
+# whatever cache is available; the loop already prints WARNING and
+# moves on for any package the partial cache can't resolve.
+#
+RUN (apt-get update || echo "WARNING: apt-get update for dbgsym sources failed; continuing with stale cache") && \
     for pkg in libc6-dbg libssl3[]T64[]-dbgsym libtalloc2-dbgsym libpcre2-8-0[]T64[]-dbgsym; do \
         apt-get install -y $APT_OPTS "$pkg" || echo "WARNING: could not install dbgsym package: $pkg"; \
     done

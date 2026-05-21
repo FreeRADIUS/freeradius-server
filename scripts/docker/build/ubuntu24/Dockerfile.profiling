@@ -60,7 +60,15 @@ RUN apt-get update && \
     printf 'deb http://ddebs.ubuntu.com noble main restricted universe multiverse\ndeb http://ddebs.ubuntu.com noble-updates main restricted universe multiverse\n' \
         > /etc/apt/sources.list.d/ddebs.list
 
-RUN apt-get update && \
+#
+# ddebs.ubuntu.com and debug.mirrors.debian.org are notoriously flaky
+# (slow timeouts and occasional 5xx/404 storms). Acquire::Retries=3
+# from the toolchain template doesn't always cover it. Let `apt-get
+# update` fail soft so the per-package install loop still runs against
+# whatever cache is available; the loop already prints WARNING and
+# moves on for any package the partial cache can't resolve.
+#
+RUN (apt-get update || echo "WARNING: apt-get update for dbgsym sources failed; continuing with stale cache") && \
     for pkg in libc6-dbg libssl3t64-dbgsym libtalloc2-dbgsym libpcre2-8-0t64-dbgsym; do \
         apt-get install -y $APT_OPTS "$pkg" || echo "WARNING: could not install dbgsym package: $pkg"; \
     done
