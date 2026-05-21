@@ -30,7 +30,7 @@ states:
               {%- endfor %}
               printf "  NUM_MESSAGES:     %s\n" "$TEST_LOADGEN_NUM_MESSAGES"
 
-              if [ "${PROFILING}" = "yes" ]; then
+              if [ "$PROFILING" = "yes" ]; then
                 source /etc/freeradius/start_valgrind_profiling.sh
               else
                 exec freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes
