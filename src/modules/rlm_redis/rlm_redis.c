@@ -372,26 +372,25 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_redis_t const			*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
+	rlm_redis_thread_t		*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-	fr_redis_cluster_key_slot_t const	*key_slot;
-	fr_redis_cluster_node_t const		*node;
-	fr_ipaddr_t				ipaddr;
-	uint16_t				port;
+	fr_redis_ct_key_slot_t const	*key_slot;
+	fr_redis_ct_node_t const	*node;
+	fr_ipaddr_t			ipaddr;
+	uint16_t			port;
 
-	unsigned long				idx = 0;
-	fr_value_box_t				*vb;
-	fr_value_box_t				*key = fr_value_box_list_head(in);
-	fr_value_box_t				*idx_vb = fr_value_box_list_next(in, key);
+	unsigned long			idx = 0;
+	fr_value_box_t			*vb, *key, *idx_vb;
+	XLAT_ARGS(in, &key, &idx_vb);
 
 	if (idx_vb) idx = idx_vb->vb_uint32;
 
-	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key->vb_strvalue,
+	key_slot = fr_redis_ct_slot_by_key(thread->rtcluster, request, (uint8_t const *)key->vb_strvalue,
 						key->vb_length);
 	if (idx == 0) {
-		node = fr_redis_cluster_master(inst->cluster, key_slot);
+		node = fr_redis_ct_master(thread->rtcluster, key_slot);
 	} else {
-		node = fr_redis_cluster_slave(inst->cluster, key_slot, idx - 1);
+		node = fr_redis_ct_replica(thread->rtcluster, key_slot, idx - 1);
 	}
 
 	if (!node) {
@@ -399,7 +398,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
-	if ((fr_redis_cluster_ipaddr(&ipaddr, node) < 0) || (fr_redis_cluster_port(&port, node) < 0)) {
+	if ((fr_redis_ct_ipaddr(&ipaddr, node) < 0) || (fr_redis_ct_port(&port, node) < 0)) {
 		REDEBUG("Failed retrieving node information");
 		return XLAT_ACTION_FAIL;
 	}
