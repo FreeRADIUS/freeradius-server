@@ -24,7 +24,7 @@ services:
   homeserver{{ i }}:
     image: ${FREERADIUS_IMAGE}
     volumes:
-    - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/raddb/radiusd.conf
+    - ${DATA_PATH}/freeradius/homeserver/radiusd.conf:/etc/freeradius/radiusd.conf
     - ${LISTENER_DIR}/:/var/run/multi-server/
     restart: unless-stopped
     healthcheck:
@@ -45,16 +45,16 @@ services:
 {% endfor %}
     volumes:
     # load-generator templates
-    - ${DATA_PATH}/freeradius/load-generator/template.d/load-generator-templates:/etc/raddb/template.d/load-generator-templates
+    - ${DATA_PATH}/freeradius/load-generator/template.d/load-generator-templates:/etc/freeradius/template.d/load-generator-templates
 
     # Setup a testuser/testpass user for authentication testing with load-generator
     # This is only really needed when testing the load-generator with radclient during development.
-    - ${DATA_PATH}/freeradius/load-generator/mods-config/files/authorize:/etc/raddb/mods-config/files/authorize
+    - ${DATA_PATH}/freeradius/load-generator/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
 
     # load-generator server config
-    - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/raddb/radiusd.conf
+    - ${DATA_PATH}/freeradius/load-generator/radiusd.conf:/etc/freeradius/radiusd.conf
 
-    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/raddb/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
     - ${LISTENER_DIR}/:/var/run/multi-server/
     entrypoint:
     - bash
