@@ -122,11 +122,11 @@ jobs:
         run: |
           GIT_COMMIT=$(git rev-parse --short HEAD)
 
-          docker tag freeradius40x-build/ubuntu24:$GIT_COMMIT            $REGISTRY/freeradius40x-build/ubuntu24:$GIT_COMMIT
-          docker push                                                    $REGISTRY/freeradius40x-build/ubuntu24:$GIT_COMMIT
+          docker tag freeradius4-crossbuild/ubuntu24:$GIT_COMMIT  $REGISTRY/freeradius4-crossbuild/ubuntu24:$GIT_COMMIT
+          docker push                                             $REGISTRY/freeradius4-crossbuild/ubuntu24:$GIT_COMMIT
 
-          docker tag freeradius4-default-profiling/ubuntu24:$GIT_COMMIT  $REGISTRY/freeradius4-default-profiling/ubuntu24:$GIT_COMMIT
-          docker push                                                    $REGISTRY/freeradius4-default-profiling/ubuntu24:$GIT_COMMIT
+          docker tag freeradius4-profiling/ubuntu24:$GIT_COMMIT   $REGISTRY/freeradius4-profiling/ubuntu24:$GIT_COMMIT
+          docker push                                             $REGISTRY/freeradius4-profiling/ubuntu24:$GIT_COMMIT
 
       - name: Upload profiling results
         if: always()
