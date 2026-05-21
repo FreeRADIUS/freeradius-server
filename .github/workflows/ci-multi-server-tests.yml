@@ -1,24 +1,38 @@
 name: Multi-Server CI Tests
 
 on:
+  #
+  #  Two entry points:
+  #
+  #    push: per-commit gate. Pulls crossbuild:latest /
+  #    profiling-deps:latest / service:latest / profiling:latest from
+  #    the internal registry (refreshed periodically by
+  #    docker-refresh.yml). For the multi-server tests' purposes the
+  #    FR runtime in those :latest tags is "recent enough" to validate
+  #    multi-server topology / compose / proto_load changes per
+  #    commit. Runs the CI subset.
+  #
+  #    schedule: nightly full-suite run. Falls back to a local layer
+  #    rebuild if the registry has been pruned of any :latest tag.
+  #
   push:
     branches-ignore:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
-  pull_request:
-    paths:
-      - '.github/workflows/ci-multi-server-tests.yml'
-      - 'src/tests/multi-server/**'
   schedule:
-    #  Daily at 2pm EST (7pm UTC) — runs all tests, not just CI subset
+    #  Daily at 2pm EST (7pm UTC) - full test set, not just CI subset.
     - cron: '0 19 * * *'
-  workflow_dispatch:
 
 jobs:
   multi-server-tests:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [service, profiling]
 
     services:
       dind:
@@ -118,18 +132,65 @@ jobs:
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
 
-      - name: Build Docker image from source
+      #
+      #  Build the FreeRADIUS image for this matrix leg. Service mode
+      #  uses the standard service image; profiling mode uses the
+      #  standard profiling image (FR compiled with callgrind-friendly
+      #  CFLAGS via scripts/docker/m4/common.freeradius-profile-build.m4).
+      #
+      #  DOCKER_REGISTRY tells scripts/docker/docker.mk to try pulling
+      #  freeradius4-<type>/<image>:<sha> from the internal registry
+      #  before rebuilding locally - so when the crossbuild workflow
+      #  has already pushed a matching crossbuild image we skip the
+      #  ~5-8 minute crossbuild stage. The crossbuild image itself
+      #  benefits from the same pull-through whenever a previous
+      #  docker-crossbuild.yml run published it.
+      #
+      - name: Build FreeRADIUS image (${{ matrix.mode }})
+        env:
+          DOCKER_REGISTRY: docker.internal.networkradius.com
         run: |
-          make docker.service.ubuntu24
-          docker tag "freeradius4-service/ubuntu24:$(git rev-parse --short HEAD)" freeradius-build:latest
+          case "${{ matrix.mode }}" in
+            service)
+              make docker.service.ubuntu24
+              ;;
+            profiling)
+              make docker.profiling.ubuntu24
+              ;;
+          esac
 
-      - name: Run multi-server tests
+      #
+      #  schedule runs the full test set; workflow_run runs the CI
+      #  subset that gates per-commit.
+      #
+      - name: Run multi-server tests (${{ matrix.mode }})
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            make -j$(nproc) test.multi-server
-          else
-            make -j$(nproc) test.multi-server.ci
-          fi
+          case "${{ matrix.mode }}-${{ github.event_name }}" in
+            service-schedule)
+              make -j$(nproc) test.multi-server
+              ;;
+            service-*)
+              make -j$(nproc) test.multi-server.ci
+              ;;
+            profiling-schedule)
+              make -j$(nproc) test.multi-server.profiling
+              ;;
+            profiling-*)
+              make -j$(nproc) test.multi-server.profiling.ci
+              ;;
+          esac
+
+      #
+      #  Stash callgrind output as a workflow artifact in profiling
+      #  mode. Skipped in service mode (nothing to upload).
+      #
+      - name: Upload profiling results
+        if: ${{ matrix.mode == 'profiling' && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: prof-results-${{ github.sha }}
+          path: prof-results/
+          if-no-files-found: ignore
 
       #
       #  If the CI has failed and the branch is ci-debug

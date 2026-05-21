@@ -7,85 +7,68 @@ ARG from=ubuntu:26.04
 FROM ${from}
 
 #
-#  Install profiling tools
+#  Per-commit profiling image. The slow toolchain layer (valgrind /
+#  kcachegrind / dbgsym / FlameGraph / inferno) lives in profiling-deps
+#  and is refreshed periodically by docker-refresh.yml; this layer just
+#  compiles FreeRADIUS with profiling-friendly CFLAGS on top of it.
+#  See common.freeradius-profile-build.m4 for the CFLAGS rationale.
 #
-#    valgrind / cachegrind
-#    kcachegrind + KDE/Qt runtime libs (cachegrind annotation viewer)
-#    gperftools (libgoogle-perftools-dev ships the pprof binaries too,
-#    so we don't need the separate google-perftools package -- which
-#    has been retired from newer debian/ubuntu archives anyway)
-#    heaptrack
 #
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS \
-        libgoogle-perftools-dev \
-        valgrind \
-        heaptrack \
-        psmisc \
-        kcachegrind \
-        kio \
-        libkf5iconthemes5 \
-        libkf5parts5 \
-        libkf5textwidgets5 \
-        libqt5gui5 \
-        libqt5widgets5 && \
-    apt-get clean && \
-    rm -r /var/lib/apt/lists/*
+#  Build and install FreeRADIUS with profiling-friendly CFLAGS into the
+#  profiling image. Layered on top of the crossbuild base, which already
+#  provides build deps and a clone of the upstream source at
+#  /usr/local/src/repositories/freeradius-server. The local checkout is
+#  copied in over the top so the image reflects the branch under test,
+#  not whatever was on upstream master at image build time.
+#
+#  CFLAGS are tuned for callgrind:
+#    -g3                          full debug info for symbol resolution
+#    -O1                          realistic hotspot costs without losing structure
+#    -fno-omit-frame-pointer      keep frame pointers so callgrind can stack-walk
+#    -fno-inline + -Dalways_inline=
+#                                 preserve call edges; -fno-inline alone leaves
+#                                 CC_HINT(flatten) and the always_inline attribute
+#                                 to still erase them
+#    -fno-optimize-sibling-calls  suppress tail-call elimination
+#    -fno-plt                     cross-library calls go through the GOT instead
+#                                 of PLT stubs, which lack DWARF info
+#    -fno-builtin                 keep stdlib helpers (memcpy, strlen, ...) visible
+#                                 instead of having them inlined as builtins
+#
+WORKDIR /usr/local/src/repositories/freeradius-server
+COPY . .
+# Wipe any host build artefacts that survived the COPY before invoking
+# autoconf/make so the container builds from a clean state. The
+# libbacktrace submodule in particular tends to carry host-absolute
+# paths in its generated Makefile / libtool.
+RUN rm -rf build autom4te.cache .libs config.log config.status \
+        src/lib/backtrace/Makefile src/lib/backtrace/config.log \
+        src/lib/backtrace/config.status src/lib/backtrace/libtool \
+        src/lib/backtrace/.libs src/lib/backtrace/*.la \
+        src/lib/backtrace/*.lo
+RUN ./configure \
+        --enable-developer \
+        --disable-verify-ptr \
+        --with-raddbdir=/etc/freeradius \
+        CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin" \
+        LDFLAGS="-fno-omit-frame-pointer" \
+    && make -j$(nproc) \
+    && make install
 
 #
-#  Debug symbols for the FreeRADIUS runtime library closure.
+#  Provide `freeradius` / `freeradius.conf` / `/etc/raddb` aliases so
+#  profiling scripts and configs match the names used by the production
+#  packages.
 #
-#  Repo source depends on derivative:
-#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
-#    debian     debug.mirrors.debian.org via the existing debian-archive
-#               keyring (no extra keyring install)
-#
-#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
-#  13. T64 expands accordingly; `[]' breaks the surrounding token so
-#  m4 actually expands the macro mid-package-name.
-#
-#  Per-package install with `|| true' fallback so the structural
-#  version skew on Ubuntu LTS (ddebs lagging security-patched main,
-#  e.g. libpcre2-8-0-dbgsym=10.39-3build1 vs main 10.39-3ubuntu0.1)
-#  doesn't wreck the whole layer. A WARNING line in the build log
-#  flags any package that couldn't be installed so operators can see
-#  what's missing rather than discovering it at debug time.
-#
-#  We deliberately do NOT `apt-get clean / rm -r /var/lib/apt/lists/*'
-#  here: the cache would invalidate every subsequent apt-get install
-#  in the containing template and force a redundant apt-get update.
-#
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com resolute main restricted universe multiverse\ndeb http://ddebs.ubuntu.com resolute-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list
-
-RUN apt-get update && \
-    for pkg in libc6-dbg libssl3t64-dbgsym libtalloc2-dbgsym libpcre2-8-0t64-dbgsym; do \
-        apt-get install -y $APT_OPTS "$pkg" || echo "WARNING: could not install dbgsym package: $pkg"; \
-    done
+RUN ln -sf /usr/local/sbin/radiusd /usr/local/sbin/freeradius \
+ && ln -sf /etc/freeradius/radiusd.conf /etc/freeradius/freeradius.conf \
+ && ln -sf /etc/freeradius /etc/raddb
 
 #
-#  Install FlameGraph
+#  Generate the self-signed RSA (and DH/EC) certificates the test
+#  fixtures expect.
 #
-RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph /opt/flamegraph \
-    && chmod +x /opt/flamegraph/*.pl /opt/flamegraph/*.sh
-
-ENV PATH="/opt/flamegraph:${PATH}"
-
-#
-#  Install Inferno (Rust port of FlameGraph with broader format support).
-#  Bootstrap rustup so we always have a recent stable toolchain --
-#  debian12's distro cargo (1.63) is too old for current inferno's
-#  transitive crate MSRVs, and pinning to an older inferno just defers
-#  the same drift everywhere else. Uninstall the toolchain after the
-#  build to keep the layer small.
-#
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --default-toolchain stable --profile minimal && \
-    . "$HOME/.cargo/env" && \
-    cargo install inferno --version 0.11.21 --locked --root /usr/local && \
-    rm -rf "$HOME/.cargo" "$HOME/.rustup"
+RUN cd /etc/freeradius/certs && make
 
 EXPOSE 1812/udp 1813/udp
 CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]

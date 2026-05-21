@@ -2735,17 +2735,29 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
-		connection->parent->radclient->active = true;
-		fr_assert(connection->parent->state == PR_CLIENT_PENDING);
-		connection->parent->state = PR_CLIENT_DYNAMIC;
-
-		update_client(connection->parent, radclient);
-
 		/*
-		 *	Re-parent the conf section used to build this client
-		 *	so its lifetime is linked to parent client
+		 *	Under load, two or more new TCP connections from the same source IP may both be
+		 *	created while the parent is still PR_CLIENT_PENDING.  For now, each child runs its own
+		 *	dynamic-client verification.  @todo - that should be fixed.
+		 *
+		 *	The first child to complete will promote the parent to PR_CLIENT_DYNAMIC.  Other
+		 *	children which finish later notice the already-promoted parent, and skip the
+		 *	unnecessary update.
 		 */
-		talloc_steal(connection->parent->radclient, connection->parent->radclient->cs);
+		if (connection->parent->state == PR_CLIENT_PENDING) {
+			connection->parent->radclient->active = true;
+			connection->parent->state = PR_CLIENT_DYNAMIC;
+
+			update_client(connection->parent, radclient);
+
+			/*
+			 *	Re-parent the conf section used to build this client
+			 *	so its lifetime is linked to parent client
+			 */
+			talloc_steal(connection->parent->radclient, connection->parent->radclient->cs);
+		} else {
+			fr_assert(connection->parent->state == PR_CLIENT_DYNAMIC);
+		}
 
 		/*
 		 *	The client has been allowed.

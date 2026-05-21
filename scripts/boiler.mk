@@ -698,8 +698,20 @@ CPP = cc -E
 LINK.c = ${CC}
 LINK.cxx = ${CXX}
 
-ifneq "$(AC_HAVE_BACKTRACE)" ""
-  DSYMUTIL = $(shell which dsymutil)
+#
+#  dsymutil emits a separate .dSYM bundle alongside Mach-O binaries on
+#  macOS so debuggers and crash reporters can find DWARF after a strip.
+#  It does not understand ELF, so we only invoke it on apple-darwin
+#  targets; everything else gets the `echo` no-op so the recipe step
+#  is harmless. Older boiler.mk versions picked the binary up off PATH
+#  whenever libbacktrace was present, which broke the build inside
+#  images that happen to ship LLVM (e.g. the profiling image's
+#  kcachegrind / inferno toolchain).
+#
+ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+  ifneq "$(AC_HAVE_BACKTRACE)" ""
+    DSYMUTIL = $(shell which dsymutil)
+  endif
 endif
 
 ifeq "$(DSYMUTIL)" ""

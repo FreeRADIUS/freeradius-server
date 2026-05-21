@@ -1,4 +1,4 @@
-name: Build Dockerfiles
+name: Docker crossbuild images
 
 on:
   push:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   #
-  #  Generate matrix based on docker directories.
+  #  Generate matrix based on crossbuild docker directories.
   #
   gen-matrix:
 
@@ -30,7 +30,7 @@ jobs:
         lfs: false
 
     - id: gen-matrix
-      name: Generate matrix based on docker targets
+      name: Generate matrix based on crossbuild targets
       run: |
         cd scripts/docker/build
         M=$(ls | perl -n -e '{chomp; push @L,"\"$_\""} END{print "{\"env\":[{\"OS\":",join("},{\"OS\":",@L),"}]}"}')
@@ -42,7 +42,7 @@ jobs:
   #  the self-hosted-docker-cli image and talks to a self-hosted-docker-dind
   #  sidecar (registry-mirror -> internal NR cache, internal CA pre-trusted).
   #
-  docker-selfhosted:
+  crossbuild-selfhosted:
     needs:
       - gen-matrix
 
@@ -56,7 +56,7 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "v4.0.x-${{ matrix.env.OS }}"
+    name: "${{ github.workflow }}-${{ matrix.env.OS }}"
 
     services:
       dind:
@@ -73,8 +73,10 @@ jobs:
           NO_PROXY: "*.networkradius.com,127.0.0.1"
         #
         #  Share the runner's workspace with dind so the build
-        #  context (Dockerfile + COPY sources) resolves to real
-        #  files inside the dind daemon.
+        #  context resolves to real files inside the dind daemon
+        #  and the inner `docker run --mount=type=bind,source=...`
+        #  bind-mount of the source tree resolves the same way in
+        #  both containers.
         #
         #  github.workspace is the HOST path to the workspace. The
         #  runner mounts it into the job container at a different
@@ -108,36 +110,70 @@ jobs:
 
     - uses: actions/checkout@v6
       with:
-        fetch-depth: 1
+        fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
         lfs: false
 
     - name: setup-dind
       uses: ./.github/actions/setup-dind
 
     #
-    #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
-    #  registry-mirrors -> docker.internal.networkradius.com baked
-    #  in, but our internal registry isn't actually a Hub pull-
-    #  through cache, so FROM ubuntu:24.04 etc. inside the build
-    #  falls back to docker.io and would otherwise hit anonymous
-    #  rate limits.
+    #  The dind sidecar has its own dockerd that's not pre-authenticated
+    #  to docker.internal.networkradius.com (the host docker daemon on
+    #  the self-hosted runner is, via the runner's job-started hook,
+    #  but that auth doesn't propagate into the dind container). Log in
+    #  explicitly so the inner crossbuild's FROM-pull of self-hosted-*
+    #  works instead of 401-ing.
     #
-    - name: Login to Docker Hub (via dind)
-      uses: docker/login-action@v4
-      with:
-        username: ${{ vars.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_KEY }}
-
-    - name: Verify Dockerfiles match m4 templates
-      run: make dockerfile.service.check
-
-    - name: Build docker image
+    - name: Login to internal Docker registry (via dind)
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
       run: |
-        make docker.service.$OS
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
 
-    - name: Show docker build log
-      if: failure()
-      run: cat build/docker/build.$OS.service
+    #
+    #  Run the per-distro crossbuild. CB_FROM_<distro> overrides the
+    #  `from` build-arg in scripts/docker/crossbuild.mk so the inner
+    #  docker build FROMs an internal base image instead of docker.io,
+    #  killing the Hub pull (and the anonymous rate-limit headache) on
+    #  every CI run. Local `make crossbuild.<distro>` ignores these
+    #  and uses the upstream image baked into Dockerfile.crossbuild by m4.
+    #
+    - name: Run crossbuild tests
+      env:
+        CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-deb-debian12
+        CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-deb-debian13
+        CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-deb-debiansid
+        CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-deb-ubuntu22
+        CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-deb-ubuntu24
+        CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-deb-ubuntu26
+        CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
+        CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
+      run: |
+        make dockerfile.crossbuild.check
+        make crossbuild.$OS
+
+    #
+    #  No push step here. crossbuild:latest is published by
+    #  docker-refresh.yml on its periodic schedule. This workflow is
+    #  a per-commit sanity test - it builds crossbuild and runs FR's
+    #  in-container test suite against the working source, then the
+    #  per-job dind sidecar tears down with the :<sha> image inside.
+
+    - name: Show build log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/build.$OS.crossbuild
+
+    - name: Show configure log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/configure.$OS.crossbuild
+
+    - name: Show test log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/test.$OS.crossbuild
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
@@ -154,7 +190,7 @@ jobs:
   #  the public docker:dind sidecar and a plain ubuntu:24.04 job
   #  container - no internal registry or CA involvement.
   #
-  docker-public:
+  crossbuild-public:
     needs:
       - gen-matrix
 
@@ -168,7 +204,7 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "v4.0.x-${{ matrix.env.OS }}"
+    name: "${{ github.workflow }}-${{ matrix.env.OS }}"
 
     services:
       dind:
@@ -186,8 +222,10 @@ jobs:
         env:
           DOCKER_TLS_CERTDIR: ""
         #  Share the runner's workspace with dind so the build
-        #  context (Dockerfile + COPY sources) resolves to real
-        #  files inside the dind daemon.
+        #  context resolves to real files inside the dind daemon
+        #  and the inner `docker run --mount=type=bind,source=...`
+        #  bind-mount of the source tree resolves the same way in
+        #  both containers.
         #
         #  github.workspace is the HOST path to the workspace. The
         #  runner mounts it into the job container at a different
@@ -222,7 +260,7 @@ jobs:
 
     - uses: actions/checkout@v6
       with:
-        fetch-depth: 1
+        fetch-depth: 0${{ ( matrix.env.OS != 'centos7' ) && '1' }}
         lfs: false
 
     - name: setup-dind
@@ -230,16 +268,25 @@ jobs:
       with:
         packages: m4 make
 
-    - name: Verify Dockerfiles match m4 templates
-      run: make dockerfile.service.check
-
-    - name: Build docker image
+    - name: Run crossbuild tests
       run: |
-        make docker.service.$OS
+        make dockerfile.crossbuild.check
+        make crossbuild.$OS
 
-    - name: Show docker build log
-      if: failure()
-      run: cat build/docker/build.$OS.service
+    - name: Show build log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/build.$OS.crossbuild
+
+    - name: Show configure log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/configure.$OS.crossbuild
+
+    - name: Show test log
+      if: ${{ success() || failure() }}
+      run: |
+        cat build/docker/test.$OS.crossbuild
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate

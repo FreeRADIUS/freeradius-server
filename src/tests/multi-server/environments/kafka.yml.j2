@@ -69,13 +69,13 @@ services:
       start_period: 60s
 
   kafka-producer1:
-    image: freeradius-build:latest
+    image: ${FREERADIUS_IMAGE}
     depends_on:
       kafka:
         condition: service_healthy
     volumes:
-    - ${DATA_PATH}/freeradius/kafka-producer1/radiusd.conf:/etc/raddb/radiusd.conf
-    - ${DATA_PATH}/freeradius/kafka-producer1/load-generator-packets/:/etc/raddb/load-generator-packets/
+    - ${DATA_PATH}/freeradius/kafka-producer1/radiusd.conf:/etc/freeradius/radiusd.conf
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
     - ${DATA_PATH}/freeradius/env-setup.sh:/tmp/env-setup.sh
     - ${LISTENER_DIR}/:/var/run/multi-server/
     #

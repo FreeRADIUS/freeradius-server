@@ -6,7 +6,6 @@
 #define TRUNK_TESTS 1
 #include "trunk.c"
 
-//#include <gperftools/profiler.h>
 typedef struct {
 	trunk_request_t	*treq;			//!< Trunk request.
 	bool			cancelled;		//!< Seen by the cancelled callback.

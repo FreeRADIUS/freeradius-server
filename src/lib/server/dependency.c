@@ -444,7 +444,22 @@ void dependency_version_print(void)
 #endif
 		DEBUG2("  ");
 	}
-	INFO("Copyright 1999-2025 The FreeRADIUS server project and contributors");
+#ifdef WITH_VERIFY_PTR
+	WARN(" ");
+	WARN("#######################################################################");
+	WARN("# ");
+	WARN("# The server was built with the 'WITH_VERIFY_PTR' flag set.  This is a");
+	WARN("# developer-only build option that DRASTICALLY slows down the server.");
+	WARN("# If you are using the server in a production environment, you will see");
+	WARN("# significantly improved performance (3x-4x) by re-running 'configure'");
+	WARN("# with the flag '--disable-developer', and then re-building and");
+	WARN("# re-installing the server.");
+	WARN("# ");
+	WARN("#######################################################################");
+	WARN(" ");
+#endif
+
+	INFO("Copyright 1999-2026 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");

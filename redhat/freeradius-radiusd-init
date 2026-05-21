@@ -30,7 +30,7 @@ prog=radiusd
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
 exec=${exec:=/usr/sbin/$prog}
-config_dir=${config_dir:=/etc/raddb}
+config_dir=${config_dir:=/etc/freeradius}
 config=${config:=$config_dir/radiusd.conf}
 pidfile=${pidfile:=/var/run/$prog/$prog.pid}
 lockfile=${lockfile:=/var/lock/subsys/radiusd}

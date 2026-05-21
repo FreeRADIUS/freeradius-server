@@ -127,7 +127,19 @@ TGT_PREREQS	:= $(TALLOC_EXTENSION_LIBS)
 # as it's the only library that uses it.  Other libraries should not use it directly but
 # instead add the functionality they need to libfreeradius-util.
 ifeq "$(WITH_BACKTRACE)" "yes"
-HEADERS         += $(top_srcdir)/src/lib/backtrace/backtrace.h
+# Path is relative because the install rule does
+# `$(addprefix ${SRC_INCLUDE_DIR}/,$(HEADERS))` and then the pattern
+# rule `${SRC_INCLUDE_DIR}/%.h: src/include/%.h` resolves the prereq
+# under src/include/. The src/include/backtrace -> ../lib/backtrace
+# symlink set up below makes `backtrace/backtrace.h` reach the source.
+# An absolute $(top_srcdir) path here interpolates into
+# `${SRC_INCLUDE_DIR}//abs/path/backtrace.h` (the addprefix output),
+# which the pattern rule still matches but derives a non-existent
+# `src/include//abs/path/backtrace.h` prereq - `make install` then
+# trips with "No rule to make target" in any build where $(top_srcdir)
+# is absolute, e.g. inside docker builds where @abs_top_srcdir@
+# resolves to /usr/local/...
+HEADERS         += backtrace/backtrace.h
 TGT_PREREQS	+= libbacktrace.la
 TGT_LDLIBS	+= '-lbacktrace'
 TGT_LDFLAGS	+= -L$(top_builddir)/build/lib/local/.libs
@@ -141,7 +153,16 @@ src/include/backtrace:
 build/objs/src/lib/util/backtrace.$(OBJ_EXT): | src/include/backtrace
 
 # Actually call the 'sub'-make to build libbacktrace.
-src/lib/backtrace/libbacktrace.la src/lib/backtrace/.libs/libbacktrace.a:
+#
+# Grouped target form (`&:`) is critical: the sub-make produces both
+# the .la and the .a in one invocation, so a regular multi-target rule
+# would let parallel make spawn two concurrent sub-makes (one per
+# target) racing on the same .a / .libs/ directory. That race surfaces
+# under -j>1 as `ranlib: .libs/libbacktrace.a: error reading mmapio.o:
+# file truncated` - ar is mid-write of the .a archive (with mmapio.o
+# as a member) when a concurrent ranlib starts reading it.
+# Requires GNU make >= 4.3.
+src/lib/backtrace/libbacktrace.la src/lib/backtrace/.libs/libbacktrace.a &:
 	$(MAKE) -C $(top_srcdir)/src/lib/backtrace
 
 # We need to do this so jlibtool can find the library.

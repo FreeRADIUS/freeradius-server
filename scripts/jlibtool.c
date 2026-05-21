@@ -630,6 +630,7 @@ static void __attribute__((noreturn)) usage(int code)
 	printf("  --shared	           Build shared libraries when using --mode=link\n");
 	printf("  --show-config	           show all configuration variables\n");
 	printf("                           Or --show-config=VALUE to see just one value\n");
+	printf("  --profile=filename	   Set 'CPUPROFILE=filename' when using --execute\n");
 	printf("  --version	           print version information\n");
 
 	printf("\nMODE must be one of the following:\n\n");
@@ -1248,6 +1249,16 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	} else if (strcmp(var, "timeout") == 0) {
 		cmd->timeout = strtoul(value, NULL, 10);
 		NOTICE("Timeout %u\n", cmd->timeout);
+
+	} else if (strcmp(var, "profile") == 0) {
+		/*
+		 *	This option allows you to use jlibtool to run a program from within the build tree,
+		 *	but where we don't profile jlibtool itself.
+		 *
+		 *	If instead we did "CPUPROFILE=foo jlibtool --exec..", it would profile jlibtool.
+		 */
+		setenv("CPUPROFILE", value, 1);
+
 	} else {
 		return 0;
 	}

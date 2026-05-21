@@ -60,7 +60,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 	static size_t base10_units_len = NUM_ELEMENTS(base10_units);
 
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	char		c = '\0';
+	uint8_t		c = '\0';
 	uint64_t	size;
 
 	*out = 0;
@@ -68,7 +68,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 	if (fr_sbuff_out(NULL, &size, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 	if (!fr_sbuff_extend(&our_in)) goto done;
 
-	c = tolower(fr_sbuff_char(&our_in, '\0'));
+	c = tolower(fr_sbuff_uint8(&our_in, '\0'));
 
 	/*
 	 *	Special cases first...
@@ -110,8 +110,8 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 			units_len = base10_units_len;
 		}
 
-		if (((size_t)c >= units_len) || units[(uint8_t)c] == 0) {
-			fr_strerror_printf("Unknown unit '%c'", c);
+		if (((size_t)c >= units_len) || units[c] == 0) {
+			fr_strerror_printf("Unknown unit '%c'", (char) c);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 

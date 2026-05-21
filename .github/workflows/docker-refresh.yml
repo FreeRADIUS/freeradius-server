@@ -1,4 +1,4 @@
-name: Docker CI Image Refresh
+name: Docker refresh
 
 on:
   push:
@@ -34,6 +34,7 @@ jobs:
       matrix:
         os:
           - base_image: ubuntu:24.04
+            display: self-hosted-ubuntu24
             image_name: docker.internal.networkradius.com/self-hosted-ubuntu24
             extra_tags:
               - docker.internal.networkradius.com/self-hosted
@@ -47,54 +48,66 @@ jobs:
           #  no build_args are needed here.
           #
           - base_image: rockylinux/rockylinux:9
+            display: self-hosted-rocky9
             image_name: docker.internal.networkradius.com/self-hosted-rocky9
             dockerfile: scripts/docker/build/rocky9/Dockerfile.ci
 
           - base_image: rockylinux/rockylinux:10
+            display: self-hosted-rocky10
             image_name: docker.internal.networkradius.com/self-hosted-rocky10
             dockerfile: scripts/docker/build/rocky10/Dockerfile.ci
 
           - base_image: debian:bookworm
+            display: self-hosted-deb-debian12
             image_name: docker.internal.networkradius.com/self-hosted-deb-debian12
             dockerfile: scripts/docker/build/debian12/Dockerfile.ci
 
           - base_image: debian:trixie
+            display: self-hosted-deb-debian13
             image_name: docker.internal.networkradius.com/self-hosted-deb-debian13
             dockerfile: scripts/docker/build/debian13/Dockerfile.ci
 
           - base_image: debian:sid
+            display: self-hosted-deb-debiansid
             image_name: docker.internal.networkradius.com/self-hosted-deb-debiansid
             dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
 
           - base_image: ubuntu:22.04
+            display: self-hosted-deb-ubuntu22
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu22
             dockerfile: scripts/docker/build/ubuntu22/Dockerfile.ci
 
           - base_image: ubuntu:24.04
+            display: self-hosted-deb-ubuntu24
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu24
             dockerfile: scripts/docker/build/ubuntu24/Dockerfile.ci
 
           - base_image: ubuntu:26.04
+            display: self-hosted-deb-ubuntu26
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu26
             dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
 
           #
           #  Custom dind sidecar image used by the dind-based
-          #  workflows (docker.yml, crossbuild.yml, multi-server-tests).
+          #  workflows (docker-service.yml, docker-crossbuild.yml, multi-server-tests).
           #  Bakes in registry-mirror -> internal cache and trusts the
           #  internal CA, so per-job apt-installing and daemon.json
           #  wiring goes away.
           #
           - base_image: docker:24-dind
+            display: self-hosted-docker-dind
             image_name: docker.internal.networkradius.com/self-hosted-docker-dind
             dockerfile: scripts/ci/docker/Dockerfile.docker-dind
             needs_internal_ca: true
 
           - base_image: mariadb
+            display: mariadb
           - base_image: postgres
+            display: postgres
           - base_image: 4teamwork/389ds
+            display: 4teamwork/389ds
 
-    name: "process-images"
+    name: "${{ matrix.os.display }}"
 
     steps:
 
@@ -260,10 +273,11 @@ jobs:
           #  workflows.
           #
           - parent_image: docker.internal.networkradius.com/self-hosted
+            display: self-hosted-docker-cli
             image_name: docker.internal.networkradius.com/self-hosted-docker-cli
             dockerfile: scripts/ci/docker/Dockerfile.docker-cli
 
-    name: "process-derived-images"
+    name: "${{ matrix.os.display }}"
 
     steps:
 
@@ -320,3 +334,144 @@ jobs:
             sleep 10
           done
           exit 1
+
+  #
+  #  Periodic refresh of the FreeRADIUS base image chain in the
+  #  internal registry. Builds for each supported distro in parallel:
+  #
+  #    crossbuild        FROM upstream OS base, full toolchain + FR
+  #                      build-deps
+  #    profiling-deps    FROM crossbuild:latest, toolchain layer
+  #                      (valgrind / kcachegrind / dbgsym / FlameGraph /
+  #                      inferno)
+  #    service           FROM the same upstream OS base as crossbuild
+  #                      (NOT from crossbuild) - the FR debian/rpm
+  #                      package build does its own apt-install of
+  #                      build deps; layering on crossbuild would
+  #                      bloat the runtime image with toolchain
+  #                      artefacts.
+  #
+  #  Tags pushed: <prefix>-<type>/<image>:latest for each of those
+  #  three.
+  #
+  #  The `profiling` layer (FR compiled with callgrind-friendly CFLAGS
+  #  on top of profiling-deps:latest) is deliberately NOT published
+  #  here. It's per-commit by design - we want to profile specific
+  #  commits, not whatever master HEAD was at refresh time. Multi-
+  #  server profiling tests pull profiling-deps:latest and build the
+  #  profiling layer locally per commit.
+  #
+  process-freeradius-images:
+    needs: process-derived-images
+    timeout-minutes: 90
+
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu22, ubuntu24, ubuntu26, debian12, debian13, debiansid, rocky9, rocky10]
+
+    services:
+      dind:
+        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    name: "freeradius4-{crossbuild,profiling-deps,service}-${{ matrix.os }}"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
+
+      - name: Login to Docker Hub (via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+      #
+      #  Read-only login first - covers the FROM-pull of the
+      #  self-hosted-deb-* / self-hosted-rocky* CI base for crossbuild,
+      #  and any pull-through misses below.
+      #
+      - name: Login to internal Docker registry (read, via dind)
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+      #
+      #  Build crossbuild + profiling-deps + service. docker.mk's
+      #  DOCKER_BUILD wires stamp prereqs so the chain resolves in
+      #  order; service and profiling-deps both FROM crossbuild:latest
+      #  which DOCKER_BUILD writes locally as part of the crossbuild
+      #  build, so subsequent layers find it without a registry pull.
+      #
+      - name: Build crossbuild + profiling-deps + service images
+        env:
+          OS: ${{ matrix.os }}
+          CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-deb-debian12
+          CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-deb-debian13
+          CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-deb-debiansid
+          CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-deb-ubuntu22
+          CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-deb-ubuntu24
+          CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-deb-ubuntu26
+          CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
+          CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
+        run: |
+          make dockerfile.check
+          make docker.crossbuild.$OS
+          make docker.profiling-deps.$OS
+          make docker.service.$OS
+
+      #
+      #  Switch to push-capable creds and publish the three :latest
+      #  tags. The per-commit `profiling` layer stays local.
+      #
+      - name: Login to internal Docker registry for push (via dind)
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+      - name: Push freeradius4-{crossbuild,profiling-deps,service}:latest
+        env:
+          OS: ${{ matrix.os }}
+          REGISTRY: docker.internal.networkradius.com
+        run: |
+          for type in crossbuild profiling-deps service; do
+            local_tag="freeradius4-${type}/${OS}:latest"
+            remote_tag="${REGISTRY}/${local_tag}"
+            docker tag "${local_tag}" "${remote_tag}"
+            for attempt in 1 2 3; do
+              docker push "${remote_tag}" && break
+              echo "Push attempt $attempt for ${remote_tag} failed; retrying after backoff..."
+              sleep 10
+            done
+          done

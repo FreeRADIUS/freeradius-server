@@ -69,7 +69,7 @@ ProtectKernelTunables=true
 SystemCallArchitectures=native
 
 # We shouldn't be writing to the configuration directory
-ReadOnlyDirectories=/etc/raddb/
+ReadOnlyDirectories=/etc/freeradius/
 
 # We can read and write to the log directory.
 ReadWriteDirectories=/var/log/radius/

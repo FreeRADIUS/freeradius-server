@@ -1,0 +1,113 @@
+# Auto generated for ubuntu22
+# from scripts/docker/m4/profiling-deps.deb.m4
+#
+# Rebuild this file with `make dockerfile.profiling-deps`
+#
+ARG from=ubuntu:22.04
+FROM ${from}
+
+#
+#  Install profiling tools
+#
+#    valgrind / cachegrind
+#    kcachegrind + KDE/Qt runtime libs (cachegrind annotation viewer)
+#    gperftools (libgoogle-perftools-dev ships the pprof binaries too,
+#    so we don't need the separate google-perftools package -- which
+#    has been retired from newer debian/ubuntu archives anyway)
+#    heaptrack
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS \
+        libgoogle-perftools-dev \
+        valgrind \
+        heaptrack \
+        psmisc \
+        kcachegrind \
+        kio \
+        libkf5iconthemes5 \
+        libkf5parts5 \
+        libkf5textwidgets5 \
+        libqt5gui5 \
+        libqt5widgets5 && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
+
+#
+#  Debug symbols for the FreeRADIUS runtime library closure.
+#
+#  Repo source depends on derivative:
+#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
+#    debian     debug.mirrors.debian.org via the existing debian-archive
+#               keyring (no extra keyring install)
+#
+#  Package list is empirically derived per codename (apt-cache against
+#  the crossbuild images). The install is a single apt-get with no
+#  per-package fallback: if a package goes missing in upstream ddebs
+#  the build fails fast and the operator updates this template, rather
+#  than silently shipping a profiling image with no symbols for half
+#  the runtime closure.
+#
+#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
+#  13. T64 expands to "t64" on those releases. The same boundary also
+#  picks the libldap and libhiredis soname names, so PRE_T64 captures
+#  pre-transition releases (bookworm, jammy) as 1.
+#
+#  We deliberately do NOT `apt-get clean / rm -r /var/lib/apt/lists/*'
+#  here: the cache would invalidate every subsequent apt-get install
+#  in the containing template and force a redundant apt-get update.
+#
+RUN apt-get update && \
+    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
+    printf 'deb http://ddebs.ubuntu.com jammy main restricted universe multiverse\ndeb http://ddebs.ubuntu.com jammy-updates main restricted universe multiverse\n' \
+        > /etc/apt/sources.list.d/ddebs.list
+
+RUN apt-get update && apt-get install -y $APT_OPTS \
+        libc6-dbg \
+        zlib1g-dbgsym \
+        libreadline8-dbgsym \
+        libssl3-dbgsym \
+        libsasl2-2-dbgsym \
+        libpam0g-dbgsym \
+        libldap-2.5-0-dbgsym \
+        libtalloc2-dbgsym \
+        libpcre2-8-0-dbgsym \
+        libpcap0.8-dbgsym \
+        libunbound8-dbgsym \
+        libsqlite3-0-dbgsym \
+        libpq5-dbgsym \
+        libmariadb3-dbgsym \
+        libgdbm6-dbgsym \
+        libjson-c5-dbgsym \
+        libbrotli1-dbgsym \
+        libhiredis0.14-dbgsym \
+        librdkafka1-dbgsym \
+        libwbclient0-dbgsym \
+        libcurl4-dbgsym \
+        libxml2-dbgsym \
+        libidn12-dbgsym \
+        python3.10-dbg
+
+#
+#  Install FlameGraph
+#
+RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph /opt/flamegraph \
+    && chmod +x /opt/flamegraph/*.pl /opt/flamegraph/*.sh
+
+ENV PATH="/opt/flamegraph:${PATH}"
+
+#
+#  Install Inferno (Rust port of FlameGraph with broader format support).
+#  Bootstrap rustup so we always have a recent stable toolchain --
+#  debian12's distro cargo (1.63) is too old for current inferno's
+#  transitive crate MSRVs, and pinning to an older inferno just defers
+#  the same drift everywhere else. Uninstall the toolchain after the
+#  build to keep the layer small.
+#
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+        sh -s -- -y --default-toolchain stable --profile minimal && \
+    . "$HOME/.cargo/env" && \
+    cargo install inferno --version 0.11.21 --locked --root /usr/local && \
+    rm -rf "$HOME/.cargo" "$HOME/.rustup"
+
+EXPOSE 1812/udp 1813/udp
+CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]

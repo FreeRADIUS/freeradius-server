@@ -24,10 +24,6 @@
 #include"acutest_helpers.h"
 #include <freeradius-devel/util/size.h>
 
-#ifdef HAVE_GPERFTOOLS_PROFILER_H
-#  include <gperftools/profiler.h>
-#endif
-
 /*
 fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in);
 

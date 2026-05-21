@@ -98,3 +98,6 @@ main-site.yml
 
 # Claude AI
 build-2f*
+
+# Profiling results
+prof-results/

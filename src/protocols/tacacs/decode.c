@@ -221,7 +221,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		fr_pair_list_t *dst;
 		uint8_t buffer[256];
 
-		fr_assert((p + argv[i]) <= end);
+		if (argv[i] > (end - p)) return -1;
 
 		if (argv[i] < 2) goto next; /* skip malformed */
 

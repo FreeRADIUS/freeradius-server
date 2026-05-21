@@ -90,7 +90,7 @@ endef
 #  <type>.rpm.m4 naming convention so DOCKERFILE_RULE picks them up
 #  from $(T) alone.
 #
-DOCKERFILE_TYPES := ci crossbuild profiling service
+DOCKERFILE_TYPES := ci crossbuild profiling-deps profiling service
 
 #
 #  Wire each (image, type) Dockerfile rule plus the per-type regen
@@ -113,10 +113,11 @@ dockerfile.check: $(foreach T,$(DOCKERFILE_TYPES),dockerfile.$(T).check)
 #
 define DOCKER_HELP_TYPES
 	@echo "Types:"
-	@echo "    service     production runtime image"
-	@echo "    ci          slim toolchain base for ci-deb.yml / ci-rpm.yml"
-	@echo "    crossbuild  full toolchain for crossbuild.yml"
-	@echo "    profiling   crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
+	@echo "    service         production runtime image"
+	@echo "    ci              slim toolchain base for ci-deb.yml / ci-rpm.yml"
+	@echo "    crossbuild      full toolchain for docker-crossbuild.yml"
+	@echo "    profiling-deps  crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
+	@echo "    profiling       profiling-deps + FreeRADIUS compiled with callgrind-friendly CFLAGS"
 endef
 
 .PHONY: dockerfile.help

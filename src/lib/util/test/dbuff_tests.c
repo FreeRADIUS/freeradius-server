@@ -4,8 +4,6 @@
 
 #include <freeradius-devel/util/dbuff.h>
 
-//#include <gperftools/profiler.h>
-
 /*
  *	Type for a function with the internals of a test of fd flavored dbuffs.
  */

@@ -1,0 +1,29 @@
+listen load {
+		handler = load
+		type = Access-Request
+		transport = step
+
+		step {
+
+			# Default packet config to use by proto_load module
+			filename = {{ packet_conf_path | default('${confdir}/load-generator-packets/packet.conf') }}
+
+			# Saving proto_load statistics disabled by default, can be enabled for debugging purposes.
+			csv = ${confdir}/stats/load-generator-stats.csv
+
+			max_attributes = 64
+
+			#
+			# The load profile is configured via environment variables set
+			# in the testcase configuration files.
+			#
+			start_pps = $ENV{TEST_LOADGEN_START_PPS}
+			max_pps   = $ENV{TEST_LOADGEN_MAX_PPS}
+			duration  = $ENV{TEST_LOADGEN_DURATION}
+			step = $ENV{TEST_LOADGEN_STEP}
+			max_backlog = $ENV{TEST_LOADGEN_MAX_BACKLOG}
+			parallel = $ENV{TEST_LOADGEN_PARALLEL}
+			num_messages = $ENV{TEST_LOADGEN_NUM_MESSAGES}
+			repeat = no
+		}
+	}
