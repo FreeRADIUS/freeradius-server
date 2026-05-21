@@ -37,7 +37,6 @@ RUN ./configure \
         --with-raddbdir=/etc/freeradius \
         CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin" \
         LDFLAGS="-fno-omit-frame-pointer" \
-    && make -j1 src/lib/backtrace/libbacktrace.la \
     && make -j$(nproc) \
     && make install
 
