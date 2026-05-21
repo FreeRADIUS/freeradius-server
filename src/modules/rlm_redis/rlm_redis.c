@@ -92,6 +92,7 @@ typedef struct {
 } rlm_redis_t;
 
 typedef struct {
+	rlm_redis_t const		*inst;				//!< Module instance.
 	fr_redis_cluster_thread_t	*rtcluster;			//!< Per thread Redis cluster.
 	fr_coord_worker_t		*cw;				//!< Coord-worker for fetching cluster map.
 } rlm_redis_thread_t;
@@ -801,14 +802,56 @@ finish:
 	return action;
 }
 
+static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
+				    UNUSED redisReply *reply, void *rctx)
+{
+	redis_lua_func_t	*func = talloc_get_type_abort(rctx, redis_lua_func_t);
+	DEBUG2("Loaded lua function \"%s\" onto node", func->name);
+}
+
+static void lua_script_load(fr_redis_trunk_t *rtrunk, void *uctx)
+{
+	rlm_redis_thread_t	*thread = talloc_get_type_abort(uctx, rlm_redis_thread_t);
+	fr_redis_command_set_t	*cmds;
+
+	MEM(cmds = fr_redis_command_set_alloc(rtrunk, NULL, NULL, NULL, NULL, true));
+
+	talloc_foreach(thread->inst->lua.funcs, func) {
+		char const	**argv;
+		size_t		*argv_len;
+
+		MEM(argv = talloc_array(cmds, char const *, 3));
+		MEM(argv_len = talloc_array(cmds, size_t, 3));
+
+		argv[0] = "SCRIPT";
+		argv_len[0] = sizeof("SCRIPT") - 1;
+		argv[1] = "LOAD";
+		argv_len[1] = sizeof("LOAD") - 1;
+		argv[2] = func->body;
+		argv_len[2] = talloc_strlen(func->body);
+
+		fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, func);
+	}
+
+	if (redis_command_set_enqueue(rtrunk, cmds) != FR_REDIS_PIPELINE_OK) {
+		ERROR("Failed to enqueue lua function loading");
+		talloc_free(cmds);
+	}
+}
+
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
 	rlm_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf);
+	if (talloc_array_length(inst->lua.funcs) == 0) {
+		t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, NULL, NULL, false);
+	} else {
+		t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, lua_script_load, t, true);
+	}
 	if (!t->rtcluster) return -1;
+	t->inst = inst;
 
 	return 0;
 }
@@ -859,8 +902,6 @@ static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_redis_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
-	fr_socket_t *nodes;
-	int ret, i;
 
 	inst->conf.log_prefix = mctx->mi->name;
 
@@ -887,77 +928,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
-
-	/*
-	 *	Best effort - Try and load in scripts on startup
-	 */
-	if (talloc_array_length(inst->lua.funcs) == 0) return 0;
-
-	ret = fr_redis_cluster_node_addr_by_role(NULL, &nodes, inst->cluster, true, true);
-	if (ret <= 0) return 0;
-
-	for (i = 0; i < ret; i++) {
-		fr_pool_t 		*pool;
-		fr_redis_conn_t		*conn;
-
-		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &nodes[i], true) < 0) {
-			talloc_free(nodes);
-			return 0;
-		}
-
-		conn = fr_pool_connection_get(pool, 0);
-		if (!conn) continue;
-
-		talloc_foreach(inst->lua.funcs, func) {
-			char const	*script_load_argv[] = {
-						"SCRIPT",
-						"LOAD",
-						func->body
-					};
-
-			size_t		script_load_arg_len[] = {
-						(sizeof("SCRIPT") - 1),
-						(sizeof("LOAD") - 1),
-						(talloc_strlen(func->body))
-					};
-
-			fr_redis_rcode_t status;
-			redisReply *reply;
-
-			/*
-			 *	preload onto every node, even replicas.
-			 */
-			if (redis_command(&status, &reply, NULL, conn, false,
-					  NUM_ELEMENTS(script_load_argv), script_load_argv, script_load_arg_len) == -2) {
-			error:
-				fr_pool_connection_release(pool, NULL, conn);
-				talloc_free(nodes);
-				return -1;
-			}
-
-			fr_redis_reply_free(&reply);
-
-			/*
-			 *	Only error on explicit errors, not on connectivity issues
-			 */
-			switch (status) {
-			case REDIS_RCODE_ERROR:
-				PERROR("Loading lua function \"%s\" onto node failed", func->name);
-				goto error;
-
-			case REDIS_RCODE_SUCCESS:
-				DEBUG2("Loaded lua function \"%s\" onto node", func->name);
-				break;
-
-			default:
-				PWARN("Loading lua function \"%s\" onto node failed", func->name);
-				continue;
-			}
-		}
-
-		fr_pool_connection_release(pool, NULL, conn);
-	}
-	talloc_free(nodes);
 
 	return 0;
 }
