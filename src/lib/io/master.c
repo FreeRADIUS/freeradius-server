@@ -848,11 +848,24 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	}
 
 	/*
-	 *	Add the connection to the set of connections for this
-	 *	client.
+	 *	If the parent client is still PENDING, lazily create the hash table that tracks its child
+	 *	connections.  We need this so that fr_io_connection_allow() can later find any sibling
+	 *	connections, and add them to the scheduler once the dynamic client is defined.
+	 */
+	if ((client->state == PR_CLIENT_PENDING) && !client->ht) {
+		(void) pthread_mutex_init(&client->mutex, NULL);
+		MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
+	}
+
+	/*
+	 *	Add the connection to the set of connections for this client.  Capture the pre-insert size so
+	 *	we can tell whether this is the first connection (which runs the dynamic-client verification)
+	 *	or a later connection (which is deferred until the first connection is verified).
 	 */
 	pthread_mutex_lock(&client->mutex);
 	if (client->ht) {
+		size_t pre_size = fr_hash_table_num_elements(client->ht);
+
 		if (nak) (void) fr_hash_table_delete(client->ht, nak);
 		ret = fr_hash_table_insert(client->ht, connection);
 		client->ready_to_delete = false;
@@ -864,6 +877,19 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			      "Closing it, and discarding all packets for connection %s.",
 			      inst->app_io->common.name, connection->name);
 			goto cleanup;
+		}
+
+		/*
+		 *	The first connection for a PENDING parent runs the dynamic client definition.  All
+		 *	later connections will be scheduled by fr_io_connection_allow(), once the parent is
+		 *	defined (or not).  nak placeholders are never scheduled, so they don't count.
+		 */
+		if (!nak && (client->state == PR_CLIENT_PENDING) && (pre_size > 0)) {
+			pthread_mutex_unlock(&client->mutex);
+			DEBUG("proto_%s - deferring scheduling of connection %s until parent client %pV is defined",
+			      inst->app_io->common.name, connection->name, fr_box_ipaddr(client->src_ipaddr));
+			thread->num_connections++;
+			return connection;
 		}
 	}
 	pthread_mutex_unlock(&client->mutex);
@@ -984,7 +1010,14 @@ static int _client_live_free(fr_io_client_t *client)
 		(void) fr_heap_extract(&client->thread->alive_clients, client);
 	}
 
-	if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+	/*
+	 *	The mutex/ht pair is initialized either for use_connected
+	 *	clients (in client_alloc) or for PENDING clients with
+	 *	deferred sibling connections (in fr_io_connection_alloc).
+	 *	The ht pointer is the canonical signal that the mutex
+	 *	was initialized.
+	 */
+	if (client->ht) (void) pthread_mutex_destroy(&client->mutex);
 
 	return 0;
 }
@@ -1065,7 +1098,7 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 	if (fr_trie_insert_by_key(thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 		ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packets for it.",
 		      inst->app_io->common.name, client->radclient->shortname);
-		if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+		if (client->ht) (void) pthread_mutex_destroy(&client->mutex);
 		talloc_free(client);
 		return NULL;
 	}
@@ -2419,6 +2452,166 @@ static void update_client(fr_io_client_t *client, fr_client_t *radclient)
 	COPY_FIELD(client, cs);
 }
 
+/** Tear down any deferred sibling connections under a pending parent.
+ *
+ *  This function is Cclled from mod_write() when the first connection dynamic-client verification fails (NAK
+ *  or hard reject).  Any other connections that were inserted into parent->ht are then freed.
+ *
+ *  Walk parent->ht, find every deferred sibling, remove it from the hash table, close the socket, and frees
+ *  its module instance (which cascades to the connection itself).  The first connection (the one whose
+ *  verification just failed) is identified by conn->nr != NULL and is left alone, as the caller already owns
+ *  its cleanup.
+ *
+ *  Uses a find-one-then-restart loop rather than iterate-while-deleting, since the deferred sibling count is
+ *  small and the cost is irrelevant on the failure path.
+ */
+static void fr_io_connection_deny(fr_io_client_t *parent)
+{
+	if (!parent->ht) return;
+
+	while (true) {
+		fr_hash_iter_t		iter;
+		fr_io_connection_t	*target = NULL;
+		fr_io_connection_t	*conn;
+
+		pthread_mutex_lock(&parent->mutex);
+		for (conn = fr_hash_table_iter_init(parent->ht, &iter);
+		     conn != NULL;
+		     conn = fr_hash_table_iter_next(parent->ht, &iter)) {
+			if (conn->nr != NULL) continue;				/* first child, owned by caller */
+			if (conn->client->state != PR_CLIENT_PENDING) continue;	/* already NAK or promoted */
+			target = conn;
+			break;
+		}
+		if (target && target->in_parent_hash) {
+			target->in_parent_hash = false;
+			(void) fr_hash_table_delete(parent->ht, target);
+		}
+		pthread_mutex_unlock(&parent->mutex);
+
+		if (!target) break;
+
+		DEBUG("proto_%s - cleaning up deferred connection %s after verification failure",
+		      target->client->inst->app_io->common.name, target->name);
+
+		if (target->child) {
+			if (target->client->inst->app_io->close) {
+				(void) target->client->inst->app_io->close(target->child);
+			} else if (target->child->fd >= 0) {
+				close(target->child->fd);
+			}
+		}
+
+		talloc_free(target->mi);
+	}
+}
+
+/** Promote a pending dynamic-client parent and all of its child connections.
+ *
+ *  When multiple TCP connections from the same source IP arrive while the parent client is still
+ *  PR_CLIENT_PENDING, only the first connection is added to the scheduler.  Later connection are inserted
+ *  into the parent's hash table, but their fr_schedule_listen_add() call is deferred to this function.  When
+ *  the first connection verification completes successfully, every other connection is finished and
+ *  scheduled.
+ *
+ *  This function:
+ *
+ *  * Promotes the parent itself to PR_CLIENT_DYNAMIC and re-parents the cs.
+ *
+ *  * Walks the parent's hash table of connections.  For the first connection (already in the scheduler with
+ *    connection->nr set), it resumes reads if the connection was paused.  For every later connection,
+ *    (connection->nr == NULL), it copies the verified radclient definition onto the connection and then calls
+ *    fr_schedule_listen_add() to add the connection to the scheduler.
+ *
+ *  @param parent     the parent client whose state and child connections to promote
+ *  @param radclient  the verified radclient (typically the calling child's radclient)
+ */
+static void fr_io_connection_allow(fr_io_client_t *parent, fr_client_t *radclient)
+{
+	fr_hash_iter_t		iter;
+	fr_io_connection_t	*conn;
+	fr_schedule_t		*sc = parent->thread->sc;
+
+	/*
+	 *	Promote the parent itself.  Only the first connection to reach here does the work; later
+	 *	connections will already see the parent as PR_CLIENT_DYNAMIC.
+	 */
+	if (parent->state == PR_CLIENT_PENDING) {
+		parent->radclient->active = true;
+		parent->state = PR_CLIENT_DYNAMIC;
+
+		update_client(parent, radclient);
+
+		/*
+		 *	Re-parent the conf section used to build this
+		 *	client so its lifetime is linked to the parent
+		 *	client.
+		 */
+		talloc_steal(parent->radclient, parent->radclient->cs);
+	} else {
+		fr_assert(parent->state == PR_CLIENT_DYNAMIC);
+	}
+
+	/*
+	 *	Walk every child connection of this parent and promote the pending ones.  The calling
+	 *	connection is itself in parent->ht, so its per-child work is also done here.
+	 */
+	pthread_mutex_lock(&parent->mutex);
+	if (parent->ht) {
+		for (conn = fr_hash_table_iter_init(parent->ht, &iter);
+		     conn != NULL;
+		     conn = fr_hash_table_iter_next(parent->ht, &iter)) {
+			fr_io_client_t *child = conn->client;
+
+			if (child->state != PR_CLIENT_PENDING) continue;
+
+			/*
+			 *	Connections can't spawn new connections.
+			 */
+			child->use_connected = child->radclient->use_connected = false;
+
+			if (conn->nr == NULL) {
+				/*
+				 *	Deferred connection: its radclient was cloned from the parent's
+				 *	placeholder before verification, so copy the now-verified fields onto
+				 *	it before adding it to the scheduler.
+				 */
+				update_client(child, radclient);
+
+				child->state = PR_CLIENT_DYNAMIC;
+				child->radclient->active = true;
+
+				DEBUG("proto_%s - scheduling deferred connection %s",
+				      child->inst->app_io->common.name, conn->name);
+
+				conn->nr = fr_schedule_listen_add(sc, conn->listen);
+				if (!conn->nr) {
+					ERROR("proto_%s - Failed scheduling deferred connection %s",
+					      child->inst->app_io->common.name, conn->name);
+					/*
+					 *	Leave the entry in the hash table; the usual connection
+					 *	cleanup path will eventually remove it.
+					 */
+				}
+			} else {
+				/*
+				 *	The first connection is already scheduled.  Resume reads if it was
+				 *	paused, while waiting on verification.
+				 */
+				if (conn->paused) {
+					conn->paused = false;
+					(void) fr_event_filter_update(conn->el, conn->child->fd,
+								      FR_EVENT_FILTER_IO, resume_read);
+				}
+
+				child->state = PR_CLIENT_DYNAMIC;
+				child->radclient->active = true;
+			}
+		}
+	}
+	pthread_mutex_unlock(&parent->mutex);
+}
+
 static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, size_t written)
 {
@@ -2572,6 +2765,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		pthread_mutex_unlock(&connection->parent->mutex);
 
 		/*
+		 *	Tear down any sibling connections that were
+		 *	deferred waiting on this verification.
+		 */
+		fr_io_connection_deny(connection->parent);
+
+		/*
 		 *	Mark the connection as dead, then trigger the
 		 *	standard cleanup path via fr_network_listen_read().
 		 *	This calls mod_read(), which sees connection->dead,
@@ -2601,6 +2800,14 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		}
 		if (client->table) TALLOC_FREE(client->table);
 		fr_assert(client->packets == 0);
+
+		/*
+		 *	Tear down any sibling connections that were
+		 *	deferred waiting on this verification.  Only
+		 *	relevant for the connection case — the !connection
+		 *	path never has deferred siblings.
+		 */
+		if (connection) fr_io_connection_deny(connection->parent);
 
 		/*
 		 *	If we're a connected UDP socket, allocate a
@@ -2715,43 +2922,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		fr_assert(connection->client == client);
 		fr_assert(client->connection != NULL);
 
-		client->state = PR_CLIENT_CONNECTED;
-
 		/*
-		 *	Connections can't spawn new connections.
+		 *	Promote the parent and every sibling connection.
+		 *	This also promotes the current child.
 		 */
-		client->use_connected = radclient->use_connected = false;
-
-		/*
-		 *	If we were paused. resume reading from the
-		 *	connection.
-		 *
-		 *	Note that the event list doesn't like resuming
-		 *	a connection that isn't paused.  It just sets
-		 *	the read function to NULL.
-		 */
-		if (connection->paused) {
-			(void) fr_event_filter_update(el, child->fd,
-						      FR_EVENT_FILTER_IO, resume_read);
-		}
-
-		connection->parent->radclient->active = true;
-		fr_assert(connection->parent->state == PR_CLIENT_PENDING);
-		connection->parent->state = PR_CLIENT_DYNAMIC;
-
-		update_client(connection->parent, radclient);
-
-		/*
-		 *	Re-parent the conf section used to build this client
-		 *	so its lifetime is linked to parent client
-		 */
-		talloc_steal(connection->parent->radclient, connection->parent->radclient->cs);
-
-		/*
-		 *	The client has been allowed.
-		 */
-		client->state = PR_CLIENT_DYNAMIC;
-		client->radclient->active = true;
+		fr_io_connection_allow(connection->parent, radclient);
 
 		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing queued packets",
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
