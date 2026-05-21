@@ -94,31 +94,35 @@ $(foreach IMG,$(IMAGES),\
   $(eval $(call DOCKERFILE_RULE,$(IMG),service,$(CB_DIR)/m4/service.deb.m4 $(CB_DIR)/m4/service.rpm.m4)) \
   $(eval $(call DOCKERFILE_RULE,$(IMG),ci,$(CB_DIR)/m4/ci.deb.m4 $(CB_DIR)/m4/ci.rpm.m4)) \
   $(eval $(call DOCKERFILE_RULE,$(IMG),crossbuild,$(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4)) \
+  $(eval $(call DOCKERFILE_RULE,$(IMG),profiling-deps,$(CB_DIR)/m4/profiling-deps.deb.m4 $(CB_DIR)/m4/profiling-deps.rpm.m4)) \
   $(eval $(call DOCKERFILE_RULE,$(IMG),profiling,$(CB_DIR)/m4/profiling.deb.m4 $(CB_DIR)/m4/profiling.rpm.m4)))
 
 $(eval $(call DOCKERFILE_ALL,dockerfile.service,service,$(IMAGES)))
 $(eval $(call DOCKERFILE_ALL,dockerfile.ci,ci,$(IMAGES)))
 $(eval $(call DOCKERFILE_ALL,dockerfile.crossbuild,crossbuild,$(IMAGES)))
+$(eval $(call DOCKERFILE_ALL,dockerfile.profiling-deps,profiling-deps,$(IMAGES)))
 $(eval $(call DOCKERFILE_ALL,dockerfile.profiling,profiling,$(IMAGES)))
 
 $(eval $(call DOCKERFILE_CHECK,dockerfile.service.check,service,$(IMAGES),dockerfile.service))
 $(eval $(call DOCKERFILE_CHECK,dockerfile.ci.check,ci,$(IMAGES),dockerfile.ci))
 $(eval $(call DOCKERFILE_CHECK,dockerfile.crossbuild.check,crossbuild,$(IMAGES),dockerfile.crossbuild))
+$(eval $(call DOCKERFILE_CHECK,dockerfile.profiling-deps.check,profiling-deps,$(IMAGES),dockerfile.profiling-deps))
 $(eval $(call DOCKERFILE_CHECK,dockerfile.profiling.check,profiling,$(IMAGES),dockerfile.profiling))
 
 .PHONY: dockerfile dockerfile.check
-dockerfile:       dockerfile.ci       dockerfile.crossbuild       dockerfile.profiling       dockerfile.service
-dockerfile.check: dockerfile.ci.check dockerfile.crossbuild.check dockerfile.profiling.check dockerfile.service.check
+dockerfile:       dockerfile.ci       dockerfile.crossbuild       dockerfile.profiling-deps       dockerfile.profiling       dockerfile.service
+dockerfile.check: dockerfile.ci.check dockerfile.crossbuild.check dockerfile.profiling-deps.check dockerfile.profiling.check dockerfile.service.check
 
 #
 #  Glossary of type identifiers, shared by docker.help / dockerfile.help.
 #
 define DOCKER_HELP_TYPES
 	@echo "Types:"
-	@echo "    service     production runtime image"
-	@echo "    ci          slim toolchain base for ci-deb.yml / ci-rpm.yml"
-	@echo "    crossbuild  full toolchain for crossbuild.yml"
-	@echo "    profiling   crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
+	@echo "    service         production runtime image"
+	@echo "    ci              slim toolchain base for ci-deb.yml / ci-rpm.yml"
+	@echo "    crossbuild      full toolchain for docker-crossbuild.yml"
+	@echo "    profiling-deps  crossbuild + valgrind / gperftools / heaptrack / kcachegrind / debug symbols"
+	@echo "    profiling       profiling-deps + FreeRADIUS compiled with callgrind-friendly CFLAGS"
 endef
 
 .PHONY: dockerfile.help

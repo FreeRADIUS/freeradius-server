@@ -4,41 +4,30 @@ on:
   #
   #  Two entry points:
   #
-  #    workflow_run on Docker crossbuild images completion
-  #      Per-commit CI gate. Crossbuild has just published
-  #      freeradius4-crossbuild/<image>:<sha> to the internal registry,
-  #      so docker.mk's pull-through (DOCKER_REGISTRY) finds it and we
-  #      skip the ~5-8 minute crossbuild stage. Runs the CI subset.
+  #    push: per-commit gate. Pulls crossbuild:latest /
+  #    profiling-deps:latest / service:latest / profiling:latest from
+  #    the internal registry (refreshed periodically by
+  #    docker-refresh.yml). For the multi-server tests' purposes the
+  #    FR runtime in those :latest tags is "recent enough" to validate
+  #    multi-server topology / compose / proto_load changes per
+  #    commit. Runs the CI subset.
   #
-  #    schedule: nightly
-  #      Independent of crossbuild's own schedule. The matching
-  #      crossbuild image may have been pruned by the periodic registry
-  #      cleanup, in which case docker.mk's pull misses and the build
-  #      falls back to a local crossbuild compile (slow but
-  #      self-sufficient). Runs the full test set, not just the CI
-  #      subset.
+  #    schedule: nightly full-suite run. Falls back to a local layer
+  #    rebuild if the registry has been pruned of any :latest tag.
   #
-  workflow_run:
-    workflows: ["Docker crossbuild images"]
-    types: [completed]
+  push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
   schedule:
-    #  Daily at 2pm EST (7pm UTC).
+    #  Daily at 2pm EST (7pm UTC) - full test set, not just CI subset.
     - cron: '0 19 * * *'
 
 jobs:
   multi-server-tests:
     runs-on: self-hosted
-    #
-    #  Skip workflow_run instances triggered by a failed crossbuild
-    #  (no fresh image in the registry, no point testing). Schedule
-    #  events bypass the gate - they're independent of crossbuild and
-    #  expected to fall back to a local crossbuild compile if the
-    #  registry image has been pruned.
-    #
-    if: |
-      github.repository_owner == 'FreeRADIUS' &&
-      (github.event_name == 'schedule' ||
-       github.event.workflow_run.conclusion == 'success')
+    if: github.repository_owner == 'FreeRADIUS'
 
     strategy:
       fail-fast: false
@@ -106,15 +95,8 @@ jobs:
 
     steps:
 
-      #
-      #  workflow_run: pin to the SHA the upstream crossbuild ran
-      #  against so we test the same commit the crossbuild image was
-      #  built from. schedule has no upstream; let checkout default to
-      #  the branch tip (github.sha) via the `||` fallback.
-      #
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           lfs: false
 
       - name: setup-dind

@@ -165,37 +165,11 @@ jobs:
         make docker.profiling.$OS
 
     #
-    #  Push both freshly-built images to the internal registry so
-    #  downstream workflows (ci-multi-server-tests.yml, ci-deb.yml,
-    #  ...) can pull rather than rebuild. Only on success - a broken
-    #  image shouldn't be published for the next workflow to trust.
-    #
-    #
-    #  Re-login to dind with the push-capable creds. The earlier login
-    #  step uses DOCKER_REPO_USERNAME / DOCKER_REPO_PASSWORD which only
-    #  carry read access (enough for pulling base images and pulling
-    #  the crossbuild image via DOCKER_REGISTRY); pushing the built
-    #  service + profiling images needs DOCKER_REPO_UPDATE_*.
-    #
-    - name: Login to internal Docker registry for push (via dind)
-      if: ${{ success() }}
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-      run: |
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
-
-    - name: Push docker images to internal registry
-      if: ${{ success() }}
-      env:
-        REGISTRY: docker.internal.networkradius.com
-      run: |
-        sha=$(git rev-parse --short HEAD)
-        for type in service profiling; do
-          tag="freeradius4-${type}/${OS}:${sha}"
-          docker tag  "${tag}" "${REGISTRY}/${tag}"
-          docker push "${REGISTRY}/${tag}"
-        done
+    #  No push step here. service + profiling images are published as
+    #  :latest by docker-refresh.yml on its periodic schedule. This
+    #  workflow is a per-commit smoke build only - it confirms the
+    #  Dockerfile chain still compiles. The built :<sha> tags die with
+    #  the per-job dind sidecar.
 
     - name: Show docker build log
       if: failure()

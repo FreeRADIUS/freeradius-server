@@ -7,94 +7,12 @@ ARG from=ubuntu:22.04
 FROM ${from}
 
 #
-#  Install profiling tools
+#  Per-commit profiling image. The slow toolchain layer (valgrind /
+#  kcachegrind / dbgsym / FlameGraph / inferno) lives in profiling-deps
+#  and is refreshed periodically by docker-refresh.yml; this layer just
+#  compiles FreeRADIUS with profiling-friendly CFLAGS on top of it.
+#  See common.freeradius-profile-build.m4 for the CFLAGS rationale.
 #
-#    valgrind / cachegrind
-#    kcachegrind + KDE/Qt runtime libs (cachegrind annotation viewer)
-#    gperftools (libgoogle-perftools-dev ships the pprof binaries too,
-#    so we don't need the separate google-perftools package -- which
-#    has been retired from newer debian/ubuntu archives anyway)
-#    heaptrack
-#
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS \
-        libgoogle-perftools-dev \
-        valgrind \
-        heaptrack \
-        psmisc \
-        kcachegrind \
-        kio \
-        libkf5iconthemes5 \
-        libkf5parts5 \
-        libkf5textwidgets5 \
-        libqt5gui5 \
-        libqt5widgets5 && \
-    apt-get clean && \
-    rm -r /var/lib/apt/lists/*
-
-#
-#  Debug symbols for the FreeRADIUS runtime library closure.
-#
-#  Repo source depends on derivative:
-#    ubuntu     ddebs.ubuntu.com with ubuntu-dbgsym-keyring
-#    debian     debug.mirrors.debian.org via the existing debian-archive
-#               keyring (no extra keyring install)
-#
-#  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
-#  13. T64 expands accordingly; `[]' breaks the surrounding token so
-#  m4 actually expands the macro mid-package-name.
-#
-#  Per-package install with `|| true' fallback so the structural
-#  version skew on Ubuntu LTS (ddebs lagging security-patched main,
-#  e.g. libpcre2-8-0-dbgsym=10.39-3build1 vs main 10.39-3ubuntu0.1)
-#  doesn't wreck the whole layer. A WARNING line in the build log
-#  flags any package that couldn't be installed so operators can see
-#  what's missing rather than discovering it at debug time.
-#
-#  We deliberately do NOT `apt-get clean / rm -r /var/lib/apt/lists/*'
-#  here: the cache would invalidate every subsequent apt-get install
-#  in the containing template and force a redundant apt-get update.
-#
-RUN apt-get update && \
-    apt-get install -y $APT_OPTS ubuntu-dbgsym-keyring && \
-    printf 'deb http://ddebs.ubuntu.com jammy main restricted universe multiverse\ndeb http://ddebs.ubuntu.com jammy-updates main restricted universe multiverse\n' \
-        > /etc/apt/sources.list.d/ddebs.list
-
-#
-# ddebs.ubuntu.com and debug.mirrors.debian.org are notoriously flaky
-# (slow timeouts and occasional 5xx/404 storms). Acquire::Retries=3
-# from the toolchain template doesn't always cover it. Let `apt-get
-# update` fail soft so the per-package install loop still runs against
-# whatever cache is available; the loop already prints WARNING and
-# moves on for any package the partial cache can't resolve.
-#
-RUN (apt-get update || echo "WARNING: apt-get update for dbgsym sources failed; continuing with stale cache") && \
-    for pkg in libc6-dbg libssl3-dbgsym libtalloc2-dbgsym libpcre2-8-0-dbgsym; do \
-        apt-get install -y $APT_OPTS "$pkg" || echo "WARNING: could not install dbgsym package: $pkg"; \
-    done
-
-#
-#  Install FlameGraph
-#
-RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph /opt/flamegraph \
-    && chmod +x /opt/flamegraph/*.pl /opt/flamegraph/*.sh
-
-ENV PATH="/opt/flamegraph:${PATH}"
-
-#
-#  Install Inferno (Rust port of FlameGraph with broader format support).
-#  Bootstrap rustup so we always have a recent stable toolchain --
-#  debian12's distro cargo (1.63) is too old for current inferno's
-#  transitive crate MSRVs, and pinning to an older inferno just defers
-#  the same drift everywhere else. Uninstall the toolchain after the
-#  build to keep the layer small.
-#
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --default-toolchain stable --profile minimal && \
-    . "$HOME/.cargo/env" && \
-    cargo install inferno --version 0.11.21 --locked --root /usr/local && \
-    rm -rf "$HOME/.cargo" "$HOME/.rustup"
-
 #
 #  Build and install FreeRADIUS with profiling-friendly CFLAGS into the
 #  profiling image. Layered on top of the crossbuild base, which already

@@ -154,35 +154,11 @@ jobs:
         make crossbuild.$OS
 
     #
-    #  Push the freshly-built crossbuild image to the internal registry
-    #  so downstream workflows (ci-multi-server-tests.yml profiling leg)
-    #  can `docker pull` it instead of rebuilding from scratch on every
-    #  run. Only on success - we don't want to publish a broken image
-    #  that the next workflow then trusts.
-    #
-    #
-    #  Re-login to dind with the push-capable creds. The earlier login
-    #  step uses DOCKER_REPO_USERNAME / DOCKER_REPO_PASSWORD which only
-    #  carry read access (enough for pulling self-hosted base images);
-    #  pushing the built crossbuild image needs DOCKER_REPO_UPDATE_*.
-    #
-    - name: Login to internal Docker registry for push (via dind)
-      if: ${{ success() }}
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-      run: |
-        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
-
-    - name: Push crossbuild image to internal registry
-      if: ${{ success() }}
-      env:
-        REGISTRY: docker.internal.networkradius.com
-      run: |
-        sha=$(git rev-parse --short HEAD)
-        tag="freeradius4-crossbuild/${OS}:${sha}"
-        docker tag  "${tag}" "${REGISTRY}/${tag}"
-        docker push "${REGISTRY}/${tag}"
+    #  No push step here. crossbuild:latest is published by
+    #  docker-refresh.yml on its periodic schedule. This workflow is
+    #  a per-commit sanity test - it builds crossbuild and runs FR's
+    #  in-container test suite against the working source, then the
+    #  per-job dind sidecar tears down with the :<sha> image inside.
 
     - name: Show build log
       if: ${{ success() || failure() }}

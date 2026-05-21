@@ -96,17 +96,20 @@ $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKE
 	$${Q}set -e; \
 	if [ -z "$(NOPULL)" ] && [ -n "$(DOCKER_REGISTRY)" ] && \
 	   timeout $(DOCKER_PULL_TIMEOUT) docker pull -q \
-	           "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)" \
+	           "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
 	           >$(DOCKER_STATE)/pull.${1}.${2} 2>&1; then \
-		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)" \
+		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
+		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest"; \
+		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
 		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
-		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) <- $(DOCKER_REGISTRY)"; \
+		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest <- $(DOCKER_REGISTRY)"; \
 	else \
 		echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"; \
 		docker build $$(DOCKER_BUILD_OPTS) ${3} \
 			--label ci-ttl=$(CI_TTL) \
 			-f $(DT)/${1}/Dockerfile.${2} \
 			-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
+			-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest \
 			. >$(DOCKER_STATE)/build.${1}.${2} 2>&1; \
 	fi
 	$${Q}touch $$@
@@ -221,15 +224,31 @@ $(DOCKER_STATE):
 
 #
 #  Wire build + phony + clean + lifecycle for every (image, type)
-#  combo. Profiling FROMs the crossbuild image of the same distro,
-#  so its build depends on the corresponding crossbuild stamp.
+#  combo.
+#
+#  Layer chain:
+#    service          FROMs the upstream OS base (the m4 template's
+#                     default ARG from=ubuntu:24.04 / debian:bookworm /
+#                     rockylinux:9 etc., from scripts/docker/m4/service.{deb,rpm}.m4).
+#                     Independent of crossbuild - it does its own
+#                     apt-install of build deps.
+#    profiling-deps   FROMs crossbuild/<image>:latest
+#    profiling        FROMs profiling-deps/<image>:latest
+#
+#  The :latest base tags are published periodically by
+#  docker-refresh.yml. Per-commit builds (docker-service.yml,
+#  ci-multi-server-tests.yml, local) consume those :latest tags via
+#  the DOCKER_REGISTRY pull-through in DOCKER_BUILD, or by an
+#  explicit `docker pull <REGISTRY>/<prefix>-<base>/<image>:latest`
+#  + retag in the calling workflow.
 #
 $(foreach IMG,$(IMAGES),\
   $(eval $(call DOCKER_BUILD,$(IMG),service,,)) \
   $(eval $(call DOCKER_BUILD,$(IMG),ci,,)) \
   $(eval $(call DOCKER_BUILD,$(IMG),crossbuild,$(if $(CB_FROM_$(IMG)),--build-arg=from=$(CB_FROM_$(IMG))),)) \
-  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):$(GIT_SHA),$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
-  $(foreach T,service ci crossbuild profiling, \
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling-deps,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-crossbuild/$(IMG):latest,$(DOCKER_STATE)/stamp-image.$(IMG).crossbuild)) \
+  $(eval $(call DOCKER_BUILD,$(IMG),profiling,--build-arg=from=$(DOCKER_IMAGE_PREFIX)-profiling-deps/$(IMG):latest,$(DOCKER_STATE)/stamp-image.$(IMG).profiling-deps)) \
+  $(foreach T,service ci crossbuild profiling-deps profiling, \
     $(eval $(call DOCKER_PHONY,$(IMG),$(T))) \
     $(eval $(call DOCKER_CLEAN,$(IMG),$(T))) \
     $(eval $(call DOCKER_LIFECYCLE,$(IMG),$(T))) \
@@ -251,6 +270,7 @@ endef
 $(eval $(call DOCKER_TYPE_UMBRELLAS,service,$(IMAGES)))
 $(eval $(call DOCKER_TYPE_UMBRELLAS,ci,$(IMAGES)))
 $(eval $(call DOCKER_TYPE_UMBRELLAS,crossbuild,$(IMAGES)))
+$(eval $(call DOCKER_TYPE_UMBRELLAS,profiling-deps,$(IMAGES)))
 $(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(IMAGES)))
 
 #
@@ -260,10 +280,10 @@ $(eval $(call DOCKER_TYPE_UMBRELLAS,profiling,$(IMAGES)))
 .PHONY: docker docker.common docker.clean docker.up docker.down docker.reset docker.info docker.info_header
 docker:        docker.info docker.service
 docker.common: docker.info $(foreach IMG,$(DOCKER_COMMON),docker.service.$(IMG))
-docker.clean:  docker.ci.clean docker.crossbuild.clean docker.profiling.clean docker.service.clean
-docker.up:     docker.ci.up    docker.crossbuild.up    docker.profiling.up    docker.service.up
-docker.down:   docker.ci.down  docker.crossbuild.down  docker.profiling.down  docker.service.down
-docker.reset:  docker.ci.reset docker.crossbuild.reset docker.profiling.reset docker.service.reset
+docker.clean:  docker.ci.clean docker.crossbuild.clean docker.profiling-deps.clean docker.profiling.clean docker.service.clean
+docker.up:     docker.ci.up    docker.crossbuild.up    docker.profiling-deps.up    docker.profiling.up    docker.service.up
+docker.down:   docker.ci.down  docker.crossbuild.down  docker.profiling-deps.down  docker.profiling.down  docker.service.down
+docker.reset:  docker.ci.reset docker.crossbuild.reset docker.profiling-deps.reset docker.profiling.reset docker.service.reset
 
 docker.info: docker.info_header $(foreach IMG,$(IMAGES),docker.service.$(IMG).status)
 	@echo All images: $(IMAGES)
