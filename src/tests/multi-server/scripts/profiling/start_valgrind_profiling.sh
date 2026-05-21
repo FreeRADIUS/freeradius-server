@@ -9,7 +9,9 @@ rm -f /etc/prof-results/valgrind_profiling.log
 exec > /etc/prof-results/valgrind_profiling.log 2>&1
 
 # Ignore SIGTERM — freeradius broadcasts it to the process group on shutdown,
-# which would otherwise kill this script before it can touch .profiling_complete
+# which would otherwise kill this script before it can touch .profiling_complete.
+# As a side-effect `docker stop` cannot tear this script down before the
+# 10s SIGKILL fallback.
 trap '' SIGTERM
 
 # Echo env variables required for proto_load configuration and test load generation — these should be set by the testcase template
@@ -24,14 +26,18 @@ echo "TEST_LOADGEN_REPEAT=$TEST_LOADGEN_REPEAT"
 echo "TEST_LOADGEN_NUM_MESSAGES=$TEST_LOADGEN_NUM_MESSAGES"
 echo ""
 
-# Calculate approximate send duration
+# Approximate load-generator send duration; the instrumented run sleeps this
+# long between callgrind_control --instr=on and the graceful shutdown signal.
 SEND_DURATION=$(( TEST_LOADGEN_NUM_MESSAGES / TEST_LOADGEN_START_PPS ))
-PROFILE_DURATION_BUFFER=15
-PROFILE_DURATION=$SEND_DURATION-$PROFILE_DURATION_BUFFER
 
-# Start freeradius under valgrind with instrumentation off
+# Start freeradius under valgrind with instrumentation off.
+#
+# valgrind writes its own log to --log-file and freeradius stdout/stderr
+# go directly to freeradius.log. Avoiding `| tee` here so $! is the
+# valgrind PID rather than tee's — the fallback kill paths below rely on it.
 valgrind \
   --tool=callgrind \
+  --log-file=/etc/prof-results/valgrind.log \
   --callgrind-out-file=/etc/prof-results/callgrind.out.%p \
   --trace-children=yes \
   --separate-threads=yes \
@@ -41,8 +47,8 @@ valgrind \
   --branch-sim=yes \
   --keep-debuginfo=yes \
   --instr-atstart=no \
-  freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes 2>&1 | \
-  tee /etc/prof-results/freeradius.log &
+  freeradius -f -l stdout -S resources.talloc_skip_cleanup=yes \
+  > /etc/prof-results/freeradius.log 2>&1 &
 VALGRIND_PID=$!
 
 # Wait for server ready (bail out if freeradius fails to start under valgrind)
@@ -70,28 +76,10 @@ echo "Freeradius PID: ${FR_PID}"
 # Wait for approximate send duration
 sleep ${SEND_DURATION}
 
-## Stop instrumentation before shutdown so valgrind only flushes already-collected data
-#echo "INFO: disabling callgrind instrumentation"
-#CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
-#printf '%s\n' "$CTRL_OUT"
-#
-## Graceful shutdown (equivalent to Ctrl+C)
-#if [ -z "${FR_PID}" ]; then
-#  echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind pipeline instead"
-#  kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
-#else
-#  echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
-#  kill -SIGINT ${FR_PID}
-#fi
-#
-## Give valgrind time to write callgrind output after freeradius exits
-#echo "INFO: sleeping for 5s"
-#sleep 5
-
 # Graceful shutdown (equivalent to Ctrl+C) — keep instrumentation on so shutdown
 # transitions are captured before we stop profiling
 if [ -z "${FR_PID}" ]; then
-  echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind pipeline instead"
+  echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind instead"
   kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
 else
   echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
@@ -124,10 +112,9 @@ wait ${VALGRIND_PID} 2>/dev/null || true
 echo "INFO: Profiling complete at $(date)"
 
 echo "INFO: running callgrind_annotate to generate report"
-#callgrind_annotate $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) > /etc/prof-results/callgrind_report.txt
-cmd='callgrind_annotate $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) > /etc/prof-results/callgrind_report.txt'
-echo "$cmd"
-eval "$cmd"
+callgrind_annotate \
+  $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) \
+  > /etc/prof-results/callgrind_report.txt
 
 # Restore stdout/stderr
 exec > /dev/null 2>&1

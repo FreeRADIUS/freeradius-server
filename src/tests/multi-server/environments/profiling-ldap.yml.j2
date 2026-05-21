@@ -13,7 +13,13 @@ x-common-config: &id001
     TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
 services:
   openldap:
-    image: openldap:latest
+    image: osixia/openldap:1.5.0
+    environment:
+      LDAP_ORGANISATION: "Example"
+      LDAP_DOMAIN: "example.com"
+      LDAP_ADMIN_PASSWORD: "adminpassword"
+    volumes:
+    - ${DATA_PATH}/openldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
     healthcheck:
       test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -D 'cn=admin,dc=example,dc=com' -w adminpassword -b 'dc=example,dc=com' > /dev/null 2>&1"]
       interval: 2s
@@ -31,8 +37,6 @@ services:
     - ${DATA_PATH}/freeradius/profiling-ldap/radiusd.conf:/etc/freeradius/radiusd.conf
     # load generator packet configuration
     - ${DATA_PATH}/freeradius/profiling-ldap/common/packet.conf:/etc/freeradius/common/packet.conf
-    # files module configuration
-    - ${DATA_PATH}/freeradius/profiling-ldap/mods-config/files/authorize:/etc/freeradius/mods-config/files/authorize
     # Profiling scripts
     - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
     # Profiling results directory

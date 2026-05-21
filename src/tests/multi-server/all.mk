@@ -17,7 +17,6 @@
 
 SHELL := /bin/bash
 
-PROFILE ?= default-profiling
 BUILD_PLATFORM ?=
 
 #
@@ -305,32 +304,27 @@ TEST_MULTI_SERVER_PROF_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_PROF_TESTS)
 test.multi-server.profiling.ci: $(TEST_MULTI_SERVER_PROF_CI_TESTS)
 
 #
-#  Ensure the freeradius-prof image is present before running
-#  any of the profiling tests.
+#  Ensure the freeradius-prof image is present before running any of the
+#  profiling tests.
 #
-
-
-# Crossbuild image
-FREERADIUS_CROSSBUILD_IMAGE := freeradius40x-build/ubuntu24:latest
-# Base profiling image, FreeRADIUS not built on this image
-FREERADIUS_PROF_IMAGE := freeradius4-$(PROFILE)/ubuntu24:latest
-# Multi-server profiling image; FreeRADIUS dev build specifically for profiling
-FREERADIUS_RADENV_PROF_IMAGE := freeradius-prof:latest
+#  Base layer:    freeradius4-profiling/ubuntu24:<git-sha>  (built by
+#                 scripts/docker/docker.mk via `make docker.profiling.ubuntu24`)
+#  Test layer:    freeradius-prof:latest                   (this Makefile)
+#
+PROF_BASE_IMAGE       := freeradius4-profiling/ubuntu24:$(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null)
+FREERADIUS_PROF_IMAGE := freeradius-prof:latest
 
 .PHONY: freeradius-prof.image
 freeradius-prof.image:
-	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ]; then \
-		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.regen; \
-		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.build; \
-		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
-	elif [ -z "$$(docker images -q $(FREERADIUS_PROF_IMAGE) 2>/dev/null)" ]; then \
-		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.regen; \
-		$(MAKE) -C $(top_srcdir) crossbuild.ubuntu24.profile.build; \
-		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
-	elif [ -z "$$(docker images -q $(FREERADIUS_RADENV_PROF_IMAGE) 2>/dev/null)" ]; then \
-		./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(PROF_BASE_IMAGE) 2>/dev/null)" ]; then \
+		$(MAKE) -C $(top_srcdir) docker.profiling.ubuntu24; \
 	else \
-		echo "$(FREERADIUS_PROF_IMAGE) and $(FREERADIUS_RADENV_PROF_IMAGE) available, skipping image creation"; \
+		echo "$(PROF_BASE_IMAGE) available, skipping base profiling image build"; \
+	fi
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(FREERADIUS_PROF_IMAGE) 2>/dev/null)" ]; then \
+		BASE_IMAGE=$(PROF_BASE_IMAGE) ./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
+	else \
+		echo "$(FREERADIUS_PROF_IMAGE) available, skipping multi-server profiling image build"; \
 	fi
 
 $(TEST_MULTI_SERVER_PROF_TESTS): freeradius-prof.image
@@ -350,23 +344,6 @@ test.multi-server.${1}.${2}: $(OUTPUT)/${1}/${2}/start_valgrind_profiling.sh
 endef
 
 $(foreach s,$(filter prof-%,$(TEST_MULTI_SERVER_SUITES)),$(foreach p,$(TEST_MULTI_SERVER_PARAM_FILES.$(s)),$(eval $(call TEST_MULTI_SERVER_PROF_SCRIPT,$(s),$(subst .,_,$(patsubst %.test.yml,%,$(notdir $(p))))))))
-
-#
-#  Ensure the ldap image is present before running prof-ldap tests.
-#  Builds it automatically via docker.openldap.prof if not found.
-#
-OPENLDAP_PROF_IMAGE := freeradius4/openldap-prof:latest
-
-.PHONY: openldap.image
-openldap.image:
-	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(OPENLDAP_PROF_IMAGE) 2>/dev/null)" ]; then \
-		$(MAKE) -C $(top_srcdir) docker.openldap.prof; \
-	else \
-		echo "$(OPENLDAP_PROF_IMAGE) available, skipping image creation"; \
-	fi
-	${Q}docker tag $(OPENLDAP_PROF_IMAGE) openldap:latest
-
-$(TEST_MULTI_SERVER_TESTS.prof-ldap): openldap.image
 
 .PHONY: clean.test.multi-server
 clean.test.multi-server:

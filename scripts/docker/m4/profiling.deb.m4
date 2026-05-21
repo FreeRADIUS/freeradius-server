@@ -51,5 +51,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     cargo install inferno --version 0.11.21 --locked --root /usr/local && \
     rm -rf "$HOME/.cargo" "$HOME/.rustup"
 
+include(`common.freeradius-profile-build.m4')dnl
+
 EXPOSE 1812/udp 1813/udp
 CMD ["/bin/sh", "-c", "while true; do sleep 60; done"]

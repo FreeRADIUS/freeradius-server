@@ -14,5 +14,4 @@ loadgen:
 
 # Test framework
 test_timeout: 125
-test_state1_verify_timeout: 120
-test_state2_verify_timeout: 30
+test_verify_timeout: 120
