@@ -2,22 +2,29 @@
 # all.mk for multi-server tests
 #
 # Makefile arguments:
-# - TEST_MULTI_SERVER_DEBUG=<0-2>  debug level for multi-server test framework
-# - TEST_MULTI_SERVER_VERBOSE=<0-4> verbosity level
-# - PROF_MODE=<ci|dev>             profiling results path mode (default: ci)
-#                                    ci:  PROF_RESULTS_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
-#                                    dev: PROF_RESULTS_ROOT/<suite>/<test>  (flat, overwrites each run)
+# - TEST_MULTI_SERVER_DEBUG=<0-2>   debug level for multi-server test framework
+# - TEST_MULTI_SERVER_VERBOSE=<0-4>  verbosity level
+# - MODE=<service|profiling>        which FreeRADIUS image to drive the tests
+#                                   with. Default `service`. `profiling` swaps in
+#                                   freeradius4-profiling/<image>:<sha>, sets PROFILING=yes
+#                                   so the test template runs the server under
+#                                   valgrind/callgrind, and writes results to
+#                                   PROFILING_RESULT_PATH.
+# - PROFILING_RESULT_MODE=<ci|dev>      Profiling output layout (only meaningful when
+#                                   MODE=profiling). Default `ci`.
+#                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
+#                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
 #
 # Usage:
-#   make -f src/tests/multi-server/all.mk test.multi-server                         # run all tests
-#   make -f src/tests/multi-server/all.mk test.multi-server.ci                      # run all ci tests
-#   make -f src/tests/multi-server/all.mk test.multi-server.proxy-accept.short_ci   # run single test
-#   make -f src/tests/multi-server/all.mk clean.test.multi-server                   # clean logs
+#   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
+#   make -f src/tests/multi-server/all.mk test.multi-server.ci                    # CI subset, service image
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling             # all suites, profiling image
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci          # CI subset, profiling image
+#   make -f src/tests/multi-server/all.mk test.multi-server.accept.short_ci       # single test
+#   make -f src/tests/multi-server/all.mk clean.test.multi-server                 # clean logs
 #
 
 SHELL := /bin/bash
-
-BUILD_PLATFORM ?=
 
 #
 #  Allow for stand-alone builds from the local directory.
@@ -34,10 +41,21 @@ endif
 DIR    := $(abspath ${top_srcdir}/src/tests/multi-server)
 OUTPUT := $(abspath $(BUILD_DIR)/tests/multi-server)
 
-GIT_BRANCH        := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '_'),unknown-branch)
-GIT_COMMIT        := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
-PROF_RESULTS_ROOT := $(abspath $(top_srcdir)/prof-results)
-PROF_MODE         ?= ci
+GIT_BRANCH         := $(or $(shell git -C $(top_srcdir) rev-parse --abbrev-ref HEAD 2>/dev/null | tr '/' '_'),unknown-branch)
+GIT_COMMIT         := $(or $(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null),unknown-commit)
+PROFILING_RESULT_ROOT  := $(abspath $(top_srcdir)/prof-results)
+PROFILING_RESULT_MODE  ?= ci
+
+#
+#  Image plumbing.
+#
+#  Compose envs reference ${FREERADIUS_IMAGE}; the per-test recipe
+#  exports the right one based on MODE. We use the SHA-tagged image
+#  directly so the source-of-truth is the docker.<type>.<image> build
+#  output, no intermediate :latest aliases to keep in sync.
+#
+FREERADIUS_SERVICE_IMAGE     := freeradius4-service/ubuntu24:$(GIT_COMMIT)
+FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
 
 # FIXME: We should be using packaged versions of the multi-server test framework
 # instead of cloning from git.
@@ -134,10 +152,18 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 endef
 
 #
+#  Profiling helper script. Always copied into each test's output dir
+#  so the compose bind-mount resolves regardless of MODE; the script
+#  is only sourced when PROFILING=yes is exported into the container.
+#
+PROFILING_SCRIPT_SRC := $(DIR)/scripts/profiling/start_valgrind_profiling.sh
+
+#
 #  TEST_MULTI_SERVER_INSTANCE - define render + run targets for a single test.
 #
 #  Discovers all .j2 files in the suite directory, generates a render rule
 #  for each, and creates a test target that depends on all rendered outputs.
+#  Switches image / valgrind wiring based on MODE.
 #
 #  ${1} = suite dir name
 #  ${2} = test name
@@ -150,76 +176,52 @@ TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,
 
 $$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
 
-.PHONY: render.test.multi-server.${1}.${2}
-render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
-
-.PHONY: test.multi-server.${1}.${2}
-test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
-	$$(eval CMD := cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && DATA_PATH="${4}" python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log")
-	${Q}mkdir -p "${4}/logs" "${4}/listener"
-	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
-	${Q}$$(CMD) > "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
-	{ \
-	    echo "FAILED: test.multi-server.${1}.${2}"; \
-	    echo "$$(CMD)"; \
-	    for f in ${4}/logs/* ${4}/listener/*; do \
-	        [ -f "$$$$f" ] || continue; \
-	        echo ""; \
-	        echo "=== $$$$f ==="; \
-	        case "$$$$f" in \
-	            */listener/*) \
-	                echo "-- line-type counts --"; \
-	                awk '{print $$$$1}' "$$$$f" | sort | uniq -c; \
-	                echo "-- last 200 lines --"; \
-	                ;; \
-	        esac; \
-	        tail -200 "$$$$f"; \
-	    done; \
-	    exit 1; \
-	}
-endef
-
-#
-#  TEST_MULTI_SERVER_PROF_INSTANCE - like TEST_MULTI_SERVER_INSTANCE but
-#  computes PROF_RESULTS_PATH and exports it to docker compose so valgrind
-#  output lands in:
-#    ci mode (default): $(PROF_RESULTS_ROOT)/<suite>/<test>/<branch>/<commit>/<run-index>
-#    dev mode:          $(PROF_RESULTS_ROOT)/<suite>/<test>
-#
-#  ${1} = suite dir name
-#  ${2} = test name
-#  ${3} = params file path
-#  ${4} = test output directory
-#
-define TEST_MULTI_SERVER_PROF_INSTANCE
-TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}  := $$(wildcard $$(DIR)/tests/${1}/*.j2)
-TEST_MULTI_SERVER_RENDERED.${1}.${2}     := $$(patsubst $$(DIR)/tests/${1}/%.j2,${4}/%,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}))
-
-$$(foreach j,$$(TEST_MULTI_SERVER_JINJA_FILES.${1}.${2}),$$(eval $$(call TEST_MULTI_SERVER_RENDER,${1},${2},${3},$$j)))
+${4}/start_valgrind_profiling.sh: $$(PROFILING_SCRIPT_SRC)
+	$${Q}mkdir -p $$(@D)
+	$${Q}cp $$< $$@
 
 .PHONY: render.test.multi-server.${1}.${2}
-render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
+render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
 
 .PHONY: test.multi-server.${1}.${2}
-test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2})
+test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
-	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2}"
-	${Q}if [ "$(PROF_MODE)" = "dev" ]; then \
-		PROF_RESULTS_PATH="$(PROF_RESULTS_ROOT)/${1}/${2}"; \
+	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE))"
+	${Q}if [ "$(MODE)" = "profiling" ]; then \
+		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
+		PROFILING=yes; \
+		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
+			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
+		else \
+			PROF_BASE="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
+			EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
+			RUN_INDEX=$$$$((EXISTING + 1)); \
+			PROFILING_RESULT_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+		fi; \
+		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
+		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
 	else \
-		PROF_BASE="$(PROF_RESULTS_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-		EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
-		RUN_INDEX=$$$$((EXISTING + 1)); \
-		PROF_RESULTS_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+		FREERADIUS_IMAGE=$(FREERADIUS_SERVICE_IMAGE); \
+		PROFILING=no; \
+		PROFILING_RESULT_PATH=/tmp/prof-results-unused; \
 	fi; \
-	mkdir -p "$$$$PROF_RESULTS_PATH" && \
-	echo "PROF_RESULTS_PATH: $$$$PROF_RESULTS_PATH" && \
 	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && \
-	DATA_PATH="${4}" PROF_RESULTS_PATH="$$$$PROF_RESULTS_PATH" \
-	python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) --project-name "${1}-${2}" --compose "${4}/environment.yml" --test "${4}/template.yml" --use-files --listener-dir "${4}/listener" --log-dir "${4}/logs" --output "${4}/logs/result.log" \
-	> "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
+	DATA_PATH="${4}" \
+	TOP_SRCDIR="$(top_srcdir)" \
+	FREERADIUS_IMAGE="$$$$FREERADIUS_IMAGE" \
+	PROFILING="$$$$PROFILING" \
+	PROFILING_RESULT_PATH="$$$$PROFILING_RESULT_PATH" \
+	python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) \
+	    --project-name "${1}-${2}-$(MODE)" \
+	    --compose "${4}/environment.yml" \
+	    --test "${4}/template.yml" \
+	    --use-files \
+	    --listener-dir "${4}/listener" \
+	    --log-dir "${4}/logs" \
+	    --output "${4}/logs/result.log" \
+	    > "${4}/logs/stdout.log" 2> "${4}/logs/stderr.log" || \
 	{ \
-	    echo "FAILED: test.multi-server.${1}.${2}"; \
+	    echo "FAILED: test.multi-server.${1}.${2} (MODE=$(MODE))"; \
 	    for f in ${4}/logs/* ${4}/listener/*; do \
 	        [ -f "$$$$f" ] || continue; \
 	        echo ""; \
@@ -243,13 +245,13 @@ endef
 #  Discovers *.yml param files in the suite directory and generates
 #  render + test targets for each.
 #
-#  ${1} = suite dir name (e.g. proxy-accept)
+#  ${1} = suite dir name (e.g. accept)
 #
 define TEST_MULTI_SERVER
 TEST_MULTI_SERVER_PARAM_FILES.${1} := $$(wildcard $$(DIR)/tests/${1}/*.test.yml)
 TEST_MULTI_SERVER_TESTS.${1}       := $$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),test.multi-server.${1}.$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))
 
-$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call $(if $(filter prof-%,${1}),TEST_MULTI_SERVER_PROF_INSTANCE,TEST_MULTI_SERVER_INSTANCE),${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
+$$(foreach p,$$(TEST_MULTI_SERVER_PARAM_FILES.${1}),$$(eval $$(call TEST_MULTI_SERVER_INSTANCE,${1},$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))),$$p,$(OUTPUT)/${1}/$$(subst .,_,$$(patsubst %.test.yml,%,$$(notdir $$p))))))
 endef
 
 ######################################################################
@@ -257,6 +259,8 @@ endef
 #  Discover suites and generate targets
 #
 ######################################################################
+
+MODE ?= service
 
 #
 #  A suite is any subdirectory containing a template.yml.j2 file.
@@ -266,8 +270,6 @@ TEST_MULTI_SERVER_SUITES := $(notdir $(patsubst %/template.yml.j2,%,$(wildcard $
 $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(eval $(call TEST_MULTI_SERVER,$s)))
 
 TEST_MULTI_SERVER_ALL_TESTS := $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(TEST_MULTI_SERVER_TESTS.$(s)))
-
-TEST_MULTI_SERVER_PROF_TESTS := $(foreach s,$(filter prof-%,$(TEST_MULTI_SERVER_SUITES)),$(TEST_MULTI_SERVER_TESTS.$(s)))
 
 ######################################################################
 #
@@ -290,60 +292,30 @@ TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 #
-#  Profiling tests only - all prof-* suites
+#  Profiling pass: same suites, profiling image, valgrind wrapper. Forces
+#  MODE=profiling via a recursive sub-make so the per-test recipes pick up
+#  the right image / env without needing the operator to set MODE manually.
 #
-.PHONY: test.multi-server.profiling
-test.multi-server.profiling: $(TEST_MULTI_SERVER_PROF_TESTS)
+.PHONY: test.multi-server.profiling test.multi-server.profiling.ci
+test.multi-server.profiling: freeradius-prof.image
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling
+
+test.multi-server.profiling.ci: freeradius-prof.image
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling
 
 #
-#  Profiling CI tests only - *.ci.test.yml param files in prof-* suites
+#  Profiling image: build the standard freeradius4-profiling/<image>:<sha>
+#  via the top-level docker.profiling target. Stops short of any retag;
+#  the compose envs read the SHA-tagged image name directly out of
+#  FREERADIUS_IMAGE.
 #
-TEST_MULTI_SERVER_PROF_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_PROF_TESTS))
-
-.PHONY: test.multi-server.profiling.ci
-test.multi-server.profiling.ci: $(TEST_MULTI_SERVER_PROF_CI_TESTS)
-
-#
-#  Ensure the freeradius-prof image is present before running any of the
-#  profiling tests.
-#
-#  Base layer:    freeradius4-profiling/ubuntu24:<git-sha>  (built by
-#                 scripts/docker/docker.mk via `make docker.profiling.ubuntu24`)
-#  Test layer:    freeradius-prof:latest                   (this Makefile)
-#
-PROF_BASE_IMAGE       := freeradius4-profiling/ubuntu24:$(shell git -C $(top_srcdir) rev-parse --short HEAD 2>/dev/null)
-FREERADIUS_PROF_IMAGE := freeradius-prof:latest
-
 .PHONY: freeradius-prof.image
 freeradius-prof.image:
-	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(PROF_BASE_IMAGE) 2>/dev/null)" ]; then \
+	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(FREERADIUS_PROFILING_IMAGE) 2>/dev/null)" ]; then \
 		$(MAKE) -C $(top_srcdir) docker.profiling.ubuntu24; \
 	else \
-		echo "$(PROF_BASE_IMAGE) available, skipping base profiling image build"; \
+		echo "$(FREERADIUS_PROFILING_IMAGE) available, skipping profiling image build"; \
 	fi
-	${Q}if [ -n "$(FORCE_IMAGE_REBUILD)" ] || [ -z "$$(docker images -q $(FREERADIUS_PROF_IMAGE) 2>/dev/null)" ]; then \
-		BASE_IMAGE=$(PROF_BASE_IMAGE) ./src/tests/multi-server/scripts/docker/build/build_image.sh $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)); \
-	else \
-		echo "$(FREERADIUS_PROF_IMAGE) available, skipping multi-server profiling image build"; \
-	fi
-
-$(TEST_MULTI_SERVER_PROF_TESTS): freeradius-prof.image
-
-#
-#  Copy the valgrind profiling helper script into each prof test's output dir
-#  so it is available alongside the rendered test configs.
-#
-PROFILING_SCRIPT_SRC := $(DIR)/scripts/profiling/start_valgrind_profiling.sh
-
-define TEST_MULTI_SERVER_PROF_SCRIPT
-$(OUTPUT)/${1}/${2}/start_valgrind_profiling.sh: $(PROFILING_SCRIPT_SRC)
-	$${Q}mkdir -p $$(@D)
-	$${Q}cp $$< $$@
-
-test.multi-server.${1}.${2}: $(OUTPUT)/${1}/${2}/start_valgrind_profiling.sh
-endef
-
-$(foreach s,$(filter prof-%,$(TEST_MULTI_SERVER_SUITES)),$(foreach p,$(TEST_MULTI_SERVER_PARAM_FILES.$(s)),$(eval $(call TEST_MULTI_SERVER_PROF_SCRIPT,$(s),$(subst .,_,$(patsubst %.test.yml,%,$(notdir $(p))))))))
 
 .PHONY: clean.test.multi-server
 clean.test.multi-server:

@@ -69,7 +69,7 @@ services:
       start_period: 60s
 
   kafka-producer1:
-    image: freeradius-build:latest
+    image: ${FREERADIUS_IMAGE}
     depends_on:
       kafka:
         condition: service_healthy

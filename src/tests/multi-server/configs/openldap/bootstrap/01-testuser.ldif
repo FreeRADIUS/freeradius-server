@@ -1,4 +1,4 @@
-# Bootstrap testuser into dc=example,dc=com so the prof-ldap suite can
+# Bootstrap testuser into dc=example,dc=com so the ldap suite can
 # authenticate against it. Loaded by the osixia/openldap container at
 # first start from /container/service/slapd/assets/config/bootstrap/ldif/custom/.
 dn: ou=people,dc=example,dc=com

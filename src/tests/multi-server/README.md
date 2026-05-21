@@ -1,35 +1,56 @@
 # Multi-Server Tests
 
-Integration tests that spin up multiple FreeRADIUS instances in Docker
-containers and verify they can proxy traffic between each other.
+Integration tests that spin up FreeRADIUS plus its peers (proxies,
+backing stores, kafka, etc.) in Docker containers and exercise them via
+the radenv test framework.
 
 ## Prerequisites
 
-A `freeradius-build:latest` Docker image must be available locally:
+A standard `freeradius4-service/<image>:<sha>` Docker image must be
+available locally for the service-mode pass:
 
 ```bash
-make docker.ubuntu24.build
-docker tag freeradius4/ubuntu24:latest freeradius-build:latest
+make docker.service.ubuntu24
+```
+
+For profiling-mode runs, the standard `freeradius4-profiling/<image>:<sha>`
+image is what gets used directly:
+
+```bash
+make freeradius-prof.image
 ```
 
 ## Running Tests
 
-### All tests
+### All tests, service mode
 
 ```bash
 make test.multi-server
 ```
 
-### CI tests only (short tests)
+### CI subset, service mode
 
 ```bash
 make test.multi-server.ci
 ```
 
+### Profiling pass (same suites, valgrind/callgrind wrapper)
+
+```bash
+make test.multi-server.profiling       # all suites
+make test.multi-server.profiling.ci    # CI subset
+```
+
+Profiling results land under
+`prof-results/<suite>/<test>/<branch>/<commit>/<run-index>/`. Set
+`PROFILING_RESULT_MODE=dev` to use a flat per-suite layout that overwrites
+each run.
+
 ### A specific test
 
 ```bash
-make test.multi-server.proxy-accept.short_ci
+make test.multi-server.proxy-accept.short_ci          # service mode (default)
+make test.multi-server.accept.short_ci MODE=profiling # one test, profiling
 ```
 
 ### Parallel execution
@@ -62,6 +83,25 @@ rendered into the build directory.
 
 Build outputs go to `build/tests/multi-server/<suite>/<test>/`.
 
+### Service vs profiling mode
+
+Compose envs reference `${FREERADIUS_IMAGE}` and read `${PROFILING:-no}`.
+The per-test recipe in `all.mk` sets both based on the `MODE` makefile
+variable, exporting the SHA-tagged image name directly:
+
+- `MODE=service` (default) selects `freeradius4-service/<image>:<sha>`,
+  the test template `exec`s the server directly.
+- `MODE=profiling` selects `freeradius4-profiling/<image>:<sha>`, sets
+  `PROFILING=yes`, and the test template sources `start_valgrind_profiling.sh`
+  instead so the run is captured by callgrind.
+
+The profiling image is the standard `freeradius4-profiling/<image>:<sha>`
+output, built by `scripts/docker/m4/profiling.deb.m4` /
+`profiling.rpm.m4`. The configure + make + install pass with
+callgrind-friendly CFLAGS is in
+`scripts/docker/m4/common.freeradius-profile-build.m4` and is included
+into both deb and rpm flavours.
+
 ## Adding a New Test
 
 1. Create a parameter file in an existing suite directory, e.g.
@@ -81,59 +121,15 @@ finding `*.test.yml` files within them.
 - `*.ci.test.yml` - CI test parameter file (also discovered by `make test.multi-server.ci`)
 - `*.yml.j2` - Jinja2 template (rendered, not treated as a test)
 
-# Multi-Server Profiling Tests
-
-Four suites instrument FreeRADIUS under Valgrind to collect heap and call-graph profiles:
+## Suites
 
 | Suite | What it exercises |
 | --- | --- |
-| `prof-accept` | Plain RADIUS accept (no external services) |
-| `prof-pap-auth` | PAP authentication |
-| `prof-ldap` | Authentication backed by an LDAP server |
-| `prof-mysql` | Authentication backed by a MySQL database |
-
-Results land in `prof-results/<suite>/<test>/<branch>/<commit>/<run-index>/`.
-
-### Docker image dependencies
-
-Profiling suites require images that are not needed by regular multi-server tests.
-The `freeradius-prof.image` target builds or verifies them automatically before any `prof-*` test runs:
-
-- `freeradius40x-build/ubuntu24:latest` — crossbuild base image
-- `freeradius4-<profile>/ubuntu24:latest` — FreeRADIUS profiling base image
-- `freeradius-prof:latest` — final multi-server profiling image (built by `build_image.sh`)
-
-The `prof-ldap` suite additionally requires:
-
-- `freeradius4/openldap-prof:latest` — built via the `openldap.image` target
-
-To build all profiling images explicitly:
-
-```bash
-make freeradius-prof.image
-make openldap.image   # prof-ldap only
-```
-
-### Running on Linux
-
-Profiling tests run the same way as any other multi-server test:
-
-```bash
-make test.multi-server.prof-mysql.short_ci
-```
-
-### Running on macOS (Apple Silicon)
-
-The profiling image is based on a `crossbuild.<distro>` base image that is built for
-`linux/amd64`. On Apple Silicon you must pass `BUILD_PLATFORM=linux/amd64` so that
-Docker pulls and runs the correct platform variant:
-
-```bash
-make test.multi-server.prof-mysql.short_ci BUILD_PLATFORM=linux/amd64
-```
-
-This applies to all four profiling suites and to the image-build targets as well:
-
-```bash
-make freeradius-prof.image BUILD_PLATFORM=linux/amd64
-```
+| `accept` | Plain RADIUS accept (no external services) |
+| `pap-auth` | PAP authentication against the `files` module |
+| `ldap` | Authentication backed by an LDAP server |
+| `mysql` | Authentication backed by a MySQL database |
+| `proxy-accept` | Five home servers, proxied auth |
+| `proxy-multihop-accept` | Two-hop proxy chain |
+| `kafka-produce` | `rlm_kafka` producer against an Apache Kafka broker |
+| `kafka-produce-reconnect` | Producer reconnection behaviour |

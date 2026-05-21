@@ -128,16 +128,65 @@ jobs:
         username: ${{ vars.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
-    - name: Verify Dockerfiles match m4 templates
-      run: make dockerfile.service.check
+    #
+    #  Authenticate dind to the internal registry so the push steps
+    #  below can publish service + profiling images. The host docker
+    #  daemon is logged in via the runner's job-started hook, but
+    #  dind is a separate daemon with no auth config.
+    #
+    - name: Login to internal Docker registry (via dind)
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+      run: |
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
 
-    - name: Build docker image
+    - name: Verify Dockerfiles match m4 templates
+      run: |
+        make dockerfile.service.check
+        make dockerfile.profiling.check
+
+    #
+    #  Build service + profiling images for this distro. Profiling
+    #  FROMs the crossbuild image of the same distro, so its build
+    #  rule depends on the crossbuild stamp - covered by the
+    #  freeradius4-crossbuild push in crossbuild.yml.
+    #
+    #  DOCKER_REGISTRY is set so any base image (crossbuild) that
+    #  hasn't yet been pulled locally is grabbed from the registry
+    #  instead of rebuilt, per the pull-through fallback in
+    #  scripts/docker/docker.mk.
+    #
+    - name: Build docker images
+      env:
+        DOCKER_REGISTRY: docker.internal.networkradius.com
       run: |
         make docker.service.$OS
+        make docker.profiling.$OS
+
+    #
+    #  Push both freshly-built images to the internal registry so
+    #  downstream workflows (ci-multi-server-tests.yml, ci-deb.yml,
+    #  ...) can pull rather than rebuild. Only on success - a broken
+    #  image shouldn't be published for the next workflow to trust.
+    #
+    - name: Push docker images to internal registry
+      if: ${{ success() }}
+      env:
+        REGISTRY: docker.internal.networkradius.com
+      run: |
+        sha=$(git rev-parse --short HEAD)
+        for type in service profiling; do
+          tag="freeradius4-${type}/${OS}:${sha}"
+          docker tag  "${tag}" "${REGISTRY}/${tag}"
+          docker push "${REGISTRY}/${tag}"
+        done
 
     - name: Show docker build log
       if: failure()
-      run: cat build/docker/build.$OS.service
+      run: |
+        cat build/docker/build.$OS.service 2>/dev/null || true
+        cat build/docker/build.$OS.profiling 2>/dev/null || true
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate

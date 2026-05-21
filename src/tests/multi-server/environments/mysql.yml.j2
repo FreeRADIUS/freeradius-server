@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------
+# Docker Compose Test Environment:
+#
+#   load-generator (proto_load, in-process) -> FreeRADIUS -> mariadb
+#
+#   Same compose serves both service and profiling modes; see
+#   environments/accept.yml.j2 for the FREERADIUS_IMAGE / PROFILING
+#   convention.
+# ---------------------------------------------------------------
+x-common-config: &id001
+  cap_add:
+  - NET_ADMIN
+  - SYS_PTRACE
+  environment:
+    TEST_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    TEST_SUBNET: {{ test_subnet | default('172.16.0.0/12') }}
+services:
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: radius
+      MYSQL_USER: radius
+      MYSQL_PASSWORD: radpass
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u root -p${MYSQL_ROOT_PASSWORD} > /dev/null 2>&1"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    tmpfs:
+    # Throwaway data dir per compose-up so init.sql always re-applies
+    - /var/lib/mysql
+    volumes:
+    # Canonical FreeRADIUS schema from raddb/mods-config/sql; the test
+    # fixture below seeds the testuser row needed by the load generator.
+    - ${TOP_SRCDIR}/raddb/mods-config/sql/main/mysql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    - ${DATA_PATH}/mariadb/default/02-testdata.sql:/docker-entrypoint-initdb.d/02-testdata.sql:ro
+    <<: *id001
+  freeradius:
+    image: ${FREERADIUS_IMAGE}
+    environment:
+      PROFILING: ${PROFILING:-no}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+    # freeradius server config
+    - ${DATA_PATH}/freeradius/mysql/radiusd.conf:/etc/freeradius/radiusd.conf
+    # proto_load packet configuration, packets and statistics output
+    - ${DATA_PATH}/freeradius/mysql/proto_load_config.env:/etc/freeradius/proto_load_config.env
+    - ${DATA_PATH}/freeradius/mysql/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/mysql/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
+    # Profiling wrapper (no-op in service mode)
+    - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
+    # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
+    - ${PROFILING_RESULT_PATH:-/tmp/prof-results}/:/etc/prof-results/
+    # Listener directory
+    - ${LISTENER_DIR}/:/var/run/multi-server/
+    entrypoint:
+    - bash
+    - -lc
+    - |
+      # Keep the container alive. The test framework starts FreeRADIUS
+      # and runs commands via 'docker exec' so it can control timing.
+      sleep infinity
+    <<: *id001

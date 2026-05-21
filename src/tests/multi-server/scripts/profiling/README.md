@@ -2,7 +2,7 @@
 
 python3 src/tests/multi-server/scripts/profiling/generate_callgrind_report.py \
   <results_dir> \
-  --title "FreeRADIUS prof-accept 5min" \
+  --title "FreeRADIUS accept 5min" \
   --text-output valgrind_report_radenv_prof_accept.txt \
   --md-output valgrind_report_radenv_prof_accept.md
 

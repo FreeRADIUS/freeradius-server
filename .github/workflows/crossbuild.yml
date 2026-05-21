@@ -153,6 +153,23 @@ jobs:
         make dockerfile.crossbuild.check
         make crossbuild.$OS
 
+    #
+    #  Push the freshly-built crossbuild image to the internal registry
+    #  so downstream workflows (ci-multi-server-tests.yml profiling leg)
+    #  can `docker pull` it instead of rebuilding from scratch on every
+    #  run. Only on success - we don't want to publish a broken image
+    #  that the next workflow then trusts.
+    #
+    - name: Push crossbuild image to internal registry
+      if: ${{ success() }}
+      env:
+        REGISTRY: docker.internal.networkradius.com
+      run: |
+        sha=$(git rev-parse --short HEAD)
+        tag="freeradius4-crossbuild/${OS}:${sha}"
+        docker tag  "${tag}" "${REGISTRY}/${tag}"
+        docker push "${REGISTRY}/${tag}"
+
     - name: Show build log
       if: ${{ success() || failure() }}
       run: |

@@ -60,10 +60,31 @@ ifneq "$(NOCACHE)" ""
 endif
 
 #
+#  Optional registry to try as a pull-through cache before rebuilding
+#  any docker.<type>.<image> from scratch. Set DOCKER_REGISTRY in the
+#  environment (or make.conf / a -e flag) to e.g.
+#  docker.internal.networkradius.com and every build rule will first
+#  attempt `docker pull <REGISTRY>/<prefix>-<type>/<image>:<sha>` with
+#  a short timeout, retag locally on success, and skip the build.
+#  Falls through to the local build if the pull fails for any reason
+#  (no registry configured, pull times out, image not in registry,
+#  auth missing). DOCKER_PULL_TIMEOUT bounds the per-pull wait so a
+#  hung registry doesn't stall a dev rebuild forever; bypass the
+#  registry path entirely with NOPULL=1.
+#
+DOCKER_REGISTRY     ?=
+DOCKER_PULL_TIMEOUT ?= 30
+
+#
 #  Per-image build rule. Tags $(DOCKER_IMAGE_PREFIX)-<type>/<image>:<sha>,
 #  labels ci-ttl=$(CI_TTL), logs to $(DOCKER_STATE)/build.<image>.<type>,
 #  and touches $(DOCKER_STATE)/stamp-image.<image>.<type> so a second
 #  invocation is a no-op until a dep changes.
+#
+#  When DOCKER_REGISTRY is set the rule first tries to pull the
+#  matching SHA-tagged image from the registry (capped at
+#  DOCKER_PULL_TIMEOUT seconds). Hit → retag locally + touch stamp,
+#  no build runs. Miss → fall through to the normal docker build.
 #
 #  $(1) image name
 #  $(2) type
@@ -72,12 +93,22 @@ endif
 #
 define DOCKER_BUILD
 $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKER_STATE)
-	$${Q}echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"
-	$${Q}docker build $$(DOCKER_BUILD_OPTS) ${3} \
-		--label ci-ttl=$(CI_TTL) \
-		-f $(DT)/${1}/Dockerfile.${2} \
-		-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
-		. >$(DOCKER_STATE)/build.${1}.${2} 2>&1
+	$${Q}set -e; \
+	if [ -z "$(NOPULL)" ] && [ -n "$(DOCKER_REGISTRY)" ] && \
+	   timeout $(DOCKER_PULL_TIMEOUT) docker pull -q \
+	           "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)" \
+	           >$(DOCKER_STATE)/pull.${1}.${2} 2>&1; then \
+		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)" \
+		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
+		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) <- $(DOCKER_REGISTRY)"; \
+	else \
+		echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"; \
+		docker build $$(DOCKER_BUILD_OPTS) ${3} \
+			--label ci-ttl=$(CI_TTL) \
+			-f $(DT)/${1}/Dockerfile.${2} \
+			-t $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) \
+			. >$(DOCKER_STATE)/build.${1}.${2} 2>&1; \
+	fi
 	$${Q}touch $$@
 endef
 
