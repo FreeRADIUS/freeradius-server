@@ -57,10 +57,8 @@ PROFILING_RESULT_MODE  ?= ci
 FREERADIUS_SERVICE_IMAGE     := freeradius4-service/ubuntu24:$(GIT_COMMIT)
 FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
 
-# FIXME: We should be using packaged versions of the multi-server test framework
-# instead of cloning from git.
-TEST_MULTI_SERVER_GIT_REPO   := https://github.com/InkbridgeNetworks/radenv.git
-TEST_MULTI_SERVER_GIT_BRANCH := main
+RADENV_PACKAGE_VERSION          := 1.0.1
+RADENV_PACKAGE_URL              := https://pypi.inkbridge.io/freeradius-multi-server/
 TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/radenv)
 
 #
@@ -86,24 +84,18 @@ $(OUTPUT):
 	@mkdir -p $@
 
 #
-#  Clone and configure the multi-server test framework.
+#  Install the multi-server test framework from the package index.
 #  This is a shared prerequisite for all test targets.
 #
 $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.configured: | $(OUTPUT)
 	@set -e; \
-	mkdir -p $(dir $(TEST_MULTI_SERVER_FRAMEWORK_DIR)); \
-	if [ ! -d $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.git ]; then \
-		git clone $(TEST_MULTI_SERVER_GIT_REPO) $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
-		cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
-		git checkout $(TEST_MULTI_SERVER_GIT_BRANCH); \
-	else \
-		cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
-		git checkout $(TEST_MULTI_SERVER_GIT_BRANCH) && \
-		git pull; \
+	mkdir -p $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
+	if [ ! -d $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv ]; then \
+		python3 -m venv $(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv; \
 	fi; \
-	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && \
-	$(MAKE) configure && \
-	touch .configured
+	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/pip install \
+		$(RADENV_PACKAGE_URL)multi_server_test-$(RADENV_PACKAGE_VERSION).tar.gz; \
+	touch $@
 
 ######################################################################
 #
@@ -138,9 +130,7 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
-	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR); \
-	. .venv/bin/activate; \
-	python3 -m src.config_builder \
+	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/multi-server-test-config \
 	    "${4}" \
 	    --vars-file "${3}" \
 	    --aux-file \
@@ -205,13 +195,12 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 		PROFILING=no; \
 		PROFILING_RESULT_PATH=/tmp/prof-results-unused; \
 	fi; \
-	cd $(TEST_MULTI_SERVER_FRAMEWORK_DIR) && . .venv/bin/activate && \
 	DATA_PATH="${4}" \
 	TOP_SRCDIR="$(top_srcdir)" \
 	FREERADIUS_IMAGE="$$$$FREERADIUS_IMAGE" \
 	PROFILING="$$$$PROFILING" \
 	PROFILING_RESULT_PATH="$$$$PROFILING_RESULT_PATH" \
-	python3 -m src.multi_server_test $(TEST_MULTI_SERVER_FLAGS) \
+	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/multi-server-test $(TEST_MULTI_SERVER_FLAGS) \
 	    --project-name "${1}-${2}-$(MODE)" \
 	    --compose "${4}/environment.yml" \
 	    --test "${4}/template.yml" \
