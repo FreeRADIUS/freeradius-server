@@ -47,10 +47,6 @@ static void test_init(void);
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
-#ifdef HAVE_GPERFTOOLS_PROFILER_H
-#  include <gperftools/profiler.h>
-#endif
-
 static TALLOC_CTX       *autofree;
 static fr_pair_list_t   test_pairs;
 static fr_dict_t	*test_dict;

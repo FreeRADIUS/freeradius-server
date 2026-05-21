@@ -25,8 +25,6 @@
 
 #include <freeradius-devel/util/sbuff.h>
 
-//#include <gperftools/profiler.h>
-
 #define TEST_SBUFF_LEN(_sbuff, _num) \
 do { \
 	size_t _len; \
