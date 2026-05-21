@@ -2,44 +2,29 @@ name: Multi-Server CI Tests
 
 on:
   #
-  #  Triggered indirectly via Check Crossbuild completion: the
-  #  crossbuild workflow publishes freeradius4-crossbuild/<image>:<sha>
-  #  to the internal registry on success, which the multi-server tests
-  #  then pull through (via DOCKER_REGISTRY in scripts/docker/docker.mk)
-  #  instead of rebuilding crossbuild from scratch. workflow_run only
-  #  fires after Check Crossbuild has actually finished for this SHA,
-  #  so we never race against the image not being in the registry yet.
+  #  Only fires after Check Crossbuild has succeeded for this SHA -
+  #  that workflow publishes freeradius4-crossbuild/<image>:<sha> to
+  #  the internal registry, which the multi-server tests then pull
+  #  through (via DOCKER_REGISTRY in scripts/docker/docker.mk) instead
+  #  of rebuilding crossbuild from scratch. Other triggers
+  #  (push / pull_request / schedule / workflow_dispatch) are
+  #  deliberately omitted: any of them would race ahead of crossbuild
+  #  and find no image in the registry to consume.
   #
   workflow_run:
     workflows: ["Check Crossbuild"]
     types: [completed]
-  pull_request:
-    paths:
-      - '.github/workflows/ci-multi-server-tests.yml'
-      - 'src/tests/multi-server/**'
-      - 'scripts/docker/m4/profiling.deb.m4'
-      - 'scripts/docker/m4/profiling.rpm.m4'
-      - 'scripts/docker/m4/common.freeradius-profile-build.m4'
-      - 'scripts/docker/build/ubuntu24/Dockerfile.profiling'
-      - 'scripts/docker/build/ubuntu24/Dockerfile.service'
-  schedule:
-    #  Daily at 2pm EST (7pm UTC) - runs all tests, not just CI subset
-    - cron: '0 19 * * *'
-  workflow_dispatch:
 
 jobs:
   multi-server-tests:
     runs-on: self-hosted
     #
-    #  Skip the workflow_run instance when Check Crossbuild didn't
-    #  succeed - we'd just rebuild from a known-broken base. Other
-    #  triggers (PR / schedule / manual dispatch) don't carry a
-    #  workflow_run conclusion so the second clause keeps them firing.
+    #  Skip when the upstream Check Crossbuild didn't succeed: testing
+    #  against a known-broken crossbuild base is wasted runner time.
     #
     if: |
       github.repository_owner == 'FreeRADIUS' &&
-      (github.event_name != 'workflow_run' ||
-       github.event.workflow_run.conclusion == 'success')
+      github.event.workflow_run.conclusion == 'success'
 
     strategy:
       fail-fast: false
@@ -108,15 +93,14 @@ jobs:
     steps:
 
       #
-      #  On the workflow_run path, github.sha is the default branch's
-      #  tip; we want the commit the upstream Check Crossbuild run was
-      #  fired against. event.workflow_run.head_sha carries that value
-      #  for workflow_run events and is empty otherwise, so the ||
-      #  fallback covers PR / schedule / manual dispatch.
+      #  workflow_run resolves github.sha to the default branch's tip
+      #  by default; pin to the SHA the upstream Check Crossbuild run
+      #  was triggered against so we test the same commit the
+      #  crossbuild image was built from.
       #
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           lfs: false
 
       - name: setup-dind
