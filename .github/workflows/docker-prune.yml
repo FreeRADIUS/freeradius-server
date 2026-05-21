@@ -1,16 +1,24 @@
 name: Prune CI Docker images
 
 #
-#  Periodic cleanup for locally-built CI images. The scripts/docker
-#  pipeline tags every image it builds with a ci-ttl=<duration>
-#  label (see scripts/docker/m4-macros.mk). This workflow walks
-#  each self-hosted runner host, reads the label, and removes any
-#  image whose age exceeds its declared TTL.
+#  Periodic cleanup for ci-ttl-labeled images in the internal Docker
+#  registry. The scripts/docker pipeline tags every image it builds
+#  with a ci-ttl=<duration> label (see scripts/docker/docker.mk:
+#  DOCKER_BUILD). docker-server.yml + docker-crossbuild.yml push those
+#  tagged images to docker.internal.networkradius.com, where they
+#  accumulate one tag per commit until something cleans them up.
 #
-#  Cadence is every 30 minutes, which gives a worst-case overrun
-#  of one cron interval past the per-image deadline. Tighten the
-#  schedule if disk pressure becomes a problem; lengthen it if the
-#  prune itself starts to interfere with concurrent CI jobs.
+#  Each pass walks the registry's catalog, fetches the OCI image
+#  config for every tag under the freeradius4-* namespaces to recover
+#  the ci-ttl label and creation timestamp, computes age vs TTL, and
+#  issues DELETE /v2/<name>/manifests/<digest> for anything past its
+#  deadline. The actual disk reclamation needs the registry-side
+#  garbage collector to run afterwards; that's configured separately
+#  on the registry host (`registry garbage-collect`).
+#
+#  Cadence is every 30 minutes - same trade-off as before: tighten
+#  for disk pressure, lengthen if the prune itself starts interfering
+#  with concurrent pushes.
 #
 
 on:
@@ -23,11 +31,30 @@ jobs:
     if: github.repository_owner == 'FreeRADIUS'
     runs-on: self-hosted
 
+    container:
+      #
+      #  Custom CI image with curl + jq baked on top of the self-hosted
+      #  base. CA mount lets curl talk HTTPS to
+      #  docker.internal.networkradius.com without -k.
+      #
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+
     steps:
-      - name: Remove expired ci-ttl images
+      - name: Update CA certificates
+        run: /usr/sbin/update-ca-certificates 2>/dev/null || true
+
+      - name: Prune expired ci-ttl images from internal registry
         shell: bash
+        env:
+          REGISTRY: docker.internal.networkradius.com
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
         run: |
           set -euo pipefail
+
+          which jq >/dev/null 2>&1 || apt-get -qq update >/dev/null && apt-get -y install jq >/dev/null
 
           #
           #  Convert a go-style duration string into seconds.
@@ -39,50 +66,111 @@ jobs:
             local n=${v%[a-zA-Z]*}
             local u=${v##*[0-9]}
             case "$u" in
-              s) echo "$n" ;;
-              m) echo "$(( n * 60 ))" ;;
-              h) echo "$(( n * 3600 ))" ;;
-              d) echo "$(( n * 86400 ))" ;;
-              *) return 1 ;;
+              s)
+                echo "$n"
+                ;;
+              m)
+                echo "$(( n * 60 ))"
+                ;;
+              h)
+                echo "$(( n * 3600 ))"
+                ;;
+              d)
+                echo "$(( n * 86400 ))"
+                ;;
+              *)
+                return 1
+                ;;
             esac
           }
+
+          API="https://${REGISTRY}/v2"
+          CURL=(curl -sSf --user "${DOCKER_USERNAME}:${DOCKER_PASSWORD}"
+                -H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json")
+          MANIFEST_HEADERS=(-H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json")
 
           now=$(date +%s)
           removed=0
           kept=0
+          failed=0
 
-          while IFS=$'\t' read -r id ttl created tags; do
-            [ -n "$id" ] || continue
+          #
+          #  Pull the catalog one page at a time. n=1000 is the registry's
+          #  practical upper bound per request; we'll loop with the Link
+          #  header if it ever overflows but for our footprint a single
+          #  page is enough.
+          #
+          repos=$("${CURL[@]}" "${API}/_catalog?n=1000" | jq -r '.repositories[]?')
 
-            #  RepoTags is empty / "<none>:<none>" for dangling images
-            #  (e.g. when a buildkit cache layer survives the prune of
-            #  its parent). Fall back to the short ID so the log line
-            #  still identifies something the operator can chase.
-            label="${tags:-<dangling>} (${id:0:19})"
+          for repo in $repos; do
+            case "$repo" in
+              freeradius4-*)
+                ;;
+              *)
+                continue
+                ;;
+            esac
 
-            if ! ttl_secs=$(ttl_to_seconds "$ttl"); then
-              echo "skip   $label: unparseable ci-ttl=$ttl"
-              kept=$(( kept + 1 ))
-              continue
-            fi
+            tags=$("${CURL[@]}" "${API}/${repo}/tags/list" | jq -r '.tags[]?')
+            for tag in $tags; do
+              label="${REGISTRY}/${repo}:${tag}"
 
-            #  docker inspect emits RFC 3339 with nanoseconds; trim to
-            #  whole seconds before handing to date.
-            created_trimmed=${created%.*}
-            created_secs=$(date -u -d "$created_trimmed" +%s 2>/dev/null || \
-                           date -ju -f "%Y-%m-%dT%H:%M:%S" "$created_trimmed" +%s)
-            age=$(( now - created_secs ))
+              #
+              #  Fetch the manifest and the digest header in one call.
+              #  -D - emits the response headers to stdout ahead of the
+              #  body; we split them at the blank line. Docker-Content-
+              #  Digest is the by-digest reference needed for DELETE.
+              #
+              response=$("${CURL[@]}" -D - "${API}/${repo}/manifests/${tag}")
+              digest=$(printf '%s\n' "$response" | awk 'BEGIN{IGNORECASE=1} /^docker-content-digest:/ {print $2; exit}' | tr -d '\r')
+              manifest=$(printf '%s\n' "$response" | awk 'p {print} /^\r?$/ {p=1}')
 
-            if [ "$age" -gt "$ttl_secs" ]; then
-              echo "remove $label (age ${age}s > ttl ${ttl_secs}s [ci-ttl=$ttl])"
-              docker image rm -f "$id" >/dev/null
-              removed=$(( removed + 1 ))
-            else
-              echo "keep   $label (age ${age}s <= ttl ${ttl_secs}s [ci-ttl=$ttl])"
-              kept=$(( kept + 1 ))
-            fi
-          done < <(docker image ls --filter "label=ci-ttl" --format '{{.ID}}' | \
-                   xargs -r -I{} docker inspect {} \
-                       --format '{{.Id}}{{"\t"}}{{ index .Config.Labels "ci-ttl" }}{{"\t"}}{{.Created}}{{"\t"}}{{join .RepoTags ","}}')
+              config_digest=$(printf '%s' "$manifest" | jq -r '.config.digest // ""')
+              if [ -z "$config_digest" ] || [ "$config_digest" = "null" ]; then
+                echo "skip   $label: no config digest in manifest"
+                kept=$(( kept + 1 ))
+                continue
+              fi
 
-          echo "summary: removed=$removed kept=$kept"
+              config=$("${CURL[@]}" "${API}/${repo}/blobs/${config_digest}")
+              ttl=$(printf '%s' "$config" | jq -r '.config.Labels."ci-ttl" // ""')
+              created=$(printf '%s' "$config" | jq -r '.created // ""')
+
+              if [ -z "$ttl" ]; then
+                echo "skip   $label: no ci-ttl label"
+                kept=$(( kept + 1 ))
+                continue
+              fi
+
+              if ! ttl_secs=$(ttl_to_seconds "$ttl"); then
+                echo "skip   $label: unparseable ci-ttl=$ttl"
+                kept=$(( kept + 1 ))
+                continue
+              fi
+
+              created_trimmed=${created%.*}
+              if ! created_secs=$(date -u -d "$created_trimmed" +%s 2>/dev/null); then
+                echo "skip   $label: unparseable created=$created"
+                kept=$(( kept + 1 ))
+                continue
+              fi
+              age=$(( now - created_secs ))
+
+              if [ "$age" -gt "$ttl_secs" ]; then
+                if curl -sSf -X DELETE --user "${DOCKER_USERNAME}:${DOCKER_PASSWORD}" \
+                       "${API}/${repo}/manifests/${digest}" >/dev/null 2>&1; then
+                  echo "remove $label (age ${age}s > ttl ${ttl_secs}s [ci-ttl=$ttl])"
+                  removed=$(( removed + 1 ))
+                else
+                  echo "FAIL   $label: DELETE rejected (registry config may have storage.delete.enabled=false)"
+                  failed=$(( failed + 1 ))
+                fi
+              else
+                echo "keep   $label (age ${age}s <= ttl ${ttl_secs}s [ci-ttl=$ttl])"
+                kept=$(( kept + 1 ))
+              fi
+            done
+          done
+
+          echo "summary: removed=$removed kept=$kept failed=$failed"
+          [ "$failed" -eq 0 ]
