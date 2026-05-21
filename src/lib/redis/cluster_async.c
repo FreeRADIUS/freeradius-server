@@ -212,6 +212,40 @@ fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_cluster_thread_t *rtclust
 	return &rtcluster->node[key_slot->replica[replica_num]];
 }
 
+/** Return the ipaddr of a particular node
+ *
+ * @param[out] out	Ipaddr of the node.
+ * @param[in] node	to get ip address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (node is NULL).
+ */
+int fr_redis_ct_ipaddr(fr_ipaddr_t *out, fr_redis_ct_node_t const *node)
+{
+	if (!node) return -1;
+
+	memcpy(out, &node->addr.inet.dst_ipaddr, sizeof(*out));
+
+	return 0;
+}
+
+/** Return the port of a particular node
+ *
+ * @param[out] out	Port of the node.
+ * @param[in] node	to get ip address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (node is NULL).
+ */
+int fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node)
+{
+	if (!node) return -1;
+
+	*out = node->addr.inet.dst_port;
+
+	return 0;
+}
+
 /** Enqueue a command set on a node identified by the key.
  *
  */

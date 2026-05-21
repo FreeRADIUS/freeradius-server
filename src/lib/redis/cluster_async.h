@@ -72,6 +72,10 @@ fr_redis_ct_node_t const	*fr_redis_ct_master(fr_redis_cluster_thread_t *thread,
 fr_redis_ct_node_t const	*fr_redis_ct_replica(fr_redis_cluster_thread_t *thread,
 						     fr_redis_ct_key_slot_t const *key_slot, uint8_t replica_num);
 
+int				fr_redis_ct_ipaddr(fr_ipaddr_t *out, fr_redis_ct_node_t const *node);
+
+int				fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node);
+
 fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf,
 							       fr_redis_trunk_active_t active, void *active_uctx,
 							       bool active_oneshot);
