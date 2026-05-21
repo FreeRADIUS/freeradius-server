@@ -320,6 +320,29 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 	return cmd;
 }
 
+/** Re-submit a redis async command set on a different node
+ *
+ * Using the node returned by a MOVED / ASK response.
+ * @param cmd	Async command set to redirect
+ * @return fr_redis_async_rcode_t
+ */
+fr_redis_async_rcode_t fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd)
+{
+	fr_redis_ct_node_t	find, *cluster_node;
+
+	fr_redis_command_set_next_node(cmd->cmds, &find.addr);
+
+	cluster_node = fr_rb_find(cmd->rtcluster->used_nodes, &find);
+	if (!cluster_node) {
+		ERROR("Asked to redirect to a node not in the current cluster map");
+		return REDIS_ASYNC_RCODE_ERROR;
+	}
+
+	fr_redis_command_set_reset(cmd->cmds);
+	cmd->node = cluster_node;
+	return fr_redis_async_cmd_enqueue(cmd);
+}
+
 /** Compare two redis nodes to check equality
  *
  * @param[in] one first node.
