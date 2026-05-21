@@ -2,7 +2,7 @@ name: Multi-Server CI Tests
 
 on:
   #
-  #  Only fires after Check Crossbuild has succeeded for this SHA -
+  #  Only fires after Docker crossbuild images has succeeded for this SHA -
   #  that workflow publishes freeradius4-crossbuild/<image>:<sha> to
   #  the internal registry, which the multi-server tests then pull
   #  through (via DOCKER_REGISTRY in scripts/docker/docker.mk) instead
@@ -12,14 +12,14 @@ on:
   #  and find no image in the registry to consume.
   #
   workflow_run:
-    workflows: ["Check Crossbuild"]
+    workflows: ["Docker crossbuild images"]
     types: [completed]
 
 jobs:
   multi-server-tests:
     runs-on: self-hosted
     #
-    #  Skip when the upstream Check Crossbuild didn't succeed: testing
+    #  Skip when the upstream Docker crossbuild images didn't succeed: testing
     #  against a known-broken crossbuild base is wasted runner time.
     #
     if: |
@@ -94,7 +94,7 @@ jobs:
 
       #
       #  workflow_run resolves github.sha to the default branch's tip
-      #  by default; pin to the SHA the upstream Check Crossbuild run
+      #  by default; pin to the SHA the upstream Docker crossbuild images run
       #  was triggered against so we test the same commit the
       #  crossbuild image was built from.
       #
@@ -148,7 +148,7 @@ jobs:
       #  has already pushed a matching crossbuild image we skip the
       #  ~5-8 minute crossbuild stage. The crossbuild image itself
       #  benefits from the same pull-through whenever a previous
-      #  crossbuild.yml run published it.
+      #  docker-crossbuild.yml run published it.
       #
       - name: Build FreeRADIUS image (${{ matrix.mode }})
         env:
@@ -167,18 +167,10 @@ jobs:
         run: |
           case "${{ matrix.mode }}" in
             service)
-              if [ "${{ github.event_name }}" = "schedule" ]; then
-                make -j$(nproc) test.multi-server
-              else
-                make -j$(nproc) test.multi-server.ci
-              fi
+              make -j$(nproc) test.multi-server.ci
               ;;
             profiling)
-              if [ "${{ github.event_name }}" = "schedule" ]; then
-                make -j$(nproc) test.multi-server.profiling
-              else
-                make -j$(nproc) test.multi-server.profiling.ci
-              fi
+              make -j$(nproc) test.multi-server.profiling.ci
               ;;
           esac
 

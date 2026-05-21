@@ -80,7 +80,7 @@ jobs:
 
           #
           #  Custom dind sidecar image used by the dind-based
-          #  workflows (docker.yml, crossbuild.yml, multi-server-tests).
+          #  workflows (docker-server.yml, docker-crossbuild.yml, multi-server-tests).
           #  Bakes in registry-mirror -> internal cache and trusts the
           #  internal CA, so per-job apt-installing and daemon.json
           #  wiring goes away.
