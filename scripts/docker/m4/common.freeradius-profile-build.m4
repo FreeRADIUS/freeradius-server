@@ -6,20 +6,38 @@
 #  copied in over the top so the image reflects the branch under test,
 #  not whatever was on upstream master at image build time.
 #
-#  CFLAGS used here are tuned for callgrind: -g3 for full debug info,
-#  -O1 for realistic hotspot costs, and -fno-inline / -Dalways_inline= /
-#  -fno-plt / -fno-builtin / -fno-optimize-sibling-calls / -fno-omit-frame-pointer
-#  to keep the call graph aligned with the source. Inlined or tail-called
-#  frames are otherwise lost in the callgrind output.
+#  CFLAGS are tuned for callgrind:
+#    -g3                          full debug info for symbol resolution
+#    -O1                          realistic hotspot costs without losing structure
+#    -fno-omit-frame-pointer      keep frame pointers so callgrind can stack-walk
+#    -fno-inline + -Dalways_inline=
+#                                 preserve call edges; -fno-inline alone leaves
+#                                 CC_HINT(flatten) and the always_inline attribute
+#                                 to still erase them
+#    -fno-optimize-sibling-calls  suppress tail-call elimination
+#    -fno-plt                     cross-library calls go through the GOT instead
+#                                 of PLT stubs, which lack DWARF info
+#    -fno-builtin                 keep stdlib helpers (memcpy, strlen, ...) visible
+#                                 instead of having them inlined as builtins
 #
 WORKDIR /usr/local/src/repositories/freeradius-server
 COPY . .
+# Wipe any host build artefacts that survived the COPY before invoking
+# autoconf/make so the container builds from a clean state. The
+# libbacktrace submodule in particular tends to carry host-absolute
+# paths in its generated Makefile / libtool.
+RUN rm -rf build autom4te.cache .libs config.log config.status \
+        src/lib/backtrace/Makefile src/lib/backtrace/config.log \
+        src/lib/backtrace/config.status src/lib/backtrace/libtool \
+        src/lib/backtrace/.libs src/lib/backtrace/*.la \
+        src/lib/backtrace/*.lo
 RUN ./configure \
         --enable-developer \
         --disable-verify-ptr \
         --with-raddbdir=/etc/freeradius \
-        CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-plt -fno-builtin -fno-optimize-sibling-calls" \
+        CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin" \
         LDFLAGS="-fno-omit-frame-pointer" \
+    && make -j1 src/lib/backtrace/libbacktrace.la \
     && make -j$(nproc) \
     && make install
 
