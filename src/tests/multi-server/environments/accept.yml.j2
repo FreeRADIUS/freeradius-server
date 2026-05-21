@@ -24,9 +24,9 @@ services:
     # freeradius server config
     - ${DATA_PATH}/freeradius/accept/radiusd.conf:/etc/freeradius/radiusd.conf
     # proto_load packet configuration and statistics output
-    - ${DATA_PATH}/freeradius/accept/proto_load_config.env:/etc/freeradius/proto_load_config.env
-    - ${DATA_PATH}/freeradius/accept/load-generator-packets/:/etc/freeradius/load-generator-packets/
-    - ${DATA_PATH}/freeradius/accept/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
+    - ${DATA_PATH}/freeradius/common/proto-load/proto_load_config.env:/etc/freeradius/proto_load_config.env
+    - ${DATA_PATH}/freeradius/common/proto-load/load-generator-packets/:/etc/freeradius/load-generator-packets/
+    - ${DATA_PATH}/freeradius/common/proto-load/stats/load-generator-stats.csv:/etc/freeradius/stats/load-generator-stats.csv
     # Profiling wrapper (no-op in service mode)
     - ${DATA_PATH}/start_valgrind_profiling.sh:/etc/freeradius/start_valgrind_profiling.sh
     # Profiling results directory; defaults to /tmp/prof-results in service mode (unused)
