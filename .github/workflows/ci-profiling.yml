@@ -1,0 +1,146 @@
+name: Multi-Server Profiling CI Tests
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+      - debug-fuzzer-**
+  workflow_dispatch:
+
+jobs:
+
+  profiling:
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS'
+
+    services:
+      dind:
+        #
+        #  Custom dind image with /etc/docker/daemon.json baked in
+        #  pointing at the internal NR registry as a Docker Hub
+        #  pull-through mirror, and the internal CA pre-trusted.
+        #  Built by docker-refresh.yml from scripts/ci/docker/Dockerfile.docker-dind.
+        #
+        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          #  Bypass the squid proxy for internal registry access.
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+          #  Fix the network pool so TEST_SUBNET is predictable.
+          DOCKER_OPTS: "--default-address-pool base=172.16.0.0/12,size=24"
+        #
+        #  Share the runner's workspace with dind so that docker
+        #  compose bind-mounts (radiusd.conf, env-setup.sh, listener
+        #  dirs, etc.) resolve to real files inside the dind daemon.
+        #
+        #  github.workspace is the HOST path to the workspace.
+        #  The runner mounts it into the job container at a
+        #  different path (/__w/...), so we use a fixed mount
+        #  point (/workspace) that both containers agree on.
+        #
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      #
+      #  Custom CI image with docker CLI / buildx / m4 baked on top
+      #  of the self-hosted base. Built by docker-refresh.yml from
+      #  scripts/ci/docker/Dockerfile.docker-cli.
+      #
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      #  "privileged" is needed for Samba install
+      #  "memory-swap -1" enables full use of host swap and may help
+      #    with containers randomly quitting with "The operation was
+      #    canceled"
+      options: >-
+        --privileged
+        --memory-swap -1
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      #
+      #  CA cert mount lets the in-container apt and curl talk HTTPS
+      #  to docker.internal.networkradius.com. Shared workspace - see
+      #  dind volumes comment above.
+      #
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
+        with:
+          packages: docker-compose-v2 python3-venv
+
+      #
+      #  Authenticate dind to Docker Hub. self-hosted-docker-dind has
+      #  registry-mirrors -> docker.internal.networkradius.com baked
+      #  in, but our internal registry isn't actually a Hub pull-
+      #  through cache (it 404s on library/kafka etc.), so dockerd
+      #  falls back to docker.io and we hit anonymous rate limits
+      #  during compose pulls. Authenticated Hub pulls get 5000/day.
+      #
+      - name: Login to Docker Hub (via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+      #
+      #  Authenticate dind to the internal registry so docker compose
+      #  can pull mariadb / postgres / 389ds etc. tagged under
+      #  docker.internal.networkradius.com. The host docker daemon is
+      #  logged in via the runner's job-started hook, but dind is a
+      #  separate daemon with no auth config.
+      #
+      - name: Login to internal Docker registry
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+
+      - name: Run profiling tests
+        run: |
+          make -j$(nproc) test.multi-server.profiling.ci
+
+      - name: Push profiling images to registry
+        env:
+          REGISTRY: docker.internal.networkradius.com
+        run: |
+          GIT_COMMIT=$(git rev-parse --short HEAD)
+
+          docker tag freeradius4-crossbuild/ubuntu24:$GIT_COMMIT  $REGISTRY/freeradius4-crossbuild/ubuntu24:$GIT_COMMIT
+          docker push                                             $REGISTRY/freeradius4-crossbuild/ubuntu24:$GIT_COMMIT
+
+          docker tag freeradius4-profiling/ubuntu24:$GIT_COMMIT   $REGISTRY/freeradius4-profiling/ubuntu24:$GIT_COMMIT
+          docker push                                             $REGISTRY/freeradius4-profiling/ubuntu24:$GIT_COMMIT
+
+      - name: Upload profiling results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prof-results
+          path: prof-results/
+
+      #
+      #  If the CI has failed and the branch is ci-debug
+      #  then start a tmate session for interactive debugging.
+      #
+      - name: "Debug: Start tmate"
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}

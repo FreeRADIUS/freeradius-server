@@ -1,0 +1,40 @@
+# Dockerfile for multi-server profiling tests.
+# Builds off of "base" profiling image, configures FreeRADIUS and builds it.
+ARG BASE_TAG=latest
+FROM freeradius4-profiling/ubuntu24:${BASE_TAG}
+
+# CFLAGS used for profiling build:
+#   -g3                          Maximum debug info for callgrind symbol resolution
+#   -O1                          Basic optimisation for realistic hotspot costs; inlining/vectorisation/
+#                                unrolling disabled below so the call graph matches the source.
+#   -fno-omit-frame-pointer      Keep frame pointers for callgrind stack walking
+#   -fno-inline                  Preserve call edges (suppresses CC_HINT(flatten) too)
+#   -Dalways_inline=             Strip always_inline, which -fno-inline does not suppress
+#   -fno-plt                     Resolve cross-library calls via GOT rather than PLT stubs;
+#                                PLT stubs have no DWARF info and show as ??? in callgrind.
+#   -fno-builtin                 Keep stdlib calls (memcpy, strlen, etc.) visible in the graph
+#   -fno-optimize-sibling-calls  Suppress tail-call elimination (-O1 can still apply it)
+RUN ./configure \
+    --enable-developer \
+    --disable-verify-ptr \
+    --with-raddbdir=/etc/freeradius \
+    CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-plt -fno-builtin -fno-optimize-sibling-calls" \
+    LDFLAGS="-fno-omit-frame-pointer"
+
+RUN make
+
+# FreeRADIUS installed in /etc/freeradius
+RUN make install
+
+# Setup softlinks to be able to run server with `freeradius` cmd
+RUN ln -sf /usr/local/sbin/radiusd /usr/local/sbin/freeradius && \
+    ln -sf /etc/freeradius/radiusd.conf /etc/freeradius/freeradius.conf && \
+    ln -sf /etc/freeradius /etc/raddb
+
+# Create freeradius log directory
+RUN mkdir -p /var/log/freeradius
+
+# Generate the self-signed RSA (and DH/EC) certificates for testing.
+RUN cd /etc/freeradius/certs && make
+
+
