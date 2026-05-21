@@ -97,6 +97,18 @@ typedef struct {
 	fr_coord_worker_t		*cw;				//!< Coord-worker for fetching cluster map.
 } rlm_redis_thread_t;
 
+/** Resume context for redis xlat
+ */
+typedef struct {
+	bool			read_only;				//!< Should the xlat be run read only.
+	bool			forced_node;				//!< Was the xlat called with a specific node.
+	TALLOC_CTX		*ctx;					//!< Context to allocate boxes.
+	fr_value_box_list_t	out;					//!< List to store boxes in callback.
+	xlat_action_t		action;					//!< Xlat action set in callback.
+	fr_redis_command_set_t	*cmds;					//!< Command set for this xlat.
+	fr_redis_async_cmd_t	*cmd;					//!< Async command context.
+} rlm_redis_xlat_rctx_t;
+
 typedef enum {
 	REDIS_COORD_PAIR_CALLBACK_ID = 0,
 } rlm_redis_coord_t;
@@ -157,6 +169,24 @@ static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_IT
 	if (DEBUG_ENABLED3) cf_log_debug(ci, "sha1 hash of function is %pV", fr_box_strvalue_len(func->digest, sizeof(func->digest) - 1));
 
 	return 0;
+}
+
+/** Callback to check redis replied with "OK" when expected.
+ */
+static void redis_xlat_status_check(request_t *request, fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_redis_xlat_rctx_t	*xlat_rctx = talloc_get_type_abort(rctx, rlm_redis_xlat_rctx_t);
+
+	if (reply->type  != REDIS_REPLY_STATUS) {
+		RWARN("Did not receive expected redis status reply");
+		xlat_rctx->action = XLAT_ACTION_FAIL;
+		return;
+	}
+
+	if (strcmp(reply->str, "OK") != 0) {
+		RERROR("Running \"%s\" returned %s", fr_redis_command_get_cmd(cmd), reply->str);
+		xlat_rctx->action = XLAT_ACTION_FAIL;
+	}
 }
 
 /** Issue a command against redis and get a response
@@ -601,6 +631,69 @@ static xlat_arg_parser_t const redis_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+/** Callback to convert redis reply to value boxes
+ */
+static void redis_xlat_results(request_t *request, fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_redis_xlat_rctx_t	*xlat_rctx = talloc_get_type_abort(rctx, rlm_redis_xlat_rctx_t);
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc_null(xlat_rctx->ctx));
+	if (fr_redis_reply_to_value_box(xlat_rctx->ctx, vb, reply, FR_TYPE_VOID, NULL, false, false) < 0) {
+		RPERROR("Failed processing reply to %s", fr_redis_command_get_cmd(cmd));
+		return;
+	}
+
+	if (vb->type == FR_TYPE_GROUP) {
+		fr_value_box_t	*child_vb = NULL;
+		while ((child_vb = fr_value_box_list_pop_head(&vb->vb_group))) fr_value_box_list_insert_tail(&xlat_rctx->out, child_vb);
+		talloc_free(vb);
+	} else {
+		fr_value_box_list_insert_tail(&xlat_rctx->out, vb);
+	}
+	xlat_rctx->action = XLAT_ACTION_DONE;
+}
+
+static xlat_action_t redis_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				       request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	rlm_redis_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_xlat_rctx_t);
+	fr_value_box_t		*vb = NULL;
+
+	switch (fr_redis_command_set_rcode(rctx->cmds)) {
+	case REDIS_ASYNC_RCODE_MOVE:
+	{
+		rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
+		rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
+
+		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg);
+	}
+		FALL_THROUGH;
+
+	case REDIS_ASYNC_RCODE_ASK:
+		if (rctx->forced_node) goto error;
+		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
+		return unlang_xlat_yield(request, redis_xlat_resume, NULL, 0, rctx);
+
+	case REDIS_ASYNC_RCODE_ERROR:
+	error:
+		RPERROR("Server returned error");
+		return XLAT_ACTION_FAIL;
+
+	default:
+		break;
+	}
+
+	if (rctx->action != XLAT_ACTION_DONE) {
+		RPERROR("Failed executing Redis command");
+		return rctx->action;
+	}
+
+	while ((vb = fr_value_box_list_pop_head(&rctx->out))) fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Xlat to make calls to redis
  *
 @verbatim
@@ -609,41 +702,38 @@ static xlat_arg_parser_t const redis_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t redis_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				xlat_ctx_t const *xctx,
 				request_t *request, fr_value_box_list_t *in)
 {
 	rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
-	xlat_action_t		action = XLAT_ACTION_DONE;
-	fr_redis_conn_t		*conn;
-
-	bool			read_only = false;
+	rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 	uint8_t	const		*key = NULL;
 	size_t			key_len = 0;
-
-	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t		status;
-
-	redisReply		*reply = NULL;
-	int			s_ret;
 
 	fr_value_box_t		*first = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(first->vb_strvalue, first->vb_length);
 
 	int			argc = 0;
-	char const		*argv[MAX_REDIS_ARGS];
-	size_t			arg_len[MAX_REDIS_ARGS];
+	char const		**argv;
+	size_t			*arg_len;
+	fr_redis_command_set_t	*cmds;
+	rlm_redis_xlat_rctx_t	*rctx;
+	fr_redis_async_rcode_t	ret;
+	fr_redis_ct_node_t	*node = NULL;
 
-	fr_value_box_t		*vb_out;
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_redis_xlat_rctx_t));
+	rctx->ctx = ctx;
+	rctx->action = XLAT_ACTION_FAIL;
+	fr_value_box_list_init(&rctx->out);
 
-	if (fr_sbuff_next_if_char(&sbuff, '-')) read_only = true;
+	if (fr_sbuff_next_if_char(&sbuff, '-')) rctx->read_only = true;
 
 	/*
 	 *	Hack to allow querying against a specific node for testing
 	 */
 	if (fr_sbuff_next_if_char(&sbuff, '@')) {
 		fr_socket_t	node_addr;
-		fr_pool_t	*pool;
 
 		RDEBUG3("Overriding node selection");
 
@@ -654,92 +744,38 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &node_addr, true) < 0) {
+		node = fr_redis_cluster_thread_node_by_addr(thread->rtcluster, &node_addr);
+		if (!node) {
 			RPEDEBUG("Failed locating cluster node");
 			return XLAT_ACTION_FAIL;
 		}
 
-		conn = fr_pool_connection_get(pool, request);
-		if (!conn) {
-			REDEBUG("No connections available for cluster node");
-			return XLAT_ACTION_FAIL;
-		}
-
 		fr_value_box_list_talloc_free_head(in);	/* Remove and free server arg */
-
-		fr_value_box_list_foreach(in, vb) {
-			if (argc == NUM_ELEMENTS(argv)) {
-				REDEBUG("Too many arguments (%i)", argc);
-				REXDENT();
-				goto fail;
-			}
-
-			/*
-			 *	Fixup null or empty arguments to be
-			 *	zero length strings so that the position
-			 *	of subsequent arguments are maintained.
-			 */
-			if (!fr_type_is_string(vb->type)) {
-				argv[argc] = "";
-				arg_len[argc++] = 0;
-				continue;
-			}
-
-			argv[argc] = vb->vb_strvalue;
-			arg_len[argc++] = vb->vb_length;
-		}
-
-		RDEBUG2("Executing command: %pV", fr_value_box_list_head(in));
-		if (argc > 1) {
-			RDEBUG2("With arguments");
-			RINDENT();
-			for (int i = 1; i < argc; i++) RDEBUG2("[%i] %s", i, argv[i]);
-			REXDENT();
-		}
-
-		if (redis_command(&status, &reply, request, conn, read_only, argc, argv, arg_len) == -2) {
-			goto close_conn;
-		}
-
-		if (!reply) goto fail;
-
-		switch (status) {
-		case REDIS_RCODE_MOVE:
-		{
-			fr_value_box_t vb;
-
-			if (fr_redis_reply_to_value_box(NULL, &vb, reply, FR_TYPE_STRING, NULL, false, true) == 0) {
-				REDEBUG("Key served by a different node: %pV", &vb);
-			}
-			goto fail;
-		}
-
-		case REDIS_RCODE_SUCCESS:
-			goto reply_parse;
-
-		case REDIS_RCODE_RECONNECT:
-		close_conn:
-			fr_pool_connection_close(pool, request, conn);
-			action = XLAT_ACTION_FAIL;
-			goto finish;
-
-		default:
-		fail:
-			fr_pool_connection_release(pool, request, conn);
-			action = XLAT_ACTION_FAIL;
-			goto finish;
-		}
+		rctx->forced_node = true;
 	}
 
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+
+	argc = fr_value_box_list_num_elements(in);
+	MEM(argv = talloc_array(cmds, char const *, argc));
+	MEM(arg_len = talloc_array(cmds, size_t, argc));
+
+	argc = 0;
 	fr_value_box_list_foreach(in, vb) {
-		if (argc == NUM_ELEMENTS(argv)) {
-			REDEBUG("Too many arguments (%i)", argc);
-			REXDENT();
-			goto finish;
+		if (!fr_type_is_string(vb->type)) {
+			argv[argc] = talloc_strdup(argv, "");
+			arg_len[argc++] = 0;
+			continue;
 		}
 
-		argv[argc] = vb->vb_strvalue;
-		arg_len[argc] = vb->vb_length;
+		if ((argc == 0) && rctx->read_only && !rctx->forced_node) {
+			argv[argc] = talloc_strndup(argv, vb->vb_strvalue + 1, vb->vb_length - 1);
+			arg_len[argc] = vb->vb_length - 1;
+		} else {
+			argv[argc] = talloc_strndup(argv, vb->vb_strvalue, vb->vb_length);
+			arg_len[argc] = vb->vb_length;
+		}
 		argc++;
 	}
 
@@ -755,51 +791,17 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 	key_len = arg_len[1];
 	}
 
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_len, read_only);
-	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
-	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &reply)) {
-		RDEBUG2("Executing command: %pV", fr_value_box_list_head(in));
-		if (argc > 1) {
-			RDEBUG2("With arguments");
-			RINDENT();
-			for (int i = 1; i < argc; i++) RDEBUG2("[%i] %s", i, argv[i]);
-			REXDENT();
-		}
+	if (rctx->read_only) fr_redis_command_preformatted_add(cmds, "READONLY", redis_xlat_status_check, rctx);
+	fr_redis_command_argv_add(cmds, argc, argv, arg_len, redis_xlat_results, rctx);
+	if (rctx->read_only) fr_redis_command_preformatted_add(cmds, "READWRITE", redis_xlat_status_check, rctx);
 
-		if (redis_command(&status, &reply, request, conn, read_only, argc, argv, arg_len) == -2) {
-			state.close_conn = true;
-		}
-	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
-		action = XLAT_ACTION_FAIL;
-		goto finish;
-	}
+	rctx->cmd = fr_redis_async_cmd_start(unlang_interpret_frame_talloc_ctx(request), request, &ret,
+					     thread->rtcluster, key, key_len, cmds, rctx->read_only, node);
 
-	if (!fr_cond_assert(reply)) {
-		action = XLAT_ACTION_FAIL;
-		goto finish;
-	}
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
+					"Failed enqueueing Redis command", XLAT_ACTION_FAIL)
 
-reply_parse:
-	MEM(vb_out = fr_value_box_alloc_null(ctx));
-	if (fr_redis_reply_to_value_box(ctx, vb_out, reply, FR_TYPE_VOID, NULL, false, false) < 0) {
-		RPERROR("Failed processing reply");
-		action = XLAT_ACTION_FAIL;
-		goto finish;
-	}
-
-	if (vb_out->type == FR_TYPE_GROUP) {
-		fr_value_box_t	*child_vb = NULL;
-		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) fr_dcursor_append(out, child_vb);
-		talloc_free(vb_out);
-	} else {
-		fr_dcursor_append(out, vb_out);
-	}
-
-finish:
-	fr_redis_reply_free(&reply);
-
-	return action;
+	return unlang_xlat_yield(request, redis_xlat_resume, NULL, 0, rctx);
 }
 
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,

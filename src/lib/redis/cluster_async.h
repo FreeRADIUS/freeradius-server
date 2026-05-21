@@ -39,6 +39,30 @@ typedef struct fr_redis_ct_key_slot_s fr_redis_ct_key_slot_t;
 typedef struct fr_redis_ct_node_s fr_redis_ct_node_t;
 typedef struct fr_redis_async_cmd_s fr_redis_async_cmd_t;
 
+/** Convenience macro to reduce boilerplate
+ *
+ * @param _rcode		to process.
+ * @param _cluster		Redis cluster thread.
+ * @param _cw			Coordinator worker for cluster bootstrapping.
+ * @param _coord_pair_reg	Coordinator pair reg for cluster bootstrapping.
+ * @param _error_msg		Message to report on error.
+ * @param _error_ret		Return value on error.
+ */
+#define REDIS_ASYNC_START_RCODE_PROCESS(_rcode, _cluster, _cw, _coord_pair_reg, _error_msg, _error_ret) \
+switch (_rcode) { \
+case REDIS_ASYNC_RCODE_BOOTSTRAP: \
+	fr_redis_cluster_thread_map_bootstrap(_cluster, _cw, _coord_pair_reg); \
+	break; \
+case REDIS_ASYNC_RCODE_GETMAP: \
+	fr_redis_cluster_thread_map_get(_cluster, _cw, _coord_pair_reg, false); \
+	break; \
+case REDIS_ASYNC_RCODE_ERROR: \
+	RPERROR(_error_msg); \
+	return _error_ret; \
+default: \
+	break; \
+}
+
 fr_redis_ct_key_slot_t const	*fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t *rtcluster, request_t *request,
 							 uint8_t const *key, size_t key_len);
 
