@@ -3,6 +3,7 @@ set -euo pipefail
 
 BUILD_PLATFORM=""
 IMAGE_TAG="latest"
+NOCACHE=""
 
 for arg in "$@"; do
   case $arg in
@@ -11,6 +12,9 @@ for arg in "$@"; do
       ;;
     IMAGE_TAG=*)
       IMAGE_TAG="${arg#*=}"
+      ;;
+    NOCACHE=*)
+      NOCACHE="${arg#*=}"
       ;;
   esac
 done
@@ -22,7 +26,12 @@ if [ -n "${BUILD_PLATFORM}" ]; then
     PLATFORM_ARG="--platform=${BUILD_PLATFORM}"
 fi
 
-docker build ${PLATFORM_ARG} \
+NOCACHE_ARG=""
+if [ -n "${NOCACHE}" ]; then
+    NOCACHE_ARG="--no-cache"
+fi
+
+docker build ${PLATFORM_ARG} ${NOCACHE_ARG} \
     --build-arg BASE_TAG="${IMAGE_TAG}" \
     -f src/tests/multi-server/scripts/docker/build/Dockerfile.multi-server-prof \
     -t "freeradius-prof:${IMAGE_TAG}" \

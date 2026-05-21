@@ -324,13 +324,13 @@ test.multi-server.profiling.ci: $(TEST_MULTI_SERVER_PROF_CI_TESTS)
 
 
 # Crossbuild base image; used as the base for the profiling image
-FREERADIUS_CROSSBUILD_IMAGE   := freeradius40x-build/ubuntu24:$(GIT_COMMIT)
+FREERADIUS_CROSSBUILD_IMAGE   := freeradius4-crossbuild/ubuntu24:$(GIT_COMMIT)
 # Base profiling image, FreeRADIUS not built on this image
-FREERADIUS_PROF_IMAGE         := freeradius4-$(PROFILE)/ubuntu24:$(GIT_COMMIT)
+FREERADIUS_PROF_IMAGE         := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
 # Multi-server profiling image; FreeRADIUS dev build specifically for profiling
 FREERADIUS_RADENV_PROF_IMAGE  := freeradius-prof:$(GIT_COMMIT)
 
-FREERADIUS_CROSSBUILD_STAMP        := $(OUTPUT)/.stamps/freeradius40x-build.ubuntu24.$(GIT_COMMIT)
+FREERADIUS_CROSSBUILD_STAMP   := $(OUTPUT)/.stamps/freeradius40x-build.ubuntu24.$(GIT_COMMIT)
 FREERADIUS_PROF_STAMP         := $(OUTPUT)/.stamps/freeradius-prof-base.$(GIT_COMMIT)
 FREERADIUS_RADENV_PROF_STAMP  := $(OUTPUT)/.stamps/freeradius-radenv-prof.$(GIT_COMMIT)
 
@@ -338,25 +338,27 @@ ifneq "$(FORCE_IMAGE_REBUILD)" ""
 $(shell rm -f $(FREERADIUS_CROSSBUILD_STAMP) $(FREERADIUS_PROF_STAMP) $(FREERADIUS_RADENV_PROF_STAMP))
 endif
 
-$(FREERADIUS_CROSSBUILD_STAMP): $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.cb
+$(FREERADIUS_CROSSBUILD_STAMP): $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.crossbuild
 	${Q}docker build \
 	    $(if $(BUILD_PLATFORM),--platform=$(BUILD_PLATFORM)) \
-	    -f $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.cb \
-	    -t freeradius40x-build/ubuntu24:latest \
-	    $(top_srcdir)/scripts/docker/build/ubuntu24
-	${Q}docker tag freeradius40x-build/ubuntu24:latest $(FREERADIUS_CROSSBUILD_IMAGE)
+	    $(if $(NOCACHE),--no-cache) \
+	    -f $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.crossbuild \
+	    -t freeradius4-crossbuild/ubuntu24:latest \
+	    $(top_srcdir)
+	${Q}docker tag freeradius4-crossbuild/ubuntu24:latest $(FREERADIUS_CROSSBUILD_IMAGE)
 	@mkdir -p $(@D)
 	@touch $@
 
 $(FREERADIUS_PROF_STAMP): $(FREERADIUS_CROSSBUILD_STAMP) \
-                           $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.prof
+                           $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.profiling
 	${Q}docker build \
 	    $(if $(BUILD_PLATFORM),--platform=$(BUILD_PLATFORM)) \
+	    $(if $(NOCACHE),--no-cache) \
 	    --build-arg from=$(FREERADIUS_CROSSBUILD_IMAGE) \
-	    -f $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.prof \
-	    -t freeradius4-$(PROFILE)/ubuntu24:latest \
+	    -f $(top_srcdir)/scripts/docker/build/ubuntu24/Dockerfile.profiling \
+	    -t freeradius4-profiling/ubuntu24:latest \
 	    $(top_srcdir)
-	${Q}docker tag freeradius4-$(PROFILE)/ubuntu24:latest $(FREERADIUS_PROF_IMAGE)
+	${Q}docker tag freeradius4-profiling/ubuntu24:latest $(FREERADIUS_PROF_IMAGE)
 	@mkdir -p $(@D)
 	@touch $@
 
@@ -365,6 +367,7 @@ $(FREERADIUS_RADENV_PROF_STAMP): $(FREERADIUS_PROF_STAMP) \
     $(DIR)/scripts/docker/build/build_image.sh
 	${Q}$(DIR)/scripts/docker/build/build_image.sh \
 	    $(if $(BUILD_PLATFORM),BUILD_PLATFORM=$(BUILD_PLATFORM)) \
+	    $(if $(NOCACHE),NOCACHE=$(NOCACHE)) \
 	    IMAGE_TAG=$(GIT_COMMIT)
 	@mkdir -p $(@D)
 	@touch $@
