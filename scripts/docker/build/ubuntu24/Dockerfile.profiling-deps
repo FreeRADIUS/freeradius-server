@@ -62,7 +62,6 @@ RUN apt-get update && \
         > /etc/apt/sources.list.d/ddebs.list
 
 RUN apt-get update && apt-get install -y $APT_OPTS \
-        libc6-dbg \
         zlib1g-dbgsym \
         libreadline8t64-dbgsym \
         libssl3t64-dbgsym \
@@ -85,7 +84,8 @@ RUN apt-get update && apt-get install -y $APT_OPTS \
         libcurl4t64-dbgsym \
         libxml2-dbgsym \
         libidn12-dbgsym \
-        python3.12-dbg
+        python3.12-dbg \
+        libc6-dbg
 
 #
 #  Install FlameGraph

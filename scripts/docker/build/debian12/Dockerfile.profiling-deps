@@ -60,7 +60,6 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug bookworm-debug main
         > /etc/apt/sources.list.d/debian-debug.list
 
 RUN apt-get update && apt-get install -y $APT_OPTS \
-        libc6-dbg \
         zlib1g-dbgsym \
         libreadline8-dbgsym \
         libssl3-dbgsym \
@@ -83,7 +82,8 @@ RUN apt-get update && apt-get install -y $APT_OPTS \
         libcurl4-dbgsym \
         libxml2-dbgsym \
         libidn12-dbgsym \
-        python3.11-dbg
+        python3.11-dbg \
+        libc6-dbg
 
 #
 #  Install FlameGraph

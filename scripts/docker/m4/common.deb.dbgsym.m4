@@ -39,7 +39,6 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug m
 ])m4exit(1)])
 
 RUN apt-get update && apt-get install -y $APT_OPTS \
-        libc6-dbg \
         zlib1g-dbgsym \
         libreadline8[]T64[]-dbgsym \
         libssl3[]T64[]-dbgsym \
@@ -60,19 +59,19 @@ RUN apt-get update && apt-get install -y $APT_OPTS \
         librdkafka1-dbgsym \
         libwbclient0-dbgsym \
         libcurl4[]T64[]-dbgsym \
-ifelse(OS_CODENAME, [forky], [], OS_CODENAME, [resolute], [], [dnl
+ifelse(OS_CODENAME, [sid], [], OS_CODENAME, [resolute], [], [dnl
         libxml2-dbgsym \
 ])dnl
 ifelse(OS_CODENAME, [resolute], [], [dnl
         libidn12-dbgsym \
 ])dnl
-        ifelse(OS_CODENAME, [bookworm], [python3.11-dbg],
-               OS_CODENAME, [trixie],   [python3.13-dbg],
-               OS_CODENAME, [forky],    [python3.13-dbg],
-               OS_CODENAME, [jammy],    [python3.10-dbg],
-               OS_CODENAME, [noble],    [python3.12-dbg],
-               OS_CODENAME, [resolute], [],
-               [])
+ifelse(OS_CODENAME, [bookworm], [        python3.11-dbg \
+], OS_CODENAME, [trixie],   [        python3.13-dbg \
+], OS_CODENAME, [sid],    [        python3.13-dbg \
+], OS_CODENAME, [jammy],    [        python3.10-dbg \
+], OS_CODENAME, [noble],    [        python3.12-dbg \
+])dnl
+        libc6-dbg
 undefine([T64])dnl
 undefine([PRE_T64])dnl
 changequote(`,')dnl

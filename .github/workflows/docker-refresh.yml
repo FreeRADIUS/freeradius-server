@@ -19,9 +19,9 @@ env:
 
 jobs:
   #
-  #  Refresh / build the base set of images. Each matrix entry produces
-  #  one image. Images here must not depend on any other image we're
-  #  building - those go in process-derived-images below.
+  #  Refresh / build the base set of images that FROM upstream
+  #  (ubuntu/debian/rocky/docker:dind) or are pure pull-through caches
+  #  (mariadb/postgres/389ds). Each matrix entry produces one image.
   #
   process-images:
     timeout-minutes: 20
@@ -256,8 +256,7 @@ jobs:
   #  are guaranteed to be in the internal registry. Each derived entry
   #  pulls its parent, builds, pushes - all with retries.
   #
-  process-derived-images:
-    needs: process-images
+  process-docker-cli:
     timeout-minutes: 15
 
     runs-on: self-hosted
@@ -362,7 +361,6 @@ jobs:
   #  profiling layer locally per commit.
   #
   process-freeradius-images:
-    needs: process-derived-images
     timeout-minutes: 90
 
     runs-on: self-hosted

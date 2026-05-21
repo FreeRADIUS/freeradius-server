@@ -60,7 +60,6 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug sid-debug main\n' \
         > /etc/apt/sources.list.d/debian-debug.list
 
 RUN apt-get update && apt-get install -y $APT_OPTS \
-        libc6-dbg \
         zlib1g-dbgsym \
         libreadline8t64-dbgsym \
         libssl3t64-dbgsym \
@@ -81,9 +80,9 @@ RUN apt-get update && apt-get install -y $APT_OPTS \
         librdkafka1-dbgsym \
         libwbclient0-dbgsym \
         libcurl4t64-dbgsym \
-        libxml2-dbgsym \
         libidn12-dbgsym \
-        
+        python3.13-dbg \
+        libc6-dbg
 
 #
 #  Install FlameGraph
