@@ -147,6 +147,9 @@ struct fr_redis_trunk_s {
 	trunk_t				*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
 	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this trunk belongs to.
+
+	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
+	void				*active_uctx;	//!< Uctx to pass to active callback.
 };
 
 /** Free any free requests when the thread is joined
@@ -726,17 +729,29 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 	if (cmds->autofree) talloc_free(cmds);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private trunk_t trips --fsanitize=function */
+static void _redis_trunk_active(UNUSED trunk_t *trunk, UNUSED trunk_state_t prev, UNUSED trunk_state_t state, void *uctx)
+{
+	fr_redis_trunk_t	*rtcluster = talloc_get_type_abort(uctx, fr_redis_trunk_t);
+
+	rtcluster->active(rtcluster, rtcluster->active_uctx);
+}
+
 /** Allocate a new trunk
  *
  * @param[in] rtcluster		to allocate the trunk for.
  * @param[in] io_conf		Describing the connection to a single REDIS host.
  * @param[in] trigger_args	Pairs to pass to trigger requests, if triggers are enabled.
+ * @param[in] active		Callback to run when the trunk becomes active.
+ * @param[in] active_uctx	Uctx to pass to active callback.
+ * @param[in] active_oneshot	Should the call back be run just once.
  * @return
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
 fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_redis_io_conf_t const *io_conf,
-				       fr_pair_list_t *trigger_args)
+				       fr_pair_list_t *trigger_args, fr_redis_trunk_active_t active,
+				       void *active_uctx, bool active_oneshot)
 {
 	fr_redis_trunk_t	*rtrunk;
 	trunk_io_funcs_t	io_funcs = {
@@ -749,8 +764,13 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_
 					.request_free		= _redis_pipeline_command_set_free
 				};
 
-	MEM(rtrunk = talloc_zero(rtcluster, fr_redis_trunk_t));
-	rtrunk->io_conf = io_conf;
+	MEM(rtrunk = talloc(rtcluster, fr_redis_trunk_t));
+	*rtrunk = (fr_redis_trunk_t) {
+		.io_conf = io_conf,
+		.rtcluster = rtcluster,
+		.active = active,
+		.active_uctx = active_uctx,
+	};
 	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_cluster_thread_el(rtcluster),
 				    &io_funcs, fr_redis_cluster_thread_trunk_conf(rtcluster),
 				    io_conf->log_prefix, rtrunk, false, trigger_args);
@@ -758,6 +778,8 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_
 		talloc_free(rtrunk);
 		return NULL;
 	}
+
+	if (active) trunk_add_watch(rtrunk->trunk, TRUNK_STATE_ACTIVE, _redis_trunk_active, active_oneshot, rtrunk);
 
 	return rtrunk;
 }

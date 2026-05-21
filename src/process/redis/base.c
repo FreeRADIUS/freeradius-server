@@ -316,7 +316,7 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 		if (!rctx->current_node->trunk) {
 			rctx->current_node->trunk = fr_redis_trunk_alloc(cluster->rtcluster,
 									 &rctx->current_node->io_conf,
-									 NULL);
+									 NULL, NULL, NULL, false);
 		}
 
 		if (redis_command_set_enqueue(rctx->current_node->trunk, rctx->cmds) == FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_YIELD;
@@ -563,7 +563,7 @@ RECV(cluster_map_bootstrap)
 		}
 	}
 
-	MEM(cluster->rtcluster = fr_redis_cluster_thread_alloc(cluster, thread->el, conf));
+	MEM(cluster->rtcluster = fr_redis_cluster_thread_alloc(cluster, thread->el, conf, NULL, NULL, false));
 
 	/*
 	 *	Add all the bootstrap nodes to the cluster.

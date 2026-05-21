@@ -55,6 +55,10 @@ struct fr_redis_cluster_thread_s {
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
 	fr_redis_conf_t const		*conf;		//!< Redis configuration for the cluster.
 
+	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
+	void				*active_uctx;	//!< Uctx to pass to active callback.
+	bool				active_oneshot;	//!< Should the callback only be called once.
+
 	fr_redis_ct_node_t		*node;		//!< Array of nodes in this cluster.
 	fr_fifo_t			*free_nodes;	//!< Nodes not currently active.
 	fr_rb_tree_t			*used_nodes;	//!< Active nodes.
@@ -108,7 +112,8 @@ char buff [FR_IPADDR_STRLEN]; \
 	_node->ioconf.log_prefix = talloc_asprintf(rtcluster, "%s %s:%d", rtcluster->conf->log_prefix, \
 						   fr_inet_ntop(buff, sizeof(buff), &_node->addr.inet.dst_ipaddr), \
 						   _node->ioconf.port); \
-	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, NULL); \
+	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, NULL, rtcluster->active, rtcluster->active_uctx, \
+					    rtcluster->active_oneshot); \
 	if (!_node->trunk) goto error; \
 } while (0)
 
@@ -339,19 +344,26 @@ static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf)
+fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf,
+							 fr_redis_trunk_active_t active, void *active_uctx,
+							 bool active_oneshot)
 {
 	fr_redis_cluster_thread_t	*rtcluster;
 	trunk_conf_t			*our_tconf;
 	uint8_t				i;
 
 	MEM(rtcluster = talloc_zero(ctx, fr_redis_cluster_thread_t));
+	*rtcluster = (fr_redis_cluster_thread_t) {
+		.el = el,
+		.conf = conf,
+		.active = active,
+		.active_uctx = active_uctx,
+		.active_oneshot = active_oneshot
+	};
 	MEM(our_tconf = talloc_memdup(rtcluster, &conf->trunk_conf, sizeof(conf->trunk_conf)));
 	our_tconf->always_writable = true;
 
-	rtcluster->el = el;
 	rtcluster->tconf = our_tconf;
-	rtcluster->conf = conf;
 	fr_dlist_talloc_init(&rtcluster->pending, fr_redis_async_cmd_t, entry);
 
 	if (conf->max_nodes == UINT8_MAX) {
