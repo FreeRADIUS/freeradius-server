@@ -361,14 +361,6 @@ void version_init_features(CONF_SECTION *cs)
 				);
 
 
-	version_add_feature(cs, "recv-coa-from-home-server",
-#ifdef WITH_COA_TUNNEL
-			        true
-#else
-				false
-#endif
-				);
-
 	version_add_feature(cs, "control-socket",
 #ifdef WITH_COMMAND_SOCKET
 				true
@@ -380,6 +372,14 @@ void version_init_features(CONF_SECTION *cs)
 
 	version_add_feature(cs, "detail",
 #ifdef WITH_DETAIL
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "developer",
+#ifndef NDEBUG
 				true
 #else
 				false
@@ -413,6 +413,14 @@ void version_init_features(CONF_SECTION *cs)
 	version_add_feature(cs, "proxy",
 #ifdef WITH_PROXY
 				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "recv-coa-from-home-server",
+#ifdef WITH_COA_TUNNEL
+			        true
 #else
 				false
 #endif
@@ -506,14 +514,6 @@ void version_init_features(CONF_SECTION *cs)
 
 	version_add_feature(cs, "vmps",
 #ifdef WITH_VMPS
-				true
-#else
-				false
-#endif
-				);
-
-	version_add_feature(cs, "developer",
-#ifndef NDEBUG
 				true
 #else
 				false
