@@ -250,7 +250,7 @@ jobs:
   #  cache mirrors. Runs inside dind + the freshly-built docker-cli
   #  container.
   #
-  process-images:
+  process-ci-images:
     needs: process-docker-cli
     timeout-minutes: 20
 
@@ -278,6 +278,7 @@ jobs:
 
     defaults:
       run:
+        shell: bash
         working-directory: /workspace
 
     strategy:
@@ -578,6 +579,7 @@ jobs:
 
     defaults:
       run:
+        shell: bash
         working-directory: /workspace
 
     name: "freeradius4-{crossbuild,profiling-deps,service}-${{ matrix.os }}"
