@@ -567,7 +567,7 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 			ERROR("BlastRADIUS check: Received packet without Message-Authenticator.");
 			ERROR("Setting \"require_message_authenticator = false\" for client %s", client->shortname);
 			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("UPGRADE CLIENT %s AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.", client->shortname);
 			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for  client %s", client->shortname);
 			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			client->require_ma = FR_BOOL_FALSE;
@@ -633,7 +633,7 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 		DEBUG("YOU MUST SET \"limit_proxy_state = true\" for client %s", client->shortname);
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		DEBUG("The packet does not contain Message-Authenticator, which is a security issue");
-		DEBUG("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		DEBUG("UPGRADE CLIENT %s AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.", client->shortname);
 		DEBUG("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		return;
@@ -655,7 +655,7 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 		ERROR("the client is a proxy RADIUS server which has not been upgraded.");
 		ERROR("Setting \"limit_proxy_state = false\" for client %s", client->shortname);
 		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		ERROR("UPGRADE CLIENT %s AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.", client->shortname);
 		ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
 		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
@@ -685,7 +685,7 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 
 		if (!packet->message_authenticator) {
 			ERROR("The packet does not contain Message-Authenticator, which is a security issue.");
-			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK MAY BE VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("UPGRADE CLIENT %s AS YOUR NETWORK MAY BE VULNERABLE TO THE BLASTRADIUS ATTACK.", client->shortname);
 			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
 		} else {
 			ERROR("The packet contains Message-Authenticator.");

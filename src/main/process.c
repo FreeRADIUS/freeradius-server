@@ -3207,7 +3207,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 					RERROR("BlastRADIUS check: Received response to Access-Request without Message-Authenticator.");
 					RERROR("Setting \"require_message_authenticator = false\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-					RERROR("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+					RERROR("UPGRADE HOME SERVER %s AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.", request->home_server->name);
 					RERROR("Once the home_server is upgraded, set \"require_message_authenticator = true\" for home_server %s.", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
@@ -3217,7 +3217,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 					RERROR("BlastRADIUS check: Received response to Access-Request with Message-Authenticator.");
 					RERROR("Setting \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-					RERROR("It looks like the home server has been updated to protect from the BlastRADIUS attack.");
+					RERROR("It looks like home server %s has been updated to protect from the BlastRADIUS attack.", request->home_server->name);
 					RERROR("Please set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
