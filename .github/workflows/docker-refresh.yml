@@ -14,6 +14,16 @@ on:
   schedule:
     - cron: '0 1 * * *'
 
+concurrency:
+  #
+  #  Only one refresh at a time. Lets in-flight runs finish rather than
+  #  having a push trigger a cancel: an interrupted refresh leaves the
+  #  registry partially updated, whereas a queued second run just
+  #  re-publishes everything cleanly after the first one finishes.
+  #
+  group: docker-refresh
+  cancel-in-progress: false
+
 env:
   DOCKER_REGISTRY: "docker.internal.networkradius.com"
 
