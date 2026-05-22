@@ -39,6 +39,7 @@ jobs:
             extra_tags:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/docker/Dockerfile
+            needs_build_deps: true
 
           #
           #  Custom dind sidecar image used by the dind-based
@@ -84,6 +85,31 @@ jobs:
         run: |
           cp /usr/local/share/ca-certificates/networkradius.com.crt \
              scripts/ci/networkradius.com.crt
+
+      - name: Create build dependency package
+        if: ${{ matrix.os.needs_build_deps }}
+        env:
+          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
+        run: |
+          cat > build-dep-pkg.sh << EOF
+          apt-get update
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+          cd /work
+          debian/rules debian/control
+          mk-build-deps debian/control
+          mv freeradius-build-deps_*.deb freeradius-build-deps.deb
+          mk-build-deps scripts/ci/extra-packages.debian.control
+          mv freeradius-build-deps_1*.deb freeradius-build-deps-extra.deb
+          chown $(stat -c'%u:%g' .git) *
+          EOF
+          chmod 755 build-dep-pkg.sh
+          docker run \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            --rm \
+            "$DOCKER_BASE_IMAGE" \
+            sh -c './build-dep-pkg.sh'
 
       - name: Build main Docker image
         env:
