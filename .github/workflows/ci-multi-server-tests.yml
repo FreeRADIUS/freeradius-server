@@ -197,7 +197,7 @@ jobs:
       #
       - name: Upload profiling results
         if: ${{ matrix.mode == 'profiling' && always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: prof-results-${{ github.sha }}
           path: prof-results/
