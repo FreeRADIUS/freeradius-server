@@ -90,6 +90,7 @@ struct fr_redis_ct_node_s {
 struct fr_redis_async_cmd_s {
 	request_t			*request;	//!< Request this command set relates to.
 	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this command set is running on.
+	fr_redis_trunk_t		*rtrunk;	//!< Trunk the command set is currently running on.
 	fr_redis_command_set_t		*cmds;		//!< Command set to run.
 	uint8_t const			*key;		//!< Key used to identify key slot.
 	size_t				key_len;	//!< Length of key.
@@ -252,26 +253,27 @@ int fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node)
 static fr_redis_async_rcode_t fr_redis_async_cmd_enqueue(fr_redis_async_cmd_t *cmd)
 {
 	fr_redis_cluster_thread_t	*rtcluster = cmd->rtcluster;
-	fr_redis_trunk_t		*trunk;
 	fr_redis_pipeline_status_t	ret;
 	bool				dst_unavail = false;
 
 	if (likely(!cmd->node)) cmd->key_slot = fr_redis_ct_slot_by_key(rtcluster, cmd->request, cmd->key, cmd->key_len);
 
 	if (unlikely(cmd->node != NULL)) {
-		trunk = cmd->node->trunk;
+		cmd->rtrunk = cmd->node->trunk;
 	}
 	/*
 	 *	Read only commands start on the first replica, if there are any.
 	 */
 	else if (cmd->read_only && cmd->key_slot->num_replicas) {
-		trunk = rtcluster->node[cmd->key_slot->replica[0]].trunk;
+		cmd->rtrunk = rtcluster->node[cmd->key_slot->replica[0]].trunk;
 	} else {
-		trunk = rtcluster->node[cmd->key_slot->master].trunk;
+		cmd->rtrunk = rtcluster->node[cmd->key_slot->master].trunk;
 	}
 
+	if (unlikely(!cmd->rtrunk)) return REDIS_ASYNC_RCODE_ERROR;
+
 again:
-	ret = redis_command_set_enqueue(trunk, cmd->cmds);
+	ret = redis_command_set_enqueue(cmd->rtrunk, cmd->cmds);
 
 	switch (ret) {
 	case FR_REDIS_PIPELINE_OK:
@@ -281,7 +283,7 @@ again:
 		if (cmd->node) return REDIS_ASYNC_RCODE_ERROR;
 		dst_unavail = true;
 		if (cmd->replica_no < cmd->key_slot->num_replicas) {
-			trunk = rtcluster->node[cmd->key_slot->replica[cmd->replica_no]].trunk;
+			cmd->rtrunk = rtcluster->node[cmd->key_slot->replica[cmd->replica_no]].trunk;
 			cmd->replica_no++;
 			goto again;
 		}
@@ -289,8 +291,8 @@ again:
 		 *	Read only commands can also try the master node.
 		 *	Non-read only first tried the master.
 		 */
-		if (cmd->read_only && (trunk != rtcluster->node[cmd->key_slot->master].trunk)) {
-			trunk = rtcluster->node[cmd->key_slot->master].trunk;
+		if (cmd->read_only && (cmd->rtrunk != rtcluster->node[cmd->key_slot->master].trunk)) {
+			cmd->rtrunk = rtcluster->node[cmd->key_slot->master].trunk;
 			goto again;
 		}
 		return REDIS_ASYNC_RCODE_ERROR;
