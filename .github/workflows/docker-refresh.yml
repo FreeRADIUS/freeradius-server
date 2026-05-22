@@ -557,7 +557,7 @@ jobs:
   #  profiling layer locally per commit.
   #
   process-freeradius-images:
-    needs: process-ci-images
+    needs: process-docker-cli
     timeout-minutes: 90
 
     runs-on: self-hosted
@@ -610,9 +610,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
       #
-      #  Read-only login first - covers the FROM-pull of the
-      #  self-hosted-ci-<distro> CI base for crossbuild, and any
-      #  pull-through misses below.
+      #  Read-only login for any DOCKER_REGISTRY pull-through misses
+      #  during the build (crossbuild itself FROMs upstream OS, not
+      #  the internal registry).
       #
       - name: Login to internal Docker registry (read, via dind)
         uses: docker/login-action@v4
@@ -622,23 +622,15 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       #
-      #  Build crossbuild + profiling-deps + service. docker.mk's
-      #  DOCKER_BUILD wires stamp prereqs so the chain resolves in
-      #  order; service and profiling-deps both FROM crossbuild:latest
-      #  which DOCKER_BUILD writes locally as part of the crossbuild
-      #  build, so subsequent layers find it without a registry pull.
+      #  Build crossbuild + profiling-deps + service. crossbuild and
+      #  service both FROM the upstream OS base; profiling-deps FROMs
+      #  crossbuild:latest which DOCKER_BUILD writes locally as part
+      #  of the crossbuild build, so the chain resolves in order
+      #  without a registry pull between layers.
       #
       - name: Build crossbuild + profiling-deps + service images
         env:
           OS: ${{ matrix.os }}
-          CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-ci-debian12
-          CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-ci-debian13
-          CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-ci-debiansid
-          CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-ci-ubuntu22
-          CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-ci-ubuntu24
-          CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-ci-ubuntu26
-          CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-ci-rocky9
-          CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-ci-rocky10
         run: |
           make dockerfile.check
           make docker.crossbuild.$OS
