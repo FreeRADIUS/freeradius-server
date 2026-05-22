@@ -1229,8 +1229,17 @@ static int listener_cmp(void const *one, void const *two)
 	return 0;
 }
 
-static int listener_unlink(UNUSED void *ctx, UNUSED void *data)
+static int listener_unlink(UNUSED void *ctx, void *data)
 {
+	rad_listen_t *child = data;
+
+	/*
+	 *	The child listener can stay active, even if the parent one is closed.
+	 *
+	 *	Clear the childs parent pointer when the parents destructor unlinks it.
+	 */
+	child->parent = NULL;
+
 	return 2;		/* unlink this node from the tree */
 }
 #endif
