@@ -193,10 +193,10 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
 			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
 		else \
-			PROF_BASE="$(PROFILING_RESULT_ROOT)/${1}/${2}/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
-			EXISTING=$$$$( find "$$$$PROF_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
+			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
+			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
 			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$PROF_BASE/$$$$RUN_INDEX"; \
+			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \

@@ -83,8 +83,8 @@ DOCKER_PULL_TIMEOUT ?= 30
 #
 #  When DOCKER_REGISTRY is set the rule first tries to pull the
 #  matching SHA-tagged image from the registry (capped at
-#  DOCKER_PULL_TIMEOUT seconds). Hit → retag locally + touch stamp,
-#  no build runs. Miss → fall through to the normal docker build.
+#  DOCKER_PULL_TIMEOUT seconds). Hit > retag locally + touch stamp,
+#  no build runs. Miss > fall through to the normal docker build.
 #
 #  $(1) image name
 #  $(2) type
