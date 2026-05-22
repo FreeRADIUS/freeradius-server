@@ -19,11 +19,11 @@ env:
 
 jobs:
   #
-  #  Refresh / build the base set of images that FROM upstream
-  #  (ubuntu/debian/rocky/docker:dind) or are pure pull-through caches
-  #  (mariadb/postgres/389ds). Each matrix entry produces one image.
+  #  Stage 1: rebuild the runner-host base and the dind sidecar image
+  #  from upstream. These can't run inside our own dind/cli container
+  #  because that container is built on top of them.
   #
-  process-images:
+  process-host-bases:
     timeout-minutes: 20
 
     runs-on: self-hosted
@@ -40,6 +40,224 @@ jobs:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/docker/Dockerfile
 
+          #
+          #  Custom dind sidecar image used by the dind-based
+          #  workflows (docker-service.yml, docker-crossbuild.yml, multi-server-tests).
+          #  Bakes in registry-mirror -> internal cache and trusts the
+          #  internal CA, so per-job apt-installing and daemon.json
+          #  wiring goes away.
+          #
+          - base_image: docker:24-dind
+            display: self-hosted-docker-dind
+            image_name: docker.internal.networkradius.com/self-hosted-docker-dind
+            dockerfile: scripts/ci/docker/Dockerfile.docker-dind
+            needs_internal_ca: true
+
+    name: "${{ matrix.os.display }}"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_READ_USER }}
+          password: ${{ secrets.DOCKERHUB_READ_KEY }}
+
+      - name: Fetch and label image
+        env:
+          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
+        run: |
+          for attempt in 1 2 3; do
+            docker pull "$DOCKER_BASE_IMAGE" && break
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            echo "Pull attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
+
+      - name: Stage internal CA into build context
+        if: ${{ matrix.os.needs_internal_ca }}
+        run: |
+          cp /usr/local/share/ca-certificates/networkradius.com.crt \
+             scripts/ci/networkradius.com.crt
+
+      - name: Build main Docker image
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKERFILE: ${{ matrix.os.dockerfile }}
+        run: |
+          for attempt in 1 2 3; do
+            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            echo "Build attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Login to internal Docker registry for push
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Push base image to local registry
+        env:
+          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
+        run: |
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Push main image to local registry
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+        run: |
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_IMAGE_NAME" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Create and push alternative tags
+        if: ${{ matrix.os.extra_tags }}
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
+        run: |
+          for TAG in $DOCKER_TAGS; do
+            docker image tag "$DOCKER_IMAGE_NAME" "$TAG"
+            for attempt in 1 2 3; do
+              docker push "$TAG" && break
+              if [ "$attempt" = "3" ]; then exit 1; fi
+              echo "Push of $TAG attempt $attempt failed; retrying..."
+              sleep 10
+            done
+          done
+
+  #
+  #  Stage 2: build the docker-cli image, which FROMs self-hosted (built
+  #  in stage 1). Stages 3+ use this as their job container, so it has
+  #  to be fresh before they start.
+  #
+  process-docker-cli:
+    needs: process-host-bases
+    timeout-minutes: 15
+
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - parent_image: docker.internal.networkradius.com/self-hosted
+            display: self-hosted-docker-cli
+            image_name: docker.internal.networkradius.com/self-hosted-docker-cli
+            dockerfile: scripts/ci/docker/Dockerfile.docker-cli
+
+    name: "${{ matrix.os.display }}"
+
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          lfs: false
+
+      - name: Login to internal Docker registry (read)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Pull parent image
+        env:
+          PARENT_IMAGE: ${{ matrix.os.parent_image }}
+        run: |
+          for attempt in 1 2 3; do
+            docker pull "$PARENT_IMAGE" && exit 0
+            echo "Pull attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Build derived image
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+          DOCKERFILE: ${{ matrix.os.dockerfile }}
+        run: |
+          for attempt in 1 2 3; do
+            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
+            echo "Build attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+      - name: Login to internal Docker registry for push
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Push derived image
+        env:
+          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
+        run: |
+          for attempt in 1 2 3; do
+            docker push "$DOCKER_IMAGE_NAME" && exit 0
+            echo "Push attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
+          exit 1
+
+  #
+  #  Stage 3: refresh the remaining CI base images and the pull-through
+  #  cache mirrors. Runs inside dind + the freshly-built docker-cli
+  #  container.
+  #
+  process-images:
+    needs: process-docker-cli
+    timeout-minutes: 20
+
+    runs-on: self-hosted
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
+
+    services:
+      dind:
+        image: docker.internal.networkradius.com/self-hosted-docker-dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          NO_PROXY: "*.networkradius.com,127.0.0.1"
+        volumes:
+          - ${{ github.workspace }}:/workspace
+
+    container:
+      image: docker.internal.networkradius.com/self-hosted-docker-cli
+      env:
+        DOCKER_HOST: tcp://dind:2375
+        NO_PROXY: dind,*.networkradius.com,127.0.0.1
+      volumes:
+        - /usr/local/share/ca-certificates/networkradius.com.crt:/usr/local/share/ca-certificates/networkradius.com.crt:ro
+        - ${{ github.workspace }}:/workspace
+
+    defaults:
+      run:
+        working-directory: /workspace
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
           #
           #  Slim build bases for ci-rpm.yml / ci-deb.yml. Generated from
           #  scripts/docker/m4/ci.{rpm,deb}.m4 - regenerate with
@@ -87,19 +305,6 @@ jobs:
             image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu26
             dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
 
-          #
-          #  Custom dind sidecar image used by the dind-based
-          #  workflows (docker-service.yml, docker-crossbuild.yml, multi-server-tests).
-          #  Bakes in registry-mirror -> internal cache and trusts the
-          #  internal CA, so per-job apt-installing and daemon.json
-          #  wiring goes away.
-          #
-          - base_image: docker:24-dind
-            display: self-hosted-docker-dind
-            image_name: docker.internal.networkradius.com/self-hosted-docker-dind
-            dockerfile: scripts/ci/docker/Dockerfile.docker-dind
-            needs_internal_ca: true
-
           - base_image: mariadb
             display: mariadb
           - base_image: postgres
@@ -115,31 +320,73 @@ jobs:
         with:
           lfs: false
 
+      - name: setup-dind
+        uses: ./.github/actions/setup-dind
+
       #
-      #  Authenticate the host docker daemon to Docker Hub up-front so
-      #  every subsequent `docker pull` (and the implicit FROM-pulls
-      #  triggered by `docker build`) uses the higher per-user rate
-      #  limit instead of anonymous 100/6h. Without this, refreshing
-      #  6+ images in parallel from the same egress IP burns through
-      #  the limit and the run fails partway through.
+      #  Authenticate dind to Docker Hub up-front so every subsequent
+      #  `docker pull` (and the implicit FROM-pulls triggered by
+      #  `docker build`) uses the higher per-user rate limit instead
+      #  of anonymous 100/6h. Skipped on parent_image-only entries
+      #  since they pull from the internal registry instead.
       #
-      - name: Docker Hub login
+      - name: Login to Docker Hub (via dind)
+        if: ${{ matrix.os.base_image }}
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_READ_USER }}
           password: ${{ secrets.DOCKERHUB_READ_KEY }}
 
-      - name: Fetch and label image
-        shell: bash
+      #
+      #  Read-only login to the internal registry. Needed up front so
+      #  parent_image entries (cli) can pull their parent before the
+      #  build step.
+      #
+      - name: Login to internal Docker registry (read, via dind)
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
+
+      #
+      #  Pull the source image into dind. base_image entries pull from
+      #  Docker Hub then re-tag to the internal registry namespace so
+      #  pull-through cache consumers see the same name. parent_image
+      #  entries pull from the internal registry directly.
+      #
+      - name: Pull source image
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
+          PARENT_IMAGE: ${{ matrix.os.parent_image }}
         run: |
-          docker pull "$DOCKER_BASE_IMAGE"
+          if [ -n "$PARENT_IMAGE" ]; then
+            for attempt in 1 2 3; do
+              docker pull "$PARENT_IMAGE" && exit 0
+              echo "Pull attempt $attempt failed; retrying after backoff..."
+              sleep 10
+            done
+            exit 1
+          fi
+          for attempt in 1 2 3; do
+            docker pull "$DOCKER_BASE_IMAGE" && break
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            echo "Pull attempt $attempt failed; retrying after backoff..."
+            sleep 10
+          done
           echo "FROM $DOCKER_BASE_IMAGE" | docker build --label preserve=true -t "$DOCKER_REGISTRY/$DOCKER_BASE_IMAGE" -
 
+      #
+      #  Generate freeradius-build-deps*.deb so the slim CI base images
+      #  can apt-install the package list without pulling the full
+      #  build-essential / devscripts toolchain at every CI run. Only
+      #  meaningful for the deb-family CI bases that build FreeRADIUS;
+      #  pull-through DB caches, dind, and cli skip this.
+      #
       - name: Create build dependency package
-        if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
-        shell: bash
+        if: ${{ matrix.os.image_name && matrix.os.dockerfile && matrix.os.base_image }}
+        env:
+          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
           cat > build-dep-pkg.sh << EOF
           apt-get update
@@ -155,22 +402,19 @@ jobs:
           EOF
           chmod 755 build-dep-pkg.sh
           docker run \
-            -v ${{ github.workspace }}:/work \
+            -v /workspace:/work \
             -w /work \
             --rm \
-            ${{ matrix.os.base_image }} \
+            "$DOCKER_BASE_IMAGE" \
             sh -c './build-dep-pkg.sh'
 
       #
       #  Stage the internal CA cert into the build context for any
       #  matrix entry that asks for it (currently the dind sidecar
       #  image, which needs to trust docker.internal.networkradius.com).
-      #  The cert lives on the self-hosted runner host outside the
-      #  repo, so we copy it in just before the build.
       #
       - name: Stage internal CA into build context
         if: ${{ matrix.os.needs_internal_ca }}
-        shell: bash
         run: |
           cp /usr/local/share/ca-certificates/networkradius.com.crt \
              scripts/ci/networkradius.com.crt
@@ -183,7 +427,6 @@ jobs:
       #
       - name: Build main Docker image
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
-        shell: bash
         env:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKERFILE: ${{ matrix.os.dockerfile }}
@@ -200,7 +443,10 @@ jobs:
           done
           exit 1
 
-      - name: Docker login
+      #
+      #  Switch to push-capable creds and publish.
+      #
+      - name: Login to internal Docker registry for push (via dind)
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
@@ -208,7 +454,7 @@ jobs:
           registry: ${{ env.DOCKER_REGISTRY }}
 
       - name: Push base image to local registry
-        shell: bash
+        if: ${{ matrix.os.base_image }}
         env:
           DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
@@ -221,10 +467,8 @@ jobs:
 
       - name: Push main image to local registry
         if: ${{ matrix.os.image_name && matrix.os.dockerfile }}
-        shell: bash
         env:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
-          DOCKER_BASE_IMAGE: ${{ matrix.os.base_image }}
         run: |
           for attempt in 1 2 3; do
             docker push "$DOCKER_IMAGE_NAME" && exit 0
@@ -235,7 +479,6 @@ jobs:
 
       - name: Create and push alternative tags
         if: ${{ matrix.os.image_name && matrix.os.extra_tags }}
-        shell: bash
         env:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
           DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
@@ -249,90 +492,6 @@ jobs:
               sleep 10
             done
           done
-
-  #
-  #  Refresh / build images that FROM one of the images produced by
-  #  process-images. Runs after that job completes so the parent images
-  #  are guaranteed to be in the internal registry. Each derived entry
-  #  pulls its parent, builds, pushes - all with retries.
-  #
-  process-docker-cli:
-    timeout-minutes: 15
-
-    runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS' || github.event_name == 'workflow_dispatch'
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          #
-          #  self-hosted-docker-cli: extends self-hosted with docker
-          #  CLI/buildx/m4. Used as the JOB container of the dind-based
-          #  workflows.
-          #
-          - parent_image: docker.internal.networkradius.com/self-hosted
-            display: self-hosted-docker-cli
-            image_name: docker.internal.networkradius.com/self-hosted-docker-cli
-            dockerfile: scripts/ci/docker/Dockerfile.docker-cli
-
-    name: "${{ matrix.os.display }}"
-
-    steps:
-
-      - uses: actions/checkout@v6
-        with:
-          lfs: false
-
-      - name: Docker login (internal registry)
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-          registry: ${{ env.DOCKER_REGISTRY }}
-
-      #
-      #  Pull the parent image from the internal registry. process-images
-      #  pushed it in the previous job, but this job almost certainly runs
-      #  on a different self-hosted runner whose docker daemon doesn't
-      #  have it cached locally.
-      #
-      - name: Pull parent image
-        shell: bash
-        env:
-          PARENT_IMAGE: ${{ matrix.os.parent_image }}
-        run: |
-          for attempt in 1 2 3; do
-            docker pull "$PARENT_IMAGE" && exit 0
-            echo "Pull attempt $attempt failed; retrying after backoff..."
-            sleep 10
-          done
-          exit 1
-
-      - name: Build derived image
-        shell: bash
-        env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
-          DOCKERFILE: ${{ matrix.os.dockerfile }}
-        run: |
-          for attempt in 1 2 3; do
-            docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true . && exit 0
-            echo "Build attempt $attempt failed; retrying after backoff..."
-            sleep 10
-          done
-          exit 1
-
-      - name: Push derived image
-        shell: bash
-        env:
-          DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
-        run: |
-          for attempt in 1 2 3; do
-            docker push "$DOCKER_IMAGE_NAME" && exit 0
-            echo "Push attempt $attempt failed; retrying after backoff..."
-            sleep 10
-          done
-          exit 1
 
   #
   #  Periodic refresh of the FreeRADIUS base image chain in the
@@ -361,6 +520,7 @@ jobs:
   #  profiling layer locally per commit.
   #
   process-freeradius-images:
+    needs: process-docker-cli
     timeout-minutes: 90
 
     runs-on: self-hosted
@@ -417,11 +577,11 @@ jobs:
       #  and any pull-through misses below.
       #
       - name: Login to internal Docker registry (read, via dind)
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
 
       #
       #  Build crossbuild + profiling-deps + service. docker.mk's
@@ -452,11 +612,11 @@ jobs:
       #  tags. The per-commit `profiling` layer stays local.
       #
       - name: Login to internal Docker registry for push (via dind)
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
-        run: |
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin https://docker.internal.networkradius.com/
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
+          password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
+          registry: ${{ env.DOCKER_REGISTRY }}
 
       - name: Push freeradius4-{crossbuild,profiling-deps,service}:latest
         env:
