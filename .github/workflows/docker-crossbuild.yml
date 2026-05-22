@@ -141,14 +141,14 @@ jobs:
     #
     - name: Run crossbuild tests
       env:
-        CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-deb-debian12
-        CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-deb-debian13
-        CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-deb-debiansid
-        CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-deb-ubuntu22
-        CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-deb-ubuntu24
-        CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-deb-ubuntu26
-        CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
-        CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
+        CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-ci-debian12
+        CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-ci-debian13
+        CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-ci-debiansid
+        CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-ci-ubuntu22
+        CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-ci-ubuntu24
+        CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-ci-ubuntu26
+        CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-ci-rocky9
+        CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-ci-rocky10
       run: |
         make dockerfile.crossbuild.check
         make crossbuild.$OS

@@ -41,8 +41,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky9",  "DIST": "rocky", "VERSION": 9  },
-              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky10", "DIST": "rocky", "VERSION": 10 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9  },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky10", "DIST": "rocky", "VERSION": 10 }
             ]
           }
         EOF
@@ -51,7 +51,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-rocky9",  "DIST": "rocky", "VERSION": 9 }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",  "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-rocky9",  "DIST": "rocky", "VERSION": 9 }
             ]
           }
         EOF

@@ -293,43 +293,43 @@ jobs:
           #  no build_args are needed here.
           #
           - base_image: rockylinux/rockylinux:9
-            display: self-hosted-rocky9
-            image_name: docker.internal.networkradius.com/self-hosted-rocky9
+            display: self-hosted-ci-rocky9
+            image_name: docker.internal.networkradius.com/self-hosted-ci-rocky9
             dockerfile: scripts/docker/build/rocky9/Dockerfile.ci
 
           - base_image: rockylinux/rockylinux:10
-            display: self-hosted-rocky10
-            image_name: docker.internal.networkradius.com/self-hosted-rocky10
+            display: self-hosted-ci-rocky10
+            image_name: docker.internal.networkradius.com/self-hosted-ci-rocky10
             dockerfile: scripts/docker/build/rocky10/Dockerfile.ci
 
           - base_image: debian:bookworm
-            display: self-hosted-deb-debian12
-            image_name: docker.internal.networkradius.com/self-hosted-deb-debian12
+            display: self-hosted-ci-debian12
+            image_name: docker.internal.networkradius.com/self-hosted-ci-debian12
             dockerfile: scripts/docker/build/debian12/Dockerfile.ci
 
           - base_image: debian:trixie
-            display: self-hosted-deb-debian13
-            image_name: docker.internal.networkradius.com/self-hosted-deb-debian13
+            display: self-hosted-ci-debian13
+            image_name: docker.internal.networkradius.com/self-hosted-ci-debian13
             dockerfile: scripts/docker/build/debian13/Dockerfile.ci
 
           - base_image: debian:sid
-            display: self-hosted-deb-debiansid
-            image_name: docker.internal.networkradius.com/self-hosted-deb-debiansid
+            display: self-hosted-ci-debiansid
+            image_name: docker.internal.networkradius.com/self-hosted-ci-debiansid
             dockerfile: scripts/docker/build/debiansid/Dockerfile.ci
 
           - base_image: ubuntu:22.04
-            display: self-hosted-deb-ubuntu22
-            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu22
+            display: self-hosted-ci-ubuntu22
+            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu22
             dockerfile: scripts/docker/build/ubuntu22/Dockerfile.ci
 
           - base_image: ubuntu:24.04
-            display: self-hosted-deb-ubuntu24
-            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu24
+            display: self-hosted-ci-ubuntu24
+            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu24
             dockerfile: scripts/docker/build/ubuntu24/Dockerfile.ci
 
           - base_image: ubuntu:26.04
-            display: self-hosted-deb-ubuntu26
-            image_name: docker.internal.networkradius.com/self-hosted-deb-ubuntu26
+            display: self-hosted-ci-ubuntu26
+            image_name: docker.internal.networkradius.com/self-hosted-ci-ubuntu26
             dockerfile: scripts/docker/build/ubuntu26/Dockerfile.ci
 
           - base_image: mariadb
@@ -601,8 +601,8 @@ jobs:
 
       #
       #  Read-only login first - covers the FROM-pull of the
-      #  self-hosted-deb-* / self-hosted-rocky* CI base for crossbuild,
-      #  and any pull-through misses below.
+      #  self-hosted-ci-<distro> CI base for crossbuild, and any
+      #  pull-through misses below.
       #
       - name: Login to internal Docker registry (read, via dind)
         uses: docker/login-action@v4
@@ -621,19 +621,32 @@ jobs:
       - name: Build crossbuild + profiling-deps + service images
         env:
           OS: ${{ matrix.os }}
-          CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-deb-debian12
-          CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-deb-debian13
-          CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-deb-debiansid
-          CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-deb-ubuntu22
-          CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-deb-ubuntu24
-          CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-deb-ubuntu26
-          CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-rocky9
-          CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-rocky10
+          CB_FROM_debian12:  docker.internal.networkradius.com/self-hosted-ci-debian12
+          CB_FROM_debian13:  docker.internal.networkradius.com/self-hosted-ci-debian13
+          CB_FROM_debiansid: docker.internal.networkradius.com/self-hosted-ci-debiansid
+          CB_FROM_ubuntu22:  docker.internal.networkradius.com/self-hosted-ci-ubuntu22
+          CB_FROM_ubuntu24:  docker.internal.networkradius.com/self-hosted-ci-ubuntu24
+          CB_FROM_ubuntu26:  docker.internal.networkradius.com/self-hosted-ci-ubuntu26
+          CB_FROM_rocky9:    docker.internal.networkradius.com/self-hosted-ci-rocky9
+          CB_FROM_rocky10:   docker.internal.networkradius.com/self-hosted-ci-rocky10
         run: |
           make dockerfile.check
           make docker.crossbuild.$OS
           make docker.profiling-deps.$OS
           make docker.service.$OS
+
+      - name: Show docker build logs
+        if: failure()
+        env:
+          OS: ${{ matrix.os }}
+        run: |
+          for type in crossbuild profiling-deps service; do
+            log="build/docker/build.$OS.$type"
+            if [ -f "$log" ]; then
+              echo "===== $log ====="
+              cat "$log"
+            fi
+          done
 
       #
       #  Switch to push-capable creds and publish the three :latest

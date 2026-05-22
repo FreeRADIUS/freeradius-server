@@ -44,12 +44,12 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu22"   },
-              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu24"   },
-              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-ubuntu26"   },
-              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian12"   },
-              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian13"   },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debiansid"  }
+              { "NAME": "ubuntu-22.04", "OS": "ubuntu:22.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu22"   },
+              { "NAME": "ubuntu-24.04", "OS": "ubuntu:24.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu24"   },
+              { "NAME": "ubuntu-26.04", "OS": "ubuntu:26.04",    "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-ubuntu26"   },
+              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian12"   },
+              { "NAME": "debian-13",    "OS": "debian:trixie",   "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian13"   },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debiansid"  }
             ]
           }
         EOF
@@ -58,7 +58,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-deb-debian12" }
+              { "NAME": "debian-12",    "OS": "debian:bookworm", "BUILD_IMAGE": "docker.internal.networkradius.com/self-hosted-ci-debian12" }
             ]
           }
         EOF
