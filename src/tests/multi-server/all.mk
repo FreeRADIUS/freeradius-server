@@ -63,8 +63,8 @@ FREERADIUS_PROFILING_IMAGE   := freeradius4-profiling/ubuntu24:$(GIT_COMMIT)
 #  no /simple/ suffix needed). pip uses it for the named package and
 #  falls back to PyPI proper for transitive deps not hosted there.
 #
-RADENV_PACKAGE                  := freeradius-multi-server
-RADENV_VERSION                  := 1.0.1
+RADENV_PACKAGE                  := radenv
+RADENV_VERSION                  := 1.0.2
 RADENV_INDEX_URL                := https://pypi.inkbridge.io/
 TEST_MULTI_SERVER_FRAMEWORK_DIR := $(abspath $(BUILD_DIR)/radenv)
 
@@ -138,7 +138,7 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	${Q}mkdir -p $$(@D)
 	${Q}echo "RENDER ${4} -> $$@"
 	${Q}set -e; \
-	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/multi-server-test-config \
+	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/radenv-config \
 	    "${4}" \
 	    --vars-file "${3}" \
 	    --aux-file \
@@ -208,7 +208,7 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 	FREERADIUS_IMAGE="$$$$FREERADIUS_IMAGE" \
 	PROFILING="$$$$PROFILING" \
 	PROFILING_RESULT_PATH="$$$$PROFILING_RESULT_PATH" \
-	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/multi-server-test $(TEST_MULTI_SERVER_FLAGS) \
+	$(TEST_MULTI_SERVER_FRAMEWORK_DIR)/.venv/bin/radenv $(TEST_MULTI_SERVER_FLAGS) \
 	    --project-name "${1}-${2}-$(MODE)" \
 	    --compose "${4}/environment.yml" \
 	    --test "${4}/template.yml" \
