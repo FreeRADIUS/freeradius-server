@@ -547,7 +547,7 @@ jobs:
   #  profiling layer locally per commit.
   #
   process-freeradius-images:
-    needs: process-docker-cli
+    needs: process-ci-images
     timeout-minutes: 90
 
     runs-on: self-hosted
