@@ -4367,8 +4367,13 @@ static void request_ping(REQUEST *request, int action)
 		rad_assert(request->in_proxy_hash);
 
 		request->home_server->num_received_pings++;
-		RPROXY("Received response to status check %d ID %u (%d in current sequence)",
-		       request->number, request->proxy->id, home->num_received_pings);
+		RPROXY("Received response to status check %d ID %u (%d in current sequence) from home server %s port %d",
+		       request->number, request->proxy->id, home->num_received_pings,
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port);
+
 		/* FALL-THROUGH */
 
 		/*
