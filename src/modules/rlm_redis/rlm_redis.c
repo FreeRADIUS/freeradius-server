@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <stdint.h>
 
 #include <freeradius-devel/redis/base.h>
-#include <freeradius-devel/redis/cluster.h>
 #include <freeradius-devel/redis/cluster_async.h>
 
 #include <freeradius-devel/server/modpriv.h>
@@ -84,8 +83,6 @@ typedef struct {
 									//!< Must be first field in this struct.
 
 	rlm_redis_lua_t		lua;					//!< Array of functions to register.
-
-	fr_redis_cluster_t	*cluster;				//!< Redis cluster.
 
 	fr_coord_reg_t		*coord_reg;				//!< Coordinator registration.
 	fr_coord_pair_reg_t	*coord_pair_reg;			//!< Coord pair registration.
@@ -913,9 +910,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		});
 
 	if (!inst->coord_reg) return -1;
-
-	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, NULL, NULL, NULL);
-	if (!inst->cluster) return -1;
 
 	return 0;
 }
