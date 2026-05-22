@@ -31,7 +31,14 @@ RUN rm -rf build autom4te.cache .libs config.log config.status \
         src/lib/backtrace/config.status src/lib/backtrace/libtool \
         src/lib/backtrace/.libs src/lib/backtrace/*.la \
         src/lib/backtrace/*.lo
+#
+#  --prefix=/usr puts binaries under /usr/{bin,sbin}, libraries under
+#  /usr/lib, etc. so the profiling image's filesystem layout matches
+#  the production deb/rpm packages. Test fixtures and scripts can use
+#  the same absolute paths (e.g. /usr/bin/radclient) in either mode.
+#
 RUN ./configure \
+        --prefix=/usr \
         --enable-developer \
         --disable-verify-ptr \
         --with-raddbdir=/etc/freeradius \
@@ -45,7 +52,7 @@ RUN ./configure \
 #  profiling scripts and configs match the names used by the production
 #  packages.
 #
-RUN ln -sf /usr/local/sbin/radiusd /usr/local/sbin/freeradius \
+RUN ln -sf /usr/sbin/radiusd /usr/sbin/freeradius \
  && ln -sf /etc/freeradius/radiusd.conf /etc/freeradius/freeradius.conf \
  && ln -sf /etc/freeradius /etc/raddb
 
