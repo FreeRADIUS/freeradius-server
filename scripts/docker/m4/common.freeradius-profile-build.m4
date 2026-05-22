@@ -61,3 +61,13 @@ RUN ln -sf /usr/sbin/radiusd /usr/sbin/freeradius \
 #  fixtures expect.
 #
 RUN cd /etc/freeradius/certs && make
+
+#
+#  Stage the same docker-entrypoint.sh the service image uses. Docker
+#  compose fixtures (e.g. src/tests/multi-server/environments/) override
+#  ENTRYPOINT but still exec /docker-entrypoint.sh from inside their
+#  wrapper, so the file needs to exist at the root in both images.
+#
+WORKDIR /
+COPY scripts/docker/etc/docker-entrypoint.sh.PKG_TYPE docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
