@@ -356,6 +356,14 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 	return cmd;
 }
 
+/** Fetch the redis trunk a command is associated with.
+ *
+ */
+fr_redis_trunk_t *fr_redis_async_cmd_trunk(fr_redis_async_cmd_t *cmd)
+{
+	return cmd->rtrunk;
+}
+
 /** Re-submit a redis async command set on a different node
  *
  * Using the node returned by a MOVED / ASK response.
