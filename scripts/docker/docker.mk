@@ -102,7 +102,7 @@ $(DOCKER_STATE)/stamp-image.${1}.${2}: $(DT)/${1}/Dockerfile.${2} ${4} | $(DOCKE
 		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest"; \
 		docker tag "$(DOCKER_REGISTRY)/$(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest" \
 		           "$(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
-		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest <- $(DOCKER_REGISTRY)"; \
+		echo "PULL   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest < $(DOCKER_REGISTRY)"; \
 	else \
 		echo "BUILD  $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) > $(DOCKER_STATE)/build.${1}.${2}"; \
 		docker build $$(DOCKER_BUILD_OPTS) ${3} \

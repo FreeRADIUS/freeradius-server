@@ -48,7 +48,7 @@ states:
         - execute_command:
             command: |
               # This command will query the load-generator's built-in Status-Server for statistics. Port 1820 configured to be used for Status-Server.
-              printf 'User-Name := "testuser"\nUser-Password := "testpass"' | /usr/bin/radclient -x localhost:1820 status testing123
+              printf 'User-Name := "testuser"\nUser-Password := "testpass"' | radclient -x localhost:1820 status testing123
     verify:
       timeout: 5
       trigger_mode: unordered

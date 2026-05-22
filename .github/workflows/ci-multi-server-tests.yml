@@ -159,6 +159,17 @@ jobs:
               ;;
           esac
 
+      - name: Show docker build logs
+        if: failure()
+        run: |
+          for type in crossbuild profiling-deps profiling service; do
+            log="build/docker/build.ubuntu24.$type"
+            if [ -f "$log" ]; then
+              echo "===== $log ====="
+              cat "$log"
+            fi
+          done
+
       #
       #  schedule runs the full test set; workflow_run runs the CI
       #  subset that gates per-commit.
