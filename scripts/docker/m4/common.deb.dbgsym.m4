@@ -7,12 +7,15 @@ changequote([,])dnl
 #    debian     debug.mirrors.debian.org via the existing debian-archive
 #               keyring (no extra keyring install)
 #
-#  Package list is empirically derived per codename (apt-cache against
-#  the crossbuild images). The install is a single apt-get with no
-#  per-package fallback: if a package goes missing in upstream ddebs
-#  the build fails fast and the operator updates this template, rather
-#  than silently shipping a profiling image with no symbols for half
-#  the runtime closure.
+#  Package list is empirically derived per codename. ddebs and
+#  debian-debug rebuild dbgsyms slower than the corresponding main
+#  package gets a security update, so on any given day a handful of
+#  entries are "in skew" (dbgsym pinned to -buildN while main is on
+#  -ubuntuN.M.K) and an `apt-get install <full list>` would fail with
+#  unmet dependencies. Install one package at a time so a skewed
+#  entry is logged as a WARNING and the rest still go through; ddebs
+#  catches up within hours-to-days, so the next refresh picks the
+#  missing one up.
 #
 #  Glibc-linked libs gained the t64 suffix in ubuntu 24.04 and debian
 #  13. T64 expands to "t64" on those releases. The same boundary also
@@ -38,7 +41,9 @@ RUN printf 'deb http://debug.mirrors.debian.org/debian-debug OS_CODENAME-debug m
        [errprint([common.deb.dbgsym.m4: unsupported OS_NAME=]OS_NAME[
 ])m4exit(1)])
 
-RUN apt-get update && apt-get install -y $APT_OPTS \
+RUN apt-get update && \
+    for pkg in \
+        libc6-dbg \
         zlib1g-dbgsym \
         libreadline8[]T64[]-dbgsym \
         libssl3[]T64[]-dbgsym \
@@ -71,7 +76,9 @@ ifelse(OS_CODENAME, [bookworm], [        python3.11-dbg \
 ], OS_CODENAME, [jammy],    [        python3.10-dbg \
 ], OS_CODENAME, [noble],    [        python3.12-dbg \
 ])dnl
-        libc6-dbg
+    ; do \
+        apt-get install -y $APT_OPTS "$pkg" || echo "WARNING: could not install dbgsym package: $pkg (likely ddebs version skew, will resolve on a later refresh)"; \
+    done
 undefine([T64])dnl
 undefine([PRE_T64])dnl
 changequote(`,')dnl
