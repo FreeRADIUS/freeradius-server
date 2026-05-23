@@ -2462,22 +2462,14 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_file_c
 	return 0;
 }
 
-/** Enable fuzzer output
+/** Helper function to open a fuzzer path, and update the name / FD.
  *
- *  Any commands that produce potentially useful corpus seed data will write that out data
- *  to files in the specified directory, using the md5 of the text input at as the file name.
- *
- *  The output directory given here is appended to the path given by '-F path'.
- *
- *  If there's no '-F path' command-line option set, then the path of the current file is used as the base
- *  directory.
  */
-static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
-				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static int fuzzer_open_fd(command_file_ctx_t *cc, char **out, char const *base, char const *dir)
 {
 	int	fd;
 	struct	stat sdir;
-	char	*fuzzer_dir;
+	char	*fuzzer_dir = NULL;
 	bool	retry_dir = true;
 
 	/*
@@ -2488,13 +2480,7 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 		cc->fuzzer_fd = -1;
 	}
 
-	if (in[0] == '\0') {
-		fr_strerror_const("Missing directory name");
-		RETURN_PARSE_ERROR(0);
-	}
-
-	fuzzer_dir = talloc_asprintf(cc, "%s/%s",
-				     cc->config->fuzzer_base_dir ? cc->config->fuzzer_base_dir : cc->path, in);
+	fuzzer_dir = talloc_asprintf(cc, "%s/%s", base, dir);
 
 again:
 	fd = open(fuzzer_dir, O_RDONLY);
@@ -2512,25 +2498,54 @@ again:
 		}
 
 		fr_strerror_printf("fuzzer-out \"%s\" doesn't exist: %s", fuzzer_dir, fr_syserror(errno));
-		RETURN_PARSE_ERROR(0);
+		return -1;
 	}
 
 stat:
 	if (fstat(fd, &sdir) < 0) {
 		close(fd);
 		fr_strerror_printf("failed statting fuzzer-out \"%s\": %s", fuzzer_dir, fr_syserror(errno));
-		RETURN_PARSE_ERROR(0);
+		return -1;
 	}
 
 	if (!(sdir.st_mode & S_IFDIR)) {
 		close(fd);
 		fr_strerror_printf("fuzzer-out \"%s\" is not a directory", fuzzer_dir);
-		RETURN_PARSE_ERROR(0);
+		return -1;
 	}
+
 	cc->fuzzer_fd = fd;
 
-	TALLOC_FREE(cc->fuzzer_proto_dir);
-	cc->fuzzer_proto_dir = fuzzer_dir;
+	talloc_free(*out);
+	*out = fuzzer_dir;
+
+	return 0;
+}
+
+/** Enable fuzzer output
+ *
+ *  Any commands that produce potentially useful corpus seed data will write that out data
+ *  to files in the specified directory, using the md5 of the text input at as the file name.
+ *
+ *  The output directory given here is appended to the path given by '-F path'.
+ *
+ *  If there's no '-F path' command-line option set, then the path of the current file is used as the base
+ *  directory.
+ */
+static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing directory name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	if (fuzzer_open_fd(cc, &cc->fuzzer_proto_dir,
+			   cc->config->fuzzer_base_dir ? cc->config->fuzzer_base_dir : cc->path,
+			   in) < 0) {
+		RETURN_PARSE_ERROR(0);
+
+	}
 
 	return 0;
 }
