@@ -209,7 +209,7 @@ typedef struct {
 	fr_dict_t		*test_internal_dict;	//!< Internal dictionary of test_gctx.
 	fr_dict_gctx_t const	*test_gctx;		//!< Dictionary context for test dictionaries.
 
-	int			fuzzer_dir;		//!< File descriptor pointing to a a directory to
+	int			fuzzer_fd;		//!< File descriptor pointing to a a directory to
 							///< write fuzzer output.
 	command_config_t const	*config;
 } command_file_ctx_t;
@@ -1851,8 +1851,8 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, (to_dec - to_dec_start)) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, to_dec_start, (to_dec - to_dec_start)) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1949,8 +1949,8 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, poison_size);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, to_dec_start, slen) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, to_dec_start, slen) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2085,8 +2085,8 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 		if (next) *next = 0;
 	}
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, in, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, in, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2296,8 +2296,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	CLEAR_TEST_POINT(cc);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2440,8 +2440,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	CLEAR_TEST_POINT(cc);
 
-	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, slen) < 0)) {
+	if ((cc->fuzzer_fd >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_fd, p, cc->buffer_start, slen) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -2477,9 +2477,9 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 	/*
 	 *	Close any open fuzzer output dirs
 	 */
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 
 	if (in[0] == '\0') {
@@ -2521,7 +2521,7 @@ stat:
 		fr_strerror_printf("fuzzer-out \"%s\" is not a directory", fuzzer_dir);
 		RETURN_PARSE_ERROR(0);
 	}
-	cc->fuzzer_dir = fd;
+	cc->fuzzer_fd = fd;
 	talloc_free(fuzzer_dir);
 
 	return 0;
@@ -3105,7 +3105,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	/*
 	 *	Store <type><value str...>
 	 */
-	if (cc->fuzzer_dir >= 0) {
+	if (cc->fuzzer_fd >= 0) {
 		char fuzzer_buffer[1024];
 		char *fuzzer_p = fuzzer_buffer, *fuzzer_end = fuzzer_p + sizeof(fuzzer_buffer);
 
@@ -3113,7 +3113,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 
 		strlcpy(fuzzer_p, data, slen > fuzzer_end - fuzzer_p ? fuzzer_end - fuzzer_p : slen);
 
-		if (dump_fuzzer_data(cc->fuzzer_dir, fuzzer_buffer,
+		if (dump_fuzzer_data(cc->fuzzer_fd, fuzzer_buffer,
 				     (uint8_t *)fuzzer_buffer, strlen(fuzzer_buffer)) < 0) {
 			RETURN_COMMAND_ERROR();
 		}
@@ -3818,9 +3818,9 @@ static int _command_ctx_free(command_file_ctx_t *cc)
 		fr_perror("unit_test_attribute");
 		return -1;
 	}
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 	return 0;
 }
@@ -3871,7 +3871,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	fr_dict_global_ctx_dir_set(cc->path);	/* Load new dictionaries relative to the test file */
 	fr_dict_global_ctx_set(cc->config->dict_gctx);
 
-	cc->fuzzer_dir = -1;
+	cc->fuzzer_fd = -1;
 
 	cc->tmpl_rules.attr.list_def = request_attr_request;
 	cc->tmpl_rules.attr.namespace = fr_dict_root(cc->config->dict);
@@ -3897,9 +3897,9 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 		fr_perror("Failed loading test dict_gctx internal dictionary");
 	}
 
-	if (cc->fuzzer_dir >= 0) {
-		close(cc->fuzzer_dir);
-		cc->fuzzer_dir = -1;
+	if (cc->fuzzer_fd >= 0) {
+		close(cc->fuzzer_fd);
+		cc->fuzzer_fd = -1;
 	}
 }
 
