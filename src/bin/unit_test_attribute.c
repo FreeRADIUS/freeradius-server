@@ -186,7 +186,7 @@ typedef struct {
 	fr_dict_gctx_t const	*dict_gctx;		//!< Dictionary gctx to "reset" to.
 	char const		*confdir;
 	char const		*dict_dir;
-	char const		*fuzzer_dir;		//!< Where to write fuzzer files.
+	char const		*fuzzer_base_dir;      	//!< Base directory of where to write fuzzer files, from '-F'
 	CONF_SECTION		*features;		//!< Enabled features.
 } command_config_t;
 
@@ -209,6 +209,8 @@ typedef struct {
 	fr_dict_t		*test_internal_dict;	//!< Internal dictionary of test_gctx.
 	fr_dict_gctx_t const	*test_gctx;		//!< Dictionary context for test dictionaries.
 
+	char			*fuzzer_proto_dir;     	//!< Subdirectory of where to write fuzzer files,
+							//!< from 'fuzzer-out dir'.
 	int			fuzzer_fd;		//!< File descriptor pointing to a a directory to
 							///< write fuzzer output.
 	command_config_t const	*config;
@@ -2462,9 +2464,13 @@ static size_t command_eof(UNUSED command_result_t *result, UNUSED command_file_c
 
 /** Enable fuzzer output
  *
- * Any commands that produce potentially useful corpus seed data will write that out data
- * to files in the specified directory, using the md5 of the text input at as the file name.
+ *  Any commands that produce potentially useful corpus seed data will write that out data
+ *  to files in the specified directory, using the md5 of the text input at as the file name.
  *
+ *  The output directory given here is appended to the path given by '-F path'.
+ *
+ *  If there's no '-F path' command-line option set, then the path of the current file is used as the base
+ *  directory.
  */
 static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
 				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
@@ -2487,8 +2493,8 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 		RETURN_PARSE_ERROR(0);
 	}
 
-	fuzzer_dir = talloc_asprintf(cc->tmp_ctx, "%s/%s",
-				     cc->config->fuzzer_dir ? cc->config->fuzzer_dir : cc->path, in);
+	fuzzer_dir = talloc_asprintf(cc, "%s/%s",
+				     cc->config->fuzzer_base_dir ? cc->config->fuzzer_base_dir : cc->path, in);
 
 again:
 	fd = open(fuzzer_dir, O_RDONLY);
@@ -2522,7 +2528,9 @@ stat:
 		RETURN_PARSE_ERROR(0);
 	}
 	cc->fuzzer_fd = fd;
-	talloc_free(fuzzer_dir);
+
+	TALLOC_FREE(cc->fuzzer_proto_dir);
+	cc->fuzzer_proto_dir = fuzzer_dir;
 
 	return 0;
 }
@@ -4432,7 +4440,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'F':
-			config.fuzzer_dir = optarg;
+			config.fuzzer_base_dir = optarg;
 			break;
 
 		case 'f':
