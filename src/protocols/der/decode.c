@@ -2011,21 +2011,46 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		*len		= 0;
 
 		/*
-		 *	Length bits of zero is an indeterminate length field where
-		 *	the length is encoded in the data instead.
+		 *	Length-of-length of zero is the BER indefinite-length form.  DER (X.690 Section 10.1)
+		 *	forbids it for both primitive and constructed encodings.  If we accept it, then an
+		 *	attacker can hide a zero-length value with trailing bytes, which then gets reparsed as
+		 *	a sibling TLV.
 		 */
-		if (len_len > 0) {
-			if (unlikely(len_len > sizeof(*len))) {
-				fr_strerror_printf_push("Length field too large (%" PRIu32 ")", len_len);
-				return -1;
-			}
+		if (unlikely(len_len == 0)) {
+			fr_strerror_const_push("Indefinite-length form is forbidden in DER");
+			return -1;
+		}
 
-			while (len_len--) {
-				if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
-				*len = (*len << 8) | len_byte;
-			}
-		} else if (!constructed) {
-			fr_strerror_const_push("Primitive data with indefinite form length field is invalid");
+		if (unlikely(len_len > sizeof(*len))) {
+			fr_strerror_printf_push("Length field too large (%" PRIu32 ")", len_len);
+			return -1;
+		}
+
+		/*
+		 *	DER (X.690 Section 10.1) mandates minimal length encoding.  In the long form, the
+		 *	leading length octet must not be zero, otherwise the length could be expressed in
+		 *	fewer octets.
+		 */
+		if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
+		if (unlikely(len_byte == 0)) {
+			fr_strerror_const_push("Non-minimal DER length encoding (leading zero in long form)");
+			return -1;
+		}
+		*len = len_byte;
+		len_len--;
+
+		while (len_len--) {
+			if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
+			*len = (*len << 8) | len_byte;
+		}
+
+		/*
+		 *	DER also mandates the short form whenever the
+		 *	length fits in 7 bits.  Reject the long form when
+		 *	the value is < 128.
+		 */
+		if (unlikely(*len < 128)) {
+			fr_strerror_printf_push("Non-minimal DER length encoding (long form used for length %zu)", *len);
 			return -1;
 		}
 

@@ -52,7 +52,7 @@ match Constructed flag mismatch for tag 1: Failed decoding Test-Boolean header
 proto-dictionary-root Test-Integer
 
 decode-pair 02 80 02 01 05 00 00
-match Primitive data with indefinite form length field is invalid: Failed decoding Test-Integer header
+match Indefinite-length form is forbidden in DER: Failed decoding Test-Integer header
 
 #
 #  ----  NULL errors  ----
