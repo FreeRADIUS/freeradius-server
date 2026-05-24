@@ -1217,6 +1217,10 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	return fr_dbuff_set(in, &our_in);
 }
 
+static bool const sbuff_char_class_num[SBUFF_CHAR_CLASS] = {
+	SBUFF_CHAR_CLASS_NUM,
+};
+
 static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
@@ -1287,33 +1291,71 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	}
 
 	/*
-	 *	Check if the fractional seconds are present
+	 *	Check if the fractional seconds are present.
 	 */
 	if (timestr[DER_GENERALIZED_TIME_LEN_MIN - 1] == '.') {
+		size_t sublen;
+
 		/*
-		 *	We only support subseconds up to 9 decimal places (nanoseconds)
+		 *	We only support subseconds up to 9 decimal places (nanoseconds).
 		 */
 		char subsecstring[DER_GENERALIZED_TIME_PRECISION_MAX + 1];
 
 		uint8_t precision = DER_GENERALIZED_TIME_PRECISION_MAX;
 
-		if (unlikely(fr_dbuff_remaining(&our_in) - 1 < DER_GENERALIZED_TIME_PRECISION_MAX)) {
-			precision = fr_dbuff_remaining(&our_in) - 1;
-		}
-
-		if (unlikely(precision == 0)) {
+		/*
+		 *	"." is invalid, as is ".Z", or even ".0"
+		 */
+		sublen = fr_dbuff_remaining(&our_in);
+		if (sublen <= 1) {
+		insufficient_data:
 			fr_strerror_const_push("Insufficient data for subseconds");
 			return -1;
 		}
 
+		/*
+		 *	Ensure that the remaining characters are all decimal numbers.
+		 */
+		sublen = fr_sbuff_adv_past_allowed(&FR_SBUFF_IN((char const *) fr_dbuff_current(&our_in), sublen),
+						   SIZE_MAX, sbuff_char_class_num, NULL);
+		if (sublen == 0) goto insufficient_data;
+
+		/*
+		 *	Limit precision to either what's there, or the maximum that we care about.
+		 */
+		precision = (sublen <= DER_GENERALIZED_TIME_PRECISION_MAX ?
+			     sublen : DER_GENERALIZED_TIME_PRECISION_MAX);
+
 		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)subsecstring, &our_in, precision);
 
-		if (memchr(subsecstring, '\0', precision) != NULL) {
-			fr_strerror_const_push("Generalized time contains null byte in subseconds");
-			return -1;
-		}
-
 		subsecstring[precision] = '\0';
+
+		/*
+		 *	Skip the numbers, and see if we have a trailing 'Z'.
+		 */
+		if (precision < sublen) (void) fr_dbuff_advance(&our_in, sublen - precision);
+
+		sublen = fr_dbuff_remaining(&our_in);
+
+		/*
+		 *	Time zone can be missing.
+		 */
+		if (sublen > 0) {
+			FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)subsecstring, &our_in, 1);
+
+			/*
+			 *	This is a special case for error messages.
+			 */
+			if (!subsecstring[0]) {
+				fr_strerror_const_push("Generalized time contains null byte in subseconds");
+				return -1;
+			}
+
+			if ((sublen > 1) || (subsecstring[0] != 'Z')) {
+				fr_strerror_const_push("Generalized time contains invalid time zone");
+				return -1;
+			}
+		}
 
 		/*
 		 *	Convert the subseconds to an unsigned long
@@ -1337,7 +1379,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 			};
 			subseconds *= nsec_multiplier[precision];
 		}
-	}
+	} /* else the trailing character is 'Z' */
 
 	/*
 	 *	Make sure the timezone is UTC (Z)
@@ -1362,12 +1404,6 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	vp->vp_date = fr_unix_time_add(fr_unix_time_from_tm(&tm), fr_time_delta_wrap(subseconds));
 
 	fr_pair_append(out, vp);
-
-	/*
-	 *	Move to the end of the buffer
-	 *	This is necessary because the fractional seconds are being ignored
-	 */
-	fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
 
 	return fr_dbuff_set(in, &our_in);
 }
