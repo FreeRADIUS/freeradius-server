@@ -1726,7 +1726,7 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_dbuff_t		      our_in = FR_DBUFF(in);
 	fr_dbuff_t		      oid_in;
 	fr_der_decode_oid_to_da_ctx_t uctx;
-	fr_pair_t		      *vp;
+	fr_pair_t		      *vp = NULL;
 
 	uint8_t	 tag;
 	size_t	 oid_len;
@@ -1746,6 +1746,7 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &oid_len, FR_DER_TAG_OID)) <= 0)) {
 	error:
+		talloc_free(vp);
 		fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
 		return slen;
 	}
@@ -1785,11 +1786,13 @@ static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (unlikely((slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							       decode_ctx)) < 0)) {
+			talloc_free(vp);
 			fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 			return -1;
 		}
 	} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							    decode_ctx)) < 0)) {
+		talloc_free(vp);
 		fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 		return -1;
 	}
