@@ -75,6 +75,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 	error:
+		talloc_free(dict_buf);
+		talloc_free(lib_buf);
 		fr_perror("fuzzer_xlat");
 		return -1;
 	}
