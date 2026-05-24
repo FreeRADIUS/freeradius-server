@@ -2875,6 +2875,9 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	fr_dict_t const		*dict = dictionary_current(cc);
 	fr_dict_attr_t const	*root_da = fr_dict_root(dict);
 	fr_dict_attr_t const	*new_root;
+	char			*p, buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char			*fuzzer_dir = NULL;
+	char const		*q;
 
 	if (is_whitespace(in) || (*in == '\0')) {
 		new_root = fr_dict_root(dict);
@@ -2887,6 +2890,21 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	}
 
 	cc->tmpl_rules.attr.namespace = new_root;
+
+	if (cc->fuzzer_fd < 0) RETURN_OK(0);
+
+	for (p = buffer, q = new_root->name; *q != '\0'; p++, q++) {
+		if (isalnum((uint8_t) *q)) {
+			*p = *q;
+		} else {
+			*p = '_';
+		}
+	}
+	*p = '\0';
+
+	if (fuzzer_open_fd(cc, &fuzzer_dir, cc->fuzzer_proto_dir, buffer) < 0) {
+		RETURN_PARSE_ERROR(0);
+	}
 
 	RETURN_OK(0);
 }
