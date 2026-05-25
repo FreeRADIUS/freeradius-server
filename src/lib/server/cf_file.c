@@ -2875,8 +2875,17 @@ alloc_section:
 		/*
 		 *	We're processing a section.  The @reference is
 		 *	OUTSIDE of this section.
+		 *
+		 *	'@reference' is only valid at the top level of a
+		 *	section: once any enclosing section has been opened,
+		 *	frame->current diverges from frame->parent, and the
+		 *	reference has no well-defined target.
 		 */
-		fr_assert(frame->current == frame->parent);
+		if (frame->current != frame->parent) {
+			ERROR("%s[%d]: '@%s' references can only appear at the top level of a section",
+			      frame->filename, frame->lineno, name);
+			return -1;
+		}
 		frame->at_reference = frame->parent;
 		name2_token = T_BARE_WORD;
 
