@@ -3789,6 +3789,97 @@ int cf_file_read(CONF_SECTION *cs, char const *filename, bool root)
 	return 0;
 }
 
+/** Bootstrap a configuration section from an in-memory buffer.
+ *
+ *  Mirrors cf_file_read(), but reads the configuration text from a buffer via fmemopen() instead of from a
+ *  file on disk.  The buffer is treated as if it were the contents of "filename", which is used in error
+ *  messages and stored as the section's source filename.
+ *
+ *  $INCLUDE / $-INCLUDEs are taken relative to the directory portion of "filename", as with cf_file_read().
+ *
+ *  Unlike cf_file_read(), this function never sets the "raddbdir" / "confdir" CONF_PAIRs (the buffer has no
+ *  canonical install path) and never inserts "filename" into the dedup tree.
+ *
+ *  @param[in] cs       Top-level configuration section to populate.
+ *  @param[in] buffer   The configuration text.  The caller retains ownership
+ *                      and may free the buffer after this call returns.
+ *  @param[in] buflen   Length of @p buffer in bytes (excluding any trailing NUL).
+ *  @param[in] filename Virtual filename for error reporting.  May be a
+ *                      placeholder like "<inline>" if there is no real file.
+ *  @return 0 on success, -1 on failure.
+ */
+int cf_file_read_buffer(CONF_SECTION *cs, char const *buffer, size_t buflen, char const *filename)
+{
+	int			i;
+	FILE			*fp;
+	fr_rb_tree_t		*tree;
+	cf_stack_t		stack;
+	cf_stack_frame_t	*frame;
+
+	fp = fmemopen(UNCONST(char *, buffer), buflen, "r");
+	if (!fp) {
+		ERROR("Failed opening in-memory buffer for parsing: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	The dedup-by-inode filename tree may already exist if the caller
+	 *	is reading more than one buffer / file into the same root section.
+	 */
+	tree = cf_data_value(cf_data_find(cs, fr_rb_tree_t, "filename"));
+	if (!tree) {
+		MEM(tree = fr_rb_inline_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL));
+		cf_data_add(cs, tree, "filename", false);
+	}
+
+#ifndef NDEBUG
+	memset(&stack, 0, sizeof(stack));
+#endif
+
+	/*
+	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
+	 */
+	stack.buff = talloc_array(cs, char *, 4);
+	for (i = 0; i < 4; i++) MEM(stack.buff[i] = talloc_array(stack.buff, char, 8192));
+
+	stack.depth = 0;
+	stack.bufsize = 8192;
+	frame = &stack.frame[stack.depth];
+
+	memset(frame, 0, sizeof(*frame));
+	frame->parent = frame->current = cs;
+
+	frame->type = CF_STACK_FILE;
+	frame->filename = talloc_strdup(frame->parent, filename);
+	cs->item.filename = frame->filename;
+
+	/*
+	 *	Pre-set frame->fp so cf_file_include() skips its own cf_file_open()
+	 *	call (which would try to fopen() a real path).  cf_file_include()
+	 *	fclose()s frame->fp on the way out, which for an fmemopen() handle
+	 *	does not free the underlying buffer.
+	 */
+	frame->fp = fp;
+
+	if (cf_file_include(&stack) < 0) {
+		cf_stack_cleanup(&stack);
+		return -1;
+	}
+
+	talloc_free(stack.buff);
+
+	/*
+	 *	Now that we've read the buffer, go back through it and
+	 *	expand the variables.
+	 */
+	if (cf_section_pass2(cs) < 0) {
+		cf_log_err(cs, "Parsing config items failed");
+		return -1;
+	}
+
+	return 0;
+}
+
 void cf_file_free(CONF_SECTION *cs)
 {
 	talloc_free(cs);

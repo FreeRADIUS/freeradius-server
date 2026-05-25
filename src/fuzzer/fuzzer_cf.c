@@ -51,22 +51,21 @@ RCSID("$Id$")
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
-static char fuzz_path[64];
-
 int LLVMFuzzerInitialize(UNUSED int *argc, UNUSED char ***argv)
 {
 	/*
-	 *	Each fuzzer worker (libFuzzer -jobs=N) gets its own pid,
-	 *	so a pid-suffixed path avoids races between workers.
+	 *	Don't put output anywhere.  Otherwise we will have reams of log messages.
 	 */
-	snprintf(fuzz_path, sizeof(fuzz_path), "/tmp/fuzzer_cf_input.%d.conf",
-		 (int) getpid());
+	default_log.dst = L_DST_NULL;
+	default_log.fd = -1;
+	default_log.print_level = true;
+	default_log.suppress_secrets = true;
+
 	return 0;
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	int		fd;
 	main_config_t	*config;
 	size_t		depth = 0, max_depth = 0;
 
@@ -95,6 +94,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 *	every fuzz cycle on the same recursion failure.
 	 */
 	for (size_t i = 0; i < size; i++) {
+		if (!data[i]) {
+			size = i;
+			break;
+		}
+
 		if (data[i] == '{') {
 			depth++;
 			if (depth > max_depth) max_depth = depth;
@@ -104,36 +108,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	}
 	if (max_depth > 64) return 0;
 
-	/*
-	 *	cf_file_read() takes a path; mirror the input to disk.
-	 */
-	fd = open(fuzz_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (fd < 0) return 0;
-	if (size && write(fd, data, size) != (ssize_t) size) {
-		close(fd);
-		unlink(fuzz_path);
-		return 0;
-	}
-	close(fd);
-
 	config = main_config_alloc(NULL);
-	if (!config) {
-		unlink(fuzz_path);
-		return 0;
-	}
+	if (!config) return 0;
 
 	config->root_cs = cf_section_alloc(config, NULL, "main", NULL);
 	if (!config->root_cs) {
 		talloc_free(config);
-		unlink(fuzz_path);
 		return 0;
 	}
 	cf_section_set_unlang(config->root_cs);
 
-	(void) cf_file_read(config->root_cs, fuzz_path, true);
+	(void) cf_file_read_buffer(config->root_cs, (char const *) data, size, "/");
 
 	talloc_free(config);
-	unlink(fuzz_path);
 
 	/*
 	 *	Clear error messages from the run, keeping malloc/free

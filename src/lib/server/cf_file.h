@@ -54,6 +54,7 @@ typedef enum {
  *	Config file parsing
  */
 int			cf_file_read(CONF_SECTION *cs, char const *file, bool root);
+int			cf_file_read_buffer(CONF_SECTION *cs, char const *buffer, size_t buflen, char const *filename);
 int			cf_section_pass2(CONF_SECTION *cs);
 void			cf_file_free(CONF_SECTION *cs);
 
