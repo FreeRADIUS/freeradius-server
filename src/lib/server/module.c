@@ -1928,6 +1928,7 @@ module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type
 static int _module_dl_loader_init(void *uctx)
 {
 	dl_modules = dl_module_loader_init(uctx);
+	if (!dl_modules) return -1;
 
 	/*
 	 *	Ensure the common library tracking
