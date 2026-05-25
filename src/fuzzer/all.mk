@@ -46,7 +46,7 @@ FUZZER_TIMEOUT   ?= 10
 #  Define a function to do all of the same thing.
 #
 define FUZZ_PROTOCOL
-src/fuzzer/fuzzer_${1}.c: src/fuzzer/fuzzer.c
+src/fuzzer/fuzzer_${1}.c: src/fuzzer/fuzzer.c | src/freeradius-devel/fuzzer
 	$${Q}sed 's/XX_PROTOCOL_XX/${1}/g' < $$^ > $$@
 
 
@@ -143,3 +143,7 @@ else
 fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X}) test.fuzzer:
 	@echo "The server MUST be built with '--enable-fuzzer'"
 endif
+
+.PHONY: src/freeradius-devel/fuzzer
+src/freeradius-devel/fuzzer:
+	${Q}[ -e $@ ] || (cd ${top_srcdir}/src/include && ln -s ../fuzzer)

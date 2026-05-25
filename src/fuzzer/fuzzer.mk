@@ -18,7 +18,7 @@
 #
 
 TARGET			:= fuzzer_$(PROTOCOL)$(E)
-SOURCES			:= fuzzer_$(PROTOCOL).c
+SOURCES			:= fuzzer_$(PROTOCOL).c common.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L)
 
