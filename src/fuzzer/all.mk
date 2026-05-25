@@ -15,9 +15,12 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
 #  as a wire protocol (see src/lib/util/fuzzer.c) but isn't itself
 #  a network protocol, so it lives here too.
 #
-FUZZER_NON_PROTOCOL_TARGETS = util json value
+FUZZER_NON_PROTOCOL_TARGETS = util json value cf xlat
 
-# cf xlat
+#
+#  Build these fuzzers, but skip them in CI.
+#
+FUZZER_NO_TEST = cf xlat
 
 #
 #  Per-target extra arguments passed to the fuzzer binary. util uses
@@ -66,7 +69,7 @@ clean: clean.fuzzer
 #
 #  Standalone fuzzers' build mks
 #
-SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk
+SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk fuzzer_cf.mk
 
 # fuzzer_cf.mk 
 
@@ -135,7 +138,7 @@ fuzzer.help:
 	@for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
 	@echo
 
-test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS))
+test.fuzzer: $(addprefix test.fuzzer., $(filter-out $(FUZZER_NO_TEST),$(FUZZER_PROTOCOLS) $(FUZZER_NON_PROTOCOL_TARGETS)))
 
 test.fuzzer.crash: $(addsuffix .crash,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
 
