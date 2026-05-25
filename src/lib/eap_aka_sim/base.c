@@ -63,6 +63,7 @@ fr_dict_attr_t const *attr_eap_aka_sim_auts;
 fr_dict_attr_t const *attr_eap_aka_sim_bidding;
 fr_dict_attr_t const *attr_eap_aka_sim_checkcode;
 fr_dict_attr_t const *attr_eap_aka_sim_ck;
+fr_dict_attr_t const *attr_eap_aka_sim_ck_prime;
 fr_dict_attr_t const *attr_eap_aka_sim_client_error_code;
 fr_dict_attr_t const *attr_eap_aka_sim_counter;
 fr_dict_attr_t const *attr_eap_aka_sim_counter_too_small;
@@ -73,6 +74,7 @@ fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_response;
 fr_dict_attr_t const *attr_eap_aka_sim_identity;
 fr_dict_attr_t const *attr_eap_aka_sim_identity_type;
 fr_dict_attr_t const *attr_eap_aka_sim_ik;
+fr_dict_attr_t const *attr_eap_aka_sim_ik_prime;
 fr_dict_attr_t const *attr_eap_aka_sim_iv;
 fr_dict_attr_t const *attr_eap_aka_sim_k_aut;
 fr_dict_attr_t const *attr_eap_aka_sim_k_encr;
@@ -123,6 +125,7 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_bidding, .name = "Bidding", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_checkcode, .name = "Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ck_prime, .name = "CK-Prime", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_client_error_code, .name = "Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_fullauth_id_req, .name = "Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_hmac_extra_request, .name = "HMAC-Extra-Request", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
@@ -130,6 +133,7 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_identity, .name = "Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_identity_type, .name = "Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ik, .name = "IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ik_prime, .name = "IK-Prime", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_iv, .name = "IV", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_k_aut, .name = "K-Aut", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_k_encr, .name = "K-Encr", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },

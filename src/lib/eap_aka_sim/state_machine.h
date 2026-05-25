@@ -192,6 +192,12 @@ typedef struct {
 									///< of the EAP-SIM/AKA/AKA' state machine.
 
 	char const			*network_name;			//!< Network ID as described by RFC 5448.
+	bool				derive_ck_ik_prime;		//!< Whether the server derives CK'/IK' from
+									///< CK/IK locally (default).  Set to no when the
+									///< quintuplet source already supplies CK'/IK'
+									///< (e.g. a 3GPP HSS over SWx); the server then
+									///< reads control.CK-Prime / control.IK-Prime.
+									///< EAP-AKA' only.
 	fr_aka_sim_id_req_type_t	request_identity;		//!< Whether we always request the identity of
 									///< the subscriber.
 	size_t				ephemeral_id_length;		//!< The length of any identities we're
