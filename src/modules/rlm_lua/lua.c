@@ -96,9 +96,9 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 
 #define IN_RANGE_FLOAT_SIGNED(_x) \
 	do { \
-		if ((((double)(_x)) < DBL_MIN) || (((double)(_x)) > DBL_MAX)) { \
+		if ((((double)(_x)) < -DBL_MAX) || (((double)(_x)) > DBL_MAX)) { \
 			REDEBUG("Value (%f) cannot be represented as Lua number.  Must be between %f-%f", \
-				(double)(_x), DBL_MIN, DBL_MAX); \
+				(double)(_x), -DBL_MAX, DBL_MAX); \
 			return -1; \
 		} \
 	} while (0)
