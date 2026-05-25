@@ -219,10 +219,8 @@ sql {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
-		#  If the server cannot create specified number of
-		#  connections during instantiation it will exit.
-		#  Set to `0` to allow the server to start without the
-		#  external service being available.
+		#  Set to `0` to allow the server to start without immediately
+		#  creating connections to the database.
 		#
 		start = 0
 
@@ -284,6 +282,26 @@ sql {
 		#  manage_interval:: How often to manage the connection pool.
 		#
 #		manage_interval = 0.2
+
+		#
+		#  connection { ... }:: Per-connection configuration.
+		#
+		connection {
+			#
+			#  connection_timeout:: How long to wait
+			#  before giving up on a connection which is
+			#  being opened.
+			#
+			connection_timeout = 3.0
+
+			#
+			#  reconnect_delay:: If opening a connection
+			#  fails, or an open connection fails,
+			#  we wait `reconnect_delay` seconds before
+			#  attempting to open another connection.
+			#
+			reconnect_delay = 5
+		}
 
 		#
 		#  request:: Options specific to requests handled by this connection pool

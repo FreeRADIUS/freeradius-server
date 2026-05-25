@@ -191,10 +191,8 @@ in significantly worse system performance.
 
 start:: Connections to create during module instantiation.
 
-If the server cannot create specified number of
-connections during instantiation it will exit.
-Set to `0` to allow the server to start without the
-external service being available.
+Set to `0` to allow the server to start without immediately
+creating connections to the database.
 
 
 
@@ -246,6 +244,22 @@ How long we must be below the target utilisation for connections to be closed
 
 
 manage_interval:: How often to manage the connection pool.
+
+
+
+connection { ... }:: Per-connection configuration.
+
+
+connection_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
+
+
+
+reconnect_delay:: If opening a connection
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another connection.
 
 
 
@@ -366,6 +380,10 @@ sql {
 #		open_delay = 0.2
 #		close_delay = 10
 #		manage_interval = 0.2
+		connection {
+			connection_timeout = 3.0
+			reconnect_delay = 5
+		}
 		request {
 #			free_delay = 10
 		}
