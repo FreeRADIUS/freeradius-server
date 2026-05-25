@@ -1694,9 +1694,14 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
 		if (tmpl_attr_parse_filter(err, ar, &our_name, at_rules) < 0) goto error;
 
 		/*
-		*	Insert the ar into the list of attribute references
-		*/
+		 *	Insert the ar into the list of attribute references
+		 *
+		 *	The tmpl is no longer a pure TMPL_TYPE_ATTR.  We have to convert it to an unresolved
+		 *	one.  If we don't do this, then tmpl_afrom_attr_substr() would walk the ar list
+		 *	expecting every ar->ar_da to be non-NULL, and would crash on the UNRESOLVED entry.
+		 */
 		tmpl_attr_insert(vpt, ar);
+		vpt->type = TMPL_TYPE_ATTR_UNRESOLVED;
 
 		/*
 		*	Once one OID component is created as unresolved all
