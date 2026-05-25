@@ -15,9 +15,9 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
 #  as a wire protocol (see src/lib/util/fuzzer.c) but isn't itself
 #  a network protocol, so it lives here too.
 #
-FUZZER_NON_PROTOCOL_TARGETS = util json value xlat
+FUZZER_NON_PROTOCOL_TARGETS = util json value
 
-# cf
+# cf xlat
 
 #
 #  Per-target extra arguments passed to the fuzzer binary. util uses
