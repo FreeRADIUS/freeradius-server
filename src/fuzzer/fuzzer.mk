@@ -43,6 +43,8 @@ TGT_LDFLAGS	+= -L/opt/homebrew/lib -L/opt/homebrew/opt/gettext/lib -L$(LLVM_LOC)
 endif
 endif
 
+ifneq "$(PROTOCOL)" "util"
+
 FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 
 #
@@ -140,3 +142,7 @@ test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
 		$(filter $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-%, $?)
+
+#
+#
+endif

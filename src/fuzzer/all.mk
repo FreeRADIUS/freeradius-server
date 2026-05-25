@@ -65,11 +65,13 @@ clean: clean.fuzzer
 #
 #  Standalone fuzzers' build mks
 #
-SUBMAKEFILES += fuzzer_util.mk fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk
+SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk
 
 # fuzzer_cf.mk 
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+
+$(eval $(call FUZZ_PROTOCOL,util))
 
 #
 #  test.fuzzer.X / .merge rules for the standalone targets. Mirrors
