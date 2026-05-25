@@ -39,6 +39,12 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 	fr_redis_handle_t	*h = conn->h;
 
 	/*
+	 *	Some code paths result in hiredis calling this callback after
+	 *	we have freed the handle, which would result in a use after free.
+	 */
+	if (conn->state == CONNECTION_STATE_CLOSED) return;
+
+	/*
 	 *	redisAsyncFree was called with a live
 	 *	connection, but inside the talloc
 	 *	destructor of the fr_redis_handle_t.
@@ -306,6 +312,12 @@ static void _redis_io_free(void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
+
+	/*
+	 *	Some code paths result in hiredis calling this callback after
+	 *	we have freed the handle, which would result in a use after free.
+	 */
+	if (conn->state == CONNECTION_STATE_CLOSED) return;
 
 	DEBUG4("redis handle %p - Freed", h);
 
