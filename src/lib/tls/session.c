@@ -270,7 +270,7 @@ int fr_tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 	}
 
 	len = strlcpy(buf, (char *)u, size);
-	if (len > (size_t)size) {
+	if (len >= (size_t)size) {
 		ERROR("Password too long.  Maximum length is %i bytes", size - 1);
 		return 0;
 	}
