@@ -3314,7 +3314,7 @@ static int frame_readdir(cf_stack_t *stack)
 		 */
 		talloc_free(frame->directory);
 		stack->depth--;
-		return 1;
+		return 0;
 	}
 
 	/*
