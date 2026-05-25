@@ -81,6 +81,8 @@ fr_fring_t *fr_fring_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
 
 	uint32_t pow;
 
+	if (size == 0 || size > 0x80000000U) return NULL;
+
 	/*
 	 *	Find the nearest power of 2 (rounding up)
 	 */
