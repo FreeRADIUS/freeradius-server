@@ -83,18 +83,18 @@ static void backtrace_info_print(fr_bt_info_frame_t *frame, int fd, bool trim_pa
 		return;
 	}
 	else if (!frame->filename) {
-		dprintf(fd, "%u: 0x%lx %s in %s()\n",
+		dprintf(fd, "#%u: 0x%lx %s in %s()\n",
 			frame->frameno,
 			(unsigned long)frame->pc,
 			trim_path ? fr_filename(frame->library) : frame->library,
-			frame->function);
+			frame->function ? frame->function : "??");
 		return;
 	}
 	dprintf(fd, "#%u: 0x%lx %s in %s() at %s:%d\n",
 		frame->frameno,
 		(unsigned long)frame->pc,
 		trim_path ? fr_filename(frame->library) : frame->library,
-		frame->function,
+		frame->function ? frame->function : "??",
 		trim_path ? fr_filename_common_trim(frame->filename, frame->library) : frame->filename,
 		frame->lineno);
 
