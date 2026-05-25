@@ -1032,39 +1032,84 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
 CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 			     char const *name1, char const *name2, bool copy_meta)
 {
-	CONF_SECTION	*new, *subcs;
-	CONF_PAIR	*cp;
+	CONF_SECTION	   *out, *dst;
+	CONF_SECTION const *src;
+	CONF_ITEM const	   *ci;
 
-	new = cf_section_alloc(ctx, parent, name1, name2);
+	/*
+	 *	Create the new output section.
+	 */
+	out = cf_section_alloc(ctx, parent, name1, name2);
 
 	if (copy_meta) {
-		new->template = cs->template;
-		new->base = cs->base;
-		new->depth = cs->depth;
+		out->template = cs->template;
+		out->base = cs->base;
+		out->depth = cs->depth;
 	}
 
-	cf_filename_set(new, cs->item.filename);
-	cf_lineno_set(new, cs->item.lineno);
+	cf_filename_set(out, cs->item.filename);
+	cf_lineno_set(out, cs->item.lineno);
 
-	cf_item_foreach(&cs->item, ci) {
+	/*
+	 *	Start copying children of the input.
+	 */
+	src = cs;
+	ci = NULL;
+	dst = out;
+
+	/*
+	 *	Do this iteratively, because it's nicer than using the C stack.
+	 */
+	while (true) {
+		CONF_SECTION *src_child, *dst_child;
+		CONF_PAIR *cp;
+
+		/*
+		 *	Go to the next child.  If there is none, then try to go back up to the parent.
+		 */
+		ci = fr_dlist_next(&src->item.children, ci);
+		if (!ci) {
+			/*
+			 *	We're back at the top, and we have no more children.  We can stop looping.
+			 */
+			if (src == cs) break;
+
+			/*
+			 *	The current child is what we were just copying.  The parent is now the childs
+			 *	parent.
+			 */
+			ci = &src->item;
+			src = cf_item_to_section(src->item.parent);
+			dst = cf_item_to_section(dst->item.parent);
+			continue;
+		}
+
+		fr_assert(ci != cf_section_to_item(cs));
+		fr_assert(ci != cf_section_to_item(parent));
+
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
-			subcs = cf_item_to_section(ci);
-			subcs = cf_section_dup(new, new, subcs,
-					       cf_section_name1(subcs), cf_section_name2(subcs),
-					       copy_meta);
-			if (!subcs) {
-				talloc_free(new);
+			src_child = cf_item_to_section(ci);
+			dst_child = cf_section_alloc(dst, dst, src_child->name1, src_child->name2);
+			if (!dst_child) {
+			oom:
+				talloc_free(out);
 				return NULL;
 			}
+
+			if (copy_meta) {
+				dst_child->template = src_child->template;
+				dst_child->base = src_child->base;
+				dst_child->depth = src_child->depth;
+			}
+
+			dst_child->item.filename = src_child->item.filename;
+			dst_child->item.lineno = src_child->item.lineno;
 			break;
 
 		case CONF_ITEM_PAIR:
-			cp = cf_pair_dup(new, cf_item_to_pair(ci), copy_meta);
-			if (!cp) {
-				talloc_free(new);
-				return NULL;
-			}
+			cp = cf_pair_dup(dst, cf_item_to_pair(ci), copy_meta);
+			if (!cp) goto oom;
 			break;
 
 		case CONF_ITEM_DATA: /* Skip data */
@@ -1077,12 +1122,13 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			 *	stay correct.
 			 */
 			{
-				CONF_COMMENT const *src = cf_item_to_comment(ci);
-				CONF_COMMENT *dup = cf_comment_alloc(new, src->text);
-				if (dup) {
-					cf_filename_set(dup, src->item.filename);
-					cf_lineno_set(dup, src->item.lineno);
-				}
+				CONF_COMMENT const *src_co = cf_item_to_comment(ci);
+				CONF_COMMENT *dst_co = cf_comment_alloc(dst, src_co->text);
+
+				if (!dst_co) goto oom;
+
+				cf_filename_set(dst_co, src_co->item.filename);
+				cf_lineno_set(dst_co, src_co->item.lineno);
 			}
 			break;
 
@@ -1091,7 +1137,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 		}
 	}
 
-	return new;
+	return out;
 }
 
 /** Return the first child in a CONF_SECTION
