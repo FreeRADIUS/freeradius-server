@@ -428,7 +428,10 @@ ssize_t fr_skip_condition(char const *start, char const *end, bool const termina
 		/*
 		 *	Any control characters (other than \t) cause an error.
 		 */
-		if (*p < ' ') break;
+		if (*p < ' ') {
+			fr_strerror_const("Invalid escape in condition");
+			return -(p - start);
+		}
 
 		was_regex = false;
 
