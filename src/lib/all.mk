@@ -12,7 +12,7 @@ define LIB_INCLUDE
 #  to evaluate the condition.  Instead, it evaluates the rule
 #  immediately, and decides that nothing is there.
 #
-#  So, we instead depend on a targe which has already been defined.t
+#  So, we instead depend on a target which has already been defined.
 #  - This is a terrible hack
 #
 src/freeradius-devel: | src/include/${1}
