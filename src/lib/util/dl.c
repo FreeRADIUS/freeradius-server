@@ -234,7 +234,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 {
 	dl_symbol_init_t	*init = NULL;
 	void			*sym = NULL;
-	char			buffer[256];
+	char			buffer[256] = "";
 
 	while ((init = fr_dlist_next(&dl_loader->sym_init, init))) {
 		if (init->symbol) {
