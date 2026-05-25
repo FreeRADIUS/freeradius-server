@@ -21,10 +21,10 @@ xlat %{%test('bar') || %{%{User-Name} || 'bar'}}
 match %{(%test('bar') || %{(%{User-Name} || 'bar')})}
 
 xlat %{%{User-Name} || }
-match ERROR offset 18: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 18: Unexpected input '}' when trying to read an attribute name
 
 xlat %{%{Operator-Name} || }
-match ERROR offset 22: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 22: Unexpected input '}' when trying to read an attribute name
 
 xlat %{%{%{User-Name} || 'foo'} || 'bar'}
 match %{(%{(%{User-Name} || 'foo')} || 'bar')}
@@ -33,10 +33,10 @@ xlat %{%{%{User-Name} || 'foo'} || %{%test('bar') || %{User-Name}}}
 match %{(%{(%{User-Name} || 'foo')} || %{(%test('bar') || %{User-Name})})}
 
 xlat %{ || }
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 3: Unexpected input '|' when trying to read an attribute name
 
 xlat %{ || %{User-Name}}
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 3: Unexpected input '|' when trying to read an attribute name
 
 xlat %{%{} || }
 match ERROR offset 4: Empty expressions are invalid

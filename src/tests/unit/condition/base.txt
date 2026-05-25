@@ -23,10 +23,10 @@ condition ()
 match ERROR offset 1: Empty expressions are invalid
 
 condition (!)
-match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Unexpected input ')' when trying to read an attribute name
 
 condition (|| b)
-match ERROR offset 1: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 1: Unexpected input '|' when trying to read an attribute name
 
 condition ((ok || handled) foo)
 match ERROR offset 17: Invalid operator

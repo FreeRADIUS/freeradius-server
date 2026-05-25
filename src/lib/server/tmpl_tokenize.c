@@ -1606,13 +1606,13 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
 		return slen;
 
 	/*
-	 * No filters and no previous elements is the equivalent of '&'
-	 * which is not allowed.
+	 *	No filters and no previous elements is the equivalent of '&'
+	 *	which is not allowed.
 	 *
-	 * &[<filter>] is allowed as this lets us perform filtering operations
-	 * at the root.
+	 *	&[<filter>] is allowed as this lets us perform filtering operations
+	 *	at the root.
 	 */
-	} else if ((slen == 0) && (tmpl_attr_num_elements(vpt) == 0)) {
+	} else if (tmpl_attr_num_elements(vpt) == 0) {
 		fr_strerror_const("Invalid attribute name");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		return -1;
@@ -1797,9 +1797,19 @@ static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	Input too short
 	 */
 	if (!fr_sbuff_extend(name)) {
-		fr_strerror_const("Missing attribute reference");
+		fr_strerror_const("Unexpected end of input when trying to read an attribute name");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		goto error;
+	}
+
+	/*
+	 *	This cannot possibly be an attribute name, so we just bypass all kinds of work.
+	 */
+	if (!depth && !fr_dict_attr_nested_allowed_chars[fr_sbuff_uint8(name, '\0')]) {
+		fr_strerror_printf("Unexpected input '%c' when trying to read an attribute name",
+				   fr_sbuff_char(name, '\0'));
+		if (err) *err = TMPL_ATTR_ERROR_EMPTY;
+		FR_SBUFF_ERROR_RETURN(name);
 	}
 
 	/*
@@ -2298,6 +2308,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	if (fr_sbuff_next_if_char(&our_name, '&') && check_config && at_rules->ci) {
 		cf_log_warn(at_rules->ci, "Using '&' is no longer necessary when referencing attributes.  Please delete it.");
+	}
+
+	if (fr_sbuff_is_char(name, '[')) {
+		fr_strerror_const("Missing attribute name");
+		if (err) *err = TMPL_ATTR_ERROR_EMPTY;
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	/*

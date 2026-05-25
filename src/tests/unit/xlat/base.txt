@@ -189,10 +189,10 @@ xlat %{}
 match ERROR offset 2: Empty expressions are invalid
 
 xlat %{:}
-match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Unexpected input ':' when trying to read an attribute name
 
 xlat %{:bar}
-match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Unexpected input ':' when trying to read an attribute name
 
 xlat %foo(' bar')
 match ERROR offset 1: Unresolved expansion functions are not allowed here
@@ -204,13 +204,13 @@ xlat %{[baz}
 match ERROR offset 2: Missing attribute name
 
 xlat %{ }
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 3: Unexpected input '}' when trying to read an attribute name
 
 xlat %{\t}
-match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Unexpected input '\' when trying to read an attribute name
 
 xlat %{\n}
-match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Unexpected input '\' when trying to read an attribute name
 
 xlat %{foo }
 match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
