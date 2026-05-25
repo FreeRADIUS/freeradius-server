@@ -23,6 +23,27 @@ xlat \
 match \\
 
 #
+#  Constant strings that contain a literal '%' adjacent to other text.  The
+#  tokenizer breaks the input at every '%' and emits a separate value-box per
+#  chunk; xlat_tokenize_input() must merge the adjacent constants into a
+#  single value-box so callers see exactly one constant child.
+#
+xlat 100%
+match 100\%
+
+xlat a%
+match a\%
+
+xlat x% y
+match x\% y
+
+xlat a%%b
+match a\%b
+
+xlat %%
+match \%
+
+#
 #  Literals mixed with attributes
 #
 xlat literal%{User-Password}
@@ -250,6 +271,24 @@ match ERROR offset 44: Unexpected text after attribute reference
 xlat_argv echo hello %{Filter-Id}:1234 world
 match [0]{ echo }, [1]{ hello }, [2]{ %{Filter-Id}:1234 }, [3]{ world }
 
+#
+#  Double-quoted constant arguments containing a literal '%'.  Without the
+#  in-tokenizer merge in xlat_tokenize_input(), the group node would contain
+#  multiple constant value-box children and trip the
+#  fr_dlist_num_elements(...) == 1 assertion in xlat_tokenize_word().
+#
+xlat_argv "100%"
+match [0]{ "100\%" }
+
+xlat_argv "a%%b"
+match [0]{ "a\%b" }
+
+xlat_argv /bin/sh "100%" "%{User-Name}"
+match [0]{ /bin/sh }, [1]{ "100\%" }, [2]{ "%{User-Name}" }
+
+xlat_argv foo "ratio is %" bar
+match [0]{ foo }, [1]{ "ratio is \%" }, [2]{ bar }
+
 xlat %debug(5)
 match %debug(5)
 
@@ -304,4 +343,4 @@ xlat %hash.md5('arg"')
 match %hash.md5(0x61726722)
 
 count
-match 161
+match 179

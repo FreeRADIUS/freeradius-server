@@ -871,6 +871,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 							   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	xlat_exp_t			*node = NULL;
+	xlat_exp_t			*prev = NULL;
 	fr_slen_t			slen;
 	fr_sbuff_term_t			terminals = FR_SBUFF_TERMS(
 						L("%"),
@@ -897,6 +898,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		/*
 		 *	Find the next token
 		 */
+	skip_alloc:
 		fr_sbuff_marker(&m_s, &our_in);
 		slen = fr_sbuff_out_aunescape_until(node, &str, &our_in, SIZE_MAX, tokens, escapes);
 
@@ -917,6 +919,35 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		 */
 		if (slen > 0) {
 		do_value_box:
+			/*
+			 *	If the previous node was also a constant value-box, we can merge the new
+			 *	string into it instead of inserting a fresh node.  This merge ensures that we
+			 *	only have one constant value-box produced, instead of many.
+			 */
+			if (prev && (prev->type == XLAT_BOX)) {
+				size_t	prev_len = prev->data.vb_length;
+				size_t	add_len = talloc_strlen(str);
+				size_t	total = prev_len + add_len;
+				char	*merged;
+
+				fr_assert(prev->data.type == FR_TYPE_STRING);
+
+				MEM(fr_value_box_bstr_realloc(prev, &merged, &prev->data, total) == 0);
+				memcpy(merged + prev_len, str, add_len + 1);
+
+				xlat_exp_set_name(prev, merged, total);
+				talloc_free(str);
+
+				XLAT_DEBUG("VALUE-BOX merged --> %s", prev->fmt);
+
+				fr_sbuff_marker_release(&m_s);
+
+				/*
+				 *	Keep "node", as we haven't used it.
+				 */
+				goto skip_alloc;
+			}
+
 			xlat_exp_set_name_shallow(node, str);
 			fr_value_box_bstrndup(node, &node->data, NULL, str, talloc_strlen(str), false);
 			fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);
@@ -932,6 +963,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 
 			xlat_exp_insert_tail(head, node);
 
+			prev = node;
 			node = NULL;
 			fr_sbuff_marker_release(&m_s);
 			continue;
@@ -956,6 +988,8 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 				fr_strerror_const("Old style alternation of %{...:-...} is no longer supported");
 				goto error;
 			}
+
+			prev = NULL;	/* non-value-box inserted; subsequent text must not merge */
 
 		next:
 			fr_sbuff_marker_release(&m_s);
@@ -982,6 +1016,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 			 *	Tokenize the function arguments using the new method.
 			 */
 			if (xlat_tokenize_function_args(head, &our_in, t_rules) < 0) goto error;
+			prev = NULL;	/* non-value-box inserted; subsequent text must not merge */
 			goto next;
 		}
 
