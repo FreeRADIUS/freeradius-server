@@ -366,15 +366,16 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
 				CONF_SECTION *subcs;
+				CONF_ITEM *ci_p;
 
 				/*
-				 *	Adding an entry again to a
-				 *	section is wrong.  We don't
-				 *	want an infinite loop.
+				 *	We can't refer to any parent, otherwise we have an infinite loop.
 				 */
-				if (cf_item_to_section(ci->parent) == outer_cs) {
-					ERROR("%s[%d]: Cannot reference different item in same section", cf, lineno);
-					return NULL;
+				for (ci_p = &outer_cs->item; ci_p != NULL; ci_p = ci_p->parent) {
+					if (ci_p == ci) {
+						ERROR("%s[%d]: Cannot reference different item in same section", cf, lineno);
+						return NULL;
+					}
 				}
 
 				/*
