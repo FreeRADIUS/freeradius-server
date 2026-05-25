@@ -25,6 +25,7 @@ FUZZER_NON_PROTOCOL_TARGETS = util json value xlat
 #  json / cf / value / xlat are standalone parsers that don't.
 #
 FUZZER_util_ARGS  := -D share/dictionary
+FUZZER_xlat_ARGS  := -D share/dictionary
 
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.

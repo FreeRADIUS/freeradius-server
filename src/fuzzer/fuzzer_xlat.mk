@@ -1,5 +1,5 @@
 TARGET			:= fuzzer_xlat$(E)
-SOURCES			:= fuzzer_xlat.c
+SOURCES			:= fuzzer_xlat.c common.c
 
 TGT_PREREQS		:= $(LIBFREERADIUS_SERVER)
 

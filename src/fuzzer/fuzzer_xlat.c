@@ -35,17 +35,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/build.h>
-#include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/dl.h>
-#include <freeradius-devel/util/lsan.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/fuzzer/common.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/tmpl.h>
@@ -55,58 +45,17 @@ RCSID("$Id$")
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
-static bool		init_done = false;
-static fr_dict_t	*dict_internal = NULL;
-
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
-	char const	*dict_dir = NULL;
-	char const	*lib_dir  = NULL;
-	char		*dict_buf = NULL, *lib_buf = NULL;
-	char const	*p;
+	if (dict) return 0;
 
-	if (init_done) return 0;
-	if (!argc || !argv || !*argv) return -1;
-
-	fr_atexit_global_setup();
-	fr_talloc_fault_setup();
-	fr_strerror_const("fuzz");
-	fr_strerror_clear();
+	if (fuzzer_common_init(argc, argv, false) < 0) fr_exit_now(EXIT_FAILURE);
 
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 	error:
-		talloc_free(dict_buf);
-		talloc_free(lib_buf);
 		fr_perror("fuzzer_xlat");
-		return -1;
+		fr_exit_now(EXIT_FAILURE);
 	}
-
-	dict_dir = getenv("FR_DICTIONARY_DIR");
-	lib_dir  = getenv("FR_LIBRARY_PATH");
-
-	p = strrchr((*argv)[0], '/');
-	if (p) {
-		if (!dict_dir) {
-			dict_buf = talloc_asprintf(NULL, "%.*s/dict",
-						   (int)(p - (*argv)[0]), (*argv)[0]);
-			if (!dict_buf) goto error;
-			dict_dir = dict_buf;
-		}
-		if (!lib_dir) {
-			lib_buf = talloc_asprintf(NULL, "%.*s/lib",
-						  (int)(p - (*argv)[0]), (*argv)[0]);
-			if (!lib_buf) goto error;
-			lib_dir = lib_buf;
-		}
-	}
-
-	if (lib_dir && dl_search_global_path_set(lib_dir) < 0) goto error;
-
-	if (dict_dir) (void) setenv("FR_DICTIONARY_DIR", dict_dir, 1);
-
-	if (!fr_dict_global_ctx_init(NULL, true, dict_dir ? dict_dir : "share/dictionary")) goto error;
-
-	if (fr_dict_internal_afrom_file(&dict_internal, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) goto error;
 
 	if (request_global_init() < 0) goto error;
 
@@ -116,10 +65,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	if (unlang_global_init() < 0) goto error;
 
-	talloc_free(dict_buf);
-	talloc_free(lib_buf);
-
-	init_done = true;
 	return 0;
 }
 
@@ -146,7 +91,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	size_t			fmt_len;
 	fr_slen_t		slen;
 
-	if (!init_done) return 0;
+	if (!dict) return 0;
 	if (size < 2) return 0;
 	if (size > 4096) return 0; /* keep iterations fast */
 
@@ -178,7 +123,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 */
 	t_rules = (tmpl_rules_t) {
 		.attr = (tmpl_attr_rules_t) {
-			.dict_def	      = dict_internal,
+			.dict_def	      = dict,
 			.list_def	      = request_attr_request,
 			.allow_unresolved = false,
 			.allow_unknown    = false,
@@ -219,7 +164,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	 */
 	{
 		xlat_res_rules_t const	xr_rules = {
-			.tr_rules = &(tmpl_res_rules_t){ .dict_def = dict_internal },
+			.tr_rules = &(tmpl_res_rules_t){ .dict_def = dict },
 			.allow_unresolved = false,
 		};
 		(void) xlat_resolve(head, &xr_rules);
