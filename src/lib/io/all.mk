@@ -22,10 +22,3 @@ TGT_LDLIBS	:= $(LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS)
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/io/*.h))
-
-#
-#  Create the build directory.
-#
-.PHONY: src/freeradius-devel/io
-src/freeradius-devel/io:
-	${Q}[ -e $@ ] || ln -s ${top_srcdir}/src/lib/io ${top_srcdir}/src/include
