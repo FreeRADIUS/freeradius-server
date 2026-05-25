@@ -133,6 +133,7 @@ typedef struct {
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
 	CONF_SECTION   	*at_reference;		//!< was this thing an @foo ?
+	int		at_reference_braces;	//!< braces when we found this thing
 
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
@@ -2406,7 +2407,7 @@ static int parse_input(cf_stack_t *stack)
 		 *	section, before we were parsing the
 		 *	@reference.
 		 */
-		if (frame->at_reference) {
+		if (frame->at_reference && (frame->braces == frame->at_reference_braces + 1)) {
 			frame->current = frame->parent = frame->at_reference;
 			frame->at_reference = NULL;
 
@@ -2887,6 +2888,7 @@ alloc_section:
 			return -1;
 		}
 		frame->at_reference = frame->parent;
+		frame->at_reference_braces = frame->braces;
 		name2_token = T_BARE_WORD;
 
 		css = cf_section_alloc(parent, parent, value, NULL);
