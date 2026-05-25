@@ -40,7 +40,7 @@ ssize_t fr_skip_string(char const *start, char const *end)
 
 	quote = *(p++);
 
-	while ((end && (p < end)) || *p) {
+	while (end ? ((p < end) && *p) : *p) {
 		/*
 		 *	Stop at the quotation character
 		 */
@@ -131,7 +131,7 @@ static ssize_t skip_brackets(char const *start, char const *end, char end_quote,
 		return -(p - start);
 	}
 
-	while ((end && (p < end)) || *p) {
+	while (end ? ((p < end) && *p) : *p) {
 		if (*p == end_quote) {
 			p++;
 			return p - start;
@@ -326,7 +326,7 @@ ssize_t fr_skip_condition(char const *start, char const *end, bool const termina
 	/*
 	 *	Keep parsing the condition until we hit EOS or EOL.
 	 */
-	while ((end && (p < end)) || *p) {
+	while (end ? ((p < end) && *p) : *p) {
 		if (isspace((uint8_t) *p)) {
 			p++;
 			continue;
