@@ -4572,6 +4572,14 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Initialize the internal attributes needed by the tmpls.
+	 */
+	if (tmpl_global_init() < 0) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
 	 *	Always needed so we can load the list attributes
 	 *	otherwise the tmpl_tokenize code fails.
 	 */
