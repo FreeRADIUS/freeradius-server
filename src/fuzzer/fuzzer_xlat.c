@@ -57,6 +57,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
+	if (tmpl_global_init() < 0) goto error;
+
 	if (request_global_init() < 0) goto error;
 
 	/*
