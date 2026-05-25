@@ -3404,6 +3404,8 @@ static xlat_action_t xlat_func_str_utf8(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &in_head);
 
+	if (!in_head) return XLAT_ACTION_FAIL;
+
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = (fr_utf8_str((uint8_t const *)in_head->vb_strvalue,
 				   in_head->vb_length) >= 0);
