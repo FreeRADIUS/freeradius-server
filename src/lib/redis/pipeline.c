@@ -515,6 +515,27 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	fr_dlist_remove(&cmds->sent, cmd);
 	fr_dlist_insert_tail(&cmds->completed, cmd);
 
+	if (!reply) {
+		cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
+	error:
+		/*
+		 *	Mark remaining sent commands to be ignored and fail the treq
+		 */
+		fr_dlist_foreach(&cmds->sent, fr_redis_command_t, sent_cmd) {
+			fr_redis_connection_ignore_response(h, sent_cmd->sqn);
+		}
+
+		/*
+		 *	Only REDIS_ASYNC_RCODE_ERROR is really a failure.
+		 */
+		if (cmds->rcode == REDIS_ASYNC_RCODE_ERROR) {
+			trunk_request_signal_fail(cmds->treq);
+		} else {
+			trunk_request_signal_complete(cmds->treq);
+		}
+		return;
+	}
+
 	/*
 	 *	If the reply was an error, look for known types.
 	 */
@@ -545,15 +566,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 			fr_strerror_printf("Server error: %s", reply->str);
 			cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
 		}
-
-		/*
-		 *	Mark remaining sent commands to be ignored and fail the treq
-		 */
-		fr_dlist_foreach(&cmds->sent, fr_redis_command_t, sent_cmd) {
-			fr_redis_connection_ignore_response(h, sent_cmd->sqn);
-		}
-		trunk_request_signal_fail(cmds->treq);
-		return;
+		goto error;
 	}
 
 	if (cmd->complete) cmd->complete(cmds->request, cmd, reply, cmd->rctx);
