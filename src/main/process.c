@@ -2608,7 +2608,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(request->home_server != NULL);
 	rad_assert(proxy_list != NULL);
 
-
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	proxy_listener = request->proxy_listener; /* may or may not be NULL */
 	request->num_proxied_requests = 1;
@@ -2655,20 +2654,22 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		if (tries > 0) continue; /* try opening new socket only once */
 
+		/*
+		 *	If there are too many FDs overall (incoming, outgoing, etc.), or we've hit a proxy
+		 *	limit, then we can't accept a new FD.
+		 */
+		if (fr_event_fd_full(el)
 #ifdef HAVE_PTHREAD_H
-		if (proxy_no_new_sockets) break;
+		    || proxy_no_new_sockets
 #endif
+		    ) {
+
+			RATE_LIMIT(ERROR("Cannot open new connection to home_server %s as there are too many connections", request->home_server->name));
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			goto fail;
+		}
 
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
-
-		/*
-		 *	If there are too many FDs overall (incoming, outgoing,
-		 *	etc.), then we can't accept a new FD.
-		 */
-		if (fr_event_fd_full(el)) {
-			RATE_LIMIT(INFO("Cannot open new connection to home_server %s as too many connections are open", request->home_server->name));
-			break;
-		}
 
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
@@ -2701,8 +2702,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 			 *	open sockets, which should
 			 *	minimize this problem.
 			 */
-			ERROR("Failed adding proxy socket: %s",
-			      fr_strerror());
+			RPROXY("Failed adding proxy socket: %s", fr_strerror());
 			goto fail;
 		}
 
@@ -2728,7 +2728,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	if (!proxy_listener || !success) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		REDEBUG2("proxy: Failed allocating Id for proxied request");
+		RATE_LIMIT(ERROR("Failed proxying to home_server %s as we are unable to find a socket with a free ID", request->home_server->name));
+
 	fail:
 		request->proxy_listener = NULL;
 		request->in_proxy_hash = false;
