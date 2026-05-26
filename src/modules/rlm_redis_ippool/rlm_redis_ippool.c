@@ -54,6 +54,14 @@ RCSID("$Id$")
 
 #include "redis_ippool.h"
 
+static fr_dict_t const *dict_redis;
+
+extern fr_dict_autoload_t rlm_redis_ippool_dict[];
+fr_dict_autoload_t rlm_redis_ippool_dict[] = {
+	{ .out = &dict_redis, .proto = "redis" },
+	DICT_AUTOLOAD_TERMINATOR
+};
+
 /** rlm_redis module instance
  *
  */
@@ -75,7 +83,14 @@ typedef struct {
 						//!< allocated_address_attr if updates are successful.
 
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
+
+	fr_coord_reg_t		*coord_reg;		//!< Coordinator registration.
+	fr_coord_pair_reg_t	*coord_pair_reg;	//!< Coord pair registration.
 } rlm_redis_ippool_t;
+
+typedef enum {
+	REDIS_COORD_PAIR_CALLBACK_ID = 0,
+} rlm_redis_coord_t;
 
 static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
@@ -1302,14 +1317,60 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_resu
 	RETURN_UNLANG_NOOP;
 }
 
+/** Callback for worker receiving Fetch-OK packet from coordinator
+ */
+static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
+			       fr_pair_list_t const *list, UNUSED fr_time_t now,
+			       module_ctx_t *mctx, UNUSED void *uctx)
+{
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	return;
+}
+
+static fr_coord_cb_reg_t coord_callbacks[] = {
+	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_cb_reg_t worker_callbacks[] = {
+	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
+	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	static bool			done_hash = false;
 	CONF_SECTION			*subcs = cf_section_find(mctx->mi->conf, "redis", NULL);
-
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
 
 	fr_assert(subcs);
+
+	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.worker_cb = worker_pair_callbacks,
+			.cb_id = REDIS_COORD_PAIR_CALLBACK_ID,
+			.root = fr_dict_root(dict_redis),
+			.cs = subcs,
+		}
+	);
+	if (!inst->coord_pair_reg) return -1;
+
+	FR_COORD_PAIR_CB_CTX_SET(coord_callbacks, worker_callbacks, inst->coord_pair_reg);
+
+	inst->coord_reg = fr_coord_register(&(fr_coord_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.coord_cb = coord_callbacks,
+			.worker_cb = worker_callbacks,
+			.mi = mctx->mi
+		});
+
+	if (!inst->coord_reg) return -1;
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
@@ -1346,6 +1407,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_redis_ippool_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
+
+	fr_coord_deregister(inst->coord_reg);
+	talloc_free(inst->coord_pair_reg);
+	return 0;
+}
+
 static int mod_load(void)
 {
 	fr_redis_version_print();
@@ -1361,7 +1431,8 @@ module_rlm_t rlm_redis_ippool = {
 		.inst_size	= sizeof(rlm_redis_ippool_t),
 		.config		= module_config,
 		.onload		= mod_load,
-		.instantiate	= mod_instantiate
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
