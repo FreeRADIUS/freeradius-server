@@ -51,7 +51,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 {
 	md5_packet_t	*data;
 	MD5_PACKET	*packet;
-	unsigned short	name_len;
+	size_t		name_len;
 
 	/*
 	 *	We need a response, of type EAP-MD5, with at least
@@ -70,12 +70,13 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	}
 
 	/*
-	 *	Sanity check the EAP-MD5 packet sent to us
-	 *	by the client.
+	 *	Sanity check the EAP-MD5 packet sent to us by the client.  type.length is the number of bytes
+	 *	addressable via type.data (i.e. value_size + value + name).  The value occupies value_size
+	 *	bytes immediately after the value_size byte itself, so it must fit in (type.length - 1).
 	 */
 	data = (md5_packet_t *)eap_ds->response->type.data;
-	if (data->value_size > (eap_ds->response->length - MD5_HEADER_LEN)) {
-		ERROR("corrupted data");
+	if ((size_t) data->value_size + 1 > eap_ds->response->type.length) {
+		ERROR("rlm_eap_md5: corrupted data (value-size overruns EAP type data)");
 		return NULL;
 	}
 
@@ -109,12 +110,18 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	memcpy(packet->value, data->value_name, packet->value_size);
 
 	/*
-	 *	Name is optional and is present after Value, but we
-	 *	need to check for it, as eapmd5_compose()
+	 *	Name is optional and is present after Value.  While EAP allows name to be up to 64K octets in
+	 *	size, anything past 1024 is unreasonable, and we disallow it.
 	 */
-	name_len =  packet->length - (packet->value_size + 1);
+	name_len = eap_ds->response->type.length - 1 - data->value_size;
 	if (name_len) {
-	  packet->name = talloc_array(packet, char, name_len + 1);
+		if (name_len > 1024) {
+			ERROR("rlm_eap_md5: name field too long");
+			talloc_free(packet);
+			return NULL;
+		}
+
+		packet->name = talloc_array(packet, char, name_len + 1);
 		if (!packet->name) {
 			talloc_free(packet);
 			return NULL;
