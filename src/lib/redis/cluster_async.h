@@ -90,7 +90,7 @@ int				fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluste
 
 fr_redis_async_rcode_t		fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster,
 								fr_coord_worker_t *cw,
-								fr_coord_pair_reg_t *coord_pair_reg);
+								fr_coord_pair_reg_t *coord_pair_reg, bool force);
 
 int				fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *thread, fr_pair_list_t const *list);
 

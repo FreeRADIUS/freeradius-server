@@ -44,3 +44,4 @@ extern fr_dict_attr_t const *attr_redis_node;
 extern fr_dict_attr_t const *attr_redis_node_endpoint;
 extern fr_dict_attr_t const *attr_redis_node_port;
 extern fr_dict_attr_t const *attr_redis_node_role;
+extern fr_dict_attr_t const *attr_redis_force_update;

@@ -40,3 +40,5 @@ ATTRIBUTE	Role					.3	uint8
 
 VALUE		Role			Master			1
 VALUE		Role			Replica			2
+
+ATTRIBUTE	Force-Update				10	bool

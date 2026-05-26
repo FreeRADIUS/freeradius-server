@@ -783,7 +783,7 @@ int fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster, 
  * To be used when a command returns MOVED
  */
 fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster, fr_coord_worker_t *cw,
-						       fr_coord_pair_reg_t *coord_pair_reg)
+						       fr_coord_pair_reg_t *coord_pair_reg, bool force)
 {
 	fr_pair_list_t		list;
 	fr_pair_t		*vp;
@@ -803,6 +803,10 @@ fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t
 
 	fr_pair_list_append_by_da(local, vp, &list, attr_redis_cluster_id, rtcluster->cluster_id, false);
 	if (!vp) goto error;
+
+	if (force) {
+		fr_pair_list_append_by_da(local, vp, &list, attr_redis_force_update, true, false);
+	}
 
 	ret = fr_worker_to_coord_pair_send(cw, coord_pair_reg, &list);
 	talloc_free(local);

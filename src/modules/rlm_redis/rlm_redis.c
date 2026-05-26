@@ -270,7 +270,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_redis_async_rcode_t	ret;
 
 	if (fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
-					    inst->coord_pair_reg) == REDIS_ASYNC_RCODE_ERROR) {
+					    inst->coord_pair_reg, true) == REDIS_ASYNC_RCODE_ERROR) {
 		RPEDEBUG("Failed to initiate cluster remap");
 		return XLAT_ACTION_FAIL;
 	}
@@ -448,7 +448,7 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
 		rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
 		rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg);
+		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 
@@ -651,7 +651,7 @@ static xlat_action_t redis_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 		rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
 		rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg);
+		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 

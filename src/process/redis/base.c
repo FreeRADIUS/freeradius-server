@@ -603,7 +603,8 @@ RECV(cluster_map_get)
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (fr_time_to_sec(fr_time()) == fr_time_to_sec(rctx->cluster->last_update)) {
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_force_update);
+	if ((fr_time_to_sec(fr_time()) == fr_time_to_sec(rctx->cluster->last_update)) && (!vp || !vp->vp_bool)) {
 		RWARN("Cluster was updated less than a second ago, returning last response");
 		return process_redis_return_existing(request, rctx->cluster, rctx->worker_id);
 	}
