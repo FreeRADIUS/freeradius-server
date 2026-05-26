@@ -924,13 +924,11 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 			 *	string into it instead of inserting a fresh node.  This merge ensures that we
 			 *	only have one constant value-box produced, instead of many.
 			 */
-			if (prev && (prev->type == XLAT_BOX)) {
+			if (prev && (prev->type == XLAT_BOX) && (prev->data.type == FR_TYPE_STRING)) {
 				size_t	prev_len = prev->data.vb_length;
 				size_t	add_len = talloc_strlen(str);
 				size_t	total = prev_len + add_len;
 				char	*merged;
-
-				fr_assert(prev->data.type == FR_TYPE_STRING);
 
 				MEM(fr_value_box_bstr_realloc(prev, &merged, &prev->data, total) == 0);
 				memcpy(merged + prev_len, str, add_len + 1);
@@ -1581,32 +1579,43 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 
 		/*
-		 *	There's no expansion in the string.  Hoist the value-box.
+		 *	There's no expansion in the string.  Hoist the value-box where we can.
 		 */
 		if (node->flags.constant) {
-			xlat_exp_t *child;
+			size_t num = fr_dlist_num_elements(&node->group->dlist);
 
 			/*
-			 *	The list is either empty, or else it has one child, which is the constant
-			 *	node.
+			 *	Empty string: convert the wrapper to an empty XLAT_BOX.
+			 *
+			 *	Exactly one child of type XLAT_BOX: hoist the child up in place of the
+			 *	wrapper.
+			 *
+			 *	Anything else (multiple constant children, or a single non-box child like
+			 *	a hoisted %{(const)} expression result) is left wrapped in an XLAT_GROUP.
+			 *	The hoist flag on the GROUP makes the runtime concatenate the children's
+			 *	stringified values at eval time, which is the correct semantics for cases
+			 *	like "x%{(1)}y".  The integer 1 still needs to be stringified before it
+			 *	can be merged into the surrounding literal text.
 			 */
-			if (fr_dlist_num_elements(&node->group->dlist) == 0) {
+			if (num == 0) {
 				xlat_exp_set_type(node, XLAT_BOX);
 
 				fr_value_box_init(&node->data, FR_TYPE_STRING, NULL, false);
 				fr_value_box_strdup(node, &node->data, NULL, "", false);
 
-			} else {
-				fr_assert(fr_dlist_num_elements(&node->group->dlist) == 1);
+				fr_assert(node->type == XLAT_BOX);
+				node->quote = quote;
 
-				child = talloc_steal(ctx, xlat_exp_head(node->group));
-				talloc_free(node);
-				node = child;
-			}
+			} else if (num == 1) {
+				xlat_exp_t *child = xlat_exp_head(node->group);
 
-			fr_assert(node->type == XLAT_BOX);
-
-			node->quote = quote; /* not the same node! */
+				if (child->type == XLAT_BOX) {
+					(void) talloc_steal(ctx, child);
+					talloc_free(node);
+					node = child;
+					node->quote = quote; /* not the same node! */
+				} /* else there are single non-box constant child, leave the wrapper alone */
+			} /* else there are multiple constant children, leave the wrapper alone */
 		}
 		break;
 

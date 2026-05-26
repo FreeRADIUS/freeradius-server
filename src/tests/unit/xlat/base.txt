@@ -272,10 +272,10 @@ xlat_argv echo hello %{Filter-Id}:1234 world
 match [0]{ echo }, [1]{ hello }, [2]{ %{Filter-Id}:1234 }, [3]{ world }
 
 #
-#  Double-quoted constant arguments containing a literal '%'.  Without the
-#  in-tokenizer merge in xlat_tokenize_input(), the group node would contain
-#  multiple constant value-box children and trip the
-#  fr_dlist_num_elements(...) == 1 assertion in xlat_tokenize_word().
+#  Double-quoted constant arguments which contain a literal '%'.  Without the
+#  value-box merge in xlat_tokenize_input(), the group node would contain
+#  multiple constant value-box children, and violate the assumptions of
+#  the rest of the code.
 #
 xlat_argv "100%"
 match [0]{ "100\%" }
@@ -288,6 +288,34 @@ match [0]{ /bin/sh }, [1]{ "100\%" }, [2]{ "%{User-Name}" }
 
 xlat_argv foo "ratio is %" bar
 match [0]{ foo }, [1]{ "ratio is \%" }, [2]{ bar }
+
+#
+#  Double-quoted strings containing a `%{(<constant expression>)}` between
+#  literal text.  The `(...)` form takes the expression branch in
+#  xlat_tokenize_expansion(), and the inner expression is constant — so the
+#  resulting XLAT_GROUP has flags.constant=true.  xlat_tokenize_word's
+#  hoist-when-constant block used to assert dlist == 1, which failed here
+#  because head is [BOX text, GROUP %{(const)}, BOX text].  It now leaves
+#  the wrapper alone for the multi-constant case; hoist=true on the GROUP
+#  stringifies and concatenates at eval time.
+#
+xlat_argv "x%{(1)}y"
+match [0]{ "x%{1}y" }
+
+xlat_argv "x%{((1))}y"
+match [0]{ "x%{1}y" }
+
+xlat_argv "x%{(true)}y"
+match [0]{ "x%{true}y" }
+
+xlat_argv "a%{(1)}"
+match [0]{ "a%{1}" }
+
+xlat_argv "%{(1)}b"
+match [0]{ "%{1}b" }
+
+xlat_argv "x%{(1 + 2)}y"
+match [0]{ "x%{(1 + 2)}y" }
 
 xlat %debug(5)
 match %debug(5)
@@ -343,4 +371,4 @@ xlat %hash.md5('arg"')
 match %hash.md5(0x61726722)
 
 count
-match 179
+match 191
