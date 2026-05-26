@@ -512,6 +512,11 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
 	cmds = cmd->cmds;
 
+	/*
+	 *	The trunk request has already failed, nothing more to do.
+	 */
+	if (cmds->rcode == REDIS_ASYNC_RCODE_FAIL) return;
+
 	fr_dlist_remove(&cmds->sent, cmd);
 	fr_dlist_insert_tail(&cmds->completed, cmd);
 
@@ -727,6 +732,7 @@ static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *pr
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
+	cmds->rcode = REDIS_ASYNC_RCODE_FAIL;
 	if (cmds->fail) cmds->fail(cmds->request, &cmds->completed, cmds->rctx);
 	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }

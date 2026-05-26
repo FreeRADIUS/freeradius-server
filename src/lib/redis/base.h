@@ -107,6 +107,7 @@ typedef enum {
 	REDIS_ASYNC_RCODE_ASK = -5,		//!< Attempt operation on an alternative node.
 	REDIS_ASYNC_RCODE_MOVE = -6,		//!< Attempt operation on an alternative node with remap.
 	REDIS_ASYNC_RCODE_NO_SCRIPT = -7,	//!< Script doesn't exist.
+	REDIS_ASYNC_RCODE_FAIL = -8,		//!< The command set trunk request has been failed.
 } fr_redis_async_rcode_t;
 
 /** Connection handle, holding a redis context
