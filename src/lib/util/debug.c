@@ -153,6 +153,7 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		 * exit by the OS. */
 		"leak:libobjc.A.dylib\n"
 		"leak:CoreFoundation.framework\n"
+		"leak:td::__1::thread::thread\n"
 #elif defined(__linux__)
 		"leak:*getpwnam_r*\n"			/* libc startup leak - reported by heaptrack */
 		"leak:_dl_init\n"			/* dl startup leak - reported by heaptrack */
