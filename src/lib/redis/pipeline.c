@@ -564,6 +564,7 @@ static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_
 			fr_redis_connection_ignore_response(h, cmd->sqn);
 		}
 	}
+		return;
 
 	case TRUNK_CANCEL_REASON_NONE:
 		fr_assert(0);
