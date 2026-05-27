@@ -134,15 +134,23 @@ RESUME_FLAG(recv_bfd, UNUSED,)
 		 */
 		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
 		if (vp) {
+			if (!PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
+				REDEBUG("Invalid BFD packet type %u", vp->vp_uint32);
+				RETURN_UNLANG_FAIL;
+			}
 			state = vp->vp_uint32;
 		} else {
 			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_bfd_packet);
 			if (vp) vp = fr_pair_find_by_da_nested(&vp->vp_group, NULL, attr_bfd_state);
-			if (vp) state = vp->vp_uint8;
+			if (vp) {
+				if (!PROCESS_PACKET_CODE_VALID(vp->vp_uint8)) {
+					REDEBUG("Invalid BFD state %u", vp->vp_uint8);
+					RETURN_UNLANG_FAIL;
+				}
+				state = vp->vp_uint8;
+			}
 		}
 	}
-
-	fr_assert(PROCESS_PACKET_CODE_VALID(state));
 
 	request->reply->code = state;
 
@@ -243,7 +251,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 	 *	If there's no packet, we must be calling the "send" routine
 	 */
 	if (wrapper->type == BFD_WRAPPER_SEND_PACKET) {
-		fr_assert(wrapper->type == BFD_WRAPPER_SEND_PACKET);
 
 		UPDATE_STATE(reply);
 
