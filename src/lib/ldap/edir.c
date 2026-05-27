@@ -203,9 +203,10 @@ static unlang_action_t ldap_edir_get_password_resume(unlang_result_t *p_result, 
 
 	err = ldap_parse_extended_result(query->ldap_conn->handle, query->result, &reply_oid, &reply_bv, false);
 
-	switch (err) {
-	case LDAP_SUCCESS:
-		break;
+	if (err != LDAP_SUCCESS) {
+		REDEBUG("Failed to parse extended result: %s", ldap_err2string(err));
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
 	/* Make sure there is a return OID */
@@ -341,7 +342,7 @@ char const *fr_ldap_edir_errstr(int code)
 		return "Bad arguments passed to eDir functions";
 
 	case NMAS_E_INVALID_VERSION:
-		return "LDAP EXT version does not match expected version" STRINGIFY(NMAS_LDAP_EXT_VERSION);
+		return "LDAP EXT version does not match expected version " STRINGIFY(NMAS_LDAP_EXT_VERSION);
 
 	case NMAS_E_ACCESS_NOT_ALLOWED:
 		return "Bound user does not have sufficient rights to read the Universal Password of users";
