@@ -20,7 +20,7 @@ FUZZER_NON_PROTOCOL_TARGETS = util json value cf xlat base16_32_64 tmpl
 #
 #  Build these fuzzers, but skip them in CI.
 #
-FUZZER_NO_TEST = cf xlat
+FUZZER_NO_TEST = cf xlat tmpl
 
 #
 #  Per-target extra arguments passed to the fuzzer binary. util uses

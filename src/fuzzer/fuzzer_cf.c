@@ -38,15 +38,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
+extern char const  *__lsan_default_suppressions(void);
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
