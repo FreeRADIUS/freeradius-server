@@ -5,7 +5,7 @@
 #  source / makefile are generated from src/fuzzer/fuzzer.c and
 #  src/fuzzer/fuzzer.mk via FUZZ_PROTOCOL below.
 #
-FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
+FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor arp
 
 #
 #  Standalone fuzzer targets - each has a hand-written fuzzer_<name>.c
@@ -15,7 +15,7 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 dns tacacs vmps tftp bfd cbor der arp
 #  as a wire protocol (see src/lib/util/fuzzer.c) but isn't itself
 #  a network protocol, so it lives here too.
 #
-FUZZER_NON_PROTOCOL_TARGETS = util json value cf xlat base16_32_64 tmpl
+FUZZER_NON_PROTOCOL_TARGETS = util json value cf xlat base16_32_64 tmpl der
 
 #
 #  Build these fuzzers, but skip them in CI.
@@ -30,6 +30,7 @@ FUZZER_NO_TEST = cf xlat tmpl
 FUZZER_util_ARGS  := -D share/dictionary
 FUZZER_tmpl_ARGS  := -D share/dictionary
 FUZZER_xlat_ARGS  := -D share/dictionary
+FUZZER_der_ARGS   := -D share/dictionary
 
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
@@ -70,7 +71,7 @@ clean: clean.fuzzer
 #
 #  Standalone fuzzers' build mks
 #
-SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk fuzzer_cf.mk fuzzer_base16_32_64.mk fuzzer_tmpl.mk
+SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk fuzzer_cf.mk fuzzer_base16_32_64.mk fuzzer_tmpl.mk fuzzer_der.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 
