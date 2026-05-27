@@ -660,6 +660,26 @@ home_server tls {
 		#
 	#	psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
 
+		#  For TLS-PSK, you can hard-code a fixed PSK identity
+		#  and (hex) password here.
+		#
+	#	psk_identity = "test"
+	#	psk_hexphrase = "036363823"
+
+		#
+		#  For TLS-PSK, uncomment the following line to use
+		#  standard ciphers for TLS 1.3.
+		#
+		#  TLS-PSK may work without this line, but it is
+		#  likely to not work when the "next hop" home_server
+		#  accepts both certificates and PSK.  OpenSSL will
+		#  negotiate cipher suites which are incompatible with
+		#  PSK, and then fail.
+		#
+		#  Setting the cipher_suites here forces PSK to be negotiated.
+		#
+	#	cipher_suites = ""TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+
 		#
 		#  For DH cipher suites to work, you have to
 		#  run OpenSSL to create the DH file first:

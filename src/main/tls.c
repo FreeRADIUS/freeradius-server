@@ -1629,6 +1629,9 @@ static CONF_PARSER tls_server_config[] = {
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
+#ifdef TLS1_3_VERSION
+	{ "cipher_suites", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_suites), NULL },
+#endif
 	{ "cipher_server_preference", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, cipher_server_preference), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
@@ -1707,6 +1710,9 @@ static CONF_PARSER tls_client_config[] = {
 	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), "no" },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
+#ifdef TLS1_3_VERSION
+	{ "cipher_suites", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_suites), NULL },
+#endif
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "ca_path_reload_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ca_path_reload_interval), "0" },
 
@@ -4391,6 +4397,15 @@ post_ca:
 			return NULL;
 		}
 	}
+
+#ifdef TLS1_3_VERSION
+       if (conf->cipher_suites) {
+               if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
+                       tls_error_log(NULL, "Failed setting cipher suites");
+                       return NULL;
+               }
+       }
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	if (conf->sigalgs_list) {
