@@ -77,7 +77,6 @@ static OSSL_PROVIDER *openssl_legacy_provider = NULL;
 
 #define FIPS_mode(_x) EVP_default_properties_is_fips_enabled(NULL)
 #define PEM_read_bio_DHparams(_bio, _x, _y, _z) PEM_read_bio_Parameters(_bio, &dh)
-#define SSL_CTX_set0_tmp_dh_pkey(_ctx, _dh) SSL_CTX_set_tmp_dh(_ctx, _dh)
 #define DH EVP_PKEY
 #define DH_free(_dh)
 #endif
