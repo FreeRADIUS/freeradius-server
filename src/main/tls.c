@@ -521,11 +521,14 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_info_callback(ssn->ssl, cbtls_info);
 
 	/*
-	 *	Always verify the peer certificate.
+	 *	Always verify the peer, but only require a certificate
+	 *	if we're doing certificate auth, and not PSK.
 	 */
-	DEBUG2("Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
-	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	if (!conf->psk_identity) {
+		RDEBUG2("(TLS) Requiring Server certificate");
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	}
 	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
