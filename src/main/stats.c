@@ -1017,7 +1017,8 @@ void request_stats_reply(REQUEST *request)
 		if (vp) vp->vp_date = home->last_packet_sent;
 
 		if ((flag->vp_integer & 0x01) != 0) {	/* auth */
-			if (home->type == HOME_TYPE_AUTH) {
+			if ((home->type == HOME_TYPE_AUTH) ||
+			    (home->type == HOME_TYPE_AUTH_ACCT)) {
 				request_stats_addvp(request, proxy_authvp,
 						    &home->stats);
 			} else {
@@ -1027,7 +1028,8 @@ void request_stats_reply(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 		if ((flag->vp_integer & 0x02) != 0) {	/* accounting */
-			if (home->type == HOME_TYPE_ACCT) {
+			if ((home->type == HOME_TYPE_ACCT) ||
+			    (home->type == HOME_TYPE_AUTH_ACCT)) {
 				request_stats_addvp(request, proxy_acctvp,
 						    &home->stats);
 			} else {
