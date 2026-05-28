@@ -1512,11 +1512,11 @@ static int _module_instance_free(module_instance_t *mi)
 	 *	freed.
 	 */
 	if (!ml->name_tree->being_freed) {
-		if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi))) return 1;
+		if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi))) return -1;
 	}
 
 	if (!ml->data_tree->being_freed) {
-		if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return 1;
+		if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return -1;
 	}
 	if (ml->type->data_del) ml->type->data_del(mi);
 
