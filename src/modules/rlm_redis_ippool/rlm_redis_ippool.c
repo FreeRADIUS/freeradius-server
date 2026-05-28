@@ -1323,12 +1323,52 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_resu
 	RETURN_UNLANG_NOOP;
 }
 
+static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
+				    redisReply *reply, UNUSED void *rctx)
+{
+	if (reply->type != REDIS_REPLY_STRING) {
+		ERROR("Unexpected reply type after loading function");
+		return;
+	}
+	DEBUG2("Loaded lua function with hash \"%s\" onto node", reply->str);
+}
+
+#define REDIS_IPPOOL_SCRIPT_LOAD(_script) do { \
+	char const	**argv; \
+	size_t		*argv_len; \
+	MEM(argv = talloc_array(cmds, char const *, 3)); \
+	MEM(argv_len = talloc_array(cmds, size_t, 3)); \
+	argv[0] = "SCRIPT"; \
+	argv[1] = "LOAD"; \
+	argv[2] = _script; \
+	argv_len[0] = (sizeof("SCRIPT") - 1); \
+	argv_len[1] = (sizeof("LOAD") - 1); \
+	argv_len[2] = (sizeof(_script) - 1); \
+	fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, NULL); \
+} while (0)
+
+static void lua_script_load(fr_redis_trunk_t *rtrunk, UNUSED void *uctx)
+{
+	fr_redis_command_set_t		*cmds;
+
+	MEM(cmds = fr_redis_command_set_alloc(rtrunk, NULL, NULL, NULL, NULL, true));
+
+	REDIS_IPPOOL_SCRIPT_LOAD(lua_alloc_cmd);
+	REDIS_IPPOOL_SCRIPT_LOAD(lua_update_cmd);
+	REDIS_IPPOOL_SCRIPT_LOAD(lua_release_cmd);
+
+	if (redis_command_set_enqueue(rtrunk, cmds) != FR_REDIS_PIPELINE_OK) {
+		ERROR("Failed to enqueue lua function loading");
+		talloc_free(cmds);
+	}
+}
+
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, NULL, NULL, false);
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, lua_script_load, t, true);
 
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
