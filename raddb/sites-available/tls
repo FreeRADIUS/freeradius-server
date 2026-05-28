@@ -678,7 +678,7 @@ home_server tls {
 		#
 		#  Setting the cipher_suites here forces PSK to be negotiated.
 		#
-	#	cipher_suites = ""TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+	#	cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
 		#
 		#  For DH cipher suites to work, you have to
