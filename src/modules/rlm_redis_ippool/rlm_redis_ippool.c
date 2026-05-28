@@ -747,6 +747,48 @@ finish:
 	return s_ret;
 }
 
+/** Enqueue a script to run against a redis cluster
+ *
+ * @param[in] ctx		To allocate redis command set.
+ * @param[out] out_cmds		Where to write a pointer to the command set.
+ * @param[out] out_cmd		Where to write a pointer to the async command
+ * @param[in] request		The current request.
+ * @param[in] thread		Redis ippool thread
+ * @param[in] key		to use to determine the cluster node.
+ * @param[in] key_len		length of the key.
+ * @param[in] cmd		Pre-formatted redis command to call script
+ * @param[in] cmd_len		length of the pre-formatted command.
+ * @param[in] complete		Callback to run when `cmd` is completed
+ * @param[in] resume		Resume function to run after script completed.
+ * @param[in] rctx		to pass to `complete` and `resume`.
+ * @return #unlang_action_t
+ */
+static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_set_t **out_cmds,
+					     fr_redis_async_cmd_t **out_cmd, request_t *request,
+					     rlm_redis_ippool_thread_t *thread, uint8_t const *key, size_t key_len,
+					     char const *cmd, int cmd_len, fr_redis_command_complete_t complete,
+					     module_method_t resume, void *rctx)
+{
+	fr_redis_command_set_t	*cmds;
+	fr_redis_async_rcode_t	ret;
+
+	MEM(cmds = fr_redis_command_set_alloc(ctx, request, NULL, NULL, NULL, false));
+
+	fr_redis_command_preformatted_add(cmds, cmd, cmd_len, complete, rctx);
+
+	if (thread->inst->wait_cmd) {
+		fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len, NULL, NULL);
+	}
+
+	*out_cmd = fr_redis_async_cmd_start(ctx, request, &ret, thread->rtcluster, key, key_len, cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed enqueuing Redis command", UNLANG_ACTION_FAIL)
+
+	if (out_cmds) *out_cmds = cmds;
+	return unlang_module_yield(request, resume, NULL, 0, rctx);
+}
+
 /** Allocate a new IP address from a pool
  *
  */
