@@ -50,6 +50,12 @@ typedef enum {
 							///< MULTI command must be requeued.
 } fr_redis_command_type_t;
 
+typedef enum {
+	FR_REDIS_COMMAND_FMT_EXPANDED = 0,		//!< A command as a single string
+	FR_REDIS_COMMAND_FMT_ARGV,			//!< A command as an argv array
+	FR_REDIS_COMMAND_FMT_PREFORMATTED		//!< A command preformatted with redisCommandFormat
+} fr_redis_command_fmt_t;
+
 /** Represents a single command
  *
  */
@@ -58,12 +64,19 @@ struct fr_redis_command_s {
 	fr_dlist_t			entry;		//!< Entry in the command buffer.
 
 	fr_redis_command_type_t		type;		//!< Redis command type.
+	fr_redis_command_fmt_t		fmt;		//!< Redis command format.
 
-	char const			*str;		//!< The command string.
-
-	size_t				argc;		//!< Number of argv arguments.
-	char const			**argv;		//!< Arguments for the redis command.
-	size_t				*argv_len;	//!< Lengths of the arguments.
+	union {
+		struct{
+			char const	*str;		//!< The command string.
+			size_t		str_len;	//!< Length of the command string.
+		};
+		struct {
+			size_t		argc;		//!< Number of argv arguments.
+			char const	**argv;		//!< Arguments for the redis command.
+			size_t		*argv_len;	//!< Lengths of the arguments.
+		};
+	};
 
 	uint64_t			sqn;		//!< The sequence number of the command.  This is only
 							///< valid for a specific handle, and is unique within
@@ -368,6 +381,7 @@ fr_redis_pipeline_status_t fr_redis_command_literal_add(fr_redis_command_set_t *
 	cmd->str = cmd_str;
 	cmd->complete = complete;
 	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_EXPANDED;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -405,6 +419,49 @@ fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmd
 	cmd->argv_len = argv_len;
 	cmd->complete = complete;
 	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_ARGV;
+	fr_dlist_insert_tail(&cmds->pending, cmd);
+
+	return FR_REDIS_PIPELINE_OK;
+}
+
+/** Add an preformatted command to the command set as formatted by redisCommandFormat or it's variants
+ *
+ * The command must either be entirely static, or parented by the command set.
+ *
+ * @note Caller should disallow "SUBSCRIBE" et al, if they're not appropriate.
+ * 	 As subscribing to a stream where we're not expecting it would break
+ * 	 things, badly.
+ *
+ * @param[in] cmds	Command set to add command to.
+ * @param[in] cmd_str	A fully formatted command to send to redis.
+ *			Must be static, or have the same lifetime as the
+ *			command set (allocated with the command set as the parent).
+ * @param[in] cmd_len	The length of cmd_str (as returned by redisCommandForamt)
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
+ * @return
+ *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
+ *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
+ */
+fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							     size_t cmd_len,
+							     fr_redis_command_complete_t complete, void *rctx)
+{
+	request_t		*request = cmds->request;
+	fr_redis_command_t	*cmd;
+	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+
+	if (redis_command_transaction_check(request, &type, cmds, cmd_str) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+
+	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
+	cmd->cmds = cmds;
+	cmd->type = type;
+	cmd->str = cmd_str;
+	cmd->str_len = cmd_len;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
+	cmd->fmt = FR_REDIS_COMMAND_FMT_PREFORMATTED;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -630,11 +687,20 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 			 *	is disconnecting, but if that's happening then
 			 *	we shouldn't be enqueueing new requests?
 			 */
-			if (cmd->argv) {
+			switch (cmd->fmt) {
+			case FR_REDIS_COMMAND_FMT_ARGV:
 				ret = redisAsyncCommandArgv(h->ac, _redis_pipeline_demux, cmd, cmd->argc,
 							    cmd->argv, cmd->argv_len);
-			} else {
+				break;
+
+			case FR_REDIS_COMMAND_FMT_EXPANDED:
 				ret = redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, cmd->str);
+				break;
+
+			case FR_REDIS_COMMAND_FMT_PREFORMATTED:
+				ret = redisAsyncFormattedCommand(h->ac, _redis_pipeline_demux, cmd,
+								 cmd->str, cmd->str_len);
+				break;
 			}
 
 			if (unlikely(ret != REDIS_OK)) {
@@ -809,8 +875,14 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_
 
 char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
 {
-	if (cmd->argv) return cmd->argv[0];
-	return cmd->str;
+	switch(cmd->type) {
+	case FR_REDIS_COMMAND_FMT_EXPANDED:
+	case FR_REDIS_COMMAND_FMT_PREFORMATTED:
+		return cmd->str;
+
+	case FR_REDIS_COMMAND_FMT_ARGV:
+		return cmd->argv[0];
+	}
 }
 
 /** Extract the rcode from a command set
