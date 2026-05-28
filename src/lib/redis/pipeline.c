@@ -347,6 +347,8 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
  * @param[in] cmd_str	A fully expanded/formatted command to send to redis.
  *			Must be static, or have the same lifetime as the
  *			command set (allocated with the command set as the parent).
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
  * @return
  *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
@@ -379,6 +381,8 @@ fr_redis_pipeline_status_t fr_redis_command_literal_add(fr_redis_command_set_t *
  * @param[in] argc	Number of arguments.
  * @param[in] argv	Redis command arguments.
  * @param[in] argv_len	Length of the command arguments.
+ * @param[in] complete	Callback to run when this command completes
+ * @param[in] rctx	to pass to `complete`
  * @return
  *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
