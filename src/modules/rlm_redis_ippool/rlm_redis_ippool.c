@@ -76,6 +76,9 @@ typedef struct {
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
+	char			*wait_cmd;	//!< Preformatted redis "WAIT" command.
+	int			wait_cmd_len;	//!< Length of wait_cmd
+
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
 
@@ -1450,6 +1453,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->coord_reg) return -1;
 
+	if (inst->wait_num) {
+		inst->wait_cmd_len = redisFormatCommand(&inst->wait_cmd, "WAIT %i %i", inst->wait_num,
+							fr_time_delta_to_msec(inst->wait_timeout));
+		if (inst->wait_cmd_len < 0) return -1;
+	}
+
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
@@ -1502,6 +1511,9 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 	fr_coord_deregister(inst->coord_reg);
 	talloc_free(inst->coord_pair_reg);
+
+	if (inst->wait_cmd) redisFreeCommand(inst->wait_cmd);
+
 	return 0;
 }
 
