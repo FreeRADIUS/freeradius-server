@@ -294,7 +294,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 		break;
 
 	case 'e':
-		if (tolower(cmd[1]) != 'e') break;
+		if (tolower(cmd[1]) != 'x') break;
 		if (strncasecmp(cmd, "exec", sizeof("exec") - 1) != 0) break;
 		goto txn_end;
 
