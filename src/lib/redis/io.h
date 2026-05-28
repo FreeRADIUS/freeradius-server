@@ -107,7 +107,7 @@ static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_
 {
 	fr_redis_sqn_ignore_t *ignore;
 
-	fr_assert(sqn <= h->rsp_sqn);
+	fr_assert(sqn <= h->req_sqn);
 
 	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
 	ignore->sqn = sqn;
