@@ -85,7 +85,7 @@ fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 							    request_t *request,
 							    fr_redis_command_set_complete_t complete,
 							    fr_redis_command_set_fail_t fail,
-							    void *rctx);
+							    void *rctx, bool autofree);
 
 fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
 						      fr_redis_io_conf_t const *conf, fr_pair_list_t *trigger_args);

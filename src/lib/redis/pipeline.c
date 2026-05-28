@@ -82,6 +82,7 @@ struct fr_redis_command_set_s {
 	fr_dlist_t			entry;
 
 	fr_redis_async_rcode_t		rcode;		//!< Code from last error returned.
+	bool				autofree;	//!< Should the command set be freed when it is complete
 
 	fr_ipaddr_t			next_node_addr;	//!< IP address of node from MOVED / ASK reply
 	uint16_t			next_node_port; //!< Port of node from MOVED / ASK reply
@@ -200,13 +201,14 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
  * @param[in] fail	Function to call if the command set was not executed
  *			or was partially executed.
  * @param[in] rctx	Resume context to pass to complete and fail functions.
+ * @param[in] autofree	Should the command set be freed when completed.
  * @return A new or refurbished command set.
  */
 fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 						   request_t *request,
 						   fr_redis_command_set_complete_t complete,
 						   fr_redis_command_set_fail_t fail,
-						   void *rctx)
+						   void *rctx, bool autofree)
 
 {
 	fr_redis_command_set_t	*cmds;
@@ -247,6 +249,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	cmds->complete = complete;
 	cmds->fail = fail;
 	cmds->rctx = rctx;
+	cmds->autofree = autofree;
 
 	if (ctx) talloc_link_ctx(ctx, cmds);
 
@@ -733,7 +736,7 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
-	talloc_free(cmds);
+	if (cmds->autofree) talloc_free(cmds);
 }
 
 /** Allocate a new trunk
