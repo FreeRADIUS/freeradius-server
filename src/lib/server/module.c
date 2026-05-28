@@ -1561,7 +1561,7 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	talloc_free_children(mi);
 
-	dl_module_free(mi->module);
+	if (mi->module) dl_module_free(mi->module);
 
 	return 0;
 }
@@ -1761,6 +1761,7 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 		talloc_free(mi);
 		return NULL;
 	}
+	talloc_set_destructor(mi, _module_instance_free);
 
 	/*
 	 *	We have no way of checking if this is correct... so we hope...
@@ -1793,7 +1794,6 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 *	correctly even if bootstrap/instantiation fails.
 	 */
 	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
-	talloc_set_destructor(mi, _module_instance_free);	/* Set late intentionally */
 	mi->number = ml->last_number++;
 
 	/*
