@@ -335,7 +335,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 	return FR_REDIS_PIPELINE_OK;
 }
 
-/** Add a preformatted/expanded command to the command set
+/** Add a literal command to the command set
  *
  * The command must either be entirely static, or parented by the command set.
  *
@@ -351,8 +351,8 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
  *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
  */
-fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
-							     fr_redis_command_complete_t complete, void *rctx)
+fr_redis_pipeline_status_t fr_redis_command_literal_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							fr_redis_command_complete_t complete, void *rctx)
 {
 	request_t		*request = cmds->request;
 	fr_redis_command_t	*cmd;

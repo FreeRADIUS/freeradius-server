@@ -308,7 +308,7 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 
 	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
 
-	fr_redis_command_preformatted_add(rctx->cmds, "CLUSTER SLOTS", redis_cluster_slots_results, rctx);
+	fr_redis_command_literal_add(rctx->cmds, "CLUSTER SLOTS", redis_cluster_slots_results, rctx);
 
 	while ((rctx->current_node = fr_dlist_next(&cluster->nodes, rctx->current_node))) {
 		RDEBUG2("Fetching cluster map %d from %pV:%d", cluster->cluster_id,

@@ -123,12 +123,12 @@ typedef enum {
 
 #define REDIS_XLAT_CMD_SETUP(_cmds, _argc, _argv, _arg_len, _rctx, _read_only, _func) \
 if (_read_only && \
-    (fr_redis_command_preformatted_add(_cmds, "READONLY", redis_xlat_status_check, _rctx) != FR_REDIS_PIPELINE_OK)) \
+    (fr_redis_command_literal_add(_cmds, "READONLY", redis_xlat_status_check, _rctx) != FR_REDIS_PIPELINE_OK)) \
 	return XLAT_ACTION_FAIL; \
 if (fr_redis_command_argv_add(_cmds, _argc, _argv, _arg_len, _func, _rctx) != FR_REDIS_PIPELINE_OK) \
 	return XLAT_ACTION_FAIL; \
 if (_read_only && \
-    (fr_redis_command_preformatted_add(_cmds, "READWRITE", redis_xlat_status_check, _rctx) != FR_REDIS_PIPELINE_OK)) \
+    (fr_redis_command_literal_add(_cmds, "READWRITE", redis_xlat_status_check, _rctx) != FR_REDIS_PIPELINE_OK)) \
     	return XLAT_ACTION_FAIL
 
 static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -288,7 +288,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
 	rctx->cmds = cmds;
-	fr_redis_command_preformatted_add(cmds, "PING", redis_xlat_ping_check, rctx);
+	fr_redis_command_literal_add(cmds, "PING", redis_xlat_ping_check, rctx);
 
 	rctx->cmd = fr_redis_async_cmd_start(unlang_interpret_frame_talloc_ctx(request), request, &ret,
 					     thread->rtcluster, NULL, 0, cmds, rctx->read_only, NULL);
