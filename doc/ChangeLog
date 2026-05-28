@@ -1,17 +1,33 @@
 FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
-
-	Feature improvements
-	* Always allow Protocol-Error packet as valid response to any
-	  packet.
 	* Add "protocol_error = yes" configuration to clients.  If set,
 	  the server can return Protocol-Error responses to the client.
-	* Add Error-Cause attributes to CoA-NAK and Disconnect-NAK
-	* added filter_username_nai to policy.d/filter, mainly for use in
-	  eduroam.
+	* radclient can now suppress Message-Authenticator in Access-Request,
+	  when the input packet contains "Message-Authenticator !* ANY"
+	  Don't use this in production!
+	* Set "suppress_secrets = true" by default.
+	* Add "connect_fail_interval" to home_server configuration.  If a
+	  connection fails, the server will wait this time before trying to
+	  connect again.
+	* Add "certificate_fail_interval" to home_server configuration.
+	  If a connection succeeds but the home_server certificate is
+	  invalid, the server will wait this time before trying to connect
+	  again.
+	* Add `update` section to home_server configuration.
+	  Status-Server packets can therefore be customized.
+	* Add "cipher_suites" to tls{} configuration.  See
+	  raddb/sites-available/tls.  This is mainly used to set the
+	  cipher suites for TLS-PSK with TLS 1.3.
+
+	Feature improvements
 	* Initial implementation of Protocol-Failure as per IETF draft.
 	  The functionality is disabled by default, but can be enabled
 	  via new configuration flags.
+	* Always allow Protocol-Error packet as valid response to any
+	  packet.
+	* Add Error-Cause attributes to CoA-NAK and Disconnect-NAK
+	* added filter_username_nai to policy.d/filter, mainly for use in
+	  eduroam.
 	* Updates to VSCode default configuration.
 	* Cleanups and add log messages for rlm_proxy_rate_limit.
 	* allow 389ds legacy PBKDF2_SHA256 to use arbitrary iteration
@@ -27,24 +43,15 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	  the secrets are being suppressed.
 	* Allow parallel build for Debian.  Fixes #5774.
 	* Add RTBrick and other dictionaries.
-	* Set "suppress_secrets = true" by default.
 	* Add documentation for ntlm_auth and spaces in passwords.
 	  Addresses #5654.
-	* radclient can now suppress Message-Authenticator in Access-Request,
-	  when the input packet contains "Message-Authenticator !* ANY"
-	  Don't use this in production!
-	* Add "connect_fail_interval" to home_server configuration.  If a
-	  connection fails, the server will wait this time before trying to
-	  connect again.
-	* Add "certificate_fail_interval" to home_server configuration.
-	  If a connection succeeds but the home_server certificate is
-	  invalid, the server will wait this time before trying to connect
-	  again.
-	* Add `update` section to home_server configuration.  Status-Server packets
-	  can therefore be customized.
 
 	Bug fixes
 	* Many minor bug fixes and cleanups.
+	* Fixes to RadSec.
+	* Many other fixes to socket and event handling, which enable
+	  increased scalability.
+	* Fix issues found with EAP-MSCHAPv2, EAP-PWD, and EAP-MD5.
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
 	* Disable the PCRE JIT at run time if it can't allocate
 	  executable memory.
@@ -77,8 +84,11 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	  Fixes #5775.
 	* Hoist mutex lock in TLS sockets.  Fixes #5480
 	* Fix occasional EAP-PWD authentication failure.
-	* Many other fixes to socket and event handling, which enable
-	  increased scalability.
+	* Fix memcache storing of dates.
+	* Add more debugging information for TEAP.
+	  TEAP has limited utility, due to the incompleteness of the spec,
+	  and the severe limitations of the Windows TEAP supplicant.
+	* Return stats for "auth+acct" home servers.  Fixes #5866.
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
