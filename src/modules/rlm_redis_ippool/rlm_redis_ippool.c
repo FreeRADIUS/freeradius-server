@@ -157,6 +157,17 @@ typedef struct {
 	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
 } redis_ippool_alloc_call_env_t;
 
+/** Resume context for async calls to alloc script
+ *
+ */
+typedef struct {
+	redis_ippool_alloc_call_env_t	*env;		//!< Callenv for the current allocation
+	char				*cmd_str;	//!< Formatted redis command
+	fr_redis_command_set_t		*cmds;		//!< Command set to be run.
+	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
+	ippool_rcode_t			ret;		//!< Return code for the allocation result.
+} redis_ippool_alloc_rctx_t;
+
 /** Call environment used when calling redis_ippool update method.
  *
  */
@@ -789,78 +800,24 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 	return unlang_module_yield(request, resume, NULL, 0, rctx);
 }
 
-/** Allocate a new IP address from a pool
- *
+/** Callback to process results from allocation script
  */
-static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, request_t *request,
-					    redis_ippool_alloc_call_env_t *env, uint32_t lease_time)
+static void redis_ippool_allocate_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
 {
-	struct			timeval now;
-	redisReply		*reply = NULL;
-	uint32_t		assoc_time;
+	redis_ippool_alloc_rctx_t	*alloc_rctx = talloc_get_type_abort(rctx, redis_ippool_alloc_rctx_t);
+	redis_ippool_alloc_call_env_t	*env = alloc_rctx->env;
 
-	fr_redis_rcode_t	status;
-	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
-
-	fr_assert(env->pool_name.vb_length > 0);
-	fr_assert(env->owner.vb_length > 0);
-
-	now = fr_time_to_timeval(fr_time());
-
-	assoc_time = (env->association_time.type == FR_TYPE_UINT32) &&
-		     (env->association_time.vb_uint32 > lease_time) ? env->association_time.vb_uint32 : lease_time;
-
-	if ((env->requested_address.datum.ip.af == AF_INET) && inst->ipv4_integer) {
-		status = ippool_script(&reply, request, inst->cluster,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       inst->wait_num, inst->wait_timeout,
-				       lua_alloc_digest, lua_alloc_cmd,
-		 		       "EVALSHA %s 1 %b %u %u %b %u %b %u",
-	 			       lua_alloc_digest,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       (unsigned int)now.tv_sec, lease_time,
-				       (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
-				       assoc_time,
-				       (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
-				       htonl(env->requested_address.datum.ip.addr.v4.s_addr));
-	} else {
-		char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
-		if (env->requested_address.type == FR_TYPE_COMBO_IP_ADDR) {
-			IPPOOL_SPRINT_IP(ip_buff, &env->requested_address.datum.ip, env->requested_address.datum.ip.prefix);
-		} else {
-			ip_buff[0] = '\0';
-		}
-
-		status = ippool_script(&reply, request, inst->cluster,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       inst->wait_num, inst->wait_timeout,
-				       lua_alloc_digest, lua_alloc_cmd,
-		 		       "EVALSHA %s 1 %b %u %u %b %u %b %s",
-	 			       lua_alloc_digest,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       (unsigned int)now.tv_sec, lease_time,
-				       (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
-				       assoc_time,
-				       (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
-				       ip_buff);
-	}
-	if (status != REDIS_RCODE_SUCCESS) {
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
-	}
-
-	fr_assert(reply);
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
 
 	if (reply->elements == 0) {
 		REDEBUG("Got empty result array");
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
 
 	/*
@@ -869,11 +826,11 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
-	ret = reply->element[0]->integer;
-	if (ret < 0) goto finish;
+	alloc_rctx->ret = reply->element[0]->integer;
+	if (alloc_rctx->ret < 0) return;
 
 	/*
 	 *	Process IP address
@@ -903,8 +860,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 				if (fr_value_box_cast(NULL, tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
 						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
-					ret = IPPOOL_RCODE_FAIL;
-					goto finish;
+					alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+					return;
 				}
 			} else {
 				fr_value_box(&ip_map.rhs->data.literal,
@@ -918,16 +875,16 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 						      NULL, reply->element[1]->str, reply->element[1]->len, false);
 		do_ip_map:
 			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
-				ret = IPPOOL_RCODE_FAIL;
-				goto finish;
+				alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+				return;
 			}
 			break;
 
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for IP element (result[1])",
 				fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 	}
 
@@ -952,8 +909,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 			fr_value_box_bstrndup_shallow(&range_map.rhs->data.literal,
 						      NULL, reply->element[2]->str, reply->element[2]->len, true);
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
-				ret = IPPOOL_RCODE_FAIL;
-				goto finish;
+				alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+				return;
 			}
 		}
 			break;
@@ -964,8 +921,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for range element (result[2])",
 				fr_table_str_by_value(redis_reply_types, reply->element[2]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 	}
 
@@ -984,19 +941,16 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
 			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
 				fr_table_str_by_value(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 
 		fr_value_box(&expiry_map.rhs->data.literal, (uint32_t)reply->element[3]->integer, true);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			alloc_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 	}
-finish:
-	fr_redis_reply_free(&reply);
-	return ret;
 }
 
 /** Update an existing IP address in a pool
@@ -1231,11 +1185,87 @@ finish:
 		RETURN_UNLANG_NOOP; \
 	}
 
+/** Check the return code from an async redis command
+ *
+ * Redirecting to another node in response to ASK / MOVED codes.
+ */
+static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_redis_command_set_t *cmds,
+						       fr_redis_async_cmd_t *cmd, module_ctx_t const *mctx,
+						       module_method_t resume)
+{
+	switch (fr_redis_command_set_rcode(cmds)) {
+	case REDIS_ASYNC_RCODE_NO_SCRIPT:
+		/*
+		 *	Script loading is done following trunk connection.
+		 *	A NO-SCRIPT response means the command was enqueued before the script load.
+		 *	Re-enqueue the command set and it will run after the script load.
+		 */
+		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
+		return unlang_module_yield(request, resume, NULL, 0, mctx->rctx);
+
+	case REDIS_ASYNC_RCODE_MOVE:
+	{
+		rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
+		rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+
+		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+										inst->coord_pair_reg, false);
+	}
+		FALL_THROUGH;
+
+	case REDIS_ASYNC_RCODE_ASK:
+		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
+		return unlang_module_yield(request, resume, NULL, 0, mctx->rctx);
+
+	default:
+		break;
+	}
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_alloc_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							 request_t *request)
+{
+	redis_ippool_alloc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_alloc_rctx_t);
+
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx,
+				     mod_alloc_resume) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+
+	switch (rctx->ret) {
+	case IPPOOL_RCODE_SUCCESS:
+		RDEBUG2("IP address lease allocated");
+		RETURN_UNLANG_UPDATED;
+
+	case IPPOOL_RCODE_POOL_EMPTY:
+		RWDEBUG("Pool contains no free addresses");
+		RETURN_UNLANG_NOTFOUND;
+
+	default:
+		RPERROR("Allocating IP address failed");
+		RETURN_UNLANG_FAIL;
+	}
+}
+
+static int _redis_ippool_alloc_ctx_free(redis_ippool_alloc_rctx_t *rctx)
+{
+	if (!rctx->cmd_str) return 0;
+	redisFreeCommand(rctx->cmd_str);
+	return 0;
+}
+
 static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 	redis_ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_alloc_call_env_t);
 	uint32_t			lease_time;
+	struct				timeval now;
+	uint32_t			assoc_time;
+	redis_ippool_alloc_rctx_t	*rctx;
+	int				cmd_len;
+
+	fr_assert(env->pool_name.vb_length > 0);
+	fr_assert(env->owner.vb_length > 0);
 
 	CHECK_POOL_NAME
 
@@ -1247,18 +1277,53 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 			env->offer_time.vb_uint32 : env->lease_time.vb_uint32;
 	ippool_action_print(request, POOL_ACTION_ALLOCATE, L_DBG_LVL_2, &env->pool_name, NULL,
 			    &env->owner, &env->gateway_id, lease_time);
-	switch (redis_ippool_allocate(inst, request, env, lease_time)) {
-	case IPPOOL_RCODE_SUCCESS:
-		RDEBUG2("IP address lease allocated");
-		RETURN_UNLANG_UPDATED;
 
-	case IPPOOL_RCODE_POOL_EMPTY:
-		RWDEBUG("Pool contains no free addresses");
-		RETURN_UNLANG_NOTFOUND;
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_alloc_rctx_t));
+	rctx->env = env;
+	rctx->ret = IPPOOL_RCODE_FAIL;
+	talloc_set_destructor(rctx, _redis_ippool_alloc_ctx_free);
 
-	default:
-		RETURN_UNLANG_FAIL;
+	now = fr_time_to_timeval(fr_time());
+
+	assoc_time = (env->association_time.type == FR_TYPE_UINT32) &&
+		     (env->association_time.vb_uint32 > lease_time) ? env->association_time.vb_uint32 : lease_time;
+
+	if ((env->requested_address.datum.ip.af == AF_INET) && inst->ipv4_integer) {
+		cmd_len = redisFormatCommand(&rctx->cmd_str, "EVALSHA %s 1 %b %u %u %b %u %b %u",
+					     lua_alloc_digest,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     (unsigned int)now.tv_sec, lease_time,
+					     (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
+					     assoc_time,
+					     (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
+					     htonl(env->requested_address.datum.ip.addr.v4.s_addr));
+		if (cmd_len < 0) {
+		format_error:
+			RERROR("Failed formatting redis command");
+			return UNLANG_ACTION_FAIL;
+		}
+	} else {
+		char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
+		if (env->requested_address.type == FR_TYPE_COMBO_IP_ADDR) {
+			IPPOOL_SPRINT_IP(ip_buff, &env->requested_address.datum.ip, env->requested_address.datum.ip.prefix);
+		} else {
+			ip_buff[0] = '\0';
+		}
+
+		cmd_len = redisFormatCommand(&rctx->cmd_str, "EVALSHA %s 1 %b %u %u %b %u %b %s",
+	 				     lua_alloc_digest,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     (unsigned int)now.tv_sec, lease_time,
+					     (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length,
+					     assoc_time,
+					     (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length,
+					     ip_buff);
+		if (cmd_len < 0) goto format_error;
 	}
+
+	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
+				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				     rctx->cmd_str, cmd_len, redis_ippool_allocate_results, mod_alloc_resume, rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
