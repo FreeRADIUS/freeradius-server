@@ -49,7 +49,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/token.h>
 
 #include <freeradius-devel/redis/base.h>
-#include <freeradius-devel/redis/cluster.h>
 #include <freeradius-devel/redis/cluster_async.h>
 
 #include "redis_ippool.h"
@@ -84,8 +83,6 @@ typedef struct {
 
 	bool			copy_on_update; //!< Copy the address provided by ip_address to the
 						//!< allocated_address_attr if updates are successful.
-
-	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
 
 	fr_coord_reg_t		*coord_reg;		//!< Coordinator registration.
 	fr_coord_pair_reg_t	*coord_pair_reg;	//!< Coord pair registration.
@@ -1446,14 +1443,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->wait_cmd_len = redisFormatCommand(&inst->wait_cmd, "WAIT %i %i", inst->wait_num,
 							fr_time_delta_to_msec(inst->wait_timeout));
 		if (inst->wait_cmd_len < 0) return -1;
-	}
-
-	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, NULL, NULL, NULL);
-	if (!inst->cluster) return -1;
-
-	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {
-		PERROR("Cluster error");
-		return -1;
 	}
 
 	/*
