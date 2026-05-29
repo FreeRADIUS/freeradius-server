@@ -195,7 +195,6 @@ static mrb_value mruby_pair_list_keys(mrb_state *mrb, mrb_value self)
 	pair = (mruby_pair_t *)DATA_PTR(self);
 	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
 
-	if (!pair->vp) return keys;
 	keys = mrb_ary_new(mrb);
 	if (!pair->vp) return keys;
 	for (vp = fr_pair_list_head(&pair->vp->vp_group); vp; vp = fr_pair_list_next(&pair->vp->vp_group, vp)) {
