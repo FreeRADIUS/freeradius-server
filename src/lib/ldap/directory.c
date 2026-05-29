@@ -149,7 +149,8 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	if (values) {
 		num = ldap_count_values_len(values);
 		for (i = 0; i < num; i++) {
-			if (strncmp("OpenLDAProotDSE", values[i]->bv_val, values[i]->bv_len) == 0) {
+			if ((values[i]->bv_len == sizeof("OpenLDAProotDSE") - 1) &&
+			    (memcmp("OpenLDAProotDSE", values[i]->bv_val, values[i]->bv_len) == 0)) {
 				directory->type = FR_LDAP_DIRECTORY_OPENLDAP;
 			}
 		}
@@ -192,17 +193,20 @@ found:
 	if (values) {
 		num = ldap_count_values_len(values);
 		for (i = 0; i < num; i++) {
-			if (strncmp(LDAP_CONTROL_SYNC, values[i]->bv_val, values[i]->bv_len) == 0) {
+			if ((values[i]->bv_len == strlen(LDAP_CONTROL_SYNC)) &&
+			    (memcmp(LDAP_CONTROL_SYNC, values[i]->bv_val, values[i]->bv_len) == 0)) {
 				INFO("Directory supports RFC 4533");
 				directory->sync_type = FR_LDAP_SYNC_RFC4533;
 				break;
 			}
-			if (strncmp(LDAP_SERVER_NOTIFICATION_OID, values[i]->bv_val, values[i]->bv_len) == 0) {
+			if ((values[i]->bv_len == strlen(LDAP_SERVER_NOTIFICATION_OID)) &&
+			    (memcmp(LDAP_SERVER_NOTIFICATION_OID, values[i]->bv_val, values[i]->bv_len) == 0)) {
 				INFO("Directory supports LDAP_SERVER_NOTIFICATION_OID");
 				directory->sync_type = FR_LDAP_SYNC_ACTIVE_DIRECTORY;
 				break;
 			}
-			if (strncmp(LDAP_CONTROL_PERSIST_REQUEST, values[i]->bv_val, values[i]->bv_len) == 0) {
+			if ((values[i]->bv_len == strlen(LDAP_CONTROL_PERSIST_REQUEST)) &&
+			    (memcmp(LDAP_CONTROL_PERSIST_REQUEST, values[i]->bv_val, values[i]->bv_len) == 0)) {
 				INFO("Directory supports persistent search");
 				directory->sync_type = FR_LDAP_SYNC_PERSISTENT_SEARCH;
 				break;
