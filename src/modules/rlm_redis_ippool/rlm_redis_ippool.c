@@ -194,6 +194,17 @@ typedef struct {
 	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
 } redis_ippool_update_call_env_t;
 
+/** Resume context for async calls to update script
+ *
+ */
+typedef struct {
+	redis_ippool_update_call_env_t	*env;		//!< Callenv for the current allocation
+	char				*cmd_str;	//!< Formatted redis command
+	fr_redis_command_set_t		*cmds;		//!< Command set to be run.
+	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
+	ippool_rcode_t			ret;		//!< Return code for the allocation result.
+} redis_ippool_update_rctx_t;
+
 /** Call environment used when calling redis_ippool release method.
  *
  */
@@ -953,74 +964,24 @@ static void redis_ippool_allocate_results(request_t *request, UNUSED fr_redis_co
 	}
 }
 
-/** Update an existing IP address in a pool
- *
+/** Callback to process results from allocation script
  */
-static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, request_t *request,
-					  redis_ippool_update_call_env_t *env,
-					  fr_ipaddr_t *ip,
-					  fr_value_box_t const *owner,
-					  fr_value_box_t const *gateway_id,
-					  uint32_t expires)
+static void redis_ippool_update_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
 {
-	struct			timeval now;
-	redisReply		*reply = NULL;
-
-	fr_redis_rcode_t	status;
-	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
-	uint32_t		assoc_time;
-
-	now = fr_time_to_timeval(fr_time());
-
-	assoc_time = (env->association_time.type == FR_TYPE_UINT32) &&
-		     (env->association_time.vb_uint32 > expires) ? env->association_time.vb_uint32 : expires;
-
-	if ((ip->af == AF_INET) && inst->ipv4_integer) {
-		status = ippool_script(&reply, request, inst->cluster,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       inst->wait_num, inst->wait_timeout,
-				       lua_update_digest, lua_update_cmd,
-				       "EVALSHA %s 1 %b %u %u %u %b %u %b",
-				       lua_update_digest,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       (unsigned int)now.tv_sec, expires,
-				       htonl(ip->addr.v4.s_addr),
-				       (uint8_t const *)owner->vb_strvalue, owner->vb_length,
-				       assoc_time,
-				       (uint8_t const *)gateway_id->vb_strvalue, gateway_id->vb_length);
-	} else {
-		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
-
-		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
-		status = ippool_script(&reply, request, inst->cluster,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       inst->wait_num, inst->wait_timeout,
-				       lua_update_digest, lua_update_cmd,
-				       "EVALSHA %s 1 %b %u %u %s %b %u %b",
-				       lua_update_digest,
-				       (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				       (unsigned int)now.tv_sec, expires,
-				       ip_buff,
-				       (uint8_t const *)owner->vb_strvalue, owner->vb_length,
-				       assoc_time,
-				       (uint8_t const *)gateway_id->vb_strvalue, gateway_id->vb_length);
-	}
-	if (status != REDIS_RCODE_SUCCESS) {
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
-	}
+	redis_ippool_update_rctx_t	*update_rctx = talloc_get_type_abort(rctx, redis_ippool_update_rctx_t);
+	redis_ippool_update_call_env_t	*env = update_rctx->env;
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		update_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
 
 	if (reply->elements == 0) {
 		REDEBUG("Got empty result array");
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		update_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
 
 	/*
@@ -1029,11 +990,11 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 	if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
+		update_rctx->ret = IPPOOL_RCODE_FAIL;
+		return;
 	}
-	ret = reply->element[0]->integer;
-	if (ret < 0) goto finish;
+	update_rctx->ret = reply->element[0]->integer;
+	if (update_rctx->ret < 0) return;
 
 	/*
 	 *	Process Range identifier
@@ -1052,8 +1013,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 			fr_value_box_bstrndup_shallow(&range_map.rhs->data.literal, NULL,
 						      reply->element[1]->str, reply->element[1]->len, true);
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
-				ret = IPPOOL_RCODE_FAIL;
-				goto finish;
+				update_rctx->ret = IPPOOL_RCODE_FAIL;
+				return;
 			}
 		}
 			break;
@@ -1064,8 +1025,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 		default:
 			REDEBUG("Server returned unexpected type \"%s\" for range element (result[1])",
 				fr_table_str_by_value(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			update_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 	}
 
@@ -1083,17 +1044,12 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 
 		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0, NULL);
 
-		fr_value_box(&expiry_map.rhs->data.literal, expires, false);
+		fr_value_box(&expiry_map.rhs->data.literal, env->lease_time.vb_uint32, false);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
+			update_rctx->ret = IPPOOL_RCODE_FAIL;
+			return;
 		}
 	}
-
-finish:
-	fr_redis_reply_free(&reply);
-
-	return ret;
 }
 
 /** Release an existing IP address in a pool
@@ -1326,19 +1282,17 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 				     rctx->cmd_str, cmd_len, redis_ippool_allocate_results, mod_alloc_resume, rctx);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_update_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							 request_t *request)
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
+	redis_ippool_update_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_update_rctx_t);
 	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
 
-	CHECK_POOL_NAME
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx,
+				     mod_update_resume) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
-	ippool_action_print(request, POOL_ACTION_UPDATE, L_DBG_LVL_2, &env->pool_name,
-			    &env->requested_address, &env->owner, &env->gateway_id, env->lease_time.vb_uint32);
-	switch (redis_ippool_update(inst, request, env,
-				    &env->requested_address.datum.ip, &env->owner,
-				    &env->gateway_id,
-				    env->lease_time.vb_uint32)) {
+	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
 		RDEBUG2("Requested IP address' \"%pV\" lease updated", &env->requested_address);
 
@@ -1387,8 +1341,70 @@ static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, mo
 		RETURN_UNLANG_INVALID;
 
 	default:
+		RPERROR("Failed updating IP address");
 		RETURN_UNLANG_FAIL;
 	}
+}
+
+static int _redis_ippool_update_rctx_free(redis_ippool_update_rctx_t *rctx)
+{
+	if (!rctx->cmd_str) return 0;
+	redisFreeCommand(rctx->cmd_str);
+	return 0;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
+    	struct				timeval now;
+	uint32_t			assoc_time, expires;
+	fr_ipaddr_t			*ip = &env->requested_address.datum.ip;
+	int				cmd_len;
+	redis_ippool_update_rctx_t	*rctx;
+
+	CHECK_POOL_NAME
+
+	ippool_action_print(request, POOL_ACTION_UPDATE, L_DBG_LVL_2, &env->pool_name,
+			    &env->requested_address, &env->owner, &env->gateway_id, env->lease_time.vb_uint32);
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_update_rctx_t));
+	rctx->env = env;
+	rctx->ret = IPPOOL_RCODE_FAIL;
+	talloc_set_destructor(rctx, _redis_ippool_update_rctx_free);
+
+	now = fr_time_to_timeval(fr_time());
+	expires = env->lease_time.vb_uint32;
+	assoc_time = (env->association_time.type == FR_TYPE_UINT32) &&
+		     (env->association_time.vb_uint32 > expires) ? env->association_time.vb_uint32 : expires;
+
+	if ((ip->af == AF_INET) && inst->ipv4_integer) {
+		cmd_len = redisFormatCommand(&rctx->cmd_str, "EVALSHA %s 1 %b %u %u %u %b %u %b", lua_update_digest,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     (unsigned int)now.tv_sec, expires, htonl(ip->addr.v4.s_addr),
+					     (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length, assoc_time,
+					     (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length);
+		if (cmd_len < 0) {
+		format_error:
+			RERROR("Failed formatting redis command");
+			return UNLANG_ACTION_FAIL;
+		}
+	} else {
+		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
+
+		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
+		cmd_len = redisFormatCommand(&rctx->cmd_str, "EVALSHA %s 1 %b %u %u %s %b %u %b", lua_update_digest,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     (unsigned int)now.tv_sec, expires, ip_buff,
+					     (uint8_t const *)env->owner.vb_strvalue, env->owner.vb_length, assoc_time,
+					     (uint8_t const *)env->gateway_id.vb_strvalue, env->gateway_id.vb_length);
+		if (cmd_len < 0) goto format_error;
+	}
+
+	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
+				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+				     rctx->cmd_str, cmd_len, redis_ippool_update_results, mod_update_resume, rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_release(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
