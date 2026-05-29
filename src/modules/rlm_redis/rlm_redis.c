@@ -269,6 +269,11 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rlm_redis_xlat_rctx_t	*rctx;
 	fr_redis_async_rcode_t	ret;
 
+	if (!inst->conf.use_cluster_map) {
+		RWARN("Cluster map not in use");
+		return XLAT_ACTION_DONE;
+	}
+
 	if (fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
 					    inst->coord_pair_reg, true) == REDIS_ASYNC_RCODE_ERROR) {
 		RPEDEBUG("Failed to initiate cluster remap");
@@ -448,7 +453,8 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
 		rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
 		rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg, false);
+		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+									        inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 
@@ -651,7 +657,8 @@ static xlat_action_t redis_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 		rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_t);
 		rlm_redis_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_thread_t);
 
-		fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw, inst->coord_pair_reg, false);
+		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+										inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 
@@ -846,6 +853,8 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 	rlm_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_thread_t);
 	rlm_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 
+	if (!inst->conf.use_cluster_map) return 0;
+
 	t->cw = fr_coord_attach(t, mctx->el, inst->coord_reg);
 
 	if (!t->cw) {
@@ -890,6 +899,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->conf.log_prefix = mctx->mi->name;
 
+	if (!inst->conf.use_cluster_map) return 0;
+
 	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
 			.name = mctx->mi->name,
 			.worker_cb = worker_pair_callbacks,
@@ -928,6 +939,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_redis_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
+
+	if (!inst->conf.use_cluster_map) return 0;
 
 	fr_coord_deregister(inst->coord_reg);
 	talloc_free(inst->coord_pair_reg);

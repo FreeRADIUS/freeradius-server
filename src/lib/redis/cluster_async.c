@@ -430,6 +430,7 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 	fr_redis_cluster_thread_t	*rtcluster;
 	trunk_conf_t			*our_tconf;
 	uint8_t				i;
+	uint32_t			s, num_nodes;
 
 	MEM(rtcluster = talloc_zero(ctx, fr_redis_cluster_thread_t));
 	*rtcluster = (fr_redis_cluster_thread_t) {
@@ -447,14 +448,14 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 
 	if (conf->max_nodes == UINT8_MAX) {
 		ERROR("%s - Maximum number of connected nodes allowed is %i", conf->log_prefix, UINT8_MAX - 1);
+	error:
 		talloc_free(rtcluster);
 		return NULL;
 	}
 
 	if (conf->max_nodes == 0) {
 		ERROR("%s - Minimum number of nodes allowed is 1", conf->log_prefix);
-		talloc_free(rtcluster);
-		return NULL;
+		goto error;
 	}
 
 	MEM(rtcluster->node = talloc_zero_array(rtcluster, fr_redis_ct_node_t, conf->max_nodes + 1));
@@ -472,6 +473,43 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 		/* Push them all into the queue */
 		fr_fifo_push(rtcluster->free_nodes, &rtcluster->node[i]);
 	}
+
+	if (conf->use_cluster_map) return rtcluster;
+
+	/*
+	 *	If we are not using a cluster map, just configure nodes from
+	 *	the bootstrap list and distribute them through the key slots.
+	 */
+	for (s = 0; s < talloc_array_length(conf->hostname); s++) {
+		fr_redis_ct_node_t	*cluster_node;
+		fr_socket_t		addr;
+
+		cluster_node = fr_fifo_pop(rtcluster->free_nodes);
+		if (!cluster_node) {
+			ERROR("Reached maximum connected nodes");
+			goto error;
+		}
+		if (fr_inet_pton_port(&addr.inet.dst_ipaddr, &addr.inet.dst_port,
+				      conf->hostname[s], talloc_strlen(conf->hostname[s]), AF_UNSPEC, true, true) < 0) {
+			PERROR("Failed parsing %s", conf->hostname[s]);
+			goto error;
+		}
+		if (addr.inet.dst_port == 0) addr.inet.dst_port = conf->port;
+		CONFIGURE_NODE(cluster_node, addr);
+		fr_rb_insert(rtcluster->used_nodes, cluster_node);
+		cluster_node->is_active = true;
+		cluster_node->is_master = true;
+	}
+
+	num_nodes = fr_rb_num_elements(rtcluster->used_nodes);
+	if (!num_nodes) {
+		ERROR("%s - No bootstrap servers configured", conf->log_prefix);
+		goto error;
+	}
+
+	for (s = 0; s < KEY_SLOTS; s++) rtcluster->key_slot[s].master = (s % (uint16_t) num_nodes) + 1;
+
+	rtcluster->state = CLUSTER_READY;
 
 	return rtcluster;
 }

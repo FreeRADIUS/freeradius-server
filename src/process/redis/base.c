@@ -552,6 +552,7 @@ RECV(cluster_map_bootstrap)
 	fr_pair_list_init(&cluster->cluster_pairs);
 
 	conf->max_nodes = vp->vp_uint8;
+	conf->use_cluster_map = true;
 
 	fr_pair_list_foreach(&request->request_pairs, conf_vp) {
 		if (conf_vp->da == attr_redis_username) {
