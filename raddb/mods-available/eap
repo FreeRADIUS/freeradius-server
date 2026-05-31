@@ -1150,23 +1150,30 @@ eap {
 	#
 	#  #### Notes regarding Microsoft Windows 11 ####
 	#
-	#  This supplicant is *extremely* temperamental, seemingly across
-	#  all EAP methods but especially so for TEAP.
+	#  The Windows supplicant is *extremely* temperamental,
+	#  seemingly across all EAP methods but especially so for
+	#  TEAP.  For example, for TLS 1.3, it supports session
+	#  resumption with EAP-TLS, but not with PEAP or TTLS.  This
+	#  issue has been raised with Microsoft, but has not yet been
+	#  addressed.
 	#
-	#  We cannot help you here in configuration of Windows other than
-	#  to provide an account of our observations with a stock, non-updated
-	#  Windows 11 25H2 install with the usual caveat "your mileage may vary".
+	#  We cannot help you with configuring Windows, other than to
+	#  provide an account of our observations with a stock,
+	#  non-updated Windows 11 25H2 install with the usual caveat
+	#  "your mileage may vary".
 	#
-	#  By not configuring Microsoft Windows 11 or FreeRADIUS in accordance
-	#  to the observations listed here, then TEAP is unlikely to work.
+	#  The observations below describe how to configure Microsoft
+	#  Windows 11 and FreeRADIUS.  If you don't follow similar
+	#  steps, then TEAP is unlikely to work.
 	#
 	#   * We found the new style 802.1X UI is unusable and you should
 	#     use the old UI; found by searching for 'View network connections'
 	#     using the search bar, right clicking on your network interface,
 	#     selecting 'Properties' and then go to the 'Authentication' tab.
 	#
-	#   * You are not able to configure the supplicant to skip verifying
-	#     the CA or server name, they both should be configured.
+	#   * You are not able to configure the supplicant to skip
+	#     verifying the CA or server name, both of those
+	#     verification steps should be configured.
 	#
 	#   * Due to a bug known to Microsoft since 2022, when using wired
 	#     802.1X you may find no traffic is sent to the RADIUS server,
@@ -1179,15 +1186,17 @@ eap {
 	#   * 'user' authentication is almost always EAP-MSCHAPv2 or if EAP-TLS
 	#     then a 'smartcard'; which can (in theory) be Windows Hello.
 	#
-	#   * For user based authentication, the 'Sign in' button may not
-	#     appear or stop functioning resulting in no further RADIUS
-	#     traffic. The workaround we found was to close completely the
-	#     new UI page and let the 'Sign in' toast popup open the UI.
+	#   * For user-based authentication, the 'Sign in' button may
+	#     not appear or stop functioning resulting in no further
+	#     RADIUS traffic. The workaround we found was to close
+	#     completely the new UI page and let the 'Sign in' toast
+	#     popup open the UI.
 	#
-	#     Failing this, make sure you have checked 'Fall-back to
-	#     unauthorized network access', otherwise you may never see the
-	#     'Sign in' button or toast popup window to enter credentials; as
-	#     such we recommend you leave this enabled.
+	#     Failing the above, make sure you have checked 'Fall-back
+	#     to unauthorized network access', otherwise you may never
+	#     see the 'Sign in' button or toast popup window to enter
+	#     credentials; as such we recommend you leave this setting
+	#     enabled.
 	#
 	#   * Interactive authentications (such as EAP-MSCHAPv2) can lead to
 	#     the credentials prompt, but after providing your credentials
@@ -1198,20 +1207,26 @@ eap {
 	#     you will need to configure one of the methods to use a Smartcard.
 	#
 	#      - Attempting to use an installed client certificate seemingly
-	#        stalls from the perspective of the user but for the RADIUS
-	#        server it receives a non-standard empty EAP identity and
-	#        responds with an Access-Reject.
+	#        stalls from the perspective of the user.  However, the RADIUS
+	#        server receives a non-standard empty EAP identity and therefore
+	#        can only respond with an Access-Reject.
 	#
-	#      - After selecting the Smartcard identity to use, Windows
-	#        may immediately claim authentication failed but send
-	#        no traffic to the RADIUS server. To resolve this, re-insert
-	#        your Smartcard.
+	#	That is, when Windows has no crentials it doesn't send
+	#	a TEAP error, it just starts EAP with no identity.
+	#	This behavior violates the base EAP specifications,
+	#	and also the TEAP specfication.
 	#
-	#      - We have only tested this using QEMU's CCID emulation and
-	#        with the Smartcard functionality in UNIX 'spicy' client.
+	#      - After selecting the Smartcard identity to use,
+	#        Windows may immediately claim authentication failed.
+	#        However, it has sent no traffic to the RADIUS
+	#        server. To resolve this, re-insert your Smartcard.
+	#
+	#      - We have only tested this using QEMU's CCID emulation
+	#        and with the Smartcard functionality in UNIX 'spicy'
+	#        client.  Your mileage may vary.
 	#
 	#   * The configuration of the methods used must match the value you
-	#     set 'identity_types' below to.
+	#     set in 'identity_types', below.
 	#
 	#     If you use 'none' as the secondary method then you must set
 	#     'identity_types' to a single value; using optional methods
@@ -1221,62 +1236,75 @@ eap {
 	#     For Windows, though the language 'primary' and 'secondary'
 	#     imply preference, the implementation is in fact ordering based.
 	#
-	#     The order you provide to Windows must be the same order of
-	#     methods you set in 'identity_types' and the values you use
-	#     for machine_eap_type and user_eap_type.
+	#     You must configure Windows in the same order of methods
+	#     that you set in 'identity_types' and also the values you
+	#     use for machine_eap_type and user_eap_type.
 	#
-	#   * The value used for 'Specify authentication mode', which is found
-	#     under 'Additional settings', must be appropriately set for the
-	#     value of 'identity_types' you want to use below:
+	#   * The value used for 'Specify authentication mode' (which
+	#     is found under 'Additional settings') must be set
+	#     correctly for the value of 'identity_types' you want to
+	#     use below:
 	#
-	#      - unchecked leads to automatic detection and selection of
-	#        one of the following settings. It often incorrectly
-	#        selects something you do not desire, especially when
-	#        optional methods are in use.
+	#      - unchecked leads to automatic detection and selection
+	#        of one of the following settings.  Windows often
+	#        incorrectly selects something you do not desire,
+	#        especially when optional methods are in use.
 	#
-	#      - User or computer authentication:
+	#      - Windows "User or computer authentication":
 	#
-	#         * Supports 'machine,user' and 'user,machine'
+	#         * Supports FreeRADIUS 'identity_types = machine,user'
+	#	    and 'identity_types = user,machine'
 	#
-	#      - Computer authentication
+	#      - Windows "Computer authentication"
 	#
-	#         * Supports 'machine'
+	#         * Supports FreeRADIUS 'identity_types = machine'
 	#
-	#         * Supports 'machine,?user' if you have a dummy EAP-MSCHAPv2
+	#         * Supports FreeRADIUS 'identity_types = machine,?user',
+	#	    if you have a dummy EAP-MSCHAPv2
 	#           secondary method configured on Windows
 	#
-	#         * Does not support '?user,machine'
+	#         * Does not support FreeRADIUS 'identity_types = ?user,machine'
 	#
-	#      - User authentication
+	#      - Windows "User authentication"
 	#
-	#         * Supports 'user'
+	#         * Supports FreeRADIUS 'identity_types = user'
 	#
-	#         * Supports 'user,?machine' if you have a dummy EAP-TLS
-	#           secondary method configured on Windows
+	#         * Supports FreeRADIUS 'identity_types = user,?machine',
+	#	    if you have a dummy EAP-TLS secondary method
+	#           configured on Windows
 	#
-	#         * Does not support '?machine,user'
+	#         * Does not support FreeRADIUS 'identity_types = ?machine,user'
 	#
-	#      - Guest authentication
+	#      - Windows "Guest authentication"
 	#
-	#         * Unsupported (assumed to mean use "no inner methods")
-	#           as it Windows sends to the RADIUS server a non-compliant
-	#           zero length EAP-Identity before TEAP is negotiated.
+	#         * Unsupported (we assume that Windows uses this to
+	#           mean use "no inner methods") as it Windows sends a
+	#           non-compliant zero length EAP-Identity before TEAP
+	#           is even negotiated.
 	#
 	#   * EAP-TLS followed by either EAP-TLS or EAP-MSCHAPv2 is supported
 	#
-	#      - EAP-MSCHAPv2 followed by EAP-TLS is unsupported (see RFC 9930,
-	#        sections 5.1 and 6.2.5, and leads to Tunnel-Compromise).
+	#      - EAP-MSCHAPv2 followed by EAP-TLS is unsupported.  See
+	#        RFC 9930, sections 5.1 and 6.2.5.  Using this method
+	#        can lead to Tunnel-Compromise.
 	#
-	#   * When selecting the the 'primary' and 'secondary' EAP methods in
-	#     Windows to use they must match your configuration here for
-	#     'user_eap_type' and 'machine_eap_type' with the constraint:
+	#   * When selecting the 'primary' and 'secondary' EAP
+	#     methods in Windows, they must match your configuration
+	#     here for 'user_eap_type' and 'machine_eap_type' with the
+	#     constraint:
 	#
-	#      - 'machine' can be EAP-TLS with 'Use a certificate on this computer'
+	#      - 'machine' can be EAP-TLS with a Windows configuratiun of
+	#	  'Use a certificate on this computer'
 	#
-	#      - 'user' may be EAP-MSCHAPV2 or EAP-TLS with 'Use my smart card'
+	#      - 'user' may be EAP-MSCHAPV2 or EAP-TLS with a Windows
+	#        configuration of 'Use my smart card'
 	#
 	#         * It may be possible to use Windows Hello here to provide
 	#           a non-smartcard EAP-TLS (ie. TPM) secured certificate
+	#
+	#  In short, TEAP is functional in a very, very limited set of
+	#  situations.  The FreeRADIUS team is working in the IETF on
+	#  TEAPv2 which will address this, and other issues with TEAP.
 	#
 	#  ##############################################
 	#
