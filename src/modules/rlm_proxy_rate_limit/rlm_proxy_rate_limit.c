@@ -85,6 +85,11 @@ typedef struct {
 	time_t				last_request;
 
 	/*
+	 *  Time that last logging message was emitted
+	 */
+	time_t				last_log_message;
+
+	/*
 	 *	We only actively suppress after receiving two Access-Rejects from
 	 *	home servers within the same second.
 	 */
@@ -112,6 +117,9 @@ struct rlm_proxy_rate_limit_s {
 	uint32_t			num_subtables;
 	uint32_t			count;
 	uint32_t			window;
+	bool				log_enabled;
+	uint32_t			log_message_period;
+	char const			*log_message;
 	rlm_proxy_rate_limit_table_t	tables[MAX_NUM_SUBTABLES];
 };
 
@@ -121,6 +129,9 @@ static const CONF_PARSER module_config[] = {
 	{ "num_subtables", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, num_subtables), "256" },
 	{ "window", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, window), "1"},
 	{ "count", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, count), "2"},
+	{ "log_enabled", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_proxy_rate_limit_t, log_enabled), "no"},
+	{ "log_message_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_proxy_rate_limit_t, log_message_period), "1"},
+	{ "log_message", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_proxy_rate_limit_t, log_message), "Rate limited %{User-Name} %{Calling-Station-Id}"},
 	CONF_PARSER_TERMINATOR
 };
 
@@ -305,6 +316,21 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 		return 0;
 	}
 
+	/*
+	 *  Emit a log message about the rate limiting once every
+	 *  inst->log_message_period seconds.
+	 */
+	if (inst->log_enabled && (request->timestamp - entry->last_log_message) >= inst->log_message_period) {
+		char log_msg[2048];
+
+		if (radius_xlat(log_msg, sizeof(log_msg), request, inst->log_message, NULL, NULL) < 0) {
+			PROXY("Rate limited entry %s (%d)", entry->key, entry->table->id);
+		} else {
+			PROXY("%s", log_msg);
+		}
+		entry->last_log_message = request->timestamp;
+	}
+
 	entry->last_request = request->timestamp;
 
 	/*
@@ -428,7 +454,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		fr_dlist_entry_init(&entry->dlist);
 		entry->table = table;
 		entry->active = false;
-		entry->last_request = entry->last_reject = request->timestamp;
+		entry->last_request = entry->last_reject = entry->last_log_message = request->timestamp;
 		entry->last_id = request->packet->id;
 
 		/*
