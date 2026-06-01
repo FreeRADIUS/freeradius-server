@@ -49,13 +49,31 @@ FUZZER_ARTIFACTS ?= ${BUILD_DIR}/fuzzer
 FUZZER_TIMEOUT   ?= 10
 
 #
-#  Define a function to do all of the same thing.
+#  A handful of protocols ship a hand-written fuzzer_<proto>.c (committed to
+#  git) instead of one generated from fuzzer.c - e.g. to enable the encode /
+#  round-trip path, which needs protocol-specific test points. These still use
+#  the rest of the FUZZER_PROTOCOL machinery (generated .mk, corpus, prereqs,
+#  test rules); only their .c is not generated, and must not be cleaned.
 #
-define FUZZ_PROTOCOL
+FUZZER_PROTOCOL_CUSTOM_SRC = radius
+
+FUZZER_PROTOCOLS_GENERATED = $(filter-out ${FUZZER_PROTOCOL_CUSTOM_SRC},${FUZZER_PROTOCOLS})
+
+#
+#  Generate the protocol fuzzer .c from fuzzer.c. Skipped for custom-src
+#  protocols, whose .c is hand-written and committed.
+#
+define FUZZ_PROTOCOL_SRC
 src/fuzzer/fuzzer_${1}.c: src/fuzzer/fuzzer.c | src/freeradius-devel/fuzzer
 	$${Q}sed 's/XX_PROTOCOL_XX/${1}/g' < $$^ > $$@
+endef
 
-
+#
+#  Generate the protocol fuzzer .mk from fuzzer.mk and wire it in. Done for
+#  every protocol (including custom-src ones) so they all keep the corpus /
+#  prereq / test machinery.
+#
+define FUZZ_PROTOCOL
 src/fuzzer/fuzzer_${1}.mk: src/fuzzer/fuzzer.mk
 	$${Q}sed 's/$$$$(PROTOCOL)/${1}/g' < $$^ > $$@
 
@@ -64,7 +82,8 @@ endef
 
 .PHONY: clean.fuzzer
 clean.fuzzer:
-	@rm -f $(foreach X,${FUZZER_PROTOCOLS},$(subst FUZZER,${X},src/fuzzer/FUZZER.c src/fuzzer/FUZZER.mk))
+	@rm -f $(foreach X,${FUZZER_PROTOCOLS},src/fuzzer/fuzzer_${X}.mk)
+	@rm -f $(foreach X,${FUZZER_PROTOCOLS_GENERATED},src/fuzzer/fuzzer_${X}.c)
 
 clean: clean.fuzzer
 
@@ -74,8 +93,10 @@ clean: clean.fuzzer
 SUBMAKEFILES += fuzzer_json.mk fuzzer_value.mk fuzzer_xlat.mk fuzzer_cf.mk fuzzer_base16_32_64.mk fuzzer_tmpl.mk fuzzer_der.mk
 
 $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
+$(foreach X,${FUZZER_PROTOCOLS_GENERATED},$(eval $(call FUZZ_PROTOCOL_SRC,${X})))
 
 $(eval $(call FUZZ_PROTOCOL,util))
+$(eval $(call FUZZ_PROTOCOL_SRC,util))
 
 #
 #  test.fuzzer.X / .merge rules for the standalone targets. Mirrors
