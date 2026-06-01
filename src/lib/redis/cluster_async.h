@@ -72,5 +72,7 @@ fr_redis_async_cmd_t		*fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *requ
 
 fr_redis_async_rcode_t		fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd);
 
+fr_redis_async_rcode_t		fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd);
+
 fr_redis_ct_node_t		*fr_redis_cluster_thread_node_by_addr(fr_redis_cluster_thread_t *rtcluster,
 								      fr_socket_t *addr);

@@ -343,6 +343,18 @@ fr_redis_async_rcode_t fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd)
 	return fr_redis_async_cmd_enqueue(cmd);
 }
 
+/** Re-submit a redis async command set
+ *
+ * To be used following TRYAGAIN responses
+ * @param cmd	Async command set to redirect
+ * @return fr_redis_async_rcode_t
+ */
+fr_redis_async_rcode_t fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd)
+{
+	fr_redis_command_set_reset(cmd->cmds);
+	return fr_redis_async_cmd_enqueue(cmd);
+}
+
 /** Compare two redis nodes to check equality
  *
  * @param[in] one first node.
