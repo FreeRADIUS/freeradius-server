@@ -832,7 +832,6 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 {
 	cassandra_query_ctx_t	*cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
 
-	cass_result_free(cass_query_ctx->result);
 	talloc_const_free(cass_query_ctx->error.msg);
 
 	return sql_free_result(query_ctx, config);
