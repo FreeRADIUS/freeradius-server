@@ -113,6 +113,10 @@ struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
+	} else if (ret < 3) {
+		msgb_free(msg);
+		*error = -EIO;
+		return NULL;
 	}
 
 	msgb_put(msg, ret);
@@ -120,6 +124,11 @@ struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 	/* then read the length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
 	len = ntohs(hh->len);
+	if (len > TS1_ALLOC_SIZE - (int)sizeof(*hh)) {
+		msgb_free(msg);
+		*error = -EINVAL;
+		return NULL;
+	}
 	ret = recv(bfd->fd, msg->l2h, len, 0);
 	if (ret < len) {
 		msgb_free(msg);
