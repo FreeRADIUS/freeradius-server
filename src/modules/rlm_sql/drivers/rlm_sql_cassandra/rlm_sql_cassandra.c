@@ -613,6 +613,7 @@ static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reas
 		if (cass_query->query_ctx == query_ctx) {
 			fr_dlist_remove(&sql_conn->queries, cass_query);
 			cass_future_free(cass_query->future);
+			talloc_free(cass_query);
 			return;
 		}
 	}
