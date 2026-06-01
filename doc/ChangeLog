@@ -1,4 +1,4 @@
-FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
+FreeRADIUS 3.2.9 Mon 01 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
 	* Add "protocol_error = yes" configuration to clients.  If set,
 	  the server can return Protocol-Error responses to the client.
