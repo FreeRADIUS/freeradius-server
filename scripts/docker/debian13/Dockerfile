@@ -1,9 +1,9 @@
-# Auto generated for debian12
+# Auto generated for debian13
 # from scripts/docker/m4/Dockerfile.deb.m4
 #
-# Rebuild this file with `make docker.debian12.regen`
+# Rebuild this file with `make docker.debian13.regen`
 #
-ARG from=debian:bookworm
+ARG from=debian:trixie
 FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive

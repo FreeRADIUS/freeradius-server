@@ -1,9 +1,9 @@
-# Auto generated for rocky9
+# Auto generated for rocky10
 # from scripts/crossbuild/m4/Dockerfile.rpm.m4
 #
-# Rebuild this file with `make crossbuild.rocky9.regen`
+# Rebuild this file with `make crossbuild.rocky10.regen`
 #
-ARG from=rockylinux/rockylinux:9
+ARG from=rockylinux/rockylinux:10
 FROM ${from} AS build
 
 #
@@ -16,7 +16,6 @@ RUN yum install -y rpmdevtools openssl epel-release git procps yum-utils \
 
 
 
-RUN yum config-manager --set-enabled crb
 
 #
 #  Documentation build dependecies

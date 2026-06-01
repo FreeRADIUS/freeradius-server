@@ -1,9 +1,9 @@
-# Auto generated for centos7
+# Auto generated for rocky10
 # from scripts/docker/m4/Dockerfile.rpm.m4
 #
-# Rebuild this file with `make docker.centos7.regen`
+# Rebuild this file with `make docker.rocky10.regen`
 #
-ARG from=centos:7
+ARG from=rockylinux/rockylinux:10
 FROM ${from} AS build
 
 
@@ -11,8 +11,8 @@ FROM ${from} AS build
 #  Install build tools
 #
 RUN yum groupinstall -y "Development Tools"
-RUN yum install -y rpmdevtools
-RUN yum install -y openssl
+
+RUN yum install -y rpmdevtools openssl dnf-utils
 
 
 #
@@ -34,18 +34,8 @@ WORKDIR freeradius-server
 #  Other requirements
 #
 
-#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
-RUN echo $'[ltb-project]\n\
-name=LTB project packages\n\
-baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo
-RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
-
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
 
 #
 #  Install build dependencies
@@ -84,20 +74,18 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 COPY --from=build /root/rpms /tmp/
 
-# Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
-RUN echo $'[ltb-project]\n\
-name=LTB project packages\n\
-baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo \
-    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
-    \
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm \
+    && yum install -y dnf-utils \
+    && yum config-manager --enable epel-testing
+
+ARG radiusd_uid=95
+ARG radiusd_gid=95
+
+RUN groupadd -g ${radiusd_gid} -r radiusd \
+    && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
     && yum install -y /tmp/*.rpm
 
 COPY docker-entrypoint.sh /

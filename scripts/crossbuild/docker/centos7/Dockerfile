@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.centos7.regen`
 #
 ARG from=centos:7
-FROM ${from} as build
+FROM ${from} AS build
 
 #
 #  Install devtools like make and git and the EPEL

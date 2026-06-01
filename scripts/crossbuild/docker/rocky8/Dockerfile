@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.rocky8.regen`
 #
 ARG from=rockylinux/rockylinux:8
-FROM ${from} as build
+FROM ${from} AS build
 
 #
 #  Install devtools like make and git and the EPEL

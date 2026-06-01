@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.rocky8.regen`
 #
 ARG from=rockylinux/rockylinux:8
-FROM ${from} as build
+FROM ${from} AS build
 
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
 

@@ -1,9 +1,9 @@
-# Auto generated for debian12
+# Auto generated for ubuntu26
 # from scripts/docker/m4/Dockerfile.deb.m4
 #
-# Rebuild this file with `make docker.debian12.regen`
+# Rebuild this file with `make docker.ubuntu26.regen`
 #
-ARG from=debian:bookworm
+ARG from=ubuntu:26.04
 FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive

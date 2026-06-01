@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.debian10.regen`
 #
 ARG from=debian:buster
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -34,6 +34,7 @@ WORKDIR freeradius-server
 #
 RUN git checkout ${release}; \
     if [ -e ./debian/control.in ]; then \
+        touch -t 202001010000 debian/control; \
         debian/rules debian/control; \
     fi; \
     echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control

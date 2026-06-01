@@ -74,15 +74,16 @@ define ADD_DOCKER_REGEN
     docker.${1}.regen: $$(DOCKER_DIR)/${1}/Dockerfile
 endef
 
-$(eval $(call ADD_DOCKER_REGEN,debian10,deb,debian:buster,debian,10,buster))
 $(eval $(call ADD_DOCKER_REGEN,debian11,deb,debian:bullseye,debian,11,bullseye))
 $(eval $(call ADD_DOCKER_REGEN,debian12,deb,debian:bookworm,debian,12,bookworm))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
+$(eval $(call ADD_DOCKER_REGEN,debian13,deb,debian:trixie,debian,13,trixie))
 $(eval $(call ADD_DOCKER_REGEN,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu24,deb,ubuntu:24.04,ubuntu,24,noble))
+$(eval $(call ADD_DOCKER_REGEN,ubuntu26,deb,ubuntu:26.04,ubuntu,26,resolute))
 $(eval $(call ADD_DOCKER_REGEN,centos7,rpm,centos:centos7,centos,7,7))
 $(eval $(call ADD_DOCKER_REGEN,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
 $(eval $(call ADD_DOCKER_REGEN,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
+$(eval $(call ADD_DOCKER_REGEN,rocky10,rpm,rockylinux/rockylinux:10,rocky,10,10))
 
 .PHONY: docker.regen
 docker.regen: $(DOCKER_DOCKERFILES)

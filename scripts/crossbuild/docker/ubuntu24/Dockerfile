@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.ubuntu24.regen`
 #
 ARG from=ubuntu:24.04
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +19,7 @@ RUN apt-get update && \
 
 RUN apt-get update && \
 #  Development utilities
-    apt-get install -y devscripts equivs git quilt rsync fakeroot && \
+    apt-get install -y devscripts equivs git quilt rsync fakeroot curl && \
 #  Compilers
     apt-get install -y g++ llvm clang lldb && \
 #  eapol_test dependencies
@@ -67,6 +67,7 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 	do \
 		git checkout $i; \
 		if [ -e ./debian/control.in ] ; then \
+		        touch -t 202001010000 debian/control; \
 			debian/rules debian/control ; \
 		fi ; \
 		echo 'y' | \

@@ -1,10 +1,10 @@
-# Auto generated for debian10
+# Auto generated for ubuntu26
 # from scripts/crossbuild/m4/Dockerfile.deb.m4
 #
-# Rebuild this file with `make crossbuild.debian10.regen`
+# Rebuild this file with `make crossbuild.ubuntu26.regen`
 #
-ARG from=debian:buster
-FROM ${from} as build
+ARG from=ubuntu:26.04
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -16,15 +16,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 
-#  For clang
-RUN add-apt-repository -y "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-8 main" && \
-    apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
 
 RUN apt-get update && \
 #  Development utilities
-    apt-get install -y devscripts equivs git quilt rsync && \
+    apt-get install -y devscripts equivs git quilt rsync fakeroot curl && \
 #  Compilers
-    apt-get install -y g++ llvm-8 clang-8 lldb-8 && \
+    apt-get install -y g++ llvm clang lldb && \
 #  eapol_test dependencies
     apt-get install -y libnl-3-dev libnl-genl-3-dev
 
@@ -46,14 +43,6 @@ RUN apt-get install -y ./pandoc-*.deb
 RUN apt-get install -y ruby-dev
 RUN gem install asciidoctor
 
-#
-#  Set defaults
-#
-RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 60 && \
-    update-alternatives --config clang
-
-RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-8 60 && \
-    update-alternatives --config lldb
 
 
 #
@@ -78,6 +67,7 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 	do \
 		git checkout $i; \
 		if [ -e ./debian/control.in ] ; then \
+		        touch -t 202001010000 debian/control; \
 			debian/rules debian/control ; \
 		fi ; \
 		echo 'y' | \
