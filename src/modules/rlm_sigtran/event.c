@@ -290,7 +290,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 
 		slen = write(ofd->fd, p, end - p);
 		if (slen > 0) {
-			p += slen;
+			p += slen - 1; /* -1 because of p++ in for loop */
 			continue;
 		}
 
