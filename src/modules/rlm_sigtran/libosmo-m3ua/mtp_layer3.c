@@ -544,6 +544,13 @@ static int mtp_link_sccp_data(struct mtp_link_set *set, struct mtp_level_3_hdr *
 		if (!out)
 			return -1;
 
+		if (!set->slc[sls]) {
+			LOGP(DINP, LOGL_ERROR, "No link for SLS %u on %d/%s\n",
+				sls, set->nr, set->name);
+			msgb_free(out);
+			return -1;
+		}
+
 		mtp_link_submit(set->slc[MTP_LINK_SLS(hdr->addr)], out);
 
 		return 0;
