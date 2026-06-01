@@ -26,16 +26,12 @@ docker run --rm -it \
     freeradius4-profiling-deps/ubuntu24:latest bash
 ```
 
-Inside the container, configure the server with dev CFLAGS and build:
+### Configure and Build FreeRADIUS
 
 ```bash
-./configure \
-  --enable-developer \
-  --disable-verify-ptr \
-  CFLAGS="-g3 -O1 -fno-omit-frame-pointer -fno-inline -Dalways_inline= -fno-optimize-sibling-calls -fno-plt -fno-builtin" \
-  LDFLAGS="-fno-omit-frame-pointer"
+docker exec -it fr-profiling bash
 
-make -j$(nproc)
+./scripts/profiling/config_and_build.sh --fr_src_dir /freeradius
 ```
 
 ### Start Valgrind
