@@ -33,6 +33,8 @@ fi
 
 mkdir -p "${fr_src_dir}/prof-results"
 
+trap 'echo "Stopping..."; kill "$valgrind_pid" 2>/dev/null; wait "$valgrind_pid" 2>/dev/null; exit 0' INT TERM
+
 valgrind \
   --tool=callgrind \
   --log-file="${fr_src_dir}/prof-results/valgrind.log" \
@@ -46,5 +48,8 @@ valgrind \
   --keep-debuginfo=yes \
   --instr-atstart=yes \
   ./scripts/bin/radiusd -f -l stdout -S resources.talloc_skip_cleanup=yes \
-  > "${fr_src_dir}/prof-results/freeradius.log" 2>&1
+  > "${fr_src_dir}/prof-results/freeradius.log" 2>&1 &
+valgrind_pid=$!
+
+wait "$valgrind_pid"
 
