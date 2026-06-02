@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.28 Tue 09 Jul 2024 12:00:00 UTC urgency=low
+FreeRADIUS 3.0.28 Tue 02 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
@@ -6,6 +6,9 @@ FreeRADIUS 3.0.28 Tue 09 Jul 2024 12:00:00 UTC urgency=low
 
 	Bug fixes
 	* Ignore home server "ping" packets for statistics
+	* Backport build fixes from 3.2 especially for newer OSes
+	* Require Message-Authenticator by default
+	* Other bug fixes - see git changelog for details
 
 FreeRADIUS 3.0.27 Tue 09 Jul 2024 12:00:00 UTC urgency=high
 	Configuration changes
