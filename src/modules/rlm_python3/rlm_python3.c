@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/lsan.h>
 
 #include <Python.h>
 #include <dlfcn.h>
@@ -56,11 +57,11 @@ RCSID("$Id$")
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
 
-static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
-static PyObject		*main_module;		//!< Pthon configuration dictionary.
+static PyThreadState	*main_interpreter = NULL;	//!< Main interpreter (cext safe)
+static PyObject		*main_module = NULL;		//!< Pthon configuration dictionary.
 
-static rlm_python_t *current_inst;		//!< Needed to pass parameter to PyInit_radiusd
-static CONF_SECTION *current_conf;		//!< Needed to pass parameter to PyInit_radiusd
+static rlm_python_t *current_inst = NULL;		//!< Needed to pass parameter to PyInit_radiusd
+static CONF_SECTION *current_conf = NULL;		//!< Needed to pass parameter to PyInit_radiusd
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -688,12 +689,9 @@ finish:
 
 static void python_interpreter_free(PyThreadState *interp)
 {
-DIAG_OFF(deprecated-declarations)
-	PyEval_AcquireLock();
+	PyEval_RestoreThread(interp);
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
-	PyEval_ReleaseLock();
-DIAG_ON(deprecated-declarations)
 }
 
 /** Destroy a thread state
@@ -871,7 +869,7 @@ static int python_function_load(char const *name, python_func_def_t *def)
 		return -1;
 	}
 
-	def->module = PyImport_ImportModule(def->module_name);
+	LSAN_DISABLE(def->module = PyImport_ImportModule(def->module_name));
 	if (!def->module) {
 		ERROR("%s - Module '%s' not found", __func__, def->module_name);
 
@@ -1108,10 +1106,12 @@ static PyMODINIT_FUNC PyInit_radiusd(void)
  */
 static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
+	bool locked = false;
+
 	/*
 	 * prepare radiusd module to be loaded
 	 */
-	if (!inst->cext_compat || !main_module) {
+	if ((!inst->cext_compat || !main_module) && (python_instances == 0)) {
 		/*
 		 * This is ugly, but there is no other way to pass parameters to PyMODINIT_FUNC
 		 */
@@ -1148,7 +1148,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 				return -1;
 			}
 
-			status = Py_InitializeFromConfig(&config);
+			LSAN_DISABLE(status = Py_InitializeFromConfig(&config));
 			if (PyStatus_Exception(status)) {
 				PyConfig_Clear(&config);
 				return -1;
@@ -1174,11 +1174,12 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 #if PY_VERSION_HEX <= 0x030a0000
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
-#if PY_VERSION_HEX <= 0x03060000
+#if PY_VERSION_HEX < 0x03070000
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 #endif
 #endif
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
+		locked = true;
 	}
 #if PY_VERSION_HEX < 0x03090000
 	rad_assert(PyEval_ThreadsInitialized());
@@ -1195,10 +1196,12 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 */
 	if (!inst->cext_compat) {
 		inst->sub_interpreter = Py_NewInterpreter();
+		locked = true;
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
 
+	if (!locked) PyEval_AcquireThread(inst->sub_interpreter);
 	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
@@ -1306,12 +1309,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PYTHON_FUNC_LOAD(detach);
 
 	/*
-	 *	Call the instantiate function only if the function and module is set.
+	 *	Call the instantiate function only if the function and module is set and we're not doing a config check.
 	 */
-	if (inst->instantiate.module_name && inst->instantiate.function_name) {
+	if (!check_config && inst->instantiate.module_name && inst->instantiate.function_name) {
 
 		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
-		if (code < 0) {
+		if ((code < 0) || (code == RLM_MODULE_FAIL)) {
 		error:
 			python_error_log();	/* Needs valid thread with GIL */
 			PyEval_SaveThread();
@@ -1333,7 +1336,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (!check_config && inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1373,8 +1376,8 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
-		Py_Finalize();
+		PyEval_RestoreThread(main_interpreter); /* Swap to the main thread */
+		LSAN_DISABLE(Py_Finalize());
 		dlclose(python_dlhandle);
 	}
 
