@@ -243,6 +243,7 @@ static const CONF_PARSER unlang_config[] = {
 	{ "group_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.group_stop_return), "no" },
 	{ "policy_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.policy_stop_return), "no" },
 	{ "improved_state_tracking", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.hoist_state), "no" },
+	{ "proxy_null_listener", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.proxy_null_listener), "no" },
 	CONF_PARSER_TERMINATOR
 };
 

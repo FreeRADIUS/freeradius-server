@@ -262,6 +262,7 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
 #ifdef WITH_PROXY
 static fr_packet_list_t *proxy_list = NULL;
 static TALLOC_CTX *proxy_ctx = NULL;
+static rad_listen_t *proxy_null_listener = NULL;
 #endif
 
 #ifdef HAVE_PTHREAD_H
@@ -699,6 +700,70 @@ void proxy_listener_thaw(rad_listen_t *listener)
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 #endif	/* WITH_TLS */
+
+/*
+ *	Noop functions for the NULL proxy listener.
+ */
+static int proxy_null_recv(UNUSED rad_listen_t *listener)
+{
+	return 0;
+}
+
+static int proxy_null_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+{
+	return 0;
+}
+
+static int proxy_null_proxy_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+{
+	return 0;
+}
+
+/*
+ *	Create a noop proxy listener.  Used to bypass threading issues
+ *	when one thread realizes that the proxy listener needs to be
+ *	removed, but another thread may still be accessing it.
+ *
+ *	The pointer is cached in a file-scope static, so all threads
+ *	share the same listener.  radius_event_start() calls this
+ *	function before threads are spawned, so that the pointer is
+ *	visible to all threads without locking.
+ *
+ *	We don't care about the contents of the proxy listener, as
+ *	nothing will ever use it for anything.
+ */
+static int proxy_null_listener_alloc(void)
+{
+	rad_listen_t	*this;
+	listen_socket_t	*sock;
+
+	if (proxy_null_listener) return 0;
+
+	this = talloc_zero(proxy_ctx, rad_listen_t);
+	if (!this) return -1;
+
+	sock = talloc_zero(this, listen_socket_t);
+	if (!sock) {
+		talloc_free(this);
+		return -1;
+	}
+
+	this->type = RAD_LISTEN_PROXY;
+	this->recv = proxy_null_recv;
+	this->send = proxy_null_send;
+	this->proxy_decode = proxy_null_proxy_decode;
+	this->data = sock;
+	this->fd = -1;
+
+	sock->my_ipaddr.af = AF_INET;
+	sock->my_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	sock->other_ipaddr.af = AF_INET;
+	sock->other_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+
+	proxy_null_listener = this;
+
+	return 0;
+}
 
 static void proxy_reply_too_late(REQUEST *request)
 {
@@ -2547,7 +2612,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		}
 	}
 
-	if (request->proxy_listener) {
+	if (!request->proxy_listener || (request->proxy_listener != proxy_null_listener)) {
 		if (request->proxy_listener->count) request->proxy_listener->count--;
 
 #ifdef WITH_COA_TUNNEL
@@ -2561,8 +2626,9 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 			request->proxy_listener->num_ids_used--;
 		}
 #endif
+
+		request->proxy_listener = proxy_null_listener;
 	}
-	request->proxy_listener = NULL;
 
 	/*
 	 *	Got from YES in hash, to NO, not in hash while we hold
@@ -2731,7 +2797,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		RATE_LIMIT(ERROR("Failed proxying to home_server %s as we are unable to find a socket with a free ID", request->home_server->name));
 
 	fail:
-		request->proxy_listener = NULL;
+		request->proxy_listener = proxy_null_listener;
 		request->in_proxy_hash = false;
 		return 0;
 	}
@@ -2780,7 +2846,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	 *	There may be a proxy reply, but it may be too late.  i.e. We have a reply, and then the socket
 	 *	goes away.  So we can't decode it.  Instead, pretend that we received nothing.
 	 */
-	if ((request->home_server && !request->home_server->virtual_server) && !request->proxy_listener) {
+	if ((request->home_server && !request->home_server->virtual_server) &&
+	    (!request->proxy_listener || (request->proxy_listener == proxy_null_listener))) {
 		if (request->in_proxy_hash) remove_from_proxy_hash(request);
 
 		reply = NULL;
@@ -2854,7 +2921,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		if (request->client->protocol_error) {
 			RWDEBUG("Synthesizing Protocol-Error reply to client %s", request->client->shortname);
 
-			request->proxy_listener = NULL;
+			request->proxy_listener = proxy_null_listener;
 
 			/*
 			 *	Ensure that we can do Post-Proxy-Type Fail
@@ -3129,7 +3196,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	/*
 	 *	Check for listener, etc. not existing any more.
 	 */
-	if (!request->proxy_listener || !request->proxy_listener->data) {
+	if (!request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
+	    !request->proxy_listener->data) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		proxy_reply_too_late(request);
 		return 0;
@@ -3257,7 +3325,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	This shouldn't happen, but threads and race
 	 *	conditions.
 	 */
-	if (!request->proxy_listener || !request->proxy_listener->data) {
+	if (!request->proxy_listener  || (request->proxy_listener == proxy_null_listener) ||
+	    !request->proxy_listener->data) {
 		proxy_reply_too_late(request);
 		return 0;
 	}
@@ -4915,7 +4984,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	retransmits.
 		 */
 		if (HOME_SERVER_IS_DEAD(home) ||
-		    !request->proxy_listener ||
+		    !request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_proxy_anew(request);
 			return;
@@ -5002,7 +5071,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		response_window = request_response_window(request);
 
 #ifdef WITH_TCP
-		if (!request->proxy_listener ||
+		if (!request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
 		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			remove_from_proxy_hash(request);
 
@@ -5441,7 +5510,7 @@ static void coa_retransmit(REQUEST *request)
 	if (!request->home_server ||
 	    HOME_SERVER_IS_DEAD(request->home_server) ||
 	    request->proxy_reply ||
-	    !request->proxy_listener ||
+	    !request->proxy_listener || (request->proxy_listener == proxy_null_listener) ||
 	    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 		request_done(request, FR_ACTION_COA_CANCELLED);
 		return;
@@ -6934,6 +7003,16 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		main_config.init_delay.tv_sec >>= 1;
 
 		proxy_ctx = talloc_init("proxy");
+
+		/*
+		 *	Initialise the null proxy listener before any
+		 *	threads are spawned, so the singleton pointer is
+		 *	visible to all threads without locking.
+		 */
+		if (main_config.proxy_null_listener && (proxy_null_listener_alloc() < 0)) {
+			ERROR("FATAL: Failed to create null proxy listener");
+			fr_exit(1);
+		}
 	}
 #endif
 
