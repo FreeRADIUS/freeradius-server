@@ -4,6 +4,8 @@ FreeRADIUS 3.2.10 Mon 01 Jun 2026 12:00:00 UTC urgency=low
 	Feature improvements
 
 	Bug fixes
+	* Correct bug where detail file reader would not read files.
+	  Patch from Bjørn Mork.  Fixes #5870
 
 FreeRADIUS 3.2.9 Mon 01 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
