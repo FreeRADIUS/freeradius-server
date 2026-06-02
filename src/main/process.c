@@ -1450,7 +1450,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	 *
 	 *	FIXME: check for correct state.
 	 */
-	if (request->packet->vps) return 0;
+	if (request->packet->vps) return 1;
 
 	rcode = request->listener->decode(request->listener, request);
 	if (rcode < 0) {
