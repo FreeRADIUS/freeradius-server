@@ -280,8 +280,9 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
  *	- #RLM_MODULE_OK on cache hit.
  *	- #RLM_MODULE_FAIL on failure.
  *	- #RLM_MODULE_NOTFOUND on cache miss.
+ *	- #UNLANG_ACTION_YIELD if the driver has yielded.
  */
-static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t **out,
+static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t **out, void **out_rctx,
 				  rlm_cache_t const *inst, request_t *request,
 				  rlm_cache_handle_t **handle, fr_value_box_t const *key)
 {
@@ -292,7 +293,7 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->driver->find(&c, &inst->config, inst->driver_submodule->data, request, *handle, key);
+		ret = inst->driver->find(&c, out_rctx, &inst->config, inst->driver_submodule->data, request, *handle, key);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG2("Reconnecting...");
@@ -305,6 +306,9 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 		case CACHE_MISS:
 			RDEBUG2("No cache entry found for \"%pV\"", key);
 			RETURN_UNLANG_NOTFOUND;
+
+		case CACHE_YIELD:
+			return UNLANG_ACTION_YIELD;
 
 		default:
 			RETURN_UNLANG_FAIL;
@@ -633,6 +637,7 @@ if (fr_type_is_variable_size(key->type) && (key->vb_length == 0)) { \
 static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_cache_entry_t	*c = NULL;
+	void			*driver_rctx = NULL;
 	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
@@ -664,7 +669,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 			RETURN_UNLANG_FAIL;
 		}
 
-		cache_find(p_result, &c, inst, request, &handle, key);
+		cache_find(p_result, &c, &driver_rctx, inst, request, &handle, key);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 		fr_assert(!inst->driver->acquire || handle);
 
@@ -711,7 +716,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	 *	recording whether the entry existed.
 	 */
 	if (merge) {
-		cache_find(p_result, &c, inst, request, &handle, key);
+		cache_find(p_result, &c, &driver_rctx,inst, request, &handle, key);
 		switch (p_result->rcode) {
 		case RLM_MODULE_FAIL:
 			goto finish;
@@ -776,7 +781,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	if ((exists < 0) && (insert || set_ttl)) {
 		unlang_result_t tmp;
 
-		cache_find(&tmp, &c, inst, request, &handle, key);
+		cache_find(&tmp, &c, &driver_rctx, inst, request, &handle, key);
 		switch (tmp.rcode) {
 		case RLM_MODULE_FAIL:
 			p_result->rcode = RLM_MODULE_FAIL;
@@ -900,6 +905,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 request_t *request, fr_value_box_list_t *in)
 {
 	rlm_cache_entry_t 		*c = NULL;
+	void				*driver_rctx = NULL;
 	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
 	fr_value_box_t			*key = fr_value_box_list_head(&env->key);
@@ -935,7 +941,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&result, &c, inst, request, &handle, key);
+	cache_find(&result, &c, &driver_rctx, inst, request, &handle, key);
 	switch (result.rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -986,6 +992,7 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	rlm_cache_entry_t	*c = NULL;
+	void			*driver_rctx = NULL;
 	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
@@ -1001,7 +1008,7 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&result, &c, inst, request, &handle, key);
+	cache_find(&result, &c, &driver_rctx, inst, request, &handle, key);
 	switch (result.rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -1074,6 +1081,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
+	void			*driver_rctx = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1086,7 +1094,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 
 	fr_assert(!inst->driver->acquire || handle);
 
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	p_result->rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
@@ -1111,6 +1119,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
+	void			*driver_rctx;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1121,7 +1130,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
@@ -1155,6 +1164,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
+	void			*driver_rctx = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1196,7 +1206,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	/*
@@ -1260,6 +1270,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
+	void			*driver_rctx = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1281,7 +1292,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	switch (p_result->rcode) {
 	default:
 	case RLM_MODULE_OK:
@@ -1325,6 +1336,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
+	void			*driver_rctx = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1337,7 +1349,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
@@ -1370,6 +1382,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
+	void			*driver_rctx = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
@@ -1403,7 +1416,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, key);
+	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (p_result->rcode == RLM_MODULE_OK) {

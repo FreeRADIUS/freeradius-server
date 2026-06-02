@@ -160,7 +160,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  *
  * @copydetails cache_entry_find_t
  */
-static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
+static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rctx_out,
 				       UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
 				       request_t *request, void *handle, fr_value_box_t const *key)
 {

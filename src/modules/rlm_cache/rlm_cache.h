@@ -107,6 +107,7 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  * it reinitialised/reconnected.
  *
  * @param[out] out Where to write a pointer to the retrieved entry (if there was one).
+ * @param[out] rctx_out Where to write a pointer to a resume context for async drivers.
  * @param[in] config for this instance of the rlm_cache module.
  * @param[in] instance Driver specific instance data.
  * @param[in] request The current request.
@@ -119,7 +120,7 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  *	- #CACHE_OK - Lookup was successful.
  *	- #CACHE_MISS - No cached entry was found.
  */
-typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
+typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, void **rctx_out, rlm_cache_config_t const *config,
 					      void *instance, request_t *request, void *handle,
 					      fr_value_box_t const *key);
 
