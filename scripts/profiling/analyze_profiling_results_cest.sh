@@ -63,6 +63,7 @@
 # USAGE
 #   ./analyze_profiling_results_cest.sh [--md <file>] [--top N] \
 #       -d <dir1> [-d <dir2> ...] <pat1> [pat2 ...]
+#
 #     --md <file>  also write a Markdown report (console still prints)
 #     --top N      top-N functions per pattern (default 10)
 #

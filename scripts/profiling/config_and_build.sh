@@ -43,5 +43,7 @@ cd "${fr_src_dir}"
 # Build server
 make -j$(nproc)
 
-# Build the certs for EAP-TLS testing
-make certs
+# Clean up certs to make sure old ones are removed and doesn't cause issues
+# Generate new certs
+cd ${fr_src_dir}/raddb/certs && make distclean && cd ${fr_src_dir} && make certs
+
