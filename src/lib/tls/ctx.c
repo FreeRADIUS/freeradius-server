@@ -930,6 +930,22 @@ post_ca:
 		}
 	}
 
+#ifdef TLS1_3_VERSION
+	/*
+	 *	Set the TLS 1.3 cipher suites if we were told to.
+	 *
+	 *	This helps with TLS-PSK: OpenSSL will otherwise
+	 *	negotiate cipher suites which are incompatible with
+	 *	PSK, and then fail.
+	 */
+	if (conf->cipher_suites) {
+		if (!SSL_CTX_set_ciphersuites(ctx, conf->cipher_suites)) {
+			fr_tls_log(NULL, "Failed setting cipher suites");
+			goto error;
+		}
+	}
+#endif
+
 	/*
 	 *	Print the actual cipher list
 	 */

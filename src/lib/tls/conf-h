@@ -158,6 +158,7 @@ struct fr_tls_conf_s {
 	uint32_t	padding_block_size;		//!< for TLS 1.3, pad blocks to multiple of this size.
 
 	char const	*cipher_list;			//!< Acceptable ciphers.
+	char const	*cipher_suites;			//!< Acceptable TLS 1.3 cipher suites.
 	bool		cipher_server_preference;	//!< use server preferences for cipher selection
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	bool		allow_renegotiation;		//!< Whether or not to allow cipher renegotiation.

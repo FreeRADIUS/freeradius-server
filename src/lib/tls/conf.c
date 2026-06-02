@@ -184,6 +184,9 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("disable_single_dh_use", fr_tls_conf_t, disable_single_dh_use) },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
+#ifdef TLS1_3_VERSION
+	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
+#endif
 	{ FR_CONF_OFFSET("cipher_server_preference", fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	{ FR_CONF_OFFSET("allow_renegotiation", fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
@@ -232,6 +235,9 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("fragment_size",  fr_tls_conf_t, fragment_size), .dflt = "1024" },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
+#ifdef TLS1_3_VERSION
+	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
+#endif
 
 #ifndef OPENSSL_NO_ECDH
 	{ FR_CONF_OFFSET("ecdh_curve", fr_tls_conf_t, ecdh_curve), .dflt = "prime256v1" },
