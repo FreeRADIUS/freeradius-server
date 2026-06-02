@@ -1,3 +1,10 @@
+FreeRADIUS 3.2.10 Mon 01 Jun 2026 12:00:00 UTC urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.9 Mon 01 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
 	* Add "protocol_error = yes" configuration to clients.  If set,
