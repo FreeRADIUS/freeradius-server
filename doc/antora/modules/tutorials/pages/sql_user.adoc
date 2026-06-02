@@ -1,7 +1,8 @@
-= Configuring a user in an SQL database
+= SQL Users
 
-*Goal:* To configure the server to have a new user in an SQL database,
-to send test packets as that user, and to receive a reply.
+*Goal:* To add a new user in the SQL database schema, similar to the xref:new_user.adoc[New User] tutorial. Next, you'll send test packets as that user, and to receive a reply.
+
+The RADIUS server can retrieve authentication and authorization information directly from the database. It can either replace or work with the `authorize` or `users` file.
 
 *Time:* 25-40 minutes.
 
@@ -9,67 +10,144 @@ to send test packets as that user, and to receive a reply.
 
 - `mods-available/sql`
 - `mods-config/sql/main/*`
+- `mods-config/sql/main/<dialect>/schema.sql`
+- `mods-config/sql/main/<dialect>/queries.conf`
 
-Now that we have verified in the previous exercise,
-xref:sql.adoc[SQL] that the server can communicate with
-an SQL server, we proceed to adding user configuration entries into the
-SQL database.
+*Documentation pages:*
 
-Before adding any user configuration to an SQL database, we first need
-to create the schema used to store that information. In the source
-archive, the file `RADIUS-SQL.schema` in the documentatin directory,
-describes where the schemas are located, and how to install them. In
-general, you will need to be familiar with the tools for the SQL
-database your are using, as they are too complicated and variable to
-describe here.
+- xref:reference:raddb/mods-available/sql.adoc[SQL]
 
-Once the schema has been created, use an SQL client utility to execute
-the following SQL commands:
+Having completed the previous xref:sql.adoc[SQL] tutorial,
+which confirmed the server's ability to communicate with the SQL database, our next step is to add user entries to the SQL database.
 
-[source, sql]
----------------------------------------------------------
-INSERT INTO radcheck (UserName, Attribute, op, Value)
-  values("bob", "Password.Cleartext", ":=", "hello");
-INSERT INTO radreply (UserName, Attribute, op, Value)
-  values("bob", "Reply-Message", ":=", "Hello from SQL");
----------------------------------------------------------
+== Step 1: Add a User into the SQL Database
 
+Add a test user directly into the database. We're using MySQL in this example, so you will connect to the database server using the `mysql` command-line client.
+
+Connect to your MySQL server with the credentials stored in the `mods-available/sql` file:
+
+- server    = "localhost"
+- port      = 3306
+- login     = "radius"
+- password  = "password"
+- radius_db = "radius"
+
+[source,bash]
+----
+$ mysql -h 127.0.0.1 -u radius -p
+----
+
+Enter the password when prompted.
+
+*Add the test user with the following:*
+
+[source,bash]
+----
+USE radius;
+
+INSERT INTO radcheck (username, attribute, op, value)
+VALUES ('alice', 'Cleartext-Password', ':=', 'testing123');
+
+INSERT INTO radreply (username, attribute, op, value)
+VALUES ('alice', 'Reply-Message', '+', 'Hello! You authenticated via the SQL database.');
+----
 These commands may need to be modified slightly, depending on the syntax
-required by your SQL database.
+required by your SQL database. These commands mirror the "check" and "reply" entries listed in the file for the user "alice".
 
-These commands mirror the "check" and "reply" entries listed in the
-file for the user "bob". Use the SQL client to verify that the entries
-are now in the database.
+*Confirm the rows were inserted using:*
 
-As the previous exercise in xref:sql.adoc[SQL]
-did not tell the server to query the database, but only to connect to it,
-we must now configure FreeRADIUS to query the database. This may be done
-by editing `sites-available/default`, and listing the `sql`
-module in the "authorize" section.
+Use the SQL client to verify that the entries are now in the database.
 
-There should already be a commented-out entry for `sql` in the
-"authorize" section or there will be `-sql` entry.
-If the entry is commented it should be un-commented, to make it live.
-If the entry has a '-' prefix, it may be left as is, the '-' prefix is used
-to mark modules as optional, so that the server can start even if they
-are not enabled.
+----
+SELECT * FROM radcheck WHERE username = 'alice';
+SELECT * FROM radreply WHERE username = 'alice';
+----
 
-The file should now be edited to delete the existing entry or entries
-for user "bob". This may be done by commenting out the entries, rather
-than deleting them. Add a `#` character to the start of every line
-for the relevant entries, and save the updated file.
+The two `INSERT` statements are the direct SQL equivalent of the following classic `authorize` file entry:
 
-The server should now be started. Send a test packet for user "bob",
-and verify that an authentication accept packet is received. Observe the
-debugging output of the server, and verify that the `sql` module is
-called, and that it successfully returns data for user "bob".
+[source,text]
+----
+mysql> SELECT * FROM radcheck WHERE username = 'alice';
++----+----------+--------------------+----+------------+
+| id | username | attribute          | op | value      |
++----+----------+--------------------+----+------------+
+|  1 | alice    | Cleartext-Password | := | hello      |
++----+----------+--------------------+----+------------+
+1 row in set (0.00 sec)
+
+mysql> SELECT * FROM radreply WHERE username = 'alice';
++----+----------+---------------+----+------------------------------------------------+
+| id | username | attribute     | op | value                                          |
++----+----------+---------------+----+------------------------------------------------+
+|  1 | alice    | Reply-Message | := | Hello! You authenticated via the SQL database. |
++----+----------+---------------+----+------------------------------------------------+
+1 row in set (0.00 sec)
+----
+
+If you see the rows appear in the `SELECT` output, the test user is correctly stored in the database.
+
+== Step 2: Test Authentication with `radclient`
+
+Keep the server running in debug mode (`radiusd -X`).
+
+Open a second terminal and send a PAP authentication request:
+
+[source,bash]
+----
+$ echo 'User-Name = "alice", User-Password = "hello"' | radclient -x 127.0.0.1 auth testing123
+----
+
+You should see `Access-Accept` and the `Reply-Message` coming back from the server. A successful response should look similar to this:
+
+[source,text]
+----
+Sent Access-Request Id 60 from 0.0.0.0:48774 to 127.0.0.1:1812 length 63
+	Message-Authenticator = 0x
+        User-Name = "alice"
+        User-Password = "hello"
+Received Access-Accept Id 60 from 127.0.0.1:1812 to 0.0.0.0:48774 via lo length 93
+        Message-Authenticator = 0x27b9670734452d218b977f5518b5e1f2
+        Reply-Message = "Hello! You authenticated via the SQL database."
+        User-Name = "alice"
+----
+
+Return to the terminal where the server is running in debug mode.
+
+After the `radclient` command completes, review the debug output. Look for the section that corresponds to the relevant request.
+
+*Debug output*
+
+[source,text]
+----
+(0)      sql - SQL-User-Name set to 'alice'
+(0)        sql - | %{SQL-User-Name}
+(0)        sql - | --> alice
+(0)        sql - | ||
+(0)        sql - | %logical_or()
+(0)          sql - | User-Password
+(0)            sql - | %{User-Password}
+(0)            sql - | --> hello
+(0)          sql - | %logical_or(...)
+(0)          sql - | --> hello
+(0)        sql - | %{reply.Packet-Type}
+(0)        sql - | --> Access-Accept
+(0)        sql - | %S
+(0)        sql - | --> 2026-02-11 11:06:52
+(0)        sql - | %M
+(0)        sql - | --> 374075
+(0)        sql - | %{reply.Class}
+(0)        sql - (null)
+(0)      -sql (ok)
+----
+
+== Step 3: Diagnose Failures
 
 If the server rejects the access request, then there are a number of
-steps to take, to correct the problem. Verify that FreeRADIUS is
-connecting to the SQL server, and that FreeRADIUS is "Ready to process
-requests." Verify that the file entry for "bob" has not matched the
-request. Verify that the SQL module returns "ok", rather than
-"notfound".
+steps to take, to correct the problem:
+
+* Verify that FreeRADIUS is connecting to the SQL server.
+* Check that FreeRADIUS is "Ready to process requests."
+* Verify that the SQL module returns "ok", rather than "notfound" for the "alice" user.
 
 If necessary, edit the `mods-enabled/sql` file, and enable
 additional debugging of SQL statements via the `sqltrace` and `sqltracefile`
