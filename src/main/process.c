@@ -2612,7 +2612,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		}
 	}
 
-	if (!request->proxy_listener || (request->proxy_listener != proxy_null_listener)) {
+	if (request->proxy_listener && (request->proxy_listener != proxy_null_listener)) {
 		if (request->proxy_listener->count) request->proxy_listener->count--;
 
 #ifdef WITH_COA_TUNNEL
