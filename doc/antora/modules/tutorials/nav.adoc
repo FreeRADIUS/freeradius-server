@@ -21,7 +21,7 @@
 **** xref:eap-peap.adoc[EAP-PEAP]
 **** xref:eap-tls.adoc[EAP-TLS]
 
-*** xref:sql.adoc[SQL]
+*** xref:sql_db.adoc[SQL]
 **** xref:sql_user.adoc[SQL Users]
 
 *** xref:proxy.adoc[Proxying]

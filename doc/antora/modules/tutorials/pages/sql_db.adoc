@@ -1,0 +1,240 @@
+= SQL
+
+*Goal:* To set up the RADIUS server to communicate with an SQL database by enabling the `sql` module, configuring the schema, and testing the connection.
+
+*Time:* 25-40 minutes.
+
+*Files:*
+
+- `mods-available/sql`
+- `sites-enabled/default`
+- `mods-config/sql/main/<dialect>/schema.sql`
+- `mods-config/sql/main/<dialect>/queries.conf`
+
+*Documentation pages:*
+
+- xref:reference:raddb/mods-available/sql.adoc[SQL]
+- xref:reference:raddb/sites-available/buffered-sql.adoc[Buffered SQL]
+- xref:howto:datastores/sql.adoc[SQL Datastore]
+
+By using a SQL database, the RADIUS server can retrieve authentication and authorization information directly from the database. The server can either replace or work with the `authorize` or `users` file.
+
+The SQL schema used by FreeRADIUS is designed to mirror the `users` file. Each SQL dialect includes its own schema and configuration files. These can be found in the `mods-config/sql/main/<dialect>` directory. Within each dialect's directory, the schema is specified in the `schema.sql` file, and the queries are defined in the `queries.conf` file.
+
+The main configuration for the SQL module is in `mods-available/sql`.
+It will `$INCLUDE` the relevant `queries.conf` file for the dialect
+chosen. We recommend that you *review* the configuration file for the SQL database you are using.
+
+[TIP]
+========================================================================
+If you do not have a pre-configured database, use the SQLite driver. Uncomment the sqlite-specific lines in the 'mods-available/sql' file. The server will then create a new database using the schema file in that directory.
+========================================================================
+
+== Step 1: Enable the `sql` Module
+
+Create a soft-link to activate the `sql` module:
+
+[source,bash]
+----
+$ cd raddb/mods-enabled
+$ ln -s ../mods-available/sql sql
+----
+
+== Step 2: Configure the `sql` Module
+
+Next, open `mods-available/sql` and configure it for mySQL testing. A basic working configuration looks like this:
+
+[source,unlang]
+----
+sql {
+
+	dialect = "mysql"
+
+	driver = "${dialect}"
+
+	server = "localhost"
+	port = 3306
+	login = "radius"
+	password = "radpass"
+	radius_db = "radius"
+
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+
+	postauth_table = "radpostauth"
+	authcheck_table = "radcheck"
+	groupcheck_table = "radgroupcheck"
+	authreply_table = "radreply"
+	groupreply_table = "radgroupreply"
+	usergroup_table = "radusergroup"
+
+	pool {
+		start = 0
+		min = 1
+		max = 100
+		connecting = 2
+		uses = 0
+		lifetime = 0
+	}
+	group_attribute = "${.:instance}-Group"
+
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
+}
+
+----
+
+== Step 3: Configure the Virtual Server
+
+Set up at least one named virtual server that calls the `sql` module. The simplest way to do this is to edit the `default` file.
+
+Open `sites-enabled/default` and find the `recv Access-Request { … }` section.
+
+A common method to implement this is to call the `sql` module early and then check whether it returned useful data:
+
+[source,unlang]
+----
+server default {
+    namespace = radius
+
+    recv Access-Request {
+        # If the site already have files, suffix, etc. here — keep them
+        sql
+    }
+
+    recv Accounting-Request {
+        sql
+        ok
+    }
+}
+----
+
+== Step 4: Verify Startup and SQL Configs
+
+Run the server in debug mode so you can observe the startup sequence happening:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+If everything is working, the server prints out the normal "Ready to
+process requests" message. Scroll up in your terminal window, to see similar type of messages from the `sql` module, such as:
+
+[source,text]
+----
+including configuration file ./scripts/bin/../../raddb/mods-enabled/sql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/driver/mysql
+including configuration file ./scripts/bin/../../raddb/mods-config/sql/main/mysql/queries.conf
+...
+Loaded module rlm_sql
+    sql {
+      driver = mysql
+rlm_sql_mysql - libmysql version: 3.2.6
+Loaded module rlm_sql_mysql
+      mysql {
+        tls {
+        }
+        warnings = auto
+      }
+      server = "localhost"
+      port = 3306
+      login = "radius"
+      password = <<< secret >>>
+      radius_db = "radius"
+      read_groups = yes
+      group_attribute = "sql-Group"
+      read_profiles = yes
+      safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
+      query_timeout = 5
+      pool {
+        start = 0
+        min = 1
+        max = 100
+        connecting = 2
+        uses = 0
+        lifetime = 0
+        idle_timeout = 0
+        open_delay = 0.2
+        close_delay = 10.0
+        manage_interval = 0.2
+        max_backlog = 1000
+        connection {
+          connect_timeout = 3.0
+          reconnect_delay = 1
+        }
+        request {
+          per_connection_max = 2000
+          per_connection_target = 1000
+          free_delay = 10.0
+        }
+      }
+    }
+...
+Bootstrapping rlm_sql "sql"
+...
+Instantiating rlm_sql "sql"
+Instantiating rlm_sql_mysql "sql.mysql"
+...
+sql - [3] - Signalled to start from HALTED state
+sql - [3] - Connection changed state HALTED -> INIT
+sql - [3] - Starting connect to MySQL server
+sql - [3] - Connecting to database 'radius' on localhost:3306, fd 31
+sql - [3] - Connection changed state INIT -> CONNECTING
+...
+sql - [3] - Connected to database on Localhost via UNIX socket, server version 8.0.44, protocol version 10
+sql - [3] - Signalled connected from CONNECTING state
+sql - [3] - Connection changed state CONNECTING -> CONNECTED
+sql - [3] - Connection established
+Ready to process requests
+----
+
+These messages indicate that the server was able to load the `sql`
+module, and that the `sql` module was able to communicate with the SQL
+server.
+
+If there is a problem with shared libraries or with access permissions
+to the SQL database, an error message will be printed, and the
+server will not start properly. Check the
+`radiusd.conf` file, specifically the `libdir` entry, for information on how to
+fix shared library issues.
+
+== Step 5: Test the Connection
+
+Test your connection to the MySQL server using the credentials stored in `mods-available/sql`:
+
+- server    = "127.0.0.1"
+- port	    = 3306
+- login     = "radius"
+- password  = "password"
+- radius_db = "radius"
+
+[source,bash]
+----
+$ mysql -h 127.0.0.1 -u radius -p
+----
+
+.MySQL Flags
+[opts=autowidth,header]
+|====
+|*Flag*			|*Description*
+|-h[host]		|The MySQL server's hostname or ip address.
+|-u[user]   	|Specifies the MySQL user name to enter when connecting.
+|-p[password]	|Prompts for a password when connecting to the database server.
+|====
+
+Enter the password when prompted.
+
+Stop the server by pressing `Ctrl+C`.
+
+Next, see the xref:sql_user.adoc[SQL Users] tutorial for guidance on populating your database and testing your entries.
+
+== Questions
+
+1.  Why is it important to test SQL connectivity, independently of
+testing the ability to obtain user configuration from an SQL database?
+2.  Why are there different configuration files for each SQL server?
+3.  What additional benefits, not mentioned here, do SQL databases have
+over the files module?
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
