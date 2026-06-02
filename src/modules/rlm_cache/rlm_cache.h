@@ -40,7 +40,8 @@ typedef enum {
 	CACHE_RECONNECT	= -2,				//!< Handle needs to be reconnected
 	CACHE_ERROR	= -1,				//!< Fatal error
 	CACHE_OK	= 0,				//!< Cache entry found/updated
-	CACHE_MISS	= 1				//!< Cache entry notfound
+	CACHE_MISS	= 1,				//!< Cache entry notfound
+	CACHE_YIELD	= 2,				//!< The driver has pushed an async
 } cache_status_t;
 
 /** Configuration for the rlm_cache module
