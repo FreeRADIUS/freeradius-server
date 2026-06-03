@@ -342,6 +342,57 @@ unlang {
 	#  exit the policy but continue processing after that.
 	#
 #	policy_stop_return = no
+
+	#
+	#  improved_state_tracking: use a different method to save /
+	#  restore the State attribute.
+	#
+	#  The original logic in FreeRADIUS did the save / restore in
+	#  one set of situations when processing packets.  However,
+	#  this tracking had some issues in corner cases, where the
+	#  tracking was not saved / restored as one might expect.
+	#
+	#  The "improved_state_tracking" configuration option changes
+	#  how the State tracking is managed.  In the interest of
+	#  compatability, and not breaking existing configurations,
+	#  the default value is set to "no".
+	#
+	#  When set to "yes", tracking is moved to restore State when
+	#  receiving requests, and to save State when sending
+	#  responses.  The "on the wire" behavior is the same.
+	#  However, the difference in the server is that the State
+	#  attribute has the expected value in more situations.
+	#
+	#  If the State tracking is fine for your configuration, then
+	#  this configuration item can remain unchanged.  If you are
+	#  having odd issues with State, then set this option to
+	#  "yes", and that should fix the issue.
+	#
+#	improved_state_tracking = no
+
+	#
+	#  proxy_null_listener: Work around a race condition in corner
+	#  cases in the server.
+	#
+	#  Some sites have reported crashes in the server, which have
+	#  been tracked down to issues with the proxy listener.  The
+	#  "proxy_null_listener" configuration item is an attempt to
+	#  fix the issue.
+	#
+	#  In the interest of compatability, and not breaking existing
+	#  configurations, the default value is set to "no".
+	#
+	#  When set to "yes", the server works around the above issues
+	#  by creating an (invisible) empty or "null" proxy listener.
+	#  Then when a proxy socket is closed, the active proxy
+	#  listener is replaced with the "null" listener.  The result
+	#  is that the rest of the server always sees a valid proxy
+	#  listener, which avoids the above issues.
+	#
+	#  Enable this configuration item if you see crashes that
+	#  dereference request->proxy_listener under load.
+	#
+#	proxy_null_listener = no
 }
 
 #
