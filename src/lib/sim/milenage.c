@@ -32,7 +32,7 @@
 static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 					uint8_t const key[16], uint8_t const in[16], uint8_t out[16])
 {
-	size_t len = 0;
+	int len = 0;
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		fr_tls_strerror_printf("Failed initialising AES-128-ECB context");
@@ -50,8 +50,8 @@ static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 	 *	when decrypting.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_EncryptUpdate(evp_ctx, out, (int *)&len, in, 16) != 1) ||
-	    unlikely(EVP_EncryptFinal_ex(evp_ctx, out + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, out, &len, in, 16) != 1) ||
+	    unlikely(EVP_EncryptFinal_ex(evp_ctx, out + len, &len) != 1)) {
 		fr_tls_strerror_printf("Failed encrypting data");
 		return -1;
 	}
@@ -340,7 +340,7 @@ int milenage_auts(uint64_t *sqn,
 	if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
 	for (i = 0; i < sizeof(sqn_buff); i++) sqn_buff[i] = auts[i] ^ ak[i];
 
-	if (milenage_f1(NULL, mac_s, opc, ki, rand, sqn_buff, amf) || CRYPTO_memcmp(mac_s, auts + 6, 8) != 0) return -1;
+	if (milenage_f1(NULL, mac_s, opc, ki, rand, sqn_buff, amf) || fr_digest_cmp(mac_s, auts + 6, 8) != 0) return -1;
 
 	*sqn = uint48_from_buff(sqn_buff);
 
@@ -446,7 +446,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 	for (i = 0; i < 6; i++) rx_sqn[i] = autn[i] ^ ak[i];
 	FR_PROTO_HEX_DUMP(rx_sqn, MILENAGE_SQN_SIZE, "SQN");
 
-	if (CRYPTO_memcmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) <= 0) {
+	if (fr_digest_cmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) != 0) {
 		uint8_t auts_amf[MILENAGE_AMF_SIZE] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
 
 		if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
@@ -465,7 +465,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 
 	FR_PROTO_HEX_DUMP(mac_a, MILENAGE_MAC_A_SIZE, "MAC_A");
 
-	if (CRYPTO_memcmp(mac_a, autn + 8, 8) != 0) {
+	if (fr_digest_cmp(mac_a, autn + 8, 8) != 0) {
 		FR_PROTO_HEX_DUMP(autn + 8, 8, "Received MAC_A");
 		fr_strerror_const("MAC mismatch");
 		return -1;
