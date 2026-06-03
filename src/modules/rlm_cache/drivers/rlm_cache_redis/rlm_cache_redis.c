@@ -29,6 +29,9 @@
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
+#include <freeradius-devel/redis/cluster_async.h>
+#include <freeradius-devel/io/coord_pair.h>
+
 static conf_parser_t driver_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
@@ -42,13 +45,18 @@ typedef struct {
 	tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
 
 	fr_redis_cluster_t	*cluster;
+
+	fr_coord_reg_t		*coord_reg;			//!< Coordinator registration.
+	fr_coord_pair_reg_t	*coord_pair_reg;		//!< Coord pair registration.
 } rlm_cache_redis_t;
 
 static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_redis;
 
 extern fr_dict_autoload_t rlm_cache_redis_dict[];
 fr_dict_autoload_t rlm_cache_redis_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_redis, .proto = "redis" },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -62,6 +70,36 @@ fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
+typedef enum {
+	REDIS_COORD_PAIR_CALLBACK_ID = 0,
+} rlm_redis_coord_t;
+
+/** Callback for worker receiving Fetch-OK packet from coordinator
+ */
+static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
+			       fr_pair_list_t const *list, UNUSED fr_time_t now,
+			       module_ctx_t *mctx, UNUSED void *uctx)
+{
+	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
+	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	return;
+}
+
+static fr_coord_cb_reg_t coord_callbacks[] = {
+	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_cb_reg_t worker_callbacks[] = {
+	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
+	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
 /** Create a new rlm_cache_redis instance
  *
  * @param[in] mctx		Data required for instantiation.
@@ -71,14 +109,14 @@ fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_redis_t		*driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
+	rlm_cache_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
 	char				buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
-	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf,
+	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf,
 						 buffer, "modules.cache.pool", NULL);
-	if (!driver->cluster) {
+	if (!inst->cluster) {
 		ERROR("Cluster failure");
 		return -1;
 	}
@@ -86,16 +124,50 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
-	if (tmpl_afrom_attr_str(driver, NULL, &driver->created_attr, "Cache-Created", NULL) <= 0) {
+	if (tmpl_afrom_attr_str(inst, NULL, &inst->created_attr, "Cache-Created", NULL) <= 0) {
 		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
-	if (tmpl_afrom_attr_str(driver, NULL, &driver->expires_attr, "Cache-Expires", NULL) <= 0) {
+	if (tmpl_afrom_attr_str(inst, NULL, &inst->expires_attr, "Cache-Expires", NULL) <= 0) {
 		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}
 
+	if (!inst->conf.use_cluster_map) return 0;
+
+	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.worker_cb = worker_pair_callbacks,
+			.cb_id = REDIS_COORD_PAIR_CALLBACK_ID,
+			.root = fr_dict_root(dict_redis),
+			.cs = mctx->mi->conf,
+		}
+	);
+	if (!inst->coord_pair_reg) return -1;
+
+	FR_COORD_PAIR_CB_CTX_SET(coord_callbacks, worker_callbacks, inst->coord_pair_reg);
+
+	inst->coord_reg = fr_coord_register(&(fr_coord_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.coord_cb = coord_callbacks,
+			.worker_cb = worker_callbacks,
+			.mi = mctx->mi
+		});
+
+	if (!inst->coord_reg) return -1;
+
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_cache_redis_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
+
+	if (!inst->conf.use_cluster_map) return 0;
+
+	fr_coord_deregister(inst->coord_reg);
+	talloc_free(inst->coord_pair_reg);
 	return 0;
 }
 
@@ -470,6 +542,7 @@ rlm_cache_driver_t rlm_cache_redis = {
 		.name		= "cache_redis",
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
 		.inst_size	= sizeof(rlm_cache_redis_t),
 		.config		= driver_config,
 	},
