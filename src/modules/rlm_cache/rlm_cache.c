@@ -1254,7 +1254,7 @@ finish:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Create, or update a cache entry
+/** Create a cache entry if it does not already exist.
  *
  * @return
  *	- #RLM_MODULE_NOOP if an entry already existed.
