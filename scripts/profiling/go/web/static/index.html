@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cest-analyzer (WASM)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>cest-analyzer</h1>
+    <p>Callgrind CEst analysis in the browser. Everything runs locally via
+       WebAssembly; no file leaves your machine.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <label>
+        callgrind.out.* files
+        <input id="files" type="file" multiple>
+      </label>
+
+      <label>
+        Patterns (space-separated, case-insensitive)
+        <input id="patterns" type="text" value="memset rbtree" placeholder="memset rbtree sha256">
+      </label>
+
+      <label>
+        Top-N per pattern
+        <input id="topn" type="number" value="10" min="1" max="100">
+      </label>
+
+      <button id="run" disabled>Loading WASM…</button>
+    </section>
+
+    <section id="output" hidden>
+      <div class="toolbar">
+        <button id="download" type="button">Download Markdown report</button>
+      </div>
+      <pre id="report"></pre>
+    </section>
+
+    <p id="error" class="error" hidden></p>
+  </main>
+
+  <script src="wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

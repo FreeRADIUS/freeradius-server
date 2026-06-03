@@ -1,0 +1,98 @@
+:root {
+  --fg: #1a1a1a;
+  --bg: #fafafa;
+  --accent: #0b6e4f;
+  --border: #d0d0d0;
+  --error: #b00020;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+header, main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+
+header h1 { margin-bottom: 0.25rem; }
+header p { color: #555; margin-top: 0; }
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.controls input {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #9aa;
+  cursor: not-allowed;
+}
+
+#output {
+  margin-top: 1.5rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+#report {
+  padding: 1rem;
+  overflow-x: auto;
+  background: #1e1e1e;
+  color: #e6e6e6;
+  border-radius: 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  color: var(--error);
+  background: #fde7ea;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+}
