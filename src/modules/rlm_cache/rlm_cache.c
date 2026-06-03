@@ -1134,6 +1134,37 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
 	}
 }
 
+/** Common result handling for status method
+ */
+static inline unlang_action_t mod_method_status_results(unlang_result_t *p_result, request_t *request,
+							rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							rlm_cache_entry_t *entry)
+{
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+
+	p_result->rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_method_status_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+								 request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	rlm_cache_entry_t	*entry = NULL;
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_status_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_status_results(p_result, request, inst, rctx->handle, entry);
+}
+
 /** Get the status by ${key} (without load)
  *
  * @return
@@ -1161,15 +1192,11 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 
 	fr_assert(!inst->driver->acquire || handle);
 
-	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-
-	p_result->rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+					  mod_method_status_resume, NULL, driver_rctx, NULL);
+	}
+	return mod_method_status_results(p_result, request, inst, handle, entry);
 }
 
 /** Common result handling for load method
