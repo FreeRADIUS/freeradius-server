@@ -462,6 +462,7 @@ static unlang_action_t cache_insert(unlang_result_t *p_result,
 	fr_pair_t		*vp;
 	bool			merge = false;
 	rlm_cache_entry_t	*c;
+	void			*driver_rctx;
 
 	TALLOC_CTX		*pool;
 
@@ -605,7 +606,7 @@ skip_maps:
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_submodule->data, request, *handle, c);
+		ret = inst->driver->insert(&driver_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -633,13 +634,15 @@ static unlang_action_t cache_set_ttl(unlang_result_t *p_result,
 				     rlm_cache_t const *inst, request_t *request,
 				     rlm_cache_handle_t **handle, rlm_cache_entry_t *c)
 {
+	void	*driver_rctx;
+
 	/*
 	 *	Call the driver's insert method to overwrite the old entry
 	 */
 	if (!inst->driver->set_ttl) for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_submodule->data, request, *handle, c);
+		ret = inst->driver->insert(&driver_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;

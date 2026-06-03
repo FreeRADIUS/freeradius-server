@@ -163,6 +163,7 @@ typedef cache_status_t	(*cache_entry_find_resume_t)(rlm_cache_entry_t **out, rlm
  *
  * @note This callback *must* overwrite existing cache entries on insert.
  *
+ * @param rctx_out Where to write a pointer to a resume context for async drivers.
  * @param config for this instance of the rlm_cache module.
  * @param instance Driver specific instance data.
  * @param request The current request.
@@ -173,8 +174,9 @@ typedef cache_status_t	(*cache_entry_find_resume_t)(rlm_cache_entry_t **out, rlm
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the insert couldn't be completed.
  *	- #CACHE_OK - If the insert was successful.
+ *	- #CACHE_YIELD - The driver has initiated an async insert and yielded.
  */
-typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config, void *instance,
+typedef cache_status_t	(*cache_entry_insert_t)(void **rctx_out, rlm_cache_config_t const *config, void *instance,
 						request_t *request, void *handle,
 						rlm_cache_entry_t const *c);
 

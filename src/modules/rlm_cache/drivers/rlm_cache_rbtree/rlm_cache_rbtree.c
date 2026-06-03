@@ -177,7 +177,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  *
  * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_insert(UNUSED void **rctx_out, rlm_cache_config_t const *config, void *instance,
 					 request_t *request, void *handle,
 					 rlm_cache_entry_t const *c)
 {
