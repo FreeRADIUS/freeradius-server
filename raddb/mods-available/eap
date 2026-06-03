@@ -1293,7 +1293,7 @@ eap {
 	#     here for 'user_eap_type' and 'machine_eap_type' with the
 	#     constraint:
 	#
-	#      - 'machine' can be EAP-TLS with a Windows configuratiun of
+	#      - 'machine' can be EAP-TLS with a Windows configuration of
 	#	  'Use a certificate on this computer'
 	#
 	#      - 'user' may be EAP-MSCHAPV2 or EAP-TLS with a Windows
