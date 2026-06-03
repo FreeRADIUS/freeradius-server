@@ -96,7 +96,7 @@ static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 	fr_time_t now;
 	char read_buffer[256];
 	uint8_t	data[256];
-	size_t message_size;
+	ssize_t message_size;
 	uint32_t id = 0;
 
 	/*
@@ -417,6 +417,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 	 */
 	if (data_size < m->data_size) {
 		fr_strerror_printf("Allocation size should be at least %zd", m->data_size);
+		m->status = FR_CONTROL_MESSAGE_DONE;
 		return -(m->data_size);
 	}
 
