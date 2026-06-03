@@ -50,6 +50,12 @@ typedef struct {
 	fr_coord_pair_reg_t	*coord_pair_reg;		//!< Coord pair registration.
 } rlm_cache_redis_t;
 
+typedef struct {
+	rlm_cache_redis_t const		*inst;			//!< Module instance.
+	fr_redis_cluster_thread_t	*rtcluster;		//!< Per thread Redis cluster.
+	fr_coord_worker_t		*cw;			//!< Coord-worker for fetching cluster map.
+} rlm_cache_redis_thread_t;
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_redis;
 
@@ -121,6 +127,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
+	inst->conf.log_prefix = talloc_asprintf(inst, "rlm_cache (%s)", mctx->mi->parent->name);
+
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
@@ -160,6 +168,48 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
+	rlm_cache_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
+
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, NULL, NULL, false);
+	if (!t->rtcluster) return -1;
+	t->inst = inst;
+
+	return 0;
+}
+
+static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
+	rlm_cache_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
+
+	if (!inst->conf.use_cluster_map) return 0;
+
+	t->cw = fr_coord_attach(t, mctx->el, inst->coord_reg);
+
+	if (!t->cw) {
+		ERROR("Failed to attach to coordinator");
+		return -1;
+	}
+
+	if ((inst->conf.trunk_conf.start == 0) || (fr_schedule_worker_id() != 0)) return 0;
+
+	return fr_redis_cluster_thread_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
+}
+
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
+
+	if (!t->cw) return 0;
+
+	fr_coord_detach(t->cw, true);
+	t->cw = NULL;
+	return 0;
+}
+
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_cache_redis_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
@@ -174,7 +224,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 static int mod_load(void)
 {
 	fr_redis_version_print();
-	return 0;
+	return redis_dict_init();
 }
 
 static void cache_entry_free(rlm_cache_entry_t *c)
@@ -542,8 +592,12 @@ rlm_cache_driver_t rlm_cache_redis = {
 		.name		= "cache_redis",
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
+		.coord_attach	= mod_coord_attach,
 		.detach		= mod_detach,
 		.inst_size	= sizeof(rlm_cache_redis_t),
+		MODULE_THREAD_INST(rlm_cache_redis_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 		.config		= driver_config,
 	},
 	.free		= cache_entry_free,
