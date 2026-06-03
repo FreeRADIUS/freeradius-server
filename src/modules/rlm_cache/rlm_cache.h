@@ -119,10 +119,33 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  *	- #CACHE_ERROR - If the lookup couldn't be completed.
  *	- #CACHE_OK - Lookup was successful.
  *	- #CACHE_MISS - No cached entry was found.
+ *	- #CACHE_YIELD - The driver has initiated an async lookup and yielded.
  */
 typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, void **rctx_out, rlm_cache_config_t const *config,
 					      void *instance, request_t *request, void *handle,
 					      fr_value_box_t const *key);
+
+/** Resume retrieving a cache entry
+ *
+ * To be called during resumption when a driver replies with CACHE_YIELD
+ * after a call to `find`.
+ *
+ * @param[out] out Where to write a pointer to the retrieved entry (if there was one).
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] instance Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] rctx Resume context returned by call to `find`.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the lookup couldn't be completed.
+ *	- #CACHE_OK - Lookup was successful.
+ *	- #CACHE_MISS - No cached entry was found.
+ *	- #CACHE_YIELD - The driver has initiated another async operation and yielded.
+ */
+typedef cache_status_t	(*cache_entry_find_resume_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
+						     void *instance, request_t *request, void *handle, void *rctx);
 
 /** Insert an entry into the cache
  *
@@ -263,6 +286,7 @@ struct rlm_cache_driver_s {
 	cache_entry_free_t		free;			//!< (optional) Free memory used by an entry.
 
 	cache_entry_find_t		find;			//!< Retrieve an existing cache entry.
+	cache_entry_find_resume_t	find_resume;		//!< Resume an async find.
 	cache_entry_insert_t		insert;			//!< Add a new entry.
 	cache_entry_expire_t		expire;			//!< Remove an old entry.
 	cache_entry_set_ttl_t		set_ttl;		//!< (Optional) Update the TTL of an entry.
