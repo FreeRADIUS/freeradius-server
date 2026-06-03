@@ -64,6 +64,17 @@ typedef struct {
 
 } cache_htrie_t;
 
+/** Resume context when driver is async
+ */
+typedef struct {
+	rlm_cache_handle_t	*handle;
+	fr_value_box_t const	*key;
+	rlm_cache_entry_t	*entry;
+	fr_time_delta_t		ttl;
+	void			*rctx;			//!< Driver resume context
+	void			*uctx;			//!< Module method context
+} cache_rctx_t;
+
 static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
@@ -154,6 +165,23 @@ static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rul
 	}
 
 	return 0;
+}
+
+static unlang_action_t cache_module_yield(request_t *request, rlm_cache_handle_t *handle, fr_value_box_t const *key,
+					  rlm_cache_entry_t *entry, fr_time_delta_t *ttl, module_method_t resume,
+					  unlang_module_signal_t cancel, void *driver_rctx, void *uctx)
+{
+	cache_rctx_t	*rctx;
+
+	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), cache_rctx_t));
+	rctx->handle = handle;
+	rctx->rctx = driver_rctx;
+	rctx->key = key;
+	rctx->entry = entry;
+	rctx->ttl = *ttl;
+	rctx->uctx = uctx;
+
+	return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 /** Get exclusive use of a handle to access the cache
@@ -274,6 +302,74 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
 		RLM_MODULE_OK;
 }
 
+/** Process results of cache find - either synchronous or async
+ */
+static inline unlang_action_t cache_find_results(unlang_result_t *p_result, rlm_cache_entry_t **out,
+						 rlm_cache_t const *inst, request_t *request,
+						 rlm_cache_handle_t **handle, fr_value_box_t const *key,
+						 rlm_cache_entry_t *c)
+{
+	/*
+	 *	Yes, but it expired, OR the "forget all" epoch has
+	 *	passed.  Delete it, and pretend it doesn't exist.
+	 */
+	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
+		unlang_result_t tmp;
+
+		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
+			key,
+			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)),
+			fr_box_date(c->expires),
+			fr_box_time(request->packet->timestamp));
+
+	expired:
+		cache_expire(&tmp, inst, request, handle, key);
+		cache_free(inst, &c);
+		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
+	}
+
+	if (fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
+		RDEBUG2("Found entry for \"%pV\", but it was created before the current epoch.  Removing it",
+			key);
+		goto expired;
+	}
+	RDEBUG2("Found entry for \"%pV\"", key);
+
+	c->hits++;
+	*out = c;
+
+	RETURN_UNLANG_OK;
+}
+
+/** Resume callback after async cache find
+ */
+static unlang_action_t CC_HINT(nonnull) cache_find_resume(unlang_result_t *p_result, rlm_cache_entry_t **out,
+							  rlm_cache_t const *inst, request_t *request,
+							  rlm_cache_handle_t **handle, fr_value_box_t const *key,
+							  void *rctx)
+{
+	cache_status_t		ret;
+	rlm_cache_entry_t	*c;
+
+	ret = inst->driver->find_resume(&c, &inst->config, inst->driver_submodule->data, request, *handle, rctx);
+	switch (ret) {
+	case CACHE_OK:
+		break;
+
+	case CACHE_MISS:
+		RDEBUG2("No cache entry found for \"%pV\"", key);
+		RETURN_UNLANG_NOTFOUND;
+
+	case CACHE_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	default:
+		RETURN_UNLANG_FAIL;
+	}
+
+	return cache_find_results(p_result, out, inst, request, handle, key, c);
+}
+
 /** Find a cached entry.
  *
  * @return
@@ -318,36 +414,7 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 		break;
 	}
 
-	/*
-	 *	Yes, but it expired, OR the "forget all" epoch has
-	 *	passed.  Delete it, and pretend it doesn't exist.
-	 */
-	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
-		unlang_result_t tmp;
-
-		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
-			key,
-			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)),
-			fr_box_date(c->expires),
-			fr_box_time(request->packet->timestamp));
-
-	expired:
-		cache_expire(&tmp, inst, request, handle, key);
-		cache_free(inst, &c);
-		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
-	}
-
-	if (fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
-		RDEBUG2("Found entry for \"%pV\", but it was created before the current epoch.  Removing it",
-			key);
-		goto expired;
-	}
-	RDEBUG2("Found entry for \"%pV\"", key);
-
-	c->hits++;
-	*out = c;
-
-	RETURN_UNLANG_OK;
+	return cache_find_results(p_result, out, inst, request, handle, key, c);
 }
 
 /** Expire a cache entry (removing it from the datastore)
@@ -1105,6 +1172,42 @@ finish:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+/** Common result handling for load method
+ */
+static inline unlang_action_t mod_method_load_results(unlang_result_t *p_result, request_t *request,
+						      rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+						      rlm_cache_entry_t *entry)
+{
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!entry) {
+		RDEBUG2("Entry not found to load");
+		p_result->rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	p_result->rcode = cache_merge(inst, request, entry);
+
+finish:
+	cache_unref(request, inst, entry, handle);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_method_load_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							       request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	rlm_cache_entry_t	*entry = NULL;
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_load_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_load_results(p_result, request, inst, rctx->handle, entry);
+}
+
 /** Load the avps by ${key}.
  *
  * @return
@@ -1130,21 +1233,11 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (!entry) {
-		RDEBUG2("Entry not found to load");
-		p_result->rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
+	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+					  mod_method_load_resume, NULL, driver_rctx, NULL);
 	}
-
-	p_result->rcode = cache_merge(inst, request, entry);
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_method_load_results(p_result, request, inst, handle, entry);
 }
 
 /** Create, or update a cache entry
