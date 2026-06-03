@@ -1,72 +1,299 @@
-= Custom Dictionaries and Attributes
+= Dictionaries
 
-include::ROOT:partial$v3_warning.adoc[]
+*Goal:* To understand how dictionaries map protocol numbers to names and how these files are used by the server. You'll create a local dictionary and a custom dictionary file with vendor-specific attributes. Then you will test the custom dictionary using a RADIUS test client. Finally, you'll configure a dictionary definition within a virtual server.
 
-*Goal:* To understand how the dictionaries affect the server and to create
-a new vendor-specific dictionary with a number of custom attributes; also, to test those attributes in the server.
+*Time:* 30-35 minutes
 
-*Time:* 20-30 minutes
+*Files:*
 
-*File:*
+- `raddb/dictionary`
+- `raddb/dictionary.d/`
+- `raddb/mods-config/files/authorize`
+- `${prefix}/share/freeradius/`
 
-- usr/share/freeradius/dictionary.*
+*Documentation Pages:*
 
-*`man` page:* dictionary
+* xref:reference:dictionary/index.adoc[Dictionaries] Index of Keywords
+* xref:reference:man/dictionary.adoc[dictionary(5)] `man` page
 
-The dictionary files used by FreeRADIUS form the basis for mapping protocol
-numbers to humanly readable text. These dictionary files are ASCII and may be
-edited to add, delete, or update entries. For this exercise, you will create a
-custom dictionary and will send the attributes to the server using a RADIUS test
-client.
+The dictionary files used by FreeRADIUS work together to map protocol numbers to human-readable names and link them to data types. Some dictionaries are included with the server, while others are vendor-specific additions. Entries in one dictionary can reference definitions from another, allowing for extensive customisations. These ASCII files can be edited to add, remove, or update entries.
 
-You should first familiarize yourself with the `man` page for the "dictionary"
-file.
+RADIUS packets carry attributes as type-length-value triples.  The type
+field is a number (e.g. `1` for `User-Name`).  Without a dictionary, a
+policy would have to say:
 
-You should create a file called `dictionary.test` in the appropriate directory
-and populate it with a "test" vendor, using a vendor ID of 123456. This
-dictionary file should be referenced from the main dictionary file. You should
-verify that the server starts successfully with the new dictionary file, even
-when the new dictionary is empty.
+  if attribute 1 == "bob" { ... }
 
-You should now stop the server and add a number of vendor specific attributes to
-the "test" dictionary, as follows:
+With a dictionary entry that says "number 1 is called User-Name and holds a
+string", the policy can say:
 
-.Vendor Specific Attributes to add
-|============================================
-| Name               | Number | Type
-| Lunch time         | 1      | date
-| People to eat with | 2      | text string
-| Where to eat       | 3      | IP address
-| What to eat        | 4      | integer
-|============================================
+  if User-Name == "bob" { ... }
 
-.Enumerated values for "What to eat" to add
-|======================
-| Name      | Number
-| Salad     | 1
-| Bread     | 2
-| Dessert   | 3
-| Beans     | 4
-|======================
+The dictionary is local or available only within the server’s scope where it resides. Renaming an attribute in a dictionary file does not change anything on the network. Clients and NAS devices never see dictionary names.
 
-Once the attributes and values are added to the `dictionary.test` file, re-start
-the server. Using a RADIUS client, send the server an authentication request for
-user "bob", containing one of each attribute. Verify that the attributes are
-printed as names, not numbers.
+The `share/` dictionaries are overwritten on every upgrade.  All
+local changes must go into `raddb/dictionary` or `raddb/dictionary.d/`.
 
-Edit the file, and update the entry for user "bob" to reply with the
-attributes and with four names for "people to eat with". Re-send the
-authentication request for user "bob", and verify that the access accept
-contains the expected attributes.
+The `raddb/dictionary` file already ends with:
 
-[[dictionary-questions]]
+[source]
+----
+$INCLUDE- dictionary.d/
+----
+
+The `-` suffix means the include is optional. The server starts normally even
+if the directory is empty or missing.
+
+== Hierarchical Names (v4 change from v3)
+
+In v3, attribute names were global.  Vendor-specific attributes were named
+with a vendor prefix, e.g. `Cisco-AVPair`.
+
+In v4, names are hierarchical.  The same attribute is now
+`Vendor-Specific.Cisco.AVPair`.  The full path makes the protocol structure
+explicit and removes name conflicts across vendors.
+
+Old v3-style flat names are still available through alias dictionaries.  See
+`raddb/dictionary` for the `$INCLUDE` directives that enable v3 compatibility
+names.
+
+== DEFINE versus ATTRIBUTE
+
+[options="header,autowidth"]
+|===
+| Keyword       | Number required | Goes on the wire | Use for
+| `ATTRIBUTE`   | Yes             | Yes              | Protocol attributes that NAS devices send/receive.
+| `DEFINE`      |     No          | No               | Internal server-side variables (policies, caching, etc.).
+|===
+
+Use `DEFINE` for attributes that exist only inside the server.
+Use `ATTRIBUTE` (inside a vendor block) for attributes that must appear in
+real RADIUS packets.
+
+== Step 1: Local Attributes with DEFINE
+
+Local attributes are the simplest way to add custom data to a policy.
+They live in `raddb/dictionary`, never go into a packet, and do not
+need a number.
+
+Open `raddb/dictionary` and add the following lines before the final
+`$INCLUDE- dictionary.d/` line:
+
+[source]
+----
+DEFINE  My-Local-String   string
+DEFINE  My-Local-IPAddr   ipaddr
+DEFINE  My-Local-Integer  uint32
+----
+
+Start the server in debug mode to confirm the definitions load without errors:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+You should see the server print `Ready to process requests` with no errors
+about unknown attributes.  Stop the server with Ctrl-C.
+
+== Step 2: Vendor-Specific Dictionary
+
+Vendor-specific attributes (VSAs) use an IANA-assigned Private Enterprise
+Number (PEN) to namespace the vendor's attributes inside a RADIUS packet.
+For this exercise, use the example PEN `123456`.
+
+
+=== Create the dictionary file
+
+Create the file `raddb/dictionary.d/dictionary.test` with the following
+content:
+
+[source]
+----
+# -*- text -*-
+#
+# dictionary.test - Example vendor-specific dictionary for the tutorial
+#
+# Vendor PEN 123456 is used here as an example only.
+# Real deployments require an IANA-assigned number.
+#
+VENDOR    Test    123456
+BEGIN-VENDOR    Test
+ATTRIBUTE   Test-Lunch-Time         1   date
+ATTRIBUTE   Test-People-To-Eat-With 2   string
+ATTRIBUTE   Test-Where-To-Eat       3   ipaddr
+ATTRIBUTE   Test-What-To-Eat        4   uint32
+VALUE   Test-What-To-Eat    Salad    1
+VALUE   Test-What-To-Eat    Bread    2
+VALUE   Test-What-To-Eat    Dessert  3
+VALUE   Test-What-To-Eat    Beans    4
+END-VENDOR  Test
+----
+
+The file is picked up automatically because `raddb/dictionary` already
+includes `dictionary.d/`.
+
+
+=== Dictionary syntax reference
+
+The following tables outline the type of keywords, data types, and related syntax and formats used in this tutorial.
+
+.v4 Keywords
+[options="header,autowidth"]
+|===
+| Keyword       | Syntax                         | Description
+| `VENDOR`      | `VENDOR <name> <pen>`          | Declares the vendor name and PEN.
+| `BEGIN-VENDOR`| `BEGIN-VENDOR <name>`          | Opens the vendor namespace.
+| `ATTRIBUTE`   | `ATTRIBUTE <name> <number> <type>` | Defines a VSA.
+| `VALUE`       | `VALUE <attr> <name> <integer>`| Names an enumerated value.
+| `END-VENDOR`  | `END-VENDOR <name>`            | Closes the vendor namespace.
+|===
+
+.v4 Data types 
+[options="header,autowidth"]
+|===
+| v4 type   | Description                           | Value
+| `date`    | Unix timestamp displayed as a date    | `2026-06-01T09:00:00`
+| `string`  | UTF-8 string                          | `"Alice"`
+| `ipaddr`  | IPv4 address                          | `192.0.2.1`
+| `uint32`  | 32-bit unsigned integer (with optional `VALUE` names) | `Salad`
+|===
+
+
+[NOTE]
+====
+The v3 type name `integer` is still accepted as an alias for `uint32`.
+====
+
+
+=== Verify the dictionary loads
+
+Start the server in debug mode:
+
+[source,bash]
+----
+$ radiusd -X
+----
+
+With `-X`, the server logs one line for the root `raddb/dictionary` file
+(the leading path depends on your install prefix):
+
+[source]
+----
+Including dictionary file ".../raddb/dictionary"
+----
+
+Files loaded via `$INCLUDE-` inside that file, including `dictionary.d/dictionary.test`,
+do not produce their own log line. A clean startup ending with `Ready to process requests.`
+means all included files parsed without errors.
+
+If the server fails to start with a parse error pointing at `dictionary.d/dictionary.test`,
+check for typos in attribute numbers or types. Each attribute number must be unique
+within the vendor block. Stop the server before continuing.
+
+== Step 3: Test the New Attributes
+
+
+=== Add a test user
+
+Edit `raddb/mods-config/files/authorize` and add the following entry for
+user `bob`:
+
+[source]
+----
+bob     Password.Cleartext := "hello"
+        Reply-Message := "Hello, bob",
+        Vendor-Specific.Test.Test-Lunch-Time := "Jun  1 2026 12:00:00 UTC",
+        Vendor-Specific.Test.Test-People-To-Eat-With := "Alice",
+        Vendor-Specific.Test.Test-Where-To-Eat := "192.0.2.50",
+        Vendor-Specific.Test.Test-What-To-Eat := Bread
+----
+
+The fully qualified name `Vendor-Specific.Test.Test-Lunch-Time` reflects the
+v4 hierarchical naming.  The vendor name (`Test`) and the attribute name
+(`Test-Lunch-Time`) are both part of the path.
+
+
+=== Start the server and send a test packet
+
+[source,bash]
+----
+$ radiusd -X &
+$ echo "User-Name = bob, User-Password = hello" | radclient 127.0.0.1 auth testing123
+----
+
+In the server debug output, look for the VSA reply attributes printed by
+name rather than as raw numbers:
+
+[source]
+----
+(0)   files - Found match "bob" on line ...
+(0)   files - Preparing attribute updates:
+(0)     Password.Cleartext := "hello"
+(0)     Reply-Message := "Hello, bob"
+(0)     Vendor-Specific.Test.Test-Lunch-Time := "Jun  1 2026 12:00:00 UTC"
+(0)     Vendor-Specific.Test.Test-People-To-Eat-With := "Alice"
+(0)     Vendor-Specific.Test.Test-Where-To-Eat := "192.0.2.50"
+(0)     Vendor-Specific.Test.Test-What-To-Eat := Bread
+----
+
+If the attributes were showing as raw numbers (e.g. `Vendor-Specific.123456.4 := 0x00000002`)
+instead of names, the dictionary file would not have been loaded.
+
+
+=== Test multiple values for one attribute
+
+Edit the `bob` entry to return four values for `Test-People-To-Eat-With`:
+
+[source]
+----
+bob     Password.Cleartext := "hello"
+        Reply-Message := "Hello, bob",
+        Vendor-Specific.Test.Test-People-To-Eat-With := "Alice",
+        Vendor-Specific.Test.Test-People-To-Eat-With += "Bob",
+        Vendor-Specific.Test.Test-People-To-Eat-With += "Carol",
+        Vendor-Specific.Test.Test-People-To-Eat-With += "Dave",
+        Vendor-Specific.Test.Test-What-To-Eat := Salad
+----
+
+The `+=` operator appends an additional instance of the attribute rather than
+replacing the first.  Re-send the `radclient` request and verify all four names
+appear in the reply.
+
+== Step 4: Add Local Dictionary to a Virtual Server
+
+In FreeRADIUS v4, there is now a `dictionary { }` subsection directly inside a virtual server. Attributes defined there are visible only within that virtual server and never go into a packet.  They behave like `DEFINE` attributes, but are scoped to one server.
+
+Open `raddb/sites-available/default` and look for the `dictionary { }`
+section.  It already contains commented-out examples.
+Add a local attribute:
+
+[source]
+----
+dictionary {
+    uint32 My-Session-Counter
+    values My-Session-Counter {
+        None = 0
+        Low  = 1
+        High = 2
+    }
+}
+----
+
+This attribute can be set and tested in policies within the `default` virtual
+server without adding anything to `raddb/dictionary` or `raddb/dictionary.d/`.
+
 == Questions
 
-1.  What happens when the same attribute has multiple names, i.e.,
-multiple names for one number?
-2.  Why are many of the attributes in other vendor specific dictionaries
-prefixed with the vendor name?
-3.  Why are vendor specific attributes useful?
+1. What happens if two dictionary files define the same attribute number
+   within the same vendor block?
+2. Why do v4 attribute names use a hierarchical path
+   `Vendor-Specific.Test.Test-What-To-Eat` instead of a flat name
+   `Test-What-To-Eat`?
+3. When should you use `DEFINE` instead of a VSA?
+4. Why do the shared dictionaries in `share/` warn against editing?
+5. What is the purpose of the `VALUE` keyword, and what happens at the
+   protocol level when you send `Test-What-To-Eat = Bread`?
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
