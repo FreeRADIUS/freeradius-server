@@ -286,6 +286,13 @@ doc.fixascii:
 doc.copyright:
 	perl -p -i -e "s/Copyright \(C\) 2.../Copyright (C) $$(date +%Y)/"  $$(git grep -l 'Copyright' $$(find doc/antora/ -name "*.adoc" -print))
 
+.phony: doc.wrap
+doc.wrap: $(BASE_ADOC_FILES)
+	@for x in $(BASE_ADOC_FILES); do \
+		./scripts/asciidoc/wrap.py -i $$x || exit 1; \
+	done
+
+
 doc: build/docsite/sitemap.xml
 
 # end of WITH_DOC

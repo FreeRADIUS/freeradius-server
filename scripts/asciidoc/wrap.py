@@ -5,25 +5,34 @@ Rules:
   - Paragraphs are wrapped at 80 columns, and separated by blank lines.
   - Multiple blank lines in a row are collapsed to a single blank line.
   - Trailing whitespace on every line is removed.
+  - A fixed set of non-ASCII characters is converted to ASCII
+    equivalents (smart quotes, en/em dashes, ellipsis, etc.).
   - Lines starting with "//" (comments) are left unchanged.
   - Section titles begin with one or more "=" or "#" followed by a
     space.  They are left unchanged, and are always followed by a
     blank line.
   - Inline block titles are lines beginning with "." and are left
     unchanged.
-  - Inline blocks delimited by lines equal to "----" are left unchanged
-    (including the delimiters themselves).
+  - Inline code blocks delimited by lines equal to "----" are left
+    unchanged (including the delimiters themselves).
   - Code blocks delimited by lines equal to "```" are also left
     unchanged, and follow the same rules as "----" blocks.
+  - Text blocks are delimited by lines equal to "====".  The "===="
+    delimiters stay on their own line; the contents are still wrapped
+    as normal paragraphs.
+  - Lines that start with "[" (e.g. "[NOTE]", "[source,c]") are left
+    unchanged on their own line.
   - Lines starting with "|" (tables) are left unchanged.
-  - List entries begin with "* " or "- ".  Each entry is wrapped on its
-    own; continuation lines are indented 2 spaces so they align with
-    the text after the bullet marker.
+  - List entries begin with "* " or "- ", or with a number followed by
+    "." (e.g. "1.").  Each entry is wrapped on its own; continuation
+    lines are indented so they align with the text after the marker.
+    For numbered entries the leading number is preserved as-is.
 
 	$Id$
 """
 
 import argparse
+import re
 import sys
 import textwrap
 
@@ -31,6 +40,28 @@ import textwrap
 #  Wrap at 80 columns means leave some whitespace at the end.
 #
 WIDTH = 70
+
+
+#
+#  Non-ASCII to ASCII replacements, per doc/wrap.md.
+#
+ASCII_REPLACEMENTS = str.maketrans({
+    "‘": "'",   # ‘  left single quotation mark
+    "’": "'",   # ’  right single quotation mark
+    "–": "-",   # –  en dash
+    "—": "-",   # —  em dash
+    " ": " ",   #    non-breaking space
+    "…": ",",   # …  horizontal ellipsis
+    "“": '"',   # “  left double quotation mark
+    "”": '"',   # ”  right double quotation mark
+    "≤": "<=",  # ≤  less-than or equal
+    "≥": ">=",  # ≥  greater-than or equal
+    "→": "->",  # →  rightwards arrow
+})
+
+
+def to_ascii(line):
+    return line.translate(ASCII_REPLACEMENTS)
 
 
 def wrap_paragraph(text):
@@ -42,11 +73,11 @@ def wrap_paragraph(text):
                                    break_on_hyphens=False))
 
 
-def wrap_list_entry(text):
-    """Wrap a list entry.  The first line keeps its "* " or "- " marker;
-    continuation lines are indented 2 spaces to align with the text."""
+def wrap_list_entry(text, indent):
+    """Wrap a list entry.  The first line keeps its marker ("* ", "- ",
+    or "N. "); continuation lines are indented to align with the text."""
     return "\n".join(textwrap.wrap(text, width=WIDTH,
-                                   subsequent_indent="  ",
+                                   subsequent_indent=" " * indent,
                                    break_long_words=False,
                                    break_on_hyphens=False))
 
@@ -74,9 +105,21 @@ def is_comment(line):
     return line.lstrip().startswith("//")
 
 
+_LIST_MARKER_RE = re.compile(r"^(?:[*-]|\d+\.)\s+")
+
+
+def list_marker_len(line):
+    """If line begins a list entry, return the length of its marker
+    including all trailing whitespace, so continuation lines line up
+    with the text after the marker.  Otherwise return None."""
+    m = _LIST_MARKER_RE.match(line.lstrip())
+    if m:
+        return m.end()
+    return None
+
+
 def is_list_start(line):
-    s = line.lstrip()
-    return s.startswith("* ") or s.startswith("- ")
+    return list_marker_len(line) is not None
 
 
 BLOCK_DELIMS = ("----", "```")
@@ -94,11 +137,22 @@ def is_table(line):
     return line.lstrip().startswith("|")
 
 
+def is_attribute(line):
+    """Notes, warnings, source attributes, etc. e.g. "[NOTE]"."""
+    return line.lstrip().startswith("[")
+
+
+def is_text_block_delim(line):
+    """Text block delimiter "====".  Contents are still wrapped, but the
+    delimiter itself stays on its own line."""
+    return line.rstrip() == "===="
+
+
 def process(lines):
     out = []
     block_open = None     # delimiter string (e.g. "----" or "```") if inside a block
     buf = []
-    buf_is_list = False
+    buf_list_indent = None  # marker length if buf holds a list entry, else None
     need_blank_after_title = False
 
     def emit_blank():
@@ -108,26 +162,35 @@ def process(lines):
         out.append("")
 
     def flush():
-        nonlocal buf, buf_is_list
+        nonlocal buf, buf_list_indent
         if not buf:
             return
         text = " ".join(s.strip() for s in buf)
-        if buf_is_list:
-            out.append(wrap_list_entry(text))
+        if buf_list_indent is not None:
+            out.append(wrap_list_entry(text, buf_list_indent))
         else:
             out.append(wrap_paragraph(text))
         buf = []
-        buf_is_list = False
+        buf_list_indent = None
 
     for line in lines:
-        # Strip trailing whitespace (including the newline) from every line.
-        line = line.rstrip()
+        # Strip just the trailing newline; keep the rest of the line
+        # exactly as-is so we can preserve block contents verbatim.
+        raw = line.rstrip("\n")
 
         if block_open is not None:
-            out.append(line)
-            if block_delim(line) == block_open:
+            # Inside a "----" or "```" block, the only line we look at
+            # is the matching closing delimiter.  Everything else,
+            # including lines that resemble titles, lists, etc., is
+            # passed through verbatim.
+            out.append(raw)
+            if block_delim(raw) == block_open:
                 block_open = None
             continue
+
+        # Outside any block: convert known non-ASCII characters to ASCII
+        # equivalents and strip trailing whitespace.
+        line = to_ascii(raw).rstrip()
 
         # Force a blank line right after a section title.  We emit it
         # lazily so that an input already containing the blank line
@@ -149,7 +212,8 @@ def process(lines):
             need_blank_after_title = True
             continue
 
-        if is_comment(line) or is_block_title(line) or is_table(line):
+        if (is_comment(line) or is_block_title(line) or is_table(line)
+                or is_attribute(line) or is_text_block_delim(line)):
             flush()
             out.append(line)
             continue
@@ -159,10 +223,11 @@ def process(lines):
             emit_blank()
             continue
 
-        if is_list_start(line):
+        marker_len = list_marker_len(line)
+        if marker_len is not None:
             flush()
             buf = [line]
-            buf_is_list = True
+            buf_list_indent = marker_len
             continue
 
         # Continuation of the current paragraph or list entry.
