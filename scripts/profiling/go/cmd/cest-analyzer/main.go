@@ -1,5 +1,5 @@
 // Command cest-analyzer compares Callgrind cycle-estimate (CEst) cost across
-// one or more profiling runs.
+// one or more profiling run result directories.
 //
 // Usage:
 //
@@ -7,8 +7,6 @@
 //
 // Build:   go build -o cest-analyzer ./cmd/cest-analyzer
 // WASI:    GOOS=wasip1 GOARCH=wasm go build -o cest-analyzer.wasm ./cmd/cest-analyzer
-// WASM:    GOOS=js GOARCH=wasm go build -o web/static/cest-analyzer.wasm ./web/wasm
-//          cp "$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)" web/static/
 
 // The analysis itself lives in cest-analyzer/internal/cest; this file only
 // supplies OS-bound I/O: flag parsing, file globbing, and stdout.
