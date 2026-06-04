@@ -892,7 +892,7 @@ static ssize_t snmp_process(fr_dcursor_t *out, request_t *request,
 	if (!da_stack->da[depth]) {
 		if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			fr_strerror_const("Invalid OID: Not a leaf");
-			return -(ssize_t)(depth - 1);
+			return -(ssize_t)depth;
 		}
 		snmp_next_leaf(da_stack, depth, &map[1]);
 
