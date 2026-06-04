@@ -180,7 +180,7 @@ static int _redis_command_set_free(fr_redis_command_set_t *cmds)
 	}
 
 	talloc_free_children(cmds);
-	memset(cmds, 0, sizeof(cmds));
+	memset(cmds, 0, sizeof(*cmds));
 
 	fr_dlist_insert_head(command_set_free_list, cmds);
 
