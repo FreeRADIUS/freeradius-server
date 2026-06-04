@@ -265,7 +265,7 @@ static int _backtrace_do(fr_bt_marker_t *marker)
 
 	bt->obj = marker->obj;
 #ifdef HAVE_BACKTRACE
-
+	backtrace_record(bt);
 #else
 	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
 #endif
