@@ -6,7 +6,9 @@
 const $ = (id) => document.getElementById(id);
 
 const runBtn = $("run");
-const filesInput = $("files");
+const addRunBtn = $("add-run");
+const runsContainer = $("runs");
+const runRowTemplate = $("run-row");
 const patternsInput = $("patterns");
 const topnInput = $("topn");
 const outputSection = $("output");
@@ -15,6 +17,32 @@ const downloadBtn = $("download");
 const errorP = $("error");
 
 let lastMarkdown = ""; // populated after each successful run
+
+// --- Dynamic run rows ------------------------------------------------------
+// Each row is one labelled run (one profiling directory's files). The first
+// row is created on load; "Add run" appends more so the WASM core can compare
+// 2+ runs. The remove button is hidden while only one row remains.
+
+function addRunRow() {
+  const row = runRowTemplate.content.firstElementChild.cloneNode(true);
+  row.querySelector(".remove-run").addEventListener("click", () => {
+    row.remove();
+    refreshRemoveButtons();
+  });
+  runsContainer.appendChild(row);
+  refreshRemoveButtons();
+  return row;
+}
+
+// Hide the remove button when a single run is left (a run is mandatory).
+function refreshRemoveButtons() {
+  const rows = runsContainer.querySelectorAll(".run-row");
+  rows.forEach((row) => {
+    row.querySelector(".remove-run").hidden = rows.length <= 1;
+  });
+}
+
+addRunRow(); // start with one run
 
 // --- Load the WASM module --------------------------------------------------
 
@@ -42,13 +70,37 @@ function readFileText(file) {
 
 // --- Run ------------------------------------------------------------------
 
+// collectRuns reads every non-empty run row into the { label: {file: text} }
+// shape analyzeCest expects. Insertion order is preserved, so the first row is
+// the comparison baseline. Labels are defaulted ("run 1", ...) when blank and
+// made unique by suffixing, since the WASM side keys runs by label.
+async function collectRuns() {
+  const rows = Array.from(runsContainer.querySelectorAll(".run-row"));
+  const runs = {};
+  const usedLabels = new Set();
+
+  for (let i = 0; i < rows.length; i++) {
+    const files = Array.from(rows[i].querySelector(".run-files-input").files || []);
+    if (files.length === 0) continue; // skip empty rows
+
+    let label = rows[i].querySelector(".run-label-input").value.trim() || `run ${i + 1}`;
+    let unique = label;
+    for (let n = 2; usedLabels.has(unique); n++) unique = `${label} (${n})`;
+    usedLabels.add(unique);
+
+    const filesObj = {};
+    await Promise.all(
+      files.map(async (f) => {
+        filesObj[f.name] = await readFileText(f);
+      })
+    );
+    runs[unique] = filesObj;
+  }
+  return runs;
+}
+
 async function run() {
   hideError();
-  const files = Array.from(filesInput.files || []);
-  if (files.length === 0) {
-    showError("Select one or more callgrind.out.* files first.");
-    return;
-  }
 
   const patterns = patternsInput.value.trim().split(/\s+/).filter(Boolean);
   if (patterns.length === 0) {
@@ -60,15 +112,11 @@ async function run() {
   runBtn.disabled = true;
   runBtn.textContent = "Analyzing…";
   try {
-    // All selected files are treated as one run. To compare builds, this is
-    // where you'd group files into multiple labelled runs.
-    const filesObj = {};
-    await Promise.all(
-      files.map(async (f) => {
-        filesObj[f.name] = await readFileText(f);
-      })
-    );
-    const runs = { "uploaded run": filesObj };
+    const runs = await collectRuns();
+    if (Object.keys(runs).length === 0) {
+      showError("Select one or more callgrind.out.* files in at least one run.");
+      return;
+    }
 
     const result = analyzeCest(runs, patterns, topN);
     if (result.error) {
@@ -88,6 +136,7 @@ async function run() {
 }
 
 runBtn.addEventListener("click", run);
+addRunBtn.addEventListener("click", () => addRunRow());
 
 // --- Markdown download -----------------------------------------------------
 

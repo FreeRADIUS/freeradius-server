@@ -67,6 +67,47 @@ button:disabled {
   cursor: not-allowed;
 }
 
+button.secondary {
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid var(--accent);
+}
+
+/* --- Run rows --- */
+
+.runs-title { font-weight: 600; font-size: 0.9rem; }
+.hint { margin: 0.25rem 0 0; color: #555; font-size: 0.8rem; font-weight: 400; }
+
+#runs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.run-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f4f4f4;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.run-row .run-label { flex: 0 0 9rem; }
+.run-row .run-files { flex: 1 1 auto; }
+
+.remove-run {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.toolbar-left {
+  display: flex;
+  justify-content: flex-start;
+}
+
 #output {
   margin-top: 1.5rem;
 }

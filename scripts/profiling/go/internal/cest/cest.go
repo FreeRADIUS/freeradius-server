@@ -12,8 +12,9 @@ import "regexp"
 // ---------------------------------------------------------------------------
 
 // Cost computes the Cycle Estimation from raw Callgrind event counters.
-//
+// Equation taken from QCachegrind/KCachegrind 0.8.0 implementation.
 //	CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)
+
 func Cost(ir, i1, d1r, d1w, ilm, dlr, dlw, bcm, bim int64) int64 {
 	return ir + 10*(i1+d1r+d1w) + 100*(ilm+dlr+dlw) + 10*(bcm+bim)
 }
