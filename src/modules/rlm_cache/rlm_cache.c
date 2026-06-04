@@ -1579,6 +1579,63 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 	return mod_method_clear_find_results(p_result, request, inst, handle, key, entry);
 }
 
+/** Common result handling after ttl method does a find
+ */
+static inline unlang_action_t mod_method_ttl_find_results(unlang_result_t *p_result, request_t *request,
+							  rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							  rlm_cache_entry_t *entry)
+{
+	fr_time_delta_t		ttl;
+	fr_pair_t		*vp;
+
+	if (p_result->rcode != RLM_MODULE_OK) goto finish;
+
+	/* Process the TTL */
+	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp) {
+		if (vp->vp_int32 < 0) {
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
+		/* Updating the TTL */
+		} else {
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
+		}
+
+		RDEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(inst->config.ttl), vp->vp_int32);
+	}
+
+	fr_assert(entry != NULL);
+
+	RDEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
+
+	entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
+
+	cache_set_ttl(p_result, inst, request, &handle, entry);
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+
+	p_result->rcode = RLM_MODULE_UPDATED;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_method_ttl_find_resume(unlang_result_t *p_result,
+								   module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	rlm_cache_entry_t	*entry = NULL;
+
+	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_ttl_find_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_ttl_find_results(p_result, request, inst, rctx->handle, entry);
+}
+
 /** Change the TTL on an existing entry.
  *
  * @return
@@ -1591,7 +1648,6 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
-	fr_time_delta_t		ttl;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
@@ -1603,52 +1659,23 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 
 	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp && (vp->vp_int32 == 0)) RETURN_UNLANG_NOOP;
+
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
 		RETURN_UNLANG_FAIL;
 	}
 
-	/* Process the TTL */
-	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
-	if (vp) {
-		if (vp->vp_int32 == 0) {
-			p_result->rcode = RLM_MODULE_NOOP;
-			goto finish;
-
-		} else if (vp->vp_int32 < 0) {
-			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
-		/* Updating the TTL */
-		} else {
-			ttl = fr_time_delta_from_sec(vp->vp_int32);
-		}
-
-		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(inst->config.ttl), vp->vp_int32);
-	}
-
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (p_result->rcode == RLM_MODULE_OK) {
-		fr_assert(entry != NULL);
-
-		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
-
-		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
-
-		cache_set_ttl(p_result, inst, request, &handle, entry);
-		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-
-		p_result->rcode = RLM_MODULE_UPDATED;
+	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+					  mod_method_ttl_find_resume, NULL, driver_rctx, NULL);
 	}
 
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_method_ttl_find_results(p_result, request, inst, handle, entry);
 }
 
 /** Free any memory allocated under the instance
