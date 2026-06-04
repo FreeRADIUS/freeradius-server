@@ -248,7 +248,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 	} else if (reply->da == attr_ms_chap_error) {
 		REDEBUG("MS-CHAPv2 Failure");
 		length = 4 + reply->vp_length - 1;
-		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length));
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -415,8 +415,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 			fr_pair_t	*ms;
 
 
-			if (eap_round->response->type.length < 544) {
-				RDEBUG2("Password change has invalid length %zu < 544",
+			if (eap_round->response->type.length < 586) {
+				RDEBUG2("Password change has invalid length %zu < 586",
 					eap_round->response->type.length);
 				RETURN_UNLANG_INVALID;
 			}
@@ -577,6 +577,12 @@ failure:
 	length = fr_nbo_to_uint16(eap_round->response->type.data + 2);
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
+		RETURN_UNLANG_INVALID;
+	}
+
+	if (eap_round->response->type.length < length) {
+		REDEBUG("Response type data (%zu bytes) is shorter than claimed MS-Length (%zu)",
+			eap_round->response->type.length, length);
 		RETURN_UNLANG_INVALID;
 	}
 
