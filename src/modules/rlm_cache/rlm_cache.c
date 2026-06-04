@@ -970,54 +970,14 @@ static xlat_arg_parser_t const cache_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Allow single attribute values to be retrieved from the cache
- *
- * @ingroup xlat_functions
- */
-static CC_HINT(nonnull)
-xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			 xlat_ctx_t const *xctx,
-			 request_t *request, fr_value_box_list_t *in)
+static xlat_action_t cache_xlat_results(TALLOC_CTX *ctx, unlang_result_t *result, request_t *request,
+					rlm_cache_t const *inst, rlm_cache_handle_t *handle, rlm_cache_entry_t *c,
+					tmpl_t *target, fr_dcursor_t *out)
 {
-	rlm_cache_entry_t 		*c = NULL;
-	void				*driver_rctx = NULL;
-	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
-	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
-	fr_value_box_t			*key = fr_value_box_list_head(&env->key);
-	rlm_cache_handle_t		*handle = NULL;
-
-	ssize_t				slen;
-
-	fr_value_box_t			*attr = fr_value_box_list_head(in);
 	fr_value_box_t			*vb;
-
-	tmpl_t				*target = NULL;
 	map_t				*map = NULL;
-	unlang_result_t 		result = { .rcode = RLM_MODULE_NOOP };
 
-	FIXUP_KEY(return XLAT_ACTION_FAIL, return XLAT_ACTION_FAIL)
-
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
-				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
-				      NULL,
-				      &(tmpl_rules_t){
-				      	.attr = {
-						.dict_def = request->local_dict,
-						.list_def = request_attr_request,
-				      	}
-				      });
-	if (slen <= 0) {
-		RPEDEBUG("Invalid key");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (cache_acquire(&handle, inst, request) < 0) {
-		talloc_free(target);
-		return XLAT_ACTION_FAIL;
-	}
-
-	cache_find(&result, &c, &driver_rctx, inst, request, &handle, key);
-	switch (result.rcode) {
+	switch (result->rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
@@ -1060,6 +1020,85 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 
 	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t cache_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	unlang_result_t		result;
+	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, cache_rctx_t);
+	tmpl_t			*target = talloc_get_type_abort(rctx->uctx, tmpl_t);
+	rlm_cache_entry_t	*entry = NULL;
+
+	if (cache_find_resume(&result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		unlang_xlat_yield(request, cache_xlat_resume, NULL, 0, rctx);
+		return XLAT_ACTION_YIELD;
+	}
+
+	return cache_xlat_results(ctx, &result, request, inst, rctx->handle, entry, target, out);
+}
+
+/** Allow single attribute values to be retrieved from the cache
+ *
+ * @ingroup xlat_functions
+ */
+static CC_HINT(nonnull)
+xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			 xlat_ctx_t const *xctx,
+			 request_t *request, fr_value_box_list_t *in)
+{
+	rlm_cache_entry_t 		*c = NULL;
+	void				*driver_rctx = NULL;
+	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
+	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
+	fr_value_box_t			*key = fr_value_box_list_head(&env->key);
+	rlm_cache_handle_t		*handle = NULL;
+
+	ssize_t				slen;
+
+	fr_value_box_t			*attr = fr_value_box_list_head(in);
+
+	tmpl_t				*target = NULL;
+	unlang_result_t 		result = { .rcode = RLM_MODULE_NOOP };
+
+	FIXUP_KEY(return XLAT_ACTION_FAIL, return XLAT_ACTION_FAIL)
+
+	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
+				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
+				      NULL,
+				      &(tmpl_rules_t){
+				      	.attr = {
+						.dict_def = request->local_dict,
+						.list_def = request_attr_request,
+				      	}
+				      });
+	if (slen <= 0) {
+		RPEDEBUG("Invalid key");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (cache_acquire(&handle, inst, request) < 0) {
+		talloc_free(target);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (cache_find(&result, &c, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		cache_rctx_t	*rctx;
+
+		MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), cache_rctx_t));
+		*rctx = (cache_rctx_t) {
+			.handle = handle,
+			.key = key,
+			.rctx = driver_rctx,
+			.uctx = target
+		};
+
+		unlang_xlat_yield(request, cache_xlat_resume, NULL, 0, rctx);
+		return XLAT_ACTION_YIELD;
+	}
+	return cache_xlat_results(ctx, &result, request, inst, handle, c, target, out);
 }
 
 static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
