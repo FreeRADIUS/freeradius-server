@@ -1377,45 +1377,16 @@ finish:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Create a cache entry if it does not already exist.
- *
- * @return
- *	- #RLM_MODULE_NOOP if an entry already existed.
- *	- #RLM_MODULE_UPDATED if we inserted a cache entry.
- *	- #RLM_MODULE_FAIL on failure.
+/** Common result handdling after store method does a find
  */
-static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+static inline unlang_action_t mod_method_store_find_results(unlang_result_t *p_result, request_t *request,
+							    rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							    cache_call_env_t *env, rlm_cache_entry_t *entry)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
-	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	fr_time_delta_t		ttl;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
-	void			*driver_rctx = NULL;
 
-	p_result->rcode = RLM_MODULE_NOOP;
-
-	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
-
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_UNLANG_FAIL;
-	}
-
-	/* Process the TTL */
-	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
-	if (vp && (vp->vp_int32 > 0)) {
-		ttl = fr_time_delta_from_sec(vp->vp_int32);
-
-		DEBUG3("Overriding default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
-	}
-
-	/*
-	 *	We can only alter the TTL on an entry if it exists.
-	 */
-	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
 	switch (p_result->rcode) {
 	default:
 	case RLM_MODULE_OK:
@@ -1427,6 +1398,15 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 
 	case RLM_MODULE_NOTFOUND:
 		break;
+	}
+
+	/* Process the TTL */
+	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp && (vp->vp_int32 > 0)) {
+		ttl = fr_time_delta_from_sec(vp->vp_int32);
+
+		RDEBUG3("Overriding default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
 	}
 
 	/*
@@ -1443,6 +1423,57 @@ finish:
 	cache_unref(request, inst, entry, handle);
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_method_store_find_resume(unlang_result_t *p_result,
+								     module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	rlm_cache_entry_t	*entry = NULL;
+
+	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_store_find_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_store_find_results(p_result, request, inst, rctx->handle, env, entry);
+}
+
+/** Create a cache entry if it does not already exist.
+ *
+ * @return
+ *	- #RLM_MODULE_NOOP if an entry already existed.
+ *	- #RLM_MODULE_UPDATED if we inserted a cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+	void			*driver_rctx = NULL;
+
+	p_result->rcode = RLM_MODULE_NOOP;
+
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
+
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_UNLANG_FAIL;
+	}
+
+	/*
+	 *	We only insert an entry if it doesn't already exist.
+	 */
+	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+					  mod_method_store_find_resume, NULL, driver_rctx, NULL);
+	}
+
+	return mod_method_store_find_results(p_result, request, inst, handle, env, entry);
 }
 
 /** Delete the entries by ${key}
