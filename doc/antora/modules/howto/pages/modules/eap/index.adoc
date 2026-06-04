@@ -1,525 +1,375 @@
 = EAP
 
-include::ROOT:partial$v3_warning.adoc[]
-
 The Extensible Authentication Protocol (EAP), `RFC 3748`, is an authentication
 framework and data link layer protocol that allows network access points
 to support multiple authentication methods. Each EAP Type indicates a
 specific authentication mechanism. The `802.1X` standard authenticates
 both wireless and wired LAN users/devices trying to access `Enterprise` networks.
 
-RADIUS attribute used for EAP is `EAP-Message`, 79(`rfc2869`). RADIUS
-communicates all EAP messages by embedding them in this attribute.
+RADIUS uses the `EAP-Message` attribute (type 79, defined in `RFC 2869`) to carry EAP messages between the NAS and the RADIUS server.
 
-General Terminology Authenticator/NAS/Access Point(AP) - _A network
-device providing users Supplicant/EAP Client_ - The software on the
-end-user/client machine (e.g. machine with the wireless card or
-connected to an 802.1X switch port). with a point of entry into the
-network. EAPOL - EAP over LAN as defined in 802.1X standard. EAPOW - EAP
-over Wireless as defined in the 802.11 standard.
+== How EAP Works
+
+The supplicant is the software on the client (the machine with the wireless
+card).
+
+The EAP process does not start until the client has associated with the Access
+Point using Open authentication. Once the association is established, the AP
+blocks all traffic except 802.1X. EAP traffic is passed to the RADIUS server
+and RADIUS responses are passed back to the client.
+
+After the client associates with the AP, the supplicant prompts the user for
+credentials. Using 802.1X and EAP, the supplicant sends the username and a
+one-way hash of the password to the AP.
+
+The AP encapsulates the request and sends it to the RADIUS server.
+
+The RADIUS server needs a plaintext password to perform the same one-way hash
+and verify the credential. If the hash matches, the RADIUS server issues an
+access challenge, which goes back via the AP to the client.
+
+The client sends the EAP response to the challenge via the AP to the RADIUS
+server.
+
+If the response is valid, the RADIUS server sends a success message and the
+session WEP key (for EAP over wireless) to the client via the AP. The same
+session WEP key is also sent to the AP in the success packet.
+
+The client and the AP then begin using session WEP keys. The WEP key used for
+multicasts is sent from the AP to the client, encrypted using the session WEP
+key.
+
+
+.EAP Processing
 
 ```
    +----------+        +----------+        +----------+
-   |          |  EAPOL |          | RADIUS |          |
-   |  EAP     |<------>|  Access  |<------>|  RADIUS  |
-   |  Client  |  EAPOW |  Point   |  (EAP) |  Server  |
-   |          |        |          |        |          |
-   +----------+        +----------+        +----------+
+   |          |  EAPOL |          | RADIUS  |          |
+   |  EAP     |<------>|  Access  |<------->|  RADIUS  |
+   |  Client  |  EAPOW |  Point   |  (EAP)  |  Server  |
+   |          |        |          |         |          |
+   +----------+        +----------+         +----------+
 ```
 
-The sequence of events, for `EAP-MD5`, runs as follows:
+Terminology:
+
+* *Authenticator / NAS / Access Point (AP)* - A network device providing users with a point of entry into the network.
+* *Supplicant / EAP Client* - The software on the end-user/client machine (for example, a machine with a wireless card or connected to an 802.1X switch port).
+* *EAPOL* - EAP over LAN as defined in the 802.1X standard.
+* *EAPOW* - EAP over Wireless as defined in the 802.11 standard.
+
+== `EAP-MD5` Authentication Flow
 
 [arabic]
-. The end-user associates with the Access Point(AP).
-. The supplicant specifies AP to use EAP by sending `EAP-Start`.
-. AP requests the supplicant to Identify itself (`EAP-Identity`).
-. Supplicant then sends its Identity (username) to the AP.
-. AP forwards this `EAP-response` AS-IS to the RADIUS server. (The
-supplicant and the RADIUS server mutually authenticate via AP. AP just
-acts as a passthru till authentication is finished.)
+. The end-user associates with the Access Point (AP).
+. The supplicant signals the AP to use EAP by sending `EAP-Start`.
+. The AP requests the supplicant to identify itself (`EAP-Identity`).
+. The supplicant sends its identity (username) to the AP.
+. The AP forwards the `EAP-Response` as-is to the RADIUS server. The
+  supplicant and the RADIUS server authenticate via the AP, which acts as
+  a pass-through until authentication completes.
 . The server sends a challenge to the supplicant.
-. The supplicant carries out a hash on the password and sends this
-hashed password to the RADIUS server as its response.
-. The RADIUS server performs a hash on the password for that supplicant
-in its user database and compares the two hashed values and
-authenticates the client if the two values
-match(EAP-Success/EAP-Failure)
-. AP now opens a port to accept data from the end-user.
+. The supplicant computes a hash of the password and sends the result to
+  the RADIUS server.
+. The RADIUS server computes a hash of the stored password and compares the
+  two values. If they match, authentication succeeds (`EAP-Success`) and
+  the AP opens a port for the user.
 
-Currently, EAP is widely used in wireless networks than in wired
-networks. In 802.11/wireless based networking, following sequence of
-events happen in addition to the above EAP events.
+In 802.11/wireless networking, these additional events follow:
 
-[arabic, start=10]
-. RADIUS server and the supplicant agree to a specific WEP key.
-. The supplicant loads the key ready for logging on.
-. The RADIUS server sends the key for this session (Session key) to the
-AP.
-. The AP encrypts its Broadcast key with the Session key
-. The AP sends the encrypted key to the supplicant
-. The supplicant decrypts the Broadcast key with the Session key and the
-session continues using the Broadcast and Session keys until the session
-ends.
-
-References:
-
-The Implementation of EAP over RADIUS is based on the following RFCs
+[arabic, start=9]
+. The RADIUS server and the supplicant agree on a specific WEP key.
+. The supplicant loads the key ready for login.
+. The RADIUS server sends the session key to the AP.
+. The AP encrypts its broadcast key with the session key.
+. The AP sends the encrypted key to the supplicant.
+. The supplicant decrypts the broadcast key. The session continues using
+  both the broadcast and session keys until the session ends.
 
 
-* https://datatracker.ietf.org/doc/html/rfc3579:"RFC3579" - RADIUS (Remote Authentication Dial In User Service) Support For Extensible Authentication Protocol (EAP)
-* https://datatracker.ietf.org/doc/html/rfc3748:"RFC3748" - Extensible Authentication Protocol (EAP)
-* https://datatracker.ietf.org/doc/html/rfc5216:"RFC5216" - The EAP-TLS Authentication Protocol
-* https://datatracker.ietf.org/doc/html/draft-josefsson-pppext-eap-tls-eap-06.txt:"draft-josefsson-pppext-eap-tls-eap-06" - Protected EAP Protocol (PEAP)
-* https://datatracker.ietf.org/doc/html/rfc5281:"RFC5281" - Extensible Authentication Protocol Tunneled Transport Layer Security Authentication Methods
-* https://datatracker.ietf.org/doc/html/rfc5247:"RFC5247" - Extensible Authentication Protocol (EAP) Key Management Framework
-* https://datatracker.ietf.org/doc/html/rfc4187:"RFC4187" - Extensible Authentication Protocol Method for Global System for Mobile Communications (GSM) Subscriber Identity Modules (EAP-SIM)
-* https://datatracker.ietf.org/doc/html/rfc4186:"RFC4186" - Extensible Authentication Protocol Method for 3rd Generation Authentication and Key Agreement (EAP-AKA)
-* https://datatracker.ietf.org/doc/html/rfc5448:"RFC5448" - Improved Extensible Authentication Protocol Method for 3rd Generation Authentication and Key Agreement (EAP-AKA')
-* https://datatracker.ietf.org/doc/html/rfc4851:"RFC4851" - The Flexible Authentication via Secure Tunneling Extensible Authentication Protocol Method (EAP-FAST)
-* https://datatracker.ietf.org/doc/html/rfc8446:"RFC8446" - The Transport Layer Security (TLS) Protocol Version 1.3
+== EAP Code Organisation
 
+EAP is implemented as a module in FreeRADIUS and the code is in
+`src/modules/rlm_eap`. All EAP sub-types are organized as subdirectories
+under `rlm_eap/types/`.
 
-The following IEEE standards are also relevant:
-* https://standards.ieee.org/ieee/802.1X/7345/:"IEEE 802.1X" - Port-Based Network Access Control
+Each EAP sub-type directory contains the code that handles that specific
+authentication mechanism. To add a new EAP type, create a new directory
+named `rlm_eap/types/rlm_eap_XXXX`, where `XXXX` is the type name.
 
-== EAP code organization
-
-EAP is implemented as a module in freeradius and the code is placed in
-src/modules/rlm_eap. All `EAP-Types` are organized as subdirectories in
-rlm_eap/types/.
-
-Each `EAP-Type`, like `types/rlm_eap_md5`, contains a chunk of code that
-knows how to deal with a particular kind of authentication mechanism.
-
-To add a new `EAP-Type` then a new directory should be created as
-`rlm_eap/types/rlm_eap_XXXX`, where XXXX is `EAP-Type` name ie for `EAP-Type`
-like ONE TIME PASSWORD (OTP) it would be rlm_eap_otp
-
-[width="100%",cols="45%,55%",options="header",]
+.EAP source code paths
+[width="100%",cols="45%,55%",options="header"]
 |===
-|Path |Description
-| `src/modules/rlm_eap`        | Contains the basic EAP and generalized
-                                 interfaces to all the EAP-Types.
-| `rlm_eap/types`              | Contains all the supported EAP-Types
-| `rlm_eap/types/rlm_eap_md5`  | EAP-MD5 authentication.
-| `rlm_eap/types/rlm_eap_tls`  | EAP-TLS based authentication.
-| `rlm_eap/types/rlm_eap_ttls` | TTLS based authentication.
-| `rlm_eap/types/rlm_eap_peap` | Windows PEAP based authentication.
-| `rlm_eap/types/rlm_eap_sim`  | EAP-SIM (GSM) based authentication
-|===
+| Path | Description
 
-== Configuration
-
-Add the eap configuration stanza to the modules section in
-`radiusd.conf` to load and control rlm_eap and all the supported
-EAP-Types:
-
-For example:
-
-[source,unlang]
-----
-modules {
-    ...
-    eap {
-        default_eap_type = md5
-
-        md5 {
-        }
-        ...
-    }
-    ...
-}
-----
-
-[NOTE]
-====
-You cannot have empty eap stanza. At least one EAP-Type sub-stanza
-should be defined as above, otherwise the server will not know what type
-of eap authentication mechanism to be used and the server will exit with
-error.
-====
-
-All the various options and their associated default values for each
-`EAP-Type` are documented in the sample radiusd.conf that is provided
-with the distribution.
-
-Since the EAP requests may not contain a requested EAP type, the
-`default_eap_type` configuration options is used by the EAP module to
-determine which EAP type to choose for authentication.
-
-NOTE: EAP cannot authorize a user. It can only authenticate. Other
-Freeradius modules authorize the user.
-
-== EAP SIM server
-
-To configure `EAP-SIM` authentication, the following attributes must be
-set in the server. This can be done in the users file, but in many cases
-will be taken from a database server, via one of the SQL interface.
-
-If one has SIM cards that one controls (i.e. whose share secret you
-know), one should be able to write a module to generate these attributes
-(the triplets) in the server.
-
-If one has access to the SS7 based settlement network, then a module to
-fetch appropriate triplets could be written. This module would act as an
-authorization only module.
-
-The attributes are:
-
-[cols=",",options="header",]
-|===
-| Attribute     | Size
-| EAP-Sim-Rand1 | 16 bytes
-| EAP-Sim-SRES1 |  4 bytes
-| EAP-Sim-KC1   |  8 bytes
-| EAP-Sim-Rand2 | 16 bytes
-| EAP-Sim-SRES2 |  4 bytes
-| EAP-Sim-KC2   |  8 bytes
-| EAP-Sim-Rand3 | 16 bytes
-| EAP-Sim-SRES3 |  4 bytes
-| EAP-Sim-KC3   |  8 bytes
-|===
-
-NOTE: `EAP-SIM` will send WEP attributes to the resquestor.
-
-== EAP sub-types
-
-=== LEAP
-
-The Lightweight Extensible Authentication Protocol (LEAP) is a proprietary EAP method developed by Cisco Systems.
-
-There is no native support for LEAP in any Windows operating system but is supported by third party supplicants. The protocol is known to be vulnerable to dictionary attacks however Cisco still maintains that LEAP can be secure if sufficiently complex passwords are used. Newer protocols like EAP-TTLS and EAP-PEAP do not have this problem and can operate on Cisco and non-Cisco Access Points.
-
-=== EAP-TLS
-
-*EAP-TLS*, defined in RFC 2716, is an IETF open standard, and is well-supported among wireless vendors.  It offers a good deal of security, since TLS is considered the successor of the SSL standard.  It uses PKI to secure communication to the RADIUS authentication server which provides excellent security however the overhead of client-side certificates can make it seem daunting to set up.
-
-EAP-TLS is the original standard wireless LAN EAP authentication protocol. It is considered one of the most secure EAP standards available and is universally supported by all manufacturers of wireless LAN hardware and software including Microsoft.  The requirement for a client-side certificate, however unpopular it may be, is what gives EAP-TLS its authentication strength and illustrates the classic convenience vs. security trade-off.  A compromised password is not enough to break into EAP-TLS enabled systems because the hacker still needs to have the client-side certificate.  When the client-side certificates are housed in smartcards, this offers the most security available because there is no way to steal a certificate's private key from a smartcard without stealing the smartcard itself.  It is significantly more likely that physical theft of a smartcard would be immediately noticed and the smartcard revoked and a new card issued than that password theft would be noticed and the password changed or account disabled.  Up until April of 2005, EAP-TLS was the only EAP type vendors needed to certify for a WPA or WPA2 logo.  There are client and server implementations of it in Microsoft, Cisco, Apple, Linux, and open source.  EAP-TLS is natively supported in MAC OS 10.3 and above, Windows 2000 SP4, Windows XP, Windows Mobile 2003 and above, and Windows CE 4.2 as well as by many Open Source EAP Clients.
-
-=== EAP-MD5
-
-*EAP-MD5*, defined in RFC 3748, is another IETF open standard, but offers minimal security.  The MD5 hash function is vulnerable to dictionary attacks, and does not support mutual authentication or key generation, which makes it unsuitable for use with dynamic WEP,  or WPA/WPA2 enterprise.
-
-=== EAP-TTLS
-
-*EAP-Tunneled Transport Layer Security*, or *EAP-TTLS*, was co-developed by Funk Software and Certicom.  It is widely supported across platforms, and offers very good security, using PKI certificates only on the authentication server.
-
-EAP TTLS is also described in an IETF internet draft, "draft-funk-eap-ttls-v0-04.txt http://www.ietf.org/internet-drafts/draft-funk-eap-ttls-v0-04.txt". Note that this an individual submission and not standardized in the IETF.
-
-=== EAP-IKEv2
-
-EAP-IKEv2 is an EAP authentication method based on the Internet Key Exchange Protocol version 2 (IKEv2). It provides mutual authentication and session key establishment between an EAP peer and an EAP server. It supports authentication techniques that are based on the following types of credentials:
-
-* *Asymmetric key pairs* - public/private key pairs where the public key is embedded into a digital certificate, and the corresponding private key is known only to a single party.
-* *Passwords* - low-entropy bit strings that are known to both the server and the peer.
-* *Symmetric keys* - high-entropy bit strings that known to both the server and the peer.
-
-It is possible to use a different authentication credential (and technique) in each direction. For example that the EAP server authenticates itself using public/private key pair and the EAP client using symmetric key. In particular, the following combinations are expected to be used in practice:
+| `src/modules/rlm_eap`             | Core EAP module and shared interfaces for all EAP sub-types.
+| `rlm_eap/types/rlm_eap_md5`       | EAP-MD5 authentication.
+| `rlm_eap/types/rlm_eap_tls`       | EAP-TLS certificate-based authentication.
+| `rlm_eap/types/rlm_eap_ttls`      | EAP-TTLS tunneled authentication.
+| `rlm_eap/types/rlm_eap_peap`      | PEAP (Protected EAP) authentication.
+| `rlm_eap/types/rlm_eap_gtc`       | EAP-GTC (Generic Token Card) authentication.
+| `rlm_eap/types/rlm_eap_mschapv2`  | EAP-MSCHAPv2 authentication.
+| `rlm_eap/types/rlm_eap_fast`      | EAP-FAST (Flexible Authentication via Secure Tunneling).
+| `rlm_eap/types/rlm_eap_pwd`       | EAP-PWD password-based authentication.
+| `rlm_eap/types/rlm_eap_sim`       | EAP-SIM (GSM) authentication.
+| `rlm_eap/types/rlm_eap_aka`       | EAP-AKA (UMTS) authentication.
+| `rlm_eap/types/rlm_eap_aka_prime` | EAP-AKA' improved UMTS authentication (RFC 5448).
 
 |===
-|EAP server |EAP peer
-|asym. key pair |asym. key pair
-|asym. key pair |symmetric key
-|asym. key pair |password
-|symmetric key |symmetric key
-|===
-
-EAP-IKEv2 is described in an IETF internet draft, http://www.ietf.org/internet-drafts/draft-tschofenig-eap-ikev2-11.txt draft-tschofenig-eap-ikev2-11.txt. Prototype implementation can be found at http://eap-ikev2.sourceforge.net page.
-
-=== PEAP
-
-*Protected Extensible Authentication Protocol* is a joint proposal by Cisco Systems, Microsoft and RSA Security as an open standard.  It is already widely available in products, and provides very good security.  It is similar in design to EAP-TTLS, requiring only a server-side PKI certificate to create a secure TLS tunnel to protect user authentication.
-
-As of May of 2005, there were two PEAP sub-types certified for the updated WPA and WPA2 standard.  They are:
-*PEAPv0/EAP-MSCHAPv2
-*PEAPv1/EAP-GTC
-
-==== PEAPv0/EAP-MSCHAPv2
-
-PEAPv0/EAP-MSCHAPv2 is the technical term for what people most commonly refer to as "PEAP".  Whenever the word PEAP is used, it almost always refers to this form of PEAP since most people have no idea there are so many flavors of PEAP.  Behind EAP-TLS, PEAPv0/EAP-MSCHAPv2 is the second most widely supported EAP standard in the world.  There are client and server implementations of it in Microsoft, Cisco, Apple, Linux, and open source.  PEAPv0/EAP-MSCHAPv2 is natively supported in MAC OS 10.3 and above, Windows 2000 SP4, Windows XP, Windows Mobile 2003 and above, and Windows CE 4.2.  The server side implementation of PEAPv0/EAP-MSCHAPv2, called IAS (Internet Authentication Service), is also included in Windows 2003 server.  PEAPv0/EAP-MSCHAPv2 enjoys universal support and is known as the PEAP standard.
-
-This version of PEAP is defined through IETF Internet Draft "draft-kamath-pppext-peapv0-00 http://www.watersprings.org/pub/id/draft-kamath-pppext-peapv0-00.txt". Note that this is an expired draft.
-
-==== PEAPv1/EAP-GTC
-
-PEAPv1/EAP-GTC was created by Cisco as an alternative to PEAPv0/EAP-MSCHAPv2.  It allows the use of an inner authentication protocol other than Microsoft's MSCHAPv2. EAP-GTC (Generic Token Card) is defined in RFC 3748. It carries a text challenge from the authentication server, and a reply which is assumed to be generated by a security token. EAP-GTC does not protect the authentication data in any way.
-
-Even though Microsoft (along with RSA and Cisco) co-invented the PEAP standard, Microsoft never added support for PEAPv1 in general, which means PEAPv1/EAP-GTC has no native Windows OS support.  Since Cisco has always favored the use of its own less secure proprietary LEAP and EAP-FAST protocols over PEAP and markets them as simpler certificate-less solutions, standardized PEAP is rarely promoted by Cisco. With no interest from Microsoft to support PEAPv1 and little interest from Cisco to promote PEAP in general, PEAPv1 authentication is rarely used.  There is no native OS support for this EAP protocol.
-
-Although there is no in-built support for PEAP-GTC in MS Windows, it is supported by the Cisco CCX extensions program.  CCX compatibility is enabled by default on many vendor-provided 802.11A/B/G clients.
-
-[NOTE]
-====
-The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market.  Even with its late start, Microsoft's and Cisco's size allowed them to quickly overtake EAP-TTLS in the market.  Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1.  PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.  From Cisco's perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.  Since Microsoft only supports PEAPv0 and doesn't support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator.  Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.  However, Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don't support.  PEAP-EAP-TLS does require a client-side digital certificate located on the client's hard drive or a more secure smartcard.  PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS.  Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.  Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know.  PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
-====
-
-This version of PEAP is defined through the IETF internet draft "draft-josefsson-pppext-eap-tls-eap-05 http://www.watersprings.org/pub/id/draft-josefsson-pppext-eap-tls-eap-05.txt."  Note that this is an expired draft.
-
-=== EAP-FAST
-
-_EAP-FAST (Flexible Authentication via Secure Tunneling)_ is a method designed by Cisco Systems to fix the weaknesses of LEAP. Use of server certificates is optional in EAP-FAST. EAP-FAST uses a Protected Access Credential (PAC). The PAC can be provisioned manually or dynamically in Phase 0 of EAP-FAST. EAP-FAST has three phases. Phase 0 is an optional phase. In Phase 1 the client and the AAA server uses the PAC to establish TLS tunnel. In Phase 2, the client sends user information across the tunnel.
-
-Although Cisco advertises EAP-FAST as being much more secure than LEAP, it can still suffer from a poor implementation. EAP-MD5 and LEAP suffered from a weak user password, EAP-FAST can give up usernames and passwords in situations where Automatic PAC provisioning is enabled on the RADIUS server and the Wireless Client.
-
-EAP-FAST is defined in IETF RFC 4851. Note that this is an Informational RFC.
-
-=== EAP-SIM
-
-*EAP for GSM Subscriber Identity* is used for authentication and session key distribution using the Global System for Mobile Communications (GSM) Subscriber Identity Module (SIM)  EAP SIM is defined in RFC 4186.
-
-=== EAP-AKA
-
-*EAP for UMTS Authentication and Key Agreement* is used for authentication and session key distribution using the Universal Mobile Telecommunications System (UMTS) UMTS Subscriber Identity Module (USIM).  EAP AKA is defined in RFC 4187.
-
-== EAP clients
-
-The main EAP client is https://w1.fi/wpa_supplicant/
-
-== Audit
-
-An Open Source audit tool is available at:
-
-https://github.com/ANSSI-FR/audit-radius
-
-== FAQ and examples
-
-How do i use it?
-
-[arabic]
-. How can I enable EAP-MD5 authentication ?
-
-In radiusd.conf
-
-[source,unlang]
-----
-  modules {
-    ...
-    eap {
-        default_eap_type = md5
-        md5 {
-        }
-        ...
-    }
-    ...
-  }
-
-  # eap sets the authenticate type as EAP
-  recv Access-Request {
-    ...
-    eap
-  }
-
-  # eap authentication takes place.
-  process Access-Request {
-    eap
-  }
-----
-
-[arabic, start=2]
-. My Userbase is in LDAP and I want to use EAP-MD5 authentication
-
-In radiusd.conf
-
-[source,unlang]
-----
-  modules {
-    ...
-    eap {
-        default_eap_type = md5
-        md5 {
-        }
-        ...
-    }
-    ...
-  }
-
-  # ldap gets the configured password.
-  # eap sets the authenticate type as EAP
-  recv Access-Request {
-    ...
-    ldap
-    eap
-    ...
-  }
-
-  # eap authentication takes place.
-  process Access-Request {
-    ...
-    eap
-    ...
-  }
-----
-
-[arabic, start=3]
-. How can I Proxy EAP messages, with/without User-Name attribute in the
-`Access-Request` packets
-
-With `User-Name` attribute in `Access-Request` packet,
-`EAP-proxying` is just same as RADIUS-proxying.
-
-If `User-Name` attribute is not present in `Access-Request` packet,
-Freeradius can proxy the request with the following configuration in
-radiusd.conf
-
-```
-#  eap module should be configured as the First module in
-#  the authorize stanza
-
-recv Access-Request {
-  eap
-  ...  other modules.
-}
-```
-
-With this configuration, eap_authorize creates `User-Name` attribute
-from `EAP-Identity` response, if it is not present. Once `User-Name`
-attribute is created, RADIUS proxying takes care of EAP proxying.
-
-[arabic, start=4]
-. How Freeradius can handle `EAP-START` messages ?
-
-In most of the cases this is handled by the Authenticator.
-
-Only if it is required then, in `radiusd.conf`
-
-```
-recv Access-Request {
-    eap
-    ...  other modules.
-}
-```
-
-With the above configuration, RADIUS server immediately responds with
-`EAP-Identity` request.
-
-NOTE: EAP does not check for any Identity or maintains any state in case
-of `EAP-START`. It blindly responds with `EAP-Identity` request. Proxying is
-handled only after `EAP-Identity` response is received.
-
-[arabic, start=5]
-. I want to enable multiple EAP-Types, how can I configure ?
-
-In radiusd.conf
-
-```
-modules {
-    ...
-    eap {
-        default_eap_type = tls
-        md5 {
-        }
-        tls {
-            ...
-        }
-        ...
-    }
-    ...
-}
-```
-
-The above configuration will let the server load all the `EAP-Types`, but
-the server can have only one default `EAP-Type`, as above.
-
-Once `EAP-Identity` response is received by the server, based on the
-`default_eap_type`, the server will send a new request (`MD5-Challenge`
-request in case of md5, `TLS-START` request in case of tls) to the
-supplicant. If the supplicant is `rfc2284` compliant and does not support
-the `EAP-Type` sent by the server then it sends `EAP-Acknowledge` with the
-supported `EAP-Type`. If this `EAP-Type` is supported by the server then it
-will send the respective EAP-request.
-
-Example: If the supplicant supports only `EAP-MD5` but the server
-`default_eap_type` is configured as `EAP-TLS`, as above, then the server
-will send `TLS-STAR` after EAP-Identity is received. Supplicant will
-respond with `EAP-Acknowledge` (`EAP-MD5`). Server now responds with
-`MD5-Challenge`.
 
 == Installation
 
 EAP, EAP-MD5, and EAP-MSCHAPv2 do not require any additional packages.
-Freeradius contains all the required packages.
+FreeRADIUS contains all required code.
 
-For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, https://www.openssl.org/, is
-required to be installed. Any version from 0.9.7, should fairly work
-with this module.
+For EAP-TLS, EAP-TTLS, and PEAP, https://www.openssl.org/[OpenSSL] 3.0.0 or later is required.
 
-EAP-SIM should not require any additional packages.
+EAP-SIM, EAP-AKA, and EAP-AKA' do not require any additional packages.
 
-== Implementation (For Developers)
+== Configuration
 
-The rlm_eap module only deals with EAP specific authentication mechanism
-and the generic interface to interact with all the EAP-Types.
+EAP is configured in `raddb/mods-available/eap`. Enable each method with
+a `type` entry. Each method also has a configuration sub-section with
+method-specific options.
 
-Currently, these are the existing interfaces,
+For example, to enable EAP-TLS, EAP-TTLS, and PEAP:
 
-```
-int attach(CONF_SECTION *conf, void **type_arg);
-int initiate(void *type_arg, EAP_HANDLER *handler);
-int authenticate(void *type_arg, EAP_HANDLER *handler);
-int detach(void **type_arg);
-```
+[source,unlang]
+----
+eap {
+    default_eap_type = tls
 
-`attach()` and `detach()` functions allocate and deallocate all the
-required resources.
+    type = tls
+    type = ttls
+    type = peap
 
-`initiate()` function begins the conversation when EAP-Identity
-response is received. In case of EAP-MD5, `initiate()` function sends
-the challenge.
+    tls-config tls-common {
+        chain rsa {
+            certificate_file     = ${certdir}/rsa/server.pem
+            private_key_file     = ${certdir}/rsa/server.key
+            private_key_password = whatever
+            ca_file              = ${certdir}/rsa/ca.pem
+        }
+    }
 
-`authenticate()` function uses specific EAP-Type authentication
-mechanism to authenticate the user. During authentication many
-EAP-Requests and EAP-Responses takes place for each authentication.
-Hence authenticate() function may be called many times. EAP_HANDLER
-contains the complete state information required.
+    tls {
+        tls = tls-common
+    }
 
-== How EAP works
+    ttls {
+        tls            = tls-common
+        virtual_server = "inner-tunnel"
+    }
 
-as posted to the list, by John Lindsay
-mailto:jlindsay@internode.com.au[jlindsay@internode.com.au]
+    peap {
+        tls              = tls-common
+        default_eap_type = mschapv2
+        virtual_server   = "inner-tunnel"
+    }
+}
+----
 
-To make it clear for everyone, the supplicant is the software on the
-client (machine with the wireless card).
+In the virtual server, call `eap` in `recv Access-Request` with return code
+handling, and add an `authenticate eap` section for the actual EAP exchange:
 
-The EAP process doesn't start until the client has associated with the
-Access Point using Open authentication. If this process isn't crystal
-clear you need to go away and gain understanding.
+[source,unlang]
+----
+recv Access-Request {
+    eap {
+        ok = return
+        updated = return
+    }
+}
 
-Once the association is made the AP blocks all traffic that is not
-802.1X so although associated the connection only has value for EAP. Any
-EAP traffic is passed to the radius server and any radius traffic is
-passed back to the client.
+authenticate eap {
+    eap
+}
+----
 
-So, after the client has associated to the Access Point, the supplicant
-starts the process for using EAP over LAN by asking the user for their
-logon and password.
+[NOTE]
+====
+The `ok = return` and `updated = return` directives cause the section to exit
+early when the `eap` module has handled a packet mid-exchange (for example,
+during the TLS handshake in TTLS or PEAP). Without them, modules such as
+`ldap` or `sql` would be called on every round-trip packet, not just the
+final authentication packet.
+====
 
-Using 802.1X and EAP the supplicant sends the username and a one-way
-hash of the password to the AP.
+[NOTE]
+====
+At least one `type` entry must be present in the `eap {}` stanza. Without a
+type, the server has no authentication mechanism to use and exits with an error.
+====
 
-The AP encapsulates the request and sends it to the RADIUS server.
+If an EAP request does not indicate which EAP method to use, `default_eap_type`
+determines the initial method to offer the client.
 
-The radius server needs a plaintext password so that it can perform the
-same one-way hash to determine that the password is correct. If it is,
-the radius server issues an access challenge which goes back via to the
-AP to the client. (my study guide says client but my brain says
-`supplicant`)
+EAP cannot authorize a user - it can only authenticate. Other
+FreeRADIUS modules handle authorization.
 
-The client sends the EAP response to the challenge via the AP to the
-RADIUS server.
+== EAP clients
 
-If the response is valid the RADIUS server sends a success message and
-the session WEP key (EAP over wireless) to the client via the AP. The
-same session WEP key is also sent to the AP in the success packet.
+The main open source EAP client is https://w1.fi/wpa_supplicant/[wpa_supplicant].
 
-The client and the AP then begin using session WEP keys. The WEP key
-used for multicasts is then sent from the AP to the client. It is
-encrypted using the session WEP key.
+
+== Examples
+
+=== *EAP-MD5 Authentication*
+
+In `raddb/mods-available/eap`:
+
+[source,unlang]
+----
+eap {
+    default_eap_type = md5
+
+    type = md5
+
+    md5 {
+    }
+}
+----
+
+In the virtual server:
+
+[source,unlang]
+----
+recv Access-Request {
+    eap {
+        ok = return
+        updated = return
+    }
+}
+
+authenticate eap {
+    eap
+}
+----
+
+=== *EAP-MD5 authentication with LDAP*
+
+In `raddb/mods-available/eap`:
+
+[source,unlang]
+----
+eap {
+    default_eap_type = md5
+
+    type = md5
+
+    md5 {
+    }
+}
+----
+
+In the virtual server, `eap` must come before `ldap` in `recv Access-Request`.
+The return code handling ensures LDAP is only queried on the final authentication packet, not on every round-trip during the EAP exchange:
+
+[source,unlang]
+----
+recv Access-Request {
+    eap {
+        ok = return
+        updated = return
+    }
+    ldap
+}
+
+authenticate eap {
+    eap
+}
+----
+
+=== *Proxy EAP messages, with or without a `User-Name` attribute in the `Access-Request`*
+
+With a `User-Name` attribute in the `Access-Request` packet, EAP proxying
+works the same as standard RADIUS proxying.
+
+If `User-Name` is not present, FreeRADIUS can proxy the request with the
+following configuration. The `eap` module must be listed first so it can
+create `User-Name` from the `EAP-Identity` response before proxy routing runs:
+
+[source,unlang]
+----
+recv Access-Request {
+    eap {
+        ok = return
+        updated = return
+    }
+    ...  # other modules
+}
+----
+
+Once `User-Name` is set, RADIUS proxying handles EAP proxying automatically.
+
+=== *Configure FreeRADIUS to handle `EAP-START` messages*
+
+In most cases, `EAP-START` is handled by the Authenticator (NAS/AP). If
+the RADIUS server needs to handle it:
+
+[source,unlang]
+----
+recv Access-Request {
+    eap {
+        ok = return
+        updated = return
+    }
+    ...  # other modules
+}
+----
+
+With this configuration the server responds immediately with an
+`EAP-Identity` request.
+
+NOTE: EAP does not check for any identity or maintain any state for
+`EAP-START`. It responds with an `EAP-Identity` request unconditionally.
+Proxying is handled only after an `EAP-Identity` response is received.
+
+=== *Enable multiple EAP types*
+
+In `raddb/mods-available/eap`, list each type with a `type` entry:
+
+[source,unlang]
+----
+eap {
+    default_eap_type = tls
+
+    type = md5
+    type = tls
+
+    md5 {
+    }
+
+    tls-config tls-common {
+        chain rsa {
+            certificate_file     = ${certdir}/rsa/server.pem
+            private_key_file     = ${certdir}/rsa/server.key
+            private_key_password = whatever
+            ca_file              = ${certdir}/rsa/ca.pem
+        }
+    }
+
+    tls {
+        tls = tls-common
+    }
+}
+----
+
+The server loads all listed EAP types but uses only one default. When an
+`EAP-Identity` response is received, the server sends a request for the
+`default_eap_type`. If the supplicant does not support that type, it sends
+an `EAP-Nak` with its preferred type. If the server supports that type, it
+switches to it.
+
+Example: If `default_eap_type = tls` but the supplicant supports only
+EAP-MD5, the server sends `TLS-Start`. The supplicant responds with an
+`EAP-Nak` indicating EAP-MD5. The server then sends an `MD5-Challenge`.
 
 == Acknowledgements
 
-* Primary author - Raghu mailto:raghud@mail.com[raghud@mail.com]
+* Contributer - Raghu mailto:raghud@mail.com[raghud@mail.com]
 * EAP-SIM - Michael Richardson mailto:mcr@sandelman.ottawa.on.ca[mcr@sandelman.ottawa.on.ca]
-* The development of the EAP/SIM support was funded by Internet Foundation Austria (http://www.nic.at/ipa).
+* The development of the EAP/SIM support was funded by http://www.nic.at/ipa[Internet Foundation Austria].
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
