@@ -1476,6 +1476,43 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	return mod_method_store_find_results(p_result, request, inst, handle, env, entry);
 }
 
+/** Common result handdling after clear method does a find
+ */
+static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_result, request_t *request,
+							    rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							    fr_value_box_t const *key, rlm_cache_entry_t *entry)
+{
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!entry) {
+		REDEBUG2("Entry not found to delete");
+		p_result->rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	cache_expire(p_result, inst, request, &handle, key);
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_method_clear_find_resume(unlang_result_t *p_result,
+								     module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	rlm_cache_entry_t	*entry = NULL;
+
+	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
+			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_clear_find_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_clear_find_results(p_result, request, inst, rctx->handle, rctx->key, entry);
+}
+
 /** Delete the entries by ${key}
  *
  * @return
@@ -1503,21 +1540,12 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (!entry) {
-		REDEBUG2("Entry not found to delete");
-		p_result->rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
+	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+					  mod_method_clear_find_resume, NULL, driver_rctx, NULL);
 	}
 
-	cache_expire(p_result, inst, request, &handle, key);
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_method_clear_find_results(p_result, request, inst, handle, key, entry);
 }
 
 /** Change the TTL on an existing entry.
