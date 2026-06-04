@@ -96,7 +96,7 @@ ssize_t fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_pair_append(out, vp);
 	}
 
-	return slen;
+	return packet_len;
 }
 
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
