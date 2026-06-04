@@ -8,9 +8,12 @@
 </head>
 <body>
   <header>
-    <h1>cest-analyzer</h1>
+    <h1>CPU Cycle Utilization (CEst) Utility</h1>
     <p>Callgrind CEst analysis in the browser. Everything runs locally via
        WebAssembly; no file leaves your machine.</p>
+    <h2>Cycle Estimation (CEst) formula</h2>
+    <p>As implemented in QCachegrind/KCachegrind.</p>
+    <p><b>CEst</b> = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</p>
   </header>
 
   <main>
