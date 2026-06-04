@@ -54,6 +54,10 @@
 *** xref:modules/chap/index.adoc[CHAP]
 **** xref:modules/chap/testing.adoc[Testing]
 *** xref:modules/eap/index.adoc[EAP]
+**** xref:modules/eap/eap_subtypes.adoc[EAP Sub-Types]
+**** xref:modules/eap/eap_sim.adoc[EAP SIM Server]
+***** xref:modules/eap/eap_sim_aka.adoc[EAP SIM-AKA Testing]
+**** xref:modules/eap/rfcs.adoc[EAP RFCs]
 *** xref:modules/expiration/index.adoc[Expiration]
 *** xref:modules/krb5/index.adoc[KRB5]
 

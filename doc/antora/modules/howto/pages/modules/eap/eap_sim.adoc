@@ -1,0 +1,40 @@
+= EAP SIM Server
+
+EAP-SIM configuration in v4 is handled through the `eap-aka-sim`
+virtual server (see `sites-available/eap-aka-sim`). The server
+calls sections of this virtual server at each stage of the EAP-SIM
+exchange.
+
+To supply GSM triplets retrieved from an Authentication Centre (AuC),
+set the following `control` attributes inside the `send
+Challenge-Request` section. EAP-SIM requires three triplets, so each
+attribute must be provided three times:
+
+.EAP-SIM triplet attributes (from AuC)
+[cols="20%,15%,65%",options="header"]
+|===
+| Attribute | Size | Description
+
+| `RAND`  | 16 bytes | Random challenge sent to the SIM.
+| `SRES`  |  4 bytes | Signing response from the AuC.
+| `KC`    |  8 bytes | Session key derived by the AuC.
+
+|===
+
+To generate triplets locally using the Milenage algorithm, set these
+`control` attributes instead:
+
+.EAP-SIM local Milenage attributes
+[cols="20%,15%,65%",options="header"]
+|===
+| Attribute    | Size     | Description
+
+| `SIM-Ki`     | 16 bytes | Subscriber key shared between the AuC and SIM.
+| `SIM-SQN`    |  6 bytes | Sequence number for replay protection.
+| `SIM-OPc`    | 16 bytes | Derived operator variant (preferred over `SIM-OP`).
+| `SIM-OP`     | 16 bytes | Operator variant field (used to derive `SIM-OPc`).
+
+|===
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
