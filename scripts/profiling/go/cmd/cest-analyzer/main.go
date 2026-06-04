@@ -7,7 +7,9 @@
 //
 // Build:   go build -o cest-analyzer ./cmd/cest-analyzer
 // WASI:    GOOS=wasip1 GOARCH=wasm go build -o cest-analyzer.wasm ./cmd/cest-analyzer
-//
+// WASM:    GOOS=js GOARCH=wasm go build -o web/static/cest-analyzer.wasm ./web/wasm
+//          cp "$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)" web/static/
+
 // The analysis itself lives in cest-analyzer/internal/cest; this file only
 // supplies OS-bound I/O: flag parsing, file globbing, and stdout.
 package main
@@ -47,16 +49,18 @@ func candidatesForDir(dir string) []cest.Candidate {
 func main() {
 	var dirs dirFlag
 	var mdFile string
+	var jsonFile string
 	var topn int
 
 	flag.Var(&dirs, "d", "profiling `directory` (repeatable)")
 	flag.StringVar(&mdFile, "md", "", "write markdown report to `file`")
+	flag.StringVar(&jsonFile, "json", "", "write JSON report to `file`")
 	flag.IntVar(&topn, "top", 10, "top-N functions per pattern")
 	flag.Parse()
 
 	patterns := flag.Args()
 	if len(patterns) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: cest-analyzer [--md <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]")
+		fmt.Fprintln(os.Stderr, "Usage: cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]")
 		os.Exit(1)
 	}
 	if len(dirs) == 0 {
@@ -91,5 +95,23 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Printf("Markdown report written to: %s\n", mdFile)
+	}
+
+	if jsonFile != "" {
+		f, err := os.Create(jsonFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+			os.Exit(1)
+		}
+		if err := cest.WriteJSON(f, results, patterns, cats, topn); err != nil {
+			f.Close()
+			fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+			os.Exit(1)
+		}
+		if err := f.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("JSON report written to: %s\n", jsonFile)
 	}
 }

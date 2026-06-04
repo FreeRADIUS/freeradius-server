@@ -114,11 +114,30 @@ button.secondary {
 
 .toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
-#report {
+.view-tabs { display: flex; gap: 0.25rem; }
+
+.view-tab {
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid var(--accent);
+  padding: 0.4rem 0.9rem;
+}
+
+.view-tab.active {
+  color: #fff;
+  background: var(--accent);
+}
+
+.downloads { display: flex; gap: 0.5rem; }
+
+#report, #json {
   padding: 1rem;
   overflow-x: auto;
   background: #1e1e1e;
@@ -128,6 +147,93 @@ button.secondary {
   font-size: 0.8rem;
   line-height: 1.4;
 }
+
+/* --- Tables view --- */
+
+.metric-select {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.metric-select select {
+  padding: 0.45rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+#tables h3 { margin: 1.25rem 0 0.25rem; }
+#tables h4 { margin: 0.75rem 0 0.25rem; color: #555; font-size: 0.85rem; }
+
+table.data {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+table.data th, table.data td {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+table.data th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+table.data .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.data tbody tr:nth-child(even) { background: #fafafa; }
+
+/* --- Horizontal scroll affordance --- */
+/* Wide content (the report text, the JSON, and the all-components table) can
+   extend past the viewport. Make that obvious: a styled scrollbar that always
+   shows when content overflows, plus a hint shown only when it does. */
+
+.scroll-x {
+  overflow-x: auto;
+  /* keep table columns at full width so a wide table overflows (and scrolls)
+     instead of squashing every number onto two lines */
+}
+
+.scroll-x table.data { white-space: nowrap; width: auto; min-width: 100%; }
+
+/* Styled scrollbars are not overlay in Chromium, so the bar stays visible
+   whenever there is overflow. Track is tinted so the bar reads as a control. */
+#report::-webkit-scrollbar, #json::-webkit-scrollbar, .scroll-x::-webkit-scrollbar {
+  height: 12px;
+}
+#report::-webkit-scrollbar-track, #json::-webkit-scrollbar-track {
+  background: #333;
+  border-radius: 6px;
+}
+#report::-webkit-scrollbar-thumb, #json::-webkit-scrollbar-thumb {
+  background: #777;
+  border-radius: 6px;
+}
+.scroll-x::-webkit-scrollbar-track { background: #e6e6e6; border-radius: 6px; }
+.scroll-x::-webkit-scrollbar-thumb { background: #aaa; border-radius: 6px; }
+/* Firefox */
+#report, #json, .scroll-x { scrollbar-width: thin; }
+
+.scroll-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.scroll-hint::before { content: "\2194\00a0"; } /* leading ↔ */
 
 .error {
   margin-top: 1rem;

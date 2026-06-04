@@ -7,12 +7,15 @@ import (
 	"strings"
 )
 
-// Result holds the per-run totals produced by Parse.
+// Result holds the per-run totals produced by Parse. Each field accumulates
+// the full Events counter set, so any component (or the derived CEst) can be
+// read back; Total carries every component, which lets later stages
+// compute a per-metric percentage share.
 type Result struct {
-	Total   int64            // total CEst over the whole run
-	PatSums []int64          // self-CEst per requested pattern
-	FnSelf  map[string]int64 // self-CEst per function name
-	CatSums []int64          // self-CEst per category
+	Total   Events            // counters summed over the whole run
+	PatSums []Events          // self counters per requested pattern
+	FnSelf  map[string]Events // self counters per function name
+	CatSums []Events          // self counters per category
 }
 
 // ---------------------------------------------------------------------------
@@ -74,9 +77,9 @@ func ReadSummaryIr(r io.Reader) int64 {
 // Parse reads one callgrind.out.* stream and accumulates self-CEst totals.
 func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 	res := &Result{
-		PatSums: make([]int64, len(patterns)),
-		FnSelf:  make(map[string]int64),
-		CatSums: make([]int64, len(cats)),
+		PatSums: make([]Events, len(patterns)),
+		FnSelf:  make(map[string]Events),
+		CatSums: make([]Events, len(cats)),
 	}
 	lp := make([]string, len(patterns))
 	for i, p := range patterns {
@@ -136,32 +139,32 @@ func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 			//   Ir=$3→[2]  I1mr=$6→[5]  D1mr=$7→[6]  D1mw=$8→[7]
 			//   ILmr=$9→[8]  DLmr=$10→[9]  DLmw=$11→[10]
 			//   Bcm=$13→[12]  Bim=$15→[14]
-			ir := getField(flds, 2)
-			i1 := getField(flds, 5)
-			d1r := getField(flds, 6)
-			d1w := getField(flds, 7)
-			ilm := getField(flds, 8)
-			dlr := getField(flds, 9)
-			dlw := getField(flds, 10)
-			bcm := getField(flds, 12)
-			bim := getField(flds, 14)
-
-			c := Cost(ir, i1, d1r, d1w, ilm, dlr, dlw, bcm, bim)
-			res.Total += c
+			ev := Events{
+				Ir:   getField(flds, 2),
+				I1mr: getField(flds, 5),
+				D1mr: getField(flds, 6),
+				D1mw: getField(flds, 7),
+				ILmr: getField(flds, 8),
+				DLmr: getField(flds, 9),
+				DLmw: getField(flds, 10),
+				Bcm:  getField(flds, 12),
+				Bim:  getField(flds, 14),
+			}
+			res.Total = res.Total.Add(ev)
 
 			if curFn == "" {
 				continue
 			}
-			res.FnSelf[curFn] += c
+			res.FnSelf[curFn] = res.FnSelf[curFn].Add(ev)
 			lf := strings.ToLower(curFn)
 			for i, pat := range lp {
 				if strings.Contains(lf, pat) {
-					res.PatSums[i] += c
+					res.PatSums[i] = res.PatSums[i].Add(ev)
 				}
 			}
 			for i, cat := range cats {
 				if cat.Match(lf) {
-					res.CatSums[i] += c
+					res.CatSums[i] = res.CatSums[i].Add(ev)
 					break // first-match-wins
 				}
 			}

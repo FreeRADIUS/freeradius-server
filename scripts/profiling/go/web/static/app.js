@@ -14,9 +14,23 @@ const topnInput = $("topn");
 const outputSection = $("output");
 const reportPre = $("report");
 const downloadBtn = $("download");
+const downloadJsonBtn = $("download-json");
 const errorP = $("error");
+const metricSelect = $("metric");
+const tablesContainer = $("tables");
+const jsonPre = $("json");
+const viewTabs = Array.from(document.querySelectorAll(".view-tab"));
+const reportHint = $("report-hint");
+const tablesHint = $("tables-hint");
+const jsonHint = $("json-hint");
 
 let lastMarkdown = ""; // populated after each successful run
+let lastJsonText = ""; // raw JSON string, for the JSON view and download
+let lastReport = null; // parsed JSON report object, drives the Tables view
+
+// Component column order for the "All components" table (logical grouping;
+// the JSON object key order is not significant for display).
+const ALL_METRICS = ["CEst", "Ir", "I1mr", "D1mr", "D1mw", "ILmr", "DLmr", "DLmw", "Bcm", "Bim"];
 
 // --- Dynamic run rows ------------------------------------------------------
 // Each row is one labelled run (one profiling directory's files). The first
@@ -126,7 +140,12 @@ async function run() {
 
     reportPre.textContent = result.text;
     lastMarkdown = result.markdown;
+    lastJsonText = result.json || "";
+    lastReport = lastJsonText ? JSON.parse(lastJsonText) : null;
+    jsonPre.textContent = lastJsonText;
+    renderTables();
     outputSection.hidden = false;
+    updateScrollHints(); // measure now that the output section is visible
   } catch (e) {
     showError(String(e));
   } finally {
@@ -138,18 +157,182 @@ async function run() {
 runBtn.addEventListener("click", run);
 addRunBtn.addEventListener("click", () => addRunRow());
 
-// --- Markdown download -----------------------------------------------------
+// --- View switching --------------------------------------------------------
+// The three views (Report, Tables, JSON) live in #view-report / #view-tables /
+// #view-json. Clicking a tab shows its view and hides the others.
 
-downloadBtn.addEventListener("click", () => {
-  if (!lastMarkdown) return;
-  const blob = new Blob([lastMarkdown], { type: "text/markdown" });
+function showView(name) {
+  viewTabs.forEach((t) => t.classList.toggle("active", t.dataset.view === name));
+  ["report", "tables", "json"].forEach((v) => {
+    $(`view-${v}`).hidden = v !== name;
+  });
+  updateScrollHints(); // now that the chosen view is visible, it can be measured
+}
+
+viewTabs.forEach((tab) => {
+  tab.addEventListener("click", () => showView(tab.dataset.view));
+});
+
+// --- Tables view -----------------------------------------------------------
+// Driven by the parsed JSON report (lastReport) and the metric <select>.
+
+const fmtNum = (n) => n.toLocaleString("en-US");
+const fmtPct = (p) => `${p.toFixed(2)}%`;
+
+// el builds a DOM element with optional text and children. Text is set via
+// textContent so function names are never interpreted as HTML.
+function el(tag, opts = {}, children = []) {
+  const node = document.createElement(tag);
+  if (opts.text != null) node.textContent = opts.text;
+  if (opts.className) node.className = opts.className;
+  children.forEach((c) => node.appendChild(c));
+  return node;
+}
+
+function metricLabel() {
+  return metricSelect.value === "all" ? "All components" : metricSelect.value;
+}
+
+// renderTables redraws the Tables view for the current metric selection.
+function renderTables() {
+  tablesContainer.replaceChildren();
+  if (!lastReport || !lastReport.runs || lastReport.runs.length === 0) {
+    tablesContainer.appendChild(el("p", { text: "No JSON report available." }));
+    updateScrollHints();
+    return;
+  }
+  const runs = lastReport.runs;
+  const sections = [
+    ["Functions (top by CEst)", "functions"],
+    ["Patterns", "patterns"],
+    ["Categories", "categories"],
+  ];
+  if (metricSelect.value === "all") {
+    // One wide table per run per section: all components side by side.
+    runs.forEach((run) => {
+      tablesContainer.appendChild(el("h3", { text: runHeading(run) }));
+      sections.forEach(([title, key]) => {
+        tablesContainer.appendChild(el("h4", { text: title }));
+        tablesContainer.appendChild(allComponentsTable(run[key] || []));
+      });
+    });
+  } else {
+    // One table per section, comparing the chosen metric across all runs.
+    const metric = metricSelect.value;
+    sections.forEach(([title, key]) => {
+      tablesContainer.appendChild(el("h3", { text: title }));
+      tablesContainer.appendChild(singleMetricTable(runs, key, metric));
+    });
+  }
+  updateScrollHints();
+}
+
+// runHeading labels a run by its display label and chosen main file.
+function runHeading(run) {
+  return `${run.label}  (${run.mainFile})`;
+}
+
+// allComponentsTable: rows = entries, columns = name + each component number.
+function allComponentsTable(rows) {
+  const head = el("tr", {}, [el("th", { text: "Name" }), ...ALL_METRICS.map((m) => el("th", { text: m, className: "num" }))]);
+  const body = rows.map((r) =>
+    el("tr", {}, [
+      el("td", { text: r.name || "total" }),
+      ...ALL_METRICS.map((m) => el("td", { text: fmtNum(r[m].number), className: "num" })),
+    ])
+  );
+  return table(head, body);
+}
+
+// singleMetricTable: rows = union of entry names across runs, columns = name +
+// (number, %) per run. Rows are ordered by the first run's appearance, which
+// (for functions) is already sorted by CEst descending.
+function singleMetricTable(runs, key, metric) {
+  const order = [];
+  const seen = new Set();
+  const byNamePerRun = runs.map((run) => {
+    const map = new Map();
+    (run[key] || []).forEach((r) => {
+      const name = r.name || "total";
+      map.set(name, r);
+      if (!seen.has(name)) {
+        seen.add(name);
+        order.push(name);
+      }
+    });
+    return map;
+  });
+
+  const head = el("tr", {}, [
+    el("th", { text: "Name" }),
+    ...runs.flatMap((run) => [
+      el("th", { text: run.label, className: "num" }),
+      el("th", { text: "%", className: "num" }),
+    ]),
+  ]);
+  const body = order.map((name) =>
+    el("tr", {}, [
+      el("td", { text: name }),
+      ...byNamePerRun.flatMap((map) => {
+        const r = map.get(name);
+        if (!r) return [el("td", { text: "-", className: "num" }), el("td", { text: "-", className: "num" })];
+        return [
+          el("td", { text: fmtNum(r[metric].number), className: "num" }),
+          el("td", { text: fmtPct(r[metric].percent), className: "num" }),
+        ];
+      }),
+    ])
+  );
+  if (body.length === 0) body.push(el("tr", {}, [el("td", { text: "(none)" })]));
+  return table(head, body);
+}
+
+function table(headRow, bodyRows) {
+  // Wrap the table so a wide one scrolls within its own box rather than
+  // pushing the whole page sideways.
+  return el("div", { className: "scroll-x" }, [
+    el("table", { className: "data" }, [
+      el("thead", {}, [headRow]),
+      el("tbody", {}, bodyRows),
+    ]),
+  ]);
+}
+
+metricSelect.addEventListener("change", renderTables);
+
+// --- Scroll hints ----------------------------------------------------------
+// A hint is shown only when its content actually overflows horizontally.
+// Overflow can only be measured on a visible element, so this is re-run when a
+// view is shown, after each render, and on resize.
+
+function overflowsX(node) {
+  return node.scrollWidth > node.clientWidth + 1;
+}
+
+function updateScrollHints() {
+  reportHint.hidden = !overflowsX(reportPre);
+  jsonHint.hidden = !overflowsX(jsonPre);
+  const tableScrolls = Array.from(tablesContainer.querySelectorAll(".scroll-x"));
+  tablesHint.hidden = !tableScrolls.some(overflowsX);
+}
+
+window.addEventListener("resize", updateScrollHints);
+
+// --- Downloads -------------------------------------------------------------
+
+function download(content, type, filename) {
+  if (!content) return;
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "cest-report.md";
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-});
+}
+
+downloadBtn.addEventListener("click", () => download(lastMarkdown, "text/markdown", "cest-report.md"));
+downloadJsonBtn.addEventListener("click", () => download(lastJsonText, "application/json", "cest-report.json"));
 
 // --- Error helpers ---------------------------------------------------------
 

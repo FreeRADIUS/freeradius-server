@@ -61,9 +61,50 @@
 
     <section id="output" hidden>
       <div class="toolbar">
-        <button id="download" type="button">Download Markdown report</button>
+        <div class="view-tabs" role="tablist">
+          <button type="button" class="view-tab active" data-view="report">Report</button>
+          <button type="button" class="view-tab" data-view="tables">Tables</button>
+          <button type="button" class="view-tab" data-view="json">JSON</button>
+        </div>
+        <div class="downloads">
+          <button id="download" type="button" class="secondary">Download Markdown</button>
+          <button id="download-json" type="button" class="secondary">Download JSON</button>
+        </div>
       </div>
-      <pre id="report"></pre>
+
+      <!-- Report view: the console-style text report -->
+      <div id="view-report" class="view">
+        <p class="scroll-hint" id="report-hint" hidden>Scroll the report sideways to see all columns</p>
+        <pre id="report"></pre>
+      </div>
+
+      <!-- Tables view: metric selector drives the rendered tables -->
+      <div id="view-tables" class="view" hidden>
+        <label class="metric-select">
+          Metric
+          <select id="metric">
+            <option value="CEst">CEst</option>
+            <option value="Ir">Ir</option>
+            <option value="I1mr">I1mr</option>
+            <option value="D1mr">D1mr</option>
+            <option value="D1mw">D1mw</option>
+            <option value="ILmr">ILmr</option>
+            <option value="DLmr">DLmr</option>
+            <option value="DLmw">DLmw</option>
+            <option value="Bcm">Bcm</option>
+            <option value="Bim">Bim</option>
+            <option value="all">All components</option>
+          </select>
+        </label>
+        <p class="scroll-hint" id="tables-hint" hidden>Scroll a table sideways to see every column</p>
+        <div id="tables"></div>
+      </div>
+
+      <!-- JSON view: the report exactly as written to disk -->
+      <div id="view-json" class="view" hidden>
+        <p class="scroll-hint" id="json-hint" hidden>Scroll sideways to see long lines in full</p>
+        <pre id="json"></pre>
+      </div>
     </section>
 
     <p id="error" class="error" hidden></p>

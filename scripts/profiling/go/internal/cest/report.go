@@ -9,13 +9,15 @@ import (
 // WriteReport renders the console report for one analyzed run.
 func WriteReport(w io.Writer, dr *DirResult, patterns []string, cats []Category, topn int) {
 	res := dr.Res
+	total := res.Total.CEst()
 	fmt.Fprintln(w, "===================================================")
 	fmt.Fprintf(w, "Directory: %s\n", dr.Label)
 	fmt.Fprintf(w, "Main file: %s\n", dr.Main)
-	fmt.Fprintf(w, "total CEst: %d\n", res.Total)
+	fmt.Fprintf(w, "total CEst: %d\n", total)
 	fmt.Fprintln(w, "---------------------------------------------------")
 	for i, pat := range patterns {
-		fmt.Fprintf(w, "%-26s CEst: %d  (%.4f%%)\n", pat, res.PatSums[i], Pct(res.PatSums[i], res.Total))
+		c := res.PatSums[i].CEst()
+		fmt.Fprintf(w, "%-26s CEst: %d  (%.4f%%)\n", pat, c, Pct(c, total))
 	}
 	fmt.Fprintln(w)
 
@@ -25,16 +27,70 @@ func WriteReport(w io.Writer, dr *DirResult, patterns []string, cats []Category,
 		if len(top) == 0 {
 			fmt.Fprintln(w, "  (no matching functions)")
 		} else {
+			fmt.Fprintf(w, "%-36s %11s  %7s\n", "function", "Self CEst", "Self CEst %")
 			for _, fn := range top {
-				fmt.Fprintf(w, "%-36s %11d  %6.2f%%\n", fn.Name, fn.Cost, Pct(fn.Cost, res.Total))
+				c := fn.Events.CEst()
+				fmt.Fprintf(w, "%-36s %11d  %10.2f%%\n", fn.Name, c, Pct(c, total))
 			}
 		}
 		fmt.Fprintln(w)
 	}
 
 	fmt.Fprintln(w, "--- Where the cost goes (categories) ---")
+	fmt.Fprintf(w, "%-24s %11s  %7s\n", "category", "Self CEst", "Self CEst %")
 	for i, cat := range cats {
-		fmt.Fprintf(w, "%-24s %11d  %6.2f%%\n", cat.Label, res.CatSums[i], Pct(res.CatSums[i], res.Total))
+		c := res.CatSums[i].CEst()
+		fmt.Fprintf(w, "%-24s %11d  %10.2f%%\n", cat.Label, c, Pct(c, total))
+	}
+	fmt.Fprintln(w)
+
+	writeComponentBreakdown(w, res, patterns, cats)
+}
+
+// componentOrder fixes the column order of the raw counters in the component
+// breakdown section, matching the breakdown documented on Events.
+var componentOrder = []struct {
+	name string
+	get  func(Events) int64
+}{
+	{"Ir", func(e Events) int64 { return e.Ir }},
+	{"I1mr", func(e Events) int64 { return e.I1mr }},
+	{"D1mr", func(e Events) int64 { return e.D1mr }},
+	{"D1mw", func(e Events) int64 { return e.D1mw }},
+	{"ILmr", func(e Events) int64 { return e.ILmr }},
+	{"DLmr", func(e Events) int64 { return e.DLmr }},
+	{"DLmw", func(e Events) int64 { return e.DLmw }},
+	{"Bcm", func(e Events) int64 { return e.Bcm }},
+	{"Bim", func(e Events) int64 { return e.Bim }},
+}
+
+// writeComponentBreakdown prints all 9 raw counters and the derived CEst for
+// the run total, each requested pattern, and each category. CEst stays the
+// headline elsewhere; this section exposes the components CEst is built from.
+func writeComponentBreakdown(w io.Writer, res *Result, patterns []string, cats []Category) {
+	fmt.Fprintln(w, "--- Component breakdown ---")
+	fmt.Fprintln(w, "Each row lists the 9 raw Callgrind counters for that scope. The final")
+	fmt.Fprintln(w, "CEst column is the cycle estimate those counters produce, not their sum:")
+	fmt.Fprintf(w, "  %s\n", Formula)
+	fmt.Fprintf(w, "%-26s", "Scope")
+	for _, c := range componentOrder {
+		fmt.Fprintf(w, " %13s", c.name)
+	}
+	fmt.Fprintf(w, " %15s\n", "CEst")
+
+	row := func(label string, e Events) {
+		fmt.Fprintf(w, "%-26s", label)
+		for _, c := range componentOrder {
+			fmt.Fprintf(w, " %13d", c.get(e))
+		}
+		fmt.Fprintf(w, " %15d\n", e.CEst())
+	}
+	row("total", res.Total)
+	for i, pat := range patterns {
+		row(pat, res.PatSums[i])
+	}
+	for i, cat := range cats {
+		row(cat.Label, res.CatSums[i])
 	}
 	fmt.Fprintln(w)
 }
@@ -42,20 +98,20 @@ func WriteReport(w io.Writer, dr *DirResult, patterns []string, cats []Category,
 // WriteComparison renders the comparison footer for two or more runs,
 // using the first run as baseline.
 func WriteComparison(w io.Writer, dirs []*DirResult, patterns []string) {
-	base := dirs[0].Res.Total
+	base := dirs[0].Res.Total.CEst()
 	fmt.Fprintln(w, "===================================================")
 	fmt.Fprintf(w, "COMPARISON  (baseline = dir 0: %s)\n", path.Base(dirs[0].Label))
 	fmt.Fprintln(w, "===================================================")
 	for j, dr := range dirs {
 		fmt.Fprintf(w, "[dir %d] %s\n", j, dr.Label)
-		t := dr.Res.Total
+		t := dr.Res.Total.CEst()
 		if j == 0 {
 			fmt.Fprintf(w, "  %-14s %18d %12s\n", "total CEst", t, "-")
 		} else {
 			fmt.Fprintf(w, "  %-14s %18d %+11.2f%%\n", "total CEst", t, Pct(t-base, base))
 		}
 		for p, pat := range patterns {
-			v, bv := dr.Res.PatSums[p], dirs[0].Res.PatSums[p]
+			v, bv := dr.Res.PatSums[p].CEst(), dirs[0].Res.PatSums[p].CEst()
 			if j == 0 || bv == 0 {
 				fmt.Fprintf(w, "  %-14s %18d %12s\n", pat, v, "-")
 			} else {
@@ -79,9 +135,10 @@ func WriteMarkdown(w io.Writer, dirs []*DirResult, patterns []string, cats []Cat
 	line("## Headline Results")
 	line("")
 	if len(dirs) >= 2 {
-		delta := Pct(dirs[1].Res.Total-dirs[0].Res.Total, dirs[0].Res.Total)
-		line("- Baseline (dir 0): `%s` — total CEst %d", dirs[0].Main, dirs[0].Res.Total)
-		line("- Compared (dir 1): `%s` — total CEst %d (%.1f%% vs baseline)", dirs[1].Main, dirs[1].Res.Total, delta)
+		base, cmp := dirs[0].Res.Total.CEst(), dirs[1].Res.Total.CEst()
+		delta := Pct(cmp-base, base)
+		line("- Baseline (dir 0): `%s` — total CEst %d", dirs[0].Main, base)
+		line("- Compared (dir 1): `%s` — total CEst %d (%.1f%% vs baseline)", dirs[1].Main, cmp, delta)
 		line("")
 	}
 	line("<!-- TODO: short explanation. Example: On a matched, sustained")
@@ -101,8 +158,8 @@ func WriteMarkdown(w io.Writer, dirs []*DirResult, patterns []string, cats []Cat
 	for i, pat := range patterns {
 		row := fmt.Sprintf("%-26s", pat)
 		for _, dr := range dirs {
-			v := dr.Res.PatSums[i]
-			row += fmt.Sprintf(" %18d %7.2f%%", v, Pct(v, dr.Res.Total))
+			v := dr.Res.PatSums[i].CEst()
+			row += fmt.Sprintf(" %18d %7.2f%%", v, Pct(v, dr.Res.Total.CEst()))
 		}
 		line("%s", row)
 	}
@@ -116,10 +173,11 @@ func WriteMarkdown(w io.Writer, dirs []*DirResult, patterns []string, cats []Cat
 		line("**dir %d — %s** (`%s`)", k, dr.Label, dr.Main)
 		line("")
 		line("```")
-		line("Category                  Self CEst   Self %%")
-		line("------------------------  ----------  ------")
+		line("Category                  Self CEst   Self CEst %%")
+		line("------------------------  ----------  ------------")
 		for i, cat := range cats {
-			line("%-24s %11d  %6.2f%%", cat.Label, dr.Res.CatSums[i], Pct(dr.Res.CatSums[i], dr.Res.Total))
+			c := dr.Res.CatSums[i].CEst()
+			line("%-24s %11d  %10.2f%%", cat.Label, c, Pct(c, dr.Res.Total.CEst()))
 		}
 		line("```")
 		line("")
@@ -132,21 +190,59 @@ func WriteMarkdown(w io.Writer, dirs []*DirResult, patterns []string, cats []Cat
 		line("### Pattern: `%s`", pat)
 		line("")
 		for k, dr := range dirs {
-			line("**dir %d** (`%s`, total %d)", k, dr.Main, dr.Res.Total)
+			total := dr.Res.Total.CEst()
+			line("**dir %d** (`%s`, total %d)", k, dr.Main, total)
 			line("")
 			line("```")
-			line("Function                              Self CEst   Self %%")
-			line("------------------------------------  -----------  ------")
+			line("Function                              Self CEst   Self CEst %%")
+			line("------------------------------------  ----------  ------------")
 			if len(dr.TopData[i]) == 0 {
 				line("  (none)")
 			} else {
 				for _, fn := range dr.TopData[i] {
-					line("%-36s %11d  %6.2f%%", fn.Name, fn.Cost, Pct(fn.Cost, dr.Res.Total))
+					c := fn.Events.CEst()
+					line("%-36s %11d  %10.2f%%", fn.Name, c, Pct(c, total))
 				}
 			}
 			line("```")
 			line("")
 		}
+	}
+
+	// Component breakdown: the raw counters CEst is built from.
+	line("## Component Breakdown")
+	line("")
+	line("Each row lists the 9 raw Callgrind counters for that scope. The final")
+	line("CEst column is the cycle estimate those counters produce, not their sum:")
+	line("`%s`.", Formula)
+	line("")
+	for k, dr := range dirs {
+		line("**dir %d — %s** (`%s`)", k, dr.Label, dr.Main)
+		line("")
+		line("```")
+		head := fmt.Sprintf("%-26s", "Scope")
+		for _, c := range componentOrder {
+			head += fmt.Sprintf(" %13s", c.name)
+		}
+		head += fmt.Sprintf(" %15s", "CEst")
+		line("%s", head)
+		mdRow := func(label string, e Events) {
+			row := fmt.Sprintf("%-26s", label)
+			for _, c := range componentOrder {
+				row += fmt.Sprintf(" %13d", c.get(e))
+			}
+			row += fmt.Sprintf(" %15d", e.CEst())
+			line("%s", row)
+		}
+		mdRow("total", dr.Res.Total)
+		for i, pat := range patterns {
+			mdRow(pat, dr.Res.PatSums[i])
+		}
+		for i, cat := range cats {
+			mdRow(cat.Label, dr.Res.CatSums[i])
+		}
+		line("```")
+		line("")
 	}
 
 	line("## Methodology")

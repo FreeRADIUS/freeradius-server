@@ -8,16 +8,43 @@ package cest
 import "regexp"
 
 // ---------------------------------------------------------------------------
-// CEst formula
+// Event counters + CEst formula
 // ---------------------------------------------------------------------------
 
-// Cost computes the Cycle Estimation from raw Callgrind event counters.
+// Events holds the raw Callgrind counters that CEst is built from.
+type Events struct {
+	Ir   int64 // instruction reads
+	I1mr int64 // L1 instruction-cache read misses
+	D1mr int64 // L1 data-cache read misses
+	D1mw int64 // L1 data-cache write misses
+	ILmr int64 // last-level instruction-cache read misses
+	DLmr int64 // last-level data-cache read misses
+	DLmw int64 // last-level data-cache write misses
+	Bcm  int64 // conditional-branch mispredictions
+	Bim  int64 // indirect-branch mispredictions
+}
+
+// CEst computes the Cycle Estimation from the counters.
 //
 // Equation taken from QCachegrind/KCachegrind 0.8.0 implementation:
 // CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)
+func (e Events) CEst() int64 {
+	return e.Ir + 10*(e.I1mr+e.D1mr+e.D1mw) + 100*(e.ILmr+e.DLmr+e.DLmw) + 10*(e.Bcm+e.Bim)
+}
 
-func Cost(ir, i1, d1r, d1w, ilm, dlr, dlw, bcm, bim int64) int64 {
-	return ir + 10*(i1+d1r+d1w) + 100*(ilm+dlr+dlw) + 10*(bcm+bim)
+// Add returns the field-wise sum of e and o.
+func (e Events) Add(o Events) Events {
+	return Events{
+		Ir:   e.Ir + o.Ir,
+		I1mr: e.I1mr + o.I1mr,
+		D1mr: e.D1mr + o.D1mr,
+		D1mw: e.D1mw + o.D1mw,
+		ILmr: e.ILmr + o.ILmr,
+		DLmr: e.DLmr + o.DLmr,
+		DLmw: e.DLmw + o.DLmw,
+		Bcm:  e.Bcm + o.Bcm,
+		Bim:  e.Bim + o.Bim,
+	}
 }
 
 // Pct returns num/den as a percentage, or 0 when den is 0.

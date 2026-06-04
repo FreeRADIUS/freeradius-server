@@ -7,12 +7,11 @@ import (
 	"strings"
 )
 
-// Candidate is one callgrind.out.* file in a run, named for display and
-// opened on demand. The CLI backs Open with os.Open; the browser backs it
-// with bytes.NewReader over uploaded contents. Either way the core stays
+// Candidate is one callgrind.out.* file, opened on demand via Open. The CLI
+// backs Open with os.Open, the browser with a bytes.Reader, so the core stays
 // free of os and filepath.
 type Candidate struct {
-	Name string                       // base name, e.g. callgrind.out.1234
+	Name string                        // base name, e.g. callgrind.out.1234
 	Open func() (io.ReadCloser, error) // fresh stream each call
 }
 
@@ -40,34 +39,76 @@ func PickMain(cands []Candidate) (Candidate, error) {
 	return best, nil
 }
 
-// FnCost pairs a function name with its self-CEst.
-type FnCost struct {
-	Name string
-	Cost int64
+// FnEvents pairs a function name with its self counters.
+type FnEvents struct {
+	Name   string
+	Events Events
 }
 
-// TopNFns returns the n highest self-CEst functions whose name contains pat.
-func TopNFns(fnSelf map[string]int64, pat string, n int) []FnCost {
+// TopNFns returns the n highest-CEst functions whose name contains pat.
+func TopNFns(fnSelf map[string]Events, pat string, n int) []FnEvents {
 	lpat := strings.ToLower(pat)
-	var matches []FnCost
-	for name, cost := range fnSelf {
+	var matches []FnEvents
+	for name, ev := range fnSelf {
 		if strings.Contains(strings.ToLower(name), lpat) {
-			matches = append(matches, FnCost{name, cost})
+			matches = append(matches, FnEvents{name, ev})
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].Cost > matches[j].Cost })
+	sortByCEst(matches)
 	if len(matches) > n {
 		matches = matches[:n]
 	}
 	return matches
 }
 
+// TopNFnsAny returns the n highest-CEst functions whose name contains any of
+// patterns, or the n highest-CEst of all functions when patterns is empty.
+// Used for the flat JSON functions list. Each function appears at most once
+// (the source map is keyed by name).
+func TopNFnsAny(fnSelf map[string]Events, patterns []string, n int) []FnEvents {
+	lp := make([]string, len(patterns))
+	for i, p := range patterns {
+		lp[i] = strings.ToLower(p)
+	}
+	var matches []FnEvents
+	for name, ev := range fnSelf {
+		if len(lp) == 0 {
+			matches = append(matches, FnEvents{name, ev})
+			continue
+		}
+		lname := strings.ToLower(name)
+		for _, p := range lp {
+			if strings.Contains(lname, p) {
+				matches = append(matches, FnEvents{name, ev})
+				break
+			}
+		}
+	}
+	sortByCEst(matches)
+	if len(matches) > n {
+		matches = matches[:n]
+	}
+	return matches
+}
+
+// sortByCEst sorts fns by descending CEst, name ascending as a tiebreaker so
+// the order is stable across map-iteration randomness.
+func sortByCEst(fns []FnEvents) {
+	sort.Slice(fns, func(i, j int) bool {
+		ci, cj := fns[i].Events.CEst(), fns[j].Events.CEst()
+		if ci != cj {
+			return ci > cj
+		}
+		return fns[i].Name < fns[j].Name
+	})
+}
+
 // DirResult is one analyzed run, kept for the comparison footer and markdown.
 type DirResult struct {
-	Label   string     // display label (directory path or run name)
-	Main    string     // base name of the chosen main file
-	Res     *Result    // parsed totals
-	TopData [][]FnCost // top-N functions, indexed by pattern
+	Label   string       // display label (directory path or run name)
+	Main    string       // base name of the chosen main file
+	Res     *Result      // parsed totals
+	TopData [][]FnEvents // top-N functions, indexed by pattern
 }
 
 // Analyze picks the main file from cands, parses it, and computes the
@@ -92,7 +133,7 @@ func Analyze(label string, cands []Candidate, patterns []string, cats []Category
 		Label:   label,
 		Main:    main.Name,
 		Res:     res,
-		TopData: make([][]FnCost, len(patterns)),
+		TopData: make([][]FnEvents, len(patterns)),
 	}
 	for i, pat := range patterns {
 		dr.TopData[i] = TopNFns(res.FnSelf, pat, topn)

@@ -1,8 +1,6 @@
-# cest-analyzer
+# CPU Cycle Utilization (CEst) Utility
 
-Go rewrite of `analyze_profiling_results_cest.sh`. Compares Callgrind
-cycle-estimate (CEst) cost across one or more profiling runs without
-requiring QCachegrind or a working `callgrind_annotate --show=CEst`.
+Compares Callgrind cycle-estimate (CEst) cost across one or more profiling runs.
 
 ## Requirements
 
@@ -14,6 +12,12 @@ Install Go on macOS:
 ```bash
 brew install go
 ```
+Install Go on Ubuntu:
+```
+sudo apt update
+sudo apt install golang-go
+go version
+```
 
 ## Layout
 
@@ -23,10 +27,11 @@ serves the CLI, WASI, and the browser:
 ```text
 go/
 ├── internal/cest/        I/O-free core (formula, parser, reports)
-│   ├── cest.go           CEst formula + categories
+│   ├── cest.go           Events counters, CEst formula, categories
 │   ├── parse.go          Parse(io.Reader, ...) and summary scan
-│   ├── analyze.go        Candidate, PickMain, Analyze
-│   └── report.go         text / comparison / markdown writers
+│   ├── analyze.go        Candidate, PickMain, Analyze, top-N helpers
+│   ├── report.go         text / comparison / markdown writers
+│   └── json.go           JSON report schema + writer
 ├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
 └── web/                  browser target
     ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest)
@@ -144,12 +149,17 @@ python3 -m http.server 8080 --bind 0.0.0.0
 
 #### Use
 
-In the page: pick one or more `callgrind.out.*` files, enter space-separated
-patterns, and click **Analyze**. The console-style report renders inline and
-the Markdown report is available via the download button. All selected files
-are treated as one run; grouping into multiple labelled runs for comparison is
-a small change in [web/static/app.js](web/static/app.js) (build several keys in
-the `runs` object).
+In the page: for each run pick its `callgrind.out.*` files (use **+ Add run** to
+compare several labelled runs; the first is the baseline), enter space-separated
+patterns, and click **Analyze**. The output has three tabs:
+
+- **Report** — the console-style text report, including the component breakdown.
+- **Tables** — a metric selector (CEst, each of the 9 components, or "All
+  components") that re-renders the functions / patterns / categories tables for
+  the chosen counter across runs.
+- **JSON** — the JSON report exactly as `--json` writes it.
+
+The Markdown and JSON reports are also available via the download buttons.
 
 ### Comparison
 
@@ -157,13 +167,13 @@ the `runs` object).
 |---|---|---|
 | Entry point | `./cmd/cest-analyzer` | `./web/wasm` |
 | File access | host FS via `--dir` | uploaded files via `FileReader` |
-| Output | stdout / `--md` file | DOM + Markdown download |
+| Output | stdout / `--md` / `--json` files | Report / Tables / JSON tabs + Markdown and JSON download |
 | Runtime | wasmtime, wazero, Node 21+ | any browser |
 
 ## Usage
 
 ```
-cest-analyzer [--md <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
+cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 ```
 
 | Flag | Default | Description |
@@ -171,6 +181,7 @@ cest-analyzer [--md <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 | `-d <dir>` | `.` | Profiling directory containing `callgrind.out.*` files. Repeatable. |
 | `--top N` | `10` | Number of top functions to show per pattern. |
 | `--md <file>` | _(none)_ | Also write a Markdown report to this file. |
+| `--json <file>` | _(none)_ | Also write a JSON report to this file (see Output). |
 
 Patterns are case-insensitive substrings matched against function names.
 
@@ -196,9 +207,24 @@ For each directory the tool prints:
 - Per-pattern self-CEst sum and percentage of total
 - Top-N functions matching each pattern, sorted by self-CEst
 - Whole-program category breakdown (memset, malloc, crypto, etc.)
+- A component breakdown listing the 9 raw counters CEst is built from (Ir,
+  I1mr, D1mr, D1mw, ILmr, DLmr, DLmw, Bcm, Bim) plus CEst, for the run total,
+  each pattern, and each category
 
 With two or more directories a comparison footer shows percentage change
 relative to the first directory (baseline).
+
+### JSON report (`--json`)
+
+`--json <file>` writes a structured report. Every counter is reported as
+`{ "number": <int>, "percent": <float> }`, where `percent` is the value's share
+of the run's grand total for that same counter (so `Ir.percent` is the share of
+total Ir, `D1mr.percent` the share of total D1mr, and so on). Per run it carries
+the total CEst, a flat top-N `functions` list (matching any requested pattern,
+or all functions if none were given), and the per-pattern and per-category
+subtotals; each `functions` / `patterns` / `categories` row carries CEst plus
+all 9 components. Multiple `-d` directories appear as elements of `runs`. The
+same structure backs the **Tables** and **JSON** views in the web UI.
 
 ## CEst formula
 
@@ -211,6 +237,7 @@ Only self (exclusive) cost is reported — inclusive cost is not computed.
 
 ## Customizing categories
 
-Edit the `defaultCategories` slice near the top of `main.go`. Each entry is a
-label and a case-insensitive Go regexp. The first matching category wins, so
-list the most specific patterns first.
+Edit the `DefaultCategories` function in
+[internal/cest/cest.go](internal/cest/cest.go). Each entry is a label and a
+case-insensitive Go regexp. The first matching category wins, so list the most
+specific patterns first.

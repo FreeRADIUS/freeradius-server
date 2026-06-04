@@ -58,7 +58,7 @@ func candidatesFromJS(filesObj js.Value) []cest.Candidate {
 //	patterns: ["memset", "rbtree", ...]
 //	topN:     number
 //
-// Returns { text, markdown } on success or { error } on failure.
+// Returns { text, markdown, json } on success or { error } on failure.
 func analyzeCest(this js.Value, args []js.Value) (result any) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -106,9 +106,15 @@ func analyzeCest(this js.Value, args []js.Value) (result any) {
 	var md strings.Builder
 	cest.WriteMarkdown(&md, results, patterns, cats, topN)
 
+	var jsonOut strings.Builder
+	if err := cest.WriteJSON(&jsonOut, results, patterns, cats, topN); err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+
 	return map[string]any{
 		"text":     text.String(),
 		"markdown": md.String(),
+		"json":     jsonOut.String(),
 	}
 }
 
