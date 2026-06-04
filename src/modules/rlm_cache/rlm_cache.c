@@ -696,6 +696,13 @@ if (fr_type_is_variable_size(key->type) && (key->vb_length == 0)) { \
 	_invalid; \
 }
 
+static inline unlang_action_t mod_method_status_results(unlang_result_t *p_result, request_t *request,
+							rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							rlm_cache_entry_t *entry);
+
+static unlang_action_t CC_HINT(nonnull) mod_method_status_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+								 request_t *request);
+
 /** Do caching checks
  *
  * Since we can update ANY VP list, we do exactly the same thing for all sections
@@ -739,13 +746,11 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 			RETURN_UNLANG_FAIL;
 		}
 
-		cache_find(p_result, &c, &driver_rctx, inst, request, &handle, key);
-		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-		fr_assert(!inst->driver->acquire || handle);
-
-		p_result->rcode = c ? RLM_MODULE_OK:
-				      RLM_MODULE_NOTFOUND;
-		goto finish;
+		if (cache_find(p_result, &c, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+			return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
+						  mod_method_status_resume, NULL, driver_rctx, NULL);
+		}
+		return mod_method_status_results(p_result, request, inst, handle, c);
 	}
 
 	/*
