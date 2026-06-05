@@ -456,6 +456,31 @@ static unlang_action_t cache_expire(unlang_result_t *p_result,
 	}
 }
 
+static unlang_action_t CC_HINT(nonnull) cache_insert_resume(unlang_result_t *p_result, request_t *request,
+							    rlm_cache_t const *inst, rlm_cache_handle_t **handle,
+							    fr_time_delta_t *ttl, void *rctx)
+{
+	cache_status_t		ret;
+	fr_pair_t		*vp;
+	rlm_cache_entry_t	*c;
+
+	ret = inst->driver->insert_resume(&c, &inst->config, inst->driver_submodule->data, request, *handle, rctx);
+	switch (ret) {
+	case CACHE_OK:
+		RDEBUG2("Committed entry, TTL %pV seconds", fr_box_time_delta(*ttl));
+		cache_free(inst, &c);
+
+		vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_merge_new);
+		RETURN_UNLANG_RCODE((vp && vp->vp_bool) ? RLM_MODULE_UPDATED : RLM_MODULE_OK);
+
+	case CACHE_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	default:
+		RETURN_UNLANG_FAIL;
+	}
+}
+
 /** Create and insert a cache entry
  *
  * @return
@@ -463,7 +488,7 @@ static unlang_action_t cache_expire(unlang_result_t *p_result,
  *	- #RLM_MODULE_UPDATED if we merged the cache entry.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static unlang_action_t cache_insert(unlang_result_t *p_result,
+static unlang_action_t cache_insert(unlang_result_t *p_result, void **out_rctx,
 				    rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
 				    fr_value_box_t const *key, map_list_t const *maps, fr_time_delta_t ttl)
 {
@@ -473,7 +498,6 @@ static unlang_action_t cache_insert(unlang_result_t *p_result,
 	fr_pair_t		*vp;
 	bool			merge = false;
 	rlm_cache_entry_t	*c;
-	void			*driver_rctx;
 
 	TALLOC_CTX		*pool;
 
@@ -617,7 +641,7 @@ skip_maps:
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&driver_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
+		ret = inst->driver->insert(out_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -627,6 +651,9 @@ skip_maps:
 			RDEBUG2("Committed entry, TTL %pV seconds", fr_box_time_delta(ttl));
 			cache_free(inst, &c);
 			RETURN_UNLANG_RCODE(merge ? RLM_MODULE_UPDATED : RLM_MODULE_OK);
+
+		case CACHE_YIELD:
+			return UNLANG_ACTION_YIELD;
 
 		default:
 			talloc_free(c);	/* Failed insertion - use talloc_free not the driver free */
@@ -756,6 +783,7 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 	cache_it_ctx_t		*ctx = talloc_get_type_abort(rctx->uctx, cache_it_ctx_t);
 	cache_call_env_t	*env = ctx->env;
 	fr_value_box_t const	*key = fr_value_box_list_head(&env->key);
+	void			*driver_rctx;
 
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
@@ -1468,6 +1496,33 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 	return mod_method_load_results(p_result, request, inst, handle, entry);
 }
 
+/** Common result handling for any module method which returns `updated` for success
+ */
+static inline unlang_action_t mod_method_common_results(unlang_result_t *p_result, request_t *request,
+							rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+							rlm_cache_entry_t *entry)
+{
+	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+	p_result->rcode = RLM_MODULE_UPDATED;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t mod_method_common_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+						request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (cache_insert_resume(p_result, request, inst, &rctx->handle, &rctx->ttl, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_common_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
+}
+
 /** Common result handdling after update method does a find
  */
 static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_result, request_t *request,
@@ -1478,6 +1533,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 	fr_time_delta_t		ttl;
 	bool 			expire = false;
 	fr_pair_t		*vp;
+	void			*driver_rctx;
 
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
@@ -1539,8 +1595,11 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 		/*
 		 *	Insert a new entry.
 		 */
-		cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
-		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+		if (cache_insert(p_result, &driver_rctx, inst, request, &handle, key, env->maps, ttl) == UNLANG_ACTION_YIELD) {
+			return cache_module_yield(request, handle, key, entry, &ttl,
+						  mod_method_common_resume, NULL, driver_rctx, NULL);
+		}
+		return mod_method_common_insert_results(p_result, request, inst, handle, entry);
 	}
 
 	/*
@@ -1615,15 +1674,17 @@ static inline unlang_action_t mod_method_store_find_results(unlang_result_t *p_r
 	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	fr_time_delta_t		ttl;
 	fr_pair_t		*vp;
+	void			*driver_rctx;
 
 	switch (p_result->rcode) {
 	default:
 	case RLM_MODULE_OK:
 		p_result->rcode = RLM_MODULE_NOOP;
-		goto finish;
+		FALL_THROUGH;
 
 	case RLM_MODULE_FAIL:
-		goto finish;
+		cache_unref(request, inst, entry, handle);
+		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case RLM_MODULE_NOTFOUND:
 		break;
@@ -1644,14 +1705,12 @@ static inline unlang_action_t mod_method_store_find_results(unlang_result_t *p_r
 	 *	setting the TTL, which precludes performing an
 	 *	insert.
 	 */
-	cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
-	p_result->rcode = RLM_MODULE_UPDATED;
+	if (cache_insert(p_result, &driver_rctx, inst, request, &handle, key, env->maps, ttl) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, entry, &ttl, mod_method_common_resume,
+					  NULL, driver_rctx, NULL);
+	}
 
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_method_common_insert_results(p_result, request, inst, handle, entry);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_method_store_find_resume(unlang_result_t *p_result,
