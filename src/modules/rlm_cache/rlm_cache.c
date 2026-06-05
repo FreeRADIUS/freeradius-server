@@ -662,25 +662,51 @@ skip_maps:
 	}
 }
 
+static unlang_action_t cache_set_ttl_resume(unlang_result_t *p_result, request_t *request,
+					    rlm_cache_t const *inst, rlm_cache_handle_t *handle, void *rctx)
+{
+	if (!inst->driver->set_ttl) {
+		cache_status_t ret;
+		rlm_cache_entry_t *c;
+		ret = inst->driver->insert_resume(&c, &inst->config, inst->driver_submodule->data, request, handle, rctx);
+		switch (ret) {
+		case CACHE_OK:
+			RDEBUG2("Updated entry TTL");
+			RETURN_UNLANG_OK;
+
+		case CACHE_YIELD:
+			return UNLANG_ACTION_YIELD;
+
+		default:
+			RETURN_UNLANG_FAIL;
+		}
+	}
+
+	/*
+	 *	Async ttl driver call not defined yet.
+	 */
+	fr_assert(0);
+
+	RETURN_UNLANG_FAIL;
+}
+
 /** Update the TTL of an entry
  *
  * @return
  *	- #RLM_MODULE_OK on success.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static unlang_action_t cache_set_ttl(unlang_result_t *p_result,
+static unlang_action_t cache_set_ttl(unlang_result_t *p_result, void **out_rctx,
 				     rlm_cache_t const *inst, request_t *request,
 				     rlm_cache_handle_t **handle, rlm_cache_entry_t *c)
 {
-	void	*driver_rctx;
-
 	/*
 	 *	Call the driver's insert method to overwrite the old entry
 	 */
 	if (!inst->driver->set_ttl) for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&driver_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
+		ret = inst->driver->insert(out_rctx, &inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -689,6 +715,9 @@ static unlang_action_t cache_set_ttl(unlang_result_t *p_result,
 		case CACHE_OK:
 			RDEBUG2("Updated entry TTL");
 			RETURN_UNLANG_OK;
+
+		case CACHE_YIELD:
+			return UNLANG_ACTION_YIELD;
 
 		default:
 			RETURN_UNLANG_FAIL;
@@ -835,7 +864,7 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 
 		rctx->entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), rctx->ttl);
 
-		cache_set_ttl(&tmp, inst, request, &handle, rctx->entry);
+		cache_set_ttl(&tmp, &driver_rctx, inst, request, &handle, rctx->entry);
 		switch (tmp.rcode) {
 		case RLM_MODULE_FAIL:
 			p_result->rcode = RLM_MODULE_FAIL;
@@ -1617,7 +1646,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 
 		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
-		cache_set_ttl(p_result, inst, request, &handle, entry);
+		cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 	} else {
 	insert_new:
@@ -1628,7 +1657,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 			return cache_module_yield(request, handle, key, entry, &ttl,
 						  mod_method_common_resume, NULL, driver_rctx, NULL);
 		}
-		return mod_method_common_insert_results(p_result, request, inst, handle, entry);
+		return mod_method_common_results(p_result, request, inst, handle, entry);
 	}
 
 	/*
@@ -1739,7 +1768,7 @@ static inline unlang_action_t mod_method_store_find_results(unlang_result_t *p_r
 					  NULL, driver_rctx, NULL);
 	}
 
-	return mod_method_common_insert_results(p_result, request, inst, handle, entry);
+	return mod_method_common_results(p_result, request, inst, handle, entry);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_method_store_find_resume(unlang_result_t *p_result,
@@ -1865,6 +1894,19 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 	return mod_method_clear_find_results(p_result, request, inst, handle, key, entry);
 }
 
+static unlang_action_t CC_HINT(nonnull) mod_method_ttl_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							      request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (cache_set_ttl_resume(p_result, request, inst, rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_ttl_resume, NULL, 0, rctx);
+	}
+
+	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
+}
+
 /** Common result handling after ttl method does a find
  */
 static inline unlang_action_t mod_method_ttl_find_results(unlang_result_t *p_result, request_t *request,
@@ -1873,8 +1915,12 @@ static inline unlang_action_t mod_method_ttl_find_results(unlang_result_t *p_res
 {
 	fr_time_delta_t		ttl;
 	fr_pair_t		*vp;
+	void			*driver_rctx;
 
-	if (p_result->rcode != RLM_MODULE_OK) goto finish;
+	if (p_result->rcode != RLM_MODULE_OK) {
+		cache_unref(request, inst, entry, handle);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	/* Process the TTL */
 	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
@@ -1896,15 +1942,12 @@ static inline unlang_action_t mod_method_ttl_find_results(unlang_result_t *p_res
 
 	entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
-	cache_set_ttl(p_result, inst, request, &handle, entry);
-	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
+	if (cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, NULL, entry, &ttl, mod_method_ttl_resume,
+					  NULL, driver_rctx, NULL);
+	}
 
-	p_result->rcode = RLM_MODULE_UPDATED;
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_method_common_results(p_result, request, inst, handle, entry);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_method_ttl_find_resume(unlang_result_t *p_result,
