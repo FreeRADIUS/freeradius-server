@@ -777,8 +777,48 @@ static unlang_action_t mod_cache_it_finish(request_t *request, rlm_cache_t const
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+static unlang_action_t mod_cache_it_insert_results(unlang_result_t *p_result, unlang_result_t *tmp, request_t *request,
+						   rlm_cache_t const *inst, rlm_cache_handle_t *handle,
+						   rlm_cache_entry_t *c)
+{
+	switch (tmp->rcode) {
+	case RLM_MODULE_FAIL:
+		p_result->rcode = RLM_MODULE_FAIL;
+		goto finish;
+
+	case RLM_MODULE_OK:
+		if (p_result->rcode != RLM_MODULE_UPDATED) p_result->rcode = RLM_MODULE_OK;
+		break;
+
+	case RLM_MODULE_UPDATED:
+		p_result->rcode = RLM_MODULE_UPDATED;
+		break;
+
+	default:
+		fr_assert(0);
+	}
+	fr_assert(!inst->driver->acquire || handle);
+finish:
+
+	return mod_cache_it_finish(request, inst, handle, c);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_cache_it_insert_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+								   request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	unlang_result_t		tmp;
+
+	if (cache_insert_resume(&tmp, request, inst, &rctx->handle, &rctx->ttl, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_cache_it_insert_resume, NULL, 0, rctx);
+	}
+
+	return mod_cache_it_insert_results(p_result, &tmp, request, inst, rctx->handle, rctx->entry);
+}
+
 static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *request, rlm_cache_t const *inst,
-					rlm_cache_handle_t *handle, rlm_cache_entry_t *c, cache_rctx_t *rctx)
+					rlm_cache_handle_t *handle, cache_rctx_t *rctx)
 {
 	cache_it_ctx_t		*ctx = talloc_get_type_abort(rctx->uctx, cache_it_ctx_t);
 	cache_call_env_t	*env = ctx->env;
@@ -791,11 +831,11 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 	if (ctx->set_ttl && (ctx->exists == 1)) {
 		unlang_result_t tmp;
 
-		fr_assert(c);
+		fr_assert(rctx->entry);
 
 		rctx->entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), rctx->ttl);
 
-		cache_set_ttl(&tmp, inst, request, &handle, c);
+		cache_set_ttl(&tmp, inst, request, &handle, rctx->entry);
 		switch (tmp.rcode) {
 		case RLM_MODULE_FAIL:
 			p_result->rcode = RLM_MODULE_FAIL;
@@ -820,25 +860,14 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 	if (ctx->insert && (ctx->exists == 0)) {
 		unlang_result_t tmp;
 
-		cache_insert(&tmp, inst, request, &handle, key, env->maps, rctx->ttl);
-		switch (tmp.rcode) {
-		case RLM_MODULE_FAIL:
-			p_result->rcode = RLM_MODULE_FAIL;
-			goto finish;
+		if (cache_insert(&tmp, &driver_rctx, inst, request, &handle, key,
+				 env->maps, rctx->ttl) == UNLANG_ACTION_YIELD) {
+			cache_module_yield(request, handle, key, NULL, &rctx->ttl,
+					   mod_cache_it_insert_resume, NULL, driver_rctx, ctx);
+			return UNLANG_ACTION_YIELD;
 
-		case RLM_MODULE_OK:
-			if (p_result->rcode != RLM_MODULE_UPDATED) p_result->rcode = RLM_MODULE_OK;
-			break;
-
-		case RLM_MODULE_UPDATED:
-			p_result->rcode = RLM_MODULE_UPDATED;
-			break;
-
-		default:
-			fr_assert(0);
 		}
-		fr_assert(!inst->driver->acquire || handle);
-		goto finish;
+		return mod_cache_it_insert_results(p_result, &tmp, request, inst, handle, rctx->entry);
 	}
 
 finish:
@@ -876,7 +905,6 @@ static unlang_action_t mod_cache_it_find_resume(unlang_result_t *p_result, modul
 						request_t *request)
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
-	rlm_cache_entry_t	*entry = NULL;
 	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
 	cache_it_ctx_t		*ctx = talloc_get_type_abort(rctx->uctx, cache_it_ctx_t);
 	unlang_result_t		tmp;
@@ -1014,7 +1042,6 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it_merge_resume(unlang_result_
  */
 static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_entry_t	*c = NULL;
 	void			*driver_rctx = NULL;
 	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
@@ -1035,6 +1062,8 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_status_only);
 	if (vp && vp->vp_bool) {
+		rlm_cache_entry_t	*c = NULL;
+
 		RINDENT();
 		RDEBUG3("status-only: yes");
 		REXDENT();
@@ -1102,8 +1131,8 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 			return cache_module_yield(request, handle, key, NULL, &ttl,
 						  mod_cache_it_merge_resume, NULL, driver_rctx, ctx);
 		}
-		if (mod_cache_it_merge_results(p_result, request, inst, handle, ctx, c) < 0) {
-			return mod_cache_it_finish(request, inst, handle, c);
+		if (mod_cache_it_merge_results(p_result, request, inst, handle, ctx, entry) < 0) {
+			return mod_cache_it_finish(request, inst, handle, entry);
 		}
 	}
 
