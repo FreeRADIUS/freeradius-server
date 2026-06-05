@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Use the new message set - the allocations will be beyond the origial ring buffer size.
+	 *	Use the new message set - the allocations will be beyond the original ring buffer size.
 	 */
 	alloc_blocks(ms2, &seed, &start, &end);
 	free_blocks(ms2, &seed, &start, &end);

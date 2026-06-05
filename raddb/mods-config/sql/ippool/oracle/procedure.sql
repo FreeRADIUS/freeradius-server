@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION fr_ippool_allocate_previous_or_new_address (
 	v_gateway IN VARCHAR2,
 	v_owner IN VARCHAR2,
 	v_lease_duration IN INTEGER,
-	v_requsted_address IN VARCHAR2
+	v_requested_address IN VARCHAR2
 )
 RETURN varchar2 IS
 	PRAGMA AUTONOMOUS_TRANSACTION;

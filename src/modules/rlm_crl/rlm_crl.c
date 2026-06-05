@@ -130,7 +130,7 @@ typedef struct {
 } rlm_crl_env_t;
 
 typedef enum {
-	CRL_ERROR = -1,							//!< Unspecified error ocurred.
+	CRL_ERROR = -1,							//!< Unspecified error occurred.
 	CRL_ENTRY_NOT_FOUND = 0,					//!< Serial not found in this CRL.
 	CRL_ENTRY_FOUND = 1,						//!< Serial was found in this CRL.
 	CRL_ENTRY_REMOVED = 2,						//!< Serial was "un-revoked" in this delta CRL.

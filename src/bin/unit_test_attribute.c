@@ -307,7 +307,7 @@ static int poisoned_buffer_allocate(TALLOC_CTX *ctx, uint8_t **buff, size_t size
 	if (our_buff) {
 		/*
 		 *	If it's already the correct length
-		 *	don't bother re-allocing the buffer,
+		 *	don't bother re-allocating the buffer,
 		 *	just memset it to zero.
 		 */
 		if ((size + BUFF_POISON_START + BUFF_POISON_END) == talloc_array_length(our_buff)) {

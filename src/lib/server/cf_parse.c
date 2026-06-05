@@ -559,7 +559,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		size_t		i = 0;
 
 		/*
-		 *	Easier than re-allocing
+		 *	Easier than re-allocating
 		 */
 		count = cf_pair_count(cs, rule->name1);
 
@@ -604,7 +604,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		}
 
 		/*
-		 *	No output, so don't bother allocing the array
+		 *	No output, so don't bother allocating the array
 		 */
 		if (!out) {
 			array = NULL;

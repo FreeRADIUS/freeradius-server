@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 #define MAX_ENVP 1024
 
-static _Thread_local char *env_exec_arr[MAX_ENVP];	/* Avoid allocing 8k on the stack */
+static _Thread_local char *env_exec_arr[MAX_ENVP];	/* Avoid allocating 8k on the stack */
 
 /** Flatten a list into individual "char *" argv-style array
  *
@@ -259,8 +259,8 @@ int exec_pair_to_env(char **env_p, size_t env_len,
  */
 char **fr_exec_pair_to_env(request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
 {
-	static _Thread_local char *env_arr[MAX_ENVP];				/* Avoid allocing 8k on the stack */
-	static _Thread_local char env_buff[NUM_ELEMENTS(env_arr) * 128];	/* Avoid allocing 128k on the stack */
+	static _Thread_local char *env_arr[MAX_ENVP];				/* Avoid allocating 8k on the stack */
+	static _Thread_local char env_buff[NUM_ELEMENTS(env_arr) * 128];	/* Avoid allocating 128k on the stack */
 	static _Thread_local fr_sbuff_marker_t env_m[NUM_ELEMENTS(env_arr)];
 
 	if (exec_pair_to_env(env_arr, NUM_ELEMENTS(env_arr),
@@ -600,7 +600,7 @@ int fr_exec_fork_wait(pid_t *pid_p,
 	}
 
 	/*
-	 *	Tell the caller the childs PID, and the FD to read from.
+	 *	Tell the caller the child's PID, and the FD to read from.
 	 */
 	*pid_p = pid;
 

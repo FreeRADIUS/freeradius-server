@@ -1188,7 +1188,7 @@ void tls_cache_disable_stateless_resumption(SSL_CTX *ctx)
  * @param[in] ctx to disable stateful session resumption for.
  */
 static inline CC_HINT(always_inline)
-void tls_cache_disable_statefull_resumption(SSL_CTX *ctx)
+void tls_cache_disable_stateful_resumption(SSL_CTX *ctx)
 {
 	/*
 	 *	Only disables stateful session-resumption.
@@ -1391,7 +1391,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 	switch (cache_conf->mode) {
 	case FR_TLS_CACHE_DISABLED:
 		tls_cache_disable_stateless_resumption(ctx);
-		tls_cache_disable_statefull_resumption(ctx);
+		tls_cache_disable_stateful_resumption(ctx);
 		return 0;
 
 	case FR_TLS_CACHE_AUTO:
@@ -1432,7 +1432,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		uint8_t *key_buff;
 		EVP_PKEY_CTX *pkey_ctx = NULL;
 
-		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) tls_cache_disable_statefull_resumption(ctx);
+		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) tls_cache_disable_stateful_resumption(ctx);
 
 		/*
 		 *	If keys is NULL, then OpenSSL returns the expected

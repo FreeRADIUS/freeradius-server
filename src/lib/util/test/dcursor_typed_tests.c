@@ -1756,7 +1756,7 @@ TEST_LIST = {
 	 */
 	{ "head_tail_null",	test_dcursor_head_tail_null },
 	{ "head",		test_dcursor_test_head },
-	{ "head_resest",	test_dcursor_head_reset },
+	{ "head_reset",		test_dcursor_head_reset },
 	{ "head_iter_reset",	test_dcursor_iter_head_reset },
 	{ "head_after_next",	test_dcursor_head_after_next },
 	{ "tail",		test_dcursor_test_tail },

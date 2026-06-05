@@ -53,7 +53,7 @@ typedef ssize_t (*fr_tp_proto_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *list,
  * @param[in] vps		vps to encode
  * @param[in] data		buffer where data can be written
  * @param[in] data_len		The length of the buffer, i.e. maximum packet length
- * @param[in] encode_ctx	Any enccode specific data such as secrets or configurable.
+ * @param[in] encode_ctx	Any encode specific data such as secrets or configurable.
  * @return
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were encoded

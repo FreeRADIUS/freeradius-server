@@ -520,7 +520,7 @@ redo:
 
 		/*
 		 *	+= means "append"
-		 *	:= menas "don't append".
+		 *	:= means "don't append".
 		 */
 		if (op != T_OP_EQ) {
 			if (was_relative) {
@@ -789,7 +789,7 @@ redo:
 				/*
 				 *	We had previously parsed a known VSA, but this component is
 				 *	perhaps a numerical OID.  Set the data type to VENDOR, so that
-				 *	the hierachy is correct.
+				 *	the hierarchy is correct.
 				 */
 				unknown_type = FR_TYPE_VENDOR;
 

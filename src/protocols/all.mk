@@ -20,7 +20,7 @@ src/protocols/${1}/stats/${2}_da_def.c: share/dictionary/${1}/dictionary.stats $
 	${Q}./scripts/bin/radict -F da_def -M ${4} -p ${1} ${3} > $$@.cache && mv $$@.cache $$@
 
 #
-#  define the autoload structures which point to the "attr_foo" defintions
+#  define the autoload structures which point to the "attr_foo" definitions
 #
 src/protocols/${1}/stats/${2}_da_autoload.c: share/dictionary/${1}/dictionary.stats $(BUILD_DIR)/bin/local/radict$(E)
 	@echo STATS ${1} ${2} - autoload

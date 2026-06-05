@@ -289,7 +289,7 @@ CURL *fr_curl_tmp_handle(void)
 
 /** Initialise global curl options
  *
- * libcurl is meant to performa reference counting, but still seems to
+ * libcurl is meant to perform reference counting, but still seems to
  * leak lots of memory if we call curl_global_init many times.
  */
 static int fr_curl_init(void)

@@ -555,7 +555,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 		/*
 		 *	Prepopulate the name buffer with  <section_name2>.
-		 *	as every function wil be registered with this
+		 *	as every function will be registered with this
 		 *	prefix.
 		 */
 		if ((fr_sbuff_in_bstrcpy_buffer(name, cf_section_name2(cs)) <= 0) ||
@@ -613,9 +613,9 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			 *	it does not mean the function signature is compatible.
 			 *
 			 *	These issues are caught when we instantiate a redundant
-			 *	xlat, as the arguments passed to the redunant xlat are
+			 *	xlat, as the arguments passed to the redundant xlat are
 			 *	validated against the argument definitions for each
-			 *	individual xlat the redunant xlat would call.
+			 *	individual xlat the redundant xlat would call.
 			 */
 			do {
 				if (!mrx->xlat->flags.pure) flags &= ~XLAT_FUNC_FLAG_PURE;

@@ -110,7 +110,7 @@ xref:https://datatracker.ietf.org/doc/html/rfc2865[RFC 2345]
 
 Use the built in functions and templates from ascidoc to standardize output rendering. Some tips include:
 
-* Use the Menu lisitng and the menu items function in ascidocs. For example, `menu` function (gives the MENU>item2>item2 syntax).
+* Use the Menu listing and the menu items function in ascidocs. For example, `menu` function (gives the MENU>item2>item2 syntax).
 * For tables, use the [options="headers,autowidth"] to uniformaly size the columns and data. If needed, the options can be set to customize the column size according to the data to be displayed. For example, [cols="1,3"].
 * Use plain text for code and code snippets instead our shell=source, or bash. The use of these parameters colorize the text and we want to do this by modifying the CSS file.
 

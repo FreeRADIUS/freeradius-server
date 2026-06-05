@@ -124,7 +124,7 @@ static int child_find(char const *key)
 		if (!child[i].name) continue;
 
 		/*
-		 *	Found a matchin key.  See if the process is alive.  If not, wipe out the old entry.
+		 *	Found a matching key.  See if the process is alive.  If not, wipe out the old entry.
 		 */
 		if (strcmp(child[i].name, key) == 0) {
 			if (write(child[i].stdin[WRITER], " ", 1) < 0) {

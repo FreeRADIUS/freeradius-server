@@ -6,7 +6,7 @@ string foo
 #
 #  Try returns noop - which is not caught
 #
-#  Regression test where there are no more sibilings for catch.
+#  Regression test where there are no more siblings for catch.
 #
 group {
 	try {

@@ -34,7 +34,7 @@ code of the called virtual server.
 [NOTE]
 
 ====
-The statments inside of a `call { ... }` execute after the called
+The statements inside of a `call { ... }` execute after the called
 server returns. Execution of these statements returns an rcode that
 becomes the `call` rcode, overriding the rcode of the called server.
 ====

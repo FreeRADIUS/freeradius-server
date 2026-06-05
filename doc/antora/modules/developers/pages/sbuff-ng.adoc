@@ -241,7 +241,7 @@ Behind the scenes, when `sbuff_error_printf` is called, it copies `ctx_len` byte
 and `subject_len` bytes after the current position,  records the offset of the error in the string it just copied,
 and creates/stored the error string from `err_fmt`, and `...`.
 
-In this way we still get rich, contextful errors, but without passing an offset back up the stack.
+In this way we still get rich, contextual errors, but without passing an offset back up the stack.
 
 All parse functions can revert to returning `int (0, -1)` instead of `fr_slen_t` (as they do now).
 

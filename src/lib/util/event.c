@@ -1532,7 +1532,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 			case CLD_KILLED:
 			case CLD_DUMPED:
 				EVENT_DEBUG("%p - PID %ld early exit - code %s (%d), status %d",
-					    el, (long)pid, fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
+					    el, (long)pid, fr_table_str_by_value(si_codes, info.si_code, "<UNKNOWN>"),
 					    info.si_code, info.si_status);
 
 				/*
@@ -1567,7 +1567,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 
 			default:
 				fr_strerror_printf("Unexpected code %s (%d) whilst waiting on PID %ld",
-						   fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
+						   fr_table_str_by_value(si_codes, info.si_code, "<UNKNOWN>"),
 						   info.si_code, (long) pid);
 
 				goto error;

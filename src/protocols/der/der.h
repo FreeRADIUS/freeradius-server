@@ -53,7 +53,7 @@ typedef enum {
 	FR_DER_TAG_UNIVERSAL_STRING = 0x1c,	   //!< String of universal chars.
 	FR_DER_TAG_BMP_STRING	    = 0x1e,	   //!< String of BMP chars.
 
-	FR_DER_TAG_CHOICE	    = 0x23,	   //!< A choice of types. Techically not a DER tag, but used to represent a choice.
+	FR_DER_TAG_CHOICE	    = 0x23,	   //!< A choice of types. Technically not a DER tag, but used to represent a choice.
 
 	FR_DER_TAG_MAX		    = 0x24
 } fr_der_tag_t;
@@ -101,7 +101,7 @@ typedef struct {
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
-	uint8_t			min;			//!< mininum count
+	uint8_t			min;			//!< minimum count
 	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
 	bool			is_option : 1;		//!< has an option defined
 	bool			optional : 1;		//!< optional, we MUST already have set 'option'

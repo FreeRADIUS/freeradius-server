@@ -286,7 +286,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	 */
 	if (OCIAttrSet((dvoid *)c->srv, OCI_HTYPE_SERVER, (dvoid *)0, 0, OCI_ATTR_NONBLOCKING_MODE, c->error) != OCI_SUCCESS) {
 		sql_snprint_error(errbuff, sizeof(errbuff), c);
-		WARN("Cound not set non-blocking mode: %s", errbuff);
+		WARN("Could not set non-blocking mode: %s", errbuff);
   	}
 
 	*h = c;
@@ -355,7 +355,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 		default:
 			/*
-			 *	Error code 1 is unique contraint violated
+			 *	Error code 1 is unique constraint violated
 			 */
 			if (sql_snprint_error(errbuff, sizeof(errbuff), sql_conn) == 1) {
 				query_ctx->rcode = RLM_SQL_ALT_QUERY;

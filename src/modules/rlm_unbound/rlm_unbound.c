@@ -409,7 +409,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (fr_timer_in(ur, ur->t->ev_b->el->tl, &ur->ev, fr_time_delta_from_msec(inst->timeout),
 			false, xlat_unbound_timeout, ur) < 0) {
-		REDEBUG("Unable to attach unbound timeout_envent");
+		REDEBUG("Unable to attach unbound timeout_event");
 		ub_cancel(t->ev_b->ub, ur->async_id);
 		return XLAT_ACTION_FAIL;
 	}

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  Dummy script which expects particular inputs mimicing a NT password change using the ntlm_auth helper script
+#  Dummy script which expects particular inputs mimicking a NT password change using the ntlm_auth helper script
 #
 read username
 if [ "$username" != 'username: john' ]; then

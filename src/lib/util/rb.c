@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 
-#define NIL &sentinel	   /* all leafs are sentinels */
+#define NIL &sentinel	   /* all leaves are sentinels */
 static fr_rb_node_t sentinel = { NIL, NIL, NULL, NULL, BLACK, false };
 
 #ifndef NDEBUG

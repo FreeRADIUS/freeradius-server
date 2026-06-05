@@ -184,7 +184,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		}
 
 		/*
-		 *	Catch duplicants, and also catch the case where we insert a /16, and then later try to
+		 *	Catch duplicates, and also catch the case where we insert a /16, and then later try to
 		 *	insert a /24 inside of that.
 		 *
 		 *	If instead we insert a /24, and then later a /16, we won't catch that.

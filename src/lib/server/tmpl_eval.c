@@ -372,7 +372,7 @@ ssize_t _tmpl_to_type(void *out,
 	}
 
 	/*
-	 *	We need a buffer to hold ouput data which can be returned to the caller.
+	 *	We need a buffer to hold output data which can be returned to the caller.
 	 */
 	if (fr_type_is_variable_size(dst_type) && !buff) {
 		REDEBUG("Missing expansion buffer for %s -> %s cast", fr_type_to_str(to_cast->type), fr_type_to_str(dst_type));
@@ -426,7 +426,7 @@ do_copy:
 	return from_cast->vb_length;
 }
 
-/** Expand a template to a string, allocing a new buffer to hold the string
+/** Expand a template to a string, allocating a new buffer to hold the string
  *
  * The intended use of #tmpl_expand and #tmpl_aexpand is for modules to easily convert a #tmpl_t
  * provided by the conf parser, into a usable value.

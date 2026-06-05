@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_radius/track.c
- * @brief Tracking RADUS client packets
+ * @brief Tracking RADIUS client packets
  *
  * @copyright 2017 Network RADIUS SAS
  */

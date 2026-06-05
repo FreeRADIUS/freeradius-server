@@ -139,7 +139,7 @@ static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, conf_parse
  * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
  * @param[in] value	to convert.
- * @param[in] quote	to use when allocing the pair.
+ * @param[in] quote	to use when allocating the pair.
  * @param[in] rule	UNUSED.
  * @return
  *	- 0 on success.
@@ -358,7 +358,7 @@ int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, void *base,
  * @param[out] out	Where to write the pair.
  * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
- * @param[in] quote	to use when allocing the pair.
+ * @param[in] quote	to use when allocating the pair.
  * @param[in] rule	UNUSED.
  * @return
  *	- 0 on success.
@@ -547,7 +547,7 @@ static int kafka_topic_config_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, vo
  * @param[out] out	Where to write the pair.
  * @param[in] parent	being populated.
  * @param[in] cs	to allocate the pair in.
- * @param[in] quote	to use when allocing the pair.
+ * @param[in] quote	to use when allocating the pair.
  * @param[in] rule	UNUSED.
  * @return
  *	- 0 on success.

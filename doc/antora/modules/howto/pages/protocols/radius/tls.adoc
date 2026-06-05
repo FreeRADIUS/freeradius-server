@@ -6,7 +6,7 @@ client connection information using PROXY Protocol.
 
 It is not a comprehensive guide to using RadSec with FreeRADIUS. It presents a
 basic configuration that uses an example CA and does not validate certificate
-attributes or perform revokation status.
+attributes or perform revocation status.
 
 
 == Introduction

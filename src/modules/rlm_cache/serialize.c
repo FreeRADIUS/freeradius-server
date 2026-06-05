@@ -51,7 +51,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 	if (!to_store) return -1;
 
 	/*
-	 *	It's valid to have an empty cache entry (save allocing the pairs pool)
+	 *	It's valid to have an empty cache entry (save allocating the pairs pool)
 	 */
 	if (map_list_empty(&c->maps)) goto finish;
 

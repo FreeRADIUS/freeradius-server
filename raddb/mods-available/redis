@@ -101,7 +101,7 @@ redis {
 		#  The redis module will use the first key to determine which cluster node the function
 		#  should called on.
 		#
-		#  The redis module pre-calcualtes the SHA1 hash of all lua functions on startup.
+		#  The redis module pre-calculates the SHA1 hash of all lua functions on startup.
 		#  When an expansion function is called, it uses the `EVALSHA` command to attempt to
 		#  call lua function on a remote redis node.  If `EVALSHA` fails with an error indicating
 		#  no script could be found with the calculated SHA1 hash, the lua function will be

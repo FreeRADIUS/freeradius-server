@@ -365,7 +365,7 @@ static int timer_ordered_insert_at(fr_timer_list_t *tl, fr_timer_t *ev)
 
 	tail = timer_tail(&tl->ordered);
 	if (tail && fr_time_lt(ev->when, tail->when)) {
-		fr_strerror_const("Event being inserted must occurr _after_ the last event");
+		fr_strerror_const("Event being inserted must occur _after_ the last event");
 		return -1;
 	}
 
@@ -529,7 +529,7 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
 			fr_timer_t *head = timer_list_ordered_head(tl);
 
 			if (head && fr_time_lt(ev->when, head->when)) {
-				fr_strerror_const("Event being inserted must occurr _after_ the last event");
+				fr_strerror_const("Event being inserted must occur _after_ the last event");
 
 			insert_failed:
 				talloc_set_destructor(ev, NULL);
@@ -634,7 +634,7 @@ static int timer_ordered_disarm(fr_timer_t *ev)
 	(void)talloc_get_type_abort(ev, fr_timer_t);;
 
 	/*
-	 *	Already dissassociated from a list, nothing to do.
+	 *	Already disassociated from a list, nothing to do.
 	 */
 	if (!ev->tl) return 0;
 
@@ -783,7 +783,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 		 *	Disarm the event before calling it.
 		 *
 		 *	This leaves the memory in place,
-		 *	but dissassociates it from the list.
+		 *	but disassociates it from the list.
 		 *
 		 *	We use the public function as it
 		 *	handles more cases.
@@ -842,7 +842,7 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 		 *	Disarm the event before calling it.
 		 *
 		 *	This leaves the memory in place,
-		 *	but dissassociates it from the list.
+		 *	but disassociates it from the list.
 		 *
 		 *	We use the public function as it
 		 *	handles more cases.

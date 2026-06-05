@@ -185,7 +185,7 @@ uint8_t const fr_base32_hex_alphabet_decode[SBUFF_CHAR_CLASS] = {
  * @param[in] alphabet		to use for encoding.
  * @return
  *	- Amount of data we wrote to the buffer.
- *	- <0 the number of bytes we would have needed in the ouput buffer.
+ *	- <0 the number of bytes we would have needed in the output buffer.
  */
 ssize_t fr_base32_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
 			      bool add_padding, char const alphabet[static SBUFF_CHAR_CLASS])

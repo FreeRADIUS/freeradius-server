@@ -114,7 +114,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			ROPTIONAL(RWARN, WARN, "SQL deadlock. Retry query %s", query_ctx->query_str);
 
 			/*
-			 *	@todo For non READ_COMMITED transactions put
+			 *	@todo For non READ_COMMITTED transactions put
 			 *	rollback here
 			 *	fb_rollback(conn);
 			 */

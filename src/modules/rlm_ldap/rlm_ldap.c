@@ -637,7 +637,7 @@ static xlat_action_t ldap_xlat_uri_attr_option(TALLOC_CTX *ctx, fr_dcursor_t *ou
 #endif
 
 	if (option_vb->vb_length < 1) {
-		RERROR("LDAP attriubte option must not be blank");
+		RERROR("LDAP attribute option must not be blank");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -2258,7 +2258,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_re
  *
  * Process a modification map to update a user object in the LDAP directory.
  *
- * The module method called in "accouting" and "send" sections.
+ * The module method called in "accounting" and "send" sections.
  */
 static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {

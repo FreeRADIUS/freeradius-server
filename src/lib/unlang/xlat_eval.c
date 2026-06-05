@@ -1043,7 +1043,7 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	argument, and catch the errors.  Note that this is largely what Perl and Python do with their
 	 *	logical "and" / "or" functions.
 	 *
-	 *	For our use-case, we could perhaps have a variante of || which "catches" errors.  One proposal
+	 *	For our use-case, we could perhaps have a variant of || which "catches" errors.  One proposal
 	 *	is to use a %catch(...) function, but that seems ugly.  Pretty much everything would need to
 	 *	be wrapped in %catch().
 	 *
@@ -1644,7 +1644,7 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 			if (xlat_sync_stringify(vb, request, node->group, &vb->vb_group, escape, escape_ctx) < 0) return -1;
 
 			/*
-			 *	Replace the group wuth a fixed string.
+			 *	Replace the group with a fixed string.
 			 */
 			MEM(box = fr_value_box_alloc_null(ctx));
 

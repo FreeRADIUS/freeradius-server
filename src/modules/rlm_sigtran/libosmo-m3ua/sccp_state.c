@@ -245,7 +245,7 @@ static void bsc_reset_timeout(void *_app)
  *  2.) Bring down all MGCP endpoints
  *  3.) Clear the connection data.
  *
- * To make things worse we need to buffer the BSC messages... atfer
+ * To make things worse we need to buffer the BSC messages... after
  * everything has been sent we will try to connect to the MSC again.
  *
  * We will have to veriy that all connections are closed properly..

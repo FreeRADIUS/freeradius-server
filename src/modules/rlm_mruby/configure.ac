@@ -15,7 +15,7 @@ dnl ############################################################
 
 dnl extra argument: --with-mruby-include-dir=DIR
 mruby_include_dir=
-AC_ARG_WITH(mruby-incude-dir,
+AC_ARG_WITH(mruby-include-dir,
 	[AS_HELP_STRING([--with-mruby-include-dir=DIR],
 		[Directory where the mruby includes may be found])],
 	[case "$withval" in

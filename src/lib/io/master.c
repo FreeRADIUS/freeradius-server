@@ -2653,7 +2653,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		if (fr_time_neq(track->timestamp, request_time) || track->discard) {
 			fr_assert(track->packets > 0);
 			track->packets--;
-			DEBUG3("Suppressing reply as we have a newer / conflicing packet from the same source");
+			DEBUG3("Suppressing reply as we have a newer / conflicting packet from the same source");
 			track->discard = true;
 			goto setup_timer;
 		}

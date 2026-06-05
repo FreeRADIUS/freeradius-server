@@ -1029,7 +1029,7 @@ static void connection_state_enter_connected(connection_t *conn)
 
 /** Enter the connecting state
  *
- * After this function returns we wait to be signalled with connection_singal_connected
+ * After this function returns we wait to be signalled with connection_signal_connected
  * or for the connection timer to expire.
  *
  * @param[in] conn	Entering the connecting state.

@@ -89,7 +89,7 @@ $(TEST):
 	${Q}if [ `grep -v -P 'Cookie = rid=\d{3},csn=\d{14}\.\d{6}Z#\d{6}#\d{3}#\d{6}' $(OUT_DIR)/cookielog.out | wc -l` -ne 0 ]; then	\
 		echo "LDAP_SYNC FAILED $@ - invalid cookie stored";	\
 		rm -f $(BUILD_DIR)/tests/test.ldap_sync/rfc4533;	\
-		$(MAKE) --no-print-direcotry test.ldap_sync/rfc4533.radiusd_kill; \
+		$(MAKE) --no-print-directory test.ldap_sync/rfc4533.radiusd_kill; \
 		exit 1;							\
 	fi
 	${Q}if [ "`cat $(OUT_DIR)/cookielog.out | wc -l`" -lt "`expr $(TEST_COUNT) / 2`" ]; then \

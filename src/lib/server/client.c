@@ -713,7 +713,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 		 */
 		cp = cf_pair_alloc(out, attr, value, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) {
-			cf_log_err(out, "Failed allocing pair \"%s\" = \"%s\"", attr, value);
+			cf_log_err(out, "Failed allocating pair \"%s\" = \"%s\"", attr, value);
 			talloc_free(value);
 			return -1;
 		}

@@ -44,7 +44,7 @@ help is if they [ask good questions](https://wiki.freeradius.org/guide/Users-Mai
 
 Another source of problematic behavior is participants who believe that as the experts, we can answer any and
 all questions about all possible technologies which interact with FreeRADIUS.  That expectation is
-unfortunatley impossible.  When that expectation turns to entitlement and anger, it becomes unacceptable
+unfortunately impossible.  When that expectation turns to entitlement and anger, it becomes unacceptable
 behaviour.
 
 The following behaviours are also unacceptable within our community:

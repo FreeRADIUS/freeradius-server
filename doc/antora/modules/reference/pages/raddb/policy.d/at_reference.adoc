@@ -16,7 +16,7 @@ module in a policy not just once, but every time the module is called.
 
 == Module Method Overrides
 
-Thge `@policy` syntax be used in conjunction with the
+The `@policy` syntax be used in conjunction with the
 xref:raddb/policy.d/method.adoc[method override] syntax to
 override a module, but only when it is called from a specific
 processing section.

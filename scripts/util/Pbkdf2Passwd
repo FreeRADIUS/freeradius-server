@@ -107,7 +107,7 @@ Pbkdf2Passwd - Generate a PBKDF2 hashed password
 
 =head1 DESCRIPTION
 
-Generate a Password Based Key Derivation Functiong version 2 using given
+Generate a Password Based Key Derivation Function version 2 using given
 password, a hashing algorithm, the number of iterations, and optional salt.
 
 =head1 SYNOPSIS

@@ -249,13 +249,13 @@ be automatically added to the email.  Only the list of
 
 to:: Set the body `TO` header.
 
-If `recepients` is not set, then messages will be sent to the `TO` address.
+If `recipients` is not set, then messages will be sent to the `TO` address.
 
 
 
 cc:: Set the body `CC` header.
 
-If `recepients` is not set, then messages will also be sent to the `CC` addresses.
+If `recipients` is not set, then messages will also be sent to the `CC` addresses.
 
 
 
@@ -266,7 +266,7 @@ The local part may contain commas, the domain may not (https://tools.ietf.org/ht
 Therefore, the first comma after the @ represents a new
 address, and is not listed in the header of the email.
 
-If `recepients` is not set, then messages will also be sent to the `CCC` addresses.
+If `recipients` is not set, then messages will also be sent to the `CCC` addresses.
 
 
 

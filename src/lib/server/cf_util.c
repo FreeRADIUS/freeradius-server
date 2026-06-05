@@ -1075,7 +1075,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			if (src == cs) break;
 
 			/*
-			 *	The current child is what we were just copying.  The parent is now the childs
+			 *	The current child is what we were just copying.  The parent is now the child's
 			 *	parent.
 			 */
 			ci = &src->item;

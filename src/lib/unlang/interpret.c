@@ -850,7 +850,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	 */
 	switch (result->priority) {
 	/*
-	 *	The child's prioriy value indicates we
+	 *	The child's priority value indicates we
 	 *	should return from this frame.
 	 */
 	case MOD_ACTION_RETURN:
@@ -1759,7 +1759,7 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * @note This does NOT immediately stop the request, it just deliveres
+ * @note This does NOT immediately stop the request, it just delivers
  *	 signals, and in the case of a cancel, marks up frames for unwinding
  *	 and adds it to the runnable queue if it's yielded.
  *
@@ -2272,7 +2272,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		*	If we're being pedantic subrequests don't have a virtual
 		*	server associated with them unless they go call {}.
 		*
-		*	But we're not being pendantic, so go back up the request
+		*	But we're not being pedantic, so go back up the request
 		*	list ooking for a call frame.
 		*
 		*	Unfortunately for detached subrequests we still won't find

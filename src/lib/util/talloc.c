@@ -565,7 +565,7 @@ char *talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] fmt	The format string.
- * @param[in] ap	varadic arguments.
+ * @param[in] ap	variadic arguments.
  * @return
  *	- Formatted string.
  *	- NULL on error.

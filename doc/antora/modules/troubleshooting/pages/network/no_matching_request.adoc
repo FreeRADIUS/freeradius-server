@@ -15,7 +15,7 @@ seconds to reply, the original request fails. The late response cannot
 be linked to it.
 
 To resolve this, check the network for reliability and bandwidth
-availibility. Ensure the next hop server responds quickly, with
+availability. Ensure the next hop server responds quickly, with
 minimal packet loss and delays.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -2,7 +2,7 @@
 The RADIUS server processes an NAS request based on the following criteria:
 
 * Contents of the NAS request.
-* Information available locally to the RADUS server (flat files, SQL, LDAP).
+* Information available locally to the RADIUS server (flat files, SQL, LDAP).
 
 The limitations inherent in the above processing criteria mean that the server can't negotiate with a NAS to request more information. The server takes what the NAS sends and returns either an acknowledgment or a non-acknowledgment.
 

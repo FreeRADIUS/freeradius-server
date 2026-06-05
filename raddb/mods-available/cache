@@ -366,7 +366,7 @@ cache {
 	#  |===
 	#  | Return     | Description
 	#  | `updated`  | we created or updated a cache entry.
-	#  | `noop`     | if a cache entry aready existed.
+	#  | `noop`     | if a cache entry already existed.
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#

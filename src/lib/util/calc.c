@@ -1146,7 +1146,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		}
 
 		if (memcmp(a->vb_strvalue + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
-			fr_strerror_const("Right side of substract is not a suffix of the input string");
+			fr_strerror_const("Right side of subtract is not a suffix of the input string");
 			return -1;
 		}
 

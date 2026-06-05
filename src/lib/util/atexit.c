@@ -154,7 +154,7 @@ static int _destructor_list_free(fr_atexit_list_t *list)
 	return 0;
 }
 
-/** Free any thread-local exit handler lists that pthread_key failed to fre
+/** Free any thread-local exit handler lists that pthread_key failed to free
  *
  */
 static void _global_free(void)

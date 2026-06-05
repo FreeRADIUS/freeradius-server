@@ -399,7 +399,7 @@ fail:
 	}
 
 	/*
-	 *	RFC 4243 is silent about this, but we assime that anything with no vendor data means that we
+	 *	RFC 4243 is silent about this, but we assume that anything with no vendor data means that we
 	 *	ignore it.  i.e. we don't create an empty vendor attribute.
 	 */
 	if (len == (sizeof(uint32_t) + 1)) {

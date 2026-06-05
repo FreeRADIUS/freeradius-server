@@ -50,7 +50,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = "1812"
 DEFAULT_SECRET = "testing123"
 DEFAULT_PARALLEL = 1
-DEFAULT_INTERATIONS = 1
+DEFAULT_ITERATIONS = 1
 
 EAPOL_TEST_BIN = "eapol_test"
 EAPOL_TEST_CTRL_IFACE = "/tmp/radeapol_uat_ctrl_iface"
@@ -67,7 +67,7 @@ def dlog(_level, _message):
 	if (VERBOSE_LEVEL >= _level):
 		logger.debug(_message)
 
-def convert_keyval2json(_paylaod, out_as_list=False):
+def convert_keyval2json(_payload, out_as_list=False):
 	"""
 	Hack converting the 'eapol_test' status collected from Ctrl to list{}
 	"""
@@ -98,7 +98,7 @@ def convert_keyval2json(_paylaod, out_as_list=False):
 	        else:
 	            dlog(6, "MultiOrderedDicttoList: create key={} value={}".format(key, value))
 	            super().__setitem__(key, value)
-	dlog(6, "convert_keyval2json(): input='{}'".format(_paylaod))
+	dlog(6, "convert_keyval2json(): input='{}'".format(_payload))
 
 	if out_as_list:
 		parser = configparser.RawConfigParser(dict_type=MultiOrderedDicttoList, strict=False)
@@ -106,7 +106,7 @@ def convert_keyval2json(_paylaod, out_as_list=False):
 		parser = configparser.RawConfigParser(dict_type=MultiOrderedDict, strict=False)
 
 	parser.optionxform = str
-	parser.read_string("[DEFAULT]\n" + _paylaod)
+	parser.read_string("[DEFAULT]\n" + _payload)
 
 	result = {}
 	for k,v in parser.items("DEFAULT"):
@@ -309,10 +309,10 @@ The directory containing the tests may have multiple subdirectories to group the
 	)
 	parser.add_argument("-i",
 						dest = "iter",
-						help = "Number of iterations. (default: {})".format(DEFAULT_INTERATIONS),
+						help = "Number of iterations. (default: {})".format(DEFAULT_ITERATIONS),
 						type = int,
 						required = False,
-						default = DEFAULT_INTERATIONS
+						default = DEFAULT_ITERATIONS
 	)
 	parser.add_argument("-n",
 						dest='no_fast_reauth',

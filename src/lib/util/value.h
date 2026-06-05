@@ -539,7 +539,7 @@ void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type,
 	 *	Initializes an fr_value_box_t pointed at by vb appropriately for a given type.
 	 * 	Coverity gets involved here because an fr_value_box_t has members with const-
 	 * 	qualified type (and members that have members with const-qualified type), so an
-	 *	attempt to assign to *vb or any of its cosnt-qualified members will give an error.
+	 *	attempt to assign to *vb or any of its const-qualified members will give an error.
 	 *
 	 * 	C compilers, at least currently, let one get around the issue. See the memcpy()
 	 * 	below. Coverity, though, isn't faked out, and reports the store_writes_const_field
@@ -781,7 +781,7 @@ uint8_t *fr_value_box_raw(fr_value_box_t const *vb, fr_type_t type)
  * as it allows us to use standard parsing and casting functions and then emit the result
  * as a C value.
  *
- * The field pointed to by out must be of the same type as we use to represent the value boxe's
+ * The field pointed to by out must be of the same type as we use to represent the value box's
  * value in its datum union, or at least the same size.
  *
  * No checks are done to ensure this is the case, so if you get this wrong it'll lead to silent
@@ -809,13 +809,13 @@ int fr_value_box_memcpy_out(void *out, fr_value_box_t const *vb)
 	return 0;
 }
 
-/** Copy a C value value to a value box.
+/** Copy a C value to a value box.
  *
  * This is useful when interacting with 3rd party libraries, and doing configuration parsing
  * as it allows us to use standard parsing and casting functions and then emit the result
  * as a C value.
  *
- * The field pointed to by in must be of the same type as we use to represent the value boxe's
+ * The field pointed to by in must be of the same type as we use to represent the value box's
  * value in its datum union, or at least the same size.
  *
  * No checks are done to ensure this is the case, so if you get this wrong it'll lead to silent

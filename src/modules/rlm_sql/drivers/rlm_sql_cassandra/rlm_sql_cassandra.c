@@ -665,7 +665,7 @@ static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t
 	int				fields, i;
 	char				**row;
 
-#define RLM_CASS_ERR_DATA_RETRIVE(_t) \
+#define RLM_CASS_ERR_DATA_RETRIEVE(_t) \
 do {\
 	char const *_col_name;\
 	size_t _col_name_len;\
@@ -721,7 +721,7 @@ do {\
 			const char	*str;
 			size_t		len;
 
-			if (cass_value_get_string(value, &str, &len) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("string");
+			if (cass_value_get_string(value, &str, &len) != CASS_OK) RLM_CASS_ERR_DATA_RETRIEVE("string");
 
 			MEM(row[i] = talloc_array(row, char, len + 1));
 			memcpy(row[i], str, len);
@@ -733,7 +733,7 @@ do {\
 		{
 			cass_bool_t bv;
 
-			if (cass_value_get_bool(value, &bv) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("bool");
+			if (cass_value_get_bool(value, &bv) != CASS_OK) RLM_CASS_ERR_DATA_RETRIEVE("bool");
 
 			MEM(row[i] = talloc_zero_array(row, char, 2));
 			row[i][0] = (bv == cass_false) ? '0' : '1';
@@ -744,7 +744,7 @@ do {\
 		{
 			cass_int32_t i32v;
 
-			if (cass_value_get_int32(value, &i32v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("int32");
+			if (cass_value_get_int32(value, &i32v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIEVE("int32");
 
 			MEM(row[i] = talloc_typed_asprintf(row, "%"PRId32, (int32_t)i32v));
 		}
@@ -755,7 +755,7 @@ do {\
 		{
 			cass_int64_t i64v;
 
-			if (cass_value_get_int64(value, &i64v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("int64");
+			if (cass_value_get_int64(value, &i64v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIEVE("int64");
 
 			MEM(row[i] = talloc_typed_asprintf(row, "%"PRId64, (int64_t)i64v));
 		}
@@ -766,7 +766,7 @@ do {\
 		{
 			CassUuid uuid;
 
-			if (cass_value_get_uuid(value, &uuid) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("UUID");
+			if (cass_value_get_uuid(value, &uuid) != CASS_OK) RLM_CASS_ERR_DATA_RETRIEVE("UUID");
 			MEM(row[i] = talloc_array(row, char, CASS_UUID_STRING_LENGTH));
 			cass_uuid_string(uuid, row[i]);
 		}

@@ -1055,7 +1055,7 @@ typedef enum {
 	_tmpl_to_type((void *)(_out), (uint8_t *)_buff, _buff_len, \
 		      _request, _vpt, FR_TYPE_FROM_PTR(_out))
 
-/** Expand a tmpl to a C type, allocing a new buffer to hold the string
+/** Expand a tmpl to a C type, allocating a new buffer to hold the string
  *
  * Expands a template using the _out ptr to determinate the cast type.
  *
@@ -1064,7 +1064,7 @@ typedef enum {
 #define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
 	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
 
-/** Expand a tmpl to a C type, allocing a new buffer to hold the string
+/** Expand a tmpl to a C type, allocating a new buffer to hold the string
  *
  * Takes an explicit type which must match the ctype pointed to by out.
  *
