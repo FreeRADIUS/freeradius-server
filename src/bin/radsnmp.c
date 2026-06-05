@@ -830,6 +830,7 @@ do { \
 								    packet->vector,
 								    conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
+						talloc_free(reply);
 						goto recv_error;
 					}
 					break;
