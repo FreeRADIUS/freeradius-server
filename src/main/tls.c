@@ -524,12 +524,17 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	 *	if we're doing certificate auth, and not PSK.
 	 */
 	verify_mode = SSL_VERIFY_PEER;
+#ifdef PSK_MAX_IDENTITY_LEN
 	if (!conf->psk_identity) {
+#endif
 		RDEBUG2("(TLS) Requiring Server certificate");
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+
+#ifdef PSK_MAX_IDENTITY_LEN
 	} else {
 		RDEBUG2("(TLS) PSK configured -- verifying Server certificate if presented");
 	}
+#endif
 	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
