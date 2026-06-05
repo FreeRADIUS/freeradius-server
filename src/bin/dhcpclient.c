@@ -493,7 +493,7 @@ static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool re
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
-	       dhcp_message_types[packet->code],
+	       FR_DHCP_PACKET_CODE_VALID(packet->code) ? dhcp_message_types[packet->code] : "unknown",
 	       packet->id,
 	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->socket.inet.src_ipaddr.af,
