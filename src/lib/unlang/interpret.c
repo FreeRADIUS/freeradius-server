@@ -2381,7 +2381,7 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
  * uses a push function, and experiences an error and needs to
  * remove the frame that was just pushed.
  */
-void unlang_interpet_frame_discard(request_t *request)
+void unlang_interpret_frame_discard(request_t *request)
 {
 	frame_pop(request, request->stack);
 }
