@@ -1646,7 +1646,10 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 
 		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
-		cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry);
+		if (cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry) == UNLANG_ACTION_YIELD) {
+			return cache_module_yield(request, handle, key, NULL, &ttl,
+						  mod_method_common_resume, NULL, driver_rctx, NULL);
+		}
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 	} else {
 	insert_new:
