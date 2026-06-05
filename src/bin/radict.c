@@ -277,7 +277,10 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 	if (!print_recursive || !fr_type_is_structural(da->type)) return;
 
 	namespace = dict_attr_namespace(da);
-	fr_assert(namespace != NULL);
+	if (!namespace) {
+		fr_assert(0);	/* the namespace should always exist */
+		return;
+	}
 
 	for (child = fr_hash_table_iter_init(namespace, &iter);
 	     child != NULL;
@@ -333,7 +336,7 @@ static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DI
 		size_t	len;
 
 		len = strlen(da->parent->name);
-       
+
 		/*
 		 *	"radiusAuthServer" and "radiusAuthServTotalAccessRejects"
 		 *	to "total_access_rejects"
