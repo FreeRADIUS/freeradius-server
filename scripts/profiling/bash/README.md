@@ -41,7 +41,7 @@ Terminal 1:
 # If not already in the container
 docker exec -it fr-profiling bash
 
-./scripts/profiling/config_and_build.sh --fr_src_dir /freeradius
+./scripts/profiling/bash/config_and_build.sh --fr_src_dir /freeradius
 ```
 
 ### Start Valgrind
@@ -52,7 +52,7 @@ Terminal 1:
 # If not already in the container
 docker exec -it fr-profiling bash
 
-./scripts/profiling/start_valgrind.sh --fr_src_dir /freeradius --results_dir <custom-results-dir-name>
+./scripts/profiling/bash/start_valgrind.sh --fr_src_dir /freeradius --results_dir <custom-results-dir-name>
 ```
 
 ### Run Tests (Example)
@@ -93,7 +93,7 @@ category breakdowns. Pass function-name substrings as patterns (case-insensitive
 ### Single directory
 
 ```bash
-./scripts/profiling/analyze_profiling_results_cest.sh \
+./scripts/profiling/bash/analyze_profiling_results_cest.sh \
     --md report.md \
     --top 10 \
     -d ./prof-results \
@@ -103,7 +103,7 @@ category breakdowns. Pass function-name substrings as patterns (case-insensitive
 ### Two directories (baseline vs. comparison)
 
 ```bash
-./scripts/profiling/analyze_profiling_results_cest.sh \
+./scripts/profiling/bash/analyze_profiling_results_cest.sh \
     --md report.md \
     --top 10 \
     -d ./prof-results-baseline \
