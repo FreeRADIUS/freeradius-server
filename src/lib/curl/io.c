@@ -75,12 +75,12 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			 *	There is no good work around for this other than
 			 *	upgrading to a newer version of curl.
 			 */
-			talloc_get_type_abort(randle, fr_curl_io_request_t);
-			if (!fr_cond_assert_msg(ret == CURLE_OK,
+			 if (!fr_cond_assert_msg(ret == CURLE_OK,
 						"Failed retrieving request data from CURL easy handle (candle)")) {
 				curl_multi_remove_handle(mandle, candle);
 				return;
 			}
+			talloc_get_type_abort(randle, fr_curl_io_request_t);
 			request = randle->request;
 
 			REQUEST_VERIFY(request);
