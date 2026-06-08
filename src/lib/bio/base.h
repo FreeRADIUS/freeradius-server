@@ -30,7 +30,7 @@ RCSIDH(lib_bio_base_h, "$Id$")
 #include <freeradius-devel/util/dlist.h>
 
 #ifdef NDEBUG
-#define XDEBUG(_x)
+#define XDEBUG(...)
 #else
 #define XDEBUG(fmt, ...) fprintf(stderr, fmt, ## __VA_ARGS__)
 #endif
