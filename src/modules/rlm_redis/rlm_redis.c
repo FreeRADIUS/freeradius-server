@@ -225,6 +225,17 @@ static void redis_xlat_ping_check(request_t *request, fr_redis_command_t *cmd, r
 	xlat_rctx->action = XLAT_ACTION_DONE;
 }
 
+/** Common cancellation for redis xlats
+ *
+ */
+static void redis_xlat_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_redis_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_xlat_rctx_t);
+
+	RDEBUG2("Forcibly cancelling pending redis command");
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
 static xlat_action_t redis_remap_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
 					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
@@ -301,7 +312,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
 					"Failed to enqueue redis PING", XLAT_ACTION_FAIL)
 
-	return unlang_xlat_yield(request, redis_remap_xlat_resume, NULL, 0, rctx);
+	return unlang_xlat_yield(request, redis_remap_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 static xlat_arg_parser_t const redis_node_xlat_args[] = {
@@ -665,7 +676,7 @@ static xlat_action_t redis_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 	case REDIS_ASYNC_RCODE_ASK:
 		if (rctx->forced_node) goto error;
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
-		return unlang_xlat_yield(request, redis_xlat_resume, NULL, 0, rctx);
+		return unlang_xlat_yield(request, redis_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 
 	case REDIS_ASYNC_RCODE_ERROR:
 	error:
@@ -791,7 +802,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
 					"Failed enqueueing Redis command", XLAT_ACTION_FAIL)
 
-	return unlang_xlat_yield(request, redis_xlat_resume, NULL, 0, rctx);
+	return unlang_xlat_yield(request, redis_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
