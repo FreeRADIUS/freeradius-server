@@ -223,6 +223,10 @@ int main(int argc, char *argv[])
 	case RADLOCK_REMOVE:
 		sem_id = fr_sem_get(file, 0, uid, gid, false, true);
 		if (sem_id == -4) EXIT_WITH_SUCCESS;
+		if (sem_id < 0) {
+			fr_perror("radlock");
+			EXIT_WITH_FAILURE;
+		}
 
 		if (fr_sem_close(sem_id, file) < 0) {
 			fr_perror("radlock");
