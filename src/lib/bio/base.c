@@ -298,7 +298,9 @@ int fr_bio_write_blocked(fr_bio_t *bio)
 		if (!this->priv_cb.write_blocked) continue;
 
 		/*
-		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 *	Run this BIO's write_blocked handler.  On error we bail out immediately;
+		 *	otherwise we record whether it considers itself blocked and keep walking up
+		 *	the chain so that every BIO is told that writes are blocked.
 		 */
 		rcode = this->priv_cb.write_blocked((fr_bio_t *) this);
 		if (rcode < 0) return rcode;
