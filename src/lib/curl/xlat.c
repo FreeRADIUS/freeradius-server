@@ -58,7 +58,7 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (strlen(escaped) == to_escape->vb_length) goto done;
 
 	fr_value_box_clear_value(to_escape);
-	fr_value_box_strdup(to_escape, to_escape, NULL, escaped, to_escape->tainted);
+	MEM(fr_value_box_strdup(to_escape, to_escape, NULL, escaped, to_escape->tainted) >= 0);
 
 done:
 	curl_free(escaped);
@@ -94,7 +94,7 @@ xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *ou
 	}
 
 	fr_value_box_clear_value(to_unescape);
-	fr_value_box_bstrndup(to_unescape, to_unescape, NULL, unescaped, unescaped_len, to_unescape->tainted);
+	MEM(fr_value_box_bstrndup(to_unescape, to_unescape, NULL, unescaped, unescaped_len, to_unescape->tainted) >= 0);
 	curl_free(unescaped);
 	fr_dcursor_insert(out, to_unescape);
 
