@@ -61,12 +61,7 @@
 
     <section id="output" hidden>
       <div class="toolbar">
-        <div class="view-tabs" role="tablist">
-          <button type="button" class="view-tab active" data-view="tables">Tables</button>
-          <button type="button" class="view-tab" data-view="json">JSON</button>
-        </div>
         <div class="downloads">
-          <button id="download" type="button" class="secondary">Download Markdown</button>
           <button id="download-json" type="button" class="secondary">Download JSON</button>
         </div>
       </div>
@@ -91,12 +86,6 @@
         </label>
         <p class="scroll-hint" id="tables-hint" hidden>Scroll a table sideways to see every column</p>
         <div id="tables"></div>
-      </div>
-
-      <!-- JSON view: the report exactly as written to disk -->
-      <div id="view-json" class="view" hidden>
-        <p class="scroll-hint" id="json-hint" hidden>Scroll sideways to see long lines in full</p>
-        <pre id="json"></pre>
       </div>
     </section>
 

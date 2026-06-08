@@ -1,8 +1,8 @@
 // app.js wires the page to the Go WASM bridge exported as globalThis.analyzeCest.
 //
 // Flow: load cest-analyzer.wasm -> read selected files as text with FileReader
-// -> call analyzeCest(runs, patterns, topN) -> render the Tables and JSON views
-// from { json }, and keep { markdown } for the Download Markdown button.
+// -> call analyzeCest(runs, patterns, topN) -> render the Tables view from
+// { json }, and keep { json } for the Download JSON button.
 
 const $ = (id) => document.getElementById(id);
 
@@ -13,18 +13,13 @@ const runRowTemplate = $("run-row");
 const patternsInput = $("patterns");
 const topnInput = $("topn");
 const outputSection = $("output");
-const downloadBtn = $("download");
 const downloadJsonBtn = $("download-json");
 const errorP = $("error");
 const metricSelect = $("metric");
 const tablesContainer = $("tables");
-const jsonPre = $("json");
-const viewTabs = Array.from(document.querySelectorAll(".view-tab"));
 const tablesHint = $("tables-hint");
-const jsonHint = $("json-hint");
 
-let lastMarkdown = ""; // populated after each successful run
-let lastJsonText = ""; // raw JSON string, for the JSON view and download
+let lastJsonText = ""; // raw JSON string, for the Download JSON button
 let lastReport = null; // parsed JSON report object, drives the Tables view
 
 // Component column order for the "All components" table (logical grouping;
@@ -137,10 +132,8 @@ async function run() {
       return;
     }
 
-    lastMarkdown = result.markdown;
     lastJsonText = result.json || "";
     lastReport = lastJsonText ? JSON.parse(lastJsonText) : null;
-    jsonPre.textContent = lastJsonText;
     renderTables();
     outputSection.hidden = false;
     updateScrollHints(); // measure now that the output section is visible
@@ -154,22 +147,6 @@ async function run() {
 
 runBtn.addEventListener("click", run);
 addRunBtn.addEventListener("click", () => addRunRow());
-
-// --- View switching --------------------------------------------------------
-// The two views (Tables, JSON) live in #view-tables / #view-json. Clicking a
-// tab shows its view and hides the other.
-
-function showView(name) {
-  viewTabs.forEach((t) => t.classList.toggle("active", t.dataset.view === name));
-  ["tables", "json"].forEach((v) => {
-    $(`view-${v}`).hidden = v !== name;
-  });
-  updateScrollHints(); // now that the chosen view is visible, it can be measured
-}
-
-viewTabs.forEach((tab) => {
-  tab.addEventListener("click", () => showView(tab.dataset.view));
-});
 
 // --- Tables view -----------------------------------------------------------
 // Driven by the parsed JSON report (lastReport) and the metric <select>.
@@ -299,16 +276,15 @@ function table(headRow, bodyRows) {
 metricSelect.addEventListener("change", renderTables);
 
 // --- Scroll hints ----------------------------------------------------------
-// A hint is shown only when its content actually overflows horizontally.
-// Overflow can only be measured on a visible element, so this is re-run when a
-// view is shown, after each render, and on resize.
+// The hint is shown only when a table actually overflows horizontally.
+// Overflow can only be measured on a visible element, so this is re-run after
+// each render and on resize.
 
 function overflowsX(node) {
   return node.scrollWidth > node.clientWidth + 1;
 }
 
 function updateScrollHints() {
-  jsonHint.hidden = !overflowsX(jsonPre);
   const tableScrolls = Array.from(tablesContainer.querySelectorAll(".tables-scroll"));
   tablesHint.hidden = !tableScrolls.some(overflowsX);
 }
@@ -328,7 +304,6 @@ function download(content, type, filename) {
   URL.revokeObjectURL(url);
 }
 
-downloadBtn.addEventListener("click", () => download(lastMarkdown, "text/markdown", "cest-report.md"));
 downloadJsonBtn.addEventListener("click", () => download(lastJsonText, "application/json", "cest-report.json"));
 
 // --- Error helpers ---------------------------------------------------------

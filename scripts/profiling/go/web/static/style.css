@@ -121,32 +121,7 @@ button.secondary {
   flex-wrap: wrap;
 }
 
-.view-tabs { display: flex; gap: 0.25rem; }
-
-.view-tab {
-  color: var(--accent);
-  background: #fff;
-  border: 1px solid var(--accent);
-  padding: 0.4rem 0.9rem;
-}
-
-.view-tab.active {
-  color: #fff;
-  background: var(--accent);
-}
-
 .downloads { display: flex; gap: 0.5rem; }
-
-#json {
-  padding: 1rem;
-  overflow-x: auto;
-  background: #1e1e1e;
-  color: #e6e6e6;
-  border-radius: 8px;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
 
 /* --- Tables view --- */
 
@@ -197,9 +172,9 @@ table.tables-data .num {
 table.tables-data tbody tr:nth-child(even) { background: #fafafa; }
 
 /* --- Horizontal scroll affordance --- */
-/* Wide content (the JSON and the all-components table) can extend past the
-   viewport. Make that obvious: a styled scrollbar that always shows when
-   content overflows, plus a hint shown only when it does. */
+/* A wide all-components table can extend past the viewport. Make that obvious:
+   a styled scrollbar that always shows when content overflows, plus a hint
+   shown only when it does. */
 
 .tables-scroll {
   overflow-x: auto;
@@ -210,22 +185,14 @@ table.tables-data tbody tr:nth-child(even) { background: #fafafa; }
 .tables-scroll table.tables-data { white-space: nowrap; width: auto; min-width: 100%; }
 
 /* Styled scrollbars are not overlay in Chromium, so the bar stays visible
-   whenever there is overflow. Track is tinted so the bar reads as a control. */
-#json::-webkit-scrollbar, .tables-scroll::-webkit-scrollbar {
+   whenever there is overflow. */
+.tables-scroll::-webkit-scrollbar {
   height: 12px;
-}
-#json::-webkit-scrollbar-track {
-  background: #333;
-  border-radius: 6px;
-}
-#json::-webkit-scrollbar-thumb {
-  background: #777;
-  border-radius: 6px;
 }
 .tables-scroll::-webkit-scrollbar-track { background: #e6e6e6; border-radius: 6px; }
 .tables-scroll::-webkit-scrollbar-thumb { background: #aaa; border-radius: 6px; }
 /* Firefox */
-#json, .tables-scroll { scrollbar-width: thin; }
+.tables-scroll { scrollbar-width: thin; }
 
 .scroll-hint {
   margin: 0 0 0.4rem;
