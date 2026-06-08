@@ -356,6 +356,14 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 	return cmd;
 }
 
+/** Cancel a Redis async command.
+ *
+ */
+void fr_redis_async_cmd_cancel(fr_redis_async_cmd_t *cmd)
+{
+	fr_redis_command_set_cancel(cmd->cmds);
+}
+
 /** Fetch the redis trunk a command is associated with.
  *
  */
