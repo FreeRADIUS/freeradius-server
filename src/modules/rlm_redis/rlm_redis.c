@@ -377,6 +377,17 @@ static xlat_arg_parser_t const redis_lua_func_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+/** Cancellation of Redis Lua load / exec
+ *
+ */
+static void redis_lua_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_redis_lua_xlat_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, rlm_redis_lua_xlat_rctx_t);
+
+	RDEBUG2("Forcibly cancelling pending redis lua command");
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
 static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
 					   UNUSED request_t *request, UNUSED fr_value_box_list_t *in);
 
@@ -402,7 +413,7 @@ static xlat_action_t redis_lua_load_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 		return XLAT_ACTION_FAIL;
 	}
 
-	return unlang_xlat_yield(request, redis_lua_func_resume, NULL, 0, rctx);
+	return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 /** Callback to verify reply to SCRIPT LOAD
@@ -471,7 +482,7 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
-		return unlang_xlat_yield(request, redis_lua_func_resume, NULL, 0, rctx);
+		return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 
 	case REDIS_ASYNC_RCODE_ERROR:
 		PERROR("Server returned error");
@@ -502,7 +513,7 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
 			return XLAT_ACTION_FAIL;
 		}
 
-		return unlang_xlat_yield(request, redis_lua_load_resume, NULL, 0, rctx);
+		return unlang_xlat_yield(request, redis_lua_load_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 	}
 	default:
 		break;
@@ -612,7 +623,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, inst->coord_pair_reg,
 					"Failed enqueing lua command", XLAT_ACTION_FAIL)
 
-	return unlang_xlat_yield(request, redis_lua_func_resume, NULL, 0, rctx);
+	return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 /** Copies the function configuration into xlat function instance data

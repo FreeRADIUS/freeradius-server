@@ -643,7 +643,7 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 					     fr_redis_async_cmd_t **out_cmd, request_t *request,
 					     rlm_redis_ippool_thread_t *thread, uint8_t const *key, size_t key_len,
 					     char const *cmd, int cmd_len, fr_redis_command_complete_t complete,
-					     module_method_t resume, void *rctx)
+					     module_method_t resume, unlang_module_signal_t cancel, void *rctx)
 {
 	fr_redis_command_set_t	*cmds;
 	fr_redis_async_rcode_t	ret;
@@ -662,7 +662,7 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 					"Failed enqueuing Redis command", UNLANG_ACTION_FAIL)
 
 	if (out_cmds) *out_cmds = cmds;
-	return unlang_module_yield(request, resume, NULL, 0, rctx);
+	return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
 /** Callback to process results from allocation script
@@ -955,7 +955,7 @@ static void redis_ippool_release_results(request_t *request, UNUSED fr_redis_com
  */
 static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_redis_command_set_t *cmds,
 						       fr_redis_async_cmd_t *cmd, module_ctx_t const *mctx,
-						       module_method_t resume)
+						       module_method_t resume, unlang_module_signal_t cancel)
 {
 	switch (fr_redis_command_set_rcode(cmds)) {
 	case REDIS_ASYNC_RCODE_NO_SCRIPT:
@@ -965,7 +965,7 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 		 *	Re-enqueue the command set and it will run after the script load.
 		 */
 		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, NULL, 0, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
 
 	case REDIS_ASYNC_RCODE_MOVE:
 	{
@@ -979,7 +979,7 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, NULL, 0, mctx->rctx);
+		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
 
 	default:
 		break;
@@ -987,13 +987,22 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+static void mod_alloc_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_alloc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_alloc_rctx_t);
+
+	RDEBUG2("Forcibly cancelling Redis alloc command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
 static unlang_action_t CC_HINT(nonnull) mod_alloc_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
 							 request_t *request)
 {
 	redis_ippool_alloc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_alloc_rctx_t);
 
-	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx,
-				     mod_alloc_resume) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_alloc_resume,
+				     mod_alloc_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1087,7 +1096,17 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				     rctx->cmd_str, cmd_len, redis_ippool_allocate_results, mod_alloc_resume, rctx);
+				     rctx->cmd_str, cmd_len, redis_ippool_allocate_results, mod_alloc_resume,
+				     mod_alloc_cancel, rctx);
+}
+
+static void mod_update_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_update_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_update_rctx_t);
+
+	RDEBUG2("Forcibly cancelling Redis update command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_update_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
@@ -1097,8 +1116,8 @@ static unlang_action_t CC_HINT(nonnull) mod_update_resume(unlang_result_t *p_res
 	redis_ippool_update_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_update_rctx_t);
 	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
 
-	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx,
-				     mod_update_resume) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_update_resume,
+				     mod_alloc_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1212,7 +1231,17 @@ static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, mo
 
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				     rctx->cmd_str, cmd_len, redis_ippool_update_results, mod_update_resume, rctx);
+				     rctx->cmd_str, cmd_len, redis_ippool_update_results, mod_update_resume,
+				     mod_update_cancel, rctx);
+}
+
+static void mod_release_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_release_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_release_rctx_t);
+
+	RDEBUG2("Forcibly cancelling Redis release command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_release_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
@@ -1221,8 +1250,8 @@ static unlang_action_t CC_HINT(nonnull) mod_release_resume(unlang_result_t *p_re
 	redis_ippool_release_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_release_rctx_t);
 	redis_ippool_release_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_release_call_env_t);
 
-	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx,
-				     mod_release_resume) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_release_resume,
+				     mod_release_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1302,7 +1331,8 @@ static unlang_action_t CC_HINT(nonnull) mod_release(unlang_result_t *p_result, m
 
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
-				     rctx->cmd_str, cmd_len, redis_ippool_release_results, mod_release_resume, rctx);
+				     rctx->cmd_str, cmd_len, redis_ippool_release_results, mod_release_resume,
+				     mod_release_cancel, rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
