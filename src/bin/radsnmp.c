@@ -637,11 +637,10 @@ do { \
 	if (stop) return 0; \
 	errno = 0;\
 	_line = fgets(_buffer, sizeof(_buffer), stdin); \
-	if (_line) { \
-		_len = strlen(_line); \
-		if ((_len > 0) && (_line[_len - 1] == '\n')) _line[_len - 1] = '\0'; \
-		DEBUG2("read: %s", _line); \
-	} \
+	if (!_line) return 0; \
+	_len = strlen(_line); \
+	if ((_len > 0) && (_line[_len - 1] == '\n')) _line[_len - 1] = '\0'; \
+	DEBUG2("read: %s", _line); \
 } while (0)
 
 	/*
