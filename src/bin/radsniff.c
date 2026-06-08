@@ -1178,7 +1178,7 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 			TALLOC_FREE(request->capture_p->data);
 
 			/* Reset the pointer to the start of the circular buffer */
-			if (request->capture_p++ >=
+			if (++request->capture_p >=
 					(request->capture +
 					 NUM_ELEMENTS(request->capture))) {
 				request->capture_p = request->capture;
