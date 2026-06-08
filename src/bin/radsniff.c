@@ -626,7 +626,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	stats->interval.reused = ((long double) stats->interval.reused_total) / conf->stats.interval;
 	stats->interval.lost = ((long double) stats->interval.lost_total) / conf->stats.interval;
 
-	for (i = 1; i < RS_RETRANSMIT_MAX; i++) {
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
 		stats->interval.rt[i] = ((long double) stats->interval.rt_total[i]) / conf->stats.interval;
 	}
 }
