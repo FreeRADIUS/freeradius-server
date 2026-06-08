@@ -269,11 +269,9 @@ int main(int argc, char *argv[])
 
 		for (i = 1; i < argc; i++) {
 			ret = process_file(argv[i]);
-			if (ret < 0) break;
+			if (ret != EXIT_SUCCESS) break;
 		}
 	}
-
-	if (ret < 0) ret = 1; /* internal to Unix process return code */
 
 cleanup:
 	/*
