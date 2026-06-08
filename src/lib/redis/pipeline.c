@@ -499,6 +499,16 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 	}
 }
 
+/** Cancel a command set
+ *
+ * @param[in] cmds	Command set to cancel.
+ */
+void fr_redis_command_set_cancel(fr_redis_command_set_t *cmds)
+{
+	if (cmds->treq) trunk_request_signal_cancel(cmds->treq);
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
+}
+
 /** Convert a MOVED / ASK reply into an address and port
  *
  */
