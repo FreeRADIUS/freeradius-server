@@ -664,10 +664,7 @@ static fr_client_t *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, 
 	 *	Prefer local clients.
 	 */
 	if (inst->clients) {
-		fr_client_t *client;
-
-		client = client_find(inst->clients, ipaddr, ipproto);
-		if (client) return client;
+		return client_find(inst->clients, ipaddr, ipproto);
 	}
 
 	return inst->default_client;
