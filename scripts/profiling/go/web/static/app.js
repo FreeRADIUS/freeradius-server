@@ -1,7 +1,8 @@
 // app.js wires the page to the Go WASM bridge exported as globalThis.analyzeCest.
 //
 // Flow: load cest-analyzer.wasm -> read selected files as text with FileReader
-// -> call analyzeCest(runs, patterns, topN) -> render { text, markdown }.
+// -> call analyzeCest(runs, patterns, topN) -> render the Tables and JSON views
+// from { json }, and keep { markdown } for the Download Markdown button.
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,7 +13,6 @@ const runRowTemplate = $("run-row");
 const patternsInput = $("patterns");
 const topnInput = $("topn");
 const outputSection = $("output");
-const reportPre = $("report");
 const downloadBtn = $("download");
 const downloadJsonBtn = $("download-json");
 const errorP = $("error");
@@ -20,7 +20,6 @@ const metricSelect = $("metric");
 const tablesContainer = $("tables");
 const jsonPre = $("json");
 const viewTabs = Array.from(document.querySelectorAll(".view-tab"));
-const reportHint = $("report-hint");
 const tablesHint = $("tables-hint");
 const jsonHint = $("json-hint");
 
@@ -138,7 +137,6 @@ async function run() {
       return;
     }
 
-    reportPre.textContent = result.text;
     lastMarkdown = result.markdown;
     lastJsonText = result.json || "";
     lastReport = lastJsonText ? JSON.parse(lastJsonText) : null;
@@ -158,12 +156,12 @@ runBtn.addEventListener("click", run);
 addRunBtn.addEventListener("click", () => addRunRow());
 
 // --- View switching --------------------------------------------------------
-// The three views (Report, Tables, JSON) live in #view-report / #view-tables /
-// #view-json. Clicking a tab shows its view and hides the others.
+// The two views (Tables, JSON) live in #view-tables / #view-json. Clicking a
+// tab shows its view and hides the other.
 
 function showView(name) {
   viewTabs.forEach((t) => t.classList.toggle("active", t.dataset.view === name));
-  ["report", "tables", "json"].forEach((v) => {
+  ["tables", "json"].forEach((v) => {
     $(`view-${v}`).hidden = v !== name;
   });
   updateScrollHints(); // now that the chosen view is visible, it can be measured
@@ -190,7 +188,7 @@ function el(tag, opts = {}, children = []) {
 }
 
 function metricLabel() {
-  return metricSelect.value === "all" ? "All components" : metricSelect.value;
+  return metricSelect.value === "all" ? "All Stats" : metricSelect.value;
 }
 
 // renderTables redraws the Tables view for the current metric selection.
@@ -290,8 +288,8 @@ function singleMetricTable(runs, key, metric) {
 function table(headRow, bodyRows) {
   // Wrap the table so a wide one scrolls within its own box rather than
   // pushing the whole page sideways.
-  return el("div", { className: "scroll-x" }, [
-    el("table", { className: "data" }, [
+  return el("div", { className: "tables-scroll" }, [
+    el("table", { className: "tables-data" }, [
       el("thead", {}, [headRow]),
       el("tbody", {}, bodyRows),
     ]),
@@ -310,9 +308,8 @@ function overflowsX(node) {
 }
 
 function updateScrollHints() {
-  reportHint.hidden = !overflowsX(reportPre);
   jsonHint.hidden = !overflowsX(jsonPre);
-  const tableScrolls = Array.from(tablesContainer.querySelectorAll(".scroll-x"));
+  const tableScrolls = Array.from(tablesContainer.querySelectorAll(".tables-scroll"));
   tablesHint.hidden = !tableScrolls.some(overflowsX);
 }
 
