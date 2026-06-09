@@ -2,8 +2,14 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
+	* Add $VALUE{filename} which reads a value from one line of a
+	  file.
+	* Add $FILE{filename} which reads a value from the entire contents
+	  of a file.
 
-	Bug fixes
+	Bug fixese
+	* Skip PSK checks when OpenSSL does not support PSK.
+	  Fixes #5874.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
