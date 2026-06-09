@@ -846,6 +846,40 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it_insert_resume(unlang_result
 	return mod_cache_it_insert_results(p_result, &tmp, request, inst, rctx->handle, rctx->entry);
 }
 
+static unlang_action_t mod_cache_it_ttl_results(unlang_result_t *p_result, unlang_result_t *tmp, request_t *request,
+						rlm_cache_t const *inst, rlm_cache_handle_t *handle, cache_rctx_t *rctx)
+{
+	switch (tmp->rcode) {
+	case RLM_MODULE_FAIL:
+		p_result->rcode = RLM_MODULE_FAIL;
+		break;
+
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_OK:
+		if (p_result->rcode != RLM_MODULE_UPDATED) p_result->rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	return mod_cache_it_finish(request, inst, handle, rctx->entry);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_cache_it_ttl_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+								request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	unlang_result_t		tmp;
+
+	if (cache_set_ttl_resume(&tmp, request, inst, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_cache_it_ttl_resume, NULL, 0, rctx);
+	}
+
+	return mod_cache_it_ttl_results(p_result, &tmp, request, inst, rctx->handle, rctx);
+}
+
 static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *request, rlm_cache_t const *inst,
 					rlm_cache_handle_t *handle, cache_rctx_t *rctx)
 {
@@ -864,20 +898,12 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 
 		rctx->entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), rctx->ttl);
 
-		cache_set_ttl(&tmp, &driver_rctx, inst, request, &handle, rctx->entry);
-		switch (tmp.rcode) {
-		case RLM_MODULE_FAIL:
-			p_result->rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_OK:
-			if (p_result->rcode != RLM_MODULE_UPDATED) p_result->rcode = RLM_MODULE_OK;
-			goto finish;
-
-		default:
-			fr_assert(0);
+		if (cache_set_ttl(&tmp, &driver_rctx, inst, request, &handle, rctx->entry) == UNLANG_ACTION_YIELD)
+		{
+			return cache_module_yield(request, handle, key, rctx->entry, &rctx->ttl,
+						  mod_cache_it_ttl_resume, NULL, driver_rctx, ctx);
 		}
+		return mod_cache_it_ttl_results(p_result, &tmp, request, inst, handle, rctx);
 	}
 
 	/*
@@ -891,7 +917,7 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 
 		if (cache_insert(&tmp, &driver_rctx, inst, request, &handle, key,
 				 env->maps, rctx->ttl) == UNLANG_ACTION_YIELD) {
-			cache_module_yield(request, handle, key, NULL, &rctx->ttl,
+			cache_module_yield(request, handle, key, rctx->entry, &rctx->ttl,
 					   mod_cache_it_insert_resume, NULL, driver_rctx, ctx);
 			return UNLANG_ACTION_YIELD;
 
@@ -899,7 +925,6 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 		return mod_cache_it_insert_results(p_result, &tmp, request, inst, handle, rctx->entry);
 	}
 
-finish:
 	return mod_cache_it_finish(request, inst, handle, rctx->entry);
 }
 
