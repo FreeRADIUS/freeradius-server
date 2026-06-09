@@ -46,6 +46,8 @@ typedef struct {
 
 	fr_redis_cluster_t	*cluster;
 
+	module_instance_t const	*mi;				//!< Module instance.
+
 	fr_coord_reg_t		*coord_reg;			//!< Coordinator registration.
 	fr_coord_pair_reg_t	*coord_pair_reg;		//!< Coord pair registration.
 } rlm_cache_redis_t;
@@ -55,6 +57,15 @@ typedef struct {
 	fr_redis_cluster_thread_t	*rtcluster;		//!< Per thread Redis cluster.
 	fr_coord_worker_t		*cw;			//!< Coord-worker for fetching cluster map.
 } rlm_cache_redis_thread_t;
+
+typedef struct {
+	fr_value_box_t const		*key;
+	fr_redis_command_set_t		*cmds;
+	char				**cmd_str;
+	fr_redis_async_cmd_t		*cmd;
+	rlm_cache_entry_t		*entry;
+	cache_status_t			rcode;
+} rlm_cache_redis_rctx_t;
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_redis;
@@ -127,6 +138,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
+	inst->mi = mctx->mi;
 	inst->conf.log_prefix = talloc_asprintf(inst, "rlm_cache (%s)", mctx->mi->parent->name);
 
 	/*
@@ -232,62 +244,85 @@ static void cache_entry_free(rlm_cache_entry_t *c)
 	talloc_free(c);
 }
 
-/** Locate a cache entry in redis
+static int cache_redis_rctx_free(rlm_cache_redis_rctx_t *rctx)
+{
+	size_t i;
+	for (i = 0; i < talloc_array_length(rctx->cmd_str); i++) {
+		if (!rctx->cmd_str[i]) continue;
+		redisFreeCommand(rctx->cmd_str[i]);
+	}
+	return 0;
+}
+
+/** Process the results of Redis cache commands
  *
- * @copydetails cache_entry_find_t
+ * Initiating a cluster remap and query redirection if needed.
+ *
  */
-static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rctx_out,
-				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
+static cache_status_t cache_redis_results(request_t *request, rlm_cache_redis_t *inst, fr_redis_command_set_t *cmds,
+					  fr_redis_async_cmd_t *cmd, cache_status_t rcode)
+{
+	switch (fr_redis_command_set_rcode(cmds)) {
+	case REDIS_ASYNC_RCODE_SUCCESS:
+		return rcode;
+
+	case REDIS_ASYNC_RCODE_MOVE:
+	{
+		rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data,
+										rlm_cache_redis_thread_t);
+
+		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+										inst->coord_pair_reg, false);
+	}
+		FALL_THROUGH;
+
+	case REDIS_ASYNC_RCODE_ASK:
+		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return CACHE_ERROR;
+		return CACHE_YIELD;
+
+	case REDIS_ASYNC_RCODE_ERROR:
+		RPERROR("Server returned error");
+		return CACHE_ERROR;
+
+	default:
+		return CACHE_ERROR;
+	}
+}
+
+static cache_status_t cache_entry_find_resume(rlm_cache_entry_t **out, UNUSED rlm_cache_config_t const *config,
+					      void *instance, UNUSED request_t *request,
+					      UNUSED void *handle, void *rctx)
 {
 	rlm_cache_redis_t		*driver = instance;
+	rlm_cache_redis_rctx_t		*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	*out = cache_rctx->entry;
+	return cache_redis_results(request, driver, cache_rctx->cmds, cache_rctx->cmd, cache_rctx->rcode);
+}
+
+static void cache_entry_find_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_cache_redis_rctx_t		*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
 	size_t				i;
-
-	fr_redis_cluster_state_t	state;
-	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
-	redisReply			*reply = NULL;
-	int				s_ret;
-
-	map_list_t			head;
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
+	map_list_t			head;
 	rlm_cache_entry_t		*c;
-
-	map_list_init(&head);
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)key->vb_strvalue, key->vb_length, false);
-	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
-	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
-		/*
-		 *	Grab all the data for this hash, should return an array
-		 *	of alternating keys/values which we then convert into maps.
-		 */
-		RDEBUG3("LRANGE %pV 0 -1", key);
-		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key->vb_strvalue, key->vb_length);
-		status = fr_redis_command_status(conn, reply);
-	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
-		RERROR("Failed retrieving entry for key \"%pV\"", key);
-
-	error:
-		fr_redis_reply_free(&reply);
-		return CACHE_ERROR;
-	}
-
-	if (!fr_cond_assert(reply)) goto error;
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		goto error;
+	error:
+		cache_rctx->rcode = CACHE_ERROR;
+		return;
 	}
 
 	RDEBUG3("Entry contains %zu elements", reply->elements);
 
 	if (reply->elements == 0) {
-		fr_redis_reply_free(&reply);
-		return CACHE_MISS;
+		cache_rctx->rcode = CACHE_MISS;
+		return;
 	}
 
 	if (reply->elements % 3) {
@@ -296,6 +331,8 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rc
 			reply->elements);
 		goto error;
 	}
+
+	map_list_init(&head);
 
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	/*
@@ -323,11 +360,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rc
 		if (fr_redis_reply_to_map(c, &head, request,
 					  reply->element[i], reply->element[i + 1], reply->element[i + 2]) < 0) {
 			talloc_free(c);
-			fr_redis_reply_free(&reply);
-			return CACHE_ERROR;
+			cache_rctx->rcode = CACHE_ERROR;
+			return;
 		}
 	}
-	fr_redis_reply_free(&reply);
 
 	/*
 	 *	Pull out the cache created date
@@ -353,12 +389,50 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rc
 		talloc_free(map);
 	}
 
-	if (unlikely(fr_value_box_copy(c, &c->key, key) < 0)) goto error;
+	if (unlikely(fr_value_box_copy(c, &c->key, cache_rctx->key) < 0)) goto error;
 
 	map_list_move(&c->maps, &head);
-	*out = c;
+	cache_rctx->entry = c;
+}
 
-	return CACHE_OK;
+/** Locate a cache entry in redis
+ *
+ * @copydetails cache_entry_find_t
+ */
+static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rctx_out,
+				       UNUSED rlm_cache_config_t const *config, void *instance,
+				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
+{
+	rlm_cache_redis_t		*driver = instance;
+	rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(driver->mi)->data, rlm_cache_redis_thread_t);
+	rlm_cache_redis_rctx_t		*rctx;
+	fr_redis_command_set_t		*cmds;
+	int				cmd_len;
+	fr_redis_async_rcode_t		ret;
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_cache_redis_rctx_t));
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	rctx->key = key;
+	rctx->cmd_str = talloc_zero_array(rctx, char *, 1);
+	talloc_set_destructor(rctx, cache_redis_rctx_free);
+
+	RDEBUG3("LRANGE %pV 0 -1", key);
+	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "LRANGE %b 0 -1", key->vb_strvalue, key->vb_length);
+	if (cmd_len < 0) {
+		RERROR("Failed formatting redis command");
+		talloc_free(rctx);
+		return CACHE_ERROR;
+	}
+	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_find_results, rctx);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
+					     key->vb_length, cmds, false, NULL);
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed to enqueue Redis cache find commands", CACHE_ERROR)
+
+	*rctx_out = rctx;
+	return CACHE_YIELD;
 }
 
 
@@ -602,6 +676,7 @@ rlm_cache_driver_t rlm_cache_redis = {
 	},
 	.free		= cache_entry_free,
 	.find		= cache_entry_find,
+	.find_resume	= cache_entry_find_resume,
 	.insert		= cache_entry_insert,
 	.expire		= cache_entry_expire,
 };
