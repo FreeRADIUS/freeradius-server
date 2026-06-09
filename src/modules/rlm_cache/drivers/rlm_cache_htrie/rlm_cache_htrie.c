@@ -248,7 +248,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED void **rc
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle,
 					 fr_value_box_t const *key)
 {
@@ -297,7 +297,7 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, rlm_cache_confi
 	 *	Allow overwriting
 	 */
 	if (fr_htrie_insert(mutable->cache, c) != 0) {
-		status = cache_entry_expire(config, instance, request, handle, &c->key);
+		status = cache_entry_expire(NULL, config, instance, request, handle, &c->key);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
 		if (fr_htrie_insert(mutable->cache, c) != 0) {

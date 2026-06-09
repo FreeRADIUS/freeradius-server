@@ -545,7 +545,7 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
+static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_redis_t		*driver = instance;

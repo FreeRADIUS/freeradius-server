@@ -248,8 +248,9 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					 request_t *request, void *handle, fr_value_box_t const *key)
+static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config,
+					 UNUSED void *instance, request_t *request, void *handle,
+					 fr_value_box_t const *key)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 

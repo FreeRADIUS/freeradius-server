@@ -205,6 +205,7 @@ typedef cache_status_t	(*cache_entry_insert_resume_t)(rlm_cache_entry_t **out, r
  *
  * @note This callback is not optional.
  *
+ * @param[out] rctx_out Where to write a pointer to a resume context for async drivers.
  * @param[in] config for this instance of the rlm_cache module.
  * @param[in] instance Driver specific instance data.
  * @param[in] request The current request.
@@ -216,8 +217,9 @@ typedef cache_status_t	(*cache_entry_insert_resume_t)(rlm_cache_entry_t **out, r
  *	- #CACHE_ERROR - If the entry couldn't be expired.
  *	- #CACHE_OK - If the entry was expired.
  *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
+ *	- #CACHE_YIELD - The driver has initiated an async expire and yielded.
  */
-typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *instance,
+typedef cache_status_t	(*cache_entry_expire_t)(void **rctx_out, rlm_cache_config_t const *config, void *instance,
 						request_t *request, void *handle,
 						fr_value_box_t const *key);
 

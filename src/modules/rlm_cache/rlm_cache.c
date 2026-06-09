@@ -40,7 +40,7 @@ extern module_rlm_t rlm_cache;
 int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
-static unlang_action_t cache_expire(unlang_result_t *p_result, rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle, fr_value_box_t const *key);
+static unlang_action_t cache_expire(unlang_result_t *p_result, void **rctx_out, rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle, fr_value_box_t const *key);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
@@ -326,6 +326,7 @@ static inline unlang_action_t cache_find_results(unlang_result_t *p_result, rlm_
 	 */
 	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
 		unlang_result_t tmp;
+		void *driver_rctx;
 
 		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
 			key,
@@ -334,7 +335,7 @@ static inline unlang_action_t cache_find_results(unlang_result_t *p_result, rlm_
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		cache_expire(&tmp, inst, request, handle, key);
+		cache_expire(&tmp, &driver_rctx, inst, request, handle, key);
 		cache_free(inst, &c);
 		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -435,12 +436,12 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
  *	- #RLM_MODULE_NOTFOUND if no entry existed.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static unlang_action_t cache_expire(unlang_result_t *p_result,
+static unlang_action_t cache_expire(unlang_result_t *p_result, void **rctx_out,
 				    rlm_cache_t const *inst, request_t *request,
 				    rlm_cache_handle_t **handle, fr_value_box_t const *key)
 {
 	RDEBUG2("Expiring cache entry");
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_submodule->data, request, *handle, key)) {
+	for (;;) switch (inst->driver->expire(rctx_out, &inst->config, inst->driver_submodule->data, request, *handle, key)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
 		FALL_THROUGH;
@@ -996,7 +997,7 @@ static unlang_action_t mod_cache_it_expire(unlang_result_t *p_result, request_t 
 			unlang_result_t tmp;
 
 			fr_assert(!ctx->set_ttl);
-			cache_expire(&tmp, inst, request, &handle, key);
+			cache_expire(&tmp, &driver_rctx, inst, request, &handle, key);
 			switch (tmp.rcode) {
 			case RLM_MODULE_FAIL:
 				p_result->rcode = RLM_MODULE_FAIL;
@@ -1656,7 +1657,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 	if (expire && (p_result->rcode == RLM_MODULE_OK)) {
 		RDEBUG3("Expiring cache entry");
 
-		cache_expire(p_result, inst, request, &handle, key);
+		cache_expire(p_result, &driver_rctx, inst, request, &handle, key);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 		goto insert_new;
 	}
@@ -1856,6 +1857,8 @@ static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_r
 							    rlm_cache_t const *inst, rlm_cache_handle_t *handle,
 							    fr_value_box_t const *key, rlm_cache_entry_t *entry)
 {
+	void *driver_rctx;
+
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
@@ -1864,7 +1867,7 @@ static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_r
 		goto finish;
 	}
 
-	cache_expire(p_result, inst, request, &handle, key);
+	cache_expire(p_result, &driver_rctx, inst, request, &handle, key);
 
 finish:
 	cache_unref(request, inst, entry, handle);
