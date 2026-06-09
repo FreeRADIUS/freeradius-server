@@ -28,7 +28,6 @@
 
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>
-#include <freeradius-devel/redis/cluster.h>
 #include <freeradius-devel/redis/cluster_async.h>
 #include <freeradius-devel/io/coord_pair.h>
 
@@ -43,8 +42,6 @@ typedef struct {
 
 	tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
 	tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
-
-	fr_redis_cluster_t	*cluster;
 
 	module_instance_t const	*mi;				//!< Module instance.
 
@@ -130,13 +127,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	char				buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
-
-	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf,
-						 buffer, "modules.cache.pool", NULL);
-	if (!inst->cluster) {
-		ERROR("Cluster failure");
-		return -1;
-	}
 
 	inst->mi = mctx->mi;
 	inst->conf.log_prefix = talloc_asprintf(inst, "rlm_cache (%s)", mctx->mi->parent->name);
