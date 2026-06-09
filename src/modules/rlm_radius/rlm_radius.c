@@ -98,7 +98,7 @@ static conf_parser_t disconnect_config[] = {
 };
 
 static conf_parser_t const transport_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_t, secret) },
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED | CONF_FLAG_SECRET, rlm_radius_t, secret) },
 
 	CONF_PARSER_TERMINATOR
 };

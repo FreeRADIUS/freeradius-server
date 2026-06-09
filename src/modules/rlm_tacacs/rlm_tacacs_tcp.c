@@ -174,7 +174,7 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET("port", rlm_tacacs_tcp_t, dst_port) },
 
-	{ FR_CONF_OFFSET("secret", rlm_tacacs_tcp_t, secret) }, /* can be NULL */
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, rlm_tacacs_tcp_t, secret) }, /* can be NULL */
 
 	{ FR_CONF_OFFSET("interface", rlm_tacacs_tcp_t, interface) },
 
