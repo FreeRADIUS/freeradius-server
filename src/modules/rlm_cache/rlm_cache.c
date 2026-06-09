@@ -429,12 +429,36 @@ static unlang_action_t cache_find(unlang_result_t *p_result, rlm_cache_entry_t *
 	return cache_find_results(p_result, out, inst, request, handle, key, c);
 }
 
+/** Resume callback after async cache expire
+ */
+static unlang_action_t cache_expire_resume(unlang_result_t *p_result, rlm_cache_t const *inst, request_t *request,
+					   rlm_cache_handle_t **handle, void *rctx)
+{
+	cache_status_t		ret;
+
+	ret = inst->driver->expire_resume(&inst->config, inst->driver_submodule->data, request, handle, rctx);
+	switch (ret) {
+	case CACHE_OK:
+		RETURN_UNLANG_OK;
+
+	case CACHE_MISS:
+		RETURN_UNLANG_NOTFOUND;
+
+	case CACHE_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	default:
+		RETURN_UNLANG_FAIL;
+	}
+}
+
 /** Expire a cache entry (removing it from the datastore)
  *
  * @return
  *	- #RLM_MODULE_OK on success.
  *	- #RLM_MODULE_NOTFOUND if no entry existed.
  *	- #RLM_MODULE_FAIL on failure.
+ *	- #UNLANG_ACTION_YIELD if the driver yielded.
  */
 static unlang_action_t cache_expire(unlang_result_t *p_result, void **rctx_out,
 				    rlm_cache_t const *inst, request_t *request,
@@ -454,6 +478,9 @@ static unlang_action_t cache_expire(unlang_result_t *p_result, void **rctx_out,
 
 	case CACHE_MISS:
 		RETURN_UNLANG_NOTFOUND;
+
+	case CACHE_YIELD:
+		return UNLANG_ACTION_YIELD;
 	}
 }
 
@@ -1851,6 +1878,20 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	return mod_method_store_find_results(p_result, request, inst, handle, env, entry);
 }
 
+static unlang_action_t mod_method_clear_expire_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+						      request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (cache_expire_resume(p_result, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_clear_expire_resume, NULL, 0, rctx);
+	}
+
+	cache_unref(request, inst, rctx->entry, rctx->handle);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 /** Common result handdling after clear method does a find
  */
 static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_result, request_t *request,
@@ -1867,7 +1908,10 @@ static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_r
 		goto finish;
 	}
 
-	cache_expire(p_result, &driver_rctx, inst, request, &handle, key);
+	if (cache_expire(p_result, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, handle, key, entry, &fr_time_delta_wrap(0),
+					   mod_method_clear_expire_resume, NULL, driver_rctx, NULL);
+	}
 
 finish:
 	cache_unref(request, inst, entry, handle);
