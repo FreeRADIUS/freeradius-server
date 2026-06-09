@@ -5740,11 +5740,16 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 					depth++;
 					continue;
 
-				} else if ((p[1] == 'E') &&
-					   (p[2] == 'N') &&
-					   (p[3] == 'V') &&
-					   (p[4] == '{')) {
-					p += 5;
+				} else if ((p[1] >= 'A') && (p[1] <= 'Z')) {
+					p++;
+					while ((*p >= 'A') && (*p <= 'Z')) {
+						p++;
+					}
+
+					if (*p != '{') {
+						return_P("Missing '{'");
+					}
+
 					depth++;
 					continue;
 
