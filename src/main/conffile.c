@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+#include <fcntl.h>
 #include <ctype.h>
 
 bool check_config = false;
@@ -1182,6 +1183,145 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 
 
 /*
+ *	Open and read a file.
+ *
+ *	If raw is true, the entire contents of the file are copied into
+ *	the output buffer.  Otherwise only the first line is copied, and
+ *	a multi-line file is treated as an error.
+ */
+static int cf_expand_file(char const *cf, int *lineno,
+			  char **p_p, char const **ptr_p,
+			  char *output, size_t outsize, bool raw)
+{
+	int		fd;
+	size_t		room;
+	ssize_t		len;
+	char		*p, *next;
+	char const	*ptr;
+	char		name[PATH_MAX];
+
+	/*
+	 *	Note that we do NOT recursively expand the value.  It has to be a hard-coded string.
+	 *
+	 *	We do NOT do any sanity checks on the value.  i.e. filenames beginning with '/' are allowed,
+	 *	as are files with "../../".  The value here comes from the configuration files, and only the
+	 *	administrator has write access to them.
+	 */
+	strlcpy(name, cf, sizeof(name));
+	p = strrchr(name, '/');
+	if (p) {
+		p++;
+	} else {
+		p = name;
+	}
+
+	ptr = *ptr_p;
+
+	/*
+	 *	Look for trailing '}', and log a
+	 *	warning for anything that doesn't match,
+	 *	and exit with a fatal error.
+	 */
+	next = strchr(ptr, '}');
+	if (next == NULL) {
+		*p = '\0';
+		ERROR("%s[%d]: File expansion missing }",
+		      cf, *lineno);
+		return -1;
+	}
+
+	/*
+	 *	Can't really happen because input lines are
+	 *	capped at 8k, which is sizeof(name)
+	 */
+	if ((next - ptr) >= (name + sizeof(name) - p)) {
+		ERROR("%s[%d]: File name is too large",
+		      cf, *lineno);
+		return -1;
+	}
+
+	memcpy(p, ptr, next - ptr);
+	p[next - ptr] = '\0';
+
+	fd = open(name, O_RDONLY);
+	if (fd < 0) {
+		ERROR("%s[%d]: Failed opening %s: %s",
+		      cf, *lineno, name, fr_syserror(errno));
+		return -1;
+	}
+
+	p = *p_p;
+	room = (output + outsize) - p;
+	rad_assert(room > 0);
+
+	/*
+	 *	Read the raw data.
+	 */
+	len = read(fd, p, room);
+	if (len < 0) {
+		ERROR("%s[%d]: Failed reading %s: %s",
+		      cf, *lineno, name, fr_syserror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	if (!len) {
+		ERROR("%s[%d]: Failed reading %s: the file is empty",
+		      cf, *lineno, name);
+		return -1;
+	}
+
+	/*
+	 *	We don't know whether or not it was
+	 *	truncated, so we just error out.
+	 */
+	if ((size_t) len >= room) {
+		ERROR("%s[%d]: Too much data in %s: did not read the entire file",
+		      cf, *lineno, name);
+		return -1;
+	}
+
+	/*
+	 *	If we're not reading the raw file, return only the first line.
+	 */
+	if (!raw) {
+		char *q, *end = p + len;
+
+		while (p < end) {
+			if (*p >= ' ') {
+				p++;
+				continue;
+			}
+
+			break;
+		}
+
+		/*
+		 *	Strip trailing CR/LF.
+		 */
+		for (q = p; q < end; q++) {
+			if (*q >= ' ') break;
+
+			*q = '\0';
+		}
+
+		if (q != end) {
+			ERROR("%s[%d]: Too much data in %s: expected one line of text, found multiple lines in the file",
+			      cf, *lineno, name);
+			return -1;
+		}
+	} else {
+		p += len;
+	}
+
+	*ptr_p = next + 1;
+	*p_p = p;
+
+	return 0;
+}
+
+/*
  *	Expand the variables in an input string.
  */
 static char const *cf_expand_variables(char const *cf, int *lineno,
@@ -1425,6 +1565,16 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			strcpy(p, env);
 			p += strlen(p);
 			ptr = end + 1;
+
+		} else if (strncmp(ptr, "$VALUE{", 7) == 0) {
+			ptr += 7;
+
+			if (cf_expand_file(cf, lineno, &p, &ptr, output, outsize, false) < 0) return NULL;
+
+		} else if (strncmp(ptr, "$FILE{", 6) == 0) {
+			ptr += 6;
+
+			if (cf_expand_file(cf, lineno, &p, &ptr, output, outsize, true) < 0) return NULL;
 
 		} else {
 			/*

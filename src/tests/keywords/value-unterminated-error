@@ -1,0 +1,6 @@
+#
+#  $VALUE{...} requires a closing "}".  Missing one is an error.
+#
+update request {
+	Tmp-String-0 := "$VALUE{value-data.md"                            # ERROR
+}

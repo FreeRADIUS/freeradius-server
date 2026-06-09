@@ -1,0 +1,7 @@
+#
+#  $VALUE{path} accepts only a single line of text.  A file that
+#  contains multiple non-blank lines is an error.
+#
+update request {
+	Tmp-String-0 := "$VALUE{value-multiline.md}"                      # ERROR
+}

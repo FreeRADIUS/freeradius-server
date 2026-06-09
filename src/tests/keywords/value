@@ -1,0 +1,14 @@
+#
+#  $VALUE{path} reads a single line from the named file at config
+#  parse time and substitutes its contents into the input stream.
+#
+update request {
+	reply:Filter-Id := 'filter'
+	Tmp-String-0 := "$VALUE{value-data.md}"
+}
+
+if (&Tmp-String-0 != 'hello-value') {
+	update reply {
+		Filter-Id += 'fail'
+	}
+}

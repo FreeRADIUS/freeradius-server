@@ -1,0 +1,6 @@
+#
+#  $VALUE{path} fails when the file does not exist.
+#
+update request {
+	Tmp-String-0 := "$VALUE{this-file-does-not-exist.md}"             # ERROR
+}

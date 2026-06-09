@@ -1,0 +1,6 @@
+#
+#  $VALUE{path} fails when the file is empty.
+#
+update request {
+	Tmp-String-0 := "$VALUE{value-empty.md}"                          # ERROR
+}
