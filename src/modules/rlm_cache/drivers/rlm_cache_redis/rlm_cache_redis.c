@@ -435,6 +435,29 @@ static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rc
 	return CACHE_YIELD;
 }
 
+static cache_status_t cache_entry_insert_resume(rlm_cache_entry_t **out, UNUSED rlm_cache_config_t const *config,
+						void *instance, UNUSED request_t *request,
+						UNUSED void *handle, void *rctx)
+{
+	rlm_cache_redis_t		*driver = instance;
+	rlm_cache_redis_rctx_t		*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	*out = cache_rctx->entry;
+
+	return cache_redis_results(request, driver, cache_rctx->cmds, cache_rctx->cmd, cache_rctx->rcode);
+}
+
+static void cache_entry_insert_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_cache_redis_rctx_t		*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	RDEBUG3("Command results");
+	RINDENT();
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+	REXDENT();
+
+	cache_rctx->rcode = CACHE_OK;
+}
 
 /** Insert a new entry into the data store
  *
@@ -443,26 +466,23 @@ static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rc
 static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
-	rlm_cache_redis_t	*driver = instance;
+	rlm_cache_redis_t		*driver = instance;
+	rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(driver->mi)->data, rlm_cache_redis_thread_t);
+	rlm_cache_redis_rctx_t		*rctx;
+	fr_redis_command_set_t		*cmds;
+	int				cmd_len;
+	fr_redis_async_rcode_t		ret;
+
 	TALLOC_CTX		*pool;
 
 	map_t			*map = NULL;
-
-	fr_redis_conn_t		*conn;
-	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
-	redisReply		*reply = NULL;
-	int			s_ret;
 
 	static char const	command[] = "RPUSH";
 	char const		**argv;
 	size_t			*argv_len;
 	char const		**argv_p;
 	size_t			*argv_len_p;
-
-	unsigned int		pipelined = 0;	/* How many commands pending in the pipeline */
-	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
-	size_t			reply_cnt = 0, i;
+	size_t			i;
 
 	int			cnt;
 
@@ -479,6 +499,9 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 					.lhs	= driver->created_attr,
 					.rhs	= &created_value,
 				};
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_cache_redis_rctx_t));
+	rctx->entry = UNCONST(rlm_cache_entry_t *, c);
 
 	/*
 	 *	Encode the entry created date
@@ -504,7 +527,7 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 	 *
 	 * @todo We should really calculate this using some sort of moving average.
 	 */
-	pool = talloc_pool(request, 1024);
+	pool = talloc_pool(rctx, 1024);
 	if (!pool) return CACHE_ERROR;
 
 	argv_p = argv = talloc_array(pool, char const *, (cnt * 3) + 2);	/* pair = 3 + cmd + key */
@@ -521,14 +544,14 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 	 */
 	if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, &created) < 0) {
 		REDEBUG("Failed encoding map as Redis K/V pair");
-		talloc_free(pool);
+		talloc_free(rctx);
 		return CACHE_ERROR;
 	}
 	argv_p += 3;
 	argv_len_p += 3;
 	if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, &expires) < 0) {
 		REDEBUG("Failed encoding map as Redis K/V pair");
-		talloc_free(pool);
+		talloc_free(rctx);
 		return CACHE_ERROR;
 	}
 	argv_p += 3;
@@ -536,83 +559,70 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 	while ((map = map_list_next(&c->maps, map))) {
 		if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, map) < 0) {
 			REDEBUG("Failed encoding map as Redis K/V pair");
-			talloc_free(pool);
+			talloc_free(rctx);
 			return CACHE_ERROR;
 		}
 		argv_p += 3;
 		argv_len_p += 3;
 	}
 
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	rctx->key = &c->key;
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, 3));
+	talloc_set_destructor(rctx, cache_redis_rctx_free);
+
 	RDEBUG3("Pipelining commands");
 
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)c->key.vb_strvalue, c->key.vb_length, false);
-	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
-	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
-		/*
-		 *	Start the transaction, as we need to set an expiry time too.
-		 */
-		if (fr_unix_time_ispos(c->expires)) {
-			RDEBUG3("MULTI");
-			if (redisAppendCommand(conn->handle, "MULTI") != REDIS_OK) {
-			append_error:
-				REXDENT();
-				RERROR("Failed appending Redis command to output buffer: %s", conn->handle->errstr);
-				talloc_free(pool);
-				return CACHE_ERROR;
-			}
-			pipelined++;
-		}
-
-		RDEBUG3("DEL \"%pV\"", &c->key);
-
-		if (redisAppendCommand(conn->handle, "DEL %b", (uint8_t const *)c->key.vb_strvalue, c->key.vb_length) != REDIS_OK) goto append_error;
-		pipelined++;
-
-		if (RDEBUG_ENABLED3) {
-			RDEBUG3("argv command");
-			RINDENT();
-			for (i = 0; i < talloc_array_length(argv); i++) {
-				RDEBUG3("%pV", fr_box_strvalue_len(argv[i], argv_len[i]));
-			}
-			REXDENT();
-		}
-		redisAppendCommandArgv(conn->handle, talloc_array_length(argv), argv, argv_len);
-		pipelined++;
-
-		/*
-		 *	Set the expiry time and close out the transaction.
-		 */
-		if (fr_unix_time_ispos(c->expires)) {
-			RDEBUG3("EXPIREAT \"%pV\" %" PRIu64,
-				&c->key,
-				fr_unix_time_to_sec(c->expires));
-			if (redisAppendCommand(conn->handle, "EXPIREAT %b %" PRIu64, (uint8_t const *)c->key.vb_strvalue, (size_t)c->key.vb_length,
-					       fr_unix_time_to_sec(c->expires)) != REDIS_OK) goto append_error;
-			pipelined++;
-			RDEBUG3("EXEC");
-			if (redisAppendCommand(conn->handle, "EXEC") != REDIS_OK) goto append_error;
-			pipelined++;
-		}
-
-		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, NUM_ELEMENTS(replies),
-						     conn);
-		reply = replies[0];
+	if (fr_unix_time_ispos(c->expires)) {
+		RDEBUG3("MULTI");
+		fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
 	}
-	talloc_free(pool);
 
-	if (s_ret != REDIS_RCODE_SUCCESS) {
-		RPERROR("Failed inserting entry");
+	RDEBUG3("DEL \"%pV\"", &c->key);
+	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "DEL %b", (uint8_t const *)c->key.vb_strvalue, c->key.vb_length);
+	if (cmd_len < 0) {
+	format_error:
+		talloc_free(rctx);
+		RERROR("Failed formatting redis command");
 		return CACHE_ERROR;
 	}
+	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, NULL, NULL);
 
-	RDEBUG3("Command results");
-	RINDENT();
-	if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i, status);
-	fr_redis_pipeline_free(replies, reply_cnt);
-	REXDENT();
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("argv command");
+		RINDENT();
+		for (i = 0; i < talloc_array_length(argv); i++) {
+			RDEBUG3("%pV", fr_box_strvalue_len(argv[i], argv_len[i]));
+		}
+		REXDENT();
+	}
+	cmd_len = redisFormatCommandArgv(&rctx->cmd_str[1], talloc_array_length(argv), argv, argv_len);
+	if (cmd_len < 0) goto format_error;
 
-	return CACHE_OK;
+	if (fr_unix_time_ispos(c->expires)) {
+		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, NULL, NULL);
+
+		RDEBUG3("EXPIREAT \"%pV\" %" PRIu64, &c->key, fr_unix_time_to_sec(c->expires));
+		cmd_len = redisFormatCommand(&rctx->cmd_str[2], "EXPIREAT %b %" PRIu64,
+					     (uint8_t const *)c->key.vb_strvalue, (size_t)c->key.vb_length,
+					     fr_unix_time_to_sec(c->expires));
+		if (cmd_len < 0) goto format_error;
+		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[2], cmd_len, NULL, NULL);
+
+		RDEBUG3("EXEC");
+		fr_redis_command_literal_add(cmds, "EXEC", cache_entry_insert_results, rctx);
+	} else {
+		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, cache_entry_insert_results, rctx);
+	}
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)c->key.vb_strvalue,
+					     c->key.vb_length, cmds, false, NULL);
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed to enqueue Redis cache insert commands", CACHE_ERROR)
+
+	*rctx_out = rctx;
+	return CACHE_YIELD;
 }
 
 /** Call delete the cache entry from redis
@@ -678,5 +688,6 @@ rlm_cache_driver_t rlm_cache_redis = {
 	.find		= cache_entry_find,
 	.find_resume	= cache_entry_find_resume,
 	.insert		= cache_entry_insert,
+	.insert_resume	= cache_entry_insert_resume,
 	.expire		= cache_entry_expire,
 };
