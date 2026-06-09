@@ -223,6 +223,24 @@ typedef cache_status_t	(*cache_entry_expire_t)(void **rctx_out, rlm_cache_config
 						request_t *request, void *handle,
 						fr_value_box_t const *key);
 
+/** Resume removing a cache entry
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] instance Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] rctx Resume context returned by call to `expire`
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the entry couldn't be expired.
+ *	- #CACHE_OK - If the entry was expired.
+ *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
+ *	- #CACHE_YIELD - The driver has initiated another async operation and yielded.
+ */
+typedef cache_status_t	(*cache_entry_expire_resume_t)(rlm_cache_config_t const *config, void *instance,
+						       request_t *request, void *handle, void *rctx);
+
 /** Update the ttl of an entry in the cache
  *
  * @note This callback optional. If it's not specified the cache code will expire and
@@ -315,6 +333,7 @@ struct rlm_cache_driver_s {
 	cache_entry_insert_t		insert;			//!< Add a new entry.
 	cache_entry_insert_resume_t	insert_resume;		//!< Resume an async insert.
 	cache_entry_expire_t		expire;			//!< Remove an old entry.
+	cache_entry_expire_resume_t	expire_resume;		//!< Resume an async expire.
 	cache_entry_set_ttl_t		set_ttl;		//!< (Optional) Update the TTL of an entry.
 	cache_entry_count_t		count;			//!< (Optional) Number of entries currently in
 								//!< the cache.
