@@ -625,6 +625,30 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 	return CACHE_YIELD;
 }
 
+static cache_status_t cache_entry_expire_resume(UNUSED rlm_cache_config_t const *config, void *instance,
+						UNUSED request_t *request, UNUSED void *handle, void *rctx)
+{
+	rlm_cache_redis_t	*driver = instance;
+	rlm_cache_redis_rctx_t	*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	return cache_redis_results(request, driver, cache_rctx->cmds, cache_rctx->cmd, cache_rctx->rcode);
+}
+
+static void cache_entry_expire_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	rlm_cache_redis_rctx_t	*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	if (reply->type == REDIS_REPLY_INTEGER) {
+		cache_rctx->rcode = (reply->integer) ? CACHE_OK : CACHE_MISS;
+		return;
+	}
+
+	REDEBUG("Bad result type, expected integer, got %s",
+		fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+
+	cache_rctx->rcode = CACHE_ERROR;
+}
+
 /** Call delete the cache entry from redis
  *
  * @copydetails cache_entry_expire_t
@@ -633,40 +657,34 @@ static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cach
 					 request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_redis_t		*driver = instance;
-	fr_redis_cluster_state_t	state;
-	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
-	redisReply			*reply = NULL;
-	int				s_ret;
-	cache_status_t			cache_status;
+	rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(driver->mi)->data, rlm_cache_redis_thread_t);
+	rlm_cache_redis_rctx_t		*rctx;
+	fr_redis_command_set_t		*cmds;
+	int				cmd_len;
+	fr_redis_async_rcode_t		ret;
 
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)key->vb_strvalue, key->vb_length, false);
-	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
-	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
-	     	reply = redisCommand(conn->handle, "DEL %b", (uint8_t const *)key->vb_strvalue, key->vb_length);
-	     	status = fr_redis_command_status(conn, reply);
-	}
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_cache_redis_rctx_t));
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	rctx->key = key;
+	rctx->cmd_str = talloc_zero_array(rctx, char *, 1);
+	talloc_set_destructor(rctx, cache_redis_rctx_free);
 
-	if (s_ret != REDIS_RCODE_SUCCESS) {
-		RERROR("Failed expiring entry");
-	error:
-		fr_redis_reply_free(&reply);
+	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "DEL %b", (uint8_t const *)key->vb_strvalue, key->vb_length);
+	if (cmd_len < 0) {
+		RERROR("Failed formatting redis command");
+		talloc_free(rctx);
 		return CACHE_ERROR;
 	}
-	if (!fr_cond_assert(reply)) goto error;
+	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_expire_results, rctx);
 
-	if (reply->type == REDIS_REPLY_INTEGER) {
-		cache_status = CACHE_MISS;
-		if (reply->integer) cache_status = CACHE_OK;    /* Affected */
-		fr_redis_reply_free(&reply);
-		return cache_status;
-	}
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
+					     key->vb_length, cmds, false, NULL);
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed to enqueue Redis cache expire command", CACHE_ERROR)
 
-	REDEBUG("Bad result type, expected integer, got %s",
-		fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-	fr_redis_reply_free(&reply);
-
-	return CACHE_ERROR;
+	*rctx_out = rctx;
+	return CACHE_YIELD;
 }
 
 extern rlm_cache_driver_t rlm_cache_redis;
@@ -690,4 +708,5 @@ rlm_cache_driver_t rlm_cache_redis = {
 	.insert		= cache_entry_insert,
 	.insert_resume	= cache_entry_insert_resume,
 	.expire		= cache_entry_expire,
+	.expire_resume	= cache_entry_expire_resume,
 };
