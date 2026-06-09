@@ -1634,6 +1634,34 @@ static unlang_action_t mod_method_common_resume(unlang_result_t *p_result, modul
 	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
 }
 
+static unlang_action_t mod_method_update_expire_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+						       request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	void			*driver_rctx;
+
+	if (cache_expire_resume(p_result, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_method_update_expire_resume, NULL, 0, rctx);
+	}
+
+	if (p_result->rcode == RLM_MODULE_FAIL) {
+		cache_unref(request, inst, rctx->handle, &rctx->handle);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Insert a new entry
+	 */
+	if (cache_insert(p_result, &driver_rctx, inst, request, &rctx->handle, rctx->key,
+			 env->maps, rctx->ttl) == UNLANG_ACTION_YIELD) {
+		return cache_module_yield(request, rctx->handle, rctx->key, rctx->entry, &rctx->ttl,
+					  mod_method_common_resume, NULL, driver_rctx, NULL);
+	}
+	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
+}
+
 /** Common result handdling after update method does a find
  */
 static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_result, request_t *request,
@@ -1684,7 +1712,10 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 	if (expire && (p_result->rcode == RLM_MODULE_OK)) {
 		RDEBUG3("Expiring cache entry");
 
-		cache_expire(p_result, &driver_rctx, inst, request, &handle, key);
+		if (cache_expire(p_result, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+			return cache_module_yield(request, handle, key, entry, &ttl,
+						  mod_method_update_expire_resume, NULL, driver_rctx, NULL);
+		}
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 		goto insert_new;
 	}
