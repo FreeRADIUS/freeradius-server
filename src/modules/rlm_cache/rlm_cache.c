@@ -1004,6 +1004,45 @@ static unlang_action_t mod_cache_it_find_resume(unlang_result_t *p_result, modul
 	return mod_cache_it_ttl(p_result, request, inst, rctx->handle, rctx);
 }
 
+static inline unlang_action_t mod_cache_it_expire_results(unlang_result_t *p_result, unlang_result_t *tmp,
+							  request_t *request, rlm_cache_t const *inst,
+							  rlm_cache_handle_t *handle, rlm_cache_entry_t *entry)
+{
+	switch (tmp->rcode) {
+	case RLM_MODULE_FAIL:
+		p_result->rcode = RLM_MODULE_FAIL;
+		break;
+
+	case RLM_MODULE_OK:
+		if (p_result->rcode == RLM_MODULE_NOOP) p_result->rcode = RLM_MODULE_OK;
+		break;
+
+	case RLM_MODULE_NOTFOUND:
+		if (p_result->rcode == RLM_MODULE_NOOP) p_result->rcode = RLM_MODULE_NOTFOUND;
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+
+	return mod_cache_it_finish(request, inst, handle, entry);
+}
+
+static unlang_action_t mod_cache_it_expire_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+						  request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+	unlang_result_t		tmp;
+
+	if (cache_expire_resume(&tmp, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
+		return unlang_module_yield(request, mod_cache_it_expire_resume, NULL, 0, rctx);
+	}
+
+	return mod_cache_it_expire_results(p_result, &tmp, request, inst, rctx->handle, rctx->entry);
+}
+
 static unlang_action_t mod_cache_it_expire(unlang_result_t *p_result, request_t *request, rlm_cache_t const *inst,
 					   rlm_cache_handle_t *handle, cache_rctx_t *rctx)
 {
@@ -1024,25 +1063,12 @@ static unlang_action_t mod_cache_it_expire(unlang_result_t *p_result, request_t 
 			unlang_result_t tmp;
 
 			fr_assert(!ctx->set_ttl);
-			cache_expire(&tmp, &driver_rctx, inst, request, &handle, key);
-			switch (tmp.rcode) {
-			case RLM_MODULE_FAIL:
-				p_result->rcode = RLM_MODULE_FAIL;
-				return mod_cache_it_finish(request, inst, handle, rctx->entry);
-
-			case RLM_MODULE_OK:
-				if (p_result->rcode == RLM_MODULE_NOOP) p_result->rcode = RLM_MODULE_OK;
-				break;
-
-			case RLM_MODULE_NOTFOUND:
-				if (p_result->rcode == RLM_MODULE_NOOP) p_result->rcode = RLM_MODULE_NOTFOUND;
-				break;
-
-			default:
-				fr_assert(0);
-				break;
+			if (cache_expire(&tmp, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
+				return cache_module_yield(request, handle, key, rctx->entry, &fr_time_delta_wrap(0),
+							  mod_cache_it_expire_resume, NULL, driver_rctx, ctx);
 			}
-			/* If it previously existed, it doesn't now */
+
+			return mod_cache_it_expire_results(p_result, &tmp, request, inst, handle, rctx->entry);
 		}
 		/* Otherwise use insert to overwrite */
 		ctx->exists = 0;
