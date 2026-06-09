@@ -4,7 +4,8 @@ The "*.adoc" files should have all text paragraphs wrapped at 80
 columns.
 
 If there are multiple blank lines in a row, then the output should
-contain only one blank line.
+contain only one blank line.  If there are blank lines at the end of
+the file, they should be removed.
 
 Trailing spaces on lines should be removed.
 
@@ -41,12 +42,12 @@ wrapped.
 
 Paragraphs should have a blank line between them.
 
-List entries are lines that start with "* " or "- ".  They should be
-wrapped individually.  That is, each list entry should be word wrapped
-all by itself, and should not include text from other list entries.
-If a list entry spans multiple lines, the second line should be
-indented another 2 spaces, so that it is aligned with the text, and
-not with the leading "* ".
+List entries are lines that start with "* " ("** " or "*** "), or "-
+".  They should be wrapped individually.  That is, each list entry
+should be word wrapped all by itself, and should not include text from
+other list entries.  If a list entry spans multiple lines, the second
+line should be indented another 2 spaces, so that it is aligned with
+the text, and not with the leading "* ".
 
 Numbered list entries are lines that start with a number, followed by
 a dot.  e.g. "1.".  Those list entries should be word wrapped just

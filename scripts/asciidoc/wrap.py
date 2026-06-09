@@ -23,10 +23,11 @@ Rules:
   - Lines that start with "[" (e.g. "[NOTE]", "[source,c]") are left
     unchanged on their own line.
   - Lines starting with "|" (tables) are left unchanged.
-  - List entries begin with "* " or "- ", or with a number followed by
-    "." (e.g. "1.").  Each entry is wrapped on its own; continuation
-    lines are indented so they align with the text after the marker.
-    For numbered entries the leading number is preserved as-is.
+  - List entries begin with one to four "*" markers ("* ", "** ",
+    "*** ", "**** "), with "- ", or with a number followed by "."
+    (e.g. "1.").  Each entry is wrapped on its own; continuation lines
+    are indented so they align with the text after the marker.  For
+    numbered entries the leading number is preserved as-is.
 
 	$Id$
 """
@@ -105,7 +106,7 @@ def is_comment(line):
     return line.lstrip().startswith("//")
 
 
-_LIST_MARKER_RE = re.compile(r"^(?:[*-]|\d+\.)\s+")
+_LIST_MARKER_RE = re.compile(r"^(?:\*{1,4}|-|\d+\.)\s+")
 
 
 def list_marker_len(line):
