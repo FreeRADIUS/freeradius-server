@@ -1,0 +1,6 @@
+string test
+
+#
+#  $VALUE{path} fails when the file does not exist.
+#
+test = "$VALUE{this-file-does-not-exist.md}"                      # ERROR

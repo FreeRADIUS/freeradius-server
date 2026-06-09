@@ -1,0 +1,13 @@
+string test
+
+#
+#  $VALUE{path} reads a single line from the named file at config
+#  parse time and substitutes its contents into the input stream.
+#
+test = "$VALUE{value-data.md}"
+
+if (test != "hello-value") {
+	test_fail
+}
+
+success

@@ -401,5 +401,67 @@ blogs = "this ${foo} is ${baz}"
 
 Will set variable `blogs` to the string `this bar is bug`.
 
+=== Environment Variables
+
+In addition to variable expansions as described above, it is also
+possible to refer to environment variables via the following syntax:
+
+.Loading value from an environment Variable
+====
+----
+blogs = "this $ENV{FOO}"
+----
+====
+
+If an environment variable does not exist, the server will exit with
+an error.  The name of the environment variable is a fixed string, and
+cannot be another reference.
+
+The expansion will copy the value of the environment variable exactly.
+
+=== Value from a file
+
+In addition to variable expansions as described above, it is also
+possible to refer to read a value from a file via the following syntax:
+
+.Loading value from a file
+====
+----
+blogs = "this $VALUE{foo.txt}"
+----
+====
+
+If the file does not exist, the server will exit with an error.  The
+filename is a fixed string, and cannot be another reference.  Both
+absolute and relative filenames are supported.  If the filename does
+not begin with '/', then it is taken as relative to the current file.
+
+The file must contain one line.  A file with multiple lines will return an error.
+
+The expansion will copy the contents of the file, and will remove any
+trailing CR / LF.
+
+=== Data from a file
+
+In addition to variable expansions as described above, it is also
+possible to refer to read an entire file via the following syntax:
+
+.Loading value from a file
+====
+----
+blogs = "this $FILE{foo.txt}"
+----
+====
+
+If the file does not exist, the server will exit with an error.  The
+filename is a fixed string, and cannot be another reference.  Both
+absolute and relative filenames are supported.  If the filename does
+not begin with '/', then it is taken as relative to the current file.
+
+The file can be binary, multiple lines, etc.
+
+The expansion will copy all of the contents of the file exactly,
+without changes.
+
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
