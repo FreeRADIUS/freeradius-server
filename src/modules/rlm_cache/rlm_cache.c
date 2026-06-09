@@ -335,7 +335,12 @@ static inline unlang_action_t cache_find_results(unlang_result_t *p_result, rlm_
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		cache_expire(&tmp, &driver_rctx, inst, request, handle, key);
+		/*
+		 * @todo - handle async entry expiry during fetch.
+		 * At present only Redis is async and expiry is handled by Redis so
+		 * this is not required.
+		 */
+		if (!inst->driver->expire_resume) cache_expire(&tmp, &driver_rctx, inst, request, handle, key);
 		cache_free(inst, &c);
 		RETURN_UNLANG_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
