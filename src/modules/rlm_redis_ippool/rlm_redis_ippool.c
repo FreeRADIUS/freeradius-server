@@ -154,6 +154,14 @@ typedef struct {
 	tmpl_t		*expiry_attr;			//!< Time at which the lease will expire.
 } redis_ippool_alloc_call_env_t;
 
+/** Resume context for validating WAIT replies.
+ *
+ */
+typedef struct {
+	int				wait_num;
+	bool				fail;
+} redis_wait_rctx_t;
+
 /** Resume context for async calls to alloc script
  *
  */
@@ -163,6 +171,7 @@ typedef struct {
 	fr_redis_command_set_t		*cmds;		//!< Command set to be run.
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
 	ippool_rcode_t			ret;		//!< Return code for the allocation result.
+	redis_wait_rctx_t		wait_rctx;	//!< WAIT resume context.
 } redis_ippool_alloc_rctx_t;
 
 /** Call environment used when calling redis_ippool update method.
@@ -200,6 +209,7 @@ typedef struct {
 	fr_redis_command_set_t		*cmds;		//!< Command set to be run.
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
 	ippool_rcode_t			ret;		//!< Return code for the allocation result.
+	redis_wait_rctx_t		wait_rctx;	//!< WAIT resume context.
 } redis_ippool_update_rctx_t;
 
 /** Call environment used when calling redis_ippool release method.
@@ -230,6 +240,7 @@ typedef struct {
 	fr_redis_command_set_t		*cmds;		//!< Command set to be run.
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
 	ippool_rcode_t			ret;		//!< Return code for the allocation result.
+	redis_wait_rctx_t		wait_rctx;	//!< WAIT resume context.
 } redis_ippool_release_rctx_t;
 
 /** Call environment used when calling redis_ippool bulk release method.
@@ -545,27 +556,27 @@ static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 /** Check the requisite number of slaves replicated the lease info
  *
  * @param request The current request.
- * @param wait_num Number of slaves required.
+ * @param cmd The Redis command triggering this callback
  * @param reply we got from the server.
- * @return
- *	- 0 if enough slaves replicated the data.
- *	- -1 if too few slaves replicated the data, or another error.
+ * @param rctx WAIT resume context.
  */
-static inline int ippool_wait_check(request_t *request, uint32_t wait_num, redisReply *reply)
+static inline void ippool_wait_check(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
 {
-	if (!wait_num) return 0;
+	redis_wait_rctx_t	*wait_rctx = rctx;
+	if (!wait_rctx->wait_num) return;
 
 	if (reply->type != REDIS_REPLY_INTEGER) {
 		REDEBUG("WAIT result is wrong type, expected integer got %s",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
-		return -1;
+		wait_rctx->fail = true;
+		return;
 	}
-	if (reply->integer < wait_num) {
+	if (reply->integer < wait_rctx->wait_num) {
 		REDEBUG("Too few slaves acknowledged allocation, needed %i, got %lli",
-			wait_num, reply->integer);
-		return -1;
+			wait_rctx->wait_num, reply->integer);
+		wait_rctx->fail = true;
+		return;
 	}
-	return 0;
 }
 
 static void ippool_action_print(request_t *request, ippool_action_t action,
@@ -643,7 +654,8 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 					     fr_redis_async_cmd_t **out_cmd, request_t *request,
 					     rlm_redis_ippool_thread_t *thread, uint8_t const *key, size_t key_len,
 					     char const *cmd, int cmd_len, fr_redis_command_complete_t complete,
-					     module_method_t resume, unlang_module_signal_t cancel, void *rctx)
+					     module_method_t resume, unlang_module_signal_t cancel, void *rctx,
+					     redis_wait_rctx_t *wait_rctx)
 {
 	fr_redis_command_set_t	*cmds;
 	fr_redis_async_rcode_t	ret;
@@ -653,7 +665,8 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 	fr_redis_command_preformatted_add(cmds, cmd, cmd_len, complete, rctx);
 
 	if (thread->inst->wait_cmd) {
-		fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len, NULL, NULL);
+		fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len,
+						  ippool_wait_check, wait_rctx);
 	}
 
 	*out_cmd = fr_redis_async_cmd_start(ctx, request, &ret, thread->rtcluster, key, key_len, cmds, false, NULL);
@@ -1006,6 +1019,8 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc_resume(unlang_result_t *p_resu
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
+		if (rctx->wait_rctx.fail) RETURN_UNLANG_FAIL;
+
 		RDEBUG2("IP address lease allocated");
 		RETURN_UNLANG_UPDATED;
 
@@ -1097,7 +1112,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
 				     rctx->cmd_str, cmd_len, redis_ippool_allocate_results, mod_alloc_resume,
-				     mod_alloc_cancel, rctx);
+				     mod_alloc_cancel, rctx, &rctx->wait_rctx);
 }
 
 static void mod_update_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
@@ -1121,6 +1136,8 @@ static unlang_action_t CC_HINT(nonnull) mod_update_resume(unlang_result_t *p_res
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
+		if (rctx->wait_rctx.fail) RETURN_UNLANG_FAIL;
+
 		RDEBUG2("Requested IP address' \"%pV\" lease updated", &env->requested_address);
 
 		/*
@@ -1232,7 +1249,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, mo
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
 				     rctx->cmd_str, cmd_len, redis_ippool_update_results, mod_update_resume,
-				     mod_update_cancel, rctx);
+				     mod_update_cancel, rctx, &rctx->wait_rctx);
 }
 
 static void mod_release_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
@@ -1255,6 +1272,8 @@ static unlang_action_t CC_HINT(nonnull) mod_release_resume(unlang_result_t *p_re
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
+		if (rctx->wait_rctx.fail) RETURN_UNLANG_FAIL;
+
 		RDEBUG2("IP address \"%pV\" released", &env->requested_address);
 		RETURN_UNLANG_UPDATED;
 
@@ -1332,7 +1351,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(unlang_result_t *p_result, m
 	return ippool_script_enqueue(rctx, &rctx->cmds, &rctx->cmd, request, thread,
 				     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
 				     rctx->cmd_str, cmd_len, redis_ippool_release_results, mod_release_resume,
-				     mod_release_cancel, rctx);
+				     mod_release_cancel, rctx, &rctx->wait_rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
