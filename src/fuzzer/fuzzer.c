@@ -55,6 +55,7 @@ static uint8_t encoded_data[65536];
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
 	TALLOC_CTX *   ctx = talloc_init_const("fuzzer");
+	ssize_t slen;
 	fr_pair_list_t vps;
 	void *decode_ctx = NULL;
 	void *encode_ctx = NULL;
@@ -69,13 +70,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, root_da) < 0)) {
-		fr_perror("fuzzer: Failed initializing test point encode_ctx");
-		fr_exit_now(EXIT_FAILURE);
+	if (do_encode) {
+		if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, root_da) < 0)) {
+			fr_perror("fuzzer: Failed initializing test point encode_ctx");
+			fr_exit_now(EXIT_FAILURE);
+		}
 	}
 
 	if (fr_debug_lvl > 3) {
-		FR_PROTO_TRACE("Fuzzer input");
+		FR_PROTO_TRACE("Fuzzer PROTOCOL input");
 
 		FR_PROTO_HEX_DUMP(buf, len, "");
 	}
@@ -87,14 +90,58 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	 *	If we have successfully decoded the data, then encode
 	 *	it again, too.
 	 */
-	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) > 0) {
-		PAIR_LIST_VERIFY_WITH_CTX(ctx, &vps);
+	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) < 0) goto cleanup;
 
-		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
+	PAIR_LIST_VERIFY_WITH_CTX(ctx, &vps);
 
-		if (do_encode) (void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+	if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
+
+	if (!do_encode) goto cleanup;
+
+	slen = tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+	if (!slen) goto cleanup;
+
+	if (slen < 0) {
+#if 1
+		/*
+		 *	We would like to fail on encode, but right now some protocols will decode packets that
+		 *	they cannot later encode.
+		 *
+		 *	In addition, the decoder "canonicalizes" the value-pairs, by merging the same
+		 *	attributes into one output pair list.  But the encoders don't always split the pair list when encoding.
+		 */
+		goto cleanup;
+#else
+		fr_debug_lvl = 4;
+		FR_PROTO_TRACE("Input data for PROTOCOL");
+		FR_PROTO_HEX_DUMP(buf, len, "");
+
+		fr_pair_list_debug(stderr, &vps);
+		fr_perror("fuzzer_PROTOCOL: Failed encoding data");
+		fr_exit_now(EXIT_FAILURE);
+#endif
 	}
 
+	/*
+	 *	Round-trip: if the encoder produced a packet, decode it again into a fresh pair list. The
+	 *	result is discarded - the point is that the encoder's output must be something the decoder
+	 *	accepts without crashing.
+	 *
+	 *	We do this by reinitializing the ctx and decode_ctx.
+	 */
+	talloc_free(decode_ctx);
+	talloc_free(ctx);
+	ctx = talloc_init_const("fuzzer-roundtrip");
+	fr_pair_list_init(&vps);
+
+	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, root_da) < 0)) {
+		fr_perror("fuzzer_PROTOCOL: Failed re-initializing test point decode_ctx");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	(void) tp_decode->func(ctx, &vps, encoded_data, (size_t) slen, decode_ctx);
+
+cleanup:
 	talloc_free(decode_ctx);
 	talloc_free(encode_ctx);
 	talloc_free(ctx);
