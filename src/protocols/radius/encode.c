@@ -541,6 +541,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	/*
+	 *	We don't encode encrypted attributes in foreign protocols.
+	 */
+	if (packet_ctx->foreign && (fr_radius_flag_encrypted(da) != RADIUS_FLAG_ENCRYPT_NONE)) goto return_0;
+
+	/*
 	 *	Encrypt the various password styles
 	 *
 	 *	Attributes with encrypted values MUST be less than
@@ -1713,6 +1718,7 @@ ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
        	fr_radius_ctx_t common_ctx = {};
 	fr_radius_encode_ctx_t encode_ctx = {
 		.common = &common_ctx,
+		.foreign = true,		/* we are being called from a foreign protocol */
 	};
 
 	/*

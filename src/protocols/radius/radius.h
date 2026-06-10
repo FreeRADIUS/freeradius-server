@@ -148,6 +148,7 @@ typedef struct {
 
 	bool			add_proxy_state;       	//!< do we add a Proxy-State?
 	bool			seen_message_authenticator;
+	bool			foreign;		//!< are we in a foreign protocol?
 #ifdef NAS_VIOLATES_RFC
 	bool			allow_vulnerable_clients; //!< for vendors who violate the RFCs.
 #endif
