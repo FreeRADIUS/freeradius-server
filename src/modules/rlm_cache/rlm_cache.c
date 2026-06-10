@@ -387,6 +387,16 @@ static unlang_action_t CC_HINT(nonnull) cache_find_resume(unlang_result_t *p_res
 	return cache_find_results(p_result, out, inst, request, handle, key, c);
 }
 
+static void cache_find_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (!inst->driver->find_cancel) return;
+
+	inst->driver->find_cancel(&inst->config, inst->driver_submodule->data, request, rctx->handle, rctx->rctx);
+}
+
 /** Find a cached entry.
  *
  * @return
@@ -457,6 +467,16 @@ static unlang_action_t cache_expire_resume(unlang_result_t *p_result, rlm_cache_
 	}
 }
 
+static void cache_expire_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (!inst->driver->expire_cancel) return;
+
+	inst->driver->expire_cancel(&inst->config, inst->driver_submodule->data, request, rctx->handle, rctx->rctx);
+}
+
 /** Expire a cache entry (removing it from the datastore)
  *
  * @return
@@ -512,6 +532,16 @@ static unlang_action_t CC_HINT(nonnull) cache_insert_resume(unlang_result_t *p_r
 	default:
 		RETURN_UNLANG_FAIL;
 	}
+}
+
+static void cache_insert_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (!inst->driver->insert_cancel) return;
+
+	inst->driver->insert_cancel(&inst->config, inst->driver_submodule->data, request, rctx->handle, rctx->rctx);
 }
 
 /** Create and insert a cache entry
@@ -723,6 +753,17 @@ static unlang_action_t cache_set_ttl_resume(unlang_result_t *p_result, request_t
 	RETURN_UNLANG_FAIL;
 }
 
+static void cache_set_ttl_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
+
+	if (inst->driver->set_ttl) return;
+	if (!inst->driver->insert_cancel) return;
+
+	inst->driver->insert_cancel(&inst->config, inst->driver_submodule->data, request, rctx->handle, rctx->rctx);
+}
+
 /** Update the TTL of an entry
  *
  * @return
@@ -873,7 +914,8 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it_insert_resume(unlang_result
 	unlang_result_t		tmp;
 
 	if (cache_insert_resume(&tmp, request, inst, &rctx->handle, &rctx->ttl, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_cache_it_insert_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_cache_it_insert_resume, cache_insert_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_cache_it_insert_results(p_result, &tmp, request, inst, rctx->handle, rctx->entry);
@@ -907,7 +949,8 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it_ttl_resume(unlang_result_t 
 	unlang_result_t		tmp;
 
 	if (cache_set_ttl_resume(&tmp, request, inst, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_cache_it_ttl_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_cache_it_ttl_resume, cache_set_ttl_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_cache_it_ttl_results(p_result, &tmp, request, inst, rctx->handle, rctx);
@@ -934,7 +977,7 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 		if (cache_set_ttl(&tmp, &driver_rctx, inst, request, &handle, rctx->entry) == UNLANG_ACTION_YIELD)
 		{
 			return cache_module_yield(request, handle, key, rctx->entry, &rctx->ttl,
-						  mod_cache_it_ttl_resume, NULL, driver_rctx, ctx);
+						  mod_cache_it_ttl_resume, cache_set_ttl_cancel, driver_rctx, ctx);
 		}
 		return mod_cache_it_ttl_results(p_result, &tmp, request, inst, handle, rctx);
 	}
@@ -951,7 +994,7 @@ static unlang_action_t mod_cache_it_ttl(unlang_result_t *p_result, request_t *re
 		if (cache_insert(&tmp, &driver_rctx, inst, request, &handle, key,
 				 env->maps, rctx->ttl) == UNLANG_ACTION_YIELD) {
 			cache_module_yield(request, handle, key, rctx->entry, &rctx->ttl,
-					   mod_cache_it_insert_resume, NULL, driver_rctx, ctx);
+					   mod_cache_it_insert_resume, cache_insert_cancel, driver_rctx, ctx);
 			return UNLANG_ACTION_YIELD;
 
 		}
@@ -998,7 +1041,8 @@ static unlang_action_t mod_cache_it_find_resume(unlang_result_t *p_result, modul
 
 	if (cache_find_resume(&tmp, &rctx->entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_cache_it_find_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_cache_it_find_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	if (mod_cache_it_find_results(p_result, &tmp, inst, rctx->handle, ctx) < 0) {
@@ -1042,7 +1086,8 @@ static unlang_action_t mod_cache_it_expire_resume(unlang_result_t *p_result, mod
 	unlang_result_t		tmp;
 
 	if (cache_expire_resume(&tmp, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_cache_it_expire_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_cache_it_expire_resume, cache_expire_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_cache_it_expire_results(p_result, &tmp, request, inst, rctx->handle, rctx->entry);
@@ -1070,7 +1115,7 @@ static unlang_action_t mod_cache_it_expire(unlang_result_t *p_result, request_t 
 			fr_assert(!ctx->set_ttl);
 			if (cache_expire(&tmp, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 				return cache_module_yield(request, handle, key, rctx->entry, &fr_time_delta_wrap(0),
-							  mod_cache_it_expire_resume, NULL, driver_rctx, ctx);
+							  mod_cache_it_expire_resume, cache_expire_cancel, driver_rctx, ctx);
 			}
 
 			return mod_cache_it_expire_results(p_result, &tmp, request, inst, handle, rctx->entry);
@@ -1089,7 +1134,7 @@ static unlang_action_t mod_cache_it_expire(unlang_result_t *p_result, request_t 
 
 		if (cache_find(&tmp, &rctx->entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-						  mod_cache_it_find_resume, NULL, driver_rctx, ctx);
+						  mod_cache_it_find_resume, cache_find_cancel, driver_rctx, ctx);
 		}
 
 		if (mod_cache_it_find_results(p_result, &tmp, inst, handle, ctx) < 0) {
@@ -1134,7 +1179,8 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it_merge_resume(unlang_result_
 
 	if (cache_find_resume(p_result, &rctx->entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_cache_it_merge_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_cache_it_merge_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	if (mod_cache_it_merge_results(p_result, request, inst, rctx->handle, ctx, rctx->entry) < 0) {
@@ -1187,7 +1233,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 
 		if (cache_find(p_result, &c, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-						  mod_method_status_resume, NULL, driver_rctx, NULL);
+						  mod_method_status_resume, cache_find_cancel, driver_rctx, NULL);
 		}
 		return mod_method_status_results(p_result, request, inst, handle, c);
 	}
@@ -1242,7 +1288,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	if (ctx->merge) {
 		if (cache_find(p_result, &entry, &driver_rctx,inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, NULL, &ttl,
-						  mod_cache_it_merge_resume, NULL, driver_rctx, ctx);
+						  mod_cache_it_merge_resume, cache_find_cancel, driver_rctx, ctx);
 		}
 		if (mod_cache_it_merge_results(p_result, request, inst, handle, ctx, entry) < 0) {
 			return mod_cache_it_finish(request, inst, handle, entry);
@@ -1530,7 +1576,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status_resume(unlang_result_t
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_status_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_status_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_status_results(p_result, request, inst, rctx->handle, entry);
@@ -1565,7 +1612,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_status_resume, NULL, driver_rctx, NULL);
+					  mod_method_status_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 	return mod_method_status_results(p_result, request, inst, handle, entry);
 }
@@ -1600,7 +1647,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load_resume(unlang_result_t *
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_load_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_load_resume, cache_find_cancel, ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_load_results(p_result, request, inst, rctx->handle, entry);
@@ -1633,7 +1680,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_load_resume, NULL, driver_rctx, NULL);
+					  mod_method_load_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 	return mod_method_load_results(p_result, request, inst, handle, entry);
 }
@@ -1659,7 +1706,8 @@ static unlang_action_t mod_method_common_resume(unlang_result_t *p_result, modul
 	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
 
 	if (cache_insert_resume(p_result, request, inst, &rctx->handle, &rctx->ttl, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_common_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_common_resume, cache_insert_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
@@ -1674,7 +1722,8 @@ static unlang_action_t mod_method_update_expire_resume(unlang_result_t *p_result
 	void			*driver_rctx;
 
 	if (cache_expire_resume(p_result, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_update_expire_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_update_expire_resume, cache_expire_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	if (p_result->rcode == RLM_MODULE_FAIL) {
@@ -1688,7 +1737,7 @@ static unlang_action_t mod_method_update_expire_resume(unlang_result_t *p_result
 	if (cache_insert(p_result, &driver_rctx, inst, request, &rctx->handle, rctx->key,
 			 env->maps, rctx->ttl) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, rctx->handle, rctx->key, rctx->entry, &rctx->ttl,
-					  mod_method_common_resume, NULL, driver_rctx, NULL);
+					  mod_method_common_resume, cache_insert_cancel, driver_rctx, NULL);
 	}
 	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
 }
@@ -1745,7 +1794,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 
 		if (cache_expire(p_result, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, entry, &ttl,
-						  mod_method_update_expire_resume, NULL, driver_rctx, NULL);
+						  mod_method_update_expire_resume, cache_expire_cancel, driver_rctx, NULL);
 		}
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 		goto insert_new;
@@ -1763,7 +1812,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 
 		if (cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, NULL, &ttl,
-						  mod_method_common_resume, NULL, driver_rctx, NULL);
+						  mod_method_common_resume, cache_set_ttl_cancel, driver_rctx, NULL);
 		}
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 	} else {
@@ -1773,7 +1822,7 @@ static inline unlang_action_t mod_method_update_find_results(unlang_result_t *p_
 		 */
 		if (cache_insert(p_result, &driver_rctx, inst, request, &handle, key, env->maps, ttl) == UNLANG_ACTION_YIELD) {
 			return cache_module_yield(request, handle, key, entry, &ttl,
-						  mod_method_common_resume, NULL, driver_rctx, NULL);
+						  mod_method_common_resume, cache_insert_cancel, driver_rctx, NULL);
 		}
 		return mod_method_common_results(p_result, request, inst, handle, entry);
 	}
@@ -1799,7 +1848,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update_find_resume(unlang_res
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_update_find_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_update_find_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_update_find_results(p_result, request, inst, rctx->handle, env, entry);
@@ -1835,7 +1885,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	 */
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_update_find_resume, NULL, driver_rctx, NULL);
+					  mod_method_update_find_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_update_find_results(p_result, request, inst, handle, env, entry);
@@ -1883,7 +1933,7 @@ static inline unlang_action_t mod_method_store_find_results(unlang_result_t *p_r
 	 */
 	if (cache_insert(p_result, &driver_rctx, inst, request, &handle, key, env->maps, ttl) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, entry, &ttl, mod_method_common_resume,
-					  NULL, driver_rctx, NULL);
+					  cache_insert_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_common_results(p_result, request, inst, handle, entry);
@@ -1899,7 +1949,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store_find_resume(unlang_resu
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_store_find_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_store_find_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_store_find_results(p_result, request, inst, rctx->handle, env, entry);
@@ -1934,7 +1985,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	 */
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_store_find_resume, NULL, driver_rctx, NULL);
+					  mod_method_store_find_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_store_find_results(p_result, request, inst, handle, env, entry);
@@ -1947,7 +1998,8 @@ static unlang_action_t mod_method_clear_expire_resume(unlang_result_t *p_result,
 	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
 
 	if (cache_expire_resume(p_result, inst, request, &rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_clear_expire_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_clear_expire_resume, cache_expire_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	cache_unref(request, inst, rctx->entry, rctx->handle);
@@ -1972,7 +2024,7 @@ static inline unlang_action_t mod_method_clear_find_results(unlang_result_t *p_r
 
 	if (cache_expire(p_result, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, entry, &fr_time_delta_wrap(0),
-					   mod_method_clear_expire_resume, NULL, driver_rctx, NULL);
+					   mod_method_clear_expire_resume, cache_expire_cancel, driver_rctx, NULL);
 	}
 
 finish:
@@ -1990,7 +2042,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear_find_resume(unlang_resu
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_clear_find_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_clear_find_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_clear_find_results(p_result, request, inst, rctx->handle, rctx->key, entry);
@@ -2025,7 +2078,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_clear_find_resume, NULL, driver_rctx, NULL);
+					  mod_method_clear_find_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_clear_find_results(p_result, request, inst, handle, key, entry);
@@ -2038,7 +2091,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl_resume(unlang_result_t *p
 	cache_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, cache_rctx_t);
 
 	if (cache_set_ttl_resume(p_result, request, inst, rctx->handle, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_ttl_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_ttl_resume, cache_set_ttl_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_common_results(p_result, request, inst, rctx->handle, rctx->entry);
@@ -2081,7 +2135,7 @@ static inline unlang_action_t mod_method_ttl_find_results(unlang_result_t *p_res
 
 	if (cache_set_ttl(p_result, &driver_rctx, inst, request, &handle, entry) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, NULL, entry, &ttl, mod_method_ttl_resume,
-					  NULL, driver_rctx, NULL);
+					  cache_set_ttl_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_common_results(p_result, request, inst, handle, entry);
@@ -2096,7 +2150,8 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl_find_resume(unlang_result
 
 	if (cache_find_resume(p_result, &entry, inst, request, &rctx->handle,
 			      rctx->key, rctx->rctx) == UNLANG_ACTION_YIELD) {
-		return unlang_module_yield(request, mod_method_ttl_find_resume, NULL, 0, rctx);
+		return unlang_module_yield(request, mod_method_ttl_find_resume, cache_find_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
 	}
 
 	return mod_method_ttl_find_results(p_result, request, inst, rctx->handle, entry);
@@ -2138,7 +2193,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	 */
 	if (cache_find(p_result, &entry, &driver_rctx, inst, request, &handle, key) == UNLANG_ACTION_YIELD) {
 		return cache_module_yield(request, handle, key, NULL, &fr_time_delta_wrap(0),
-					  mod_method_ttl_find_resume, NULL, driver_rctx, NULL);
+					  mod_method_ttl_find_resume, cache_find_cancel, driver_rctx, NULL);
 	}
 
 	return mod_method_ttl_find_results(p_result, request, inst, handle, entry);
