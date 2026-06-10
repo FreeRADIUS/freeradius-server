@@ -609,8 +609,24 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	Message-Authenticator is not required for all other packets, but is required if the
 		 *	caller asks for it.
 		 */
-	default:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+
+	case FR_RADIUS_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
+
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_NAK:
 		break;
+
+		/*
+		 *	All other packet codes are not handled by the encoder, so we reject them.
+		 */
+	default:
+		failure = FR_RADIUS_FAIL_UNKNOWN_PACKET_CODE;
+		goto finish;
 	}
 
 	/*
