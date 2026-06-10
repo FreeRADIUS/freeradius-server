@@ -396,7 +396,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 		/*
 		 *	Dup so we can re-parse, and have unique CONF_DATA
 		 */
-		node->pool_cs = cf_section_dup(cluster, NULL, pool, "pool", NULL, true);
+		node->pool_cs = cf_section_dup(cluster, NULL, pool, "pool", NULL, false);
 		node->addr = node->pending_addr;
 		node->pool = fr_pool_init(cluster, node->pool_cs, node,
 					  fr_redis_cluster_conn_create, NULL, buffer);
