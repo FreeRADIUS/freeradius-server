@@ -279,6 +279,15 @@ static cache_status_t cache_redis_results(request_t *request, rlm_cache_redis_t 
 	}
 }
 
+static void cache_redis_cancel(UNUSED rlm_cache_config_t const *config, UNUSED void *instance, request_t *request,
+			       UNUSED void *handle, void *rctx)
+{
+	rlm_cache_redis_rctx_t	*cache_rctx = talloc_get_type_abort(rctx, rlm_cache_redis_rctx_t);
+
+	RDEBUG2("Forcibly cancelling pending redis cache request");
+	fr_redis_async_cmd_cancel(cache_rctx->cmd);
+}
+
 static cache_status_t cache_entry_find_resume(rlm_cache_entry_t **out, UNUSED rlm_cache_config_t const *config,
 					      void *instance, UNUSED request_t *request,
 					      UNUSED void *handle, void *rctx)
@@ -695,8 +704,11 @@ rlm_cache_driver_t rlm_cache_redis = {
 	.free		= cache_entry_free,
 	.find		= cache_entry_find,
 	.find_resume	= cache_entry_find_resume,
+	.find_cancel	= cache_redis_cancel,
 	.insert		= cache_entry_insert,
 	.insert_resume	= cache_entry_insert_resume,
+	.insert_cancel	= cache_redis_cancel,
 	.expire		= cache_entry_expire,
 	.expire_resume	= cache_entry_expire_resume,
+	.expire_cancel	= cache_redis_cancel,
 };
