@@ -198,6 +198,10 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		allow_relay = true;
 		break;
 
+	case 0:
+		fr_strerror_const("Invalid Message type 0");
+		return 0;
+
 	default:
 		/*
 		 *	8 bit code + 24 bits of transaction ID
