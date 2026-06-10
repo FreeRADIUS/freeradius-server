@@ -66,10 +66,10 @@ int fuzzer_common_init(int *argc, char ***argv, bool load_proto)
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
+	fr_time_start();
+
 	if (debug_lvl_str) {
 		fr_debug_lvl = atoi(debug_lvl_str);
-
-		if (fr_debug_lvl) fr_time_start();
 	}
 
 	autofree = talloc_autofree_context();
