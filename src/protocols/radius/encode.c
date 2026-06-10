@@ -1480,7 +1480,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		 */
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > UINT8_MAX)) {
-			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
+			(void) fr_dcursor_next(cursor);
 			return 0;
 		}
 		break;
@@ -1700,6 +1700,14 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
 		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	We didn't encode any data, continue.
+	 */
+	if (!slen) {
+		fr_assert(fr_dcursor_current(cursor) != vp);
+		return 0;
 	}
 
 	/*

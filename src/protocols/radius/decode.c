@@ -1997,6 +1997,11 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		packet_ctx->tag_root_ctx = ctx;
 	}
 
+	if (data[0] == 0) {
+		fr_strerror_const("Attribute 0 is invalid");
+		return -1;
+	}
+
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), data[0]);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
