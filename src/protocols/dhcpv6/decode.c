@@ -297,6 +297,11 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
 		PAIR_ALLOCED(vp);
 
+		/*
+		 *	Check if the relayed packet is OK.  If not, it's an error.
+		 */
+		if (!fr_dhcpv6_ok(data + 4, len, 200)) return -1;
+
 		slen = fr_dhcpv6_decode(vp, &vp->vp_group, data + 4, len);
 		if (slen < 0) {
 			talloc_free(vp);
