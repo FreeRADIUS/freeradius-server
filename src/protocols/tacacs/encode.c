@@ -259,12 +259,16 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t arg_cnt, uint
 				}
 
 				slen = fr_sbuff_in_sprintf(&sbuff, "%lu", box.vb_uint64);
-				if (slen <= 0) return -1;
+				if (slen < 0) {
+				error:
+					fr_strerror_printf("Failed encoding %s", vp->da->name);
+					return -1;
+				}
 				break;
 
 			default:
 				slen = fr_pair_print_value_quoted(&sbuff, vp, T_BARE_WORD);
-				if (slen <= 0) return -1;
+				if (slen < 0) goto error;
 			}
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, (size_t) slen);
@@ -381,7 +385,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	fr_tacacs_packet_hdr_t const *original = (fr_tacacs_packet_hdr_t const *) original_packet;
 
 	if (!vps) {
-	error:
 		fr_strerror_const("Cannot encode empty packet");
 		return -1;
 	}
@@ -729,7 +732,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author_req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_req.arg_cnt, &packet->author_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_req.arg_cnt, &packet->author_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 			goto check_request;
@@ -800,7 +803,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author_reply.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_reply.arg_cnt, &packet->author_reply.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->author_reply.arg_cnt, &packet->author_reply.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 			goto check_reply;
@@ -870,7 +873,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->acct_req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct_req.arg_cnt, &packet->acct_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, packet->acct_req.arg_cnt, &packet->acct_req.arg_len[0], vps, attr_tacacs_argument_list) < 0) return -1;
 			}
 
 		check_request:
