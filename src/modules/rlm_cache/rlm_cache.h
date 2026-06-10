@@ -322,6 +322,21 @@ typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *instanc
 typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_t const *config,
 					     void *instance, request_t *request);
 
+/** Cancel an async cache request
+ *
+ * To be called during request cancellation for outstanding cache requests
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] instance Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] rctx Resume context returned by call to the function which started the async request.
+ */
+typedef void (*cache_entry_request_cancel_t)(rlm_cache_config_t const *config, void *instance, request_t *request,
+					     void *handle, void *rctx);
+
+
 struct rlm_cache_driver_s {
 	module_t			common;			//!< Common fields for all loadable modules.
 
@@ -330,10 +345,13 @@ struct rlm_cache_driver_s {
 
 	cache_entry_find_t		find;			//!< Retrieve an existing cache entry.
 	cache_entry_find_resume_t	find_resume;		//!< Resume an async find.
+	cache_entry_request_cancel_t	find_cancel;		//!< Cancel an async find.
 	cache_entry_insert_t		insert;			//!< Add a new entry.
 	cache_entry_insert_resume_t	insert_resume;		//!< Resume an async insert.
+	cache_entry_request_cancel_t	insert_cancel;		//!< Cancel an async insert.
 	cache_entry_expire_t		expire;			//!< Remove an old entry.
 	cache_entry_expire_resume_t	expire_resume;		//!< Resume an async expire.
+	cache_entry_request_cancel_t	expire_cancel;		//!< Cancel an async expire.
 	cache_entry_set_ttl_t		set_ttl;		//!< (Optional) Update the TTL of an entry.
 	cache_entry_count_t		count;			//!< (Optional) Number of entries currently in
 								//!< the cache.
