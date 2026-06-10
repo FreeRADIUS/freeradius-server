@@ -78,7 +78,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	}
 
 	if (fr_debug_lvl > 3) {
-		FR_PROTO_TRACE("Fuzzer PROTOCOL input");
+		FR_PROTO_TRACE("Fuzzer XX_PROTOCOL_XX input");
 
 		FR_PROTO_HEX_DUMP(buf, len, "");
 	}
@@ -113,11 +113,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 		goto cleanup;
 #else
 		fr_debug_lvl = 4;
-		FR_PROTO_TRACE("Input data for PROTOCOL");
+		FR_PROTO_TRACE("Input data for XX_PROTOCOL_XX");
 		FR_PROTO_HEX_DUMP(buf, len, "");
 
 		fr_pair_list_debug(stderr, &vps);
-		fr_perror("fuzzer_PROTOCOL: Failed encoding data");
+		fr_perror("fuzzer_XX_PROTOCOL_XX: Failed encoding data");
 		fr_exit_now(EXIT_FAILURE);
 #endif
 	}
@@ -135,7 +135,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	fr_pair_list_init(&vps);
 
 	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, root_da) < 0)) {
-		fr_perror("fuzzer_PROTOCOL: Failed re-initializing test point decode_ctx");
+		fr_perror("fuzzer_XX_PROTOCOL_XX: Failed re-initializing test point decode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
