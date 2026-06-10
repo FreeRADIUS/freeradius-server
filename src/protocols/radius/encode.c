@@ -565,10 +565,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		}
 
 		slen = encode_tunnel_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
-		if (slen < 0) {
-			fr_strerror_printf("%s too long", vp->da->name);
-			return slen;
-		}
+		if (slen < 0) return slen;
 
 		encrypted = true;
 		break;
