@@ -1482,6 +1482,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->conf.use_cluster_map) goto cmds;
 
+	if (inst->conf.database) {
+		cf_log_err(mctx->mi->conf, "Cannot set Redis database number when cluster in use");
+		return -1;
+	}
+
 	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
 			.name = mctx->mi->name,
 			.worker_cb = worker_pair_callbacks,
