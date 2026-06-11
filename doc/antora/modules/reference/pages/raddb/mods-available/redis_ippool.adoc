@@ -137,15 +137,26 @@ redis_ippool {
 	copy_on_update = yes
 	redis {
 		server = localhost
+		virtual_server = redis
 		pool {
 			start = 0
-			min = 0
-#			max = 1
-			spare = 1
+			min = 1
+			max = 10
+			connecting = 2
 			uses = 0
 			lifetime = 0
-			retry_delay = 30
-			idle_timeout = 60
+#			open_delay = 0.2
+#			close_delay = 10
+#			manage_interval = 0.2
+			connection {
+				connect_timeout = 3.0
+				reconnect_delay = 5
+			}
+			request {
+				per_connection_max = 2000
+				per_connection_target = 1000
+				free_delay = 10
+			}
 		}
 	}
 }

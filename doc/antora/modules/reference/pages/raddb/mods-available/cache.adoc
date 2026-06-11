@@ -74,6 +74,12 @@ pool:: Connection pool.
 
 === Redis cache driver
 
+redis {...}:: Redis connection settings.
+
+Identical to all other Redis based modules.
+
+NOTES: See the `redis` module for more information.
+
 server:: Redis Server name.
 
 If using Redis cluster, multiple 'bootstrap' servers may be listed
@@ -96,6 +102,8 @@ The default port is 6379.
 password:: For authenticating ourselves to the Redis server.
 
 database:: The database number to use.
+
+virtual_server:: The virtual server used to fetch cluster maps
 
 pool:: Connection pool.
 
@@ -376,16 +384,26 @@ cache {
 #		port = 6379
 #		password = 'supersecret'
 #		database = 0
-		pool {
+#		virtual_server = redis
+#		pool {
 			start = 0
 			min = 0
-			max =
-			spare = 1
-			uses = 0
-			lifetime = 0
-			idle_timeout = 60
-		}
-	}
+#			max = 10
+#			connecting = 2
+#			uses = 0
+#			lifetime = 0
+#			idle_timeout = 60
+#			connection {
+#				connect_timeout = 3.0
+#				reconnection_delay = 5
+#			}
+#			request {
+#				per_connection_max = 2000
+#				per_connection_target = 1000
+#				free_delay = 10
+#			}
+#		}
+#	}
 	key = %{User-Name}
 	ttl = 10
 	add_stats = no

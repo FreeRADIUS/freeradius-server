@@ -44,6 +44,12 @@ use_tls:: Use TLS (requires hiredis 1.0+)
 TLS parameters can be specified in an optional tls {} section.  See
 the `eap` module for documentation on the `tls` section.
 
+virtual_server:: Virtual server used to fetch Redis cluster map
+
+Rather than each thread independently fetching the Redis cluster map
+a coordinator thread is used.  This requires a virtual server which
+uses the `redis` namespace.
+
 use_cluster_map:: Use cluster map
 
 Build cluster map during initialization.
@@ -92,14 +98,12 @@ body:: Lua code to send to redis nodes with SCRIPT LOAD
 
 pool { ... }::
 
-Information for the connection pool. The configuration items below are
-the same for all modules which use the new connection pool.
+The connection pool is a set of per-thread parameters for connections to the redis cluster.
 
 start:: Connections to create during module instantiation.
 
-If the server cannot create specified number of connections during
-instantiation it will exit. Set to `0` to allow the server to start
-without the external service being available.
+Set to `0` to allow the server to start without immediately
+creating connections to the redis cluster.
 
 min:: Minimum number of connections to keep open.
 
@@ -108,62 +112,58 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one is requested, the
 request will NOT get a connection.
 
-Setting `max` to *LESS* than the number of threads means that some
-threads may starve, and you will see errors like _No connections
-available and at max connection limit_.
-
-Setting `max` to MORE than the number of threads means that there are
-more connections than necessary.
-
-If `max` is not specified, then it defaults to the number of workers
-configured.
-
-spare:: Spare connections to be left idle.
-
-NOTE: Idle connections WILL be closed if `idle_timeout` is set. This
-should be less than or equal to `max` above.
-
 uses:: Number of uses before the connection is closed.
 
 NOTE: `0` means "infinite".
-
-retry_delay:: The number of seconds to wait after the server tries to
-open a connection, and fails.
-
-During this time, no new connections will be opened.
 
 lifetime:: The lifetime (in seconds) of the connection.
 
 NOTE: `0` means "infinite".
 
-cleanup_interval:: The pool is checked for free connections every
-`cleanup_interval`.
+open_delay:: Open delay (in seconds).
 
-If there are free connections, then one of them is closed.
+How long must we be above the target utilisation for connections to be opened.
 
-idle_timeout:: The idle timeout (in seconds).
+close_delay:: Close delay (in seconds).
 
-A connection which is unused for this length of time will be closed.
+How long we must be below the target utilisation for connections to be closed
 
-NOTE: `0` means "infinite".
+manage_interval:: How often to manage the connection pool.
 
-connect_timeout:: Connection timeout (in seconds).
+connection { ... }:: Per-connection configuration.
 
-The maximum amount of time to wait for a new connection to be
-established.
+connect_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
 
-[NOTE]
-====
-All configuration settings are enforced. If a connection is closed
-because of `idle_timeout`, `uses`, or `lifetime`, then the total
-number of connections MAY fall below `min`.
+reconnect_delay:: If opening a connection
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another connection.
 
-When that happens, it will open a new connection. It will also log a
-*WARNING* message.
+request:: Options specific to requests handled by this connection pool
 
-The solution is to either lower the "min" connections, or increase
-lifetime/idle_timeout.
-====
+Note:  Due to the one outstanding query per connection limit, the settings
+`per_connection_max` and `per_connection_target` are forcibly set to 1 for
+SQL database connections.
+
+per_connection_max:: The maximum number of requests
+which are "live" on a particular connection.
+
+per_connection_target:: The target number
+of requests which are "live" on a
+particular connection.
+
+There can be a balance between overloading
+a connection, and under-utilizing it.  The
+default is to fill each connection before
+opening a new one.
+
+free_delay:: How long must a request in the unassigned (free) list not have been
+used for before it's cleaned up and actually freed.
+
+Unassigned requests can be re-used, multiple times, reducing memory allocation
+and freeing overheads.
 
 == Default Configuration
 
@@ -176,6 +176,7 @@ redis {
 #	use_tls = no
 ##	tls {
 ##	}
+	virtual_server = redis
 #	use_cluster_map = yes
 	lua {
 		function hello_world {
@@ -184,15 +185,22 @@ redis {
 	}
 	pool {
 		start = 0
-		min = 0
-#		max =
-		spare = 1
+		min = 1
+		max = 10
 		uses = 0
-		retry_delay = 30
 		lifetime = 86400
-		cleanup_interval = 300
-		idle_timeout = 600
-		connect_timeout = 3.0
+#		open_delay = 0.2
+#		close_delay = 10
+#		manage_interval = 0.2
+		connection {
+			connect_timeout = 3.0
+			reconnect_delay = 5
+		}
+		request {
+#			per_connection_max = 2000
+#			per_connection_target = 1000
+#			free_delay = 10
+		}
 	}
 }
 ----
