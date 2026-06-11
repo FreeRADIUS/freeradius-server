@@ -1421,6 +1421,8 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
 
+	if (!inst->conf.use_cluster_map) return 0;
+
 	t->cw = fr_coord_attach(t, mctx->el, inst->coord_reg);
 
 	if (!t->cw) {
@@ -1478,6 +1480,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	if (!inst->conf.use_cluster_map) goto cmds;
+
 	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
 			.name = mctx->mi->name,
 			.worker_cb = worker_pair_callbacks,
@@ -1499,6 +1503,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->coord_reg) return -1;
 
+cmds:
 	if (inst->wait_num) {
 		inst->wait_cmd_len = redisFormatCommand(&inst->wait_cmd, "WAIT %i %i", inst->wait_num,
 							fr_time_delta_to_msec(inst->wait_timeout));
