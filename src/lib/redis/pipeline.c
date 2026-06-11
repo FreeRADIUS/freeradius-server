@@ -673,7 +673,11 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
 {
 	fr_redis_trunk_t *rtrunk = talloc_get_type_abort(uctx, fr_redis_trunk_t);
 
-	return fr_redis_connection_alloc(tconn, el, conf, rtrunk->io_conf, log_prefix);
+	return fr_redis_connection_alloc(tconn, el, conf, rtrunk->io_conf,
+#ifdef HAVE_REDIS_SSL
+					 fr_redis_cluster_ssl_ctx(rtrunk->rtcluster),
+#endif
+					 log_prefix);
 }
 
 /** Enqueue one or more command sets onto a redis handle

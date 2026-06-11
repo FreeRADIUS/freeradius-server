@@ -28,9 +28,18 @@
  */
 RCSIDH(redis_io_h, "$Id$")
 
+#include "config.h"
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/server/connection.h>
+
+#ifndef WITH_TLS
+#  undef HAVE_REDIS_SSL
+#endif
+
+#ifdef HAVE_REDIS_SSL
+#include <freeradius-devel/tls/strerror.h>
+#endif
 
 #include <hiredis/async.h>
 
@@ -47,6 +56,7 @@ typedef struct {
 	char const		*username;	//!< to authenticate to Redis.
 	char const		*password;	//!< to authenticate to Redis.
 	char const		*log_prefix;
+	bool			use_tls;
 } fr_redis_io_conf_t;
 
 typedef uint64_t fr_redis_sqn_t;
@@ -141,6 +151,9 @@ static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
 connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 						   connection_conf_t const *conn_conf,
 						   fr_redis_io_conf_t const *io_conf,
+#ifdef HAVE_REDIS_SSL
+						   SSL_CTX *ssl_ctx,
+#endif
 						   char const *log_prefix);
 
 redisAsyncContext	*fr_redis_connection_get_async_ctx(connection_t *conn);

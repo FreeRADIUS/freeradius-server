@@ -25,10 +25,19 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
-#include "config.h"
 #include <freeradius-devel/redis/io.h>
 #include <freeradius-devel/util/debug.h>
 
+#ifdef HAVE_REDIS_SSL
+#include <hiredis/hiredis_ssl.h>
+#endif
+
+typedef struct {
+	fr_redis_io_conf_t const	*io_conf;
+#ifdef HAVE_REDIS_SSL
+	SSL_CTX				*ssl_ctx;
+#endif
+} redis_conn_uctx_t;
 
 /** Called by hiredis to indicate the connection is dead
  *
@@ -101,10 +110,31 @@ static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED 
  */
 static void _redis_connected(redisAsyncContext *ac, UNUSED int status)
 {
-	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
-	fr_redis_io_conf_t	*io_conf = connection_uctx_get(conn);
+	connection_t			*conn = talloc_get_type_abort(ac->data, connection_t);
+	redis_conn_uctx_t		*conn_uctx = connection_uctx_get(conn);
+	fr_redis_io_conf_t const	*io_conf = conn_uctx->io_conf;
 
 	DEBUG4("Signalled by hiredis, connection is open");
+
+#ifdef HAVE_REDIS_SSL
+	if (io_conf->use_tls) {
+		fr_tls_session_t *tls_session = fr_tls_session_alloc_client(conn, conn_uctx->ssl_ctx);
+		DEBUG2("%s - Using tls", io_conf->log_prefix);
+		if (!tls_session) {
+			fr_tls_strerror_printf("%s - [%s]", io_conf->log_prefix, conn->name);
+			ERROR("%s - Failed to allocate TLS session", io_conf->log_prefix);
+			return connection_signal_reconnect(conn, CONNECTION_FAILED);
+		}
+
+		// redisInitiateSSL() takes ownership of SSL object on success
+		SSL_up_ref(tls_session->ssl);
+		if (redisInitiateSSL(&ac->c, tls_session->ssl) != REDIS_OK) {
+			ERROR("%s - Failed to initiate SSL: %s", io_conf->log_prefix, ac->c.errstr);
+			SSL_free(tls_session->ssl);
+			return connection_signal_reconnect(conn, CONNECTION_FAILED);
+		}
+	}
+#endif
 
 	/*
 	 *	If auth is configured, send the appropriate AUTH command
@@ -374,9 +404,9 @@ static int _redis_handle_free(fr_redis_handle_t *h)
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _redis_io_connection_init(void **h_out, connection_t *conn, void *uctx)
 {
-	fr_redis_io_conf_t	*conf = uctx;
-	char const		*host = conf->hostname;
-	uint16_t		port = conf->port;
+	redis_conn_uctx_t	*conn_uctx = uctx;
+	char const		*host = conn_uctx->io_conf->hostname;
+	uint16_t		port = conn_uctx->io_conf->port;
 	fr_redis_handle_t	*h;
 	int			ret;
 
@@ -490,11 +520,22 @@ static void _redis_io_connection_close(UNUSED fr_event_list_t *el, void *h, UNUS
 /** Allocate an async redis I/O connection
  *
  */
-connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					   connection_conf_t const *conn_conf, fr_redis_io_conf_t const *io_conf,
-					   char const *log_prefix)
+connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, connection_conf_t const *conn_conf,
+					fr_redis_io_conf_t const *io_conf,
+#ifdef HAVE_REDIS_SSL
+					SSL_CTX *ssl_ctx,
+#endif
+					char const *log_prefix)
 {
-	connection_t *conn;
+	connection_t 		*conn;
+	redis_conn_uctx_t	*uctx;
+
+	MEM(uctx = talloc(ctx, redis_conn_uctx_t));
+	uctx->io_conf = io_conf;
+#ifdef HAVE_REDIS_SSL
+	uctx->ssl_ctx = ssl_ctx;
+#endif
+
 	/*
 	 *	We don't specify an open callback
 	 *	as hiredis handles switching over
@@ -510,7 +551,7 @@ connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				   },
 				   conn_conf,
 				   log_prefix,
-				   io_conf);
+				   uctx);
 	if (!conn) return NULL;
 
 	return conn;

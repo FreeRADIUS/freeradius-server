@@ -262,6 +262,7 @@ static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster
 	node->io_conf = (fr_redis_io_conf_t) {
 		.password = conf->password,
 		.username = conf->username,
+		.use_tls = conf->use_tls,
 	};
 	if (fr_inet_pton_port(&node->io_conf.ipaddr, &node->io_conf.port, host_vp->vp_strvalue,
 			      host_vp->vp_length, AF_UNSPEC, true, true) < 0){
@@ -478,6 +479,7 @@ RECV(cluster_map_bootstrap)
 	fr_pair_t		*port_vp;
 	process_redis_cluster_t	find, *cluster;
 	fr_redis_conf_t		*conf;
+	CONF_SECTION		*tls_conf = NULL;
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 	rctx->worker_id = vp->vp_int32;
@@ -564,7 +566,15 @@ RECV(cluster_map_bootstrap)
 		}
 	}
 
-	MEM(cluster->rtcluster = fr_redis_cluster_thread_alloc(cluster, thread->el, conf, NULL, NULL, false));
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_use_tls);
+	if (vp) {
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_tls_conf);
+		if (!vp) return UNLANG_ACTION_FAIL;
+		conf->use_tls = true;
+		tls_conf = (CONF_SECTION *)(uintptr_t)vp->vp_uint64;
+	}
+
+	MEM(cluster->rtcluster = fr_redis_cluster_thread_alloc(cluster, tls_conf, thread->el, conf, NULL, NULL, false));
 
 	/*
 	 *	Add all the bootstrap nodes to the cluster.

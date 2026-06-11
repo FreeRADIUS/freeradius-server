@@ -73,6 +73,8 @@ fr_dict_attr_t const *attr_redis_node_endpoint;
 fr_dict_attr_t const *attr_redis_node_port;
 fr_dict_attr_t const *attr_redis_node_role;
 fr_dict_attr_t const *attr_redis_force_update;
+fr_dict_attr_t const *attr_redis_use_tls;
+fr_dict_attr_t const *attr_redis_tls_conf;
 
 extern fr_dict_attr_autoload_t redis_base_dict_attr[];
 fr_dict_attr_autoload_t redis_base_dict_attr[] = {
@@ -93,6 +95,8 @@ fr_dict_attr_autoload_t redis_base_dict_attr[] = {
 	{ .out = &attr_redis_node_port, .name = "Shard.Node.Port", .type = FR_TYPE_UINT16, .dict = &dict_redis },
 	{ .out = &attr_redis_node_role, .name = "Shard.Node.Role", .type = FR_TYPE_UINT8, .dict = &dict_redis },
 	{ .out = &attr_redis_force_update, .name = "Force-Update", .type = FR_TYPE_BOOL, .dict = &dict_redis },
+	{ .out = &attr_redis_use_tls, .name = "Use-TLS", .type = FR_TYPE_BOOL, .dict = &dict_redis },
+	{ .out = &attr_redis_tls_conf, .name = "TLS-Conf", .type = FR_TYPE_UINT64, .dict = &dict_redis },
 
 	DICT_AUTOLOAD_TERMINATOR
 };

@@ -40,6 +40,8 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
+	CONF_SECTION 		*tls_conf;	//!< TLS CONF_SECTION
+
 	tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
 	tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
 
@@ -131,6 +133,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->mi = mctx->mi;
 	inst->conf.log_prefix = talloc_asprintf(inst, "rlm_cache (%s)", mctx->mi->parent->name);
 
+	if (inst->conf.use_tls) {
+		inst->tls_conf = cf_section_find(mctx->mi->conf, "tls", CF_IDENT_ANY);
+
+		if (!inst->tls_conf) {
+			cf_log_err(mctx->mi->conf, "Missing tls section");
+			return -1;
+		}
+	}
+
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
@@ -175,7 +186,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
 	rlm_cache_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, NULL, NULL, false);
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, inst->tls_conf, mctx->el, &inst->conf, NULL, NULL, false);
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
 

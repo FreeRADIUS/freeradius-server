@@ -42,3 +42,6 @@ VALUE		Role			Master			1
 VALUE		Role			Replica			2
 
 ATTRIBUTE	Force-Update				10	bool
+
+ATTRIBUTE	Use-TLS					11	bool
+ATTRIBUTE	TLS-Conf				12	uint64

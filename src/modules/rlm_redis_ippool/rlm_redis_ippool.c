@@ -68,6 +68,8 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
+	CONF_SECTION 		*tls_conf;	//!< TLS CONF_SECTION
+
 	char const		*name;		//!< Instance name.
 
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
@@ -1406,7 +1408,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, mctx->el, &inst->conf, lua_script_load, t, true);
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, inst->tls_conf, mctx->el, &inst->conf, lua_script_load, t, true);
 
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
@@ -1466,6 +1468,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(subcs);
 
 	inst->conf.log_prefix = mctx->mi->name;
+
+	if (inst->conf.use_tls) {
+		inst->tls_conf = cf_section_find(subcs, "tls", CF_IDENT_ANY);
+
+		if (!inst->tls_conf) {
+			cf_log_err(mctx->mi->conf, "Missing tls section");
+			return -1;
+		}
+	}
 
 	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
 			.name = mctx->mi->name,

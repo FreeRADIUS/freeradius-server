@@ -27,9 +27,19 @@
 
 #include <freeradius-devel/util/debug.h>
 
+#include "config.h"
 #include "attrs.h"
 #include "cluster_async.h"
 #include "crc16.h"
+
+#ifndef WITH_TLS
+#  undef HAVE_REDIS_SSL
+#endif
+
+#ifdef HAVE_REDIS_SSL
+#include <freeradius-devel/tls/strerror.h>
+#include <hiredis/hiredis_ssl.h>
+#endif
 
 #define MAX_REPLICAS		5			//!< Maximum number of replicas associated
 							//!< with a keyslot.
@@ -54,10 +64,15 @@ struct fr_redis_cluster_thread_s {
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
 	fr_redis_conf_t const		*conf;		//!< Redis configuration for the cluster.
+	CONF_SECTION const		*tls_cs;	//!< TLS CONF_SECTION
 
 	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
 	void				*active_uctx;	//!< Uctx to pass to active callback.
 	bool				active_oneshot;	//!< Should the callback only be called once.
+
+#ifdef HAVE_REDIS_SSL
+	SSL_CTX				*ssl_ctx;	//!< SSL context.
+#endif
 
 	fr_redis_ct_node_t		*node;		//!< Array of nodes in this cluster.
 	fr_fifo_t			*free_nodes;	//!< Nodes not currently active.
@@ -109,6 +124,7 @@ char buff [FR_IPADDR_STRLEN]; \
 		.port = _node->addr.inet.dst_port, \
 		.username = rtcluster->conf->username, \
 		.password = rtcluster->conf->password, \
+		.use_tls = rtcluster->conf->use_tls, \
 	}; \
 	_node->ioconf.log_prefix = talloc_asprintf(rtcluster, "%s %s:%d", rtcluster->conf->log_prefix, \
 						   fr_inet_ntop(buff, sizeof(buff), &_node->addr.inet.dst_ipaddr), \
@@ -425,15 +441,23 @@ static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
 	return CMP(a->addr.inet.dst_port, b->addr.inet.dst_port);
 }
 
+#ifdef HAVE_REDIS_SSL
+static int _redis_cluster_thread_free(fr_redis_cluster_thread_t *rtcluster)
+{
+	if (rtcluster->ssl_ctx) SSL_CTX_free(rtcluster->ssl_ctx);
+	return 0;
+}
+#endif
+
 /** Allocate per-thread, per-cluster instance
  *
  * This structure represents all the connections for a given thread for a given cluster.
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_redis_conf_t *conf,
-							 fr_redis_trunk_active_t active, void *active_uctx,
-							 bool active_oneshot)
+fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event_list_t *el,
+							 fr_redis_conf_t *conf, fr_redis_trunk_active_t active,
+							 void *active_uctx, bool active_oneshot)
 {
 	fr_redis_cluster_thread_t	*rtcluster;
 	trunk_conf_t			*our_tconf;
@@ -444,6 +468,7 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 	*rtcluster = (fr_redis_cluster_thread_t) {
 		.el = el,
 		.conf = conf,
+		.tls_cs = tls_cs,
 		.active = active,
 		.active_uctx = active_uctx,
 		.active_oneshot = active_oneshot
@@ -480,6 +505,31 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 
 		/* Push them all into the queue */
 		fr_fifo_push(rtcluster->free_nodes, &rtcluster->node[i]);
+	}
+
+	if (conf->use_tls) {
+#ifdef HAVE_REDIS_SSL
+		fr_tls_conf_t *tls_conf;
+		if (!tls_cs) {
+			ERROR("%s - Missing TLS configuration", conf->log_prefix);
+			goto error;
+		}
+
+		tls_conf = fr_tls_conf_parse_client(tls_cs);
+		if (!tls_conf) {
+			ERROR("%s - Failed to parse TLS configuration", conf->log_prefix);
+			goto error;
+		}
+
+		rtcluster->ssl_ctx = fr_tls_ctx_alloc(tls_conf, true);
+		if (!rtcluster->ssl_ctx) {
+			ERROR("%s - Failed to allocate SSL context", conf->log_prefix);
+			goto error;
+		}
+		talloc_set_destructor(rtcluster, _redis_cluster_thread_free);
+#else
+		WARN("%s - No redis SSL support, ignoring \"use_tls = yes\"", conf->log_prefix);
+#endif
 	}
 
 	if (conf->use_cluster_map) return rtcluster;
@@ -531,6 +581,13 @@ trunk_conf_t const *fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t
 {
 	return rtcluster->tconf;
 }
+
+#ifdef HAVE_REDIS_SSL
+SSL_CTX *fr_redis_cluster_ssl_ctx(fr_redis_cluster_thread_t *rtcluster)
+{
+	return rtcluster->ssl_ctx;
+}
+#endif
 
 /** Update a Redis cluster map from a pair list returned from a coordinator
  *
@@ -813,6 +870,14 @@ int fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster, 
 			if (fr_pair_append_by_da(local, &vp, &list, attr_redis_username) < 0) goto error;
 			if (fr_value_box_strdup(vp, &vp->data, NULL, conf->username, false) < 0) goto error;
 		}
+	}
+
+	if (conf->use_tls) {
+		uintptr_t tls_conf = (uintptr_t)rtcluster->tls_cs;
+		fr_pair_list_append_by_da(local, vp, &list, attr_redis_use_tls, false, false);
+		if (!vp) goto error;
+		fr_pair_list_append_by_da(local, vp, &list, attr_redis_tls_conf, (uint64_t)tls_conf, false);
+		if (!vp) goto error;
 	}
 
 	ret = fr_worker_to_coord_pair_send(cw, coord_pair_reg, &list);
