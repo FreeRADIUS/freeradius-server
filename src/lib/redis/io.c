@@ -69,6 +69,42 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
+/** Callback for verifying the results of SELECT
+ *
+ */
+static void _redis_select_result(struct redisAsyncContext *ac, void *data, UNUSED void *privdata)
+{
+	connection_t	*conn = talloc_get_type_abort(ac->data, connection_t);
+	redisReply	*reply = data;
+
+	if (!reply) {
+		ERROR("Failed selecting database: %s", ac->errstr);
+	error:
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		return;
+	}
+
+	switch (reply->type) {
+	case REDIS_REPLY_STATUS:
+		if (strcmp(reply->str, "OK") != 0) {
+			ERROR("Failed selecting database: %s", reply->str);
+			goto error;
+		}
+		break;	/* else it's OK */
+
+	case REDIS_REPLY_ERROR:
+		ERROR("Failed selecting database: %s", reply->str);
+		goto error;
+
+	default:
+		ERROR("Unexpected reply of type %s to SELECT",
+		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+		goto error;
+	}
+
+	connection_signal_connected(conn);
+}
+
 /** Callback for verifying the results of AUTH
  *
  */
@@ -76,6 +112,8 @@ static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED 
 {
 	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
 	redisReply		*reply = data;
+	redis_conn_uctx_t	*conn_uctx = connection_uctx_get(conn);
+	uint32_t		database = conn_uctx->io_conf->database;
 
 	if (!reply) {
 		ERROR("Failed authenticating: %s", ac->errstr);
@@ -100,6 +138,12 @@ static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED 
 		ERROR("Unexpected reply of type %s to AUTH",
 		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		goto error;
+	}
+
+	if (database) {
+		DEBUG3("Executing: SELECT %d", database);
+		if (redisAsyncCommand(ac, _redis_select_result, NULL, "SELECT %d", database) != REDIS_OK) goto error;
+		return;
 	}
 
 	connection_signal_connected(conn);
@@ -153,6 +197,12 @@ static void _redis_connected(redisAsyncContext *ac, UNUSED int status)
 		}
 		DEBUG3("Executing: AUTH %s", io_conf->password);
 		if (redisAsyncCommand(ac, _redis_auth_result, NULL, "AUTH %s", io_conf->password) != REDIS_OK) goto error;
+		return;
+	}
+
+	if (io_conf->database) {
+		DEBUG3("Executing: SELECT %d", io_conf->database);
+		if (redisAsyncCommand(ac, _redis_select_result, NULL, "SELECT %d", io_conf->database) != REDIS_OK) goto error;
 		return;
 	}
 

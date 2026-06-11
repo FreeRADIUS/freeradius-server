@@ -122,6 +122,7 @@ char buff [FR_IPADDR_STRLEN]; \
 	_node->addr = _addr; \
 	_node->ioconf = (fr_redis_io_conf_t) { \
 		.port = _node->addr.inet.dst_port, \
+		.database = rtcluster->conf->database, \
 		.username = rtcluster->conf->username, \
 		.password = rtcluster->conf->password, \
 		.use_tls = rtcluster->conf->use_tls, \
