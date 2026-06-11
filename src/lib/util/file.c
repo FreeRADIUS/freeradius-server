@@ -944,3 +944,53 @@ const fr_sbuff_escape_rules_t fr_filename_escape_dots = {
 	},
 };
 
+/** See if a filename is OK.
+ *
+ * @param[in] filename	to check
+ * @return
+ *	- false - filename is invalid or insecure
+ *	- true - filename is sane and OK
+ */
+bool fr_filename_ok(char const *filename)
+{
+	char const *p = filename;
+
+	if (*p == '/') {
+		fr_strerror_const("Invalid filename - leading '/' is forbidden");
+		return false;
+	}
+
+	if (*p == '.') {
+		fr_strerror_const("Invalid filename - leading '.' is forbidden");
+		return false;
+	}
+
+	while (*p) {
+		if (*p < ' ') {
+			fr_strerror_const("Invalid filename - control characters are forbidden");
+			return false;
+		}
+
+		if (*p == '\\') {
+			fr_strerror_const("Invalid filename - backslashes are forbidden");
+			return false;
+		}
+
+		if (*p != '/') {
+			p++;
+			continue;
+		}
+
+		if (p[1] == '/') {
+			fr_strerror_const("Invalid filename - multiple '/' are forbidden");
+			return false;
+		}
+
+		if (p[1] == '.') {
+			fr_strerror_const("Invalid filename - 'dot' files cannot be accessed");
+			return false;
+		}
+	}
+
+	return true;
+}
