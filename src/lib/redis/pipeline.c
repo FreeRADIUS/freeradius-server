@@ -682,6 +682,7 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
  * will be called any time trunk_request_enqueue is called, so there'll only
  * ever be one command to dequeue.
  *
+ * @param[in] el		Event list for trunk events. Unused.
  * @param[in] tconn		Trunk connection holding the commands to enqueue.
  * @param[in] conn		Connection handle containing the fr_redis_handle_t.
  * @param[in] uctx		fr_redis_cluster_t.  Unused.
