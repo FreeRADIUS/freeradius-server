@@ -572,6 +572,15 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	connection_t		*conn = talloc_get_type_abort(ac->ev.data, connection_t);
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	redisReply		*reply = vreply;
+
+	/*
+	 *	If we're already disconnecting, then ignore the response.
+	 *	Testing has shown this callback can be called by hiredis after the connection
+	 *	has errored.  At that point privdata is no longer valid so there's nothing
+	 *	that can be done.
+	 */
+	if (h->freeing) return;
+
 	/*
 	 *	First check if we should ignore the response
 	 */
