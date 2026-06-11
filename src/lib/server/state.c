@@ -679,6 +679,8 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 
 /** Called when sending an Access-Accept/Access-Reject to discard state information
  *
+ * @param[in] state	tree to lookup state in.
+ * @param[in] request	to discard state for.
  */
 void fr_state_discard(fr_state_tree_t *state, request_t *request)
 {
@@ -717,6 +719,31 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	return;
+}
+
+/** Called to discard a state which is synthesized
+ *
+ *  Some protocols synthesize a state, which means that there is the
+ *  possibility for conflict.  i.e. an old state exists which needs to
+ *  be discarded.  The current request can't restore the old state, it
+ *  instead needs to discard it.
+ *
+ * @param[in] state	tree to lookup state in.
+ * @param[in] request	to discard state for.
+ */
+void fr_state_discard_by_state(fr_state_tree_t *state, request_t *request)
+{
+	fr_pair_t		*vp;
+	fr_state_entry_t	*entry;
+
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, state->da);
+	if (!vp) return;
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
+	entry = state_entry_find_and_unlink(state, &vp->data);
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	if (entry) talloc_free(entry);
 }
 
 /** Copy a pointer to the head of the list of state fr_pair_ts (and their ctx) into the request

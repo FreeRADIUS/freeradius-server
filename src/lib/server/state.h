@@ -52,6 +52,7 @@ extern const conf_parser_t state_session_config[];
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_state_config_t const *config);
 
 void	fr_state_discard(fr_state_tree_t *state, request_t *request);
+void	fr_state_discard_by_state(fr_state_tree_t *state, request_t *request);
 
 int	fr_state_restore(fr_state_tree_t *state, request_t *request);
 int	fr_state_store(fr_state_tree_t *state, request_t *request);
