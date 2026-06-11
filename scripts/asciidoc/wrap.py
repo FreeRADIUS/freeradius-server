@@ -23,11 +23,14 @@ Rules:
   - Lines that start with "[" (e.g. "[NOTE]", "[source,c]") are left
     unchanged on their own line.
   - Lines starting with "|" (tables) are left unchanged.
-  - List entries begin with one to four "*" markers ("* ", "** ",
-    "*** ", "**** "), with "- ", or with a number followed by "."
+  - List entries begin with any number of "*" markers ("* ", "** ",
+    "*** ", etc.), with "- ", or with a number followed by "."
     (e.g. "1.").  Each entry is wrapped on its own; continuation lines
     are indented so they align with the text after the marker.  For
     numbered entries the leading number is preserved as-is.
+  - List entries containing an "xref:" macro are left unwrapped.
+    Antora's nav parser requires each "* xref:..." entry to occupy a
+    single line; splitting it breaks the nav tree.
 
 	$Id$
 """
@@ -106,7 +109,7 @@ def is_comment(line):
     return line.lstrip().startswith("//")
 
 
-_LIST_MARKER_RE = re.compile(r"^(?:\*{1,4}|-|\d+\.)\s+")
+_LIST_MARKER_RE = re.compile(r"^(?:\*+|-|\d+\.)\s+")
 
 
 def list_marker_len(line):
@@ -166,11 +169,18 @@ def process(lines):
         nonlocal buf, buf_list_indent
         if not buf:
             return
-        text = " ".join(s.strip() for s in buf)
-        if buf_list_indent is not None:
-            out.append(wrap_list_entry(text, buf_list_indent))
+        if buf_list_indent is not None and any("xref:" in s for s in buf):
+            # Antora's nav parser requires each "* xref:..." entry on one
+            # line.  Wrapping splits the xref macro across lines and breaks
+            # the nav tree, so emit these entries verbatim.
+            for s in buf:
+                out.append(s)
         else:
-            out.append(wrap_paragraph(text))
+            text = " ".join(s.strip() for s in buf)
+            if buf_list_indent is not None:
+                out.append(wrap_list_entry(text, buf_list_indent))
+            else:
+                out.append(wrap_paragraph(text))
         buf = []
         buf_list_indent = None
 
