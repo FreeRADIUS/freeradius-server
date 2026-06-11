@@ -135,7 +135,7 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 
 	if (vb->vb_length == 0) return 0;
 
-	fr_assert(!fr_value_box_is_safe_for(vb, rad_filename_box_make_safe));
+	if (fr_value_box_is_safe_for(vb, rad_filename_box_make_safe)) return 1;
 
 	/*
 	 *	Allocate an output buffer, only ever the same or shorter than the input
