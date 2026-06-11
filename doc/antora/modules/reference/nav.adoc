@@ -217,11 +217,12 @@
 **** xref:raddb/mods-available/mruby.adoc[Ruby]
 
 *** xref:raddb/mods-available/doc/logging.adoc[Logging]
+**** xref:raddb/mods-available/detail.adoc[Detail]
+***** xref:raddb/mods-available/detail.example.com.adoc[Detail Sample]
+***** xref:raddb/mods-available/detail.log.adoc[Detail Log Sample]
+**** xref:raddb/mods-available/kafka.adoc[Kafka]
 **** xref:raddb/mods-available/linelog.adoc[Linelog]
 **** xref:raddb/mods-available/logtee.adoc[Logtee]
-**** xref:raddb/mods-available/detail.adoc[Detail]
-***** xref:raddb/mods-available/detail.example.com.adoc[Example]
-***** xref:raddb/mods-available/detail.log.adoc[Log Example]
 
 
 *** xref:raddb/mods-available/doc/policy.adoc[Policy]
