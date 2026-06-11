@@ -1446,6 +1446,8 @@ ssize_t	fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...);
 ssize_t	fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_escape, ##__VA_ARGS__)
 
+bool	fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1));
+
 ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
 

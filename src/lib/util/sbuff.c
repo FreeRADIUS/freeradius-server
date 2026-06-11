@@ -1694,6 +1694,49 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 	FR_SBUFF_SET_RETURN(sbuff, &our_sbuff);
 }
 
+/** Walk an input string and report whether fr_sbuff_in_escape() would
+ * escape any characters in it.
+ *
+ *  Mirrors the per-byte decisions of #fr_sbuff_in_escape: a byte
+ *  inside a multi-byte UTF-8 sequence (when do_utf8 is set) is passed
+ *  through, a byte with a substitution mapping is escaped, and a byte
+ *  in the esc[] table is escaped.  If any byte would be escaped, the
+ *  function returns false at that byte.  A NULL or chr=='\0' ruleset
+ *  is treated as "no escaping": the function always returns true.
+ *
+ * @param[in] in	to inspect.
+ * @param[in] inlen	bytes of `in` to inspect.
+ * @param[in] e_rules	escaping rules.  May be NULL.
+ * @return
+ *	- false	at least one byte would be escaped.
+ *	- true	no byte would be escaped (the string is already safe).
+ */
+bool fr_sbuff_in_needs_escaping(char const *in, size_t inlen, fr_sbuff_escape_rules_t const *e_rules)
+{
+	char const	*end = in + inlen;
+	char const	*p = in;
+
+	if (!e_rules || !e_rules->chr) return false;
+
+	while (p < end) {
+		size_t	clen;
+		uint8_t	c = (uint8_t) *p;
+
+		if (e_rules->do_utf8 && ((clen = fr_utf8_char((uint8_t const *) p, end - p)) > 1)) {
+			p += clen;
+			continue;
+		}
+
+		if (e_rules->subs[c] != '\0') return false;
+
+		if (e_rules->esc[c]) return false;
+
+		p++;
+	}
+
+	return true;
+}
+
 /** Print an escaped string to an sbuff taking a talloced buffer as input
  *
  * @param[in] sbuff	to print into.
