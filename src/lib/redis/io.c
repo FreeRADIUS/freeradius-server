@@ -164,7 +164,7 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
-	DEBUG4("redis handle %p - FD %i errored: %s", h, fd, fr_syserror(fd_errno));
+	ERROR("%s handle %p - FD %i errored: %s", conn->name, h, fd, fr_syserror(fd_errno));
 
 	/*
 	 *	Connection state machine will handle reconnecting
