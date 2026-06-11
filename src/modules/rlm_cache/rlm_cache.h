@@ -23,7 +23,7 @@
  * @copyright 2014 The FreeRADIUS server project
  * @copyright 2014 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(cache_h, "$Id$")
+RCSIDH(rlm_cache_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/dl_module.h>
