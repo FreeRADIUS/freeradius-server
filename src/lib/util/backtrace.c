@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/backtrace.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/file.h>
 
 #ifdef HAVE_BACKTRACE
 #  include <freeradius-devel/backtrace/backtrace.h>

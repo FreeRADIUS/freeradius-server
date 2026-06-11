@@ -104,6 +104,8 @@ int		fr_globdir_iter_next(char const **filename, fr_globdir_iter_t *iter);
 int		fr_globdir_iter_free(fr_globdir_iter_t *iter);
 
 bool		fr_filename_ok(char const *filename) CC_HINT(nonnull);
+char const	*fr_filename(char const *path);
+char const	*fr_filename_common_trim(char const *path, char const *common);
 
 extern const fr_sbuff_escape_rules_t fr_filename_escape;
 extern const fr_sbuff_escape_rules_t fr_filename_escape_dots;

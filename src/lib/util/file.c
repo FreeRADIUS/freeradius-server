@@ -994,3 +994,50 @@ bool fr_filename_ok(char const *filename)
 
 	return true;
 }
+
+/** Get the filename from a path
+ *
+ * @param path to get filename from.
+ * @return
+ *	- pointer to the filename in the path.
+ *	- pointer to the path if no '/' is found.
+ */
+char const *fr_filename(char const *path)
+{
+	char const *p = strrchr(path, '/');
+
+	if (p) return p + 1;
+
+	return path;
+}
+
+/** Trim a common prefix from a filename
+ *
+ * @param path to get filename from.
+ * @param common prefix to trim from the path.
+ * @return
+ *	- pointer to the position on the path where the common prefix match ended.
+ */
+char const *fr_filename_common_trim(char const *path, char const *common)
+{
+	char const *p_p, *p_c, *p_pn, *p_cn;
+
+	if (!path) return NULL;
+	if (!common) return NULL;
+
+	p_p = path;
+	p_c = common;
+
+	while ((p_pn = strchr(p_p, '/')) != NULL) {
+		p_cn = strchr(p_c, '/');
+		if (!p_cn) p_cn = p_c + strlen(p_c);
+
+		if ((p_pn - p_p) != (p_cn - p_c)) break;	/* path component not the same len */
+		if (strncmp(p_p, p_c, p_pn - p_p) != 0) break;  /* path component not the same */
+
+		p_p = p_pn + 1;
+		p_c = p_cn + 1;
+	}
+
+	return p_p;
+}
