@@ -709,6 +709,7 @@ void fr_coord_pair_data_recv(UNUSED fr_coord_t *coord, uint32_t worker_id, fr_db
  * @param cw	Worker which received the message.
  * @param dbuff	Data received.
  * @param now	Time the data is received.
+ * @param mctx	Module context to pass to callback.
  * @param uctx	The coord_pair registration.
  */
 void fr_coord_worker_pair_data_recv(fr_coord_worker_t *cw, fr_dbuff_t *dbuff, fr_time_t now, module_ctx_t *mctx, void *uctx)
@@ -804,6 +805,7 @@ int fr_coord_to_worker_reply_broadcast(request_t *request)
  * The pair list must include an attribute indicating the packet type
  *
  * @param cw	The coord worker sending the data.
+ * @param coord_pair_reg	The coord_pair registration to use.
  * @param list	of pairs to send.
  * @return
  *	- 0 on success
@@ -830,6 +832,7 @@ int fr_worker_to_coord_pair_send(fr_coord_worker_t *cw, fr_coord_pair_reg_t *coo
 /** Instance creation called during coordinator creation.
  *
  * @param ctx		to allocate the instance in.
+ * @param coord		Coordinator to create an instance of.
  * @param el		Event list for instance to use.
  * @param single_thread	is the server in single thread mode.
  * @param uctx		configured for the callback this instance relates to.
