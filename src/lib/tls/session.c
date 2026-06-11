@@ -541,8 +541,8 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				REDEBUG("Verify the client has a copy of the server's Certificate "
-					"Authority (CA) installed, and trusts that CA");
+				ROPTIONAL(REDEBUG, ERROR, "Verify the client has a copy of the server's Certificate "
+							  "Authority (CA) installed, and trusts that CA");
 				break;
 
 			default:
@@ -552,7 +552,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			if (request) {
 				MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
 				vp->vp_uint8 = ret & 0xff;
-				RDEBUG2("TLS-Client-Error-Code := %pV", &vp->data);
+				ROPTIONAL(RDEBUG2, DEBUG2, "TLS-Client-Error-Code := %pV", &vp->data);
 			}
 		/*
 		 *	We're sending the client an alert.
@@ -587,7 +587,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
+				ROPTIONAL(RDEBUG2, DEBUG2, "Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
 			ROPTIONAL(REDEBUG, ERROR, "Handshake exit state %s%s", role, state);
