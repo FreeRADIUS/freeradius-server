@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>
@@ -106,6 +107,8 @@ int		fr_globdir_iter_free(fr_globdir_iter_t *iter);
 bool		fr_filename_ok(char const *filename) CC_HINT(nonnull);
 char const	*fr_filename(char const *path);
 char const	*fr_filename_common_trim(char const *path, char const *common);
+
+int		fr_filename_box_make_safe(TALLOC_CTX *ctx, fr_value_box_t *vb) CC_HINT(nonnull(2));
 
 extern const fr_sbuff_escape_rules_t fr_filename_escape;
 extern const fr_sbuff_escape_rules_t fr_filename_escape_dots;

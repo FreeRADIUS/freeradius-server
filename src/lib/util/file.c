@@ -944,6 +944,67 @@ const fr_sbuff_escape_rules_t fr_filename_escape_dots = {
 	},
 };
 
+/** Escape a string-typed value box so its contents are safe to use in a filename.
+ *
+ *  The box's safe_for marker is set to this function, so a second
+ *  call is a no-op.  Boxes with zero length are also a no-op.
+ *
+ *  @param[in]      ctx    talloc_ctx
+ *  @param[in,out]  vb     value box to escape in place.
+ *  @return
+ *      - 0 on no-op (empty box).
+ *      - 1 on success (box was either already safe or has been
+ *        rewritten).
+ *      - -1 on allocation/escape failure.
+ */
+int fr_filename_box_make_safe(TALLOC_CTX *ctx, fr_value_box_t *vb)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	tctx;
+	fr_slen_t		slen;
+
+	fr_assert(vb->type == FR_TYPE_STRING);
+
+	if (vb->vb_length == 0) return 0;
+
+	if (fr_value_box_is_safe_for(vb, fr_filename_box_make_safe)) return 1;
+
+	/*
+	 *	In many cases, the filename is already clean, so we can avoid all kinds of work.
+	 */
+	if (!fr_sbuff_in_needs_escaping(vb->vb_strvalue, vb->vb_length, &fr_filename_escape)) {
+		goto done;
+	}
+
+	/*
+	 *	Escaped output can be up to ~4x the input (each byte
+	 *	may turn into "_XX").  Let the sbuff grow as needed.
+	 *	rather than guessing.
+	 */
+	if (!fr_sbuff_init_talloc(ctx, &sbuff, &tctx, vb->vb_length + 1, SIZE_MAX)) {
+		return -1;
+	}
+
+	slen = fr_sbuff_in_escape(&sbuff, vb->vb_strvalue, vb->vb_length, &fr_filename_escape);
+	if (slen < 0) {
+	error:
+		talloc_free(sbuff.buff);
+		return -1;
+	}
+
+	/*
+	 *	Trim it to the correct size.
+	 */
+	if (fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0) goto error;
+
+	fr_value_box_strdup_shallow_replace(vb, sbuff.buff, (size_t) slen);
+
+done:
+	fr_value_box_mark_safe_for(vb, fr_filename_box_make_safe);
+
+	return 1;
+}
+
 /** See if a filename is OK.
  *
  * @param[in] filename	to check
