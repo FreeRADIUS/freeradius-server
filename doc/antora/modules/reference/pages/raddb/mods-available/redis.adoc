@@ -38,6 +38,9 @@ cluster as a whole.
 
 database:: Select the Redis logical database having the specified zero-based numeric index.
 
+NOTE: Redis only supports logical databases when Redis cluster is
+not in use.
+
 
 
 port:: Port to connect to
@@ -66,6 +69,9 @@ by following '-ASK' and '-MOVE' redirects.
 
 Disabling cluster map can be required for stunnel-based deployments.
 Alternatively, cluster map is not built during initialization when pool.start == 0
+
+In addition the cluster map should be disabled when connecting to
+non-clustered Redis servers.
 
 
 lua { ... }::
