@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
 	bool			read_set;		//!< We're listening for reads.
 	bool			write_set;		//!< We're listening for writes.
-	bool			ignore_disconnect_cb;	//!< Ensure that redisAsyncFree doesn't cause
+	bool			freeing;		//!< Ensure that redisAsyncFree doesn't cause
 							///< a callback loop.
 	fr_timer_t		*timer_ev;		//!< Connection timer.
 

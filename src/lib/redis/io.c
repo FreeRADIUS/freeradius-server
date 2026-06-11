@@ -53,7 +53,7 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 	 *	machine that it needs reconnecting,
 	 *	the connection is being destroyed.
 	 */
-	if (h->ignore_disconnect_cb) return;
+	if (h->freeing) return;
 
 	DEBUG4("Signalled by hiredis, connection disconnected");
 
@@ -353,7 +353,7 @@ static int _redis_handle_free(fr_redis_handle_t *h)
 	 *	Don't fire the reconnect callback if we're
 	 *      freeing the handle.
 	 */
-	h->ignore_disconnect_cb = true;
+	h->freeing = true;
 	if (h->ac) redisAsyncFree(h->ac);
 
 	return 0;
