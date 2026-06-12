@@ -15,6 +15,13 @@ on:
   #    schedule: nightly full-suite run. Falls back to a local layer
   #    rebuild if the registry has been pruned of any :latest tag.
   #
+  #    workflow_dispatch: manual "Run workflow" button in the Actions
+  #    tab. GitHub's UI provides the branch/tag picker natively (the
+  #    "Use workflow from" dropdown), so no input is needed to select
+  #    the ref. The button only appears once this file is present on
+  #    the default branch.
+  #
+  workflow_dispatch:
   push:
     branches-ignore:
       - coverity_scan
