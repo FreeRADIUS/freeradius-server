@@ -179,18 +179,11 @@ def process(lines, nav_mode=False):
         nonlocal buf, buf_list_indent
         if not buf:
             return
-        if buf_list_indent is not None and any("xref:" in s for s in buf):
-            # Antora's nav parser requires each "* xref:..." entry on one
-            # line.  Wrapping splits the xref macro across lines and breaks
-            # the nav tree, so emit these entries verbatim.
-            for s in buf:
-                out.append(s)
+        text = " ".join(s.strip() for s in buf)
+        if buf_list_indent is not None:
+            out.append(wrap_list_entry(text, buf_list_indent))
         else:
-            text = " ".join(s.strip() for s in buf)
-            if buf_list_indent is not None:
-                out.append(wrap_list_entry(text, buf_list_indent))
-            else:
-                out.append(wrap_paragraph(text))
+            out.append(wrap_paragraph(text))
         buf = []
         buf_list_indent = None
 
