@@ -214,7 +214,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	If the client also defines a server, do that now.
 	 */
-	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_home_server)) return false;
+	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_home_server, false)) return false;
 
 	/*
 	 *	If there's no client list, BUT there's a virtual
@@ -1195,7 +1195,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 			 *	realm_config_t without a mutex, by one of the
 			 *	workers, would be bad.
 			 */
-			home = home_server_afrom_cs(NULL, NULL, server);
+			home = home_server_afrom_cs(NULL, NULL, server, NULL);
 			if (!home) {
 				talloc_free(server);
 				goto error;

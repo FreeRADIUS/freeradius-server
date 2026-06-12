@@ -66,6 +66,7 @@ struct realm_config {
 	bool			dynamic;
 	bool			fallback;
 	bool			wake_all_if_all_dead;
+	bool			dns_soft_fail;
 };
 
 static const FR_NAME_NUMBER home_server_types[] = {
@@ -128,6 +129,9 @@ static const CONF_PARSER proxy_config[] = {
 	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
 
 	{ "wake_all_if_all_dead", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), "no" },
+
+	{ "dns_soft_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dns_soft_fail), NULL },
+
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -499,9 +503,9 @@ static const char *require_message_authenticator = NULL;
 static CONF_PARSER home_server_config[] = {
 	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
 	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
-	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
+	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ipaddr_str), NULL },
+	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ipaddr_str), NULL },
+	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ipaddr_str), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, virtual_server), NULL },
 
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
@@ -538,6 +542,8 @@ static CONF_PARSER home_server_config[] = {
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
 
 	{ "affinity_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
+
+	{ "dns_soft_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, dns_soft_fail), NULL },
 
 #ifdef WITH_STATS
 	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
@@ -734,9 +740,10 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 /** Add an already allocate home_server_t to the various trees
  *
  * @param home server to add.
+ * @param soft_fail do we do a soft fail on DNS / IP conflicts
  * @return true on success, else false on error.
  */
-bool realm_home_server_add(home_server_t *home)
+bool realm_home_server_add(home_server_t *home, bool soft_fail)
 {
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
@@ -754,6 +761,8 @@ bool realm_home_server_add(home_server_t *home)
 
 	if (!home->virtual_server && !home->dynamic && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
 		char buffer[INET6_ADDRSTRLEN + 3];
+
+		if (soft_fail) return true;
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
 
@@ -900,12 +909,15 @@ static int home_server_map_verify(vp_map_t *map, UNUSED void *instance)
  * @param ctx to allocate home_server_t in.
  * @param rc Realm config, may be NULL in which case the global realm_config will be used.
  * @param cs Configuration section containing home server parameters.
+ * @param soft_fail whether we do a soft fail on DNS failure
  * @return a new home_server_t alloced in the context of the realm_config, or NULL on error.
  */
-home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
+home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs, bool *soft_fail)
 {
 	home_server_t	*home;
 	CONF_SECTION	*tls;
+	CONF_PAIR	*cp;
+	int		af;
 
 	if (!rc) rc = realm_config; /* Use the global config */
 
@@ -929,10 +941,48 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		goto error;
 	}
 
+	if (soft_fail) *soft_fail = home->dns_soft_fail | realm_config->dns_soft_fail;
+
+	af = AF_UNSPEC;
+	cp = cf_pair_find(cs, "ipaddr");
+	if (!cp) {
+		cp = cf_pair_find(cs, "ipv4addr");
+		if (cp) {
+			af = AF_INET;
+		} else {
+			cp = cf_pair_find(cs, "ipv6addr");
+			if (cp) {
+				af = AF_INET6;
+			}
+		}
+	}
+
 	/*
 	 *	It has an IP address, it must be a remote server.
 	 */
-	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
+	if (cp) {
+		if (fr_pton(&home->ipaddr, home->ipaddr_str, -1, af, true) < 0) {
+			cf_log_err(cf_pair_to_item(cp), "Failed parsing configuration item \"%s\" - %s",
+				   cf_pair_attr(cp), fr_strerror());
+			goto error;
+		}
+
+		if (home->ipaddr.af == AF_INET) {
+			if (home->ipaddr.prefix != 32) {
+				cf_log_err(cf_pair_to_item(cp), "Invalid prefix for \"%s\" - IPv4 home servers must use a /32 prefix",
+					   cf_pair_attr(cp));
+				goto error;
+			}
+		}
+
+		if (home->ipaddr.af == AF_INET6) {
+			if (home->ipaddr.prefix != 128) {
+				cf_log_err(cf_pair_to_item(cp), "Invalid prefix for \"%s\" - IPv6 home servers must use a /128 prefix",
+					   cf_pair_attr(cp));
+				goto error;
+			}
+		}
+
 		if (fr_inaddr_any(&home->ipaddr) == 1) {
 			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
 			goto error;
@@ -2719,10 +2769,13 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
 	     	home_server_t *home;
+		bool soft_fail = false;
 
-	     	home = home_server_afrom_cs(rc, rc, cs);
+		home = home_server_afrom_cs(rc, rc, cs, &soft_fail);
+		if (soft_fail && !home) continue;
+
 	     	if (!home) goto error;
-		if (!realm_home_server_add(home)) goto error;
+		if (!realm_home_server_add(home, soft_fail)) goto error;
 	}
 
 	/*
@@ -2736,10 +2789,13 @@ int realms_init(CONF_SECTION *config)
 		     cs != NULL;
 		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
 			home_server_t *home;
+			bool soft_fail = false;
 
-			home = home_server_afrom_cs(rc, rc, cs);
+			home = home_server_afrom_cs(rc, rc, cs, &soft_fail);
+			if (soft_fail && !home) continue;
+
 			if (!home) goto error;
-			if (!realm_home_server_add(home)) goto error;
+			if (!realm_home_server_add(home, soft_fail)) goto error;
 		}
 	}
 #endif
@@ -3616,7 +3672,7 @@ int home_server_afrom_file(char const *filename)
 		goto error;
 	}
 
-	home = home_server_afrom_cs(realm_config, realm_config, subcs);
+	home = home_server_afrom_cs(realm_config, realm_config, subcs, NULL);
 	if (!home) {
 		fr_strerror_printf("Failed parsing configuration to a home_server structure");
 		goto error;
@@ -3732,7 +3788,7 @@ int home_server_afrom_file(char const *filename)
 	 *	just change the IP address?
 	 */
 
-	if (!realm_home_server_add(home)) {
+	if (!realm_home_server_add(home, false)) {
 		fr_strerror_printf("Failed adding dynamic server");
 		talloc_free(home);
 		goto error;

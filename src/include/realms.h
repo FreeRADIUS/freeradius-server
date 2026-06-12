@@ -80,15 +80,17 @@ typedef struct home_server {
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	bool			dynamic;		//!< is this a dynamically added home server?
 	bool			nonblock;		//!< Enable a socket non-blocking to the home server.
+	bool			dns_soft_fail;		//!< ignore the home server if DNS has issues
 	fr_bool_auto_t	       	require_ma;		//!< for all replies to Access-Request and Status-Server
 
 #ifdef WITH_COA_TUNNEL
 	bool			recv_coa;		//!< receive CoA packets, too
 #endif
-	char const		*virtual_server;		//!< For internal proxying
+	char const		*virtual_server;	//!< For internal proxying
 	char const		*parent_server;
 
 	fr_ipaddr_t		ipaddr;			//!< IP address of home server.
+	char const		*ipaddr_str;		//!< the name of the IP address
 	uint16_t		port;
 
 	uint32_t		affinity;		//!< for home server fail-over groups and EAP.
@@ -227,14 +229,14 @@ REALM		*realm_find2(char const *name); /* ... with name taken from realm_find */
 void		realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs);
 int		realm_pool_add(home_pool_t *pool, CONF_SECTION *cs);
 void		realm_pool_free(home_pool_t *pool);
-bool		realm_home_server_add(home_server_t *home);
+bool		realm_home_server_add(home_server_t *home, bool soft_fail);
 int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 
 void		home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t	*home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
 home_server_t	*home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
 home_server_t	*home_server_find_bysrc(fr_ipaddr_t *ipaddr, uint16_t port, int proto, fr_ipaddr_t *src_ipaddr);
-home_server_t	*home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs);
+home_server_t	*home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs, bool *soft_fail);
 CONF_SECTION	*home_server_cs_afrom_client(CONF_SECTION *client);
 #ifdef WITH_COA
 home_server_t	*home_server_byname(char const *name, int type);
