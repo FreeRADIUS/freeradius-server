@@ -224,7 +224,7 @@ jobs:
       #  (the OpenResty/WebDAV container deployed via cinfra-deploy as the
       #  cinfra-profiling-server_<env> Portainer stack). The image there is static; this
       #  only uploads files into its volume, never rebuilds it. Traefik strips
-      #  the /prof-results prefix, so the container writes to /data/<rel>.
+      #  the /profiling prefix, so the container writes to /data/<rel>.
       #
       #  Auth is a GitHub OIDC token scoped to the store URL (PROF_RESULTS_URL),
       #  which the store's access.lua verifies (signature + repo + optional aud)
@@ -255,7 +255,7 @@ jobs:
           find prof-results -type f ! -name '.DS_Store' | while read -r f; do
             rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
             curl -fsS --noproxy '*' -H "Authorization: Bearer ${token}" \
-              -T "$f" "${PROF_RESULTS_URL}/prof-results/${rel}" \
+              -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
               || echo "WARNING: failed to upload ${rel}"
           done
 
