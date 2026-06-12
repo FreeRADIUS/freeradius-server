@@ -83,7 +83,7 @@ static int fr_bio_packet_write_resume(fr_bio_t *bio)
 		}
 	}
 
-	if (!my->cb.write_resume) return 0;
+	if (!my->cb.write_resume) return 1;
 
 	rcode = my->cb.write_resume(my);
 	if (rcode < 0) return rcode;
@@ -110,7 +110,7 @@ static int fr_bio_packet_read_resume(fr_bio_t *bio)
 	my->read_blocked = false;
 
 	if (!my->cb.read_resume) return 0;
-	
+
 	return my->cb.read_resume(my);
 }
 
