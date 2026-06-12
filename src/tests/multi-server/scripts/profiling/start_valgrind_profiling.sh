@@ -40,7 +40,7 @@ valgrind \
   --log-file=/etc/prof-results/valgrind.log \
   --callgrind-out-file=/etc/prof-results/callgrind.out.%p \
   --trace-children=yes \
-  --separate-threads=yes \
+  --separate-threads=no \
   --dump-instr=yes \
   --collect-jumps=yes \
   --cache-sim=yes \
