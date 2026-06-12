@@ -185,8 +185,9 @@ static unlang_action_t mod_encode(unlang_result_t *p_result, module_ctx_t const 
 			if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
 				RPWDEBUG("Failed calculating checkcode");
 				pair_delete_reply(vp);
+			} else {
+				fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 			}
-			fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 		}
 
 		/*
