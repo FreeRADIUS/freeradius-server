@@ -259,6 +259,11 @@ jobs:
               -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
               || echo "WARNING: failed to upload ${rel}"
           done
+          #  Refresh the manifest once the run's files are all uploaded, so the
+          #  UI's read path stays in sync with the tree.
+          curl -fsS --noproxy '*' -X POST -H "Authorization: Bearer ${token}" \
+            "${PROF_RESULTS_URL}/profiling/_manifest" \
+            || echo "WARNING: manifest regenerate failed"
 
       #
       #  If the CI has failed and the branch is ci-debug
