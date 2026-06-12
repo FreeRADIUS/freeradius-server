@@ -31,6 +31,9 @@ Rules:
   - List entries containing an "xref:" macro are left unwrapped.
     Antora's nav parser requires each "* xref:..." entry to occupy a
     single line; splitting it breaks the nav tree.
+  - When the filename ends with "nav.adoc", every "*" list entry
+    (regardless of marker depth) is emitted verbatim, so the nav
+    parser sees one entry per line.
 
 	$Id$
 """
@@ -152,7 +155,14 @@ def is_text_block_delim(line):
     return line.rstrip() == "===="
 
 
-def process(lines):
+def is_star_list(line):
+    """List entry whose marker starts with `*`.  Antora nav files use
+    these for hierarchy (`*`, `**`, `***`, ...) and each entry must
+    occupy a single line."""
+    return line.lstrip().startswith("*") and list_marker_len(line) is not None
+
+
+def process(lines, nav_mode=False):
     out = []
     block_open = None     # delimiter string (e.g. "----" or "```") if inside a block
     buf = []
@@ -237,6 +247,12 @@ def process(lines):
         marker_len = list_marker_len(line)
         if marker_len is not None:
             flush()
+            # In an Antora nav file, every "*" list entry (regardless
+            # of nesting depth) must stay on a single line so the nav
+            # parser can match its hierarchy.  Emit verbatim.
+            if nav_mode and is_star_list(line):
+                out.append(line)
+                continue
             buf = [line]
             buf_list_indent = marker_len
             continue
@@ -264,8 +280,13 @@ def main():
         return
 
     for path in args.files:
+        # Antora nav files (any filename ending in "nav.adoc") have
+        # one-line-per-entry hierarchy expressed with "*", "**", ...
+        # markers.  Wrapping a "*" entry breaks the nav parser, so
+        # those entries are emitted verbatim in this mode.
+        nav_mode = path.endswith("nav.adoc")
         with open(path, "r", encoding="utf-8") as f:
-            wrapped = process(f)
+            wrapped = process(f, nav_mode=nav_mode)
         if args.in_place:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(wrapped)
