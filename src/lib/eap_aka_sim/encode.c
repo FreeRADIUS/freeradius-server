@@ -952,6 +952,8 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 		if (slen < 0) {
 		error:
 			talloc_free(fr_dbuff_buff(&dbuff));
+			eap_packet->type.data = NULL;
+			eap_packet->type.length = 0;
 			return PAIR_ENCODE_FATAL_ERROR;
 		}
 		fr_assert(fr_dbuff_used(&dbuff) > 0);	/* We messed up a check somewhere in the encoder */
