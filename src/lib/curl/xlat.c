@@ -50,7 +50,10 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char		*escaped;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, to_escape->vb_length);
-	if (!escaped) return XLAT_ACTION_FAIL;
+	if (!escaped) {
+		talloc_free(to_escape);
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	Returned string the same length - nothing changed
