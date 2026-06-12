@@ -410,7 +410,7 @@ static int curl_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
 			q = memchr(p, '\n', end - p);
 			if (!q) q = end;
 
-			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
+			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
 		}
 
