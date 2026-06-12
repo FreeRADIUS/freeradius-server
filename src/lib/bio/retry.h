@@ -98,8 +98,6 @@ typedef enum {
 typedef void	(*fr_bio_retry_sent_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size,
 				       fr_bio_retry_entry_t *retry_ctx);
 
-typedef ssize_t	(*fr_bio_retry_rewrite_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size);
-
 /** Callback on read to see if a packet is a response
  *
  *  The callback should manually associate the response with a request, but allow the packet to be returned
