@@ -1,287 +1,329 @@
-# Processing Packets
-
-include::ROOT:partial$v3_warning.adoc[]
-
-Each line (or most of them) of the packet processing output starts with a request number, e.g. `(0)`.  This number lets you track debug messages which are all for one packet.  Messages from different packets may be inter-mingled, due to threading or proxying.  Prefixing the messages with a number allows the messages to be easily differentiated.
-
-## Receiving a packet
-
-The first message for a packet tells you what type of packet was received, what it's RADIUS ID is, and the source / destination IP / port information.
-
-    (0) Received Access-Request Id 104 from 127.0.0.1:33278 to 127.0.0.1:1812 length 73
-
-After that, it prints out all of the attributes which were received in the packet.
-[%collapsible]
-====
-    (0)   User-Name = "bob"
-    (0)   User-Password = "wrongpassword"
-    (0)   NAS-IP-Address = 127.0.1.1
-    (0)   NAS-Port = 0
-    (0)   Message-Authenticator = 0x3d27116b37323e4f629b4e8217fc25c8
-====
-
-[NOTE]
-====
-If an attribute is not printed here, then *it does not exist*.  If you need the packet to contain an attribute, then you must **provision the NAS** so that the NAS sends the attribute.
-====
-
-Once the packet is received, it is run through the various processing sections of the server.  For Access-Request packets, these are `authorize`, `authenticate`, and `post-auth`.
-
-    (0) # Executing section authorize from file /etc/raddb/sites-enabled/default
-    (0)   authorize {
-
-The `authorize` section contains a number of modules, along with unlang keywords like `if`, `update`, etc.
-
-Each module prints out what it is doing, and why.  For example, the `suffix` module here is looking for `User-Name` attributes which contain `user@domain`.
-[%collapsible]
-====
-    (0) suffix: Checking for suffix after "@"
-    (0) suffix: No '@' in User-Name = "bob", looking up realm NULL
-    (0) suffix: No such realm "NULL"
-====
-
-The server core then prints out the xref:reference:unlang/return_codes.adoc[return code] of the module.
-
-    (0)     [suffix] = noop
-    (0)     [files] = noop
-
-The `authorize` section also has a return code.
-
-    (0)   } # authorize = noop
-
-In this case, the user is unknown, so they will be rejected.
-
-    (0) ERROR: No Auth-Type found: rejecting the user via Post-Auth-Type = Reject
-    (0) Failed to authenticate the user
-
-The packet is processed through the `Post-Auth-Type REJECT` section
-[%collapsible]
-====
-    (0) Using Post-Auth-Type Reject
-    (0) # Executing group from file /etc/raddb/sites-enabled/default
-    (0)   Post-Auth-Type REJECT {
-====
-
-That section contains more modules and unlang statements.
-
-Here, the `attr_filter` module is removing attributes which are forbidden from appearing in an Access-Reject packet.
-[%collapsible]
-====
-    (0) attr_filter.access_reject: EXPAND %{User-Name}
-    (0) attr_filter.access_reject:    --> bob
-    (0) attr_filter.access_reject: Matched entry DEFAULT at line 11
-    (0)     [attr_filter.access_reject] = updated
-    (0)     [eap] = noop
-    (0)     policy remove_reply_message_if_eap {
-    (0)       if (reply:EAP-Message && reply:Reply-Message) {
-    (0)       if (reply:EAP-Message && reply:Reply-Message)  -> FALSE
-    (0)       else {
-    (0)         [noop] = noop
-    (0)       } # else = noop
-    (0)     } # policy remove_reply_message_if_eap = noop
-====
-
-Finally, the `Post-Auth-Type REJECT` section is done.
-
-    (0)   } # Post-Auth-Type REJECT = updated
-
-Since this is an Access-Reject, it is delayed for one second to prevent password attacks.  The `reject_delay` configuration above control this delay.
-
-    (0) Delaying response for 1.000000 seconds
-
-The server then sleeps for a while, waking up periodically to deal with internal book-keeping.
-
-    Waking up in 0.3 seconds.
-    Waking up in 0.6 seconds.
-
-Finally after a one-second delay, the server wakes up and sends the Access-Reject packet.
-
-    (0) Sending delayed response
-
-The IP / port printed here is the mirror of the one printed for the Access-Request, above.  This indicates that it's a reply to an earlier request.
-
-    (0) Sent Access-Reject Id 104 from 127.0.0.1:1812 to 127.0.0.1:33278 length 20
-
-If there are any attributes in the reply packet, they will be printed here.  In this case, there are none.
-
-[NOTE]
-====
-You **must** check the reply attributes to see if the server is sending the reply you expect.  If it is not sending the correct reply. you will need to fix the configuration to do so.
-====
-
-If it is sending the correct reply, but the user is not getting the expected service, then the problem is the NAS.  No amount of changing the server configuration will make the NAS behave.
-
-The server then sleeps for a while:
-
-    Waking up in 3.9 seconds.
-
-And then cleans up the request and it's associated response.  This delay is controlled by `cleanup_delay`, which was seen earlier in the debug output.
-
-    (0) Cleaning up request packet ID 104 with timestamp +23
-
-Since there's nothing more to do, we're back to this message.
-
-    Ready to process requests
-
-The debug log has another packet, which we will skip, as it's largely the same as the previous one.
-[%collapsible]
-====
-    (1) Received Access-Request Id 146 from 127.0.0.1:40967 to 127.0.0.1:1812 length 73
-    (1)   User-Name = "bob"
-    (1)   User-Password = "wrongagain"
-    (1)   NAS-IP-Address = 127.0.1.1
-    (1)   NAS-Port = 0
-====
-
-The debug log then shows a successful authentication.
-
-The input packet is largely the same, but has a different `User-Name` and `User-Password` attribute.
-[%collapsible]
-====
-    (2) Received Access-Request Id 135 from 127.0.0.1:40344 to 127.0.0.1:1812 length 77
-    (2)   User-Name = "bob@int"
-    (2)   User-Password = "test"
-    (2)   NAS-IP-Address = 127.0.1.1
-    (2)   NAS-Port = 0
-====
-
-The `Message-Authenticator` attribute is a cryptographic signature of the packet, and has no other meaning.
-
-    (2)   Message-Authenticator = 0x3b3f4cf11005dcccfe78bb4a5830dd52
-
-We start the `authorize` section again/
-
-    (2) # Executing section authorize from file /etc/raddb/sites-enabled/default
-    (2)   authorize {
-
-This time the `suffix` module does find a suffix.
-
-    (2) suffix: Checking for suffix after "@"
-    (2) suffix: Looking up realm "int" for User-Name = "bob@int"
-
-The realm `int` is defined above in the `realm` configuration.
-
-    (2) suffix: Found realm "int"
-
-The `suffix` module splits the `User-Name` into a `Stripped-User-Name` and `Realm` attributes.  The `Stripped-User-Name` is used by subsequent modules to match the user's name.
-[%collapsible]
-====
-    (2) suffix: Adding Stripped-User-Name = "bob"
-    (2) suffix: Adding Realm = "int"
-    (2) suffix: Proxying request from user bob to realm int
-    (2) suffix: Preparing to proxy authentication request to realm "int"
-    (2)     [suffix] = updated
-    (2)     [files] = noop
-    (2)   } # authorize = updated
-    (2) Starting proxy to home server (null) port 1812
-====
-
-This configuration has been changed from the default configuration to proxy packets to the `inner-tunnel` virtual server.  This change was done here strictly for demonstration purposes.  It is not necessary (and you should not do it!) in normal configurations.
-
-    Proxying to virtual server inner-tunnel
-    (2) # Executing section authorize from file /etc/raddb/sites-enabled/inner-tunnel
-    (2)   authorize {
-
-The `files` module matches the user name and realm, at `line 1` of the `users` file.  This output lets you know exactly which entry was matched.
-
-If the server does not do what you expect it to do, you should read `line 1` of the `users` file (or whatever entry matched), to verify that the entry is what you expect it to be.
-
-    (2) files: users: Matched entry bob@int at line 1
-    (2)     [files] = ok
-
-The `pap` module sees the `Cleartext-Password` which was set in the `users` file, along with the `User-Password` that came from the packet.  The module then sets `Auth-Type := PAP`.  This is so that the `authenticate` section will run the `pap` module, which will then authenticate the user.
-
-    (2)     [pap] = updated
-    (2)   } # authorize = updated
-
-It now runs `Auth-Type PAP`
-[%collapsible]
-====
-    (2) Found Auth-Type = PAP
-    (2) # Executing group from file /etc/raddb/sites-enabled/inner-tunnel
-    (2)   Auth-Type PAP {
-====
-
-The `pap` module tells you that everything is OK.
-[%collapsible]
-====
-    (2) pap: Login attempt with password
-    (2) pap: Comparing with "known good" Cleartext-Password
-    (2) pap: User authenticated successfully
-    (2)     [pap] = ok
-    (2)   } # Auth-Type PAP = ok
-====
-
-It now runs the normal `post-auth` section
-[%collapsible]
-====
-    (2) # Executing section post-auth from file /etc/raddb/sites-enabled/inner-tunnel
-    (2)   post-auth {
-    (2)     update reply {
-    (2)       Reply-Message := "hello"
-    (2)     } # update reply = noop
-    (2)     if (0) {
-    (2)     if (0)  -> FALSE
-    (2)   } # post-auth = noop
-    (2) Finished internally proxied request.
-    (2) Clearing existing reply: attributes
-====
-
-Because this is a proxied request, it now runs the `post-proxy` section of the `default` virtual server.
-[%collapsible]
-====
-    (2) # Executing section post-proxy from file /etc/raddb/sites-enabled/default
-    (2)   post-proxy {
-    (2)     policy debug_reply {
-    (2)       if ("%{debug_attr:reply:}" == '') {
-    (2)       Attributes matching "reply:"
-    (2)         EXPAND %{debug_attr:reply:}
-    (2)            -->
-    (2)         if ("%{debug_attr:reply:}" == '')  -> TRUE
-    (2)         if ("%{debug_attr:reply:}" == '')  {
-    (2)           [noop] = noop
-    (2)         } # if ("%{debug_attr:reply:}" == '')  = noop
-    (2)       } # policy debug_reply = noop
-    (2)     } # post-proxy = noop
-====
-
-This `Auth-Type = Accept` is added by the server code when proxying.  Since the proxied request returned an Access-Accept, the `default` virtual server treats that as a successful authentication.
-
-    (2)   Found Auth-Type = Accept
-    (2)   Auth-Type = Accept, accepting the user
-
-It then runs the `post-auth` section from the `default` virtual server.
-[%collapsible]
-====
-    (2)   # Executing section post-auth from file /etc/raddb/sites-enabled/default
-    (2)     post-auth {
-    (2)       update {
-    (2)         No attributes updated
-    (2)       } # update = noop
-    (2)       [exec] = noop
-    (2)       policy remove_reply_message_if_eap {
-    (2)         if (reply:EAP-Message && reply:Reply-Message) {
-    (2)         if (reply:EAP-Message && reply:Reply-Message)  -> FALSE
-    (2)         else {
-    (2)           [noop] = noop
-    (2)         } # else = noop
-    (2)       } # policy remove_reply_message_if_eap = noop
-    (2)     } # post-auth = noop
-====
-
-And finally returns an Access-Accept to the client.  The `Reply-Message` here was take from `line 1` of the `users` file, when it matched above.
-[%collapsible]
-====
-    (2)   Sent Access-Accept Id 135 from 127.0.0.1:1812 to 127.0.0.1:40344 length 0
-    (2)     Reply-Message := "hello"
-    (2)   Finished request
-    Waking up in 4.9 seconds.
-    (2)   Cleaning up request packet ID 135 with timestamp +74
-    Ready to process requests
-    ^C
-====
-
-That is a *lot* of information to go through.  We hope that this page has been useful.
+= Processing Packets
+
+This page walks through the *packet processing* output of FreeRADIUS
+version 4, line by line.  It follows on from
+xref:debugging/startup.adoc[Startup Text]: once the server has printed
+`Ready to process requests`, this is what you see when packets arrive.
+
+The output on this page authenticates a user `bob` with the `pap`
+module.  Two requests are shown:
+
+* request `(0)` with a wrong password (rejected) and request
+* request `(1)` with the correct password (accepted).
+
+== Request numbers
+
+Every log line for a packet starts with a request number in
+parentheses, for example, (0). The number lets you match up all the
+messages for one packet when the output contains messages from
+multiple packets interleaved due to threading.
+
+== Receiving a packet
+
+The first message for a new packet comes from the network listener,
+and does not yet have a request number:
+
+----
+proto_radius_udp - Received Access-Request ID 3 length 61 radius_udp server * port 1812
+----
+
+All further processing for the request happens inside its virtual
+server, so the next line opens a `server-name { ... }` block.  The
+next line tells you the packet type, the RADIUS ID, the source and
+destination address and port, and the network interface.
+
+All processing for a request happens inside its virtual server, so the
+first line opens a `server-name { ... }` block.  The next line tells
+you the packet type, the RADIUS ID, the source and destination address
+and port, and the network interface. The interface name is OS
+dependent, for example `lo` on Linux and `lo0` on macOS.
+
+----
+(0) default {
+(0)   Received Access-Request ID 104 from 127.0.0.1:58504 to 127.0.0.1:1812 via lo0
+----
+
+After the `Received` line, the server prints the attributes it
+received in the packet.  Attribute values are printed without
+quotation marks.  The attribute list is followed by two structures
+added by the server itself: a `Net` structure with the socket details,
+and a `Packet` structure with the RADIUS ID and authenticator. Finally
+a `Packet-Type` attribute gives the packet type.
+
+----
+(0)      Message-Authenticator = 0xce9fbd43b2b13998783af1081aa112e3
+(0)      User-Name = bob
+(0)      User-Password = <<< secret >>>
+(0)      Net = {
+(0)        Src = {
+(0)          IP = 127.0.0.1
+(0)          Port = 52356
+(0)        }
+(0)        Dst = {
+(0)          IP = 127.0.0.1
+(0)          Port = 1812
+(0)        }
+(0)        Timestamp = 2026-06-12T22:08:14Z
+(0)        Interface = lo
+(0)      }
+(0)      Packet = {
+(0)        Id = 3
+(0)        Authenticator = 0x03e0b76e3a5ee133d76ab8bd8e767a70
+(0)      }
+(0)      Packet-Type = Access-Request
+----
+
+IMPORTANT: In v4, secret values such as `User-Password` are redacted
+to `<<< secret >>>` by default, controlled by the `suppress_secrets`
+setting in the `log` section.  This allows you to share debug output
+without risk. Set `suppress_secrets = no` if you need to see the real
+value while debugging.
+
+NOTE: If an attribute is not printed here, it was not in the packet.
+No amount of changing the server configuration will add an attribute
+that the NAS did not send.  If you need an attribute to be present,
+you must configure the NAS to send it.
+
+== The recv Access-Request section
+
+In v4, we now call the first processing section `recv Access-Request`.
+In version 3 this section was called `authorize`. Its job is the same:
+look up the user in a database, determine what type of authentication
+to use, and set up the `Auth-Type` control attribute that tells the
+server which `authenticate` section to run next.
+
+----
+(0)   Running 'recv Access-Request' from file ./raddb/sites-enabled/default
+(0)   recv Access-Request {
+----
+
+The `Running` line names the section and the file it came from.  Check
+this line if you suspect the server is using a different site than the
+one you edited.
+
+Each module in the section runs in order.  Lines printed by a module
+are prefixed with the module's name and ` - `.  After the module
+returns, the server prints the module name and its return code in
+parentheses.
+
+----
+(0)     files - Looking for key "bob"
+(0)     files - Found match "bob" on line 169 of ./raddb/mods-config/files/authorize
+(0)     files (ok)
+(0)     pap - Setting control.Auth-Type = pap
+(0)     pap (updated)
+(0)   } # recv Access-Request ((updated))
+----
+
+.Common return codes
+[cols="1,3"]
+|===
+|Code |Meaning
+
+|`noop`
+|The module ran but did nothing, because the packet did not contain the attributes the module needed.
+
+|`ok`
+|The module ran successfully.
+
+|`updated`
+|The module ran and changed something.
+
+|`reject`
+|The module explicitly rejected the request.
+
+|`fail`
+|The module encountered an error.
+|===
+
+In this trace, the `files` module finds the user `bob` in the users
+file and sets `control.Password.Cleartext` from the entry there,
+returning `ok`.  The `pap` module then sees a known-good password is
+available, sets `control.Auth-Type = pap`, and returns `updated`.
+
+The section closes with `} # recv Access-Request ((updated))`, where
+`updated` is the highest-priority return code returned by any module
+in the section.  (Top-level packet sections print their result in
+double parentheses.)
+
+When you are diagnosing a problem, read this section carefully to
+answer:
+
+* Was the user found in the database?  Look for the `files` (or `sql`,
+  `ldap`, etc.) module result.
+* Was `Auth-Type` set?  If none of `pap`, `chap`, `mschap`, `eap`,
+  etc. sets it, then the user will be rejected.
+
+== Authentication
+
+After the `recv Access-Request` section, the server checks whether
+`Auth-Type` was set.  If it was not set, the server rejects the
+request immediately:
+
+----
+(0) No 'Auth-Type' attribute found, cannot authenticate the user - rejecting the request
+----
+
+In this trace, `Auth-Type = pap` was set, so the server runs the
+`authenticate pap` section.
+
+----
+(0)   Running 'authenticate pap' from file ./raddb/sites-enabled/default
+(0)   authenticate pap {
+----
+
+The `pap` module compares the `User-Password` from the packet against
+the known-good password that `files` set earlier.
+
+For a wrong password:
+
+----
+(0)     pap - Login attempt with password
+(0)     pap - Comparing with "known-good" Cleartext (5)
+(0)     pap - ERROR: Cleartext password does not match "known good" password
+(0)     pap (reject)
+(0)   } # authenticate pap ((reject))
+(0) Failed to authenticate the user
+----
+
+For a correct password:
+
+----
+(1)     pap - Login attempt with password
+(1)     pap - Comparing with "known-good" Cleartext (5)
+(1)     pap - User authenticated successfully
+(1)     pap (ok)
+(1)   } # authenticate pap ((ok))
+----
+
+NOTE: If the `pap` module returns `noop` in the authenticate section,
+that usually means no known-good password (such as
+`control.Password.Cleartext`) was set in the `recv Access-Request`
+section.  Go back and check that the database module (`files`, `sql`,
+`ldap`, etc.) found the user and returned `ok` or `updated`.
+
+== Sending a reply
+
+=== Access-Reject
+
+When authentication fails, the server runs the `send Access-Reject`
+section before sending the reply.
+
+----
+(0)   Running 'send Access-Reject' from file ./raddb/sites-enabled/default
+(0)   send Access-Reject {
+(0)     attr_filter.access_reject - Matched entry DEFAULT at line 11
+(0)     attr_filter.access_reject (updated)
+(0)     delay_reject - Delaying request by ~1.0s
+(0)     delay_reject (noop)
+(0)   } # send Access-Reject ((updated))
+----
+
+The `attr_filter.access_reject` module strips any reply attributes
+that are not permitted in an Access-Reject packet.
+
+The `delay_reject` module (an instance of `rlm_delay`) holds the reply
+for about one second before allowing it to be sent.  This delay slows
+down password-guessing attacks.
+
+After the section finishes, the virtual server block closes and the
+reply is sent.
+
+----
+(0)   default (noop)
+(0) } # default (noop)
+(0) Done request
+(0) Sending Access-Reject ID 104 from 0.0.0.0:1812 to 127.0.0.1:58504 length 50 via socket radius_udp server 127.0.0.1 port 1812
+(0)   Reply-Message = "Hello, bob"
+(0)   Packet-Type = Access-Reject
+(0) Finished request
+----
+
+The `Sending` line mirrors the `Received` line, with the source and
+destination swapped to show this is a reply.  Any attributes in the
+reply are printed after it.
+
+NOTE: Always check the reply attributes.  If the server is sending the
+correct reply but the user is still not getting the expected service,
+the problem is in the NAS, not the server.
+
+=== Access-Accept
+
+When authentication succeeds, the server runs the `send Access-Accept`
+section instead.  With the default configuration, the `send
+Access-Accept` section copies the authenticated user name into the
+reply, and then runs the `remove_reply_message_if_eap` policy.
+
+----
+(1)    Running 'send Access-Accept' from file /etc/raddb/sites-enabled/default
+(1)    send Access-Accept {
+(1)      reply += {
+(1)        Session-State-User-Name = "bob"
+(1)      }
+(1)      policy remove_reply_message_if_eap {
+...
+(1)      } # policy remove_reply_message_if_eap (noop)
+(1)    } # send Access-Accept ((noop))
+(1)    default (noop)
+(1)  } # default (noop)
+(1)  Done request
+(1)  Sending Access-Accept ID 79 from 0.0.0.0/0:1812 to 127.0.0.1:47730 length 50 via socket radius_udp server * port 1812
+(1)    Reply-Message = Hello, bob
+(1)    Packet-Type = Access-Accept
+(1)  Finished request
+----
+
+=== No reply sent
+
+If a `send` section returns `handled`, the server skips sending a
+reply entirely.  This is used for EAP challenges and for policies that
+intentionally drop certain packets.
+
+== Accounting packets
+
+Accounting packets follow a similar pattern, but use different section
+names.  The `recv Accounting-Request` section does any pre-processing.
+After it, a sub-section matched by `Acct-Status-Type` (for example
+`accounting Start { }`) runs.  Finally, `send Accounting-Response`
+runs before the reply is sent. Accounting packets follow a similar
+pattern, but use different section names.  The `recv
+Accounting-Request` section does any pre-processing. After the `recv
+Accounting-Request` section, a sub-section matched by
+`Acct-Status-Type` (for example `accounting Start { }`) runs. Finally,
+`send Accounting-Response` runs before the reply is sent.
+
+----
+(2)  default {
+(2)    Received Accounting-Request ID 123 from 127.0.0.1:42980 to 127.0.0.1:1813 via lo
+...
+(2)    Running 'recv Accounting-Request' from file /etc/raddb/sites-enabled/default
+(2)    recv Accounting-Request {
+...
+(2)    } # recv Accounting-Request ((ok))
+(2)    accounting Start {
+(2)      ... ignoring empty subsection ...
+(2)    }
+(2)    Running 'send Accounting-Response' from file /etc/raddb/sites-enabled/default
+(2)    send Accounting-Response {
+(2)      detail (ok)
+(2)      attr_filter.accounting_response - Matched entry DEFAULT at line 12
+(2)      attr_filter.accounting_response (updated)
+(2)    } # send Accounting-Response ((updated))
+(2)    default (ok)
+(2)  } # default (ok)
+(2)  Done request
+(2)  Sending Accounting-Response ID 123 from 0.0.0.0/0:1813 to 127.0.0.1:42980 length 20 via socket radius_udp server * port 1813
+(2)    Packet-Type = Accounting-Response
+(2)  Finished request
+----
+
+== If the server stops producing output
+
+If `Ready to process requests` was printed but *nothing* appears after
+that, the server is not receiving any packets.  That is a network or
+firewall problem, not a server configuration problem.  Check that the
+NAS is sending packets to the correct IP address and port, and that no
+firewall is blocking UDP on port 1812 or 1813.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
