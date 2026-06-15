@@ -270,6 +270,12 @@ static const conf_parser_t limit_files_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const conf_parser_t limit_exec_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("allow", CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, main_config_t, limit_exec) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 /**********************************************************************
  *
@@ -303,6 +309,8 @@ static const conf_parser_t security_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .name2 = "files", .subcs = (void const *) limit_files_config },
+
+	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .name2 = "exec", .subcs = (void const *) limit_exec_config },
 
 	CONF_PARSER_TERMINATOR
 };

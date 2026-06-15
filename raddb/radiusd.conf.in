@@ -559,8 +559,12 @@ security {
 	#  files, write files, make directories, etc.  For security,
 	#  this ability can be limited to specific directories.
 	#
-	#  If no files are listed here, then the server allows the
+	#  If this section is missing, then the server allows the
 	#  %file...() APIs to read and write any directory.
+	#
+	#  If the section exists but is empty, then the server does
+	#  not allow the %file...() APIs to read and write any
+	#  directory.
 	#
 	#  Note that you should NOT list ${confdir} here.  The
 	#  configuration files should NEVER be writable by the server.
@@ -568,6 +572,28 @@ security {
 	limit files {
 		allow = ${logdir}
 		allow = ${radacctdir}
+	}
+
+	#
+	#  limit exec: Limit the programs which can be executed
+	#
+	#  The server provides functions such as %exec() to run
+	#  external programs.  For security, this ability can be
+	#  limited to specific directories.
+	#
+	#  If this section is missing, then the server allows the
+	#  %exec() APIs to run any program on the system.
+	#
+	#  If this section exists but is empty, then the server does
+	#  not allow the %exec() APIs to run any program.
+	#
+	limit exec {
+		#
+		#  The entries here can be directories or specific
+		#  programs.
+		#
+		allow = "/bin"
+		allow = "/usr/bin"
 	}
 
 	#

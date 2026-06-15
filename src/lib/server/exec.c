@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_priv.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/util.h>
 
 #define MAX_ENVP 1024
@@ -442,6 +443,46 @@ char **exec_build_env(char **env_in, bool env_inherit)
 	return env_exec_arr;
 }
 
+static bool fr_exec_allowed(char const *filename)
+{
+	size_t i, num_files, len;
+
+	if (!main_config->limit_exec) return true;
+
+	num_files = talloc_array_length(main_config->limit_exec);
+	if (!num_files) goto fail;
+
+	len = strlen(filename);
+
+	for (i = 0; i < num_files; i++) {
+		size_t alen = talloc_array_length(main_config->limit_exec[i]);
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > len) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(filename, main_config->limit_exec[i], alen) != 0) continue;
+
+		if (alen == len) return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (filename[alen] != '/') break;
+
+		return true;
+	}
+
+fail:
+	EDEBUG("Failed running program %s - it is outside of 'limit exec { ... }'", filename);
+	return false;
+}
+
 /** Execute a program without waiting for the program to finish.
  *
  * @param[in] el		event list to insert reaper child into.
@@ -464,6 +505,8 @@ int fr_exec_fork_nowait(fr_event_list_t *el, char **argv_in, char **env_in, bool
 {
 	char		**env;
 	pid_t		pid;
+
+	if (!fr_exec_allowed(argv_in[0])) return -1;
 
 	env = exec_build_env(env_in, env_inherit);
 	pid = fork();
@@ -536,6 +579,8 @@ int fr_exec_fork_wait(pid_t *pid_p,
 	int		stdin_pipe[2] = {-1, -1};
 	int		stderr_pipe[2] = {-1, -1};
 	int		stdout_pipe[2] = {-1, -1};
+
+	if (!fr_exec_allowed(argv_in[0])) return -1;
 
 	if (stdin_fd) {
 		if (pipe(stdin_pipe) < 0) {

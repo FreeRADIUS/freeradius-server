@@ -428,7 +428,7 @@ static bool xlat_file_allowed(request_t *request, char const *filename, size_t l
 	if (!main_config->limit_files) return true;
 
 	num_files = talloc_array_length(main_config->limit_files);
-	if (!num_files) return false;
+	if (!num_files) goto fail;
 
 	for (i = 0; i < num_files; i++) {
 		size_t alen = talloc_array_length(main_config->limit_files[i]);
@@ -454,7 +454,8 @@ static bool xlat_file_allowed(request_t *request, char const *filename, size_t l
 		return true;
 	}
 
-	REDEBUG3("Failed access file %s - it is outside of 'limit files'", filename);
+fail:
+	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", filename);
 	return false;
 }
 
