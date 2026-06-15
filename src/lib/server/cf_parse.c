@@ -1648,7 +1648,14 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 
 			subcs = cf_section_find(cs, name1, name2);
 			if (!subcs) {
-				cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				if ((rule->flags & CONF_FLAG_OK_MISSING) != 0) return 0;
+
+				if (!name2 || (name2 == CF_IDENT_ANY)) {
+					cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				} else {
+					cf_log_err(cs, "Failed finding '%s %s' subsection", name1, name2);
+				}
+
 				cf_item_debug(cs);
 				return -1;
 			}
