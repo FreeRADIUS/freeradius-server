@@ -168,6 +168,10 @@ table.heat .base-col,table.heat th.base-col{outline:2px solid var(--accent);outl
   color:var(--ink-soft);text-align:center;padding:20px;}
 .empty-msg b{font-size:14px;color:var(--ink);}
 .empty-msg span{font-size:12.5px;max-width:360px;}
+/* opaque card so the chart's baseline/axis lines don't show through the text */
+.empty-card{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
+  background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 22px;
+  box-shadow:0 1px 3px rgba(15,23,42,.06);}
 /* ghost shapes reused by the trends/divergence empty states */
 .sk-pill{display:inline-block;height:9px;border-radius:5px;background:var(--bar-2);vertical-align:middle;}
 .sk-sel{width:140px;height:26px;border-radius:7px;}

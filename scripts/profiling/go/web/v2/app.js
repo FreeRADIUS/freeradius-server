@@ -354,8 +354,8 @@ function emptyHeat() {
   widths.forEach((w) => { rows += '<div class="sk-row"><span class="sk-bar" style="width:' + w + '%"></span></div>'; });
   return '<div class="empty-view">'
     + '<div class="sk-col"><div class="sk-head">function</div>' + rows + "</div>"
-    + '<div class="empty-msg"><b>Heatmap appears here</b>'
-    + "<span>Add runs to compute the median (p50) baseline and the per-function comparison across runs.</span></div>"
+    + '<div class="empty-msg"><div class="empty-card"><b>Heatmap appears here</b>'
+    + "<span>Add runs to compute the median (p50) baseline and the per-function comparison across runs.</span></div></div>"
     + "</div>";
 }
 // Trends empty state: the plot-functions picker (ghost chips), a chart frame
@@ -366,7 +366,7 @@ function emptyTrend() {
   const pick = '<div class="trend-pick"><span class="lbl">plot functions</span>' + chips + '<span class="cnt">0 / 5 · total always shown</span></div>';
   const chart = '<div class="sk-chart">'
     + '<div class="sk-baseline"></div><span class="sk-baseline-lbl">baseline = p50 (0%)</span>'
-    + '<div class="empty-msg"><b>Trends chart appears here</b><span>Add runs to plot Δ% vs the p50 baseline across runs (load order).</span></div>'
+    + '<div class="empty-msg"><div class="empty-card"><b>Trends chart appears here</b><span>Add runs to plot Δ% vs the p50 baseline across runs (load order).</span></div></div>'
     + "</div>";
   const leg = '<div class="trend-leg"><span style="color:#0f172a;font-weight:700;">— total CEst</span><span>Δ% vs p50 · load order</span></div>';
   return pick + chart + leg;
@@ -378,7 +378,7 @@ function emptyDiverge() {
     + '<span class="dvg-h-lbl">vs</span><span class="sk-pill sk-sel"></span>'
     + '<span class="dvg-leg"><span class="sw up"></span>increased<span class="sw down"></span>decreased</span></div>';
   const body = '<div class="sk-chart" style="height:300px;"><div class="sk-vcenter"></div>'
-    + '<div class="empty-msg"><b>Divergence bars appear here</b><span>Add runs to compare each function’s self-share (pp) vs the p50 baseline.</span></div>'
+    + '<div class="empty-msg"><div class="empty-card"><b>Divergence bars appear here</b><span>Add runs to compare each function’s self-share (pp) vs the p50 baseline.</span></div></div>'
     + "</div>";
   return head + body;
 }
