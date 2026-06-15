@@ -589,8 +589,10 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
 
 	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t		*ip_key_p = ip_key;
+	ippool_rcode_t	ret = IPPOOL_RCODE_SUCCESS;
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	if (ret == IPPOOL_RCODE_FAIL) return 0;
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
@@ -745,8 +747,10 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	uint8_t		*ip_key_p = ip_key;
 
 	int		enqueued = 0;
+	ippool_rcode_t	ret = IPPOOL_RCODE_SUCCESS;
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	if (ret == IPPOOL_RCODE_FAIL) return 0;
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
@@ -816,8 +820,10 @@ static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 
 	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t		*ip_key_p = ip_key;
+	ippool_rcode_t	ret = IPPOOL_RCODE_SUCCESS;
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	if (ret == IPPOOL_RCODE_FAIL) return 0;
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
@@ -953,24 +959,26 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 {
 	fr_socket_t		*master;
 	size_t			k;
-	ssize_t			ret, i, used = 0;
+	ssize_t			nodes, i, used = 0;
 	fr_redis_conn_t		*conn = NULL;
 	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t			*key_p = key;
 	uint8_t 		**result;
+	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:"IPPOOL_POOL_KEY, 1);
+	if (ret == IPPOOL_RCODE_FAIL) return 0;
 
 	*out = NULL;	/* Initialise output pointer */
 
 	/*
 	 *	Get the addresses of all masters in the pool
 	 */
-	ret = fr_redis_cluster_node_addr_by_role(ctx, &master, inst->cluster, true, false);
-	if (ret <= 0) {
+	nodes = fr_redis_cluster_node_addr_by_role(ctx, &master, inst->cluster, true, false);
+	if (nodes <= 0) {
 		result = NULL;
-		return ret;
+		return nodes;
 	}
 
 	result = talloc_zero_array(ctx, uint8_t *, 1);
@@ -983,7 +991,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	/*
 	 *	Iterate over the masters, getting the pools on each
 	 */
-	for (i = 0; i < ret; i++) {
+	for (i = 0; i < nodes; i++) {
 		fr_pool_t	*pool;
 		redisReply		*reply;
 		char const		*p;
@@ -1145,10 +1153,12 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	unsigned int			pipelined = 0;		/* Update if additional commands added */
 
 	size_t				reply_cnt = 0, i = 0;
+	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
 
 #define STATS_COMMANDS_TOTAL 14
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	if (ret == IPPOOL_RCODE_FAIL) return -1;
 
 	MEM(replies = talloc_zero_array(inst, redisReply *, STATS_COMMANDS_TOTAL));
 

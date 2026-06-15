@@ -79,6 +79,11 @@ typedef enum {
  */
 #define IPPOOL_BUILD_KEY(_buff, _p, _key, _key_len) \
 do { \
+	if (_key_len > sizeof(_buff) - sizeof(IPPOOL_POOL_KEY) - sizeof("{}:") - 1) { \
+		ERROR("Pool name too long"); \
+		ret = IPPOOL_RCODE_FAIL; \
+		break; \
+	} \
 	*_p++ = '{'; \
 	memcpy(_p, _key, _key_len); \
 	_p += _key_len; \
