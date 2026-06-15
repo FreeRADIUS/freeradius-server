@@ -18,7 +18,7 @@ Optimizing resources and configurations helps maintain a stable and robust RADIU
 
 === Resource efficiency
 
-Optimizing resource usage (CPU, memory, disk I/O) allows you to run FreeRADIUS effectively even on limited hardware. If FreeRADIUS is integrated with a datastore, implementing well-structured querires prevents bottlenecks.
+Optimizing resource usage (CPU, memory, disk I/O) allows you to run FreeRADIUS effectively even on limited hardware. If FreeRADIUS is integrated with a datastore, implementing well-structured queries prevents bottlenecks.
 
 == Sections in this guide
 
@@ -28,7 +28,7 @@ Auditing provides valuable insights into user behaviour, policy enforcement, and
 
 === xref:optimization/monitoring/index.adoc[Monitoring]
 
-Monitoring the FreeRADUS server and network components includes observing the AAA processes and how the overall system is operating. Several logging options help the administrator generate statistics to determine where issues are occurring such as slow connectivity or authentications.
+Monitoring the FreeRADIUS server and network components includes observing the AAA processes and how the overall system is operating. Several logging options help the administrator generate statistics to determine where issues are occurring such as slow connectivity or authentications.
 
 FreeRADIUS is packaged with a xref:optimization/monitoring/statistics.adoc[virtual statistics server] that enables you to select what you want to watch or help find a problem.
 

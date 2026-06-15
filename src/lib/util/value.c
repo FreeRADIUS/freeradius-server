@@ -857,7 +857,7 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	 */
 	}
 
-	(void)fr_cond_assert(0);	/* invalud type for leaf comparison */
+	(void)fr_cond_assert(0);	/* invalid type for leaf comparison */
 	return -2;
 }
 
@@ -2412,7 +2412,7 @@ ssize_t fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr
  *			decode complete values.
  * @return
  *	- >= 0 The number of bytes consumed.
- *	- <0 an error occured
+ *	- <0 an error occurred
  */
 ssize_t	fr_value_box_from_memory(TALLOC_CTX *ctx,
 				 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
@@ -4652,7 +4652,7 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 	len = strlen(vb->vb_strvalue);
 	str = talloc_realloc(ctx, UNCONST(char *, vb->vb_strvalue), char, len + 1);
 	if (!str) {
-		fr_strerror_const("Failed re-allocing string buffer");
+		fr_strerror_const("Failed re-allocating string buffer");
 		return -1;
 	}
 	vb->vb_strvalue = str;

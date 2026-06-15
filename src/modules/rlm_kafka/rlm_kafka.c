@@ -965,13 +965,13 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	 *
 	 *	At the point where thread_detach is called
 	 *	there are no more request_t in progress, so
-	 *	we gurantee the callback will never add additional
+	 *	we guarantee the callback will never add additional
 	 *	delivery reports to this thread's queue.
 	 *
 	 *	We call kafka flush in every thread, because
 	 *	there is no explicit synchronisation which
-	 *	gurantees all workers have stopped processing
-	 *	reuests by the time the first thread is being
+	 *	guarantees all workers have stopped processing
+	 *	requests by the time the first thread is being
 	 *	detached, so theoretically new requests can
 	 *	be enqueued by other threads after the first
 	 *	thread has called flush.

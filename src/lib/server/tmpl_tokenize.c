@@ -688,7 +688,7 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TA
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-/** Parse one or more request references, allocing a new list and adding the references to it
+/** Parse one or more request references, allocating a new list and adding the references to it
  *
  * This can be used to create request ref lists for rules and for tmpls.
  *

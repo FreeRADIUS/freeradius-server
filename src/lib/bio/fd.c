@@ -1164,7 +1164,7 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 	my->connect.el = NULL;
 }
 
-/**  We have a timeout on the conenction
+/**  We have a timeout on the connection
  *
  */
 static void fr_bio_fd_el_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)

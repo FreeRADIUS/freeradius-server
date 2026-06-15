@@ -134,7 +134,7 @@ pidfile = ${run_dir}/${name}.pid
 #  ====
 #  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
 #  AN INTERACTIVE ACTION MEANS THE SERVER IS NOT RESPONDING TO REQUESTS.
-#  AN INTERACTICE ACTION MEANS THE SERVER WILL NOT RESTART.
+#  AN INTERACTIVE ACTION MEANS THE SERVER WILL NOT RESTART.
 #
 #  THE SERVER MUST NOT BE ALLOWED EXECUTE UNTRUSTED PANIC ACTION CODE
 #  PATTACH CAN BE USED AS AN ATTACK VECTOR.
@@ -382,7 +382,7 @@ log {
 	#
 	#  In many cases it is not useful to suppress secrets in an
 	#  attempt to "be more secure".  Any administrator who can see
-	#  the debug ouput is usually also able to view and/or modify
+	#  the debug output is usually also able to view and/or modify
 	#  the servers configuration (including passwords in
 	#  databases!).  And any "low level" administrator who can
 	#  only see the debug output will usually need to see the
@@ -399,7 +399,7 @@ log {
 #  For example, the following function calls can be placed in an
 #  `unlang` block, where it will:
 #
-#	* delete any pre-exising debug log for this user
+#	* delete any pre-existing debug log for this user
 #	  do not do this for EAP sessions, as they use multiple round trips.
 #	* use the 'log debug' section as a template
 #	* set the debug level for this request to '2'

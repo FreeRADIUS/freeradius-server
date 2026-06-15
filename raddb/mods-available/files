@@ -41,7 +41,7 @@ files {
 	#
 	#  match_attr:: List and attribute to populate with the `name` of the matched entry.
 	#
-	#  Note: the attriubte type should be capable of holding data of the type
+	#  Note: the attribute type should be capable of holding data of the type
 	#  used as key values.
 	#  Particularly useful if matching IP addresses to subnets, since the populated
 	#  value will be the subnet.  In that case it is best to use `0.0.0.0/0` in place
@@ -56,7 +56,7 @@ files {
 	#  do not need to have the v4 "::" prefix.  This flag helps with migrating v3
 	#  configurations to v4.
 	#
-	#  Default value "false".  Allowed vaues, `true` and `false`.
+	#  Default value "false".  Allowed values, `true` and `false`.
 	#
 #	v3_compat = false
 }

@@ -33,7 +33,7 @@ include::partial$libkqueue-rpm.adoc
 
 > GCC upgrade only required for versions >= v4.0.x you can skip this step for v3.0.x and below.
 
-RHE7 ships with GCC 4.8.5 but FreeRADIUS v4 requires GCC >= 4.9.0.
+RHEL7 ships with GCC 4.8.5 but FreeRADIUS v4 requires GCC >= 4.9.0.
 
 The ``devtoolset-3`` series of packages provides a later version of GCC.
 

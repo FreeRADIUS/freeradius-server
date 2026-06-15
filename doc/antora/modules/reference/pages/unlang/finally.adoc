@@ -25,7 +25,7 @@ current `namespace` of the virtual server.  If no there is no `finally
 _<request-type>_ { ... }` section, then the unqualified `finally {
 ... }` section is run.
 
-.Example of using unqalified finally
+.Example of using unqualified finally
 [source,unlang]
 ----
 # Is processed first
@@ -151,7 +151,7 @@ that there can be cascading chains of failure when something goes
 wrong.  For example, if the server is configured to use log
 `Accounting-Request` packets to SQL for both normal accounting
 processing, and in the `finally` section, what happens when the SQL
-databsase is slow, or has an issue?
+database is slow, or has an issue?
 
 When the SQL database is slow, the `Accounting-Request` packet will
 fail to log anything to SQL and time out.  When all processing for the

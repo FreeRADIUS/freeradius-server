@@ -189,7 +189,7 @@ do { \
 
 /** Generic wrapper to return an error and an offset from encoding.
  *
- *  Some encoders return PAIR_ENCODE_FATAL_ERROR.  Substracting an
+ *  Some encoders return PAIR_ENCODE_FATAL_ERROR.  Subtracting an
  *  offset from that values means it wraps be be a positive number
  *  near INT64_MAX.  This macro ensures that doesn't happen.
  */

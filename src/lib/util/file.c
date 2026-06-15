@@ -400,7 +400,7 @@ char const *fr_cwd_strip(char const *filename)
 /** From a pathname, return fd and filename needed for *at() functions
  *
  * @param[in] dirfd	points to place to store the dirfd
- * @param[in] filename	points to placd to store a pointer into pathname
+ * @param[in] filename	points to place to store a pointer into pathname
  *			that points to the filename
  * @param[in] pathname	the full pathname of the file
  *

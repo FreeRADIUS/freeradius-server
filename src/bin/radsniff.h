@@ -137,7 +137,7 @@ typedef struct {
 typedef struct {
 	uint64_t		min_length_packet;
 	uint64_t		min_length_field;
-	uint64_t		min_length_mimatch;
+	uint64_t		min_length_mismatch;
 	uint64_t		header_overflow;
 	uint64_t		invalid_attribute;
 	uint64_t		attribute_too_short;

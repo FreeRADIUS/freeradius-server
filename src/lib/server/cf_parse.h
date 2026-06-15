@@ -567,7 +567,7 @@ typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *c
  * @param[out] out	Where to write default conf pair.
  * @param[in] parent	being populated.
  * @param[in] cs	to allocate pair in.
- * @param[in] quote	to use when allocing the pair.  Provided as a convenience.
+ * @param[in] quote	to use when allocating the pair.  Provided as a convenience.
  * @param[in] rule	to produce default for.
  * @return
  *	- 0 on success.

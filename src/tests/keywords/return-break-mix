@@ -10,7 +10,7 @@ control += {
 
 foreach thing (control.NAS-Port[*]) {
 	#
-	#  Test where a "return" in a policy will stop exection
+	#  Test where a "return" in a policy will stop execution
 	#  of the caller.
 	#
 	policy_return

@@ -218,7 +218,7 @@ void radius_request_pairs_store(request_t *request, process_radius_rctx_t *rctx)
 	fr_pair_t		*proxy_state;
 
 	/*
-	 *	Don't bother allocing the struct if there's no proxy state to store
+	 *	Don't bother allocating the struct if there's no proxy state to store
 	 */
 	proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state);
 	if (!proxy_state) return;

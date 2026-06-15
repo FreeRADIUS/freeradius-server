@@ -1,6 +1,6 @@
 = Alvarion
 
-Alvarion gateways mplement a non-standard version of WiMAX.  If you with to use Alvarion, you *must* use the "master" branch from http://git.freeradius.org.  Then, before you install it, do:
+Alvarion gateways implement a non-standard version of WiMAX.  If you with to use Alvarion, you *must* use the "master" branch from http://git.freeradius.org.  Then, before you install it, do:
 
   $ cd share
   $ vi dictionary

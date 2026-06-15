@@ -58,7 +58,7 @@
 #   number greater or equal to MINIMUM-VERSION and less than TOO-BIG-VERSION
 #   will be accepted.
 #
-#   Version comparisions require the AX_COMPARE_VERSION macro, which is
+#   Version comparisons require the AX_COMPARE_VERSION macro, which is
 #   provided by ax_compare_version.m4 from the Autoconf Archive.
 #
 #   The Lua version number, LUA_VERSION, is found from the interpreter, and
@@ -226,7 +226,7 @@ AC_DEFUN([AX_PROG_LUA],
     ax_display_LUA='lua'
 
     dnl At least check if this is a Lua interpreter.
-    AC_MSG_CHECKING([if $LUA is a Lua interprester])
+    AC_MSG_CHECKING([if $LUA is a Lua interpreter])
     _AX_LUA_CHK_IS_INTRP([$LUA],
       [AC_MSG_RESULT([yes])],
       [ AC_MSG_RESULT([no])
@@ -236,7 +236,7 @@ AC_DEFUN([AX_PROG_LUA],
   [ dnl A version check is needed.
     AS_IF([test "x$LUA" != 'x'],
     [ dnl Check if this is a Lua interpreter.
-      AC_MSG_CHECKING([if $LUA is a Lua interprester])
+      AC_MSG_CHECKING([if $LUA is a Lua interpreter])
       _AX_LUA_CHK_IS_INTRP([$LUA],
         [AC_MSG_RESULT([yes])],
         [ AC_MSG_RESULT([no])

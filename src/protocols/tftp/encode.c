@@ -197,7 +197,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		char const 	*error_msg;
 		size_t 		error_msg_len;
 
-		/* <ErroCode> */
+		/* <ErrorCode> */
 		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_error_code);
 		if (!vp) {
 			fr_strerror_printf("Invalid TFTP packet without %s", attr_tftp_error_code->name);

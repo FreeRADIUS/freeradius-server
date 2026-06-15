@@ -434,7 +434,7 @@ server eduroam-inner {
 	}
 
 	authorize {
-		# The outer username is considered garabage for autz purposes, but
+		# The outer username is considered garbage for autz purposes, but
 		# the domain portion of the outer and inner identities must match.
 		split_username_nai
 		if (noop || (Stripped-User-Domain && \

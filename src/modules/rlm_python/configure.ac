@@ -10,7 +10,7 @@ AC_PROG_CC
 AC_PROG_CPP
 
 dnl extra argument: --with-rlm-python-config-bin
-PYHTON_BIN=
+PYThON_BIN=
 AC_ARG_WITH(rlm-python-config-bin,
 	[AS_HELP_STRING([--with-rlm-python-config-bin=PATH],
 		[path to python-config binary])],

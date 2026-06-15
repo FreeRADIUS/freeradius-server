@@ -909,7 +909,7 @@ static unlang_action_t ldap_check_userobj_start(UNUSED unlang_result_t *p_result
 
 /** Process the results of evaluating a user object when checking group membership
  *
- * Any information relating to the user's group memberships should be evailable in the group_ctx
+ * Any information relating to the user's group memberships should be available in the group_ctx
  * structure before this is called.
  */
 static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)

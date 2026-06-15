@@ -1724,7 +1724,7 @@ error:
 	return -1;
 }
 
-/** Adds an additional header to a handle to use in the next reques
+/** Adds an additional header to a handle to use in the next request
  *
  * @param[in] request	Current request.
  * @param[in] randle	used for the next request.

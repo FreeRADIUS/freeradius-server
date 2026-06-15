@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 /** Maximum number of arguments
  *
- * For any one keyword, this is the maxiumum number of arguments that can be passed.
+ * For any one keyword, this is the maximum number of arguments that can be passed.
  */
 #define DICT_MAX_ARGV (8)
 

@@ -79,7 +79,7 @@ typedef enum {
 								///< packets which do not have a Message-Authenticator attribute.
 
 	FR_RADIUS_LIMIT_PROXY_STATE_AUTO	= 0x02,		//!< Do not allow Proxy-State unless:
-								///< - All packets received from a client have containted proxy state.
+								///< - All packets received from a client have contained proxy state.
 								///< - The client has sent a packet with a Message-Authenticator.
 								///< @note This isn't used by the radius protocol code, but may be used
 								///< to drive logic in modules.

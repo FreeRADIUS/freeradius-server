@@ -601,7 +601,7 @@ RESUME(crl_fetch)
 			uint64_t delta_base, crl_num;
 			ASN1_INTEGER_get_uint64(&delta_base, base_num);
 			ASN1_INTEGER_get_uint64(&crl_num, rctx->base_crl->crl_num);
-			RERROR("Delta CRL referrs to base CRL number %"PRIu64", current base is %"PRIu64,
+			RERROR("Delta CRL refers to base CRL number %"PRIu64", current base is %"PRIu64,
 			       delta_base, crl_num);
 			ASN1_INTEGER_free(base_num);
 			goto error;
@@ -709,7 +709,7 @@ timer:
 
 	/*
 	 *	A negative expiry time will occur if a refresh fails to fetch a newer CRL
-	 *	or the CRL has already expired. In that case use retry_delay to rate limit retrys.
+	 *	or the CRL has already expired. In that case use retry_delay to rate limit retries.
 	 */
 	if (fr_time_delta_isneg(refresh_delta)) refresh_delta = inst->retry_delay;
 

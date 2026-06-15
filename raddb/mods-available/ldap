@@ -1228,7 +1228,7 @@ ldap {
 #
 #  === %ldap.profile(...)
 #
-#  Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
+#  Retrieve an LDAP object representing an RADIUS profile and apply the attribute
 #  updates as configured in the module `update` section.  This can be useful when
 #  additional profiles need to be applied to a subscriber beyond those directly
 #  associated with their LDAP entry.

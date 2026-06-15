@@ -117,7 +117,7 @@ the generation of pseudonym or fastauth identities.
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying EAP-Identity or Identity to Permanant-Identity.
+copying EAP-Identity or Identity to Permanent-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -178,7 +178,7 @@ fastauth identities we generate (not including hint byte).
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying EAP-Identity or Identity to Permanant-Identity.
+copying EAP-Identity or Identity to Permanent-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -262,7 +262,7 @@ the generation of pseudonym or fastauth identities.
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying EAP-Identity or Identity to Permanant-Identity.
+copying EAP-Identity or Identity to Permanent-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -345,7 +345,7 @@ cannot be processed, you should return `notfound` from this section
 to request an additional identity from the supplicant.
 
 Adding any of the following attributes to the reply list will also
-cause an additional identity to bre request from the supplicant.
+cause an additional identity to be requested from the supplicant.
 
 - `Permanent-Id-Req`		request the supplicants `Permanent` Id
 		usually its IMSI number.

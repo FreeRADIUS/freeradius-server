@@ -311,7 +311,7 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
  *
  * @param[out] p_result		Where to write the result of the bind operation.
  *				If this is NULL, the rcode result will be discarded.
- *				- LDAP_PROC_SUCCES = RLM_MODULE_OK,
+ *				- LDAP_PROC_SUCCESS = RLM_MODULE_OK,
  *				- LDAP_PROC_NOT_PERMITTED = RLM_MODULE_DISALLOW,
  *				- LDAP_PROC_REJECT = RLM_MODULE_REJECT,
  *				- LDAP_PROC_BAD_DN = RLM_MODULE_INVALID,

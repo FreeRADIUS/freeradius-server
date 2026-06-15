@@ -875,7 +875,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(unlang_res
  *	389ds pbkdf2 legacy password with header {PBKDF2_SHA256}
  *
  *	this was the first implementation in 389ds using a fixed length struct as base64.
- *	at some point it was the default scheme, although it's not recommened anymore.
+ *	at some point it was the default scheme, although it's not recommended anymore.
  *
  *      content struct is
  *      4 bytes iterations (value 8192)

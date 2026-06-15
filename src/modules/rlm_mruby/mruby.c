@@ -544,7 +544,7 @@ static mrb_value mruby_pair_list_missing(mrb_state *mrb, mrb_value self)
 		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr_name);
 	}
 
-	if (!da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attriubte name \"%s\"", attr_name);
+	if (!da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attribute name \"%s\"", attr_name);
 
 	if (pair->vp) vp = fr_pair_find_by_da_idx(&pair->vp->vp_group, da, idx);
 
@@ -573,7 +573,7 @@ static mrb_value mruby_pair_list_missing(mrb_state *mrb, mrb_value self)
 		child_da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), child_attr_name);
 	}
 
-	if (!child_da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attriubte name \"%s\"", attr_name);
+	if (!child_da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attribute name \"%s\"", attr_name);
 
 	if (vp) vp = fr_pair_find_by_da_idx(&vp->vp_group, child_da, child_idx);
 

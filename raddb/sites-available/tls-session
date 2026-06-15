@@ -7,7 +7,7 @@
 #  the client certificate chain.
 #
 #  The number of certificates decoded depends on the setting of
-#  setting of `attriubte_mode` in the `verify` section of the
+#  setting of `attribute_mode` in the `verify` section of the
 #  appropriate TLS configuration.
 #
 #  Certificates are decoded into nested attributes e.g.

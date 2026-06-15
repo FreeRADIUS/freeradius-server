@@ -94,12 +94,12 @@ void		*request_data_get(request_t *request, void const *unique_ptr, int unique_i
 
 void		*request_data_reference(request_t *request, void const *unique_ptr, int unique_int);
 
-int		request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool persist);
+int		request_data_by_persistence(fr_dlist_head_t *out, request_t *request, bool persist);
 
-int		request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out,
+int		request_data_by_persistence_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out,
 						     request_t *request, bool persist);
 
-int		request_data_by_persistance_count(request_t *request, bool persist);
+int		request_data_by_persistence_count(request_t *request, bool persist);
 
 void		request_data_restore(request_t *request, fr_dlist_head_t *in);
 

@@ -369,7 +369,7 @@ void *request_data_reference(request_t *request, void const *unique_ptr, int uni
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool persist)
+int request_data_by_persistence(fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int		count = 0;
 	request_data_t	*rd = NULL, *prev;
@@ -395,7 +395,7 @@ int request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool p
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, request_t *request, bool persist)
+int request_data_by_persistence_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int			count = 0;
 	request_data_t		*rd = NULL, *new, *prev;
@@ -438,7 +438,7 @@ int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, 
  * @param[in] persist	Whether to count persistable or non-persistable data.
  * @return number of request_data_t that exist in persistable or non-persistable form
  */
-int request_data_by_persistance_count(request_t *request, bool persist)
+int request_data_by_persistence_count(request_t *request, bool persist)
 {
 	int 		count = 0;
 	request_data_t	*rd = NULL;
@@ -475,7 +475,7 @@ void request_data_persistable_free(request_t *request)
 
 	fr_dlist_talloc_init(&head, request_data_t, list);
 
-	request_data_by_persistance(&head, request, true);
+	request_data_by_persistence(&head, request, true);
 
 	fr_dlist_talloc_free(&head);
 }

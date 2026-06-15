@@ -9,7 +9,7 @@ Calculate dynamic PSKs
 This module needs the following attributes as input:
 
 
-The attributes where data is found can be amened using configuration options
+The attributes where data is found can be amended using configuration options
 below, e.g. if you need to use different VSAs for the anonce and EAPoL key msg.
 
 Note that you MUST run the "rewrite_called_station_id" policy before calling this module.

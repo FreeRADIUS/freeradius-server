@@ -21,7 +21,7 @@ being denied access) and the HR department informs the security guard that the e
 The RADIUS server processes a NAS request based on the following criteria:
 
 * Contents of the NAS request.
-* Information available locally to the RADUS server (flat files, SQL, LDAP).
+* Information available locally to the RADIUS server (flat files, SQL, LDAP).
 
 This processing criteria limits the server ability to perform more complex authentication scenarios. The server can't negotiate with a NAS to request more information. The server uses the initial information that the NAS sends and returns either an acknowledgment or a non-acknowledgment.
 

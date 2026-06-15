@@ -11,7 +11,7 @@ If you have to place your RADIUS server on the public Internet, you
 should at least take the following actions to protect it:
 
 * use RadSec (RADIUS over TLS) where possible
-* add OS firewall rules to allow traffic only from known source IP addres
+* add OS firewall rules to allow traffic only from known source IP address
   * if RADIUS clients are using TLS and dynamic discovery, you can't take this step.
 
 For RADIUS/UDP traffic, add firewall rules to perform the following checks:

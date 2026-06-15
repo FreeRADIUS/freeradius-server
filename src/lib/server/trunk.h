@@ -584,7 +584,7 @@ typedef void (*trunk_request_cancel_mux_t)(fr_event_list_t *el,
  *
  * If the treq (trunk request) is in the TRUNK_REQUEST_STATE_PARTIAL or
  * TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
- * to moving the treq to a new connection, requeueing the treq or freeing
+ * to moving the treq to a new connection, requeuing the treq or freeing
  * the treq.
  *
  * The treq, and any associated resources, should be

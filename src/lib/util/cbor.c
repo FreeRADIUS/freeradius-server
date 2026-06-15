@@ -845,7 +845,7 @@ static ssize_t cbor_decode_int64(int64_t *out, fr_dbuff_t *dbuff, fr_type_t type
 
 		/*
 		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
-		 *	then conver to -1..-(2^63)
+		 *	then convert to -1..-(2^63)
 		 */
 		neg = -value;
 		neg--;
@@ -1166,7 +1166,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		/*
 		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
-		 *	then conver to -1..-(2^63)
+		 *	then convert to -1..-(2^63)
 		 */
 		neg = -value;
 		neg--;

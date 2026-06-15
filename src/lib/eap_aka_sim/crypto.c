@@ -53,7 +53,7 @@ RCSID("$Id$")
  *
  * Avoids memory churn allocating and freeing the ctx for each operation.
  */
-static _Thread_local EVP_CIPHER_CTX *evp_chipher_ctx;
+static _Thread_local EVP_CIPHER_CTX *evp_cipher_ctx;
 
 static int _evp_cipher_ctx_free_on_exit(void *arg)
 {
@@ -68,16 +68,16 @@ static int _evp_cipher_ctx_free_on_exit(void *arg)
  */
 EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void)
 {
-	if (unlikely(!evp_chipher_ctx)) {
+	if (unlikely(!evp_cipher_ctx)) {
 		EVP_CIPHER_CTX *ctx;
 
 		MEM(ctx = EVP_CIPHER_CTX_new());
-		fr_atexit_thread_local(evp_chipher_ctx, _evp_cipher_ctx_free_on_exit, ctx);
+		fr_atexit_thread_local(evp_cipher_ctx, _evp_cipher_ctx_free_on_exit, ctx);
 	} else {
-		EVP_CIPHER_CTX_reset(evp_chipher_ctx);
+		EVP_CIPHER_CTX_reset(evp_cipher_ctx);
 	}
 
-	return evp_chipher_ctx;
+	return evp_cipher_ctx;
 }
 
 /** Explicitly free all thread load cipher ctxs
@@ -86,7 +86,7 @@ EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void)
 void aka_sim_crypto_cipher_ctx_free(void)
 {
 	fr_atexit_trigger(false, _evp_cipher_ctx_free_on_exit, NULL);
-	evp_chipher_ctx = NULL;
+	evp_cipher_ctx = NULL;
 }
 
 /** Free OpenSSL memory associated with our checkcode ctx

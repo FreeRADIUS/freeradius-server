@@ -607,7 +607,7 @@ void fr_machine_resume(fr_machine_t *m)
 /** Send an async signal to the state machine.
  *
  * @param m	The state machine
- * @param signal the signal to send to the state machne
+ * @param signal the signal to send to the state machine
  * @return
  *	- 0 for "no transition has occurred"
  *	- >0 for "we are in a new state".

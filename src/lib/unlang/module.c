@@ -533,7 +533,7 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 
 	/*
 	 *	Call the signal routines.  Note that signals are
-	 *	explicitely asynchronous, even if the module has
+	 *	explicitly asynchronous, even if the module has
 	 *	declared itself to be MODULE_TYPE_THREAD_UNSAFE.
 	 */
 	if (!(action & state->sigmask)) state->signal(MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx), request, action);

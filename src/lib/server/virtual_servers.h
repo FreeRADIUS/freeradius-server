@@ -138,7 +138,7 @@ struct virtual_server_compile_s {
 								///< and the offset will be ignored.
 	size_t					instruction;	//!< where the instruction pointer is written
 	unlang_mod_actions_t const		*actions;	//!< Default actions for this section.
-	section_name_t const			**methods;	//!< list of auxilliary module methods which are allowed in
+	section_name_t const			**methods;	//!< list of auxiliary module methods which are allowed in
 								///< if the main name doesn't match.
 };
 

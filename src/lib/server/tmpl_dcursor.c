@@ -150,7 +150,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	/*
 	 *	Array indexes can be attribute references.  In which case they must be castable to a uint8_t.
 	 *
-	 *	i.e. there's likly no point in allowing the array ref to specify "none", or "any", or "count".
+	 *	i.e. there's likely no point in allowing the array ref to specify "none", or "any", or "count".
 	 *
 	 *	Arguably it's useful to specify "all", but why?  The main utility of the array reference is to
 	 *	index a particular attribute when looping over a list of attributes.

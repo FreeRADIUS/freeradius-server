@@ -1,4 +1,4 @@
-/** Bob Jenkin's random number generator
+/** Bob Jenkins' random number generator
  *
  * Bob's random number generator, ISAAC.  Public Domain.
  *

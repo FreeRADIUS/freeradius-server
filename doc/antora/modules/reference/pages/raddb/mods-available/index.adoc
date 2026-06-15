@@ -18,7 +18,7 @@ pap
 
 Each of the above modules has a complex configuration file, but the
 above policy does not contain the full configuration of SQL server
-address, admin login, queries, etc.  Instead, the policy focusses on
+address, admin login, queries, etc.  Instead, the policy focuses on
 the functional aspects of the requirements, which means that it is
 easier to create and understand.  A simple policy also means that (for
 example) the underlying SQL module can be reconfigured for a different

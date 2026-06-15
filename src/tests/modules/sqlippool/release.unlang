@@ -40,7 +40,7 @@ if (%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Nam
 }
 
 
-# Check the expiry - releasing an address sets the exipry to now
+# Check the expiry - releasing an address sets the expiry to now
 # Allow for some time passing between packet processing and "now"
 expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
 if (expiry > (%l + 5)) {

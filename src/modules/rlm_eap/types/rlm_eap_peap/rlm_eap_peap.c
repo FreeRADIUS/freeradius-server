@@ -678,7 +678,7 @@ static unlang_action_t eap_peap_process(unlang_result_t *p_result, module_ctx_t 
 					 false, UNLANG_SUB_FRAME) < 0) goto finish;
 
 	/*
-	 *	Setup a function in thie child to process the
+	 *	Setup a function in this child to process the
 	 *	result of the subrequest.
 	 */
 	if (unlang_function_push_with_result(NULL,

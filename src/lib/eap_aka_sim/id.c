@@ -565,7 +565,7 @@ uint8_t fr_aka_sim_id_3gpp_pseudonym_key_index(char const encr_id[AKA_SIM_3GPP_P
 
 /** Decrypt the 3GPP pseudonym
  *
- * @param[out] out		Where to write the decypted, uncompressed IMSI.
+ * @param[out] out		Where to write the decrypted, uncompressed IMSI.
  * @param[in] encr_id		to decypt. Will read exactly 23 bytes from the buffer.
  * @param[in] key		to use to decrypt the encrypted and compressed IMSI.
  *				Must be 128 bits (16 bytes).
@@ -635,7 +635,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 	decr_len = len;
 
 	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, (int *)&len) != 1)) {
-		fr_tls_strerror_printf("Failed finalising decypted IMSI");
+		fr_tls_strerror_printf("Failed finalising decrypted IMSI");
 		goto error;
 	}
 	decr_len += len;

@@ -23,7 +23,7 @@ The deprecated instantiate section sometimes used the & syntax for dynamic expan
 
 === Unlang Policy Language
 
-The configuration language (Unlang) is now more consise and robust. You now edit attributes with specific statements in processing sections. The old-style `update` sections are deprecated.
+The configuration language (Unlang) is now more concise and robust. You now edit attributes with specific statements in processing sections. The old-style `update` sections are deprecated.
 
 == Keyword Changes
 

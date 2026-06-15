@@ -55,7 +55,7 @@ attributes in the request can be accessed using syntax of the form:
 Where attribute names contain `-` this should be replaced by `_`, e.g.
 `request.User-Name` becomes `p.request.user_name`
 
-The interface between FreeRADIUS and Ruby is mosty string.
+The interface between FreeRADIUS and Ruby is mostly string.
 
 Attributes of type `string` are copied to Ruby as-is.
 They are not escaped or interpreted.

@@ -255,7 +255,7 @@ unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *reques
 
 	/*
 	 *	If the query already has a treq, and that is not in the "init" state
-	 *	then this is part of an ongoing transaction and needs requeueing
+	 *	then this is part of an ongoing transaction and needs requeuing
 	 *	to submit on the same connection.
 	 */
 	if (query_ctx->treq && query_ctx->treq->state != TRUNK_REQUEST_STATE_INIT) {

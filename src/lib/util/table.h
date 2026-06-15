@@ -194,8 +194,7 @@ bool _our_name(_our_out_type *out, _our_table_type table, size_t table_len, char
  *									  with partial matching.
  * @param[in] _our_table_type	C type of the table elements.
  *				Must contain two fields, an #fr_table_elem_name_t called name
- *				and an arbitraryily typed field called value.
- *				A pointer to thi
+ *				and an arbitrarily typed field called value.
  * @param[in] _our_name		name of the search function to define.
  * @param[in] _our_def_type	C type of the default value.
  * @param[in] _our_return_type	C type of the return value, i.e. the value part of the element.
@@ -227,8 +226,7 @@ _our_return_type _our_name(_our_table_type table, size_t table_len, char const *
  *									  with partial matching.
  * @param[in] _our_table_type	C type of the table elements.
  *				Must contain two fields, an #fr_table_elem_name_t called name
- *				and an arbitraryily typed field called value.
- *				A pointer to thi
+ *				and an arbitrarily typed field called value.
  * @param[in] _our_name		name of the search function to define.
  * @param[in] _our_def_type	C type of the default value.
  * @param[in] _our_out_type	C type of the return/output value, i.e. the value part of the element.

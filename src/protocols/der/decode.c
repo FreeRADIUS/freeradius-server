@@ -658,7 +658,7 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 		}
 
 		/*
-		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
+		 *	The initial packed field has the first two components included, as (x * 40) + y.
 		 */
 		if (first) {
 			uint64_t first_component;
@@ -2129,7 +2129,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	return fr_dbuff_set(in, &our_in);
 }
 
-/** Decode an X509 Extentions Field
+/** Decode an X509 Extensions Field
  *
  * @param[in] ctx		Talloc context
  * @param[in] out		Output list
@@ -2633,7 +2633,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *	@todo - parse 'string' and 'date', and then set flags->restrictions to allow any compatible
 	 *	DER tags, as a hack.  Doing that makes this a little more generic?  Or, add support for data
 	 *	types "Time" and "DirectoryString", and do the right thing.  Or, define them as separate
-	 *	attributes in dictionarty.common, and remove the "tags compatible" checks.
+	 *	attributes in dictionary.common, and remove the "tags compatible" checks.
 	 */
 	if (unlikely((tag != flags->der_type) &&
 		     (!fr_type_to_der_tag_valid(parent->type, tag) || !fr_der_tags_compatible(tag, flags->der_type)))) {

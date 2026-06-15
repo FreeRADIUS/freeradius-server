@@ -3599,7 +3599,7 @@ static int xlat_instantiate_subst_regex(xlat_inst_ctx_t const *xctx)
 
 	sbuff = FR_SBUFF_IN(patt_exp->data.vb_strvalue, patt_exp->data.vb_length);
 
-	/* skip any whitesapce */
+	/* skip any whitespace */
 	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, 0);
 
 	/* Is the next char a forward slash? */

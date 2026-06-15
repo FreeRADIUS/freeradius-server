@@ -889,7 +889,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *	cached reply.  It's also responsible for calling the fr_bio_retry_respond() function to send
 	 *	a duplicate reply, and then return "don't receive" this packet.
 	 *
-	 *	The application can alos call fr_bio_dedup_entry_extend() in order to extend the lifetime of a
+	 *	The application can also call fr_bio_dedup_entry_extend() in order to extend the lifetime of a
 	 *	packet which has a cached response.
 	 *
 	 *	If there's an active packet, then the receive() function should do whatever it needs to do in

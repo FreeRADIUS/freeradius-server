@@ -293,7 +293,7 @@ struct module_instance_s {
 	void				*data;		//!< Module's instance data.  This is most
 							///< frequently accessed, so comes first.
 
-	void				*boot;		//!< Data allocated during the boostrap phase
+	void				*boot;		//!< Data allocated during the bootstrap phase
 
 	module_t			*exported;	//!< Public module structure.  Cached for convenience.
 							///< This exports module methods, i.e. the functions

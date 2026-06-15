@@ -194,7 +194,7 @@ typedef struct {
 }
 
 /*
- *	We can't put this into a typdef:
+ *	We can't put this into a typedef:
  *
  *	  typedef bool sbuff_char_class_t[static UINT8_MAX + 1];
  *

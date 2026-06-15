@@ -229,7 +229,7 @@ bool const module_instance_allowed_chars[SBUFF_CHAR_CLASS] = {
 
 /** dl module tracking
  *
- * This is used by all module lists, irrespecitve of their type, and is thread safe.
+ * This is used by all module lists, irrespective of their type, and is thread safe.
  */
 static dl_module_loader_t	*dl_modules = NULL;
 
@@ -310,8 +310,8 @@ typedef void (*module_list_thread_data_del_t)(module_thread_instance_t *ti);
  *
  * We care about performance for module lists, as they're used heavily at runtime.
  *
- * As much as possible we try to avoid jumping through unecessary functions and
- * unecessary switch statements.
+ * As much as possible we try to avoid jumping through unnecessary functions and
+ * unnecessary switch statements.
  *
  * This structure contains callbacks which change how the module list operates,
  * making it either a global module list, or a thread-local module list, i.e. one
@@ -1359,7 +1359,7 @@ int module_bootstrap(module_instance_t *mi)
 		/*
 		 *	Modules MUST NOT modify their instance data during
 		 *	bootstrap.  This is because dynamic (runtime) modules
-		 *	don't run their boostrap callbacks, and MUST re-resolve
+		 *	don't run their bootstrap callbacks, and MUST re-resolve
 		 *	any resources added during bootstrap in the
 		 *	instantiate callback.
 		 *

@@ -7,7 +7,7 @@ The DHCPv4 functionality include performance, no limits on the size of
 IP pools, the ability to use many data sources. FreeRADIUS DHCP server
 provides a more flexible solution for DHCP capabilities that include:
 
-== Optimal perfomance surpassing other implementations (ISC or Kea)
+== Optimal performance surpassing other implementations (ISC or Kea)
 
 FreeRADIUS is multi-threaded by default, and has been for almost two
 decades. It can robustly support high input packets rates using many
@@ -106,7 +106,7 @@ FreeRADIUS supports:
 
 * Optimized to work with FreeRADIUS.
 
-* Simple cost-effective solution - comes with packaage and can use the same hardware.
+* Simple cost-effective solution - comes with package and can use the same hardware.
 
 * Flexible configuration and can scale up depending on organization's needs.
 
@@ -115,7 +115,7 @@ FreeRADIUS supports:
 
 == Related information
 
-IP adddress pools can be store in
+IP address pools can be store in
 xref:raddb/mods-available/sqlippool.adoc[SQL] or
 xref:raddb/mods-available/redis_ippool.adoc[Redist]
 

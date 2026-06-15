@@ -846,7 +846,7 @@ int fr_state_store(fr_state_tree_t *state, request_t *request)
 
 	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
-	request_data_by_persistance(&data, request, true);
+	request_data_by_persistence(&data, request, true);
 
 	if (fr_pair_list_empty(&request->session_state_pairs) && fr_dlist_empty(&data)) return 0;
 
@@ -948,7 +948,7 @@ void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int uniq
 
 	RDEBUG3("Storing subrequest state in request %s", child->parent->name);
 
-	if ((request_data_by_persistance_count(request, true) > 0) ||
+	if ((request_data_by_persistence_count(request, true) > 0) ||
 		!fr_pair_list_empty(&request->session_state_pairs)) {
 		MEM(child_entry = talloc_zero(request->parent->session_state_ctx, state_child_entry_t));
 		request_data_list_init(&child_entry->data);
@@ -965,7 +965,7 @@ void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int uniq
 		 *	which is why we don't need to copy or
 		 *	reparent any of this.
 		 */
-		request_data_by_persistance(&child_entry->data, request, true);
+		request_data_by_persistence(&child_entry->data, request, true);
 
 		/*
 		 *	...and add the request_data from

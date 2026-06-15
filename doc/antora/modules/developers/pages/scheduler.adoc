@@ -103,7 +103,7 @@ The `modules.c` code creates the first few layers of each TLV.
 The `modules` header file defines a few macros:
 
   DEFINE_YIELD_POINT(name)
-  USE_YEILD_POINT(inst, name)
+  USE_YIELD_POINT(inst, name)
   CACHE_DA_YIELD_POINT(name)
   CREATE_DA_YIELD_POINT(inst, name)
 

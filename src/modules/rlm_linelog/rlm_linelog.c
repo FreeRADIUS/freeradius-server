@@ -1079,7 +1079,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/** Initialise thread specific data strcuture
+/** Initialise thread specific data structure
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {

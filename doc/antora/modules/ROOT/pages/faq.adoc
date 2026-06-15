@@ -25,7 +25,7 @@ authentication and accounting practices. See xref:concepts:components/architectu
 
 === How does FreeRADIUS differ from other radius servers?
 
-FreeRADIUS is an open-source product with all the benefits of open-source software that includes flexibility, scalibility, and cost-effectivness. FreeRADIUS has many features not found in other free and commercial versions. Some of these features are:
+FreeRADIUS is an open-source product with all the benefits of open-source software that includes flexibility, scalability, and cost-effectiveness. FreeRADIUS has many features not found in other free and commercial versions. Some of these features are:
 
 * Access based on huntgroups.
 * Multiple DEFAULT entries in `users` file.

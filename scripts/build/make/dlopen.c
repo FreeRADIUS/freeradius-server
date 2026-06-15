@@ -306,7 +306,7 @@ static char *make_dlopen(__attribute__((unused)) char const *nm, unsigned int ar
 	 */
 
 	/*
-	 *	We didn't find it in the list of cached librarys.
+	 *	We didn't find it in the list of cached libraries.
 	 *	Call dlopen().
 	 *
 	 *	"name" here can either be the full filename, or just

@@ -573,7 +573,7 @@ static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *req
 	fr_assert(worker->num_active > 0);
 	worker->num_active--;
 
-	TALLOC_FREE(request->timeout);	/* Disarm the reques timer */
+	TALLOC_FREE(request->timeout);	/* Disarm the request timer */
 }
 
 /** Send a response packet to the network side
@@ -796,7 +796,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	request_slab_element_set_destructor(request, _worker_request_deinit, worker);
 
 	/*
-	 *	Have to initialise the request manually because namspace
+	 *	Have to initialise the request manually because namespace
 	 *	changes based on the listener that allocated it.
 	 */
 	if (request_init(request, REQUEST_TYPE_EXTERNAL, (&(request_init_args_t){ .namespace = listen->dict })) < 0) {

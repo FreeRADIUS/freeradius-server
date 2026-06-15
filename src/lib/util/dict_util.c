@@ -75,7 +75,7 @@ bool const fr_dict_enum_allowed_chars[SBUFF_CHAR_CLASS] = {
 
 /** Default protocol rules set for every dictionary
  *
- * This is usually overriden by the public symbol from the protocol library
+ * This is usually overridden by the public symbol from the protocol library
  * associated with the dictionary
  * e.g. libfreeradius-dhcpv6.so -> libfreeradius_dhcpv6_dict_protocol.
  */
@@ -842,9 +842,9 @@ int dict_attr_init_common(char const *filename, int line,
  *
  * The reason for the separation, is that sometimes we're initialising a dictionary attribute
  * by parsing an actual dictionary file, and other times we're copying attribute, or initialising
- * them programatically.
+ * them programmatically.
  *
- * This function should only be used for the second case, where we have a complet attribute
+ * This function should only be used for the second case, where we have a complete attribute
  * definition already.
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
@@ -889,9 +889,9 @@ int _dict_attr_init(char const *filename, int line,
  *
  * The reason for the separation, is that sometimes we're initialising a dictionary attribute
  * by parsing an actual dictionary file, and other times we're copying attribute, or initialising
- * them programatically.
+ * them programmatically.
  *
- * This function should only be used for the second case, where we have a complet attribute
+ * This function should only be used for the second case, where we have a complete attribute
  * definition already.
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
@@ -918,7 +918,7 @@ int _dict_attr_init_name_only(char const *filename, int line,
 	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
 
 	/*
-	 *	Automatically generate the attribute number when the attribut is added.
+	 *	Automatically generate the attribute number when the attribute is added.
 	 */
 	(*da_p)->flags.name_only = true;
 
@@ -3889,7 +3889,7 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	talloc_free(sym_name);
 
 	/*
-	 *	Soft failure, not all protocol libraires provide
+	 *	Soft failure, not all protocol libraries provide
 	 *	custom validation functions or flats.
 	 */
 	if (!proto) return 0;
@@ -4222,7 +4222,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 	/*
 	 *	Set the default dictionary protocol, this can
-	 *	be overriden by the protocol library.
+	 *	be overridden by the protocol library.
 	 */
 	dict->proto = &dict_proto_default;
 

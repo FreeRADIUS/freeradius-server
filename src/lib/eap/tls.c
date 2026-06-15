@@ -165,7 +165,7 @@ int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_stat
 	 *	Identifier value for each fragment ACK contained
 	 *	within an EAP-Request, and the peer MUST include this
 	 *	Identifier value in the subsequent fragment contained
-	 *	within an EAP-Reponse.
+	 *	within an EAP-Response.
 	 */
 	eap_round->request->type.data = p = talloc_array(eap_round->request, uint8_t, len);
 	if (!p) return -1;
@@ -455,7 +455,7 @@ int eap_tls_request(request_t *request, eap_session_t *eap_session)
  * In order to prevent errors in the processing of fragments, the EAP server
  * MUST use increment the Identifier value for each fragment ACK contained
  * within an EAP-Request, and the peer MUST include this Identifier value in
- * the subsequent fragment contained within an EAP-Reponse.
+ * the subsequent fragment contained within an EAP-Response.
  *
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	that we're acking the fragment for.
@@ -848,7 +848,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	 *
 	 *	Note this is only done for when there is no application
 	 *	data to be sent. So this is done always for EAP-TLS but
-	 *	notibly not for PEAP even on resumption.
+	 *	notably not for PEAP even on resumption.
 	 *
 	 *	We only want to send this application data IF:
 	 *

@@ -18,7 +18,7 @@ if !(test_addr == 192.168.10.23) {
 	test_fail
 }
 
-#  Check we can get the hightest address
+#  Check we can get the highest address
 test_addr := test_prefix + 255
 if !(test_addr == 192.168.10.255) {
 	test_fail

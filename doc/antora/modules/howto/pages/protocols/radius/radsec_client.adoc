@@ -140,7 +140,7 @@ radiusd -X
 At this stage you should be able to cause the test client to send RadSec
 requests directly to the RadSec server.
 
-Run the following to send a RADUS (UDP) Access-Request to the local FreeRADIUS
+Run the following to send a RADIUS (UDP) Access-Request to the local FreeRADIUS
 instance.  It  should then proxy the request over RadSec connection to
 the remote RadSec server:
 

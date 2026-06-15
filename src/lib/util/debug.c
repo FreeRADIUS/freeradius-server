@@ -782,8 +782,8 @@ static int fr_fault_check_permissions(void)
 	 */
 	if ((q = strchr(panic_action, ' '))) {
 		/*
-		 *	need to use a static buffer, because allocing memory in a signal handler
-		 *	is a bad idea and can result in deadlock.
+		 *	need to use a static buffer, because allocating memory in a signal
+		 *	handler is a bad idea and can result in deadlock.
 		 */
 		len = snprintf(filename, sizeof(filename), "%.*s", (int)(q - panic_action), panic_action);
 		if (is_truncated(len, sizeof(filename))) {

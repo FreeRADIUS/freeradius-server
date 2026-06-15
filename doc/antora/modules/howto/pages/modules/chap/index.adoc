@@ -73,7 +73,7 @@ recv Access-Request {
 }
 ----
 
-You must also configure a database module which retreives the "known
+You must also configure a database module which retrieves the "known
 good" password for the user.  This password must be placed into the
 `Password.Cleartext` attribute.
 

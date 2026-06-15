@@ -1282,7 +1282,7 @@ static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
  *   - profiles are read from &control.User-Profile
  *   - if `cache_groups` is set, groups populate &control.SQL-Group
  *
- * Profiles are handled after groups, and will not happend if the last group resulted in `Fall-Through = no`
+ * Profiles are handled after groups, and will not happen if the last group resulted in `Fall-Through = no`
  *
  * Before each query is run, &request.SQL-Group is populated with the value of the group being evaluated.
  *
