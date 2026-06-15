@@ -484,6 +484,17 @@ The directory here should either be "/", or ${confdir}
 
 
 
+limit files: Limit the directories for function calls
+
+The server provides functions such as %file.touch() to read
+files, write files, make directories, etc.  For security,
+this ability can be limited to specific directories.
+
+If no files are listed here, then the server allows the
+%file APIs to read and write any directory.
+
+
+
 allow_core_dumps:: Core dumps are a bad thing.
 
 This should only be set to `yes` if you're debugging
@@ -767,6 +778,10 @@ security {
 #	user = radius
 #	group = radius
 #	chdir = ${confdir}
+	limit files {
+		allow = ${logdir}
+		allow = ${radacctdir}
+	}
 	allow_core_dumps = yes
 	max_attributes = 200
 	allow_vulnerable_openssl = no

@@ -552,6 +552,23 @@ security {
 	#
 #	chdir = ${confdir}
 
+	#
+	#  limit files: Limit the directories for function calls
+	#
+	#  The server provides functions such as %file.touch() to read
+	#  files, write files, make directories, etc.  For security,
+	#  this ability can be limited to specific directories.
+	#
+	#  If no files are listed here, then the server allows the
+	#  %file...() APIs to read and write any directory.
+	#
+	#  Note that you should NOT list ${confdir} here.  The
+	#  configuration files should NEVER be writable by the server.
+	#
+	limit files {
+		allow = ${logdir}
+		allow = ${radacctdir}
+	}
 
 	#
 	#  allow_core_dumps:: Core dumps are a bad thing.

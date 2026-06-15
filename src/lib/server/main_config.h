@@ -102,6 +102,9 @@ struct main_config_s {
 	char const	*chdir;				//!< where to chdir() to when we start.
 	bool		chdir_is_set;
 
+	char const	**limit_files;			//!< where %file....() is limited to
+	bool		limit_files_is_set;
+
 	/*
 	 *	OpenSSL configuration
 	 */

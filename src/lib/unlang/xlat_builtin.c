@@ -30,6 +30,7 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 #include <freeradius-devel/io/test_point.h>
@@ -417,6 +418,48 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 };
 
 
+/*
+ *	Limit the %file...() functions to a particular subset of directories.
+ */
+static bool xlat_file_allowed(request_t *request, char const *filename, size_t len)
+{
+	size_t i, num_files;
+
+	if (!main_config->limit_files) return true;
+
+	num_files = talloc_array_length(main_config->limit_files);
+	if (!num_files) return false;
+
+	for (i = 0; i < num_files; i++) {
+		size_t alen = talloc_array_length(main_config->limit_files[i]);
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > len) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(filename, main_config->limit_files[i], alen) != 0) continue;
+
+		if (alen == len) return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (filename[alen] != '/') break;
+
+		return true;
+	}
+
+	REDEBUG3("Failed access file %s - it is outside of 'limit files'", filename);
+	return false;
+}
+
+#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, (_vb)->vb_strvalue, (_vb)->vb_length)
+
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   UNUSED request_t *request, fr_value_box_list_t *args)
@@ -428,6 +471,8 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -451,6 +496,8 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -508,6 +555,8 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	if (stat(filename, &buf) < 0) {
 		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
 		return XLAT_ACTION_FAIL;
@@ -537,6 +586,8 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb, &num);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -725,6 +776,8 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
@@ -776,6 +829,8 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
@@ -797,6 +852,8 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -824,6 +881,8 @@ static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
@@ -844,6 +903,8 @@ static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);

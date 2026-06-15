@@ -2,6 +2,7 @@
 #  PRE: if
 #
 ipv4prefix prefix
+string head
 
 prefix = 192.0.2/24
 
@@ -41,5 +42,21 @@ if %file.escape("${confdir}") != "src/tests/keywords/" {
 #if %file.safe("${confdir}" + %taint('/foo')) != "src/tests/keywords/_x2ffoo" {
 #	test_fail
 #}
+
+#
+#  These files are outside of the "limit files" sub section of the "security" configuration.
+#
+if %file.mkdir("/tmp/radiusd/") {
+	test_fail
+}
+
+if %file.touch("~/radiusd") {
+	test_fail
+}
+
+head = %file.head("/etc/passwd")
+if head {
+	test_fail
+}
 
 success
