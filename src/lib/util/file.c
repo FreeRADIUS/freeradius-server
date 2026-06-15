@@ -382,7 +382,7 @@ int fr_unlink(char const *filename) {
  */
 char const *fr_cwd_strip(char const *filename)
 {
-	static char our_wd[MAXPATHLEN];
+	char our_wd[MAXPATHLEN];
 	char const *found;
 
 	if (!getcwd(our_wd, sizeof(our_wd))) return filename;
