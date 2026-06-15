@@ -204,8 +204,9 @@ async function analyze() {
 const fmtM = (v) => (v / 1e6).toFixed(1) + "M";
 function fmtPct(d) {
   if (!isFinite(d)) return "new";
-  if (Math.abs(d) < 1) return "0%";
-  return (d > 0 ? "+" : "−") + Math.round(Math.abs(d)) + "%";
+  const a = Math.abs(d);
+  if (a < 0.005) return "0%";   // rounds to 0.00 — show a clean zero
+  return (d > 0 ? "+" : "−") + a.toFixed(2) + "%";
 }
 // Δ% of a function's CEst in run i vs the baseline run. A function absent from
 // the baseline (base 0) has no defined %: treat any positive current as "new".
