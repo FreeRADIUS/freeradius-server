@@ -103,16 +103,26 @@ h1.title{font-weight:700;font-size:28px;letter-spacing:-.01em;margin:8px 0 6px;}
 /* matrix views */
 .nview{border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:auto;max-width:100%;}
 .nview:empty{display:none;}
-table.heat{border-collapse:collapse;font-size:11px;width:100%;}
+/* width:auto so the table hugs its columns — with few runs the result cells
+   stay next to the function names instead of stretching across the panel. */
+table.heat{border-collapse:collapse;font-size:11px;}
 table.heat th,table.heat td{border:1px solid var(--line);text-align:center;}
 table.heat thead th{position:sticky;top:0;background:#f3f6fa;font-size:9px;font-weight:600;
   padding:3px 4px;white-space:nowrap;z-index:2;color:var(--ink-soft);}
 table.heat .fn{position:sticky;left:0;background:var(--paper);text-align:left;padding:5px 9px;
   font-size:11px;white-space:nowrap;z-index:1;border-right:1px solid var(--line-strong);}
+table.heat .fnname{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table.heat thead .fn{z-index:3;}
 table.heat .fn .bv{color:var(--ink-soft);font-size:10px;font-weight:400;}
 table.heat td.cell{min-width:54px;height:23px;font-size:9px;font-weight:600;font-variant-numeric:tabular-nums;}
-table.heat .base-col,table.heat th.base-col{outline:2px solid var(--accent);outline-offset:-2px;}
+/* Frame the baseline (p50) column with inset box-shadows, not outline/border.
+   Collapsed borders belong to the table and don't render correctly on the
+   sticky header, and outline+offset drifts; an inset shadow is painted with the
+   cell itself, so the header and every body cell align exactly. Left+right on
+   all cells, plus a top cap on the header and a bottom cap on the last row. */
+table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);}
+table.heat thead th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent);}
+table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 -2px 0 var(--accent);}
 
 /* trends: function picker + chart */
 .trend-pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);font-size:12px;}

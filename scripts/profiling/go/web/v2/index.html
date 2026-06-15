@@ -12,7 +12,7 @@
 <body>
   <header class="top">
     <div class="doc-inner">
-      <div class="kicker">CEst Utility</div>
+      <div class="kicker">CEst Analysis Utility</div>
       <h1 class="title">Compare CI profiling runs</h1>
       <p class="sub">Load one or more run directories of <code>callgrind.out.*</code> files. The
         <b>median (p50)</b> run by total CEst is the baseline; every cell's Δ is measured against it.
@@ -23,7 +23,7 @@
   <div class="stage">
     <div class="app">
       <div class="app-head">
-        <h2>CPU Cycle Utilization (CEst) Utility</h2>
+        <h2>CPU Cycle Utilization (CEst) Analysis Utility</h2>
         <p class="formula" id="formula">CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</p>
       </div>
 
@@ -72,7 +72,9 @@
         </div>
         <div class="viewseg" id="valseg" style="margin-left:2px;">
           <button class="on" data-val="delta">Δ % vs p50</button>
+          <button data-val="deltatotal">Δ % vs total</button>
           <button data-val="abs">CEst cycles</button>
+          <button data-val="pct">CEst %</button>
         </div>
         <label class="field-lbl inline">patterns
           <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />

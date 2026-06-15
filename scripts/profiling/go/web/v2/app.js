@@ -208,6 +208,8 @@ function fmtPct(d) {
   if (a < 0.005) return "0%";   // rounds to 0.00 — show a clean zero
   return (d > 0 ? "+" : "−") + a.toFixed(2) + "%";
 }
+// fmtShare formats a self-share / percentage-of-total value (no leading sign).
+function fmtShare(p) { return p.toFixed(2) + "%"; }
 // Δ% of a function's CEst in run i vs the baseline run. A function absent from
 // the baseline (base 0) has no defined %: treat any positive current as "new".
 function deltaPct(f, i) {
@@ -221,6 +223,10 @@ function cestOf(f, i) { return matrix.R[i].cest[matrix.funcs[f]]; }
 // baseline has no defined %, so it sits on the baseline (0) rather than ∞.
 function finiteDelta(f, i) { const d = deltaPct(f, i); return isFinite(d) ? d : 0; }
 function totalDelta(i) { return (matrix.totals[i] - matrix.totals[matrix.BASE]) / matrix.totals[matrix.BASE] * 100; }
+// self-share: a function's CEst as a percentage of its run's total CEst.
+function selfShare(f, i) { const t = matrix.totals[i]; return t ? cestOf(f, i) / t * 100 : 0; }
+// change vs p50 expressed as a percentage of THIS run's total CEst.
+function deltaTotal(f, i) { const t = matrix.totals[i]; return t ? (cestOf(f, i) - cestOf(f, matrix.BASE)) / t * 100 : 0; }
 function dColor(d) { return Math.abs(d) < 1 ? "#566173" : (d > 0 ? "#b42318" : "#1f7a55"); }
 // shortLabel picks the run# segment for compact axis ticks ("4/accept/short_ci" -> "4").
 function shortLabel(label) { return String(label).split("/")[0]; }
@@ -326,6 +332,16 @@ function renderChips() {
   });
 }
 
+// heatCellLabel is the text shown in a non-baseline heatmap cell, per value mode.
+function heatCellLabel(f, i) {
+  switch (valMode) {
+    case "abs": return fmtM(cestOf(f, i));            // CEst cycles
+    case "pct": return fmtShare(selfShare(f, i));     // CEst % of run total
+    case "deltatotal": return fmtPct(deltaTotal(f, i)); // Δ% vs that run's total
+    default: return fmtPct(deltaPct(f, i));           // Δ% vs p50
+  }
+}
+
 function renderHeat() {
   const { funcs, R, BASE } = matrix;
   const cols = colOrder();
@@ -336,18 +352,19 @@ function renderHeat() {
   });
   h += "</tr></thead><tbody>";
   funcs.forEach((fn, f) => {
-    h += '<tr><td class="fn">' + esc(fn) + '<div class="bv">' + fmtM(cestOf(f, BASE)) + "</div></td>";
+    h += '<tr><td class="fn"><span class="fnname" title="' + esc(fn) + '">' + esc(fn) + '</span><div class="bv">' + fmtM(cestOf(f, BASE)) + "</div></td>";
     cols.forEach((i) => {
       if (i === BASE) {
-        h += '<td class="cell base-col" style="background:#e7f3ec;color:#1f7a55;">'
-          + (valMode === "abs" ? fmtM(cestOf(f, BASE)) : "base") + "</td>";
+        // The p50 column has no Δ; show the actual value for value modes, "base" for Δ modes.
+        const baseCell = valMode === "abs" ? fmtM(cestOf(f, BASE))
+          : valMode === "pct" ? fmtShare(selfShare(f, BASE)) : "base";
+        h += '<td class="cell base-col" style="background:#e7f3ec;color:#1f7a55;">' + baseCell + "</td>";
         return;
       }
-      const d = deltaPct(f, i);
-      const label = valMode === "abs" ? fmtM(cestOf(f, i)) : fmtPct(d);
+      const d = deltaPct(f, i);              // colour + flag always track Δ% vs p50
       const flagged = isFinite(d) && Math.abs(d) >= NTHRESH;
       h += '<td class="cell" style="background:' + heatColor(d) + ";color:" + heatText(d)
-        + (flagged ? ";outline:1px solid var(--note);outline-offset:-1px" : "") + '">' + label + "</td>";
+        + (flagged ? ";outline:1px solid var(--note);outline-offset:-1px" : "") + '">' + heatCellLabel(f, i) + "</td>";
     });
     h += "</tr>";
   });
@@ -411,14 +428,16 @@ function legendFor() {
       ? '<span>Total CEst cycles per run · ● p50 baseline · load order. Pick up to 5 functions to plot.</span>'
       : '<span>Δ% vs p50 (baseline = 0%). Watch where total rises above 0. Pick up to 5 functions to plot.</span>';
   }
-  if (valMode === "abs") {
-    return '<span>cells show <b>CEst cycles</b> (self) per function per run</span>'
-      + '<span><span class="swatch" style="background:#e7f3ec"></span>baseline (p50) column</span>';
-  }
-  return '<span><span class="swatch" style="background:hsl(8 72% 70%)"></span>regression (Δ &gt; 0)</span>'
-    + '<span><span class="swatch" style="background:hsl(150 42% 70%)"></span>improvement (Δ &lt; 0)</span>'
+  let cells;
+  if (valMode === "abs") cells = "cells = <b>CEst cycles</b> (self, M = million)";
+  else if (valMode === "pct") cells = "cells = <b>CEst %</b> — function’s share of its run’s total CEst";
+  else if (valMode === "deltatotal") cells = "cells = <b>Δ % vs total</b> — (run − p50) ÷ that run’s total CEst";
+  else cells = "cells = <b>Δ % vs p50</b>";
+  return "<span>" + cells + " · colour = Δ% vs p50</span>"
+    + '<span><span class="swatch" style="background:hsl(8 72% 70%)"></span>regression</span>'
+    + '<span><span class="swatch" style="background:hsl(150 42% 70%)"></span>improvement</span>'
     + '<span><span class="swatch" style="background:#e7f3ec"></span>baseline (p50)</span>'
-    + '<span>outlined cells exceed the Δ ≥ ' + NTHRESH + '% flag</span>';
+    + "<span>· outlined ≥ " + NTHRESH + "%</span>";
 }
 
 // ---- trends view ---------------------------------------------------------
@@ -448,22 +467,40 @@ function renderTrend(W) {
     pick += '<span class="tfn' + (on ? " on" : "") + (dis ? " dis" : "") + '" data-trendfn="' + f + '">'
       + '<span class="dot" style="background:' + dot + '"></span>' + esc(fn) + "</span>";
   });
-  pick += '<span class="cnt">' + trendFns.length + ' / 5 · total always shown</span></div>';
+  pick += '<span class="cnt">' + trendFns.length + ' / 5 plotted</span></div>';
 
+  // per-mode plotting: value accessor, the reference (baseline) line, the
+  // y-formatter, and whether a "total CEst" line is meaningful (it isn't for
+  // CEst %, where every run's total share is 100%).
   const series = [];
-  let refVal, refLabel, yfmt;
+  let valueFn, totalArr, refVal = null, refLabel = "", yfmt, hasTotal = true, modeLabel;
   if (valMode === "abs") {
-    trendFns.forEach((f) => series.push({ arr: R.map((_, i) => cestOf(f, i)), col: colorOf[f], sw: 2.2, name: funcs[f] }));
-    series.push({ arr: totals.slice(), col: "#0f172a", sw: 3, name: "total CEst" });
+    valueFn = (f, i) => cestOf(f, i);
+    totalArr = totals.slice();
     refVal = totals[BASE]; refLabel = "p50 total (" + fmtM(totals[BASE]) + ")"; yfmt = fmtM;
+    modeLabel = "absolute CEst cycles";
+  } else if (valMode === "pct") {
+    valueFn = (f, i) => selfShare(f, i);
+    hasTotal = false; // total self-share is always 100%
+    yfmt = (v) => v.toFixed(1) + "%";
+    modeLabel = "CEst % of run total";
+  } else if (valMode === "deltatotal") {
+    valueFn = (f, i) => deltaTotal(f, i);
+    totalArr = R.map((_, i) => totals[i] ? (totals[i] - totals[BASE]) / totals[i] * 100 : 0);
+    refVal = 0; refLabel = "baseline = p50 (0%)"; yfmt = (v) => v.toFixed(2) + "%";
+    modeLabel = "Δ% vs that run's total";
   } else {
-    trendFns.forEach((f) => series.push({ arr: R.map((_, i) => finiteDelta(f, i)), col: colorOf[f], sw: 2.2, name: funcs[f] }));
-    series.push({ arr: R.map((_, i) => totalDelta(i)), col: "#0f172a", sw: 3, name: "total CEst" });
+    valueFn = (f, i) => finiteDelta(f, i);
+    totalArr = R.map((_, i) => totalDelta(i));
     refVal = 0; refLabel = "baseline = p50 (0%)"; yfmt = (v) => Math.round(v) + "%";
+    modeLabel = "Δ% vs p50";
   }
-  const totLine = series[series.length - 1].arr;
-  const allv = series.reduce((a, s) => a.concat(s.arr), [refVal]);
+  trendFns.forEach((f) => series.push({ arr: R.map((_, i) => valueFn(f, i)), col: colorOf[f], sw: 2.2, name: funcs[f] }));
+  if (hasTotal) series.push({ arr: totalArr, col: "#0f172a", sw: 3, name: "total CEst" });
+  const totLine = hasTotal ? series[series.length - 1].arr : null;
+  const allv = series.reduce((a, s) => a.concat(s.arr), refVal === null ? [] : [refVal]);
   let ymin = Math.min.apply(null, allv), ymax = Math.max.apply(null, allv);
+  if (!isFinite(ymin) || !isFinite(ymax)) { ymin = 0; ymax = 1; } // no series (e.g. filter matched nothing)
   const padv = (ymax - ymin) * 0.12 || 1; ymin -= padv; ymax += padv;
   const X = (i) => N <= 1 ? (L + (W - L - Rp) / 2) : (L + (i / (N - 1)) * (W - L - Rp));
   const Y = (v) => T + (1 - (v - ymin) / ((ymax - ymin) || 1)) * (hgt - T - B);
@@ -472,8 +509,10 @@ function renderTrend(W) {
     return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" vector-effect="non-scaling-stroke"/>';
   };
   let s = '<svg viewBox="0 0 ' + W + " " + hgt + '" preserveAspectRatio="none" style="width:100%;height:' + hgt + 'px;display:block;font-family:monospace;">';
-  s += '<line x1="' + L + '" y1="' + Y(refVal) + '" x2="' + (W - Rp) + '" y2="' + Y(refVal) + '" stroke="#1f7a55" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>';
-  s += '<text x="' + (L + 4) + '" y="' + (Y(refVal) - 5) + '" font-size="11" fill="#1f7a55">' + refLabel + "</text>";
+  if (refVal !== null) {
+    s += '<line x1="' + L + '" y1="' + Y(refVal) + '" x2="' + (W - Rp) + '" y2="' + Y(refVal) + '" stroke="#1f7a55" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>';
+    s += '<text x="' + (L + 4) + '" y="' + (Y(refVal) - 5) + '" font-size="11" fill="#1f7a55">' + refLabel + "</text>";
+  }
   [ymin + padv, (ymin + ymax) / 2, ymax - padv].forEach((v) => {
     s += '<text x="6" y="' + (Y(v) + 4) + '" font-size="10" fill="#566173">' + yfmt(v) + "</text>";
   });
@@ -481,11 +520,11 @@ function renderTrend(W) {
     if (i % 2 === 0 || i === N - 1) s += '<text x="' + X(i) + '" y="' + (hgt - 10) + '" font-size="9" fill="#566173" text-anchor="middle">' + esc(shortLabel(r.label)) + "</text>";
   });
   series.forEach((se) => { s += path(se.arr, se.col, se.sw); });
-  s += '<circle cx="' + X(BASE) + '" cy="' + Y(totLine[BASE]) + '" r="5.5" fill="#1f7a55"/>';
+  if (hasTotal) s += '<circle cx="' + X(BASE) + '" cy="' + Y(totLine[BASE]) + '" r="5.5" fill="#1f7a55"/>';
   s += "</svg>";
   let leg = '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;padding:9px 12px;border-top:1px dashed #d6dce5;">';
   series.slice().reverse().forEach((se) => { leg += '<span style="color:' + se.col + ';font-weight:700;">— ' + esc(se.name) + "</span>"; });
-  leg += '<span style="color:#566173;">' + (valMode === "abs" ? "absolute CEst cycles" : "Δ% vs p50") + " · load order</span></div>";
+  leg += '<span style="color:#566173;">' + modeLabel + " · load order</span></div>";
   return pick + s + leg;
 }
 
