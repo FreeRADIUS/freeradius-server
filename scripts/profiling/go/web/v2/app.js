@@ -22,6 +22,7 @@ const controlsEl = $("controls");
 const viewseg    = $("viewseg");
 const valseg     = $("valseg");
 const topnInput  = $("topn");
+const patternsInput = $("patterns");
 const nthreshInp = $("nthresh");
 const orderPill  = $("order");
 const nviewEl     = $("nview");
@@ -47,6 +48,7 @@ let trendFns = null;
 let curRun = null;      // divergence current run index (null -> latest)
 let cmpRun = "base";    // divergence reference: 'base' (p50) or a run index
 let dvgTopN = 10;       // divergence: 10 | 25 | 'all'
+let lastPatternsKey = ""; // last applied patterns string, to know when to reset trend picks
 const TREND_COLORS = ["#b42318", "#1f5fbf", "#b45309", "#6d28d9", "#0e7490"];
 
 // ---- WASM load -----------------------------------------------------------
@@ -169,12 +171,24 @@ async function parseRuns() {
 function applyTopN() {
   if (!full) return;
   const topN = Math.max(1, parseInt(topnInput.value, 10) || 25);
+  // Optional patterns filter (space-separated, case-insensitive substring).
+  // Empty => all functions. Filters the cached full set in JS (no re-parse),
+  // preserving the max-CEst order, then keeps the top-N of the matches.
+  const patKey = patternsInput.value.trim();
+  const pats = patKey.toLowerCase().split(/\s+/).filter(Boolean);
+  let funcs = full.funcs;
+  if (pats.length) {
+    funcs = funcs.filter((fn) => { const l = fn.toLowerCase(); return pats.some((p) => l.includes(p)); });
+  }
   matrix = {
-    funcs: full.funcs.slice(0, topN),
+    funcs: funcs.slice(0, topN),
     R: full.R, totals: full.totals, BASE: full.BASE, maxTotal: full.maxTotal,
   };
-  // Trend plots index into the displayed funcs; drop any beyond the new count.
-  if (trendFns) {
+  // Trend plots index into the displayed funcs. The index is stable when only
+  // the count changes (prefix slice), but not when the filter changes the set —
+  // so reset the picks on a patterns change; otherwise just drop overflow.
+  if (patKey !== lastPatternsKey) { trendFns = null; lastPatternsKey = patKey; }
+  else if (trendFns) {
     trendFns = trendFns.filter((f) => f < matrix.funcs.length);
     if (trendFns.length === 0) trendFns = null;
   }
@@ -612,16 +626,15 @@ valseg.addEventListener("click", (e) => {
   valseg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
   render();
 });
-// Changing the function count only re-slices the cached matrix (no re-parse).
-// Debounce so holding/tapping the spinner stays responsive; Enter commits now.
-let topnTimer = null;
-topnInput.addEventListener("input", () => {
-  clearTimeout(topnTimer);
-  topnTimer = setTimeout(applyTopN, 250);
-});
-topnInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { clearTimeout(topnTimer); applyTopN(); }
-});
+// The functions count and patterns filter both only re-slice the cached matrix
+// (no re-parse). Debounce so typing/spinning stays responsive; Enter commits now.
+let applyTimer = null;
+function scheduleApply() { clearTimeout(applyTimer); applyTimer = setTimeout(applyTopN, 250); }
+function commitApply() { clearTimeout(applyTimer); applyTopN(); }
+topnInput.addEventListener("input", scheduleApply);
+topnInput.addEventListener("keydown", (e) => { if (e.key === "Enter") commitApply(); });
+patternsInput.addEventListener("input", scheduleApply);
+patternsInput.addEventListener("keydown", (e) => { if (e.key === "Enter") commitApply(); });
 nthreshInp.addEventListener("input", () => {
   NTHRESH = Math.max(0, parseInt(nthreshInp.value, 10) || 0);
   if (matrix) render();
@@ -665,6 +678,32 @@ window.addEventListener("resize", () => {
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
+// ---- download -----------------------------------------------------------
+// Same Blob + anchor mechanism as v1. Exports the complete comparison dataset
+// (all functions, every run's CEst, totals, the p50 baseline) — not just the
+// displayed top-N — so the file is the full analysis, independent of the view.
+function download(content, type, filename) {
+  if (!content) return;
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function downloadJson() {
+  if (!full || !wasmReady) return;
+  const topN = Math.max(1, parseInt(topnInput.value, 10) || 25);
+  const runsObj = {};
+  runs.forEach((r) => { runsObj[r.label] = r.files; });
+  const pats = patternsInput.value.trim().split(/\s+/).filter(Boolean);
+  const res = cestReport(runsObj, topN, pats); // rich report schema (all 9 counters)
+  if (res.error) { showError(res.error); return; }
+  download(res.json, "application/json", "cest-compare.json");
+}
+$("download-json").addEventListener("click", downloadJson);
+
 function showError(msg) { errorP.textContent = msg; errorP.hidden = false; }
 function hideError() { errorP.hidden = true; errorP.textContent = ""; }
 

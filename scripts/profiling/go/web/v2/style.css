@@ -93,6 +93,9 @@ h1.title{font-weight:700;font-size:28px;letter-spacing:-.01em;margin:8px 0 6px;}
   letter-spacing:.04em;display:inline-flex;align-items:center;gap:6px;margin:0 0 0 4px;}
 .num-inp{width:54px;border:1px solid var(--line-strong);border-radius:6px;background:var(--paper);
   font-family:"IBM Plex Mono",monospace;font-size:13px;text-align:center;color:var(--ink);padding:3px 4px;}
+.pat-inp{width:150px;border:1px solid var(--line-strong);border-radius:6px;background:var(--paper);
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);padding:3px 8px;text-transform:none;}
+.pat-inp::placeholder{color:#a7afbd;}
 .nthresh-inp{width:42px;border:0;border-bottom:1.5px solid var(--note);background:transparent;
   font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;text-align:center;color:var(--note);padding:0 2px;}
 .nthresh-inp:focus,.num-inp:focus{outline:0;}
@@ -156,6 +159,7 @@ table.heat .base-col,table.heat th.base-col{outline:2px solid var(--accent);outl
 /* empty state: keep the view toggle, hide the data-only controls */
 #controls.controls-empty #valseg,
 #controls.controls-empty .field-lbl.inline,
+#controls.controls-empty #download-json,
 #controls.controls-empty .pill{display:none;}
 
 /* results placeholder shown before any runs are added */

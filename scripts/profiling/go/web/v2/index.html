@@ -74,12 +74,16 @@
           <button class="on" data-val="delta">Δ % vs p50</button>
           <button data-val="abs">CEst cycles</button>
         </div>
+        <label class="field-lbl inline">patterns
+          <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />
+        </label>
         <label class="field-lbl inline">functions
           <input type="number" id="topn" value="25" min="1" max="200" step="5" class="num-inp" />
         </label>
         <span class="pill" style="border-style:dashed;">Flag Δ ≥
           <input type="number" class="nthresh-inp" id="nthresh" value="25" min="0" max="500" step="5" /> %</span>
         <span class="pill" id="order" style="cursor:pointer;">order: load ▾</span>
+        <button class="btn btn-sm" id="download-json" style="margin-left:auto;">Download JSON</button>
       </div>
 
       <div class="nview" id="nview"></div>

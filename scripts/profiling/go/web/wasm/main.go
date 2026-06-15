@@ -229,6 +229,58 @@ func cestMatrix(this js.Value, args []js.Value) (result any) {
 	}
 }
 
+// cestReport is the "Download JSON" bridge for the compare UI. It emits the
+// rich report schema (per run: total, functions, patterns, categories — each
+// with all 9 counters + percent), built with cest.WriteJSON. The compare UI has
+// no pattern filter, so the patterns section is empty; categories use the
+// defaults.
+//
+// JS signature: cestReport(runs, topN, patterns?) -> { json } | { error }
+// patterns is an optional array of name substrings; empty/absent means the
+// functions list is the top-N overall and the patterns section is empty.
+func cestReport(this js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": panicMessage(r)}
+		}
+	}()
+
+	if len(args) < 2 {
+		return map[string]any{"error": "cestReport(runs, topN, patterns?): runs and topN required"}
+	}
+	runsObj := args[0]
+	topN := args[1].Int()
+	if topN <= 0 {
+		topN = 25 // a sane functions count; TopNFnsAny needs a positive bound
+	}
+	var patterns []string
+	if len(args) >= 3 && args[2].Type() == js.TypeObject {
+		for i := 0; i < args[2].Length(); i++ {
+			patterns = append(patterns, args[2].Index(i).String())
+		}
+	}
+
+	cats := cest.DefaultCategories()
+	var dirs []*cest.DirResult
+	for _, label := range jsObjectKeys(runsObj) {
+		cands := candidatesFromJS(runsObj.Get(label))
+		dr, err := cest.Analyze(label, cands, patterns, cats, topN)
+		if err != nil {
+			return map[string]any{"error": err.Error()}
+		}
+		dirs = append(dirs, dr)
+	}
+	if len(dirs) == 0 {
+		return map[string]any{"error": "no runs supplied"}
+	}
+
+	var jsonOut strings.Builder
+	if err := cest.WriteJSON(&jsonOut, dirs, patterns, cats, topN); err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+	return map[string]any{"json": jsonOut.String()}
+}
+
 // panicMessage renders a recovered panic value as a string for the JS caller.
 func panicMessage(v any) string {
 	switch e := v.(type) {
@@ -244,6 +296,7 @@ func panicMessage(v any) string {
 func main() {
 	js.Global().Set("analyzeCest", js.FuncOf(analyzeCest))
 	js.Global().Set("cestMatrix", js.FuncOf(cestMatrix))
+	js.Global().Set("cestReport", js.FuncOf(cestReport))
 	// Block forever: the page calls analyzeCest on demand, so the Go program
 	// must stay alive after main returns control to the JS event loop.
 	select {}
