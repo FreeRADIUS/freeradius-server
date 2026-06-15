@@ -116,10 +116,11 @@ table.heat td.cell{min-width:54px;height:23px;font-size:9px;font-weight:600;font
    sticky header, and outline+offset drifts; an inset shadow is painted with the
    cell itself, so the header and every body cell align exactly. Left+right on
    all cells, plus a top cap on the header and a bottom cap on the last row. */
-table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);border-right-color:transparent;}
-/* the cell just left of the baseline column: drop its grey right border so the
-   green frame's left edge has no adjacent grey (kept width via transparent). */
-table.heat td.base-left,table.heat th.base-left{border-right-color:transparent;}
+table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);border-right-width:0;}
+/* the cell just left of the baseline column: drop its grey right border (0 width,
+   not just transparent) so the next column sits flush against the green frame
+   with no leftover gap. */
+table.heat td.base-left,table.heat th.base-left{border-right-width:0;}
 table.heat thead th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent);}
 table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 -2px 0 var(--accent);}
 
