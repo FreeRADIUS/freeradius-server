@@ -482,6 +482,11 @@ static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_s
 		uint8_t	const	*opc_p;
 
 		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+		if (!opc_p) {
+			RPEDEBUG2("No control.%s or control.%s found, "
+				  "can't run Milenage", attr_sim_op->name, attr_sim_opc->name);
+			return -1;
+		}
 
 		uint48_to_buff(sqn_buff, keys->sqn);
 		if (amf_vp) memcpy(amf_buff, amf_vp->vp_octets, amf_size);
