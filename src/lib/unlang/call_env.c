@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/section.h>
-#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 

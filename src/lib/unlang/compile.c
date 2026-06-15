@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 
