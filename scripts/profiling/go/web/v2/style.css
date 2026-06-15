@@ -2,7 +2,7 @@
    cinfra-profiling-server wireframe docs/wireframes/ui/cest-ui.html, trimmed to
    what the live app uses. */
 :root{
-  --bg:#eef1f5; --paper:#ffffff; --ink:#0f172a; --ink-soft:#566173; --faint:#8a94a6;
+  --bg:#ffffff; --paper:#ffffff; --ink:#0f172a; --ink-soft:#566173; --faint:#8a94a6;
   --line:#d6dce5; --line-strong:#b8c1ce;
   --brand:#1f5fbf; --brand-soft:#eaf1fb;
   --accent:#1f7a55; --accent-soft:#e7f3ec;   /* improvement / baseline (green) */
@@ -28,8 +28,8 @@ a{color:var(--brand);}
 .btn-sm{font-size:12.5px;padding:5px 10px;}
 
 .stage{max-width:1320px;margin:0 auto;padding:0 28px;}
-.app{border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:22px;
-  margin-top:22px;box-shadow:0 1px 3px rgba(15,23,42,.06);}
+.app{border:0px solid var(--line);border-radius:12px;background:var(--paper);padding:22px;
+  margin-top:22px;box-shadow:0 0px 0px rgba(15,23,42,.06);}
 .app-head h2{font-weight:700;font-size:20px;margin:0;}
 .app-head .formula{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12.5px;margin:4px 0 0;}
 

@@ -34,9 +34,10 @@ go/
 │   └── json.go           JSON report schema + writer
 ├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
 └── web/                  browser target
-    ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix)
+    ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix, cestReport)
     ├── v1/               single-run / pattern UI: index.html, app.js, style.css, wasm_exec.js, .wasm
-    └── v2/               multi-run compare UI (heatmap …): index.html, app.js, style.css; loads ../v1/ wasm
+    └── v2/               multi-run compare UI (heatmap / trends / divergence):
+                          index.html, app.js, style.css, config.json; loads ../v1/ wasm
 ```
 
 `internal/cest` never imports `os`, `flag`, or `syscall/js`. Callers feed it
@@ -91,10 +92,19 @@ wasmtime --dir /path/to/prof-results \
 ### Option 2: `GOOS=js` — browser app (`./web/wasm`)
 
 The browser has no filesystem, so this target uses a separate `syscall/js`
-entry point ([web/wasm/main.go](web/wasm/main.go)) that exposes a
-`globalThis.analyzeCest(runs, patterns, topN)` function. The page reads the
-uploaded `callgrind.out.*` files with the `FileReader` API and hands their
-text in; the same `internal/cest` core does the analysis.
+entry point ([web/wasm/main.go](web/wasm/main.go)) that exposes three functions
+on `globalThis`:
+
+- `analyzeCest(runs, patterns, topN)` — pattern-centric, per-run top-N report
+  (the v1 UI).
+- `cestMatrix(runs, topN)` — a complete function×run matrix the v2 compare UI
+  renders (pass `topN = 0` for all functions).
+- `cestReport(runs, topN, patterns?)` — the rich JSON report (all 9 counters)
+  behind v2's **Download JSON**.
+
+The page reads the picked `callgrind.out.*` files with the `FileReader` API and
+hands their text in; the same `internal/cest` core does the analysis. No file
+ever leaves the browser.
 
 #### Build
 
@@ -155,8 +165,12 @@ python3 -m http.server 8080 --bind 0.0.0.0
 
 #### Use
 
-In the page: for each run pick its `callgrind.out.*` files (use **+ Add run** to
-compare several labelled runs; the first is the baseline), enter space-separated
+There are two browser UIs. Both run entirely locally; no file leaves the browser.
+
+##### v1 — single-run / pattern UI (`/v1/`)
+
+For each run pick its `callgrind.out.*` files (use **+ Add run** to compare
+several labelled runs; the first is the baseline), enter space-separated
 patterns, and click **Analyze**. The output has three tabs:
 
 - **Report** — the console-style text report, including the component breakdown.
@@ -167,13 +181,44 @@ patterns, and click **Analyze**. The output has three tabs:
 
 The Markdown and JSON reports are also available via the download buttons.
 
+##### v2 — multi-run compare UI (`/v2/`)
+
+Compares many runs at once, where **one run = one directory of
+`callgrind.out.*` files** (one test directory in the prof-results tree).
+
+- **Add runs** from **Local files** (the directory picker) or **Repo** (the
+  hosted prof-results store — the picker shell is in place; its data wiring is
+  the source-selection work, configured via [web/v2/config.json](web/v2/config.json)).
+  Pick a leaf test directory for one run, or a parent (a run# or the whole
+  `<sha>` directory) to load every run beneath it; labels drop the shared path
+  prefix (e.g. `4/accept/short_ci`, `5/accept/short_ci`).
+- **Baseline = the median (p50) run** by total CEst (lower-middle for an even
+  count). It is an actual profile, not a synthetic average, and is recomputed
+  whenever the selected run set changes.
+- Three views (toggle top-left):
+  - **Heatmap** — the function×run matrix; cells are coloured by Δ% vs the p50
+    baseline (green = improvement, red = regression) and outlined when
+    `|Δ|` ≥ the flag threshold.
+  - **Trends** — a line chart over the runs in load order; the total-CEst line
+    is always drawn, and you can pick up to 5 functions to overlay.
+  - **Divergence** — a diverging bar chart of each function's change in
+    **self-share** of total CEst (percentage points) for a current run vs a
+    reference run (the p50 baseline by default, or any run you choose).
+- **Value mode** (heatmap / trends): Δ% vs p50, Δ% vs that run's total, CEst
+  cycles, or CEst % of run total.
+- Other controls: a **patterns** filter (space-separated, case-insensitive
+  substrings), the **functions** top-N count, the flag **threshold**, and an
+  overflow menu for column order (load order / by CEst) and **Download JSON**
+  (the full comparison dataset — all functions, every run — independent of the
+  current view).
+
 ### Comparison
 
 | | `wasip1` (CLI) | `js` (browser) |
 |---|---|---|
 | Entry point | `./cmd/cest-analyzer` | `./web/wasm` |
-| File access | host FS via `--dir` | uploaded files via `FileReader` |
-| Output | stdout / `--md` / `--json` files | Report / Tables / JSON tabs + Markdown and JSON download |
+| File access | host FS via `--dir` | picked files via `FileReader` |
+| Output | stdout / `--md` / `--json` files | v1: Report / Tables / JSON tabs + downloads · v2: heatmap / trends / divergence + JSON download |
 | Runtime | wasmtime, wazero, Node 21+ | any browser |
 
 ## Usage
