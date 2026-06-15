@@ -16,6 +16,7 @@ const $ = (id) => document.getElementById(id);
 const addRunsBtn = $("add-runs");
 const clearBtn   = $("clear-runs");
 const dirInput   = $("dir-input");
+const importFilterInput = $("import-filter");
 const chipsEl     = $("chips");
 const emptyHint  = $("empty-hint");
 const controlsEl = $("controls");
@@ -131,7 +132,22 @@ async function addRunsFromPick(fileList) {
     groups.get(dir).push(f);
   });
 
-  const dirs = Array.from(groups.keys());
+  // Optional import filter: keep only the directories whose path contains one
+  // of the space-separated terms (case-insensitive). Empty => keep everything.
+  // This lets a single broad pick (a whole <sha> tree of mixed suites) be
+  // narrowed to, say, just the "ldap" suite directories.
+  let dirs = Array.from(groups.keys());
+  const importTerms = (importFilterInput ? importFilterInput.value : "")
+    .trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (importTerms.length) {
+    const kept = dirs.filter((d) => { const l = d.toLowerCase(); return importTerms.some((t) => l.includes(t)); });
+    if (kept.length === 0) {
+      showError('Import filter "' + importFilterInput.value.trim() + '" matched none of the '
+        + dirs.length + " folder(s) in that selection.");
+      return;
+    }
+    dirs = kept;
+  }
   const prefix = commonPrefixSegs(dirs); // trimmed from labels when many runs share it
 
   for (const dir of dirs) {
@@ -681,6 +697,8 @@ addRunsBtn.addEventListener("click", () => {
   if (source === "repo") openRepoModal();
   else dirInput.click();
 });
+// Enter in the import filter opens the picker (same as clicking Add runs).
+importFilterInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addRunsBtn.click(); });
 dirInput.addEventListener("change", async (e) => {
   const fl = e.target.files;
   if (fl && fl.length) await addRunsFromPick(fl);
