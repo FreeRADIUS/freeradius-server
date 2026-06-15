@@ -24,7 +24,8 @@ const valseg     = $("valseg");
 const topnInput  = $("topn");
 const patternsInput = $("patterns");
 const nthreshInp = $("nthresh");
-const orderPill  = $("order");
+const menuBtn    = $("menu-btn");
+const menu       = $("menu");
 const nviewEl     = $("nview");
 const nlegendEl  = $("nlegend");
 const errorP     = $("error");
@@ -60,6 +61,32 @@ async function loadWasm() {
   wasmReady = true;
 }
 loadWasm().catch((e) => showError(`Failed to load WASM: ${e}`));
+
+// ---- store config --------------------------------------------------------
+// The hosted prof-results store URL/label is deploy-configurable via config.json
+// (fetched at startup) so testdev/prod/vanity hosts don't need a rebuild. The
+// Go/WASM core never sees this — it's used only by the hosted-store picker UI
+// (and, later, for fetching runs from the store).
+const DEFAULT_STORE = { url: "https://cinfra.testdev.inkbridge.io/profiling", label: "cinfra.testdev.inkbridge.io" };
+const store = { ...DEFAULT_STORE };
+async function loadConfig() {
+  try {
+    const resp = await fetch("config.json", { cache: "no-store" });
+    if (resp.ok) {
+      const cfg = await resp.json();
+      if (cfg && cfg.store) {
+        if (cfg.store.url) store.url = cfg.store.url;
+        if (cfg.store.label) store.label = cfg.store.label;
+      }
+    }
+  } catch (e) { /* config.json absent/unreachable — keep defaults */ }
+  if (!store.label && store.url) {
+    try { store.label = new URL(store.url).host; } catch (e) { /* leave as-is */ }
+  }
+  const hostEl = $("repo-host"); if (hostEl) hostEl.textContent = store.label;
+  const urlEl = $("repo-url"); if (urlEl) urlEl.textContent = store.url.replace(/^https?:\/\//, "");
+}
+loadConfig();
 
 // ---- file loading --------------------------------------------------------
 function readFileText(file) {
@@ -278,6 +305,7 @@ function render() {
   }
   nrunBase.textContent = matrix.R[matrix.BASE].label;
   updateControls();
+  syncMenu();
   const avail = nviewEl.clientWidth > 60 ? nviewEl.clientWidth : 1040;
   if (view === "trend") nviewEl.innerHTML = renderTrend(avail);
   else if (view === "diverge") nviewEl.innerHTML = renderDiverge();
@@ -291,7 +319,6 @@ function render() {
 function updateControls() {
   const hide = view === "diverge";
   valseg.style.display = hide ? "none" : "";
-  orderPill.style.display = hide ? "none" : "";
   const thPill = nthreshInp.closest(".pill");
   if (thPill) thPill.style.display = hide ? "none" : "";
 }
@@ -345,14 +372,22 @@ function heatCellLabel(f, i) {
 function renderHeat() {
   const { funcs, R, BASE } = matrix;
   const cols = colOrder();
-  let h = '<table class="heat"><thead><tr><th class="fn">function<div class="bv">baseline (p50)</div></th>';
+  // The baseline column's green frame is drawn with box-shadow; suppress the
+  // grey border on its own right edge and on the cell just to its left so the
+  // frame is the only thing at both edges (otherwise one side shows grey+green).
+  const basePos = cols.indexOf(BASE);
+  const preBaseRun = basePos > 0 ? cols[basePos - 1] : null; // run index left of base
+  const fnPreBase = basePos === 0 ? " base-left" : "";       // base is first col -> the fn column is to its left
+
+  let h = '<table class="heat"><thead><tr><th class="fn' + fnPreBase + '">function<div class="bv">baseline (p50)</div></th>';
   cols.forEach((i) => {
-    const b = i === BASE ? " base-col" : "";
-    h += '<th class="' + b + '">' + labelLines(R[i].label) + "</th>";
+    let cls = i === BASE ? "base-col" : "";
+    if (i === preBaseRun) cls += (cls ? " " : "") + "base-left";
+    h += '<th class="' + cls + '">' + labelLines(R[i].label) + "</th>";
   });
   h += "</tr></thead><tbody>";
   funcs.forEach((fn, f) => {
-    h += '<tr><td class="fn"><span class="fnname" title="' + esc(fn) + '">' + esc(fn) + '</span><div class="bv">' + fmtM(cestOf(f, BASE)) + "</div></td>";
+    h += '<tr><td class="fn' + fnPreBase + '"><span class="fnname" title="' + esc(fn) + '">' + esc(fn) + '</span><div class="bv">' + fmtM(cestOf(f, BASE)) + "</div></td>";
     cols.forEach((i) => {
       if (i === BASE) {
         // The p50 column has no Δ; show the actual value for value modes, "base" for Δ modes.
@@ -363,7 +398,8 @@ function renderHeat() {
       }
       const d = deltaPct(f, i);              // colour + flag always track Δ% vs p50
       const flagged = isFinite(d) && Math.abs(d) >= NTHRESH;
-      h += '<td class="cell" style="background:' + heatColor(d) + ";color:" + heatText(d)
+      const cls = "cell" + (i === preBaseRun ? " base-left" : "");
+      h += '<td class="' + cls + '" style="background:' + heatColor(d) + ";color:" + heatText(d)
         + (flagged ? ";outline:1px solid var(--note);outline-offset:-1px" : "") + '">' + heatCellLabel(f, i) + "</td>";
     });
     h += "</tr>";
@@ -679,10 +715,20 @@ nthreshInp.addEventListener("input", () => {
   NTHRESH = Math.max(0, parseInt(nthreshInp.value, 10) || 0);
   if (matrix) render();
 });
-orderPill.addEventListener("click", () => {
-  orderMode = orderMode === "load" ? "cest" : "load";
-  orderPill.textContent = "order: " + (orderMode === "load" ? "load" : "CEst") + " ▾";
-  if (matrix) render();
+// Overflow menu: column order (heatmap only) + Download JSON.
+function syncMenu() {
+  menu.querySelectorAll("[data-order]").forEach((b) => b.classList.toggle("on", b.dataset.order === orderMode));
+  const mo = $("menu-order");
+  if (mo) mo.hidden = view !== "heat"; // column order only affects the heatmap
+}
+function setMenu(open) { menu.hidden = !open; menuBtn.setAttribute("aria-expanded", String(open)); }
+menuBtn.addEventListener("click", (e) => { e.stopPropagation(); setMenu(menu.hidden); });
+document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest(".menu-wrap")) setMenu(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) setMenu(false); });
+menu.addEventListener("click", (e) => {
+  const ord = e.target.closest("[data-order]");
+  if (ord) { orderMode = ord.dataset.order; setMenu(false); if (matrix) render(); return; }
+  if (e.target.closest("#menu-download")) { setMenu(false); downloadJson(); }
 });
 
 // The divergence selectors and the trends function picker live inside the
@@ -742,7 +788,8 @@ function downloadJson() {
   if (res.error) { showError(res.error); return; }
   download(res.json, "application/json", "cest-compare.json");
 }
-$("download-json").addEventListener("click", downloadJson);
+// downloadJson is triggered from the overflow menu (#menu-download), not a
+// standalone button.
 
 function showError(msg) { errorP.textContent = msg; errorP.hidden = false; }
 function hideError() { errorP.hidden = true; errorP.textContent = ""; }

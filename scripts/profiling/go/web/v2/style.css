@@ -27,13 +27,6 @@ a{color:var(--brand);}
 .btn:hover{background:#f6f8fb;}
 .btn-sm{font-size:12.5px;padding:5px 10px;}
 
-/* document header */
-header.top{background:var(--paper);border-bottom:1px solid var(--line);}
-.doc-inner{max-width:1320px;margin:0 auto;padding:30px 28px 24px;}
-.kicker{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);}
-h1.title{font-weight:700;font-size:28px;letter-spacing:-.01em;margin:8px 0 6px;}
-.sub{color:var(--ink-soft);font-size:16px;margin:0;max-width:900px;}
-
 .stage{max-width:1320px;margin:0 auto;padding:0 28px;}
 .app{border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:22px;
   margin-top:22px;box-shadow:0 1px 3px rgba(15,23,42,.06);}
@@ -106,9 +99,12 @@ h1.title{font-weight:700;font-size:28px;letter-spacing:-.01em;margin:8px 0 6px;}
 /* width:auto so the table hugs its columns — with few runs the result cells
    stay next to the function names instead of stretching across the panel. */
 table.heat{border-collapse:collapse;font-size:11px;}
-table.heat th,table.heat td{border:1px solid var(--line);text-align:center;}
+/* Vertical column separators only (one-sided border-right): no per-column
+   top/bottom borders, so nothing doubles into thick lines (the sticky header
+   made full 4-side borders render doubled). The nview box frames the edges. */
+table.heat th,table.heat td{border-right:1px solid var(--line);text-align:center;}
 table.heat thead th{position:sticky;top:0;background:#f3f6fa;font-size:9px;font-weight:600;
-  padding:3px 4px;white-space:nowrap;z-index:2;color:var(--ink-soft);}
+  padding:3px 4px;white-space:nowrap;z-index:2;color:var(--ink-soft);border-bottom:1px solid var(--line-strong);}
 table.heat .fn{position:sticky;left:0;background:var(--paper);text-align:left;padding:5px 9px;
   font-size:11px;white-space:nowrap;z-index:1;border-right:1px solid var(--line-strong);}
 table.heat .fnname{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -120,7 +116,10 @@ table.heat td.cell{min-width:54px;height:23px;font-size:9px;font-weight:600;font
    sticky header, and outline+offset drifts; an inset shadow is painted with the
    cell itself, so the header and every body cell align exactly. Left+right on
    all cells, plus a top cap on the header and a bottom cap on the last row. */
-table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);}
+table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent);border-right-color:transparent;}
+/* the cell just left of the baseline column: drop its grey right border so the
+   green frame's left edge has no adjacent grey (kept width via transparent). */
+table.heat td.base-left,table.heat th.base-left{border-right-color:transparent;}
 table.heat thead th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent);}
 table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 -2px 0 var(--accent);}
 
@@ -169,8 +168,22 @@ table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent
 /* empty state: keep the view toggle, hide the data-only controls */
 #controls.controls-empty #valseg,
 #controls.controls-empty .field-lbl.inline,
-#controls.controls-empty #download-json,
+#controls.controls-empty .menu-wrap,
 #controls.controls-empty .pill{display:none;}
+
+/* overflow menu (column order + Download JSON) behind a hamburger button */
+.menu-wrap{position:relative;}
+.menu-btn{display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;padding:5px 10px;}
+.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;min-width:180px;background:var(--paper);
+  border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(15,23,42,.14);padding:5px;}
+.menu[hidden]{display:none;}
+.menu-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);padding:5px 9px 3px;}
+.menu-item{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:6px;
+  padding:6px 9px 6px 22px;font-size:13px;color:var(--ink);cursor:pointer;font-family:inherit;position:relative;}
+.menu-item:hover{background:#f6f8fb;}
+.menu-item.on{color:var(--brand);font-weight:600;}
+.menu-item.on::before{content:"✓";position:absolute;left:8px;}
+.menu-sep{height:1px;background:var(--line);margin:5px 0;}
 
 /* results placeholder shown before any runs are added */
 .empty-view{display:flex;min-height:240px;}

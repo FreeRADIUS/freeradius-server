@@ -10,16 +10,6 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="top">
-    <div class="doc-inner">
-      <div class="kicker">CEst Analysis Utility</div>
-      <h1 class="title">Compare CI profiling runs</h1>
-      <p class="sub">Load one or more run directories of <code>callgrind.out.*</code> files. The
-        <b>median (p50)</b> run by total CEst is the baseline; every cell's Δ is measured against it.
-        Everything runs locally in your browser via WebAssembly — no file leaves your machine.</p>
-    </div>
-  </header>
-
   <div class="stage">
     <div class="app">
       <div class="app-head">
@@ -84,8 +74,18 @@
         </label>
         <span class="pill" style="border-style:dashed;">Flag Δ ≥
           <input type="number" class="nthresh-inp" id="nthresh" value="25" min="0" max="500" step="5" /> %</span>
-        <span class="pill" id="order" style="cursor:pointer;">order: load ▾</span>
-        <button class="btn btn-sm" id="download-json" style="margin-left:auto;">Download JSON</button>
+        <div class="menu-wrap" style="margin-left:auto;">
+          <button class="btn btn-sm menu-btn" id="menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+          <div class="menu" id="menu" hidden>
+            <div id="menu-order">
+              <div class="menu-label">Column order</div>
+              <button class="menu-item" data-order="load">Load order</button>
+              <button class="menu-item" data-order="cest">By CEst</button>
+              <div class="menu-sep"></div>
+            </div>
+            <button class="menu-item" id="menu-download">Download JSON</button>
+          </div>
+        </div>
       </div>
 
       <div class="nview" id="nview"></div>
@@ -99,7 +99,7 @@
        source-selection work, so for now it shows the table shell + empty state. -->
   <div class="scrim" id="repo-modal" aria-hidden="true">
     <div class="modal sketch" role="dialog" aria-modal="true" aria-label="Select runs from the hosted store">
-      <h4>Select runs to compare — profiling.inkbridge.io</h4>
+      <h4>Select runs to compare — <span id="repo-host">cinfra.testdev.inkbridge.io</span></h4>
       <p class="mp">Hosted prof-results store · tick many · sorted by date</p>
       <div class="search"><span>🔍</span><input id="repo-search" placeholder="filter by branch, commit, PR…" disabled /></div>
       <table class="runs-tbl">
@@ -107,7 +107,7 @@
         <tbody id="repo-rows">
           <tr><td colspan="6"><div class="runs-empty">
             Not connected yet. This is the selection UI for the hosted store at
-            <code>cinfra.testdev.inkbridge.io/profiling</code>; live runs appear here once the
+            <code id="repo-url">cinfra.testdev.inkbridge.io/profiling</code>; live runs appear here once the
             store is reachable and the source-selection work lands. For now, use
             <b>Local files</b> to add runs from disk.
           </div></td></tr>
