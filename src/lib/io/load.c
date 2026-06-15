@@ -147,6 +147,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		l->step_end = fr_time_add(l->next, l->config->duration);
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
+		if (l->pps > (UINT32_MAX / l->config->milliseconds)) l->pps = UINT32_MAX / l->config->milliseconds;
 		l->stats.pps = l->pps;
 		l->stats.skipped = 0;
 		l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
