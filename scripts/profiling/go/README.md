@@ -34,8 +34,9 @@ go/
 │   └── json.go           JSON report schema + writer
 ├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
 └── web/                  browser target
-    ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest)
-    └── static/           index.html, app.js, style.css, wasm_exec.js, .wasm
+    ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix)
+    ├── v1/               single-run / pattern UI: index.html, app.js, style.css, wasm_exec.js, .wasm
+    └── v2/               multi-run compare UI (heatmap …): index.html, app.js, style.css; loads ../v1/ wasm
 ```
 
 `internal/cest` never imports `os`, `flag`, or `syscall/js`. Callers feed it
@@ -100,23 +101,24 @@ text in; the same `internal/cest` core does the analysis.
 ```bash
 cd scripts/profiling/go
 
-# Build the module into the web assets directory
-GOOS=js GOARCH=wasm go build -o web/static/cest-analyzer.wasm ./web/wasm
+# Build the module into the shared web assets directory (web/v1). Both UIs use
+# this one .wasm: v1 directly, v2 via ../v1/cest-analyzer.wasm.
+GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
 
 # Copy the JS glue shipped with Go. Its path inside GOROOT changed across
 # Go releases (older: misc/wasm/; newer: lib/wasm/), so locate it first:
-cp "$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)" web/static/
+cp "$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)" web/v1/
 ```
 
-After this, `web/static/` holds everything the page needs:
+After this, `web/v1/` holds everything the pages need:
 
 ```text
-web/static/
-├── index.html
+web/v1/
+├── index.html            (v1 single-run / pattern UI)
 ├── app.js
 ├── style.css
 ├── wasm_exec.js          (copied from GOROOT)
-└── cest-analyzer.wasm    (built above)
+└── cest-analyzer.wasm    (built above; v2 loads it via ../v1/)
 ```
 
 #### Run
@@ -127,8 +129,11 @@ URL. `file://` fails for two reasons: the browser blocks the `fetch()` of the
 `Content-Type: application/wasm`, which only a server sets. Any static file
 server works; pick one:
 
+Serve from `web/` (not a UI subdir) so both `/v1/` and `/v2/` are reachable and
+v2 can load the shared `../v1/` wasm:
+
 ```bash
-cd scripts/profiling/go/web/static
+cd scripts/profiling/go/web
 
 # Python 3 (sends Content-Type: application/wasm for .wasm files)
 python3 -m http.server 8080
@@ -137,7 +142,8 @@ python3 -m http.server 8080
 npx serve -l 8080 .
 ```
 
-Then open <http://localhost:8080> in a browser.
+Then open <http://localhost:8080/v1/> (single-run / pattern UI) or
+<http://localhost:8080/v2/> (multi-run compare UI) in a browser.
 
 To reach it from another machine on the network, bind all interfaces and use
 the host's IP:

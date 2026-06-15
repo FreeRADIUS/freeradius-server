@@ -6,7 +6,7 @@
 //
 // Build:
 //
-//	GOOS=js GOARCH=wasm go build -o web/static/cest-analyzer.wasm ./web/wasm
+//	GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
 //
 // There is no filesystem in the browser, so the page reads each
 // callgrind.out.* file with the FileReader API and passes its text in; this
@@ -16,6 +16,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"sort"
 	"strings"
 	"syscall/js"
 
@@ -118,6 +119,116 @@ func analyzeCest(this js.Value, args []js.Value) (result any) {
 	}
 }
 
+// cestMatrix is the JS entry point for the multi-run comparison UI.
+//
+// JS signature: cestMatrix(runs, topN)
+//
+//	runs: { "<run label>": { "callgrind.out.123": "<file text>", ... }, ... }
+//	topN: number of functions to keep (the shared set, by max CEst across runs;
+//	      0 or negative keeps all functions)
+//
+// Unlike analyzeCest (pattern-centric, per-run top-N), this returns a COMPLETE
+// function×run matrix over a single shared function set, so every cell has a
+// value: the comparison views (heatmap / trends / divergence) need run B's CEst
+// for a function even when that function is not in run B's own top-N.
+//
+// Returns on success:
+//
+//	{
+//	  formula:   "CEst = ...",
+//	  functions: ["fn1", "fn2", ...],           // shared set, max-CEst order
+//	  runs: [ { label, mainFile, total, cest: { "fn1": n, ... } }, ... ]
+//	}
+//
+// or { error } on failure. cest is 0 for a function absent from that run.
+func cestMatrix(this js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": panicMessage(r)}
+		}
+	}()
+
+	if len(args) < 2 {
+		return map[string]any{"error": "cestMatrix(runs, topN): 2 args required"}
+	}
+	runsObj := args[0]
+	topN := args[1].Int()
+
+	cats := cest.DefaultCategories()
+
+	type runM struct {
+		label, main string
+		total       int64
+		cest        map[string]int64
+	}
+	var rms []runM
+	maxC := map[string]int64{} // per-function max CEst across runs, for the shared set
+
+	for _, label := range jsObjectKeys(runsObj) {
+		cands := candidatesFromJS(runsObj.Get(label))
+		// No patterns: we want every function's self CEst, not a pattern subset.
+		dr, err := cest.Analyze(label, cands, nil, cats, 0)
+		if err != nil {
+			return map[string]any{"error": err.Error()}
+		}
+		cm := make(map[string]int64, len(dr.Res.FnSelf))
+		for name, ev := range dr.Res.FnSelf {
+			c := ev.CEst()
+			cm[name] = c
+			if c > maxC[name] {
+				maxC[name] = c
+			}
+		}
+		rms = append(rms, runM{label: dr.Label, main: dr.Main, total: dr.Res.Total.CEst(), cest: cm})
+	}
+	if len(rms) == 0 {
+		return map[string]any{"error": "no runs supplied"}
+	}
+
+	// Shared function set: the top-N functions by max CEst across runs, so the
+	// most significant functions anywhere are the matrix rows.
+	type fc struct {
+		name string
+		c    int64
+	}
+	fcs := make([]fc, 0, len(maxC))
+	for n, c := range maxC {
+		fcs = append(fcs, fc{n, c})
+	}
+	sort.Slice(fcs, func(i, j int) bool {
+		if fcs[i].c != fcs[j].c {
+			return fcs[i].c > fcs[j].c
+		}
+		return fcs[i].name < fcs[j].name
+	})
+	if topN > 0 && len(fcs) > topN {
+		fcs = fcs[:topN]
+	}
+
+	funcs := make([]any, len(fcs))
+	for i, f := range fcs {
+		funcs[i] = f.name
+	}
+	runsOut := make([]any, len(rms))
+	for i, rm := range rms {
+		cestObj := make(map[string]any, len(fcs))
+		for _, f := range fcs {
+			cestObj[f.name] = rm.cest[f.name] // 0 if absent
+		}
+		runsOut[i] = map[string]any{
+			"label":    rm.label,
+			"mainFile": rm.main,
+			"total":    rm.total,
+			"cest":     cestObj,
+		}
+	}
+	return map[string]any{
+		"formula":   cest.Formula,
+		"functions": funcs,
+		"runs":      runsOut,
+	}
+}
+
 // panicMessage renders a recovered panic value as a string for the JS caller.
 func panicMessage(v any) string {
 	switch e := v.(type) {
@@ -132,6 +243,7 @@ func panicMessage(v any) string {
 
 func main() {
 	js.Global().Set("analyzeCest", js.FuncOf(analyzeCest))
+	js.Global().Set("cestMatrix", js.FuncOf(cestMatrix))
 	// Block forever: the page calls analyzeCest on demand, so the Go program
 	// must stay alive after main returns control to the JS event loop.
 	select {}

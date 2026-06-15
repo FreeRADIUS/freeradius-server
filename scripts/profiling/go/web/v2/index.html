@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CEst Utility — compare runs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="doc-inner">
+      <div class="kicker">CEst Utility</div>
+      <h1 class="title">Compare CI profiling runs</h1>
+      <p class="sub">Load one or more run directories of <code>callgrind.out.*</code> files. The
+        <b>median (p50)</b> run by total CEst is the baseline; every cell's Δ is measured against it.
+        Everything runs locally in your browser via WebAssembly — no file leaves your machine.</p>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="app">
+      <div class="app-head">
+        <h2>CPU Cycle Utilization (CEst) Utility</h2>
+        <p class="formula" id="formula">CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</p>
+      </div>
+
+      <div class="nbar sketch">
+        <div class="nbar-top">
+          <div class="nbar-meta">
+            Comparing <b id="nrun-count">0</b> runs · baseline = <b>median&nbsp;(p50)</b> by CEst
+            <span class="tag" id="nrun-base">—</span>
+          </div>
+          <div class="add-bar">
+            <div class="viewseg" id="srcseg" title="Where to add runs from">
+              <button class="on" data-src="local">Local files</button>
+              <button data-src="repo">Repo</button>
+            </div>
+            <button class="btn btn-sm" id="add-runs">+ Add runs</button>
+            <button class="btn btn-sm" id="clear-runs" hidden>Clear</button>
+          </div>
+        </div>
+        <!-- Hidden directory picker: each pick is one run (one test directory). -->
+        <input id="dir-input" type="file" webkitdirectory multiple hidden />
+        <div class="chips" id="chips"></div>
+        <p class="empty-hint" id="empty-hint">No runs yet — “Add runs” to load
+          <code>callgrind.out.*</code> files. Pick a leaf test directory for one run, or a parent
+          (a run# or the whole <code>&lt;sha&gt;</code> directory) to load every run beneath it.</p>
+
+        <details class="infobox">
+          <summary><span class="chev">▸</span><span class="ic">i</span> How the median (p50) baseline is chosen</summary>
+          <div class="ibody">
+            <ol>
+              <li>Sum CEst across all functions for each of the <b id="nrun-info-count">0</b> selected runs → one <b>total CEst</b> per run.</li>
+              <li>Rank the runs by total CEst and take the <b>median (p50)</b> run — the middle one (for an even count, the lower-middle). That run becomes the baseline column.</li>
+              <li>Every cell's Δ is measured against that baseline run, per function:</li>
+            </ol>
+            <div class="formula2">Δ%(fn, run) = ( CEst<sub>fn,run</sub> − CEst<sub>fn,p50</sub> ) / CEst<sub>fn,p50</sub> × 100
+<span class="c">where p50 = argmin over runs of | rank(total CEst) − N/2 |</span></div>
+            <p style="margin:6px 0 0;color:var(--ink-soft);">Why a real run and not the mean: the p50 run is an <b>actual profile</b> (robust to outliers), so every comparison is run-vs-run rather than run-vs-synthetic-average. The baseline is <b>recomputed whenever the selected set changes</b>.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="ncontrols" id="controls" hidden>
+        <div class="viewseg" id="viewseg">
+          <button class="on" data-view="heat">Heatmap</button>
+          <button data-view="trend">Trends</button>
+          <button data-view="diverge">Divergence</button>
+        </div>
+        <div class="viewseg" id="valseg" style="margin-left:2px;">
+          <button class="on" data-val="delta">Δ % vs p50</button>
+          <button data-val="abs">CEst cycles</button>
+        </div>
+        <label class="field-lbl inline">functions
+          <input type="number" id="topn" value="25" min="1" max="200" step="5" class="num-inp" />
+        </label>
+        <span class="pill" style="border-style:dashed;">Flag Δ ≥
+          <input type="number" class="nthresh-inp" id="nthresh" value="25" min="0" max="500" step="5" /> %</span>
+        <span class="pill" id="order" style="cursor:pointer;">order: load ▾</span>
+      </div>
+
+      <div class="nview" id="nview"></div>
+      <div class="nlegend" id="nlegend"></div>
+      <p id="error" class="error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Hosted-store run picker. The selection UI for the prof-results store at
+       cinfra.testdev.inkbridge.io/profiling; data wiring comes with the
+       source-selection work, so for now it shows the table shell + empty state. -->
+  <div class="scrim" id="repo-modal" aria-hidden="true">
+    <div class="modal sketch" role="dialog" aria-modal="true" aria-label="Select runs from the hosted store">
+      <h4>Select runs to compare — profiling.inkbridge.io</h4>
+      <p class="mp">Hosted prof-results store · tick many · sorted by date</p>
+      <div class="search"><span>🔍</span><input id="repo-search" placeholder="filter by branch, commit, PR…" disabled /></div>
+      <table class="runs-tbl">
+        <thead><tr><th>＋</th><th>date</th><th>sha</th><th>branch</th><th>build</th><th>by / PR</th></tr></thead>
+        <tbody id="repo-rows">
+          <tr><td colspan="6"><div class="runs-empty">
+            Not connected yet. This is the selection UI for the hosted store at
+            <code>cinfra.testdev.inkbridge.io/profiling</code>; live runs appear here once the
+            store is reachable and the source-selection work lands. For now, use
+            <b>Local files</b> to add runs from disk.
+          </div></td></tr>
+        </tbody>
+      </table>
+      <div class="modal-foot">
+        <span class="src-mini" id="repo-ticked">0 ticked</span>
+        <button class="btn" id="repo-cancel">Cancel</button>
+        <button class="btn btn-primary" id="repo-add" disabled>Add selected</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../v1/wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
