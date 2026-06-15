@@ -546,7 +546,11 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 
 	responder->sequence = sequence;
 	message_interval = fr_time_sub(when, responder->stats.last_write);
-	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
+	if (!fr_time_delta_ispos(responder->stats.message_interval)) {
+		responder->stats.message_interval = message_interval;
+	} else {
+		responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
+	}
 
 	fr_assert_msg(fr_time_lteq(responder->stats.last_write, when),
 		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
