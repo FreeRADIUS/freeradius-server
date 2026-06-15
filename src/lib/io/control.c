@@ -154,11 +154,11 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 	fr_control_t *c;
 
 	c = talloc_zero_size(ctx, sizeof(fr_control_t) + sizeof(fr_control_ctx_t) * num_callbacks);
-	talloc_set_type(c, fr_control_t);
 	if (!c) {
 		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
+	talloc_set_type(c, fr_control_t);
 	c->el = el;
 	c->aq = aq;
 	c->num_callbacks = num_callbacks;
