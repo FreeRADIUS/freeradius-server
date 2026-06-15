@@ -550,6 +550,12 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	required = fr_rule_required(rule);
 	deprecated = fr_rule_deprecated(rule);
 
+	cp = cf_pair_find(cs, rule->name1);
+	if (cp && cp->item.parsed) {
+		return 0;
+	}
+	cp = NULL;
+
 	/*
 	 *	If the item is multi-valued we allocate an array
 	 *	to hold the multiple values.
