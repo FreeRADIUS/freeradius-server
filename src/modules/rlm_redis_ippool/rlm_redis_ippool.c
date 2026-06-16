@@ -44,6 +44,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/modpriv.h>
 
+#include <freeradius-devel/unlang/xlat_func.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/token.h>
@@ -244,6 +246,16 @@ typedef struct {
 	ippool_rcode_t			ret;		//!< Return code for the allocation result.
 	redis_wait_rctx_t		wait_rctx;	//!< WAIT resume context.
 } redis_ippool_release_rctx_t;
+
+/** Resume context for IP pool updating xlats
+ *
+ */
+typedef struct {
+	char 				**cmd_str;	//!< Formatted redis commands for this xlat
+	fr_redis_command_set_t		*cmds;		//!< Redis command set to run
+	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
+	uint32_t			changes;	//!< Number of changes reported by redis.
+} redis_ippool_tool_rctx_t;
 
 /** Call environment used when calling redis_ippool bulk release method.
  *
@@ -554,6 +566,12 @@ static char lua_release_cmd[] =
 	"  redis.call('HINCRBY', address_key, 'counter', 1) - 1" EOL			/* 29 */
 	"}";										/* 30 */
 static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
+
+static uint32_t uint32_gen_mask(uint8_t bits)
+{
+	if (bits >= 32) return 0xffffffff;
+	return (1U << bits) - 1;
+}
 
 /** Check the requisite number of slaves replicated the lease info
  *
@@ -1363,6 +1381,359 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_resu
 	RETURN_UNLANG_NOOP;
 }
 
+static int _redis_ippool_tool_rctx_free(redis_ippool_tool_rctx_t *rctx)
+{
+	char	*cmd_str;
+	size_t	i = 0;
+
+	/*
+	 *	Free any Redis commands
+	 */
+	while (i < talloc_array_length(rctx->cmd_str)) {
+		cmd_str = rctx->cmd_str[i];
+		if (!cmd_str) break;
+		redisFreeCommand(cmd_str);
+		i++;
+	}
+
+	return 0;
+}
+
+/** Increment an IP address by a given number of addresses
+ */
+static void ipaddr_inc(fr_ipaddr_t *addr, size_t inc)
+{
+	switch (addr->af) {
+	case AF_INET:
+		addr->addr.v4.s_addr = htonl(ntohl(addr->addr.v4.s_addr) + inc);
+		break;
+	case AF_INET6:
+	{
+		uint128_t ip_curr;
+
+		/* Don't be tempted to cast */
+		memcpy(&ip_curr, addr->addr.v6.s6_addr, sizeof(ip_curr));
+			ip_curr = ntohlll(ip_curr);
+
+			/* Increment the prefix */
+			ip_curr = uint128_add(ip_curr, inc);
+			ip_curr = htonlll(ip_curr);
+			memcpy(&addr->addr.v6.s6_addr, &ip_curr, sizeof(addr->addr.v6.s6_addr));
+			break;
+	}
+	}
+}
+
+/** Parse argments provided to IP pool manipulation xlats which work on subnets
+ *
+ * @param[in] request		The current request, for debugging.
+ * @param[out] start		Where to write the start address.
+ * @param[out] end		Where to write the end address.
+ * @param[out] prefix_out	Where to write the parsed value of prefix.
+ * @param[out] step		Where to write the step size for multiple addresses.
+ * @param[out] num_addr		Where to write the number of addresses
+ * @param[in] subnet		to parse.
+ * @param[in] prefix_in		optinal prefix argument.
+ */
+static int redis_ippool_subnet_arg_parse(request_t *request, fr_value_box_t *start, fr_value_box_t *end,
+					 uint8_t *prefix_out, size_t *step, size_t *num_addr,
+					 fr_value_box_t *subnet, fr_value_box_t *prefix_in)
+{
+	uint8_t	prefix, subnetlen = subnet->vb_ip.prefix;
+
+	switch (subnet->vb_ip.af) {
+	case AF_INET:
+		prefix = (prefix_in && prefix_in->type == FR_TYPE_UINT8) ? prefix_in->vb_uint8 : 32;
+		if ((prefix < 1) || (prefix > 32)) {
+			RERROR("Prefix %d out of range (1-32)", prefix);
+			return -1;
+		}
+		*step = 1 << (32 - prefix);
+		break;
+
+	case AF_INET6:
+		prefix = (prefix_in && prefix_in->type == FR_TYPE_UINT8) ? prefix_in->vb_uint8 : 128;
+		if ((prefix < 1) || (prefix > 128)) {
+			RERROR("Prefix %d out of range (1-128)", prefix);
+			return -1;
+		}
+		*step = 1 << (128 - prefix);
+		break;
+
+	default:
+		fr_assert(0);
+		return -1;
+	}
+
+	*prefix_out = prefix;
+
+	if (prefix < subnetlen) {
+		ERROR("Prefix len must be greater than or equal to subnet length (%u)", subnetlen);
+		return -1;
+	}
+
+	switch (subnet->vb_ip.af) {
+	case AF_INET:
+	{
+		uint32_t ip;
+
+		/* cond assert to satisfy clang scan */
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
+
+		/* Set the input to /32 so cast works */
+		subnet->vb_ip.prefix = 32;
+		if (fr_value_box_cast(start, start, FR_TYPE_IPV4_ADDR, NULL, subnet) < 0) return -1;
+		if (subnetlen == 32) {
+			if (fr_value_box_copy(end, end, start) < 0) return -1;
+			*num_addr = 1;
+			return 0;
+		}
+
+		ip = ntohl(start->vb_ip.addr.v4.s_addr);
+		ip |= uint32_gen_mask(prefix - subnetlen) << (32 - prefix);
+
+		/*
+		 *	Exclude the broadcast address if we are working with /32 addresses.
+		 */
+		if (prefix == 32) ip--;
+
+		fr_value_box_init(end, FR_TYPE_IPV4_ADDR, NULL, start->tainted);
+		end->vb_ipv4addr = htonl(ip);
+	}
+		break;
+
+	case AF_INET6:
+	{
+		uint128_t ip, p_mask;
+
+		/* cond assert to satisfy clang scan */
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
+
+		/* Set the input to /128 so cast works */
+		subnet->vb_ip.prefix = 128;
+		if (fr_value_box_cast(start, start, FR_TYPE_IPV6_ADDR, NULL, subnet) < 0) return -1;
+		if (subnetlen == 128) {
+			if (fr_value_box_copy(end, end, start) < 0) return -1;
+			*num_addr = 1;
+			return 0;
+		}
+
+		memcpy(&ip, start->vb_ipv6addr, sizeof(ip));
+		ip = ntohlll(ip);
+		p_mask = uint128_lshift(uint128_gen_mask(prefix - subnetlen), (128 - prefix));
+		ip = htonlll(uint128_bor(p_mask, ip));
+
+		fr_value_box_init(end, FR_TYPE_IPV6_ADDR, NULL, start->tainted);
+		memcpy(&end->vb_ipv6addr, &ip, sizeof(end->vb_ipv6addr));
+	}
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	if (unlikely(!fr_cond_assert((prefix - subnetlen) < 128))) return -1;
+	*num_addr = (size_t)1 << (prefix - subnetlen);
+	return 0;
+}
+
+/** Common cancellation function for xlats using redi_ippool_tool_rctx_t
+ *
+ */
+static void redis_ippool_common_cancel(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_tool_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, redis_ippool_tool_rctx_t);
+
+	RDEBUG2("Forcibly cancelling pending IP pool command");
+	if (rctx->cmd) fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
+/** Common resume function for pool manipulation xlats
+ *
+ * Where the number of changes is to be returned
+ */
+static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+						UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	redis_ippool_tool_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, redis_ippool_tool_rctx_t);
+	fr_value_box_t			*vb;
+
+	switch (fr_redis_command_set_rcode(rctx->cmds)) {
+	case REDIS_ASYNC_RCODE_SUCCESS:
+		break;
+
+	case REDIS_ASYNC_RCODE_MOVE:
+	{
+		rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_ippool_t);
+		rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+
+		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
+									        inst->coord_pair_reg, false);
+	}
+		FALL_THROUGH;
+
+	case REDIS_ASYNC_RCODE_ASK:
+		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
+		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, ~FR_SIGNAL_CANCEL, rctx);
+
+	case REDIS_ASYNC_RCODE_ERROR:
+		PERROR("Server returned error");
+		return XLAT_ACTION_FAIL;
+
+	default:
+		return XLAT_ACTION_FAIL;
+	}
+
+	vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL);
+	vb->vb_uint32 = rctx->changes;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Callback to be used when Redis commands are expected to return a single integer
+ *
+ * With the value indicating the number of changes made.
+ */
+static void redis_xlat_common_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	redis_ippool_tool_rctx_t	*xlat_rctx = talloc_get_type_abort(rctx, redis_ippool_tool_rctx_t);
+
+	if (reply->type != REDIS_REPLY_INTEGER) {
+		RERROR("Unexpected reply type");
+		return;
+	}
+
+	xlat_rctx->changes += reply->integer;
+	return;
+}
+
+/** Callback to be used when Redis commands are expected to return an array
+ *
+ * Where the first element is expected to be an integer indicating the number
+ * of changes made.
+ * Typically this is when a MULTI ... EXEC is used and this parses the
+ * reply from EXEC.
+ */
+static void redis_xlat_array_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	redis_ippool_tool_rctx_t	*xlat_rctx = talloc_get_type_abort(rctx, redis_ippool_tool_rctx_t);
+
+	if (reply->type != REDIS_REPLY_ARRAY) {
+	error:
+		RERROR("Unexpected reply type");
+		return;
+	}
+
+	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
+		xlat_rctx->changes += reply->element[0]->integer;
+	} else {
+		goto error;
+	}
+}
+
+/** Common code for adding addresses to a pool.
+ */
+static xlat_action_t redis_ippool_add_common(request_t *request, rlm_redis_ippool_t *inst, rlm_redis_ippool_thread_t *t,
+					     fr_value_box_t *pool, fr_value_box_t *start, fr_value_box_t *end,
+					     fr_value_box_t *range, uint8_t prefix, size_t num_addr, size_t step)
+{
+	redis_ippool_tool_rctx_t	*rctx;
+	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
+	int				cmd_len;
+	uint8_t				*p = key;
+	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_async_rcode_t		rcode;
+	bool				use_range = false;
+	size_t				cmd_no = 0;
+	fr_value_box_t			curr_addr;
+	char				ipaddr[INET6_ADDRSTRLEN + 1];
+
+	if (fr_value_box_copy(request, &curr_addr, start) < 0) return XLAT_ACTION_FAIL;
+
+	if (prefix != (curr_addr.vb_ip.af == AF_INET ? 32 : 128)) {
+		if (fr_value_box_cast_in_place(request, &curr_addr, curr_addr.vb_ip.af == AF_INET ?
+					       FR_TYPE_IPV4_PREFIX : FR_TYPE_IPV6_PREFIX, NULL) < 0) return XLAT_ACTION_FAIL;
+		curr_addr.vb_ip.prefix = prefix;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_tool_rctx_t));
+	talloc_set_destructor(rctx, _redis_ippool_tool_rctx_free);
+
+	IPPOOL_BUILD_KEY(key, p, pool->vb_strvalue, pool->vb_length);
+	if (ret == IPPOOL_RCODE_FAIL) return XLAT_ACTION_FAIL;
+
+	use_range = range && range->type == FR_TYPE_STRING;
+
+	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, num_addr * (use_range ? 2 : 1)));
+
+	do {
+		DEBUG3("Adding %pV to pool \"%pV\"", &curr_addr, pool);
+
+		if (fr_value_box_print(&FR_SBUFF_OUT(ipaddr, sizeof(ipaddr)), &curr_addr, NULL) < 0) return XLAT_ACTION_FAIL;
+		cmd_len = redisFormatCommand(&rctx->cmd_str[cmd_no], "ZADD %b NX %u %s", key, p - key, 0,
+					     ipaddr);
+		if (cmd_len < 0) return XLAT_ACTION_FAIL;
+
+		if (use_range) {
+			uint8_t	ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+			uint8_t	*ip_key_p = ip_key;
+
+			fr_redis_command_literal_add(rctx->cmds, "MULTI", NULL, NULL);
+			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL);
+
+			IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, pool->vb_strvalue, pool->vb_length, ipaddr);
+			if (ret == IPPOOL_RCODE_FAIL) return XLAT_ACTION_FAIL;
+			cmd_len = redisFormatCommand(&rctx->cmd_str[cmd_no], "HSET %b range %b", ip_key, ip_key_p - ip_key,
+						     range->vb_strvalue, range->vb_length);
+			if (cmd_len < 0) return XLAT_ACTION_FAIL;
+
+			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL);
+			fr_redis_command_literal_add(rctx->cmds, "EXEC", redis_xlat_array_results, rctx);
+		} else {
+			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+							  redis_xlat_common_results, rctx);
+		}
+
+		ipaddr_inc(&curr_addr.vb_ip, step);
+	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
+					     pool->vb_length, rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, t->rtcluster, t->cw, inst->coord_pair_reg,
+					"Failed to launch Redis command", XLAT_ACTION_FAIL);
+
+	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
+				 ~FR_SIGNAL_CANCEL, rctx);
+}
+
+static xlat_arg_parser_t const redis_ippool_subnet_add_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_PREFIX },	// IP subnet
+	{ .single = true, .type = FR_TYPE_UINT8 },				// Prefix length
+	{ .single = true, .type = FR_TYPE_STRING },				// Range
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_subnet_add_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						  xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *subnet, start, end, *prefix_in, *range;
+	uint8_t				prefix;
+	size_t				num_addr, step;
+
+	XLAT_ARGS(in, &pool, &subnet, &prefix_in, &range);
+
+	if (redis_ippool_subnet_arg_parse(request, &start, &end, &prefix, &step, &num_addr,
+					  subnet, prefix_in) < 0) return XLAT_ACTION_FAIL;
+
+	return redis_ippool_add_common(request, inst, t, pool, &start, &end, range, prefix, num_addr, step);
+}
+
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
@@ -1565,6 +1936,17 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t				*xlat;
+
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.add", redis_ippool_subnet_add_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_subnet_add_args);
+
+	return 0;
+}
+
 static int mod_load(void)
 {
 	fr_redis_version_print();
@@ -1580,6 +1962,7 @@ module_rlm_t rlm_redis_ippool = {
 		.inst_size	= sizeof(rlm_redis_ippool_t),
 		.config		= module_config,
 		.onload		= mod_load,
+		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 		.coord_attach	= mod_coord_attach,
 		.detach		= mod_detach,
