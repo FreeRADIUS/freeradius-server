@@ -46,7 +46,7 @@ in the comments.
 The `unlang` policy language can be used to create complex
 if / else policies.  For more information, see
 
-https://www.freeradius.org/documentation/freeradius-server/RADIUSD_DOC_VERSION/
+https://www.freeradius.org/documentation/freeradius-server/4.0/
 
 NOTE: The paths used for installed server files. They are set
 automatically at install time and will not normally need to be
@@ -265,7 +265,7 @@ Logging section.  The various `log_*` configuration items
 will eventually be moved here.
 
 
-destination: Destination for log messages.
+destination:: Destination for log messages.
 
 This can be one of:
 
@@ -319,8 +319,10 @@ don't want to change this.
 suppress_secrets:: Suppress "secret" values when printing
 them in debug mode.
 
+NOTE: Note that when running the server at debug level 3 or
+higher, this configuration ite, is ignored.
 
-Setting this to "yes" means that the server does not print
+Setting this to `yes` means that the server does not print
 the contents of "secret" values such as passwords.  It
 instead prints a place-holder value "<<< secret >>>", as
 follows:
@@ -329,17 +331,18 @@ follows:
 User-Password = "<<< secret >>>"
 ...
 
-Note that secret values are tracked across string
-expansions, string modifications, concatenations, etc.
-i.e. if a `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` is placed into a `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]`,
-then the value of the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` will also be marked
-as "secret".
+Secret values are tracked across string expansions, string
+modifications, concatenations, etc.  i.e. if a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` is placed into a `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]`, then the
+value of the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` will also be marked as
+"secret".
 
-This configuration is disabled by default.  It is extremely
-important for administrators to be able to debug user
-logins by seeing what is actually being sent.
+This configuration is enabled by default.  While doing this
+can make it harder to debug the server (as passwords are
+omitted from the debug output), the servers defaults are as
+secure as possible.
 
-In most cases it is not useful to suppress secrets in an
+In many cases it is not useful to suppress secrets in an
 attempt to "be more secure".  Any administrator who can see
 the debug ouput is usually also able to view and/or modify
 the servers configuration (including passwords in
@@ -484,7 +487,7 @@ The directory here should either be "/", or ${confdir}
 
 
 
-limit files: Limit the directories for function calls
+limit files:: Limit the directories for function calls
 
 The server provides functions such as %file.touch() to read
 files, write files, make directories, etc.  For security,
@@ -502,7 +505,7 @@ configuration files should NEVER be writable by the server.
 
 
 
-limit exec: Limit the programs which can be executed
+limit exec:: Limit the programs which can be executed
 
 The server provides functions such as %exec() to run
 external programs.  For security, this ability can be
@@ -542,14 +545,6 @@ the server to use all available memory on the machine.
 
 Setting this number to 0 means "allow any number of attributes"
 
-
-
-allow_vulnerable_openssl: Allow the server to start with
-versions of OpenSSL known to have critical vulnerabilities.
-
-This check is based on the version number reported by libssl
-and may not reflect patches applied to libssl by
-distribution maintainers.
 
 
 
@@ -603,7 +598,7 @@ contexts which are allocated to a worker thread.
 If the maximum is reached, then no more TLS sessions can be
 created.
 
-Note: Setting this to 0 will mean unlimited async contexts
+NOTE: Setting this to 0 will mean unlimited async contexts
 will be created.  But as of 3.0.0, OpenSSL has no mechanism
 to shrink the async pool.  This means if there's a
 significant traffic spike the process will continue to use
@@ -725,7 +720,7 @@ All of the other configuration sections like:
 
 Have been moved to the file:
 
-`raddb/sites-available/default`
+xref:reference:raddb/sites-available/default.adoc[sites-available/default]
 
 This is the `default` virtual server that has the same
 configuration as in version 1.0.x and 1.1.x.  The default
@@ -734,27 +729,27 @@ edit it to create policies for your local site.
 
 For more documentation on virtual servers, see:
 
-`raddb/sites-available/index.adoc`
+xref:reference:raddb/sites-available/index.adoc.adoc[sites-available/index.adoc]
 
 
 == Default Configuration
 
 ```
-prefix = /usr/local
-exec_prefix = ${prefix}
-sysconfdir = ${prefix}/etc
-localstatedir = ${prefix}/var
-sbindir = ${exec_prefix}/sbin
-logdir = ${localstatedir}/log/radius
-confdir = ${sysconfdir}/raddb
-radacctdir = ${logdir}/radacct
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+sysconfdir = @sysconfdir@
+localstatedir = @localstatedir@
+sbindir = @sbindir@
+logdir = @logdir@
+confdir = @confdir@
+radacctdir = @radacctdir@
 name = radiusd
 modconfdir = ${confdir}/mods-config
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
 db_dir = ${localstatedir}/lib/${name}
-libdir = ${exec_prefix}/lib
+libdir = @libdir@
 pidfile = ${run_dir}/${name}.pid
 #panic_action = "gdb %e %p"
 #panic_action = "gdb -silent -x ${confdir}/panic.gdb %e %p 2>&1 | tee ${logdir}/gdb-${name}-%p.log"
@@ -775,7 +770,7 @@ log {
 #	timestamp = no
 	file = ${logdir}/radius.log
 	syslog_facility = daemon
-#	suppress_secrets = no
+	suppress_secrets = yes
 }
 #	* delete any pre-exising debug log for this user
 #	  do not do this for EAP sessions, as they use multiple round trips.
@@ -811,9 +806,9 @@ security {
 		allow = "/bin"
 		allow = "/usr/bin"
 	}
-	allow_core_dumps = yes
+	allow_core_dumps = @allow_core_dumps@
 	max_attributes = 200
-	allow_vulnerable_openssl = no
+@openssl_version_check_config@
 }
 $INCLUDE clients.conf
 thread pool {
