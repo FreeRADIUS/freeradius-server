@@ -567,6 +567,40 @@ static char lua_release_cmd[] =
 	"}";										/* 30 */
 static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
+/** Lua script for removing a lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] IP address to remove.
+ *
+ * Removes the IP entry in the ZSET, then removes the address hash, and the device key
+ * if one exists.
+ *
+ * Will work with partially removed IP addresses (where the ZSET entry is absent but other
+ * elements weren't cleaned up).
+ *
+ * Returns
+ * - 0 if no ip addresses were removed.
+ * - 1 if an ip address was removed.
+ */
+static char lua_remove_cmd[] =
+	"local found" EOL								/* 1 */
+	"local ret" EOL									/* 2 */
+	"local address_key" EOL								/* 3 */
+
+	"ret = redis.call('ZREM', '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"', ARGV[1])" EOL	/* 4 */
+	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[1]" EOL	/* 5 */
+	"found = redis.call('HGET', address_key, 'device')" EOL				/* 6 */
+	"redis.call('DEL', address_key)" EOL						/* 7 */
+	"if not found then" EOL								/* 8 */
+	"  return ret"	EOL								/* 9 */
+	"end" EOL									/* 10 */
+
+	/*
+	 *	Remove the association between the device and a lease
+	 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
+	"return 1" EOL;									/* 12 */
+
 static uint32_t uint32_gen_mask(uint8_t bits)
 {
 	if (bits >= 32) return 0xffffffff;
@@ -1827,6 +1861,81 @@ static xlat_action_t redis_ippool_addresses_add_xlat(UNUSED TALLOC_CTX *ctx, UNU
 	return redis_ippool_add_common(request, inst, t, pool, start, end, range, prefix, num_addr, step);
 }
 
+/** Common code for removing addresses from a pool.
+ */
+static xlat_action_t redis_ippool_remove_common(request_t *request, rlm_redis_ippool_t *inst, rlm_redis_ippool_thread_t *t,
+						fr_value_box_t *pool, fr_value_box_t *start, fr_value_box_t *end,
+						uint8_t prefix, size_t num_addr, size_t step)
+{
+	redis_ippool_tool_rctx_t	*rctx;
+	int				cmd_len;
+	fr_redis_async_rcode_t		rcode;
+	size_t				cmd_no = 0;
+	fr_value_box_t			curr_addr;
+	char				ipaddr[INET6_ADDRSTRLEN + 1];
+
+	if (fr_value_box_copy(request, &curr_addr, start) < 0) return XLAT_ACTION_FAIL;
+
+	if (prefix != (curr_addr.vb_ip.af == AF_INET ? 32 : 128)) {
+		if (fr_value_box_cast_in_place(request, &curr_addr, curr_addr.vb_ip.af == AF_INET ?
+					       FR_TYPE_IPV4_PREFIX : FR_TYPE_IPV6_PREFIX, NULL) < 0) return XLAT_ACTION_FAIL;
+		curr_addr.vb_ip.prefix = prefix;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_tool_rctx_t));
+	talloc_set_destructor(rctx, _redis_ippool_tool_rctx_free);
+
+	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, num_addr));
+
+	do {
+		DEBUG3("Removing %pV from pool \"%pV\"", &curr_addr, pool);
+
+		if (fr_value_box_print(&FR_SBUFF_OUT(ipaddr, sizeof(ipaddr)), &curr_addr, NULL) < 0) return XLAT_ACTION_FAIL;
+		cmd_len = redisFormatCommand(&rctx->cmd_str[cmd_no], "EVAL %s 1 %b %s", lua_remove_cmd,
+					     pool->vb_strvalue, pool->vb_length, ipaddr);
+		if (cmd_len < 0) return XLAT_ACTION_FAIL;
+
+		fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+						  redis_xlat_common_results, rctx);
+
+		ipaddr_inc(&curr_addr.vb_ip, step);
+	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
+					     pool->vb_length, rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, t->rtcluster, t->cw, inst->coord_pair_reg,
+					"Failed to launch Redis command", XLAT_ACTION_FAIL);
+
+	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
+				 ~FR_SIGNAL_CANCEL, rctx);
+}
+
+static xlat_arg_parser_t const redis_ippool_subnet_remove_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_PREFIX },	// IP subnet
+	{ .single = true, .type = FR_TYPE_UINT8 },				// Prefix length
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_subnet_remove_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						     xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *subnet, start, end, *prefix_in;
+	uint8_t				prefix;
+	size_t				num_addr, step;
+
+	XLAT_ARGS(in, &pool, &subnet, &prefix_in);
+
+	if (redis_ippool_subnet_arg_parse(request, &start, &end, &prefix, &step, &num_addr,
+					  subnet, prefix_in) < 0) return XLAT_ACTION_FAIL;
+
+	return redis_ippool_remove_common(request, inst, t, pool, &start, &end, prefix, num_addr, step);
+}
+
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
@@ -2041,6 +2150,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_add_args);
 
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.remove", redis_ippool_subnet_remove_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_subnet_remove_args);
 	return 0;
 }
 
