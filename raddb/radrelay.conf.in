@@ -109,7 +109,7 @@ cleanup_delay = 5
 #
 log {
 	#
-	#  destination: Destination for log messages.
+	#  destination:: Destination for log messages.
 	#
 	#  This can be one of:
 	#

@@ -24,7 +24,7 @@
 #
 dhcpv4 {
 	#
-	#  ipaddr: The IP address we use for sending packets.
+	#  ipaddr:: The IP address we use for sending packets.
 	#
 	#  This MUST be an IPv4 address.  IPv6 addresses are not
 	#  supported for DHCPv4.

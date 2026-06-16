@@ -261,7 +261,7 @@ ldap {
 		#  This reveals group nesting. It is available only on domain controllers with
 		#  Windows Server 2003 SP2 or Windows Server 2008 (or above).
 		#
-		#  See: https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
+		#  For further information, see https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
 		#
 #		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 
@@ -508,7 +508,7 @@ ldap {
 		#
 		#  Groups are never processed for disabled users.
 		#
-		#  Defaults to 'yes'.
+		#  Default 'yes'.
 		#
 		skip_on_suspend = 'yes'
 	}
@@ -553,7 +553,7 @@ ldap {
 #		attribute = 'radiusProfileDn'
 
 		#
-		#  attribute_suspend: The LDAP attribute containing profile DNs to apply
+		#  attribute_suspend:: The LDAP attribute containing profile DNs to apply
 		#  in addition to the default profile above, when the user account is in
 		#  the suspended state
 		#
@@ -665,7 +665,7 @@ ldap {
 		#
 		#  May be one of 'never', 'searching', 'finding' or 'always'
 		#
-		#  default: libldap's default which is usually 'never'.
+		#  Defaukt is libldap's default, which is usually 'never'.
 		#
 		#  NOTE: `LDAP_OPT_DEREF` is set to this value.
 		#
@@ -721,7 +721,7 @@ ldap {
 		#
 		#  res_timeout:: Seconds to wait for LDAP query to finish.
 		#
-		#  Default: `20`
+		#  Default `20`
 		#
 		res_timeout = 10
 
@@ -729,7 +729,7 @@ ldap {
 		#  srv_timelimit:: Seconds LDAP server has to process the query (server-side
 		#  time limit).
 		#
-		#  Default: `20`
+		#  Default `20`
 		#
 		#  NOTE: `LDAP_OPT_TIMELIMIT` is set to this value.
 		#

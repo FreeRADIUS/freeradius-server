@@ -198,7 +198,7 @@ smtp {
 	timeout = 5s
 
 	#
-	#  authenticate: Configuration for verifying a users name and clear-text password
+	#  authenticate:: Configuration for verifying a users name and clear-text password
 	#  against an SMTP server.
 	#
 	#  This is not generally recommended, but is supported for cases where an LDAP server

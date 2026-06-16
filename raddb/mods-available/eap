@@ -431,7 +431,7 @@ eap {
 			#  NOTE: The Root CA must still be available for creating certificate chains to
 			#  succeed even if `include_root_ca = no`.
 			#
-			#  Default: `no`.
+			#  Default value is `no`.
 			#
 			include_root_ca = no
 		}
@@ -1141,7 +1141,8 @@ eap {
 	#
 	#  * If is still doesn't work, and you're using Samba, you may be
 	#  encountering a Samba bug.
-	#  see: https://bugzilla.samba.org/show_bug.cgi?id=6563
+	#
+	#  For further information, see https://bugzilla.samba.org/show_bug.cgi?id=6563
 	#
 	#  * Note that we do not necessarily agree with their explanation. but
 	#  the fix does appear to work.

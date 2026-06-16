@@ -48,7 +48,7 @@ icmp {
 #	interface = eth0
 
 	#
-	#  src_ipaddr: Source address for ICMP messages.
+	#  src_ipaddr:: Source address for ICMP messages.
 	#
 	src_ipaddr = *
 

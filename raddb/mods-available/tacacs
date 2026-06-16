@@ -49,7 +49,7 @@ tacacs {
 	type = Accounting-Request
 
 	#
-	#  response_window: If we do not receive a reply within this time period, then
+	#  response_window:: If we do not receive a reply within this time period, then
 	#  start `zombie_period`
 	#
 	response_window = 15

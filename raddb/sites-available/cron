@@ -39,7 +39,7 @@ server cron {
 		type = Access-Request
 
 		#
-		#  transport: What kind of cron functionality we are using.
+		#  transport:: What kind of cron functionality we are using.
 		#
 		#  For now, only `crontab` is supported.
 		#

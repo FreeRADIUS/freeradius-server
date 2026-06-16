@@ -68,7 +68,7 @@ server crl {
 		#  to the current time, and if this option is `no` (the default)
 		#  then, if that time is in the past, the CRL will not be
 		#  accepted.
-#		allow_expired: yes
+#		allow_expired = yes
 
 		#
 		#  allow_not_yet_valid:: Should a not yet valid expired CRL be accepted.
@@ -77,7 +77,7 @@ server crl {
 		#  to the current time, and if this option is `no` (the default)
 		#  then, if that time is in the future, the CRL will not be
 		#  accepted.
-#		allow_not_yet_valid: yes
+#		allow_not_yet_valid = yes
 	}
 
 	#

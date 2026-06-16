@@ -246,7 +246,7 @@ radius {
 	require_message_authenticator = auto
 
 	#
-	#  response_window: If we do not receive any replies within
+	#  response_window:: If we do not receive any replies within
 	#  this time period, then start `zombie_period`
 	#
 	response_window = 15

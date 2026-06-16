@@ -45,7 +45,7 @@ sqlippool {
 	offer_duration = 60
 
 	#
-	#  pool_name: The attribute which contains the pool name.
+	#  pool_name:: The attribute which contains the pool name.
 	#
 	pool_name = control.IP-Pool.Name
 

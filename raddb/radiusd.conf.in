@@ -298,7 +298,7 @@ hostname_lookups = yes
 #
 log {
 	#
-	#  destination: Destination for log messages.
+	#  destination:: Destination for log messages.
 	#
 	#  This can be one of:
 	#
@@ -553,7 +553,7 @@ security {
 #	chdir = ${confdir}
 
 	#
-	#  limit files: Limit the directories for function calls
+	#  limit files:: Limit the directories for function calls
 	#
 	#  The server provides functions such as %file.touch() to read
 	#  files, write files, make directories, etc.  For security,
@@ -575,7 +575,7 @@ security {
 	}
 
 	#
-	#  limit exec: Limit the programs which can be executed
+	#  limit exec:: Limit the programs which can be executed
 	#
 	#  The server provides functions such as %exec() to run
 	#  external programs.  For security, this ability can be
