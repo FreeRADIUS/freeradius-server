@@ -118,6 +118,27 @@ do { \
 	_p += (size_t)_slen;\
 } while (0)
 
+#define IPPOOL_BUILD_IP_KEY_FROM_STR(_buff, _p, _key, _key_len, _ip_str) \
+do { \
+	ssize_t _slen; \
+	if (_key_len > sizeof(_buff) - sizeof(IPPOOL_ADDRESS_KEY) - sizeof("{}:") - 1) { \
+		ERROR("Pool name too long"); \
+		ret = IPPOOL_RCODE_FAIL; \
+		break; \
+	} \
+	*_p++ = '{'; \
+	memcpy(_p, _key, _key_len); \
+	_p += _key_len; \
+	_slen = strlcpy((char *)_p, "}:"IPPOOL_ADDRESS_KEY":", sizeof(_buff) - (_p - _buff)); \
+	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
+		ERROR("IP key too long"); \
+		ret = IPPOOL_RCODE_FAIL;\
+		break; \
+	} \
+	_p += (size_t)_slen;\
+	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
+} while (0)
+
 /** If the prefix is as wide as the AF data size then print it without CIDR notation.
  *
  */
