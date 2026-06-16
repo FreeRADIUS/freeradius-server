@@ -1537,6 +1537,73 @@ static int redis_ippool_subnet_arg_parse(request_t *request, fr_value_box_t *sta
 	return 0;
 }
 
+/** Parse argments provided to IP pool manipulation xlats which work on start and end addresses
+ *
+ * @param[in] request		The current request, for debugging.
+ * @param[out] prefix_out	Where to write the parsed value of prefix.
+ * @param[out] step		Where to write the step size for multiple addresses.
+ * @param[out] num_addr		Where to write the number of addresses
+ * @param[in] start		The provided start address.
+ * @param[in] end		The provided end address.
+ * @param[in] prefix_in		optinal prefix argument.
+ */
+static int redis_ippool_addresses_arg_parse(request_t *request, uint8_t *prefix_out, size_t *step, size_t *num_addr,
+					    fr_value_box_t *start, fr_value_box_t *end, fr_value_box_t *prefix_in)
+{
+	uint8_t	prefix;
+
+	if (start->vb_ip.af != end->vb_ip.af) {
+		RERROR("Mis-matched start and end IP address types");
+		return XLAT_ACTION_FAIL;
+	}
+
+	switch (start->vb_ip.af) {
+	case AF_INET:
+	{
+		uint32_t	start_ip, end_ip;
+		start_ip = ntohl(start->vb_ipv4addr);
+		end_ip = ntohl(end->vb_ipv4addr);
+
+		prefix = (prefix_in && prefix_in->type == FR_TYPE_UINT8) ? prefix_in->vb_uint8 : 32;
+		if ((prefix < 1) || (prefix > 32)) {
+			RERROR("Prefix %d out of range (1-32)", prefix);
+			return -1;
+		}
+		*step = 1 << (32 - prefix);
+		*num_addr = (end_ip - start_ip + 1) / *step;
+	}
+		break;
+
+	case AF_INET6:
+	{
+		uint128_t	start_ip, end_ip;
+
+		memcpy(&start_ip, start->vb_ipv6addr, sizeof(start_ip));
+		memcpy(&end_ip, end->vb_ipv6addr, sizeof(end_ip));
+
+		start_ip = ntohlll(start_ip);
+		end_ip = ntohlll(end_ip);
+
+		prefix = (prefix_in && prefix_in->type == FR_TYPE_UINT8) ? prefix_in->vb_uint8 : 128;
+		if ((prefix < 1) || (prefix > 128)) {
+			RERROR("Prefix %d out of range (1-127)", prefix);
+			return -1;
+		}
+		*step = 1 << (128 - prefix);
+		*num_addr = uint128_sub(end_ip, start_ip) + 1 / *step;
+	}
+
+		break;
+
+	default:
+		fr_assert(0);
+		return -1;
+	}
+
+	*prefix_out = prefix;
+	return 0;
+}
+
 /** Common cancellation function for xlats using redi_ippool_tool_rctx_t
  *
  */
@@ -1732,6 +1799,32 @@ static xlat_action_t redis_ippool_subnet_add_xlat(UNUSED TALLOC_CTX *ctx, UNUSED
 					  subnet, prefix_in) < 0) return XLAT_ACTION_FAIL;
 
 	return redis_ippool_add_common(request, inst, t, pool, &start, &end, range, prefix, num_addr, step);
+}
+
+static xlat_arg_parser_t const redis_ippool_addresses_add_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_ADDR },	// Start address
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_ADDR },	// End address
+	{ .single = true, .type = FR_TYPE_UINT8 },				// Prefix length
+	{ .single = true, .type = FR_TYPE_STRING },				// Range
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_addresses_add_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						     xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *start, *end, *prefix_in, *range;
+	uint8_t				prefix;
+	size_t				num_addr, step;
+
+	XLAT_ARGS(in, &pool, &start, &end, &prefix_in, &range);
+
+	if (redis_ippool_addresses_arg_parse(request, &prefix, &step, &num_addr,
+					     start, end, prefix_in) < 0) return XLAT_ACTION_FAIL;
+
+	return redis_ippool_add_common(request, inst, t, pool, start, end, range, prefix, num_addr, step);
 }
 
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
@@ -1943,6 +2036,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.add", redis_ippool_subnet_add_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_add_args);
+
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.add", redis_ippool_addresses_add_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_addresses_add_args);
 
 	return 0;
 }
