@@ -1217,6 +1217,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 {
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
+	bool			machine_only = false;
 	VALUE_PAIR		*tvp;
 	teap_tunnel_t		*t = (teap_tunnel_t *)tls_session->opaque;
 	int			eap_method = 0;
@@ -1252,6 +1253,17 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 			fr_pair_value_bstrncpy(t->username, tvp->vp_octets + 5, tvp->vp_length - 5);
 
 			RDEBUG("Phase 2: Got tunneled identity of %s", t->username->vp_strvalue);
+
+		} else if (tvp &&
+		    (tvp->vp_length == EAP_HEADER_LEN + 1) &&
+		    (tvp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
+		    (tvp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY)) {
+			/*
+			 * Empty inner EAP-Identity indicates machine-only auth: finish
+			 * with final TEAP Result TLV, then wait for client Result echo.
+			 */
+			RDEBUG2("Phase 2: Received empty inner EAP-Identity; treating as machine-only TEAP completion");
+			machine_only = true;
 
 		} else if (!fake->username) {
 			/*
@@ -1556,12 +1568,14 @@ done:
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake, true);
+	if (!machine_only) {
+		rad_virtual_server(fake, true);
+	}
 
 	/*
 	 * Decide what to do with the reply.
 	 */
-	switch (fake->reply->code) {
+	switch (machine_only ? PW_CODE_ACCESS_CHALLENGE : fake->reply->code) {
 	case 0:
 		tvp = fr_pair_find_by_num(fake->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
 		if (tvp && (tvp->vp_integer == PW_CODE_ACCESS_CHALLENGE)) {
@@ -1572,6 +1586,15 @@ done:
 		RDEBUG("Phase 2: No tunneled reply was found, rejecting the user.");
 		code = PW_CODE_ACCESS_REJECT;
 		break;
+
+	case PW_CODE_ACCESS_CHALLENGE:
+		if (machine_only) {
+			t->result_final = true;
+			eap_teap_append_result(request, tls_session, PW_CODE_ACCESS_ACCEPT);
+			code = PW_CODE_ACCESS_CHALLENGE;
+			break;
+		}
+		/* FALL-THROUGH */
 
 	case PW_CODE_ACCESS_ACCEPT:
 		tvp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
