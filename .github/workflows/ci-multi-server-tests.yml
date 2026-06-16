@@ -230,7 +230,7 @@ jobs:
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() }}
         env:
-          PROF_RESULTS_URL: "https://cinfra.testdev.inkbridge.io"
+          PROF_RESULTS_URL: "https://cinfra-ca.testdev.inkbridge.io"
         run: |
           [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
           #  Mint an OIDC token with the store URL as audience (no --noproxy: the
@@ -245,13 +245,13 @@ jobs:
           fi
           find prof-results -type f ! -name '.DS_Store' | while read -r f; do
             rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
-            curl -fsS --noproxy '*' -H "Authorization: Bearer ${token}" \
+            curl -fsS -H "Authorization: Bearer ${token}" \
               -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
               || echo "WARNING: failed to upload ${rel}"
           done
           #  Refresh the manifest once the run's files are all uploaded, so the
           #  UI's read path stays in sync with the tree.
-          curl -fsS --noproxy '*' -X POST -H "Authorization: Bearer ${token}" \
+          curl -fsS -X POST -H "Authorization: Bearer ${token}" \
             "${PROF_RESULTS_URL}/profiling/_manifest" \
             || echo "WARNING: manifest regenerate failed"
 
