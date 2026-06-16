@@ -168,13 +168,13 @@ pidfile = ${run_dir}/${name}.pid
 #
 
 #
-# request:: Configuration for request handling.
+#  request:: Configuration for request handling.
 #
-# These items control how requests are allocated and processed.
+#  These items control how requests are allocated and processed.
 #
-# NOTE: Most of these configuration items are per-worker.  To get the
-# true number of requests you need to multiply the value by the number
-# of workers (or the number of cores).
+#  NOTE: Most of these configuration items are per-worker.  To get the
+#  true number of requests you need to multiply the value by the number
+#  of workers (or the number of cores).
 #
 request {
 	#
