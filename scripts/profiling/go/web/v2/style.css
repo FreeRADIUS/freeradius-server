@@ -66,6 +66,38 @@ a{color:var(--brand);}
 .rchip.base::after{content:'p50';position:absolute;top:-11px;left:50%;transform:translateX(-50%);
   font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);}
 
+/* loading bar: shown while a multi-run pick is read + analyzed. The reading
+   phase reports real progress (determinate fill); the analyze phase is a short
+   blocking WASM parse, shown as an indeterminate sweep with a clear message. */
+.loadbar{display:flex;align-items:center;gap:10px;margin:8px 2px 2px;padding:8px 12px;
+  border:1px solid var(--brand);background:var(--brand-soft);border-radius:8px;font-size:12.5px;color:var(--ink);}
+.loadbar[hidden]{display:none;}
+.loadbar .spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--brand);
+  border-top-color:transparent;animation:lb-spin .7s linear infinite;flex:none;}
+@keyframes lb-spin{to{transform:rotate(360deg);}}
+.loadbar-msg{font-weight:600;white-space:nowrap;}
+.loadbar-track{flex:1;min-width:80px;height:6px;border-radius:3px;background:#fff;border:1px solid var(--line);overflow:hidden;}
+/* No width transition: progress is stepped once per frame (per run), so a
+   transition would lag behind and the fill would trail the text counter. */
+.loadbar-track i{display:block;height:100%;width:100%;background:var(--brand);}
+.loadbar.indet .loadbar-track i{width:40%;animation:lb-sweep 1.1s ease-in-out infinite;}
+@keyframes lb-sweep{0%{margin-left:-40%;}100%{margin-left:100%;}}
+
+/* phase stepper above the bar: shows reading files is the quick step and the
+   analysis step is where the time goes. pending = grey dot, active = brand with
+   a pulsing dot, done = green. */
+.loadphase{display:flex;align-items:center;gap:8px;margin:8px 2px 0;font-size:11.5px;font-weight:600;}
+.loadphase[hidden]{display:none;}
+.lp-step{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:var(--faint);}
+.lp-step .lp-dot{width:9px;height:9px;border-radius:50%;background:var(--line-strong);flex:none;}
+.lp-step.active{color:var(--brand);border-color:var(--brand);background:var(--brand-soft);}
+.lp-step.active .lp-dot{background:var(--brand);animation:lp-pulse 1s ease-in-out infinite;}
+.lp-step.done{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
+.lp-step.done .lp-dot{background:var(--accent);}
+.lp-sep{color:var(--line-strong);font-weight:400;}
+@keyframes lp-pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
 /* collapsible methodology infobox */
 .infobox{margin-top:12px;border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;background:#f8fafc;overflow:hidden;}
 .infobox>summary{list-style:none;cursor:pointer;padding:9px 13px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;color:var(--ink);}

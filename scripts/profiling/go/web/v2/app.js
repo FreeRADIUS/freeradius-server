@@ -32,6 +32,10 @@ const nlegendEl  = $("nlegend");
 const errorP     = $("error");
 const nrunCount  = $("nrun-count");
 const nrunBase   = $("nrun-base");
+const loadbar    = $("loadbar");
+const loadbarMsg = $("loadbar-msg");
+const loadbarFill = $("loadbar-fill");
+const loadphase  = $("loadphase");
 
 // ---- state ---------------------------------------------------------------
 let runs = [];          // [{ label, files: { name: text } }] in load order
@@ -103,6 +107,61 @@ async function loadConfig() {
 }
 loadConfig();
 
+// ---- loading indicator ---------------------------------------------------
+// Adding one run is instant, but reading + parsing 10–20 runs takes long enough
+// that the UI looks stuck. showLoading paints a status bar before the work runs.
+// frac (0..1) shows determinate progress (the file-reading phase, which is async
+// and animates); pass null for the indeterminate sweep (the analyze phase, a
+// short blocking WASM parse — the bar is painted first, then the parse runs).
+// The Add/Clear buttons are disabled while the bar is up to block re-entry.
+function showLoading(msg, frac) {
+  loadbarMsg.textContent = msg;
+  if (frac == null) {
+    loadbar.classList.add("indet");
+    loadbarFill.style.width = "100%";
+  } else {
+    loadbar.classList.remove("indet");
+    loadbarFill.style.width = Math.round(Math.max(0, Math.min(1, frac)) * 100) + "%";
+  }
+  loadbar.hidden = false;
+  addRunsBtn.disabled = true;
+  clearBtn.disabled = true;
+}
+function hideLoading() {
+  loadbar.hidden = true;
+  loadbar.classList.remove("indet");
+  hidePhases();
+  addRunsBtn.disabled = false;
+  clearBtn.disabled = false;
+}
+// Phase stepper (above the bar): names the high-level steps of the operation so
+// it's clear reading files is the quick step and analysis is where time goes.
+// setPhaseList renders the chips (all pending); setActivePhase highlights one,
+// marks earlier ones done. Driven by the entry points, not parseRuns.
+function setPhaseList(names) {
+  loadphase.innerHTML = names.map((n, k) =>
+    (k ? '<span class="lp-sep">→</span>' : "") +
+    '<span class="lp-step"><i class="lp-dot"></i>' + esc(n) + "</span>"
+  ).join("");
+  loadphase.hidden = false;
+}
+function setActivePhase(idx) {
+  loadphase.querySelectorAll(".lp-step").forEach((el, k) => {
+    el.classList.toggle("done", k < idx);
+    el.classList.toggle("active", k === idx);
+  });
+}
+function hidePhases() { loadphase.hidden = true; loadphase.innerHTML = ""; }
+// yieldToPaint resolves after the browser has painted the current DOM, so a
+// status bar shown just before a blocking synchronous call is actually visible
+// (requestAnimationFrame runs before paint; the setTimeout defers past it).
+function yieldToPaint() {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+// Above this many runs the analyze (parse) step is slow enough to warrant the
+// indeterminate bar; below it the parse is instant and a bar would just flash.
+const LOADING_MIN_RUNS = 4;
+
 // ---- file loading --------------------------------------------------------
 function readFileText(file) {
   return new Promise((resolve, reject) => {
@@ -164,7 +223,25 @@ async function addRunsFromPick(fileList) {
   }
   const prefix = commonPrefixSegs(dirs); // trimmed from labels when many runs share it
 
-  for (const dir of dirs) {
+  // Reading callgrind files off disk is async, so the bar can show real per-run
+  // progress. Only worth showing for a multi-run pick; one run is instant. The
+  // reads often resolve within a single frame, so we yieldToPaint after each
+  // progress update — otherwise the increments coalesce and the fill appears to
+  // jump straight to the end. frac = runs completed / total (so "run 7 of 10"
+  // shows at 60%: six done, reading the seventh). analyze() then owns the bar.
+  const showReadProgress = dirs.length > 1;
+  // The phase stepper appears when either phase will be slow enough to show the
+  // bar. Reading is the quick step; analysis (the full re-parse of every run) is
+  // the slow one — the stepper makes that explicit.
+  const analyzeShowsBar = (runs.length + dirs.length) >= LOADING_MIN_RUNS;
+  if (showReadProgress || analyzeShowsBar) { setPhaseList(["Reading files", "Analyzing"]); setActivePhase(0); }
+  for (let di = 0; di < dirs.length; di++) {
+    const dir = dirs[di];
+    if (showReadProgress) {
+      // Fill matches the displayed run number so the bar tracks the counter.
+      showLoading("Reading run " + (di + 1) + " of " + dirs.length + "…", (di + 1) / dirs.length);
+      await yieldToPaint();
+    }
     const segs = dir.split("/");
     const trimmed = segs.slice(prefix.length).join("/");
     const label = uniqueLabel(trimmed || segs[segs.length - 1] || `run ${runs.length + 1}`);
@@ -172,8 +249,9 @@ async function addRunsFromPick(fileList) {
     await Promise.all(groups.get(dir).map(async (f) => { filesObj[f.name] = await readFileText(f); }));
     runs.push({ label, files: filesObj });
   }
+  if (showReadProgress || analyzeShowsBar) setActivePhase(1); // reading done → analyzing
   hideError();
-  await analyze();
+  await analyze(); // parseRuns continues the bar with per-run analyze progress
 }
 
 // commonPrefixSegs returns the shared leading path segments across dirs, so
@@ -192,29 +270,53 @@ function commonPrefixSegs(dirs) {
 }
 
 // ---- analysis (WASM) -----------------------------------------------------
-// parseRuns runs the WASM core over every loaded run ONCE and caches the full
-// function set (all functions, ordered by max CEst). This is the expensive step
-// — it parses every run's callgrind file — so it runs only when the run set
-// changes, never when the displayed function count changes. Returns true when a
-// fresh full matrix is ready.
+// parseRuns parses every loaded run and caches the full function set (all
+// functions, ordered by max CEst across runs). This is the expensive step, so
+// it runs only when the run set changes, never on a function-count change.
+//
+// It parses ONE RUN AT A TIME (cestRunCEst) rather than all at once (cestMatrix)
+// so the loading bar shows real per-run progress and the page stays responsive:
+// each run's parse is a short synchronous chunk, and yieldToPaint between runs
+// lets the browser paint the bar. The shared function set and the p50 baseline
+// are then assembled in JS — the same result cestMatrix returns, just streamed.
+// Returns true when a fresh full matrix is ready.
 async function parseRuns() {
   if (!wasmReady) { showError("WASM still loading — try again in a moment."); return false; }
   if (runs.length === 0) { full = null; matrix = null; render(); return false; }
 
-  const runsObj = {};
-  runs.forEach((r) => { runsObj[r.label] = r.files; });
+  const R = [];                     // per run: { label, total, cest:{fn:CEst} }
+  const maxC = Object.create(null); // per-function max CEst across runs (row order)
+  const showProg = runs.length >= LOADING_MIN_RUNS;
+  let formula = "";
+  for (let i = 0; i < runs.length; i++) {
+    if (showProg) {
+      // Fill matches the displayed run number ("run 7 of 20" -> 7/20), so the
+      // bar and the counter stay in lockstep; it reaches 100% on the last run.
+      showLoading("Analyzing run " + (i + 1) + " of " + runs.length + "…", (i + 1) / runs.length);
+      await yieldToPaint(); // paint this increment before the run's blocking parse
+    }
+    const res = cestRunCEst(runs[i].files);
+    if (res.error) { showError(res.error); return false; }
+    formula = res.formula || formula;
+    const cest = res.cest;
+    for (const name in cest) {
+      const c = cest[name];
+      if (c > (maxC[name] || 0)) maxC[name] = c;
+    }
+    R.push({ label: runs[i].label, total: res.total, cest });
+  }
 
-  const res = cestMatrix(runsObj, 0); // 0 => all functions; display count is sliced in JS
-  if (res.error) { showError(res.error); return false; }
-
-  const R = res.runs; // in load order; each run's cest holds every function
   const totals = R.map((r) => r.total);
   // p50 baseline: the median run by total CEst (lower-middle for even counts).
   const byTotal = totals.map((t, i) => [t, i]).sort((a, b) => a[0] - b[0]);
   const BASE = byTotal[Math.floor(R.length / 2)][1];
   const maxTotal = byTotal[byTotal.length - 1][0] || 1;
 
-  full = { funcs: res.functions, R, totals, BASE, maxTotal };
+  // Shared function set: every function seen in any run, by max CEst descending
+  // (name ascending as a tiebreaker), matching cestMatrix's row ordering.
+  const funcs = Object.keys(maxC).sort((a, b) => (maxC[b] - maxC[a]) || (a < b ? -1 : a > b ? 1 : 0));
+
+  full = { funcs, R, totals, BASE, maxTotal };
   // The run set changed, so view selections keyed by run/function index reset.
   trendFns = null;
   curRun = R.length - 1;
@@ -223,7 +325,7 @@ async function parseRuns() {
   // and fall back to the comparison views whenever the run set changes.
   detailRun = null;
   detailData = null;
-  if ($("formula") && res.formula) $("formula").textContent = res.formula;
+  if ($("formula") && formula) $("formula").textContent = formula;
   return true;
 }
 
@@ -257,8 +359,14 @@ function applyTopN() {
 }
 
 // analyze re-parses (run set changed) then applies the current function count.
+// parseRuns shows its own determinate per-run progress on the loading bar; the
+// finally always clears the bar (including a reading-phase bar from addRunsFromPick).
 async function analyze() {
-  if (await parseRuns()) applyTopN();
+  try {
+    if (await parseRuns()) applyTopN();
+  } finally {
+    hideLoading();
+  }
 }
 
 // ---- helpers (ported from the wireframe) ---------------------------------
@@ -277,12 +385,13 @@ function fmtShare(p) { return p.toFixed(2) + "%"; }
 // Δ% of a function's CEst in run i vs the baseline run. A function absent from
 // the baseline (base 0) has no defined %: treat any positive current as "new".
 function deltaPct(f, i) {
-  const b = matrix.R[matrix.BASE].cest[matrix.funcs[f]];
-  const v = matrix.R[i].cest[matrix.funcs[f]];
+  // cest maps are per-run, so a function absent from a run has no key — treat as 0.
+  const b = matrix.R[matrix.BASE].cest[matrix.funcs[f]] || 0;
+  const v = matrix.R[i].cest[matrix.funcs[f]] || 0;
   if (b === 0) return v > 0 ? Infinity : 0;
   return (v - b) / b * 100;
 }
-function cestOf(f, i) { return matrix.R[i].cest[matrix.funcs[f]]; }
+function cestOf(f, i) { return matrix.R[i].cest[matrix.funcs[f]] || 0; }
 // finiteDelta is deltaPct guarded for plotting: a function absent from the
 // baseline has no defined %, so it sits on the baseline (0) rather than ∞.
 function finiteDelta(f, i) { const d = deltaPct(f, i); return isFinite(d) ? d : 0; }
@@ -854,6 +963,8 @@ function renderDiverge() {
 // ---- mutations -----------------------------------------------------------
 function removeRun(i) {
   runs.splice(i, 1);
+  // Removing a run re-parses the remaining set — no reading phase, just analysis.
+  if (runs.length >= LOADING_MIN_RUNS) { setPhaseList(["Analyzing"]); setActivePhase(0); }
   analyze();
 }
 function clearRuns() {

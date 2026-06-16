@@ -282,6 +282,47 @@ func cestReport(this js.Value, args []js.Value) (result any) {
 	return map[string]any{"json": jsonOut.String()}
 }
 
+// cestRunCEst is the per-run bridge for the comparison matrix. cestMatrix
+// parses every run in one blocking call, which freezes the page (and any
+// progress bar) for the whole parse; the compare UI instead calls this once per
+// run so it can paint progress and stay responsive between runs. It returns the
+// same numbers cestMatrix produces per run — the run's total CEst and each
+// function's self CEst — just split out one run at a time. The JS side
+// assembles the shared function set and baseline from these.
+//
+// JS signature: cestRunCEst(files) -> result
+//
+//	files: { "callgrind.out.123": "<file text>", ... }   // ONE run's files
+//
+// Returns { formula, total, cest: { "fn": CEst, ... } } on success or { error }.
+func cestRunCEst(this js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": panicMessage(r)}
+		}
+	}()
+
+	if len(args) < 1 {
+		return map[string]any{"error": "cestRunCEst(files): 1 arg required"}
+	}
+	cands := candidatesFromJS(args[0])
+	cats := cest.DefaultCategories()
+	// No patterns: we want every function's self CEst (the matrix rows).
+	dr, err := cest.Analyze("run", cands, nil, cats, 0)
+	if err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+	cestObj := make(map[string]any, len(dr.Res.FnSelf))
+	for name, ev := range dr.Res.FnSelf {
+		cestObj[name] = ev.CEst()
+	}
+	return map[string]any{
+		"formula": cest.Formula,
+		"total":   dr.Res.Total.CEst(),
+		"cest":    cestObj,
+	}
+}
+
 // cestRunDetail is the JS bridge for the per-run detail view (one run's full
 // function table). cestMatrix returns only each function's CEst across runs;
 // the detail view needs every raw counter for a single run, so this parses one
@@ -373,6 +414,7 @@ func main() {
 	js.Global().Set("analyzeCest", js.FuncOf(analyzeCest))
 	js.Global().Set("cestMatrix", js.FuncOf(cestMatrix))
 	js.Global().Set("cestReport", js.FuncOf(cestReport))
+	js.Global().Set("cestRunCEst", js.FuncOf(cestRunCEst))
 	js.Global().Set("cestRunDetail", js.FuncOf(cestRunDetail))
 	// Block forever: the page calls analyzeCest on demand, so the Go program
 	// must stay alive after main returns control to the JS event loop.

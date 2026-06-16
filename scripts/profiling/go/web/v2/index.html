@@ -36,6 +36,16 @@
         <!-- Hidden directory picker: each pick is one run (one test directory). -->
         <input id="dir-input" type="file" webkitdirectory multiple hidden />
         <div class="chips" id="chips"></div>
+        <!-- Progress while a multi-run pick is read from disk and analyzed. Adding
+             one run updates instantly; 10–20 runs take long enough to need feedback.
+             The phase stepper makes clear that reading files is quick and the time
+             is spent in the analysis step. -->
+        <div class="loadphase" id="loadphase" hidden></div>
+        <div class="loadbar" id="loadbar" hidden role="status" aria-live="polite">
+          <span class="spin" aria-hidden="true"></span>
+          <span class="loadbar-msg" id="loadbar-msg">Loading…</span>
+          <div class="loadbar-track"><i id="loadbar-fill"></i></div>
+        </div>
         <p class="empty-hint" id="empty-hint">No runs yet — “Add runs” to load
           <code>callgrind.out.*</code> files. Pick a leaf test directory for one run, or a parent
           (a run# or the whole <code>&lt;sha&gt;</code> directory) to load every run beneath it.</p>
