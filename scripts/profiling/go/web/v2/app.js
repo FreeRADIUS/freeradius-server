@@ -409,10 +409,12 @@ function labelLines(label) {
   const parts = String(label).split("/");
   return parts.map((p, i) => esc(p) + (i < parts.length - 1 ? "/" : "")).join("<br>");
 }
-// diverging heat colour: green (improvement) ← neutral → red (regression)
+// diverging heat colour: green (improvement) ← neutral → red (regression).
+// Near-zero cells (|Δ| < 1%) are left uncolored so only meaningful changes draw
+// the eye; a function absent from the p50 baseline is "new" (pale pink).
 function heatColor(d) {
   if (!isFinite(d)) return "#fbeceb";
-  if (Math.abs(d) < 1) return "#f7f6ef";
+  if (Math.abs(d) < 1) return "transparent";
   const mag = Math.min(Math.abs(d), 90) / 90;
   const L = 94 - mag * 42;
   return d > 0 ? "hsl(8 72% " + L + "%)" : "hsl(150 42% " + L + "%)";
@@ -791,6 +793,7 @@ function legendFor() {
     + '<span><span class="swatch" style="background:hsl(8 72% 70%)"></span>regression</span>'
     + '<span><span class="swatch" style="background:hsl(150 42% 70%)"></span>improvement</span>'
     + '<span><span class="swatch" style="background:#e7f3ec"></span>baseline (p50)</span>'
+    + "<span>· blank ≈ 0% (no change)</span>"
     + "<span>· outlined ≥ " + NTHRESH + "%</span>";
 }
 
