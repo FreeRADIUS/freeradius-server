@@ -36,6 +36,12 @@ jobs:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
+    #  id-token lets the profiling leg mint a GitHub OIDC token to authenticate
+    #  uploads to the prof-results store which is validated by its access.lua.
+    permissions:
+      contents: read
+      id-token: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -203,12 +209,31 @@ jobs:
       #  mode. Skipped in service mode (nothing to upload).
       #
       - name: Upload profiling results
+        id: upload-prof-results
         if: ${{ matrix.mode == 'profiling' && always() }}
         uses: actions/upload-artifact@v6
         with:
           name: prof-results-${{ github.sha }}
           path: prof-results/
           if-no-files-found: ignore
+
+      #
+      #  Push the same prof-results/ tree into the durable prof-results store
+      #  so the browser UI can read it. The script tars the tree and POSTs the
+      #  tarball to the store's ingest endpoint, which numbers the runs,
+      #  updates its indexes, and refreshes its manifest server-side; see the
+      #  script header for the auth and proxy details. A failed publish fails
+      #  the leg.
+      #
+      #  Gated on the artifact step having found files: with if-no-files-found:
+      #  ignore, upload-artifact leaves artifact-id empty when the tree is
+      #  absent/empty, so this step is skipped rather than publishing nothing.
+      #
+      - name: Publish profiling results to the prof-results store
+        if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
+        env:
+          PROF_RESULTS_URL: "https://cinfra-ca.inkbridge.io"
+        run: scripts/ci/publish-profiling-results.sh
 
       #
       #  If the CI has failed and the branch is ci-debug
