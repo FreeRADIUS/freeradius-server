@@ -638,6 +638,68 @@ static char lua_release_xlat_cmd[] =
 	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1";									/* 12 */
 
+/** Lua script for assigning a static lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] THE ip address to create a static assignment for.
+ * - ARGV[2] The owner to assign the static lease to.
+ * - ARGV[3] The range identifier.
+ * - ARGV[4] Wall time (seconds since epoch)
+ *
+ * Checks whether the IP already has a static assignment, and
+ * whether the owner is already associated with a different IP.
+ *
+ * If check pass, sets the static flag on the IP entry in the ZSET and
+ * creates the association between the IP and the owner.
+ *
+ * Returns
+ *  - 0 if no assignment is made.
+ *  - 1 if the IP assignment is made.
+ */
+static char lua_assign_cmd[] =
+	"local pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 1 */
+	"local owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[2]" EOL	/* 2 */
+	"local ip_key = '{' .. KEYS[1]..'}:"IPPOOL_ADDRESS_KEY":' .. ARGV[1]" EOL	/* 3 */
+
+	/*
+	 *	Check the address doesn't already have a static assignment.
+	 */
+	"local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[1]))" EOL		/* 4 */
+	"if expires and expires >= " STRINGIFY(IPPOOL_STATIC_BIT) " then" EOL		/* 5 */
+	"  return 0" EOL								/* 6 */
+	"end" EOL									/* 7 */
+
+	/*
+	 *	Check current assignment for device.
+	 */
+	"local found = redis.call('GET', owner_key)" EOL				/* 8 */
+	"if found and found ~= ARGV[1] then" EOL					/* 9 */
+	"  return 0" EOL								/* 10 */
+	"end" EOL									/* 11 */
+
+	/*
+	 *	If expires is in the future, check it is not
+	 *	another owner.
+	 */
+	"if expires and expires > tonumber(ARGV[4]) then" EOL				/* 12 */
+	"  found = redis.call('HGET', ip_key, 'device')"				/* 13 */
+	"  if found and found ~= ARGV[2] then" EOL					/* 14 */
+	"    return 0" EOL								/* 15 */
+	"  end" EOL									/* 16 */
+	"end" EOL									/* 17 */
+
+	/*
+	 *	All checks passed - set the assignment.
+	 */
+	"expires = (expires or 0) + " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 18 */
+	"redis.call('ZADD', pool_key, 'CH', expires, ARGV[1])" EOL			/* 19 */
+	"redis.call('SET', owner_key, ARGV[1])" EOL					/* 20 */
+	"redis.call('HSET', ip_key, 'device', ARGV[2], 'counter', 0)" EOL		/* 21 */
+	"if ARGV[3] then" EOL								/* 22 */
+	"  redis.call('HSET', ip_key, 'range', ARGV[3])" EOL				/* 23 */
+	"end" EOL									/* 24 */
+	"return 1";									/* 25 */
+
 static uint32_t uint32_gen_mask(uint8_t bits)
 {
 	if (bits >= 32) return 0xffffffff;
@@ -2205,6 +2267,59 @@ static xlat_action_t redis_ippool_addresses_modify_xlat(UNUSED TALLOC_CTX *ctx, 
 	return redis_ippool_modify_common(request, inst, t, pool, start, end, range, prefix, num_addr, step);
 }
 
+static xlat_arg_parser_t const redis_ippool_assign_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_PREFIX },	// IP / prefix
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Owner
+	{ .concat = true, .type = FR_TYPE_STRING },				// Range
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_assign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					      xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *ipaddr, *owner, *range;
+	redis_ippool_tool_rctx_t	*rctx;
+	int				cmd_len;
+	fr_redis_async_rcode_t		rcode;
+	char				ip_buff[FR_IPADDR_PREFIX_STRLEN];
+	uint8_t	const			*range_str = NULL;
+	size_t				range_len = 0;
+
+	XLAT_ARGS(in, &pool, &ipaddr, &owner, &range);
+
+	if (range && (range->type == FR_TYPE_STRING)) {
+		range_str = (uint8_t const *)range->vb_strvalue;
+		range_len = range->vb_length;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_tool_rctx_t));
+	talloc_set_destructor(rctx, _redis_ippool_tool_rctx_free);
+
+	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, 1));
+
+	IPPOOL_SPRINT_IP(ip_buff, &ipaddr->vb_ip, ipaddr->vb_ip.prefix);
+	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "EVAL %s 1 %b %s %b %b %i", lua_assign_cmd,
+				     (uint8_t const *)pool->vb_strvalue, pool->vb_length, ip_buff,
+				     (uint8_t const *)owner->vb_strvalue, owner->vb_length,
+				     range_str, range_len, fr_time_to_sec(fr_time()));
+	if (cmd_len < 0) return XLAT_ACTION_FAIL;
+
+	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results, rctx);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
+					     pool->vb_length, rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, t->rtcluster, t->cw, inst->coord_pair_reg,
+					"Failed to launch Redis command", XLAT_ACTION_FAIL);
+
+	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
+				 ~FR_SIGNAL_CANCEL, rctx);
+}
+
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
@@ -2442,6 +2557,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.modify", redis_ippool_addresses_modify_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_addresses_modify_args);
+
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "address.assign", redis_ippool_assign_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_assign_args);
 
 	return 0;
 }
