@@ -2,10 +2,10 @@
 
 == Description
 
-All versions of the BAY software prior to _18.0.2_ are broken in regards
-to the `Message-Authenticator`. The software sends a strictly MD5 encoded secret
-instead of the encoding required by the RFC. This has been fixed in
-*18.0.2* only.
+All versions of the BAY software prior to _18.0.2_ are broken in
+regards to the `Message-Authenticator`. The software sends a strictly
+MD5 encoded secret instead of the encoding required by the RFC. This
+has been fixed in *18.0.2* only.
 
 If you see messages in the radius log like:
 
@@ -13,7 +13,8 @@ If you see messages in the radius log like:
 Received packet from xxx.xxx.xxx.xxx with invalid Message-Authenticator!
 ```
 
-Then you MUST upgrade the software on your Bay Annex. There is NO other solution to the problem.
+Then you MUST upgrade the software on your Bay Annex. There is NO
+other solution to the problem.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

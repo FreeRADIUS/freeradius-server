@@ -9,7 +9,7 @@ and even for performing remote administration of servers.
 For basic configuration management one only has to:
 
 [source,bash]
----- 
+----
 cd <config_dir>
 git init
 git add .
@@ -19,28 +19,28 @@ git commit --message 'Initial commit of FreeRADIUS configuration'
 Then every time a change is made:
 
 [source,bash]
----- 
+----
 git commit -a --message 'Added support for xyz'
 ----
 
 To see a list of changes:
 
 [source,bash]
----- 
+----
 git log
 ----
 
 To know who to blame:
 
 [source,bash]
----- 
+----
 git blame
 ----
 
 And if it's all gone horribly wrong:
 
 [source,bash]
----- 
+----
 git log # To find the last known good commit id
 git revert <commit id>
 ----
@@ -73,9 +73,11 @@ https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/gi
 chmod +x post-receive
 ----
 
-Edit the parameters at the top of the file to work with with your system (defaults are for Ubuntu 10.04 LTS)
+Edit the parameters at the top of the file to work with with your
+system (defaults are for Ubuntu 10.04 LTS)
 
-Tweak the git configuration to allow commits to the currently checked out branch::
+Tweak the git configuration to allow commits to the currently checked
+out branch::
 
 [source,bash]
 ----
@@ -121,15 +123,15 @@ To ssh://<user>@<server>/usr/local/etc/raddb
 == What just happened?
 
 First the commit was transferred to the remote server and merged with
-the commits already there, then our post-receive hook was
-executed. The post receive hook updated the working copy to the
-repository HEAD **(throwing away any local changes, be careful)**.
+the commits already there, then our post-receive hook was executed.
+The post receive hook updated the working copy to the repository HEAD
+**(throwing away any local changes, be careful)**.
 
-`radiusd -C` was called to check the new config was valid, it
-appeared to be valid so the server was restarted to load in the new
-config parameters, restart seemed to go ok so the *stable* tag was
-updated to point to the new commit (tags are user assigned aliases for
-particular commits).
+`radiusd -C` was called to check the new config was valid, it appeared
+to be valid so the server was restarted to load in the new config
+parameters, restart seemed to go ok so the *stable* tag was updated to
+point to the new commit (tags are user assigned aliases for particular
+commits).
 
 == The stable tag
 

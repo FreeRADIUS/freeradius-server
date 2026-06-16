@@ -1,15 +1,19 @@
 = OSX
 
-FreeRADIUS can be built and installed on OSX platforms, however some environment setup is required. Additional dev tools are also configured before the server installation.
+FreeRADIUS can be built and installed on OSX platforms, however some
+environment setup is required. Additional dev tools are also
+configured before the server installation.
 
 == Dependencies
 
 === Homebrew
 
-Install the https://brew.sh[Homebrew] package manager to streamline the installation process on OSX platforms. It'll make your life on macOS far simpler. Once you've installed Homebrew, you can install more from the command line:
+Install the https://brew.sh[Homebrew] package manager to streamline
+the installation process on OSX platforms. It'll make your life on
+macOS far simpler. Once you've installed Homebrew, you can install
+more from the command line:
 
-```bash
-brew install talloc
+```bash brew install talloc
 ```
 === Install script
 
@@ -55,8 +59,8 @@ make
 The information below is for future reference.
 
 ```
-cp ./org.freeradius.radius.plist /Library/LaunchDaemons
-launchctl load -w Library/LaunchDaemons/org.freeradius.radiusd.plist
+cp ./org.freeradius.radius.plist /Library/LaunchDaemons launchctl load
+-w Library/LaunchDaemons/org.freeradius.radiusd.plist
 ```
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -7,38 +7,48 @@ greatly increase the chances of your change being accepted.
 
 == Submit patches or diff's to the FreeRADIUS project
 
-GitHub is the preferred method for submitting code changes. You can email small diffs for a single change or file. For big changes, like a large patch or modifying several files, submit a pull request to the project’s GitHub repository. This approach helps the FreeRADIUS team manage contributions more effectively. It ensures that large or complex changes are properly tracked and discussed.
+GitHub is the preferred method for submitting code changes. You can
+email small diffs for a single change or file. For big changes, like a
+large patch or modifying several files, submit a pull request to the
+project's GitHub repository. This approach helps the FreeRADIUS team
+manage contributions more effectively. It ensures that large or
+complex changes are properly tracked and discussed.
 
 === *Describe your changes*
 
 Describe the technical details of the changes in your patch or commit.
 
-Be as specific as possible. Avoid using vague descriptions like "update file X", "bug fix for file X", or "this patch updates subsystem X, please apply".
+Be as specific as possible. Avoid using vague descriptions like
+"update file X", "bug fix for file X", or "this patch updates
+subsystem X, please apply".
 
-If your description gets too long, it may be a sign that you should split your commit, as explained in the next point.
+If your description gets too long, it may be a sign that you should
+split your commit, as explained in the next point.
 
 === *Separate your changes*
 
-Separate each logical change into its own commit. For example, if your changes include both bug fixes and performance enhancements for a single module, separate those changes into two or more patches.
+Separate each logical change into its own commit. For example, if your
+changes include both bug fixes and performance enhancements for a
+single module, separate those changes into two or more patches.
 
-On the other hand, if you make a single change to numerous files, group
-those changes into a single commit. Thus a single LOGICAL change is
-contained within a single commit.
+On the other hand, if you make a single change to numerous files,
+group those changes into a single commit. Thus a single LOGICAL change
+is contained within a single commit.
 
 If one commit depends on another commit in order for a change to be
 complete, that is OK. Simply note "this commit depends on commit X" in
 the extended commit description.
 
-If your commit includes significant whitespace changes these should also
-be broken out into another, separate, commit.
-
+If your commit includes significant whitespace changes these should
+also be broken out into another, separate, commit.
 
 == Patches via GitHub
 
-See the xref:github.adoc[Using GitHub] page for how to contribute patches via
-GitHub.
+See the xref:github.adoc[Using GitHub] page for how to contribute
+patches via GitHub.
 
-Refer to https://help.github.com/articles/fork-a-repo[Forking GitHub repositories] for additional help on setting up your repository.
+Refer to https://help.github.com/articles/fork-a-repo[Forking GitHub
+repositories] for additional help on setting up your repository.
 
 == Diffs via Email
 
@@ -49,7 +59,8 @@ email.
 ====
 Only small patches will be accepted via email. Large patches, or
 patches that modify a number of files MUST be submitted as a
-https://github.com/FreeRADIUS/freeradius-server/pulls[pull-request via GitHub].
+https://github.com/FreeRADIUS/freeradius-server/pulls[pull-request via
+GitHub].
 ====
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -42,10 +42,10 @@ converted to printable strings, and then back to it's real data type
 (`ipaddr` in the above example).  Removing the double quotes means
 that there is less work going on, which means higher performance.
 
-
 == Best Practise
 
-In v3, many people had a habit of just adding `"..."` around _everything_.  For example:
+In v3, many people had a habit of just adding `"..."` around
+_everything_.  For example:
 
 .Bad practice - using "" everywhere
 [source,unlang]
@@ -61,9 +61,11 @@ if ("%{User-Name}" == "bob") {
 }
 ----
 
-This practice is not recommended.  It was never necessary, and it's not clear why it became a (bad) habit.
+This practice is not recommended.  It was never necessary, and it's
+not clear why it became a (bad) habit.
 
-In v4, it is clearer, simpler, and faster to just use `unlang` syntax correctly.
+In v4, it is clearer, simpler, and faster to just use `unlang` syntax
+correctly.
 
 .Good practice - just rely on the server to do the right thing
 

@@ -1,13 +1,16 @@
 = Getting Started
 
-To begin with FreeRADIUS, install it on your system and configure a basic setup with a test user and client. Next, test the server's functionality in debug mode (`radiusd -X`). This process includes editing the client and users files to add a test user and client.
+To begin with FreeRADIUS, install it on your system and configure a
+basic setup with a test user and client. Next, test the server's
+functionality in debug mode (`radiusd -X`). This process includes
+editing the client and users files to add a test user and client.
 
 == Get the source
 
-FreeRADIUS can be installed using the pre-built packages available from
-https://packages.inkbridgenetworks.com[InkBridge Networks]. This site
-contains packages for all common OS platforms and has the most current
-packages for the latest release.
+FreeRADIUS can be installed using the pre-built packages available
+from https://packages.inkbridgenetworks.com[InkBridge Networks]. This
+site contains packages for all common OS platforms and has the most
+current packages for the latest release.
 
 FreeRADIUS can also be installed from the source code. Please see the
 xref:howto:installation/index.adoc[installation guide] for
@@ -16,8 +19,8 @@ instructions.
 [NOTE]
 ====
 Debian-based systems call the server daemon *freeradius* instead of
-radiusd and the configuration files are located in
-`/etc/freeradius/` instead of `/etc/raddb/`.
+radiusd and the configuration files are located in `/etc/freeradius/`
+instead of `/etc/raddb/`.
 ====
 
 == Start the server
@@ -37,21 +40,23 @@ xref:debugging/radiusd_X.adoc[debugging] page for more details.
 == Initial tests
 
 Test basic authentication by editing the
-xref:reference:raddb/mods-config/files/users.adoc[users] file and add the
-following line at the top of the file:
+xref:reference:raddb/mods-config/files/users.adoc[users] file and add
+the following line at the top of the file:
 
 ```
 testing Password.Cleartext := "password"
 ```
 
-Save the file and restart the server in xref:debugging/radiusd_X.adoc[debugging mode] (`radiusd -X`).
-Open a second terminal window and run radtest by issuing the command:
+Save the file and restart the server in
+xref:debugging/radiusd_X.adoc[debugging mode] (`radiusd -X`). Open a
+second terminal window and run radtest by issuing the command:
 
 ```
 radtest testing password 127.0.0.1 0 testing123
 ```
 
-The expected result is that the server responds with an `Access-Accept`. If it doesn't, the debug log will show why.
+The expected result is that the server responds with an
+`Access-Accept`. If it doesn't, the debug log will show why.
 
 If you do see an `Access-Accept`, then congratulations, the following
 authentication methods now work for the testing user:
@@ -68,9 +73,9 @@ wireless access point (WAP) or network access switch (NAS). or other
 form of NAS. The network clients or end-users such as laptops,
 tablets, etc. do not talk directly to the RADIUS server.
 
-The above test runs `radtest` from localhost. It is useful to add a new
-client, which can be done by editing the clients.conf file. Add the
-following content:
+The above test runs `radtest` from localhost. It is useful to add a
+new client, which can be done by editing the clients.conf file. Add
+the following content:
 
 ```
 client new {
@@ -88,7 +93,8 @@ client must use the same secret as configured above in the client
 section.
 
 Then restart the server in debugging mode, and run a simple test using
-the testing user. You should see an `Access-Accept` in the server output
+the testing user. You should see an `Access-Accept` in the server
+output
 
 The following steps outline the best known method for configuring the
 server. Following them lets you create complex configurations with a
@@ -100,7 +106,8 @@ and wasted effort.
 To create complex configurations with a minimum of effort, follow the
 steps to configure the server *ONE* change at a time:
 
-* Start with a "known working" configuration, such as supplied by the default installation.
+* Start with a "known working" configuration, such as supplied by the
+  default installation.
 * Make one small change to the configuration file.
 * Start the server in debugging mode (`radiusd -X`).
 * Verify that the results are what you expect.
@@ -109,7 +116,9 @@ Your next step is to configure more server components.
 
 ## More information
 
-For specific problem solving, we recommend the xref:howto:index.adoc[Howto] guide. For configuring and testing individual modules, refer to
+For specific problem solving, we recommend the
+xref:howto:index.adoc[Howto] guide. For configuring and testing
+individual modules, refer to
 xref:howto:modules/configuring_modules.adoc[Modules].
 
 All of the xref:reference:raddb/index.adoc[Configuration Files] are

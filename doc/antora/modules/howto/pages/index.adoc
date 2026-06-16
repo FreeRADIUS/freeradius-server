@@ -1,20 +1,26 @@
 = Howto Guides
 
 This section describe how to perform various common tasks with
-FreeRADIUS. Each sub-section provides worked examples such as using the modules in common deployment scenarios or building packages.
+FreeRADIUS. Each sub-section provides worked examples such as using
+the modules in common deployment scenarios or building packages.
 
 The section is broken down into the following top-level areas:
 
-xref:howto:installation/index.adoc[Install and Upgrade] contains instructions for building and installing FreeRADIUS from packages and source.
+xref:howto:installation/index.adoc[Install and Upgrade] contains
+instructions for building and installing FreeRADIUS from packages and
+source.
 
-xref:modules/configuring_modules.adoc[Configure Modules] provides worked examples on using the various modules in common deployment scenarios.
+xref:modules/configuring_modules.adoc[Configure Modules] provides
+worked examples on using the various modules in common deployment
+scenarios.
 
 * xref:protocols/index.adoc[Protocols]
 ** xref:protocols/dhcp/index.adoc[DHCP]
 *** xref:protocols/dhcp/prepare.adoc[Preparation]
 *** xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
 *** xref:protocols/dhcp/test.adoc[Testing the DHCP service]
-*** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy] that includes ip pool management.
+*** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy] that
+    includes ip pool management.
 
 ** Security Certificates
 *** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
@@ -31,16 +37,15 @@ xref:modules/configuring_modules.adoc[Configure Modules] provides worked example
 *** xref:tuning/performance-testing.adoc[Performance Testing]
 *** xref:tuning/tuning_guide.adoc[Tuning Guide]
 
-If you have a topic you'd like to see included in the list of howtos, contact
-the developers on the
+If you have a topic you'd like to see included in the list of howtos,
+contact the developers on the
 https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
 mailing list].
 
-Some of the documents here started life as pages on the old
-Wiki. However, there were eventually very few contributions to it.
-The full documentation is now maintained by [InkBridge
-Networks](https://inkbridgenetworks.com) (previously Network
-RADIUS).
+Some of the documents here started life as pages on the old Wiki.
+However, there were eventually very few contributions to it. The full
+documentation is now maintained by [InkBridge
+Networks](https://inkbridgenetworks.com) (previously Network RADIUS).
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

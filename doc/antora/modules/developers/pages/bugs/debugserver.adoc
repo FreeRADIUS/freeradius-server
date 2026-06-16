@@ -44,7 +44,8 @@ and you should be back at the gdb prompt:
 (gdb)
 ```
 
-Next, follow the instructions in the xref:developers:bugs/info.adoc[Extract Information].
+Next, follow the instructions in the
+xref:developers:bugs/info.adoc[Extract Information].
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

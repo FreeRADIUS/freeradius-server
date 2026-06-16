@@ -30,23 +30,20 @@ received or sent.
 
 [NOTE]
 ====
-For accounting, packets are also processed through an
-`accounting` section named after Acct-Status-Type. This process is
-similar to `authenticate` for `Access-Request` packets. The goal
-here is to allow a common pre-processing of accounting packets in the
-`recv Accounting-Request` packet, followed by type-specific processing
-in `accounting %{Acct-Status-Type}`. See sites-available/default for
+For accounting, packets are also processed through an `accounting`
+section named after Acct-Status-Type. This process is similar to
+`authenticate` for `Access-Request` packets. The goal here is to allow
+a common pre-processing of accounting packets in the `recv
+Accounting-Request` packet, followed by type-specific processing in
+`accounting %{Acct-Status-Type}`. See sites-available/default for
 examples and more information.
 ====
 
 == Update Sections
 
 A major difference between v3 and v4 is that `update` sections are no
-longer necessary.  See the xref:howto:upgrade/unlang.adoc[Unlang Syntax] pages for more guidance and
-details.
-
-
-
+longer necessary.  See the xref:howto:upgrade/unlang.adoc[Unlang
+Syntax] pages for more guidance and details.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

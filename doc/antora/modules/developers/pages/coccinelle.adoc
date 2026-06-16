@@ -1,13 +1,17 @@
 = Semantic Patches
 
-Coccinelle is an open source tool that can analyse and transform C code according to specified rules creating SmPL (Semantic Patch Language) patches. Semantic patches are much more powerful than patches or regular expressions. so, that's why we use it.
+Coccinelle is an open source tool that can analyse and transform C
+code according to specified rules creating SmPL (Semantic Patch
+Language) patches. Semantic patches are much more powerful than
+patches or regular expressions. so, that's why we use it.
 
 About Coccinelle
 
 * Official site http://coccinelle.lip6.fr/
 * Howto http://coccinelle.lip6.fr/papers/tutorial.pdf
 * The SmPL Grammar http://coccinelle.lip6.fr/docs/main_grammar.html
-* An Introduction to Coccinelle (video) https://www.youtube.com/watch?v=buZrNd6XkEw
+* An Introduction to Coccinelle (video)
+  https://www.youtube.com/watch?v=buZrNd6XkEw
 
 == Maintainer work
 
@@ -33,7 +37,9 @@ $ make coccinelle.patch
 
 == Proposing new semantic patches
 
-New semantic patches can be proposed and submitted. they should be organized by name in `scripts/coccinelle/` with good description inside the script or follow the below tutorial.
+New semantic patches can be proposed and submitted. they should be
+organized by name in `scripts/coccinelle/` with good description
+inside the script or follow the below tutorial.
 
 === 1. Create your file in `scripts/coccinelle/foo.cocci`
 

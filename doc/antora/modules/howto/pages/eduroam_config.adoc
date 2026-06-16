@@ -2,37 +2,64 @@
 
 ## Overview
 
-This guide is intended to help any site wishing to join eduroam implement the IdP (home service) and SP (visited service) eduroam components.  It contains sample configuration files that may be used in place of the normal v3.0.x configuration files that ship with the server.
+This guide is intended to help any site wishing to join eduroam
+implement the IdP (home service) and SP (visited service) eduroam
+components.  It contains sample configuration files that may be used
+in place of the normal v3.0.x configuration files that ship with the
+server.
 
-In addition to the configuration files here, you will need to configure a module to talk to your user store (LDAP, Novell, Active Directory, SQL).  See notes in the inner-tunnel configuration.
+In addition to the configuration files here, you will need to
+configure a module to talk to your user store (LDAP, Novell, Active
+Directory, SQL).  See notes in the inner-tunnel configuration.
 
 The general order of operations is:
 
-1. Install FreeRADIUS >= 3.0.15 from packages or by building from source.
-2. Replace the relevant configuration files in ``/etc/raddb`` or ``/etc/freeradius`` with the ones found here.
+1. Install FreeRADIUS >= 3.0.15 from packages or by building from
+   source.
+2. Replace the relevant configuration files in ``/etc/raddb`` or
+   ``/etc/freeradius`` with the ones found here.
 3. Start the server with ``radiusd -X || freeradius -X``
-4. Use the test files with ``eapol_test`` to verify the server is functional.
+4. Use the test files with ``eapol_test`` to verify the server is
+   functional.
 5. Stop the server.
-6. Remove the call to the ``files`` module in the inner-tunnel, and either configure ``ntlm_auth``, the ldap module, or the sql module.
-7. Modify the ``eapol_test`` files with real credentials in your user directory (preferably a test account).
+6. Remove the call to the ``files`` module in the inner-tunnel, and
+   either configure ``ntlm_auth``, the ldap module, or the sql module.
+7. Modify the ``eapol_test`` files with real credentials in your user
+   directory (preferably a test account).
 8. Start the server with ``radiusd -X || freeradius -X``
 9. Check that the ``eapol_test`` files work with *REAL* credentials.
 10. Stop the server.
-11. Replace the dummy certs in the ``certs`` directory (``${confdir}/certs``) with ones issued by [edupki](https://www.edupki.org) or a commercial certification authority.
-12. Alter the ``eapol_test`` files so they specify a certification authority.
-13. Check that the ``eapol_test`` files work with a *REAL* certificate, and *REAL* credentials.
+11. Replace the dummy certs in the ``certs`` directory
+    (``${confdir}/certs``) with ones issued by
+    [edupki](https://www.edupki.org) or a commercial certification
+    authority.
+12. Alter the ``eapol_test`` files so they specify a certification
+    authority.
+13. Check that the ``eapol_test`` files work with a *REAL*
+    certificate, and *REAL* credentials.
 14. Clone the config onto two servers (or clone the server).
-15. Pass the server IP addresses of those servers to your NRO (National RADIUS Operator).  They will usually issue you secrets and tell you the IP addresses of the FLRS (Federation Level RADIUS Servers), which you need to put in ``proxy.conf`` and ``clients.conf``
+15. Pass the server IP addresses of those servers to your NRO
+    (National RADIUS Operator).  They will usually issue you secrets
+    and tell you the IP addresses of the FLRS (Federation Level RADIUS
+    Servers), which you need to put in ``proxy.conf`` and
+    ``clients.conf``
 
-A separate page gives more detail on configuring efficient logging for eduroam.
+A separate page gives more detail on configuring efficient logging for
+eduroam.
 
 ## Tooling
 
 ### eapol_test
 
-Before you begin you should build a copy of ``eapol_test``.  ``eapol_test`` is an extremely useful tool produced by the hostapd project which can simulate both a Wireless Access Point and a Supplicant (client).  Unfortunately it's not usually packaged and can be quite challenging to build manually.
+Before you begin you should build a copy of ``eapol_test``.
+``eapol_test`` is an extremely useful tool produced by the hostapd
+project which can simulate both a Wireless Access Point and a
+Supplicant (client).  Unfortunately it's not usually packaged and can
+be quite challenging to build manually.
 
-A script is included in the FreeRADIUS CIT suite that will automatically build ``eapol_test``, which you should use. Instructions on building it are as follows:
+A script is included in the FreeRADIUS CIT suite that will
+automatically build ``eapol_test``, which you should use. Instructions
+on building it are as follows:
 
 #### Dependencies
 
@@ -65,19 +92,23 @@ You should now have a functional ``eapol_test`` in your path.
 
 ## Configuration
 
-You should replace existing configuration files in their entirety with the configuration file contents provided below.
+You should replace existing configuration files in their entirety with
+the configuration file contents provided below.
 
 ### The outer virtual server
 
-This is a bare bones configuration file for the outer virtual-server.  This virtual-server handles
-the outer EAP conversation, i.e. data outside of the TLS tunnel.
+This is a bare bones configuration file for the outer virtual-server.
+This virtual-server handles the outer EAP conversation, i.e. data
+outside of the TLS tunnel.
 
 It does the following:
 - Checks the sanity of incoming ``User-Name`` strings.
-- Routes requests that cannot be processed locally to the NRO (National Roaming Operator).
+- Routes requests that cannot be processed locally to the NRO
+  (National Roaming Operator).
 - Filters responses from remote IdPs.
 - Calls the EAP module for authentication of local users.
-- Assigns a VLAN based on whether the user is a local user, or was authenticated by a remote IdP.
+- Assigns a VLAN based on whether the user is a local user, or was
+  authenticated by a remote IdP.
 - Logs authentication successes and failures.
 
 ***
@@ -86,116 +117,105 @@ It does the following:
 
 ```text
 # The domain users will add to their username to have their credentials
+
 # routed to your institution.  You will also need to register this
+
 # and your RADIUS server addresses with your NRO.
+
 operator_name = "<your-institutions-domain>"
 
 # The VLAN to assign eduroam visitors
+
 eduroam_default_guest_vlan = "<guest-vid>"
 
 # The VLAN to assign your students/staff
+
 eduroam_default_local_vlan = "<local-vid>"
 
-server eduroam {
-	listen {
-		type = auth
-		ipaddr = *
-		port = 1812
-	}
+server eduroam { listen { type = auth ipaddr = * port = 1812 }
 
-	authorize {
+authorize {
 		# Log requests before we change them
-		linelog_recv_request
+
+linelog_recv_request
 
 		# split_username_nai is a policy in the default distribution to
+
 		# split a username into username and domain.  We reject user-name
+
 		# strings without domains, as they're not routable.
-		split_username_nai
-		if (noop || !Stripped-User-Domain) {
-			reject
-		}
+
+split_username_nai if (noop || !Stripped-User-Domain) { reject }
 
 		# Send the request to the NRO for your region.
+
 		# The details of the FLRs (Federation Level RADIUS servers)
+
 		# are in proxy.conf.
+
 		# You can make this condition as complex as you like, to
+
 		# include additional subdomains just concatenate the conditions
+
 		# with &&.
-		if (Stripped-User-Domain != "${operator_name}") {
-			update {
-				control.Load-Balance-Key := Calling-Station-ID
-				control.Proxy-To-Realm := 'eduroam_flr'
+
+if (Stripped-User-Domain != "${operator_name}") { update {
+control.Load-Balance-Key := Calling-Station-ID control.Proxy-To-Realm
+:= 'eduroam_flr'
 
 				# Operator name (RFC 5580) identifies the network the
+
 				# request originated from. It's not absolutely necessary
+
 				# but it helps with debugging.
-				request:Operator-Name := "1${operator_name}"
-			}
-			return
-		}
+
+request:Operator-Name := "1${operator_name}" } return }
 
 		# If the EAP module returns 'ok' or 'updated', it means it has handled
+
 		# the request and we don't need to call any other modules in this
+
 		# section.
-		eap {
-			ok = return
-			updated = return
-		}
-	}
 
-	pre-proxy {
-		attr_filter.pre-proxy
-		linelog_send_proxy_request
-	}
+eap { ok = return updated = return } }
 
-	post-proxy {
-		attr_filter.post-proxy
-		linelog_recv_proxy_response
-	}
+pre-proxy { attr_filter.pre-proxy linelog_send_proxy_request }
 
-	authenticate {
-		eap
-	}
+post-proxy { attr_filter.post-proxy linelog_recv_proxy_response }
 
-	post-auth {
+authenticate { eap }
+
+post-auth {
 		# To implement eduroam you must:
+
 		# - Use wireless access points or a controller which supports
+
                 #   dynamic VLAN assignments.
+
 		# - Have that feature enabled.
+
 		# - Have the guest_vlan/local_vlan available to the controller,
+
                 #   or to all your access points.
+
 		# eduroam user traffic *MUST* be segregated, this is *NOT* optional.
-		update reply {
-			Tunnel-Type := VLAN
-			Tunnel-Medium-Type := IEEE-802
-		}
-		if (control.Proxy-To-Realm) {
-			update reply {
-				Tunnel-Private-Group-ID = ${eduroam_default_guest_vlan}
-			}
-		}
-		else {
-			update reply {
-				Tunnel-Private-Group-ID = ${eduroam_default_local_vlan}
-			}
-		}
+
+update reply { Tunnel-Type := VLAN Tunnel-Medium-Type := IEEE-802 } if
+(control.Proxy-To-Realm) { update reply { Tunnel-Private-Group-ID =
+${eduroam_default_guest_vlan} } } else { update reply {
+Tunnel-Private-Group-ID = ${eduroam_default_local_vlan} } }
 
 		# We're sending a response to one of OUR network devices for one of
+
 		# OUR users so provide it with the real user-identity.
-		if (session-state.Stripped-User-Name) {
-			update reply {
-				User-Name := "%{session-state.Stripped-User-Name}@%{Stripped-User-Domain}"
-			}
-		}
 
-		linelog_send_accept
+if (session-state.Stripped-User-Name) { update reply { User-Name :=
+"%{session-state.Stripped-User-Name}@%{Stripped-User-Domain}" } }
 
-		Post-Auth-Type REJECT {
-			attr_filter.access_reject
-			linelog_send_reject
-		}
-	}
-}
+linelog_send_accept
+
+Post-Auth-Type REJECT { attr_filter.access_reject linelog_send_reject
+} } }
 ```
 ***
 

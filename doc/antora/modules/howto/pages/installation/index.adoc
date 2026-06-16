@@ -1,6 +1,7 @@
 = Install and Upgrade
 
-FreeRADIUS is available from many locations. Select one of the options below to begin installing your server:
+FreeRADIUS is available from many locations. Select one of the options
+below to begin installing your server:
 
 * xref:howto:installation/packages.adoc[Inbridge Networks packages]
 * xref:howto:installation/source.adoc[Source code]
@@ -9,87 +10,91 @@ FreeRADIUS is available from many locations. Select one of the options below to 
 Get the FreeRADIUS source from one of the following locations:
 include::partial$get_the_source.adoc[]
 
-We recommend using the official https://packages.inkbridgenetworks.com/[InkBridge Networks packages] where available.
+We recommend using the official
+https://packages.inkbridgenetworks.com/[InkBridge Networks packages]
+where available.
 
-The documents in this section cover details of the above
-installation methods, as well as instructions on building
-packages locally.
+The documents in this section cover details of the above installation
+methods, as well as instructions on building packages locally.
 
 The following steps describes how to perform the first install of
-FreeRADIUS. It assumes a basic knowledge of Unix system administration.
-No RADIUS knowledge is required.
+FreeRADIUS. It assumes a basic knowledge of Unix system
+administration. No RADIUS knowledge is required.
 
 == Install the server
 
 Where possible, while learning the basics, it's recommended that
 beginners use the packaging system that is used by your operating
-system. The version that is supplied by your OS might be out of
-date, but usually works "out of the box". The only
-exception to this is if your operating system supplies an older
-major version, as you will then be learning an obsolete
-configuration. See xref:howto:installation/packages.adoc[install from packages] for a more current version.
+system. The version that is supplied by your OS might be out of date,
+but usually works "out of the box". The only exception to this is if
+your operating system supplies an older major version, as you will
+then be learning an obsolete configuration. See
+xref:howto:installation/packages.adoc[install from packages] for a
+more current version.
 
 Once you have learnt how FreeRADIUS works, it is then highly
 recommended to move to the latest released stable version before
 moving into production.
 
-If you need to install it yourself, the [building from source] page contains detailed instructions for a number of platforms.
+If you need to install it yourself, the [building from source] page
+contains detailed instructions for a number of platforms.
 
-Otherwise, we assume that you can install the server via something like
-`yum install freeradius`, or `apt-get install freeradius`.
+Otherwise, we assume that you can install the server via something
+like `yum install freeradius`, or `apt-get install freeradius`.
 
 [NOTE]
 ====
-Debian-based systems refer to the server daemon as
-`freeradius` instead of `radiusd`. The debian configuration files are
-located in `/etc/freeradius/` instead of `/etc/raddb/`. The terms
-`radiusd` and `/etc/raddb/` are used in this guide for simplicity.
+Debian-based systems refer to the server daemon as `freeradius`
+instead of `radiusd`. The debian configuration files are located in
+`/etc/freeradius/` instead of `/etc/raddb/`. The terms `radiusd` and
+`/etc/raddb/` are used in this guide for simplicity.
 ====
 
 === Best practice
 
-Once the server has been installed, the first thing to do is *change as
-little as possible*. The default configuration is designed to work
+Once the server has been installed, the first thing to do is *change
+as little as possible*. The default configuration is designed to work
 everywhere, and to perform nearly every authentication method.
 
 ***
 
 *Do not edit the default configuration files until you understand what
-they do. This means reading the documentation contained in the comments
-of the configuration files.*
+they do. This means reading the documentation contained in the
+comments of the configuration files.*
 
 ***
 
-Many common configurations are documented as suggestions or examples in
-the configuration files. Many common problems are discussed in the
+Many common configurations are documented as suggestions or examples
+in the configuration files. Many common problems are discussed in the
 configuration files, along with suggested solutions.
 
-We recommend *reading the debug output of the server*. While it contains
-a lot of text, it describes exactly what is happening within the server
-and usually contains error messages which describe what went wrong, and
-how to fix it.
+We recommend *reading the debug output of the server*. While it
+contains a lot of text, it describes exactly what is happening within
+the server and usually contains error messages which describe what
+went wrong, and how to fix it.
 
 == Start the server
 
 include::partial$start_server.adoc[]
 
-Otherwise, typical errors include `Address already in use`, which means
-that there is another RADIUS server already running. You will need to
-find that one and stop it before running the server in debugging mode.
+Otherwise, typical errors include `Address already in use`, which
+means that there is another RADIUS server already running. You will
+need to find that one and stop it before running the server in
+debugging mode.
 
-The output from `radiusd -X` is very verbose, see the xref:ROOT:debugging/radiusd_X.adoc[debugging page] for an
-explanation of the debug output.
-
+The output from `radiusd -X` is very verbose, see the
+xref:ROOT:debugging/radiusd_X.adoc[debugging page] for an explanation
+of the debug output.
 
 == Initial tests
 
 Once your server is up and running, test basic authentication.
 include::partial$initial_tests.adoc[]
 
-
 == Add a client
 
-After a successful authentication, add a client, and verify that packets are successfully sent and received.
+After a successful authentication, add a client, and verify that
+packets are successfully sent and received.
 include::partial$add_client.adoc[]
 
 ***
@@ -98,23 +103,21 @@ include::partial$add_client.adoc[]
 
 include::partial$config_server.adoc[]
 
-
 [WARNING]
 ====
-*These instructions cover installing FreeRADIUS 4.x, which is still
-in heavy development. Other than exceptional circumstances, you
-should use https://freeradius.org/releases/[version 3].*
+*These instructions cover installing FreeRADIUS 4.x, which is still in
+heavy development. Other than exceptional circumstances, you should
+use https://freeradius.org/releases/[version 3].*
 
-FreeRADIUS 4 is actively used in many high profile client
-deployments who have
-https://www.inkbridgenetworks.com/support/freeradius-support[purchased a support
-contract] from InkBridge Networks.
+FreeRADIUS 4 is actively used in many high profile client deployments
+who have
+https://www.inkbridgenetworks.com/support/freeradius-support[purchased
+a support contract] from InkBridge Networks.
 
 *We recommend to 99.9%+ of our customers to use the latest release
-https://freeradius.org/releases/[FreeRADIUS 3.2.x]* and the InkBridge Networks
-https://packages.inkbridgenetworks.com/[pre-built packages]
+https://freeradius.org/releases/[FreeRADIUS 3.2.x]* and the InkBridge
+Networks https://packages.inkbridgenetworks.com/[pre-built packages]
 ====
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

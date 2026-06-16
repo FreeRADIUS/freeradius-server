@@ -1,42 +1,50 @@
-Note: The required functionality to do basic twitter operations is only available in FreeRADIUS >= v3.0.4
+Note: The required functionality to do basic twitter operations is
+only available in FreeRADIUS >= v3.0.4
 
 ## Overview
 
-The difficult part in twitter integration is signing the requests. If a single character
-is incorrect, the signature won't match, and the Twitter API will return an authentication
-error.
+The difficult part in twitter integration is signing the requests. If
+a single character is incorrect, the signature won't match, and the
+Twitter API will return an authentication error.
 
-The config snippet below shows how this can be done for a simple status update. At the time
-of writing there is no xlat method to sort values lexicographically. So in order to use
-the more complex API calls, you will need to modify Stage 1.1 and add your other post data
+The config snippet below shows how this can be done for a simple
+status update. At the time of writing there is no xlat method to sort
+values lexicographically. So in order to use the more complex API
+calls, you will need to modify Stage 1.1 and add your other post data
 pairs, maintaining lexicographic attribute order manually.
 
-This is all very much a work in progress, and whether additional example operations get added here will
-depend on the actual demand for twitter integration.
+This is all very much a work in progress, and whether additional
+example operations get added here will depend on the actual demand for
+twitter integration.
 
 ## Getting the tokens
 
-Follow the link here(https://dev.twitter.com/docs/auth/tokens-devtwittercom) signing up
-for an account and creating a new application if necessary.
+Follow the link
+here(https://dev.twitter.com/docs/auth/tokens-devtwittercom) signing
+up for an account and creating a new application if necessary.
 
 ## Understanding how signing works
 
-Twitter has some excellent documents on authorizing(https://dev.twitter.com/docs/auth/authorizing-request) and signing(https://dev.twitter.com/docs/auth/creating-signature) requests.
+Twitter has some excellent documents on
+authorizing(https://dev.twitter.com/docs/auth/authorizing-request) and
+signing(https://dev.twitter.com/docs/auth/creating-signature)
+requests.
 
-The policies below implement signing for simple status updates. It's not currently possible to write a generic signing policy.
+The policies below implement signing for simple status updates. It's
+not currently possible to write a generic signing policy.
 
 ## Dictionary attributes
 
-Add the following to your custom dictionary
-```text
-ATTRIBUTE	Twitter-API-Method			<next #>	integer
-ATTRIBUTE	Twitter-API-URL				<next #>	string
-ATTRIBUTE	Twitter-API-Data			<next #>	string
+Add the following to your custom dictionary ```text ATTRIBUTE
+Twitter-API-Method                      <next #>        integer
+ATTRIBUTE       Twitter-API-URL                         <next #>
+string ATTRIBUTE        Twitter-API-Data                        <next
+#>        string
 
-VALUE	Twitter-API-Method		GET			1
-VALUE	Twitter-API-Method		POST			2
-VALUE	Twitter-API-Method		PUT			3
-VALUE	Twitter-API-Method		DELETE			4
+VALUE   Twitter-API-Method              GET                     1
+VALUE Twitter-API-Method              POST                    2 VALUE
+Twitter-API-Method              PUT                     3 VALUE
+Twitter-API-Method              DELETE                  4
 ```
 
 ## The policy

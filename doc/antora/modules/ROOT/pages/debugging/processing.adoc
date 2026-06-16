@@ -72,9 +72,10 @@ packet type.
 IMPORTANT: In v4, secret values such as `User-Password` are redacted
 to `<<< secret >>>` by default, controlled by the `suppress_secrets`
 setting in the `log` section of the main
-xref:reference:raddb/radiusd.conf.adoc[radiusd.conf] configuration file.  This
-allows you to share debug output without risk. Set `suppress_secrets =
-no` if you need to see the real value of the secret while debugging.
+xref:reference:raddb/radiusd.conf.adoc[radiusd.conf] configuration
+file.  This allows you to share debug output without risk. Set
+`suppress_secrets = no` if you need to see the real value of the
+secret while debugging.
 
 NOTE: If an attribute is not printed here, then it was not in the
 packet.  No amount of changing the server configuration will add an
@@ -114,8 +115,8 @@ in parentheses.
 (0)   } # recv Access-Request ((updated))
 ----
 
-See the xref:reference:unlang/module_rcode.adoc[module rcode] page for the
-meaning and behavior of the various return codes such as `ok` or
+See the xref:reference:unlang/module_rcode.adoc[module rcode] page for
+the meaning and behavior of the various return codes such as `ok` or
 `updated`.
 
 In this output, the `files` module finds the user `bob` in the users
@@ -207,7 +208,8 @@ that are not permitted in an Access-Reject packet.
 
 The `delay_reject` module (an instance of `rlm_delay`) delays the
 reply for a configurable time (default one second) before sending it
-to the NAS.  This delay protects against brute-force dictionary attacks.
+to the NAS.  This delay protects against brute-force dictionary
+attacks.
 
 After the section finishes, the virtual server block closes and the
 reply is sent.

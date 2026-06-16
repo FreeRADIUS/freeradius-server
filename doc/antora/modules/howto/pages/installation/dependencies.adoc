@@ -1,17 +1,15 @@
 = Dependencies
 
 Some external dependencies must be installed before building or
-running FreeRADIUS. The core depends on two libraries:
-`libtalloc` for memory management and `libkqueue` for event
-handling.
+running FreeRADIUS. The core depends on two libraries: `libtalloc` for
+memory management and `libkqueue` for event handling.
 
-Many of the modules also have optional dependencies. For example,
-the LDAP module requires LDAP client libraries to be installed
-and database modules need their respective database client
-libraries.
+Many of the modules also have optional dependencies. For example, the
+LDAP module requires LDAP client libraries to be installed and
+database modules need their respective database client libraries.
 
-If building from source code, the configure stage will check for
-the optional dependencies. Any missing libraries will cause that
+If building from source code, the configure stage will check for the
+optional dependencies. Any missing libraries will cause that
 particular module to be skipped.
 
 == Libraries
@@ -20,7 +18,6 @@ particular module to be skipped.
 
 Talloc is a memory allocation library available from
 https://talloc.samba.org/talloc/doc/html/index.html[Samba]
-
 
 ==== Debian, Ubuntu and `dpkg`-based systems
 
@@ -39,9 +36,9 @@ https://talloc.samba.org/talloc/doc/html/index.html[Samba]
 
 === kqueue
 
-Kqueue is an event / timer API originally written for BSD systems.
-It is _much_ simpler to use than third-party event libraries. A
-library, `libkqueue`, is available for Linux systems.
+Kqueue is an event / timer API originally written for BSD systems. It
+is _much_ simpler to use than third-party event libraries. A library,
+`libkqueue`, is available for Linux systems.
 
 ====  Debian, Ubuntu and `dpkg`-based systems
 
@@ -61,13 +58,12 @@ Kqueue is already available, there is nothing to install.
 
 === GNU Compiler Collection (GCC)
 
-FreeRADIUS v4 requires at least GCC 4.9 to support the C11 features introduced in version 3.
+FreeRADIUS v4 requires at least GCC 4.9 to support the C11 features
+introduced in version 3.
 
 Update your version to GCC 4.9 with these commands:
 
 include::partial$upgrade_gcc.adoc[]
-
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

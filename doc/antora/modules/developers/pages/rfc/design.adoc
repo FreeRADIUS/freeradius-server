@@ -25,16 +25,19 @@ specifications closely for the best results.  If you're unsure about
 the RFCs, follow existing best practices, or ask on the
 freeradius-users mailing list.
 
-Additional problems with the RADIUS standards and implementations are listed on the
+Additional problems with the RADIUS standards and implementations are
+listed on the
 https://github.com/radext-wg/issues-and-fixes-2/wiki/[IETF RADEXT
 Wiki], and in the https://www.freeradius.org/rfc/issues.html[open
 issues] page.
 
 == More Information
 
-https://www.inkbridgenetworks.com/blog/blog-10/the-freeradius-auth-type-attribute-103[The FreeRADIUS Auth-Type attribute]
+https://www.inkbridgenetworks.com/blog/blog-10/the-freeradius-auth-type-attribute-103[The
+FreeRADIUS Auth-Type attribute]
 
-https://www.inkbridgenetworks.com/blog/blog-10/radius-standards-compliance-from-rfc-to-wifi-alliance-135[RADIUS standards compliance: from RFC to WiFi Alliance]
+https://www.inkbridgenetworks.com/blog/blog-10/radius-standards-compliance-from-rfc-to-wifi-alliance-135[RADIUS
+standards compliance: from RFC to WiFi Alliance]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

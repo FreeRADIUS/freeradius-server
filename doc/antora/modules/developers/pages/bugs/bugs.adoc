@@ -7,14 +7,13 @@ you can then report the bug to the development team.  Good bug reports
 help developers fix problems faster.
 
 This document is primarily for non-developers of the FreeRADIUS
-server. If you are able to patch the code to work correctly, then
-we invite you to join the development list to discuss it. If
-you're the type who know little about how to code, then this is
-the place for you!
+server. If you are able to patch the code to work correctly, then we
+invite you to join the development list to discuss it. If you're the
+type who know little about how to code, then this is the place for
+you!
 
-The https://freeradius.org/[FreeRADIUS] web site also hosts most of the
-information referenced in this document.
-
+The https://freeradius.org/[FreeRADIUS] web site also hosts most of
+the information referenced in this document.
 
 [NOTE]
 ====
@@ -28,13 +27,13 @@ banned from the FreeRADIUS project's GitHub repositories.
 == You found a bug
 
 To report a bug or defect, use the FreeRADIUS GitHub
-https://github.com/FreeRADIUS/freeradius-server/issues[Issues]
-page. The freeradius-server repository is where development of
-FreeRADIUS happens, making it the best place to submit bug reports.
+https://github.com/FreeRADIUS/freeradius-server/issues[Issues] page.
+The freeradius-server repository is where development of FreeRADIUS
+happens, making it the best place to submit bug reports.
 
 For example, report a bug when the server terminates ungracefully due
-to a bus error, segmentation violation, or other memory
-error. Generate the *Defect Report* using the
+to a bus error, segmentation violation, or other memory error.
+Generate the *Defect Report* using the
 https://github.com/FreeRADIUS/freeradius-server/issues/new?template=bug.yml[Create
 new issue] modal and include information from the debugging sections.
 
@@ -45,8 +44,8 @@ exploited from a remote location. This allows patches to be developed
 before the issue is made public. This process keeps development
 organized and ensures sensitive information is handled properly.
 
-If the behaviour is correct but confusing, we think that's a bug too, and
-you should file a bug against our documentation.
+If the behaviour is correct but confusing, we think that's a bug too,
+and you should file a bug against our documentation.
 
 For any other issues, discuss them on the
 https://www.freeradius.org/list/users.html[FreeRADIUS users list], to

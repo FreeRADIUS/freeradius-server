@@ -1,4 +1,5 @@
-Documentation regarding frontend modules such as as `proto_radius` should go here.
+Documentation regarding frontend modules such as as `proto_radius`
+should go here.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

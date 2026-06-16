@@ -39,9 +39,9 @@ type = Access-Request
 type = Accounting-Request
 ```
 
-Each `listen` section also has a `transport` entry. This
-configuration can be left out for `headless` servers, such as
-`inner-tunnel`. For example, setting UDP transport is done via:
+Each `listen` section also has a `transport` entry. This configuration
+can be left out for `headless` servers, such as `inner-tunnel`. For
+example, setting UDP transport is done via:
 
 ```
 transport = udp
@@ -61,9 +61,10 @@ For `udp`, the configuration entries are largely the same as for v3.
 e.g. `ipaddr`, `port`, etc.
 
 The `listen` section then compiles each
-xref:index.adoc#_processing_sections[Processing Section] based on the named packet
-types. It has a `recv` section for receiving packets, and a `send`
-section for sending packets, as seen in the following example:
+xref:index.adoc#_processing_sections[Processing Section] based on the
+named packet types. It has a `recv` section for receiving packets, and
+a `send` section for sending packets, as seen in the following
+example:
 
 [source,unlang]
 ----
@@ -81,8 +82,8 @@ that it is much easier to understand. Instead of using confusing names
 such as `Post-Auth-Type Reject`, the server now just uses `send
 Access-Reject`.
 
-See also xref:index.adoc#_processing_sections[Processing Section] for how the
-`unlang` statements are parsed.
+See also xref:index.adoc#_processing_sections[Processing Section] for
+how the `unlang` statements are parsed.
 
 [#clients]
 == Clients
@@ -99,18 +100,18 @@ The server also supports dynamic clients. See
 `sites-available/dynamic_clients` for a worked example. There are many
 changes from v3. First, there is no need to have a `client` definition
 which contains a network. Instead, there is a `network` section which
-has a number of `allow` and `deny` rules. Second, dynamic clients
-can be defined on a per-connection basis. Finally, the
+has a number of `allow` and `deny` rules. Second, dynamic clients can
+be defined on a per-connection basis. Finally, the
 `sites-available/dynamic_clients` virtual server has full access to
 the entire RADIUS packet.
 
-The result of these changes is that it is now possible to have multiple
-clients behind a NAT gateway, and to have different shared secrets for
-each client. e.g._by keying off of the `NAS-Identifier` attribute.
+The result of these changes is that it is now possible to have
+multiple clients behind a NAT gateway, and to have different shared
+secrets for each client. e.g._by keying off of the `NAS-Identifier`
+attribute.
 
 The dynamic client functionality behaves the same for all protocols
 supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
