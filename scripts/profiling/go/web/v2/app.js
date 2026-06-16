@@ -1,6 +1,6 @@
 // app.js — CEst compare UI (v2).
 //
-// Loads the shared WASM core (../v1/cest-analyzer.wasm) and calls the
+// Loads the WASM core (cest-analyzer.wasm, alongside this file) and calls the
 // cestMatrix(runs, topN) bridge to get a complete function×run matrix, then
 // renders the comparison views. Phase 1: local directory loading + the heatmap
 // view (p50-median baseline, Δ%/absolute, threshold, ordering). Trends and
@@ -53,10 +53,24 @@ let dvgTopN = 10;       // divergence: 10 | 25 | 'all'
 let lastPatternsKey = ""; // last applied patterns string, to know when to reset trend picks
 const TREND_COLORS = ["#b42318", "#1f5fbf", "#b45309", "#6d28d9", "#0e7490"];
 
+// detail view: when a run chip is clicked we leave the comparison views and show
+// one run's full per-function breakdown (all 9 raw counters + CEst). detailRun is
+// that run's index (null = comparison views). detailData caches the parsed run so
+// re-sorting / re-filtering needs no re-parse. The function table and the pattern
+// table each keep their own {key,dir} sort. Detail is exited (set to null) on any
+// run-set change (see parseRuns) and when a comparison view button is clicked.
+let detailRun = null;     // run index shown in detail, or null
+let detailData = null;    // { formula, total, functions:[{name,Ir,...,CEst}] } for detailRun
+let detailFnSort = { key: "CEst", dir: "desc" };  // function table sort
+let detailPatSort = { key: "CEst", dir: "desc" }; // pattern table sort
+// The 10 numeric columns shared by both detail tables (first column is the
+// Function/Pattern name). CEst leads, then the 9 raw Callgrind counters.
+const COUNTER_COLS = ["CEst", "Ir", "I1mr", "D1mr", "D1mw", "ILmr", "DLmr", "DLmw", "Bcm", "Bim"];
+
 // ---- WASM load -----------------------------------------------------------
 async function loadWasm() {
-  const go = new Go(); // from ../v1/wasm_exec.js
-  const resp = await fetch("../v1/cest-analyzer.wasm");
+  const go = new Go(); // from wasm_exec.js (same directory)
+  const resp = await fetch("cest-analyzer.wasm");
   const { instance } = await WebAssembly.instantiateStreaming(resp, go.importObject);
   go.run(instance); // registers globalThis.cestMatrix, then blocks on select{}
   wasmReady = true;
@@ -205,6 +219,10 @@ async function parseRuns() {
   trendFns = null;
   curRun = R.length - 1;
   cmpRun = "base";
+  // The detail view's cached parse is keyed to a specific run index, so leave it
+  // and fall back to the comparison views whenever the run set changes.
+  detailRun = null;
+  detailData = null;
   if ($("formula") && res.formula) $("formula").textContent = res.formula;
   return true;
 }
@@ -245,6 +263,9 @@ async function analyze() {
 
 // ---- helpers (ported from the wireframe) ---------------------------------
 const fmtM = (v) => (v / 1e6).toFixed(1) + "M";
+// fmtInt groups a raw counter with thousands separators (the detail tables show
+// exact counts, not the M-abbreviated values used in the heatmap cells).
+const fmtInt = (v) => Math.round(v).toLocaleString("en-US");
 function fmtPct(d) {
   if (!isFinite(d)) return "new";
   const a = Math.abs(d);
@@ -322,6 +343,12 @@ function render() {
   nrunBase.textContent = matrix.R[matrix.BASE].label;
   updateControls();
   syncMenu();
+  // A clicked run chip leaves the comparison views for the per-run detail table.
+  if (detailRun !== null && detailData) {
+    nviewEl.innerHTML = renderDetail();
+    nlegendEl.innerHTML = detailLegend();
+    return;
+  }
   const avail = nviewEl.clientWidth > 60 ? nviewEl.clientWidth : 1040;
   if (view === "trend") nviewEl.innerHTML = renderTrend(avail);
   else if (view === "diverge") nviewEl.innerHTML = renderDiverge();
@@ -333,10 +360,19 @@ function render() {
 // in-view current/reference/top-N selectors, so the Δ-mode toggle, ordering,
 // and threshold pill don't apply there.
 function updateControls() {
-  const hide = view === "diverge";
+  // The detail view drives its own sorting/filtering, so the Δ-mode toggle,
+  // threshold pill, and functions-count cap don't apply (the table is full and
+  // already filtered by PATTERNS). The patterns field stays — it filters detail.
+  const detail = detailRun !== null;
+  const hide = detail || view === "diverge";
   valseg.style.display = hide ? "none" : "";
   const thPill = nthreshInp.closest(".pill");
   if (thPill) thPill.style.display = hide ? "none" : "";
+  const fnLbl = topnInput.closest(".field-lbl");
+  if (fnLbl) fnLbl.style.display = detail ? "none" : "";
+  // No comparison view is "current" while a run's detail is open.
+  viewseg.querySelectorAll("button").forEach((b) =>
+    b.classList.toggle("on", !detail && b.dataset.view === view));
 }
 
 function renderChips() {
@@ -347,12 +383,13 @@ function renderChips() {
     const pct = matrix ? Math.round(total / matrix.maxTotal * 100) : 0;
 
     const chip = document.createElement("div");
-    chip.className = "rchip" + (isBase ? " base" : "");
+    chip.className = "rchip" + (isBase ? " base" : "") + (i === detailRun ? " open" : "");
 
-    const lbl = document.createElement("div");
+    const lbl = document.createElement("button");
     lbl.className = "rlabel";
     lbl.textContent = r.label;
-    lbl.title = r.label;
+    lbl.title = "Open the detailed per-function view for " + r.label;
+    lbl.addEventListener("click", () => openDetail(i));
 
     const bar = document.createElement("div");
     bar.className = "cb";
@@ -422,6 +459,151 @@ function renderHeat() {
   });
   h += "</tbody></table>";
   return h;
+}
+
+// ---- detail view ---------------------------------------------------------
+// One run's full per-function breakdown: every function with its 9 raw
+// Callgrind counters + CEst, filtered by the PATTERNS field and sortable on any
+// column. A second table sums the counters of every function matching each
+// PATTERNS term (one row per term). Entered by clicking a run chip; left via the
+// "Back" button or any comparison-view button. detailData is parsed once per run
+// (cestRunDetail), so sorting and filtering here never re-parse.
+
+// openDetail parses the clicked run (if not already cached) and switches to its
+// detail view. Sorts reset to the default (CEst, descending) for a fresh run.
+function openDetail(i) {
+  if (!wasmReady) { showError("WASM still loading — try again in a moment."); return; }
+  if (!runs[i]) return;
+  const res = cestRunDetail(runs[i].files);
+  if (res.error) { showError(res.error); return; }
+  hideError();
+  detailData = res;
+  detailRun = i;
+  detailFnSort = { key: "CEst", dir: "desc" };
+  detailPatSort = { key: "CEst", dir: "desc" };
+  render();
+}
+
+// closeDetail returns to the comparison views (keeps the loaded runs).
+function closeDetail() {
+  detailRun = null;
+  detailData = null;
+  render();
+}
+
+// patternTerms returns the de-duplicated, lower-cased PATTERNS terms (the
+// detail tables share the existing patterns field with the comparison views).
+function patternTerms() {
+  const seen = new Set();
+  return patternsInput.value.trim().toLowerCase().split(/\s+/).filter((t) => {
+    if (!t || seen.has(t)) return false;
+    seen.add(t);
+    return true;
+  });
+}
+
+// detailFilterFns keeps the run's functions whose name contains any PATTERNS
+// term (case-insensitive); empty patterns => every function.
+function detailFilterFns() {
+  const pats = patternTerms();
+  if (!pats.length) return detailData.functions.slice();
+  return detailData.functions.filter((f) => {
+    const l = f.name.toLowerCase();
+    return pats.some((p) => l.includes(p));
+  });
+}
+
+// detailPatternRows builds one aggregated row per PATTERNS term: the field-wise
+// sum of every function matching that term. CEst is linear in the counters, so
+// summing per-function CEst matches summing the counters then computing CEst.
+function detailPatternRows() {
+  return patternTerms().map((term) => {
+    const row = { name: term };
+    COUNTER_COLS.forEach((c) => { row[c] = 0; });
+    detailData.functions.forEach((f) => {
+      if (f.name.toLowerCase().includes(term)) {
+        COUNTER_COLS.forEach((c) => { row[c] += f[c]; });
+      }
+    });
+    return row;
+  });
+}
+
+// sortRows orders rows by the chosen column: the name column sorts
+// lexicographically, every counter column numerically. dir 'asc' | 'desc'.
+function sortRows(rows, sort) {
+  const k = sort.key, dir = sort.dir === "asc" ? 1 : -1;
+  return rows.slice().sort((a, b) => {
+    if (k === "name") return dir * String(a.name).localeCompare(String(b.name));
+    return dir * (a[k] - b[k]);
+  });
+}
+
+// sortableTh renders a clickable header cell with the active-sort arrow.
+function sortableTh(table, col, label, sort) {
+  const active = sort.key === col;
+  const arrow = active ? (sort.dir === "asc" ? "▲" : "▼") : "";
+  const cls = "dsort" + (active ? " on" : "") + (col === "name" ? " col-name" : " col-num");
+  return '<th class="' + cls + '" data-sorttable="' + table + '" data-sortcol="' + col
+    + '" title="Sort by ' + esc(label) + '">' + esc(label)
+    + '<span class="darr">' + arrow + "</span></th>";
+}
+
+// detailHeader builds a full <tr> of sortable headers for one of the two tables.
+function detailHeader(table, firstLabel, sort) {
+  let h = "<tr>" + sortableTh(table, "name", firstLabel, sort);
+  COUNTER_COLS.forEach((c) => { h += sortableTh(table, c, c, sort); });
+  return h + "</tr>";
+}
+
+// detailRowHtml renders one data row (name cell + the 10 numeric cells).
+function detailRowHtml(r) {
+  let h = '<tr><td class="col-name"><span class="dname" title="' + esc(r.name) + '">' + esc(r.name) + "</span></td>";
+  COUNTER_COLS.forEach((c) => { h += '<td class="col-num">' + fmtInt(r[c]) + "</td>"; });
+  return h + "</tr>";
+}
+
+function renderDetail() {
+  const label = runs[detailRun] ? runs[detailRun].label : "";
+  const fns = sortRows(detailFilterFns(), detailFnSort);
+  const patRows = sortRows(detailPatternRows(), detailPatSort);
+  const span = COUNTER_COLS.length + 1;
+  const hasPat = patternTerms().length > 0;
+
+  let h = '<div class="detail-head">'
+    + '<button class="btn btn-sm" data-detail-back>← Back to comparison</button>'
+    + '<span class="detail-title">Detailed view · <b>' + esc(label) + "</b>"
+    + ' · total CEst <b class="mono">' + fmtInt(detailData.total.CEst) + "</b>"
+    + ' · <span class="detail-count">' + fns.length + (fns.length === 1 ? " function" : " functions")
+    + (hasPat ? " matching filter" : "") + "</span></span></div>";
+
+  h += '<div class="detail-scroll"><table class="detail"><thead>'
+    + detailHeader("fn", "Function Name", detailFnSort) + "</thead><tbody>";
+  if (fns.length === 0) {
+    h += '<tr><td class="detail-empty" colspan="' + span + '">No functions match the PATTERNS filter.</td></tr>';
+  } else {
+    fns.forEach((f) => { h += detailRowHtml(f); });
+  }
+  h += "</tbody></table></div>";
+
+  h += '<div class="detail-subhead">Pattern aggregation'
+    + '<span class="detail-sub-note">summed counters of every function whose name matches each PATTERNS term</span></div>';
+  h += '<div class="detail-scroll"><table class="detail pat"><thead>'
+    + detailHeader("pat", "Pattern Name", detailPatSort) + "</thead><tbody>";
+  if (patRows.length === 0) {
+    h += '<tr><td class="detail-empty" colspan="' + span
+      + '">Type space-separated terms in the <b>PATTERNS</b> field above to aggregate matching functions.</td></tr>';
+  } else {
+    patRows.forEach((p) => { h += detailRowHtml(p); });
+  }
+  h += "</tbody></table></div>";
+  return h;
+}
+
+function detailLegend() {
+  return "<span>All values are <b>self</b> counts for this run · <b>CEst</b> is the cycle estimate, "
+    + "the other 9 columns are the raw Callgrind counters it is built from · "
+    + "click any column header to sort · the function list follows the <b>PATTERNS</b> filter.</span>";
 }
 
 // renderEmpty paints a placeholder shaped like the currently selected view, so
@@ -710,6 +892,9 @@ viewseg.addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-view]");
   if (!btn || btn.disabled) return;
   view = btn.dataset.view;
+  // Selecting a comparison view leaves the per-run detail table.
+  detailRun = null;
+  detailData = null;
   viewseg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
   render();
 });
@@ -737,7 +922,7 @@ nthreshInp.addEventListener("input", () => {
 function syncMenu() {
   menu.querySelectorAll("[data-order]").forEach((b) => b.classList.toggle("on", b.dataset.order === orderMode));
   const mo = $("menu-order");
-  if (mo) mo.hidden = view !== "heat"; // column order only affects the heatmap
+  if (mo) mo.hidden = view !== "heat" || detailRun !== null; // column order only affects the heatmap
 }
 function setMenu(open) { menu.hidden = !open; menuBtn.setAttribute("aria-expanded", String(open)); }
 menuBtn.addEventListener("click", (e) => { e.stopPropagation(); setMenu(menu.hidden); });
@@ -760,6 +945,19 @@ nviewEl.addEventListener("change", (e) => {
   if (cn) { dvgTopN = cn.value === "all" ? "all" : parseInt(cn.value, 10); render(); return; }
 });
 nviewEl.addEventListener("click", (e) => {
+  // Detail view: the "Back" button and the sortable column headers.
+  if (e.target.closest("[data-detail-back]")) { closeDetail(); return; }
+  const sh = e.target.closest("[data-sorttable]");
+  if (sh) {
+    const sort = sh.getAttribute("data-sorttable") === "pat" ? detailPatSort : detailFnSort;
+    const col = sh.getAttribute("data-sortcol");
+    // Clicking the active column flips direction; a new column starts on its
+    // natural default (names A→Z, counters high→low).
+    if (sort.key === col) sort.dir = sort.dir === "asc" ? "desc" : "asc";
+    else { sort.key = col; sort.dir = col === "name" ? "asc" : "desc"; }
+    render();
+    return;
+  }
   const tf = e.target.closest("[data-trendfn]");
   if (!tf || tf.classList.contains("dis")) return;
   const f = parseInt(tf.getAttribute("data-trendfn"), 10);

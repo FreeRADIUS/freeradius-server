@@ -4,9 +4,10 @@
 // single JS function, globalThis.analyzeCest, that runs the same
 // cest-analyzer/internal/cest core over file contents the page hands in.
 //
-// Build:
+// Build (each UI serves its own copy, so build into both):
 //
 //	GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
+//	GOOS=js GOARCH=wasm go build -o web/v2/cest-analyzer.wasm ./web/wasm
 //
 // There is no filesystem in the browser, so the page reads each
 // callgrind.out.* file with the FileReader API and passes its text in; this
@@ -281,6 +282,81 @@ func cestReport(this js.Value, args []js.Value) (result any) {
 	return map[string]any{"json": jsonOut.String()}
 }
 
+// cestRunDetail is the JS bridge for the per-run detail view (one run's full
+// function table). cestMatrix returns only each function's CEst across runs;
+// the detail view needs every raw counter for a single run, so this parses one
+// run and returns the complete breakdown.
+//
+// JS signature: cestRunDetail(files) -> result
+//
+//	files: { "callgrind.out.123": "<file text>", ... }   // ONE run's files
+//
+// Returns on success:
+//
+//	{
+//	  formula:   "CEst = ...",
+//	  total:     { Ir, I1mr, D1mr, D1mw, ILmr, DLmr, DLmw, Bcm, Bim, CEst },
+//	  functions: [ { name, Ir, I1mr, ..., Bim, CEst }, ... ]  // descending CEst
+//	}
+//
+// or { error } on failure. The function table is filtered/sorted and the
+// per-pattern aggregation table is summed entirely in JS from these counters,
+// so changing the PATTERNS field or a sort column needs no re-parse.
+func cestRunDetail(this js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": panicMessage(r)}
+		}
+	}()
+
+	if len(args) < 1 {
+		return map[string]any{"error": "cestRunDetail(files): 1 arg required"}
+	}
+	cands := candidatesFromJS(args[0])
+	cats := cest.DefaultCategories()
+	// No patterns: the detail view wants every function's counters; pattern
+	// filtering and aggregation happen in JS off the full set.
+	dr, err := cest.Analyze("detail", cands, nil, cats, 0)
+	if err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+
+	eventsObj := func(e cest.Events) map[string]any {
+		return map[string]any{
+			"Ir": e.Ir, "I1mr": e.I1mr, "D1mr": e.D1mr, "D1mw": e.D1mw,
+			"ILmr": e.ILmr, "DLmr": e.DLmr, "DLmw": e.DLmw,
+			"Bcm": e.Bcm, "Bim": e.Bim, "CEst": e.CEst(),
+		}
+	}
+
+	fns := make([]cest.FnEvents, 0, len(dr.Res.FnSelf))
+	for name, ev := range dr.Res.FnSelf {
+		fns = append(fns, cest.FnEvents{Name: name, Events: ev})
+	}
+	// Descending CEst, name as a tiebreaker, so the default order is stable
+	// across Go's randomized map iteration.
+	sort.Slice(fns, func(i, j int) bool {
+		ci, cj := fns[i].Events.CEst(), fns[j].Events.CEst()
+		if ci != cj {
+			return ci > cj
+		}
+		return fns[i].Name < fns[j].Name
+	})
+
+	funcsOut := make([]any, len(fns))
+	for i, fn := range fns {
+		o := eventsObj(fn.Events)
+		o["name"] = fn.Name
+		funcsOut[i] = o
+	}
+
+	return map[string]any{
+		"formula":   cest.Formula,
+		"total":     eventsObj(dr.Res.Total),
+		"functions": funcsOut,
+	}
+}
+
 // panicMessage renders a recovered panic value as a string for the JS caller.
 func panicMessage(v any) string {
 	switch e := v.(type) {
@@ -297,6 +373,7 @@ func main() {
 	js.Global().Set("analyzeCest", js.FuncOf(analyzeCest))
 	js.Global().Set("cestMatrix", js.FuncOf(cestMatrix))
 	js.Global().Set("cestReport", js.FuncOf(cestReport))
+	js.Global().Set("cestRunDetail", js.FuncOf(cestRunDetail))
 	// Block forever: the page calls analyzeCest on demand, so the Go program
 	// must stay alive after main returns control to the JS event loop.
 	select {}

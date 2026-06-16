@@ -36,8 +36,8 @@ go/
 └── web/                  browser target
     ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix, cestReport)
     ├── v1/               single-run / pattern UI: index.html, app.js, style.css, wasm_exec.js, .wasm
-    └── v2/               multi-run compare UI (heatmap / trends / divergence):
-                          index.html, app.js, style.css, config.json; loads ../v1/ wasm
+    └── v2/               multi-run compare UI (heatmap / trends / divergence / per-run detail):
+                          index.html, app.js, style.css, config.json, wasm_exec.js, .wasm
 ```
 
 `internal/cest` never imports `os`, `flag`, or `syscall/js`. Callers feed it
@@ -111,24 +111,28 @@ ever leaves the browser.
 ```bash
 cd scripts/profiling/go
 
-# Build the module into the shared web assets directory (web/v1). Both UIs use
-# this one .wasm: v1 directly, v2 via ../v1/cest-analyzer.wasm.
+# Build the same module into each UI directory. The two UIs are self-contained
+# (each serves its own .wasm), so v2 can be served on its own without v1.
 GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
+GOOS=js GOARCH=wasm go build -o web/v2/cest-analyzer.wasm ./web/wasm
 
-# Copy the JS glue shipped with Go. Its path inside GOROOT changed across
-# Go releases (older: misc/wasm/; newer: lib/wasm/), so locate it first:
-cp "$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)" web/v1/
+# Copy the JS glue shipped with Go into each UI. Its path inside GOROOT changed
+# across Go releases (older: misc/wasm/; newer: lib/wasm/), so locate it first:
+WASM_EXEC="$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)"
+cp "$WASM_EXEC" web/v1/
+cp "$WASM_EXEC" web/v2/
 ```
 
-After this, `web/v1/` holds everything the pages need:
+After this, each UI directory holds everything its page needs, e.g. `web/v2/`:
 
 ```text
-web/v1/
-├── index.html            (v1 single-run / pattern UI)
+web/v2/
+├── index.html            (v2 multi-run compare UI)
 ├── app.js
 ├── style.css
+├── config.json           (hosted-store URL/label, deploy-configurable)
 ├── wasm_exec.js          (copied from GOROOT)
-└── cest-analyzer.wasm    (built above; v2 loads it via ../v1/)
+└── cest-analyzer.wasm    (built above)
 ```
 
 #### Run
@@ -139,8 +143,8 @@ URL. `file://` fails for two reasons: the browser blocks the `fetch()` of the
 `Content-Type: application/wasm`, which only a server sets. Any static file
 server works; pick one:
 
-Serve from `web/` (not a UI subdir) so both `/v1/` and `/v2/` are reachable and
-v2 can load the shared `../v1/` wasm:
+Each UI is self-contained, so you can serve a single UI directory directly (e.g.
+`web/v2`). Serving the parent `web/` keeps both `/v1/` and `/v2/` reachable:
 
 ```bash
 cd scripts/profiling/go/web

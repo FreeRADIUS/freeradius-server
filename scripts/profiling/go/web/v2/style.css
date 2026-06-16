@@ -46,7 +46,14 @@ a{color:var(--brand);}
 .rchip{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;
   border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px 5px;background:var(--paper);
   font-size:10.5px;font-weight:600;min-width:62px;max-width:120px;position:relative;line-height:1.15;}
-.rchip .rlabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* the label is a button: clicking it opens the run's detail view. Reset the
+   native button chrome so it reads as the chip's title, just clickable. */
+.rchip .rlabel{display:block;width:100%;text-align:left;border:0;background:transparent;padding:0;margin:0;
+  font-family:inherit;font-size:inherit;font-weight:inherit;color:inherit;line-height:inherit;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rchip .rlabel:hover{color:var(--brand);text-decoration:underline;}
+.rchip.open{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset;}
+.rchip.open .rlabel{color:var(--brand);}
 .rchip .cb{display:block;width:100%;height:6px;border-radius:3px;background:var(--bar-2);overflow:hidden;}
 .rchip .cb i{display:block;height:100%;background:var(--ink-soft);}
 .rchip .rn{color:var(--ink-soft);font-weight:400;}
@@ -123,6 +130,38 @@ table.heat .base-col,table.heat th.base-col{box-shadow:inset 2px 0 0 var(--accen
 table.heat td.base-left,table.heat th.base-left{border-right-width:0;}
 table.heat thead th.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 2px 0 var(--accent);}
 table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent),inset 0 -2px 0 var(--accent);}
+
+/* detail view: one run's full per-function table + a pattern-aggregation table.
+   Both tables sort on any column header; the function-name column and the
+   header row stick so labels stay visible while scrolling a long run. */
+.detail-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);}
+.detail-title{font-size:12.5px;color:var(--ink-soft);}
+.detail-title b{color:var(--ink);}
+.detail-count{color:var(--faint);}
+.detail-scroll{overflow:auto;max-height:62vh;}
+table.detail{border-collapse:collapse;font-size:11.5px;width:100%;}
+table.detail th,table.detail td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+table.detail thead th{position:sticky;top:0;z-index:2;background:#f3f6fa;color:var(--ink-soft);
+  font-size:10.5px;font-weight:600;padding:6px 9px;white-space:nowrap;border-bottom:1px solid var(--line-strong);
+  cursor:pointer;user-select:none;}
+table.detail thead th:hover{background:#e9eef5;color:var(--ink);}
+table.detail thead th.on{color:var(--brand);background:var(--brand-soft);}
+table.detail th.col-num,table.detail td.col-num{text-align:right;font-variant-numeric:tabular-nums;
+  font-family:"IBM Plex Mono",monospace;}
+table.detail td.col-num{padding:4px 9px;color:var(--ink);}
+table.detail th.col-name,table.detail td.col-name{text-align:left;}
+/* the function/pattern name column sticks to the left edge while scrolling. */
+table.detail th.col-name{left:0;z-index:3;}
+table.detail td.col-name{position:sticky;left:0;background:var(--paper);z-index:1;
+  border-right:1px solid var(--line-strong);padding:4px 9px;}
+table.detail .dname{display:block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+table.detail tbody tr:hover td{background:#f6f8fb;}
+table.detail tbody tr:hover td.col-name{background:#eef2f8;}
+table.detail .darr{display:inline-block;width:10px;margin-left:3px;color:var(--brand);font-size:9px;}
+td.detail-empty{padding:22px 14px;text-align:center;color:var(--ink-soft);font-size:12.5px;}
+.detail-subhead{padding:12px 14px 6px;font-size:12.5px;font-weight:600;color:var(--ink);
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);}
+.detail-sub-note{font-weight:400;font-size:11.5px;color:var(--ink-soft);}
 
 /* trends: function picker + chart */
 .trend-pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);font-size:12px;}
