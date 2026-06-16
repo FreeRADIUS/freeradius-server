@@ -436,7 +436,11 @@ function renderHeat() {
   cols.forEach((i) => {
     let cls = i === BASE ? "base-col" : "";
     if (i === preBaseRun) cls += (cls ? " " : "") + "base-left";
-    h += '<th class="' + cls + '">' + labelLines(R[i].label) + "</th>";
+    // Clicking a run's column header opens that run's detail view (same as
+    // clicking its chip). data-runcol carries the run index for the delegate.
+    cls += (cls ? " " : "") + "hcol";
+    h += '<th class="' + cls + '" data-runcol="' + i + '" title="Open the detailed per-function view for '
+      + esc(R[i].label) + '">' + labelLines(R[i].label) + "</th>";
   });
   h += "</tr></thead><tbody>";
   funcs.forEach((fn, f) => {
@@ -945,6 +949,9 @@ nviewEl.addEventListener("change", (e) => {
   if (cn) { dvgTopN = cn.value === "all" ? "all" : parseInt(cn.value, 10); render(); return; }
 });
 nviewEl.addEventListener("click", (e) => {
+  // Heatmap: a run's column header opens that run's detail view.
+  const rc = e.target.closest("[data-runcol]");
+  if (rc) { openDetail(parseInt(rc.getAttribute("data-runcol"), 10)); return; }
   // Detail view: the "Back" button and the sortable column headers.
   if (e.target.closest("[data-detail-back]")) { closeDetail(); return; }
   const sh = e.target.closest("[data-sorttable]");

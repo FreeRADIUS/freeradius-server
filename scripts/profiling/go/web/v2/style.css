@@ -117,6 +117,9 @@ table.heat .fn{position:sticky;left:0;background:var(--paper);text-align:left;pa
 table.heat .fnname{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table.heat thead .fn{z-index:3;}
 table.heat .fn .bv{color:var(--ink-soft);font-size:10px;font-weight:400;}
+/* run column headers are clickable: they open that run's detail view. */
+table.heat thead th.hcol{cursor:pointer;}
+table.heat thead th.hcol:hover{background:var(--brand-soft);color:var(--brand);}
 table.heat td.cell{min-width:54px;height:23px;font-size:9px;font-weight:600;font-variant-numeric:tabular-nums;}
 /* Frame the baseline (p50) column with inset box-shadows, not outline/border.
    Collapsed borders belong to the table and don't render correctly on the
