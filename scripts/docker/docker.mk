@@ -118,14 +118,27 @@ endef
 #
 #  Per-image phony shorthand. docker.<type>.<image> as a build alias,
 #  docker.<type>.<image>.status to query whether the local image is
-#  built.
+#  built, docker.<type>.<image>.tag to point the current SHA tag at
+#  the already-built :latest image (no rebuild). No-op if the SHA tag
+#  exists; fails loudly if no :latest image is built yet.
 #
 define DOCKER_PHONY
-.PHONY: docker.${2}.${1} docker.${2}.${1}.status
+.PHONY: docker.${2}.${1} docker.${2}.${1}.status docker.${2}.${1}.tag
 docker.${2}.${1}: $(DOCKER_STATE)/stamp-image.${1}.${2}
 
 docker.${2}.${1}.status:
 	$${Q}docker image ls --format "\t{{.Repository}}:{{.Tag}} \t{{.CreatedAt}}" $(DOCKER_IMAGE_PREFIX)-${2}/${1}
+
+docker.${2}.${1}.tag:
+	$${Q}if docker image inspect $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) >/dev/null 2>&1; then \
+		echo "TAG   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) already present"; \
+	elif docker image inspect $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest >/dev/null 2>&1; then \
+		docker tag $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA); \
+		echo "TAG   $(DOCKER_IMAGE_PREFIX)-${2}/${1}:latest > :$(GIT_SHA)"; \
+	else \
+		echo "FAIL tag $(DOCKER_IMAGE_PREFIX)-${2}/${1}: no :latest image (try 'make docker.${2}.${1}')"; \
+		exit 1; \
+	fi
 endef
 
 #
@@ -312,6 +325,7 @@ docker.help:
 	@echo "    docker.TYPE                       - build every IMAGE of one TYPE"
 	@echo "    docker.TYPE.IMAGE                 - build a single IMAGE"
 	@echo "    docker.TYPE.IMAGE.status          - show whether the local IMAGE is built"
+	@echo "    docker.TYPE.IMAGE.tag             - retag :latest as :SHA (no rebuild) so the current SHA resolves"
 	@echo ""
 	@echo "Container lifecycle (sleeping container, /srv/src bind-mounted from host git):"
 	@echo "    docker.TYPE.IMAGE.up              - start container"
