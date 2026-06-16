@@ -825,8 +825,4 @@ policy {
 #  installation enables this virtual server.  You should
 #  edit it to create policies for your local site.
 #
-#  For more documentation on virtual servers, see:
-#
-#  `sites-available/index.adoc`
-#
 $INCLUDE sites-enabled/

@@ -727,10 +727,6 @@ configuration as in version 1.0.x and 1.1.x.  The default
 installation enables this virtual server.  You should
 edit it to create policies for your local site.
 
-For more documentation on virtual servers, see:
-
-xref:reference:raddb/sites-available/index.adoc.adoc[sites-available/index.adoc]
-
 
 == Default Configuration
 
