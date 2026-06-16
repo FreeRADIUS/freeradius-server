@@ -2179,6 +2179,32 @@ static xlat_action_t redis_ippool_subnet_modify_xlat(UNUSED TALLOC_CTX *ctx, UNU
 	return redis_ippool_modify_common(request, inst, t, pool, &start, &end, range, prefix, num_addr, step);
 }
 
+static xlat_arg_parser_t const redis_ippool_addresses_modify_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_ADDR },	// Start address
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_ADDR },	// End address
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Range
+	{ .single = true, .type = FR_TYPE_UINT8 },				// Prefix length
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_addresses_modify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+							 xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *start, *end, *range, *prefix_in;
+	uint8_t				prefix;
+	size_t				num_addr, step;
+
+	XLAT_ARGS(in, &pool, &start, &end, &range, &prefix_in);
+
+	if (redis_ippool_addresses_arg_parse(request, &prefix, &step, &num_addr,
+					     start, end, prefix_in) < 0) return XLAT_ACTION_FAIL;
+
+	return redis_ippool_modify_common(request, inst, t, pool, start, end, range, prefix, num_addr, step);
+}
+
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
@@ -2412,6 +2438,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "subnet.modify", redis_ippool_subnet_modify_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_subnet_modify_args);
+
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "addresses.modify", redis_ippool_addresses_modify_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_addresses_modify_args);
 
 	return 0;
 }
