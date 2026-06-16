@@ -72,7 +72,7 @@ packet type.
 IMPORTANT: In v4, secret values such as `User-Password` are redacted
 to `<<< secret >>>` by default, controlled by the `suppress_secrets`
 setting in the `log` section of the main
-xref:raddb/radiusd.conf.adoc[radiusd.conf] configuration file.  This
+xref:reference:raddb/radiusd.conf.adoc[radiusd.conf] configuration file.  This
 allows you to share debug output without risk. Set `suppress_secrets =
 no` if you need to see the real value of the secret while debugging.
 
@@ -114,7 +114,7 @@ in parentheses.
 (0)   } # recv Access-Request ((updated))
 ----
 
-See the xref:unlang/module_rcode.adoc[module rcode] page for the
+See the xref:reference:unlang/module_rcode.adoc[module rcode] page for the
 meaning and behavior of the various return codes such as `ok` or
 `updated`.
 
