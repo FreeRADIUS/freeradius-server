@@ -86,7 +86,7 @@ loadWasm().catch((e) => showError(`Failed to load WASM: ${e}`));
 // (fetched at startup) so testdev/prod/vanity hosts don't need a rebuild. The
 // Go/WASM core never sees this — it's used only by the hosted-store picker UI
 // (and, later, for fetching runs from the store).
-const DEFAULT_STORE = { url: "https://cinfra.testdev.inkbridge.io/profiling", label: "cinfra.testdev.inkbridge.io" };
+const DEFAULT_STORE = { url: "https://cinfra-ca.testdev.inkbridge.io/profiling", label: "cinfra-ca.testdev.inkbridge.io" };
 const store = { ...DEFAULT_STORE };
 async function loadConfig() {
   try {
