@@ -13,42 +13,38 @@ module.  Two requests are shown:
 
 == Request numbers
 
-Every log line for a packet starts with a request number in
-parentheses, for example, (0). The number lets you match up all the
-messages for one packet when the output contains messages from
-multiple packets interleaved due to threading.
+Every line for a packet starts with a request number in parentheses,
+for example, `(0)`. The number lets you match up all the messages for
+one packet when the output contains messages from multiple packets
+which are interleaved due to threading.
 
 == Receiving a packet
 
-The first message for a new packet comes from the network listener,
-and does not yet have a request number:
+The first message for a new packet comes from the network listener
+`proto_radius_udp`,  and does not yet have a request number:
 
 ----
 proto_radius_udp - Received Access-Request ID 3 length 61 radius_udp server * port 1812
 ----
 
-All further processing for the request happens inside its virtual
-server, so the next line opens a `server-name { ... }` block.  The
-next line tells you the packet type, the RADIUS ID, the source and
-destination address and port, and the network interface.
-
-All processing for a request happens inside its virtual server, so the
-first line opens a `server-name { ... }` block.  The next line tells
-you the packet type, the RADIUS ID, the source and destination address
-and port, and the network interface. The interface name is OS
-dependent, for example `lo` on Linux and `lo0` on macOS.
+All further processing for the request happens inside a virtual
+server, which shows the virtuakl server name on the next line, in this
+case `default {`.  The following messages shows the packet type, the
+RADIUS ID, the source and destination address and port, and the
+network interface.
 
 ----
 (0) default {
 (0)   Received Access-Request ID 104 from 127.0.0.1:58504 to 127.0.0.1:1812 via lo0
 ----
 
-After the `Received` line, the server prints the attributes it
-received in the packet.  Attribute values are printed without
-quotation marks.  The attribute list is followed by two structures
-added by the server itself: a `Net` structure with the socket details,
-and a `Packet` structure with the RADIUS ID and authenticator. Finally
-a `Packet-Type` attribute gives the packet type.
+After the `Received` message, the server prints the attributes which
+it received in the packet.  For RADIUS, there are also some attributes
+added by the server which describe the packet.  A `Net` attribute
+which contains the IP addresses and ports (source and destination)
+socket details, and a `Packet` attribute which contains the RADIUS
+header information. Finally, the `Packet-Type` attribute gives the
+packet type.
 
 ----
 (0)      Message-Authenticator = 0xce9fbd43b2b13998783af1081aa112e3
@@ -75,14 +71,15 @@ a `Packet-Type` attribute gives the packet type.
 
 IMPORTANT: In v4, secret values such as `User-Password` are redacted
 to `<<< secret >>>` by default, controlled by the `suppress_secrets`
-setting in the `log` section.  This allows you to share debug output
-without risk. Set `suppress_secrets = no` if you need to see the real
-value while debugging.
+setting in the `log` section of the main
+xref:raddb/radiusd.conf.adoc[radiusd.conf] configuration file.  This
+allows you to share debug output without risk. Set `suppress_secrets =
+no` if you need to see the real value of the secret while debugging.
 
-NOTE: If an attribute is not printed here, it was not in the packet.
-No amount of changing the server configuration will add an attribute
-that the NAS did not send.  If you need an attribute to be present,
-you must configure the NAS to send it.
+NOTE: If an attribute is not printed here, then it was not in the
+packet.  No amount of changing the server configuration will add an
+attribute that the NAS did not send.  If you need an attribute to be
+present, you must configure the NAS to send it.
 
 == The recv Access-Request section
 
@@ -97,14 +94,16 @@ server which `authenticate` section to run next.
 (0)   recv Access-Request {
 ----
 
-The `Running` line names the section and the file it came from.  Check
-this line if you suspect the server is using a different site than the
-one you edited.
+The `Running` line names the section which is being run, and the file
+where the section was loaded from.  If you suspect that the server
+isn't using the configuration you're editing, you can use this
+information to double-check where the server is loading its policies
+from.
 
-Each module in the section runs in order.  Lines printed by a module
-are prefixed with the module's name and ` - `.  After the module
-returns, the server prints the module name and its return code in
-parentheses.
+Each module in the section runs in order.  Messages which come from a
+module are prefixed with the module's name and ` - `.  After the
+module returns, the server prints the module name and its return code
+in parentheses.
 
 ----
 (0)     files - Looking for key "bob"
@@ -115,36 +114,17 @@ parentheses.
 (0)   } # recv Access-Request ((updated))
 ----
 
-.Common return codes
-[cols="1,3"]
-|===
-|Code |Meaning
+See the xref:unlang/module_rcode.adoc[module rcode] page for the
+meaning and behavior of the various return codes such as `ok` or
+`updated`.
 
-|`noop`
-|The module ran but did nothing, because the packet did not contain the attributes the module needed.
-
-|`ok`
-|The module ran successfully.
-
-|`updated`
-|The module ran and changed something.
-
-|`reject`
-|The module explicitly rejected the request.
-
-|`fail`
-|The module encountered an error.
-|===
-
-In this trace, the `files` module finds the user `bob` in the users
+In this output, the `files` module finds the user `bob` in the users
 file and sets `control.Password.Cleartext` from the entry there,
 returning `ok`.  The `pap` module then sees a known-good password is
 available, sets `control.Auth-Type = pap`, and returns `updated`.
 
-The section closes with `} # recv Access-Request ((updated))`, where
-`updated` is the highest-priority return code returned by any module
-in the section.  (Top-level packet sections print their result in
-double parentheses.)
+The section closes with `} # recv Access-Request ((updated))`, so the
+final return code of the section is `updated`.
 
 When you are diagnosing a problem, read this section carefully to
 answer:
@@ -173,9 +153,9 @@ In this trace, `Auth-Type = pap` was set, so the server runs the
 ----
 
 The `pap` module compares the `User-Password` from the packet against
-the known-good password that `files` set earlier.
+the known-good password that was set earlier by the `files` module.
 
-For a wrong password:
+For a wrong password, you should see output similar to this:
 
 ----
 (0)     pap - Login attempt with password
@@ -186,7 +166,7 @@ For a wrong password:
 (0) Failed to authenticate the user
 ----
 
-For a correct password:
+For a correct password, you should see output similar to this:
 
 ----
 (1)     pap - Login attempt with password
@@ -203,6 +183,9 @@ section.  Go back and check that the database module (`files`, `sql`,
 `ldap`, etc.) found the user and returned `ok` or `updated`.
 
 == Sending a reply
+
+When the server sends a reply, it runs a `send` section which is named
+after the packet type.
 
 === Access-Reject
 
@@ -222,9 +205,9 @@ section before sending the reply.
 The `attr_filter.access_reject` module strips any reply attributes
 that are not permitted in an Access-Reject packet.
 
-The `delay_reject` module (an instance of `rlm_delay`) holds the reply
-for about one second before allowing it to be sent.  This delay slows
-down password-guessing attacks.
+The `delay_reject` module (an instance of `rlm_delay`) delays the
+reply for a configurable time (default one second) before sending it
+to the NAS.  This delay protects against brute-force dictionary attacks.
 
 After the section finishes, the virtual server block closes and the
 reply is sent.
@@ -240,8 +223,8 @@ reply is sent.
 ----
 
 The `Sending` line mirrors the `Received` line, with the source and
-destination swapped to show this is a reply.  Any attributes in the
-reply are printed after it.
+destination swapped to show that the server is sending the reply to
+the client.  Any attributes in the reply are then printed.
 
 NOTE: Always check the reply attributes.  If the server is sending the
 correct reply but the user is still not getting the expected service,
@@ -250,9 +233,10 @@ the problem is in the NAS, not the server.
 === Access-Accept
 
 When authentication succeeds, the server runs the `send Access-Accept`
-section instead.  With the default configuration, the `send
-Access-Accept` section copies the authenticated user name into the
-reply, and then runs the `remove_reply_message_if_eap` policy.
+section.  With the default configuration, the `send Access-Accept`
+section copies the user name into the reply, and then runs the various
+policies in order to enforce standard compliance.  These policies can,
+of course, be edited or deleted.
 
 ----
 (1)    Running 'send Access-Accept' from file /etc/raddb/sites-enabled/default
@@ -277,20 +261,24 @@ reply, and then runs the `remove_reply_message_if_eap` policy.
 
 If a `send` section returns `handled`, the server skips sending a
 reply entirely.  This is used for EAP challenges and for policies that
-intentionally drop certain packets.
+intentionally discard packets without a response.
 
 == Accounting packets
 
-Accounting packets follow a similar pattern, but use different section
-names.  The `recv Accounting-Request` section does any pre-processing.
-After it, a sub-section matched by `Acct-Status-Type` (for example
-`accounting Start { }`) runs.  Finally, `send Accounting-Response`
-runs before the reply is sent. Accounting packets follow a similar
-pattern, but use different section names.  The `recv
-Accounting-Request` section does any pre-processing. After the `recv
-Accounting-Request` section, a sub-section matched by
-`Acct-Status-Type` (for example `accounting Start { }`) runs. Finally,
-`send Accounting-Response` runs before the reply is sent.
+Accounting packets follow a similar pattern, but use `recv` and `send`
+section names taken from the accounting packet names..  The `recv
+Accounting-Request` section runs when the server receives an
+`Accounting-Request` packet.  After that section runs, the server
+looks at `Acct-Status-Type`, and runs an `accounting` section named
+for that status type.  For example, `accounting Start { }`.  This
+behavior lets you configure policies which are run only when specific
+types of accounting messages are received.
+
+For example, you likely want to run different policies on "Start"
+packets, than "Stop" packets.
+
+Finally, the `send Accounting-Response` section runs before the reply
+is sent.
 
 ----
 (2)  default {
