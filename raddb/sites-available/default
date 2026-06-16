@@ -1234,7 +1234,7 @@ send Access-Accept {
 	#  response, which aids matching auth and acct records and
 	#  protects against duplicate Acct-Session-Id.
 	#
-	#  Note: This only works if the NAS has implemented RFC
+	#  NOTE: This only works if the NAS has implemented RFC
 	#  2865 behaviour for the Class attribute, AND if the NAS
 	#  supports long Class attributes. Many older or cheap
 	#  NASes only support 16-octet Class attributes.

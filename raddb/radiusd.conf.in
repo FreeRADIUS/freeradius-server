@@ -681,7 +681,7 @@ thread pool {
 	#  If the maximum is reached, then no more TLS sessions can be
 	#  created.
 	#
-	#  Note: Setting this to 0 will mean unlimited async contexts
+	#  NOTE: Setting this to 0 will mean unlimited async contexts
 	#  will be created.  But as of 3.0.0, OpenSSL has no mechanism
 	#  to shrink the async pool.  This means if there's a
 	#  significant traffic spike the process will continue to use

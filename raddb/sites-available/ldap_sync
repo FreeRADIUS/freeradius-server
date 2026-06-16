@@ -18,7 +18,7 @@
 #  to receive notifications of changes to entries so we can disseminate that
 #  information or act on it.
 #
-#  Note: Each of the three implementations of LDAP synchronisation behave
+#  NOTE: Each of the three implementations of LDAP synchronisation behave
 #  differently:
 #
 #

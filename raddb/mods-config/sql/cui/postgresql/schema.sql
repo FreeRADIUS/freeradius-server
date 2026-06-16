@@ -1,5 +1,5 @@
 -- Table for Chargeable-User-Identity.
--- Note: If you change name of the table, change name of cui_pkey as well.
+-- NOTE: If you change name of the table, change name of cui_pkey as well.
 CREATE TABLE cui (
 	clientipaddress inet NOT NULL DEFAULT '0.0.0.0',
 	callingstationid text NOT NULL DEFAULT '',

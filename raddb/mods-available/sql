@@ -239,7 +239,7 @@ sql {
 		#  query per connection, this represents the maximum number of
 		#  simultaneous packets that a thread can process.
 		#
-		#  Note: The maximum number of connections from FreeRADIUS to
+		#  NOTE: The maximum number of connections from FreeRADIUS to
 		#  the database will be this number multiplied by the number of
 		#  worker threads.  Ensure that the database server supports that
 		#  number of connections.
@@ -306,7 +306,7 @@ sql {
 		#
 		#  request:: Options specific to requests handled by this connection pool
 		#
-		#  Note:  Due to the one outstanding query per connection limit, the settings
+		#  NOTE:  Due to the one outstanding query per connection limit, the settings
 		#  `per_connection_max` and `per_connection_target` are forcibly set to 1 for
 		#  SQL database connections.
 		#

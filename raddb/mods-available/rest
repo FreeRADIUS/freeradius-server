@@ -142,7 +142,7 @@ rest {
 		#
 		#  The contents of the keylog file allows wireshark captures to be decrypted for debugging purposes.
 		#
-		#  Note:: keylog_file is not expanded at runtime.
+		#  NOTE:: keylog_file is not expanded at runtime.
 		#
 #		keylog_file = '/path/to/keylog_file'
 	}

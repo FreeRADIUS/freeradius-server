@@ -130,7 +130,7 @@ GO
 --
 -- Table structure for table 'radcheck'
 --
--- Note: [op] is varchar to allow for "=" as a value -
+-- NOTE: [op] is varchar to allow for "=" as a value -
 -- depending on which driver is used to access the database, if
 -- the field is defined as char, then the trailing space may be
 -- returned, which fails to parse correctly.

@@ -135,7 +135,7 @@ CREATE TABLE radusergroup (
 #
 # Table structure for table 'radpostauth'
 #
-# Note: MySQL versions since 5.6.4 support fractional precision timestamps
+# NOTE: MySQL versions since 5.6.4 support fractional precision timestamps
 #        which we use here. Replace the authdate definition with the following
 #        if your software is too old:
 #
