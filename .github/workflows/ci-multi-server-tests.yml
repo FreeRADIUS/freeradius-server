@@ -36,6 +36,12 @@ jobs:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
+    #  id-token lets the profiling leg mint a GitHub OIDC token to authenticate
+    #  uploads to the prof-results store which is validated by its access.lua.
+    permissions:
+      contents: read
+      id-token: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -209,6 +215,45 @@ jobs:
           name: prof-results-${{ github.sha }}
           path: prof-results/
           if-no-files-found: ignore
+
+      #
+      #  Push the same prof-results/ tree into the durable prof-results store
+      #  (a WebDAV endpoint). The image there is static; this only uploads
+      #  files into its volume, never rebuilds it. The /profiling prefix is
+      #  stripped in front of the container, so it writes to /data/<rel>.
+      #
+      #  Auth is a GitHub OIDC token scoped to the store URL (PROF_RESULTS_URL),
+      #  which the store's access.lua verifies (signature + repo + optional aud),
+      #  so there is no shared upload secret. Tolerant by design: a missing
+      #  tree, unset URL, or undeployed store does not fail the leg.
+      #
+      - name: Publish profiling results to the prof-results store
+        if: ${{ matrix.mode == 'profiling' && always() }}
+        env:
+          PROF_RESULTS_URL: "https://cinfra.testdev.inkbridge.io"
+        run: |
+          [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
+          #  Mint an OIDC token with the store URL as audience (no --noproxy: the
+          #  token endpoint is reached the same way build-and-deploy.yml does).
+          token=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PROF_RESULTS_URL}" \
+            | jq -r '.value')
+          if [ -z "$token" ] || [ "$token" = null ]; then
+            echo "WARNING: could not obtain OIDC token; skipping prof-results publish"
+            exit 0
+          fi
+          find prof-results -type f ! -name '.DS_Store' | while read -r f; do
+            rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
+            curl -fsS --noproxy '*' -H "Authorization: Bearer ${token}" \
+              -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
+              || echo "WARNING: failed to upload ${rel}"
+          done
+          #  Refresh the manifest once the run's files are all uploaded, so the
+          #  UI's read path stays in sync with the tree.
+          curl -fsS --noproxy '*' -X POST -H "Authorization: Bearer ${token}" \
+            "${PROF_RESULTS_URL}/profiling/_manifest" \
+            || echo "WARNING: manifest regenerate failed"
 
       #
       #  If the CI has failed and the branch is ci-debug
