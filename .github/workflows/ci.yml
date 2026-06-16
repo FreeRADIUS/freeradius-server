@@ -273,11 +273,18 @@ jobs:
           lfs: false
           persist-credentials: false
 
-      - name: Set up Git with `GITHUB_TOKEN`
+      - name: Generate app token for push
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Set up Git with app token
         run: |
-          git config --global url."https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global user.name "freeradius-server-ci[bot]"
+          git config --global user.email "freeradius-server-ci[bot]@users.noreply.github.com"
           git config --global commit.gpgSign true
           git config --global gpg.format ssh
 
