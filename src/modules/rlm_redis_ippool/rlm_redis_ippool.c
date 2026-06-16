@@ -700,6 +700,61 @@ static char lua_assign_cmd[] =
 	"end" EOL									/* 24 */
 	"return 1";									/* 25 */
 
+/** Lua script for un-assigning a static lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] IP address to remove static lease from.
+ * - ARGV[2] The owner the static lease should be removed from.
+ * - ARGV[3] Wall time (seconds since epoch).
+ *
+ * Removes the static flag from the IP entry in the ZSET, then, depending on the remaining time
+ * determined by the ZSCORE removes the address hash, and the device key.
+ *
+ * Will do nothing if the static assignment does not exist or the IP and device do not match.
+ *
+ * Returns
+ * - 0 if no ip addresses were unassigned.
+ * - 1 if an ip address was unassigned.
+ */
+static char lua_unassign_cmd[] =
+	"local found" EOL								/* 1 */
+	"local pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL			/* 2 */
+	"local owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[2]" EOL	/* 3 */
+
+	/*
+	 *	Check that the device hash exists and points at the correct IP
+	 */
+	"found = redis.call('GET', owner_key)" EOL					/* 4 */
+	"if not found or found ~= ARGV[1] then" EOL					/* 5 */
+	"  return 0" EOL								/* 6 */
+	"end"	 EOL									/* 7 */
+
+	/*
+	 *	Check the assignment is actually static
+	 */
+	"local expires = tonumber(redis.call('ZSCORE', pool_key, ARGV[1]))" EOL		/* 8 */
+	"local static = expires >= " STRINGIFY(IPPOOL_STATIC_BIT) EOL			/* 9 */
+	"if not static then" EOL							/* 10 */
+	" return 0" EOL									/* 11 */
+	"end" EOL									/* 12 */
+
+	/*
+	 *	Remove static bit from ZSCORE
+	 */
+	"expires = expires - " STRINGIFY(IPPOOL_STATIC_BIT) EOL				/* 13 */
+	"redis.call('ZADD', pool_key, 'XX', expires, ARGV[1])" EOL			/* 14 */
+
+	/*
+	 *	If the lease still has time left, set an expiry on the device key.
+	 *	otherwise delete it.
+	 */
+	"if expires > tonumber(ARGV[3]) then" EOL					/* 15 */
+	"  redis.call('EXPIRE', owner_key, expires - tonumber(ARGV[3]))" EOL		/* 16 */
+	"else" EOL									/* 17 */
+	"  redis.call('DEL', owner_key)" EOL						/* 18 */
+	"end" EOL									/* 19 */
+	"return 1";									/* 20 */
+
 static uint32_t uint32_gen_mask(uint8_t bits)
 {
 	if (bits >= 32) return 0xffffffff;
@@ -2320,6 +2375,51 @@ static xlat_action_t redis_ippool_assign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 				 ~FR_SIGNAL_CANCEL, rctx);
 }
 
+static xlat_arg_parser_t const redis_ippool_unassign_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Pool name
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_PREFIX },	// IP / prefix
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },		// Owner
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t redis_ippool_unassign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in)
+{
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
+	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
+	fr_value_box_t			*pool, *ipaddr, *owner;
+	redis_ippool_tool_rctx_t	*rctx;
+	int				cmd_len;
+	fr_redis_async_rcode_t		rcode;
+	char				ip_buff[FR_IPADDR_PREFIX_STRLEN];
+
+	XLAT_ARGS(in, &pool, &ipaddr, &owner);
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_tool_rctx_t));
+	talloc_set_destructor(rctx, _redis_ippool_tool_rctx_free);
+
+	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, 1));
+
+	IPPOOL_SPRINT_IP(ip_buff, &ipaddr->vb_ip, ipaddr->vb_ip.prefix);
+	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "EVAL %s 1 %b %s %b %i", lua_unassign_cmd,
+				     (uint8_t const *)pool->vb_strvalue, pool->vb_length, ip_buff,
+				     (uint8_t const *)owner->vb_strvalue, owner->vb_length,
+				     fr_time_to_sec(fr_time()));
+	if (cmd_len < 0) return XLAT_ACTION_FAIL;
+
+	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results, rctx);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
+					     pool->vb_length, rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, t->rtcluster, t->cw, inst->coord_pair_reg,
+					"Failed to launch Redis command", XLAT_ACTION_FAIL);
+
+	return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel,
+				 ~FR_SIGNAL_CANCEL, rctx);
+}
+
 static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
@@ -2561,6 +2661,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "address.assign", redis_ippool_assign_xlat,
 						      FR_TYPE_UINT32)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_ippool_assign_args);
+
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "address.unassign", redis_ippool_unassign_xlat,
+						      FR_TYPE_UINT32)) == NULL)) return -1;
+	xlat_func_args_set(xlat, redis_ippool_unassign_args);
 
 	return 0;
 }
