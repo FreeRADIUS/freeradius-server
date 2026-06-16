@@ -46,12 +46,14 @@ a{color:var(--brand);}
 .rchip{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;
   border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px 5px;background:var(--paper);
   font-size:10.5px;font-weight:600;min-width:62px;max-width:120px;position:relative;line-height:1.15;}
-/* the label is a button: clicking it opens the run's detail view. Reset the
-   native button chrome so it reads as the chip's title, just clickable. */
-.rchip .rlabel{display:block;width:100%;text-align:left;border:0;background:transparent;padding:0;margin:0;
-  font-family:inherit;font-size:inherit;font-weight:inherit;color:inherit;line-height:inherit;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rchip .rlabel:hover{color:var(--brand);text-decoration:underline;}
+.rchip .rlabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* the whole chip is clickable: it opens the run's detail view (the × remove
+   button stops propagation). Hover/focus tint it brand, matching the heatmap
+   run-column headers; .open marks the run whose detail is currently showing. */
+.rchip{cursor:pointer;}
+.rchip:hover{border-color:var(--brand);background:var(--brand-soft);}
+.rchip:hover .rlabel,.rchip:hover .rn{color:var(--brand);}
+.rchip:focus-visible{outline:2px solid var(--brand);outline-offset:1px;}
 .rchip.open{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset;}
 .rchip.open .rlabel{color:var(--brand);}
 .rchip .cb{display:block;width:100%;height:6px;border-radius:3px;background:var(--bar-2);overflow:hidden;}

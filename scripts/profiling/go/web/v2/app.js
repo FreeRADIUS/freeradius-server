@@ -384,12 +384,18 @@ function renderChips() {
 
     const chip = document.createElement("div");
     chip.className = "rchip" + (isBase ? " base" : "") + (i === detailRun ? " open" : "");
+    // The whole chip opens the run's detail view (keyboard-accessible too).
+    chip.tabIndex = 0;
+    chip.setAttribute("role", "button");
+    chip.title = "Open the detailed per-function view for " + r.label;
+    chip.addEventListener("click", () => openDetail(i));
+    chip.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(i); }
+    });
 
-    const lbl = document.createElement("button");
+    const lbl = document.createElement("div");
     lbl.className = "rlabel";
     lbl.textContent = r.label;
-    lbl.title = "Open the detailed per-function view for " + r.label;
-    lbl.addEventListener("click", () => openDetail(i));
 
     const bar = document.createElement("div");
     bar.className = "cb";
@@ -405,7 +411,8 @@ function renderChips() {
     rm.className = "rm";
     rm.textContent = "×";
     rm.title = "Remove this run";
-    rm.addEventListener("click", () => removeRun(i));
+    // Stop the chip's click from also firing (which would open the detail view).
+    rm.addEventListener("click", (e) => { e.stopPropagation(); removeRun(i); });
 
     chip.append(lbl, bar, rn, rm);
     chipsEl.appendChild(chip);
