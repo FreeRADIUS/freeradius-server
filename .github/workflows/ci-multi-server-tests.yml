@@ -209,6 +209,7 @@ jobs:
       #  mode. Skipped in service mode (nothing to upload).
       #
       - name: Upload profiling results
+        id: upload-prof-results
         if: ${{ matrix.mode == 'profiling' && always() }}
         uses: actions/upload-artifact@v6
         with:
@@ -218,42 +219,19 @@ jobs:
 
       #
       #  Push the same prof-results/ tree into the durable prof-results store
-      #  (a WebDAV endpoint). The image there is static; this only uploads
-      #  files into its volume, never rebuilds it. The /profiling prefix is
-      #  stripped in front of the container, so it writes to /data/<rel>.
+      #  so the browser UI can read it. The script uploads every file and
+      #  refreshes the store's manifest; see its header for the auth and proxy
+      #  details. Any upload failure fails the leg.
       #
-      #  Auth is a GitHub OIDC token scoped to the store URL (PROF_RESULTS_URL),
-      #  which the store's access.lua verifies (signature + repo + optional aud),
-      #  so there is no shared upload secret. Tolerant by design: a missing
-      #  tree, unset URL, or undeployed store does not fail the leg.
+      #  Gated on the artifact step having found files: with if-no-files-found:
+      #  ignore, upload-artifact leaves artifact-id empty when the tree is
+      #  absent/empty, so this step is skipped rather than publishing nothing.
       #
       - name: Publish profiling results to the prof-results store
-        if: ${{ matrix.mode == 'profiling' && always() }}
+        if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
         env:
           PROF_RESULTS_URL: "https://cinfra-ca.testdev.inkbridge.io"
-        run: |
-          [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
-          #  Mint an OIDC token with the store URL as audience (no --noproxy: the
-          #  token endpoint is reached the same way build-and-deploy.yml does).
-          token=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PROF_RESULTS_URL}" \
-            | jq -r '.value')
-          if [ -z "$token" ] || [ "$token" = null ]; then
-            echo "WARNING: could not obtain OIDC token; skipping prof-results publish"
-            exit 0
-          fi
-          find prof-results -type f ! -name '.DS_Store' | while read -r f; do
-            rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
-            curl -fsS -H "Authorization: Bearer ${token}" \
-              -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
-              || echo "WARNING: failed to upload ${rel}"
-          done
-          #  Refresh the manifest once the run's files are all uploaded, so the
-          #  UI's read path stays in sync with the tree.
-          curl -fsS -X POST -H "Authorization: Bearer ${token}" \
-            "${PROF_RESULTS_URL}/profiling/_manifest" \
-            || echo "WARNING: manifest regenerate failed"
+        run: scripts/ci/publish-profiling-results.sh
 
       #
       #  If the CI has failed and the branch is ci-debug
