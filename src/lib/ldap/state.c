@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file lib/ldap/start_tls.c
- * @brief Start TLS asynchronously
+ * @file lib/ldap/state.c
+ * @brief Connection state machine for asynchronous LDAP connections
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
@@ -44,7 +44,8 @@ do { \
  * This function moves the connection through different states, setting different I/O
  * handlers.
  *
- * If any of the states
+ * If any of the states fail to be entered, the connection is moved to the error
+ * state, which restarts the state machine by signalling a reconnect.
  */
 fr_ldap_state_t fr_ldap_state_next(fr_ldap_connection_t *c)
 {
