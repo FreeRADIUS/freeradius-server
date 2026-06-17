@@ -223,6 +223,7 @@ static int fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *re
 		RPWDEBUG("Failed parsing value \"%pV\" for attribute %s", dn,
 				 tmpl_attr_tail_da(map->lhs)->name);
 		talloc_free(vp);
+		return 0;
 	}
 
 	fr_pair_append(out, vp);
