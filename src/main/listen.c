@@ -2967,17 +2967,27 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 static int proxy_socket_encode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef HOMESERVER_VIOLATES_RFC
+	bool		tls;
+#endif
 #ifdef WITH_RADIUSV11
 	listen_socket_t *sock = listener->data;
 
 	request->proxy->radiusv11 = sock->radiusv11;
 #endif
 
+#ifdef HOMESERVER_VIOLATES_RFC
+	tls = request->packet->tls;
+	if (request->home_server->no_auto_ma) request->proxy->tls = true;
+#endif
 	if (rad_encode(request->proxy, NULL, request->home_server->secret) < 0) {
 		RERROR("Failed encoding proxied packet: %s", fr_strerror());
 
 		return -1;
 	}
+#ifdef HOMESERVER_VIOLATES_RFC
+	request->proxy->tls = tls;
+#endif
 
 	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
 		RWDEBUG("Packet is large, and possibly truncated - %zd vs max %d",

@@ -558,6 +558,9 @@ static CONF_PARSER home_server_config[] = {
 #endif
 #endif
 
+#ifdef HOMESERVER_VIOLATES_RFC
+	{ "no_auto_ma", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, no_auto_ma), NULL },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 

@@ -172,6 +172,9 @@ typedef struct home_server {
 	time_t			expiration;
 #endif
 	uint32_t		id;
+#ifdef HOMESERVER_VIOLATES_RFC
+	bool			no_auto_ma;		//!< For home servers which violate the RFCs.
+#endif
 } home_server_t;
 
 
