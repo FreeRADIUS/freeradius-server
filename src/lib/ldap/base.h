@@ -682,7 +682,7 @@ static inline int fr_ldap_berval_strncasecmp(struct berval *value, char const *s
 	if (strlen != value->bv_len) return CMP(strlen, value->bv_len);
 
 	for (i = 0; i < strlen; i++) {
-		if (tolower(value->bv_val[i]) != tolower(str[i])) return CMP(value->bv_val[i], str[i]);
+		if (tolower((uint8_t)value->bv_val[i]) != tolower((uint8_t)str[i])) return CMP(value->bv_val[i], str[i]);
 	}
 
 	return 0;
