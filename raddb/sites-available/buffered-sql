@@ -48,7 +48,7 @@
 #
 server buffered-sql {
 	#
-	#  ### listen { ... }
+	#  === listen { ... }
 	#
 	listen {
 		#
@@ -137,7 +137,7 @@ server buffered-sql {
 	}
 
 	#
-	#  ### recv Accounting-Request
+	#  === recv Accounting-Request
 	#
 	#  Pre-accounting. Decide which accounting type to use.
 	#
@@ -156,7 +156,7 @@ server buffered-sql {
 	}
 
 	#
-	#  ### send Accounting-Response
+	#  === send Accounting-Response
 	#
 	#  Accounting. Log the accounting data.
 	#

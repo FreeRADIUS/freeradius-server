@@ -100,7 +100,7 @@ json {
 #		output_mode = object
 
 		#
-		#  ### Formatting options for attribute names
+		#  === Formatting options for attribute names
 		#
 		attribute {
 			#
@@ -113,7 +113,7 @@ json {
 		}
 
 		#
-		#  ### Formatting options for attribute values
+		#  === Formatting options for attribute values
 		#
 		value {
 

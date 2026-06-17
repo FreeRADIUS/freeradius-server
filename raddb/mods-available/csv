@@ -143,7 +143,7 @@ csv {
 	key = User-Name
 
 	#
-	#  ### Mapping of CSV fields to attributes.
+	#  === Mapping of CSV fields to attributes.
 	#
 	#  WARNING: Although this format is almost identical to the `unlang`
 	#  update section format, it does *NOT* mean that you can use other

@@ -34,7 +34,7 @@ server arp {
 	namespace = arp
 
 	#
-	#  ### The listen section
+	#  === The listen section
 	#
 	#  The `listen` sections in v4 are very different from the
 	#  `listen sections in v3.  The changes were necessary in

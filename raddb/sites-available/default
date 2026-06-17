@@ -89,13 +89,13 @@ server default {
 #	log = some_other_logging_destination
 
 	#
-	#  ### RADIUS Configuration
+	#  === RADIUS Configuration
 	#
 	#  All of the configuration for processing RADIUS packets goes here.
 	#
 	radius {
 		#
-		#  #### Access-Request subsection
+		#  ==== Access-Request subsection
 		#
 		#  This section contains configuration which is
 		#  specific to processing `Access-Request` packets.
@@ -173,7 +173,7 @@ server default {
 	}
 
 	#
-	#  ### Local Dictionaries
+	#  === Local Dictionaries
 	#
 	#  It is now possible to have dictionaries which are local to a virtual
 	#  server.  The attributes defined here can be used in policies in this
@@ -239,7 +239,7 @@ server default {
 
 
 	#
-	#  ### The listen section
+	#  === The listen section
 	#
 	#  The `listen` sections in v4 are very different from the
 	#  `listen sections in v3.  The changes were necessary in
@@ -452,7 +452,7 @@ server default {
 		}
 
 		#
-		#  #### UDP Transport
+		#  ==== UDP Transport
 		#
 		#  When the `listen` section contains `transport =
 		#  udp`, it looks for a "udp" subsection.  This
@@ -563,7 +563,7 @@ server default {
 		}
 
 		#
-		#  #### TCP Transport
+		#  ==== TCP Transport
 		#
 		#  When the configuration has `transport = tcp`, it
 		#  looks for a `tcp` subsection.  That subsection
@@ -702,7 +702,7 @@ server default {
 	}
 
 	#
-	#  ### Listen for Accounting-Request packets
+	#  === Listen for Accounting-Request packets
 	#
 	listen accounting {
 		type = Accounting-Request
@@ -717,7 +717,7 @@ server default {
 
 
 	#
-	#  ### Local Clients
+	#  === Local Clients
 	#
 	#  The "client" sections can can also be placed here.  Unlike
 	#  v3, they do not need to be wrapped in a "clients" section.

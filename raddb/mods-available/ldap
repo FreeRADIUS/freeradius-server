@@ -91,7 +91,7 @@ ldap {
 	#
 
 	#
-	#  ### SASL parameters to use for admin binds
+	#  === SASL parameters to use for admin binds
 	#
 	#  sasl { ... }::
 	#
@@ -129,7 +129,7 @@ ldap {
 	}
 
 	#
-	#  ### Generic valuepair attribute
+	#  === Generic valuepair attribute
 	#
 	#  If set, this will attribute will be retrieved in addition to any
 	#  mapped attributes.
@@ -154,7 +154,7 @@ ldap {
 #	valuepair_attribute = 'radiusAttribute'
 
 	#
-	#  ### Mapping of LDAP directory attributes to RADIUS dictionary attributes.
+	#  === Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
 	#  WARNING: Although this format is almost identical to the `unlang`
 	#  update section format, it does *NOT* mean that you can use other
@@ -238,7 +238,7 @@ ldap {
 	#
 
 	#
-	#  ### User object Identification
+	#  === User object Identification
 	#
 	user {
 		#
@@ -396,7 +396,7 @@ ldap {
 	}
 
 	#
-	#  ### User membership checking
+	#  === User membership checking
 	#
 	group {
 		#
@@ -514,7 +514,7 @@ ldap {
 	}
 
 	#
-	#  ### User profiles
+	#  === User profiles
 	#
 	#  RADIUS profile objects contain sets of attributes to insert into the request.
 	#  These attributes are mapped using the same mapping scheme applied to user
@@ -599,7 +599,7 @@ ldap {
 	}
 
 	#
-	#  ### Modify user object on receiving Accounting-Request
+	#  === Modify user object on receiving Accounting-Request
 	#
 	#  Useful for recording things like the last time the user logged
 	#  in, or the `Acct-Session-ID` for CoA/DM.
@@ -644,7 +644,7 @@ ldap {
 	}
 
 	#
-	#  ### "send" sections can modify LDAP objects too
+	#  === "send" sections can modify LDAP objects too
 	#
 	send {
 		access-accept {
@@ -655,7 +655,7 @@ ldap {
 	}
 
 	#
-	#  ### LDAP connection-specific options
+	#  === LDAP connection-specific options
 	#
 	#  These options set timeouts, keep-alives, etc. for the connections.
 	#
@@ -774,7 +774,7 @@ ldap {
 	}
 
 	#
-	#  ### TLS encrypted connections
+	#  === TLS encrypted connections
 	#
 	#  This subsection configures the `tls` related items that control how FreeRADIUS
 	#  connects to an LDAP server. It contains all of the `tls_*` configuration entries
@@ -827,7 +827,7 @@ ldap {
 	}
 
 	#
-	#  ### Connection Pool
+	#  === Connection Pool
 	#
 	#  The connection pool is a set of per-thread parameters for connections
 	#  to the LDAP server.
@@ -925,7 +925,7 @@ ldap {
 	}
 
 	#
-	#  ### Bind Connection Pool
+	#  === Bind Connection Pool
 	#
 	#  This connection pool is used for LDAP binds used to authenticate requests when
 	#  calling the ldap module in authenticate context.  If passwords are retrieved

@@ -71,7 +71,7 @@ cipher {
 	type = rsa
 
 	#
-	#  ### RSA asymmetrically keyed ciphering
+	#  === RSA asymmetrically keyed ciphering
 	#
 	rsa {
 		#  private_key_password::

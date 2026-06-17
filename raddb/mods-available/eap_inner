@@ -49,7 +49,7 @@ eap inner-eap {
 	type = tls
 
 	#
-	#  ## md5 { ... }
+	#  == md5 { ... }
 	#
 	#  `md5` is OK to use the inner tunnel, as keying material is provided by
 	#  the outer EAP method.
@@ -58,7 +58,7 @@ eap inner-eap {
 	}
 
 	#
-	#  ## gtc { ... }
+	#  == gtc { ... }
 	#
 	#  See the `eap` module for common configuration explanation.
 	#
@@ -69,7 +69,7 @@ eap inner-eap {
 	}
 
 	#
-	#  ## mschapv2 { ... }
+	#  == mschapv2 { ... }
 	#
 	#  See the `eap` module for common configuration explanation.
 	#
@@ -82,7 +82,7 @@ eap inner-eap {
 	#
 
 	#
-	#  ## tls-config tls-peer { ... }
+	#  == tls-config tls-peer { ... }
 	#
 	tls-config tls-peer {
 		#
@@ -152,7 +152,7 @@ eap inner-eap {
 	}
 
 	#
-	#  ## tls { ... }
+	#  == tls { ... }
 	#
 	#  You SHOULD use different certificates than are used
 	#  for the outer EAP configuration!

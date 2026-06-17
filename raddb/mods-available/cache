@@ -273,9 +273,9 @@ cache {
 	}
 
 	#
-	#  ## How to use
+	#  == How to use
 	#
-	#  ### Configuration
+	#  === Configuration
 	#
 	#  This module supports a number of runtime configuration parameters
 	#  represented by attributes in the `control.` list.
@@ -326,7 +326,7 @@ cache {
 	#  NOTE: All runtime configuration attributes will be removed from the
 	#  `control.` list after the cache module is called.
 	#
-	#  ### Methods
+	#  === Methods
 	#
 	#  The cache module also allows handling the cache using the methods.
 	#

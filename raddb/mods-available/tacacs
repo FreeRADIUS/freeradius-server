@@ -105,7 +105,7 @@ tacacs {
 	revive_interval = 3600
 
 	#
-	#  ## Connection trunking
+	#  == Connection trunking
 	#
 	#  Each worker thread (see tacacsd.conf, num_workers), has
 	#  it's own set of connections.  These connections are grouped
@@ -254,7 +254,7 @@ tacacs {
 	}
 
 	#
-	#  ## Protocols
+	#  == Protocols
 	#
 	#  Only TCP is supported.
 	#

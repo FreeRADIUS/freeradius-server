@@ -26,7 +26,7 @@
 #  example:
 #
 #    always db_online {
-#        # Default to online
+#        = Default to online
 #        rcode = ok
 #    }
 #
@@ -56,8 +56,8 @@
 #
 #    recv Access-Request {
 #
-#        #  If the database is not healthy then remain silent to trigger
-#        #  NAS failover
+#        = If the database is not healthy then remain silent to trigger
+#        = NAS failover
 #        #
 #        db_online {
 #            fail = 1

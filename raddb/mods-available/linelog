@@ -119,7 +119,7 @@ linelog {
 	destination = file
 
 	#
-	#  .File as the destination for log messages.
+	#  file:: File as the destination for log messages.
 	#
 	file {
 		#
@@ -280,7 +280,7 @@ linelog {
 	}
 
 	#
-	#  .UNIX socket-file as destination
+	#  unix:: UNIX socket-file as destination
 	#
 #	unix {
 		#
@@ -295,7 +295,7 @@ linelog {
 #	}
 
 	#
-	#  .TCP-server as a destination
+	#  tcp:: TCP-server as a destination
 	#
 	tcp {
 		#
@@ -320,7 +320,7 @@ linelog {
 	}
 
 	#
-	#  .UDP-server as a destination
+	#  udp:: UDP-server as a destination
 	#
 	udp {
 		#
@@ -345,7 +345,7 @@ linelog {
 	}
 
 	#
-	#  .Syslog-server as a destination
+	#  syslog:: Syslog-server as a destination
 	#
 	syslog {
 		#

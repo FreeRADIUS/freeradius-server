@@ -191,7 +191,7 @@ rest {
 #	chunk = 0
 
 	#
-	#  ## Sections
+	#  == Sections
 	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
@@ -363,7 +363,7 @@ rest {
 	}
 
 	#
-	#  ### recv { ... }
+	#  === recv { ... }
 	#
 	#  Default action when called in `recv` sections except `recv Accounting-Request`.
 	#
@@ -389,7 +389,7 @@ rest {
 	}
 
 	#
-	#  ### Authenticate { ... }
+	#  === Authenticate { ... }
 	#
 	#  Default action when called in `authenticate` sections.
 	#
@@ -404,7 +404,7 @@ rest {
 	}
 
 	#
-	#  ### Accounting { ... }
+	#  === Accounting { ... }
 	#
 	#  Default action when called in `recv Accounting-Request` or `accounting` sections.
 	#
@@ -426,7 +426,7 @@ rest {
 	}
 
 	#
-	#  ### send { ... }
+	#  === send { ... }
 	#
 	#  Default action when called in `send` sections.
 	#

@@ -25,13 +25,13 @@ server tacacs {
 	namespace = tacacs
 
 	#
-	#  ### TACACS+ Configuration
+	#  === TACACS+ Configuration
 	#
 	#  All of the configuration for processing TACACS+ packets goes here.
 	#
 	tacacs {
 		#
-		#  #### Authentication subsection
+		#  ==== Authentication subsection
 		#
 		#  This section contains configuration which is
 		#  specific to processing `Authentication` packets.
@@ -108,7 +108,7 @@ server tacacs {
 		transport = tcp
 
 		#
-		#  ## Protocols
+		#  == Protocols
 		#
 		#  tcp { ... }:: TCP is configured here.
 		#
@@ -197,7 +197,7 @@ server tacacs {
 	}
 
 	#
-	#  ## Clients
+	#  == Clients
 	#
 	#  A virtual server can have multiple `client` definitions.  These clients take priority
 	#  over  the global `client` definitions.
@@ -228,11 +228,11 @@ server tacacs {
 	}
 
 	#
-	#  ## Authentication-Start
+	#  == Authentication-Start
 	#
 
 	#
-	#  ### Recv
+	#  === Recv
 	#
 	#
 	#  In general, it is not necessary to set `Auth-Type` in this section.  The packet header
@@ -290,7 +290,7 @@ server tacacs {
 	}
 
 	#
-	#  ### Send
+	#  === Send
 	#
 	#  Note that "follow" is officially deprecated, and is not supported.
 	#
@@ -329,7 +329,7 @@ server tacacs {
 	}
 
 	#
-	#  ## Authentication-Continue
+	#  == Authentication-Continue
 	#
 	#  This section handles responses to challenges for `Authentication-Type = ASCII`
 	#
@@ -347,7 +347,7 @@ server tacacs {
 	#
 
 	#
-	#  ### Recv
+	#  === Recv
 	#
 	#  Receive `Authentication-Continue` packet.  When this
 	#  section is done and has a User-Password, the server will
@@ -364,11 +364,11 @@ server tacacs {
 	}
 
 	#
-	#  ## Authorization
+	#  == Authorization
 	#
 
 	#
-	#  ### Recv
+	#  === Recv
 	#
 	recv Authorization-Request {
 		"%{Authentication-Method}"
@@ -382,7 +382,7 @@ server tacacs {
 	}
 
 	#
-	#  ### Send
+	#  === Send
 	#
 	#	Add the arguments to whatever the user entered.
 	#
@@ -409,11 +409,11 @@ server tacacs {
 	}
 
 	#
-	#  ## Accounting
+	#  == Accounting
 	#
 
 	#
-	#  ### Recv
+	#  === Recv
 	#
 	recv Accounting-Request {
 		#
@@ -423,7 +423,7 @@ server tacacs {
 	}
 
 	#
-	#  ### Accounting "type" Sections
+	#  === Accounting "type" Sections
 	#
 	#  Each type of accounting packet is run through its own
 	#  section. The section MUST return "ok" to indicate that
@@ -455,7 +455,7 @@ server tacacs {
 	}
 
 	#
-	#  ### Send Responses
+	#  === Send Responses
 	#
 	send Accounting-Success {
 		reply.Server-Message := "Success"

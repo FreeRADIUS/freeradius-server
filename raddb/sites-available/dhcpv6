@@ -52,7 +52,7 @@ server dhcpv6 {
 	port = 5470
 
 	#
-	#  ### The listen section
+	#  === The listen section
 	#
 	#  DHCPv6 relies on multicast packets to work.  We suggest
 	#  defining only one DHCPv6 "listen" per host machine.  This
@@ -80,7 +80,7 @@ server dhcpv6 {
 		transport = udp
 
 		#
-		#  #### UDP Transport
+		#  ==== UDP Transport
 		#
 		#  When the `listen` section contains `transport =
 		#  udp`, it looks for a "udp" subsection.  This
@@ -141,7 +141,7 @@ server dhcpv6 {
 	}
 
 	#
-	#  ### The listen section
+	#  === The listen section
 	#
 	#  DHCPv6 relies on multicast packets to work.  We suggest
 	#  defining only one DHCPv6 "listen" per host machine.  This
@@ -171,7 +171,7 @@ server dhcpv6 {
 		transport = udp
 
 		#
-		#  #### UDP Transport
+		#  ==== UDP Transport
 		#
 		#  When the `listen` section contains `transport =
 		#  udp`, it looks for a "udp" subsection.  This
@@ -202,7 +202,7 @@ server dhcpv6 {
 	}
 
 	#
-	#  #### State machine configuration
+	#  ==== State machine configuration
 	#
 	dhcpv6 {
 		#

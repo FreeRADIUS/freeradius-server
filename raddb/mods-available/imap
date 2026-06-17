@@ -20,7 +20,7 @@ imap {
 	#
 	tls {
 		#
-		#  .Certificate validation options
+		#  Certificate validation options
 		#
 		#  Specifies how the certificate(s) presented by the
 		#  IMAP server are validated, and which certificates

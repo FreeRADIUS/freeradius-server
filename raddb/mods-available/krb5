@@ -38,7 +38,7 @@ krb5 {
 #	password = User-Password
 
 	#
-	#  .Reusable Handles
+	#  reuse:: Reusable Handles
 	#
 	#  Reusable krb5 handles are allocated in blocks.  These
 	#  parameters allow for tuning how that is done.

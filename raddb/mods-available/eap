@@ -87,7 +87,7 @@ eap {
 	ignore_unknown_eap_types = no
 
 	#
-	#  ## Allowed EAP-types
+	#  == Allowed EAP-types
 	#
 	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
 	#
@@ -116,7 +116,7 @@ eap {
 #	type = sim
 
 	#
-	#  ### EAP-MD5
+	#  === EAP-MD5
 	#
 	#  WARNING: EAP-MD5 authentication cannot be used for wireless
 	#  connections.  It is insecure, and does not provide for dynamic WEP
@@ -126,7 +126,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-PWD (Secure password-based authentication)
+	#  === EAP-PWD (Secure password-based authentication)
 	#
 	#  In v4, the "known good" password is taken from the `request.control.Password.Cleartext` list,
 	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
@@ -144,7 +144,7 @@ eap {
 	}
 
 	#
-	#  ### Generic Token Card
+	#  === Generic Token Card
 	#
 	#  Currently, this is only permitted inside of `EAP-TTLS`, or `EAP-PEAP`.
 	#  The module `challenges` the user with text, and the response from the
@@ -175,7 +175,7 @@ eap {
 	}
 
 	#
-	#  ## Common TLS configuration for TLS-based EAP types
+	#  == Common TLS configuration for TLS-based EAP types
 	#
 	#  See `certs/index.adoc` for additional comments on certificates.
 	#
@@ -280,7 +280,7 @@ eap {
 #		auto_chain = no
 
 		#
-		#  .A chain of certificates to present to the client
+		#  chain:: A chain of certificates to present to the client
 		#
 		#  Multiple chain sections can be specified to allow different
 		#  chains for different key types (RSA, DSA, DH, EC).
@@ -437,7 +437,7 @@ eap {
 		}
 
 		#
-		#  ### ECC certificate chain for key agility
+		#  === ECC certificate chain for key agility
 		#
 		#  This is disabled by default, see the warning above.
 		#
@@ -454,7 +454,7 @@ eap {
 #		}
 
 		#
-		#  ## Server certificate
+		#  == Server certificate
 		#
 		#  The server certificate may also be specified at
 		#  runtime on a per session basis.  In that use-case,
@@ -796,7 +796,7 @@ eap {
 #			allow_not_yet_valid_crl = no
 		}
 		#
-		#  ### TLS Session resumption
+		#  === TLS Session resumption
 		#
 		#  Once authentication has completed, the TLS client may be
 		#  provided with a session ticket which it presents
@@ -998,7 +998,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-TLS
+	#  === EAP-TLS
 	#
 	#  The common TLS configuration for TLS-based EAP types is given above
 	#  in the `tls-config { ... }` section.
@@ -1041,7 +1041,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-TTLS
+	#  === EAP-TTLS
 	#
 	#  The TTLS module implements the `EAP-TTLS` protocol, which can be
 	#  described as EAP inside of Diameter, inside of TLS, inside of EAP,
@@ -1117,7 +1117,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-PEAP
+	#  === EAP-PEAP
 	#
 	#  The tunneled `EAP` session needs a default `EAP` type which is separate
 	#  from the one for the non-tunneled EAP module.  Inside of the TLS/PEAP
@@ -1127,7 +1127,7 @@ eap {
 	#  secure if the supplicant is configured to validate the server
 	#  certificate.  See the comments above for EAP-TTLS about this topic.
 	#
-	#  #### Windows compatibility
+	#  ==== Windows compatibility
 	#
 	#  [IMPORTANT]
 	#  ====
@@ -1212,7 +1212,7 @@ eap {
 	}
 
 	#
-	#  ### EAP MS-CHAPv2
+	#  === EAP MS-CHAPv2
 	#
 	#  NOTE: This is the EAP MS-CHAPv2 sub-module, not the main `mschap`
 	#  module.
@@ -1275,7 +1275,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-FAST
+	#  === EAP-FAST
 	#
 	#  The FAST module implements the EAP-FAST protocol.
 	#
@@ -1348,7 +1348,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-SIM
+	#  === EAP-SIM
 	#
 	sim {
 		#
@@ -1363,7 +1363,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-AKA
+	#  === EAP-AKA
 	#
 	aka {
 		#
@@ -1393,7 +1393,7 @@ eap {
 	}
 
 	#
-	#  ### EAP-AKA-Prime
+	#  === EAP-AKA-Prime
 	#
 	aka-prime {
 		#

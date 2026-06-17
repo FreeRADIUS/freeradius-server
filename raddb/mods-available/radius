@@ -305,7 +305,7 @@ radius {
 	revive_interval = 3600
 
 	#
-	#  ### Check the status of a connection
+	#  === Check the status of a connection
 	#
 	#  status_check { ... }:: For "are you alive?" queries.
 	#
@@ -361,13 +361,13 @@ radius {
 	}
 
 	#
-	#  ## Transport Protocols
+	#  == Transport Protocols
 	#
 	#  The module supports multiple transport protocols.
 	#
 
 	#
-	#  ### File Output
+	#  === File Output
 	#
 	#  Write raw RADIUS packets (no IP or UDP header) to a file.
 	#  This transport can only be used for `mode = replicate`
@@ -377,7 +377,7 @@ radius {
 	}
 
 	#
-	#  ### UDP Transport
+	#  === UDP Transport
 	#
 	#  Much like the v3 `home_server` configuration.
 	#
@@ -419,7 +419,7 @@ radius {
 	}
 
 	#
-	#  ### TCP
+	#  === TCP
 	#
 	#  The TCP configuration is identical to the `udp` configuration.
 	#
@@ -428,7 +428,7 @@ radius {
 #	}
 
 	#
-	#  ## Connection trunking
+	#  == Connection trunking
 	#
 	#  Each worker thread (see radiusd.conf, num_workers), has
 	#  it's own set of connections.  These connections are grouped
@@ -577,7 +577,7 @@ radius {
 	}
 
 	#
-	#  ## Retransmission timers.
+	#  == Retransmission timers.
 	#
 	#  Each packet can have its own retransmission timers.
 	#
@@ -586,7 +586,7 @@ radius {
 	#
 
 	#
-	#  ### Access Request packets
+	#  === Access Request packets
 	#
 	Access-Request {
 		#
@@ -631,7 +631,7 @@ radius {
 	}
 
 	#
-	#  ### Accounting Packets
+	#  === Accounting Packets
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#
@@ -646,7 +646,7 @@ radius {
 	}
 
 	#
-	#  ### CoA Packets
+	#  === CoA Packets
 	#
 	CoA-Request {
 		initial_rtx_time = 2
@@ -656,7 +656,7 @@ radius {
 	}
 
 	#
-	#  ### Disconnect packets
+	#  === Disconnect packets
 	#
 	Disconnect-Request {
 		initial_rtx_time = 2
@@ -666,7 +666,7 @@ radius {
 	}
 
 	#
-	#  ### Status-Server packets
+	#  === Status-Server packets
 	#
 	#  The configuration here helps the module determine if a home
 	#  server is alive and responding to requests.
@@ -734,7 +734,7 @@ radius replicate {
 	transport = udp
 
 	#
-	#  ### UDP Transport
+	#  === UDP Transport
 	#
 	#  For unconnected modes, only UDP is supported.
 	#
@@ -755,7 +755,7 @@ radius replicate {
 	}
 
 	#
-	#  ### Other Configuration
+	#  === Other Configuration
 	#
 	#  No other configuration items are supported when using
 	#  `mode = unconnected-replicate`.
@@ -811,7 +811,7 @@ radius proxy {
 	transport = udp
 
 	#
-	#  ### UDP Transport
+	#  === UDP Transport
 	#
 	udp {
 		#
@@ -893,7 +893,7 @@ radius proxy {
 
 
 	#
-	#  ## Timeouts
+	#  == Timeouts
 	#
 	#  Timeouts for proxying are controlled in sections named for
 	#  the packet type.  See the examples above for full
@@ -907,7 +907,7 @@ radius proxy {
 	}
 
 	#
-	#  ## Connection trunking
+	#  == Connection trunking
 	#
 	#  See above for documentation on connection trunking.
 	#

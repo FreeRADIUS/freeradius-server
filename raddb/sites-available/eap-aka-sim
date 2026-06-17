@@ -262,7 +262,7 @@ server eap-aka-sim {
 #	}
 
 	#
-	#  ### `recv Identity-Response { ... }` - Process an EAP-Identity-Response or AKA-Identity value
+	#  === `recv Identity-Response { ... }` - Process an EAP-Identity-Response or AKA-Identity value
 	#
 	#  This is usually the first section called when starting a new EAP-AKA
 	#  session, and will be called for each round of identity negotiation.
@@ -303,7 +303,7 @@ server eap-aka-sim {
 	#  - `Pseudonym`::	`load pseudonym { ... }` will be called.
 	#  - `Fastauth`::	`load session { ... }` will be called.
 	#
-	#  #### Identity hints
+	#  ==== Identity hints
 	#
 	#  In EAP-AKA['] and EAP-SIM, the first byte of the identity is used as
 	#  a hint about what type of identity has been provided by the
@@ -337,7 +337,7 @@ server eap-aka-sim {
 	#  set `control.EAP-Type` to an appropriate value before calling the
 	#  EAP module.
 	#
-	#  #### Pseudonyms
+	#  ==== Pseudonyms
 	#
 	#  When receiving a `Identity-Type = Pseudonym` request, the pseudonym
 	#  should either be decrypted or resolved to a permanent identity.
@@ -351,7 +351,7 @@ server eap-aka-sim {
 	#  to execute the `load pseudonym { ... }` section next.  This is
 	#  sometimes useful when dealing with non-standard pseudonym identities.
 	#
-	#  #### Reauthentication
+	#  ==== Reauthentication
 	#
 	#  When receiving a `Identity-Type = Fastauth` request, the fastauth
 	#  identity should be resolved in a datastore of valid fastauth
@@ -366,7 +366,7 @@ server eap-aka-sim {
 	#  to execute the `load session { ... }` section next.  This is
 	#  sometimes useful when dealing with non-standard fastauth identities.
 	#
-	#  #### Custom identity schemes
+	#  ==== Custom identity schemes
 	#
 	#  Multiple identity privacy schemes have been proposed for
 	#  EAP-SIM/AKA/AKA'.  Instead of hard coding implementations in the server
@@ -390,7 +390,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Identity-Request { ... }` - Allow user massaging of Identity-Request
+	#  === `send Identity-Request { ... }` - Allow user massaging of Identity-Request
 	#
 	#  This section is called when a new Start or AKA-Identity request is
 	#  sent to the supplicant, unless `send Start { ... }` or `send
@@ -402,7 +402,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start requests
+	#  === `send Start-Request { ... }` - Allow specific policies to be applied to SIM start requests
 	#
 	#  This section is optional, and may be used to specify EAP-SIM only
 	#  logic for sending Start requests.
@@ -419,7 +419,7 @@ server eap-aka-sim {
 #	}
 
 	#
-	#  ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start responses
+	#  === `send Start-Request { ... }` - Allow specific policies to be applied to SIM start responses
 	#
 	#  This section is optional, and may be used to specify EAP-SIM only
 	#  logic for sending Start requests.
@@ -436,7 +436,7 @@ server eap-aka-sim {
 #	}
 
 	#
-	#  ### `send AKA-Identity-Request { ... }` - Allow specific policies to be applied to AKA identity requests
+	#  === `send AKA-Identity-Request { ... }` - Allow specific policies to be applied to AKA identity requests
 	#
 	#  This section is optional, and may be used to specify
 	#  EAP-AKA/EAP-AKA['] only logic for sending AKA-Identity requests.
@@ -453,7 +453,7 @@ server eap-aka-sim {
 #	}
 
 	#
-	#  ### `send Challenge-Request { ... }` - Acquire GSM triplets or UMTS quintuplets for the Challenge-Request
+	#  === `send Challenge-Request { ... }` - Acquire GSM triplets or UMTS quintuplets for the Challenge-Request
 	#
 	#  NOTE: It's recommended to perform identity resolution in `recv
 	#  EAP-Identity-Response` or `recv Identity-Response` and request or
@@ -518,7 +518,7 @@ server eap-aka-sim {
 	#  - `SQN`::		(optional)
 	#  - `AK`::  		(optional)
 	#
-	#  ### Pseudonyms
+	#  === Pseudonyms
 	#
 	#  For identity privacy you may include a `reply.Next-Pseudonym`
 	#  attribute. `reply.Next-Pseudonym` must be a valid UTF8 string and
@@ -539,7 +539,7 @@ server eap-aka-sim {
 	#  which case a random value with the correct hint character will be
 	#  generated for you.
 	#
-	#  ### Fast-Reauth
+	#  === Fast-Reauth
 	#
 	#  For identity privacy, to reduce load on the AuC, and to improve
 	#  authentication times/user experience, fast re-authentication may be
@@ -556,7 +556,7 @@ server eap-aka-sim {
 	#  which case a random value with the correct hint character will be
 	#  generated for you.
 	#
-	#  ### Cryptographic identity overrides
+	#  === Cryptographic identity overrides
 	#
 	#  The identity provided as the value of EAP-Response/Identity or in
 	#  the last processed EAP-Response/AKA-Identity or
@@ -596,7 +596,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Challenge-Response { ... }` - Allow additional authorization checks and logging
+	#  === `recv Challenge-Response { ... }` - Allow additional authorization checks and logging
 	#
 	#  The following rcodes have special meanings in this section:
 	#
@@ -627,7 +627,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Reauthentication-Request { ... }` - Allow user massaging of a reauthentication request
+	#  === `recv Reauthentication-Request { ... }` - Allow user massaging of a reauthentication request
 	#
 	#  There's not much to do here as the majority of the work for
 	#  session resumption is done in `load session { ... }`.
@@ -663,7 +663,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Reauthentication-Response { ... }` - Allow additional authorization checks and logging
+	#  === `recv Reauthentication-Response { ... }` - Allow additional authorization checks and logging
 	#
 	#  Uses the same rcode mappings as `recv Challenge-Response { ... }`.
 	#
@@ -675,7 +675,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
+	#  === `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
 	#
 	#  The reason for the error should be available in `Client-Error-Code`
 	#
@@ -687,7 +687,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Authentication-Reject { ... }` - Log the fact that the supplicant failed to authenticate the AuC
+	#  === `recv Authentication-Reject { ... }` - Log the fact that the supplicant failed to authenticate the AuC
 	#
 	#  NOTE: Only used for EAP-AKA and EAP-AKA'
 	#
@@ -706,7 +706,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `recv Synchronization-Failure { ... }` - Allow resynchronisation of sequence numbers
+	#  === `recv Synchronization-Failure { ... }` - Allow resynchronisation of sequence numbers
 	#
 	#  NOTE: Only used for EAP-AKA and EAP-AKA'
 	#
@@ -740,7 +740,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Failure-Notification { ... }` - Allow massaging/logging of failure notifications
+	#  === `send Failure-Notification { ... }` - Allow massaging/logging of failure notifications
 	#
 	#  NOTE: The rcode returned from this section is ignored.
 	#
@@ -749,7 +749,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Failure-Notification { ... }` - Allow logging of failure notification acknowledgements
+	#  === `send Failure-Notification { ... }` - Allow logging of failure notification acknowledgements
 	#
 	#  NOTE: The rcode returned from this section is ignored.
 	#
@@ -758,7 +758,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Success-Notification { ... }` - Allow massaging/logging of success notifications
+	#  === `send Success-Notification { ... }` - Allow massaging/logging of success notifications
 	#
 	#  Uses the same rcode mappings as `recv Challenge-Response { ... }`.
 	#
@@ -769,7 +769,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send Success-Notification-Ack { ... }` - Allow logging of success notification acknowledgements
+	#  === `send Success-Notification-Ack { ... }` - Allow logging of success notification acknowledgements
 	#
 	#  NOTE: The rcode returned from this section is ignored.
 	#
@@ -778,7 +778,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send EAP-Success { ... }` - Allow massaging/logging of success notifications
+	#  === `send EAP-Success { ... }` - Allow massaging/logging of success notifications
 	#
 	#  NOTE: The rcode returned from this section is ignored if we have already sent
 	#  a Success-Notification, otherwise the same rcode mappings as
@@ -789,7 +789,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `send EAP-Failure { ... }` - Allow logging of failure notification acknowledgements
+	#  === `send EAP-Failure { ... }` - Allow logging of failure notification acknowledgements
 	#
 	#  NOTE: The rcode returned from this section is ignored.
 	#
@@ -798,7 +798,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `store pseudonym { ... }`
+	#  === `store pseudonym { ... }`
 	#
 	#  If when sending a Challenge-Request Reauthentication-Request a
 	#  `reply.Next-Pseudonym-Id` attribute is found, this section will be
@@ -832,7 +832,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `load pseudonym { ... }`
+	#  === `load pseudonym { ... }`
 	#
 	#  This section will be called prior to entering the AKA-CHALLENGE state.
 	#
@@ -850,7 +850,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `clear pseudonym { ... }`
+	#  === `clear pseudonym { ... }`
 	#
 	#  This section we be called if authentication or re-authentication fails.
 	#
@@ -862,7 +862,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `store session { ... }`
+	#  === `store session { ... }`
 	#
 	#  If when sending a Reauthentication-Request a `reply.Next-Reauth-Id`
 	#  attribute is found, this section will be called.
@@ -889,7 +889,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `load session { ... }`
+	#  === `load session { ... }`
 	#
 	#  This section will be called prior to attempting re-authentication.
 	#
@@ -921,7 +921,7 @@ server eap-aka-sim {
 	}
 
 	#
-	#  ### `clear session { ... }`
+	#  === `clear session { ... }`
 	#
 	#  This section we be called if authentication or re-authentication fails.
 	#
