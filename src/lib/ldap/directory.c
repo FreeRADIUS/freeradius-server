@@ -224,7 +224,7 @@ found:
 	if (!values) return 0;
 
 	num = ldap_count_values_len(values);
-	directory->naming_contexts = talloc_array(directory, char const *, num);
+	MEM(directory->naming_contexts = talloc_array(directory, char const *, num));
 	for (i = 0; i < num; i++) {
 		directory->naming_contexts[i] = fr_ldap_berval_to_string(directory, values[i]);
 	}
