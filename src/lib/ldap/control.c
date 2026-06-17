@@ -56,22 +56,22 @@ USES_APPLE_DEPRECATED_API
 	size_t i, num_serverctrls = 0, num_clientctrls = 0;
 
 	if (serverctrls_in) {
-		for (i = 0; serverctrls_in[i] && (num_serverctrls < LDAP_MAX_CONTROLS); i++) {
+		for (i = 0; serverctrls_in[i] && (num_serverctrls < (serverctrls_len - 1)); i++) {
 			serverctrls_out[num_serverctrls++] = serverctrls_in[i];
 		}
 	}
 
 	if (clientctrls_in) {
-		for (i = 0; clientctrls_in[i] && (num_clientctrls < LDAP_MAX_CONTROLS); i++) {
+		for (i = 0; clientctrls_in[i] && (num_clientctrls < (clientctrls_len - 1)); i++) {
 			clientctrls_out[num_clientctrls++] = clientctrls_in[i];
 		}
 	}
 
-	for (i = 0; (i < (size_t)conn->serverctrls_cnt) && (num_serverctrls < serverctrls_len); i++) {
+	for (i = 0; (i < (size_t)conn->serverctrls_cnt) && (num_serverctrls < (serverctrls_len - 1)); i++) {
 		serverctrls_out[num_serverctrls++] = conn->serverctrls[i].control;
 	}
 
-	for (i = 0; (i < (size_t)conn->clientctrls_cnt) && (num_clientctrls < clientctrls_len); i++) {
+	for (i = 0; (i < (size_t)conn->clientctrls_cnt) && (num_clientctrls < (clientctrls_len - 1)); i++) {
 		clientctrls_out[num_clientctrls++] = conn->clientctrls[i].control;
 	}
 
