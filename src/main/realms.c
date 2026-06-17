@@ -941,7 +941,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		goto error;
 	}
 
-	if (soft_fail) *soft_fail = home->dns_soft_fail | realm_config->dns_soft_fail;
+	if (soft_fail) *soft_fail = home->dns_soft_fail | rc->dns_soft_fail;
 
 	af = AF_UNSPEC;
 	cp = cf_pair_find(cs, "ipaddr");
