@@ -218,6 +218,44 @@ jobs:
           if-no-files-found: ignore
 
       #
+      #  TEMPORARY diagnostic: confirm which hop returns the 500 / 413 the
+      #  publish step hits. Mints a real OIDC token (so the store's access.lua
+      #  gets past its 401 checks to the JWKS fetch), then PUTs the smallest
+      #  and largest real prof-results files to a throwaway _diag/ path and
+      #  prints each response's status + Server header:
+      #    500 from openresty  -> the store origin (access.lua / JWKS fetch)
+      #    413 from squid      -> the proxy's request-body cap
+      #  This shows WHICH hop, not the JWKS root cause (CA trust vs blocked
+      #  egress) - that needs the store's error.log. Never fails the leg.
+      #  Remove once the 500 and 413 are fixed.
+      #
+      - name: "Diagnose prof-results store (temporary)"
+        if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
+        env:
+          PROF_RESULTS_URL: "https://cinfra-ca.testdev.inkbridge.io"
+        run: |
+          echo "resolved: $(getent hosts cinfra-ca.testdev.inkbridge.io || echo none)"
+          echo "HTTPS_PROXY=${HTTPS_PROXY:-unset}  https_proxy=${https_proxy:-unset}"
+          token=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PROF_RESULTS_URL}" \
+            | jq -r '.value') || true
+          sizes=$(find prof-results -type f ! -name '.DS_Store' -printf '%s %p\n' | sort -n)
+          probe() {  # $1 = label, $2 = file to PUT
+            echo "=== probe ${1}: $(wc -c <"$2") bytes -> _diag/${1} ==="
+            curl -sS -o /dev/null -D - --connect-timeout 10 \
+              -H "Authorization: Bearer ${token}" \
+              -T "$2" "${PROF_RESULTS_URL}/profiling/_diag/${1}" \
+              -w 'status: HTTP %{http_code}\n' 2>&1 \
+              | grep -iE '^(HTTP/|server:|via:|x-squid-error:|status:)' || true
+            curl -sS -o /dev/null --connect-timeout 10 -X DELETE \
+              -H "Authorization: Bearer ${token}" \
+              "${PROF_RESULTS_URL}/profiling/_diag/${1}" || true
+          }
+          probe small "$(printf '%s\n' "$sizes" | head -1 | cut -d' ' -f2-)"
+          probe large "$(printf '%s\n' "$sizes" | tail -1 | cut -d' ' -f2-)"
+
+      #
       #  Push the same prof-results/ tree into the durable prof-results store
       #  so the browser UI can read it. The script uploads every file and
       #  refreshes the store's manifest; see its header for the auth and proxy
