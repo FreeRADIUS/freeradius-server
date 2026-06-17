@@ -16,10 +16,11 @@
 #  file and the manifest refresh must succeed, or this script exits
 #  non-zero and fails the CI leg.
 #
-#  --noproxy '*' on the store curls bypasses the squid proxy: the store
-#  resolves and is reachable directly, and going direct avoids squid's
-#  request-body cap on the multi-MB callgrind.out files. The token mint
-#  keeps the proxy, since the GitHub token endpoint is public.
+#  The store is reachable from the runner only through the squid proxy
+#  (direct egress is firewalled), so the uploads go through the proxy, the
+#  same path as the token mint. A short connect timeout plus a bail-out
+#  after MAX_FAILURES keeps an unreachable store from hanging the step on
+#  every one of the run's files.
 #
 #  Usage:
 #    publish-profiling-results.sh
@@ -49,30 +50,44 @@ if [ -z "$token" ] || [ "$token" = null ]; then
 	exit 1
 fi
 
-#  PUT one file ($1) to its path under the store ($2).
+#  Give up after this many failed uploads
+MAX_FAILURES=3
+
+#  PUT one file ($1) to its path under the store ($2). The connect timeout
+#  caps the wait on an unreachable store; it bounds only the connection,
+#  not the transfer, so a slow upload of a large file still completes.
 upload() {
-	curl -fsS --noproxy '*' -H "Authorization: Bearer $token" \
+	curl -fsS --connect-timeout 10 -H "Authorization: Bearer $token" \
 		-T "$1" "${PROF_RESULTS_URL}/profiling/$2"
 }
 
 #
-#  Upload every file, recording any failure but attempting all of them, so
-#  one run surfaces every problem rather than just the first. The file list
-#  goes through a temp file (not a `find | while` pipe) so the loop runs in
-#  this shell and `fail` survives it.
+#  Upload every file, but stop after MAX_FAILURES. The file list goes
+#  through a temp file (not a `find | while` pipe) so the loop runs in this
+#  shell and the failure count survives it.
 #
 fail=0
 list=$(mktemp)
 find prof-results -type f ! -name '.DS_Store' >"$list"
 while IFS= read -r f; do
 	rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
-	upload "$f" "$rel" || { echo "ERROR: failed to upload $rel" >&2; fail=1; }
+	upload "$f" "$rel" && continue
+	echo "ERROR: failed to upload $rel" >&2
+	fail=$((fail + 1))
+	if [ "$fail" -ge "$MAX_FAILURES" ]; then
+		echo "ERROR: $fail upload failures; giving up (store unreachable?)" >&2
+		break
+	fi
 done <"$list"
 rm -f "$list"
 
-#  Refresh the manifest so the UI's read path stays in sync with the tree.
-curl -fsS --noproxy '*' -X POST -H "Authorization: Bearer $token" \
-	"${PROF_RESULTS_URL}/profiling/_manifest" \
-	|| { echo "ERROR: manifest regenerate failed" >&2; fail=1; }
+#  A failed upload means an incomplete tree, so skip the manifest refresh
+#  (which would advertise runs whose files are missing) and fail the leg.
+[ "$fail" -eq 0 ] || exit 1
 
-exit "$fail"
+#  Refresh the manifest so the UI's read path stays in sync with the tree.
+curl -fsS --connect-timeout 10 -X POST -H "Authorization: Bearer $token" \
+	"${PROF_RESULTS_URL}/profiling/_manifest" \
+	|| { echo "ERROR: manifest regenerate failed" >&2; exit 1; }
+
+exit 0
