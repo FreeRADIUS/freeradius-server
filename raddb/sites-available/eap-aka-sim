@@ -600,27 +600,27 @@ server eap-aka-sim {
 	#
 	#  The following rcodes have special meanings in this section:
 	#
- 	#  - `reject`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 1026
- 	#				(User has been temporarily denied access).
- 	#  - `userlock`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 1026
- 	#				(User has been temporarily denied access).
- 	#  - `notfound`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 1031
- 	#				(User has not subscribed to the requested service).
- 	#  - `invalid`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 0
- 	#				(General failure after authentication).
- 	#  - `Fail`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 0
- 	#				(General failure after authentication).
- 	#  - Anything else		Continue processing the request.
+	#  - `reject`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 1026
+	#				(User has been temporarily denied access).
+	#  - `userlock`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 1026
+	#				(User has been temporarily denied access).
+	#  - `notfound`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 1031
+	#				(User has not subscribed to the requested service).
+	#  - `invalid`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 0
+	#				(General failure after authentication).
+	#  - `Fail`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 0
+	#				(General failure after authentication).
+	#  - Anything else		Continue processing the request.
 	#
 	recv Challenge-Response {
 		ok
@@ -641,19 +641,19 @@ server eap-aka-sim {
 	#
 	#  The following rcodes have special meanings in this section:
 	#
- 	#  - `reject`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 16384
- 	#				(General Failure).
- 	#  - `userlock`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 16384
- 	#				(General Failure).
- 	#  - `ok`			Continue with reauthentication.
- 	#  - `updated`			Continue with reauthentication.
- 	#  - `noop`			Continue with reauthentication.
- 	#  - Anything else		Fall back to full authentication.
- 	#
+	#  - `reject`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 16384
+	#				(General Failure).
+	#  - `userlock`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 16384
+	#				(General Failure).
+	#  - `ok`			Continue with reauthentication.
+	#  - `updated`			Continue with reauthentication.
+	#  - `noop`			Continue with reauthentication.
+	#  - Anything else		Fall back to full authentication.
+	#
 	#  NOTE: You should use fresh reauthentication ID values here, else the
 	#  supplicant may be tracked as they would if their permanent Id has been
 	#  used.
@@ -811,8 +811,8 @@ server eap-aka-sim {
 	#  temporarily in `Next-Pseudonym-Id` for use as a key.
 	#
 	#  You should store the following attributes against the key
- 	#  `Next-Paeudonym-Id`:
- 	#
+	#  `Next-Paeudonym-Id`:
+	#
 	#  - `session-state.Permanent-Identity`::The permanent identity of the user.
 	#
 	#  If a failure rcode is returned authentication continues but the
@@ -840,11 +840,11 @@ server eap-aka-sim {
 	#  `Next-Pseudonym-Id` as a key:
 	#
 	#  - `session-state.Permanent-Identity`::The permanent identity of the user.
- 	#
- 	#  NOTE: If you're using 3GPP style encrypted pseudonyms, you should
- 	#  decrypt the pseudonym here, and store the decrypted value in
+	#
+	#  NOTE: If you're using 3GPP style encrypted pseudonyms, you should
+	#  decrypt the pseudonym here, and store the decrypted value in
 	#  `session-state.Permanent-Identity`.
- 	#
+	#
 	load pseudonym {
 		ok
 	}
@@ -871,10 +871,10 @@ server eap-aka-sim {
 	#  `request.Session-ID` as a key:
 	#
 	#  - `session-state.Counter`::		How many times this session has
- 	#					been resumed.
+	#					been resumed.
 	#  - `session-state.Session-Data`::	The master session key.
 	#  - `session-state.Permanent-Identity`::(optionally) the permanent
- 	#					identity of the user.
+	#					identity of the user.
 	#
 	#  If a failure rcode is returned, authentication continues but the
 	#  Next-Reauth-Id will not be sent to the supplicant.
@@ -897,25 +897,25 @@ server eap-aka-sim {
 	#  `request.Session-ID` as a key:
 	#
 	#  - `session-state.Counter`::		How many times this session has
- 	#					been resumed.
+	#					been resumed.
 	#  - `session-state.Session-Data`::	The master session key.
 	#  - `session-state.Permanent-Identity`::(optionally) the permanent
- 	#					identity of the user.
- 	#
- 	#  The following rcodes have special meanings in this section:
- 	#
- 	#  - `reject`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 16384
- 	#				(General Failure).
- 	#  - `userlock`			Reject the authentication attempt, send
- 	#				a Failure-Notification with an
- 	#				AT_NOTIFICATION value of 16384
- 	#				(General Failure).
- 	#  - `ok`			Continue with reauthentication.
- 	#  - `updated`			Continue with reauthentication.
- 	#  - Anything else		Fall back to full authentication.
- 	#
+	#					identity of the user.
+	#
+	#  The following rcodes have special meanings in this section:
+	#
+	#  - `reject`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 16384
+	#				(General Failure).
+	#  - `userlock`			Reject the authentication attempt, send
+	#				a Failure-Notification with an
+	#				AT_NOTIFICATION value of 16384
+	#				(General Failure).
+	#  - `ok`			Continue with reauthentication.
+	#  - `updated`			Continue with reauthentication.
+	#  - Anything else		Fall back to full authentication.
+	#
 	load session {
 		ok
 	}

@@ -171,7 +171,7 @@ recv Request {
 	#  If the request is not for this server then silently discard it
 	if (request.Server-Identifier &&
 	    request.Server-Identifier != control.Server-Identifier) {
-	        do_not_respond
+		do_not_respond
 	}
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
