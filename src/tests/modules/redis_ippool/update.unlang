@@ -8,7 +8,7 @@ control.IP-Pool.Name := 'test_update'
 #
 #  Add IP addresses
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.1/32', 32, '192.168.0.0')
 
 # 1. Check allocation
 redis_ippool
@@ -32,7 +32,7 @@ if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", '
 }
 
 # 5. Add another IP addresses
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.1.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.1.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.1.1/32', 32, '192.168.1.0')
 
 # 6. Verify that the lease time is extended
 Framed-IP-Address := reply.Framed-IP-Address

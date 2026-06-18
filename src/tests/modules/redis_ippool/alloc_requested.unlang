@@ -8,9 +8,9 @@ control.IP-Pool.Name := 'test_alloc_requested'
 #
 #  Add IP addresses - with the one we expect to allocate last
 #
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.2/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
-%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.3/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.1/32')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.2/32')
+%redis_ippool.subnet.add(control.IP-Pool.Name, '192.168.0.3/32')
 
 #
 #  Check allocation
