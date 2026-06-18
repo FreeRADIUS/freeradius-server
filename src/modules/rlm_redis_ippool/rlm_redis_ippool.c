@@ -1357,7 +1357,7 @@ extern module_rlm_t rlm_redis_ippool;
 module_rlm_t rlm_redis_ippool = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "redis",
+		.name		= "redis_ippool",
 		.inst_size	= sizeof(rlm_redis_ippool_t),
 		.config		= module_config,
 		.onload		= mod_load,
