@@ -330,6 +330,13 @@ again:
 
 }
 
+static int _fr_redis_async_cmd_free(fr_redis_async_cmd_t *cmd)
+{
+	if (!fr_dlist_entry_in_list(&cmd->entry)) return 0;
+	fr_dlist_remove(&cmd->rtcluster->pend_cmds, cmd);
+	return 0;
+}
+
 /** Start running a command set on an async redis cluster
  *
  * @param ctx		to allocate tracking structure.
@@ -367,11 +374,13 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 		 *	If the cluster has not bootstrapped, that must be done first.
 		 */
 		fr_dlist_insert_tail(&rtcluster->pend_cmds, cmd);
+		talloc_set_destructor(cmd, _fr_redis_async_cmd_free);
 		*rcode = REDIS_ASYNC_RCODE_BOOTSTRAP;
 		break;
 
 	case CLUSTER_MAP_FETCHING:
 		fr_dlist_insert_tail(&rtcluster->pend_cmds, cmd);
+		talloc_set_destructor(cmd, _fr_redis_async_cmd_free);
 		*rcode = REDIS_ASYNC_RCODE_SUCCESS;
 		break;
 
