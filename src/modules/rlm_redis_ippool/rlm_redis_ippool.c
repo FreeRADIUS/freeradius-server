@@ -159,7 +159,7 @@ typedef struct {
 	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
 							///< Option 82 gateway.  Used for bulk lease cleanups.
 
-	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+	fr_value_box_t	requested_address;		//!< The address the client is requesting.
 
 	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
 
@@ -205,7 +205,7 @@ typedef struct {
 	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
 							///< Option 82 gateway.  Used for bulk lease cleanups.
 
-	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+	fr_value_box_t	requested_address;		//!< Address being updated.
 
 	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
 
@@ -230,7 +230,7 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_value_box_t	pool_name;			//!< Name of the pool we're allocating IP addresses from.
+	fr_value_box_t	pool_name;			//!< Name of the pool we're releasing the IP addresses to.
 
 	fr_value_box_t	owner;				//!< Unique lease owner identifier.  Could be mac-address
 							///< or a combination of User-Name and something
@@ -239,7 +239,7 @@ typedef struct {
 	fr_value_box_t	gateway_id;			//!< Gateway identifier, usually NAS-Identifier or
 							///< Option 82 gateway.  Used for bulk lease cleanups.
 
-	fr_value_box_t	requested_address;		//!< Attribute to read the IP for renewal from.
+	fr_value_box_t	requested_address;		//!< Address being released.
 
 	fr_value_box_t	association_time;		//!< How long should a device be associated with an IP address.
 
