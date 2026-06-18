@@ -66,10 +66,24 @@ fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_ippool_name;
+static fr_dict_attr_t const *attr_ippool_lease;
+static fr_dict_attr_t const *attr_ippool_lease_address;
+static fr_dict_attr_t const *attr_ippool_lease_active;
+static fr_dict_attr_t const *attr_ippool_lease_expires;
+static fr_dict_attr_t const *attr_ippool_lease_device;
+static fr_dict_attr_t const *attr_ippool_lease_gateway;
+static fr_dict_attr_t const *attr_ippool_lease_range;
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_ippool_name, .name = "IP-Pool.Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease, .name = "IP-Pool.Lease", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_address, .name = "IP-Pool.Lease.Address", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_active, .name = "IP-Pool.Lease.Active", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_expires, .name = "IP-Pool.Lease.Expires", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_device, .name = "IP-Pool.Lease.Device", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_gateway, .name = "IP-Pool.Lease.Gateway", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_lease_range, .name = "IP-Pool.Lease.Range", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -245,6 +259,26 @@ typedef struct {
 
 } redis_ippool_release_call_env_t;
 
+/** Call environment used when calling redis_ippool show method.
+ *
+ */
+typedef struct {
+	fr_value_box_t		pool_name;		//!< Name of the pool we're looking up the address in.
+
+	fr_value_box_list_t	requested_address;	//!< Address(es) to fetch details of.
+} redis_ippool_show_call_env_t;
+
+/** Resume context for methods which retrieve info and produce pairs.
+ */
+typedef struct {
+	char				**cmd_str;	//!< Formatted redis commands.
+	fr_redis_command_set_t		*cmds;		//!< Command set to run.
+	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
+	fr_value_box_t			**lookup;	//!< Value boxes holding lookup keys.
+	size_t				lookup_no;	//!< Incremented on processing each reply.
+	fr_pair_list_t			results;	//!< Temporary list to hold results.
+} redis_ippool_info_rctx_t;
+
 /** Resume context for async calls to update script
  *
  */
@@ -351,6 +385,16 @@ static const call_env_method_t redis_ippool_bulk_release_method_env = {
 		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_bulk_release_call_env_t, pool_name) },
 		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_bulk_release_call_env_t, gateway_id),
 				     .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t redis_ippool_show_method_env = {
+	FR_CALL_ENV_METHOD_OUT(redis_ippool_show_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_show_call_env_t, pool_name) },
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_PREFIX, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_show_call_env_t, requested_address),
+				     .pair.dflt = "%{Requested-IP-Address || Net.Src.IP}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -1811,6 +1855,151 @@ static int _redis_ippool_tool_rctx_free(redis_ippool_tool_rctx_t *rctx)
 	return 0;
 }
 
+static int _redis_ippool_info_rctx_free(redis_ippool_info_rctx_t *rctx)
+{
+	size_t i;
+
+	for (i = 0; i < talloc_array_length(rctx->cmd_str); i++) {
+		if (!rctx->cmd_str[i]) return 0;
+		redisFreeCommand(rctx->cmd_str[i]);
+	}
+
+	return 0;
+}
+
+static void mod_info_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_info_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_info_rctx_t);
+
+	RDEBUG2("Forcibly cancelling Redis command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_show_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							request_t *request)
+{
+	redis_ippool_info_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_info_rctx_t);
+
+	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_show_resume,
+				     mod_info_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+
+	if (fr_pair_list_num_elements(&rctx->results) == 0) RETURN_UNLANG_NOTFOUND;
+
+	RDEBUG2("%pP", fr_pair_list_head(&rctx->results));
+	fr_pair_list_append(&request->control_pairs, &rctx->results);
+
+	RETURN_UNLANG_UPDATED;
+}
+
+static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	redis_ippool_info_rctx_t	*show_rctx = talloc_get_type_abort(rctx, redis_ippool_info_rctx_t);
+	redisReply			*ip_reply;
+	fr_pair_t			*lease_vp, *vp;
+	bool				active;
+	char				ip_buff[FR_IPADDR_PREFIX_STRLEN];
+
+	IPPOOL_SPRINT_IP(ip_buff, &show_rctx->lookup[show_rctx->lookup_no]->vb_ip,
+			 show_rctx->lookup[show_rctx->lookup_no]->vb_ip.prefix);
+	show_rctx->lookup_no++;
+
+	if (reply->type != REDIS_REPLY_ARRAY) return;
+	if (reply->elements < 2) return;
+
+	if (reply->element[0]->type == REDIS_REPLY_NIL) return;		/* A nil result (IP didn't exist) */
+	if (reply->element[0]->type != REDIS_REPLY_STRING) return;	/* Something bad */
+	if (reply->element[1]->type != REDIS_REPLY_ARRAY) return;
+
+	MEM(lease_vp = fr_pair_afrom_da_nested(request->control_ctx, &show_rctx->results, attr_ippool_lease));
+	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_address));
+	fr_value_box_strdup(vp, &vp->data, NULL, ip_buff, false);
+	fr_pair_append(&lease_vp->vp_group, vp);
+
+	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_expires));
+	fr_value_box_from_str(vp, &vp->data, FR_TYPE_DATE, NULL, reply->element[0]->str, reply->element[0]->len, NULL);
+	fr_pair_append(&lease_vp->vp_group, vp);
+	active = fr_unix_time_to_sec(vp->vp_date) > fr_time_to_sec(fr_time()) ? true : false;
+
+	MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_active));
+	vp->vp_bool = active;
+	fr_pair_append(&lease_vp->vp_group, vp);
+
+	ip_reply = reply->element[1];
+	if (ip_reply->element[0]->type == REDIS_REPLY_STRING) {
+		MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_device));
+		fr_value_box_bstrndup(vp, &vp->data, NULL, ip_reply->element[0]->str, ip_reply->element[0]->len, false);
+		fr_pair_append(&lease_vp->vp_group, vp);
+	}
+	if (ip_reply->element[1]->type == REDIS_REPLY_STRING) {
+		MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_gateway));
+		fr_value_box_bstrndup(vp, &vp->data, NULL, ip_reply->element[1]->str, ip_reply->element[1]->len, false);
+		fr_pair_append(&lease_vp->vp_group, vp);
+	}
+	if (ip_reply->element[2]->type == REDIS_REPLY_STRING) {
+		MEM(vp = fr_pair_afrom_da(lease_vp, attr_ippool_lease_range));
+		fr_value_box_bstrndup(vp, &vp->data, NULL, ip_reply->element[2]->str, ip_reply->element[2]->len, false);
+		fr_pair_append(&lease_vp->vp_group, vp);
+	}
+}
+
+#define ADD_REDIS_COMMAND(_fmt, ...) cmd_len = redisFormatCommand(&rctx->cmd_str[cmd_no], _fmt, __VA_ARGS__); \
+if (cmd_len < 0) RETURN_UNLANG_FAIL; \
+fr_redis_command_preformatted_add(cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL)
+
+static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
+						 request_t *request)
+{
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	redis_ippool_show_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_show_call_env_t);
+	redis_ippool_info_rctx_t	*rctx;
+	fr_redis_command_set_t		*cmds;
+	int				cmd_len;
+	size_t				cmd_no = 0, lookup_no = 0;
+	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t				*key_p = key;
+	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_async_rcode_t		rcode;
+
+	IPPOOL_BUILD_KEY(key, key_p, env->pool_name.vb_strvalue, env->pool_name.vb_length);
+	if (ret == IPPOOL_RCODE_FAIL) RETURN_UNLANG_FAIL;
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_info_rctx_t));
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	MEM(rctx->lookup = talloc_zero_array(rctx, fr_value_box_t *, fr_value_box_list_num_elements(&env->requested_address)));
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, fr_value_box_list_num_elements(&env->requested_address) * 2));
+	fr_pair_list_init(&rctx->results);
+	talloc_set_destructor(rctx, _redis_ippool_info_rctx_free);
+
+	fr_value_box_list_foreach(&env->requested_address, addr) {
+		char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
+		uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+		uint8_t		*ip_key_p = ip_key;
+
+		IPPOOL_SPRINT_IP(ip_buff, &addr->vb_ip, addr->vb_ip.prefix);
+		IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, env->pool_name.vb_strvalue,
+					     env->pool_name.vb_length, ip_buff);
+		if (ret == IPPOOL_RCODE_FAIL) RETURN_UNLANG_FAIL;
+
+		rctx->lookup[lookup_no++] = addr;
+		fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
+		ADD_REDIS_COMMAND("ZSCORE %b %s", key, key_p - key, ip_buff);
+		ADD_REDIS_COMMAND("HMGET %b device gateway range", ip_key, ip_key_p - ip_key);
+
+		fr_redis_command_literal_add(cmds, "EXEC", mod_show_result, rctx);
+	}
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, thread->rtcluster,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL)
+
+	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
+}
+
 /** Increment an IP address by a given number of addresses
  */
 static void ipaddr_inc(fr_ipaddr_t *addr, size_t inc)
@@ -2941,6 +3130,7 @@ module_rlm_t rlm_redis_ippool = {
 			{ .section = SECTION_NAME("bulk-release", NULL), .method = mod_bulk_release, .method_env = &redis_ippool_bulk_release_method_env },		/* verb */
 
 			{ .section = SECTION_NAME("pools", "list"), .method = mod_pools_list },										/* verb */
+			{ .section = SECTION_NAME("show", CF_IDENT_ANY), .method = mod_show, .method_env = &redis_ippool_show_method_env },										/* verb */
 			MODULE_BINDING_TERMINATOR
 		}
 	}

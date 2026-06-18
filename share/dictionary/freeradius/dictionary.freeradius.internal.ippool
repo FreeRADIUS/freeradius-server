@@ -22,4 +22,16 @@ ATTRIBUTE	Name-PD					3	string	# DHCPv6 - Prefix-deligation pool
 ATTRIBUTE	Name-TA					4	string	# DHCPv6 - Temporary association pool
 
 ATTRIBUTE	Range					6	string
+
+ATTRIBUTE	Lease					7	tlv
+
+BEGIN	Lease
+ATTRIBUTE	Address					1	string
+ATTRIBUTE	Active					2	bool
+ATTRIBUTE	Expires					3	date
+ATTRIBUTE	Device					4	string
+ATTRIBUTE	Gateway					5	string
+ATTRIBUTE	Range					6	string
+END	Lease
+
 END		IP-Pool
