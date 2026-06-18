@@ -1,5 +1,8 @@
 FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
+	* PEAP / SoH functionality has been removed.  It was
+	  removed from Windows 10 years ago, and is no longer
+	  relevant.
 
 	Feature improvements
 	* Add $VALUE{filename} which reads a value from one line of a
@@ -7,9 +10,10 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Add $FILE{filename} which reads a value from the entire contents
 	  of a file.
 
-	Bug fixese
+	Bug fixes
 	* Skip PSK checks when OpenSSL does not support PSK.
 	  Fixes #5874.
+	* Updated to help build with OpenSSL 4.0 alpha.
 
 FreeRADIUS 3.2.10 Wed 03 Jun 2026 12:00:00 UTC urgency=high
 	Configuration changes
