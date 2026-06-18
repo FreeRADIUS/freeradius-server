@@ -241,19 +241,27 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PROF_RESULTS_URL}" \
             | jq -r '.value') || true
           sizes=$(find prof-results -type f ! -name '.DS_Store' -printf '%s %p\n' | sort -n)
-          probe() {  # $1 = label, $2 = file to PUT
-            echo "=== probe ${1}: $(wc -c <"$2") bytes -> _diag/${1} ==="
-            curl -sS -o /dev/null -D - --connect-timeout 10 \
+          probe() {  # $1 = label, $2 = file to PUT, $3.. = extra curl opts
+            local label=$1 file=$2; shift 2
+            echo "=== probe ${label}: $(wc -c <"$file") bytes -> _diag/${label}${*:+ (curl opts: $*)} ==="
+            curl -sS -o /dev/null -D - --connect-timeout 10 "$@" \
               -H "Authorization: Bearer ${token}" \
-              -T "$2" "${PROF_RESULTS_URL}/profiling/_diag/${1}" \
+              -T "$file" "${PROF_RESULTS_URL}/profiling/_diag/${label}" \
               -w 'status: HTTP %{http_code}\n' 2>&1 \
               | grep -iE '^(HTTP/|server:|via:|x-squid-error:|status:)' || true
-            curl -sS -o /dev/null --connect-timeout 10 -X DELETE \
+            curl -sS -o /dev/null --connect-timeout 10 "$@" -X DELETE \
               -H "Authorization: Bearer ${token}" \
-              "${PROF_RESULTS_URL}/profiling/_diag/${1}" || true
+              "${PROF_RESULTS_URL}/profiling/_diag/${label}" || true
           }
+          large=$(printf '%s\n' "$sizes" | tail -1 | cut -d' ' -f2-)
           probe small "$(printf '%s\n' "$sizes" | head -1 | cut -d' ' -f2-)"
-          probe large "$(printf '%s\n' "$sizes" | tail -1 | cut -d' ' -f2-)"
+          probe large "$large"
+          # Same large file, but bypass the squid forward proxy, to tell whether
+          # squid or the origin returns the 413: a 413 here means it is the
+          # origin (squid is not the limiter); a 2xx means squid WAS the limiter;
+          # a connect timeout means direct egress to the host is firewalled
+          # (squid is required for reachability, separate from the body cap).
+          probe large-noproxy "$large" --noproxy '*'
 
       #
       #  Push the same prof-results/ tree into the durable prof-results store
