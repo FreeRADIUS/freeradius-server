@@ -118,3 +118,6 @@ fr_redis_async_rcode_t		fr_redis_cluster_thread_node_addr_by_role(TALLOC_CTX *ct
 									  uint8_t *count_out,
 									  fr_redis_cluster_thread_t *rtcluster,
 									  bool is_master, bool is_replica);
+
+void				fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_cluster_thread_t *rtcluster,
+							  request_t *request);

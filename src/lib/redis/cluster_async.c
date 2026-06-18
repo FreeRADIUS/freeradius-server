@@ -81,7 +81,8 @@ struct fr_redis_cluster_thread_s {
 	fr_redis_ct_key_slot_t		key_slot[KEY_SLOTS];
 
 	fr_redis_ct_state_t		state;		//!< State of the cluster.
-	fr_dlist_head_t			pending;	//!< Commands awaiting cluster map.
+	fr_dlist_head_t			pend_cmds;	//!< Commands awaiting cluster map.
+	fr_dlist_head_t			pend_reqs;	//!< Requests awaiting cluster map.
 };
 
 struct fr_redis_ct_node_s {
@@ -115,6 +116,15 @@ struct fr_redis_async_cmd_s {
 	fr_dlist_t			entry;		//!< Entry in the list of commands waiting for a cluster remap.
 	fr_redis_ct_node_t		*node;		//!< Specific node to run command set on.
 };
+
+/** Structure to record that a request is waiting for the cluster map.
+ *
+ */
+typedef struct {
+	request_t			*request;	//!< The request waiting for the map.
+	fr_dlist_t			entry;		//!< Entry in the list of pending requests.
+	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster the request is waiting for.
+} fr_redis_ct_pend_req_t;
 
 #define CONFIGURE_NODE(_node, _addr) \
 do {  \
@@ -356,12 +366,12 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 		/*
 		 *	If the cluster has not bootstrapped, that must be done first.
 		 */
-		fr_dlist_insert_tail(&rtcluster->pending, cmd);
+		fr_dlist_insert_tail(&rtcluster->pend_cmds, cmd);
 		*rcode = REDIS_ASYNC_RCODE_BOOTSTRAP;
 		break;
 
 	case CLUSTER_MAP_FETCHING:
-		fr_dlist_insert_tail(&rtcluster->pending, cmd);
+		fr_dlist_insert_tail(&rtcluster->pend_cmds, cmd);
 		*rcode = REDIS_ASYNC_RCODE_SUCCESS;
 		break;
 
@@ -478,7 +488,8 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, CONF_S
 	our_tconf->always_writable = true;
 
 	rtcluster->tconf = our_tconf;
-	fr_dlist_talloc_init(&rtcluster->pending, fr_redis_async_cmd_t, entry);
+	fr_dlist_talloc_init(&rtcluster->pend_cmds, fr_redis_async_cmd_t, entry);
+	fr_dlist_talloc_init(&rtcluster->pend_reqs, fr_redis_ct_pend_req_t, entry);
 
 	if (conf->max_nodes == UINT8_MAX) {
 		ERROR("%s - Maximum number of connected nodes allowed is %i", conf->log_prefix, UINT8_MAX - 1);
@@ -611,6 +622,7 @@ int fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *rtcluster, fr_
 	fr_redis_ct_key_slot_t	tmp_slot;
 	fr_redis_ct_key_slot_t	key_slot_pending[KEY_SLOTS];
 	fr_redis_async_cmd_t	*cmd;
+	fr_redis_ct_pend_req_t	*pend_req;
 
 #define SET_INACTIVE(_node) \
 do { \
@@ -814,8 +826,16 @@ do { \
 	/*
 	 *	Enqueue any commands which were waiting for the cluster remap.
 	 */
-	while ((cmd = fr_dlist_pop_head(&rtcluster->pending))) {
+	while ((cmd = fr_dlist_pop_head(&rtcluster->pend_cmds))) {
 		fr_redis_async_cmd_enqueue(cmd);
+	}
+
+	/*
+	 *	Resume any requests which were waiting for the cluster remap.
+	 */
+	while ((pend_req = fr_dlist_pop_head(&rtcluster->pend_reqs))) {
+		unlang_interpret_mark_runnable(pend_req->request);
+		talloc_free(pend_req);
 	}
 
 	return 0;
@@ -983,4 +1003,27 @@ fr_redis_async_rcode_t fr_redis_cluster_thread_node_addr_by_role(TALLOC_CTX *ctx
 	}
 	*count_out = count;
 	return REDIS_ASYNC_RCODE_SUCCESS;
+}
+
+/** Ensure pending request is removed from the list on freeing.
+ */
+static int _fr_redis_ct_pend_req_free(fr_redis_ct_pend_req_t *pend_req)
+{
+	if (!fr_dlist_entry_in_list(&pend_req->entry)) return 0;
+	fr_dlist_remove(&pend_req->rtcluster->pend_reqs, pend_req);
+	return 0;
+}
+
+/** Add a request to the list of those waiting for the cluster map
+ *
+ */
+void fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_cluster_thread_t *rtcluster, request_t *request)
+{
+	fr_redis_ct_pend_req_t	*pend_req;
+
+	MEM(pend_req = talloc_zero(ctx, fr_redis_ct_pend_req_t));
+	pend_req->request = request;
+	pend_req->rtcluster = rtcluster;
+	fr_dlist_insert_tail(&rtcluster->pend_reqs, pend_req);
+	talloc_set_destructor(pend_req, _fr_redis_ct_pend_req_free);
 }
