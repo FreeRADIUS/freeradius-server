@@ -952,3 +952,14 @@ int fr_redis_command_set_reset(fr_redis_command_set_t *cmds)
 
 	return 0;
 }
+
+int fr_redis_command_set_clear(fr_redis_command_set_t *cmds)
+{
+	if (fr_dlist_num_elements(&cmds->pending) > 0) return -1;
+	if (fr_dlist_num_elements(&cmds->sent) > 0) return -1;
+	fr_dlist_clear(&cmds->completed);
+	cmds->next_node_addr = (fr_ipaddr_t){};
+	cmds->next_node_port = 0;
+	cmds->treq = NULL;
+	return 0;
+}

@@ -101,6 +101,8 @@ void				fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t
 
 int				fr_redis_command_set_reset(fr_redis_command_set_t *cmds);
 
+int				fr_redis_command_set_clear(fr_redis_command_set_t *cmds);
+
 fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
 						      fr_redis_io_conf_t const *conf, fr_pair_list_t *trigger_args,
 						      fr_redis_trunk_active_t active, void *active_uctx,
