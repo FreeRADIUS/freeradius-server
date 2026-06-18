@@ -126,10 +126,8 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 	if (cfg->recv_buff) {
 		int opt;
 
-		/*
-		 *	Clamp value to something reasonable.
-		 */
-		opt = (cfg->recv_buff > INT_MAX) ? INT_MAX : (int) cfg->recv_buff;
+		fr_assert(cfg->recv_buff <= INT_MAX);
+		opt = (int) cfg->recv_buff;
 
 		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
 			fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
@@ -142,10 +140,8 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 	if (cfg->send_buff) {
 		int opt;
 
-		/*
-		 *	Clamp value to something reasonable.
-		 */
-		opt = (cfg->send_buff > INT_MAX) ? INT_MAX : (int) cfg->send_buff;
+		fr_assert(cfg->send_buff <= INT_MAX);
+		opt = (int) cfg->send_buff;
 
 		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt)) < 0) {
 			fr_strerror_printf("Failed setting SO_SNDBUF: %s", fr_syserror(errno));
