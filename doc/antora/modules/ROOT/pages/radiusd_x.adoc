@@ -62,7 +62,6 @@ Sometimes the module you're using does not seem to be loaded or used.  In that c
     including configuration file /etc/raddb/mods-enabled/expiration
     including configuration file /etc/raddb/mods-enabled/files
     including configuration file /etc/raddb/mods-enabled/linelog
-    including configuration file /etc/raddb/mods-enabled/soh
     including configuration file /etc/raddb/mods-enabled/attr_filter
     including configuration file /etc/raddb/mods-enabled/ntlm_auth
     including configuration file /etc/raddb/mods-enabled/exec
