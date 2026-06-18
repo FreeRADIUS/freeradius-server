@@ -935,3 +935,52 @@ fr_redis_ct_node_t *fr_redis_cluster_thread_node_by_addr(fr_redis_cluster_thread
 	find.addr = *addr;
 	return fr_rb_find(rtcluster->used_nodes, &find);
 }
+
+fr_redis_async_rcode_t fr_redis_cluster_thread_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
+								 fr_redis_cluster_thread_t *rtcluster, bool is_master,
+								 bool is_replica)
+{
+	uint64_t 		in_use = fr_rb_num_elements(rtcluster->used_nodes);
+	fr_rb_iter_inorder_t	iter;
+	fr_redis_ct_node_t	*node;
+	uint8_t			count = 0;
+	fr_socket_t		*found;
+
+	switch (rtcluster->state) {
+	case CLUSTER_INIT:
+		return REDIS_ASYNC_RCODE_BOOTSTRAP;
+
+	case CLUSTER_MAP_FETCHING:
+		return REDIS_ASYNC_RCODE_TRY_AGAIN;
+
+	default:
+		break;
+	}
+
+	if (in_use == 0) {
+		*out = NULL;
+		*count_out = 0;
+		return REDIS_ASYNC_RCODE_SUCCESS;
+	}
+
+	found = talloc_zero_array(ctx, fr_socket_t, in_use);
+	if (!found) {
+		fr_strerror_const("Out of memory");
+		return REDIS_ASYNC_RCODE_ERROR;
+	}
+
+	for (node = fr_rb_iter_init_inorder(rtcluster->used_nodes, &iter);
+	     node;
+	     node = fr_rb_iter_next_inorder(rtcluster->used_nodes, &iter)) {
+		if ((is_master && node->is_master) || (is_replica && !node->is_master)) found[count++] = node->addr;
+	}
+
+	if (count == 0) {
+		*out = NULL;
+		talloc_free(found);
+	} else {
+		*out = found;
+	}
+	*count_out = count;
+	return REDIS_ASYNC_RCODE_SUCCESS;
+}
