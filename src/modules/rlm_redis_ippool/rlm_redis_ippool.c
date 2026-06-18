@@ -56,10 +56,20 @@ RCSID("$Id$")
 #include "redis_ippool.h"
 
 static fr_dict_t const *dict_redis;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_redis_ippool_dict[];
 fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 	{ .out = &dict_redis, .proto = "redis" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+static fr_dict_attr_t const *attr_ippool_name;
+
+extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
+	{ .out = &attr_ippool_name, .name = "IP-Pool.Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -256,6 +266,19 @@ typedef struct {
 	fr_redis_async_cmd_t		*cmd;		//!< Redis async command.
 	uint32_t			changes;	//!< Number of changes reported by redis.
 } redis_ippool_tool_rctx_t;
+
+/** Resume context for pool list module method
+ */
+typedef struct {
+	fr_socket_t		*nodes;			//!< List of nodes to query.
+	uint8_t			node_count;		//!< How many nodes are in nodes.
+	uint8_t			current_node;		//!< Node number currently being queried.
+	char			cursor[19];		//!< Cursor value returned in last result.
+	char			*cmd_str;		//!< Current preformatted Redis command.
+	fr_redis_command_set_t	*cmds;			//!< Command set to be run.
+	fr_redis_async_cmd_t	*cmd;			//!< Redis async command.
+	fr_pair_list_t		pools;			//!< Temporary list to store pool names.
+} redis_pools_list_rctx_t;
 
 /** Call environment used when calling redis_ippool bulk release method.
  *
@@ -1569,6 +1592,207 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(unlang_result_t *p_resu
 	RETURN_UNLANG_NOOP;
 }
 
+/** Parse the results from Redis SCAN command used to list pools
+ */
+static void mod_pools_list_result(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	redis_pools_list_rctx_t	*pools_rctx = talloc_get_type_abort(rctx, redis_pools_list_rctx_t);
+	size_t			k, len;
+	char const		*p;
+
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		ERROR("Failed retrieving result, expected array got %s",
+		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+		return;
+	}
+
+	if (reply->elements != 2) {
+		ERROR("Failed retrieving result, expected array with two elements, got %zu elements",
+		      reply->elements);
+		return;
+	}
+
+	if (reply->element[0]->type != REDIS_REPLY_STRING) {
+		ERROR("Failed retrieving result, expected string got %s",
+		      fr_table_str_by_value(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
+		return;
+	}
+
+	if (reply->element[1]->type != REDIS_REPLY_ARRAY) {
+		ERROR("Failed retrieving result, expected array got %s",
+		      fr_table_str_by_value(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+		return;
+	}
+
+	strlcpy(pools_rctx->cursor, reply->element[0]->str, sizeof(pools_rctx->cursor));
+
+	for (k = 0; k < reply->element[1]->elements; k++) {
+		fr_pair_t	*vp;
+		redisReply	*pool_key = reply->element[1]->element[k];
+
+		/*
+		 *	Skip over things which are not pool names
+		 */
+		if (pool_key->len < 7) continue; /* { + [<name>] + }:pool */
+
+		if ((pool_key->str[0]) != '{') continue;
+		p = memchr(pool_key->str + 1, '}', pool_key->len - 1);
+		if (!p) continue;
+
+		len = (pool_key->len - ((p + 1) - pool_key->str));
+		if (len != (sizeof(IPPOOL_POOL_KEY) - 1) + 1) continue;
+		if (memcmp(p + 1, ":" IPPOOL_POOL_KEY, (sizeof(IPPOOL_POOL_KEY) - 1) + 1) != 0) continue;
+
+		/*
+		 *	String between the curly braces is the pool name
+		 */
+		MEM(vp = fr_pair_afrom_da_nested(request->control_ctx, &pools_rctx->pools, attr_ippool_name));
+		fr_value_box_bstrndup(vp, &vp->data, NULL, pool_key->str + 1, (p - pool_key->str) - 1, false);
+	}
+}
+
+static unlang_action_t mod_pools_list_next_scan(unlang_result_t *p_result, request_t *request,
+					        rlm_redis_ippool_thread_t *thread, redis_pools_list_rctx_t *rctx);
+
+static void mod_pools_list_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_pools_list_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_pools_list_rctx_t);
+
+	RDEBUG2("Forcefully cancelling Redis SCAN command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_pools_list_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+							      request_t *request)
+{
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	redis_pools_list_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, redis_pools_list_rctx_t);
+
+	switch (fr_redis_command_set_rcode(rctx->cmds)) {
+	case REDIS_ASYNC_RCODE_ERROR:
+	case REDIS_ASYNC_RCODE_ASK:
+	case REDIS_ASYNC_RCODE_MOVE:
+	case REDIS_ASYNC_RCODE_FAIL:
+		fr_pair_list_free(&rctx->pools);
+		RETURN_UNLANG_FAIL;
+
+	default:
+		break;
+	}
+
+	if ((rctx->cursor[0] == '0') && rctx->cursor[1] == '\0') {
+		rctx->current_node++;
+		if (rctx->current_node == rctx->node_count) {
+			if (fr_pair_list_num_elements(&rctx->pools) == 0) RETURN_UNLANG_NOTFOUND;
+
+			RDEBUG2("%pP", fr_pair_list_head(&rctx->pools));
+			fr_pair_list_append(&request->control_pairs, &rctx->pools);
+			RETURN_UNLANG_UPDATED;
+		}
+	}
+
+	return mod_pools_list_next_scan(p_result, request, thread, rctx);
+}
+
+/** Enqueue the next SCAN command
+ *
+ * This will either be on the same node, with the cursor value returned
+ * by the last SCAN, or starting on a new node.
+ */
+static unlang_action_t mod_pools_list_next_scan(unlang_result_t *p_result, request_t *request,
+					        rlm_redis_ippool_thread_t *thread, redis_pools_list_rctx_t *rctx)
+{
+	fr_redis_ct_node_t	*node;
+	int			cmd_len;
+	fr_redis_async_rcode_t	ret;
+
+	do {
+		node = fr_redis_cluster_thread_node_by_addr(thread->rtcluster, &rctx->nodes[rctx->current_node]);
+		if (node) {
+			RDEBUG3("Querying node %d - %pV:%d", rctx->current_node,
+				fr_box_ipaddr(rctx->nodes[rctx->current_node].inet.dst_ipaddr),
+				rctx->nodes[rctx->current_node].inet.dst_port);
+			break;
+		}
+		RWARN("Unable to find node %pV:%d", fr_box_ipaddr(rctx->nodes[rctx->current_node].inet.dst_ipaddr),
+		      rctx->nodes[rctx->current_node].inet.dst_port);
+		rctx->current_node++;
+	} while (rctx->current_node < rctx->node_count);
+	if (!node) return UNLANG_ACTION_CALCULATE_RESULT;
+
+	if (rctx->cmd_str) {
+		redisFreeCommand(rctx->cmd_str);
+		rctx->cmd_str = NULL;
+		if (fr_redis_command_set_clear(rctx->cmds) < 0) RETURN_UNLANG_FAIL;
+	}
+
+	/*
+	 *	Break up the scan so we don't block any single Redis node too long.
+	 */
+	cmd_len = redisFormatCommand(&rctx->cmd_str, "SCAN %s MATCH {*}:"IPPOOL_POOL_KEY" COUNT 20", rctx->cursor);
+	if (cmd_len < 0) RETURN_UNLANG_FAIL;
+
+	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, mod_pools_list_result, rctx);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, NULL, 0, rctx->cmds, false, node);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed enqueuing redis command", UNLANG_ACTION_FAIL);
+
+	return unlang_module_yield(request, mod_pools_list_resume, mod_pools_list_cancel, ~FR_SIGNAL_CANCEL, rctx);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_pools_list_start(unlang_result_t *p_result, module_ctx_t const *mctx,
+							     request_t *request)
+{
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	redis_pools_list_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, redis_pools_list_rctx_t);
+	fr_redis_async_rcode_t		ret;
+
+	/*
+	 *	Fetch the list of master nodes in the cluster.
+	 */
+	ret = fr_redis_cluster_thread_node_addr_by_role(rctx, &rctx->nodes, &rctx->node_count,
+							thread->rtcluster, true, false);
+
+	switch (ret) {
+	case REDIS_ASYNC_RCODE_SUCCESS:
+		break;
+
+	case REDIS_ASYNC_RCODE_BOOTSTRAP:
+		fr_redis_cluster_thread_map_bootstrap(thread->rtcluster, thread->cw, thread->inst->coord_pair_reg);
+		fr_redis_ct_request_yield(rctx, thread->rtcluster, request);
+		return unlang_module_yield(request, mod_pools_list_start, NULL, 0, rctx);
+
+	default:
+		RETURN_UNLANG_FAIL;
+	}
+
+	return mod_pools_list_next_scan(p_result, request, thread, rctx);
+}
+
+static int _redis_pools_list_rctx_free(redis_pools_list_rctx_t *rctx)
+{
+	if (!rctx->cmd_str) return 0;
+	redisFreeCommand(rctx->cmd_str);
+	return 0;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_pools_list(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
+						       request_t *request)
+{
+	redis_pools_list_rctx_t		*rctx;
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_pools_list_rctx_t));
+	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	fr_pair_list_init(&rctx->pools);
+	talloc_set_destructor(rctx, _redis_pools_list_rctx_free);
+	strcpy(rctx->cursor, "0");
+
+	return mod_pools_list_start(p_result, MODULE_CTX(mctx->mi, mctx->thread, mctx->env_data, rctx), request);
+}
+
 static int _redis_ippool_tool_rctx_free(redis_ippool_tool_rctx_t *rctx)
 {
 	char	*cmd_str;
@@ -2715,6 +2939,8 @@ module_rlm_t rlm_redis_ippool = {
 			{ .section = SECTION_NAME("renew", NULL), .method = mod_update, .method_env = &redis_ippool_update_method_env },				/* verb */
 			{ .section = SECTION_NAME("release", NULL), .method = mod_release, .method_env = &redis_ippool_release_method_env },				/* verb */
 			{ .section = SECTION_NAME("bulk-release", NULL), .method = mod_bulk_release, .method_env = &redis_ippool_bulk_release_method_env },		/* verb */
+
+			{ .section = SECTION_NAME("pools", "list"), .method = mod_pools_list },										/* verb */
 			MODULE_BINDING_TERMINATOR
 		}
 	}
