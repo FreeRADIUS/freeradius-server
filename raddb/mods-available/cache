@@ -66,7 +66,7 @@ cache {
 #
 #  === Htrie cache driver
 #
-#	htrie {
+	htrie {
 		#
 		#  type:: Htrie backend type
 		#
@@ -78,13 +78,13 @@ cache {
 		#  | `rb`      | Use an rbtree
 		#  | `trie`    | Use a patricia trie
 		#  |===
-#		type = "auto"
-#	}
+		type = "auto"
+	}
 
 #
 #  === Memcached cache driver
 #
-#	memcached {
+	memcached {
 		#
 		#  options:: Memcached configuration options.
 		#
@@ -96,21 +96,21 @@ cache {
 		#
 		#  pool:: Connection pool.
 		#
-#		pool {
-#			start = 0
-#			min = 0
-#			max =
-#			spare = 1
-#			uses = 0
-#			lifetime = 0
-#			idle_timeout = 60
-#		}
-#	}
+		pool {
+			start = 0
+			min = 0
+			max =
+			spare = 1
+			uses = 0
+			lifetime = 0
+			idle_timeout = 60
+		}
+	}
 
 #
 #  === Redis cache driver
 #
-#	redis {
+	redis {
 		#
 		#  server:: Redis Server name.
 		#
@@ -151,16 +151,16 @@ cache {
 		#
 		#  pool:: Connection pool.
 		#
-#		pool {
+		pool {
 			start = 0
 			min = 0
-#			max =
-#			spare = 1
-#			uses = 0
-#			lifetime = 0
-#			idle_timeout = 60
-#		}
-#	}
+			max =
+			spare = 1
+			uses = 0
+			lifetime = 0
+			idle_timeout = 60
+		}
+	}
 
 	#
 	#  key:: The `key` used to index the cache. It is dynamically expanded at run time.
