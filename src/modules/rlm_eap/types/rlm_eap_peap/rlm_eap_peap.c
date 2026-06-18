@@ -44,8 +44,6 @@ typedef struct rlm_eap_peap_t {
 #endif
 	char const *virtual_server;		//!< Virtual server for inner tunnel session.
 
-	bool soh;				//!< Do we do SoH request?
-	char const *soh_virtual_server;
 	bool req_client_cert;			//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
@@ -67,11 +65,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, virtual_server), NULL },
 
-	{ "soh", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, soh), "no" },
-
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, req_client_cert), "no" },
-
-	{ "soh_virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, soh_virtual_server), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -154,8 +148,6 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 #endif
 	t->virtual_server = inst->virtual_server;
-	t->soh = inst->soh;
-	t->soh_virtual_server = inst->soh_virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
 	return t;
@@ -367,13 +359,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	our Access-Accept.
 		 */
 		peap = tls_session->opaque;
-		if (peap->soh_reply_vps) {
-			RDEBUG2("Using saved attributes from the SoH reply");
-			rdebug_pair_list(L_DBG_LVL_2, request, peap->soh_reply_vps, NULL);
-			fr_pair_list_mcopy_by_num(handler->request->reply,
-				  &handler->request->reply->vps,
-				  &peap->soh_reply_vps, 0, 0, TAG_ANY);
-		}
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			rdebug_pair_list(L_DBG_LVL_2, request, peap->accept_vps, NULL);

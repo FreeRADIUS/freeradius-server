@@ -994,16 +994,11 @@ eap {
 		#
 		virtual_server = "inner-tunnel"
 
-		#  This option enables support for MS-SoH
-		#  see doc/SoH.txt for more info.
-		#  It is disabled by default.
 		#
-	#	soh = yes
-
-		#  The SoH reply will be turned into a request which
-		#  can be sent to a specific virtual server:
+		#  SoH has been deprecated by Microsoft for a decade.
 		#
-	#	soh_virtual_server = "soh-server"
+		#  FreeRADIUS no longer supports it.
+		#
 
 		#  Unlike EAP-TLS, PEAP does not require a client certificate.
 		#  However, you can require one by setting the following

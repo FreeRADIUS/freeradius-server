@@ -118,92 +118,6 @@ static int eappeap_identity(eap_handler_t *handler, tls_session_t *tls_session)
 }
 
 /*
- * Send an MS SoH request
- */
-static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
-{
-	uint8_t tlv_packet[20];
-
-	tlv_packet[0] = 254;	/* extended type */
-
-	tlv_packet[1] = 0;
-	tlv_packet[2] = 0x01;	/* ms vendor */
-	tlv_packet[3] = 0x37;
-
-	tlv_packet[4] = 0;	/* ms soh eap */
-	tlv_packet[5] = 0;
-	tlv_packet[6] = 0;
-	tlv_packet[7] = 0x21;
-
-	tlv_packet[8] = 0;	/* vendor-spec tlv */
-	tlv_packet[9] = 7;
-
-	tlv_packet[10] = 0;
-	tlv_packet[11] = 8;	/* payload len */
-
-	tlv_packet[12] = 0;	/* ms vendor */
-	tlv_packet[13] = 0;
-	tlv_packet[14] = 0x01;
-	tlv_packet[15] = 0x37;
-
-	tlv_packet[16] = 0;
-	tlv_packet[17] = 2;
-	tlv_packet[18] = 0;
-	tlv_packet[19] = 0;
-
-	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 20);
-	tls_handshake_send(handler->request, tls_session);
-	return 1;
-}
-
-static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
-			  uint8_t const *data, unsigned int data_len) {
-
-	VALUE_PAIR *vp;
-	uint8_t eap_method_base;
-	uint32_t eap_vendor;
-	uint32_t eap_method;
-	int rv;
-
-	vp = fr_pair_make(packet, &packet->vps, "SoH-Supported", "no", T_OP_EQ);
-	if (data && data[0] == PW_EAP_NAK) {
-		RDEBUG("SoH - client NAKed");
-		return;
-	}
-
-	if (!data || data_len < 8) {
-		RDEBUG("SoH - eap payload too short");
-		return;
-	}
-
-	eap_method_base = *data++;
-	if (eap_method_base != 254) {
-		RDEBUG("SoH - response is not extended EAP: %i", eap_method_base);
-		return;
-	}
-
-	eap_vendor = soh_pull_be_24(data); data += 3;
-	if (eap_vendor != 0x137) {
-		RDEBUG("SoH - extended eap vendor %08x is not Microsoft", eap_vendor);
-		return;
-	}
-
-	eap_method = soh_pull_be_32(data); data += 4;
-	if (eap_method != 0x21) {
-		RDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_method);
-		return;
-	}
-
-
-	rv = soh_verify(request, data, data_len - 8);
-	if (rv<0) {
-		RDEBUG("SoH - error decoding payload: %s", fr_strerror());
-	} else {
-		vp->vp_integer = 1;
-	}
-}
-
-/*
  *	Verify the tunneled EAP message.
  */
 static int eapmessage_verify(REQUEST *request,
@@ -696,9 +610,6 @@ static char const *peap_state(peap_tunnel_t *t)
 	case PEAP_STATUS_TUNNEL_ESTABLISHED:
 		return "TUNNEL ESTABLISHED";
 
-	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
-		return "WAITING FOR SOH RESPONSE";
-
 	case PEAP_STATUS_INNER_IDENTITY_REQ_SENT:
 		return "WAITING FOR INNER IDENTITY";
 
@@ -779,12 +690,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG2("Skipping Phase2 because of session resumption");
 			t->session_resumption_state = PEAP_RESUMPTION_YES;
-			if (t->soh) {
-				t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
-				RDEBUG2("Requesting SoH from client");
-				eappeap_soh(handler, tls_session);
-				return RLM_MODULE_HANDLED;
-			}
 			/* we're good, send success TLV */
 			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 			eappeap_success(handler, tls_session);
@@ -814,51 +719,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 		fr_pair_value_bstrncpy(t->username, data + header + 1, data_len - header - 1);
 
 		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
-		if (t->soh) {
-			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
-			RDEBUG2("Requesting SoH from client");
-			eappeap_soh(handler, tls_session);
-			return RLM_MODULE_HANDLED;
-		}
 		t->status = PEAP_STATUS_PHASE2_INIT;
 		break;
-
-	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
-		fake = request_alloc_fake(request);
-		rad_assert(!fake->packet->vps);
-		eapsoh_verify(fake, fake->packet, data + header, data_len - header);
-		setup_fake_request(request, fake, t);
-
-		if (t->soh_virtual_server) {
-			fake->server = t->soh_virtual_server;
-		}
-		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
-		rad_virtual_server(fake);
-
-		if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			RDEBUG2("SoH was rejected");
-			talloc_free(fake);
-			t->status = PEAP_STATUS_SENT_TLV_FAILURE;
-			eappeap_failure(handler, tls_session);
-			return RLM_MODULE_HANDLED;
-		}
-
-		/* save the SoH VPs */
-		rad_assert(!t->soh_reply_vps);
-		fr_pair_list_mcopy_by_num(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
-		rad_assert(!fake->reply->vps);
-		talloc_free(fake);
-
-		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
-			/* we're good, send success TLV */
-			t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-			eappeap_success(handler, tls_session);
-			return RLM_MODULE_HANDLED;
-		}
-
-		t->status = PEAP_STATUS_PHASE2_INIT;
-		break;
-
 
 	/*
 	 *	If we authenticated the user, then it's OK.
