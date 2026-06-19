@@ -35,6 +35,7 @@ static const CONF_PARSER module_config[] = {
 	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, REDIS_INST, hostname), NULL },
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
 	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, REDIS_INST, username), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
 	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, query_timeout), "5" },
 	CONF_PARSER_TERMINATOR
@@ -61,7 +62,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	REDISSOCK *dissocket = NULL;
 	redisContext *conn;
 	redisReply *reply = NULL;
-	char buffer[1024];
 	struct timeval tv;
 	tv.tv_sec = inst->query_timeout;
 	tv.tv_usec = 0;
@@ -91,9 +91,11 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 	if (inst->password) {
-		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
-
-		reply = redisCommand(conn, buffer);
+		if (inst->username) {
+			reply = redisCommand(conn, "AUTH %s %s", inst->username, inst->password);
+		} else {
+			reply = redisCommand(conn, "AUTH %s", inst->password);
+		}
 		if (!reply) {
 			ERROR("rlm_redis (%s): Failed to run AUTH", inst->xlat_name);
 
@@ -102,7 +104,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			redisFree(conn);
 			return NULL;
 		}
-
 
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
@@ -118,12 +119,12 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			       inst->xlat_name);
 			goto do_close;
 		}
+		freeReplyObject(reply);
+		reply = NULL;
 	}
 
 	if (inst->database) {
-		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
-
-		reply = redisCommand(conn, buffer);
+		reply = redisCommand(conn, "SELECT %d", inst->database);
 		if (!reply) {
 			ERROR("rlm_redis (%s): Failed to run SELECT",
 			       inst->xlat_name);
@@ -145,6 +146,8 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			       inst->xlat_name);
 			goto do_close;
 		}
+		freeReplyObject(reply);
+		reply = NULL;
 	}
 
 	dissocket = talloc_zero(ctx, REDISSOCK);
