@@ -23,12 +23,16 @@
 #  every one of the run's files.
 #
 #  Re-running the workflow on the same sha must not clobber the previous
-#  attempt. The harness numbers runs 1..N locally, restarting at 1 each workflow
-#  run, so the destination <run> segment is offset by the highest run index
-#  already in the store for this <branch>/<sha>: a re-run's 1..N land at
-#  (offset+1)..(offset+N) and accumulate beside the earlier attempt. The store
-#  manifest is the source of truth for the offset; a sha with nothing there (or
-#  no manifest yet) gives offset 0, leaving 1..N unchanged.
+#  attempt, and the store should read as a clean, gapless run sequence per
+#  <branch>/<sha> starting at 1. Local run indexes can have gaps: a test that
+#  claimed an index but produced no files leaves an empty dir, so the indexes
+#  that actually carry results may be 3, 4, ... rather than 1, 2, ... We do not
+#  copy them verbatim. Instead the run indexes that carry files are ranked
+#  ascending and renumbered to consecutive store indexes starting at offset+1,
+#  where offset is the highest run already in the store for this <branch>/<sha>.
+#  So a first publish lands 1..K and a re-run appends (offset+1)..(offset+K). The
+#  store manifest is the source of truth for the offset; a sha with nothing there
+#  (or no manifest yet) gives offset 0, so the first publish starts at 1.
 #
 #  Usage:
 #    publish-profiling-results.sh
@@ -85,9 +89,32 @@ upload() {
 #  assumed: two runs publishing for the same sha at once could read the same max
 #  and collide (deferred).
 #
+#  The offset is only safe if we can actually read the manifest. A failed read
+#  must NOT silently fall back to offset 0 - that would land this run's 1..N on
+#  top of an earlier attempt's 1..N and overwrite it. So we inspect the HTTP
+#  status: 200 uses the manifest; 404 means the store has no manifest yet (a
+#  genuine first publish, offset 0 is correct); anything else (connect failure,
+#  5xx, non-JSON body) aborts the publish rather than risk clobbering prior runs.
+#
 existing=$(mktemp)
-curl -fsS --connect-timeout 10 "${PROF_RESULTS_URL}/profiling/manifest.json" 2>/dev/null \
-	| jq -r '.files[]?' >"$existing" 2>/dev/null || true
+body=$(mktemp)
+code=$(curl -sS --connect-timeout 10 -o "$body" -w '%{http_code}' \
+	"${PROF_RESULTS_URL}/profiling/manifest.json") || code=000
+case "$code" in
+	200)
+		jq -r '.files[]?' <"$body" >"$existing" 2>/dev/null || {
+			echo "ERROR: store manifest is not valid JSON; refusing to publish (would risk overwriting prior runs)" >&2
+			rm -f "$existing" "$body"; exit 1
+		}
+		;;
+	404)
+		: ;;   # no manifest yet: genuine first publish, offset 0 is correct
+	*)
+		echo "ERROR: could not read store manifest (HTTP $code); refusing to publish to avoid reusing run indexes" >&2
+		rm -f "$existing" "$body"; exit 1
+		;;
+esac
+rm -f "$body"
 
 offsets=$(mktemp)
 find prof-results -type f ! -name '.DS_Store' \
@@ -101,6 +128,27 @@ find prof-results -type f ! -name '.DS_Store' \
 	done
 
 #
+#  Build the run-index remap. For each <branch>/<sha>, take the local run
+#  indexes that actually carry files - a test that claimed an index but wrote
+#  nothing leaves an empty dir, which `find -type f` never reports, so it drops
+#  out here and is neither uploaded nor given a store slot - rank them ascending,
+#  and map the k-th to store index offset+k. This compacts gaps away so the store
+#  reads a clean 1..K on a first publish and (offset+1)..(offset+K) on a re-run.
+#  Keyed by <branch>/<sha>/<run>; the sort is by <branch>/<sha> then numeric run
+#  so the rank order is stable.
+#
+tab=$(printf '\t')
+remap=$(mktemp)
+find prof-results -type f ! -name '.DS_Store' \
+	| sed 's#^prof-results/##' \
+	| awk -F/ 'NF>=4 && $3 ~ /^[0-9]+$/ { print $1"/"$2"\t"$3 }' \
+	| sort -t"$tab" -k1,1 -k2,2n -u \
+	| awk -F'\t' -v offfile="$offsets" '
+		BEGIN { while ((getline l < offfile) > 0) { split(l, a, "\t"); off[a[1]] = a[2] } }
+		{ if ($1 != prev) { rank = 0; prev = $1 } rank++; printf "%s/%s\t%d\n", $1, $2, off[$1] + rank }
+	' >"$remap"
+
+#
 #  Upload every file, but stop after MAX_FAILURES. The file list goes
 #  through a temp file (not a `find | while` pipe) so the loop runs in this
 #  shell and the failure count survives it.
@@ -111,19 +159,19 @@ find prof-results -type f ! -name '.DS_Store' >"$list"
 while IFS= read -r f; do
 	rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
 	dest="$rel"
-	#  Shift the <run> (3rd) segment up by this sha's offset so a re-run
-	#  accumulates beside the earlier attempt (see header). All of a local
-	#  run's files (callgrind + logs) shift together, staying co-located.
+	#  Remap the <run> (3rd) segment to its compacted store index (see header).
+	#  All files under one local run share the same remapped index, so callgrind
+	#  output and logs stay co-located. A non-numeric or unmapped run is left as is.
 	branch="${rel%%/*}"; r1="${rel#*/}"
 	sha="${r1%%/*}";     r2="${r1#*/}"
 	run="${r2%%/*}";     rest="${r2#*/}"
 	case "$r2" in
-		*/*)   # has at least <run>/<rest>, so there is a run segment to offset
+		*/*)   # has at least <run>/<rest>, so there is a run segment to remap
 			case "$run" in
 				''|*[!0-9]*) : ;;   # non-numeric run: leave dest unchanged
 				*)
-					off=$(awk -F'\t' -v p="$branch/$sha" '$1 == p { print $2; exit }' "$offsets")
-					dest="$branch/$sha/$((run + ${off:-0}))/$rest"
+					dr=$(awk -F'\t' -v k="$branch/$sha/$run" '$1 == k { print $2; exit }' "$remap")
+					[ -n "$dr" ] && dest="$branch/$sha/$dr/$rest"
 					;;
 			esac
 			;;
@@ -136,7 +184,7 @@ while IFS= read -r f; do
 		break
 	fi
 done <"$list"
-rm -f "$list" "$existing" "$offsets"
+rm -f "$list" "$existing" "$offsets" "$remap"
 
 #  A failed upload means an incomplete tree, so skip the manifest refresh
 #  (which would advertise runs whose files are missing) and fail the leg.
