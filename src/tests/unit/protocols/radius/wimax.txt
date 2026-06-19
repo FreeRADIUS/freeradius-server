@@ -123,7 +123,7 @@ encode-pair -
 match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
 
 encode-pair Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
-match Group list for Capability MUST start with '{'
+match ERROR: Group list for Capability MUST start with '{'
 
 #
 #  We don't print raw attributes with a "raw" prefix.  Perhaps we should.

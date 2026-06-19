@@ -33,13 +33,13 @@ condition (ipaddr)"192.168.0.1" == User-Name
 match (192.168.0.1 == User-Name)
 
 condition (ipaddr ) "192.168.0.1" == User-Name
-match ERROR offset 7: Unexpected text after data type 'ipaddr'
+match ERROR: ERROR offset 7: Unexpected text after data type 'ipaddr'
 
 condition (ipaddrx) "192.168.0.1" == User-Name
-match ERROR offset 10: Invalid operator
+match ERROR: ERROR offset 10: Invalid operator
 
 condition (ipaddr+1) "192.168.0.1" == User-Name
-match ERROR offset 7: Unexpected text after data type 'ipaddr'
+match ERROR: ERROR offset 7: Unexpected text after data type 'ipaddr'
 
 count
 match 20

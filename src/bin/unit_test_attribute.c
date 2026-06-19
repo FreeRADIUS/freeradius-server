@@ -420,6 +420,9 @@ static inline size_t strerror_concat(char *out, size_t outlen)
 	char *p = out;
 	char const *err;
 
+	strcpy(out, "ERROR: ");
+	p += 7;
+
 	while ((p < end) && (err = fr_strerror_pop())) {
 		if (*fr_strerror_peek()) {
 			p += snprintf(p, end - p, "%s: ", err);

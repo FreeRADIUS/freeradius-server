@@ -56,22 +56,22 @@ match 3
 #
 # Flags extensions field would overrun value
 decode-pair 01 01 00
-match internal_decode_pair: Encoding byte invalid, fields overrun input data. 2 byte(s) remaining, need 3 byte(s)
+match ERROR: internal_decode_pair: Encoding byte invalid, fields overrun input data. 2 byte(s) remaining, need 3 byte(s)
 
 # Too few bytes to represent a value
 decode-pair 00 01
-match internal_decode_pair: Insufficient data.  Need 1 additional byte(s)
+match ERROR: internal_decode_pair: Insufficient data.  Need 1 additional byte(s)
 returned
 match -2
 
 decode-pair 00 01 01
-match internal_decode_pair: Length field value overruns input data. 0 byte(s) remaining, need 1 byte(s)
+match ERROR: internal_decode_pair: Length field value overruns input data. 0 byte(s) remaining, need 1 byte(s)
 returned
 match -2
 
 # Length overrun
 decode-pair 00 01 04 62 6f 62
-match internal_decode_pair: Length field value overruns input data. 3 byte(s) remaining, need 4 byte(s)
+match ERROR: internal_decode_pair: Length field value overruns input data. 3 byte(s) remaining, need 4 byte(s)
 
 returned
 match -2

@@ -10,74 +10,74 @@ load-dictionary protocols/radius/dictionary.test
 #  VALUEs
 #
 dictionary VALUE	Unit-Enumv	Foo	bar
-match Failed parsing string as type 'uint32': Invalid VALUE 'bar' for attribute 'Unit-Enumv' of data type 'uint32'
+match ERROR: Failed parsing string as type 'uint32': Invalid VALUE 'bar' for attribute 'Unit-Enumv' of data type 'uint32'
 
 dictionary VALUE	Unit-Byte	TooBig	256
-match integer overflow: Invalid VALUE '256' for attribute 'Unit-Byte' of data type 'uint8'
+match ERROR: integer overflow: Invalid VALUE '256' for attribute 'Unit-Byte' of data type 'uint8'
 
 dictionary VALUE	Unit-Byte	Too-Small	-1
-match integer underflow: Invalid VALUE '-1' for attribute 'Unit-Byte' of data type 'uint8'
+match ERROR: integer underflow: Invalid VALUE '-1' for attribute 'Unit-Byte' of data type 'uint8'
 
 dictionary VALUE	Unit-Short	Too-Big	65537
-match integer overflow: Invalid VALUE '65537' for attribute 'Unit-Short' of data type 'uint16'
+match ERROR: integer overflow: Invalid VALUE '65537' for attribute 'Unit-Short' of data type 'uint16'
 
 # Check non-uint32 types
 dictionary VALUE	Unit-Integer64	OK	   1
 match ok
 
 dictionary VALUE	Unit-Octets	Porridge	1
-match Attribute 'Unit-Octets' does not exist in dictionary "RADIUS"
+match ERROR: Attribute 'Unit-Octets' does not exist in dictionary "RADIUS"
 
 dictionary VALUE	Unit-Byte	Life	42
 match ok
 
 # re-defining it is not OK
 dictionary VALUE	Unit-Byte	Life	43
-match Duplicate VALUE name "Life" for Attribute 'Unit-Byte'. Old value was "42", new value was "43"
+match ERROR: Duplicate VALUE name "Life" for Attribute 'Unit-Byte'. Old value was "42", new value was "43"
 
 
 #
 #  ATTRIBUTEs
 #
 dictionary ATTRIBUTE	Foo
-match Invalid ATTRIBUTE syntax
+match ERROR: Invalid ATTRIBUTE syntax
 
 dictionary ATTRIBUTE	Attr-26		26		octets
-match Invalid name - 'Attr-' is an invalid name
+match ERROR: Invalid name - 'Attr-' is an invalid name
 
 dictionary ATTRIBUTE	My-Guy		bob		octets
-match Invalid ATTRIBUTE number
+match ERROR: Invalid ATTRIBUTE number
 
 dictionary ATTRIBUTE	Unit-Fail	241.243.bob	integer
-match Invalid OID component "bob" (0)
+match ERROR: Invalid OID component "bob" (0)
 
 # 243.244 doesn't exist
 dictionary ATTRIBUTE	Unit-Fail	241.243.255.1	integer
-match Unknown attribute '255' in OID string "255.1" for parent Unit-Ext-241-TLV
+match ERROR: Unknown attribute '255' in OID string "255.1" for parent Unit-Ext-241-TLV
 
 dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
-match Invalid length for 'octets[...]'
+match ERROR: Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
-match Attributes of type 'integer' cannot use the integer[...] syntax
+match ERROR: Attributes of type 'integer' cannot use the integer[...] syntax
 
 dictionary ATTRIBUTE	Unit-$bad$stuff	241.255		integer
-match Invalid character '$' in attribute name "Unit-$bad$stuff"
+match ERROR: Invalid character '$' in attribute name "Unit-$bad$stuff"
 
 #
 # flags
 #
 dictionary ATTRIBUTE	Unit-Array	241.254		octets[1234]
-match Attributes cannot be more than 253 octets in length
+match ERROR: Attributes cannot be more than 253 octets in length
 
 dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
-match The 'has_tag' flag can only be used with RFC and VSA attributes
+match ERROR: The 'has_tag' flag can only be used with RFC and VSA attributes
 
 dictionary ATTRIBUTE	Unit-Tag	240		date	has_tag
-match The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
+match ERROR: The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
 
 dictionary ATTRIBUTE	Unit-Tag	240		tlv	encrypt=User-Password
-match The 'encrypt=User-Password' flag can only be used with attributes of type 'string'
+match ERROR: The 'encrypt=User-Password' flag can only be used with attributes of type 'string'
 
 #
 #  structs
@@ -86,10 +86,10 @@ dictionary ATTRIBUTE	Unit-Struct	241.254		struct
 match ok
 
 dictionary ATTRIBUTE	Unit-Struct-Byte	241.254.1		byte
-match Member Unit-Struct-Byte of ATTRIBUTE Unit-Struct type 'struct' MUST use the "MEMBER" keyword
+match ERROR: Member Unit-Struct-Byte of ATTRIBUTE Unit-Struct type 'struct' MUST use the "MEMBER" keyword
 
 dictionary ATTRIBUTE	Unit-Struct-Octets	241.254.2		octets[2]
-match Member Unit-Struct-Octets of ATTRIBUTE Unit-Struct type 'struct' MUST use the "MEMBER" keyword
+match ERROR: Member Unit-Struct-Octets of ATTRIBUTE Unit-Struct type 'struct' MUST use the "MEMBER" keyword
 
 count
 match 49

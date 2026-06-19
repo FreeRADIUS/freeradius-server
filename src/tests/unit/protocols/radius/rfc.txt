@@ -114,10 +114,10 @@ pair Framed-IP-Address = 127.0.0.1/32
 match Framed-IP-Address = 127.0.0.1
 
 pair Framed-IP-Address = 127.0.0.1/323
-match Invalid IPv4 mask length "/323".  Should be between 0-32
+match ERROR: Invalid IPv4 mask length "/323".  Should be between 0-32
 
 pair Framed-IP-Address = 127.0.0.1/30
-match Invalid IPv4 mask length "/30".  Only "/32" permitted for non-prefix types
+match ERROR: Invalid IPv4 mask length "/30".  Only "/32" permitted for non-prefix types
 
 pair Framed-IP-Address = *
 match Framed-IP-Address = 0.0.0.0
@@ -141,10 +141,10 @@ pair Framed-IPv6-Prefix = ::1
 match Framed-IPv6-Prefix = ::1/128
 
 pair Framed-IPv6-Prefix = ::1/200
-match Invalid IPv6 mask length "/200".  Should be between 0-128
+match ERROR: Invalid IPv6 mask length "/200".  Should be between 0-128
 
 pair Framed-IPv6-Prefix = ::1/200
-match Invalid IPv6 mask length "/200".  Should be between 0-128
+match ERROR: Invalid IPv6 mask length "/200".  Should be between 0-128
 
 pair Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
 match Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
