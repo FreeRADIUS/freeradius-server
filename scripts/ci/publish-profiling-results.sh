@@ -41,6 +41,10 @@
 #    PROF_RESULTS_URL                 Base URL of the store (required).
 #    ACTIONS_ID_TOKEN_REQUEST_TOKEN   } GitHub OIDC request credentials,
 #    ACTIONS_ID_TOKEN_REQUEST_URL     } set by the runner under id-token: write.
+#    GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT, GITHUB_RUN_NUMBER, GITHUB_REPOSITORY
+#                                     Recorded in the run-index ledger (see the
+#                                     ledger note below); absent outside Actions,
+#                                     in which case they are recorded as null.
 
 set -eu
 
@@ -149,6 +153,21 @@ find prof-results -type f ! -name '.DS_Store' \
 	' >"$remap"
 
 #
+#  Ledger rows for the run-index map (see the ledger note further down). One row
+#  per file-bearing run: <branch> <sha> <local_run> <store_run> <suite> <test>,
+#  joining the suite/test from the tree to the store index from the remap. Built
+#  here while $remap is still around; consumed after the uploads succeed.
+#
+ledgerrows=$(mktemp)
+find prof-results -type f ! -name '.DS_Store' | sed 's#^prof-results/##' \
+	| awk -F/ 'NF>=5 && $3 ~ /^[0-9]+$/ { print $1"\t"$2"\t"$3"\t"$4"\t"$5 }' \
+	| sort -u \
+	| awk -F'\t' -v rf="$remap" '
+		BEGIN { while ((getline l < rf) > 0) { split(l, a, "\t"); store[a[1]] = a[2] } }
+		{ k = $1"/"$2"/"$3; if (k in store) print $1"\t"$2"\t"$3"\t"store[k]"\t"$4"\t"$5 }
+	' >"$ledgerrows"
+
+#
 #  Upload every file, but stop after MAX_FAILURES. The file list goes
 #  through a temp file (not a `find | while` pipe) so the loop runs in this
 #  shell and the failure count survives it.
@@ -188,7 +207,90 @@ rm -f "$list" "$existing" "$offsets" "$remap"
 
 #  A failed upload means an incomplete tree, so skip the manifest refresh
 #  (which would advertise runs whose files are missing) and fail the leg.
-[ "$fail" -eq 0 ] || exit 1
+[ "$fail" -eq 0 ] || { rm -f "$ledgerrows"; exit 1; }
+
+#
+#  Append this publish to the run-index ledger (run-index-map.json at the store
+#  root, a sibling of manifest.json). It maps each GitHub workflow-run publish
+#  (run id + attempt + sha) to the local->store run-index remap it produced, so
+#  the compaction is auditable later. The server cannot build this (the on-disk
+#  tree carries no GitHub context), so we read the current ledger, merge this
+#  publish in, and PUT it back. As with the offset read, a failed ledger read
+#  aborts rather than overwrite the history; the manifest is left un-refreshed,
+#  so a retry re-derives the same offset/remap and re-publishes idempotently.
+#
+now=$(date +%s)
+
+#  This publish's entries, grouped by <branch>/<sha> (CI has exactly one sha).
+#  store_offset is recovered as min(store_run_index) - 1. Empty/non-result runs
+#  never reach $ledgerrows, so they are absent from index_map by construction.
+newentries=$(jq -R 'select(length > 0) | split("\t")
+		| { branch: .[0], sha: .[1],
+		    github_run_index: (.[2] | tonumber), store_run_index: (.[3] | tonumber),
+		    suite: .[4], test: .[5] }' "$ledgerrows" \
+	| jq -s \
+		--argjson now "$now" \
+		--arg rid  "${GITHUB_RUN_ID:-}" \
+		--arg att  "${GITHUB_RUN_ATTEMPT:-}" \
+		--arg num  "${GITHUB_RUN_NUMBER:-}" \
+		--arg repo "${GITHUB_REPOSITORY:-}" \
+		'group_by([.branch, .sha]) | map({
+			github_run_id:      (try ($rid | tonumber) catch null),
+			github_run_attempt: (try ($att | tonumber) catch null),
+			github_run_number:  (try ($num | tonumber) catch null),
+			github_repository:  (if $repo == "" then null else $repo end),
+			branch:             .[0].branch,
+			sha:                .[0].sha,
+			published_epoch:    $now,
+			store_offset:       ((map(.store_run_index) | min) - 1),
+			index_map:          (map({ github_run_index, store_run_index, suite, test })
+			                     | sort_by(.store_run_index))
+		})')
+
+#  Read the current ledger: 200 merge, 404 start fresh, anything else abort.
+lbody=$(mktemp)
+lcode=$(curl -sS --connect-timeout 10 -o "$lbody" -w '%{http_code}' \
+	"${PROF_RESULTS_URL}/profiling/run-index-map.json") || lcode=000
+case "$lcode" in
+	200)
+		base=$(jq '.' "$lbody") || {
+			echo "ERROR: store run-index-map.json is not valid JSON; refusing to update the ledger" >&2
+			rm -f "$ledgerrows" "$lbody"; exit 1
+		}
+		;;
+	404)
+		base='{"schema":1,"publishes":[]}'
+		;;
+	*)
+		echo "ERROR: could not read store run-index-map.json (HTTP $lcode); refusing to update the ledger" >&2
+		rm -f "$ledgerrows" "$lbody"; exit 1
+		;;
+esac
+rm -f "$lbody"
+
+#  Merge: drop any prior entry for this same (run id, attempt, branch, sha) so a
+#  retry replaces rather than duplicates, then append this publish's entries and
+#  stamp the top-level generated_epoch.
+merged=$(mktemp)
+printf '%s' "$base" | jq \
+	--argjson now "$now" \
+	--argjson new "$newentries" \
+	'.schema = (.schema // 1)
+	 | .generated_epoch = $now
+	 | .publishes = ([ .publishes[]? | select(. as $e |
+	       ($new | any(.github_run_id      == $e.github_run_id
+	               and .github_run_attempt == $e.github_run_attempt
+	               and .branch             == $e.branch
+	               and .sha                == $e.sha)) | not) ] + $new)' >"$merged" || {
+	echo "ERROR: failed to build updated run-index-map.json" >&2
+	rm -f "$ledgerrows" "$merged"; exit 1
+}
+
+upload "$merged" "run-index-map.json" || {
+	echo "ERROR: failed to upload run-index-map.json" >&2
+	rm -f "$ledgerrows" "$merged"; exit 1
+}
+rm -f "$ledgerrows" "$merged"
 
 #  Refresh the manifest so the UI's read path stays in sync with the tree.
 curl -fsS --connect-timeout 10 -X POST -H "Authorization: Bearer $token" \
