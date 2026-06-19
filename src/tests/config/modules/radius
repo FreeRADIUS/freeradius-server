@@ -105,7 +105,7 @@ radius {
 		#  connection { ... }:: Per-connection configuration.
 		#
 		connection {
-			connection_timeout = 3.0
+			connect_timeout = 3.0
 			reconnect_delay = 5
 		}
 

@@ -528,11 +528,11 @@ radius {
 		#
 		connection {
 			#
-			#  connection_timeout:: How long to wait
+			#  connect_timeout:: How long to wait
 			#  before giving up on a connection which is
 			#  being opened.
 			#
-			connection_timeout = 3.0
+			connect_timeout = 3.0
 
 			#
 			#  reconnect_delay:: If opening a connection
@@ -1000,11 +1000,11 @@ radius proxy {
 		#
 		connection {
 			#
-			#  connection_timeout:: How long to wait
+			#  connect_timeout:: How long to wait
 			#  before giving up on a connection which is
 			#  being opened.
 			#
-			connection_timeout = 3.0
+			connect_timeout = 3.0
 
 			#
 			#  reconnect_delay:: If opening a connection

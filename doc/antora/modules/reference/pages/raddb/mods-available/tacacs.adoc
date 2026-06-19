@@ -184,7 +184,7 @@ open / close connections.
 connection { ... }:: Per-connection configuration.
 
 
-connection_timeout:: How long to wait
+connect_timeout:: How long to wait
 before giving up on a connection which is
 being opened.
 
@@ -276,7 +276,7 @@ tacacs {
 		close_delay = 1.0
 		manage_interval = 0.2
 		connection {
-			connection_timeout = 3.0
+			connect_timeout = 3.0
 			reconnect_delay = 5
 		}
 		request {

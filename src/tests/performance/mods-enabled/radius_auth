@@ -22,7 +22,7 @@ radius radius_auth {
 		manage_interval = 0.2
 
 		connection {
-			connection_timeout = 1.0
+			connect_timeout = 1.0
 		}
 
 		requests {
