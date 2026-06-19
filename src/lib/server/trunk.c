@@ -76,8 +76,8 @@ static fr_time_t test_time(void)
 typedef struct {
 	fr_dlist_head_t			*log_head;	//!< To allow the log entry to remove itself on free.
 	fr_dlist_t			entry;		//!< Entry in the linked list.
-	trunk_request_state_t	from;		//!< What state we transitioned from.
-	trunk_request_state_t	to;		//!< What state we transitioned to.
+	trunk_request_state_t		from;		//!< What state we transitioned from.
+	trunk_request_state_t		to;		//!< What state we transitioned to.
 
 	trunk_connection_t		*tconn;		//!< The request was associated with.
 							///< Pointer may now be invalid, do no de-reference.
@@ -152,15 +152,15 @@ struct trunk_connection_s {
  	 */
 	fr_heap_t		*pending;		//!< Requests waiting to be sent.
 
-	trunk_request_t	*partial;		//!< Partially written request.
+	trunk_request_t		*partial;		//!< Partially written request.
 
 	fr_dlist_head_t		sent;			//!< Sent request.
 
-	fr_dlist_head_t		reapable;			//!< Idle request.
+	fr_dlist_head_t		reapable;		//!< Idle request.
 
 	fr_dlist_head_t		cancel;			//!< Requests in the cancel state.
 
-	trunk_request_t	*cancel_partial;	//!< Partially written cancellation request.
+	trunk_request_t		*cancel_partial;	//!< Partially written cancellation request.
 
 	fr_dlist_head_t		cancel_sent;		//!< Sent cancellation request.
 	/** @} */
@@ -184,7 +184,7 @@ struct trunk_connection_s {
  */
 typedef struct trunk_watch_entry_s {
 	fr_dlist_t		entry;			//!< List entry.
-	trunk_watch_t	func;			//!< Function to call when a trunk enters
+	trunk_watch_t		func;			//!< Function to call when a trunk enters
 							///< the state this list belongs to
 	bool			oneshot;		//!< Remove the function after it's called once.
 	bool			enabled;		//!< Whether the watch entry is enabled.
@@ -1136,7 +1136,7 @@ static void trunk_request_enter_unassigned(trunk_request_t *treq)
 static void trunk_request_enter_backlog(trunk_request_t *treq, bool new)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_INIT:
@@ -1299,7 +1299,7 @@ static void trunk_request_enter_partial(trunk_request_t *treq)
 static void trunk_request_enter_sent(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1356,7 +1356,7 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 static void trunk_request_enter_reapable(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1419,7 +1419,7 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reason_t reason)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1470,7 +1470,7 @@ static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reaso
 static void trunk_request_enter_cancel_partial(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	fr_assert(trunk->funcs.request_cancel_mux);
@@ -1505,7 +1505,7 @@ static void trunk_request_enter_cancel_partial(trunk_request_t *treq)
 static void trunk_request_enter_cancel_sent(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	fr_assert(trunk->funcs.request_cancel_mux);
@@ -1550,7 +1550,7 @@ static void trunk_request_enter_cancel_sent(trunk_request_t *treq)
 static void trunk_request_enter_cancel_complete(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	if (!fr_cond_assert(!treq->pub.request)) return;	/* Only a valid state for request_t * which have been cancelled */
@@ -1581,7 +1581,7 @@ static void trunk_request_enter_cancel_complete(trunk_request_t *treq)
 static void trunk_request_enter_complete(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1611,7 +1611,7 @@ static void trunk_request_enter_complete(trunk_request_t *treq)
  */
 static void trunk_request_enter_failed(trunk_request_t *treq)
 {
-	trunk_connection_t		*tconn = treq->pub.tconn;
+	trunk_connection_t	*tconn = treq->pub.tconn;
 	trunk_t			*trunk = treq->pub.trunk;
 	trunk_request_state_t	prev = treq->pub.state;
 
@@ -1725,9 +1725,9 @@ static trunk_enqueue_t trunk_request_check_enqueue(trunk_connection_t **tconn_ou
  */
 static trunk_enqueue_t trunk_request_enqueue_existing(trunk_request_t *treq)
 {
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 	trunk_connection_t	*tconn = NULL;
-	trunk_enqueue_t	ret;
+	trunk_enqueue_t		ret;
 
 	/*
 	 *	Must *NOT* still be assigned to another connection
@@ -1784,7 +1784,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 						  int states, uint64_t max)
 {
 	trunk_request_t	*treq;
-	uint64_t		count = 0;
+	uint64_t	count = 0;
 
 	if (max == 0) max = UINT64_MAX;
 
@@ -1894,9 +1894,9 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 static uint64_t trunk_connection_requests_requeue_priv(trunk_connection_t *tconn, int states, uint64_t max, bool fail_bound)
 {
 	trunk_t			*trunk = tconn->pub.trunk;
-	fr_dlist_head_t			to_process;
+	fr_dlist_head_t		to_process;
 	trunk_request_t		*treq = NULL;
-	uint64_t			moved = 0;
+	uint64_t		moved = 0;
 
 	if (max == 0) max = UINT64_MAX;
 
@@ -2640,8 +2640,8 @@ trunk_enqueue_t trunk_request_enqueue(trunk_request_t **treq_out, trunk_t *trunk
 					    request_t *request, void *preq, void *rctx)
 {
 	trunk_connection_t	*tconn = NULL;
-	trunk_request_t	*treq;
-	trunk_enqueue_t	ret;
+	trunk_request_t		*treq;
+	trunk_enqueue_t		ret;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
@@ -2973,7 +2973,7 @@ static inline void trunk_connection_auto_full(trunk_connection_t *tconn)
  */
 static inline bool trunk_connection_is_full(trunk_connection_t *tconn)
 {
-	trunk_t	*trunk = tconn->pub.trunk;
+	trunk_t		*trunk = tconn->pub.trunk;
 	uint32_t	count;
 
 	/*
@@ -3037,7 +3037,7 @@ static inline void trunk_connection_writable(trunk_connection_t *tconn)
  */
 static void trunk_connection_event_update(trunk_connection_t *tconn)
 {
-	trunk_t			*trunk = tconn->pub.trunk;
+	trunk_t				*trunk = tconn->pub.trunk;
 	trunk_connection_event_t	events = TRUNK_CONN_EVENT_NONE;
 
 	switch (tconn->pub.state) {
@@ -3301,7 +3301,7 @@ static void trunk_connection_enter_draining_to_free(trunk_connection_t *tconn)
 static void trunk_connection_enter_active(trunk_connection_t *tconn)
 {
 	trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
+	int		ret;
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_FULL:
@@ -3506,7 +3506,7 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 					   void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 
 	/*
 	 *	If a connection was just connected, it should only
@@ -3565,7 +3565,7 @@ static void _trunk_connection_on_closed(UNUSED connection_t *conn,
 					void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 	bool			need_requeue = false;
 
 	switch (tconn->pub.state) {
@@ -3688,7 +3688,7 @@ static void _trunk_connection_on_halted(UNUSED connection_t *conn,
 					void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_INIT:
@@ -4216,11 +4216,11 @@ static void trunk_rebalance(trunk_t *trunk)
 static void trunk_manage(trunk_t *trunk, fr_time_t now)
 {
 	trunk_connection_t	*tconn = NULL;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	uint32_t		average = 0;
 	uint32_t		req_count;
 	uint16_t		conn_count;
-	trunk_state_t	new_state;
+	trunk_state_t		new_state;
 
 	DEBUG4("Managing trunk");
 
