@@ -83,6 +83,7 @@ krb5 {
 #  section of your `radiusd.conf` file:
 #
 #  [source, unlang]
+#  ----
 #  Auth-Type Kerberos {
 # 	krb5
 #  }

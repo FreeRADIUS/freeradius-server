@@ -18,7 +18,7 @@
 #
 #  == Syntax
 #
-#always <name> {
+##always <name> {
 	#
 	#  rcode:: Return code.
 	#
@@ -40,7 +40,7 @@
 	#  | `updated`  | Indicate that the request has been updated.
 	#  |===
 	#
-#	rcode = <value>
+##	rcode = <value>
 
 	#
 	#  simulcount::
@@ -48,7 +48,7 @@
 	#  If an instance of this module is listed in a `session {}`
 	#  section, this simulates a user having `<integer>` number of sessions.
 	#
-#	simulcount = <integer>
+##	simulcount = <integer>
 
 	#
 	#  mpp::
@@ -56,8 +56,8 @@
 	#  If an instance is listed in a `session {}` section, this
 	#  simulates the user having multilink sessions.
 	#
-#	mpp = <integer>
-#}
+##	mpp = <integer>
+##}
 
 #
 #  == xlat for peeking and poking the status

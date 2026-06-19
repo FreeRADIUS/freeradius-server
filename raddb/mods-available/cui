@@ -51,11 +51,11 @@ sql cuisql {
 	#  ====
 	#  For dialect `mysql` and `postgresql` the following information should be provided:
 	#
-#	server = "localhost"
-#	port = 3306
-#	login = "radius"
-#	password = "radpass"
-#	radius_db = "radius"
+##	server = "localhost"
+##	port = 3306
+##	login = "radius"
+##	password = "radpass"
+##	radius_db = "radius"
 	#  ====
 
 	#

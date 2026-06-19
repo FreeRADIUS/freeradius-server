@@ -32,12 +32,12 @@ unbound dns {
 	#
 	#  filename:: The libunbound configuration file.
 	#
-	#  filename = "${confdir}/mods-config/unbound/default.conf"
+#	filename = "${confdir}/mods-config/unbound/default.conf"
 
 	#
-	#  timeoit:: For unbound queries.
+	#  timeout:: For unbound queries.
 	#
-	#  timeout = 3000
+#	timeout = 3000
 
 	#
 	#  resolvconf:: resolv.conf file to instruct unbound to load
@@ -49,14 +49,14 @@ unbound dns {
 	#  This is NOT RECOMMENDED.  A local caching DNS server will
 	#  substantially improve performance.
 	#
-	#  resolvconf = "/etc/resolv.conf"
+#	resolvconf = "/etc/resolv.conf"
 
 	#
 	#  hosts:: hosts file to load data from.
 	#
 	#  Defaults to not set.
 	#
-	#  hosts = "/etc/hosts"
+#	hosts = "/etc/hosts"
 }
 
 #
@@ -64,7 +64,7 @@ unbound dns {
 #
 #  A function based on the instance name can be used to perform DNS lookups.
 #
-#  %dns(<owner>, <record type>[, <limit>])
+#	%dns(<owner>, <record type>[, <limit>])
 #
 #  You must quote the parameters, e.g. `'example.com'`.
 #
@@ -95,6 +95,6 @@ unbound dns {
 #  The above example will perform an `MX` lookup on `example.com`, and
 #  will return just the first result.
 #
-#  NOTE:: The DNS queries are blocking!  A slow (or unavailable) DNS
+#  NOTE: The DNS queries are blocking!  A slow (or unavailable) DNS
 #  server can completely destroy the performance of FreeRADIUS.
 #

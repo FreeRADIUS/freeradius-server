@@ -58,23 +58,23 @@
 #
 #  The configuration items are:
 #
-#attr_filter attr_filter.<section> {
+##attr_filter attr_filter.<section> {
 	#
 	#  key:: The `key` to use for filter the packets.
 	#
-#	key = "<value>"
+##	key = "<value>"
 
 	#
 	#  relaxed:: Only move attribute if it passed all rules, or if the config says we
 	#  should copy unmatched attributes.
 	#
-#	relaxed = no
+##	relaxed = no
 
 	#
 	#  filename:: The `filename` with the attributes to filter.
 	#
-#	filename = </path/><section>
-#}
+##	filename = </path/><section>
+##}
 
 #
 #  == Configuration Settings

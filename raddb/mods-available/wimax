@@ -28,11 +28,13 @@
 #  `Calling-Station-Id` attribute to the normal format as
 #  specified in RFC 3580 Section 3.21.
 #
+#	```
 #	recv Access-Request {
 #		...
 #		wimax
 #		...
 #	}
+#	```
 #
 #  == send Access-Accept
 #
@@ -41,6 +43,7 @@
 #  has been used, AND the EAP method derives MSK and EMSK, then
 #  the various WiMAX keys can be calculated.
 #
+#	```
 # 	send Access-Accept {
 #		...
 #
@@ -66,6 +69,7 @@
 #
 #		...
 #	}
+#	```
 #
 #  == Miscellaneous
 #
@@ -95,7 +99,9 @@
 #
 #  You have to create it, and put it into the request or reply as something like:
 #
-#    WiMAX-MN-NAI = User-Name}
+#    ```
+#    WiMAX-MN-NAI = User-Name
+#    ```
 #
 #  You will also have to have the appropriate IP address (`v4` or `v6`)
 #  in order to calculate the keys below.

@@ -28,7 +28,9 @@
 #
 #  Configuration explanation.
 #
+#	```
 #	sqlcounter <name> {
+#	```
 #
 #  sql_module_instance:: Holds the instance of the `sql` module to use when
 #  querying the SQL database.
@@ -37,7 +39,9 @@
 #  (usually for failover situations), you can specify which module has access to
 #  the Accounting Data (`radacct table`).
 #
+#	```
 #	sql_module_instance = sql_foo
+#	```
 #
 #  reset:: Defines when the counters are all reset to zero.
 #
@@ -69,7 +73,9 @@
 #  The `query` parameter specifies the SQL query used to get the current Counter value
 #  from the database.
 #
+#	```
 #	key = "%{Stripped-User-Name || User-Name}"
+#	```
 #
 #  reset_period_start_name::  The name of the attribute which is used to store the
 #  time that the current reset period started.
@@ -125,8 +131,8 @@ sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-#	reset_period_start_name = control.${.:instance}-Reset-Start
-#	reset_period_end_name = control.${.:instance}-Reset-End
+##	reset_period_start_name = control.${.:instance}-Reset-Start
+##	reset_period_end_name = control.${.:instance}-Reset-End
 	counter_name = control.Daily-Session-Time
 	check_name = control.Max-Daily-Session
 	reply_name = reply.Session-Timeout

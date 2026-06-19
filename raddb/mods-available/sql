@@ -89,10 +89,10 @@ sql {
 	#
 	#  .Connection info:
 	#
-#	server = "localhost"
-#	port = 3306
-#	login = "radius"
-#	password = "radpass"
+##	server = "localhost"
+##	port = 3306
+##	login = "radius"
+##	password = "radpass"
 
 	#
 	#  radius_db:: Database table configuration for everything.
@@ -385,7 +385,7 @@ sql {
 #	query_number_attribute = 'Query-Number'
 
 	#
-	#  .Read database-specific queries.
+	#  Database-specific queries.
 	#
 	#  Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,
 	#  please create them and contribute them back to the project.

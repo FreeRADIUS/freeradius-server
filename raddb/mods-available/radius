@@ -423,9 +423,9 @@ radius {
 	#
 	#  The TCP configuration is identical to the `udp` configuration.
 	#
-#	tcp {
-#		...
-#	}
+	tcp {
+		# copy configuration items here
+	}
 
 	#
 	#  == Connection trunking

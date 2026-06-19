@@ -103,24 +103,24 @@ kafka {
 	#  `"500"` rather than `"500ms"` for time values, and raw byte
 	#  counts rather than `"1M"` for sizes.
 	#
-#	properties {
-#		"ssl.engine.id" = "pkcs11"
-#		"socket.keepalive.enable" = "true"
-#	}
+##	properties {
+##		"ssl.engine.id" = "pkcs11"
+##		"socket.keepalive.enable" = "true"
+##	}
 
 	#
 	#  Each declared topic also accepts its own `properties { }`
 	#  block for per-topic librdkafka settings that aren't named
 	#  knobs:
 	#
-	#  topic {
-	#      radius-accounting {
-	#          request_required_acks = -1
-	#          properties {
-	#              "compression.codec" = "lz4"
-	#          }
-	#      }
-	#  }
+##	topic {
+##		radius-accounting {
+##			request_required_acks = -1
+##			properties {
+##				"compression.codec" = "lz4"
+##			}
+##		}
+##	}
 }
 
 #
@@ -148,9 +148,11 @@ kafka {
 #  section and the topic is inferred from the section's packet type.
 #  For example:
 #
+#      ```
 #      recv Accounting-Request {
 #          kafka                # publishes to topic "Accounting-Request"
 #      }
+#      ```
 #
 #  This is tidy when you name topics after packet types; if you don't,
 #  stick with the explicit `kafka.produce.<topic>` form.  Either way,
@@ -161,6 +163,7 @@ kafka {
 #  different topics can publish different shapes from one module
 #  instance:
 #
+#      ```
 #      kafka {
 #          server = "localhost:9092"
 #          topic {
@@ -174,9 +177,11 @@ kafka {
 #              }
 #          }
 #      }
+#      ```
 #
 #  In a virtual server:
 #
+#      ```
 #      recv Accounting-Request {
 #          kafka.produce.radius-accounting
 #      }
@@ -184,6 +189,7 @@ kafka {
 #      recv Access-Request {
 #          kafka.produce.radius-auth
 #      }
+#      ```
 #
 #  `value` is required per topic.  `key` is optional; when omitted,
 #  librdkafka picks a partition according to the configured
@@ -196,11 +202,13 @@ kafka {
 #  key and payload).  It returns `true` on successful delivery and
 #  `false` on failure:
 #
+#      ```
 #      send Accounting-Response {
 #          if (!%kafka.produce('radius-accounting', %json.encode(&request.[*]))) {
 #              reject
 #          }
 #      }
+#      ```
 #
 #  As with the method, the topic argument must name a declared topic.
 #

@@ -122,7 +122,7 @@ detail {
 	#
 	#  NOTE: The attributes should be listed one to a line.
 	#
-#	suppress {
-#		User-Password
-#	}
+##	suppress {
+##		User-Password
+##	}
 }

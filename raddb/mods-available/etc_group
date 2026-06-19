@@ -23,12 +23,9 @@
 #  You will have to define the `Etc-Group-Name` in the `dictionary` file,
 #  as a `string` type.  For example:
 #
-#	ATTRIBUTE Etc-Group-Name string 3020
-#
-#  We cannot use the `Group` attribute here.  The `Group` attribute is
-#  automatically created by the `unix` module, and checked against
-#  `/etc/group` automatically.  Which means that the `Group` attribute
-#  has a pre-defined meaning, and you *cannot* use it for this module.
+#	```
+#	DEFINE Etc-Group-Name string
+#	```
 #
 csv etc_group {
 	filename = ${modconfdir}/csv/${.:instance}

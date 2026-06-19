@@ -40,8 +40,8 @@
 #  However, the cache module stores _attributes_, and _lists of
 #  attributes_.
 #
-#  In contrast, the `kv` module stores _values_.  e.g. ipv4addr,
-#  uint32, etc.  The use-case for the `kv` module is to store a small
+#  In contrast, the `kv` module stores _values_.  e.g. `ipv4addr`,
+#  `uint32`, etc.  The use-case for the `kv` module is to store a small
 #  number of simple values that can be shared across multiple threads.
 #
 #  == Functions

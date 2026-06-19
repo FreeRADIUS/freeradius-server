@@ -31,18 +31,15 @@
 #  Similarly, `mod_recv_access_request` or `mod_recv` can be used to
 #  load the function from a module other than the one specified in the
 #  `module` option.
-
 #
-#  Please see the file global.d/python for server-global configuration
+#  WARN:: The Python module is slow compared to `unlang`.  The only reason to use
+#  Python is when you need to use a third-party API that is only accessible via
+#  a Python library.
+
+#  == Global Configuration
+#
+#  Please see the file `global.d/python` for server-global configuration
 #  items which control the Python path.
-#
-
-#
-#  [NOTE]
-#  ====
-#  See `global.d/python` for configuration items that affect the
-#  python interpreter globally, such as the Python path.
-#  ====
 #
 
 #
@@ -81,11 +78,11 @@ python {
 #	func_detach = detach
 
 	#
-	#  config { ... }::
+	#  config { ... }:: Define configuration items which are accessible to the Python script.
 	#
 	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
 	#  section. These items will be accessible in the Python script through `freeradius.config`
-	#  dict for instance:
+	#  dict as read-only items.
 	#
 	#  e.g:
 	#
@@ -95,10 +92,10 @@ python {
 	#  freeradius.config['sub-config']['name']
 	#  ----
 	#
-#	config {
-#		name = "value"
-#		sub-config {
-#			name = "value of name from config.sub-config"
-#		}
-#	}
+##	config {
+##		name = "value"
+##		sub-config {
+##			name = "value of name from config.sub-config"
+##		}
+##	}
 }

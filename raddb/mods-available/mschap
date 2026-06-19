@@ -222,7 +222,10 @@ mschap {
 	}
 
 	#
-	#  .Pass Change
+	#  passchange:: Control parameters for changing passwords via MS-CHAP.
+	#
+	#  NOTE: This functionality should only be used inside of PEAP.  Anything else
+	#  is insecure.
 	#
 	passchange {
 		#
@@ -241,9 +244,9 @@ mschap {
 		#
 		#  Uncomment the three lines below, and change the path to `ntlm_auth.
 		#
-#		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
-#		ntlm_auth_username = "username: %mschap('User-Name')"
-#		ntlm_auth_domain = "nt-domain: %mschap('NT-Domain')"
+##		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
+##		ntlm_auth_username = "username: %mschap('User-Name')"
+##		ntlm_auth_domain = "nt-domain: %mschap('NT-Domain')"
 
 		#
 		#  local_cpw::
@@ -255,8 +258,8 @@ mschap {
 		#
 		#  TIP: We give both examples here, but *only one should be used*.
 		#
-#		local_cpw = %exec('/path/to/script', %mschap('User-Name'), %{MS-CHAP-New-Cleartext-Password})
-#		local_cpw = %sql("UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'")
+##		local_cpw = %exec('/path/to/script', %mschap('User-Name'), %{MS-CHAP-New-Cleartext-Password})
+##		local_cpw = %sql("UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'")
 
 	}
 
@@ -283,7 +286,7 @@ mschap {
 #	retry_msg = "Re-enter (or reset) the password"
 
 	#
-	#  .Attributes
+	#  attributes:: the list of attributes used by the mschap module
 	#
 	#  The `mschap` module needs to be configured with which attributes contain
 	#  MS-CHAP data in the request and which should be used for MS-CHAP data
@@ -366,23 +369,23 @@ mschap {
 	#  TACACS+ does not have any inherent support for MPPE keys or password
 	#  changing using MSCHAP.
 	#
-#	attributes {
-#		username = User-Name
-#		chap_challenge = MS-CHAP-Challenge
-#		chap_response = MS-CHAP-Response
-#		chap2_response = MS-CHAP2-Response
+##	attributes {
+##		username = User-Name
+##		chap_challenge = MS-CHAP-Challenge
+##		chap_response = MS-CHAP-Response
+##		chap2_response = MS-CHAP2-Response
 
 		#
 		#  TACACS+ puts the MS-CHAP2-Success information in the Data field,
 		#  but we call it MS-CHAP2-Success for simplicity.
 		#  See the ALIAS definition in dictionary/tacacs/dictionary.freeradius.internal
 		#
-#		chap2_success = MS-CHAP2-Success
+##		chap2_success = MS-CHAP2-Success
 
 		#
 		#  Similarly, TACACS+ puts the MS-CHAP-Error into the Server-Message
 		#  field.
 		#
-#		chap_error = MS-CHAP-Error
-#	}
+##		chap_error = MS-CHAP-Error
+##	}
 }

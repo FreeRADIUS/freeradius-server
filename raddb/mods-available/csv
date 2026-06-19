@@ -15,11 +15,13 @@
 #
 #  The CSV map can be used in a `map` section, as in the following example.
 #
+#    ```
 #    map csv User-Name {
 #		Attribute-Name := field1
 #		Attribute-Name := field2
 #		...
 #    }
+#    ```
 #
 #  The argument to "map" is dynamically expanded.  The result is taken
 #  as a string, and is used as the value of the "key".  The key is
@@ -151,7 +153,9 @@ csv {
 	#
 	#  Configuration items are in the format:
 	#
+	#    ```
 	#    <fr attr> <op> <csv field>
+	#    ```
 	#
 	#  Where:
 	#
@@ -188,10 +192,12 @@ csv {
 	#  as given the key` field above.  For example, the map could
 	#  look like this:
 	#
+	#	```
 	#	map csv User-Name {
 	#		reply.Reply-Message := 'color'
 	#		my-integer := 'count'
-	#	}
+	#	}	
+	#	```
 	#
 	#  This map does the same operations as the key / update
 	#  fields given above.  The benefit here is that the key can

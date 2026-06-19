@@ -20,7 +20,7 @@ rest {
 	#
 	tls {
 		#
-		#  .Certificate validation options
+		#  Certificate validation options
 		#
 		#  Specifies how the certificate(s) presented by the HTTPS server being contacted
 		#  are validated, and which certificates (if any) to send to the HTTPS server.
@@ -142,7 +142,7 @@ rest {
 		#
 		#  The contents of the keylog file allows wireshark captures to be decrypted for debugging purposes.
 		#
-		#  NOTE:: keylog_file is not expanded at runtime.
+		#  NOTE: keylog_file is not expanded at runtime.
 		#
 #		keylog_file = '/path/to/keylog_file'
 	}

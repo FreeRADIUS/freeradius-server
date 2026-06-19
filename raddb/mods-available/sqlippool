@@ -145,7 +145,7 @@ sqlippool {
 #       gateway = "%{Gateway-IP-Address}"
 
 	#
-	#  .Load the queries from a separate file.
+	#  Load the queries from a separate file.
 	#
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }

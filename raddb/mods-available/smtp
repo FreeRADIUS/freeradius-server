@@ -25,7 +25,7 @@ smtp {
 	#
 	tls {
 		#
-		#  .Certificate validation options
+		#  Certificate validation options
 		#
 		#  Specifies how the certificate(s) presented by the
 		#  SMTP server are validated, and which certificates
@@ -44,7 +44,7 @@ smtp {
 		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
 		#  to deepest (signed directly by the root CA).
 		#
-#		certificate_file     = /path/to/radius.pem
+#		certificate_file = /path/to/radius.pem
 
 		#
 		#  ca_file:: PEM formatted file containing the chain
@@ -58,7 +58,7 @@ smtp {
 		#  most common way of validating the certificate
 		#  presented by an SMTP server.
 		#
-#		ca_file	             = "${certdir}/cacert.pem"
+#		ca_file = "${certdir}/cacert.pem"
 
 		#
 		#  ca_issuer_file:: PEM formatted file containing the
@@ -72,14 +72,10 @@ smtp {
 		#  by other intermediary CAs, or root CAs, in the
 		#  trusted certificate chain.
 		#
-#		ca_issuer_file     = "${certdir}/caissuer.pem"
+#		ca_issuer_file = "${certdir}/caissuer.pem"
 
 		#
 		#  ca_path:: A directory containing multiple root CA certs named by their hash.
-		#
-		#  See the OpenSSL documentation for more details:
-		#  - https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
-		#  - https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
 		#
 		#  This configuration option should only be used when the SMTP server being contacted
 		#  is not known ahead of time (using a URL from an external source), and/or the CA used
@@ -89,14 +85,14 @@ smtp {
 		#  will be the operating system's set of trusted CAs.  This will be visible in the debug
 		#  output when FreeRADIUS starts.
 		#
-#		ca_path	             = "${certdir}"
+#		ca_path = "${certdir}"
 
 		#
 		#  private_key_file:: PEM formatted file containing the private key for the specified `certificate_file`
 		#
 		#  This item must be specified if `certificate_file` is being used.
 		#
-#		private_key_file     = /path/to/radius.key
+#		private_key_file = /path/to/radius.key
 
 		#
 		#  private_key_password:: Password used to decrypt the `private_key_file`.
@@ -106,7 +102,7 @@ smtp {
 		#
 		#  random_file:: Source of random data used for various cryptographic functions.
 		#
-#		random_file          = /dev/urandom
+#		random_file = /dev/urandom
 
 		#
 		#  check_cert:: Server certificate verification requirements.
@@ -274,10 +270,10 @@ smtp {
 	#  be automatically added to the email.  Only the list of
 	#  `recipients` will be used.
 	#
-#	recipients = SMTP-Recipients[*]
-#	recipients = SMTP-TO[*]
-#	recipients = SMTP-CC[*]
-#	recipients = SMTP-BCC[*]
+##	recipients = SMTP-Recipients[*]
+##	recipients = SMTP-TO[*]
+##	recipients = SMTP-CC[*]
+##	recipients = SMTP-BCC[*]
 
 	#
 	#  to:: Set the body `TO` header.

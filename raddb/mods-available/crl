@@ -45,8 +45,8 @@ crl {
 	#  Only base CRL distribution points should be listed here.  Deltas
 	#  which they refer to will automatically be fetched.
 	#
-#	url = http://example.com/ca.crl
-#	url = ldap://ldap.example.com/cn=example%20CA,dc=example,dc=com?certificateRevocationList;binary
+##	url = http://example.com/ca.crl
+##	url = ldap://ldap.example.com/cn=example%20CA,dc=example,dc=com?certificateRevocationList;binary
 
 	#
 	#  retry_delay:: How long to wait before retrying a fetch failure.

@@ -9,6 +9,9 @@
 #
 #  This module authenticates requests containing a `CHAP-Password` attribute.
 #
+#  NOTE: You should never send CHAP-Password in RADIUS/UDP packets.  CHAP
+#  is secure ONLY when used inside of TTLS.
+#
 #  CHAP authentication requires access to the Password.Cleartext for the user.
 #
 #  Standard Unix system authentication or passwords encrypted via `crypt()`

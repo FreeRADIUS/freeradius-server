@@ -20,27 +20,29 @@
 #
 yubikey {
 	#
-	#  id_length:: The length (number of ASCII bytes) of the Public-ID portion
-	#  of the OTP string.
+	#  id_length:: The length (number of ASCII bytes) of the Public-ID
+	#  portion of the OTP string.
 	#
 	#  Yubikey defaults to a 6 byte ID (2 * 6 = 12)
 	#
 #	id_length = 12
 
 	#
-	#  split:: If true, the authorize method of `rlm_yubikey` will attempt to split the
-	#  value of `User-Password`, into the user's password, and the OTP token.
+	#  split:: If true, the authorize method of `rlm_yubikey` will
+	#  attempt to split the value of `User-Password`, into the user's
+	#  password, and the OTP token.
 	#
-	#  NOTE: If enabled and successful, the value of `request.User-Password` will be
-	#  truncated and `request.Vendor-Specific.Yubicon.Yubikey-OTP` will be added.
+	#  NOTE: If enabled and successful, the value of
+	#  `request.User-Password` will be truncated and
+	#  `request.Vendor-Specific.Yubicon.Yubikey-OTP` will be added.
 	#
 #	split = yes
 
 	#
 	#  decrypt:: Whether tokens will be decrypted and processed locally.
 	#
-	#  In the `recv Access-Request` section, this module should be placed before the
-	#  persistent storage module.
+	#  In the `recv Access-Request` section, this module should be placed
+	#  before the persistent storage module.
 	#
 	#  The following authenticate section should be added:
 	#
@@ -51,16 +53,18 @@ yubikey {
 	#  }
 	#  ----
 	#
-	#  If two factor authentication (password concatenated with OTP) is required, split
-	#  configuration should be set to yes and the pap module should be uncommented.
+	#  If two factor authentication (password concatenated with OTP) is
+	#  required, split configuration should be set to yes and the pap
+	#  module should be uncommented.
 	#
-	#  Each account will need a password added (either using attribute `Password.Cleartext`,
-	#  `SSHA-Password`, etc.).
+	#  Each account will need a password added (either using attribute
+	#  `Password.Cleartext`, `SSHA-Password`, etc.).
 	#
-	#  The module itself does not provide persistent storage as
-	#  this would duplicate functionality already in the server.
+	#  The module itself does not provide persistent storage as this
+	#  would duplicate functionality already in the server.
 	#
-	#  Yubikey authentication needs two attributes retrieved from persistent storage:
+	#  Yubikey authentication needs two attributes retrieved from
+	#  persistent storage:
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -75,8 +79,9 @@ yubikey {
 	#                                                         the request list after successful decryption.
 	#  |===
 	#
-	#  NOTE: `Vendor-Specific.Yubicon.Yubikey-Counter` isn't strictly required, but the server will generate
-	#  warnings if it's not present when `yubikey.authenticate` is called.
+	#  NOTE: `Vendor-Specific.Yubicon.Yubikey-Counter` isn't strictly
+	#  required, but the server will generate warnings if it's not
+	#  present when `yubikey.authenticate` is called.
 	#
 	#  These attributes are available after `authorization`:
 	#
@@ -95,7 +100,8 @@ yubikey {
 	#  | `request.Vendor-Specific.Yubicon.Yubikey-OTP` | The OTP portion of `User-Password`.
 	#  |===
 	#
-	#  These attributes are available after authentication (if successful):
+	#  These attributes are available after authentication (if
+	#  successful):
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -119,7 +125,8 @@ yubikey {
 	decrypt = no
 
 	#
-	#  validate:: Validation mode - Tokens will be validated against a Yubicloud server.
+	#  validate:: Validation mode - Tokens will be validated against a
+	#  Yubicloud server.
 	#
 	validate = no
 
@@ -142,8 +149,9 @@ yubikey {
 		#  | `%s`   | Placeholder for the token string itself.
 		#  |===
 		#
-		#  NOTE: If no URLs are listed, will default to the default URLs in the
-		#  ykclient library, which point to the yubico validation servers.
+		#  NOTE: If no URLs are listed, will default to the default URLs in
+		#  the ykclient library, which point to the yubico validation
+		#  servers.
 		#
 		servers {
 #			uri = 'http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s'
@@ -171,10 +179,9 @@ yubikey {
 			#
 			#  start:: Connections to create during module instantiation.
 			#
-			#  If the server cannot create specified number of
-			#  connections during instantiation it will exit.
-			#  Set to `0` to allow the server to start without the
-			#  external service being available.
+			#  If the server cannot create specified number of connections
+			#  during instantiation it will exit. Set to `0` to allow the
+			#  server to start without the external service being available.
 			#
 			start = 0
 
@@ -186,18 +193,18 @@ yubikey {
 			#
 			#  max:: Maximum number of connections.
 			#
-			#  If these connections are all in use and a new one
-			#  is requested, the request will NOT get a connection.
+			#  If these connections are all in use and a new one is requested,
+			#  the request will NOT get a connection.
 			#
-			#  Setting `max` to *LESS* than the number of threads means
-			#  that some threads may starve, and you will see errors
-			#  like _No connections available and at max connection limit_.
+			#  Setting `max` to *LESS* than the number of threads means that
+			#  some threads may starve, and you will see errors like _No
+			#  connections available and at max connection limit_.
 			#
-			#  Setting `max` to MORE than the number of threads means
-			#  that there are more connections than necessary.
+			#  Setting `max` to MORE than the number of threads means that
+			#  there are more connections than necessary.
 			#
-			#  If `max` is not specified, then it defaults to the number
-			#  of workers configured.
+			#  If `max` is not specified, then it defaults to the number of
+			#  workers configured.
 			#
 #			max =
 			#
@@ -208,8 +215,8 @@ yubikey {
 			uses = 0
 
 			#
-			#  retry_delay:: The number of seconds to wait after the server tries
-			#  to open a connection, and fails.
+			#  retry_delay:: The number of seconds to wait after the server
+			#  tries to open a connection, and fails.
 			#
 			#  During this time, no new connections will be opened.
 			#
@@ -225,7 +232,8 @@ yubikey {
 			#
 			#  idle_timeout:: The idle timeout (in seconds).
 			#
-			#  A connection which is unused for this length of time will be closed.
+			#  A connection which is unused for this length of time will be
+			#  closed.
 			#
 			#  NOTE: A setting of 0 means infinite (no timeout).
 			#
@@ -234,22 +242,25 @@ yubikey {
 			#
 			#  spread:: Enable LRU (Least Recently Used).
 			#
-			#  The `yubico` library uses `curl` multi-handles. If the multi-handle is reused
-			#  before all requests are completed the connections are re-established.
+			#  The `yubico` library uses `curl` multi-handles. If the
+			#  multi-handle is reused before all requests are completed the
+			#  connections are re-established.
 			#
-			#  The cost of re-establishing the connections is greater than the benefit of
-			#  maintaining a small pool of connections or optimising for link latency.
+			#  The cost of re-establishing the connections is greater than the
+			#  benefit of maintaining a small pool of connections or optimising
+			#  for link latency.
 			#
 			spread = yes
 
 			#
 			#  [NOTE]
 			#  ====
-			#  All configuration settings are enforced.  If a connection is closed because of
-			#  `idle_timeout`, `uses`, or `lifetime`, then the total
-			#  number of connections MAY fall below `min`.
+			#  All configuration settings are enforced. If a connection is
+			#  closed because of `idle_timeout`, `uses`, or `lifetime`, then
+			#  the total number of connections MAY fall below `min`.
 			#
-			#  When that happens, it will open a new connection. It will also log a *WARNING* message.
+			#  When that happens, it will open a new connection. It will also
+			#  log a *WARNING* message.
 			#
 			#  The solution is to either lower the "min" connections, or
 			#  increase lifetime/idle_timeout.

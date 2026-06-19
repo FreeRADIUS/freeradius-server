@@ -66,13 +66,19 @@
 #  Attributes can be set by assigning values to the array entries of leaf
 #  nodes.  E.g.
 #
+#  ```
 #  $p->{'reply'}{'foo'}[0] = 'baa'
+#  ```
 #
 #  In addition, the Perl array functions `push`, `pop`, `shift` and `unshift`
 #  can be used to add or remove instances of attributes.
 #
 #  The return codes from functions in the `perl_script` are passed directly back
 #  to the server.  These codes are defined in `mods-config/example.pl`
+#
+#  WARN:: The Perl module is slow compared to `unlang`.  The only reason to use
+#  Perl is when you need to use a third-party API that is only accessible via
+#  a Perl library.
 #
 
 #
@@ -115,9 +121,9 @@ perl {
 	#
 	#  These options cause the old FreeRADIUS v3 default subroutine
 	#  names to be used
-#	func_recv_access_request = authorize
-#	func_recv_accounting_request = preacct
-#	func_send = postauth
+##	func_recv_access_request = authorize
+##	func_recv_accounting_request = preacct
+##	func_send = postauth
 
 	#
 	#  config { ... }::
@@ -134,10 +140,10 @@ perl {
 	#  $RAD_PERLCONF{'sub-config'}->{'name'}
 	#  ----
 	#
-#	config {
-#		name = "value"
-#		sub-config {
-#			name = "value of name from config.sub-config"
-#		}
-#	}
+##	config {
+##		name = "value"
+##		sub-config {
+##			name = "value of name from config.sub-config"
+##		}
+##	}
 }

@@ -27,6 +27,7 @@
 #
 #  Then place the following configuration into the "recv Access-Request" section:
 #
+#	```
 #	recv Access-Request {
 #		...
 #		rewrite_called_station_id
@@ -36,8 +37,8 @@
 #			control.PSK-Identity := "bob"
 #			control.Pre-Shared-Key := "this-is-super-secret"
 #		}
-#
 #	}
+#	```
 #
 #  Alternatively, you can read control.PSK-Identity and
 #  control.Pre-Shared-Key from a database.  Just do that before
@@ -50,6 +51,7 @@
 #
 #  Then create an "authenticate dpsk" section which calls the "dpsk" module:
 #
+#	```
 #	authenticate dpsk {
 #		dpsk
 #		if (updated) {
@@ -57,6 +59,7 @@
 #			... cache reply.PSK-Identity
 #		}
 #	}
+#	```
 #
 #  In the "authenticate" section, the module will return
 #
@@ -131,7 +134,9 @@ dpsk {
 	#
 	#  PSKs can also be stored in a CSV file.  The format of the file is:
 	#
+	#	```
 	#	identity,psk,mac
+	#	```
 	#
 	#  If there are commas in a field, then the field can be
 	#  double quoted: "psk".
@@ -155,8 +160,10 @@ dpsk {
 	#  server does not have to be reloaded when the file changes.  Instead,
 	#  the file can be generated, and then moved into place atomically:
 	#
+	#	```
 	# 	create csv file > psk.csv.new
 	#	mv psk.csv.new psk.csv
+	#	```
 	#
 	#  Any process which writes a new "psk.csv" file MUST NOT
 	#  write to the file directly, as that will cause the dpsk

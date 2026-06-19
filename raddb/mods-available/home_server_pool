@@ -46,9 +46,11 @@ load-balance pool1 {
 #  `Calling-Station-Id`, the above `pool1` configuration can be
 #  modified with one addition:
 #
+#	```
 #	load-balance pool1 Calling-Station-Id {
 #		...
 #	}
+#	```
 #
 #  See the `load-balance` keyword documentation for more information.
 #
@@ -69,9 +71,11 @@ load-balance pool1 {
 #  server to run the `radius` module.  The simplest way to do this is
 #  to add a section:
 #
+#	```
 #	authenticate proxy {
 #		pool1
 #	}
+#	```
 #
 #  And then set `Auth-Type := proxy`.  See the sites-available/proxy
 #  example for more information.
@@ -83,12 +87,14 @@ load-balance pool1 {
 #
 #  In v3, we have:
 #
+#	```
 #	home_server radius1 {
 #		type = auth+acct
 #		ipaddr = 192.0.2.1
 #		port = 1812
 #		secret = testing123
 #	}
+#	```
 #
 #  This translates to the `radius` module, with name `home1`, and the following contents.
 #

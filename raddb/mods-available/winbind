@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = WinModule
+#  = Winbind
 #
 #  The `winbind` module authenticate PAP passwords against Microsoft Active
 #  Directory or Samba, via the winbind API.
@@ -65,7 +65,7 @@ winbind {
 	}
 
 	#
-	#  .Reusable Handles
+	#  reuse:: Maintain long-term connections to the windbind server.
 	#
 	#  Reusable connection handles are allocated in blocks.  These
 	#  parameters allow for tuning how that is done.

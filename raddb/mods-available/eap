@@ -111,9 +111,9 @@ eap {
 	type = ttls
 	type = mschapv2
 	type = peap
-#	type = fast
-#	type = aka
-#	type = sim
+##	type = fast
+##	type = aka
+##	type = sim
 
 	#
 	#  === EAP-MD5

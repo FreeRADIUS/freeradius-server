@@ -24,7 +24,9 @@
 #  In order to allow NTLM passwords, you may need to run the following
 #  command on the OpenDirectory machine:
 #
+#	```
 #	dscl -u diradmin -p /LDAPv3/127.0.0.1 -append /Config/dirserv apple-enabled-auth-mech SMB-NTLM2v
+#	```
 #
 
 #
