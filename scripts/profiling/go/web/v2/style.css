@@ -121,6 +121,15 @@ a{color:var(--brand);}
 .viewseg button:last-child{border-right:0;}
 .viewseg button.on{background:var(--brand);color:#fff;}
 .viewseg button:disabled{opacity:.45;cursor:not-allowed;}
+/* Filter nested in the source toggle, right of "Local files", so it reads as
+   part of that option. Hidden (collapses the segment) when Repo is selected. */
+#srcseg button[data-src="local"]{border-right:0;} /* filter chip floats; no divider here */
+.viewseg .seg-filter{border:0;background:#eef2f7;border-radius:6px;margin:4px 6px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink);
+  padding:5px 9px;width:164px;outline:none;}
+.viewseg .seg-filter::placeholder{color:#9aa3b2;}
+.viewseg .seg-filter:focus{background:#e7eefb;}
+.viewseg .seg-filter:disabled{background:#f1f3f7;color:#aab2c0;cursor:not-allowed;}
 .pill{border:1px solid var(--line-strong);border-radius:7px;padding:5px 10px;font-size:12px;
   font-weight:600;background:var(--paper);white-space:nowrap;}
 .field-lbl.inline{font-size:11px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;

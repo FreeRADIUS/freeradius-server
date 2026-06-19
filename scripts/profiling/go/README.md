@@ -199,9 +199,10 @@ Compares many runs at once, where **one run = one directory of
   - **Local files** — the directory picker. Pick a leaf test directory for one
     run, or a parent (a run# or the whole `<sha>` directory) to load every run
     beneath it; labels drop the shared path prefix (e.g. `4/accept/short_ci`,
-    `5/accept/short_ci`). The **import filter** beside the button narrows a broad
-    pick to only the folders whose path contains one of its space-separated terms
-    (e.g. import just the `ldap` runs from a whole-`<sha>` pick).
+    `5/accept/short_ci`). The **import filter** nested in the Local files toggle
+    narrows a broad pick to only the folders whose path contains one of its
+    space-separated terms (e.g. import just the `ldap` runs from a whole-`<sha>`
+    pick); it is greyed out (disabled) when the Repo source is selected.
   - **Repo** — the hosted prof-results store (URL/label set in
     [web/v2/config.json](web/v2/config.json)). Opens a picker that reads the
     store's `manifest.json` and lists every analyzable run — one row per
