@@ -117,9 +117,18 @@
       <p class="mp">Hosted prof-results store · tick many · sorted by date</p>
       <div class="search"><span>🔍</span><input id="repo-search" placeholder="filter by branch, commit, PR…" disabled /></div>
       <table class="runs-tbl">
-        <thead><tr><th>＋</th><th>date</th><th>sha</th><th>branch</th><th>build</th><th>by / PR</th></tr></thead>
+        <thead><tr>
+          <th><input type="checkbox" id="repo-all" title="Select / clear all shown runs" disabled /></th>
+          <th class="sortable" data-sort="date">date<span class="rarr"></span></th>
+          <th class="sortable" data-sort="sha">sha<span class="rarr"></span></th>
+          <th class="sortable" data-sort="branch">branch<span class="rarr"></span></th>
+          <th class="sortable" data-sort="run">run<span class="rarr"></span></th>
+          <th class="sortable" data-sort="suite">suite<span class="rarr"></span></th>
+          <th class="sortable" data-sort="test">test<span class="rarr"></span></th>
+          <th class="sortable" data-sort="by">by / PR<span class="rarr"></span></th>
+        </tr></thead>
         <tbody id="repo-rows">
-          <tr><td colspan="6"><div class="runs-empty">
+          <tr><td colspan="8"><div class="runs-empty">
             Not connected yet. This is the selection UI for the hosted store at
             <code id="repo-url">cinfra-ca.testdev.inkbridge.io/profiling</code>; live runs appear here once the
             store is reachable and the source-selection work lands. For now, use
