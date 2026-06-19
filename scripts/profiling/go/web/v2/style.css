@@ -185,9 +185,6 @@ table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent
    header row stick so labels stay visible while scrolling a long run. */
 /* compare view (2–3 runs) */
 .cmp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 8px 2px;font-size:12px;}
-table.heat th.cmp-sel{background:var(--brand-soft);color:var(--brand);}
-.cmp-badge{display:inline-block;min-width:13px;height:13px;line-height:13px;padding:0 2px;border-radius:7px;
-  background:var(--brand);color:#fff;font-size:9px;font-weight:700;text-align:center;vertical-align:middle;margin-right:3px;}
 table.detail.cmp .cmp-best{margin-left:5px;font-size:9.5px;font-weight:700;color:#1f7a55;text-transform:uppercase;letter-spacing:.03em;}
 table.detail.cmp .cmp-d{margin-left:5px;font-size:10.5px;font-weight:600;color:#7a2018;}
 table.detail.cmp td.cmp-spread{font-weight:700;}
