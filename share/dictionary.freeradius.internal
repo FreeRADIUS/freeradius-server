@@ -599,6 +599,13 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Uri	1935	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
 ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
 ATTRIBUTE	TLS-Cache-Method			1938	integer
+
+#	1960 - 1970
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Directory-Name	1960	string
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Directory-Name-Common-Name	1961	string
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Directory-Name	1962	string
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name	1963	string
+
 VALUE	TLS-Cache-Method		save			1
 VALUE	TLS-Cache-Method		load			2
 VALUE	TLS-Cache-Method		clear			3
@@ -632,7 +639,7 @@ ATTRIBUTE	TLS-Cert-CRL-Distribution-Points	1960	string
 ATTRIBUTE	TLS-Client-Cert-CRL-Distribution-Points	1961	string
 
 #
-#	Range:	1960-2099
+#	Range:	1970-2099
 #		Free
 #
 #	Range:	2100-2199
