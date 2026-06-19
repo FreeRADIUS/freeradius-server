@@ -33,11 +33,14 @@ go/
 │   ├── report.go         text / comparison / markdown writers
 │   └── json.go           JSON report schema + writer
 ├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
-└── web/                  browser target
+└── web/                  browser target (GOOS=js); all analysis is client-side
     ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix, cestReport)
     ├── v1/               single-run / pattern UI: index.html, app.js, style.css, wasm_exec.js, .wasm
-    └── v2/               multi-run compare UI (heatmap / trends / divergence / per-run detail):
-                          index.html, app.js, style.css, config.json, wasm_exec.js, .wasm
+    └── v2/               multi-run compare UI (heatmap / trends / divergence / per-run detail)
+                          with local-file and hosted-store run sources; the store picker reads
+                          the store's manifest.json (run list) and run-index-map.json (workflow
+                          run links). Files: index.html, app.js, style.css, config.json,
+                          wasm_exec.js, .wasm
 ```
 
 `internal/cest` never imports `os`, `flag`, or `syscall/js`. Callers feed it
@@ -102,9 +105,10 @@ on `globalThis`:
 - `cestReport(runs, topN, patterns?)` — the rich JSON report (all 9 counters)
   behind v2's **Download JSON**.
 
-The page reads the picked `callgrind.out.*` files with the `FileReader` API and
-hands their text in; the same `internal/cest` core does the analysis. No file
-ever leaves the browser.
+The page gets each `callgrind.out.*` file's text — from a local pick via the
+`FileReader` API, or fetched from the hosted prof-results store over HTTP — and
+hands it in; the same `internal/cest` core does the analysis. Analysis is
+entirely client-side; nothing is uploaded.
 
 #### Build
 
@@ -169,7 +173,8 @@ python3 -m http.server 8080 --bind 0.0.0.0
 
 #### Use
 
-There are two browser UIs. Both run entirely locally; no file leaves the browser.
+There are two browser UIs. Both analyze entirely in the browser; nothing is
+uploaded (the Repo source only *downloads* result files from the store).
 
 ##### v1 — single-run / pattern UI (`/v1/`)
 
@@ -190,12 +195,26 @@ The Markdown and JSON reports are also available via the download buttons.
 Compares many runs at once, where **one run = one directory of
 `callgrind.out.*` files** (one test directory in the prof-results tree).
 
-- **Add runs** from **Local files** (the directory picker) or **Repo** (the
-  hosted prof-results store — the picker shell is in place; its data wiring is
-  the source-selection work, configured via [web/v2/config.json](web/v2/config.json)).
-  Pick a leaf test directory for one run, or a parent (a run# or the whole
-  `<sha>` directory) to load every run beneath it; labels drop the shared path
-  prefix (e.g. `4/accept/short_ci`, `5/accept/short_ci`).
+- **Add runs** from one of two sources (toggle beside **+ Add runs**):
+  - **Local files** — the directory picker. Pick a leaf test directory for one
+    run, or a parent (a run# or the whole `<sha>` directory) to load every run
+    beneath it; labels drop the shared path prefix (e.g. `4/accept/short_ci`,
+    `5/accept/short_ci`). The **import filter** beside the button narrows a broad
+    pick to only the folders whose path contains one of its space-separated terms
+    (e.g. import just the `ldap` runs from a whole-`<sha>` pick).
+  - **Repo** — the hosted prof-results store (URL/label set in
+    [web/v2/config.json](web/v2/config.json)). Opens a picker that reads the
+    store's `manifest.json` and lists every analyzable run — one row per
+    `<branch>/<sha>/<run>/<suite>/<test>` leaf holding `callgrind.out.*` files
+    (archived trees are skipped). Tick any number of runs (the header checkbox
+    selects/clears all shown), optionally narrow with the search box (matches
+    branch / sha / run / suite / test / workflow run number), and click any
+    column header to sort (date, sha, branch, run, suite, test, by/PR).
+    **Add selected** fetches those runs' `callgrind.out.*` files over HTTP and
+    loads them, labelled `<sha>/<run>/<suite>/<test>`. The **by / PR** column
+    links to the GitHub workflow run that produced each result, joined from the
+    store's `run-index-map.json` ledger (`—` for runs published before the
+    ledger existed).
 - **Baseline = the median (p50) run** by total CEst (lower-middle for an even
   count). It is an actual profile, not a synthetic average, and is recomputed
   whenever the selected run set changes.
@@ -208,6 +227,15 @@ Compares many runs at once, where **one run = one directory of
   - **Divergence** — a diverging bar chart of each function's change in
     **self-share** of total CEst (percentage points) for a current run vs a
     reference run (the p50 baseline by default, or any run you choose).
+- **Per-run detail** — click a run's chip (or its heatmap column header) to leave
+  the comparison views for that one run's full per-function table: every function
+  with CEst plus the 9 raw Callgrind counters it is built from, sortable on any
+  column and narrowed by the **patterns** filter. A second table sums the counters
+  of every function matching each pattern term (one row per term). **← Back**, or
+  any comparison-view button, returns.
+- **Run chips** — each loaded run shows as a chip with a bar of its total CEst
+  relative to the largest run; the p50 baseline chip is marked, and **×** removes
+  a run (**Clear** removes all).
 - **Value mode** (heatmap / trends): Δ% vs p50, Δ% vs that run's total, CEst
   cycles, or CEst % of run total.
 - Other controls: a **patterns** filter (space-separated, case-insensitive
@@ -221,7 +249,7 @@ Compares many runs at once, where **one run = one directory of
 | | `wasip1` (CLI) | `js` (browser) |
 |---|---|---|
 | Entry point | `./cmd/cest-analyzer` | `./web/wasm` |
-| File access | host FS via `--dir` | picked files via `FileReader` |
+| File access | host FS via `--dir` | local pick (`FileReader`) or hosted store (HTTP fetch) |
 | Output | stdout / `--md` / `--json` files | v1: Report / Tables / JSON tabs + downloads · v2: heatmap / trends / divergence + JSON download |
 | Runtime | wasmtime, wazero, Node 21+ | any browser |
 
