@@ -22,6 +22,14 @@
 #  after MAX_FAILURES keeps an unreachable store from hanging the step on
 #  every one of the run's files.
 #
+#  Re-running the workflow on the same sha must not clobber the previous
+#  attempt. The harness numbers runs 1..N locally, restarting at 1 each workflow
+#  run, so the destination <run> segment is offset by the highest run index
+#  already in the store for this <branch>/<sha>: a re-run's 1..N land at
+#  (offset+1)..(offset+N) and accumulate beside the earlier attempt. The store
+#  manifest is the source of truth for the offset; a sha with nothing there (or
+#  no manifest yet) gives offset 0, leaving 1..N unchanged.
+#
 #  Usage:
 #    publish-profiling-results.sh
 #
@@ -62,6 +70,37 @@ upload() {
 }
 
 #
+#  Compute the per-<branch>/<sha> run-index offset (see the header note). The
+#  store manifest lists every file as <branch>/<sha>/<run>/<suite>/<test>/<file>;
+#  fetch it once (public GET, no auth) and, for each <branch>/<sha> prefix in
+#  THIS run's tree, record the highest <run> already present. The prefix match
+#  carries a trailing "/", so archived trees (<branch>/archive-.../<sha>/...)
+#  and a sha that is a prefix of another never count. An absent/empty manifest
+#  yields no lines, so every offset is 0 and paths are left as 1..N.
+#
+#  Deriving the offset from the manifest (the actual files) rather than a
+#  separate counter means manual housekeeping - deleting or archiving trees -
+#  is reflected automatically. The manifest is read BEFORE any upload, so this
+#  run's own files never inflate their own offset. Single-publisher-per-sha is
+#  assumed: two runs publishing for the same sha at once could read the same max
+#  and collide (deferred).
+#
+existing=$(mktemp)
+curl -fsS --connect-timeout 10 "${PROF_RESULTS_URL}/profiling/manifest.json" 2>/dev/null \
+	| jq -r '.files[]?' >"$existing" 2>/dev/null || true
+
+offsets=$(mktemp)
+find prof-results -type f ! -name '.DS_Store' \
+	| sed 's#^prof-results/##' \
+	| awk -F/ 'NF>=3 { print $1"/"$2 }' | sort -u \
+	| while IFS= read -r pfx; do
+		max=$(awk -F/ -v p="$pfx/" '
+			substr($0, 1, length(p)) == p && $3 ~ /^[0-9]+$/ && $3 + 0 > m { m = $3 + 0 }
+			END { print m + 0 }' "$existing")
+		printf '%s\t%s\n' "$pfx" "$max" >>"$offsets"
+	done
+
+#
 #  Upload every file, but stop after MAX_FAILURES. The file list goes
 #  through a temp file (not a `find | while` pipe) so the loop runs in this
 #  shell and the failure count survives it.
@@ -71,15 +110,33 @@ list=$(mktemp)
 find prof-results -type f ! -name '.DS_Store' >"$list"
 while IFS= read -r f; do
 	rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
-	upload "$f" "$rel" && continue
-	echo "ERROR: failed to upload $rel" >&2
+	dest="$rel"
+	#  Shift the <run> (3rd) segment up by this sha's offset so a re-run
+	#  accumulates beside the earlier attempt (see header). All of a local
+	#  run's files (callgrind + logs) shift together, staying co-located.
+	branch="${rel%%/*}"; r1="${rel#*/}"
+	sha="${r1%%/*}";     r2="${r1#*/}"
+	run="${r2%%/*}";     rest="${r2#*/}"
+	case "$r2" in
+		*/*)   # has at least <run>/<rest>, so there is a run segment to offset
+			case "$run" in
+				''|*[!0-9]*) : ;;   # non-numeric run: leave dest unchanged
+				*)
+					off=$(awk -F'\t' -v p="$branch/$sha" '$1 == p { print $2; exit }' "$offsets")
+					dest="$branch/$sha/$((run + ${off:-0}))/$rest"
+					;;
+			esac
+			;;
+	esac
+	upload "$f" "$dest" && continue
+	echo "ERROR: failed to upload $dest" >&2
 	fail=$((fail + 1))
 	if [ "$fail" -ge "$MAX_FAILURES" ]; then
 		echo "ERROR: $fail upload failures; giving up (store unreachable?)" >&2
 		break
 	fi
 done <"$list"
-rm -f "$list"
+rm -f "$list" "$existing" "$offsets"
 
 #  A failed upload means an incomplete tree, so skip the manifest refresh
 #  (which would advertise runs whose files are missing) and fail the leg.
