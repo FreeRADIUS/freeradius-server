@@ -41,7 +41,8 @@ a{color:var(--brand);}
 .nbar-top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;}
 .nbar-meta{font-size:13px;}
 .empty-hint{font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;}
-.chips{display:flex;gap:6px;overflow-x:auto;padding:9px 2px 4px;}
+.chips-hint{font-size:11px;color:var(--ink-soft);padding:8px 8px 0;}
+.chips{display:flex;gap:16px;overflow-x:auto;padding:9px 8px 4px;}
 .chips:empty{display:none;}
 .rchip{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;
   border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px 5px;background:var(--paper);
@@ -55,6 +56,8 @@ a{color:var(--brand);}
 .rchip:hover .rlabel,.rchip:hover .rn{color:var(--brand);}
 .rchip:focus-visible{outline:2px solid var(--brand);outline-offset:1px;}
 .rchip.open{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 1px var(--brand) inset;}
+.rchip.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand) inset;}
+.rchip .rcmp{position:absolute;top:-7px;left:-6px;width:14px;height:14px;margin:0;cursor:pointer;z-index:2;accent-color:var(--brand);}
 .rchip.open .rlabel{color:var(--brand);}
 .rchip .cb{display:block;width:100%;height:6px;border-radius:3px;background:var(--bar-2);overflow:hidden;}
 .rchip .cb i{display:block;height:100%;background:var(--ink-soft);}
@@ -180,6 +183,14 @@ table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent
 /* detail view: one run's full per-function table + a pattern-aggregation table.
    Both tables sort on any column header; the function-name column and the
    header row stick so labels stay visible while scrolling a long run. */
+/* compare view (2–3 runs) */
+.cmp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 8px 2px;font-size:12px;}
+table.heat th.cmp-sel{background:var(--brand-soft);color:var(--brand);}
+.cmp-badge{display:inline-block;min-width:13px;height:13px;line-height:13px;padding:0 2px;border-radius:7px;
+  background:var(--brand);color:#fff;font-size:9px;font-weight:700;text-align:center;vertical-align:middle;margin-right:3px;}
+table.detail.cmp .cmp-best{margin-left:5px;font-size:9.5px;font-weight:700;color:#1f7a55;text-transform:uppercase;letter-spacing:.03em;}
+table.detail.cmp .cmp-d{margin-left:5px;font-size:10.5px;font-weight:600;color:#7a2018;}
+table.detail.cmp td.cmp-spread{font-weight:700;}
 .detail-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);}
 .detail-title{font-size:12.5px;color:var(--ink-soft);}
 .detail-title b{color:var(--ink);}

@@ -35,7 +35,10 @@
         </div>
         <!-- Hidden directory picker: each pick is one run (one test directory). -->
         <input id="dir-input" type="file" webkitdirectory multiple hidden />
+        <div class="chips-hint" id="chips-hint" hidden>Ctrl/⌘-click chips to select runs to compare</div>
         <div class="chips" id="chips"></div>
+        <!-- Multi-run compare action bar: appears when runs are ticked / Ctrl-clicked. -->
+        <div class="cmp-bar" id="cmp-bar" hidden></div>
         <!-- Progress while a multi-run pick is read from disk and analyzed. Adding
              one run updates instantly; 10–20 runs take long enough to need feedback.
              The phase stepper makes clear that reading files is quick and the time
