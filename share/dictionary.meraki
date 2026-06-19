@@ -11,5 +11,11 @@ ATTRIBUTE	Meraki-Device-Name			1	string
 ATTRIBUTE	Meraki-Network-Name			2	string
 ATTRIBUTE	Meraki-Ap-Name				3	string
 ATTRIBUTE	Meraki-Ap-Tags				4	string
+ATTRIBUTE	Meraki-IPSK				5	tlv
+ATTRIBUTE	Meraki-IPSK-Anonce			5.1	octets
+ATTRIBUTE	Meraki-IPSK-EAPOL			5.2	octets
+ATTRIBUTE	Meraki-IPSK-BSSID			5.3	octets
+ATTRIBUTE	Meraki-IPSK-AP-MAC			5.4	octets
+ATTRIBUTE	Meraki-IPSK-SSID			5.5	string
 
 END-VENDOR      Meraki

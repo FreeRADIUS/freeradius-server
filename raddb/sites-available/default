@@ -591,6 +591,20 @@ authenticate {
 	}
 
 #	dpsk
+	#
+	#  The dpsk module can also return standard VLAN tunnel reply
+	#  attributes when a VLAN ID is supplied by the data source.
+	#  Vendor-specific reply attributes should be added in local
+	#  policy using those standard reply attributes.
+	#  Example:
+	#
+	#	Auth-Type dpsk {
+	#		dpsk
+	#		if (updated) {
+	#			ok
+	#		}
+	#	}
+	#
 
 	#
 	#  Most people want CHAP authentication
