@@ -34,4 +34,32 @@ ATTRIBUTE	Gateway					5	string
 ATTRIBUTE	Range					6	string
 END	Lease
 
+ATTRIBUTE	Stats					8	tlv
+
+BEGIN	Stats
+ATTRIBUTE	Total					1	uint64
+ATTRIBUTE	Dynamic					2	tlv
+
+BEGIN	Dynamic
+ATTRIBUTE	Total					1	uint64
+ATTRIBUTE	Free					2	uint64
+ATTRIBUTE	Expire-1m				3	uint64
+ATTRIBUTE	Expire-30m				4	uint64
+ATTRIBUTE	Expire-1h				5	uint64
+ATTRIBUTE	Expire-1d				6	uint64
+END	Dynamic
+
+ATTRIBUTE	Static					3	tlv
+
+BEGIN	Static
+ATTRIBUTE	Total					1	uint64
+ATTRIBUTE	Free					2	uint64
+ATTRIBUTE	Renew-1m				3	uint64
+ATTRIBUTE	Renew-30m				4	uint64
+ATTRIBUTE	Renew-1h				5	uint64
+ATTRIBUTE	Renew-1d				6	uint64
+END	Static
+
+END	Stats
+
 END		IP-Pool

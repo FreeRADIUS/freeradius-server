@@ -73,6 +73,22 @@ static fr_dict_attr_t const *attr_ippool_lease_expires;
 static fr_dict_attr_t const *attr_ippool_lease_device;
 static fr_dict_attr_t const *attr_ippool_lease_gateway;
 static fr_dict_attr_t const *attr_ippool_lease_range;
+static fr_dict_attr_t const *attr_ippool_stats;
+static fr_dict_attr_t const *attr_ippool_stats_total;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_total;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_free;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_expire1m;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_expire30m;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_expire1h;
+static fr_dict_attr_t const *attr_ippool_stats_dynamic_expire1d;
+static fr_dict_attr_t const *attr_ippool_stats_static;
+static fr_dict_attr_t const *attr_ippool_stats_static_total;
+static fr_dict_attr_t const *attr_ippool_stats_static_free;
+static fr_dict_attr_t const *attr_ippool_stats_static_renew1m;
+static fr_dict_attr_t const *attr_ippool_stats_static_renew30m;
+static fr_dict_attr_t const *attr_ippool_stats_static_renew1h;
+static fr_dict_attr_t const *attr_ippool_stats_static_renew1d;
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
@@ -84,6 +100,22 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ .out = &attr_ippool_lease_device, .name = "IP-Pool.Lease.Device", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_gateway, .name = "IP-Pool.Lease.Gateway", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ippool_lease_range, .name = "IP-Pool.Lease.Range", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats, .name = "IP-Pool.Stats", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_total, .name = "IP-Pool.Stats.Total", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic, .name = "IP-Pool.Stats.Dynamic", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_total, .name = "IP-Pool.Stats.Dynamic.Total", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_free, .name = "IP-Pool.Stats.Dynamic.Free", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_expire1m, .name = "IP-Pool.Stats.Dynamic.Expire-1m", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_expire30m, .name = "IP-Pool.Stats.Dynamic.Expire-30m", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_expire1h, .name = "IP-Pool.Stats.Dynamic.Expire-1h", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_dynamic_expire1d, .name = "IP-Pool.Stats.Dynamic.Expire-1d", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static, .name = "IP-Pool.Stats.Static", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_total, .name = "IP-Pool.Stats.Static.Total", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_free, .name = "IP-Pool.Stats.Static.Free", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_renew1m, .name = "IP-Pool.Stats.Static.Renew-1m", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_renew30m, .name = "IP-Pool.Stats.Static.Renew-30m", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_renew1h, .name = "IP-Pool.Stats.Static.Renew-1h", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ .out = &attr_ippool_stats_static_renew1d, .name = "IP-Pool.Stats.Static.Renew-1d", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -279,6 +311,12 @@ typedef struct {
 	fr_pair_list_t			results;	//!< Temporary list to hold results.
 } redis_ippool_info_rctx_t;
 
+/** Call environment used when calling redis_ippool stats method.
+ */
+typedef struct {
+	fr_value_box_t		pool_name;		//!< Name of the pool we're getting stats for.
+} redis_ippool_stats_call_env_t;
+
 /** Resume context for async calls to update script
  *
  */
@@ -395,6 +433,14 @@ static const call_env_method_t redis_ippool_show_method_env = {
 		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_show_call_env_t, pool_name) },
 		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_PREFIX, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_show_call_env_t, requested_address),
 				     .pair.dflt = "%{Requested-IP-Address || Net.Src.IP}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t redis_ippool_stats_method_env = {
+	FR_CALL_ENV_METHOD_OUT(redis_ippool_stats_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, redis_ippool_stats_call_env_t, pool_name) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -2000,6 +2046,109 @@ static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, UNUS
 	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
+static void mod_stats_result(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	redis_ippool_info_rctx_t	*stats_rctx = talloc_get_type_abort(rctx, redis_ippool_info_rctx_t);
+	fr_pair_t			*stats_vp, *dynamic_vp, *static_vp, *vp;
+	size_t				i;
+
+	if (reply->type != REDIS_REPLY_ARRAY) return;
+	if (reply->elements != 12) return;
+
+	for (i = 0; i < reply->elements; i++) if (reply->element[i]->type != REDIS_REPLY_INTEGER) return;
+
+	MEM(vp = fr_pair_afrom_da_nested(request->control_ctx, &stats_rctx->results, attr_ippool_name));
+	if (fr_value_box_copy(vp, &vp->data, stats_rctx->lookup[0]) < 0) return;
+	MEM(stats_vp = fr_pair_afrom_da_nested(request->control_ctx, &stats_rctx->results, attr_ippool_stats));
+
+#define POPULATE_PAIR(_da, _i, _parent)	MEM(vp = fr_pair_afrom_da(_parent, _da)); \
+	vp->vp_uint64 = reply->element[_i]->integer; \
+	fr_pair_append(&_parent->vp_group, vp)
+
+	POPULATE_PAIR(attr_ippool_stats_total, 0, stats_vp);
+
+	MEM(dynamic_vp = fr_pair_afrom_da(stats_vp, attr_ippool_stats_dynamic));
+	fr_pair_append(&stats_vp->vp_group, dynamic_vp);
+
+	MEM(vp = fr_pair_afrom_da(dynamic_vp, attr_ippool_stats_dynamic_total));
+	vp->vp_uint64 = reply->element[0]->integer - reply->element[6]->integer;
+	fr_pair_append(&dynamic_vp->vp_group, vp);
+
+	POPULATE_PAIR(attr_ippool_stats_dynamic_free, 1, dynamic_vp);
+	POPULATE_PAIR(attr_ippool_stats_dynamic_expire1m, 2, dynamic_vp);
+	POPULATE_PAIR(attr_ippool_stats_dynamic_expire30m, 3, dynamic_vp);
+	POPULATE_PAIR(attr_ippool_stats_dynamic_expire1h, 4, dynamic_vp);
+	POPULATE_PAIR(attr_ippool_stats_dynamic_expire1d, 5, dynamic_vp);
+
+	MEM(static_vp = fr_pair_afrom_da(stats_vp, attr_ippool_stats_static));
+	fr_pair_append(&stats_vp->vp_group, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_total, 6, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_free, 7, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_renew1m, 8, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_renew30m, 9, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_renew1h, 10, static_vp);
+	POPULATE_PAIR(attr_ippool_stats_static_renew1d, 11, static_vp);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
+						  request_t *request)
+{
+	rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+	redis_ippool_stats_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_stats_call_env_t);
+	redis_ippool_info_rctx_t	*rctx;
+	fr_redis_command_set_t		*cmds;
+	int				cmd_len;
+	size_t				cmd_no = 0;
+	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t				*key_p = key;
+	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_async_rcode_t		rcode;
+	fr_time_t			now;
+
+	IPPOOL_BUILD_KEY(key, key_p, env->pool_name.vb_strvalue, env->pool_name.vb_length);
+	if (ret == IPPOOL_RCODE_FAIL) RETURN_UNLANG_FAIL;
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_info_rctx_t));
+	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	rctx->cmds = cmds;
+	MEM(rctx->cmd_str = talloc_zero_array(rctx, char *, 12));
+	MEM(rctx->lookup = talloc_zero_array(rctx, fr_value_box_t *, 1));
+	fr_pair_list_init(&rctx->results);
+	rctx->lookup[0] = &env->pool_name;
+	talloc_set_destructor(rctx, _redis_ippool_info_rctx_free);
+
+	now = fr_time();
+
+	fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
+	ADD_REDIS_COMMAND("ZCARD %b", key, key_p - key);						/* Total */
+	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now));			/* Free */
+	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + 60);		/* Free in next 60s */
+	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + (60 * 30));	/* Free in next 30 mins */
+	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + (60 * 60));	/* Free in next 60 mins */
+	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + (60 * 60 * 24));	/* Free in next day */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " inf", key, key_p - key);		/* Total static */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now));			/* Static assignments 'free' */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + 60);		/* Static renew in 60s */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 30));	/* Static renew in 30 mins */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60));	/* Static renew in 60 mins */
+	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
+			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60 * 24));	/* Static renew in 1 day */
+	fr_redis_command_literal_add(cmds, "EXEC", mod_stats_result, rctx);
+
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, thread->rtcluster,
+					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
+					     rctx->cmds, false, NULL);
+
+	REDIS_ASYNC_START_RCODE_PROCESS(rcode, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
+					"Failed enqueueing Redis command", UNLANG_ACTION_FAIL)
+
+	return unlang_module_yield(request, mod_show_resume, mod_info_cancel, ~FR_SIGNAL_CANCEL, rctx);
+}
+
 /** Increment an IP address by a given number of addresses
  */
 static void ipaddr_inc(fr_ipaddr_t *addr, size_t inc)
@@ -3131,6 +3280,7 @@ module_rlm_t rlm_redis_ippool = {
 
 			{ .section = SECTION_NAME("pools", "list"), .method = mod_pools_list },										/* verb */
 			{ .section = SECTION_NAME("show", CF_IDENT_ANY), .method = mod_show, .method_env = &redis_ippool_show_method_env },										/* verb */
+			{ .section = SECTION_NAME("stats", CF_IDENT_ANY), .method = mod_stats, .method_env = &redis_ippool_stats_method_env },										/* verb */
 			MODULE_BINDING_TERMINATOR
 		}
 	}
