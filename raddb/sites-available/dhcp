@@ -112,9 +112,9 @@ listen {
 #  user machines, along with all DHCPv4 gateways that send packets to
 #  the server.
 #
-#client private {
-#       ipaddr = 192.168.0.0/16
-#}
+##client private {
+##       ipaddr = 192.168.0.0/16
+##}
 
 
 #  Packets received on the socket will be processed through one
@@ -146,9 +146,9 @@ recv Discover {
 	#  If the MAC wasn't found in that list, do something else.
 	#  You could call a Perl, Python, or Java script here.
 
-	#if (notfound) {
-	#  ...
-	#}
+##	if (notfound) {
+##		...
+##	}
 
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
@@ -219,8 +219,8 @@ recv Request {
 recv Decline {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
-#	control.IP-Pool.Name := "local"
-#	sqlippool
+##	control.IP-Pool.Name := "local"
+##	sqlippool
 
 	ok
 }
@@ -240,8 +240,8 @@ recv Inform {
 recv Release {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
-#	control.IP-Pool.Name := "local"
-#	sqlippool
+##	control.IP-Pool.Name := "local"
+##	sqlippool
 
 	ok
 }
@@ -339,8 +339,8 @@ recv Lease-Query {
 #  This is an example only - see mods-available/mac2ip instead; do
 #  not uncomment these lines here.
 #
-#passwd mac2ip {
-#	filename = ${confdir}/mac2ip
-#	format = "*Client-Hardware-Address:=Your-IP-Address"
-#	delimiter = ","
-#}
+##passwd mac2ip {
+##	filename = ${confdir}/mac2ip
+##	format = "*Client-Hardware-Address:=Your-IP-Address"
+##	delimiter = ","
+##}

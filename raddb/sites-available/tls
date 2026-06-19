@@ -102,7 +102,7 @@ server radsec {
 			#  write to files in its configuration
 			#  directory.
 			#
-	#		random_file = /dev/urandom
+#			random_file = /dev/urandom
 
 			#
 			#  The default fragment size is 1K.
@@ -122,7 +122,7 @@ server radsec {
 			#  message is included ONLY in the
 			#  First packet of a fragment series.
 			#
-		#	include_length = yes
+#			include_length = yes
 
 			#  Check the Certificate Revocation List
 			#
@@ -131,16 +131,16 @@ server radsec {
 			#    'c_rehash' is OpenSSL's command.
 			#  3) uncomment the line below.
 			#  5) Restart radiusd
-		#	check_crl = yes
+#			check_crl = yes
 			ca_path = ${cadir}
 
 			#  Accept an expired Certificate Revocation List
 			#
-		#	allow_expired_crl = no
+#			allow_expired_crl = no
 
 			#  Accept a not-yet-valid Certificate Revocation List
 			#
-		#	allow_not_yet_valid_crl = no
+#			allow_not_yet_valid_crl = no
 
 			#
 			#  If check_cert_issuer is set, the value will
@@ -153,7 +153,7 @@ server radsec {
 			#  the value of the TLS-Client-Cert-Issuer attribute.
 			#  This check can be done via any mechanism you choose.
 			#
-		#	check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+#			check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
 			#
 			#  If check_cert_cn is set, the value will
@@ -170,8 +170,8 @@ server radsec {
 			#  the value of the TLS-Client-Cert-Common-Name attribute.
 			#  This check can be done via any mechanism you choose.
 			#
-		#	check_cert_cn = %{User-Name}
-		#
+#			check_cert_cn = %{User-Name}
+
 			#  Set this option to specify the allowed
 			#  TLS cipher suites.  The format is listed
 			#  in "man 1 ciphers".
@@ -232,7 +232,7 @@ server radsec {
 			      #  If you use IPv6, change the "ipaddr" below
 			      #  to "ipv6addr"
 			      #
-			      #name = "TLS ${..ipaddr} ${..port} ${..proto}"
+#				name = "TLS ${..ipaddr} ${..port} ${..proto}"
 
 			      #
 			      #  Simple directory-based storage of sessions.
@@ -248,7 +248,7 @@ server radsec {
 			      #
 			      #  This feature REQUIRES "name" option be set above.
 			      #
-			      #persist_dir = "${logdir}/tlscache"
+#				persist_dir = "${logdir}/tlscache"
 			}
 
 			#
@@ -278,7 +278,7 @@ server radsec {
 				#  in PEM format.  This file is automatically
 				#  deleted by the server when the command
 				#  returns.
-		#    		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
+# 		   		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
 			}
 		}
 	}

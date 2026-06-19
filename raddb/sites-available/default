@@ -1037,9 +1037,9 @@ authenticate digest {
 #  that anything that can be done in PAM can be done easier in
 #  FreeRADIUS.
 #
-#authenticate pam {
-#	pam
-#}
+##authenticate pam {
+##	pam
+##}
 
 #
 #  === LDAP Authentication
@@ -1102,27 +1102,27 @@ authenticate eap {
 #  for more information.
 #
 
-#authenticate example.com {
-#	#
-#	#  Log the request before proxying.
-#	#
-#	pre_proxy_log
-#
-#	#
-#	#  Send the request to remote RADIUS servers, with
-#	#  fail-over from one to the other if there's no response.
-#	#
-#	redundant {
-#		radius1.example.com
-#		radius2.example.com
-#		radius3.example.com
-#	}
-#
-#	#
-#	#  Log the reply after proxying.
-#	#
-#	post_proxy_log.post-proxy
-#}
+##authenticate example.com {
+##	#
+##	#  Log the request before proxying.
+##	#
+##	pre_proxy_log
+##
+##	#
+##	#  Send the request to remote RADIUS servers, with
+##	#  fail-over from one to the other if there's no response.
+##	#
+##	redundant {
+##		radius1.example.com
+##		radius2.example.com
+##		radius3.example.com
+##	}
+##
+##	#
+##	#  Log the reply after proxying.
+##	#
+##	post_proxy_log.post-proxy
+##}
 
 
 
@@ -1220,14 +1220,14 @@ send Access-Accept {
 	#  contains information about the client certificate (if
 	#  available).
 	#
-#	reply += {
-#		Reply-Message = "%{session-state.TLS-Certificate.Serial}"
-#		Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
-#		Reply-Message = "%{session-state.TLS-Certificate.Subject}"
-#		Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
-#		Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
-#		Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
-#	}
+##	reply += {
+##		Reply-Message = "%{session-state.TLS-Certificate.Serial}"
+##		Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
+##		Reply-Message = "%{session-state.TLS-Certificate.Subject}"
+##		Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
+##		Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
+##		Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
+##	}
 
 	#
 	#  Insert the `Class` attribute with a unique value into the
@@ -1250,10 +1250,10 @@ send Access-Accept {
 	#
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
-#
-#	if (reply.EAP-Session-Id) {
-#		reply.EAP-Key-Name := reply.EAP-Session-Id
-#	}
+	#
+##	if (reply.EAP-Session-Id) {
+##		reply.EAP-Key-Name := reply.EAP-Session-Id
+##	}
 
 	#
 	#  Call an instance of `linelog` to log the authentication success
@@ -1434,9 +1434,9 @@ accounting Stop {
 	#  respond to the accounting request, and the NAS will
 	#  retransmit.
 	#
-#	if (noop) {
-#		ok
-#	}
+##	if (noop) {
+##		ok
+##	}
 
 	#
 	#  Return an address to the IP Pool when we see a stop record.
@@ -1562,12 +1562,12 @@ send Accounting-Response {
 #  The `finally` section can be used as a common logging section for
 #  all packets, allowing their final state to be captured.
 #
-#finally {
-#	if (timeout) {
-#		logging relating to timeouts
-#		return
-#	}
-#
-#	normal packet logging
-#}
+##finally {
+##	if (timeout) {
+##		logging relating to timeouts
+##		return
+##	}
+##
+##	normal packet logging
+##}
 }

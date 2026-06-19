@@ -7,7 +7,7 @@
 #
 #  = Buffered SQL
 #
-#  In 2.0.0, `radrelay` functionality is integrated into the
+#  The `radrelay` functionality is integrated into the
 #  server core.  This virtual server gives an example of
 #  using `radrelay` functionality inside of the server.
 #

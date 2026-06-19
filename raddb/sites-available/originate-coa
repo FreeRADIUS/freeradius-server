@@ -30,12 +30,14 @@
 #  Accounting-Request packet is received.  Simply create a subrequest,
 #  and call the `radius` module to send the packet.
 #
+#	```
 #	subrequest ::Disconnect-Request {
 #	       User-Name = parent.request.User-Name
 #	       Acct-Session-Id = parent.request.Acct-Session-Id
 #	       NAS-IP-Address = parent.NAS-IP-Address}
 #	       ...
 #	}
+#	```
 #
 #  NOTE: This functionality is configured differently from v3.
 #
