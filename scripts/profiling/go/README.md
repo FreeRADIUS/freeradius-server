@@ -37,12 +37,12 @@ go/
 └── web/                  browser target (GOOS=js); all analysis is client-side
     ├── wasm/main.go      syscall/js bridge (globalThis.cestMatrix, cestReport,
     │                     cestRunCEst, cestRunDetail, cestCompare)
-    ├── v2/               compare UI (heatmap / trends / divergence / per-run detail /
+    ├── index.html        compare UI (heatmap / trends / divergence / per-run detail /
     │                     multi-run compare) with local-file and hosted-store run
-    │                     sources; the store picker reads the store's manifest.json
-    │                     (run list) and run-index-map.json (workflow run links).
-    │                     Files: index.html, app.js, style.css, config.json,
-    │                     wasm_exec.js, .wasm
+    ├── app.js            sources; the store picker reads the store's manifest.json
+    ├── style.css         (run list) and run-index-map.json (workflow run links).
+    ├── config.json       hosted-store URL/label (deploy-configurable)
+    ├── wasm_exec.js      Go JS glue (copied from GOROOT); .wasm built alongside
     └── archive/v1/       archived single-run / pattern UI (unmaintained)
 ```
 
@@ -124,20 +124,20 @@ entirely client-side; nothing is uploaded.
 ```bash
 cd scripts/profiling/go
 
-# Build the syscall/js module into the v2 UI directory (it serves its own .wasm).
-GOOS=js GOARCH=wasm go build -o web/v2/cest-analyzer.wasm ./web/wasm
+# Build the syscall/js module into the web UI directory (it serves its own .wasm).
+GOOS=js GOARCH=wasm go build -o web/cest-analyzer.wasm ./web/wasm
 
 # Copy the JS glue shipped with Go into the UI. Its path inside GOROOT changed
 # across Go releases (older: misc/wasm/; newer: lib/wasm/), so locate it first:
 WASM_EXEC="$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)"
-cp "$WASM_EXEC" web/v2/
+cp "$WASM_EXEC" web/
 ```
 
-After this, the UI directory holds everything its page needs:
+After this, `web/` holds everything the page needs:
 
 ```text
-web/v2/
-├── index.html            (v2 multi-run compare UI)
+web/
+├── index.html            (compare UI)
 ├── app.js
 ├── style.css
 ├── config.json           (hosted-store URL/label, deploy-configurable)
@@ -153,10 +153,10 @@ URL. `file://` fails for two reasons: the browser blocks the `fetch()` of the
 `Content-Type: application/wasm`, which only a server sets. Any static file
 server works; pick one:
 
-The UI is self-contained, so serve its directory directly:
+The UI is self-contained, so serve the `web/` directory directly:
 
 ```bash
-cd scripts/profiling/go/web/v2
+cd scripts/profiling/go/web
 
 # Python 3 (sends Content-Type: application/wasm for .wasm files)
 python3 -m http.server 8080
@@ -191,7 +191,7 @@ directory in the prof-results tree).
     space-separated terms (e.g. import just the `ldap` runs from a whole-`<sha>`
     pick); it is greyed out (disabled) when the Repo source is selected.
   - **Repo** — the hosted prof-results store (URL/label set in
-    [web/v2/config.json](web/v2/config.json)). Opens a picker that reads the
+    [web/config.json](web/config.json)). Opens a picker that reads the
     store's `manifest.json` and lists every analyzable run — one row per
     `<branch>/<sha>/<run>/<suite>/<test>` leaf holding `callgrind.out.*` files
     (archived trees are skipped). Tick any number of runs (the header checkbox

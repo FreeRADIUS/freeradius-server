@@ -1,13 +1,12 @@
 //go:build js && wasm
 
-// Command cest-wasm is the browser bridge for the CEst analyzer. It exposes a
-// single JS function, globalThis.analyzeCest, that runs the same
+// Command cest-wasm is the browser bridge for the CEst analyzer. It exposes the
+// analysis functions on globalThis (see main) and runs the same
 // cest-analyzer/internal/cest core over file contents the page hands in.
 //
-// Build (each UI serves its own copy, so build into both):
+// Build (the UI serves its own copy):
 //
-//	GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
-//	GOOS=js GOARCH=wasm go build -o web/v2/cest-analyzer.wasm ./web/wasm
+//	GOOS=js GOARCH=wasm go build -o web/cest-analyzer.wasm ./web/wasm
 //
 // There is no filesystem in the browser, so the page reads each
 // callgrind.out.* file with the FileReader API and passes its text in; this
