@@ -112,10 +112,14 @@ on `globalThis`:
 
 - `cestMatrix(runs, topN)` — a complete function×run matrix the v2 views
   render (pass `topN = 0` for all functions).
-- `cestRunCEst(files)` — one run's per-function CEst, parsed one run at a time so
-  the v2 loader can show progress (the matrix/baseline are assembled in JS).
-- `cestRunDetail(files)` — one run's full per-function table (CEst + the 9 raw
-  counters) for the single-run detail view.
+- `cestRunCEst(files, foldPaths?)` — one run's per-function CEst, parsed one run
+  at a time so the v2 loader can show progress (the matrix/baseline are assembled
+  in JS). The optional `foldPaths` argument carries the call paths to fold (see
+  **Folding call paths** below); the UI passes whatever is typed in the **fold**
+  box.
+- `cestRunDetail(files, foldPaths?)` — one run's full per-function table (CEst +
+  the 9 raw counters) for the single-run detail view; `foldPaths` is applied the
+  same way as for `cestRunCEst`.
 - `cestCompare(runs)` — the per-function CEst comparison for the v2 compare view
   (2–3 ticked runs): lowest-CEst baseline, Δ% vs best, and spread. This calls the
   **same** `internal/cest.CompareCEst` as the CLI's `--compare`, so the browser
@@ -236,10 +240,38 @@ directory in the prof-results tree).
 - **Value mode** (heatmap / trends): Δ% vs p50, Δ% vs that run's total, CEst
   cycles, or CEst % of run total.
 - Other controls: a **patterns** filter (space-separated, case-insensitive
-  substrings), the **functions** top-N count, the flag **threshold**, and an
-  overflow menu for column order (load order / by CEst) and **Download JSON**
-  (the full comparison dataset — all functions, every run — independent of the
-  current view).
+  substrings), a **fold** box that folds a call path's self-CEst up into its
+  caller (see **Folding call paths** below; folding re-parses every run, so it
+  applies only when you press Enter in the box or click **Fold**, not on every
+  keystroke; the paths baked into the current view stay listed under the run
+  chips with a **reset fold list** button to clear them), the **functions**
+  top-N count, the
+  flag **threshold**, and an overflow menu for column order (load order / by
+  CEst) and **Download JSON** (the full comparison dataset, all functions, every
+  run, independent of the current view).
+
+### Folding call paths
+
+`--separate-callers=N` (set in the profiling step) makes Callgrind keep each
+function's cost split by the chain of callers above it, written on disk as
+`base'caller1'caller2'…` (nearest caller first). The parser aggregates that
+back to one row per base function for every view, so the extra detail is
+invisible by default, but it retains the per-context self-cost and the
+caller→callee call graph. That retained detail is what lets the analyzer fold a
+**specific call path** (not every call of a function) into its caller.
+
+Folding removes the named frame and rolls its self-CEst up into whatever called
+it. Because the cost is caller-separated, only the path you name is moved: if
+`_talloc` is reached from two different places, folding `app_handler/talloc_pool/_talloc`
+moves only the cost under that one path and leaves the other site alone. When a
+folded frame has several callers, its self-cost is split across them by the
+per-edge inclusive cost. Total self-CEst is preserved (cost that cannot reach an
+unfolded ancestor, e.g. a folded root, is dropped).
+
+A path is written **root-first, slash-separated, with the frame to fold last**;
+comma-separate multiple paths. A single-element path folds every call of that
+function. Folding needs profiling data captured with `--separate-callers`; on
+data without it a multi-element path has nothing to match and folds nothing.
 
 ### Comparison
 
@@ -266,6 +298,7 @@ cest-analyzer --compare [--filter pat,...] [--json <file>] -d <dir> -d <dir> [-d
 | `-d <dir>` | `.` | Profiling directory containing `callgrind.out.*` files. Repeatable. |
 | `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs. |
 | `--filter <pat,...>` | _(none)_ | `--compare` only: scope to functions whose name matches any filter (repeatable and/or comma-separated; substring, case-insensitive). Trailing positionals work too. |
+| `--fold <path>` | _(none)_ | Fold a call path's self-CEst up into its caller (see **Folding call paths**). Root-first, slash-separated, frame to fold last (e.g. `app_handler/talloc_pool/_talloc`); repeatable and/or comma-separated for several paths. Needs `--separate-callers` profiling data. Applies to both the pattern report and `--compare`. |
 | `--top N` | `10` | Number of top functions to show per pattern. Not used by `--compare`. |
 | `--md <file>` | _(none)_ | Also write a Markdown report to this file. Not used by `--compare`. |
 | `--json <file>` | _(none)_ | Also write a JSON report to this file. With `--compare`, writes the compare-shaped JSON (`cest-compare-1`); otherwise the per-run report (see Output). |
@@ -300,6 +333,13 @@ Patterns are case-insensitive substrings matched against function names.
     -d /path/to/build1/prof-results \
     -d /path/to/build2/prof-results \
     --filter _talloc,fr_rb --json compare.json
+
+# Fold one call path's self-CEst up into its caller (needs --separate-callers
+# profiling data). Here _talloc called via app_handler -> talloc_pool is folded
+# into talloc_pool; _talloc reached any other way keeps its own row.
+./cest-analyzer \
+    -d /path/to/prof-results \
+    --fold app_handler/talloc_pool/_talloc
 ```
 
 The two forms answer different questions: the **pattern report** baselines every

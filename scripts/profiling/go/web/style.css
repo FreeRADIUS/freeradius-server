@@ -99,6 +99,22 @@ a{color:var(--brand);}
 .lp-step.done{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
 .lp-step.done .lp-dot{background:var(--accent);}
 .lp-sep{color:var(--line-strong);font-weight:400;}
+/* Fold-path list under the Folding pill: each full call path on its own row. */
+.foldlist{display:flex;flex-direction:column;gap:4px;margin:6px 2px 0;}
+.foldlist[hidden]{display:none;}
+.foldpath{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--brand);
+  background:var(--brand-soft);border:1px solid var(--brand);border-radius:6px;
+  padding:2px 9px;align-self:flex-start;max-width:100%;overflow-wrap:anywhere;}
+/* Persistent applied-fold list under the chips: small, muted, full paths. */
+.appliedfold{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:6px 2px 0;
+  font-size:10.5px;color:var(--ink-soft);}
+.appliedfold[hidden]{display:none;}
+.appliedfold .af-lbl{font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);}
+.appliedfold .af-path{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft);overflow-wrap:anywhere;}
+/* reset link styled as a narrow grayscale .btn-sm: all-caps, muted, neutral. */
+.appliedfold .af-reset{font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  padding:3px 8px;margin-left:4px;color:var(--ink-soft);border-color:var(--line-strong);}
+.appliedfold .af-reset:hover{background:#f1f3f6;color:var(--ink);border-color:var(--faint);}
 @keyframes lp-pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 /* collapsible methodology infobox */
@@ -317,6 +333,10 @@ td.detail-empty{padding:22px 14px;text-align:center;color:var(--ink-soft);font-s
 .btn-primary{background:var(--brand);color:#fff;border-color:#1a52a6;}
 .btn-primary:hover{background:#1a55ad;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
+/* Fold button while the box holds an un-applied path: brand-highlighted so it
+   is clear the typed value is not live until Enter / click re-parses. */
+.btn.dirty{background:var(--brand-soft);border-color:var(--brand);color:var(--brand);}
+.btn.dirty:hover{background:#dfeafb;}
 .scrim{position:fixed;inset:0;background:rgba(15,23,42,.32);display:none;align-items:center;justify-content:center;z-index:50;padding:24px;}
 .scrim.on{display:flex;}
 .modal{width:min(860px,96%);max-height:88vh;overflow:auto;padding:20px;background:var(--paper);

@@ -65,6 +65,7 @@ func main() {
 	var topn int
 	var compareMode bool
 	var filters listFlag
+	var fold listFlag
 
 	flag.Var(&dirs, "d", "profiling `directory` (repeatable)")
 	flag.StringVar(&mdFile, "md", "", "write markdown report to `file`")
@@ -72,11 +73,18 @@ func main() {
 	flag.IntVar(&topn, "top", 10, "top-N functions per pattern")
 	flag.BoolVar(&compareMode, "compare", false, "per-function CEst comparison across runs (the UI compare view); needs >=2 -d dirs")
 	flag.Var(&filters, "filter", "function-name `filter`(s) for --compare (repeatable and/or comma-separated; substring, any-match)")
+	flag.Var(&fold, "fold", "fold a call `path` (root-first, slash-separated, target last) into its caller; repeatable and/or comma-separated; needs --separate-callers profiling; e.g. app_handler/talloc_pool/_talloc")
 	flag.Parse()
 
 	patterns := flag.Args()
 	if len(dirs) == 0 {
 		dirs = dirFlag{"."}
+	}
+
+	// Parse --fold entries (each "a/b/c") into root-first call paths.
+	var foldPaths [][]string
+	for _, e := range fold {
+		foldPaths = append(foldPaths, strings.Split(e, "/"))
 	}
 
 	//  --compare: a per-function CEst matrix across the runs, with diffs vs each
@@ -99,6 +107,9 @@ func main() {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
+			}
+			if len(foldPaths) > 0 {
+				dr = cest.Fold(dr, cats, nil, 0, foldPaths) // fold paths before comparing
 			}
 			results = append(results, dr)
 		}
@@ -139,6 +150,9 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
+		}
+		if len(foldPaths) > 0 {
+			dr = cest.Fold(dr, cats, patterns, topn, foldPaths) // fold paths before reporting
 		}
 		cest.WriteReport(os.Stdout, dr, patterns, cats, topn)
 		results = append(results, dr)

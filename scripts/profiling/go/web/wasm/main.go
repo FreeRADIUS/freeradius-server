@@ -34,6 +34,24 @@ func jsObjectKeys(v js.Value) []string {
 	return out
 }
 
+// jsPaths reads an optional fold-paths argument (a JS array of "a/b/c"
+// strings) at args[idx] into root-first call paths. Absent/non-array => nil.
+func jsPaths(args []js.Value, idx int) [][]string {
+	if len(args) <= idx || args[idx].Type() != js.TypeObject {
+		return nil
+	}
+	a := args[idx]
+	out := make([][]string, 0, a.Length())
+	for i := 0; i < a.Length(); i++ {
+		s := a.Index(i).String()
+		if s == "" {
+			continue
+		}
+		out = append(out, strings.Split(s, "/"))
+	}
+	return out
+}
+
 // candidatesFromJS turns a { filename: contents } JS object into Candidates.
 func candidatesFromJS(filesObj js.Value) []cest.Candidate {
 	names := jsObjectKeys(filesObj)
@@ -311,8 +329,13 @@ func cestRunCEst(this js.Value, args []js.Value) (result any) {
 	if err != nil {
 		return map[string]any{"error": err.Error()}
 	}
-	cestObj := make(map[string]any, len(dr.Res.FnSelf))
-	for name, ev := range dr.Res.FnSelf {
+	// Optional arg 1: fold call paths, folded over the context-separated graph.
+	self := dr.Res.FnSelf
+	if paths := jsPaths(args, 1); len(paths) > 0 {
+		self = cest.FoldSelf(dr.Res.CtxSelf, dr.Res.Edges, paths)
+	}
+	cestObj := make(map[string]any, len(self))
+	for name, ev := range self {
 		cestObj[name] = ev.CEst()
 	}
 	return map[string]any{
@@ -369,8 +392,13 @@ func cestRunDetail(this js.Value, args []js.Value) (result any) {
 		}
 	}
 
-	fns := make([]cest.FnEvents, 0, len(dr.Res.FnSelf))
-	for name, ev := range dr.Res.FnSelf {
+	// Optional arg 1: fold call paths, folded over the context-separated graph.
+	self := dr.Res.FnSelf
+	if paths := jsPaths(args, 1); len(paths) > 0 {
+		self = cest.FoldSelf(dr.Res.CtxSelf, dr.Res.Edges, paths)
+	}
+	fns := make([]cest.FnEvents, 0, len(self))
+	for name, ev := range self {
 		fns = append(fns, cest.FnEvents{Name: name, Events: ev})
 	}
 	// Descending CEst, name as a tiebreaker, so the default order is stable

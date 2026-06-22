@@ -37,6 +37,8 @@
         <input id="dir-input" type="file" webkitdirectory multiple hidden />
         <div class="chips-hint" id="chips-hint" hidden>Ctrl/⌘-click chips to select runs to compare</div>
         <div class="chips" id="chips"></div>
+        <!-- The fold paths baked into the current matrix, kept under the chips. -->
+        <div class="appliedfold" id="appliedfold" hidden></div>
         <!-- Multi-run compare action bar: appears when runs are ticked / Ctrl-clicked. -->
         <div class="cmp-bar" id="cmp-bar" hidden></div>
         <!-- Progress while a multi-run pick is read from disk and analyzed. Adding
@@ -44,6 +46,8 @@
              The phase stepper makes clear that reading files is quick and the time
              is spent in the analysis step. -->
         <div class="loadphase" id="loadphase" hidden></div>
+        <!-- The call paths being folded, listed full under the Folding pill. -->
+        <div class="foldlist" id="foldlist" hidden></div>
         <div class="loadbar" id="loadbar" hidden role="status" aria-live="polite">
           <span class="spin" aria-hidden="true"></span>
           <span class="loadbar-msg" id="loadbar-msg">Loading…</span>
@@ -86,6 +90,10 @@
         <label class="field-lbl inline">patterns
           <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />
         </label>
+        <label class="field-lbl inline">fold
+          <input type="text" id="fold" class="pat-inp" placeholder="root/.../target" title="Fold a call path into its caller (folds that frame's self-CEst up). Root-first, slash-separated, target last; comma-separate multiple paths. Needs --separate-callers profiling data. Type the path, then press Enter or click Fold to apply (it re-parses every run)." />
+        </label>
+        <button class="btn btn-sm" id="fold-apply" title="Apply the fold paths — re-parses every run. Or press Enter in the box.">Fold</button>
         <label class="field-lbl inline">functions
           <input type="number" id="topn" value="25" min="1" max="200" step="5" class="num-inp" />
         </label>

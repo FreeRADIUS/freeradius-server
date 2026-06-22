@@ -16,6 +16,16 @@ type Result struct {
 	PatSums []Events          // self counters per requested pattern
 	FnSelf  map[string]Events // self counters per function name
 	CatSums []Events          // self counters per category
+	// Edges is the call graph: Edges[caller][callee] is the inclusive cost of
+	// caller's calls into callee (the cost line that follows calls=). With
+	// --separate-callers the caller/callee keys are context-tagged names, so this
+	// is the per-call-context graph used by --fold.
+	Edges map[string]map[string]Events
+	// CtxSelf is self cost per *context-tagged* function name (the raw fn= name,
+	// keeping the --separate-callers caller chain). FnSelf above is the same cost
+	// aggregated by BaseName, which is what the report/compare/UI show by default;
+	// CtxSelf + Edges retain the call-path detail that --fold needs.
+	CtxSelf map[string]Events
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +60,25 @@ func getField(fields []string, i int) int64 {
 	return v
 }
 
+// parseEvents reads the 9 raw counters from a callgrind cost line's fields.
+// Event field offsets (0-based; positions occupy flds[0..1]):
+//
+//	Ir=$3->[2]  I1mr=$6->[5]  D1mr=$7->[6]  D1mw=$8->[7]
+//	ILmr=$9->[8]  DLmr=$10->[9]  DLmw=$11->[10]  Bcm=$13->[12]  Bim=$15->[14]
+func parseEvents(flds []string) Events {
+	return Events{
+		Ir:   getField(flds, 2),
+		I1mr: getField(flds, 5),
+		D1mr: getField(flds, 6),
+		D1mw: getField(flds, 7),
+		ILmr: getField(flds, 8),
+		DLmr: getField(flds, 9),
+		DLmw: getField(flds, 10),
+		Bcm:  getField(flds, 12),
+		Bim:  getField(flds, 14),
+	}
+}
+
 // isDataLine reports whether the first byte looks like a callgrind cost line.
 // Callgrind positions may be decimal, hex (0x…), or compressed (*  +off  -off).
 func isDataLine(c byte) bool {
@@ -80,6 +109,8 @@ func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 		PatSums: make([]Events, len(patterns)),
 		FnSelf:  make(map[string]Events),
 		CatSums: make([]Events, len(cats)),
+		Edges:   make(map[string]map[string]Events),
+		CtxSelf: make(map[string]Events),
 	}
 	lp := make([]string, len(patterns))
 	for i, p := range patterns {
@@ -88,7 +119,8 @@ func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 
 	nameTable := make(map[string]string)
 	curFn := ""
-	skipNext := false // true = next cost line is inclusive call-cost; skip it
+	curCallee := ""  // most recent cfn= callee, for capturing caller->callee edges
+	skipNext := false // true = next cost line is inclusive call-cost; record edge + skip
 
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 4<<20), 4<<20)
@@ -103,9 +135,10 @@ func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 		switch {
 		case strings.HasPrefix(line, "fn="):
 			curFn = resolveName(line[3:], nameTable)
+			curCallee = ""
 
 		case strings.HasPrefix(line, "cfn="):
-			resolveName(line[4:], nameTable) // register name, don't change curFn
+			curCallee = resolveName(line[4:], nameTable) // edge callee; curFn unchanged
 
 		case strings.HasPrefix(line, "calls="):
 			skipNext = true
@@ -129,34 +162,33 @@ func Parse(r io.Reader, patterns []string, cats []Category) (*Result, error) {
 				skipNext = false
 				continue
 			}
+			ev := parseEvents(flds)
 			if skipNext {
-				// inclusive call-cost line — discard (~24× inflation if counted)
+				// inclusive call-cost line: record the curFn->curCallee edge (the
+				// per-edge weight --fold uses), then discard from self accounting
+				// (~24x inflation if counted as self).
 				skipNext = false
+				if curFn != "" && curCallee != "" {
+					if res.Edges[curFn] == nil {
+						res.Edges[curFn] = make(map[string]Events)
+					}
+					res.Edges[curFn][curCallee] = res.Edges[curFn][curCallee].Add(ev)
+				}
 				continue
 			}
 
-			// Event field offsets (0-based; positions occupy flds[0..1]):
-			//   Ir=$3→[2]  I1mr=$6→[5]  D1mr=$7→[6]  D1mw=$8→[7]
-			//   ILmr=$9→[8]  DLmr=$10→[9]  DLmw=$11→[10]
-			//   Bcm=$13→[12]  Bim=$15→[14]
-			ev := Events{
-				Ir:   getField(flds, 2),
-				I1mr: getField(flds, 5),
-				D1mr: getField(flds, 6),
-				D1mw: getField(flds, 7),
-				ILmr: getField(flds, 8),
-				DLmr: getField(flds, 9),
-				DLmw: getField(flds, 10),
-				Bcm:  getField(flds, 12),
-				Bim:  getField(flds, 14),
-			}
 			res.Total = res.Total.Add(ev)
 
 			if curFn == "" {
 				continue
 			}
-			res.FnSelf[curFn] = res.FnSelf[curFn].Add(ev)
-			lf := strings.ToLower(curFn)
+			// FnSelf is aggregated by base function (collapsing --separate-callers
+			// context + recursion) so the report/compare/UI see one row per
+			// function; CtxSelf keeps the per-context cost for --fold.
+			base := BaseName(curFn)
+			res.FnSelf[base] = res.FnSelf[base].Add(ev)
+			res.CtxSelf[curFn] = res.CtxSelf[curFn].Add(ev)
+			lf := strings.ToLower(base)
 			for i, pat := range lp {
 				if strings.Contains(lf, pat) {
 					res.PatSums[i] = res.PatSums[i].Add(ev)

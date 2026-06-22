@@ -5,7 +5,10 @@
 // so the same code compiles for the native CLI, WASI, and browser WASM.
 package cest
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 // ---------------------------------------------------------------------------
 // Event counters + CEst formula
@@ -45,6 +48,22 @@ func (e Events) Add(o Events) Events {
 		Bcm:  e.Bcm + o.Bcm,
 		Bim:  e.Bim + o.Bim,
 	}
+}
+
+// BaseName strips a callgrind --separate-callers / --separate-recs context from a
+// function name: everything from the first apostrophe on (the recursion level and
+// the caller chain) is dropped, leaving the bare function. Names without a context
+// (no apostrophe) are returned unchanged, so this is a no-op on profiles collected
+// without separation.
+//
+//	"_talloc'talloc_pool'app_handler"  -> "_talloc"
+//	"fr_pair_list_free'2'..."          -> "fr_pair_list_free"
+//	"main"                             -> "main"
+func BaseName(name string) string {
+	if i := strings.IndexByte(name, '\''); i >= 0 {
+		return name[:i]
+	}
+	return name
 }
 
 // Pct returns num/den as a percentage, or 0 when den is 0.
