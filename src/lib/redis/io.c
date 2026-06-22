@@ -50,8 +50,16 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 	/*
 	 *	Some code paths result in hiredis calling this callback after
 	 *	we have freed the handle, which would result in a use after free.
+	 *	or we do not actually want to reconnnect.
 	 */
-	if (conn->state == CONNECTION_STATE_CLOSED) return;
+	switch (conn->state) {
+	case CONNECTION_STATE_CLOSED:
+	case CONNECTION_STATE_SHUTDOWN:
+		return;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	redisAsyncFree was called with a live
