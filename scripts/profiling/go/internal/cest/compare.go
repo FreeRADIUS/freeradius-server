@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strings"
 )
 
 // ---------------------------------------------------------------------------
@@ -147,18 +148,59 @@ func spreadCell(s float64) string {
 	}
 }
 
+// matchAny reports whether name contains any of the (lowercased) patterns; an
+// empty list matches everything. Substring / case-insensitive, like the UI's
+// patterns field.
+func matchAny(name string, lpats []string) bool {
+	if len(lpats) == 0 {
+		return true
+	}
+	ln := strings.ToLower(name)
+	for _, p := range lpats {
+		if strings.Contains(ln, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterRows keeps the compare rows whose function name matches any pattern
+// (empty patterns => all rows). Per-function baseline/spread are independent of
+// the row set, so filtering after Compare equals scoping the compare to those
+// patterns — the same result the UI gives when its patterns field is set.
+func filterRows(rows []CompareRow, patterns []string) []CompareRow {
+	if len(patterns) == 0 {
+		return rows
+	}
+	lpats := make([]string, len(patterns))
+	for i, p := range patterns {
+		lpats[i] = strings.ToLower(p)
+	}
+	out := make([]CompareRow, 0, len(rows))
+	for _, r := range rows {
+		if matchAny(r.Name, lpats) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // WriteCompare renders the per-function CEst comparison table for two or more
 // runs: each function's CEst per run, the diff vs its lowest-CEst run, and the
 // spread, sorted by spread descending with absent-in-a-run functions ("new")
 // last. Runs are referenced as run0, run1, ... with a legend mapping each to its
-// directory, to keep the columns narrow.
-func WriteCompare(w io.Writer, results []*DirResult) {
-	rows := Compare(results)
+// directory. Optional patterns scope the rows to functions whose name contains
+// any of them (substring, case-insensitive), like the UI's patterns field.
+func WriteCompare(w io.Writer, results []*DirResult, patterns []string) {
+	rows := filterRows(Compare(results), patterns)
 	fmt.Fprintln(w, "===================================================")
 	fmt.Fprintln(w, "COMPARE  (per-function CEst; diffs vs each function's lowest-CEst run)")
 	fmt.Fprintln(w, "===================================================")
 	for i, dr := range results {
 		fmt.Fprintf(w, "[run %d] %s  (main %s, total CEst %d)\n", i, dr.Label, dr.Main, dr.Res.Total.CEst())
+	}
+	if len(patterns) > 0 {
+		fmt.Fprintf(w, "filter: functions matching '%s'\n", strings.Join(patterns, "' '"))
 	}
 	fmt.Fprintln(w)
 
@@ -213,9 +255,10 @@ func finiteOrNil(f float64) *float64 {
 }
 
 // WriteCompareJSON encodes the per-function CEst comparison as JSON, matching
-// the v2 UI compare "Download JSON" shape (cest-compare-1).
-func WriteCompareJSON(w io.Writer, results []*DirResult) error {
-	rows := Compare(results)
+// the UI compare "Download JSON" shape (cest-compare-1). Optional patterns scope
+// the functions, like WriteCompare.
+func WriteCompareJSON(w io.Writer, results []*DirResult, patterns []string) error {
+	rows := filterRows(Compare(results), patterns)
 	doc := compareJSON{Schema: "cest-compare-1", Baseline: "per-function lowest-CEst run"}
 	for _, dr := range results {
 		doc.Runs = append(doc.Runs, compareRunJSON{Label: dr.Label, Main: dr.Main, TotalCEst: dr.Res.Total.CEst()})

@@ -72,3 +72,25 @@ func TestCompare(t *testing.T) {
 		t.Errorf("f3 run B Δ = %v; want +Inf", rows[2].DeltaPct[1])
 	}
 }
+
+// TestFilterRows checks that pattern scoping keeps only matching functions
+// (substring, case-insensitive, any-of) without altering their per-row values.
+func TestFilterRows(t *testing.T) {
+	rows := []CompareRow{
+		{Name: "_talloc_free", SpreadPct: 10},
+		{Name: "fr_rb_find", SpreadPct: 5},
+		{Name: "TALLOC_pool", SpreadPct: 1},
+	}
+	got := filterRows(rows, []string{"talloc"})
+	if len(got) != 2 {
+		t.Fatalf("got %d rows for 'talloc'; want 2 (_talloc_free, TALLOC_pool)", len(got))
+	}
+	for _, r := range got {
+		if r.Name != "_talloc_free" && r.Name != "TALLOC_pool" {
+			t.Errorf("unexpected row %q", r.Name)
+		}
+	}
+	if n := len(filterRows(rows, nil)); n != 3 {
+		t.Errorf("empty patterns kept %d rows; want all 3", n)
+	}
+}

@@ -2,6 +2,15 @@
 
 Compares Callgrind cycle-estimate (CEst) cost across one or more profiling runs.
 
+## CEst formula
+
+```
+CEst = Ir + 10*(I1mr + D1mr + D1mw) + 100*(ILmr + DLmr + DLmw) + 10*(Bcm + Bim)
+```
+
+Requires the run to have been profiled with `--cache-sim=yes --branch-sim=yes`.
+Only self (exclusive) cost is reported — inclusive cost is not computed.
+
 ## Requirements
 
 - Go 1.21 or later
@@ -248,14 +257,15 @@ directory in the prof-results tree).
 cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 
 # Compare mode (per-function CEst across runs; the terminal/WASI equivalent of
-# the v2 UI compare view) - needs >=2 dirs, takes no patterns
-cest-analyzer --compare [--json <file>] -d <dir> -d <dir> [-d <dir> ...]
+# the UI compare view) - needs >=2 dirs; --filter scopes it to matching functions
+cest-analyzer --compare [--filter pat,...] [--json <file>] -d <dir> -d <dir> [-d <dir> ...]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-d <dir>` | `.` | Profiling directory containing `callgrind.out.*` files. Repeatable. |
-| `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs; ignores patterns. |
+| `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs. |
+| `--filter <pat,...>` | _(none)_ | `--compare` only: scope to functions whose name matches any filter (repeatable and/or comma-separated; substring, case-insensitive). Trailing positionals work too. |
 | `--top N` | `10` | Number of top functions to show per pattern. Not used by `--compare`. |
 | `--md <file>` | _(none)_ | Also write a Markdown report to this file. Not used by `--compare`. |
 | `--json <file>` | _(none)_ | Also write a JSON report to this file. With `--compare`, writes the compare-shaped JSON (`cest-compare-1`); otherwise the per-run report (see Output). |
@@ -283,6 +293,13 @@ Patterns are case-insensitive substrings matched against function names.
     -d /path/to/build1/prof-results \
     -d /path/to/build2/prof-results \
     --json compare.json
+
+# Compare mode scoped to specific functions via --filter (repeatable and/or
+# comma-separated), like typing in the UI's patterns field.
+./cest-analyzer --compare \
+    -d /path/to/build1/prof-results \
+    -d /path/to/build2/prof-results \
+    --filter _talloc,fr_rb --json compare.json
 ```
 
 The two forms answer different questions: the **pattern report** baselines every
@@ -316,15 +333,6 @@ or all functions if none were given), and the per-pattern and per-category
 subtotals; each `functions` / `patterns` / `categories` row carries CEst plus
 all 9 components. Multiple `-d` directories appear as elements of `runs`. The
 same structure backs the **Tables** and **JSON** views in the web UI.
-
-## CEst formula
-
-```
-CEst = Ir + 10*(I1mr + D1mr + D1mw) + 100*(ILmr + DLmr + DLmw) + 10*(Bcm + Bim)
-```
-
-Requires the run to have been profiled with `--cache-sim=yes --branch-sim=yes`.
-Only self (exclusive) cost is reported — inclusive cost is not computed.
 
 ## Customizing categories
 

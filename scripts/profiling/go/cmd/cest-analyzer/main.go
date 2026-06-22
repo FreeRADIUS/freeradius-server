@@ -29,6 +29,20 @@ type dirFlag []string
 func (d *dirFlag) String() string     { return strings.Join(*d, ", ") }
 func (d *dirFlag) Set(v string) error { *d = append(*d, v); return nil }
 
+// listFlag collects a repeatable flag into a slice, splitting each value on
+// commas, so --filter a,b and --filter a --filter b both yield [a, b].
+type listFlag []string
+
+func (l *listFlag) String() string { return strings.Join(*l, ",") }
+func (l *listFlag) Set(v string) error {
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			*l = append(*l, p)
+		}
+	}
+	return nil
+}
+
 // candidatesForDir lists callgrind.out.* files in dir as cest.Candidates that
 // open lazily via os.Open.
 func candidatesForDir(dir string) []cest.Candidate {
@@ -50,12 +64,14 @@ func main() {
 	var jsonFile string
 	var topn int
 	var compareMode bool
+	var filters listFlag
 
 	flag.Var(&dirs, "d", "profiling `directory` (repeatable)")
 	flag.StringVar(&mdFile, "md", "", "write markdown report to `file`")
 	flag.StringVar(&jsonFile, "json", "", "write JSON report to `file`")
 	flag.IntVar(&topn, "top", 10, "top-N functions per pattern")
-	flag.BoolVar(&compareMode, "compare", false, "per-function CEst comparison across runs (the UI compare view); needs >=2 -d dirs, ignores patterns")
+	flag.BoolVar(&compareMode, "compare", false, "per-function CEst comparison across runs (the UI compare view); needs >=2 -d dirs")
+	flag.Var(&filters, "filter", "function-name `filter`(s) for --compare (repeatable and/or comma-separated; substring, any-match)")
 	flag.Parse()
 
 	patterns := flag.Args()
@@ -65,13 +81,17 @@ func main() {
 
 	//  --compare: a per-function CEst matrix across the runs, with diffs vs each
 	//  function's lowest-CEst run and a spread column - the terminal equivalent of
-	//  the v2 UI compare view. No patterns (it compares every function); --json
-	//  writes the compare-shaped JSON, --md does not apply.
+	//  the UI compare view. --filter (and/or trailing patterns) scope it to
+	//  functions whose name matches any entry; --json writes the compare-shaped
+	//  JSON, --md does not apply.
 	if compareMode {
 		if len(dirs) < 2 {
 			fmt.Fprintln(os.Stderr, "--compare needs at least two -d directories")
 			os.Exit(1)
 		}
+		//  Scope filters come from --filter plus any trailing positionals, so both
+		//  `--filter _talloc,fr_rb` and a bare `_talloc fr_rb` work (and combine).
+		scope := append(append(listFlag{}, filters...), patterns...)
 		cats := cest.DefaultCategories()
 		var results []*cest.DirResult
 		for _, d := range dirs {
@@ -82,14 +102,14 @@ func main() {
 			}
 			results = append(results, dr)
 		}
-		cest.WriteCompare(os.Stdout, results)
+		cest.WriteCompare(os.Stdout, results, scope)
 		if jsonFile != "" {
 			f, err := os.Create(jsonFile)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
 				os.Exit(1)
 			}
-			if err := cest.WriteCompareJSON(f, results); err != nil {
+			if err := cest.WriteCompareJSON(f, results, scope); err != nil {
 				f.Close()
 				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
 				os.Exit(1)
@@ -108,7 +128,7 @@ func main() {
 
 	if len(patterns) == 0 {
 		fmt.Fprintln(os.Stderr, "Usage: cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]")
-		fmt.Fprintln(os.Stderr, "   or: cest-analyzer --compare [--json <file>] -d <dir> -d <dir> [-d <dir> ...]")
+		fmt.Fprintln(os.Stderr, "   or: cest-analyzer --compare [--filter pat,...] [--json <file>] -d <dir> -d <dir> [-d <dir> ...]")
 		os.Exit(1)
 	}
 
