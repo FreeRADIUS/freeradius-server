@@ -4237,9 +4237,10 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 			fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
 
 	/*
-	 *	If we have idle connections, then close them.
+	 *	If we have idle connections, then close them, maintaining "min" connections.
 	 */
-	if (fr_time_delta_ispos(trunk->conf.idle_timeout)) {
+	if (fr_time_delta_ispos(trunk->conf.idle_timeout) &&
+	    (fr_minmax_heap_num_elements(trunk->active) > trunk->conf.min)) {
 		fr_minmax_heap_iter_t	iter;
 		fr_time_t idle_cutoff = fr_time_sub(now, trunk->conf.idle_timeout);
 
