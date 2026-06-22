@@ -3456,7 +3456,12 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
 	switch (tconn->pub.state) {
-	case TRUNK_CONN_DRAINING_TO_FREE:	/* Do Nothing */
+	case TRUNK_CONN_DRAINING_TO_FREE:
+		/*
+		 *	Shutdown from draining-to-free means no outstanding requests.
+		 *	Now signal to halt.
+		 */
+		connection_signal_halt(conn);
 		return;
 
 	case TRUNK_CONN_ACTIVE:		/* Transition to draining-to-free */
