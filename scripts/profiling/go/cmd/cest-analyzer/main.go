@@ -49,20 +49,67 @@ func main() {
 	var mdFile string
 	var jsonFile string
 	var topn int
+	var compareMode bool
 
 	flag.Var(&dirs, "d", "profiling `directory` (repeatable)")
 	flag.StringVar(&mdFile, "md", "", "write markdown report to `file`")
 	flag.StringVar(&jsonFile, "json", "", "write JSON report to `file`")
 	flag.IntVar(&topn, "top", 10, "top-N functions per pattern")
+	flag.BoolVar(&compareMode, "compare", false, "per-function CEst comparison across runs (the UI compare view); needs >=2 -d dirs, ignores patterns")
 	flag.Parse()
 
 	patterns := flag.Args()
-	if len(patterns) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]")
-		os.Exit(1)
-	}
 	if len(dirs) == 0 {
 		dirs = dirFlag{"."}
+	}
+
+	//  --compare: a per-function CEst matrix across the runs, with diffs vs each
+	//  function's lowest-CEst run and a spread column - the terminal equivalent of
+	//  the v2 UI compare view. No patterns (it compares every function); --json
+	//  writes the compare-shaped JSON, --md does not apply.
+	if compareMode {
+		if len(dirs) < 2 {
+			fmt.Fprintln(os.Stderr, "--compare needs at least two -d directories")
+			os.Exit(1)
+		}
+		cats := cest.DefaultCategories()
+		var results []*cest.DirResult
+		for _, d := range dirs {
+			dr, err := cest.Analyze(d, candidatesForDir(d), nil, cats, 0)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			results = append(results, dr)
+		}
+		cest.WriteCompare(os.Stdout, results)
+		if jsonFile != "" {
+			f, err := os.Create(jsonFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			if err := cest.WriteCompareJSON(f, results); err != nil {
+				f.Close()
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			if err := f.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Compare JSON written to: %s\n", jsonFile)
+		}
+		if mdFile != "" {
+			fmt.Fprintln(os.Stderr, "note: --md is not supported with --compare; ignoring")
+		}
+		return
+	}
+
+	if len(patterns) == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]")
+		fmt.Fprintln(os.Stderr, "   or: cest-analyzer --compare [--json <file>] -d <dir> -d <dir> [-d <dir> ...]")
+		os.Exit(1)
 	}
 
 	cats := cest.DefaultCategories()

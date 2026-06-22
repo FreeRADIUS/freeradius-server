@@ -398,6 +398,71 @@ func cestRunDetail(this js.Value, args []js.Value) (result any) {
 	}
 }
 
+// cestCompare is the compare-view bridge. It runs internal/cest.CompareCEst over
+// the per-run CEst maps the page already parsed (via cestRunCEst), so the
+// lowest-CEst baseline / Δ% / spread math lives only in Go (shared with the CLI's
+// --compare), not duplicated in JS. No file re-parsing — it takes the cached CEst.
+//
+// JS signature: cestCompare(runs) -> { functions: [...] } | { error }
+//
+//	runs: [ { label, total, cest: { "fn": CEst, ... } }, ... ]   // selected runs, in order
+//
+// Returns functions sorted by spread descending ('new' last); per function:
+//
+//	{ name, cest: [int,...], deltaPct: [num,...], best: int, spreadPct: num }
+//
+// cest/deltaPct are aligned to the input runs. deltaPct/spreadPct are +Inf (JS
+// Infinity) where a run lacks the function; best is the index of the lowest-CEst
+// run. The UI handles sorting by other columns, the patterns filter, and the
+// row cap itself off this returned data.
+func cestCompare(this js.Value, args []js.Value) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = map[string]any{"error": panicMessage(r)}
+		}
+	}()
+
+	if len(args) < 1 || args[0].Type() != js.TypeObject {
+		return map[string]any{"error": "cestCompare(runs): runs array required"}
+	}
+	arr := args[0]
+	runs := make([]cest.RunCEst, arr.Length())
+	for i := 0; i < arr.Length(); i++ {
+		r := arr.Index(i)
+		cestObj := r.Get("cest")
+		cm := make(map[string]int64)
+		for _, name := range jsObjectKeys(cestObj) {
+			cm[name] = int64(cestObj.Get(name).Float())
+		}
+		runs[i] = cest.RunCEst{
+			Label: r.Get("label").String(),
+			Total: int64(r.Get("total").Float()),
+			CEst:  cm,
+		}
+	}
+
+	rows := cest.CompareCEst(runs)
+	out := make([]any, len(rows))
+	for i, row := range rows {
+		cestArr := make([]any, len(row.CEst))
+		for k, c := range row.CEst {
+			cestArr[k] = c
+		}
+		deltaArr := make([]any, len(row.DeltaPct))
+		for k, d := range row.DeltaPct {
+			deltaArr[k] = d // +Inf -> JS Infinity
+		}
+		out[i] = map[string]any{
+			"name":      row.Name,
+			"cest":      cestArr,
+			"deltaPct":  deltaArr,
+			"best":      row.Best,
+			"spreadPct": row.SpreadPct, // +Inf -> JS Infinity
+		}
+	}
+	return map[string]any{"functions": out}
+}
+
 // panicMessage renders a recovered panic value as a string for the JS caller.
 func panicMessage(v any) string {
 	switch e := v.(type) {
@@ -416,6 +481,7 @@ func main() {
 	js.Global().Set("cestReport", js.FuncOf(cestReport))
 	js.Global().Set("cestRunCEst", js.FuncOf(cestRunCEst))
 	js.Global().Set("cestRunDetail", js.FuncOf(cestRunDetail))
+	js.Global().Set("cestCompare", js.FuncOf(cestCompare))
 	// Block forever: the page calls analyzeCest on demand, so the Go program
 	// must stay alive after main returns control to the JS event loop.
 	select {}

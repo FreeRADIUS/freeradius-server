@@ -31,16 +31,19 @@ go/
 │   ├── parse.go          Parse(io.Reader, ...) and summary scan
 │   ├── analyze.go        Candidate, PickMain, Analyze, top-N helpers
 │   ├── report.go         text / comparison / markdown writers
+│   ├── compare.go        per-function CEst compare (lowest-CEst baseline, spread)
 │   └── json.go           JSON report schema + writer
 ├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
 └── web/                  browser target (GOOS=js); all analysis is client-side
-    ├── wasm/main.go      syscall/js bridge (globalThis.analyzeCest, cestMatrix, cestReport)
-    ├── v1/               single-run / pattern UI: index.html, app.js, style.css, wasm_exec.js, .wasm
-    └── v2/               multi-run compare UI (heatmap / trends / divergence / per-run detail)
-                          with local-file and hosted-store run sources; the store picker reads
-                          the store's manifest.json (run list) and run-index-map.json (workflow
-                          run links). Files: index.html, app.js, style.css, config.json,
-                          wasm_exec.js, .wasm
+    ├── wasm/main.go      syscall/js bridge (globalThis.cestMatrix, cestReport,
+    │                     cestRunCEst, cestRunDetail, cestCompare)
+    ├── v2/               compare UI (heatmap / trends / divergence / per-run detail /
+    │                     multi-run compare) with local-file and hosted-store run
+    │                     sources; the store picker reads the store's manifest.json
+    │                     (run list) and run-index-map.json (workflow run links).
+    │                     Files: index.html, app.js, style.css, config.json,
+    │                     wasm_exec.js, .wasm
+    └── archive/v1/       archived single-run / pattern UI (unmaintained)
 ```
 
 `internal/cest` never imports `os`, `flag`, or `syscall/js`. Callers feed it
@@ -95,15 +98,21 @@ wasmtime --dir /path/to/prof-results \
 ### Option 2: `GOOS=js` — browser app (`./web/wasm`)
 
 The browser has no filesystem, so this target uses a separate `syscall/js`
-entry point ([web/wasm/main.go](web/wasm/main.go)) that exposes three functions
+entry point ([web/wasm/main.go](web/wasm/main.go)) that exposes these functions
 on `globalThis`:
 
-- `analyzeCest(runs, patterns, topN)` — pattern-centric, per-run top-N report
-  (the v1 UI).
-- `cestMatrix(runs, topN)` — a complete function×run matrix the v2 compare UI
-  renders (pass `topN = 0` for all functions).
+- `cestMatrix(runs, topN)` — a complete function×run matrix the v2 views
+  render (pass `topN = 0` for all functions).
+- `cestRunCEst(files)` — one run's per-function CEst, parsed one run at a time so
+  the v2 loader can show progress (the matrix/baseline are assembled in JS).
+- `cestRunDetail(files)` — one run's full per-function table (CEst + the 9 raw
+  counters) for the single-run detail view.
+- `cestCompare(runs)` — the per-function CEst comparison for the v2 compare view
+  (2–3 ticked runs): lowest-CEst baseline, Δ% vs best, and spread. This calls the
+  **same** `internal/cest.CompareCEst` as the CLI's `--compare`, so the browser
+  and the terminal report identical compare numbers (the math lives only in Go).
 - `cestReport(runs, topN, patterns?)` — the rich JSON report (all 9 counters)
-  behind v2's **Download JSON**.
+  behind v2's per-run **Download JSON**.
 
 The page gets each `callgrind.out.*` file's text — from a local pick via the
 `FileReader` API, or fetched from the hosted prof-results store over HTTP — and
@@ -115,19 +124,16 @@ entirely client-side; nothing is uploaded.
 ```bash
 cd scripts/profiling/go
 
-# Build the same module into each UI directory. The two UIs are self-contained
-# (each serves its own .wasm), so v2 can be served on its own without v1.
-GOOS=js GOARCH=wasm go build -o web/v1/cest-analyzer.wasm ./web/wasm
+# Build the syscall/js module into the v2 UI directory (it serves its own .wasm).
 GOOS=js GOARCH=wasm go build -o web/v2/cest-analyzer.wasm ./web/wasm
 
-# Copy the JS glue shipped with Go into each UI. Its path inside GOROOT changed
+# Copy the JS glue shipped with Go into the UI. Its path inside GOROOT changed
 # across Go releases (older: misc/wasm/; newer: lib/wasm/), so locate it first:
 WASM_EXEC="$(find "$(go env GOROOT)" -name wasm_exec.js | head -1)"
-cp "$WASM_EXEC" web/v1/
 cp "$WASM_EXEC" web/v2/
 ```
 
-After this, each UI directory holds everything its page needs, e.g. `web/v2/`:
+After this, the UI directory holds everything its page needs:
 
 ```text
 web/v2/
@@ -147,11 +153,10 @@ URL. `file://` fails for two reasons: the browser blocks the `fetch()` of the
 `Content-Type: application/wasm`, which only a server sets. Any static file
 server works; pick one:
 
-Each UI is self-contained, so you can serve a single UI directory directly (e.g.
-`web/v2`). Serving the parent `web/` keeps both `/v1/` and `/v2/` reachable:
+The UI is self-contained, so serve its directory directly:
 
 ```bash
-cd scripts/profiling/go/web
+cd scripts/profiling/go/web/v2
 
 # Python 3 (sends Content-Type: application/wasm for .wasm files)
 python3 -m http.server 8080
@@ -160,8 +165,7 @@ python3 -m http.server 8080
 npx serve -l 8080 .
 ```
 
-Then open <http://localhost:8080/v1/> (single-run / pattern UI) or
-<http://localhost:8080/v2/> (multi-run compare UI) in a browser.
+Then open <http://localhost:8080/> in a browser.
 
 To reach it from another machine on the network, bind all interfaces and use
 the host's IP:
@@ -173,27 +177,10 @@ python3 -m http.server 8080 --bind 0.0.0.0
 
 #### Use
 
-There are two browser UIs. Both analyze entirely in the browser; nothing is
-uploaded (the Repo source only *downloads* result files from the store).
-
-##### v1 — single-run / pattern UI (`/v1/`)
-
-For each run pick its `callgrind.out.*` files (use **+ Add run** to compare
-several labelled runs; the first is the baseline), enter space-separated
-patterns, and click **Analyze**. The output has three tabs:
-
-- **Report** — the console-style text report, including the component breakdown.
-- **Tables** — a metric selector (CEst, each of the 9 components, or "All
-  components") that re-renders the functions / patterns / categories tables for
-  the chosen counter across runs.
-- **JSON** — the JSON report exactly as `--json` writes it.
-
-The Markdown and JSON reports are also available via the download buttons.
-
-##### v2 — multi-run compare UI (`/v2/`)
-
-Compares many runs at once, where **one run = one directory of
-`callgrind.out.*` files** (one test directory in the prof-results tree).
+The browser UI analyzes entirely in the browser; nothing is uploaded (the Repo
+source only *downloads* result files from the store). It compares many runs at
+once, where **one run = one directory of `callgrind.out.*` files** (one test
+directory in the prof-results tree).
 
 - **Add runs** from one of two sources (toggle beside **+ Add runs**):
   - **Local files** — the directory picker. Pick a leaf test directory for one
@@ -251,21 +238,27 @@ Compares many runs at once, where **one run = one directory of
 |---|---|---|
 | Entry point | `./cmd/cest-analyzer` | `./web/wasm` |
 | File access | host FS via `--dir` | local pick (`FileReader`) or hosted store (HTTP fetch) |
-| Output | stdout / `--md` / `--json` files | v1: Report / Tables / JSON tabs + downloads · v2: heatmap / trends / divergence + JSON download |
+| Output | stdout / `--md` / `--json` files (incl. `--compare`) | heatmap / trends / divergence / per-run detail / multi-run compare + JSON download |
 | Runtime | wasmtime, wazero, Node 21+ | any browser |
 
 ## Usage
 
 ```
+# Pattern report (per-pattern self-CEst, top-N per pattern, baseline = first -d)
 cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
+
+# Compare mode (per-function CEst across runs; the terminal/WASI equivalent of
+# the v2 UI compare view) - needs >=2 dirs, takes no patterns
+cest-analyzer --compare [--json <file>] -d <dir> -d <dir> [-d <dir> ...]
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-d <dir>` | `.` | Profiling directory containing `callgrind.out.*` files. Repeatable. |
-| `--top N` | `10` | Number of top functions to show per pattern. |
-| `--md <file>` | _(none)_ | Also write a Markdown report to this file. |
-| `--json <file>` | _(none)_ | Also write a JSON report to this file (see Output). |
+| `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs; ignores patterns. |
+| `--top N` | `10` | Number of top functions to show per pattern. Not used by `--compare`. |
+| `--md <file>` | _(none)_ | Also write a Markdown report to this file. Not used by `--compare`. |
+| `--json <file>` | _(none)_ | Also write a JSON report to this file. With `--compare`, writes the compare-shaped JSON (`cest-compare-1`); otherwise the per-run report (see Output). |
 
 Patterns are case-insensitive substrings matched against function names.
 
@@ -275,13 +268,27 @@ Patterns are case-insensitive substrings matched against function names.
 # Single run, two patterns
 ./cest-analyzer -d /path/to/prof-results prefix1 prefix2
 
-# Compare two runs, write markdown report
+# Pattern report comparing two runs, with a markdown file (per-pattern % vs dir 0)
 ./cest-analyzer \
     -d /path/to/build1/prof-results \
     -d /path/to/build2/prof-results \
     --md report.md --top 6 \
     prefix1 prefix2
+
+# Compare mode: per-function CEst across runs, like selecting run chips in the UI.
+# Diffs are measured against each function's lowest-CEst run; a "spread" column
+# gives worst / best - 1, sorted spread-descending. --json writes the same data
+# the UI's compare "Download JSON" produces.
+./cest-analyzer --compare \
+    -d /path/to/build1/prof-results \
+    -d /path/to/build2/prof-results \
+    --json compare.json
 ```
+
+The two forms answer different questions: the **pattern report** baselines every
+run against the first `-d` and groups by your patterns; **`--compare`** is the
+per-function, lowest-CEst-baselined matrix the UI shows when you tick run chips.
+Both run identically under WASI (same binary).
 
 ## Output
 
