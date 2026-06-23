@@ -243,6 +243,8 @@ static void _redis_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNUSE
 	redisAsyncHandleWrite(h->ac);
 }
 
+static void _redis_io_common(connection_t *conn, fr_redis_handle_t *h, bool read, bool write);
+
 /** Redis FD errored - Automatically removes registered events
  *
  */
@@ -253,6 +255,11 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 	fr_redis_handle_t	*h = conn->h;
 
 	ERROR("%s handle %p - FD %i errored: %s", conn->name, h, fd, fr_syserror(fd_errno));
+
+	/*
+	 *	Ensure fd events are removed - hiredis doesn't clean up quickly.
+	 */
+	_redis_io_common(conn, h, false, false);
 
 	/*
 	 *	Connection state machine will handle reconnecting
