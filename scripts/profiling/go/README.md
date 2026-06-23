@@ -37,8 +37,11 @@ serves the CLI, WASI, and the browser:
 go/
 ├── internal/cest/        I/O-free core (formula, parser, reports)
 │   ├── cest.go           Events counters, CEst formula, categories
-│   ├── parse.go          Parse(io.Reader, ...) and summary scan
+│   ├── parse.go          Parse(io.Reader, ...) and tail-seek summary scan
 │   ├── analyze.go        Candidate, PickMain, Analyze, top-N helpers
+│   ├── fold.go           path-based --fold over the --separate-callers graph
+│   ├── snip.go           shared "fold self-cost up into callers" engine
+│   ├── paths.go          NodePaths: per-function call paths (copy-path UI)
 │   ├── report.go         text / comparison / markdown writers
 │   ├── compare.go        per-function CEst compare (lowest-CEst baseline, spread)
 │   └── json.go           JSON report schema + writer
@@ -277,6 +280,15 @@ directory in the prof-results tree).
   overflow menu for column order (load order / by CEst /
   by date) and **Download JSON** (the full comparison dataset, all functions,
   every run, independent of the current view).
+
+**Caching.** Analyzing a run (parsing its `callgrind.out.*` in WASM) is the one
+expensive step, so each run's result is cached on first use, keyed by the active
+fold paths. The per-function CEst result and the per-run detail table are cached
+separately. As a result, removing a run, changing the baseline / column order /
+value mode, switching views, and re-opening a run's detail never re-analyze;
+only loading a new run or changing the fold paths re-parses in WASM. So the first
+load of a set of runs costs one parse per run, and everything after that is
+instant.
 
 ### Folding call paths
 
