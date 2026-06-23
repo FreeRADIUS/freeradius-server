@@ -307,11 +307,21 @@ func cestReport(this js.Value, args []js.Value) (result any) {
 // function's self CEst — just split out one run at a time. The JS side
 // assembles the shared function set and baseline from these.
 //
-// JS signature: cestRunCEst(files) -> result
+// JS signature: cestRunCEst(files, foldPaths?) -> result
 //
 //	files: { "callgrind.out.123": "<file text>", ... }   // ONE run's files
 //
-// Returns { formula, total, cest: { "fn": CEst, ... } } on success or { error }.
+// Returns on success:
+//
+//	{
+//	  formula, total,
+//	  cest:  { "fn": CEst, ... },
+//	  paths: { "fn": [ { p: "root/.../fn", c: CEst }, ... ], ... }
+//	}
+//
+// or { error }. paths gives each function's root-first call paths (the fold-box
+// form) from the raw --separate-callers graph, for the UI's copy-path popover;
+// it is the same regardless of foldPaths.
 func cestRunCEst(this js.Value, args []js.Value) (result any) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -338,10 +348,26 @@ func cestRunCEst(this js.Value, args []js.Value) (result any) {
 	for name, ev := range self {
 		cestObj[name] = ev.CEst()
 	}
+	// Per-function root-first call paths from the raw context graph (independent
+	// of any fold), so the UI can offer them for copy into the fold box. Capped
+	// per function to keep the payload small; the JS side unions across runs.
+	np := cest.NodePaths(dr.Res.CtxSelf)
+	pathsObj := make(map[string]any, len(np))
+	for fn, pcs := range np {
+		if len(pcs) > 20 {
+			pcs = pcs[:20]
+		}
+		arr := make([]any, len(pcs))
+		for i, pc := range pcs {
+			arr[i] = map[string]any{"p": pc.Path, "c": pc.CEst}
+		}
+		pathsObj[fn] = arr
+	}
 	return map[string]any{
 		"formula": cest.Formula,
 		"total":   dr.Res.Total.CEst(),
 		"cest":    cestObj,
+		"paths":   pathsObj,
 	}
 }
 

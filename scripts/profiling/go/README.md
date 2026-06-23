@@ -116,7 +116,8 @@ on `globalThis`:
   at a time so the v2 loader can show progress (the matrix/baseline are assembled
   in JS). The optional `foldPaths` argument carries the call paths to fold (see
   **Folding call paths** below); the UI passes whatever is typed in the **fold**
-  box.
+  box. Also returns a `paths` map (each function's root-first call paths from the
+  raw context graph) that backs the hover **copy-path** popover.
 - `cestRunDetail(files, foldPaths?)` — one run's full per-function table (CEst +
   the 9 raw counters) for the single-run detail view; `foldPaths` is applied the
   same way as for `cestRunCEst`.
@@ -272,6 +273,12 @@ A path is written **root-first, slash-separated, with the frame to fold last**;
 comma-separate multiple paths. A single-element path folds every call of that
 function. Folding needs profiling data captured with `--separate-callers`; on
 data without it a multi-element path has nothing to match and folds nothing.
+
+To avoid typing paths by hand, **hover a function name** in the Heatmap or the
+per-run detail view: a small popover lists that node's call paths (most costly
+first, from the `--separate-callers` data) plus an "all calls" entry. Click one
+to copy it to the clipboard, then paste into the fold box. (Copy needs a click,
+so hovering only reveals the choices.)
 
 ### Comparison
 
