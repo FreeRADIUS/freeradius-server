@@ -1686,11 +1686,15 @@ static void request_finish(REQUEST *request, int action)
 	}
 
 	/*
-	 *	Copy Proxy-State from the request to the reply.
+	 *	Copy Proxy-State from the request to the reply, but
+	 *	only if we're responding, and only if it's not a
+	 *	Protocol-Error.
 	 */
-	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps,
-		       PW_PROXY_STATE, 0, TAG_ANY);
-	if (vp) fr_pair_add(&request->reply->vps, vp);
+	if (request->reply->code && (request->reply->code != PW_CODE_PROTOCOL_ERROR)) {
+		vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps,
+					      PW_PROXY_STATE, 0, TAG_ANY);
+		if (vp) fr_pair_add(&request->reply->vps, vp);
+	}
 
 	/*
 	 *	Call Post-Auth for Access-Request packets.
