@@ -243,7 +243,9 @@ directory in the prof-results tree).
       callgrind file's mtime, store runs the manifest date). Columns are ordered
       **by date by default** - oldest leftmost, newest rightmost, so they read as
       a timeline; the overflow menu's **Column order** can switch to load order or
-      by CEst.
+      by CEst. The **view** selector (top controls) focuses the heatmap on one
+      loaded run's own cost view (the single-run ramp above) instead of the
+      change view; set it back to **all runs** to return.
       The legend carries two adjustable **highlight thresholds**, one per
       direction: a cell highlights red only when `Δ ≥` the regression threshold,
       green only when `Δ ≤ −` the improvement threshold; smaller changes stay
@@ -270,8 +272,9 @@ directory in the prof-results tree).
   caller (see **Folding call paths** below; folding re-parses every run, so it
   applies only when you press Enter in the box or click **Fold**, not on every
   keystroke; the paths baked into the current view stay listed under the run
-  chips with a **reset fold list** button to clear them), the **functions**
-  top-N count, and an overflow menu for column order (load order / by CEst /
+  chips with a **reset fold list** button to clear them), the **functions** cap
+  (max functions to show, ranked by CEst; empty = all, the default), and an
+  overflow menu for column order (load order / by CEst /
   by date) and **Download JSON** (the full comparison dataset, all functions,
   every run, independent of the current view).
 

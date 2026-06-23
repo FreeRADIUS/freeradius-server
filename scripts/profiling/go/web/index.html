@@ -84,6 +84,9 @@
           <button data-val="abs">CEst cycles</button>
           <button data-val="pct">CEst %</button>
         </div>
+        <label class="field-lbl inline" id="focusrun-lbl" style="display:none">view
+          <select id="focusrun" class="dvg-sel" title="Show the change view across all runs, or one run's own cost heatmap."></select>
+        </label>
         <label class="field-lbl inline">patterns
           <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />
         </label>
@@ -92,7 +95,8 @@
         </label>
         <button class="btn btn-sm" id="fold-apply" title="Apply the fold paths — re-parses every run. Or press Enter in the box.">Fold</button>
         <label class="field-lbl inline">functions
-          <input type="number" id="topn" value="25" min="1" max="200" step="5" class="num-inp" />
+          <input type="number" id="topn" placeholder="all" min="1" step="5" class="num-inp"
+            title="Max functions to show, ranked by CEst. Empty = all." />
         </label>
         <div class="menu-wrap" style="margin-left:auto;">
           <button class="btn btn-sm menu-btn" id="menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>

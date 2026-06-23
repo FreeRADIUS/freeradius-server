@@ -52,6 +52,12 @@ func jsPaths(args []js.Value, idx int) [][]string {
 	return out
 }
 
+// seekReadCloser keeps bytes.Reader's Seek method (unlike io.NopCloser, which
+// hides it), so cest.ReadSummaryIr can scan only the file tail for "summary:".
+type seekReadCloser struct{ *bytes.Reader }
+
+func (seekReadCloser) Close() error { return nil }
+
 // candidatesFromJS turns a { filename: contents } JS object into Candidates.
 func candidatesFromJS(filesObj js.Value) []cest.Candidate {
 	names := jsObjectKeys(filesObj)
@@ -62,7 +68,7 @@ func candidatesFromJS(filesObj js.Value) []cest.Candidate {
 		cands = append(cands, cest.Candidate{
 			Name: name,
 			Open: func() (io.ReadCloser, error) {
-				return io.NopCloser(bytes.NewReader(data)), nil
+				return seekReadCloser{bytes.NewReader(data)}, nil
 			},
 		})
 	}

@@ -86,9 +86,42 @@ func isDataLine(c byte) bool {
 		c == 'x' || c == '*' || c == '+' || c == '-'
 }
 
-// ReadSummaryIr returns the "summary:" Ir counter, or -1 if none is found.
-// Used to pick the largest callgrind.out.* file in a run.
+// summaryTailWindow is how much of a file's tail ReadSummaryIr scans when the
+// stream is seekable: the callgrind "summary:" line lives in the trailer, so a
+// few hundred KiB from the end covers it without reading the whole file.
+const summaryTailWindow = 256 << 10
+
+// ReadSummaryIr returns the "summary:" Ir counter, or -1 if none is found. Used
+// to pick the largest callgrind.out.* file in a run. The summary line is in the
+// trailer, so for a seekable stream (the browser's bytes.Reader, the CLI's
+// *os.File) it scans only the tail instead of the whole (often huge) file,
+// falling back to a full scan if the stream can't seek or the tail has no match.
 func ReadSummaryIr(r io.Reader) int64 {
+	if s, ok := r.(io.Seeker); ok {
+		if size, err := s.Seek(0, io.SeekEnd); err == nil {
+			var start int64
+			if size > summaryTailWindow {
+				start = size - summaryTailWindow
+			}
+			if _, err := s.Seek(start, io.SeekStart); err == nil {
+				if ir := scanSummary(r); ir >= 0 {
+					return ir
+				}
+				if start == 0 {
+					return -1 // already scanned the whole file
+				}
+				if _, err := s.Seek(0, io.SeekStart); err == nil {
+					return scanSummary(r) // not in the tail: scan the whole file
+				}
+				return -1
+			}
+		}
+	}
+	return scanSummary(r)
+}
+
+// scanSummary reads forward from the current position for the "summary:" line.
+func scanSummary(r io.Reader) int64 {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 4<<20), 4<<20)
 	for sc.Scan() {

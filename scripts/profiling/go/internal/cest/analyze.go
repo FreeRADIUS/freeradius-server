@@ -19,6 +19,11 @@ type Candidate struct {
 // matching the heuristic of the original shell script. It errors when no
 // candidate carries a usable summary line.
 func PickMain(cands []Candidate) (Candidate, error) {
+	// One candidate is the main by definition; skip reading its summary (a full
+	// scan of an often-large file) just to confirm a choice with no alternative.
+	if len(cands) == 1 {
+		return cands[0], nil
+	}
 	best := Candidate{}
 	bestIr := int64(-1)
 	found := false
