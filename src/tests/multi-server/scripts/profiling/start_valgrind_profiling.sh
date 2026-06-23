@@ -41,6 +41,7 @@ valgrind \
   --callgrind-out-file=/etc/prof-results/callgrind.out.%p \
   --trace-children=yes \
   --separate-threads=no \
+  --separate-callers=6 \
   --dump-instr=yes \
   --collect-jumps=yes \
   --cache-sim=yes \
