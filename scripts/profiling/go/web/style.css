@@ -66,8 +66,13 @@ a{color:var(--brand);}
   background:var(--line-strong);color:#fff;font-size:10px;line-height:15px;text-align:center;cursor:pointer;padding:0;}
 .rchip.base{border-color:var(--accent);background:var(--accent-soft);}
 .rchip.base .cb i{background:var(--accent);}
-.rchip.base::after{content:'p50';position:absolute;top:-11px;left:50%;transform:translateX(-50%);
-  font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);}
+/* Baseline picker button (multi-run): "set base" on others, "baseline" on the
+   current baseline run. Δ% in the change view is measured against it. */
+.rchip .rbase{margin-top:1px;border:1px solid var(--line-strong);background:var(--paper);border-radius:5px;
+  font-family:inherit;font-size:8.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-soft);padding:1px 0;cursor:pointer;}
+.rchip .rbase:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft);}
+.rchip .rbase.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);cursor:default;}
 
 /* loading bar: shown while a multi-run pick is read + analyzed. The reading
    phase reports real progress (determinate fill); the analyze phase is a short
@@ -165,6 +170,12 @@ a{color:var(--brand);}
   font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:12.5px;text-align:center;color:var(--ink);padding:0 2px;}
 .legthresh-inp:focus{outline:0;border-bottom-color:var(--brand);}
 .legthresh-note{color:var(--faint);}
+/* Single-run cost legend: the heat ramp swatch + worst-end colour picker. */
+.legramp{display:inline-flex;align-items:center;gap:6px;}
+.legramp-bar{display:inline-block;width:120px;height:11px;border:1px solid var(--line-strong);border-radius:3px;}
+.legramp-ends{color:var(--ink-soft);}
+.legcolor-inp{width:26px;height:18px;padding:0;border:1px solid var(--line-strong);border-radius:4px;
+  background:none;cursor:pointer;vertical-align:middle;}
 
 /* matrix views */
 .nview{border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:auto;max-width:100%;}
@@ -182,11 +193,26 @@ table.heat .fn{position:sticky;left:0;background:var(--paper);text-align:left;pa
   font-size:11px;white-space:nowrap;z-index:1;border-right:1px solid var(--line-strong);}
 table.heat .fnname{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 table.heat thead .fn{z-index:3;}
-table.heat .fn .bv{color:var(--ink-soft);font-size:10px;font-weight:400;}
+/* "base" label above the baseline run's column header. */
+table.heat thead th .base-tag{display:block;font-size:8px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:2px;}
 /* run column headers are clickable: they open that run's detail view. */
 table.heat thead th.hcol{cursor:pointer;}
 table.heat thead th.hcol:hover{background:var(--brand-soft);color:var(--brand);}
 table.heat td.cell{min-width:54px;height:23px;font-size:9px;font-weight:600;font-variant-numeric:tabular-nums;}
+/* Date row directly below the header: each run's date under its column. */
+table.heat tr.daterow td{font-size:8.5px;font-weight:400;color:var(--ink-soft);background:#f9fafc;
+  padding:2px 5px;white-space:nowrap;border-bottom:1px solid var(--line-strong);text-align:center;}
+table.heat tr.daterow td.fn{text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  font-size:8px;color:var(--faint);}
+/* Single-run cost heatmap: right-aligned, roomier value columns (CEst, % of run). */
+table.heat.heat-cost td.cost{min-width:96px;text-align:right;padding:0 14px;font-size:10.5px;}
+table.heat.heat-cost th.hcol-cost{text-align:right;padding:6px 14px;}
+/* Clickable column headers (sort). */
+table.heat.heat-cost thead th.costsort{cursor:pointer;}
+table.heat.heat-cost thead th.costsort:hover{background:var(--brand-soft);color:var(--brand);}
+table.heat.heat-cost thead th.costsort.on{color:var(--brand);}
+table.heat.heat-cost thead th .darr{display:inline-block;width:10px;margin-left:3px;color:var(--brand);font-size:9px;}
 /* Frame the baseline (p50) column with inset box-shadows, not outline/border.
    Collapsed borders belong to the table and don't render correctly on the
    sticky header, and outline+offset drifts; an inset shadow is painted with the
@@ -259,7 +285,7 @@ td.detail-empty{padding:22px 14px;text-align:center;color:var(--ink-soft);font-s
 .dvg-ref{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink);white-space:nowrap;}
 .dvg-ref .dvg-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;}
 .dvg-ref .dvg-dot.man{background:var(--ink-soft);}
-.dvg-ref .dvg-p50{font-weight:600;color:var(--accent);}
+.dvg-ref .dvg-base{font-weight:600;color:var(--accent);}
 .dvg-ref .dvg-rid{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);}
 .dvg-axis{display:flex;align-items:center;padding:8px 14px 0;}
 .dvg-name-sp{width:210px;flex:none;}

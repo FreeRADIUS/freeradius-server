@@ -19,7 +19,7 @@
       <div class="nbar sketch">
         <div class="nbar-top">
           <div class="nbar-meta">
-            Comparing <b id="nrun-count">0</b> runs · baseline = <b>median&nbsp;(p50)</b> by CEst
+            <b id="nrun-count">0</b> <span id="nrun-mode">runs loaded</span>
             <span class="tag" id="nrun-base">—</span>
           </div>
           <div class="add-bar">
@@ -62,15 +62,13 @@
           <div class="ibody">
             <p style="margin:6px 0 0;"><b>CEst</b> (CPU Cycle Estimate) weights each callgrind counter by its approximate cycle cost:</p>
             <div class="formula2" id="formula">CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</div>
-            <p style="margin:14px 0 0;"><b>How the median (p50) baseline is chosen</b></p>
+            <p style="margin:14px 0 0;"><b>Two ways to read the heatmap</b></p>
             <ol>
-              <li>Sum CEst across all functions for each of the <b id="nrun-info-count">0</b> selected runs → one <b>total CEst</b> per run.</li>
-              <li>Rank the runs by total CEst and take the <b>median (p50)</b> run — the middle one (for an even count, the lower-middle). That run becomes the baseline column.</li>
-              <li>Every cell's Δ is measured against that baseline run, per function:</li>
+              <li><b>One run — cost view.</b> Functions are ranked by self-CEst, most expensive on top, and coloured on a heat ramp (worst → cheapest) so you see where the cycles go. Pick the worst-end colour in the legend.</li>
+              <li><b>Two or more runs — change view.</b> Choose one run as the <b>baseline</b> (the first loaded run by default; click <b>set base</b> on any chip to change it). Every cell's Δ is measured against that run, per function:</li>
             </ol>
-            <div class="formula2">Δ%(fn, run) = ( CEst<sub>fn,run</sub> − CEst<sub>fn,p50</sub> ) / CEst<sub>fn,p50</sub> × 100
-<span class="c">where p50 = argmin over runs of | rank(total CEst) − N/2 |</span></div>
-            <p style="margin:6px 0 0;color:var(--ink-soft);">Why a real run and not the mean: the p50 run is an <b>actual profile</b> (robust to outliers), so every comparison is run-vs-run rather than run-vs-synthetic-average. The baseline is <b>recomputed whenever the selected set changes</b>.</p>
+            <div class="formula2">Δ%(fn, run) = ( CEst<sub>fn,run</sub> − CEst<sub>fn,base</sub> ) / CEst<sub>fn,base</sub> × 100</div>
+            <p style="margin:6px 0 0;color:var(--ink-soft);">There is no mean/median baseline: for change-over-time you compare against a real reference run you pick, not a synthetic average. <span id="nrun-info-count" hidden></span></p>
           </div>
         </details>
       </div>
@@ -82,8 +80,7 @@
           <button data-view="diverge">Divergence</button>
         </div>
         <div class="viewseg" id="valseg" style="margin-left:2px;">
-          <button class="on" data-val="delta">Δ % vs p50</button>
-          <button data-val="deltatotal">Δ % vs total</button>
+          <button class="on" data-val="delta">Δ % vs base</button>
           <button data-val="abs">CEst cycles</button>
           <button data-val="pct">CEst %</button>
         </div>
@@ -104,6 +101,7 @@
               <div class="menu-label">Column order</div>
               <button class="menu-item" data-order="load">Load order</button>
               <button class="menu-item" data-order="cest">By CEst</button>
+              <button class="menu-item" data-order="date">By date</button>
               <div class="menu-sep"></div>
             </div>
             <button class="menu-item" id="menu-download">Download JSON</button>

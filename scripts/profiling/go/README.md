@@ -217,21 +217,42 @@ directory in the prof-results tree).
     links to the GitHub workflow run that produced each result, joined from the
     store's `run-index-map.json` ledger (`—` for runs published before the
     ledger existed).
-- **Baseline = the median (p50) run** by total CEst (lower-middle for an even
-  count). It is an actual profile, not a synthetic average, and is recomputed
-  whenever the selected run set changes.
+- **Baseline = a run you choose.** By default it follows the column order: the
+  **oldest** run when ordering by date (the default order), otherwise the first
+  loaded run. Click **set base** on any chip to pin a specific run (a pinned
+  choice stops following the default until you clear the runs). There is no
+  mean/median baseline: for change-over-time you compare against a real reference
+  run. With a single run loaded there is no baseline at all (see the Heatmap
+  cost view).
 - Three views (toggle top-left):
-  - **Heatmap** — the function×run matrix; cells are coloured by Δ% vs the p50
-    baseline (green = improvement, red = regression). The legend carries two
-    adjustable **highlight thresholds**, one per direction: a cell highlights red
-    only when `Δ ≥` the regression threshold, green only when `Δ ≤ −` the
-    improvement threshold. Smaller changes stay blank, so you set how much
-    divergence in each direction is worth the eye.
+  - **Heatmap** — has two modes by run count:
+    - **One run — cost view.** Functions ranked by self-CEst, most expensive on
+      top, coloured on a heat ramp so you see where the cycles go within the run.
+      Both ramp ends are configurable in the legend (worst end and cheapest end,
+      default dark red → white); the ramp blends worst → orange → green →
+      cheapest. The scale is **log-spread** over the displayed functions' CEst
+      range, so the full ramp shows even when one function dominates the run
+      (a linear scale would leave everything but the top hotspot near the cold
+      end and the orange/green midtones unused). Click any column header
+      (function, CEst, % of run) to re-sort; click again to flip the direction.
+    - **Two or more runs — change view.** The function×run matrix, cells coloured
+      by Δ% vs the chosen baseline run (green = improvement, red = regression).
+      The baseline column is marked with a **base** label above its header and
+      shows each function's reference CEst (M); the other columns show the Δ. A
+      **date** row under the headers shows each run's date (local runs use the
+      callgrind file's mtime, store runs the manifest date). Columns are ordered
+      **by date by default** - oldest leftmost, newest rightmost, so they read as
+      a timeline; the overflow menu's **Column order** can switch to load order or
+      by CEst.
+      The legend carries two adjustable **highlight thresholds**, one per
+      direction: a cell highlights red only when `Δ ≥` the regression threshold,
+      green only when `Δ ≤ −` the improvement threshold; smaller changes stay
+      blank, so you set how much divergence in each direction is worth the eye.
   - **Trends** — a line chart over the runs in load order; the total-CEst line
     is always drawn, and you can pick up to 5 functions to overlay.
   - **Divergence** — a diverging bar chart of each function's change in
     **self-share** of total CEst (percentage points) for a current run vs a
-    reference run (the p50 baseline by default, or any run you choose).
+    reference run (the baseline run by default, or any run you choose).
 - **Per-run detail** — click a run's chip (or its heatmap column header) to leave
   the comparison views for that one run's full per-function table: every function
   with CEst plus the 9 raw Callgrind counters it is built from, sortable on any
@@ -239,19 +260,20 @@ directory in the prof-results tree).
   of every function matching each pattern term (one row per term). **← Back**, or
   any comparison-view button, returns.
 - **Run chips** — each loaded run shows as a chip with a bar of its total CEst
-  relative to the largest run; the p50 baseline chip is marked, and **×** removes
-  a run (**Clear** removes all).
-- **Value mode** (heatmap / trends): Δ% vs p50, Δ% vs that run's total, CEst
-  cycles, or CEst % of run total.
+  relative to the largest run; the baseline chip is marked and carries a **set
+  base** button to make any other run the baseline, and **×** removes a run
+  (**Clear** removes all).
+- **Value mode** (multi-run heatmap / trends): Δ% vs baseline, CEst cycles, or
+  CEst % of run total.
 - Other controls: a **patterns** filter (space-separated, case-insensitive
   substrings), a **fold** box that folds a call path's self-CEst up into its
   caller (see **Folding call paths** below; folding re-parses every run, so it
   applies only when you press Enter in the box or click **Fold**, not on every
   keystroke; the paths baked into the current view stay listed under the run
   chips with a **reset fold list** button to clear them), the **functions**
-  top-N count, and an overflow menu for column order (load order / by
-  CEst) and **Download JSON** (the full comparison dataset, all functions, every
-  run, independent of the current view).
+  top-N count, and an overflow menu for column order (load order / by CEst /
+  by date) and **Download JSON** (the full comparison dataset, all functions,
+  every run, independent of the current view).
 
 ### Folding call paths
 
