@@ -744,7 +744,7 @@ uint8_t *_message_ring_find(bool *p_cleaned, fr_message_set_t *ms, fr_ring_buffe
  *      - NULL on error
  *	- fr_message_t* on success
  */
-static CC_HINT(always_inline) fr_message_t *message_alloc(fr_message_set_t *ms, bool *p_cleaned)
+static inline CC_HINT(always_inline) fr_message_t *message_alloc(fr_message_set_t *ms, bool *p_cleaned)
 {
 	fr_message_t *m;
 
@@ -771,7 +771,7 @@ static CC_HINT(always_inline) fr_message_t *message_alloc(fr_message_set_t *ms, 
  *      - NULL on error
  *	- fr_message_t* on success
  */
-static CC_HINT(always_inline) fr_message_t *message_reserve(fr_message_set_t *ms, bool *p_cleaned)
+static inline CC_HINT(always_inline) fr_message_t *message_reserve(fr_message_set_t *ms, bool *p_cleaned)
 {
 	fr_message_t *m;
 
@@ -795,7 +795,7 @@ static CC_HINT(always_inline) fr_message_t *message_reserve(fr_message_set_t *ms
  *      - <0 on error
  *	- 0 on success.
  */
-static CC_HINT(always_inline) int message_finalise(fr_message_set_t *ms, fr_message_t *m)
+static inline CC_HINT(always_inline) int message_finalise(fr_message_set_t *ms, fr_message_t *m)
 {
 	bool cleaned = false;
 	fr_message_t *nm;
