@@ -158,9 +158,13 @@ a{color:var(--brand);}
 .pat-inp{width:150px;border:1px solid var(--line-strong);border-radius:6px;background:var(--paper);
   font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);padding:3px 8px;text-transform:none;}
 .pat-inp::placeholder{color:#a7afbd;}
-.nthresh-inp{width:42px;border:0;border-bottom:1.5px solid var(--note);background:transparent;
-  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;text-align:center;color:var(--note);padding:0 2px;}
-.nthresh-inp:focus,.num-inp:focus{outline:0;}
+.num-inp:focus{outline:0;}
+/* Heatmap colour threshold, shown inline in the legend. */
+.legthresh{display:inline-flex;align-items:center;gap:5px;}
+.legthresh-inp{width:40px;border:0;border-bottom:1.5px solid var(--line-strong);background:transparent;
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:12.5px;text-align:center;color:var(--ink);padding:0 2px;}
+.legthresh-inp:focus{outline:0;border-bottom-color:var(--brand);}
+.legthresh-note{color:var(--faint);}
 
 /* matrix views */
 .nview{border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:auto;max-width:100%;}

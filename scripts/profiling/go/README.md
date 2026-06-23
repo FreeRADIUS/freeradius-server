@@ -222,8 +222,11 @@ directory in the prof-results tree).
   whenever the selected run set changes.
 - Three views (toggle top-left):
   - **Heatmap** — the function×run matrix; cells are coloured by Δ% vs the p50
-    baseline (green = improvement, red = regression) and outlined when
-    `|Δ|` ≥ the flag threshold.
+    baseline (green = improvement, red = regression). The legend carries two
+    adjustable **highlight thresholds**, one per direction: a cell highlights red
+    only when `Δ ≥` the regression threshold, green only when `Δ ≤ −` the
+    improvement threshold. Smaller changes stay blank, so you set how much
+    divergence in each direction is worth the eye.
   - **Trends** — a line chart over the runs in load order; the total-CEst line
     is always drawn, and you can pick up to 5 functions to overlay.
   - **Divergence** — a diverging bar chart of each function's change in
@@ -246,8 +249,7 @@ directory in the prof-results tree).
   applies only when you press Enter in the box or click **Fold**, not on every
   keystroke; the paths baked into the current view stay listed under the run
   chips with a **reset fold list** button to clear them), the **functions**
-  top-N count, the
-  flag **threshold**, and an overflow menu for column order (load order / by
+  top-N count, and an overflow menu for column order (load order / by
   CEst) and **Download JSON** (the full comparison dataset, all functions, every
   run, independent of the current view).
 
