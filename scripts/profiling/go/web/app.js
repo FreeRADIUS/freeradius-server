@@ -50,6 +50,7 @@ const loadbarMsg = $("loadbar-msg");
 const loadbarFill = $("loadbar-fill");
 const loadphase  = $("loadphase");
 const foldList   = $("foldlist");
+const foldCtl    = $("fold-ctl");
 const appliedFoldEl = $("appliedfold");
 
 // ---- state ---------------------------------------------------------------
@@ -92,8 +93,8 @@ let wasmReady = false;
 // max 5). divergence view: the current run, the comparison reference, and how
 // many functions to show. Reset when the run set changes (see analyze()).
 let trendFns = null;
-let curRun = null;      // divergence current run index (null -> latest)
-let cmpRun = "base";    // divergence reference: 'base' (the baseline run) or a run index
+let curRun = "base";    // divergence current run: 'base' (baseline) or a run index
+let cmpRun = null;      // divergence reference: null (most recent by date), 'base' (baseline), or a run index
 let dvgTopN = 10;       // divergence: 10 | 25 | 'all'
 let lastPatternsKey = ""; // last applied patterns string, to know when to reset trend picks
 const TREND_COLORS = ["#b42318", "#1f5fbf", "#b45309", "#6d28d9", "#0e7490"];
@@ -465,8 +466,8 @@ async function parseRuns(verb = "Analyzing", forceProg = false) {
   full = { funcs, R, totals, BASE, maxTotal, pathsByFn };
   // The run set changed, so view selections keyed by run/function index reset.
   trendFns = null;
-  curRun = R.length - 1;
-  cmpRun = "base";
+  curRun = "base";
+  cmpRun = null;
   // The detail view's cached parse is keyed to a specific run index, so leave it
   // and fall back to the comparison views whenever the run set changes.
   detailRun = null;
@@ -666,6 +667,9 @@ function render() {
   const chipsHint = $("chips-hint");
   if (chipsHint) chipsHint.hidden = n === 0;   // only meaningful once chips exist
   clearBtn.hidden = n === 0;
+  // Fold only applies once runs are loaded (it re-parses them), matching the old
+  // placement inside the controls toolbar that hid when empty.
+  if (foldCtl) foldCtl.hidden = n === 0;
 
   // Keep the view toggle visible even when empty so the layout reads as "results
   // go here"; the data-only controls hide via the controls-empty class.
@@ -701,18 +705,33 @@ function render() {
   if (detailRun !== null && detailData) {
     nviewEl.innerHTML = renderDetail();
     nlegendEl.innerHTML = detailLegend();
+    placeLegend(false);
     return;
   }
   if (compareRuns) {
     nviewEl.innerHTML = renderCompareDetail();
     nlegendEl.innerHTML = compareLegend();
+    placeLegend(false);
     return;
   }
   const avail = nviewEl.clientWidth > 60 ? nviewEl.clientWidth : 1040;
-  if (view === "trend") nviewEl.innerHTML = renderTrend(avail);
-  else if (view === "diverge") nviewEl.innerHTML = renderDiverge();
-  else nviewEl.innerHTML = renderHeat();
+  if (view === "trend") { nviewEl.innerHTML = renderTrend(avail); placeLegend(false); }
+  else if (view === "diverge") { nviewEl.innerHTML = renderDiverge(); placeLegend(false); }
+  else { nviewEl.innerHTML = renderHeat(); placeLegend(true); }
   nlegendEl.innerHTML = legendFor();
+}
+
+// placeLegend moves the shared legend above or below the view container. The
+// heatmap reads top-down (hottest functions first), so its legend belongs above
+// the table; every other view keeps the legend below.
+function placeLegend(above) {
+  const parent = nviewEl.parentNode;
+  nlegendEl.classList.toggle("above", above);
+  if (above) {
+    if (nviewEl.previousSibling !== nlegendEl) parent.insertBefore(nlegendEl, nviewEl);
+  } else if (nviewEl.nextSibling !== nlegendEl) {
+    parent.insertBefore(nlegendEl, nviewEl.nextSibling);
+  }
 }
 
 // updateControls hides the controls a view doesn't use: divergence has its own
@@ -1450,9 +1469,11 @@ function renderTrend(W) {
 function renderDiverge() {
   const { funcs, R, totals, BASE } = matrix;
   const N = R.length;
-  const cur = curRun == null ? N - 1 : Math.min(curRun, N - 1);
-  const ref = cmpRun === "base" ? BASE : Math.min(parseInt(cmpRun, 10), N - 1);
-  const refIsP50 = ref === BASE;
+  const cur = curRun === "base" ? BASE : Math.min(curRun, N - 1);
+  const latestIdx = R.reduce((best, r, i) => (r.date > R[best].date ? i : best), 0);
+  const ref = cmpRun === null ? latestIdx : (cmpRun === "base" ? BASE : Math.min(parseInt(cmpRun, 10), N - 1));
+  const refIsBase = cmpRun === "base";
+  const refIsLatest = cmpRun === null;
   const sameRun = cur === ref;
   const shareNow = (f) => totals[cur] ? cestOf(f, cur) / totals[cur] * 100 : 0;
   const shareRef = (f) => totals[ref] ? cestOf(f, ref) / totals[ref] * 100 : 0;
@@ -1468,14 +1489,17 @@ function renderDiverge() {
   const scale = niceCeil(maxAbs / 0.78);
   const fmtPP = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "pp";
 
-  let sel = '<select data-currun class="dvg-sel">';
-  R.forEach((r, i) => { sel += '<option value="' + i + '"' + (i === cur ? " selected" : "") + ">" + esc(r.label) + "</option>"; });
+  let sel = '<select data-currun class="dvg-sel"><option value="base"' + (curRun === "base" ? " selected" : "") + ">baseline run (auto)</option>";
+  R.forEach((r, i) => { sel += '<option value="' + i + '"' + (curRun !== "base" && cur === i ? " selected" : "") + ">" + esc(r.label) + "</option>"; });
   sel += "</select>";
-  let csel = '<select data-cmprun class="dvg-sel"><option value="base"' + (cmpRun === "base" ? " selected" : "") + ">baseline run (auto)</option>";
-  R.forEach((r, i) => { csel += '<option value="' + i + '"' + (cmpRun !== "base" && ref === i ? " selected" : "") + ">" + esc(r.label) + "</option>"; });
+  let csel = '<select data-cmprun class="dvg-sel"><option value="latest"' + (cmpRun === null ? " selected" : "") + ">most recent (auto)</option>"
+    + '<option value="base"' + (cmpRun === "base" ? " selected" : "") + ">baseline run (auto)</option>";
+  R.forEach((r, i) => { csel += '<option value="' + i + '"' + (cmpRun !== null && cmpRun !== "base" && ref === i ? " selected" : "") + ">" + esc(r.label) + "</option>"; });
   csel += "</select>";
-  const refTag = refIsP50
+  const refTag = refIsBase
     ? '<span class="dvg-ref"><span class="dvg-dot"></span><span class="dvg-base">baseline run</span><span class="dvg-rid">' + esc(R[BASE].label) + "</span></span>"
+    : refIsLatest
+    ? '<span class="dvg-ref"><span class="dvg-dot"></span><span class="dvg-base">most recent</span><span class="dvg-rid">' + esc(R[ref].label) + "</span></span>"
     : '<span class="dvg-ref"><span class="dvg-dot man"></span><span class="dvg-rid">' + esc(R[ref].label) + "</span></span>";
   const nopt = (n) => '<option value="' + n + '"' + (dvgTopN === n ? " selected" : "") + ">top " + n + "</option>";
   const nsel = '<span class="dvg-h-lbl" style="margin-left:auto;">show</span><select data-dvgn class="dvg-sel">'
@@ -1513,7 +1537,7 @@ function renderDiverge() {
       + '<div class="dvg-track"><span class="dvg-center"></span>' + bar + dlab + trans + "</div></div>";
   });
 
-  const refLabel = refIsP50 ? "baseline run" : ("run " + esc(R[ref].label));
+  const refLabel = refIsBase ? "baseline run" : refIsLatest ? "most recent run" : ("run " + esc(R[ref].label));
   const countLabel = (dvgTopN === "all" || shown.length >= funcs.length)
     ? ("all " + funcs.length + " functions")
     : ("top " + shown.length + " of " + funcs.length + " functions, by current share");
@@ -1748,7 +1772,7 @@ async function addRunsFromStore(paths) {
 // ---- events --------------------------------------------------------------
 // Source choice: local files (default) or the hosted prof-results store. The
 // store path opens the selection modal, which fetches the store manifest.
-let source = "local";
+let source = "repo";
 const srcseg = $("srcseg");
 const repoModal = $("repo-modal");
 // The import filter only applies to a local-files pick; the Repo picker has its
@@ -1763,7 +1787,7 @@ srcseg.addEventListener("click", (e) => {
   srcseg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
   updateSourceUI();
 });
-updateSourceUI(); // set initial visibility for the default (local) source
+updateSourceUI(); // set initial visibility for the default (repo) source
 
 function openRepoModal() { repoModal.classList.add("on"); fetchStoreManifest(); }
 function closeRepoModal() { repoModal.classList.remove("on"); }
@@ -1928,9 +1952,9 @@ menu.addEventListener("click", (e) => {
 // re-rendered view, so listen via delegation on the view container.
 nviewEl.addEventListener("change", (e) => {
   const cc = e.target.closest("[data-currun]");
-  if (cc) { curRun = parseInt(cc.value, 10); render(); return; }
+  if (cc) { curRun = cc.value === "base" ? "base" : parseInt(cc.value, 10); render(); return; }
   const cr = e.target.closest("[data-cmprun]");
-  if (cr) { cmpRun = cr.value === "base" ? "base" : parseInt(cr.value, 10); render(); return; }
+  if (cr) { cmpRun = cr.value === "latest" ? null : (cr.value === "base" ? "base" : parseInt(cr.value, 10)); render(); return; }
   const cn = e.target.closest("[data-dvgn]");
   if (cn) { dvgTopN = cn.value === "all" ? "all" : parseInt(cn.value, 10); render(); return; }
   const ctn = e.target.closest("[data-cmp-topn]");

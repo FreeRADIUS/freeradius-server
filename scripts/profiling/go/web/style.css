@@ -107,6 +107,9 @@ a{color:var(--brand);}
 .lp-step.done{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
 .lp-step.done .lp-dot{background:var(--accent);}
 .lp-sep{color:var(--line-strong);font-weight:400;}
+/* Fold call-path control, directly above the list of paths it folds. */
+.fold-ctl{display:flex;align-items:center;gap:8px;margin:8px 2px 0;}
+.fold-ctl[hidden]{display:none;}
 /* Fold-path list under the Folding pill: each full call path on its own row. */
 .foldlist{display:flex;flex-direction:column;gap:4px;margin:6px 2px 0;}
 .foldlist[hidden]{display:none;}
@@ -353,6 +356,7 @@ td.detail-empty{padding:22px 14px;text-align:center;color:var(--ink-soft);font-s
 .trend-leg{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;padding:9px 12px;border-top:1px dashed var(--line);color:var(--ink-soft);}
 
 .nlegend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:12px;align-items:center;}
+.nlegend.above{margin-top:0;margin-bottom:12px;}
 .nlegend:empty{display:none;}
 .swatch{display:inline-block;width:14px;height:12px;border:1px solid var(--line-strong);border-radius:3px;vertical-align:middle;margin-right:5px;}
 
@@ -391,8 +395,8 @@ table.runs-tbl th.sortable:hover{color:var(--ink);}
 table.runs-tbl th.sortable.on{color:var(--brand);}
 table.runs-tbl .rarr{display:inline-block;width:9px;margin-left:3px;font-size:9px;}
 .runs-empty{padding:26px 14px;text-align:center;color:var(--ink-soft);font-size:13px;line-height:1.5;white-space:normal;}
-.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;align-items:center;}
-.src-mini{font-size:11px;color:var(--ink-soft);margin-right:auto;}
+.modal-actions{display:flex;justify-content:flex-start;gap:10px;margin:0 0 12px;align-items:center;}
+.src-mini{font-size:11px;color:var(--ink-soft);}
 
 /* Copy-fold-path: hover a function name to reveal it is copyable. */
 .copyfn{cursor:copy;}

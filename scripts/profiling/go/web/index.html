@@ -21,10 +21,10 @@
           <div class="add-bar">
             <button class="btn btn-sm btn-green" id="add-runs">+ ADD RUNS</button>
             <div class="viewseg" id="srcseg" title="Where to add runs from">
-              <button class="on" data-src="local">LOCAL FILES</button>
+              <button data-src="local">LOCAL FILES</button>
               <input type="text" id="import-filter" class="seg-filter" placeholder="filter local folders"
                 title="Local files only: import only folders whose path contains this. Space-separated terms match ANY (case-insensitive). Empty imports every folder in the pick." />
-              <button data-src="repo">REPO</button>
+              <button class="on" data-src="repo">REPO</button>
             </div>
             <button class="btn btn-sm" id="clear-runs" hidden>CLEAR</button>
           </div>
@@ -46,6 +46,13 @@
              The phase stepper makes clear that reading files is quick and the time
              is spent in the analysis step. -->
         <div class="loadphase" id="loadphase" hidden></div>
+        <!-- Fold call-path control, sitting directly above the list of paths it folds. -->
+        <div class="fold-ctl" id="fold-ctl" hidden>
+          <label class="field-lbl inline">fold
+            <input type="text" id="fold" class="pat-inp" placeholder="root/.../target" title="Fold a call path into its caller (folds that frame's self-CEst up). Root-first, slash-separated, target last; comma-separate multiple paths. Needs --separate-callers profiling data. Type the path, then press Enter or click Fold to apply (it re-parses every run)." />
+          </label>
+          <button class="btn btn-sm" id="fold-apply" title="Apply the fold paths — re-parses every run. Or press Enter in the box.">Fold</button>
+        </div>
         <!-- The call paths being folded, listed full under the Folding pill. -->
         <div class="foldlist" id="foldlist" hidden></div>
         <div class="loadbar" id="loadbar" hidden role="status" aria-live="polite">
@@ -101,10 +108,6 @@
         <label class="field-lbl inline">patterns
           <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />
         </label>
-        <label class="field-lbl inline">fold
-          <input type="text" id="fold" class="pat-inp" placeholder="root/.../target" title="Fold a call path into its caller (folds that frame's self-CEst up). Root-first, slash-separated, target last; comma-separate multiple paths. Needs --separate-callers profiling data. Type the path, then press Enter or click Fold to apply (it re-parses every run)." />
-        </label>
-        <button class="btn btn-sm" id="fold-apply" title="Apply the fold paths — re-parses every run. Or press Enter in the box.">Fold</button>
         <label class="field-lbl inline">functions
           <input type="number" id="topn" placeholder="all" min="1" step="5" class="num-inp"
             title="Max functions to show, ranked by CEst. Empty = all." />
@@ -137,6 +140,11 @@
     <div class="modal sketch" role="dialog" aria-modal="true" aria-label="Select runs from the hosted store">
       <h4>Select runs to compare — <span id="repo-host">cinfra-ca.testdev.inkbridge.io</span></h4>
       <p class="mp">Hosted prof-results store · tick many · sorted by date</p>
+      <div class="modal-actions">
+        <button class="btn" id="repo-cancel">Cancel</button>
+        <button class="btn btn-primary" id="repo-add" disabled>Add selected</button>
+        <span class="src-mini" id="repo-ticked">0 ticked</span>
+      </div>
       <div class="search"><span>🔍</span><input id="repo-search" placeholder="filter by branch, commit, PR…" disabled /></div>
       <table class="runs-tbl">
         <thead><tr>
@@ -158,11 +166,6 @@
           </div></td></tr>
         </tbody>
       </table>
-      <div class="modal-foot">
-        <span class="src-mini" id="repo-ticked">0 ticked</span>
-        <button class="btn" id="repo-cancel">Cancel</button>
-        <button class="btn btn-primary" id="repo-add" disabled>Add selected</button>
-      </div>
     </div>
   </div>
 
