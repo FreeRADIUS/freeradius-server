@@ -524,7 +524,17 @@ async function analyze({ verb = "Analyzing", forceProg = false } = {}) {
 }
 
 // ---- helpers (ported from the wireframe) ---------------------------------
-const fmtM = (v) => (v / 1e6).toFixed(1) + "M";
+// Millions, 1 decimal for normal values, but adaptive: when a value is so small
+// that 1 decimal would round it to 0.0M, add decimals to keep a couple of
+// significant figures so small-but-nonzero CEst shows a real digit instead of a
+// misleading 0.0M. True zero stays 0.0M. (fmtM3 does the same with 3 decimals.)
+const fmtM = (v) => {
+  const m = v / 1e6;
+  const abs = Math.abs(m);
+  // abs < 0.05 is exactly where toFixed(1) rounds to 0.0.
+  const dec = (abs > 0 && abs < 0.05) ? Math.min(12, 1 - Math.floor(Math.log10(abs))) : 1;
+  return m.toFixed(dec) + "M";
+};
 // Millions for the compare table, where sub-0.1M CEst differences (e.g. two
 // values that both round to 0.0M but differ by tens of percent) must stay
 // legible. Adaptive precision: at least 3 decimals (matching the rest of the
