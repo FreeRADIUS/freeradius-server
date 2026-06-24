@@ -287,7 +287,7 @@ td.detail-empty{padding:22px 14px;text-align:center;color:var(--ink-soft);font-s
 .detail-sub-note{font-weight:400;font-size:11.5px;color:var(--ink-soft);}
 
 /* trends: function picker + chart */
-.trend-pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);font-size:12px;}
+.trend-pick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line);font-size:12px;}
 .trend-pick .lbl{font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-size:11px;margin-right:2px;white-space:nowrap;}
 .tfn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:999px;padding:3px 10px;cursor:pointer;background:var(--paper);color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:11px;}
 .tfn:hover{background:#f6f8fb;}

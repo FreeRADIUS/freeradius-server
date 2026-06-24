@@ -1478,7 +1478,8 @@ function renderTrend(W) {
   let leg = '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;padding:9px 12px;border-top:1px dashed #d6dce5;">';
   series.slice().reverse().forEach((se) => { leg += '<span style="color:' + se.col + ';font-weight:700;">— ' + esc(se.name) + "</span>"; });
   leg += '<span style="color:#566173;">' + modeLabel + " · load order</span></div>";
-  return pick + s + leg;
+  // Function picker sits below the graph (and its legend), not above it.
+  return s + leg + pick;
 }
 
 // ---- divergence view -----------------------------------------------------
