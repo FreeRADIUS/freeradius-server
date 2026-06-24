@@ -777,7 +777,12 @@ function populateFocusRun() {
 
 function renderChips() {
   chipsEl.replaceChildren();
-  runs.forEach((r, i) => {
+  // Display chips oldest → newest by run date (load order breaks ties), matching
+  // the heatmap's default date column order. `i` stays the run's load-order index
+  // used everywhere else (baseline, compare selection, totals[i], matrix.R[i]).
+  const order = runs.map((_, i) => i).sort((a, b) => (runs[a].date - runs[b].date) || (a - b));
+  order.forEach((i) => {
+    const r = runs[i];
     const isBase = matrix && i === matrix.BASE;
     const total = matrix ? matrix.totals[i] : 0;
     const pct = matrix ? Math.round(total / matrix.maxTotal * 100) : 0;

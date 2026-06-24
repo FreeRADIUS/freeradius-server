@@ -186,9 +186,22 @@ a{color:var(--brand);}
 /* matrix views */
 .nview{border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:auto;max-width:100%;}
 .nview:empty{display:none;}
-/* width:auto so the table hugs its columns — with few runs the result cells
-   stay next to the function names instead of stretching across the panel. */
+/* Multi-run change view fills the panel: the run columns stretch to share the
+   width the function column leaves, so 3 runs render wide and 20 runs render
+   narrow instead of all the slack pooling as empty space on the right.
+   table-layout:fixed splits that slack evenly across the run columns and keeps
+   the function column at a stable width. min-width on the run headers is
+   honoured by the fixed layout, so once there are enough runs that the columns
+   can't shrink further the table overflows 100% and the panel scrolls.
+   The single-run cost view (.heat-cost) keeps width:auto and hugs its columns. */
 table.heat{border-collapse:collapse;font-size:11px;}
+table.heat:not(.heat-cost){width:100%;table-layout:fixed;}
+table.heat:not(.heat-cost) .fn{width:240px;}
+table.heat:not(.heat-cost) thead th.hcol{min-width:54px;}
+/* At width:100% the table reaches the edge of the .nview box, which draws its
+   own border, so the last column's right border would double up into a thick
+   line. Drop it; the box frames that edge. */
+table.heat:not(.heat-cost) tr > *:last-child{border-right:0;}
 /* Vertical column separators only (one-sided border-right): no per-column
    top/bottom borders, so nothing doubles into thick lines (the sticky header
    made full 4-side borders render doubled). The nview box frames the edges. */
