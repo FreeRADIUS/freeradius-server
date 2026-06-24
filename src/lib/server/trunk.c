@@ -1379,6 +1379,9 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 	fr_dlist_insert_tail(&tconn->reapable, treq);
 
 	if (!treq->sent) {
+		trunk->pub.last_write_success = fr_time();
+
+		tconn->pub.last_write_success = trunk->pub.last_write_success;
 		tconn->sent_count++;
 		treq->sent = true;
 
