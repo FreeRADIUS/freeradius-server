@@ -83,6 +83,7 @@ struct fr_redis_cluster_thread_s {
 	fr_redis_ct_state_t		state;		//!< State of the cluster.
 	fr_dlist_head_t			pend_cmds;	//!< Commands awaiting cluster map.
 	fr_dlist_head_t			pend_reqs;	//!< Requests awaiting cluster map.
+	fr_time_t			map_updated;	//!< Time the cluster last updated.
 };
 
 struct fr_redis_ct_node_s {
@@ -831,6 +832,7 @@ do { \
 	}
 
 	rtcluster->state = CLUSTER_READY;
+	rtcluster->map_updated = fr_time();
 
 	/*
 	 *	Enqueue any commands which were waiting for the cluster remap.
@@ -932,6 +934,16 @@ fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t
 	int			ret;
 
 	if (rtcluster->cluster_id == 0) return REDIS_ASYNC_RCODE_BOOTSTRAP;
+
+	/*
+	 *	The update request has already been sent.
+	 */
+	if ((rtcluster->state == CLUSTER_MAP_FETCHING) && !force) return REDIS_ASYNC_RCODE_SUCCESS;
+
+	/*
+	 *	If the cluster was updated less than 1 sec ago, don't ask.
+	 */
+	if (((fr_time_to_sec(fr_time()) == fr_time_to_sec(rtcluster->map_updated))) && !force) return REDIS_ASYNC_RCODE_SUCCESS;
 
 	local = talloc_new(NULL);
 	fr_pair_list_init(&list);
