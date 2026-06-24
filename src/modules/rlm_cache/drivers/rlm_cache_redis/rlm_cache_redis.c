@@ -286,6 +286,10 @@ static cache_status_t cache_redis_results(request_t *request, rlm_cache_redis_t 
 		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return CACHE_ERROR;
 		return CACHE_YIELD;
 
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return CACHE_ERROR;
+		return CACHE_YIELD;
+
 	case REDIS_ASYNC_RCODE_ERROR:
 		RPERROR("Server returned error");
 		return CACHE_ERROR;

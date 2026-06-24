@@ -486,6 +486,10 @@ static xlat_action_t redis_lua_func_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t 
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
 		return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
 
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
+		return unlang_xlat_yield(request, redis_lua_func_resume, redis_lua_cancel, ~FR_SIGNAL_CANCEL, rctx);
+
 	case REDIS_ASYNC_RCODE_ERROR:
 		PERROR("Server returned error");
 		return XLAT_ACTION_FAIL;
@@ -689,6 +693,10 @@ static xlat_action_t redis_xlat_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out
 	case REDIS_ASYNC_RCODE_ASK:
 		if (rctx->forced_node) goto error;
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
+		return unlang_xlat_yield(request, redis_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
+
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
 		return unlang_xlat_yield(request, redis_xlat_resume, redis_xlat_cancel, ~FR_SIGNAL_CANCEL, rctx);
 
 	case REDIS_ASYNC_RCODE_ERROR:

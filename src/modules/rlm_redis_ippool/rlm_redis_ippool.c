@@ -1315,6 +1315,10 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 		if (fr_redis_async_cmd_redirect(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
 		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
 
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
+		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+
 	default:
 		break;
 	}
@@ -1766,6 +1770,11 @@ static unlang_action_t CC_HINT(nonnull) mod_pools_list_resume(unlang_result_t *p
 	case REDIS_ASYNC_RCODE_FAIL:
 		fr_pair_list_free(&rctx->pools);
 		RETURN_UNLANG_FAIL;
+
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) RETURN_UNLANG_FAIL;
+		return unlang_module_yield(request, mod_pools_list_resume, mod_pools_list_cancel,
+					   ~FR_SIGNAL_CANCEL, mctx->rctx);
 
 	default:
 		break;
@@ -2391,6 +2400,10 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 
 	case REDIS_ASYNC_RCODE_ASK:
 		if (fr_redis_async_cmd_redirect(rctx->cmd) != REDIS_ASYNC_RCODE_SUCCESS) return XLAT_ACTION_FAIL;
+		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, ~FR_SIGNAL_CANCEL, rctx);
+
+	case REDIS_ASYNC_RCODE_TRY_AGAIN:
+		if (fr_redis_async_cmd_resend(rctx->cmd) != REDIS_ASYNC_RCODE_ASK) return XLAT_ACTION_FAIL;
 		return unlang_xlat_yield(request, redis_ippool_common_resume, redis_ippool_common_cancel, ~FR_SIGNAL_CANCEL, rctx);
 
 	case REDIS_ASYNC_RCODE_ERROR:
