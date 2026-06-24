@@ -253,6 +253,10 @@ table.heat tbody tr:last-child td.base-col{box-shadow:inset 2px 0 0 var(--accent
 table.detail.cmp .cmp-best{margin-left:5px;font-size:9.5px;font-weight:700;color:#1f7a55;text-transform:uppercase;letter-spacing:.03em;}
 table.detail.cmp .cmp-d{margin-left:5px;font-size:10.5px;font-weight:600;color:#7a2018;}
 table.detail.cmp td.cmp-spread{font-weight:700;}
+/* Run date under each run column's label in the compare header (matches the
+   heatmap's date row). Block so it drops to its own line below the run label. */
+table.detail.cmp thead th .cmp-date{display:block;margin-top:2px;font-size:9px;
+  font-weight:400;color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;}
 .detail-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line);}
 .detail-title{font-size:12.5px;color:var(--ink-soft);}
 .detail-title b{color:var(--ink);}

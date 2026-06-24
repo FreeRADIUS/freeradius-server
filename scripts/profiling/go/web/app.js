@@ -525,10 +525,19 @@ async function analyze({ verb = "Analyzing", forceProg = false } = {}) {
 
 // ---- helpers (ported from the wireframe) ---------------------------------
 const fmtM = (v) => (v / 1e6).toFixed(1) + "M";
-// 3-decimal millions for the compare table, where sub-0.1M CEst differences
-// (e.g. two values that both round to 0.0M but differ by tens of percent) must
-// stay legible.
-const fmtM3 = (v) => (v / 1e6).toFixed(3) + "M";
+// Millions for the compare table, where sub-0.1M CEst differences (e.g. two
+// values that both round to 0.0M but differ by tens of percent) must stay
+// legible. Adaptive precision: at least 3 decimals (matching the rest of the
+// table), but more when the value is so small that 3 decimals would round it
+// to 0.000M — enough to keep ~3 significant figures, so every nonzero cell
+// shows a real digit instead of a misleading zero. True zero stays 0.000M.
+const fmtM3 = (v) => {
+  const m = v / 1e6;
+  const abs = Math.abs(m);
+  // abs < 0.0005 is exactly where toFixed(3) rounds to 0.000.
+  const dec = (abs > 0 && abs < 0.0005) ? Math.min(12, 2 - Math.floor(Math.log10(abs))) : 3;
+  return m.toFixed(dec) + "M";
+};
 // fmtInt groups a raw counter with thousands separators (the detail tables show
 // exact counts, not the M-abbreviated values used in the heatmap cells).
 const fmtInt = (v) => Math.round(v).toLocaleString("en-US");
@@ -1067,12 +1076,16 @@ function cmpHeat(d) {
 
 // cmpTh renders a sortable compare-table header. key is 'name', 'spread', or a
 // run index (as a string) for that run's CEst column.
-function cmpTh(key, label) {
+function cmpTh(key, label, sub) {
   const active = String(compareSort.key) === key;
   const arrow = active ? (compareSort.dir === "asc" ? "▲" : "▼") : "";
   const cls = "dsort" + (active ? " on" : "") + (key === "name" ? " col-name" : " col-num");
+  // `sub` is an optional second line under the label (the run date for run columns).
   return '<th class="' + cls + '" data-cmpsort="' + key + '">' + label
-    + '<span class="darr">' + arrow + "</span></th>";
+    + '<span class="darr">' + arrow + "</span>"
+    // The trailing empty .darr matches the arrow's reserved width on the label
+    // line, so the date right-aligns to the same edge as the label.
+    + (sub ? '<span class="cmp-date">' + sub + '<span class="darr"></span></span>' : "") + "</th>";
 }
 
 function compareLegend() {
@@ -1151,7 +1164,8 @@ function renderCompareDetail() {
 
   h += '<div class="detail-scroll"><table class="detail cmp"><thead><tr>';
   h += cmpTh("name", "Function");
-  sel.forEach((ri) => { h += cmpTh(String(ri), esc(R[ri].label)); });
+  sel.forEach((ri) => { h += cmpTh(String(ri), esc(R[ri].label),
+    '<span title="' + esc(fmtStoreDate(R[ri].date)) + '">' + esc(fmtShortDate(R[ri].date)) + "</span>"); });
   h += cmpTh("spread", "spread");
   h += "</tr></thead><tbody>";
   if (shown.length === 0) {
