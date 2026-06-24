@@ -1148,6 +1148,11 @@ int cf_section_pass2(CONF_SECTION *cs)
 					    (cp->rhs_quote != T_BARE_WORD));
 		if (!value) return -1;
 
+		if (!*value) {
+			ERROR("%s[%d]: Empty filename in $INCLUDE", ci->filename, ci->lineno);
+			return -1;
+		}
+
 		talloc_const_free(cp->value);
 		cp->value = talloc_strdup(cp, value);
 	}
