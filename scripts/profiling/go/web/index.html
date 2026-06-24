@@ -18,19 +18,19 @@
 
       <div class="nbar sketch">
         <div class="nbar-top">
+          <div class="add-bar">
+            <button class="btn btn-sm btn-green" id="add-runs">+ ADD RUNS</button>
+            <div class="viewseg" id="srcseg" title="Where to add runs from">
+              <button class="on" data-src="local">LOCAL FILES</button>
+              <input type="text" id="import-filter" class="seg-filter" placeholder="filter local folders"
+                title="Local files only: import only folders whose path contains this. Space-separated terms match ANY (case-insensitive). Empty imports every folder in the pick." />
+              <button data-src="repo">REPO</button>
+            </div>
+            <button class="btn btn-sm" id="clear-runs" hidden>CLEAR</button>
+          </div>
           <div class="nbar-meta">
             <b id="nrun-count">0</b> <span id="nrun-mode">runs loaded</span>
             <span class="tag" id="nrun-base">—</span>
-          </div>
-          <div class="add-bar">
-            <div class="viewseg" id="srcseg" title="Where to add runs from">
-              <button class="on" data-src="local">Local files</button>
-              <input type="text" id="import-filter" class="seg-filter" placeholder="filter local folders"
-                title="Local files only: import only folders whose path contains this. Space-separated terms match ANY (case-insensitive). Empty imports every folder in the pick." />
-              <button data-src="repo">Repo</button>
-            </div>
-            <button class="btn btn-sm" id="add-runs">+ Add runs</button>
-            <button class="btn btn-sm" id="clear-runs" hidden>Clear</button>
           </div>
         </div>
         <!-- Hidden directory picker: each pick is one run (one test directory). -->

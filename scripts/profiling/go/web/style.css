@@ -26,6 +26,9 @@ a{color:var(--brand);}
   padding:7px 14px;cursor:pointer;line-height:1;white-space:nowrap;}
 .btn:hover{background:#f6f8fb;}
 .btn-sm{font-size:12.5px;padding:5px 10px;}
+.btn-green{background:var(--accent);color:#fff;border-color:var(--accent);line-height:1.55;padding:6px 10px;}
+.btn-green:hover{background:#196344;border-color:#196344;}
+#clear-runs{line-height:1.55;padding:6px 10px;}
 
 .stage{max-width:1320px;margin:0 auto;padding:0 28px;}
 .app{border:0px solid var(--line);border-radius:12px;background:var(--paper);padding:22px;
@@ -38,7 +41,7 @@ a{color:var(--brand);}
 
 /* run bar + chips */
 .nbar{padding:14px 16px;margin-top:16px;}
-.nbar-top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;}
+.nbar-top{display:flex;align-items:center;gap:12px;justify-content:flex-start;margin-bottom:6px;flex-wrap:wrap;}
 .nbar-meta{font-size:13px;}
 .empty-hint{font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;}
 .chips-hint{font-size:11px;color:var(--ink-soft);padding:8px 8px 0;}
