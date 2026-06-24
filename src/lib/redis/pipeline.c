@@ -618,6 +618,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 		} else {
 			trunk_request_signal_complete(cmds->treq);
 		}
+		cmds->treq = NULL;
 		return;
 	}
 
@@ -663,7 +664,10 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 *	is complete.
 	 */
 	if ((fr_dlist_num_elements(&cmds->pending) == 0) &&
-	    (fr_dlist_num_elements(&cmds->sent) == 0)) trunk_request_signal_complete(cmds->treq);
+	    (fr_dlist_num_elements(&cmds->sent) == 0)) {
+		trunk_request_signal_complete(cmds->treq);
+		cmds->treq = NULL;
+	}
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
