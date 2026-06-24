@@ -403,7 +403,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 					return NULL;
 				}
 
-				len = read(fd, p, (output + outsize) - p);
+				len = read(fd, p, (output + outsize) - p - 1);
 				if (len < 0) goto fail_fd;
 
 				close(fd);
@@ -774,7 +774,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	if (DEBUG_ENABLED2) cf_log_debug(cs, "including configuration file %s", filename);
 
-	if (!fp) {		
+	if (!fp) {
 	error:
 		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
