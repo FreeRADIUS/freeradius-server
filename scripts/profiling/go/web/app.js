@@ -125,6 +125,18 @@ let compareDataKey = "";  // the compareRuns the cached rows were computed for
 // The 10 numeric columns shared by both detail tables (first column is the
 // Function/Pattern name). CEst leads, then the 9 raw Callgrind counters.
 const COUNTER_COLS = ["CEst", "Ir", "I1mr", "D1mr", "D1mw", "ILmr", "DLmr", "DLmw", "Bcm", "Bim"];
+const COUNTER_DESC = {
+  CEst: "CPU Cycle Estimate",
+  Ir:   "Instruction Fetch",
+  I1mr: "L1 Instr. Fetch Miss",
+  D1mr: "L1 Data Read Miss",
+  D1mw: "L1 Data Write Miss",
+  ILmr: "LL Instr. Fetch Miss",
+  DLmr: "LL Data Read Miss",
+  DLmw: "LL Data Write Miss",
+  Bcm:  "Mispredicted Cond. Branch",
+  Bim:  "Mispredicted Ind. Branch",
+};
 
 // ---- WASM load -----------------------------------------------------------
 async function loadWasm() {
@@ -1194,8 +1206,9 @@ function sortableTh(table, col, label, sort) {
   const active = sort.key === col;
   const arrow = active ? (sort.dir === "asc" ? "▲" : "▼") : "";
   const cls = "dsort" + (active ? " on" : "") + (col === "name" ? " col-name" : " col-num");
+  const desc = COUNTER_DESC[col] ? " - " + COUNTER_DESC[col] : "";
   return '<th class="' + cls + '" data-sorttable="' + table + '" data-sortcol="' + col
-    + '" title="Sort by ' + esc(label) + '">' + esc(label)
+    + '" title="Sort by ' + esc(label) + desc + '">' + esc(label)
     + '<span class="darr">' + arrow + "</span></th>";
 }
 

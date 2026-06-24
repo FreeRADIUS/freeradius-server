@@ -62,6 +62,17 @@
           <div class="ibody">
             <p style="margin:6px 0 0;"><b>CEst</b> (CPU Cycle Estimate) weights each callgrind counter by its approximate cycle cost:</p>
             <div class="formula2" id="formula">CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</div>
+            <p style="margin:8px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.8;">
+              <code>Ir</code> Instruction Fetch &nbsp;·&nbsp;
+              <code>I1mr</code> L1 Instr. Fetch Miss &nbsp;·&nbsp;
+              <code>D1mr</code> L1 Data Read Miss &nbsp;·&nbsp;
+              <code>D1mw</code> L1 Data Write Miss &nbsp;·&nbsp;
+              <code>ILmr</code> LL Instr. Fetch Miss &nbsp;·&nbsp;
+              <code>DLmr</code> LL Data Read Miss &nbsp;·&nbsp;
+              <code>DLmw</code> LL Data Write Miss &nbsp;·&nbsp;
+              <code>Bcm</code> Mispredicted Cond. Branch &nbsp;·&nbsp;
+              <code>Bim</code> Mispredicted Ind. Branch
+            </p>
             <p style="margin:14px 0 0;"><b>Two ways to read the heatmap</b></p>
             <ol>
               <li><b>One run — cost view.</b> Functions are ranked by self-CEst, most expensive on top, and coloured on a heat ramp (worst → cheapest) so you see where the cycles go. Pick the worst-end colour in the legend.</li>
