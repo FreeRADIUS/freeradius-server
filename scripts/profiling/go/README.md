@@ -45,7 +45,7 @@ go/
 │   ├── report.go         text / comparison / markdown writers
 │   ├── compare.go        per-function CEst compare (lowest-CEst baseline, spread)
 │   └── json.go           JSON report schema + writer
-├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, stdout (native + WASI)
+├── cmd/cest-analyzer/    CLI: flags, os.Open/Glob, store fetch (-r), stdout (native + WASI)
 └── web/                  browser target (GOOS=js); all analysis is client-side
     ├── wasm/main.go      syscall/js bridge (globalThis.cestMatrix, cestReport,
     │                     cestRunCEst, cestRunDetail, cestCompare)
@@ -106,6 +106,12 @@ wasmtime --dir /path/to/prof-results \
     cest-analyzer.wasm \
     -d /path/to/prof-results prefix1
 ```
+
+WASI has no network access, so the `-r` store-fetch flag is **native-only** — the
+`.wasm` build can analyze local `-d` directories only. To sandbox the analysis of
+store runs, fetch them first with the native binary (`-r --cache-dir ./prof-cache`)
+or `curl`, then mount that directory (`wasmtime --dir ./prof-cache …`) and pass the
+cached run folders with `-d`.
 
 ### Option 2: `GOOS=js` — browser app (`./web/wasm`)
 
@@ -335,13 +341,20 @@ so hovering only reveals the choices.)
 cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 
 # Compare mode (per-function CEst across runs; the terminal/WASI equivalent of
-# the UI compare view) - needs >=2 dirs; --filter scopes it to matching functions
+# the UI compare view) - needs >=2 runs; --filter scopes it to matching functions
 cest-analyzer --compare [--filter pat,...] [--json <file>] -d <dir> -d <dir> [-d <dir> ...]
+
+# Same, but fetch runs from the online store by path instead of a local dir
+# (native build only; -r and -d can be mixed, order = compare column order)
+cest-analyzer --compare [--store-url <url>] -r <branch/sha/run/suite/test> -r <...>
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-d <dir>` | `.` | Profiling directory containing `callgrind.out.*` files. Repeatable. |
+| `-r <run>` | _(none)_ | Fetch a run from the online store and analyze it without downloading by hand. `<run>` is a store path (`branch/sha/run/suite/test`, exactly as in a shareable-URL run path) under `--store-url`, or a full URL under that base. Repeatable, and mixes with `-d`; the `-d`/`-r` order on the command line is the compare column order. **Native build only** (WASI has no network — see WebAssembly). |
+| `--store-url <url>` | `$CEST_STORE_URL`, else `https://cinfra-ca.testdev.inkbridge.io/profiling` | Base URL of the profiling store that `-r` paths resolve against. Its `manifest.json` supplies each run's `callgrind.out.*` file names. |
+| `--cache-dir <dir>` | _(none; stream)_ | Download `-r` run files into this directory (mirroring the run path) and reuse them on later runs. Without it, files stream straight from HTTP and nothing is saved. |
 | `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs. |
 | `--filter <pat,...>` | _(none)_ | `--compare` only: scope to functions whose name matches any filter (repeatable and/or comma-separated; substring, case-insensitive). Trailing positionals work too. |
 | `--fold <path>` | _(none)_ | Fold a call path's self-CEst up into its caller (see **Folding call paths**). Root-first, slash-separated, frame to fold last (e.g. `app_handler/talloc_pool/_talloc`); repeatable and/or comma-separated for several paths. Needs `--separate-callers` profiling data. Applies to both the pattern report and `--compare`. |
@@ -380,6 +393,20 @@ Patterns are case-insensitive substrings matched against function names.
     -d /path/to/build2/prof-results \
     --filter _talloc,fr_rb --json compare.json
 
+# Compare runs straight from the online store with -r (no manual download).
+# The store paths are the same ones a shareable-URL link carries; the -r order
+# is the compare column order. --filter works the same as above.
+./cest-analyzer --compare --filter fr_ \
+    -r dev-marc-casavant_publish-prof-result-artifacts/f08767b/8/ldap/short_ci \
+    -r dev-marc-casavant_publish-prof-result-artifacts/f08767b/8/mysql/short_ci \
+    -r dev-marc-casavant_publish-prof-result-artifacts/f08767b/5/mysql/short_ci
+
+# Same, but save the fetched files for reuse, and point at a non-default store.
+./cest-analyzer --compare --cache-dir ./prof-cache \
+    --store-url https://cinfra-ca.testdev.inkbridge.io/profiling \
+    -r dev-marc-casavant_publish-prof-result-artifacts/f08767b/8/ldap/short_ci \
+    -r dev-marc-casavant_publish-prof-result-artifacts/f08767b/5/mysql/short_ci
+
 # Fold one call path's self-CEst up into its caller (needs --separate-callers
 # profiling data). Here _talloc called via app_handler -> talloc_pool is folded
 # into talloc_pool; _talloc reached any other way keeps its own row.
@@ -391,7 +418,8 @@ Patterns are case-insensitive substrings matched against function names.
 The two forms answer different questions: the **pattern report** baselines every
 run against the first `-d` and groups by your patterns; **`--compare`** is the
 per-function, lowest-CEst-baselined matrix the UI shows when you tick run chips.
-Both run identically under WASI (same binary).
+Both run identically under WASI (same binary) for local `-d` runs; the `-r`
+store-fetch flag is native-only (WASI has no network).
 
 ## Output
 
