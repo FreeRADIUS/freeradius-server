@@ -122,6 +122,9 @@ let compareRuns = null;
 let compareSort = { key: "spread", dir: "desc" }; // 'name' | 'spread' | a run index
 let compareTopN = "all"; // compare view row cap: 'all' (default) or a number
 let compareData = null;   // Go-computed compare rows (cestCompare) for compareDataKey
+// True while restoreFromURL() is reconstructing state from a shared link, so
+// render()'s syncURL() doesn't overwrite the hash mid-restore (see syncURL).
+let restoring = false;
 let compareDataKey = "";  // the compareRuns the cached rows were computed for
 // The 10 numeric columns shared by both detail tables (first column is the
 // Function/Pattern name). CEst leads, then the 9 raw Callgrind counters.
@@ -147,7 +150,7 @@ async function loadWasm() {
   go.run(instance); // registers globalThis.cestMatrix, then blocks on select{}
   wasmReady = true;
 }
-loadWasm().catch((e) => showError(`Failed to load WASM: ${e}`));
+const wasmReadyP = loadWasm().catch((e) => showError(`Failed to load WASM: ${e}`));
 
 // ---- store config --------------------------------------------------------
 // The hosted prof-results store URL/label is deploy-configurable via config.json
@@ -183,7 +186,7 @@ async function loadConfig() {
   const hostEl = $("repo-host"); if (hostEl) hostEl.textContent = store.label;
   const urlEl = $("repo-url"); if (urlEl) urlEl.textContent = store.url.replace(/^https?:\/\//, "");
 }
-loadConfig();
+const configReadyP = loadConfig();
 
 // ---- loading indicator ---------------------------------------------------
 // Adding one run is instant, but reading + parsing 10–20 runs takes long enough
@@ -675,6 +678,7 @@ function renderAppliedFold() {
 }
 
 function render() {
+  syncURL();   // keep the address-bar URL in step with the current view (repo runs)
   renderChips();
   renderAppliedFold();
   updateCompareBar();
@@ -1789,7 +1793,10 @@ async function addRunsFromStore(paths) {
       showError("Failed to fetch " + r.path + " (" + (e.message || e) + ")");
       continue;
     }
-    runs.push({ label: uniqueLabel(r.sha + "/" + r.run + "/" + r.suite + "/" + r.test), files: filesObj, date: r.date || 0 });
+    // `path` is the store path this run came from; it's what the shareable URL
+    // records so the run can be re-fetched on open. Local picks have no path, so
+    // a run set containing any of them is not shareable (see syncURL).
+    runs.push({ label: uniqueLabel(r.sha + "/" + r.run + "/" + r.suite + "/" + r.test), files: filesObj, date: r.date || 0, path: r.path });
   }
   setActivePhase(1);
   if (!failed) hideError();
@@ -2229,5 +2236,136 @@ function downloadCompareJson() {
 function showError(msg) { errorP.textContent = msg; errorP.hidden = false; }
 function hideError() { errorP.hidden = true; errorP.textContent = ""; }
 
-// Paint the initial empty state (view toggle + results placeholder) on load.
-render();
+// ---- shareable URL -------------------------------------------------------
+// The current view is mirrored into location.hash (#s=<base64url(JSON)>) so the
+// address-bar URL is always copy-able: opening it re-fetches the same runs from
+// the store and reconstructs the same view. Only repo-sourced runs can be
+// reconstructed (a URL can't reference a local file pick), so a run set with any
+// local pick is not shareable and the hash is cleared instead.
+
+// UTF-8-safe base64url (handles non-ASCII in patterns/fold without deprecated
+// escape/unescape).
+function b64urlEncode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlDecode(b64) {
+  let s = b64.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "="; // restore stripped padding (atob needs it)
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+// captureState builds the compact state object. Keys are short to keep URLs
+// small; only non-default values are stored, so a plain heatmap of a few runs
+// yields a short link. Run-index / function-index fields (bs/co/cm/tf/...) are
+// positions into the run list `r` and the parsed function set, both deterministic
+// given the same runs + fold + patterns, so they survive a reload.
+function captureState() {
+  const s = { v: 1, r: runs.map((x) => x.path), vw: view, vl: valMode, od: orderMode };
+  if (baseRunPinned) s.bs = baseRun;
+  if (costRun !== null) s.co = costRun;
+  if (compareSel.length) s.cm = compareSel.slice();
+  if (compareRuns) s.cmo = 1;
+  if (compareTopN !== "all") s.cmn = compareTopN;
+  if (compareSort.key !== "spread" || compareSort.dir !== "desc") s.cms = { k: compareSort.key, d: compareSort.dir };
+  if (trendFns && trendFns.length) s.tf = trendFns.slice();
+  if (curRun !== "base") s.dc = curRun;
+  if (cmpRun !== null) s.dr = cmpRun;
+  if (dvgTopN !== 10) s.dn = dvgTopN;
+  if (detailRun !== null) s.dt = detailRun;
+  const tn = topnInput.value.trim();      if (tn) s.tn = tn;
+  const pt = patternsInput.value.trim();  if (pt) s.pt = pt;
+  const fd = foldInput ? foldInput.value.trim() : ""; if (fd) s.fd = fd;
+  if (regressMin !== 5) s.rm = regressMin;
+  if (improveMin !== 5) s.im = improveMin;
+  if (hotColor !== "#b42318") s.hc = hotColor;
+  if (bestColor !== "#ffffff") s.bc = bestColor;
+  return s;
+}
+
+function syncURL() {
+  if (restoring) return; // don't clobber the hash while we're reading/replaying it
+  const shareable = runs.length > 0 && runs.every((x) => x.path);
+  const hash = shareable ? "#s=" + b64urlEncode(JSON.stringify(captureState())) : "";
+  if (location.hash !== hash) {
+    history.replaceState(null, "", location.pathname + location.search + hash);
+  }
+}
+
+function setSegOn(seg, attr, val) {
+  if (seg) seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.getAttribute(attr) === val));
+}
+
+// doRestore replays a decoded state: apply the config the load reads (fold,
+// patterns, cap, baseline, order, view), fetch the runs from the store, then
+// re-apply the index-based selections that parseRuns() resets. Indices are
+// clamped to what actually loaded, so a since-removed store run degrades
+// gracefully instead of throwing.
+async function doRestore(st) {
+  try {
+    await wasmReadyP;
+    await configReadyP;
+    if (st.vw) { view = st.vw; setSegOn(viewseg, "data-view", view); }
+    if (st.vl) { valMode = st.vl; setSegOn(valseg, "data-val", valMode); }
+    if (st.od) orderMode = st.od;
+    if (st.tn != null) topnInput.value = st.tn;
+    if (st.pt != null) patternsInput.value = st.pt;
+    if (st.fd != null && foldInput) { foldInput.value = st.fd; lastFoldKey = st.fd; }
+    if (st.rm != null) regressMin = st.rm;
+    if (st.im != null) improveMin = st.im;
+    if (st.hc) hotColor = st.hc;
+    if (st.bc) bestColor = st.bc;
+    if (st.bs != null) { baseRun = st.bs; baseRunPinned = true; }
+
+    source = "repo";
+    await fetchStoreManifest();   // populate storeRuns (needs store.url from config)
+    await addRunsFromStore(st.r); // fetch files + analyze + render (restoring guard holds the hash)
+    if (runs.length === 0) {
+      showError("Couldn't load the shared runs (" + st.r.length + " requested) — they may have been removed from the store, or the store is unreachable.");
+    }
+
+    const N = runs.length;
+    const F = matrix ? matrix.funcs.length : 0;
+    if (st.co != null && st.co < N) costRun = st.co;
+    if (Array.isArray(st.cm)) compareSel = st.cm.filter((i) => i < N);
+    if (st.cmo && compareSel.length >= 2) compareRuns = compareSel.slice();
+    if (st.cmn != null) compareTopN = st.cmn;
+    if (st.cms && st.cms.k != null) compareSort = { key: st.cms.k, dir: st.cms.d || "desc" };
+    if (Array.isArray(st.tf)) { const t = st.tf.filter((f) => f < F); trendFns = t.length ? t : null; }
+    if (st.dc != null) curRun = st.dc;
+    if (st.dr != null) cmpRun = st.dr;
+    if (st.dn != null) dvgTopN = st.dn;
+  } catch (e) {
+    showError("Couldn't fully restore the shared view: " + (e.message || e));
+  } finally {
+    restoring = false;
+    // The detail view needs its own parse; openDetail() fetches + renders. Any
+    // other view just renders (which now writes the final, normalized hash).
+    if (st && st.dt != null && st.dt < runs.length) openDetail(st.dt);
+    else render();
+  }
+}
+
+// restoreFromURL kicks off a restore if the hash carries valid state. Returns
+// true if it did (so the caller skips the plain initial render). Sets `restoring`
+// synchronously first, so the shell render() below won't clear the hash we're
+// about to read.
+function restoreFromURL() {
+  const m = location.hash.match(/^#s=(.+)$/);
+  if (!m) return false;
+  let st = null;
+  try { st = JSON.parse(b64urlDecode(m[1])); } catch (e) { return false; }
+  if (!st || !Array.isArray(st.r) || st.r.length === 0) return false;
+  restoring = true;
+  render();      // paint the empty shell while runs load; restoring guard holds the hash
+  doRestore(st); // async; fire and forget
+  return true;
+}
+
+// On load: replay a shared link if present, else paint the initial empty state.
+if (!restoreFromURL()) render();
