@@ -85,8 +85,8 @@ let costSort = { key: "cest", dir: "desc" }; // key: 'name' | 'cest' | 'pct'
 // Heatmap highlight thresholds, set separately per direction from the legend: a
 // cell highlights red only when Δ% vs baseline ≥ regressMin (regression), or
 // green only when Δ% ≤ −improveMin (improvement). Smaller changes stay blank.
-let regressMin = 5;
-let improveMin = 5;
+let regressMin = 15;
+let improveMin = 10;
 let wasmReady = false;
 
 // trends view: which function indices to plot (null = default top regressors,
