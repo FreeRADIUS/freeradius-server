@@ -447,6 +447,10 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 		}
 
 		p++;
+		if (*p == '\0') {
+			*q++ = '\\';
+			continue;
+		}
 		switch (*p) {
 		case 'r':
 			*q++ = '\r';
