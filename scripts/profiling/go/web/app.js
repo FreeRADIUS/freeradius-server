@@ -1188,6 +1188,11 @@ function renderCompareDetail() {
     shown.forEach((row) => {
       h += '<tr><td class="col-name"><span class="dname" title="' + esc(row.name) + '">' + esc(row.name) + "</span></td>";
       row.cest.forEach((c, k) => {
+        // c is the raw full-precision CEst (int64 from Go); the /1e6 + rounding
+        // happen only in fmtM3 for display. So c === 0 means the function is
+        // genuinely absent from that run, not a small value that rounds to
+        // 0.000M — show "absent" rather than 0.000M best, mirroring the CLI.
+        if (c === 0) { h += '<td class="col-num cmp-absent">absent</td>'; return; }
         const isMin = k === row.best;
         const dpct = row.deltaPct[k];
         const tag = isMin

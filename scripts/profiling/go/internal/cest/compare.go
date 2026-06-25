@@ -120,12 +120,31 @@ func CompareCEst(runs []RunCEst) []CompareRow {
 	return rows
 }
 
-// fmtMillions formats a CEst count as millions with 3 decimals, matching the v2
-// UI compare table where sub-0.1M differences must stay legible.
-func fmtMillions(c int64) string { return fmt.Sprintf("%.3fM", float64(c)/1e6) }
+// fmtMillions formats a CEst count as millions, mirroring the v2 UI compare
+// table's fmtM3: 3 decimals normally, but when a nonzero value would round to
+// 0.000M it shows enough extra decimals to keep ~3 significant figures (capped
+// at 12), so small per-function CEsts stay legible instead of collapsing to
+// 0.000M. A genuine zero (function absent in a run) still prints 0.000M.
+func fmtMillions(c int64) string {
+	m := float64(c) / 1e6
+	abs := math.Abs(m)
+	dec := 3
+	if abs > 0 && abs < 0.0005 { // below where %.3f rounds to 0.000
+		dec = 2 - int(math.Floor(math.Log10(abs)))
+		if dec > 12 {
+			dec = 12
+		}
+	}
+	return fmt.Sprintf("%.*fM", dec, m)
+}
 
-// compareCell is "<value>M <best|+Δ%|+inf>" for one run's cell.
+// compareCell is "<value>M <best|+Δ%|+inf>" for one run's cell, or "absent" when
+// the function has no CEst in that run (CEst 0). An absent run is necessarily the
+// lowest, so the present runs read as "+inf" against it.
 func compareCell(r CompareRow, i int) string {
+	if r.CEst[i] == 0 {
+		return "absent"
+	}
 	v := fmtMillions(r.CEst[i])
 	switch {
 	case i == r.Best:
@@ -219,6 +238,7 @@ func WriteCompare(w io.Writer, results []*DirResult, patterns []string) {
 	}
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "best   = the run with the lowest CEst for that function (the baseline)")
+	fmt.Fprintln(w, "absent = the function has no CEst in that run; it then becomes the baseline, so present runs read '+inf'")
 	fmt.Fprintln(w, "+Δ%    = that run's CEst above best; spread = worst / best - 1; 'new' = a run lacks the function")
 }
 
