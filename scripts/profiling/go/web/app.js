@@ -1680,18 +1680,21 @@ async function fetchStoreManifest() {
   renderRepoRows();
 }
 
-// runMatchesSearch: AND over space-separated terms across the run's fields.
-function runMatchesSearch(r, terms) {
-  if (!terms.length) return true;
+// runMatchesSearch: OR over comma-separated groups; AND over space-separated
+// terms within a group. e.g. "ldap, mysql #656" matches ldap, OR (mysql AND #656).
+function runMatchesSearch(r, groups) {
+  if (!groups.length) return true;
   const led = storeLedger[ledgerKey(r.branch, r.sha, r.run, r.suite, r.test)];
   const hay = (r.branch + " " + r.sha + " " + r.run + " " + r.suite + " " + r.test
     + (led && led.number != null ? " #" + led.number : "")).toLowerCase();
-  return terms.every((t) => hay.includes(t));
+  return groups.some((terms) => terms.every((t) => hay.includes(t)));
 }
 
 function renderRepoRows() {
-  const terms = repoSearchEl.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  repoShown = storeRuns.filter((r) => runMatchesSearch(r, terms));
+  const groups = repoSearchEl.value.toLowerCase().split(",")
+    .map((g) => g.trim().split(/\s+/).filter(Boolean))
+    .filter((g) => g.length);
+  repoShown = storeRuns.filter((r) => runMatchesSearch(r, groups));
   repoShown.sort(repoCmp);
   if (storeRuns.length === 0) {
     repoRowsEl.innerHTML = '<tr><td colspan="8"><div class="runs-empty">No analyzable runs on the store yet.</div></td></tr>';
