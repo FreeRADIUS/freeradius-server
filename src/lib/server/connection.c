@@ -760,6 +760,11 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	WATCH_POST(conn);
 
 	/*
+	 *	If a deferred signal changed the connection state, we're done.
+	 */
+	if (conn->pub.state != CONNECTION_STATE_SHUTDOWN) return;
+
+	/*
 	 *	If there's a connection timeout,
 	 *	set, then add the timer.
 	 *
