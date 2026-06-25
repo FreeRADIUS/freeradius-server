@@ -340,6 +340,13 @@ so hovering only reveals the choices.)
 # Pattern report (per-pattern self-CEst, top-N per pattern, baseline = first -d)
 cest-analyzer [--md <file>] [--json <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 
+# Common CLI/UI detailed run view (single run) - the same per-function detail
+# the UI's per-run heat view shows, in the terminal: every function on its own
+# row with CEst + the 9 raw counters, sorted by CEst. All functions by default;
+# --top N caps the rows; trailing patterns filter by name. Needs exactly one
+# run (-d or -r).
+cest-analyzer --view [--top N] [--json <file>] -d <dir> [pat ...]
+
 # Compare mode (per-function CEst across runs; the terminal/WASI equivalent of
 # the UI compare view) - needs >=2 runs; --filter scopes it to matching functions
 cest-analyzer --compare [--filter pat,...] [--json <file>] -d <dir> -d <dir> [-d <dir> ...]
@@ -356,9 +363,10 @@ cest-analyzer --compare [--store-url <url>] -r <branch/sha/run/suite/test> -r <.
 | `--store-url <url>` | `$CEST_STORE_URL`, else `https://cinfra-ca.testdev.inkbridge.io/profiling` | Base URL of the profiling store that `-r` paths resolve against. Its `manifest.json` supplies each run's `callgrind.out.*` file names. |
 | `--cache-dir <dir>` | _(none; stream)_ | Download `-r` run files into this directory (mirroring the run path) and reuse them on later runs. Without it, files stream straight from HTTP and nothing is saved. |
 | `--compare` | off | Per-function CEst comparison across the `-d` runs (matches the UI compare view). Needs ≥2 dirs. |
+| `--view` | off | Common CLI/UI detailed run view (single run): the same per-function detail the UI's per-run heat view shows — every function on its own row with its CEst and the 9 raw counters, sorted by CEst descending, numbers comma-grouped. Needs exactly one run. All functions by default; `--top N` caps the rows; trailing positionals filter by name (substring, any-match). |
 | `--filter <pat,...>` | _(none)_ | `--compare` only: scope to functions whose name matches any filter (repeatable and/or comma-separated; substring, case-insensitive). Trailing positionals work too. |
 | `--fold <path>` | _(none)_ | Fold a call path's self-CEst up into its caller (see **Folding call paths**). Root-first, slash-separated, frame to fold last (e.g. `app_handler/talloc_pool/_talloc`); repeatable and/or comma-separated for several paths. Needs `--separate-callers` profiling data. Applies to both the pattern report and `--compare`. |
-| `--top N` | `10` | Number of top functions to show per pattern. Not used by `--compare`. |
+| `--top N` | `10` (pattern report); all rows (`--view`) | Number of top functions to show. Per pattern in the pattern report. In `--view`, the row cap for the whole table - omit it to list every function. Not used by `--compare`. |
 | `--md <file>` | _(none)_ | Also write a Markdown report to this file. Not used by `--compare`. |
 | `--json <file>` | _(none)_ | Also write a JSON report to this file. With `--compare`, writes the compare-shaped JSON (`cest-compare-1`); otherwise the per-run report (see Output). |
 
@@ -369,6 +377,12 @@ Patterns are case-insensitive substrings matched against function names.
 ```bash
 # Single run, two patterns
 ./cest-analyzer -d /path/to/prof-results prefix1 prefix2
+
+# Common CLI/UI detailed run view of one run: every function with CEst + raw
+# counters, sorted by CEst (the same detail as the UI's per-run heat view, in
+# the terminal). Add --top N to cap rows, or trailing patterns to filter by name.
+./cest-analyzer --view -d /path/to/prof-results
+./cest-analyzer --view --top 25 -d /path/to/prof-results talloc
 
 # Pattern report comparing two runs, with a markdown file (per-pattern % vs dir 0)
 ./cest-analyzer \

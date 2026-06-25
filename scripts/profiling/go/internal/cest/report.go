@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strconv"
+	"strings"
 )
 
 // WriteReport renders the console report for one analyzed run.
@@ -252,4 +254,98 @@ func WriteMarkdown(w io.Writer, dirs []*DirResult, patterns []string, cats []Cat
 	line("Parser handles inclusive call-cost lines, event compression, and the")
 	line("shared fn=/cfn= symbol table; run totals match QCachegrind exactly.")
 	line("Category definitions are editable in DefaultCategories in internal/cest/cest.go.")
+}
+
+// viewCols is the column layout of the single-run -view table: CEst first (the
+// sort key and headline), then the 9 raw counters in the documented component
+// order. It mirrors the UI's single-run heat view.
+var viewCols = func() []struct {
+	name string
+	get  func(Events) int64
+} {
+	cols := []struct {
+		name string
+		get  func(Events) int64
+	}{{"CEst", Events.CEst}}
+	for _, c := range componentOrder {
+		cols = append(cols, struct {
+			name string
+			get  func(Events) int64
+		}{c.name, c.get})
+	}
+	return cols
+}()
+
+// WriteView renders one run as a flat table: every function (or the top n by
+// CEst when n > 0) on its own row, with its CEst and the 9 raw Callgrind
+// counters, sorted by descending CEst. It is the terminal equivalent of the
+// UI's single-run heat view. patterns, when non-empty, filters to functions
+// whose name contains any entry (the UI search box). Numbers are comma-grouped
+// and columns are sized to their contents.
+func WriteView(w io.Writer, dr *DirResult, patterns []string, n int) {
+	fns := TopNFnsAny(dr.Res.FnSelf, patterns, n)
+
+	total := dr.Res.Total.CEst()
+	fmt.Fprintf(w, "Run: %s   (main %s)\n", dr.Label, dr.Main)
+	fmt.Fprintf(w, "total CEst: %s   functions shown: %d\n\n", commaInt(total), len(fns))
+
+	// Pre-format every cell so column widths can be sized to the widest value.
+	// The name column is sized to the longest full name (never truncated), so a
+	// long demangled C++ symbol still shows in full even though it widens the row.
+	const nameHdr = "Function Name"
+	nameW := len(nameHdr)
+	for _, f := range fns {
+		if len(f.Name) > nameW {
+			nameW = len(f.Name)
+		}
+	}
+	colW := make([]int, len(viewCols))
+	for ci, c := range viewCols {
+		colW[ci] = len(c.name)
+	}
+	cells := make([][]string, len(fns))
+	for ri, f := range fns {
+		cells[ri] = make([]string, len(viewCols))
+		for ci, c := range viewCols {
+			s := commaInt(c.get(f.Events))
+			cells[ri][ci] = s
+			if len(s) > colW[ci] {
+				colW[ci] = len(s)
+			}
+		}
+	}
+
+	fmt.Fprintf(w, "%-*s", nameW, nameHdr)
+	for ci, c := range viewCols {
+		fmt.Fprintf(w, "  %*s", colW[ci], c.name)
+	}
+	fmt.Fprintln(w)
+	for ri, f := range fns {
+		fmt.Fprintf(w, "%-*s", nameW, f.Name)
+		for ci := range viewCols {
+			fmt.Fprintf(w, "  %*s", colW[ci], cells[ri][ci])
+		}
+		fmt.Fprintln(w)
+	}
+}
+
+// commaInt formats n with thousands separators (1234567 -> "1,234,567"), to
+// match the grouped numbers in the UI's tables. A negative sign is preserved.
+func commaInt(n int64) string {
+	s := strconv.FormatInt(n, 10)
+	neg := strings.HasPrefix(s, "-")
+	if neg {
+		s = s[1:]
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteByte(s[i])
+	}
+	if neg {
+		return "-" + b.String()
+	}
+	return b.String()
 }

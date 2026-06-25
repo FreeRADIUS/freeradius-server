@@ -7,6 +7,7 @@
 //
 //	cest-analyzer [--md <file>] [--top N] -d <dir> [-d <dir> ...] <pat> [pat ...]
 //	cest-analyzer --compare -r <store/run/path> -r <store/run/path> [-d <dir> ...]
+//	cest-analyzer --view [--top N] -d <dir>|-r <store/run/path> [pat ...]
 //
 // Build:   go build -o cest-analyzer ./cmd/cest-analyzer
 // WASI:    GOOS=wasip1 GOARCH=wasm go build -o cest-analyzer.wasm ./cmd/cest-analyzer
@@ -246,6 +247,7 @@ func main() {
 	var jsonFile string
 	var topn int
 	var compareMode bool
+	var viewMode bool
 	var filters listFlag
 	var fold listFlag
 	var storeURL string
@@ -259,9 +261,19 @@ func main() {
 	flag.StringVar(&jsonFile, "json", "", "write JSON report to `file`")
 	flag.IntVar(&topn, "top", 10, "top-N functions per pattern")
 	flag.BoolVar(&compareMode, "compare", false, "per-function CEst comparison across runs (the UI compare view); needs >=2 runs")
+	flag.BoolVar(&viewMode, "view", false, "single-run detailed table (the UI heat view): every function with its CEst + 9 raw counters, sorted by CEst; one run; --top N limits rows (default: all); trailing patterns filter by name")
 	flag.Var(&filters, "filter", "function-name `filter`(s) for --compare (repeatable and/or comma-separated; substring, any-match)")
 	flag.Var(&fold, "fold", "fold a call `path` (root-first, slash-separated, target last) into its caller; repeatable and/or comma-separated; needs --separate-callers profiling; e.g. app_handler/talloc_pool/_talloc")
 	flag.Parse()
+
+	// Whether --top was given explicitly: -view shows all functions by default
+	// and only caps the table when the user asked for a top-N.
+	topSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "top" {
+			topSet = true
+		}
+	})
 
 	patterns := flag.Args()
 
@@ -338,6 +350,52 @@ func main() {
 		}
 		if mdFile != "" {
 			fmt.Fprintln(os.Stderr, "note: --md is not supported with --compare; ignoring")
+		}
+		return
+	}
+
+	//  --view: the single-run detailed table (the UI heat view). One run, every
+	//  function on its own row with its CEst and 9 raw counters, sorted by CEst.
+	//  All functions by default; --top N caps the rows; trailing patterns filter
+	//  by name. --json writes the same flat report schema as the default mode.
+	if viewMode {
+		if len(inputs) != 1 {
+			fmt.Fprintln(os.Stderr, "--view takes exactly one run (one -d or one -r)")
+			os.Exit(1)
+		}
+		cats := cest.DefaultCategories()
+		dr, err := cest.Analyze(inputs[0].label, inputs[0].cands, nil, cats, 0)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if len(foldPaths) > 0 {
+			dr = cest.Fold(dr, cats, nil, 0, foldPaths) // fold paths before listing
+		}
+		limit := 0 // 0 = all functions
+		if topSet {
+			limit = topn
+		}
+		cest.WriteView(os.Stdout, dr, patterns, limit)
+		if jsonFile != "" {
+			f, err := os.Create(jsonFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			if err := cest.WriteJSON(f, []*cest.DirResult{dr}, patterns, cats, limit); err != nil {
+				f.Close()
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			if err := f.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing JSON: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("JSON report written to: %s\n", jsonFile)
+		}
+		if mdFile != "" {
+			fmt.Fprintln(os.Stderr, "note: --md is not supported with --view; ignoring")
 		}
 		return
 	}

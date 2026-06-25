@@ -68,8 +68,10 @@ func TopNFns(fnSelf map[string]Events, pat string, n int) []FnEvents {
 
 // TopNFnsAny returns the n highest-CEst functions whose name contains any of
 // patterns, or the n highest-CEst of all functions when patterns is empty.
-// Used for the flat JSON functions list. Each function appears at most once
-// (the source map is keyed by name).
+// When n <= 0 every matching function is returned (no top-N cap), which is how
+// the single-run -view table shows all functions. Used for the flat JSON
+// functions list too. Each function appears at most once (the source map is
+// keyed by name).
 func TopNFnsAny(fnSelf map[string]Events, patterns []string, n int) []FnEvents {
 	lp := make([]string, len(patterns))
 	for i, p := range patterns {
@@ -90,7 +92,7 @@ func TopNFnsAny(fnSelf map[string]Events, patterns []string, n int) []FnEvents {
 		}
 	}
 	sortByCEst(matches)
-	if len(matches) > n {
+	if n > 0 && len(matches) > n {
 		matches = matches[:n]
 	}
 	return matches
