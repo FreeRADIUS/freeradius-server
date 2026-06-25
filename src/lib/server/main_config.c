@@ -124,6 +124,7 @@ static const conf_parser_t initial_log_config[] = {
 	{ FR_CONF_OFFSET("file", main_config_t, log_file), .dflt = "${logdir}/radius.log" },
 	{ FR_CONF_OFFSET("suppress_secrets", main_config_t, suppress_secrets), .dflt = "yes" },
 	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, 0, main_config_t, log_timestamp) },
+	{ FR_CONF_OFFSET("use_utc", main_config_t, log_dates_utc) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1329,6 +1330,8 @@ int main_config_init(main_config_t *config)
 	if (config->log_timestamp_is_set && (default_log.timestamp == L_TIMESTAMP_AUTO)) {
 		default_log.timestamp = config->log_timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
 	}
+
+	default_log.dates_utc = config->log_dates_utc;
 
 #ifdef HAVE_SETUID
 	/*
