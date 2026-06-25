@@ -3538,6 +3538,13 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 	trunk->pub.last_connected = fr_time();
 
 	/*
+	 *	Set last_write_success so that idle timeout checks will run
+	 *	from when the connection has connected if they fire before
+	 *	any requests are written, rather than from server start time.
+	 */
+	tconn->pub.last_write_success = fr_time();
+
+	/*
 	 *	Insert a timer to reconnect the
 	 *	connection periodically.
 	 */
