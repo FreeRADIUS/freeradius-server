@@ -121,11 +121,6 @@ eap inner-eap {
 		fragment_size = 16384
 
 		#
-		#  check_crl:: See the `eap` module for common configuration explanation.
-		#
-#		check_crl = yes
-
-		#
 		#  ca_path:: See the `eap` module for common configuration explanation.
 		#
 		ca_path = ${cadir}
@@ -139,16 +134,6 @@ eap inner-eap {
 		#  check_cert_cn:: See the `eap` module for common configuration explanation.
 		#
 #		check_cert_cn = %{User-Name}
-
-		#
-		#  allow_expired_crl:: See the `eap` module for common configuration explanation.
-		#
-#		allow_expired_crl = no
-
-		#
-		#  allow_not_yet_valid_crl:: See the `eap` module for common configuration explanation.
-		#
-#		allow_not_yet_valid_crl = no
 	}
 
 	#

@@ -700,8 +700,7 @@ eap {
 			#  | Don't verify any certificates.
 			#
 			#  | `all`
-			#  | Verify all certificates.  Check none have been
-			#    revoked via CRL, and that all are trusted.
+			#  | Verify all certificates.  Check that all are trusted.
 			#
 			#  | `untrusted`
 			#  | Verify all untrusted certificates,
@@ -771,29 +770,6 @@ eap {
 			#  ====
 			#
 #			attribute_mode = client-and-issuer
-
-			#
-			#  check_crl:: Check the Certificate Revocation List.
-			#
-			#  Will check CRLs for all certificates in the certificate chain.
-			#
-			#  1. Copy CA certificates and CRLs to same directory.
-			#  2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
-			#     OpenSSL's command.
-			#  3. uncomment the lines below.
-			#  4. Restart radiusd.
-			#
-#			check_crl = yes
-
-			#
-			#  allow_expired_crl:: Accept an expired Certificate Revocation List.
-			#
-#			allow_expired_crl = no
-
-			#
-			#  allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
-			#
-#			allow_not_yet_valid_crl = no
 		}
 		#
 		#  === TLS Session resumption

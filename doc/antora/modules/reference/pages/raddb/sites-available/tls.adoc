@@ -139,27 +139,10 @@ message is included ONLY in the
 First packet of a fragment series.
 
 include_length = yes
-
-Check the Certificate Revocation List
-
-1) Copy CA certificates and CRLs to same directory.
-2) Execute `c_rehash /path/to/cert/directory`.
-  'c_rehash' is OpenSSL's command.
-3) uncomment the line below.
-5) Restart radiusd
-check_crl = yes
 ```
 			ca_path = ${cadir}
 
 ```
-Accept an expired Certificate Revocation List
-
-allow_expired_crl = no
-
-Accept a not-yet-valid Certificate Revocation List
-
-allow_not_yet_valid_crl = no
-
 
 If check_cert_issuer is set, the value will
 be checked against the DN of the issuer in

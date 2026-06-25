@@ -91,10 +91,6 @@ fragment_size:: See the `eap` module for common configuration explanation.
 
 
 
-check_crl:: See the `eap` module for common configuration explanation.
-
-
-
 ca_path:: See the `eap` module for common configuration explanation.
 
 
@@ -104,14 +100,6 @@ check_cert_issuer:: See the `eap` module for common configuration explanation.
 
 
 check_cert_cn:: See the `eap` module for common configuration explanation.
-
-
-
-allow_expired_crl:: See the `eap` module for common configuration explanation.
-
-
-
-allow_not_yet_valid_crl:: See the `eap` module for common configuration explanation.
 
 
 
@@ -160,12 +148,9 @@ eap inner-eap {
 #		dh_file = ${certdir}/dh
 #		random_file = /dev/urandom
 		fragment_size = 16384
-#		check_crl = yes
 		ca_path = ${cadir}
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 #		check_cert_cn = %{User-Name}
-#		allow_expired_crl = no
-#		allow_not_yet_valid_crl = no
 	}
 	tls {
 		tls = tls-peer
