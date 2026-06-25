@@ -32,9 +32,27 @@ a{color:var(--brand);}
 
 .stage{max-width:1320px;margin:0 auto;padding:0 28px;}
 .app{border:0px solid var(--line);border-radius:12px;background:var(--paper);padding:22px;
-  margin-top:22px;box-shadow:0 0px 0px rgba(15,23,42,.06);}
+  margin-top:8px;box-shadow:0 0px 0px rgba(15,23,42,.06);}
 .app-head h2{font-weight:700;font-size:20px;margin:0;}
 .app-head .formula{color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12.5px;margin:4px 0 0;}
+
+/* Collapsible title (hero) block. Collapsed: a thin ~5px line with a chevron
+   pointing down (expand). Expanded: the chevron points up (collapse) above the
+   full title. Built on <details>, so no JS. */
+.hero{margin:0;}
+.hero>summary{list-style:none;display:block;cursor:pointer;position:relative;padding:9px 0;}
+.hero>summary::-webkit-details-marker{display:none;}
+.hero>summary::before{content:"";display:block;height:5px;border-radius:3px;background:#eceff3;}
+.hero>summary:hover::before{background:#e1e7e8;}
+/* chevron sits in a white "notch" that interrupts the bar, so it reads as a
+   handle rather than a stray caret on a divider. */
+.hero-chev{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:22px;height:16px;background:#fff;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;}
+.hero-chev::after{content:"";width:6px;height:6px;
+  border-right:1.5px solid #192848;border-bottom:1.5px solid #192848;
+  transform:translateY(-1.5px) rotate(45deg);transition:transform .15s ease;}
+.hero[open] .hero-chev::after{transform:translateY(1.5px) rotate(225deg);}
 
 .tag{display:inline-block;font-size:10.5px;font-weight:600;border:1px solid var(--line-strong);
   color:var(--ink-soft);border-radius:5px;padding:1px 7px;}

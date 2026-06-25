@@ -7,14 +7,38 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- InkBridge / FreeRADIUS brand fonts for the page header -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="stage">
     <div class="app">
-      <div class="app-head">
-        <h2>CPU Cycle Utilization (CEst) Analysis Utility</h2>
-      </div>
+      <!-- ===== Header B — InkBridge / FreeRADIUS branded (self-contained) ===== -->
+      <header class="app-head" style="background:#fff; font-family:'Fira Sans',system-ui,-apple-system,sans-serif;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0 14px; border-bottom:1px solid #f0f0f0;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <svg viewBox="0 0 527.68718 533.33331" style="height:32px; width:auto; display:block;" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#192848" d="m 432.46266,234.684 c -9.78667,29.49867 -11.79867,73.69334 -11.79867,105.57867 0,5.88933 -4.76,10.664 -10.62933,10.664 h -45.76 c -6.13734,0 -11.004,-5.14667 -10.58,-11.30134 2.80266,-42.33733 2.80266,-94.11866 -8.99334,-130.24933 -27.29599,-83.71999 -134.41866,-83.71999 -161.71466,0 -11.79733,36.13067 -11.85066,87.912 -8.99333,130.24933 0.42267,6.15467 -4.444,11.30134 -10.58,11.30134 H 117.6552 c -5.92494,0 -10.63334,-4.77467 -10.63334,-10.664 0.0532,-31.88533 -1.95733,-76.08 -11.796396,-105.57867 -19.044266,-57.24666 -80.672398,-61.96933 -92.5223441,0 -4.8739598,25.56134 -2.37395324,62.028 1.35,92.05334 C 31.309866,445.06933 137.232,533.33333 263.84133,533.33333 c 126.62533,0 232.55866,-88.28546 259.79866,-206.63999 3.72,-30.02667 6.216,-66.50667 1.344,-92.00934 -11.848,-61.96933 -73.47867,-57.24666 -92.52133,0 z M 25.117199,147.84134 C 68.817732,60.220008 159.27333,1e-5 263.84133,1e-5 c 104.53599,0 194.96933,60.182665 238.68399,147.76133 -160.716,-56.357332 -314.95599,-56.879999 -477.408121,0.08"></path></svg>
+            <span style="font-size:17px; font-weight:600; color:#192848; letter-spacing:-0.01em; white-space:nowrap;">InkBridge Networks</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-style:italic; font-size:13px; color:#8e8e8e;">We authenticate the Internet</span>
+            <span style="width:1px; height:18px; background:#e1e1e1;"></span>
+            <span style="font-family:'Montserrat',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#192848;">FreeRADIUS</span>
+          </div>
+        </div>
+        <details class="hero" open>
+          <summary class="hero-toggle" title="Show / hide title" aria-label="Show or hide title"><span class="hero-chev"></span></summary>
+          <div class="hero-body" style="padding:18px 0 28px;">
+          <div style="border-left:5px solid #192848; padding-left:22px;">
+            <div style="font-family:'Montserrat',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#192848; margin-bottom:10px;">CPU Cycle Profiling</div>
+            <h1 style="margin:0; font-weight:500; font-size:42px; line-height:1.05; color:#192848; letter-spacing:-0.015em;">CycleScope</h1>
+            <p style="margin:12px 0 0; font-size:16px; line-height:1.5; color:#5d5d5d; max-width:620px;">CPU Cycle Utilization (CEst) analysis across FreeRADIUS CI builds — track per-commit cycle cost and identify potential issues quickly.</p>
+          </div>
+        </div>
+        </details>
+      </header>
+      <!-- ===== /Header B ===== -->
 
       <div class="nbar sketch">
         <div class="nbar-top">
