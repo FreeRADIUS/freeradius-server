@@ -1,7 +1,5 @@
 = EAP-TTLS: Tunneled authentication
 
-include::ROOT:partial$v3_warning.adoc[]
-
 *Goal:* To configure the server to use the EAP-TTLS authentication
 protocol and to send and receive test packets.
 
@@ -10,33 +8,186 @@ protocol and to send and receive test packets.
 *File:*
 
 - `sites-available/default`
+- `mods-config/files/authorize`
+- `eapol_test/ttls-pap.conf`
 
 *Diagram:*
 
 image::eap-ttls.svg[Fig. TTLS Packet]
 
-During installation the build system automatically creates
-certificates for use with TTLS. In a normal installation, there should
-be little or no action required to enable TTLS.
+== What is EAP-TTLS?
 
-This exercise does not cover how to configure EAP-TTLS on the wireless
-client nor how to set up a wireless access point to perform EAP-TTLS.
-We suggest that you consult the documentation for your wireless
-client software for details on this process.
+`EAP-TTLS` (Extensible Authentication Protocol - Tunneled Transport Layer Security) works in two phases:
 
-For the initial testing of EAP-TTLS, we recommend using `PAP` on the
-wireless client as the tunneled authentication protocol.
+** Phase 1 — A TLS tunnel is established using a server-side certificate. This encrypts all further communication.
+** Phase 2 — Inside the encrypted tunnel, the user's credentials are sent using an inner authentication method (e.g. PAP).
 
-Once the wireless client has been configured to enable EAP-TTLS,
-you should perform a test authentication to the server. If all goes well,
-the server, AP, and wireless client should exchange multiple RADIUS
-`Access-Request` and `Access-Challenge` packets. This process should take
-a few seconds, and you should wait until it is done. If all goes well,
-the final packet from the server should be an `Access-Accept` and should
-contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
+This means the username and password are always protected inside the TLS tunnel.
 
-Verify that the authentication succeeded by using the `ping` command to
-see if the wireless client now has network access.
+== Notes Before Setup
+
+** During installation, the FreeRADIUS build system automatically creates certificates for use with TTLS. Little or no action is required to enable it.
+** This guide does not cover configuring EAP-TTLS on a wireless client or access point. Consult your wireless client documentation for that.
+** For initial testing, PAP is recommended as the tunneled (inner) authentication protocol.
+
+== Files to Change
+
+Add the user entry in `raddb/mods-config/files/authorize`:
+
+[source, text]
+----
+bob    Password.Cleartext := "hello"
+----
+
+Update the following fields in `src/tests/eapol_test/ttls-pap.conf`:
+
+[source, text]
+----
+network={
+	key_mgmt=WPA-EAP
+	eap=TTLS
+	identity="bob"
+	anonymous_identity="anonymous@example.org"
+	ca_cert="raddb/certs/rsa/ca.pem"
+	password="hello"
+	phase2="auth=PAP"
+}
+----
+
+== Test Steps
+
+Start the server:
+
+[source, text]
+----
+$ radiusd -X
+----
+
+Run the test (separate terminal):
+
+[source, bash]
+----
+eapol_test/ttls-pap.conf -a 127.0.0.1 -p 1812 -s testing123 -n
+----
+
+== Expected result
+
+The server and client exchange multiple `Access-Request` and `Access-Challenge` packets. If successful, the final packet is an `Access-Accept` containing:
+
+** `MS-MPPE-Recv-Key`
+** `MS-MPPE-Send-Key`
+
+=== Expected Client Debug Output (eapol_test)
+
+Phase 1 — Anonymous identity sent:
+
+[source, text]
+----
+RADIUS message: code=1 (Access-Request) identifier=0 length=156
+   Attribute 80 (Message-Authenticator) length=18
+      Value: 3b2a9ea045981b569d1fdd27569ae700
+   Attribute 1 (User-Name) length=23
+      Value: 'anonymous@example.org
+----
+
+TLS tunnel establishing:
+
+[source, text]
+----
+EAP-TTLS: Start (server ver=0, own ver=0)
+SSL: SSL_connect:SSLv3/TLS write client hello
+SSL: SSL_connect:SSLv3/TLS read server hello
+TLS: Trusted root certificate(s) loaded
+EAP: Status notification: remote certificate verification (param=success)
+----
+
+TLS tunnel established:
+
+[source, text]
+----
+OpenSSL: Handshake finished - resumed=0
+EAP-TTLS: TLS done, proceed to Phase 2
+----
+
+Phase 2 — Credentials sent inside tunnel:
+
+[source, text]
+----
+EAP-TTLS: Phase 2 PAP Request
+EAP-TTLS: Encrypting Phase 2 data
+EAP-TTLS: Authentication completed successfully
+----
+
+Final Access-Accept:
+
+[source, text]
+----
+EAP: deinitialize previously used EAP method (21, TTLS) at EAP deinit
+ENGINE: engine deinit
+MPPE keys OK: 0  mismatch: 0
+SUCCESS
+----
+
+=== Expected Server Debug Output (radiusd -X)
+
+Phase 1 — Outer request received:
+
+[source, text]
+----
+Received Access-Request ID 0
+   User-Name = "anonymous@example.org"
+
+eap - New EAP session started
+eap - Calling submodule eap_ttls
+eap.ttls - Initiating new TLS session
+Sending Access-Challenge
+----
+
+TLS handshake (multiple rounds):
+
+[source, text]
+----
+>>> send TLS 1.2, handshake[length 61], server_hello
+>>> send TLS 1.2, handshake[length 1397], certificate
+>>> send TLS 1.2, handshake[length 333], server_key_exchange
+Handshake state - SSL negotiation finished successfully (1)
+Cipher suite: ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2
+----
+
+Phase 2 — Inner tunnel processing:
+
+[source, text]
+----
+eap.ttls - Session established.  Decoding Diameter attributes
+eap.ttls - Running request through virtual server "inner-tunnel"
+
+  User-Name = "bob"
+  User-Password = "hello"
+
+files - Looking for key "bob"
+sql - User found in radcheck table
+sql - Password.Cleartext := hello
+
+pap - User authenticated successfully
+----
+
+Final Access-Accept sent:
+
+[source, text]
+----
+Vendor-Specific {
+         Microsoft {
+    MPPE-Recv-Key = 0x13cb974fc....
+    MPPE-Send-Key = 0x7ad0412ba....
+   }
+}
+EAP-Message = 0x03ab0004
+Message-Authenticator = 0x00000000000000000000000000000000
+Packet-Type = ::Access-Accept
+User-Name = "anonymous@example.org"
+----
+
+You can verify network access on a real client using `ping`.
 
 == Questions
 
