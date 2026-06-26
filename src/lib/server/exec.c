@@ -58,11 +58,13 @@ int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	 *	a tainted source.
 	 */
 	first = fr_value_box_list_head(in);
-	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
 	if (!first) {
+	missing:
 		fr_strerror_const("No program to run");
 		return -1;
 	}
+	if (first->type == FR_TYPE_GROUP) first = fr_value_box_list_head(&first->vb_group);
+	if (!first) goto missing;
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
 		return -1;
