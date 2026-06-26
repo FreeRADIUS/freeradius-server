@@ -66,7 +66,7 @@ AC_ARG_WITH(rlm-python-include-dir,
 	esac])
 
 FR_MODULE_TEST_PASS_DO([
-	PY_MAJOR_VER=`${PYTHON_BIN} -x 'import sys ; print(sys.version[[0]])'`
+	PY_MAJOR_VER=`${PYTHON_BIN} -c 'import sys ; print(sys.version[[0]])'`
 	if test $PY_MAJOR_VER -ne 2; then
 		FR_MODULE_FAIL([not-python2])
 	fi
