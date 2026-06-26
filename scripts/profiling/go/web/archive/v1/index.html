@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cest-analyzer (WASM)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>CPU Cycle Utilization (CEst) Utility</h1>
+    <p>Callgrind CEst analysis in the browser. Everything runs locally via
+       WebAssembly; no file leaves your machine.</p>
+    <h2>Cycle Estimation (CEst) formula</h2>
+    <p>As implemented in QCachegrind/KCachegrind.</p>
+    <p><b>CEst</b> = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <div class="runs-head">
+        <span class="runs-title">Profiling runs</span>
+        <p class="hint">Each run is one directory's callgrind.out.* files. Add a
+           second run to get a comparison footer (first run is the baseline).</p>
+      </div>
+
+      <!-- Run rows are added here by app.js; one empty row is created on load. -->
+      <div id="runs"></div>
+
+      <div class="toolbar-left">
+        <button id="add-run" type="button" class="secondary">+ Add run</button>
+      </div>
+
+      <label>
+        Patterns (space-separated, case-insensitive)
+        <input id="patterns" type="text" value="memset rbtree" placeholder="memset rbtree sha256">
+      </label>
+
+      <label>
+        Top-N per pattern
+        <input id="topn" type="number" value="10" min="1" max="100">
+      </label>
+
+      <button id="run" disabled>Loading WASM…</button>
+    </section>
+
+    <!-- Cloned by app.js for each run. Kept in the DOM (hidden) as the source. -->
+    <template id="run-row">
+      <div class="run-row">
+        <label class="run-label">
+          Run label
+          <input type="text" class="run-label-input" placeholder="baseline">
+        </label>
+        <label class="run-files">
+          callgrind.out.* files
+          <input type="file" class="run-files-input" multiple>
+        </label>
+        <button type="button" class="remove-run secondary" title="Remove this run">✕</button>
+      </div>
+    </template>
+
+    <section id="output" hidden>
+      <div class="toolbar">
+        <div class="downloads">
+          <button id="download-json" type="button" class="secondary">Download JSON</button>
+        </div>
+      </div>
+
+      <!-- Tables view: metric selector drives the rendered tables -->
+      <div id="view-tables" class="view">
+        <label class="tables-metric-select">
+          Metric
+          <select id="metric">
+            <option value="CEst">CEst</option>
+            <option value="all">All Stats</option>
+            <option value="Ir">Ir</option>
+            <option value="I1mr">I1mr</option>
+            <option value="D1mr">D1mr</option>
+            <option value="D1mw">D1mw</option>
+            <option value="ILmr">ILmr</option>
+            <option value="DLmr">DLmr</option>
+            <option value="DLmw">DLmw</option>
+            <option value="Bcm">Bcm</option>
+            <option value="Bim">Bim</option>
+          </select>
+        </label>
+        <p class="scroll-hint" id="tables-hint" hidden>Scroll a table sideways to see every column</p>
+        <div id="tables"></div>
+      </div>
+    </section>
+
+    <p id="error" class="error" hidden></p>
+  </main>
+
+  <script src="wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

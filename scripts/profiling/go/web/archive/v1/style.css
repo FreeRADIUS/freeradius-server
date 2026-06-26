@@ -1,0 +1,212 @@
+:root {
+  --fg: #1a1a1a;
+  --bg: #fafafa;
+  --accent: #0b6e4f;
+  --border: #d0d0d0;
+  --error: #b00020;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+header, main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+
+header h1 { margin-bottom: 0.25rem; }
+header p { color: #555; margin-top: 0; }
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.controls input {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #9aa;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  color: var(--accent);
+  background: #fff;
+  border: 1px solid var(--accent);
+}
+
+/* --- Run rows --- */
+
+.runs-title { font-weight: 600; font-size: 0.9rem; }
+.hint { margin: 0.25rem 0 0; color: #555; font-size: 0.8rem; font-weight: 400; }
+
+#runs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.run-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f4f4f4;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.run-row .run-label { flex: 0 0 9rem; }
+.run-row .run-files { flex: 1 1 auto; }
+
+.remove-run {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.toolbar-left {
+  display: flex;
+  justify-content: flex-start;
+}
+
+#output {
+  margin-top: 1.5rem;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.downloads { display: flex; gap: 0.5rem; }
+
+/* --- Tables view --- */
+
+.tables-metric-select {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.tables-metric-select select {
+  padding: 0.45rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+#tables h3 { margin: 1.25rem 0 0.25rem; }
+#tables h4 { margin: 0.75rem 0 0.25rem; color: #555; font-size: 0.85rem; }
+
+table.tables-data {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+table.tables-data th, table.tables-data td {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+table.tables-data th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+table.tables-data .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+table.tables-data tbody tr:nth-child(even) { background: #fafafa; }
+
+/* --- Horizontal scroll affordance --- */
+/* A wide all-components table can extend past the viewport. Make that obvious:
+   a styled scrollbar that always shows when content overflows, plus a hint
+   shown only when it does. */
+
+.tables-scroll {
+  overflow-x: auto;
+  /* keep table columns at full width so a wide table overflows (and scrolls)
+     instead of squashing every number onto two lines */
+}
+
+.tables-scroll table.tables-data { white-space: nowrap; width: auto; min-width: 100%; }
+
+/* Styled scrollbars are not overlay in Chromium, so the bar stays visible
+   whenever there is overflow. */
+.tables-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+.tables-scroll::-webkit-scrollbar-track { background: #e6e6e6; border-radius: 6px; }
+.tables-scroll::-webkit-scrollbar-thumb { background: #aaa; border-radius: 6px; }
+/* Firefox */
+.tables-scroll { scrollbar-width: thin; }
+
+.scroll-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.scroll-hint::before { content: "\2194\00a0"; } /* leading ↔ */
+
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  color: var(--error);
+  background: #fde7ea;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+}
