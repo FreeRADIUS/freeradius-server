@@ -217,6 +217,10 @@ typedef struct {
 	 */
 	uint8_t		ck_prime[AKA_SIM_VECTOR_UMTS_CK_SIZE];	//!< Derived from CK, for AKA'.
 	uint8_t		ik_prime[AKA_SIM_VECTOR_UMTS_IK_SIZE];	//!< Derived from IK, for AKA'.
+	bool		ck_ik_prime_provided;			//!< CK'/IK' were supplied directly (e.g. by a
+								//!< 3GPP HSS over SWx which already performed the
+								//!< RFC 5448 transform), so the AKA' KDF must not
+								//!< derive them again from CK/IK.
 
 	/*
 	 *	Outputs
@@ -342,6 +346,9 @@ int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 int		fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 						  fr_aka_sim_keys_t *keys,
 						  fr_aka_sim_vector_src_t *src);
+
+int		fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_list_t *vps,
+							      fr_aka_sim_keys_t *keys);
 
 int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_list_t *vps,
 								   fr_aka_sim_keys_t *keys);

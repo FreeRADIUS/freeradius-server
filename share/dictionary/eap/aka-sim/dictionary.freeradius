@@ -48,6 +48,16 @@ ATTRIBUTE	IK					282	octets
 ATTRIBUTE	AUTHN					283	octets
 
 #
+#  Pre-derived CK'/IK' for EAP-AKA'.  When the quintuplet is fetched from
+#  a 3GPP HSS over SWx (TS 29.273), the HSS has already performed the
+#  RFC 5448 / TS 33.402 Annex A key transform.  Supply these instead of
+#  having the server derive CK'/IK' from CK/IK locally (see the
+#  eap-aka-prime "derive_ck_ik_prime" config item).
+#
+ATTRIBUTE	CK-Prime				284	octets
+ATTRIBUTE	IK-Prime				285	octets
+
+#
 #  SIM vector
 #
 ATTRIBUTE	SRES					290	octets

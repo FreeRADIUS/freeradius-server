@@ -814,6 +814,57 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 	return 0;
 }
 
+/** Retrieve pre-derived CK'/IK' for EAP-AKA' from a set of attributes.
+ *
+ * When the UMTS quintuplet is fetched from a 3GPP HSS over the SWx interface
+ * (3GPP TS 29.273), the HSS has already performed the RFC 5448 / TS 33.402
+ * Annex A transform of CK/IK into CK'/IK' (it must, because the transform binds
+ * the keys to the Access Network Identity the HSS was given).  In that case the
+ * server must not derive CK'/IK' a second time; it consumes the values supplied
+ * in control.CK-Prime / control.IK-Prime directly.  Both attributes must be
+ * present together.
+ *
+ * @param[in] request	The current request.
+ * @param[in] vps	List to hunt for CK-Prime / IK-Prime in.
+ * @param[in] keys	key structure to populate.
+ * @return
+ *	- 0	CK'/IK' were found and written to keys.
+ *	- -1	Attributes missing or of incorrect length.
+ */
+int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
+{
+	fr_pair_t	*ck_prime_vp, *ik_prime_vp;
+
+	ck_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ck_prime);
+	ik_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ik_prime);
+
+	if (!ck_prime_vp || !ik_prime_vp) {
+		REDEBUG("Missing control.%s or control.%s",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return -1;
+	}
+
+	if (ck_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_CK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_CK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ck_prime->name, ck_prime_vp->vp_length);
+		return -1;
+	}
+
+	if (ik_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_IK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ik_prime->name, ik_prime_vp->vp_length);
+		return -1;
+	}
+
+	memcpy(keys->ck_prime, ck_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_CK_SIZE);
+	memcpy(keys->ik_prime, ik_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_IK_SIZE);
+	keys->ck_ik_prime_provided = true;
+
+	return 0;
+}
+
 /** Populate a fr_aka_sim_keys_t structure from attributes in the session-state list
  *
  * @param[in] request	The current request.
