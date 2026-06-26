@@ -310,6 +310,7 @@ pid_t radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) goto error;
+		return -1;
 	}
 
 	/*
