@@ -154,7 +154,7 @@ static void lib_autofree(global_lib_autoinst_t * const *to_free)
 
 		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
 
-		fr_assert_msg(lib, "Library %s already freed", (*p)->name);
+		if (!lib) continue;
 
 		if (--lib->instance_count > 0) continue;
 
