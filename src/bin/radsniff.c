@@ -2908,7 +2908,9 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS secret           : [%s]", conf->radius_secret);
 
 		if (conf->filter_request_code) {
-			DEBUG2("  RADIUS request code     : [%s]", fr_radius_packet_name[conf->filter_request_code]);
+			DEBUG2("  RADIUS request code     : [%s]",
+			       FR_RADIUS_PACKET_CODE_VALID(conf->filter_request_code) ?
+			       fr_radius_packet_name[conf->filter_request_code] : "unknown");
 		}
 
 		if (!fr_pair_list_empty(&conf->filter_request_vps)){
@@ -2917,7 +2919,9 @@ int main(int argc, char *argv[])
 		}
 
 		if (conf->filter_response_code) {
-			DEBUG2("  RADIUS response code    : [%s]", fr_radius_packet_name[conf->filter_response_code]);
+			DEBUG2("  RADIUS response code    : [%s]",
+			       FR_RADIUS_PACKET_CODE_VALID(conf->filter_response_code) ?
+			       fr_radius_packet_name[conf->filter_response_code] : "unknown");
 		}
 
 		if (conf->to_output_dir) {

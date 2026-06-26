@@ -1196,7 +1196,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	 *	packet matched that.
 	 */
 	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (reply->code != request->filter_code)) {
-		if (FR_RADIUS_PACKET_CODE_VALID(reply->code)) {
+		if (FR_RADIUS_PACKET_CODE_VALID(request->filter_code) && FR_RADIUS_PACKET_CODE_VALID(reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
 				fr_radius_packet_name[reply->code]);
 		} else {
