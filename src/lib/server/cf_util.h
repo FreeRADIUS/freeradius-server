@@ -51,7 +51,7 @@ typedef struct cf_comment CONF_COMMENT;	//!< #CONF_ITEM holding a literal `# ...
 #include <freeradius-devel/util/log.h>
 
 #define FR_TIMEVAL_TO_MS(_x) (((_x)->tv_usec / 1000) + ((_x)->tv_sec * (uint64_t)1000))
-#define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_usec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))
+#define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_nsec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))
 
 /** Auto cast from the input type to CONF_ITEM (which is the base type)
  *
