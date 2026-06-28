@@ -53,7 +53,7 @@
 #			if (updated) {
 #				... cache &reply:Pre-Shared-Key
 #				... cache &reply:PSK-Identity
-#
+#				ok
 #			}
 #		}
 #
@@ -75,13 +75,20 @@
 #  * updated	if there are DPSK attributes which match a PSK, and the
 #		PSK was read from 'filename'.
 #
-#		It also updates the attributes &reply:Pre-Shared-Key
-#		with the found PSK, along with &reply:PSK-Identity
-#		with the found identity.
+#		It also creates &reply:Pairwise-Master-Key.  When the
+#		matching PSK is known, it also creates the attributes
+#		&reply:Pre-Shared-Key with the found PSK, along with
+#		&reply:PSK-Identity with the found identity.
 #
-#		You can then check the return code for "updated", and
-#		write those attributes into a database.  This step
-#		ensures that 'filename' is read only as a last resort.
+#		When the PSK is read from 'filename', an optional VLAN ID
+#		can also be returned via the standard reply attributes
+#		Tunnel-Type = VLAN, Tunnel-Medium-Type = IEEE-802, and
+#		Tunnel-Private-Group-Id.
+#
+#		You can then check the return code for "updated",
+#		write those attributes into a database, and return
+#		ok to continue processing.  This step ensures that
+#		'filename' is read only as a last resort.
 #		Since the file is read from top to bottom for every
 #		packet, this process is much slower than using a
 #		database which is keyed to the PSK Identity.
@@ -111,7 +118,8 @@ dpsk {
 	#
 	#  The cache entry is the PSK-Identity and Pre-Shared-Key,
 	#  and/or the PMK which are used to verify the information in
-	#  the Access-Request.
+	#  the Access-Request.  When VLAN information is read from the
+	#  file, it is also cached with the entry.
 	#
 	#  Caching entries can help, even when using a database.  It
 	#  is very slow to calculate the PMK from the PSK.
@@ -126,13 +134,19 @@ dpsk {
 	#
 	#  PSKs can also be stored in a CSV file.  The format of the file is:
 	#
-	#	identity,psk,mac
+	#	identity,psk[,mac[,vlanid]]
 	#
 	#  If there are commas in a field, then the field can be
 	#  double quoted: "psk".
 	#
 	#  The mac field is optional.  If it exists, then that PSK
-	#  will be used.  It is highly recommended that the MAC *not* be placed
+	#  will be used.  The vlanid field is also optional, and if it
+	#  exists then the module will return the standard reply
+	#  attributes Tunnel-Type = VLAN, Tunnel-Medium-Type = IEEE-802,
+	#  and Tunnel-Private-Group-Id.  The VLAN field may be present
+	#  even when the MAC field is empty, e.g. 'identity,psk,,2065'.
+	#
+	#  It is highly recommended that the MAC *not* be placed
 	#  into the CSV file.  Instead, the MAC and PSK should be placed into a
 	#  database.  The server can then be configured to look up the MAC in the
 	#  database, which returns the PSK.  That way this module will only ever
@@ -160,7 +174,8 @@ dpsk {
 	#
 	#  Both "cache_size" and "filename" can be configured at the
 	#  same time, which is recommended.  When an entry in the file
-	#  is found, the identity, PSK, and MAC are saved in the cache.
+	#  is found, the identity, PSK, optional MAC, and optional VLAN
+	#  are saved in the cache.
 	#
 	#  If a cache entry is found, then the filename is NOT read.
 	#
@@ -190,5 +205,5 @@ dpsk {
 	#  files by location, which can drastically reduce the overall
 	#  search space, and thus the CPU requirements.
 	#
-#	filename = "${modconfdir}/${..:name}/psk.csv"
+#	filename = "${modconfdir}/${.:name}/psk.csv"
 }
