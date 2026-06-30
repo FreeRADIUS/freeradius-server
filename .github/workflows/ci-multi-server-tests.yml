@@ -230,7 +230,7 @@ jobs:
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
         env:
-          PROF_RESULTS_URL: "https://cinfra-ca.testdev.inkbridge.io"
+          PROF_RESULTS_URL: "https://cinfra-ca.inkbridge.io"
         run: scripts/ci/publish-profiling-results.sh
 
       #

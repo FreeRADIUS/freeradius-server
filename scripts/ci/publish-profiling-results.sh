@@ -4,9 +4,9 @@
 #  (a WebDAV endpoint fronted by the cinfra platform). Every file under
 #  prof-results/ is uploaded into the store's volume, then the store's
 #  manifest is refreshed so the browser UI sees the new run. The store
-#  image is static; this only writes files, never rebuilds it. The
-#  /profiling prefix is stripped in front of the container, so a file
-#  lands at /data/<rel>.
+#  image is static; this only writes files, never rebuilds it. Uploads go
+#  under /profiling/data/; Traefik strips the /profiling prefix and the store
+#  serves its /data/ location from the volume, so a file lands at /data/<rel>.
 #
 #  Auth is a GitHub OIDC token scoped to the store URL (the token's
 #  audience), which the store's access.lua verifies (signature + repo),
@@ -74,7 +74,7 @@ MAX_FAILURES=3
 #  not the transfer, so a slow upload of a large file still completes.
 upload() {
 	curl -fsS --connect-timeout 10 -H "Authorization: Bearer $token" \
-		-T "$1" "${PROF_RESULTS_URL}/profiling/$2"
+		-T "$1" "${PROF_RESULTS_URL}/profiling/data/$2"
 }
 
 #
@@ -103,7 +103,7 @@ upload() {
 existing=$(mktemp)
 body=$(mktemp)
 code=$(curl -sS --connect-timeout 10 -o "$body" -w '%{http_code}' \
-	"${PROF_RESULTS_URL}/profiling/manifest.json") || code=000
+	"${PROF_RESULTS_URL}/profiling/data/manifest.json") || code=000
 case "$code" in
 	200)
 		jq -r '.files[]?' <"$body" >"$existing" 2>/dev/null || {
@@ -250,7 +250,7 @@ newentries=$(jq -R 'select(length > 0) | split("\t")
 #  Read the current ledger: 200 merge, 404 start fresh, anything else abort.
 lbody=$(mktemp)
 lcode=$(curl -sS --connect-timeout 10 -o "$lbody" -w '%{http_code}' \
-	"${PROF_RESULTS_URL}/profiling/run-index-map.json") || lcode=000
+	"${PROF_RESULTS_URL}/profiling/data/run-index-map.json") || lcode=000
 case "$lcode" in
 	200)
 		base=$(jq '.' "$lbody") || {
@@ -294,7 +294,7 @@ rm -f "$ledgerrows" "$merged"
 
 #  Refresh the manifest so the UI's read path stays in sync with the tree.
 curl -fsS --connect-timeout 10 -X POST -H "Authorization: Bearer $token" \
-	"${PROF_RESULTS_URL}/profiling/_manifest" \
+	"${PROF_RESULTS_URL}/profiling/data/_manifest" \
 	|| { echo "ERROR: manifest regenerate failed" >&2; exit 1; }
 
 exit 0
