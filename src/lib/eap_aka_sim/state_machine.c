@@ -2455,17 +2455,21 @@ RESUME(send_aka_challenge_request)
 	case FR_EAP_METHOD_AKA_PRIME:
 		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
 			/*
-			 *	When the quintuplet source already supplies CK'/IK'
-			 *	(e.g. a 3GPP HSS over SWx, which performs the
-			 *	RFC 5448 / TS 33.402 transform itself), read them
-			 *	from control.CK-Prime / control.IK-Prime instead of
-			 *	deriving locally.  fr_aka_sim_crypto_umts_kdf_1()
-			 *	then skips its own derivation.
+			 *	When control.CK-Prime / control.IK-Prime are
+			 *	supplied (e.g. by a 3GPP HSS over SWx which
+			 *	performs the RFC 5448 / TS 33.402 transform itself),
+			 *	read them from those attributes instead of deriving
+			 *	locally.  fr_aka_sim_crypto_umts_kdf_1() then skips
+			 *	its own derivation.
+			 *
+			 *	Behaviour is gated on attribute presence: if neither
+			 *	CK-Prime nor IK-Prime is in control_pairs, fall
+			 *	through to the local Annex A derivation.
 			 */
-			if (!inst->derive_ck_ik_prime &&
+			if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_eap_aka_sim_ck_prime) &&
 			    (fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request, &request->control_pairs,
 									   &eap_aka_sim_session->keys) < 0)) {
-				REDEBUG("derive_ck_ik_prime = no, but valid control.%s / control.%s were not supplied",
+				REDEBUG("control.%s supplied without valid control.%s, or with bad length",
 					attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
 				goto failure;
 			}
