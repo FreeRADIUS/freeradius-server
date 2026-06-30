@@ -110,6 +110,9 @@ def should_format(path, raddb_root):
 
     name = path.name
 
+    if name.startswith("."):
+        return False
+
     if "certs" in parts:
         return False
 
@@ -833,7 +836,7 @@ def main(argv=None):
     for fp in files:
         try:
             sources[fp] = fp.read_text(encoding="utf-8")
-        except OSError as e:
+        except (OSError, UnicodeDecodeError) as e:
             print(f"format_raddb: {fp}: {e}", file=sys.stderr)
             sources[fp] = None
 
