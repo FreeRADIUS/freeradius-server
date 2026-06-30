@@ -2456,21 +2456,19 @@ RESUME(send_aka_challenge_request)
 		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
 			/*
 			 *	When control.CK-Prime / control.IK-Prime are
-			 *	supplied (e.g. by a 3GPP HSS over SWx which
-			 *	performs the RFC 5448 / TS 33.402 transform itself),
-			 *	read them from those attributes instead of deriving
-			 *	locally.  fr_aka_sim_crypto_umts_kdf_1() then skips
-			 *	its own derivation.
+			 *	supplied (e.g. by a 3GPP HSS over SWx which performs
+			 *	the RFC 5448 / TS 33.402 transform itself), read them
+			 *	from those attributes and skip the local Annex A
+			 *	derivation in fr_aka_sim_crypto_umts_kdf_1().
 			 *
-			 *	Behaviour is gated on attribute presence: if neither
-			 *	CK-Prime nor IK-Prime is in control_pairs, fall
-			 *	through to the local Annex A derivation.
+			 *	The helper returns 1 when neither attribute is set
+			 *	(normal local-derivation path) and -1 when the inputs
+			 *	are present but invalid (mismatched pair or wrong
+			 *	length).  Only the -1 case is a real error.
 			 */
-			if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_eap_aka_sim_ck_prime) &&
-			    (fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request, &request->control_pairs,
-									   &eap_aka_sim_session->keys) < 0)) {
-				REDEBUG("control.%s supplied without valid control.%s, or with bad length",
-					attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+			if (fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request,
+									  &request->control_pairs,
+									  &eap_aka_sim_session->keys) < 0) {
 				goto failure;
 			}
 			fr_aka_sim_crypto_umts_kdf_1(&eap_aka_sim_session->keys);

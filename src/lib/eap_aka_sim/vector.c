@@ -824,7 +824,8 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
  * @param[in] keys	key structure to populate.
  * @return
  *	- 0	CK'/IK' were found and written to keys.
- *	- -1	Attributes missing or of incorrect length.
+ *	- 1	Neither attribute is present; caller should fall back to local derivation.
+ *	- -1	One attribute is present but the other is missing, or either has the wrong length.
  */
 int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
@@ -833,8 +834,14 @@ int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_li
 	ck_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ck_prime);
 	ik_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ik_prime);
 
+	if (!ck_prime_vp && !ik_prime_vp) {
+		RDEBUG3("control.%s / control.%s not supplied; local Annex A derivation will be used",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return 1;
+	}
+
 	if (!ck_prime_vp || !ik_prime_vp) {
-		REDEBUG("Missing control.%s or control.%s",
+		REDEBUG("control.%s and control.%s must be supplied together",
 			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
 		return -1;
 	}
