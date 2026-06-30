@@ -41,7 +41,12 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
+	CONF_SECTION 		*tls_conf;	//!< TLS CONF_SECTION
+
 	fr_redis_cluster_t	*cluster;	//!< Pool O pools
+
+	fr_coord_reg_t		*coord_reg;		//!< Coordinator registration.
+	fr_coord_pair_reg_t	*coord_pair_reg;	//!< Coord pair registration.
 
 	int			expiry_time;	//!< Expiry time in seconds if no updates are received for a user
 
@@ -51,6 +56,10 @@ typedef struct {
 	char const		*trim;		//!< Command for trimming the session list.
 	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
+
+typedef enum {
+	REDIS_COORD_PAIR_CALLBACK_ID = 0
+} rlm_redis_coord_t;
 
 typedef struct {
 	rlm_rediswho_t			*inst;		//!< Module instance.
@@ -85,10 +94,12 @@ static conf_parser_t module_config[] = {
 };
 
 static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_redis;
 
 extern fr_dict_autoload_t rlm_rediswho_dict[];
 fr_dict_autoload_t rlm_rediswho_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_redis, .proto = "redis" },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -245,14 +256,88 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result
 	return mod_accounting_all(p_result, inst, request, insert, trim, expire);
 }
 
+/** Callback for worker receiving Fetch-OK packet from coordinator
+ */
+static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
+			       fr_pair_list_t const *list, UNUSED fr_time_t now,
+			       module_ctx_t *mctx, UNUSED void *uctx)
+{
+	rlm_rediswho_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	return;
+}
+
+static fr_coord_cb_reg_t coord_callbacks[] = {
+	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_cb_reg_t worker_callbacks[] = {
+	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
+static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
+	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
+	FR_COORD_CALLBACK_TERMINATOR
+};
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
+	CONF_SECTION	*subcs = cf_section_find(mctx->mi->conf, "redis", NULL);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
+	inst->conf.log_prefix = mctx->mi->name;
 	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
+	if (inst->conf.use_tls) {
+		inst->tls_conf = cf_section_find(subcs, "tls", CF_IDENT_ANY);
+
+		if (!inst->tls_conf) {
+			cf_log_err(mctx->mi->conf, "Missing tls section");
+			return -1;
+		}
+	}
+
+	if (!inst->conf.use_cluster_map) return 0;
+
+	if (inst->conf.database) {
+		cf_log_err(mctx->mi->conf, "Cannot set Redis database number when cluster in use");
+		return -1;
+	}
+
+	inst->coord_pair_reg = fr_coord_pair_register(&(fr_coord_pair_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.worker_cb = worker_pair_callbacks,
+			.cb_id = REDIS_COORD_PAIR_CALLBACK_ID,
+			.root = fr_dict_root(dict_redis),
+			.cs = subcs,
+		}
+	);
+	if (!inst->coord_pair_reg) return -1;
+
+	FR_COORD_PAIR_CB_CTX_SET(coord_callbacks, worker_callbacks, inst->coord_pair_reg);
+
+	inst->coord_reg = fr_coord_register(&(fr_coord_reg_ctx_t) {
+			.name = mctx->mi->name,
+			.coord_cb = coord_callbacks,
+			.worker_cb = worker_callbacks,
+			.mi = mctx->mi
+		});
+
+	if (!inst->coord_reg) return -1;
+
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
+
+	fr_coord_deregister(inst->coord_reg);
+	talloc_free(inst->coord_pair_reg);
 	return 0;
 }
 
@@ -272,6 +357,7 @@ module_rlm_t rlm_rediswho = {
 		.config		= module_config,
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
 		MODULE_THREAD_INST(rlm_rediswho_thread_t),
 	},
 	.method_group = {
