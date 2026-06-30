@@ -2373,7 +2373,6 @@ STATE(aka_challenge)
  */
 RESUME(send_aka_challenge_request)
 {
-	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t		*vp;
 	fr_aka_sim_vector_src_t	src = AKA_SIM_VECTOR_SRC_AUTO;
