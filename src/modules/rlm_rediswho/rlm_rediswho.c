@@ -256,6 +256,36 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result
 	return mod_accounting_all(p_result, inst, request, insert, trim, expire);
 }
 
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_rediswho_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+	rlm_rediswho_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
+
+	t->rtcluster = fr_redis_cluster_thread_alloc(t, inst->tls_conf, mctx->el, &inst->conf, NULL, NULL, false);
+
+	if (!t->rtcluster) return -1;
+	t->inst = inst;
+
+	return 0;
+}
+
+static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_rediswho_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+	rlm_rediswho_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
+
+	t->cw = fr_coord_attach(t, mctx->el, inst->coord_reg);
+
+	if (!t->cw) {
+		ERROR("Failed to attach to coordinator");
+		return -1;
+	}
+
+	if ((inst->conf.trunk_conf.start == 0) || (fr_schedule_worker_id() != 0)) return 0;
+
+	return fr_redis_cluster_thread_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
+}
+
 /** Callback for worker receiving Fetch-OK packet from coordinator
  */
 static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
@@ -332,6 +362,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_rediswho_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+
+	if (!t->cw) return 0;
+
+	fr_coord_detach(t->cw, true);
+	t->cw = NULL;
+	return 0;
+}
+
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
@@ -357,8 +398,11 @@ module_rlm_t rlm_rediswho = {
 		.config		= module_config,
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
+		.coord_attach	= mod_coord_attach,
 		.detach		= mod_detach,
 		MODULE_THREAD_INST(rlm_rediswho_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
