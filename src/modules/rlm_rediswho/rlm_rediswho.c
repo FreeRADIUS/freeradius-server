@@ -35,6 +35,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
+#include <freeradius-devel/redis/cluster_async.h>
 
 typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
@@ -50,6 +51,12 @@ typedef struct {
 	char const		*trim;		//!< Command for trimming the session list.
 	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
+
+typedef struct {
+	rlm_rediswho_t			*inst;		//!< Module instance.
+	fr_redis_cluster_thread_t	*rtcluster;	//!< Per thread Redis cluster.
+	fr_coord_worker_t		*cw;		//!< Coord-worker for fetching cluster map.
+} rlm_rediswho_thread_t;
 
 static conf_parser_t section_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("insert", CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
@@ -264,7 +271,8 @@ module_rlm_t rlm_rediswho = {
 		.inst_size	= sizeof(rlm_rediswho_t),
 		.config		= module_config,
 		.onload		= mod_load,
-		.instantiate	= mod_instantiate
+		.instantiate	= mod_instantiate,
+		MODULE_THREAD_INST(rlm_rediswho_thread_t),
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
