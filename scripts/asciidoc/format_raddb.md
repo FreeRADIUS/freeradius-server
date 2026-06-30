@@ -19,6 +19,10 @@ should not be formatted.  The list of files to ignore is below:
 
 * ignore files in the `raddb/certs` directory
 
+* ignore dotfiles, i.e. files whose name begins with a `.`, e.g.
+  `.gitignore` or `.DS_Store`.  These are not configuration files, and
+  some (such as `.DS_Store`) are binary and cannot be read as text.
+
 ## Whitespace
 
 The configuration files should use tabs for indentation, not spaces.
