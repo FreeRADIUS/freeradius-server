@@ -809,7 +809,7 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 	return 0;
 }
 
-/** Retrieve pre-derived CK'/IK' for EAP-AKA' from a set of attributes.
+/** Validate and copy pre-derived CK'/IK' for EAP-AKA' from caller-supplied pairs.
  *
  * When the UMTS quintuplet is fetched from a 3GPP HSS over the SWx interface
  * (3GPP TS 29.273), the HSS has already performed the RFC 5448 / TS 33.402
@@ -819,21 +819,23 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
  * in control.CK-Prime / control.IK-Prime directly.  Both attributes must be
  * present together.
  *
- * @param[in] request	The current request.
- * @param[in] vps	List to hunt for CK-Prime / IK-Prime in.
- * @param[in] keys	key structure to populate.
+ * The caller is expected to look up control.CK-Prime / control.IK-Prime once
+ * and pass the resulting pairs in here, so this function does not repeat the
+ * list walk.
+ *
+ * @param[in] request		The current request.
+ * @param[in] ck_prime_vp	control.CK-Prime pair, or NULL if not present.
+ * @param[in] ik_prime_vp	control.IK-Prime pair, or NULL if not present.
+ * @param[in] keys		key structure to populate.
  * @return
- *	- 0	CK'/IK' were found and written to keys.
- *	- 1	Neither attribute is present; caller should fall back to local derivation.
- *	- -1	One attribute is present but the other is missing, or either has the wrong length.
+ *	- 0	CK'/IK' were valid and written to keys.
+ *	- 1	Neither pair was supplied; caller should fall back to local derivation.
+ *	- -1	Only one of the two pairs is supplied, or either has the wrong length.
  */
-int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request,
+						  fr_pair_t *ck_prime_vp, fr_pair_t *ik_prime_vp,
+						  fr_aka_sim_keys_t *keys)
 {
-	fr_pair_t	*ck_prime_vp, *ik_prime_vp;
-
-	ck_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ck_prime);
-	ik_prime_vp = fr_pair_find_by_da(vps, NULL, attr_eap_aka_sim_ik_prime);
-
 	if (!ck_prime_vp && !ik_prime_vp) {
 		RDEBUG3("control.%s / control.%s not supplied; local Annex A derivation will be used",
 			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);

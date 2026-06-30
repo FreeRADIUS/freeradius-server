@@ -347,7 +347,8 @@ int		fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 						  fr_aka_sim_keys_t *keys,
 						  fr_aka_sim_vector_src_t *src);
 
-int		fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request, fr_pair_list_t *vps,
+int		fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request,
+							      fr_pair_t *ck_prime_vp, fr_pair_t *ik_prime_vp,
 							      fr_aka_sim_keys_t *keys);
 
 int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_list_t *vps,

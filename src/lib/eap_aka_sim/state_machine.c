@@ -2454,6 +2454,9 @@ RESUME(send_aka_challenge_request)
 
 	case FR_EAP_METHOD_AKA_PRIME:
 		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
+			fr_pair_t *ck_prime_vp;
+			fr_pair_t *ik_prime_vp;
+
 			/*
 			 *	When control.CK-Prime / control.IK-Prime are
 			 *	supplied (e.g. by a 3GPP HSS over SWx which performs
@@ -2466,8 +2469,13 @@ RESUME(send_aka_challenge_request)
 			 *	are present but invalid (mismatched pair or wrong
 			 *	length).  Only the -1 case is a real error.
 			 */
+			ck_prime_vp = fr_pair_find_by_da(&request->control_pairs, NULL,
+							 attr_eap_aka_sim_ck_prime);
+			ik_prime_vp = fr_pair_find_by_da(&request->control_pairs, NULL,
+							 attr_eap_aka_sim_ik_prime);
+
 			if (fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request,
-									  &request->control_pairs,
+									  ck_prime_vp, ik_prime_vp,
 									  &eap_aka_sim_session->keys) < 0) {
 				goto failure;
 			}
