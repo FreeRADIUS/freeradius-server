@@ -814,6 +814,66 @@ int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 	return 0;
 }
 
+/** Validate and copy pre-derived CK'/IK' for EAP-AKA' from caller-supplied pairs.
+ *
+ * When the UMTS quintuplet is fetched from a 3GPP HSS over the SWx interface
+ * (3GPP TS 29.273), the HSS has already performed the RFC 5448 / TS 33.402
+ * Annex A transform of CK/IK into CK'/IK' (it must, because the transform binds
+ * the keys to the Access Network Identity the HSS was given).  In that case the
+ * server must not derive CK'/IK' a second time; it consumes the values supplied
+ * in control.CK-Prime / control.IK-Prime directly.  Both attributes must be
+ * present together.
+ *
+ * The caller is expected to look up control.CK-Prime / control.IK-Prime once
+ * and pass the resulting pairs in here, so this function does not repeat the
+ * list walk.
+ *
+ * @param[in] request		The current request.
+ * @param[in] ck_prime_vp	control.CK-Prime pair, or NULL if not present.
+ * @param[in] ik_prime_vp	control.IK-Prime pair, or NULL if not present.
+ * @param[in] keys		key structure to populate.
+ * @return
+ *	- 0	CK'/IK' were valid and written to keys.
+ *	- 1	Neither pair was supplied; caller should fall back to local derivation.
+ *	- -1	Only one of the two pairs is supplied, or either has the wrong length.
+ */
+int fr_aka_sim_vector_umts_ck_ik_prime_from_attrs(request_t *request,
+						  fr_pair_t *ck_prime_vp, fr_pair_t *ik_prime_vp,
+						  fr_aka_sim_keys_t *keys)
+{
+	if (!ck_prime_vp && !ik_prime_vp) {
+		RDEBUG3("control.%s / control.%s not supplied; local Annex A derivation will be used",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return 1;
+	}
+
+	if (!ck_prime_vp || !ik_prime_vp) {
+		REDEBUG("control.%s and control.%s must be supplied together",
+			attr_eap_aka_sim_ck_prime->name, attr_eap_aka_sim_ik_prime->name);
+		return -1;
+	}
+
+	if (ck_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_CK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_CK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ck_prime->name, ck_prime_vp->vp_length);
+		return -1;
+	}
+
+	if (ik_prime_vp->vp_length != AKA_SIM_VECTOR_UMTS_IK_SIZE) {
+		REDEBUG("control.%s incorrect length.  Expected "
+			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
+			attr_eap_aka_sim_ik_prime->name, ik_prime_vp->vp_length);
+		return -1;
+	}
+
+	memcpy(keys->ck_prime, ck_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_CK_SIZE);
+	memcpy(keys->ik_prime, ik_prime_vp->vp_octets, AKA_SIM_VECTOR_UMTS_IK_SIZE);
+	keys->ck_ik_prime_provided = true;
+
+	return 0;
+}
+
 /** Populate a fr_aka_sim_keys_t structure from attributes in the session-state list
  *
  * @param[in] request	The current request.
