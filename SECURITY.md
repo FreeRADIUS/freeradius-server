@@ -54,7 +54,7 @@ All security vulnerabilities should be reported to <security@freeradius.org>
 
 ## Use of AI
 
-Security reports must also follow the [AI policy](AI.md).  We are
+Security reports must also follow the [AI policy](https://github.com/FreeRADIUS/freeradius-server#use-of-ai).  We are
 happy to accept reports where people have used AI, _provided_ that the
 results have been verified by a person.  Simply forwarding AI results
 to us will likely just get you banned.
