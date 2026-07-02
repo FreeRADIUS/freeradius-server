@@ -52,15 +52,29 @@ those versions, even for security vulnerabilities.
 
 All security vulnerabilities should be reported to <security@freeradius.org>
 
-## Use of AI
+### Use of AI
 
-Security reports must also follow the [AI policy](AI.md).  We are
+Security reports must also follow the [policy on AI agents](AGENTS.md).  We are
 happy to accept reports where people have used AI, _provided_ that the
 results have been verified by a person.  Simply forwarding AI results
 to us will likely just get you banned.
 
 You must take personal responsibility for the content and correction
 of any security reports which were generated using AI tools.
+
+### CVEs
+
+We do not issue CVEs for the git `master` branch.  The code is in
+development, and is not part of any official release.
+
+Given the rise of AI analysis tools, we are also putting a hold on
+issuing CVEs for the 3.0 and the 3.2 branches.  If anyone can download
+the source and "find a bug" by using $0.02 of AI tokens, then the
+landscape has changed.  There is no reason to give credit to the
+"discoverer", when the discoverer is an AI tool and not a person.
+There is no reason to have an embargo period when anyone else with a
+keyboard and credit card can make the same discovery with 5 minutes of
+effort.
 
 ### PGP Key
 
