@@ -83,12 +83,12 @@ static conf_parser_t module_config[] = {
 	 *	These all smash the same variables, because we don't care about them right now.
 	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
 	 */
-	{ FR_CONF_POINTER("Start", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Interim-Update", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Stop", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-On", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-Off", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Failed", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Start", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Interim-Update", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Stop", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Accounting-On", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Accounting-Off", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Failed", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
 
 	CONF_PARSER_TERMINATOR
 };
