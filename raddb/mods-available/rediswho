@@ -16,41 +16,6 @@
 #
 rediswho {
 	#
-	#  server::
-	#
-	#  If using Redis cluster, multiple 'bootstrap' servers may be listed
-	#  here (as separate config items). These will be contacted in turn
-	#  until one provides us with a valid map for the cluster. Server
-	#  strings may contain unique ports e.g.:
-	#
-	#    server = '127.0.0.1:30001'
-	#    server = '[::1]:30002'
-	#
-	#  NOTE: Instantiation failure behaviour is controlled by
-	#  `pool.start` as with other modules. With clustering however, the
-	#  `pool { ... }` section determines limits for each node we access
-	#  in the cluster, and not the cluster as a whole.
-	#
-	server = 127.0.0.1
-
-	#
-	#  database:: Select the Redis logical database having the specified
-	#  zero-based numeric index.
-	#
-#	database = 0
-
-	#
-	#  port:: Port to connect to The default port is 6379.
-	#
-	port = 6379
-
-	#  password:: The password used to authenticate to the server.
-	#
-	#  We recommend using a strong password.
-	#
-#	password = thisisreallysecretandhardtoguess
-
-	#
 	#  trim_count:: How many sessions to keep track of per user.
 	#
 	#  If there are more than this number, older sessions are deleted.
@@ -134,4 +99,40 @@ rediswho {
 ##		trim =   ""
 ##		expire = ""
 ##	}
+
+	#
+	#  redis { ... }:: Redis connection settings.
+	#
+	#  Identical to all other Redis based modules.
+	#
+	#  NOTE: See the `redis` module for more information.
+	#
+	redis {
+		server = 127.0.0.1
+
+		virtual_server = redis
+
+		port = 6379
+
+##		password = thisisreallysecretandhardtoguess
+
+		pool {
+			start = 0
+			min = 1
+			max = 10
+			connecting = 2
+##			open_delay = 0.2
+##			close_delay = 10
+##			manage_interval = 0.2
+			connection {
+				connect_timeout = 3.0
+				reconnect_delay = 5
+			}
+			request {
+				per_connection_max = 2000
+				per_connection_target = 1000
+				free_delay = 10
+			}
+		}
+	}
 }

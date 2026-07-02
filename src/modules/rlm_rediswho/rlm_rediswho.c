@@ -74,9 +74,12 @@ static conf_parser_t section_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static conf_parser_t module_config[] = {
+static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
+	CONF_PARSER_TERMINATOR
+};
 
+static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("trim_count", rlm_rediswho_t, trim_count), .dflt = "-1" },
 
 	/*
@@ -89,6 +92,8 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_POINTER("Accounting-On", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
 	{ FR_CONF_POINTER("Accounting-Off", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
 	{ FR_CONF_POINTER("Failed", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+
+	{ FR_CONF_POINTER("redis", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = redis_config },
 
 	CONF_PARSER_TERMINATOR
 };
