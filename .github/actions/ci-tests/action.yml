@@ -261,6 +261,7 @@ runs:
         SMTP_TEST_SERVER_PORT: ${{ inputs.smtp_test_server_port }}
         REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         REDIS_IPPOOL_TEST_SERVER: ${{ inputs.redis_test_server }}
+        REDISWHO_TEST_SERVER: ${{ inputs.redis_test_server }}
         CACHE_REDIS_TEST_SERVER: ${{ inputs.redis_test_server }}
         IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
         IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}

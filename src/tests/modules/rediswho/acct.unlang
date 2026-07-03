@@ -1,0 +1,50 @@
+#
+#  Ensure there is no existing session data
+#
+%redis('DEL', User-Name)
+
+rediswho.accounting.start
+if (!ok) {
+	test_fail
+}
+
+Filter-Id := %redis('LRANGE', User-Name, 0, -1)
+
+if (Filter-Id[#] != 1) {
+	test_fail
+}
+
+rediswho.accounting.interim-update
+if (!ok) {
+	test_fail
+}
+
+request -= Filter-Id[*]
+Filter-Id := %redis('LRANGE', User-Name, 0, -1)
+
+if (Filter-Id[#] != 2) {
+	test_fail
+}
+
+rediswho.accounting.interim-update
+if (!ok) {
+	test_fail
+}
+
+# Trimming will limit the number of entries
+request -= Filter-Id[*]
+Filter-Id := %redis('LRANGE', User-Name, 0, -1)
+
+if (Filter-Id[#] != 2) {
+	test_fail
+}
+
+# Stop has no commands configured
+rediswho.accounting.stop
+if (!noop) {
+	test_fail
+}
+
+reply := {}
+
+test_pass
