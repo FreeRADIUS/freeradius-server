@@ -16,6 +16,16 @@
 #
 rediswho {
 	#
+	#  key:: Value to use as Redis key.
+	#
+	key = User-Name
+
+	#
+	#  value:: Expansion to produce value to store against Redis key.
+	#
+	value = "%l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
+
+	#
 	#  trim_count:: How many sessions to keep track of per user.
 	#
 	#  If there are more than this number, older sessions are deleted.
@@ -23,81 +33,89 @@ rediswho {
 	trim_count = 15
 
 	#
-	#  expire_time:: Expiry time in seconds.
+	#  expiry_time:: Expiry time in seconds.
 	#
 	#  Any sessions which have not received an update in this time will
 	#  be automatically expired.
 	#
-	expire_time = 86400
+	expiry_time = 86400
 
 	#
-	#  == Queries by Acct-Status-Type
+	#  == Per accounting section configuration
 	#
-	#  Each subsection contains insert / trim / expire queries.
-	#
-	#  The subsections are named after the contents of the
-	#  `Acct-Status-Type` attribute.
-	#
-	#  See `dictionary.rfc2866` for the names of the various
-	#  Acct-Status-Type values, or look at the output of debug mode.
-	#
-	#  This module supports *any* `Acct-Status-Type`. Just add a
-	#  subsection of the appropriate name, along with insert / trim /
-	#  expire queries.
+	#  Each subsection contains values appropriate to the
+	#  module being called in the named accounting section.
 	#
 
 	#
-	#  === Start
+	#  === start
 	#
-	Start {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	start {
+		#
+		#  key:: Value to use as Redis key
+		#
+		key = ${..key}
+
+		#
+		#  insert_arg:: Argument to append to Redis insert command
+		#
+		insert_arg = ${..value}
+
+		#
+		#  insert_cmd:: Redis command to run when inserting a new value
+		#
+		#  Defaults to LPUSH.  This command will be combined with the key
+		#  and insert_arg to produce the insert command.
+		#
+#		insert_cmd = 'LPUSH'
+
+		#
+		#  trim_cmd:: Redis command to run when trimming values.
+		#
+		#  Defaults to LTRIM.  This command will be combined with the key,
+		#  0 and the value of trim_count to produce the trim command.
+		#
+#		trim_cmd = 'LTRIM'
 	}
 
 	#
-	#  === Interim-Update
+	#  === interim-update
 	#
-	Interim-Update {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	interim-update {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
 
 	#
-	#  === Stop
+	#  === stop
 	#
-	Stop {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address || NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords || 0},%{Acct-Output-Gigawords || 0},%{Acct-Input-Octets || 0},%{Acct-Output-Octets || 0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
-		expire = "EXPIRE %{User-Name} ${..expire_time}"
+	stop {
+		key = ${..key}
+		insert_arg = ${..value}
 	}
 
 	#
-	#  === Accounting-On
+	#  === accounting-on
 	#
-##	Accounting-On {
-##		insert = ""
-##		trim =   ""
-##		expire = ""
+##	accounting-on {
+##		key = ""
+##		insert_arg = ""
 ##	}
 
 	#
-	#  === Accounting-Off
+	#  === accounting-off
 	#
-##	Accounting-Off {
-##		insert = ""
-##		trim =   ""
-##		expire = ""
+##	accounting-off {
+##		key = ""
+##		insert_arg = ""
 ##	}
 
 	#
-	#  === Failed
+	#  === failed
 	#
-##	Failed {
-##		insert = ""
-##		trim =   ""
-##		expire = ""
+##	failed {
+##		key = ""
+##		insert_arg = ""
 ##	}
 
 	#
