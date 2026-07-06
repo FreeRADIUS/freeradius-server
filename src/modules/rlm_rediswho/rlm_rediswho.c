@@ -48,10 +48,6 @@ typedef struct {
 	int			expiry_time;	//!< Expiry time in seconds if no updates are received for a user
 
 	int			trim_count;	//!< How many session updates to keep track of per user.
-
-	char const		*insert;	//!< Command for inserting session data
-	char const		*trim;		//!< Command for trimming the session list.
-	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
 
 typedef enum {
@@ -67,21 +63,18 @@ typedef struct {
 /** Resume context for rediswho module calls.
  */
 typedef struct {
-	char const		*trim;			//!< Format string for trim command.
-	char const		*expire;		//!< Format string for expire command.
 	fr_redis_command_set_t	*cmds;			//!< Command set for module call.
 	fr_redis_async_cmd_t	*cmd;			//!< Async command context.
 	char			*cmd_str;		//!< Formatted command currently being run.
-	uint8_t const		*key;			//!< Key value to identify cluster slot.
 	int			ret;			//!< Value returned in Redis reply.
 } rediswho_rctx_t;
 
-static conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("insert", CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
-	{ FR_CONF_OFFSET_FLAGS("trim", CONF_FLAG_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET_FLAGS("expire", CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, expire) },
-	CONF_PARSER_TERMINATOR
-};
+typedef struct {
+	fr_value_box_t		key;			//!< Key value for redis commands
+	fr_value_box_t		insert_cmd;		//!< Command to run for insert stage, defaults to LPUSH
+	fr_value_box_t		insert_arg;		//!< Argument to append to insert command
+	fr_value_box_t		trim_cmd;		//!< Command to run for trim stage, defaults to LTRIM
+} rediswho_call_env_t;
 
 static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
@@ -90,17 +83,7 @@ static conf_parser_t redis_config[] = {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("trim_count", rlm_rediswho_t, trim_count), .dflt = "-1" },
-
-	/*
-	 *	These all smash the same variables, because we don't care about them right now.
-	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
-	 */
-	{ FR_CONF_POINTER("Start", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Interim-Update", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Stop", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-On", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-Off", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Failed", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = section_config },
+	{ FR_CONF_OFFSET_FLAGS("expiry_time", CONF_FLAG_REQUIRED, rlm_rediswho_t, expiry_time) },
 
 	{ FR_CONF_POINTER("redis", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = redis_config },
 
@@ -160,36 +143,14 @@ static void rediswho_results(request_t *request, UNUSED fr_redis_command_t *cmd,
 /*
  *	Enqueue a Redis command which will return a single integer or status result.
  */
-static fr_redis_async_rcode_t rediswho_command(rlm_rediswho_thread_t *thread, request_t *request,
-					       char const *fmt, rediswho_rctx_t *rctx)
+static fr_redis_async_rcode_t rediswho_command(rlm_rediswho_thread_t *thread, request_t *request, fr_value_box_t *key,
+					       rediswho_rctx_t *rctx, char const *fmt, ...)
 {
+	va_list			ap;
 	fr_redis_async_rcode_t	ret;
 	int			cmd_len;
-	size_t			key_len;
-
-	int			argc;
-	char const		*argv[MAX_REDIS_ARGS];
-	char			argv_buf[MAX_REDIS_COMMAND_LEN];
 
 	if (!fmt || !*fmt) return REDIS_ASYNC_RCODE_ERROR;
-
-	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
-	if (argc < 0) {
-		RPEDEBUG("Invalid command: %s", fmt);
-		return REDIS_ASYNC_RCODE_ERROR;
-	}
-
-	/*
-	 *	If we've got multiple arguments, the second one is usually the key.
-	 *	The Redis docs say commands should be analysed first to get key
-	 *	positions, but this involves sending them to the server, which is
-	 *	just as expensive as sending them to the wrong server and receiving
-	 *	a redirect.
-	 */
-	if (argc > 1) {
-		key_len = strlen(argv[1]);
-		rctx->key = talloc_memdup(rctx, argv[1], key_len);
-	}
 
 	/*
 	 *	If there's a previous formatted command, clean up
@@ -200,15 +161,18 @@ static fr_redis_async_rcode_t rediswho_command(rlm_rediswho_thread_t *thread, re
 		fr_redis_command_set_clear(rctx->cmds);
 	}
 
-	cmd_len = redisFormatCommandArgv(&rctx->cmd_str, argc, argv, NULL);
+	va_start(ap, fmt);
+	cmd_len = redisvFormatCommand(&rctx->cmd_str, fmt, ap);
+	va_end(ap);
+
 	if (cmd_len < 0) {
 		RERROR("Failed formatting redis commmand");
 		return REDIS_ASYNC_RCODE_ERROR;
 	}
 	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, rediswho_results, rctx);
 
-	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, rctx->key, key_len,
-					     rctx->cmds, false, NULL);
+	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster,
+					     (uint8_t const *)key->vb_strvalue, key->vb_length, rctx->cmds, false, NULL);
 
 	return ret;
 }
@@ -271,7 +235,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_expire(unlang_result_t *p
 							      request_t *request)
 {
 	rediswho_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rediswho_rctx_t);
+	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
 	rlm_rediswho_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+	rediswho_call_env_t	*env = talloc_get_type_abort(mctx->env_data, rediswho_call_env_t);
 	fr_redis_async_rcode_t	ret;
 
 	if (rediswho_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_accounting_expire,
@@ -282,10 +248,12 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_expire(unlang_result_t *p
 		RETURN_UNLANG_FAIL;
 	}
 
-	ret = rediswho_command(thread, request, rctx->expire, rctx);
+	ret = rediswho_command(thread, request, &env->key, rctx, "EXPIRE %b %d",
+			       (uint8_t const *)env->key.vb_strvalue, env->key.vb_length, inst->expiry_time);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL)
+	RDEBUG3("Setting expiry to %d", inst->expiry_time);
 
 	return unlang_module_yield(request, mod_accounting_resume, mod_accounting_cancel, 0, rctx);
 }
@@ -296,6 +264,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_r
 	rediswho_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rediswho_rctx_t);
 	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
 	rlm_rediswho_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
+	rediswho_call_env_t	*env = talloc_get_type_abort(mctx->env_data, rediswho_call_env_t);
 	fr_redis_async_rcode_t	ret;
 
 	if (rediswho_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_accounting_trim,
@@ -306,16 +275,20 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting_trim(unlang_result_t *p_r
 		RETURN_UNLANG_FAIL;
 	}
 
-	if ((inst->trim_count > 0) && (rctx->ret > inst->trim_count)) {
-		ret = rediswho_command(thread, request, rctx->trim, rctx);
+	RDEBUG3("Key \"%pV\" has %d entries", &env->key, rctx->ret);
+
+	if (rctx->ret > inst->trim_count) {
+		ret = rediswho_command(thread, request, &env->key, rctx, "%s %b 0 %d", env->trim_cmd.vb_strvalue,
+				       (uint8_t const *)env->key.vb_strvalue, env->key.vb_length, inst->trim_count - 1);
 
 		REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 						"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL)
-
+		RDEBUG3("Trimming \"%pV\" to %d entries", &env->key, inst->trim_count);
 		return unlang_module_yield(request, mod_accounting_expire, mod_accounting_cancel, 0, rctx);
 	}
 
-	ret = rediswho_command(thread, request, rctx->expire, rctx);
+	ret = rediswho_command(thread, request, &env->key, rctx, "EXPIRE %b %d",
+			       (uint8_t const *)env->key.vb_strvalue, env->key.vb_length, inst->expiry_time);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL)
@@ -331,62 +304,35 @@ static int _rediswho_rctx_free(rediswho_rctx_t *rctx)
 
 static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_rediswho_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
 	rlm_rediswho_thread_t		*thread = talloc_get_type_abort(mctx->thread, rlm_rediswho_thread_t);
-	CONF_SECTION			*conf = mctx->mi->conf;
-	fr_pair_t			*vp;
-	fr_dict_enum_value_t const	*dv;
-	CONF_SECTION			*cs;
-	char const			*insert, *trim, *expire;
+	rediswho_call_env_t		*env = talloc_get_type_abort(mctx->env_data, rediswho_call_env_t);
 	fr_redis_async_rcode_t		ret;
 	rediswho_rctx_t			*rctx;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
-	if (!vp) {
-		RDEBUG2("Could not find account status type in packet");
+	if (env->key.vb_length == 0) {
+		RDEBUG2("Zero length key value");
 		RETURN_UNLANG_NOOP;
 	}
 
-	dv = fr_dict_enum_by_value(vp->da, &vp->data);
-	if (!dv) {
-		RDEBUG2("Unknown Acct-Status-Type %u", vp->vp_uint32);
-		RETURN_UNLANG_NOOP;
-	}
-
-	cs = cf_section_find(conf, dv->name, NULL);
-	if (!cs) {
-		RDEBUG2("No subsection %s", dv->name);
-		RETURN_UNLANG_NOOP;
-	}
-
-	insert = cf_pair_value(cf_pair_find(cs, "insert"));
-	trim = cf_pair_value(cf_pair_find(cs, "trim"));
-	expire = cf_pair_value(cf_pair_find(cs, "expire"));
-
-	if (!insert) {
-		RDEBUG("No 'insert' query - ignoring");
-		RETURN_UNLANG_NOOP;
-	}
-
-	if (!expire) {
-		RDEBUG("No 'expire' query - ignoring");
+	if (env->insert_arg.vb_length == 0) {
+		RDEBUG2("Zero length argument value");
 		RETURN_UNLANG_NOOP;
 	}
 
 	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), rediswho_rctx_t));
-	*rctx = (rediswho_rctx_t) {
-		.ret = -1,
-		.trim = trim,
-		.expire = expire
-	};
+	*rctx = (rediswho_rctx_t) { .ret = -1 };
 	rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false);
 	talloc_set_destructor(rctx, _rediswho_rctx_free);
 
-	ret = rediswho_command(thread, request, insert, rctx);
+	ret = rediswho_command(thread, request, &env->key, rctx, "%s %b %b", env->insert_cmd.vb_strvalue,
+			       (uint8_t const *)env->key.vb_strvalue, env->key.vb_length,
+			       (uint8_t const *)env->insert_arg.vb_strvalue, env->insert_arg.vb_length);
 
 	REDIS_ASYNC_START_RCODE_PROCESS(ret, thread->rtcluster, thread->cw, thread->inst->coord_pair_reg,
 					"Failed to enqueue Redis cache find commands", UNLANG_ACTION_FAIL)
 
-	return unlang_module_yield(request, trim ? mod_accounting_trim : mod_accounting_expire,
+	return unlang_module_yield(request, inst->trim_count > 0 ? mod_accounting_trim : mod_accounting_expire,
 				   mod_accounting_cancel, ~FR_SIGNAL_CANCEL, rctx);
 }
 
@@ -520,6 +466,46 @@ static int mod_load(void)
 	return 0;
 }
 
+static call_env_parser_t const rediswho_env_parser[] = {
+	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE , rediswho_call_env_t, key) },
+	{ FR_CALL_ENV_OFFSET("insert_cmd", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, rediswho_call_env_t, insert_cmd), .pair.dflt = "LPUSH", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
+	{ FR_CALL_ENV_OFFSET("insert_arg", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_REQUIRED , rediswho_call_env_t, insert_arg) },
+	{ FR_CALL_ENV_OFFSET("trim_cmd", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT , rediswho_call_env_t, trim_cmd), .pair.dflt = "LTRIM", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
+	CALL_ENV_TERMINATOR
+};
+
+static int redis_command_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+					CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*subcs = NULL;
+	char			*section2, *p;
+
+	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
+
+	section2 = talloc_strdup(NULL, section_name_str(cec->asked->name2));
+	p = section2;
+	while (*p != '\0') {
+		*(p) = tolower((uint8_t)*p);
+		p++;
+	}
+	subcs = cf_section_find(cf_item_to_section(cf_parent(ci)), section2, CF_IDENT_ANY);
+	talloc_free(section2);
+	if (!subcs) {
+		cf_log_warn(ci, "No \"%s\" section found", section_name_str(cec->asked->name2) );
+		return 0;
+	}
+
+	return call_env_parse(ctx, out, cec->asked->name2, t_rules, subcs, cec, rediswho_env_parser);
+}
+
+static const call_env_method_t method_env = {
+	FR_CALL_ENV_METHOD_OUT(rediswho_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, redis_command_call_env_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 extern module_rlm_t rlm_rediswho;
 module_rlm_t rlm_rediswho = {
 	.common = {
@@ -537,7 +523,7 @@ module_rlm_t rlm_rediswho = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting },
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
