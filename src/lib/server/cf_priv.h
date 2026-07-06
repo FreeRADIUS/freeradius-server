@@ -123,6 +123,7 @@ struct cf_section {
 
 	CONF_SECTION		*template;
 };
+#define CONF_SECTION_MAX_DEPTH 256
 
 /*
  *	Private getter for cf_file.c's parser hook - the public API is the

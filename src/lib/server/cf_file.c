@@ -3059,6 +3059,12 @@ alloc_section:
 	}
 
 setup_section:
+	if (css->depth >= CONF_SECTION_MAX_DEPTH) {
+		ERROR("%s[%d]: Failed creating section - too many nested sections (%d)",
+		      frame->filename, frame->lineno, css->depth);
+		return -1;
+	}
+
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
 	css->name2_quote = name2_token;
