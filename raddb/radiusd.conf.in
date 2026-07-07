@@ -509,19 +509,29 @@ templates {
 security {
 	#
 	#  user::
-	#  group::
 	#
-	#  The name (or `#number`) of the `user`/`group` to run `radiusd` as.
+	#  The name (or `#number`) of the `user` to use as the uid of
+	#  the server.
 	#
-	#  If these are commented out, the server will run as the
-	#  user/group that started it.  In order to change to a
-	#  different user/group, you MUST be root ( or have root
-	#  privileges ) to start the server.
+	#  If the user/group fields are commented out, the server will
+	#  run as the user/group that started it.  In order to change
+	#  to a different user/group, the server MUST start as root
+	#  (or have permissions to change UID / GID)
 	#
 	#  We STRONGLY recommend that you run the server with as few
 	#  permissions as possible.  That is, if you're not using
-	#  shadow passwords, the user and group items below should be
-	#  set to radius'.
+	#  shadow passwords, the `user` and `group` items should be
+	#  set to `radius`.
+	#
+#	user = radius
+
+	#
+	#  group::
+	#
+	#  The name (or `#number`) of the `user` to use as the gid.
+	#
+	#  See the `user` configuration above for additional
+	#  information.
 	#
 	#  NOTE: Some kernels refuse to `setgid(group)` when the
 	#  value of (unsigned)group is above 60000; don't use group
@@ -539,7 +549,6 @@ security {
 	#  member.  This can allow for some finer-grained access
 	#  controls.
 	#
-#	user = radius
 #	group = radius
 
 	#
