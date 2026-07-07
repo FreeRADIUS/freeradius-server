@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/types.h>
 
-#include <json-c/json.h>
+#include <freeradius-devel/json/base.h>
 
 #include <dirent.h>
 #include <dlfcn.h>
