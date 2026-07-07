@@ -417,6 +417,7 @@ static void _redis_io_free(void *uctx)
 	DEBUG4("redis handle %p - Freed", h);
 
 	_redis_io_common(conn, h, false, false);
+	h->ac = NULL;
 }
 
 /** Configures async I/O callbacks for an existing redisAsyncContext
@@ -492,6 +493,7 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 		ERROR("Failed allocating handle for %s:%u: %s", host, port, h->ac->errstr);
 	error:
 		redisAsyncFree(h->ac);
+		h->ac = NULL;
 		return CONNECTION_STATE_FAILED;
 	}
 
