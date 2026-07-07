@@ -125,6 +125,9 @@ def should_format(path, raddb_root):
     if "mods-config" in parts and not name.endswith(".conf"):
         return False
 
+    if name.endswith(".md") or name.endswith(".txt") or name.endswith(".mk"):
+        return False
+
     return True
 
 
