@@ -7,17 +7,19 @@
 #
 #  = Microsoft CHAP authentication Module
 #
-#  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
+#  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2`
+#  authentication.
 #
 #  MS-CHAP authentication requires access to either the
-#  Password.Cleartext or Password.NT attribute for the user.  Due to
+#  Password.Cleartext or Password.NT attribute for the user. Due to
 #  the limitations of MS-CHAP, no other password "encryption" methods
 #  are possible.
 #
-#  This module validates a user with `MS-CHAP` or `MS-CHAPv2` authentication.
-#  If called in `recv Access-Request`, it will look for `MS-CHAP` Challenge/Response
-#  attributes in the `request` list and adds an `Auth-Type` attribute set to
-#  `mschap` in the Config-Items list unless Auth-Type has already set.
+#  This module validates a user with `MS-CHAP` or `MS-CHAPv2`
+#  authentication. If called in `recv Access-Request`, it will look
+#  for `MS-CHAP` Challenge/Response attributes in the `request` list
+#  and adds an `Auth-Type` attribute set to `mschap` in the
+#  Config-Items list unless Auth-Type has already set.
 #
 #  The module also enforces the `SMB-Account-Ctrl` attribute. See the
 #  Samba documentation for the meaning of SMB account control. The
@@ -40,8 +42,8 @@
 #
 #  [NOTE]
 #  ====
-#  For more documentation on integrating FreeRADIUS with Active Directory, please
-#  see the following web page:
+#  For more documentation on integrating FreeRADIUS with Active
+#  Directory, please see the following web page:
 #  http://deployingradius.com/documents/configuration/active_directory.html
 #  ====
 #
@@ -57,8 +59,8 @@ mschap {
 	#  normalise::
 	#
 	#  By default the server will use heuristics to try and automatically
-	#  handle base64 or hex encoded passwords or hashes.
-	#  This behaviour can be disabled by setting the following to `no`.
+	#  handle base64 or hex encoded passwords or hashes. This behaviour
+	#  can be disabled by setting the following to `no`.
 	#
 	#  The default is `yes`
 	#
@@ -67,9 +69,10 @@ mschap {
 	#
 	#  use_mppe::
 	#
-	#  By default the `mschap` will add `MS-CHAP-MPPE-Keys` for `MS-CHAPv1` and
-	#  `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` for `MS-CHAPv2`.  Set this
-	#  configuration item to `no` in order to not add the MPPE keys.
+	#  By default the `mschap` will add `MS-CHAP-MPPE-Keys` for
+	#  `MS-CHAPv1` and `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` for
+	#  `MS-CHAPv2`. Set this configuration item to `no` in order to not
+	#  add the MPPE keys.
 	#
 	#  Default is `yes`.
 	#
@@ -78,7 +81,8 @@ mschap {
 	#
 	#  require_encryption::
 	#
-	#  if `use_mppe` is enabled, the `require_encryption` makes encryption moderate.
+	#  if `use_mppe` is enabled, the `require_encryption` makes
+	#  encryption moderate.
 	#
 	#  Default is `no`.
 	#
@@ -94,8 +98,9 @@ mschap {
 #	require_strong = yes
 
 	#
-	#  with_ntdomain_hack:: Windows clients send `User-Name` in the form of "DOMAIN\User",
-	#  but send the challenge/response based only on the User portion.
+	#  with_ntdomain_hack:: Windows clients send `User-Name` in the form
+	#  of "DOMAIN\User", but send the challenge/response based only on
+	#  the User portion.
 	#
 	#  Default is `yes`.
 	#
@@ -104,55 +109,57 @@ mschap {
 	#
 	#  ntlm_auth:: Path and arguments to the `ntlm_auth` program.
 	#
-	#  The module can perform authentication itself, OR
-	#  use a Windows Domain Controller.  This configuration
-	#  directive tells the module to call the `ntlm_auth`
-	#  program, which will do the authentication, and return
-	#  the `NT-Key`.
+	#  The module can perform authentication itself, OR use a Windows
+	#  Domain Controller. This configuration directive tells the module
+	#  to call the `ntlm_auth` program, which will do the authentication,
+	#  and return the `NT-Key`.
 	#
 	#  NOTE: you MUST have the such services "winbindd" and "nmbd"
 	#  running on the local machine for `ntlm_auth` to work.
 	#
 	#  See the `ntlm_auth` program documentation for details.
 	#
-	#  If `ntlm_auth` is configured below, then the `mschap` module
-	#  will call `ntlm_auth` for every `MS-CHAP` authentication request.
+	#  If `ntlm_auth` is configured below, then the `mschap` module will
+	#  call `ntlm_auth` for every `MS-CHAP` authentication request.
 	#
-	#  If there is a cleartext or NT hashed password available, you can set
-	#  `MS-CHAP-Use-NTLM-Auth := No` in the control items, and the `mschap`
-	#  module will do the authentication itself, without calling `ntlm_auth`.
+	#  If there is a cleartext or NT hashed password available, you can
+	#  set `MS-CHAP-Use-NTLM-Auth := No` in the control items, and the
+	#  `mschap` module will do the authentication itself, without calling
+	#  `ntlm_auth`.
 	#
-	#  You can also set `MS-CHAP-Use-NTLM-Auth := Auto`.  If a password is available,
-	#  it will be used.  Otherwise the module will fall back to ntlm_auth.
+	#  You can also set `MS-CHAP-Use-NTLM-Auth := Auto`. If a password is
+	#  available, it will be used. Otherwise the module will fall back to
+	#  ntlm_auth.
 	#
 	#  You can also try setting the user name as:
 	#
 	#  `... --username=%mschap(User-Name) ...`
 	#
 	#  In that case, the `mschap` module will look at the `User-Name`
-	#  attribute, and do prefix/suffix checks in order to obtain the _best_
-	#  user name for the request.
+	#  attribute, and do prefix/suffix checks in order to obtain the
+	#  _best_ user name for the request.
 	#
-	#  Depending on the AD / Samba configuration, you may also need to add:
+	#  Depending on the AD / Samba configuration, you may also need to
+	#  add:
 	#
 	#  `--allow-mschapv2`
 	#
 	#  to the list of command-line options.
 	#
-	#  WARNING: Be VERY careful when editing the following line!
-	#  Change the path, and ideally nothing else.
+	#  WARNING: Be VERY careful when editing the following line! Change
+	#  the path, and ideally nothing else.
 	#
 #	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{Stripped-User-Name || User-Name || 'None'} --challenge=%{%mschap('Challenge') || 00} --nt-response=%{%mschap('NT-Response') || 00}"
 
 	#
 	#  ntlm_auth_timeout:: Time to wait for `ntlm_auth` to run.
 	#
-	#  This is a long time, and if `ntlm_auth` is taking that long
-	#  then you likely have other problems in your domain.
+	#  This is a long time, and if `ntlm_auth` is taking that long then
+	#  you likely have other problems in your domain.
 	#
-	#  The length of time can be decreased with the following
-	#  option, which can save clients waiting if your `ntlm_auth`
-	#  usually finishes quicker.
+	#  The length of time can be decreased with the following option,
+	#  which can save clients waiting if your `ntlm_auth` usually
+	#  finishes quicker.
 	#
 	#  Range `1` to `10` seconds.
 	#
@@ -165,19 +172,18 @@ mschap {
 	#
 	winbind {
 		#
-		#  username:: User name for winbind
-		#  domain:: Domain name for winbind
+		#  username:: User name for winbind domain:: Domain name for winbind
 		#
-		#  An alternative to using `ntlm_auth` is to connect to the
-		#  winbind daemon directly for authentication. This option
-		#  is likely to be faster and may be useful on busy systems.
+		#  An alternative to using `ntlm_auth` is to connect to the winbind
+		#  daemon directly for authentication. This option is likely to be
+		#  faster and may be useful on busy systems.
 		#
-		#  Performance seems to be about twice that of `ntlm_auth`,
-		#  which still isn't a lot.
+		#  Performance seems to be about twice that of `ntlm_auth`, which
+		#  still isn't a lot.
 		#
-		#  Using this option requires libwbclient from Samba 4.2.1 or
-		#  later to be installed. Make sure that `ntlm_auth` above is
-		#  commented out.
+		#  Using this option requires libwbclient from Samba 4.2.1 or later
+		#  to be installed. Make sure that `ntlm_auth` above is commented
+		#  out.
 		#
 #		username = "%mschap('User-Name')"
 #		domain = "%mschap('NT-Domain')"
@@ -186,46 +192,45 @@ mschap {
 		#  retry_with_normalised_username::
 		#
 		#  When using single sign-on with a winbind connection and the
-		#  client uses a different casing for the username than the
-		#  casing is according to the backend, reauth may fail because
-		#  of some Windows internals.
-		#  This switch tries to find the user in the correct casing in
-		#  the backend, and retry authentication with that username.
+		#  client uses a different casing for the username than the casing
+		#  is according to the backend, reauth may fail because of some
+		#  Windows internals. This switch tries to find the user in the
+		#  correct casing in the backend, and retry authentication with that
+		#  username.
 		#
 #		retry_with_normalised_username = no
 
 		#
-		#  .Reusable Handles
+		#  == Reusable Handles
 		#
-		#  Reusable connection handles are allocated in blocks.  These
+		#  Reusable connection handles are allocated in blocks. These
 		#  parameters allow for tuning how that is done.
 		#
 		reuse {
 			#
-			#  min:: The minimum number of connection handles to
-			#  keep allocated
+			#  min:: The minimum number of connection handles to keep allocated
 			#
 #			min = 10
 
 			#
-			#  max:: The maximum number of reusable connection
-			#  handles to allocate.
+			#  max:: The maximum number of reusable connection handles to
+			#  allocate.
 			#
 #			max = 100
 
 			#
-			#  cleanup_interval:: How often to free un-used
-			#  connection handles.
+			#  cleanup_interval:: How often to free un-used connection handles.
 			#
 #			cleanup_interval = 30s
 		}
 	}
 
 	#
-	#  passchange:: Control parameters for changing passwords via MS-CHAP.
+	#  passchange:: Control parameters for changing passwords via
+	#  MS-CHAP.
 	#
-	#  NOTE: This functionality should only be used inside of PEAP.  Anything else
-	#  is insecure.
+	#  NOTE: This functionality should only be used inside of PEAP.
+	#  Anything else is insecure.
 	#
 	passchange {
 		#
@@ -235,14 +240,15 @@ mschap {
 		#
 		#  ntlm_auth_domain:: The domain name for ntlm_auth password change.
 		#
-		#  This module support `MS-CHAPv2` (not v1) password
-		#  change requests.  See `doc/howto/modules/mschap.adoc` for
-		#  some IMPORTANT information.
+		#  This module support `MS-CHAPv2` (not v1) password change
+		#  requests. See `doc/howto/modules/mschap.adoc` for some IMPORTANT
+		#  information.
 		#
 		#  Samba/ntlm_auth - if you are using `ntlm_auth` to validate
 		#  passwords, you will need to use `ntlm_auth` to change passwords.
 		#
-		#  Uncomment the three lines below, and change the path to `ntlm_auth.
+		#  Uncomment the three lines below, and change the path to
+		#  `ntlm_auth.
 		#
 ##		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
 ##		ntlm_auth_username = "username: %mschap('User-Name')"
@@ -252,9 +258,11 @@ mschap {
 		#  local_cpw::
 		#
 		#  To implement a local password change, you need to supply a string
-		#  which is then expanded, so that the password can be placed somewhere.
+		#  which is then expanded, so that the password can be placed
+		#  somewhere.
 		#
-		#  e.g. passed to a script (`exec`), or written to SQL (UPDATE/INSERT).
+		#  e.g. passed to a script (`exec`), or written to SQL
+		#  (UPDATE/INSERT).
 		#
 		#  TIP: We give both examples here, but *only one should be used*.
 		#
@@ -266,15 +274,16 @@ mschap {
 	#
 	#  use_open_directory::
 	#
-	#  For Apple Server, when running on the same machine as Open Directory.
-	#  It has no effect on other systems.
+	#  For Apple Server, when running on the same machine as Open
+	#  Directory. It has no effect on other systems.
 	#
 #	use_open_directory = yes
 
 	#
 	#  allow_retry::
 	#
-	#  On failure, set (or not) the `MS-CHAP` error code saying _retries allowed_.
+	#  On failure, set (or not) the `MS-CHAP` error code saying _retries
+	#  allowed_.
 	#
 #	allow_retry = yes
 
@@ -288,12 +297,12 @@ mschap {
 	#
 	#  attributes:: the list of attributes used by the mschap module
 	#
-	#  The `mschap` module needs to be configured with which attributes contain
-	#  MS-CHAP data in the request and which should be used for MS-CHAP data
-	#  in the reply.
+	#  The `mschap` module needs to be configured with which attributes
+	#  contain MS-CHAP data in the request and which should be used for
+	#  MS-CHAP data in the reply.
 	#
-	#  This varies for different protocols.  The defaults show below are for
-	#  RADIUS.
+	#  This varies for different protocols. The defaults show below are
+	#  for RADIUS.
 	#
 	attributes {
 		#
@@ -302,72 +311,81 @@ mschap {
 		username = User-Name
 
 		#
-		#  chap_challenge::  The attribute containing the CHAP Challenge.
+		#  chap_challenge:: The attribute containing the CHAP Challenge.
 		#
 		chap_challenge = Vendor-Specific.Microsoft.CHAP-Challenge
 
 		#
-		#  chap_response::  The attribute containing the CHAP Response for MS-CHAPv1.
+		#  chap_response:: The attribute containing the CHAP Response for
+		#  MS-CHAPv1.
 		#
 		chap_response = Vendor-Specific.Microsoft.CHAP-Response
 
 		#
-		#  chap2_response::  The attribute containing the CHAP Response for MS-CHAPv2.
+		#  chap2_response:: The attribute containing the CHAP Response for
+		#  MS-CHAPv2.
 		#
 		chap2_response = Vendor-Specific.Microsoft.CHAP2-Response
 
 		#
-		#  chap2_success::  The attribute MS-CHAPv2 success messages are returned in.
+		#  chap2_success:: The attribute MS-CHAPv2 success messages are
+		#  returned in.
 		#
 		chap2_success = Vendor-Specific.Microsoft.CHAP2-Success
 
 		#
-		#  chap_error::  The attribute CHAP error messages are returned in.
+		#  chap_error:: The attribute CHAP error messages are returned in.
 		#
 		chap_error = Vendor-Specific.Microsoft.CHAP-Error
 
 		#
-		#  chap_mppe_keys::  The attribute MPPE keys are returned in for MS-CHAPv1
+		#  chap_mppe_keys:: The attribute MPPE keys are returned in for
+		#  MS-CHAPv1
 		#
 		chap_mppe_keys = Vendor-Specific.Microsoft.CHAP-MPPE-Keys
 
 		#
-		#  mppe_recv_key::  The attribute MPPE recv key is returned in for MS-CHAPv2
+		#  mppe_recv_key:: The attribute MPPE recv key is returned in for
+		#  MS-CHAPv2
 		#
 		mppe_recv_key = Vendor-Specific.Microsoft.MPPE-Recv-Key
 
 		#
-		#  mppe_send_key::  The attribute MPPE send key is returned in for MS-CHAPv2
+		#  mppe_send_key:: The attribute MPPE send key is returned in for
+		#  MS-CHAPv2
 		#
 		mppe_send_key = Vendor-Specific.Microsoft.MPPE-Send-Key
 
 		#
-		#  mppe_encryption_policy::  The attribute that MPPE encryption policy is returned in.
+		#  mppe_encryption_policy:: The attribute that MPPE encryption
+		#  policy is returned in.
 		#
 		mppe_encryption_policy = Vendor-Specific.Microsoft.MPPE-Encryption-Policy
 
 		#
-		#  mppe_encryption_types::  The attribute that MPPE encryption type is returned in.
+		#  mppe_encryption_types:: The attribute that MPPE encryption type
+		#  is returned in.
 		#
 		mppe_encryption_types = Vendor-Specific.Microsoft.MPPE-Encryption-Types
 
 		#
-		#  chap2_cpw::  The attribute used to change a users' password
+		#  chap2_cpw:: The attribute used to change a users' password
 		#
 		chap2_cpw =  Vendor-Specific.Microsoft.CHAP2-CPW
 
 		#
-		#  chap_nt_enc_pw:: The attribute containing the encrypted new NT password
+		#  chap_nt_enc_pw:: The attribute containing the encrypted new NT
+		#  password
 		#
 		chap_nt_enc_pw = Vendor-Specific.Microsoft.CHAP-NT-Enc-PW
 	}
 
 	#
-	#  To use this instance of the mschap module to handle TACACS+ the attribute
-	#  section should be replaced with the following.
+	#  To use this instance of the mschap module to handle TACACS+ the
+	#  attribute section should be replaced with the following.
 	#
-	#  TACACS+ does not have any inherent support for MPPE keys or password
-	#  changing using MSCHAP.
+	#  TACACS+ does not have any inherent support for MPPE keys or
+	#  password changing using MSCHAP.
 	#
 ##	attributes {
 ##		username = User-Name
@@ -377,8 +395,8 @@ mschap {
 
 		#
 		#  TACACS+ puts the MS-CHAP2-Success information in the Data field,
-		#  but we call it MS-CHAP2-Success for simplicity.
-		#  See the ALIAS definition in dictionary/tacacs/dictionary.freeradius.internal
+		#  but we call it MS-CHAP2-Success for simplicity. See the ALIAS
+		#  definition in dictionary/tacacs/dictionary.freeradius.internal
 		#
 ##		chap2_success = MS-CHAP2-Success
 

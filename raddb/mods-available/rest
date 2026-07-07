@@ -15,84 +15,97 @@
 
 rest {
 	#
-	#  tls { ... }:: Configure the tls related items that control
-	#  how FreeRADIUS connects to a HTTPS server.
+	#  tls { ... }:: Configure the tls related items that control how
+	#  FreeRADIUS connects to a HTTPS server.
 	#
 	tls {
 		#
 		#  Certificate validation options
 		#
-		#  Specifies how the certificate(s) presented by the HTTPS server being contacted
-		#  are validated, and which certificates (if any) to send to the HTTPS server.
+		#  Specifies how the certificate(s) presented by the HTTPS server
+		#  being contacted are validated, and which certificates (if any) to
+		#  send to the HTTPS server.
 		#
 
 		#
-		#  ca_file:: PEM formatted file containing the chain to validate the HTTPS server's cert
+		#  ca_file:: PEM formatted file containing the chain to validate the
+		#  HTTPS server's cert
 		#
-		#  Should usually contain a concatenation of one or more intermediary CA
-		#  files, shallowest (i.e. the one that signed the HTTPS server's cert) first, and
-		#  deepest (the root CA) last.
+		#  Should usually contain a concatenation of one or more
+		#  intermediary CA files, shallowest (i.e. the one that signed the
+		#  HTTPS server's cert) first, and deepest (the root CA) last.
 		#
-		#  Providing a complete certificate chain here is the most common way of validating
-		#  the certificate presented by a HTTPS server.
+		#  Providing a complete certificate chain here is the most common
+		#  way of validating the certificate presented by a HTTPS server.
 		#
 #		ca_file	             = "${certdir}/cacert.pem"
 
 		#
-		#  ca_issuer_file:: PEM formatted file containing the CA that signed the HTTPS server's cert
+		#  ca_issuer_file:: PEM formatted file containing the CA that signed
+		#  the HTTPS server's cert
 		#
-		#  Specifies the certificate that directly signed the certificate presented by the
-		#  HTTPS server.
+		#  Specifies the certificate that directly signed the certificate
+		#  presented by the HTTPS server.
 		#
-		#  This configuration option can be used to prevent certificates passing validation that
-		#  were signed by other intermediary CAs or root CAs in the trusted certificate chain.
+		#  This configuration option can be used to prevent certificates
+		#  passing validation that were signed by other intermediary CAs or
+		#  root CAs in the trusted certificate chain.
 		#
 #		ca_issuer_file     = "${certdir}/caissuer.pem"
 
 		#
-		#  ca_path:: A directory containing multiple root CA certs named by their hash
+		#  ca_path:: A directory containing multiple root CA certs named by
+		#  their hash
 		#
 		#  See the OpenSSL documentation for more details:
 		#  - https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
 		#  - https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
 		#
-		#  This configuration option should only be used when the HTTPS server being contacted
-		#  is not known ahead of time (using a URL from an external source), and/or the CA used
-		#  to sign the HTTPS server certificate is unknown.
+		#  This configuration option should only be used when the HTTPS
+		#  server being contacted is not known ahead of time (using a URL
+		#  from an external source), and/or the CA used to sign the HTTPS
+		#  server certificate is unknown.
 		#
-		#  If not set, then whatever libcurl has as its default will be used, which typically
-		#  will be the operating system's set of trusted CAs.  This will be visible in the debug
-		#  output when FreeRADIUS starts.
+		#  If not set, then whatever libcurl has as its default will be
+		#  used, which typically will be the operating system's set of
+		#  trusted CAs. This will be visible in the debug output when
+		#  FreeRADIUS starts.
 		#
 #		ca_path	             = "${certdir}"
 
 		#
-		#  certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
+		#  certificate_file:: PEM formatted file containing the certificate
+		#  we present to the HTTPS server
 		#
-		#  Specifies a certificate and any intermediary CAs we should send to the HTTPS server.
+		#  Specifies a certificate and any intermediary CAs we should send
+		#  to the HTTPS server.
 		#
-		#  This file should usually contain the client certificate file first, then any
-		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
-		#  to deepest (signed directly by the root CA).
+		#  This file should usually contain the client certificate file
+		#  first, then any intermediary signing CAs, shallowest (direct
+		#  signee of the certificate_file) to deepest (signed directly by
+		#  the root CA).
 		#
 #		certificate_file     = /path/to/radius.pem
 
 		#
-		#  private_key_file:: PEM formatted file containing the private key for the specified certificate_file
+		#  private_key_file:: PEM formatted file containing the private key
+		#  for the specified certificate_file
 		#
 		#  Must be specified if certificate_file is being used.
 		#
 #		private_key_file     = /path/to/radius.key
 
 		#
-		#  private_key_password:: Password used to decrypt the private key file.
+		#  private_key_password:: Password used to decrypt the private key
+		#  file.
 		#
 		#  Should only be specified in the private_key_file is encrypted.
 		#
 #		private_key_password = "supersecret"
 
 		#
-		#  random_file:: Source of random data used for various cryptographic functions.
+		#  random_file:: Source of random data used for various
+		#  cryptographic functions.
 		#
 #		random_file          = /dev/urandom
 
@@ -129,7 +142,8 @@ rest {
 #		check_cert_cn = no
 
 		#
-		#  extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
+		#  extract_cert_attrs:: Extract OIDs from presented certificates as
+		#  OIDs.
 		#
 		#  Default is `no`
 		#
@@ -138,9 +152,11 @@ rest {
 		#
 		#  keylog_file:: Write out session keys in SSLKEYLOGFILE format
 		#
-		#  The SSLKEYLOGFILE format is specified here https://www.ietf.org/archive/id/draft-thomson-tls-keylogfile-00.html.
+		#  The SSLKEYLOGFILE format is specified here
+		#  https://www.ietf.org/archive/id/draft-thomson-tls-keylogfile-00.html.
 		#
-		#  The contents of the keylog file allows wireshark captures to be decrypted for debugging purposes.
+		#  The contents of the keylog file allows wireshark captures to be
+		#  decrypted for debugging purposes.
 		#
 		#  NOTE: keylog_file is not expanded at runtime.
 		#
@@ -178,10 +194,12 @@ rest {
 #	http_negotiation = "default"
 
 	#
-	#  multiplex:: Execute multiple requests simultaneously using the same HTTP connection.
+	#  multiplex:: Execute multiple requests simultaneously using the
+	#  same HTTP connection.
 	#
-	#  NOTE: HTTP >= 2.0 is required for multiplexing to succeed. If we can't negotiate
-	#  a high enough http version, multiplexing will be silently disabled.
+	#  NOTE: HTTP >= 2.0 is required for multiplexing to succeed. If we
+	#  can't negotiate a high enough http version, multiplexing will be
+	#  silently disabled.
 	#
 #	multiplex = yes
 
@@ -196,14 +214,17 @@ rest {
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#
-	#  For example, if you list `rest` in the `recv Access-Request` section of a `virtual server`,
-	#  the settings from the `recv access-request` section here will be used.
+	#  For example, if you list `rest` in the `recv Access-Request`
+	#  section of a `virtual server`, the settings from the `recv
+	#  access-request` section here will be used.
 	#
-	#  Where sections have two parts to the name, if a section which matches both names is not
-	#  found, then one using just the first name will be looked for.  E.g. a call in `accounting Start`,
-	#  will look for `accounting start` and fall back to `accounting`.
+	#  Where sections have two parts to the name, if a section which
+	#  matches both names is not found, then one using just the first
+	#  name will be looked for. E.g. a call in `accounting Start`, will
+	#  look for `accounting start` and fall back to `accounting`.
 	#
-	#  At the top level of each section, the following config items may be listed:
+	#  At the top level of each section, the following config items may
+	#  be listed:
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -214,7 +235,8 @@ rest {
 	#  | `timeout`      		| HTTP request timeout in seconds, defaults to 4.0.
 	#  |===
 	#
-	#  In the `request { ... }` subsection, the following config items may be listed:
+	#  In the `request { ... }` subsection, the following config items
+	#  may be listed:
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -245,7 +267,8 @@ rest {
 	#  |===
 	#
 	#
-	#  In the `response { ... }` subsection, the following config items may be listed:
+	#  In the `response { ... }` subsection, the following config items
+	#  may be listed:
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -259,18 +282,19 @@ rest {
 	#  | `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
 	#  |===
 	#
-	#  Additional HTTP headers may be specified with `control.REST-HTTP-Header`.
+	#  Additional HTTP headers may be specified with
+	#  `control.REST-HTTP-Header`.
 	#
 	#  The values of those attributes should be in the format:
 	#
 	#    <attribute>: <value>
 	#
-	#  `control.REST-HTTP-Header` attributes will be consumed after each call
-	#  to the rest module, and each `%rest(...)` expansion.
+	#  `control.REST-HTTP-Header` attributes will be consumed after each
+	#  call to the rest module, and each `%rest(...)` expansion.
 	#
 
 	#
-	#  .Body encodings are the same for requests and responses
+	#  == Body encodings are the same for requests and responses
 	#
 	#  POST - All attributes and values are urlencoded.
 	#
@@ -278,7 +302,8 @@ rest {
 	#
 	#  `[outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attributeN>=<valueN>`
 	#
-	#  JSON - All attributes and values are escaped according to the JSON specification.
+	#  JSON - All attributes and values are escaped according to the JSON
+	#  specification.
 	#
 	#  e.g:
 	#
@@ -344,8 +369,8 @@ rest {
 	#
 
 	#
-	#  xlat { ... }::: Allows a subset of section configuration items to be configured for
-	#  any calls to this module's `xlat` function.
+	#  xlat { ... }::: Allows a subset of section configuration items to
+	#  be configured for any calls to this module's `xlat` function.
 	#
 	xlat {
 		tls = ${..tls}
@@ -353,11 +378,11 @@ rest {
 		#
 		#  binary:: Is the output of %rest() expected to be binary data
 		#
-		#  Setting this to "yes" will result in the %rest() xlat outputting octet
-		#  data rather than string data.
+		#  Setting this to "yes" will result in the %rest() xlat outputting
+		#  octet data rather than string data.
 		#
-		#  When it is "no" then the output type will be determined from the body
-		#  type of the response.
+		#  When it is "no" then the output type will be determined from the
+		#  body type of the response.
 		#
 #		binary = yes
 	}
@@ -365,7 +390,8 @@ rest {
 	#
 	#  === recv { ... }
 	#
-	#  Default action when called in `recv` sections except `recv Accounting-Request`.
+	#  Default action when called in `recv` sections except `recv
+	#  Accounting-Request`.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -406,7 +432,8 @@ rest {
 	#
 	#  === Accounting { ... }
 	#
-	#  Default action when called in `recv Accounting-Request` or `accounting` sections.
+	#  Default action when called in `recv Accounting-Request` or
+	#  `accounting` sections.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -441,13 +468,13 @@ rest {
 	}
 
 	#
-	#  connection { ... }::  Configure how connection handles are
-	#  managed per thread.
+	#  connection { ... }:: Configure how connection handles are managed
+	#  per thread.
 	#
 	connection {
 
 		#
-		#  Reusable connection handles are allocated in blocks.  These
+		#  Reusable connection handles are allocated in blocks. These
 		#  parameters allow for tuning how that is done.
 		#
 		#  Since http requests are performed async, the settings here
@@ -456,29 +483,28 @@ rest {
 		reuse {
 
 			#
-			#  min:: The minimum number of connection handles to
-			#  keep allocated.
+			#  min:: The minimum number of connection handles to keep
+			#  allocated.
 			#
 			min = 10
 
 			#
-			#  max:: The maximum number of reusable connection handles
-			#  to allocate.
+			#  max:: The maximum number of reusable connection handles to
+			#  allocate.
 			#
-			#  Any requests to allocate a connection handle beyond
-			#  this number will cause a temporary handle to be allocated.
-			#  This is less efficient than the block allocation so
-			#  `max` should be set to reflect the number of outstanding
-			#  requests expected at peak load.
+			#  Any requests to allocate a connection handle beyond this number
+			#  will cause a temporary handle to be allocated. This is less
+			#  efficient than the block allocation so `max` should be set to
+			#  reflect the number of outstanding requests expected at peak
+			#  load.
 			max = 100
 
 			#
-			#  cleanup_interval:: How often to free un-used connection
-			#  handles.
+			#  cleanup_interval:: How often to free un-used connection handles.
 			#
-			#  Every `cleanup_interval` a cleanup routine runs which
-			#  will free any blocks of handles which are not in use,
-			#  ensuring that at least `min` handles are kept.
+			#  Every `cleanup_interval` a cleanup routine runs which will free
+			#  any blocks of handles which are not in use, ensuring that at
+			#  least `min` handles are kept.
 			#
 			cleanup_interval = 30s
 
@@ -487,7 +513,8 @@ rest {
 		#
 		#  connect_timeout:: Connection timeout (in seconds).
 		#
-		#  The maximum amount of time to wait for a new connection to be established.
+		#  The maximum amount of time to wait for a new connection to be
+		#  established.
 		#
 		connect_timeout = 3.0
 	}
