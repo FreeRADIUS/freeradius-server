@@ -40,6 +40,14 @@
 #   ...
 #
 ######################################################################
+#
+#  Testing TLS.
+#
+#  Unfortunately, radclient does not currently support outbound TLS
+#  connections.  Instead, you can test RADIUS/TLS connections using
+#  "socat".  See the "socat" example below for more information.
+#
+######################################################################
 
 listen {
 	ipaddr = *
@@ -490,6 +498,49 @@ listen {
 		#  and ${certdir}/realms/eap/
 		#
 	#	realm_dir = ${certdir}/realms/
+
+		#
+		#  Example of how to run "socat" to connect a UDP
+		#  port (1820) to the TLS server port (2083).
+		#  This configuration is not used by the server,
+		#  and is just documentation.  If the IP address
+		#  is "*", you will need to escape it or quote
+		#  it.
+		#
+		#  When you run the server in debug mode, it will
+		#  print out the exact "socat" command which is
+		#  needed to run, in order to do RADIUS/TLS
+		#  testing with radclient.
+		#
+		#  Note that we set "verify=0", so that it doesn't
+		#  verify the server certificate.  This setting just
+		#  makes it easier to test the functionality.  For
+		#  production operation, delete "verify=0".
+		#
+		#  1) run the server in debug mode in one terminal
+		#  window.  find the "socat" line in the debug output.
+		#
+		#  2) Run the "socat" command in another terminal
+		#  window.  You will likely have to escape the "*"
+		#  portion of the IP address.  Or, change "*" to
+		#  "127.0.0.1".
+		#
+		#  3) run radtest in another terminal:
+		#
+		#	radtest bob hello localhost:1820 0 radsec
+		#
+		#  Note that the shared secret is "radsec".
+		#
+		#  You will also have to type in the password for the
+		#  client certificate into the terminal window which
+		#  is running socat.  For the default / test
+		#  certificates, this password is "whatever".
+		#
+		#  You should then be able to send multiple UDP
+		#  packets to port 1820 to test TLS, so long as the
+		#  "socat" program is still running.
+		#
+		socat = "socat -d UDP-LISTEN:1820 OPENSSL:${..ipaddr}:${..port},cafile=${ca_file},certificate=${certdir}/client.pem,verify=0"
 	}
 }
 

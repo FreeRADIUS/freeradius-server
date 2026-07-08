@@ -1639,6 +1639,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "cipher_server_preference", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, cipher_server_preference), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
+	{ "socat", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, socat), NULL },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	{ "sigalgs_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, sigalgs_list), NULL },
