@@ -2,6 +2,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	Configuration changes
 	* PEAP / SoH functionality has been removed.  It was removed from
 	  Windows over 10 years ago, and is no longer relevant.
+	* Add example of using socat to test radclient + UDP to the server
+	  over TLS.  See sites-available/tls, and look for "socat".
 
 	Feature improvements
 	* Add $VALUE{filename} which reads a value from one line of a
