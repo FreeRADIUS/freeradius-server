@@ -270,7 +270,9 @@ rest {
 	#
 
 	#
-	#  .Body encodings are the same for requests and responses
+	#  === Body Encodings.
+	#
+	#  Body encodings are the same for requests and responses
 	#
 	#  POST - All attributes and values are urlencoded.
 	#
@@ -344,7 +346,7 @@ rest {
 	#
 
 	#
-	#  xlat { ... }::: Allows a subset of section configuration items to be configured for
+	#  xlat { ... }:: Allows a subset of section configuration items to be configured for
 	#  any calls to this module's `xlat` function.
 	#
 	xlat {

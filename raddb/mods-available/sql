@@ -87,7 +87,7 @@ sql {
 	$-INCLUDE ${modconfdir}/sql/driver/${driver}
 
 	#
-	#  .Connection info:
+	# Connection information
 	#
 ##	server = "localhost"
 ##	port = 3306
@@ -102,12 +102,12 @@ sql {
 	radius_db = "radius"
 
 	#
-	#  .If you are using `Oracle` then use this instead.
+	#  If you are using `Oracle` then use this instead.
 	#
 #	radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
 
 	#
-	#  .If you're using `postgresql` this can also be used instead of the connection info parameters.
+	#  If you're using `postgresql` this can also be used instead of the connection info parameters.
 	#
 #	radius_db = "dbname=radius host=localhost user=radius password=radpass"
 

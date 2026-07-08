@@ -195,7 +195,7 @@ mschap {
 #		retry_with_normalised_username = no
 
 		#
-		#  .Reusable Handles
+		#  == Reusable Handles
 		#
 		#  Reusable connection handles are allocated in blocks.  These
 		#  parameters allow for tuning how that is done.
