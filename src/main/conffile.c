@@ -1945,7 +1945,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 			lineno = cs->item.lineno;
 
-			value = cf_expand_variables("<internal>",
+			value = cf_expand_variables(cs->item.filename,
 						    &lineno,
 						    cs, buffer, sizeof(buffer),
 						    value, NULL);
