@@ -42,4 +42,13 @@ if %redis.multiline(10) {
 	test_fail
 }
 
+# Flush the script cache on the node for key "foo"
+%redis("@%redis.node('foo', 0)",'SCRIPT', 'FLUSH')
+
+# Re-run a script which uses the key "foo"
+# to check the script is reloaded.
+if (!(%redis.concat_args_keys(1, 'foo', 'hello', 'world') == 'foo,hello,world')) {
+	test_fail
+}
+
 test_pass
