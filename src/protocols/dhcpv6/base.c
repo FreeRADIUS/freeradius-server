@@ -611,8 +611,6 @@ bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode
 	 */
 	if ((packet[0] == 0) || (packet[0] > FR_DHCPV6_LEASE_QUERY_REPLY)) return false;
 
-	if (!packet_ctx->duid) return false;
-
 	if (from_server) return verify_to_client(packet, packet_len, packet_ctx);
 
 	return verify_from_client(packet, packet_len, packet_ctx);

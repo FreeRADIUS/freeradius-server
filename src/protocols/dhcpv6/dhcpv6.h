@@ -132,7 +132,7 @@ typedef struct {
 typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint32_t		transaction_id;		//!< previous transaction ID
-	uint8_t			*duid;			//!< the expected DUID, in wire format
+	uint8_t const  		*duid;			//!< the expected DUID, in wire format
 	size_t			duid_len;		//!< length of the expected DUID
 } fr_dhcpv6_decode_ctx_t;
 
