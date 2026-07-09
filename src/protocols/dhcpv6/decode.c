@@ -393,6 +393,22 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	} else if (da->type == FR_TYPE_TLV) {
 		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_option, NULL, true);
 
+	} else if (da == attr_auth) {
+		/*
+		 *	See RFC 8415 Section 18 (option format), and Section 20 (functionality).
+		 *
+		 *	The Auth option can be sent from a server to client in a Reply message, and contains a
+		 *	128-bit secret key that is recorded somewhere on the server side.
+		 *
+		 *	The Auth option can be sent from a server to a client in a Reconfigure message, and
+		 *	contains an HMAC-MD5 of the packet and the secret key.
+		 *
+		 *	We are not currently a DHCPv6 client, so we do not support the Auth option, or
+		 *	Reconfigure messages.  See verify_to_client() in base.c.
+		 */
+		fr_strerror_const("The 'Auth' option is not supported");
+		return -1;
+
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}

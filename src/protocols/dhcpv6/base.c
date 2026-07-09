@@ -53,6 +53,7 @@ fr_dict_attr_t const *attr_relay_link_address;
 fr_dict_attr_t const *attr_relay_peer_address;
 fr_dict_attr_t const *attr_relay_message;
 fr_dict_attr_t const *attr_option_request;
+fr_dict_attr_t const *attr_auth;
 
 extern fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
@@ -63,6 +64,7 @@ fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
 	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_GROUP, .dict = &dict_dhcpv6 },
 	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_ATTR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_auth, .name = "Auth", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -348,6 +350,47 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		goto check_duid;
 
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
+#if 1
+		/*
+		 *	See RFC 8415 Section 18 (option format), and Section 20 (functionality).
+		 *
+		 *	In order to support sending Reconfigure messages, we have to support the Auth option.
+		 *	Except that common clients don't support it:
+		 *
+		 *	https://www.cisco.com/c/en/us/td/docs/routers/asr920/configuration/guide/ipaddr-dhcp/17-1-1/b-dhcp-xe-17-1-asr920/b-dhcp-xe-17-1-asr920_chapter_0101.html
+		 *
+		 *	"DHCPv6 Reconfigure message type is not be supported on the Cisco ASR920 Series routers."
+		 *
+		 *	So we don't support it, either.  The rest of the comments here are notes about what we
+		 *	would need to do in order to support Reconfigure, and the Auth option.
+		 *
+		 *	If auth.type == 1, the contents of the attribute are just a reconfigure key, which is
+		 *	sent over the network in the clear.  The server has to get the key from somewhere, OR
+		 *	create it from a CSRNG and then store it.  The client just stores it somewhere.
+		 *	Except that the key is sent over the network in the clear, which make is pretty much
+		 *	useless for security.
+		 *
+		 *	If auth.type == 2, then we need to check the encode/decode context for a key, and if
+		 *	not fail.
+		 *
+		 *	For encode, encode the structure and remember in the encode context where we encoded
+		 *	it.  Then when we are finished encoding the entire packet, go back and do an HMAC-MD5
+		 *	over the packet and update the auth.value field.
+		 *
+		 *	We also have to ignore any supplied auth.rdm and auth.replay-detection field, and then
+		 *	force auth.rdm=0, and set auth.reply-detection to the current 64-bit NTP time.  The
+		 *	replay-detection field is a monotonically increasing 64-bit value which is saved
+		 *	across server restarts.  So an NTP time is the easiest way to manage that.
+		 *
+		 *	For decode, we have to check the reply-detection field, and fail if it's smaller than
+		 *	what we expect.  Then, remember where the Auth option is in the packet, go back and do
+		 *	an HMAC-MD5 over the packet.
+		 *
+		 *	See also references to attr_auth in encode.c and decode.c.
+		 */
+		fr_strerror_const("Sending Reconfigure to a client is not supported");
+		return false;
+#else
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
 
 		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
@@ -378,11 +421,12 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 			fr_strerror_const("Invalid Reconf-Msg option value");
 			return false;
 		}
+
 		/*
-		 *	@todo - check for authentication option and
-		 *	verify it.
+		 *	@todo - Do an HMAC-MD5 of the Auth option.
 		 */
 		break;
+#endif
 
 	case FR_DHCPV6_RELAY_REPLY:
 		if (packet_len < DHCPV6_RELAY_HDR_LEN) {

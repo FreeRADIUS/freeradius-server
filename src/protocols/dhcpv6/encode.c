@@ -715,6 +715,25 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 		slen = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
+	case FR_TYPE_STRUCT:
+		/*
+		 *	See RFC 8415 Section 18 (option format), and Section 20 (functionality).
+		 *
+		 *	The Auth option can be sent from a server to client in a Reply message, and contains a
+		 *	128-bit secret key that is recorded somewhere on the server side.
+		 *
+		 *	The Auth option can be sent from a server to a client in a Reconfigure message, and
+		 *	contains an HMAC-MD5 of the packet and the secret key.
+		 *
+		 *	We are not currently a DHCPv6 client, so we do not support the Auth option, or
+		 *	Reconfigure messages.  See verify_to_client() in base.c.
+		 */
+		if (da_stack.da[depth] == attr_auth) {
+			fr_strerror_const("The 'Auth' option is not supported");
+			return -1;
+		}
+		FALL_THROUGH;
+
 	default:
 		slen = encode_child(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
