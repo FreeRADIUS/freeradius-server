@@ -36,6 +36,33 @@
 #include "dhcpv6.h"
 #include "attrs.h"
 
+/*
+ *    RFC 8415 Section 21.7 defines option codes that MUST NOT appear
+ *    in an Option Request option.  We convert the attributes to a
+ *    64-bit number which can be easily checked.
+ */
+#define DHCPV6_ORO_FORBIDDEN			    \
+	((1ULL << 1)  |	 /* OPTION_CLIENTID */	    \
+	 (1ULL << 2)  |	 /* OPTION_SERVERID */	    \
+	 (1ULL << 3)  |	 /* OPTION_IA_NA */	    \
+	 (1ULL << 4)  |	 /* OPTION_IA_TA */	    \
+	 (1ULL << 5)  |	 /* OPTION_IAADDR */	    \
+	 (1ULL << 6)  |	 /* OPTION_ORO */	    \
+	 (1ULL << 7)  |	 /* OPTION_PREFERENCE */    \
+	 (1ULL << 8)  |	 /* OPTION_ELAPSED_TIME */  \
+	 (1ULL << 9)  |	 /* OPTION_RELAY_MSG */	    \
+	 (1ULL << 11) |	 /* OPTION_AUTH */	    \
+	 (1ULL << 12) |	 /* OPTION_UNICAST */	    \
+	 (1ULL << 13) |	 /* OPTION_STATUS_CODE */   \
+	 (1ULL << 14) |	 /* OPTION_RAPID_COMMIT */  \
+	 (1ULL << 15) |	 /* OPTION_USER_CLASS */    \
+	 (1ULL << 16) |	 /* OPTION_VENDOR_CLASS */  \
+	 (1ULL << 18) |	 /* OPTION_INTERFACE_ID */  \
+	 (1ULL << 19) |	 /* OPTION_RECONF_MSG */    \
+	 (1ULL << 20) |	 /* OPTION_RECONF_ACCEPT */ \
+	 (1ULL << 25) |	 /* OPTION_IA_PD */	    \
+	 (1ULL << 26))	  /* OPTION_IAPREFIX */
+
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			     fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -321,6 +348,29 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (slen < 0) return slen;
 
 	} else if (da->flags.array) {
+		if (da == attr_option_request) {
+			uint8_t const *p;
+
+			if ((len < 2) || ((len & 0x01) != 0)) {
+				fr_strerror_const("Invalid Option-Request, length is not a multiple of 2");
+				return -1;
+			}
+
+			/*
+			 *	Check for the forbidden options.
+			 */
+			for (p = data + 4; p < (data + 4 + len); p += 2) {
+				if (*p) continue;
+
+				if (*p > 26) continue;
+
+				if ((1 << *p) & DHCPV6_ORO_FORBIDDEN) {
+					fr_strerror_printf("Option %u is forbidden inside of Option-Request", *p);
+					return -1;
+				}
+			}
+		}
+
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
