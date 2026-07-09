@@ -29,11 +29,13 @@
 #		home_server = home3
 #	}
 #
-#  This translates to a `load-balance` section with name `pool1`, and the following contents.
+#  This translates to a `load-balance` section with name `pool1`, and
+#  the following contents.
 #
 load-balance pool1 {
 	#
-	#  `home1`, `home2`, and `home3` should be instances of the `radius` module.
+	#  `home1`, `home2`, and `home3` should be instances of the `radius`
+	#  module.
 	#
 	home1
 	home2
@@ -42,7 +44,7 @@ load-balance pool1 {
 #
 #  If you are using a Load-Balance-Key in v3, that can be translated
 #  to a v4 configuration by simply specifying an option to the
-#  `load-balance` section.  For example, to load balance on
+#  `load-balance` section. For example, to load balance on
 #  `Calling-Station-Id`, the above `pool1` configuration can be
 #  modified with one addition:
 #
@@ -58,17 +60,17 @@ load-balance pool1 {
 #
 #  == Using the home_server_pool
 #
-#  In this configuration, `pool1` is a _virtual module_.  That is, it
-#  can be referred to by name as a module: `pool1`.  This name can be
+#  In this configuration, `pool1` is a _virtual module_. That is, it
+#  can be referred to by name as a module: `pool1`. This name can be
 #  used anywhere that a module name is allowed.
 #
 #  The need to use the pool as a module is the one major difference in
-#  proxying between v3 and v4.  In v3, proxying was an automatic thing
-#  that happened when a special attribute got set.
-#  e.g. `Proxy-To-Realm = ...`, or `Home-Server = ...`.
+#  proxying between v3 and v4. In v3, proxying was an automatic thing
+#  that happened when a special attribute got set. e.g.
+#  `Proxy-To-Realm = ...`, or `Home-Server = ...`.
 #
 #  In v4, proxying happens only when you explicitly configure the
-#  server to run the `radius` module.  The simplest way to do this is
+#  server to run the `radius` module. The simplest way to do this is
 #  to add a section:
 #
 #	```
@@ -77,7 +79,7 @@ load-balance pool1 {
 #	}
 #	```
 #
-#  And then set `Auth-Type := proxy`.  See the sites-available/proxy
+#  And then set `Auth-Type := proxy`. See the sites-available/proxy
 #  example for more information.
 #
 #
@@ -96,9 +98,11 @@ load-balance pool1 {
 #	}
 #	```
 #
-#  This translates to the `radius` module, with name `home1`, and the following contents.
+#  This translates to the `radius` module, with name `home1`, and the
+#  following contents.
 #
-#  See the `radius` module for more information about its full configuration.
+#  See the `radius` module for more information about its full
+#  configuration.
 #
 radius home1 {
 	transport = udp
@@ -114,5 +118,6 @@ radius home1 {
 }
 
 #
-#  You can add `home2`, `home3`, etc. here.  They do not need to be in separate files.
+#  You can add `home2`, `home3`, etc. here. They do not need to be in
+#  separate files.
 #

@@ -11,9 +11,9 @@ deny_realms {
 #
 #	Filter the username
 #
-#  Force some sanity on User-Name. This helps to avoid issues
-#  issues where the back-end database is "forgiving" about
-#  what constitutes a user name.
+#  Force some sanity on User-Name. This helps to avoid issues issues
+#  where the back-end database is "forgiving" about what constitutes a
+#  user name.
 #
 filter_username {
 	if (State) {
@@ -37,13 +37,13 @@ filter_username {
 		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
-		#if (User-Name != %str.lower(User-Name)) {
+		#  if (User-Name != %str.lower(User-Name)) {
 		#	reject
-		#}
+		#  }
 
 		#
-		#  reject all whitespace
-		#  e.g. "user@ site.com", or "us er", or " user", or "user "
+		#  reject all whitespace e.g. "user@ site.com", or "us er", or "
+		#  user", or "user "
 		#
 		if (User-Name =~ / /) {
 			request += {
@@ -53,8 +53,7 @@ filter_username {
 		}
 
 		#
-		#  reject Multiple @'s
-		#  e.g. "user@site.com@site.com"
+		#  reject Multiple @'s e.g. "user@site.com@site.com"
 		#
 		if (User-Name =~ /@[^@]*@/ ) {
 			request += {
@@ -64,8 +63,7 @@ filter_username {
 		}
 
 		#
-		#  reject double dots
-		#  e.g. "user@site..com"
+		#  reject double dots e.g. "user@site..com"
 		#
 		if (User-Name =~ /\.\./ ) {
 			request += {
@@ -75,8 +73,8 @@ filter_username {
 		}
 
 		#
-		#  must have at least 1 string-dot-string after @
-		#  e.g. "user@site.com"
+		#  must have at least 1 string-dot-string after @ e.g.
+		#  "user@site.com"
 		#
 		if ((User-Name =~ /@/) && (User-Name !~ /@[^.]+(\.[^.]+)+$/))  {
 			request += {
@@ -86,8 +84,7 @@ filter_username {
 		}
 
 		#
-		#  Realm ends with a dot
-		#  e.g. "user@site.com."
+		#  Realm ends with a dot e.g. "user@site.com."
 		#
 		if (User-Name =~ /\.$/)  {
 			request += {
@@ -97,8 +94,7 @@ filter_username {
 		}
 
 		#
-		#  Realm begins with a dot
-		#  e.g. "user@.site.com"
+		#  Realm begins with a dot e.g. "user@.site.com"
 		#
 		if (User-Name =~ /@\./)  {
 			request += {
@@ -114,12 +110,12 @@ filter_username {
 #
 #	Filter the User-Password
 #
-#  Some equipment sends passwords with embedded zeros.
-#  This policy filters them out.
+#  Some equipment sends passwords with embedded zeros. This policy
+#  filters them out.
 #
 filter_password {
 	if User-Password {
-   		group tmp
+		group tmp
 		octets delim
 
 		#
@@ -144,11 +140,10 @@ filter_inner_identity {
 	}
 
 	#
-	#  Do detailed checks only if the inner and outer
-	#  NAIs are different.
+	#  Do detailed checks only if the inner and outer NAIs are different.
 	#
-	#  If the NAIs are the same, it violates user privacy,
-	#  but is allowed.
+	#  If the NAIs are the same, it violates user privacy, but is
+	#  allowed.
 	#
 	if (outer.request.User-Name != User-Name) {
 		#
@@ -158,11 +153,11 @@ filter_inner_identity {
 			request.Outer-Realm-Name = %{1}
 
 			#
-			#  When we have an outer realm name, the user portion
-			#  MUST either be empty, or begin with "anon".
+			#  When we have an outer realm name, the user portion MUST either
+			#  be empty, or begin with "anon".
 			#
-			#  We don't check for the full "anonymous", because
-			#  some vendors don't follow the standards.
+			#  We don't check for the full "anonymous", because some vendors
+			#  don't follow the standards.
 			#
 			if (outer.request.User-Name !~ /^(anon|@)/) {
 				request += {
@@ -173,11 +168,11 @@ filter_inner_identity {
 		}
 
 		#
-		#  There's no outer realm.  The outer NAI is different from the
-		#  inner NAI.  The User-Name MUST be anonymized.
+		#  There's no outer realm. The outer NAI is different from the inner
+		#  NAI. The User-Name MUST be anonymized.
 		#
-		#  Otherwise, you could log in as outer "bob", and inner "doug",
-		#  and we'd have no idea which one was correct.
+		#  Otherwise, you could log in as outer "bob", and inner "doug", and
+		#  we'd have no idea which one was correct.
 		#
 		elsif (outer.request.User-Name !~ /^anon/) {
 			request += {
@@ -193,17 +188,16 @@ filter_inner_identity {
 			request.Inner-Realm-Name = %{1}
 
 			#
-			#  Note that we do EQUALITY checks for realm names.
-			#  There is no simple way to do case insensitive checks
-			#  on internationalized domain names.  There is no reason
-			#  to allow outer "anonymous@EXAMPLE.COM" and inner
-			#  "user@example.com".  The user should enter the same
-			#  realm for both identities.
+			#  Note that we do EQUALITY checks for realm names. There is no
+			#  simple way to do case insensitive checks on internationalized
+			#  domain names. There is no reason to allow outer
+			#  "anonymous@EXAMPLE.COM" and inner "user@example.com". The user
+			#  should enter the same realm for both identities.
 			#
-			#  If the inner realm isn't the same as the outer realm,
-			#  the inner realm MUST be a subdomain of the outer realm.
+			#  If the inner realm isn't the same as the outer realm, the inner
+			#  realm MUST be a subdomain of the outer realm.
 			#
-			if (Outer-Realm-Name && \
+			if (Outer-Realm-Name &&
 			    (Inner-Realm-Name != Outer-Realm-Name) && \
 			    (Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
 				request += {
@@ -215,16 +209,16 @@ filter_inner_identity {
 			#
 			#  It's OK to have an inner realm and no outer realm.
 			#
-			#  That won't work for roaming, but the local RADIUS server
-			#  can still authenticate the user.
+			#  That won't work for roaming, but the local RADIUS server can
+			#  still authenticate the user.
 			#
 		}
 
 		#
 		#  It's OK to have an outer realm and no inner realm.
 		#
-		#  It will work for roaming, and the local RADIUS server
-		#  can authenticate the user without the realm.
+		#  It will work for roaming, and the local RADIUS server can
+		#  authenticate the user without the realm.
 		#
 	}
 }

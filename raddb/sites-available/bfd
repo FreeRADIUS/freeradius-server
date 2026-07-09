@@ -11,14 +11,15 @@
 #
 #  We are using it to determine if a `peer` application is up or down.
 #  For example, when two servers are configured in primary / secondary
-#  mode, they should be set up as BFD peers.  They can then detect
-#  when the other one goes down.
+#  mode, they should be set up as BFD peers. They can then detect when
+#  the other one goes down.
 #
-#  The code is in FreeRADIUS because we want to know if the *application*
-#  is running. It doesn't matter if the link is up, or if the host system
-#  is running. If the FreeRADIUS daemon is down, then we want to know ASAP.
+#  The code is in FreeRADIUS because we want to know if the
+#  *application* is running. It doesn't matter if the link is up, or
+#  if the host system is running. If the FreeRADIUS daemon is down,
+#  then we want to know ASAP.
 #
-#  NOTE: See also `trigger.conf`.  There are BFD-specific triggers
+#  NOTE: See also `trigger.conf`. There are BFD-specific triggers
 #  which are executed when the link is started, goes up, down, or is
 #  administratively down.
 #
@@ -37,8 +38,7 @@ server main {
 	namespace = bfd
 
 	#
-	#  Common configuration for the BFD state machine.
-	#  For now, unused.
+	#  Common configuration for the BFD state machine. For now, unused.
 	#
 	bfd {
 
@@ -49,8 +49,8 @@ server main {
 	#
 	listen {
 		#
-		#  Only IP transport is supported for BFD.
-		#  There is no ethernet type for BFD.
+		#  Only IP transport is supported for BFD. There is no ethernet type
+		#  for BFD.
 		#
 		transport = udp
 
@@ -61,7 +61,7 @@ server main {
 			#
 			#  ipaddr::
 			#
-			#   IP address, or IPv6 address as with other
+			#  IP address, or IPv6 address as with other
 			#
 			ipaddr = 192.0.2.1
 
@@ -73,9 +73,10 @@ server main {
 			#
 			#  only_state_changes::
 			#
-			#  In general the server only needs to know if the BFD session state has changed.  Set
-			#  this value to "false" if you want every received and every sent packet to be
-			#  processed through this virtual server.
+			#  In general the server only needs to know if the BFD session
+			#  state has changed. Set this value to "false" if you want every
+			#  received and every sent packet to be processed through this
+			#  virtual server.
 			#
 			only_state_changes = true
 		}
@@ -84,8 +85,8 @@ server main {
 #
 #  peer:: BFD peer
 #
-#  The peer definition is based on the `client` definition.  The standard client configuration items will work
-#  here.
+#  The peer definition is based on the `client` definition. The
+#  standard client configuration items will work here.
 #
 peer other {
 	#
@@ -99,12 +100,15 @@ peer other {
 	port = 3784
 
 	#
-	#  src_ipaddr:: Source address used when sending packets to this peer.
+	#  src_ipaddr:: Source address used when sending packets to this
+	#  peer.
 	#
-	#  This source address should match a `listen` section above.  If not source address is given, then a
-	#  "wildcard" listener will be chosen.  i.e. A listener which has `ipaddr = *`
+	#  This source address should match a `listen` section above. If not
+	#  source address is given, then a "wildcard" listener will be
+	#  chosen. i.e. A listener which has `ipaddr = *`
 	#
-	#  If the source IP address does not match any listener, then the peer will be ignored.
+	#  If the source IP address does not match any listener, then the
+	#  peer will be ignored.
 	#
 #	src_ipaddr = 192.0.2.1
 
@@ -132,8 +136,9 @@ peer other {
 	#
 	#  secret:: The secret key used for authentication.
 	#
-	#  If it starts with "0x", then it is treated as a hex string. This is recommended
-	#  for security.  The secrets should be no more than 16 octets long, and random.
+	#  If it starts with "0x", then it is treated as a hex string. This
+	#  is recommended for security. The secrets should be no more than 16
+	#  octets long, and random.
 	#
 #	secret = "hello"
 
@@ -148,7 +153,8 @@ peer other {
 	min_receive_interval = 250ms
 
 	#
-	#  max_timeouts:: Max number of timeouts before the session is declared dead.
+	#  max_timeouts:: Max number of timeouts before the session is
+	#  declared dead.
 	#
 	max_timeouts = 3
 
@@ -163,12 +169,15 @@ peer other {
 #
 #  == Packet Processing sections
 #
-#  Unlike other protocols, BFD does not follow a "request / reply" process.  Instead, there are two
-#  independent streams of packets.  One where the peer sends us packets (`recv foo { ... }`), and the other
+#  Unlike other protocols, BFD does not follow a "request / reply"
+#  process. Instead, there are two independent streams of packets. One
+#  where the peer sends us packets (`recv foo { ... }`), and the other
 #  where we send packets to the peer (`send foo { ... }`).
 #
-#  Note that when running `send`, the packet contents *cannot be changed*.  The contents of the BFD packet
-#  are defined by the protocol.  The `send` section is called only for informational purposes.
+#  Note that when running `send`, the packet contents *cannot be
+#  changed*. The contents of the BFD packet are defined by the
+#  protocol. The `send` section is called only for informational
+#  purposes.
 #
 
 #

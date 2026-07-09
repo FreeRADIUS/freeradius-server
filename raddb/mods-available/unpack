@@ -10,8 +10,8 @@
 #  The `unpack` module unpacks binary data from octets type attributes
 #  into individual attributes.
 #
-#  It is used when vendors put multiple fields into one attribute
-#  of type "octets".
+#  It is used when vendors put multiple fields into one attribute of
+#  type "octets".
 #
 #  NOTE: The module is useful only for `xlat`.
 #
@@ -19,33 +19,34 @@
 #
 #  == Syntax
 #
-#  To use it, add it to the `mods-enabled/` directory.  Then,
-#  use it on the right-hand side of a variable assignment.
+#  To use it, add it to the `mods-enabled/` directory. Then, use it on
+#  the right-hand side of a variable assignment.
 #
-#   %unpack(<data>, <offset>, <data_type>[, <repeat>])
+#  %unpack(<data>, <offset>, <data_type>[, <repeat>])
 #
 #  The arguments are three or four fields:
 #
 #  data::
 #
-#  Either `octets` or `string` type data, literal or expanded attributes.
-#  If `string` type data contains a representation of hex data, e.g. 0xabcdef
-#  that is first converted to `octets`.
+#  Either `octets` or `string` type data, literal or expanded
+#  attributes. If `string` type data contains a representation of hex
+#  data, e.g. 0xabcdef that is first converted to `octets`.
 #
 #  offset::
 #
-#  The offset into the string from which it starts unpacking. The offset starts
-#  at zero, for the first attribute.
+#  The offset into the string from which it starts unpacking. The
+#  offset starts at zero, for the first attribute.
 #
 #  data_type::
 #
-#  the data type to unpack at that offset. e.g. `integer`, `ipaddr`, `byte`, `short`, etc.
+#  the data type to unpack at that offset. e.g. `integer`, `ipaddr`,
+#  `byte`, `short`, etc.
 #
 #  repeat::
 #
-#  How many instances of the data type should be unpacked.  This optional argument
-#  must either be an integer or the special value of `'*'` to extract as many instances
-#  as can be from the input data.
+#  How many instances of the data type should be unpacked. This
+#  optional argument must either be an integer or the special value of
+#  `'*'` to extract as many instances as can be from the input data.
 
 #
 #  == Sample
@@ -54,7 +55,8 @@
 #
 #    %unpack(%{Class}, 4, uint16)
 #
-#  will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
+#  will unpack octets `4` and `5` as a `uint16`, which has value
+#  `0x0304`.
 #
 
 #

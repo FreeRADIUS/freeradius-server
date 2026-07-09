@@ -7,22 +7,23 @@
 #
 #  = Unbound Module
 #
-#  The `unbound` module performs queries against a DNS service to allow
-#  FQDNs to be resolved during request processing.
+#  The `unbound` module performs queries against a DNS service to
+#  allow FQDNs to be resolved during request processing.
 #
 #  The module is primarily intended for use by other modules through
 #  internal APIs, and so, instances should be initialized earlier than
-#  those modules which use them.  Each instance does also provide some
+#  those modules which use them. Each instance does also provide some
 #  functions for general use and for troubleshooting.
 #
 #  == Caveats
 #
-#  There is a potential for a FreeRADIUS server using rlm_unbound to either
-#  fail to terminate cleanly (leaving zombie processes, failing to clean up
-#  other modules, and hanging after a SIGTERM until a SIGKILL is sent) or
-#  to fail valgrind checks during termination when run with -m.  Likewise this
-#  problem will rely on upstream enhancements before it can be fixed, and the
-#  exact behavior may change in interim releases of libunbound until then.
+#  There is a potential for a FreeRADIUS server using rlm_unbound to
+#  either fail to terminate cleanly (leaving zombie processes, failing
+#  to clean up other modules, and hanging after a SIGTERM until a
+#  SIGKILL is sent) or to fail valgrind checks during termination when
+#  run with -m. Likewise this problem will rely on upstream
+#  enhancements before it can be fixed, and the exact behavior may
+#  change in interim releases of libunbound until then.
 #
 
 #
@@ -45,9 +46,9 @@ unbound dns {
 	#
 	#  Defaults to not set.
 	#
-	#  Without this set, unbound will query the root DNS servers.
-	#  This is NOT RECOMMENDED.  A local caching DNS server will
-	#  substantially improve performance.
+	#  Without this set, unbound will query the root DNS servers. This is
+	#  NOT RECOMMENDED. A local caching DNS server will substantially
+	#  improve performance.
 	#
 #	resolvconf = "/etc/resolv.conf"
 
@@ -62,7 +63,8 @@ unbound dns {
 #
 #  == Functions for DNS resolution
 #
-#  A function based on the instance name can be used to perform DNS lookups.
+#  A function based on the instance name can be used to perform DNS
+#  lookups.
 #
 #	%dns(<owner>, <record type>[, <limit>])
 #
@@ -75,8 +77,8 @@ unbound dns {
 #  %dns('www.example.com', 'AAAA')
 #  ```
 #
-#  Given an instance `dns` the above function will perform `A` record and
-#  `AAAA` record lookups on `www.example.com`.
+#  Given an instance `dns` the above function will perform `A` record
+#  and `AAAA` record lookups on `www.example.com`.
 #
 #  .Example
 #
@@ -95,6 +97,6 @@ unbound dns {
 #  The above example will perform an `MX` lookup on `example.com`, and
 #  will return just the first result.
 #
-#  NOTE: The DNS queries are blocking!  A slow (or unavailable) DNS
+#  NOTE: The DNS queries are blocking! A slow (or unavailable) DNS
 #  server can completely destroy the performance of FreeRADIUS.
 #

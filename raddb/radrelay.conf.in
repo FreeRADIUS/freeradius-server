@@ -12,26 +12,25 @@
 #      radiusd -n radrelay
 #
 #  This file is a sample configuration that replaces the old
-#  `radrelay` program.  It is a _minimal_ configuration that
-#  does little more than read the `detail` file, and proxy the
-#  packets to a home server.  If you need it to do more than
-#  just replace `radrelay`, you will need to add additional
-#  configuration.
+#  `radrelay` program. It is a _minimal_ configuration that does
+#  little more than read the `detail` file, and proxy the packets to a
+#  home server. If you need it to do more than just replace
+#  `radrelay`, you will need to add additional configuration.
 #
-#  See `sites-available/copy-acct-to-home-server` for a
-#  more complete example.  That example is intended to be run
-#  as part of a larger RADIUS configuration, where the server
-#  also listens on ports 1812, etc.  The example given here
-#  is a minimal example that has *only* `radrelay` functionality.
+#  See `sites-available/copy-acct-to-home-server` for a more complete
+#  example. That example is intended to be run as part of a larger
+#  RADIUS configuration, where the server also listens on ports 1812,
+#  etc. The example given here is a minimal example that has *only*
+#  `radrelay` functionality.
 #
 #  See `radiusd.conf` for a complete description of the configuration
 #  parameters used here.
 #
-# ## Why radrelay is needed
+#  == Why radrelay is needed
 #
-#  Many sites run multiple radius servers; at least one primary and one
-#  backup server. When the primary goes down, most NASes will detect that
-#  and switch to the backup server.
+#  Many sites run multiple radius servers; at least one primary and
+#  one backup server. When the primary goes down, most NASes will
+#  detect that and switch to the backup server.
 #
 #  That change will cause your accounting packets to go the backup
 #  server - and some NASes will not switch back to the primary server
@@ -39,34 +38,34 @@
 #
 #  The result is that accounting records are missed, and/or the
 #  administrator must jump through hoops in order to combine the
-#  different detail files from multiple servers. It also means that the
-#  accounting database gets out of sync.
+#  different detail files from multiple servers. It also means that
+#  the accounting database gets out of sync.
 #
-#  `radrelay` solves this issue by "relaying" packets from one server to
-#  another, so they both have the same set of accounting data.
+#  `radrelay` solves this issue by "relaying" packets from one server
+#  to another, so they both have the same set of accounting data.
 #
 #  == Overload
 #
 #  If the RADIUS server suddenly receives a many accounting packets,
 #  there may be insufficient CPU power to process them all in a timely
-#  manner.  This problem is especially noticeable when the accounting
+#  manner. This problem is especially noticeable when the accounting
 #  packets are going to a back-end database.
 #
-#  Similarly, you may have one database that tracks "live" sessions, and
-#  another that tracks historical accounting data.  In that case,
-#  accessing the first database is fast, as it is small.  Accessing the
-#  second database many be slower, as it may contain multiple gigabytes
-#  of data.  In addition, writing to the first database in a timely
-#  manner is important, while data may be written to the second database
-#  with a few minutes delay, without any harm being done.
+#  Similarly, you may have one database that tracks "live" sessions,
+#  and another that tracks historical accounting data. In that case,
+#  accessing the first database is fast, as it is small. Accessing the
+#  second database many be slower, as it may contain multiple
+#  gigabytes of data. In addition, writing to the first database in a
+#  timely manner is important, while data may be written to the second
+#  database with a few minutes delay, without any harm being done.
 #
 
 #
 #  == General definitions
 #
-#  The following options define where the server files are stored
-#  when installed. They are set by 'make' at compile time, and it
-#  is unlikely to need to change them.
+#  The following options define where the server files are stored when
+#  installed. They are set by 'make' at compile time, and it is
+#  unlikely to need to change them.
 #
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -92,8 +91,7 @@ libdir = @libdir@
 pidfile = ${run_dir}/${name}.pid
 
 #
-#  Request handling configuration.
-#  See radiusd.conf for documentation.
+#  Request handling configuration. See radiusd.conf for documentation.
 #
 max_request_time = 30
 cleanup_delay = 5
@@ -101,9 +99,9 @@ cleanup_delay = 5
 #
 #  == Logging configuration
 #
-#  The following section defines global server logging options.
-#  For more configurable and detailed logging, the logging modules
-#  should be used (`rlm_detail`, `rlm_linelog` etc.)
+#  The following section defines global server logging options. For
+#  more configurable and detailed logging, the logging modules should
+#  be used (`rlm_detail`, `rlm_linelog` etc.)
 #
 log {
 	#
@@ -128,8 +126,8 @@ log {
 	#  file:: The logging messages for the server are appended to the
 	#  tail of this file `if ${destination} == "file"`
 	#
-	#  NOTE: If the server is running in debugging mode, this file is
-	#  NOT used.
+	#  NOTE: If the server is running in debugging mode, this file is NOT
+	#  used.
 	#
 	file = ${logdir}/${name}.log
 }
@@ -137,30 +135,30 @@ log {
 #
 #  == Security Configuration
 #
-#  There may be multiple methods of attacking on the server.  This
-#  section holds the configuration items which minimize the impact
-#  of those attacks
+#  There may be multiple methods of attacking on the server. This
+#  section holds the configuration items which minimize the impact of
+#  those attacks
 #
 security {
 	#
-	#  max_attributes:: The maximum number of attributes
-	#  permitted in a RADIUS packet.  Packets which have MORE
-	#  than this number of attributes in them will be dropped.
+	#  max_attributes:: The maximum number of attributes permitted in a
+	#  RADIUS packet. Packets which have MORE than this number of
+	#  attributes in them will be dropped.
 	#
-	#  If this number is set too low, then no RADIUS packets
-	#  will be accepted.
+	#  If this number is set too low, then no RADIUS packets will be
+	#  accepted.
 	#
-	#  If this number is set too high, then an attacker may be
-	#  able to send a small number of packets which will cause
-	#  the server to use all available memory on the machine.
+	#  If this number is set too high, then an attacker may be able to
+	#  send a small number of packets which will cause the server to use
+	#  all available memory on the machine.
 	#
 	#  Setting this number to 0 means "allow any number of attributes"
 	#
 	max_attributes = 200
 
 	#
-	# reject_delay && status_server don't apply when we are
-	# only reading accounting packets from the detail file
+	#  reject_delay && status_server don't apply when we are only reading
+	#  accounting packets from the detail file
 	#
 
 @openssl_version_check_config@
@@ -186,12 +184,13 @@ instantiate {
 #  == Home server configuration
 #
 #
-#  NOTE: Proxying has changed in v4.  This example is no longer correct.
+#  NOTE: Proxying has changed in v4. This example is no longer
+#  correct.
 #
 
 #
-#  Define a `home server`, which is where packets should be
-#  relayed to.
+#  Define a `home server`, which is where packets should be relayed
+#  to.
 #
 home_server home1 {
 	#
@@ -200,8 +199,8 @@ home_server home1 {
 	type = acct
 
 	#
-	#  ipaddr:: This directive replaces the `-r` command-line option
-	#  in `radrelay`.
+	#  ipaddr:: This directive replaces the `-r` command-line option in
+	#  `radrelay`.
 	#
 	ipaddr = 192.0.2.20
 
@@ -217,16 +216,16 @@ home_server home1 {
 #	src_ipaddr = 192.0.2.1
 
 	#
-	#  secret:: This directive replaces the `-s`, `-S`, and `-n` command-line
-	#  options in `radrelay`.
+	#  secret:: This directive replaces the `-s`, `-S`, and `-n`
+	#  command-line options in `radrelay`.
 	#
 	secret = testing123
 }
 
 #
-#  List one or more home servers here for fail-over,
-#  load-balancing, etc. By default we just send all relayed
-#  packets to the one home server, `home1`, defined above.
+#  List one or more home servers here for fail-over, load-balancing,
+#  etc. By default we just send all relayed packets to the one home
+#  server, `home1`, defined above.
 #
 home_server_pool radrelay {
 	type = fail-over
@@ -257,10 +256,11 @@ server radrelay {
 		type = detail
 
 		#
-		#  filename:: The filename here should be the same as the one used by the
-		#  main `radiusd` program.
+		#  filename:: The filename here should be the same as the one used
+		#  by the main `radiusd` program.
 		#
-		#  It writes the file using the `detail` module (see `modules/detail`).
+		#  It writes the file using the `detail` module (see
+		#  `modules/detail`).
 		#
 		filename = ${radacctdir}/detail
 
@@ -272,17 +272,17 @@ server radrelay {
 
 	#
 	#  This section is called when the server receives an
-	#  Accounting-Request packet (which will be from the
-	#  "detail" reader above.
+	#  Accounting-Request packet (which will be from the "detail" reader
+	#  above.
 	#
-	#  See also `sites-available/copy-acct-to-home-server`
-	#  for additional description.
+	#  See also `sites-available/copy-acct-to-home-server` for additional
+	#  description.
 	#
 	recv Accounting-Request {
 		#
-		#  Proxy the packet using the given realm.
-		#  Note that we do not use the realm for anything else such
-		#  as prefix/suffix stripping, or comparisons.
+		#  Proxy the packet using the given realm. Note that we do not use
+		#  the realm for anything else such as prefix/suffix stripping, or
+		#  comparisons.
 		#
 		update control {
 			Proxy-To-Realm := "radrelay"

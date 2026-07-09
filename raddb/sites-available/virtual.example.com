@@ -8,31 +8,34 @@
 ######################################################################
 
 #
-#  You will want to edit this to your local needs.  We suggest copying
+#  You will want to edit this to your local needs. We suggest copying
 #  the text from the "default" file here, and then editing the text.
 #  That way, any changes to the "default" file will not affect this
 #  virtual server, and vice-versa.
 #
 #  When this virtual server receives the request, the original
-#  attributes can be accessed as "outer.request", "outer.control", etc.
+#  attributes can be accessed as "outer.request", "outer.control",
+#  etc.
 #
 
 #
-#  This example virtual server will listen on alternate ports
-#  and perform basic authentication and accounting.
-#  Consult the default file for information on the syntax and available options.
+#  This example virtual server will listen on alternate ports and
+#  perform basic authentication and accounting. Consult the default
+#  file for information on the syntax and available options.
 #
 
 server virtual.example.com {
 
 	#  In v4, all "server" sections MUST start with a "namespace"
-	#  parameter.  This tells the server which protocol is being used.
-	#  Consult the sites-available/default for more information and documentation.
+	#  parameter. This tells the server which protocol is being used.
+	#  Consult the sites-available/default for more information and
+	#  documentation.
 
 	namespace = radius
 
 	#
-	#  Define our listeners and the types of application packets we expect.
+	#  Define our listeners and the types of application packets we
+	#  expect.
 	#
 	listen {
 		type = Access-Request
@@ -60,8 +63,9 @@ server virtual.example.com {
 	}
 
 	#
-	#  Now we define our policy framework for how this virtual server will handle various application packets.
-	#  Consult the default file for information on the syntax and available options.
+	#  Now we define our policy framework for how this virtual server
+	#  will handle various application packets. Consult the default file
+	#  for information on the syntax and available options.
 	recv Access-Request {
 		#  insert policies here
 
@@ -84,8 +88,8 @@ server virtual.example.com {
 		#  insert policies here
 
 		#
-		#  Ensure that we have a semi-unique identifier for every
-		#  request, and many NAS boxes are broken.
+		#  Ensure that we have a semi-unique identifier for every request,
+		#  and many NAS boxes are broken.
 		#
 		acct_unique
 
@@ -98,9 +102,8 @@ server virtual.example.com {
 	send Accounting-Response {
 
 		#
-		#  Create a 'detail'ed log of the packets.
-		#  Note that accounting requests which are proxied
-		#  are also logged in the detail file.
+		#  Create a 'detail'ed log of the packets. Note that accounting
+		#  requests which are proxied are also logged in the detail file.
 		#
 		detail
 

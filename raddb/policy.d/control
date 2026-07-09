@@ -1,6 +1,6 @@
 #
-#  If you want the server to pretend that it is dead,
-#  then use the "do_not_respond" policy.
+#  If you want the server to pretend that it is dead, then use the
+#  "do_not_respond" policy.
 #
 do_not_respond {
 	reply.Packet-Type := ::Do-Not-Respond

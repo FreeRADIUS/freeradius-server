@@ -8,32 +8,32 @@
 #
 #  The goal of the templates is to have common configuration located
 #  in this file, and to list only the _differences_ in the individual
-#  sections.  This feature is most useful for sections like `clients`
+#  sections. This feature is most useful for sections like `clients`
 #  where many may be defined, and each one has similar repeated
 #  configuration.
 #
 #  Something similar to templates can be done by putting common
 #  configuration into separate files, and using `$INCLUDE file...`,
-#  but templates are more flexible, and simpler to understand.  It's also
-#  cheaper for the server, because `$INCLUDE` makes a copy of the
-#  configuration for inclusion, whereas templates are simply referenced.
+#  but templates are more flexible, and simpler to understand. It's
+#  also cheaper for the server, because `$INCLUDE` makes a copy of the
+#  configuration for inclusion, whereas templates are simply
+#  referenced.
 #
-#  The templates are defined in the `templates` section so that
-#  they do not affect the rest of the server configuration. The
-#  actual contents of the templates section are other
-#  configuration sections that would normally go into the main
-#  configuration files.
+#  The templates are defined in the `templates` section so that they
+#  do not affect the rest of the server configuration. The actual
+#  contents of the templates section are other configuration sections
+#  that would normally go into the main configuration files.
 #
 #  Within the main server configuration, a section can reference a
 #  template by using `$template name`.
 #
 
 #
-#  One use case would be if there are multiple instances of the
-#  sql module for load balancing or failover.
-#  These will typically share many common configuration options
-#  which can be set in a template and then that template referred
-#  to in each instances of the sql module
+#  One use case would be if there are multiple instances of the sql
+#  module for load balancing or failover. These will typically share
+#  many common configuration options which can be set in a template
+#  and then that template referred to in each instances of the sql
+#  module
 #
 #	sql sql01 {
 #		$template sql-common
@@ -46,7 +46,7 @@
 #
 #  In that case the template `sql-common` could be as follows:
 #
-#sql-common {
+#  sql-common {
 #	acct_table = 'radacct'
 #	acct_table2 = 'radacct'
 #	postauth_table = 'radpostauth'
@@ -61,4 +61,4 @@
 #		min = 1
 #		spare = 1
 #	}
-#}
+#  }

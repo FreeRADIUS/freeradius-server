@@ -7,39 +7,40 @@
 #
 #  = Python Module
 #
-#  The `python` module processes attributes through a Python interpreter.
+#  The `python` module processes attributes through a Python
+#  interpreter.
 #
 #  * Please see the `src/modules/rlm_python/example.py` sample.
 #  * Please see https://www.python.org/doc/ for more information about the
 #  Python language.
 #
 #  NOTE: Uncomment any `func_*` configuration items below which are
-#  included in your module. If the module is called for a section which
-#  does not have a function defined, it will return `noop`.
+#  included in your module. If the module is called for a section
+#  which does not have a function defined, it will return `noop`.
 #
-#  NOTE: As of FreeRADIUS v4, the Python function names called when the `python`
-#  module is called are automatically derived from the section in which
-#  they are called.
+#  NOTE: As of FreeRADIUS v4, the Python function names called when
+#  the `python` module is called are automatically derived from the
+#  section in which they are called.
 #
-#  e.g. if `python` is called in `recv Access-Request`, firstly a function
-#  `recv_access_request` will be looked for.  If that does not exist, then
-#  a function `recv` will be looked for.
+#  e.g. if `python` is called in `recv Access-Request`, firstly a
+#  function `recv_access_request` will be looked for. If that does not
+#  exist, then a function `recv` will be looked for.
 #
-#  This can be overridden by setting `func_recv_access_request` or `func_recv`
-#  to point to a different function name.
+#  This can be overridden by setting `func_recv_access_request` or
+#  `func_recv` to point to a different function name.
 #
 #  Similarly, `mod_recv_access_request` or `mod_recv` can be used to
 #  load the function from a module other than the one specified in the
 #  `module` option.
 #
-#  WARN:: The Python module is slow compared to `unlang`.  The only reason to use
-#  Python is when you need to use a third-party API that is only accessible via
-#  a Python library.
+#  WARN:: The Python module is slow compared to `unlang`. The only
+#  reason to use Python is when you need to use a third-party API that
+#  is only accessible via a Python library.
 
 #  == Global Configuration
 #
-#  Please see the file `global.d/python` for server-global configuration
-#  items which control the Python path.
+#  Please see the file `global.d/python` for server-global
+#  configuration items which control the Python path.
 #
 
 #
@@ -60,7 +61,7 @@ python {
 	#  [NOTE]
 	#  ====
 	#  * You may set `mod_<section>` for any of the section to module
-	#  mappings below, if you want to reference a function in a  different
+	#  mappings below, if you want to reference a function in a different
 	#  module.
 	#
 	#  * Uncomment `func_<section>` lines your module provides methods for.
@@ -78,18 +79,19 @@ python {
 #	func_detach = detach
 
 	#
-	#  config { ... }:: Define configuration items which are accessible to the Python script.
+	#  config { ... }:: Define configuration items which are accessible
+	#  to the Python script.
 	#
-	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
-	#  section. These items will be accessible in the Python script through `freeradius.config`
-	#  dict as read-only items.
+	#  You can define configuration items (and nested sub-sections) in
+	#  python `config { ... }` section. These items will be accessible in
+	#  the Python script through `freeradius.config` dict as read-only
+	#  items.
 	#
 	#  e.g:
 	#
 	#  [source,python]
 	#  ----
-	#  freeradius.config['name']
-	#  freeradius.config['sub-config']['name']
+	#  freeradius.config['name'] freeradius.config['sub-config']['name']
 	#  ----
 	#
 ##	config {

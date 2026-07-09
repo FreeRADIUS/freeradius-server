@@ -7,7 +7,8 @@
 #
 #  = etc_group Module
 #
-#  The `etc_group` module provides group names from the `/etc/group` file.
+#  The `etc_group` module provides group names from the `/etc/group`
+#  file.
 #
 #  NOTE: Please see the `csv` module for full documentation on the
 #  configuration items used here.
@@ -16,12 +17,12 @@
 #
 #  == Configuration Settings
 #
-#  The `csv` module configuration for the /etc/group file.  The module
+#  The `csv` module configuration for the /etc/group file. The module
 #  adds a `Etc-Group-Name` attribute for every group that the user is
 #  a member of.
 #
-#  You will have to define the `Etc-Group-Name` in the `dictionary` file,
-#  as a `string` type.  For example:
+#  You will have to define the `Etc-Group-Name` in the `dictionary`
+#  file, as a `string` type. For example:
 #
 #	```
 #	DEFINE Etc-Group-Name string
@@ -35,21 +36,20 @@ csv etc_group {
 	key = User-Name
 
 	#
-	#  The field names are just place-holders.
-	#  They are NOT attribute names!
+	#  The field names are just place-holders. They are NOT attribute
+	#  names!
 	#
 	fields = "group:::,user"
 
 	index_field = user
 
 	#
-	#  Add the ETC-Group-Name attribute to the request list.
-	#  If the user is a member of multiple groups, then the
-	#  module will add multiple ETC-Group-Name attributes,
-	#  one for each group.
+	#  Add the ETC-Group-Name attribute to the request list. If the user
+	#  is a member of multiple groups, then the module will add multiple
+	#  ETC-Group-Name attributes, one for each group.
 	#
-	#  The field names from the `fields` entry above are used
-	#  here in the right-hand side of the `update` section.
+	#  The field names from the `fields` entry above are used here in the
+	#  right-hand side of the `update` section.
 	#
 	update request {
 	       ETC-Group-Name := 'group'

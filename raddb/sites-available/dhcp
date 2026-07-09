@@ -7,8 +7,8 @@
 #
 #  See mods-config/sql/ippool/ for the schemas.
 #
-#  See sites-available/dhcp for instructions on how to configure
-#  the DHCP server.
+#  See sites-available/dhcp for instructions on how to configure the
+#  DHCP server.
 #
 #	$Id$
 #
@@ -22,17 +22,17 @@ server dhcp {
 
 #  Define a DHCP socket.
 #
-#  The default port below is 6700, so you don't break your network.
-#  If you want it to do real DHCP, change this to 67, and good luck!
+#  The default port below is 6700, so you don't break your network. If
+#  you want it to do real DHCP, change this to 67, and good luck!
 #
-#  You can also bind the DHCP socket to an interface.
-#  See below, and radiusd.conf for examples.
+#  You can also bind the DHCP socket to an interface. See below, and
+#  radiusd.conf for examples.
 #
 #  This lets you run *one* DHCP server instance and have it listen on
 #  multiple interfaces, each with a separate policy.
 #
 #  If you have multiple interfaces, it is a good idea to bind the
-#  listen section to an interface.  You will also need one listen
+#  listen section to an interface. You will also need one listen
 #  section per interface.
 #
 listen {
@@ -45,34 +45,32 @@ listen {
 	transport = udp
 
 	udp {
-		#  IP address to listen on. Will usually be the IP of the
-		#  interface, or 0.0.0.0
+		#  IP address to listen on. Will usually be the IP of the interface,
+		#  or 0.0.0.0
 		ipaddr = 127.0.0.1
 
-		#  The port should be 67 for a production network. Don't set
-		#  it to 67 on a production network unless you really know
-		#  what you're doing. Even if nothing is configured below, the
-		#  server may still NAK legitimate responses from clients.
-		#  This is also the destination port when sending to a giaddr.
+		#  The port should be 67 for a production network. Don't set it to
+		#  67 on a production network unless you really know what you're
+		#  doing. Even if nothing is configured below, the server may still
+		#  NAK legitimate responses from clients. This is also the
+		#  destination port when sending to a giaddr.
 		port = 6700
 
-		#  The port to which server -> client messages should be sent.
-		#  This should be 68 on a production network, though other ports
-		#  can be useful for testing.
+		#  The port to which server -> client messages should be sent. This
+		#  should be 68 on a production network, though other ports can be
+		#  useful for testing.
 		#
-		#  If this is not set then server -> client replies will be sent
-		#  to the source port of the client -> server request.
+		#  If this is not set then server -> client replies will be sent to
+		#  the source port of the client -> server request.
 		client_port = 68
 
 		#  Interface name we are listening on. See comments above.
 #		interface = lo0
 
-		#  source IP address for unicast packets sent by the
-		#  DHCP server.
+		#  source IP address for unicast packets sent by the DHCP server.
 		#
-		#  The source IP for unicast packets is chosen from the first
-		#  one of the following items which returns a valid IP
-		#  address:
+		#  The source IP for unicast packets is chosen from the first one of
+		#  the following items which returns a valid IP address:
 		#
 		#       src_ipaddr
 		#       ipaddr
@@ -80,23 +78,23 @@ listen {
 		#
 #		src_ipaddr = 127.0.0.1
 
-		#  The DHCP server defaults to allowing broadcast packets.
-		#  Set this to "no" only when the server receives *all* packets
-		#  from a relay agent.  i.e. when *no* clients are on the same
-		#  LAN as the DHCP server.
+		#  The DHCP server defaults to allowing broadcast packets. Set this
+		#  to "no" only when the server receives *all* packets from a relay
+		#  agent. i.e. when *no* clients are on the same LAN as the DHCP
+		#  server.
 		#
-		#  It's set to "no" here for testing. It will usually want to
-		#  be "yes" in production, unless you are only dealing with
-		#  relayed packets.
+		#  It's set to "no" here for testing. It will usually want to be
+		#  "yes" in production, unless you are only dealing with relayed
+		#  packets.
 		broadcast = no
 
-		#  On Linux if you're running the server as non-root, you
-		#  will need to do:
+		#  On Linux if you're running the server as non-root, you will need
+		#  to do:
 		#
 		#	sudo setcap cap_net_admin=ei /path/to/radiusd
 		#
-		#  This will allow the server to set ARP table entries
-		#  for newly allocated IPs
+		#  This will allow the server to set ARP table entries for newly
+		#  allocated IPs
 	}
 }
 
@@ -117,9 +115,9 @@ listen {
 ##}
 
 
-#  Packets received on the socket will be processed through one
-#  of the following sections, named after the DHCP packet type.
-#  See dictionary.dhcpv4 for the packet types.
+#  Packets received on the socket will be processed through one of the
+#  following sections, named after the DHCP packet type. See
+#  dictionary.dhcpv4 for the packet types.
 
 #  Return packets will be sent to, in preference order:
 #     Gateway-IP-Address
@@ -130,42 +128,43 @@ listen {
 
 recv Discover {
 
-	#  The DHCP Server Identifier is set here since it is returned in OFFERs
+	#  The DHCP Server Identifier is set here since it is returned in
+	#  OFFERs
 	control.Server-Identifier = 192.0.2.1
 
-	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	#  Call a policy (defined in policy.d/dhcp) to set common reply
+	#  attributes
 	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
-	#  See below for the definition of the "mac2ip"
-	#  module.
+	#  See below for the definition of the "mac2ip" module.
 	#
-#	mac2ip
+	#	mac2ip
 
-	#  If the MAC wasn't found in that list, do something else.
-	#  You could call a Perl, Python, or Java script here.
+	#  If the MAC wasn't found in that list, do something else. You could
+	#  call a Perl, Python, or Java script here.
 
 ##	if (notfound) {
 ##		...
 ##	}
 
-	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
-	#  set the pool name here if you haven't set it elsewhere.
-#	control.IP-Pool.Name := "local"
-#	sqlippool
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to set
+	#  the pool name here if you haven't set it elsewhere.
+	#	control.IP-Pool.Name := "local"
+	#	sqlippool
 
-	#  If Message-Type is not set, returning "ok" or
-	#  "updated" from this section will respond with a Offer
-	#  message.
+	#  If Message-Type is not set, returning "ok" or "updated" from this
+	#  section will respond with a Offer message.
 	#
 	#  Other rcodes will tell the server to not return any response.
-#	ok
+	#	ok
 }
 
 recv Request {
 
-	#  The DHCP Server Identifier is set here since it is returned in OFFERs
+	#  The DHCP Server Identifier is set here since it is returned in
+	#  OFFERs
 	control.Server-Identifier = 192.0.2.1
 
 	#  If the request is not for this server then silently discard it
@@ -174,51 +173,49 @@ recv Request {
 		do_not_respond
 	}
 
-	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	#  Call a policy (defined in policy.d/dhcp) to set common reply
+	#  attributes
 	dhcp_common
 
 	#  Do a simple mapping of MAC to assigned IP.
 	#
-	#  See below for the definition of the "mac2ip"
-	#  module.
+	#  See below for the definition of the "mac2ip" module.
 	#
-#	mac2ip
+	#	mac2ip
 
-	#  If the MAC wasn't found in that list, do something else.
-	#  You could call a Perl, Python, or Java script here.
+	#  If the MAC wasn't found in that list, do something else. You could
+	#  call a Perl, Python, or Java script here.
 
-	#if (notfound) {
-	#  ...
-	#}
+	#  if (notfound) { ... }
 
-	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
-	#  set the pool name here if you haven't set it elsewhere.
-#	control.IP-Pool.Name := "local"
-#	sqlippool
+	#  Or, allocate IPs from the DHCP pool in SQL. You may need to set
+	#  the pool name here if you haven't set it elsewhere.
+	#	control.IP-Pool.Name := "local"
+	#	sqlippool
 
 	if (ok) {
 		reply.Your-IP-Address := "%{request.Requested-IP-Address || request.Client-IP-Address}"
 	}
 
-	#  If Message-Type is not set, returning "ok" or
-	#  "updated" from this section will respond with a Ack
-	#  packet.
+	#  If Message-Type is not set, returning "ok" or "updated" from this
+	#  section will respond with a Ack packet.
 	#
-	#  "handled" will not return a packet, all other rcodes will
-	#  send back a NAK.
-#	ok
+	#  "handled" will not return a packet, all other rcodes will send
+	#  back a NAK.
+	#	ok
 }
 
 #
 #  Other DHCP packet types
 #
-#  There should be a separate section for each DHCP message type.
-#  By default this configuration will ignore them all. Any packet type
+#  There should be a separate section for each DHCP message type. By
+#  default this configuration will ignore them all. Any packet type
 #  not defined here will be responded to with a NAK.
 
 recv Decline {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
-	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
+	#  pool name here if you haven't set it elsewhere and mark the IP as
+	#  declined.
 ##	control.IP-Pool.Name := "local"
 ##	sqlippool
 
@@ -226,12 +223,13 @@ recv Decline {
 }
 
 #
-#  A dummy config for Inform packets - this should match the
-#  options set in the Request section above, except Inform replies
-#  must not set Your-IP-Address or IP-Address-Lease-Time
+#  A dummy config for Inform packets - this should match the options
+#  set in the Request section above, except Inform replies must not
+#  set Your-IP-Address or IP-Address-Lease-Time
 #
 recv Inform {
-	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
+	#  Call a policy (defined in policy.d/dhcp) to set common reply
+	#  attributes
 	dhcp_common
 
 	ok
@@ -247,8 +245,7 @@ recv Release {
 }
 
 recv Lease-Query {
-	#  The thing being queried for is implicit
-	#  in the packets.
+	#  The thing being queried for is implicit in the packets.
 
 	#  has MAC, asking for IP, etc.
 	if (Client-Hardware-Address) {
@@ -274,8 +271,8 @@ recv Lease-Query {
 	}
 
 	#
-	#  We presume that the database lookup returns "notfound"
-	#  if it can't find anything.
+	#  We presume that the database lookup returns "notfound" if it can't
+	#  find anything.
 	#
 	if (notfound) {
 		reply.Message-Type = ::Lease-Unknown
@@ -312,8 +309,8 @@ recv Lease-Query {
 ######################################################################
 #
 #  This next section is a sample configuration for the "passwd"
-#  module, that reads flat-text files.  It should go into
-#  radiusd.conf, in the "modules" section.
+#  module, that reads flat-text files. It should go into radiusd.conf,
+#  in the "modules" section.
 #
 #  The file is in the format <mac>,<ip>
 #
@@ -336,8 +333,8 @@ recv Lease-Query {
 ######################################################################
 
 
-#  This is an example only - see mods-available/mac2ip instead; do
-#  not uncomment these lines here.
+#  This is an example only - see mods-available/mac2ip instead; do not
+#  uncomment these lines here.
 #
 ##passwd mac2ip {
 ##	filename = ${confdir}/mac2ip

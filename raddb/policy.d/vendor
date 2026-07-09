@@ -1,8 +1,8 @@
 #
-#  Convert broadsoft 255 attributes in the form <attr number>=value
-#  to internal broadsoft attributes with numbers > 256.
-#  There is currently no way to automatically re-encode those
-#  attributes, but it can be done with unlang for specific ones.
+#  Convert broadsoft 255 attributes in the form <attr number>=value to
+#  internal broadsoft attributes with numbers > 256. There is
+#  currently no way to automatically re-encode those attributes, but
+#  it can be done with unlang for specific ones.
 #
 broadsoft-decode {
 	foreach value ( BroadSoft-Attr-255 ) {

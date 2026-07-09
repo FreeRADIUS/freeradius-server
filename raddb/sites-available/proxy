@@ -6,7 +6,8 @@
 #  This virtual server replaces the old `pre-proxy` and `post-proxy`
 #  sections that were in v3.
 #
-#  It can be called from another virtual server via the `call` keyword:
+#  It can be called from another virtual server via the `call`
+#  keyword:
 #
 #	subrequest {
 #		request := parent.request
@@ -15,11 +16,11 @@
 #	}
 #
 #  For server pools with load-balancing, fail-over, etc., you can just
-#  use the `load-balance` and `redundant` keywords.  Those sections
+#  use the `load-balance` and `redundant` keywords. Those sections
 #  should then include multiple `radius` modules, one for each home
-#  server.  See `mods-available/home_server_pool` for an example of
-#  how to convert a v3 `home_server` and `home_server_pool`
-#  configuration to v4.
+#  server. See `mods-available/home_server_pool` for an example of how
+#  to convert a v3 `home_server` and `home_server_pool` configuration
+#  to v4.
 #
 #  See also the proxy upgrade documentation for more examples of
 #  upgrading from v3 to v4:
@@ -39,10 +40,10 @@ server proxy {
 #
 #  === Receive the Access-Request from the parent
 #
-#  This section replaces `pre-proxy`.  It receives an Access-Request
+#  This section replaces `pre-proxy`. It receives an Access-Request
 #  from the parent, and uses the `radius` module to proxy it.
 #
-#  Note that there is no `send Access-Request` section.  If you add
+#  Note that there is no `send Access-Request` section. If you add
 #  one, the server will give an error, and will refuse to start.
 #
 recv Access-Request {
@@ -55,11 +56,11 @@ recv Access-Request {
 
 authenticate proxy {
 	#
-	#  This is where you decide which home server the packet is
-	#  proxied to.  See `mods-available/home_server_pool` for an
-	#  example of the `pool1` module configuration.
+	#  This is where you decide which home server the packet is proxied
+	#  to. See `mods-available/home_server_pool` for an example of the
+	#  `pool1` module configuration.
 	#
-#	pool1
+	#	pool1
 }
 
 
@@ -92,15 +93,15 @@ recv Accounting-Request {
 	#
 	#  As the last thing in the section, proxy it.
 	#
-	#  Unlike `Access-Request` packets, there is no `Acct-Type =
-	#  proxy`.  There are sections like `accounting start {...}`, but
-	#  those sections are called based on the `Acct-Status-Type`
-	#  attribute in the request.
+	#  Unlike `Access-Request` packets, there is no `Acct-Type = proxy`.
+	#  There are sections like `accounting start {...}`, but those
+	#  sections are called based on the `Acct-Status-Type` attribute in
+	#  the request.
 	#
-	#  As a result, the `pool1` virtual module has to be listed in
-	#  this section.
+	#  As a result, the `pool1` virtual module has to be listed in this
+	#  section.
 	#
-#	pool1
+	#	pool1
 }
 
 #
@@ -123,14 +124,15 @@ finally {
 	#
 	#  Remove all `Proxy-State` attributes from the response.
 	#
-	#  The `Proxy-State` attributes we get from the home server
-	#  are specific to the link between the proxy and the home
-	#  server.  They must not be sent back to the client.
+	#  The `Proxy-State` attributes we get from the home server are
+	#  specific to the link between the proxy and the home server. They
+	#  must not be sent back to the client.
 	#
 	reply -= Proxy-State[*]
 
 	#
-	#  Over-write all of the parents response attributes with our response.
+	#  Over-write all of the parents response attributes with our
+	#  response.
 	#
 	parent.reply := reply
 }

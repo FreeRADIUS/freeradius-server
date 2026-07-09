@@ -7,15 +7,16 @@
 #
 #  = EAP Module
 #
-#  The `eap` module takes care of all EAP authentication as described in RFC 3579.
+#  The `eap` module takes care of all EAP authentication as described
+#  in RFC 3579.
 #
 #  [WARNING]
 #  ====
-#  Whatever you do, do NOT set 'Auth-Type := ::EAP'.  The server is smart enough
-#  to figure this out on its own.
+#  Whatever you do, do NOT set 'Auth-Type := ::EAP'. The server is
+#  smart enough to figure this out on its own.
 #
-#  The most common side effect of setting 'Auth-Type := ::EAP' is that the users
-#  then cannot use ANY other authentication method.
+#  The most common side effect of setting 'Auth-Type := ::EAP' is that
+#  the users then cannot use ANY other authentication method.
 #  ====
 #
 
@@ -24,49 +25,51 @@
 #
 eap {
 	#
-	#  require_identity_realm:: Require the EAP Identity provided contains
-	#  a realm.
+	#  require_identity_realm:: Require the EAP Identity provided
+	#  contains a realm.
 	#
-	#  If `require_identity_realm` is `nai`, the EAP identity provided must
-	#  end with `@<label0>.<label1>[.<labelN>]`, i.e. an '@' followed by at least
-	#  two DNS labels.
+	#  If `require_identity_realm` is `nai`, the EAP identity provided
+	#  must end with `@<label0>.<label1>[.<labelN>]`, i.e. an '@'
+	#  followed by at least two DNS labels.
 	#
-	#  If `require_identity_realm` is `yes`, the EAP identity provided must
-	#  either match the NAI format described above, or a `Stripped-User-Domain`
-	#  attribute must be present in the request list.
-	#  This validation mode is intended to be user where Windows machine
-	#  authentication is intermixed with user authentication.
+	#  If `require_identity_realm` is `yes`, the EAP identity provided
+	#  must either match the NAI format described above, or a
+	#  `Stripped-User-Domain` attribute must be present in the request
+	#  list. This validation mode is intended to be user where Windows
+	#  machine authentication is intermixed with user authentication.
 	#
-	#  If `require_identity_realm` is `no`, no identity format checks are performed.
-	#  It is NOT recommended to use this value.  Future security standards will
-	#  key off the NAI realm to validate the certificate we (the EAP server) present.
-	#  If you do not require an NAI realm be present in the EAP identity string,
-	#  your users will not be able to take advantage of this added security when
-	#  it is enabled by OS and device vendors.
+	#  If `require_identity_realm` is `no`, no identity format checks are
+	#  performed. It is NOT recommended to use this value. Future
+	#  security standards will key off the NAI realm to validate the
+	#  certificate we (the EAP server) present. If you do not require an
+	#  NAI realm be present in the EAP identity string, your users will
+	#  not be able to take advantage of this added security when it is
+	#  enabled by OS and device vendors.
 	#
 #	require_identity_realm = nai
 
 	#
-	#  Session tracking has moved to the `session` section of a virtual server.
+	#  Session tracking has moved to the `session` section of a virtual
+	#  server.
 	#  * timer_expire --> timeout
 	#  * max_sessions --> max
 	#  * dedup_key    --> dedup_key
 	#
 
 	#
-	#  default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
-	#  response is received.
+	#  default_eap_type:: The default EAP submodule to invoke when an
+	#  `EAP-Identity` response is received.
 	#
-	#  If a `default_eap_type` value is not provided, enabled EAP submodules will be
-	#  queried to determine if they recognise the provided EAP-Identity.
-	#  If no submodules recognise the identity, the first `type` value listed below
-	#  will be used.
+	#  If a `default_eap_type` value is not provided, enabled EAP
+	#  submodules will be queried to determine if they recognise the
+	#  provided EAP-Identity. If no submodules recognise the identity,
+	#  the first `type` value listed below will be used.
 	#
-	#  If the `control.EAP-Type` attribute is set, then that EAP type takes precedence
-	#  over any configured or inferred EAP-Type.
+	#  If the `control.EAP-Type` attribute is set, then that EAP type
+	#  takes precedence over any configured or inferred EAP-Type.
 	#
-	#  It is generally recommended to NOT set `default_eap_type`, and instead order
-	#  the `type` configuration items appropriately.
+	#  It is generally recommended to NOT set `default_eap_type`, and
+	#  instead order the `type` configuration items appropriately.
 	#
 #	default_eap_type = md5
 
@@ -74,35 +77,38 @@ eap {
 	#  ignore_unknown_eap_types::
 	#
 	#  There are many EAP types, but the server has support for only a
-	#  limited subset.  If the server receives a request for an EAP type it
-	#  does not support, then it normally rejects the request.  By setting
-	#  this configuration to `yes`, you can tell the server to instead keep
-	#  processing the request.  Another module MUST then be configured to
-	#  proxy the request to another RADIUS server which supports that EAP
-	#  type.
+	#  limited subset. If the server receives a request for an EAP type
+	#  it does not support, then it normally rejects the request. By
+	#  setting this configuration to `yes`, you can tell the server to
+	#  instead keep processing the request. Another module MUST then be
+	#  configured to proxy the request to another RADIUS server which
+	#  supports that EAP type.
 	#
-	#  NOTE: If another module is NOT configured to handle the request, then the
-	#  request will still end up being rejected.
+	#  NOTE: If another module is NOT configured to handle the request,
+	#  then the request will still end up being rejected.
 	#
 	ignore_unknown_eap_types = no
 
 	#
 	#  == Allowed EAP-types
 	#
-	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
+	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair
+	#  will be allowed.
 	#
-	#  In addition, setting `type = md5` will load the configuration section `md5 { ... }`.
-	#  There is no need to "comment out" the entire configuration section for EAP types
-	#  which are not used.  Instead, simply comment out or delete the `type = ..` entry
-	#  for that EAP method, and the entire configuration section will be ignored.
+	#  In addition, setting `type = md5` will load the configuration
+	#  section `md5 { ... }`. There is no need to "comment out" the
+	#  entire configuration section for EAP types which are not used.
+	#  Instead, simply comment out or delete the `type = ..` entry for
+	#  that EAP method, and the entire configuration section will be
+	#  ignored.
 	#
-	#  If the `control.EAP-Type` attribute is set, then that is used to form the list of
-	#  allowed EAP types, with the first instance being the default type and others also
-	#  being allowed.
+	#  If the `control.EAP-Type` attribute is set, then that is used to
+	#  form the list of allowed EAP types, with the first instance being
+	#  the default type and others also being allowed.
 	#
-	#  Setting an EAP type in `control.EAP-Type` which is not allowed below, will not have
-	#  any effect, since this list determines which methods are loaded and potentially
-	#  available.
+	#  Setting an EAP type in `control.EAP-Type` which is not allowed
+	#  below, will not have any effect, since this list determines which
+	#  methods are loaded and potentially available.
 	#
 	type = md5
 #	type = pwd
@@ -119,7 +125,7 @@ eap {
 	#  === EAP-MD5
 	#
 	#  WARNING: EAP-MD5 authentication cannot be used for wireless
-	#  connections.  It is insecure, and does not provide for dynamic WEP
+	#  connections. It is insecure, and does not provide for dynamic WEP
 	#  keys or WPA enterprise.
 	#
 	md5 {
@@ -128,9 +134,10 @@ eap {
 	#
 	#  === EAP-PWD (Secure password-based authentication)
 	#
-	#  In v4, the "known good" password is taken from the `request.control.Password.Cleartext` list,
-	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
-	#  is not used.
+	#  In v4, the "known good" password is taken from the
+	#  `request.control.Password.Cleartext` list, as is done by other
+	#  modules. The change from v3 is that the `inner-tunnel` virtual
+	#  server is not used.
 	#
 	pwd {
 		group = 19
@@ -146,12 +153,13 @@ eap {
 	#
 	#  === Generic Token Card
 	#
-	#  Currently, this is only permitted inside of `EAP-TTLS`, or `EAP-PEAP`.
-	#  The module `challenges` the user with text, and the response from the
-	#  user is taken to be the `User-Password`.
+	#  Currently, this is only permitted inside of `EAP-TTLS`, or
+	#  `EAP-PEAP`. The module `challenges` the user with text, and the
+	#  response from the user is taken to be the `User-Password`.
 	#
-	#  WARNING: Proxying the tunneled `EAP-GTC` session is a bad idea, the users
-	#  password will go over the wire in plain-text, for anyone to see.
+	#  WARNING: Proxying the tunneled `EAP-GTC` session is a bad idea,
+	#  the users password will go over the wire in plain-text, for anyone
+	#  to see.
 	#
 	gtc {
 		#
@@ -164,12 +172,12 @@ eap {
 		#
 		#  The plain-text response which comes back is put into a
 		#  `User-Password` attribute, and passed to another module for
-		#  authentication.  This allows the `EAP-GTC` response to be
-		#  checked against plain-text, or crypt'd passwords.
+		#  authentication. This allows the `EAP-GTC` response to be checked
+		#  against plain-text, or crypt'd passwords.
 		#
-		#  If you say "Local" instead of "PAP", then the module will
-		#  look for a `User-Password` configured for the request, and do
-		#  the authentication itself.
+		#  If you say "Local" instead of "PAP", then the module will look
+		#  for a `User-Password` configured for the request, and do the
+		#  authentication itself.
 		#
 		auth_type = PAP
 	}
@@ -179,12 +187,12 @@ eap {
 	#
 	#  See `certs/index.adoc` for additional comments on certificates.
 	#
-	#  If OpenSSL was not found at the time the server was built, the `tls`,
-	#  `ttls`, and `peap` sections will be ignored.
+	#  If OpenSSL was not found at the time the server was built, the
+	#  `tls`, `ttls`, and `peap` sections will be ignored.
 	#
-	#  If you do not currently have certificates signed by a trusted CA you
-	#  may use the 'snakeoil' certificates. Included with the server in
-	#  `certs`.
+	#  If you do not currently have certificates signed by a trusted CA
+	#  you may use the 'snakeoil' certificates. Included with the server
+	#  in `certs`.
 	#
 	#  If these certificates have not been auto-generated:
 	#
@@ -192,21 +200,20 @@ eap {
 	#    make
 	#
 	#  These test certificates *SHOULD NOT* be used in a normal
-	#  deployment.  They are created only to make it easier to
-	#  install the server, and to perform some simple tests with
-	#  EAP-TLS, TTLS, or PEAP.
+	#  deployment. They are created only to make it easier to install the
+	#  server, and to perform some simple tests with EAP-TLS, TTLS, or
+	#  PEAP.
 	#
-	#  Note that you should NOT use a globally known CA here!
-	#  e.g. using a Verisign cert as a "known CA" means that
-	#  ANYONE who has a certificate signed by them may be able to
-	#  authenticate via EAP-TLS!  This is likely not what you
-	#  want.
+	#  Note that you should NOT use a globally known CA here! e.g. using
+	#  a Verisign cert as a "known CA" means that ANYONE who has a
+	#  certificate signed by them may be able to authenticate via
+	#  EAP-TLS! This is likely not what you want.
 	#
 	#
 	#  [NOTE]
 	#  ====
 	#  As of 4.0 the following TLS config items/config sections have been
-	#  removed.  Equivalent functionality is available.
+	#  removed. Equivalent functionality is available.
 	#  ====
 	#
 	#  [options="header,autowidth"]
@@ -231,16 +238,17 @@ eap {
 	#
 	tls-config tls-common {
 		#
-		#  virtual_server:: The virtual server used for checking and saving TLS data.
+		#  virtual_server:: The virtual server used for checking and saving
+		#  TLS data.
 		#
-		#  When the module receives certificate checks and stateful
-		#  session resumption requests, that information will be passed
-		#  through a virtual server.  This virtual server typically runs
-		#  policies which verifies the certificate, or loads / stores
-		#  session resumption data.
+		#  When the module receives certificate checks and stateful session
+		#  resumption requests, that information will be passed through a
+		#  virtual server. This virtual server typically runs policies which
+		#  verifies the certificate, or loads / stores session resumption
+		#  data.
 		#
-		#  The virtual server must specify `namespace = tls`, and may contain
-		#  the following sections:
+		#  The virtual server must specify `namespace = tls`, and may
+		#  contain the following sections:
 		#
 		#  [options="header,autowidth"]
 		#  |===
@@ -262,17 +270,17 @@ eap {
 		#  | Gather stapling information for one or more of our certificates.
 		#  |===
 		#
-		#  More information about the various sections can be found in the virtual server
-		#  `sites-available/tls-session`.
+		#  More information about the various sections can be found in the
+		#  virtual server `sites-available/tls-session`.
 		#
 #		virtual_server = tls-session
 
 		#  auto_chain::
 		#
-		#  OpenSSL will automatically create certificate chains, unless
-		#  we tell it to not do that.  The problem is that it sometimes
-		#  gets the chains right from a certificate signature view, but
-		#  wrong from the clients view.
+		#  OpenSSL will automatically create certificate chains, unless we
+		#  tell it to not do that. The problem is that it sometimes gets the
+		#  chains right from a certificate signature view, but wrong from
+		#  the clients view.
 		#
 		#  NOTE: When setting `auto_chain = no`, the server `chain {}`
 		#  section(s) below MUST include the full certificate chain.
@@ -285,29 +293,29 @@ eap {
 		#  Multiple chain sections can be specified to allow different
 		#  chains for different key types (RSA, DSA, DH, EC).
 		#
-		#  If multiple chains for the same key type are specified
-		#  the last chain to be processed will be used for that
-		#  key type.
+		#  If multiple chains for the same key type are specified the last
+		#  chain to be processed will be used for that key type.
 		#
-		#  WARNING: The server automatically selects a chain based on
-		#  the cipher agreed by the client and server. For example, if
-		#  the client includes ECC ciphers in its request, but the
-		#  server only has an RSA certificate, then the authentication
-		#  is likely to fail.  i.e. The client is asking the server to
-		#  use an ECC cipher and ECC certificate, but the server has no
-		#  ECC certificate available.
+		#  WARNING: The server automatically selects a chain based on the
+		#  cipher agreed by the client and server. For example, if the
+		#  client includes ECC ciphers in its request, but the server only
+		#  has an RSA certificate, then the authentication is likely to
+		#  fail. i.e. The client is asking the server to use an ECC cipher
+		#  and ECC certificate, but the server has no ECC certificate
+		#  available.
 		#
-		#  The key type does not need to be explicitly specified as
-		#  it is determined from the provided certificate.
+		#  The key type does not need to be explicitly specified as it is
+		#  determined from the provided certificate.
 		#
 		chain rsa {
 			#
 			#  format:: The format of the certificate(s) and private key file.
 			#
-			#  May be one of `PEM`, `DER` or `ASN1` (ASN1 is an alias for `DER`).
+			#  May be one of `PEM`, `DER` or `ASN1` (ASN1 is an alias for
+			#  `DER`).
 			#
-			#  Most Linux systems use PEM format.  Windows and other
-			#  systems usually use DER.
+			#  Most Linux systems use PEM format. Windows and other systems
+			#  usually use DER.
 			#
 #			format = "PEM"
 
@@ -315,69 +323,63 @@ eap {
 			#  certificate_file:: File which contains the certificate presented
 			#  as the "server certificate" to the client.
 			#
-			#  If the PEM format is used, the `certificate_file`
-			#  should contain the server certificates, along with
-			#  any intermediate CAs up to the root CA.  The client
-			#  is not normally configured with the intermediate CAs,
-			#  but it needs them to verify the server certificate.
-			#  The server therefore has to supply the intermediate
+			#  If the PEM format is used, the `certificate_file` should contain
+			#  the server certificates, along with any intermediate CAs up to
+			#  the root CA. The client is not normally configured with the
+			#  intermediate CAs, but it needs them to verify the server
+			#  certificate. The server therefore has to supply the intermediate
 			#  CAs to the client during the authentication process.
 			#
 			#  [NOTE]
 			#  ====
-			#  If `verify_mode` (below) is set to `hard` or `soft`
-			#  all intermediary CAs and the Root CA need to be
-			#  included in the `certificate_file`.
+			#  If `verify_mode` (below) is set to `hard` or `soft` all
+			#  intermediary CAs and the Root CA need to be included in the
+			#  `certificate_file`.
 			#
-			#  If the file includes multiple certificates, they MUST
-			#  be listedin order from server certificate (first in
-			#  the file) to intermediary CAs (second) to Root CA
-			#  (last in the file) as per RFC 4346 Section 7.4.2 (see
-			#  certificate_list)
+			#  If the file includes multiple certificates, they MUST be
+			#  listedin order from server certificate (first in the file) to
+			#  intermediary CAs (second) to Root CA (last in the file) as per
+			#  RFC 4346 Section 7.4.2 (see certificate_list)
 			#
-			#  If the DER format is used, the `certificate_file`
-			#  should contain ONLY the server's certificate.  One
-			#  or more `ca_file` items should be used to load
-			#  the intermediate CAs and the Root CA.
+			#  If the DER format is used, the `certificate_file` should contain
+			#  ONLY the server's certificate. One or more `ca_file` items
+			#  should be used to load the intermediate CAs and the Root CA.
 			#  ====
 			#
-			#  We recommend using `ca_file` to load the
-			#  root CAs, instead of putting them in the
-			#  `certificate_file`.
+			#  We recommend using `ca_file` to load the root CAs, instead of
+			#  putting them in the `certificate_file`.
 			#
 			certificate_file = ${certdir}/rsa/server.pem
 
 			#
-			#  ca_file::  File which contains the root CA.
+			#  ca_file:: File which contains the root CA.
 			#
-			#  This configuration item allows the server to load
-			#  additional intermediate CA or Root CA when creating
-			#  certificate chains.  Multiple "ca_file"
-			#  configurations items may be specified in order to
-			#  load multiple certificates.
+			#  This configuration item allows the server to load additional
+			#  intermediate CA or Root CA when creating certificate chains.
+			#  Multiple "ca_file" configurations items may be specified in
+			#  order to load multiple certificates.
 			#
-			#  When multiple `ca_file` entries are used, the server
-			#  will still present only one server certificate (from
-			#  `certificate_file`) to the clients.  The main use for
-			#  multiple `ca_file` entries is to permit the use of
-			#  EAP-TLS with client certificates from multiple Root
-			#  CAs.
+			#  When multiple `ca_file` entries are used, the server will still
+			#  present only one server certificate (from `certificate_file`) to
+			#  the clients. The main use for multiple `ca_file` entries is to
+			#  permit the use of EAP-TLS with client certificates from multiple
+			#  Root CAs.
 			#
-			#  If the root CA does not issue client certificates, or
-			#  if only one root CA is, then the `ca_file`
-			#  configuration can be commented out (at least when PEM
-			#  format is used).
+			#  If the root CA does not issue client certificates, or if only
+			#  one root CA is, then the `ca_file` configuration can be
+			#  commented out (at least when PEM format is used).
 			#
 			ca_file = ${certdir}/rsa/ca.pem
 
 			#
-			#  private_key_password:: The password which is used to encrypt the private key.
+			#  private_key_password:: The password which is used to encrypt the
+			#  private key.
 			#
 			#  If the private key is not encrypted, this configuration item
 			#  will have no effect.
 			#
-			#  In general, there is little security benefit in
-			#  encrypting the `private_key_file` with a password.
+			#  In general, there is little security benefit in encrypting the
+			#  `private_key_file` with a password.
 			#
 			private_key_password = whatever
 
@@ -393,9 +395,9 @@ eap {
 			#
 			#  verify_mode:: How we verify the certificate chain.
 			#
-			#  During startup the server attempts to precompile the certificate chain
-			#  from server certificate to Root CA.  This configuration item specifies
-			#  what happens if compilation fails.
+			#  During startup the server attempts to precompile the certificate
+			#  chain from server certificate to Root CA. This configuration
+			#  item specifies what happens if compilation fails.
 			#
 			#  [options="header,autowidth"]
 			#  |===
@@ -405,8 +407,8 @@ eap {
 			#  | none  | Stay silent if we cannot build a complete certificate chain.
 			#  |===
 			#
-			#  The default is `hard`.  The only time this should be changed is if
-			#  you want to limit the number of intermediary CAs sent to the
+			#  The default is `hard`. The only time this should be changed is
+			#  if you want to limit the number of intermediary CAs sent to the
 			#  client by not including them in the chain.
 			#
 			#  [NOTE]
@@ -415,8 +417,8 @@ eap {
 			#    build a complete chain, but this will be done at runtime.
 			#
 			#  * `auto_chain` has no effect on which certificates are considered
-			#  for pre-compilation.  Only those listed in this `chain {}` section
-			#  will be used.
+			#  for pre-compilation. Only those listed in this `chain {}`
+			#  section will be used.
 			#  ====
 			#
 #			verify_mode = "hard"
@@ -425,11 +427,12 @@ eap {
 			#  include_root_ca:: Whether or not the root CA is included in the
 			#  certificate chain.
 			#
-			#  The Root CA should already be known/trusted by the client so it is
-			#  usually not needed unless the client is particularly poorly behaved.
+			#  The Root CA should already be known/trusted by the client so it
+			#  is usually not needed unless the client is particularly poorly
+			#  behaved.
 			#
-			#  NOTE: The Root CA must still be available for creating certificate chains to
-			#  succeed even if `include_root_ca = no`.
+			#  NOTE: The Root CA must still be available for creating
+			#  certificate chains to succeed even if `include_root_ca = no`.
 			#
 			#  Default value is `no`.
 			#
@@ -441,45 +444,41 @@ eap {
 		#
 		#  This is disabled by default, see the warning above.
 		#
-		#  If your supplicants propose a mix of different
-		#  types of ciphers _and_ have all of the CA keys for
-		#  each type of certificate, then multiple chains can be
-		#  enabled simultaneously.
+		#  If your supplicants propose a mix of different types of ciphers
+		#  _and_ have all of the CA keys for each type of certificate, then
+		#  multiple chains can be enabled simultaneously.
 		#
-#		chain ecc {
+		#		chain ecc {
 #			certificate_file = ${certdir}/ecc/server.pem
 #			ca_file = ${certdir}/ecc/ca.pem
 #			private_key_password = whatever
 #			private_key_file = ${certdir}/ecc/server.key
-#		}
+		#		}
 
 		#
 		#  == Server certificate
 		#
-		#  The server certificate may also be specified at
-		#  runtime on a per session basis.  In that use-case,
-		#  the certificate file must consist of the
-		#  certificate and private key, PEM encoded.  The
-		#  password should either be set above with
-		#  `password`, or the certificate should have no
-		#  password.
+		#  The server certificate may also be specified at runtime on a per
+		#  session basis. In that use-case, the certificate file must
+		#  consist of the certificate and private key, PEM encoded. The
+		#  password should either be set above with `password`, or the
+		#  certificate should have no password.
 		#
 		#  The file should be provided as the attribute:
 		#
 		#      control.TLS-Session-Cert-File
 		#
-		#  If there are any errors loading or verifying the
-		#  certificate, then authentication will fail.
+		#  If there are any errors loading or verifying the certificate,
+		#  then authentication will fail.
 		#
-		#  This configuration can be used to periodically
-		#  verify correct supplicant behaviour, by presenting
-		#  an untrusted or invalid server certificate and
-		#  verifying that the supplicant returns the correct
-		#  TLS alert (available in Module-Failure-Message).
+		#  This configuration can be used to periodically verify correct
+		#  supplicant behaviour, by presenting an untrusted or invalid
+		#  server certificate and verifying that the supplicant returns the
+		#  correct TLS alert (available in Module-Failure-Message).
 		#
-		#  NOTE: After receiving a fatal alert, TLS negotiation
-		#  cannot continue, but as most supplicants will retry
-		#  enthusiastically, so this probably won't be an issue.
+		#  NOTE: After receiving a fatal alert, TLS negotiation cannot
+		#  continue, but as most supplicants will retry enthusiastically, so
+		#  this probably won't be an issue.
 		#
 
 		#
@@ -488,87 +487,85 @@ eap {
 		#  ALL of the CA's in this list will be trusted to issue client
 		#  certificates for authentication.
 		#
-		#  NOTE: You should not use a public CA here.  This should either be
-		#  set to a certificate chain for your institution's CA,
-		#  or to a self signed Root CA.
+		#  NOTE: You should not use a public CA here. This should either be
+		#  set to a certificate chain for your institution's CA, or to a
+		#  self signed Root CA.
 		#
 		ca_file = ${cadir}/rsa/ca.pem
 
 		#
 		#  psk_identity:: Default identity to present for PSK.
 		#
-		#  If OpenSSL supports TLS-PSK, then we can use a PSK identity
-		#  and (hex) password.
+		#  If OpenSSL supports TLS-PSK, then we can use a PSK identity and
+		#  (hex) password.
 		#
-		#  If using a fixed identity, it must be the same on
-		#  the client.  The passphrase must be a hex value,
-		#  and can be up to 256 hex characters.
+		#  If using a fixed identity, it must be the same on the client. The
+		#  passphrase must be a hex value, and can be up to 256 hex
+		#  characters.
 		#
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"
 
 		#
-		#  WARNING: Dynamic queries for the `PSK`.  If `TLS-PSK` is used,
-		#  and `psk_query` is set, then you MUST NOT use
-		#  `psk_identity` or `psk_hexphrase`.
+		#  WARNING: Dynamic queries for the `PSK`. If `TLS-PSK` is used, and
+		#  `psk_query` is set, then you MUST NOT use `psk_identity` or
+		#  `psk_hexphrase`.
 		#
 
 		#
 		#  psk_query:: Dynamically obtain the PSK from a query.
 		#
-		#  Instead, use a dynamic expansion similar to the one
-		#  below.  It keys off of TLS-PSK-Identity.  It should
-		#  return a of string no more than 512 hex characters.
-		#  That string will be converted to binary, and will
-		#  be used as the dynamic PSK hexphrase.
+		#  Instead, use a dynamic expansion similar to the one below. It
+		#  keys off of TLS-PSK-Identity. It should return a of string no
+		#  more than 512 hex characters. That string will be converted to
+		#  binary, and will be used as the dynamic PSK hexphrase.
 		#
-		#  Note that this query is just an example.  You will
-		#  need to customize it for your installation.
+		#  Note that this query is just an example. You will need to
+		#  customize it for your installation.
 		#
 #		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 
 		#
 		#  cipher_suites:: TLS 1.3 cipher suites.
 		#
-		#  For TLS-PSK, uncomment the following line to use
-		#  standard ciphers for TLS 1.3.
+		#  For TLS-PSK, uncomment the following line to use standard ciphers
+		#  for TLS 1.3.
 		#
-		#  TLS-PSK may work without this line, but it is
-		#  likely to not work when the "next hop" home_server
-		#  accepts both certificates and PSK.  OpenSSL will
-		#  negotiate cipher suites which are incompatible with
-		#  PSK, and then fail.
+		#  TLS-PSK may work without this line, but it is likely to not work
+		#  when the "next hop" home_server accepts both certificates and
+		#  PSK. OpenSSL will negotiate cipher suites which are incompatible
+		#  with PSK, and then fail.
 		#
 		#  Setting the `cipher_suites` here forces PSK to be negotiated.
 		#
 #		cipher_suites = "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
 
 		#
-		#  You can create the DH parameters by running the
-		#  following command:
+		#  You can create the DH parameters by running the following
+		#  command:
 		#
-		#  	openssl dhparam -out certs/dh 2048
+		#  openssl dhparam -out certs/dh 2048
 		#
 		#  The DH parameters will usually be ignored in FIPS mode.
 		#
-		#  If this file isn't specified, then OpenSSL will
-		#  automatically set the correct DH parameters.
+		#  If this file isn't specified, then OpenSSL will automatically set
+		#  the correct DH parameters.
 		#
 #		dh_file = ${certdir}/dh
 
 		#
 		#  fragment_size:: Limit for size of EAP fragments.
 		#
-		#  This can never exceed the size of a RADIUS packet (4096
-		#  bytes), and is preferably less than half of that, to leave
-		#  room for other attributes in RADIUS packet.  In most cases,
-		#  the maximum EAP packet length is limited to the Ethernet MTU,
-		#  which between `1500 - 1600` bytes.
+		#  This can never exceed the size of a RADIUS packet (4096 bytes),
+		#  and is preferably less than half of that, to leave room for other
+		#  attributes in RADIUS packet. In most cases, the maximum EAP
+		#  packet length is limited to the Ethernet MTU, which between `1500
+		#  - 1600` bytes.
 		#
-		#  In these cases, fragment size should be `1024` or less.  Note
-		#  also that the EAP RFCs say that EAP implementations MUST use
-		#  fragments of at least 1020 bytes!  Many implementations will
-		#  work with smaller values, but it is not guaranteed.
+		#  In these cases, fragment size should be `1024` or less. Note also
+		#  that the EAP RFCs say that EAP implementations MUST use fragments
+		#  of at least 1020 bytes! Many implementations will work with
+		#  smaller values, but it is not guaranteed.
 		#
 #		fragment_size = 1024
 
@@ -576,18 +573,18 @@ eap {
 		#  ca_path:: Directory where additional CAs are located.
 		#
 		#  After placing files in this directory, the OpenSSL command
-		#  `c_rehash` should be used to update the local files used by OpenSSL.
+		#  `c_rehash` should be used to update the local files used by
+		#  OpenSSL.
 		#
-		#  Most systems will only use one server certificate,
-		#  and one root CA.  Where client certificates are
-		#  used, they are usually also issued from that same
-		#  root CA.  In which case the `ca_path` configuration
-		#  is not necessary.  All certificates can be placed
+		#  Most systems will only use one server certificate, and one root
+		#  CA. Where client certificates are used, they are usually also
+		#  issued from that same root CA. In which case the `ca_path`
+		#  configuration is not necessary. All certificates can be placed
 		#  into the file which is configured in `certificate_file`.
 		#
-		#  The main reason to use multiple `ca_file` entries,
-		#  or the `ca_path` configuration, is when the server
-		#  is expected to authenticate client certificates issued by multiple CAs.
+		#  The main reason to use multiple `ca_file` entries, or the
+		#  `ca_path` configuration, is when the server is expected to
+		#  authenticate client certificates issued by multiple CAs.
 		#
 		ca_path = ${cadir}
 
@@ -606,8 +603,8 @@ eap {
 		#  If enabled, OpenSSL will use the server cipher list (possibly
 		#  defined by the `cipher_list` option above) for choosing right
 		#  cipher suite, instead of using the client-specified list which is
-		#  OpenSSl default behavior. Having it set to 'yes' is best
-		#  practice for TLS.
+		#  OpenSSl default behavior. Having it set to 'yes' is best practice
+		#  for TLS.
 		#
 		cipher_server_preference = yes
 
@@ -630,13 +627,11 @@ eap {
 		#
 		#  [NOTE]
 		#  ====
-		#  Prevents versions < tls_min_version from being negotiated.
-		#  In general the higher the tls_min_version the more secure
-		#  the protocol, but the narrower the range of supported TLS
-		#  clients.
+		#  Prevents versions < tls_min_version from being negotiated. In
+		#  general the higher the tls_min_version the more secure the
+		#  protocol, but the narrower the range of supported TLS clients.
 		#
-		#  SSLv2 and SSLv3 are permanently disabled due to security
-		#  issues.
+		#  SSLv2 and SSLv3 are permanently disabled due to security issues.
 		#  ====
 		#
 #		tls_min_version = 1.2
@@ -655,11 +650,11 @@ eap {
 		#
 		#  client_hello_parse:: Extract attributes from TLS Client Hello
 		#
-		#  For logging / diagnostics it can be beneficial to extract
-		#  data from the TLS Client Hello.
+		#  For logging / diagnostics it can be beneficial to extract data
+		#  from the TLS Client Hello.
 		#
-		#  These are placed in `session-state` so that they are
-		#  accessible throughout the authentication process.
+		#  These are placed in `session-state` so that they are accessible
+		#  throughout the authentication process.
 		#
 #		client_hello_parse = no
 
@@ -667,30 +662,27 @@ eap {
 		#  verify:: Parameters for controlling client cert chain
 		#  verification.
 		#
-		#  Certificate verification is performed in two phases.
-		#  The first is handled by the SSL library which checks
-		#  whether a trusted chain of certificates can be built
-		#  between the certificates loaded from `ca_file` or
-		#  found in `ca_path`.
+		#  Certificate verification is performed in two phases. The first is
+		#  handled by the SSL library which checks whether a trusted chain
+		#  of certificates can be built between the certificates loaded from
+		#  `ca_file` or found in `ca_path`.
 		#
-		#  The second (optional) phase is performed using the
-		#  `verify * { ... }` sections of the tls
-		#  `virtual_server`.
+		#  The second (optional) phase is performed using the `verify * {
+		#  ... }` sections of the tls `virtual_server`.
 		#
 		verify {
 			#
-			#  mode:: Which certificates in the verification chain
-			#  should be checked.
+			#  mode:: Which certificates in the verification chain should be
+			#  checked.
 			#
-			#  Certificate verification is performed in two phases.
-			#  The first is handled by the SSL library which checks
-			#  whether a trusted chain of certificates can be built
-			#  between the certificates loaded from `ca_file` or
-			#  found in `ca_path`.
+			#  Certificate verification is performed in two phases. The first
+			#  is handled by the SSL library which checks whether a trusted
+			#  chain of certificates can be built between the certificates
+			#  loaded from `ca_file` or found in `ca_path`.
 			#
-			#  The SSL library also checks that the correct usage
-			#  OIDs are present in the presented client certificate
-			#  and that none of the certificates have expired.
+			#  The SSL library also checks that the correct usage OIDs are
+			#  present in the presented client certificate and that none of the
+			#  certificates have expired.
 			#
 			#  [options="header,autowidth"]
 			#  |===
@@ -714,22 +706,20 @@ eap {
 			#  | Only verify the client certificate.
 			#  |===
 			#
-			#  It is recommended to leave mode as `all` except
-			#  when debugging, or in an emergency situation.
+			#  It is recommended to leave mode as `all` except when debugging,
+			#  or in an emergency situation.
 			#
 #			mode = all
 
 			#
-			#  attribute_mode:: Which client certificates should
-			#  be converted to attributes for use in the
-			#  `verify * { ... }` sections of the specified
-			#  `virtual_server`.
+			#  attribute_mode:: Which client certificates should be converted
+			#  to attributes for use in the `verify * { ... }` sections of the
+			#  specified `virtual_server`.
 			#
-			#  Attributes created during certificate processing
-			#  will be placed in the `session-state` list.
-			#  This is to simplify session-resumption, as the
-			#  contents of this list also contains session data
-			#  for stateful resumption, and this list is encoded
+			#  Attributes created during certificate processing will be placed
+			#  in the `session-state` list. This is to simplify
+			#  session-resumption, as the contents of this list also contains
+			#  session data for stateful resumption, and this list is encoded
 			#  in the session-ticket for stateless resumption.
 			#
 			#  [options="header,autowidth"]
@@ -759,14 +749,12 @@ eap {
 			#
 			#  [NOTE]
 			#  ====
-			#  Attribute generation is only performed on full
-			#  handshake, or where we detect that attributes
-			#  are missing from the `session-state` list during
-			#  stateful session-resumption.
+			#  Attribute generation is only performed on full handshake, or
+			#  where we detect that attributes are missing from the
+			#  `session-state` list during stateful session-resumption.
 			#
-			#  Certificate attributes will usually be retrieved
-			#  from the session-ticket in the case of
-			#  stateless session-resumption.
+			#  Certificate attributes will usually be retrieved from the
+			#  session-ticket in the case of stateless session-resumption.
 			#  ====
 			#
 #			attribute_mode = client-and-issuer
@@ -774,52 +762,51 @@ eap {
 		#
 		#  === TLS Session resumption
 		#
-		#  Once authentication has completed, the TLS client may be
-		#  provided with a session ticket which it presents
-		#  during the next authentication attempt.
+		#  Once authentication has completed, the TLS client may be provided
+		#  with a session ticket which it presents during the next
+		#  authentication attempt.
 		#
 		#  Presenting a session ticket allows the client to skip the
 		#  majority of TLS tunnel setup during its next authentication
-		#  session.  It also means that any "inner" authentication is
-		#  skipped, which means that any "inner" policies need to be
-		#  cached.
+		#  session. It also means that any "inner" authentication is
+		#  skipped, which means that any "inner" policies need to be cached.
 		#
 		#  Enabling `Session-Resumption` is highly recommended for sites
 		#  using slow authentication backends such as winbindd/Active
 		#  Directory, and for access federations operating over the
 		#  internet, such as Eduroam.
 		#
-		#  For EAP-TLS, the server also caches the client certificate,
-		#  as it is not supplied during session resumption.  Caching the
-		#  client certificate allows the server to re-apply policy rules
-		#  for the client certificate, along with certificate expiry time.
+		#  For EAP-TLS, the server also caches the client certificate, as it
+		#  is not supplied during session resumption. Caching the client
+		#  certificate allows the server to re-apply policy rules for the
+		#  client certificate, along with certificate expiry time.
 		#
 		#  Many of the configuration items in this section increase
-		#  security, but are disabled by default.  The intent is to
-		#  allow the server to work in the widest possible
-		#  circumstances, while still being reasonably secure.  In the
-		#  most common case (single EAP module, single server
-		#  certificate), this configuration is acceptable.
+		#  security, but are disabled by default. The intent is to allow the
+		#  server to work in the widest possible circumstances, while still
+		#  being reasonably secure. In the most common case (single EAP
+		#  module, single server certificate), this configuration is
+		#  acceptable.
 		#
 		#  However, we still recommend enabling all of the security
-		#  configurations below.  If enabling them does not cause an
-		#  issue in your environment, then there is no cost to leaving
-		#  them enabled.  They should only be disabled if clients are
-		#  unable to connect when the configurations are enabled.
+		#  configurations below. If enabling them does not cause an issue in
+		#  your environment, then there is no cost to leaving them enabled.
+		#  They should only be disabled if clients are unable to connect
+		#  when the configurations are enabled.
 		#
 		#  [NOTE]
 		#  ====
-		#  You must ensure that any attributes required for policy
-		#  decisions are cached along with the TLS session
-		#  data. This is usually done by placing policy attributes in the
-		#  `session-state` list, or in the case of EAP-PEAP, EAP-TTLS and
-		#  EAP-FAST, the `parent.session-state` list (i.e. in the request
-		#  which sets up the TLS part of the authentication attempt).
+		#  You must ensure that any attributes required for policy decisions
+		#  are cached along with the TLS session data. This is usually done
+		#  by placing policy attributes in the `session-state` list, or in
+		#  the case of EAP-PEAP, EAP-TTLS and EAP-FAST, the
+		#  `parent.session-state` list (i.e. in the request which sets up
+		#  the TLS part of the authentication attempt).
 		#
-		#  Caching this data means that the policies are cached at the
-		#  same time as, and along with the session resumption data.  In
-		#  most cases, it is sufficient to cache the name of a policy,
-		#  so that the named policy can be re-applied on session resumption.
+		#  Caching this data means that the policies are cached at the same
+		#  time as, and along with the session resumption data. In most
+		#  cases, it is sufficient to cache the name of a policy, so that
+		#  the named policy can be re-applied on session resumption.
 		#  ====
 		#
 		session {
@@ -859,54 +846,52 @@ eap {
 			#  It is recommended to set `mode = auto` *and* to provide a
 			#  correctly configured `virtual_server`.
 			#
-			#  Some clients such as wpa_supplicant do not allow
-			#  session tickets by default for TLS < 1.3.
+			#  Some clients such as wpa_supplicant do not allow session tickets
+			#  by default for TLS < 1.3.
 			#
 #			mode = auto
 
 			#  name:: Name of the context used for TLS sessions.
 			#
-			#  This name associates the TLS sessions with a
-			#  "namespace" so that they cannot be used for purposes
-			#  other than the original (intended) use-case.  This
-			#  configuration helps to prevent accidental "leakage"
-			#  of session tickes.  For example, if the server uses
-			#  multiple server certs, an attacker could try to get a
-			#  session ticket for one server identity, and then
-			#  resume the session for a different server identity.
-			#  Using a session ticket "namespace" makes these
-			#  attacks impossible.
+			#  This name associates the TLS sessions with a "namespace" so that
+			#  they cannot be used for purposes other than the original
+			#  (intended) use-case. This configuration helps to prevent
+			#  accidental "leakage" of session tickes. For example, if the
+			#  server uses multiple server certs, an attacker could try to get
+			#  a session ticket for one server identity, and then resume the
+			#  session for a different server identity. Using a session ticket
+			#  "namespace" makes these attacks impossible.
 			#
-			#  If you wish to share session resumption data between
-			#  multiple EAP modules or virtual servers, they must
-			#  all use the same `name`.
+			#  If you wish to share session resumption data between multiple
+			#  EAP modules or virtual servers, they must all use the same
+			#  `name`.
 			#
 			#  To disable - set to a zero length string "".
 			#
-			#  NOTE: OpenSSL only allows 32 bytes of session ctx, so
-			#  the value provided here is first hashed with SHA256
-			#  before being passed to OpenSSL.
+			#  NOTE: OpenSSL only allows 32 bytes of session ctx, so the value
+			#  provided here is first hashed with SHA256 before being passed to
+			#  OpenSSL.
 			#
 #			name = "%{EAP-Type}%interpreter('server')"
 
 			#
-			#  lifetime:: The period for which a resumable session remains valid.
+			#  lifetime:: The period for which a resumable session remains
+			#  valid.
 			#
-			#  Default is 24hrs in line with RFC 4346.  RFC 8446
-			#  requires that ticket lifetimes must not be more than
-			#  7 days.
+			#  Default is 24hrs in line with RFC 4346. RFC 8446 requires that
+			#  ticket lifetimes must not be more than 7 days.
 			#
 #			lifetime = 86400
 
 			#
-			#  require_extended_master_secret:: Only allow session
-			#  resumption if an extended master secret has been
-			#  created.  This requires client support.
+			#  require_extended_master_secret:: Only allow session resumption
+			#  if an extended master secret has been created. This requires
+			#  client support.
 			#
-			#  Extended Master Secrets (RFC 7627) are required to
-			#  prevent MITM attacks, where the attacker can resume
-			#  a session if it can insert itself into the path between
-			#  the TLS client and TLS server.
+			#  Extended Master Secrets (RFC 7627) are required to prevent MITM
+			#  attacks, where the attacker can resume a session if it can
+			#  insert itself into the path between the TLS client and TLS
+			#  server.
 			#
 			#  See more at https://mitls.org/pages/attacks/3SHAKE
 			#
@@ -915,41 +900,38 @@ eap {
 #			require_extended_master_secret = yes
 
 			#
-			#  require_perfect_forward_secrecy:: Only allow session
-			#  resumption if a cipher which would allow perfect
-			#  forward secrecy has been selected.
+			#  require_perfect_forward_secrecy:: Only allow session resumption
+			#  if a cipher which would allow perfect forward secrecy has been
+			#  selected.
 			#
 #			require_perfect_forward_secrecy = no
 
 			#
-			#  session_ticket_key:: Key used to encrypt stateless
-			#  session tickets.
+			#  session_ticket_key:: Key used to encrypt stateless session
+			#  tickets.
 			#
-			#  Sets a persistent key used to encrypt stateless session
-			#  tickets.  If this is not set, then a random key will be
-			#  chosen when the server starts.
+			#  Sets a persistent key used to encrypt stateless session tickets.
+			#  If this is not set, then a random key will be chosen when the
+			#  server starts.
 			#
-			#  Where a site has multiple RADIUS servers, it is
-			#  useful for them to share a common value for the
-			#  `session_ticket_key`.  That way a client can
-			#  authenticate against one server, get a session
-			#  ticket, and then have that session ticket validated
-			#  by a different server.  Such a configuration has
-			#  significant positive effects for increasing uptime,
-			#  and decreasing server load.
+			#  Where a site has multiple RADIUS servers, it is useful for them
+			#  to share a common value for the `session_ticket_key`. That way a
+			#  client can authenticate against one server, get a session
+			#  ticket, and then have that session ticket validated by a
+			#  different server. Such a configuration has significant positive
+			#  effects for increasing uptime, and decreasing server load.
 			#
-			#  As the key length used by OpenSSL depends on the
-			#  version/flavour of OpenSSL being used, the value
-			#  provided is fed into a HKDF function (SHA256 of the
-			#  key plus "freeradius-session-ticket").  The output of
-			#  the HKDF is then used as input to the OpenSSL keying
-			#  function.
+			#  As the key length used by OpenSSL depends on the version/flavour
+			#  of OpenSSL being used, the value provided is fed into a HKDF
+			#  function (SHA256 of the key plus "freeradius-session-ticket").
+			#  The output of the HKDF is then used as input to the OpenSSL
+			#  keying function.
 			#
-			#  It is important that a strong key is chosen here.  If the
-			#  key were ever revealed, then an attacker could manipulate
-			#  the contents of a session ticket.  This could in turn
-			#  allow privilege escalation, or if OpenSSL's ticket parsing
-			#  code is less than perfect, buffer overflow attacks.
+			#  It is important that a strong key is chosen here. If the key
+			#  were ever revealed, then an attacker could manipulate the
+			#  contents of a session ticket. This could in turn allow privilege
+			#  escalation, or if OpenSSL's ticket parsing code is less than
+			#  perfect, buffer overflow attacks.
 			#
 #			session_ticket_key = "super-secret-key"
 
@@ -959,11 +941,11 @@ eap {
 			#  As of 4.0 OpenSSL's internal cache has been disabled due to
 			#  scoping/threading issues.
 			#
-			#  The following configuration options are no longer
-			#  supported.  TLS session caching is now handled by
-			#  FreeRADIUS either using session-tickets (stateless),
-			#  or using TLS `virtual_server` and storing/retrieving
-			#  sessions to/from an external datastore (stateful).
+			#  The following configuration options are no longer supported. TLS
+			#  session caching is now handled by FreeRADIUS either using
+			#  session-tickets (stateless), or using TLS `virtual_server` and
+			#  storing/retrieving sessions to/from an external datastore
+			#  (stateful).
 			#
 			#  * `enable`
 			#  * `persist_dir`
@@ -976,8 +958,8 @@ eap {
 	#
 	#  === EAP-TLS
 	#
-	#  The common TLS configuration for TLS-based EAP types is given above
-	#  in the `tls-config { ... }` section.
+	#  The common TLS configuration for TLS-based EAP types is given
+	#  above in the `tls-config { ... }` section.
 	#
 	tls {
 		#  Point to the common TLS configuration
@@ -989,11 +971,11 @@ eap {
 		#  `EAP-TLS` can work without a client certificate, but situations
 		#  whether this is useful are quite limited.
 		#
-		#  Currently only the Hotspot 2.0 R2 standard uses `EAP-TLS`
-		#  without a peer certificate.
+		#  Currently only the Hotspot 2.0 R2 standard uses `EAP-TLS` without
+		#  a peer certificate.
 		#
-		#  This is to secure the SSID used to provide connectivity to the OSU
-		#  (Online Signup Server).
+		#  This is to secure the SSID used to provide connectivity to the
+		#  OSU (Online Signup Server).
 		#
 		#  You can override this configuration item at run-time by setting:
 		#
@@ -1002,16 +984,17 @@ eap {
 #		require_client_cert = yes
 
 		#
-		#  include_length:: Whether we include a length field in the TLS header.
+		#  include_length:: Whether we include a length field in the TLS
+		#  header.
 		#
-		#  If set to `yes`, the total length of the message is included
-		#  in every packet we send. If set to `no`, the total length of
-		#  the message is included only in the First packet of a
-		#  fragment series.
+		#  If set to `yes`, the total length of the message is included in
+		#  every packet we send. If set to `no`, the total length of the
+		#  message is included only in the First packet of a fragment
+		#  series.
 		#
-		#  This configuration item is here only to work around
-		#  historical issues with misbehaving clients.  In most cases,
-		#  it does not need to be changed.
+		#  This configuration item is here only to work around historical
+		#  issues with misbehaving clients. In most cases, it does not need
+		#  to be changed.
 		#
 #		include_length = yes
 	}
@@ -1023,22 +1006,23 @@ eap {
 	#  described as EAP inside of Diameter, inside of TLS, inside of EAP,
 	#  inside of RADIUS.
 	#
-	#  NOTE: To use `EAP-TTLS `you must also configure an `inner` method in
-	#  `mods-enabled/eap_inner`.
+	#  NOTE: To use `EAP-TTLS `you must also configure an `inner` method
+	#  in `mods-enabled/eap_inner`.
 	#
 	#  Surprisingly, it works quite well.
 	#
-	#  When using `PAP`, `GTC`, or `MSCHAPv2` as an inner method, `EAP-TTLS`
-	#  is only secure if the supplicant validates the server certificate
-	#  presented.  If the client disables certificate validation, then an
-	#  attacker can pretend to be the server, and collect user credentials.
+	#  When using `PAP`, `GTC`, or `MSCHAPv2` as an inner method,
+	#  `EAP-TTLS` is only secure if the supplicant validates the server
+	#  certificate presented. If the client disables certificate
+	#  validation, then an attacker can pretend to be the server, and
+	#  collect user credentials.
 	#
 	ttls {
 		#
-		#  tls::  Point to the common TLS configuration
+		#  tls:: Point to the common TLS configuration
 		#
-		#  Which `tls-config` section the TLS negotiation parameters
-		#  are in - see `EAP-TLS` above for an explanation.
+		#  Which `tls-config` section the TLS negotiation parameters are in
+		#  - see `EAP-TLS` above for an explanation.
 		#
 		tls = tls-common
 
@@ -1049,45 +1033,45 @@ eap {
 		#  removed in v4.0.
 		#
 		#  See the new policy `copy_request_to_tunnel` in
-		#  `sites-available/inner-tunnel`, and in `policy.d/eap` for
-		#  more information.
+		#  `sites-available/inner-tunnel`, and in `policy.d/eap` for more
+		#  information.
 		#  ====
 		#
 
 		#
-		#  virtual_server:: The virtual server used for "inner" authentication.
+		#  virtual_server:: The virtual server used for "inner"
+		#  authentication.
 		#
-		#  The inner tunneled request can be sent through a virtual
-		#  server which verifies the inner credentials.
+		#  The inner tunneled request can be sent through a virtual server
+		#  which verifies the inner credentials.
 		#
-		#  If this entry is commented out, the inner tunneled request
-		#  will be sent through the virtual server which processed the
-		#  outer request.  This configuration is NOT RECOMMENDED.
+		#  If this entry is commented out, the inner tunneled request will
+		#  be sent through the virtual server which processed the outer
+		#  request. This configuration is NOT RECOMMENDED.
 		#
 		virtual_server = "inner-tunnel"
 
 		#
-		#  include_length:: Whether we include a length field in the TLS header.
+		#  include_length:: Whether we include a length field in the TLS
+		#  header.
 		#
-		#  This has the same meaning, and overwrites, the same field in
-		#  the `tls` configuration, above.  The default value here is
-		#  `yes`.
+		#  This has the same meaning, and overwrites, the same field in the
+		#  `tls` configuration, above. The default value here is `yes`.
 		#
 #		include_length = yes
 
 		#
 		#  require_client_cert:: Whether we require a client certificate.
 		#
-		#  `EAP-TTLS` does not require a client certificate.
-		#  However, you can require one by setting the
-		#  following option. You can also override this option by
-		#  setting:
+		#  `EAP-TTLS` does not require a client certificate. However, you
+		#  can require one by setting the following option. You can also
+		#  override this option by setting:
 		#
 		#    control.EAP-TLS-Require-Client-Cert = Yes
 		#
-		#  NOTE: The majority of supplicants do not support using a
-		#  client certificate with `EAP-TTLS`, so this option is unlikely
-		#  to be useful for most people.
+		#  NOTE: The majority of supplicants do not support using a client
+		#  certificate with `EAP-TTLS`, so this option is unlikely to be
+		#  useful for most people.
 		#
 #		require_client_cert = yes
 	}
@@ -1095,30 +1079,31 @@ eap {
 	#
 	#  === EAP-PEAP
 	#
-	#  The tunneled `EAP` session needs a default `EAP` type which is separate
-	#  from the one for the non-tunneled EAP module.  Inside of the TLS/PEAP
-	#  tunnel, we recommend using `EAP-MS-CHAPv2`.
+	#  The tunneled `EAP` session needs a default `EAP` type which is
+	#  separate from the one for the non-tunneled EAP module. Inside of
+	#  the TLS/PEAP tunnel, we recommend using `EAP-MS-CHAPv2`.
 	#
 	#  When using `GTC`, or `MSCHAPv2` as an inner method, `PEAP` is only
 	#  secure if the supplicant is configured to validate the server
-	#  certificate.  See the comments above for EAP-TTLS about this topic.
+	#  certificate. See the comments above for EAP-TTLS about this topic.
 	#
 	#  ==== Windows compatibility
 	#
 	#  [IMPORTANT]
 	#  ====
 	#  * If you see the server send an `Access-Challenge`, and the client never
-	#  sends another `Access-Request`, then	*STOP*!
+	#  sends another `Access-Request`, then *STOP*!
 	#
 	#  * The server certificate has to have special OID's in it, or else the
-	#  Microsoft clients will silently fail.  See the `scripts/xpextensions`
-	#  file for details, and the following page
+	#  Microsoft clients will silently fail. See the
+	#  `scripts/xpextensions` file for details, and the following page
 	#  http://support.microsoft.com/kb/814394/en-us
 	#
 	#  * If is still doesn't work, and you're using Samba, you may be
 	#  encountering a Samba bug.
 	#
-	#  For further information, see https://bugzilla.samba.org/show_bug.cgi?id=6563
+	#  For further information, see
+	#  https://bugzilla.samba.org/show_bug.cgi?id=6563
 	#
 	#  * Note that we do not necessarily agree with their explanation. but
 	#  the fix does appear to work.
@@ -1129,20 +1114,21 @@ eap {
 	#
 	peap {
 		#
-		#  tls::  Point to the common TLS configuration
+		#  tls:: Point to the common TLS configuration
 		#
-		#  Which `tls-config` section the TLS negotiation parameters are
-		#  in - see `EAP-TLS` above for an explanation.
+		#  Which `tls-config` section the TLS negotiation parameters are in
+		#  - see `EAP-TLS` above for an explanation.
 		#
 		tls = tls-common
 
 		#
-		#  default_eap_type:: The default EAP type proposed by the server inside of the tunnel.
+		#  default_eap_type:: The default EAP type proposed by the server
+		#  inside of the tunnel.
 		#
 		#  The tunneled EAP session needs a default EAP type which is
-		#  separate from the one for the non-tunneled EAP module.
-		#  Inside of the PEAP tunnel, we recommend using MS-CHAPv2, as
-		#  that is the default type supported by Windows clients.
+		#  separate from the one for the non-tunneled EAP module. Inside of
+		#  the PEAP tunnel, we recommend using MS-CHAPv2, as that is the
+		#  default type supported by Windows clients.
 		#
 		default_eap_type = mschapv2
 
@@ -1153,21 +1139,22 @@ eap {
 		#  removed in v4.0.
 		#
 		#  See the new policy `copy_request_to_tunnel` in
-		#  `sites-available/inner-tunnel`, and in `policy.d/eap`
-		#  for more information.
+		#  `sites-available/inner-tunnel`, and in `policy.d/eap` for more
+		#  information.
 		#
 		#  ====
 		#
 
 		#
-		#  virtual_server:: The virtual server used for "inner" authentication.
+		#  virtual_server:: The virtual server used for "inner"
+		#  authentication.
 		#
-		#  The inner tunneled request can be sent through a virtual
-		#  server which verifies the inner credentials.
+		#  The inner tunneled request can be sent through a virtual server
+		#  which verifies the inner credentials.
 		#
-		#  If this entry is commented out, the inner tunneled request
-		#  will be sent through the virtual server which processed the
-		#  outer request.  This configuration is NOT RECOMMENDED.
+		#  If this entry is commented out, the inner tunneled request will
+		#  be sent through the virtual server which processed the outer
+		#  request. This configuration is NOT RECOMMENDED.
 		#
 		virtual_server = "inner-tunnel"
 
@@ -1175,14 +1162,14 @@ eap {
 		#  require_client_cert:: Whether we require a client certificate.
 		#
 		#  Unlike `EAP-TLS`, `PEAP` does not require a client certificate.
-		#  However, you can require one by setting the following
-		#  option. You can also override this option by setting
+		#  However, you can require one by setting the following option. You
+		#  can also override this option by setting
 		#
 		#	control.EAP-TLS-Require-Client-Cert = Yes
 		#
-		#  NOTE: The majority of supplicants do not support using a
-		#  client certificate with `PEAP`, so this option is unlikely to
-		#  be useful for most people.
+		#  NOTE: The majority of supplicants do not support using a client
+		#  certificate with `PEAP`, so this option is unlikely to be useful
+		#  for most people.
 		#
 #		require_client_cert = yes
 	}
@@ -1193,57 +1180,57 @@ eap {
 	#  NOTE: This is the EAP MS-CHAPv2 sub-module, not the main `mschap`
 	#  module.
 	#
-	#  In order for this sub-module to work, the main `mschap` module MUST
-	#  ALSO be configured.
+	#  In order for this sub-module to work, the main `mschap` module
+	#  MUST ALSO be configured.
 	#
-	#  This module is the *Microsoft* implementation of `MS-CHAPv2` in `EAP`.
-	#  There is another (*incompatible*) implementation of `MS-CHAPv2 in `EAP` by
-	#  Cisco, which *FreeRADIUS does not support*.
+	#  This module is the *Microsoft* implementation of `MS-CHAPv2` in
+	#  `EAP`. There is another (*incompatible*) implementation of
+	#  `MS-CHAPv2 in `EAP` by Cisco, which *FreeRADIUS does not support*.
 	#
 	mschapv2 {
 		#
-		#  auth_type:: Which "authenticate" section is used to authenticate the MS-CHAP data.
+		#  auth_type:: Which "authenticate" section is used to authenticate
+		#  the MS-CHAP data.
 		#
 #		auth_type = mschap
 
 		#
-		#  send_error:: Whether we send an MS-CHAP error on authentication failure.
+		#  send_error:: Whether we send an MS-CHAP error on authentication
+		#  failure.
 		#
 		#  In early versions of FreeRADIUS, the module never sent the
-		#  `MS-CHAP-Error` message to the client.  This worked, but it had
-		#  issues when the cached password was wrong.  The server
-		#  *should* send `E=691 R=0` to the client, which tells it to
-		#  prompt the user for a new password.
+		#  `MS-CHAP-Error` message to the client. This worked, but it had
+		#  issues when the cached password was wrong. The server *should*
+		#  send `E=691 R=0` to the client, which tells it to prompt the user
+		#  for a new password.
 		#
-		#  CAUTION: The default is `no`, which is known to work.  If you
-		#  set `send_error = yes`, then the error message will be sent
-		#  back to the client. This *may* help some clients work better,
-		#  but *may* also cause other clients to stop working.
+		#  CAUTION: The default is `no`, which is known to work. If you set
+		#  `send_error = yes`, then the error message will be sent back to
+		#  the client. This *may* help some clients work better, but *may*
+		#  also cause other clients to stop working.
 		#
 #		send_error = no
 
 		#
 		#  identity:: The server identifier to send back in the challenge.
 		#
-		#  It should generally be the host name of the RADIUS server.
-		#  Or, some information which uniquely identifies it.
+		#  It should generally be the host name of the RADIUS server. Or,
+		#  some information which uniquely identifies it.
 		#
 #		identity = "FreeRADIUS"
 
 		#
-		#  with_ntdomain_hack:: Windows clients send `User-Name` in the
-		#  form of `DOMAIN\User`, but sometimes calculate the
-		#  challenge/response based only on the `User` portion.
+		#  with_ntdomain_hack:: Windows clients send `User-Name` in the form
+		#  of `DOMAIN\User`, but sometimes calculate the challenge/response
+		#  based only on the `User` portion.
 		#
-		#  Setting this value to `yes` makes FreeRADIUS use only the
-		#  "user" portion of the `User-Name` for its MS-CHAP
-		#  calculations.
+		#  Setting this value to `yes` makes FreeRADIUS use only the "user"
+		#  portion of the `User-Name` for its MS-CHAP calculations.
 		#
-		#  If this behavior seems weird and complicated, we agree.
-		#  There is no reason for the Windows systems to do something so
-		#  unfriendly.  All it does is make life difficult for the
-		#  administrator, who has to figure out why MS-CHAP is magically
-		#  failing.
+		#  If this behavior seems weird and complicated, we agree. There is
+		#  no reason for the Windows systems to do something so unfriendly.
+		#  All it does is make life difficult for the administrator, who has
+		#  to figure out why MS-CHAP is magically failing.
 		#
 		#  Default is `no`.
 		#
@@ -1255,31 +1242,31 @@ eap {
 	#
 	#  The FAST module implements the EAP-FAST protocol.
 	#
-	#  NOTE: To use `EAP-FAST` you must also configure an `inner` method in
-	#  `mods-enabled/eap_inner`.
+	#  NOTE: To use `EAP-FAST` you must also configure an `inner` method
+	#  in `mods-enabled/eap_inner`.
 	#
 	fast {
 		#
-		#  tls::  Point to the common TLS configuration
+		#  tls:: Point to the common TLS configuration
 		#
 		tls = tls-common
 
 		#
 		#  cipher_list:: Set the list of allowed TLS cipher suites.
 		#
-		#  If `cipher_list` is set here, it will override the
-		#  `cipher_list` configuration from the `tls-common`
-		#  configuration.  The `EAP-FAST` module has its own override
-		#  for `cipher_list` because the specifications mandate a
-		#  different set of ciphers than are used by the other `EAP`
-		#  methods.
+		#  If `cipher_list` is set here, it will override the `cipher_list`
+		#  configuration from the `tls-common` configuration. The `EAP-FAST`
+		#  module has its own override for `cipher_list` because the
+		#  specifications mandate a different set of ciphers than are used
+		#  by the other `EAP` methods.
 		#
-		#  The `cipher_list` MUST include "ADH" for anonymous
-		#  provisioning.  This is not as straightforward as appending
-		#  "ADH" alongside "DEFAULT" as "DEFAULT" contains "!aNULL" so
-		#  instead it is recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		#  The `cipher_list` MUST include "ADH" for anonymous provisioning.
+		#  This is not as straightforward as appending "ADH" alongside
+		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
 		#
-		#  NOTE: for OpenSSL 1.1.0 and above you may need to add ":@SECLEVEL=0"
+		#  NOTE: for OpenSSL 1.1.0 and above you may need to add
+		#  ":@SECLEVEL=0"
 		#
 		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
@@ -1295,8 +1282,8 @@ eap {
 		#
 		#  if you are running a cluster of RADIUS servers, you should make
 		#  the value chosen here (and for `pac_opaque_key`) the same on all
-		#  your RADIUS servers.  This value should be unique to your
-		#  installation.  We suggest using a domain name.
+		#  your RADIUS servers. This value should be unique to your
+		#  installation. We suggest using a domain name.
 		#
 		authority_identity = "1234"
 
@@ -1305,13 +1292,14 @@ eap {
 		#
 		#  The PAC key must be exactly 32 bytes in size.
 		#
-		#  This value MUST be secret, and MUST be generated using
-		#  a secure method, such as via `openssl rand -hex 32`
+		#  This value MUST be secret, and MUST be generated using a secure
+		#  method, such as via `openssl rand -hex 32`
 		#
 		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		#
-		#  virtual_server:: The virtual server used for "inner" authentication.
+		#  virtual_server:: The virtual server used for "inner"
+		#  authentication.
 		#
 		virtual_server = inner-tunnel
 
@@ -1331,9 +1319,9 @@ eap {
 		#  virtual_server:: The EAP-SIM virtual server containing policy
 		#  sections.
 		#
-		#  This configuration must be set, EAP-SIM will not function
-		#  without it, as certain operations such as getting SIM vectors
-		#  require configuration for each user.
+		#  This configuration must be set, EAP-SIM will not function without
+		#  it, as certain operations such as getting SIM vectors require
+		#  configuration for each user.
 		#
 		virtual_server = eap-aka-sim
 	}
@@ -1343,17 +1331,17 @@ eap {
 	#
 	aka {
 		#
-		#  prefer_aka_prime:: Send the AT_BIDDING attribute in
-		#  AKA-Challenge messages.
+		#  prefer_aka_prime:: Send the AT_BIDDING attribute in AKA-Challenge
+		#  messages.
 		#
 		#  When AT_BIDDING is sent in a AKA-Challenge and the supplicant
-		#  supports EAP-AKA-Prime, RFC 5448 states the supplicant
-		#  should abort the authentication attempt as a bidding down
-		#  attack may have occurred.
+		#  supports EAP-AKA-Prime, RFC 5448 states the supplicant should
+		#  abort the authentication attempt as a bidding down attack may
+		#  have occurred.
 		#
-		#  If a value is not provided for this configuration item
-		#  it will be determined automatically by whether the
-		#  EAP-AKA-Prime EAP method is enabled.
+		#  If a value is not provided for this configuration item it will be
+		#  determined automatically by whether the EAP-AKA-Prime EAP method
+		#  is enabled.
 		#
 #		prefer_aka_prime = yes
 
@@ -1361,9 +1349,9 @@ eap {
 		#  virtual_server:: The EAP-SIM virtual server containing policy
 		#  sections.
 		#
-		#  This configuration must be set, EAP-AKA will not function
-		#  without it, as certain operations such as getting vectors
-		#  require configuration for each user.
+		#  This configuration must be set, EAP-AKA will not function without
+		#  it, as certain operations such as getting vectors require
+		#  configuration for each user.
 		#
 		virtual_server = eap-aka-sim
 	}
@@ -1377,8 +1365,8 @@ eap {
 		#  sections.
 		#
 		#  This configuration must be set, EAP-AKA' will not function
-		#  without it, as certain operations such as getting vectors
-		#  require configuration for each user.
+		#  without it, as certain operations such as getting vectors require
+		#  configuration for each user.
 		#
 		virtual_server = eap-aka-sim
 	}
@@ -1387,7 +1375,8 @@ eap {
 #
 #  == Expansions
 #
-#  The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
+#  The rlm_eap module provides the below functions to interact with
+#  the `3GPP` and `SIM` protocols.
 #
 #  === %3gpp_temporary_id.decrypt('...)
 #

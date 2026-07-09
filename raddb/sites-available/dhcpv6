@@ -18,12 +18,12 @@ server dhcpv6 {
 	namespace = dhcpv6
 
 	#
-	#  all_dhcp_servers_and_relays:: Predefined multicast address
-	#  for DHCPv6 servers and relays.
+	#  all_dhcp_servers_and_relays:: Predefined multicast address for
+	#  DHCPv6 servers and relays.
 	#
-	#  This configuration item is here for convenience.  It allows
-	#  each `listen` section below to use this definition, so that
-	#  those sections do not need to list magic numbers.
+	#  This configuration item is here for convenience. It allows each
+	#  `listen` section below to use this definition, so that those
+	#  sections do not need to list magic numbers.
 	#
 	all_dhcp_servers_and_relays = FF02::1:2
 
@@ -31,9 +31,8 @@ server dhcpv6 {
 	#  interface:: Ethernet interface for DHCPv6.
 	#
 	#  DHCPv6 servers require multiple listeners, one for multicast
-	#  packets, and one for unicast packets.  Both listeners should
-	#  use the same interface.  So it is defined here once, and used
-	#  below.
+	#  packets, and one for unicast packets. Both listeners should use
+	#  the same interface. So it is defined here once, and used below.
 	#
 	interface = en0
 
@@ -41,33 +40,31 @@ server dhcpv6 {
 	#  port:: The port where we accept packets.
 	#
 	#  DHCPv6 servers require multiple listeners, one for multicast
-	#  packets, and one for unicast packets.  Both listeners should
-	#  use the same interface.  So it is defined here once, and used
-	#  below.
+	#  packets, and one for unicast packets. Both listeners should use
+	#  the same interface. So it is defined here once, and used below.
 	#
-	#  The default DHCPv6 port is `547`.  We use `5470` here, so that
-	#  testing will not affect production systems.  This value should
-	#  be changed to `547` for production use.
+	#  The default DHCPv6 port is `547`. We use `5470` here, so that
+	#  testing will not affect production systems. This value should be
+	#  changed to `547` for production use.
 	#
 	port = 5470
 
 	#
 	#  === The listen section
 	#
-	#  DHCPv6 relies on multicast packets to work.  We suggest
-	#  defining only one DHCPv6 "listen" per host machine.  This
-	#  suggestion is because all DHCPv6 listeners will receive all
-	#  DHCPv6 packets.
+	#  DHCPv6 relies on multicast packets to work. We suggest defining
+	#  only one DHCPv6 "listen" per host machine. This suggestion is
+	#  because all DHCPv6 listeners will receive all DHCPv6 packets.
 	#
 	listen all_dhcp_servers_and_relays {
 		#
 		#  type:: The type of packet to accept.
 		#
-		#  Multiple types can be accepted by using multiple
-		#  lines of `type = ...`.
+		#  Multiple types can be accepted by using multiple lines of `type =
+		#  ...`.
 		#
-		#  All DHCPv6 request types are supported.  Relaying
-		#  is not supported.
+		#  All DHCPv6 request types are supported. Relaying is not
+		#  supported.
 		#
 		type = Solicit
 		type = Request
@@ -75,19 +72,18 @@ server dhcpv6 {
 		#
 		#  server-id:: The Server-ID option for this listener.
 		#
-		#  If this configuration item is set, this listener
-		#  will discard all packets that do not have a
-		#  matching Server-ID.  The listener will also add
-		#  this Server-ID option to all replies.
+		#  If this configuration item is set, this listener will discard all
+		#  packets that do not have a matching Server-ID. The listener will
+		#  also add this Server-ID option to all replies.
 		#
-		#  If this configuration item is not set, then it is
-		#  your responsibility in the policies below to check
-		#  the incoming Server-Id values, and to always add
-		#  the Server-ID option to the replies.
+		#  If this configuration item is not set, then it is your
+		#  responsibility in the policies below to check the incoming
+		#  Server-Id values, and to always add the Server-ID option to the
+		#  replies.
 		#
-		#  The format of the string is just the contents of a
-		#  "Server-Id { ...}"  attribute that would normally
-		#  be passed in an "unlang" statement, e.g.:
+		#  The format of the string is just the contents of a "Server-Id {
+		#  ...}" attribute that would normally be passed in an "unlang"
+		#  statement, e.g.:
 		#
 		#  ```
 		#  server-id = "DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Ethernet = { Address = 00:11:22:33:44:55 }"
@@ -105,49 +101,43 @@ server dhcpv6 {
 		#
 		#  ==== UDP Transport
 		#
-		#  When the `listen` section contains `transport =
-		#  udp`, it looks for a "udp" subsection.  This
-		#  subsection contains all of the configuration for
-		#  the UDP transport.
+		#  When the `listen` section contains `transport = udp`, it looks
+		#  for a "udp" subsection. This subsection contains all of the
+		#  configuration for the UDP transport.
 		#
 		udp {
 			#
-			#  ipaddr:: The IP address where we accept
-			#  packets.
+			#  ipaddr:: The IP address where we accept packets.
 			#
-			#  The address can be IPv6, or a host name.
-			#  If a host name is used, the IPv6 address is
-			#  preferred.  When there is no IPv6 address
-			#  for a host name, an error will occur.
+			#  The address can be IPv6, or a host name. If a host name is used,
+			#  the IPv6 address is preferred. When there is no IPv6 address for
+			#  a host name, an error will occur.
 			#
 			ipaddr = ${...all_dhcp_servers_and_relays}
 
 			#
 			#  port:: The port where we accept packets.
 			#
-			#   The port should be 547 for a production
-			#   network. We do NOT suggest setting it to
-			#   547 on a production network unless you
-			#   know what you are doing. Even if nothing
-			#   is configured below, the server may still
-			#   NAK legitimate responses from clients.
+			#  The port should be 547 for a production network. We do NOT
+			#  suggest setting it to 547 on a production network unless you
+			#  know what you are doing. Even if nothing is configured below,
+			#  the server may still NAK legitimate responses from clients.
 			#
 			port = ${...port}
 
 			#
 			#  interface:: Interface where we receive packets.
 			#
-			#  When a multicast address is used for `ipaddr` above,
-			#  and `interface` configuration MUST be given.
+			#  When a multicast address is used for `ipaddr` above, and
+			#  `interface` configuration MUST be given.
 			#
 			interface = ${...interface}
 
 			#
-			#  src_ipaddr:: The source IP address used for
-			#  unicast messages.
+			#  src_ipaddr:: The source IP address used for unicast messages.
 			#
-			#  If a `src_ipaddr` is not specified, then
-			#  the server will try to choose one automatically:
+			#  If a `src_ipaddr` is not specified, then the server will try to
+			#  choose one automatically:
 			#
 			#  * If `ipaddr` is unicast, then the server will use
 			#    that as `src_ipaddr`, too.
@@ -156,8 +146,7 @@ server dhcpv6 {
 			#    look for the first "link local" address on the
 			#    `interface` defined above, and use that.
 			#
-			#  In most cases, you should not need to specify
-			#  `src_ipaddr`.
+			#  In most cases, you should not need to specify `src_ipaddr`.
 			#
 #			src_ipaddr = ${ipaddr}
 		}
@@ -166,22 +155,20 @@ server dhcpv6 {
 	#
 	#  === The listen section
 	#
-	#  DHCPv6 relies on multicast packets to work.  We suggest
-	#  defining only one DHCPv6 "listen" per host machine.  This
-	#  suggestion is because all DHCPv6 listeners will receive all
-	#  DHCPv6 packets.
+	#  DHCPv6 relies on multicast packets to work. We suggest defining
+	#  only one DHCPv6 "listen" per host machine. This suggestion is
+	#  because all DHCPv6 listeners will receive all DHCPv6 packets.
 	#
 	listen local_network {
 		#
 		#  type:: The type of packet to accept.
 		#
-		#  Multiple types can be accepted by using multiple
-		#  lines of `type = ...`.
+		#  Multiple types can be accepted by using multiple lines of `type =
+		#  ...`.
 		#
-		#  A listener which is using a unicast `ipaddr`
-		#  should not receive Solicit, Rebind, or Reconfirm
-		#  packets.  Those packets MUST be sent to a multicast
-		#  address.
+		#  A listener which is using a unicast `ipaddr` should not receive
+		#  Solicit, Rebind, or Reconfirm packets. Those packets MUST be sent
+		#  to a multicast address.
 		#
 		type = Request
 		type = Information-Request
@@ -196,26 +183,22 @@ server dhcpv6 {
 		#
 		#  ==== UDP Transport
 		#
-		#  When the `listen` section contains `transport =
-		#  udp`, it looks for a "udp" subsection.  This
-		#  subsection contains all of the configuration for
-		#  the UDP transport.
+		#  When the `listen` section contains `transport = udp`, it looks
+		#  for a "udp" subsection. This subsection contains all of the
+		#  configuration for the UDP transport.
 		#
 		udp {
 			#
-			#  ipaddr:: The IP address where we accept
-			#  packets.
+			#  ipaddr:: The IP address where we accept packets.
 			#
-			#  The address can be IPv6, or a host name.
-			#  If a host name is used, the IPv6 address is
-			#  preferred.  When there is no IPv6 address
-			#  for a host name, an error will occur.
+			#  The address can be IPv6, or a host name. If a host name is used,
+			#  the IPv6 address is preferred. When there is no IPv6 address for
+			#  a host name, an error will occur.
 			#
-			#  If an `ipaddr` is not defined, then the
-			#  configuration MUST specify an `interface`.
-			#  The server will look for the first
-			#  "link local" address on that interface,
-			#  and use that as the value for `ipaddr`.
+			#  If an `ipaddr` is not defined, then the configuration MUST
+			#  specify an `interface`. The server will look for the first "link
+			#  local" address on that interface, and use that as the value for
+			#  `ipaddr`.
 			#
 #			ipaddr = 2001:db8::
 
@@ -229,46 +212,39 @@ server dhcpv6 {
 	#
 	dhcpv6 {
 		#
-		#  status_code_on_success:: Include a status-code
-		#  option in the packet even when the operation is
-		#  successful (status code 0).
+		#  status_code_on_success:: Include a status-code option in the
+		#  packet even when the operation is successful (status code 0).
 		#
-		#  RFC8415 states that the absence of a status-code
-		#  option is identical to a status-code option with
-		#  value (0).  This option is included in case
-		#  there are broken DHCPv6 clients that require an
+		#  RFC8415 states that the absence of a status-code option is
+		#  identical to a status-code option with value (0). This option is
+		#  included in case there are broken DHCPv6 clients that require an
 		#  explicit success notification.
 		#
-		#  This config item is disabled by default as
-		#  including status-code adds approximately 6 bytes
-		#  per nested message, and some clients are buggy
-		#  and count any status-code option as a failure
+		#  This config item is disabled by default as including status-code
+		#  adds approximately 6 bytes per nested message, and some clients
+		#  are buggy and count any status-code option as a failure
 		#  indication.
 		#
 #		status_code_on_success = no
 
 		#
-		#  send_failure_message:: Concatenate the contents
-		#  of any Module-Failure-Message attribute in the
-		#  request, and include it in the message field
-		#  of the status-code option when status-code is
-		#  not 0 or when `status_code_on_success = yes`.
+		#  send_failure_message:: Concatenate the contents of any
+		#  Module-Failure-Message attribute in the request, and include it
+		#  in the message field of the status-code option when status-code
+		#  is not 0 or when `status_code_on_success = yes`.
 		#
-		#  This is disabled by default as these messages
-		#  may reveal sensitive information about the
-		#  internal state of the server.
+		#  This is disabled by default as these messages may reveal
+		#  sensitive information about the internal state of the server.
 		#
-		#  It's recommended to only enable this config item
-		#  for debugging, or in conjunction with
-		#  move_failure_message_to_parent where the upstream
-		#  relay is trusted and secure.
+		#  It's recommended to only enable this config item for debugging,
+		#  or in conjunction with move_failure_message_to_parent where the
+		#  upstream relay is trusted and secure.
 		#
 #		send_failure_message = no
 
 		#
-		#  move_failure_message_to_parent:: Move all
-		#  Module-Failure-Message attributes to the parent
-		#  request.
+		#  move_failure_message_to_parent:: Move all Module-Failure-Message
+		#  attributes to the parent request.
 		#
 		#  Attributes are only moved when:
 		#
@@ -276,17 +252,14 @@ server dhcpv6 {
 		#  - The parent request of type DHCPv6.
 		#  - status-code != 0, or `status_code_on_success = yes`
 		#
-		#  When combined with send_failure_message and
-		#  a secure upstream DHCPv6 relay this provides a
-		#  useful debugging tool where the reason for a
-		#  given allocation failure can be determined from
-		#  packet traces, or trace functionality on the
-		#  upstream relay.
+		#  When combined with send_failure_message and a secure upstream
+		#  DHCPv6 relay this provides a useful debugging tool where the
+		#  reason for a given allocation failure can be determined from
+		#  packet traces, or trace functionality on the upstream relay.
 		#
-		#  As relays will strip off the outer relay-message
-		#  as the packet moves through them, the contents
-		#  of the Module-Failure-Message will not reach
-		#  the end DHCPv6 client.
+		#  As relays will strip off the outer relay-message as the packet
+		#  moves through them, the contents of the Module-Failure-Message
+		#  will not reach the end DHCPv6 client.
 		#
 #		move_failure_message_to_parent = yes
 	}

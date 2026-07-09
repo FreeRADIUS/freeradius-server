@@ -13,7 +13,8 @@
 #
 #  WARNING: Multi-line fields are NOT allowed.
 #
-#  The CSV map can be used in a `map` section, as in the following example.
+#  The CSV map can be used in a `map` section, as in the following
+#  example.
 #
 #    ```
 #    map csv User-Name {
@@ -23,10 +24,10 @@
 #    }
 #    ```
 #
-#  The argument to "map" is dynamically expanded.  The result is taken
-#  as a string, and is used as the value of the "key".  The key is
-#  then looked up in the cached CSV file.  The fields are then mapped
-#  to the attributes on the left side of the map.
+#  The argument to "map" is dynamically expanded. The result is taken
+#  as a string, and is used as the value of the "key". The key is then
+#  looked up in the cached CSV file. The fields are then mapped to the
+#  attributes on the left side of the map.
 #
 #  == Configuration Settings
 #
@@ -44,9 +45,9 @@ csv {
 	#
 	#  header:: Whether or not there is a one-line header in the file.
 	#
-	#  If the value is set to 'yes', then the CSV file MUST contain
-	#  a header as the first line of the file.  That header line
-	#  must contain the field names.
+	#  If the value is set to 'yes', then the CSV file MUST contain a
+	#  header as the first line of the file. That header line must
+	#  contain the field names.
 	#
 	header = no
 
@@ -56,27 +57,26 @@ csv {
 	#
 	#  The default is `no`.
 	#
-	#  If set to `yes`, then multiple entries are allowed.  When a
-	#  key matches, each entry is applied in the order it appears
-	#  in the file.
+	#  If set to `yes`, then multiple entries are allowed. When a key
+	#  matches, each entry is applied in the order it appears in the
+	#  file.
 	#
 	allow_multiple_keys = no
 
 	#
 	#  fields:: A string which defines field names.
 	#
-	#  This configuration item is used only when `header = no`.
-	#  The content of the `fields` item must be the same as in RFC 4180.
-	#  That is, a list of field names, separated by the `delimiter`
-	#  character.
+	#  This configuration item is used only when `header = no`. The
+	#  content of the `fields` item must be the same as in RFC 4180. That
+	#  is, a list of field names, separated by the `delimiter` character.
 	#
-	#  The `csv` module can be used to read files such as `/etc/group`
-	#  By setting `delimiter = ":"`, and by using `fields = "group:::,user"`
+	#  The `csv` module can be used to read files such as `/etc/group` By
+	#  setting `delimiter = ":"`, and by using `fields = "group:::,user"`
 	#
-	#  The special character `,` can be used *only* for the `key`
-	#  field, and *only* if the `key` field is the last field.
-	#  This special syntax means "add multiple entries for this
-	#  line, one for each `key`".
+	#  The special character `,` can be used *only* for the `key` field,
+	#  and *only* if the `key` field is the last field. This special
+	#  syntax means "add multiple entries for this line, one for each
+	#  `key`".
 	#
 	#  [NOTE]
 	#  =====
@@ -94,53 +94,52 @@ csv {
 	#
 	#  It can be any one of the field names defined above.
 	#
-	#  The CSV rows are normally placed into a binary tree,
-	#  indexed by this field.  A binary tree allows for fast
-	#  lookups, no matter the size of the CSV file.
+	#  The CSV rows are normally placed into a binary tree, indexed by
+	#  this field. A binary tree allows for fast lookups, no matter the
+	#  size of the CSV file.
 	#
-	#  When looking up entries in the binary tree, the key must match
-	#  the `index_field` exactly.
+	#  When looking up entries in the binary tree, the key must match the
+	#  `index_field` exactly.
 	#
-	#  If `data_type` is an IP address type, then the CSV rows are
-	#  placed into a prefix trie, indexed by this field.  The
-	#  prefix trie allows for fast prefix lookups.
+	#  If `data_type` is an IP address type, then the CSV rows are placed
+	#  into a prefix trie, indexed by this field. The prefix trie allows
+	#  for fast prefix lookups.
 	#
-	#  When looking up entries in a prefix trie, the closest
-	#  enclosing prefix is matched.  This prefix match allows you
-	#  to place `192.0.2/24` as an index field in the file, and
-	#  then lookups of `192.0.2.1` will return that row.
+	#  When looking up entries in a prefix trie, the closest enclosing
+	#  prefix is matched. This prefix match allows you to place
+	#  `192.0.2/24` as an index field in the file, and then lookups of
+	#  `192.0.2.1` will return that row.
 	#
 	index_field = "name"
 
 	#
-	#  key:: The key string used to look up entries via the `index_field`.
+	#  key:: The key string used to look up entries via the
+	#  `index_field`.
 	#
-	#  When the `csv` module is listed in a processing section,
-	#  the `key` is used to find the appropriate entry.  The `update`
-	#  section below is then applied.
+	#  When the `csv` module is listed in a processing section, the `key`
+	#  is used to find the appropriate entry. The `update` section below
+	#  is then applied.
 	#
-	#  The data type of the key is used to determine the type
-	#  of structure used to store the `index_field` values.
+	#  The data type of the key is used to determine the type of
+	#  structure used to store the `index_field` values.
 	#
 	#  When the key data type is one of: `ipaddr`, `ipv4prefix`,
-	#  `ipv6addr`, or `ipv6prefix`, then the rows are stored in a
-	#  prefix trie.
+	#  `ipv6addr`, or `ipv6prefix`, then the rows are stored in a prefix
+	#  trie.
 	#
 	#  For all other key data types, the rows are stored in a binary
 	#  tree.
 	#
-	#  If a data type other than the native type of `key` expression
-	#  is needed, the casting operator can be used.
-	#  For example:
-	#  a key value of `(ipv4addr) reply.Reply-Message`.
-	#  would result in a prefix trie being used for lookups, and the
-	#  `string` value of the `Reply-Message` attribute being parsed as
-	#  CIDR notation.
+	#  If a data type other than the native type of `key` expression is
+	#  needed, the casting operator can be used. For example: a key value
+	#  of `(ipv4addr) reply.Reply-Message`. would result in a prefix trie
+	#  being used for lookups, and the `string` value of the
+	#  `Reply-Message` attribute being parsed as CIDR notation.
 	#
-	#  Note that the individual fields of the CSV file do not have
-	#  data types.  They are stored internally as strings, and are
-	#  parsed to the final data type only when the `csv` module
-	#  is run, either in-place, or as a `map`.
+	#  Note that the individual fields of the CSV file do not have data
+	#  types. They are stored internally as strings, and are parsed to
+	#  the final data type only when the `csv` module is run, either
+	#  in-place, or as a `map`.
 	#
 	key = User-Name
 
@@ -170,11 +169,11 @@ csv {
 	#  |===
 	#
 	#  Request and list qualifiers may be placed after the `update`
-	#  section name to set default destination requests/lists
-	#  for `<fr attr>s` with no list qualifiers.
+	#  section name to set default destination requests/lists for `<fr
+	#  attr>s` with no list qualifiers.
 	#
-	#  NOTE: CSV field names should be single quoted unless you want
-	#  the name to be derived from an xlat expansion, or an attribute ref.
+	#  NOTE: CSV field names should be single quoted unless you want the
+	#  name to be derived from an xlat expansion, or an attribute ref.
 	#
 	#  update { ... }::
 	#
@@ -189,22 +188,21 @@ csv {
 	#	map cvs <key> { ... }
 	#
 	#  Where `csv` is the name of the module, and `key` is an expansion
-	#  as given the key` field above.  For example, the map could
-	#  look like this:
+	#  as given the key` field above. For example, the map could look
+	#  like this:
 	#
 	#	```
 	#	map csv User-Name {
 	#		reply.Reply-Message := 'color'
 	#		my-integer := 'count'
-	#	}	
+	#	}
 	#	```
 	#
-	#  This map does the same operations as the key / update
-	#  fields given above.  The benefit here is that the key can
-	#  be dynamically changed, depending on the needs of the
-	#  current section.
+	#  This map does the same operations as the key / update fields given
+	#  above. The benefit here is that the key can be dynamically
+	#  changed, depending on the needs of the current section.
 	#
-	#  If the key is not found in the CSV file, then the `map`
-	#  does nothing.
+	#  If the key is not found in the CSV file, then the `map` does
+	#  nothing.
 	#
 }

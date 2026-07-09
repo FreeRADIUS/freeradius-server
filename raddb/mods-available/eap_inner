@@ -8,8 +8,8 @@
 #  = EAP/Inner Module
 #
 #  The `eap_inner` module provides a sample configuration for an `EAP`
-#  module that occurs *inside* of a tunneled method. It is used to limit
-#  the `EAP` types that can occur inside of the inner tunnel.
+#  module that occurs *inside* of a tunneled method. It is used to
+#  limit the `EAP` types that can occur inside of the inner tunnel.
 #
 #  See also `sites-available/inner-tunnel`
 #
@@ -41,7 +41,8 @@ eap inner-eap {
 	default_eap_type = mschapv2
 
 	#
-	#  type:: Only EAP types listed below with a 'type = <EAP-Type>' pair will be allowed.
+	#  type:: Only EAP types listed below with a 'type = <EAP-Type>' pair
+	#  will be allowed.
 	#
 	type = md5
 	type = gtc
@@ -51,8 +52,8 @@ eap inner-eap {
 	#
 	#  == md5 { ... }
 	#
-	#  `md5` is OK to use the inner tunnel, as keying material is provided by
-	#  the outer EAP method.
+	#  `md5` is OK to use the inner tunnel, as keying material is
+	#  provided by the outer EAP method.
 	#
 	md5 {
 	}
@@ -86,12 +87,14 @@ eap inner-eap {
 	#
 	tls-config tls-peer {
 		#
-		#  auto_chain:: See the `eap` module for common configuration explanation.
+		#  auto_chain:: See the `eap` module for common configuration
+		#  explanation.
 		#
 #		auto_chain = yes
 
 		#
-		#  chain { ... }:: See the `eap` module for common configuration explanation.
+		#  chain { ... }:: See the `eap` module for common configuration
+		#  explanation.
 		#
 		chain {
 			certificate_file = ${certdir}/rsa/server.pem
@@ -101,7 +104,8 @@ eap inner-eap {
 		}
 
 		#
-		#  ca_file:: See the `eap` module for common configuration explanation.
+		#  ca_file:: See the `eap` module for common configuration
+		#  explanation.
 		#
 		ca_file = ${cadir}/rsa/ca.pem
 
@@ -111,27 +115,32 @@ eap inner-eap {
 #		dh_file = ${certdir}/dh
 
 		#
-		#  random_file:: See the `eap` module for common configuration explanation.
+		#  random_file:: See the `eap` module for common configuration
+		#  explanation.
 		#
 #		random_file = /dev/urandom
 
 		#
-		#  fragment_size:: See the `eap` module for common configuration explanation.
+		#  fragment_size:: See the `eap` module for common configuration
+		#  explanation.
 		#
 		fragment_size = 16384
 
 		#
-		#  ca_path:: See the `eap` module for common configuration explanation.
+		#  ca_path:: See the `eap` module for common configuration
+		#  explanation.
 		#
 		ca_path = ${cadir}
 
 		#
-		#  check_cert_issuer:: See the `eap` module for common configuration explanation.
+		#  check_cert_issuer:: See the `eap` module for common configuration
+		#  explanation.
 		#
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
 		#
-		#  check_cert_cn:: See the `eap` module for common configuration explanation.
+		#  check_cert_cn:: See the `eap` module for common configuration
+		#  explanation.
 		#
 #		check_cert_cn = %{User-Name}
 	}
@@ -139,8 +148,8 @@ eap inner-eap {
 	#
 	#  == tls { ... }
 	#
-	#  You SHOULD use different certificates than are used
-	#  for the outer EAP configuration!
+	#  You SHOULD use different certificates than are used for the outer
+	#  EAP configuration!
 	#
 	#  You can create the `inner-server.pem` file by doing:
 	#

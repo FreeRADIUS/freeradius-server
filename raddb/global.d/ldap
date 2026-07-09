@@ -6,9 +6,11 @@ ldap {
 
 	#
 	#  ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
-	#  Set this to enable debugging output from different code areas within libldap.
+	#  Set this to enable debugging output from different code areas
+	#  within libldap.
 	#
-	#  NOTE: These debugging options can produce significant amounts of logging output.
+	#  NOTE: These debugging options can produce significant amounts of
+	#  logging output.
 	#
 	#  [options="header,autowidth"]
 	#  |===

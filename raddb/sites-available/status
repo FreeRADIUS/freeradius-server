@@ -40,17 +40,15 @@ server status {
 	}
 
 	#
-	#  We recommend that you list ONLY management clients here.
-	#  i.e. NOT your NASes or Access Points, and for an ISP,
-	#  DEFINITELY not any RADIUS servers that are proxying packets
-	#  to you.
+	#  We recommend that you list ONLY management clients here. i.e. NOT
+	#  your NASes or Access Points, and for an ISP, DEFINITELY not any
+	#  RADIUS servers that are proxying packets to you.
 	#
-	#  If you do NOT list a client here, then any client that is
-	#  globally defined (i.e. all of them) will be able to query
-	#  these statistics.
+	#  If you do NOT list a client here, then any client that is globally
+	#  defined (i.e. all of them) will be able to query these statistics.
 	#
-	#  Do you really want your partners seeing the internal details
-	#  of what your RADIUS server is doing?
+	#  Do you really want your partners seeing the internal details of
+	#  what your RADIUS server is doing?
 	#
 	client admin {
 		ipaddr = 127.0.0.1
@@ -62,7 +60,8 @@ server status {
 	#
 	recv Status-Server {
 		#
-		#  Add statistics based on the Vendor-Specific.FreeRADIUS.Stats4-* queries.
+		#  Add statistics based on the Vendor-Specific.FreeRADIUS.Stats4-*
+		#  queries.
 		#
 		stats
 		ok
@@ -91,6 +90,6 @@ server status {
 
 #
 #  Due to internal limitations, the statistics might not be exactly up
-#  to date.  Do not expect all of the numbers to add up perfectly.
+#  to date. Do not expect all of the numbers to add up perfectly.
 #
 }

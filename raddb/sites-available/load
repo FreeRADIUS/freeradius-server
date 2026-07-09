@@ -17,8 +17,8 @@ server load {
 	#
 	listen load {
 		#
-		#  The main module is the proto module, even though we're
-		#  operating in the RADIUS namespace.
+		#  The main module is the proto module, even though we're operating
+		#  in the RADIUS namespace.
 		#
 		handler = load
 
@@ -37,16 +37,16 @@ server load {
 		#
 		step {
 			#
-			#  Filename with input packet.  This is in the
-			#  same format as used by `radclient`.
+			#  Filename with input packet. This is in the same format as used
+			#  by `radclient`.
 			#
 			filename = ${confdir}/load.txt
 
 			#
 			#  Where the statistics file goes, in CSV format.
 			#
-			#  One line will be written to the file for each
-			#  second of the load generation run.
+			#  One line will be written to the file for each second of the load
+			#  generation run.
 			#
 			#  Each line will contain the following columns:
 			#  - time - since the test started running
@@ -93,9 +93,8 @@ server load {
 			#
 			#  How many packet/s to end up at.
 			#
-			#  When the load generator reaches this rate,
-			#  it prints the final statistics, and makes
-			#  the server exit.
+			#  When the load generator reaches this rate, it prints the final
+			#  statistics, and makes the server exit.
 			#
 			max_pps		= 2000
 
@@ -110,21 +109,18 @@ server load {
 			step		= 200
 
 			#
-			#  We don't want to overload the server.  If
-			#  the server cannot process packets quickly
-			#  enough, we will get a backlog of
-			#  unprocessed packets.  If the backlog gets
-			#  too high, then the load generator will
-			#  temporarily stop sending packets.  Once the
+			#  We don't want to overload the server. If the server cannot
+			#  process packets quickly enough, we will get a backlog of
+			#  unprocessed packets. If the backlog gets too high, then the load
+			#  generator will temporarily stop sending packets. Once the
 			#  backlog is low enough, it will continue.
 			#
 			max_backlog	= 1000
 
 			#
-			#  How many packets to send immediately in
-			#  parallel, without waiting for a response.
-			#  When a reply is received, a new request may
-			#  be sent.
+			#  How many packets to send immediately in parallel, without
+			#  waiting for a response. When a reply is received, a new request
+			#  may be sent.
 			#
 			parallel	= 25
 		}

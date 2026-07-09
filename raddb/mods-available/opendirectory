@@ -7,12 +7,12 @@
 #
 #  = OpenDirectory Module
 #
-#  The `opendirectory` module is only used when the server is running on the same
-#  system as OpenDirectory.  The configuration of the module is hard-coded
-#  by Apple, and cannot be changed here.
+#  The `opendirectory` module is only used when the server is running
+#  on the same system as OpenDirectory. The configuration of the
+#  module is hard-coded by Apple, and cannot be changed here.
 #
 #  The `mschap` module will also automatically talk to OpenDirectory
-#  if the server is built on an OSX machine.  However, you must also
+#  if the server is built on an OSX machine. However, you must also
 #  set `dsAttrTypeNative:apple-enabled-auth-mech` attribute in the
 #  `/config/dirserv` OpenDirectory record.
 #

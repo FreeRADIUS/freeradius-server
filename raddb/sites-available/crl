@@ -25,8 +25,8 @@ server crl {
 		#  force_refresh:: Maximum time between refreshing CRLs
 		#
 		#  If the `nextUpdate` attribute of a CRL is closer than this
-		#  interval then that will be used as the point that the CRL
-		#  is refreshed.
+		#  interval then that will be used as the point that the CRL is
+		#  refreshed.
 		#
 #	        force_refresh = 7d
 
@@ -38,7 +38,8 @@ server crl {
 #		force_delta_refresh = 1d
 
 		#
-		#  early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
+		#  early_refresh:: Time before `nextUpdate` which the CRL will be
+		#  refreshed
 		#
 		early_refresh = 1h
 
@@ -64,27 +65,26 @@ server crl {
 		#
 		#  allow_expired:: Should an expired CRL be accepted.
 		#
-		#  The nextUpdate value extracted from a CRL will be compared
-		#  to the current time, and if this option is `no` (the default)
-		#  then, if that time is in the past, the CRL will not be
-		#  accepted.
+		#  The nextUpdate value extracted from a CRL will be compared to the
+		#  current time, and if this option is `no` (the default) then, if
+		#  that time is in the past, the CRL will not be accepted.
 #		allow_expired = yes
 
 		#
-		#  allow_not_yet_valid:: Should a not yet valid expired CRL be accepted.
-		#
-		#  The lastUpdate value extracted from a CRL will be compared
-		#  to the current time, and if this option is `no` (the default)
-		#  then, if that time is in the future, the CRL will not be
+		#  allow_not_yet_valid:: Should a not yet valid expired CRL be
 		#  accepted.
+		#
+		#  The lastUpdate value extracted from a CRL will be compared to the
+		#  current time, and if this option is `no` (the default) then, if
+		#  that time is in the future, the CRL will not be accepted.
 #		allow_not_yet_valid = yes
 	}
 
 	#
 	#  This section will be run to fetch CRL data
 	#
-	#  One or more instances of attribute CDP-URL will contain the
-	#  urls from which the CRL can be fetched.
+	#  One or more instances of attribute CDP-URL will contain the urls
+	#  from which the CRL can be fetched.
 	#
 	#  RFC 5280 details the use of HTTP, LDAP or FTP in CRL distribution
 	#  points.
@@ -130,8 +130,8 @@ server crl {
 	}
 
 	#
-	#  This section is called after successful fetching and validating
-	#  of a CRL and can be used for logging purposes.
+	#  This section is called after successful fetching and validating of
+	#  a CRL and can be used for logging purposes.
 	#
 	send Fetch-OK {
 		ok

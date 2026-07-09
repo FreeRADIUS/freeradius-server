@@ -7,15 +7,15 @@
 #
 #  = LDAP (Lightweight Directory Access Protocol) Module
 #
-#  The `ldap` module allows LDAP directory entries to be retrieved, modified,
-#  inserted and deleted.
+#  The `ldap` module allows LDAP directory entries to be retrieved,
+#  modified, inserted and deleted.
 #
-#  NOTE: May also perform user authentication using LDAP binds, or by retrieving
-#  the contents of a password attribute for later comparison by a module such
-#  as `pap`, or an `eap` method.
+#  NOTE: May also perform user authentication using LDAP binds, or by
+#  retrieving the contents of a password attribute for later
+#  comparison by a module such as `pap`, or an `eap` method.
 #
-#  Please see the file `global.d/ldap` for server-global configuration items
-#  which control LDAP library debugging.
+#  Please see the file `global.d/ldap` for server-global configuration
+#  items which control LDAP library debugging.
 #
 
 #
@@ -28,11 +28,11 @@ ldap {
 	#  server::
 	#
 	#  Note that this needs to match the name(s) in the LDAP server
-	#  certificate, if you're using ldaps.  See OpenLDAP documentation
-	#  for the behavioral semantics of specifying more than one host.
+	#  certificate, if you're using ldaps. See OpenLDAP documentation for
+	#  the behavioral semantics of specifying more than one host.
 	#
-	#  Depending on the `libldap` in use, server may be specified as an LDAP
-	#  URI.  In the case of `OpenLDAP` this allows the following
+	#  Depending on the `libldap` in use, server may be specified as an
+	#  LDAP URI. In the case of `OpenLDAP` this allows the following
 	#  additional schemes:
 	#
 	#  [options="header,autowidth"]
@@ -48,15 +48,18 @@ ldap {
 #	server = 'ldap.rrdns.example.org'
 
 	#
-	#  port:: Port to connect on, defaults to 389, will be ignored for LDAP URIs.
+	#  port:: Port to connect on, defaults to 389, will be ignored for
+	#  LDAP URIs.
 	#
 #	port = 389
 
 	#
-	#  identity::  Administrator account for searching and possibly modifying.
+	#  identity:: Administrator account for searching and possibly
+	#  modifying.
 	#
-	#  WARNING: If using SASL + (KRB5 | EXTERNAL) identity should be commented out
-	#  as it will set an authzid, which is likely not what you want.
+	#  WARNING: If using SASL + (KRB5 | EXTERNAL) identity should be
+	#  commented out as it will set an authzid, which is likely not what
+	#  you want.
 	#
 #	identity = 'cn=admin,dc=example,dc=org'
 
@@ -66,8 +69,8 @@ ldap {
 #	password = mypass
 
 	#
-	#  base_dn:: Unless overridden in another section, the dn from which all
-	#  searches will start from.
+	#  base_dn:: Unless overridden in another section, the dn from which
+	#  all searches will start from.
 	#
 	base_dn = 'dc=example,dc=org'
 
@@ -81,14 +84,16 @@ ldap {
 	#
 	#  That will give you the LDAP information for 'user'.
 	#
-	#  Group membership can be queried by using the above "ldapsearch" string,
-	#  and adding "memberof" qualifiers.  For ActiveDirectory, use:
+	#  Group membership can be queried by using the above "ldapsearch"
+	#  string, and adding "memberof" qualifiers. For ActiveDirectory,
+	#  use:
 	#
 	#    ```
 	#    ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
 	#    ```
 	#
-	#  Where 'user' is the user as above, and 'group' is the group you are querying for.
+	#  Where 'user' is the user as above, and 'group' is the group you
+	#  are querying for.
 	#  ====
 	#
 
@@ -97,19 +102,19 @@ ldap {
 	#
 	#  sasl { ... }::
 	#
-	#  When we're prompted by the SASL library, the config items in the SASL
-	#  section (in addition to the identity password config items above)
-	#  determine the responses given.
+	#  When we're prompted by the SASL library, the config items in the
+	#  SASL section (in addition to the identity password config items
+	#  above) determine the responses given.
 	#
 	#  If any directive is commented out, a NULL response will be
 	#  provided to cyrus-sasl.
 	#
 	#  Unfortunately the only way to control Keberos here is through
-	#  environmental variables, as cyrus-sasl provides no API to
-	#  set the kerberos (libkrb5) config directly.
+	#  environmental variables, as cyrus-sasl provides no API to set the
+	#  kerberos (libkrb5) config directly.
 	#
-	#  Full documentation for MIT krb5 can be
-	#  found at http://web.mit.edu/kerberos/krb5-devel/doc/admin/env_variables.html
+	#  Full documentation for MIT krb5 can be found at
+	#  http://web.mit.edu/kerberos/krb5-devel/doc/admin/env_variables.html
 	#
 	#  At a minimum you probably want to set `KRB5_CLIENT_KTNAME`.
 	#
@@ -185,14 +190,16 @@ ldap {
 	#  |===
 	#
 	#  Request and list qualifiers may be placed after the `update`
-	#  section name to set default destination requests/lists
-	#  for `<fr attr>s` with no list qualifiers.
+	#  section name to set default destination requests/lists for `<fr
+	#  attr>s` with no list qualifiers.
 	#
-	#  These attribute maps are applied _before_ any profiles, meaning that
-	#  the values here can be referenced in profiles using expansions.
+	#  These attribute maps are applied _before_ any profiles, meaning
+	#  that the values here can be referenced in profiles using
+	#  expansions.
 	#
 	#  NOTE: LDAP attribute names should be single quoted unless you want
-	#  the name to be derived from an xlat expansion, or an attribute ref.
+	#  the name to be derived from an xlat expansion, or an attribute
+	#  ref.
 	#
 	#  update { ... }::
 	#
@@ -204,23 +211,24 @@ ldap {
 ##		reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
 ##		reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 
-		#  NOTE: Where only a list is specified as the RADIUS attribute,
-		#  the value of the LDAP attribute is parsed as a valuepair
-		#  in the same format as the 'valuepair_attribute' (above).
+		#  NOTE: Where only a list is specified as the RADIUS attribute, the
+		#  value of the LDAP attribute is parsed as a valuepair in the same
+		#  format as the 'valuepair_attribute' (above).
 		control			+= 'radiusControlAttribute'
 		request			+= 'radiusRequestAttribute'
 		reply				+= 'radiusReplyAttribute'
 	}
 
 	#
-	#  edir:: Set to `yes` if you have eDirectory and want to use the universal
-	#  password mechanism.
+	#  edir:: Set to `yes` if you have eDirectory and want to use the
+	#  universal password mechanism.
 	#
 #	edir = no
 
 	#
-	#  edir_autz:: Set to `yes` if you want to bind as the user after retrieving the
-	#  `Password.Cleartext`. This will consume the login grace, and verify user authorization.
+	#  edir_autz:: Set to `yes` if you want to bind as the user after
+	#  retrieving the `Password.Cleartext`. This will consume the login
+	#  grace, and verify user authorization.
 	#
 #	edir_autz = no
 
@@ -235,10 +243,8 @@ ldap {
 	#
 	#  [source, unlang]
 	#  ----
-	#  ldap
-	#  if ((ok || updated) && User-Password) {
-	#  	control.Auth-Type := ::ldap
-	#  }
+	#  ldap if ((ok || updated) && User-Password) { control.Auth-Type :=
+	#  ::ldap }
 	#  ----
 	#  ====
 	#
@@ -253,33 +259,37 @@ ldap {
 		base_dn = "${..base_dn}"
 
 		#
-		#  filter:: Filter for user objects, should be specific enough
-		#  to identify a single user object.
+		#  filter:: Filter for user objects, should be specific enough to
+		#  identify a single user object.
 		#
 		filter = "(uid=%{Stripped-User-Name || User-Name})"
 
-		#  For Active Directory nested group, you should comment out the previous 'filter = ...'
-		#  and use the below. Where 'group' is the group you are querying for.
+		#  For Active Directory nested group, you should comment out the
+		#  previous 'filter = ...' and use the below. Where 'group' is the
+		#  group you are querying for.
 		#
-		#  NOTE: The string '1.2.840.113556.1.4.1941' specifies LDAP_MATCHING_RULE_IN_CHAIN.
-		#  This applies only to DN attributes. This is an extended match operator that walks
-		#  the chain of ancestry in objects all the way to the root until it finds a match.
-		#  This reveals group nesting. It is available only on domain controllers with
-		#  Windows Server 2003 SP2 or Windows Server 2008 (or above).
+		#  NOTE: The string '1.2.840.113556.1.4.1941' specifies
+		#  LDAP_MATCHING_RULE_IN_CHAIN. This applies only to DN attributes.
+		#  This is an extended match operator that walks the chain of
+		#  ancestry in objects all the way to the root until it finds a
+		#  match. This reveals group nesting. It is available only on domain
+		#  controllers with Windows Server 2003 SP2 or Windows Server 2008
+		#  (or above).
 		#
-		#  For further information, see https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
+		#  For further information, see
+		#  https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
 		#
 #		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 
 		#
 		#  sasl { ... }:: SASL parameters to use for user binds
 		#
-		#  When we're prompted by the SASL library, these control
-		#  the responses given.
+		#  When we're prompted by the SASL library, these control the
+		#  responses given.
 		#
-		#  NOTE: Any of the config items below may be an attribute ref
-		#  or and expansion.  This allows different SASL mechs,
-		#  proxy IDs and realms to be used for different users.
+		#  NOTE: Any of the config items below may be an attribute ref or
+		#  and expansion. This allows different SASL mechs, proxy IDs and
+		#  realms to be used for different users.
 		#
 		sasl {
 			#
@@ -288,8 +298,8 @@ ldap {
 #			mech = 'PLAIN'
 
 			#
-			#  authname:: SASL authentication name.  Mechanism specific value
-			#  to use when prompted for the client authentication name.
+			#  authname:: SASL authentication name. Mechanism specific value to
+			#  use when prompted for the client authentication name.
 			#
 #			authname = User-Name
 
@@ -305,15 +315,18 @@ ldap {
 		}
 
 		#
-		#  password_attribute:: Which attribute in the request should be used as
-		#  the password when performing user binds.
+		#  password_attribute:: Which attribute in the request should be
+		#  used as the password when performing user binds.
 		#
-		#  Note that Active Directory will allow unauthenticated user binds by default!
+		#  Note that Active Directory will allow unauthenticated user binds
+		#  by default!
 		#
-		#  You can fix this by choosing the "ADSI Edit" command from the Server Manager's Tools menu.
-		#  Then, open the Configuration subtree, and then open the properties of the `CN=Directory
-		#  Service, CN=Windows NT, CN=Services, CN=Configuration` object.  Modify the
-		#  `msDS-Other-Settings` attribute, and add a new entry for `DenyUnauthenticatedBind=1`.
+		#  You can fix this by choosing the "ADSI Edit" command from the
+		#  Server Manager's Tools menu. Then, open the Configuration
+		#  subtree, and then open the properties of the `CN=Directory
+		#  Service, CN=Windows NT, CN=Services, CN=Configuration` object.
+		#  Modify the `msDS-Other-Settings` attribute, and add a new entry
+		#  for `DenyUnauthenticatedBind=1`.
 		#
 #		password_attribute = User-Password
 
@@ -334,7 +347,8 @@ ldap {
 		#  sorting order will be reversed for that attribute.
 		#
 		#  * If `sort_by` is set, and the server does not support sorting
-		#  or the attributes do not have an ORDERING rule, the search will fail.
+		#  or the attributes do not have an ORDERING rule, the search will
+		#  fail.
 		#
 		#  * If a search returns multiple user objects and `sort_by` is not
 		#  set, the search will fail.
@@ -344,17 +358,17 @@ ldap {
 		#
 		#  access_attribute:: If this is undefined, anyone is authorised.
 		#
-		#  If it is defined, the contents of this attribute determine whether
-		#  or not the user is authorised.
+		#  If it is defined, the contents of this attribute determine
+		#  whether or not the user is authorised.
 		#
 #		access_attribute = 'dialupAccess'
 
 		#
-		#  access_positive:: Control whether the presence of `access_attribute`
-		#  allows access, or denies access.
+		#  access_positive:: Control whether the presence of
+		#  `access_attribute` allows access, or denies access.
 		#
 		#  * If `yes`, and the `access_attribute` is present, or `no` and the
-		#  `access_attribute` is absent then access  will be allowed.
+		#  `access_attribute` is absent then access will be allowed.
 		#
 		#  * If `yes`, and the `access_attribute` is absent, or `no` and the
 		#  `access_attribute` is present, then access will not be allowed.
@@ -382,21 +396,22 @@ ldap {
 #		access_value_negate = 'false'
 
 		#
-		#  access_value_suspend:: Which value we look for in access_attribute
-		#  to indicate that the user should be suspended.
+		#  access_value_suspend:: Which value we look for in
+		#  access_attribute to indicate that the user should be suspended.
 		#
 #		access_value_suspend = 'suspended'
 
 		#
-		#  expect_password:: When set to no, disable warnings for missing password
-		#  attributes in user objects returned from LDAP.  This is useful for
-		#  ISP environments where some subscribers have passwords set, and others
-		#  do not (e.g. mixed IPoE and PPPoE).
+		#  expect_password:: When set to no, disable warnings for missing
+		#  password attributes in user objects returned from LDAP. This is
+		#  useful for ISP environments where some subscribers have passwords
+		#  set, and others do not (e.g. mixed IPoE and PPPoE).
 		#
 #		expect_password = no
 
 		#
-		#  dn_attribute:: Where to cache the user's DN for use in authentication.
+		#  dn_attribute:: Where to cache the user's DN for use in
+		#  authentication.
 		#
 #		dn_attribute = 'LDAP-UserDN'
 	}
@@ -414,8 +429,8 @@ ldap {
 		#  filter:: Filter for group objects, should match all available
 		#  group objects a user might be a member of.
 		#
-		#  If using Active Directory you are likely to need `group`
-		#  instead of `posixGroup`.
+		#  If using Active Directory you are likely to need `group` instead
+		#  of `posixGroup`.
 		#
 		filter = '(objectClass=posixGroup)'
 
@@ -432,47 +447,51 @@ ldap {
 #		name_attribute = cn
 
 		#
-		#  membership_filter:: Filter to find all group objects a user is a member of.
+		#  membership_filter:: Filter to find all group objects a user is a
+		#  member of.
 		#
-		#  That is, group objects with attributes that identify
-		#  members (the inverse of `membership_attribute`).
+		#  That is, group objects with attributes that identify members (the
+		#  inverse of `membership_attribute`).
 		#
 #		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{Stripped-User-Name || User-Name}))"
 
 		#
-		#  membership_attribute:: The attribute, in user objects, which contain
-		#  the names or DNs of groups a user is a member of.
+		#  membership_attribute:: The attribute, in user objects, which
+		#  contain the names or DNs of groups a user is a member of.
 		#
-		#  Unless a conversion between group name and group DN is
-		#  needed, there's no requirement for the group objects
-		#  referenced to actually exist.
+		#  Unless a conversion between group name and group DN is needed,
+		#  there's no requirement for the group objects referenced to
+		#  actually exist.
 		#
 		#  [NOTE]
 		#  ====
-		#  If the LDAP server does not support the `memberOf` attribute (or equivalent),
-		#  then you will need to use the membership_filter option above instead.
-		#  If you can't see the `memberOf` attribute then it is also possible that the
-		#  LDAP bind user does not have the correct permissions to view it.
+		#  If the LDAP server does not support the `memberOf` attribute (or
+		#  equivalent), then you will need to use the membership_filter
+		#  option above instead. If you can't see the `memberOf` attribute
+		#  then it is also possible that the LDAP bind user does not have
+		#  the correct permissions to view it.
 		#  ====
 		#
 		membership_attribute = 'memberOf'
 
 		#
-		#  cacheable_name:: If `cacheable_name` or `cacheable_dn` are enabled,
-		#  all group information for the user will be retrieved from the directory
-		#  and written to `LDAP-Group` attributes appropriate for the instance of rlm_ldap.
+		#  cacheable_name:: If `cacheable_name` or `cacheable_dn` are
+		#  enabled, all group information for the user will be retrieved
+		#  from the directory and written to `LDAP-Group` attributes
+		#  appropriate for the instance of rlm_ldap.
 		#
-		#  For group comparisons these attributes will be checked instead of querying
-		#  the LDAP directory directly.
+		#  For group comparisons these attributes will be checked instead of
+		#  querying the LDAP directory directly.
 		#
-		#  This feature is intended to be used with `rlm_cache`, but may also be useful
-		#  if all group values need to be processed using `unlang` policies.
+		#  This feature is intended to be used with `rlm_cache`, but may
+		#  also be useful if all group values need to be processed using
+		#  `unlang` policies.
 		#
-		#  If you wish to use this feature, you should enable the type that matches the
-		#  format of your check items.
+		#  If you wish to use this feature, you should enable the type that
+		#  matches the format of your check items.
 		#
-		#  i.e. if your groups are specified as DNs then enable `cacheable_dn`
-		#  else enable `cacheable_name`.
+		#  i.e. if your groups are specified as DNs then enable
+		#  `cacheable_dn` else enable `cacheable_name`.
 		#
 #		cacheable_name = 'no'
 
@@ -482,8 +501,9 @@ ldap {
 #		cacheable_dn = 'no'
 
 		#
-		#  cache_attribute:: Override the normal cache attribute (`<inst>-LDAP-Group` or
-		#  `LDAP-Group` if using the default instance) and create a custom attribute.
+		#  cache_attribute:: Override the normal cache attribute
+		#  (`<inst>-LDAP-Group` or `LDAP-Group` if using the default
+		#  instance) and create a custom attribute.
 		#
 		#  This can help if multiple module instances are used in fail-over.
 		#
@@ -492,25 +512,27 @@ ldap {
 		#
 		#  allow_dangling_group_ref::
 		#
-		#  If the group being checked is specified as a name, but the user's groups are
-		#  referenced by DN, and one of those group DNs is invalid, the whole group check
-		#  is treated as invalid, and a negative result will be returned.
+		#  If the group being checked is specified as a name, but the user's
+		#  groups are referenced by DN, and one of those group DNs is
+		#  invalid, the whole group check is treated as invalid, and a
+		#  negative result will be returned.
 		#
 		#  When set to `yes`, this option ignores invalid DN references.
 		#
 #		allow_dangling_group_ref = 'no'
 
 		#
-		#  group_attribute:: Override the normal group comparison attribute name
-		#  `(<inst>-Group` or `LDAP-Group` if using the default instance).
+		#  group_attribute:: Override the normal group comparison attribute
+		#  name `(<inst>-Group` or `LDAP-Group` if using the default
+		#  instance).
 		#
 		group_attribute = "${..:instance}-Group"
 
 		#
 		#  skip_on_suspend::
 		#
-		#  Don't process user groups if the user has been suspended.
-		#  If set to 'no', groups will still be processed.
+		#  Don't process user groups if the user has been suspended. If set
+		#  to 'no', groups will still be processed.
 		#
 		#  Groups are never processed for disabled users.
 		#
@@ -522,9 +544,9 @@ ldap {
 	#
 	#  === User profiles
 	#
-	#  RADIUS profile objects contain sets of attributes to insert into the request.
-	#  These attributes are mapped using the same mapping scheme applied to user
-	#  objects (the update section above).
+	#  RADIUS profile objects contain sets of attributes to insert into
+	#  the request. These attributes are mapped using the same mapping
+	#  scheme applied to user objects (the update section above).
 	#
 	profile {
 		#
@@ -535,37 +557,39 @@ ldap {
 		#
 		#  scope:: Search scope, may be `base`, `one`, `sub` or `children`.
 		#
-		#  Should usually be left as "base", to retrieve the specific profile
-		#  specified by 'default' or in the user or group objects.
+		#  Should usually be left as "base", to retrieve the specific
+		#  profile specified by 'default' or in the user or group objects.
 		#
 #		scope = 'base'
 
 		#
-		#  default:: The default profile. This may be a DN or an attribute reference.
+		#  default:: The default profile. This may be a DN or an attribute
+		#  reference.
 		#
-		#  NOTE: To get old v2.2.x style behaviour, or to use the `User-Profile` attribute
-		#  to specify the default profile, set this to `control.User-Profile`.
+		#  NOTE: To get old v2.2.x style behaviour, or to use the
+		#  `User-Profile` attribute to specify the default profile, set this
+		#  to `control.User-Profile`.
 		#
 #		default = 'cn=radprofile,dc=example,dc=org'
 
 		#
-		#  attribute:: The LDAP attribute containing profile DNs to apply
-		#  in addition to the default profile above.
+		#  attribute:: The LDAP attribute containing profile DNs to apply in
+		#  addition to the default profile above.
 		#
 		#  These are retrieved from the user object, at the same time as the
-		#  attributes from the update section, are are applied if authorization
-		#  is successful.
+		#  attributes from the update section, are are applied if
+		#  authorization is successful.
 		#
 #		attribute = 'radiusProfileDn'
 
 		#
-		#  attribute_suspend:: The LDAP attribute containing profile DNs to apply
-		#  in addition to the default profile above, when the user account is in
-		#  the suspended state
+		#  attribute_suspend:: The LDAP attribute containing profile DNs to
+		#  apply in addition to the default profile above, when the user
+		#  account is in the suspended state
 		#
 		#  These are retrieved from the user object, at the same time as the
-		#  attributes from the update section, are are applied if authorization
-		#  is successful.
+		#  attributes from the update section, are are applied if
+		#  authorization is successful.
 		#
 #		attribute_suspend = 'radiusProfileDn'
 
@@ -580,13 +604,15 @@ ldap {
 		#  sorting order will be reversed for that attribute.
 		#
 		#  * If `sort_by` is set, and the server does not support sorting
-		#  or the attributes do not have an ORDERING rule, the search will fail.
+		#  or the attributes do not have an ORDERING rule, the search will
+		#  fail.
 		#
 #		sort_by = 'radiusProfilePriority'
 
 		#
 		#  check_attribute:: The LDAP attribute containing conditions which
-		#  will be evaluated to determine whether a profile should be applied.
+		#  will be evaluated to determine whether a profile should be
+		#  applied.
 		#
 #		check_attribute = 'radiusProfileCondition'
 
@@ -598,8 +624,9 @@ ldap {
 #		fallthrough_attribute = 'radiusProfileFallthrough'
 
 		#
-		#  fallthrough_def:: If the attribute referenced in fallthrough_attribute
-		#  is not in the reply, what should be the default behaviour
+		#  fallthrough_def:: If the attribute referenced in
+		#  fallthrough_attribute is not in the reply, what should be the
+		#  default behaviour
 		#
 #		fallthrough_default = yes
 	}
@@ -607,8 +634,8 @@ ldap {
 	#
 	#  === Modify user object on receiving Accounting-Request
 	#
-	#  Useful for recording things like the last time the user logged
-	#  in, or the `Acct-Session-ID` for CoA/DM.
+	#  Useful for recording things like the last time the user logged in,
+	#  or the `Acct-Session-ID` for CoA/DM.
 	#
 	#  LDAP modification items are in the format:
 	#
@@ -667,7 +694,8 @@ ldap {
 	#
 	options {
 		#
-		#  dereference:: Control under which situations aliases are followed.
+		#  dereference:: Control under which situations aliases are
+		#  followed.
 		#
 		#  May be one of 'never', 'searching', 'finding' or 'always'
 		#
@@ -678,49 +706,53 @@ ldap {
 #		dereference = 'always'
 
 		#
-		#  chase_referrals:: controls whether the server follows references returned
-		#  by the LDAP directory.
+		#  chase_referrals:: controls whether the server follows references
+		#  returned by the LDAP directory.
 		#
-		#  They are mostly for Active Directory compatibility.
-		#  If you set this to `no`, then searches will likely return 'operations error',
-		#  instead of a useful result.
+		#  They are mostly for Active Directory compatibility. If you set
+		#  this to `no`, then searches will likely return 'operations
+		#  error', instead of a useful result.
 		#
 		chase_referrals = yes
 
 		#
-		#  rebind:: If `chase_referrals` is `yes` then, when a referral is followed
-		#  having `rebind` set to `no` will cause the server to do an anonymous bind when
-		#  making any additional connections.  Setting this to `yes` will either bind
-		#  with the admin credentials or the credentials from the rebind url depending
-		#  on `use_referral_credentials`.
+		#  rebind:: If `chase_referrals` is `yes` then, when a referral is
+		#  followed having `rebind` set to `no` will cause the server to do
+		#  an anonymous bind when making any additional connections. Setting
+		#  this to `yes` will either bind with the admin credentials or the
+		#  credentials from the rebind url depending on
+		#  `use_referral_credentials`.
 		#
 		rebind = yes
 
 		#
-		#  use_referral_credentials:: On `rebind`, use the credentials from the rebind url
-		#  instead of admin credentials used during the initial bind.
+		#  use_referral_credentials:: On `rebind`, use the credentials from
+		#  the rebind url instead of admin credentials used during the
+		#  initial bind.
 		#
 		#  Default `no`
 		#
 		use_referral_credentials = no
 
 		#
-		#  session_tracking:: If `yes`, then include `draft-wahl-ldap-session` tracking
-		#  controls.
+		#  session_tracking:: If `yes`, then include
+		#  `draft-wahl-ldap-session` tracking controls.
 		#
-		#  If yes, encodes `NAS-IP-Address`, `NAS-IPv6-Address`, `User-Name`, `Acct-Session-Id`,
-		#  `Acct-Multi-Session-Id` as session tracking controls in applicable LDAP operations.
+		#  If yes, encodes `NAS-IP-Address`, `NAS-IPv6-Address`,
+		#  `User-Name`, `Acct-Session-Id`, `Acct-Multi-Session-Id` as
+		#  session tracking controls in applicable LDAP operations.
 		#
 		#  Default `no`
 		#
 #		session_tracking = yes
 
 		#
-		#  sasl_secprops:: SASL Security Properties (see SASL_SECPROPS in ldap.conf man page).
+		#  sasl_secprops:: SASL Security Properties (see SASL_SECPROPS in
+		#  ldap.conf man page).
 		#
-		#  NOTE: uncomment when using GSS-API sasl mechanism along with TLS encryption against
-		#  Active-Directory LDAP servers (this disables sealing and signing at the GSS level as
-		#  required by AD).
+		#  NOTE: uncomment when using GSS-API sasl mechanism along with TLS
+		#  encryption against Active-Directory LDAP servers (this disables
+		#  sealing and signing at the GSS level as required by AD).
 		#
 #		sasl_secprops = 'noanonymous,noplain,maxssf=0'
 
@@ -732,8 +764,8 @@ ldap {
 		res_timeout = 10
 
 		#
-		#  srv_timelimit:: Seconds LDAP server has to process the query (server-side
-		#  time limit).
+		#  srv_timelimit:: Seconds LDAP server has to process the query
+		#  (server-side time limit).
 		#
 		#  Default `20`
 		#
@@ -742,23 +774,24 @@ ldap {
 		srv_timelimit = 3
 
 		#
-		#  idle:: Set the number of seconds a connection needs to remain idle
-		#  before  TCP starts sending keepalive probes.
+		#  idle:: Set the number of seconds a connection needs to remain
+		#  idle before TCP starts sending keepalive probes.
 		#
 		#  NOTE: `LDAP_OPT_X_KEEPALIVE_IDLE` is set to this value.
 		#
 		idle = 60
 
 		#
-		#  probes:: Set the maximum number of keepalive probes TCP should send
-		#  before dropping  the  connection.
+		#  probes:: Set the maximum number of keepalive probes TCP should
+		#  send before dropping the connection.
 		#
 		#  NOTE: `LDAP_OPT_X_KEEPALIVE_PROBES` is set to this value.
 		#
 		probes = 3
 
 		#
-		#  interval:: Set the interval in seconds between individual keepalive probes.
+		#  interval:: Set the interval in seconds between individual
+		#  keepalive probes.
 		#
 		#  NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 		#
@@ -772,9 +805,9 @@ ldap {
 		net_timeout = 10
 
 		#
-		#  reconnection_delay:: Sets the time in seconds before a failed connection
-		#  will attempt reconnection.  This includes failures to bind as the admin
-		#  user due to incorrect credentials.
+		#  reconnection_delay:: Sets the time in seconds before a failed
+		#  connection will attempt reconnection. This includes failures to
+		#  bind as the admin user due to incorrect credentials.
 		#
 		reconnection_delay = 10
 	}
@@ -782,24 +815,27 @@ ldap {
 	#
 	#  === TLS encrypted connections
 	#
-	#  This subsection configures the `tls` related items that control how FreeRADIUS
-	#  connects to an LDAP server. It contains all of the `tls_*` configuration entries
-	#  used in older versions of FreeRADIUS.
+	#  This subsection configures the `tls` related items that control
+	#  how FreeRADIUS connects to an LDAP server. It contains all of the
+	#  `tls_*` configuration entries used in older versions of
+	#  FreeRADIUS.
 	#
-	#  Those configuration entries can still be used, but we recommend using these.
+	#  Those configuration entries can still be used, but we recommend
+	#  using these.
 	#
 	tls {
 		#
-		#  start_tls:: Set this to `yes` to use TLS encrypted connections
-		#  to the LDAP database by using the StartTLS extended operation.
+		#  start_tls:: Set this to `yes` to use TLS encrypted connections to
+		#  the LDAP database by using the StartTLS extended operation.
 		#
-		#  The StartTLS operation is supposed to be used with normal ldap connections
-		#  instead of using ldaps (port 636) connections
+		#  The StartTLS operation is supposed to be used with normal ldap
+		#  connections instead of using ldaps (port 636) connections
 		#
 #		start_tls = yes
 
 		#
-		#  NOTE: If `start_tls = yes`, then fill up those such options with the certificate information.
+		#  NOTE: If `start_tls = yes`, then fill up those such options with
+		#  the certificate information.
 		#
 ##		ca_file	= ${certdir}/cacert.pem
 ##		ca_path	= ${certdir}
@@ -821,13 +857,14 @@ ldap {
 		#  | 'hard'   | similar to 'demand' but fails if TLS cannot negotiate.
 		#  |===
 		#
-		#  NOTE: The default is libldap's default, which varies based on the contents of `ldap.conf`.
+		#  NOTE: The default is libldap's default, which varies based on the
+		#  contents of `ldap.conf`.
 		#
 #		require_cert = 'demand'
 
 		#
-		#  Minimum TLS version to accept. We STRONGLY recommend
-		#  setting this to "1.2"
+		#  Minimum TLS version to accept. We STRONGLY recommend setting this
+		#  to "1.2"
 		#
 #		tls_min_version = "1.2"
 	}
@@ -835,22 +872,22 @@ ldap {
 	#
 	#  === Connection Pool
 	#
-	#  The connection pool is a set of per-thread parameters for connections
-	#  to the LDAP server.
+	#  The connection pool is a set of per-thread parameters for
+	#  connections to the LDAP server.
 	#
-	#  This connection pool is used for LDAP queries run as the administrative user.
+	#  This connection pool is used for LDAP queries run as the
+	#  administrative user.
 	#
-	#  All LDAP operations are performed asynchronously, meaning that many queries
-	#  can be active on a single connection simultaneously.
+	#  All LDAP operations are performed asynchronously, meaning that
+	#  many queries can be active on a single connection simultaneously.
 	#
 	pool {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
 		#  If the server cannot create specified number of connections
-		#  during instantiation it will exit.
-		#  Set to `0` to allow the server to start without the directory
-		#  being available.
+		#  during instantiation it will exit. Set to `0` to allow the server
+		#  to start without the directory being available.
 		#
 		start = 0
 
@@ -862,8 +899,9 @@ ldap {
 		#
 		#  max:: Maximum number of connections.
 		#
-		#  If these connections are all fully in use (refer to per_connection_max below)
-		#  and a new one is requested, the request will NOT get a connection.
+		#  If these connections are all fully in use (refer to
+		#  per_connection_max below) and a new one is requested, the request
+		#  will NOT get a connection.
 		#
 		max = 5
 
@@ -889,13 +927,15 @@ ldap {
 		#
 		#  open_delay:: Open delay (in seconds).
 		#
-		#  How long must we be above the target utilisation for connections to be opened.
+		#  How long must we be above the target utilisation for connections
+		#  to be opened.
 #		open_delay = 0.2
 
 		#
 		#  close_delay:: Close delay (in seconds).
 		#
-		#  How long we must be below the target utilisation for connections to be closed
+		#  How long we must be below the target utilisation for connections
+		#  to be closed
 		#
 #		close_delay = 10
 
@@ -905,26 +945,29 @@ ldap {
 #		manage_interval = 0.2
 
 		#
-		#  request:: Options specific to requests handled by this connection pool
+		#  request:: Options specific to requests handled by this connection
+		#  pool
 		#
 		request {
 			#
-			#  per_connection_max::  Maximum number of active queries there can be on a
-			#  single connection.
+			#  per_connection_max:: Maximum number of active queries there can
+			#  be on a single connection.
 			#
 #			per_connection_max = 2000
 
 			#
-			#  per_connection_target::  Target number of active queries on a single connection.
+			#  per_connection_target:: Target number of active queries on a
+			#  single connection.
 			#
 #			per_connection_target = 1000
 
 			#
-			#  free_delay:: How long must a request in the unassigned (free) list not have been
-			#  used for before it's cleaned up and actually freed.
+			#  free_delay:: How long must a request in the unassigned (free)
+			#  list not have been used for before it's cleaned up and actually
+			#  freed.
 			#
-			#  Unassigned requests can be re-used, multiple times, reducing memory allocation
-			#  and freeing overheads.
+			#  Unassigned requests can be re-used, multiple times, reducing
+			#  memory allocation and freeing overheads.
 			#
 #			free_delay = 10
 		}
@@ -933,17 +976,18 @@ ldap {
 	#
 	#  === Bind Connection Pool
 	#
-	#  This connection pool is used for LDAP binds used to authenticate requests when
-	#  calling the ldap module in authenticate context.  If passwords are retrieved
-	#  from the ldap directory and FreeRADIUS performs the authentication then this is
-	#  not used.
+	#  This connection pool is used for LDAP binds used to authenticate
+	#  requests when calling the ldap module in authenticate context. If
+	#  passwords are retrieved from the ldap directory and FreeRADIUS
+	#  performs the authentication then this is not used.
 	#
-	#  The options are essentially identical to the pool section above with certain
-	#  limitations.  Since only one bind operation can be in progress on a connection at
-	#  a time, `per_connection_max` and `per_connection_target` are always set to 1.
+	#  The options are essentially identical to the pool section above
+	#  with certain limitations. Since only one bind operation can be in
+	#  progress on a connection at a time, `per_connection_max` and
+	#  `per_connection_target` are always set to 1.
 	#
-	#  This limitation means that `max` represents the maximum number of in progress
-	#  binds which there can be on a single thread.
+	#  This limitation means that `max` represents the maximum number of
+	#  in progress binds which there can be on a single thread.
 	#
 	bind_pool {
 		start = 0
@@ -958,9 +1002,9 @@ ldap {
 #  The following policy ensures that every call to the `ldap` module
 #  will time out within a short period of time.
 #
-#  The policy name here should be the same as the module name.
-#  Reusing the same name means that this policy will be used instead
-#  of the module.
+#  The policy name here should be the same as the module name. Reusing
+#  the same name means that this policy will be used instead of the
+#  module.
 #
 ##@policy ldap {
 ##	timeout 1s {
@@ -981,18 +1025,20 @@ ldap {
 #  If the LDAP uri starts `ldap:///`, i.e. no host is specified, then
 #  the server configured for the module will be used.
 #
-#  When embedding user-controlled values in the filter part of the URI, wrap
-#  them with `%ldap.filter.escape(...)`.  When embedding values in the DN part
-#  (base DN, or in a DN being looked up), wrap them with `%ldap.dn.escape(...)`.
-#  Inserting unescaped user input allows LDAP injection attacks.
+#  When embedding user-controlled values in the filter part of the
+#  URI, wrap them with `%ldap.filter.escape(...)`. When embedding
+#  values in the DN part (base DN, or in a DN being looked up), wrap
+#  them with `%ldap.dn.escape(...)`. Inserting unescaped user input
+#  allows LDAP injection attacks.
 #
 #  .Example - safe filter embedding
 #
 #  [source,unlang]
 #  ----
-#  #  User-Name is filter-escaped before being embedded in the search filter.
-#  #  Without escaping, a User-Name of '*' would produce (uid=*) and match all users.
-#  reply.Reply-Message := "Welcome %ldap("ldap:///ou=people,dc=example,dc=com?displayName?sub?(uid=%ldap.filter.escape(%{User-Name}))")"
+#  = User-Name is filter-escaped before being embedded in the search filter.
+#  = Without escaping, a User-Name of '*' would produce (uid=*) and match all users.
+#  reply.Reply-Message := "Welcome
+#  %ldap("ldap:///ou=people,dc=example,dc=com?displayName?sub?(uid=%ldap.filter.escape(%{User-Name}))")"
 #  ----
 #
 #  .Output
@@ -1004,17 +1050,19 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  #  User-Name is DN-escaped before being used in the base DN.
-#  #  Without escaping, a value containing ',' could add extra DN components.
-#  result := %ldap("ldap:///ou=%ldap.dn.escape(%{User-Name}),dc=example,dc=com?cn?base")
+#  = User-Name is DN-escaped before being used in the base DN.
+#  = Without escaping, a value containing ',' could add extra DN components.
+#  result :=
+#  %ldap("ldap:///ou=%ldap.dn.escape(%{User-Name}),dc=example,dc=com?cn?base")
 #  ----
 #
 #  === %ldap.dn.escape(...)
 #
-#  Escape a string for use in an LDAP distinguished name (RFC 4514).  Characters
-#  that are special in a DN component (`,`, `+`, `"`, `\`, `<`, `>`, `;`, `*`, `=`, `(`, `)`)
-#  are converted to `\HH` hex sequences.  The result is marked safe for use in DN positions
-#  and will not be re-escaped.
+#  Escape a string for use in an LDAP distinguished name (RFC 4514).
+#  Characters that are special in a DN component (`,`, `+`, `"`, `\`,
+#  `<`, `>`, `;`, `*`, `=`, `(`, `)`) are converted to `\HH` hex
+#  sequences. The result is marked safe for use in DN positions and
+#  will not be re-escaped.
 #
 #  .Return: _string_
 #
@@ -1022,8 +1070,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-string := "cn=admin,dc=example,dc=com"
-#  reply.Reply-Message := "Escaped: %ldap.dn.escape(%{my-string})"
+#  my-string := "cn=admin,dc=example,dc=com" reply.Reply-Message :=
+#  "Escaped: %ldap.dn.escape(%{my-string})"
 #  ----
 #
 #  .Output
@@ -1034,9 +1082,10 @@ ldap {
 #
 #  === %ldap.dn.safe(...)
 #
-#  Mark a string as already safe for use in an LDAP DN.  The value will not be escaped or
-#  modified, and will be allowed in places where dynamic values are usually prohibited.
-#  Use this only for strings you have constructed or validated yourself.
+#  Mark a string as already safe for use in an LDAP DN. The value will
+#  not be escaped or modified, and will be allowed in places where
+#  dynamic values are usually prohibited. Use this only for strings
+#  you have constructed or validated yourself.
 #
 #  .Return: _string_
 #
@@ -1044,12 +1093,14 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  my-int :=
+#  "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ----
 #
 #  === %ldap.dn.unescape(...)
 #
-#  Decode `\HH` hex sequences in an LDAP DN string back to their original characters.
+#  Decode `\HH` hex sequences in an LDAP DN string back to their
+#  original characters.
 #
 #  .Return: _string_
 #
@@ -1069,15 +1120,17 @@ ldap {
 #
 #  === %ldap.filter.escape(...)
 #
-#  Escape a string for use as an assertion value in an LDAP search filter (RFC 4515).
-#  Only the characters that are special in a filter assertion value are escaped:
-#  `*`, `(`, `)`, `\`, and NUL.  Characters such as `=`, `+`, and `,` are intentionally
-#  left unescaped because OpenLDAP does not decode non-required `\HH` sequences, so
-#  escaping them would cause silent match failures for usernames that legitimately
-#  contain those characters.
+#  Escape a string for use as an assertion value in an LDAP search
+#  filter (RFC 4515). Only the characters that are special in a filter
+#  assertion value are escaped: `*`, `(`, `)`, `\`, and NUL.
+#  Characters such as `=`, `+`, and `,` are intentionally left
+#  unescaped because OpenLDAP does not decode non-required `\HH`
+#  sequences, so escaping them would cause silent match failures for
+#  usernames that legitimately contain those characters.
 #
-#  Use this function -- not `%ldap.dn.escape` -- when inserting user-controlled values
-#  into the filter part of an LDAP URI or search string.
+#  Use this function -- not `%ldap.dn.escape` -- when inserting
+#  user-controlled values into the filter part of an LDAP URI or
+#  search string.
 #
 #  .Return: _string_
 #
@@ -1085,16 +1138,17 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  #  Safely embed User-Name in a search filter.
-#  #  A payload like '*' would otherwise produce (uid=*), matching every user.
-#  result := %ldap("ldap:///ou=people,dc=example,dc=com?cn?sub?(uid=%ldap.filter.escape(%{User-Name}))")
+#  = Safely embed User-Name in a search filter.
+#  = A payload like '*' would otherwise produce (uid=*), matching every user.
+#  result :=
+#  %ldap("ldap:///ou=people,dc=example,dc=com?cn?sub?(uid=%ldap.filter.escape(%{User-Name}))")
 #  ----
 #
 #  === %ldap.filter.safe(...)
 #
-#  Mark a string as already safe for use in an LDAP filter assertion value.  The value will
-#  not be escaped or modified.  Use this only for strings you have constructed or validated
-#  yourself.
+#  Mark a string as already safe for use in an LDAP filter assertion
+#  value. The value will not be escaped or modified. Use this only for
+#  strings you have constructed or validated yourself.
 #
 #  .Return: _string_
 #
@@ -1102,15 +1156,15 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  #  A filter fragment built in policy code, known to be safe.
-#  my-filter := "(objectClass=radiusprofile)"
-#  result := %ldap("ldap:///ou=profiles,dc=example,dc=com?cn?sub?%ldap.filter.safe(%{my-filter})")
+#  = A filter fragment built in policy code, known to be safe.
+#  my-filter := "(objectClass=radiusprofile)" result :=
+#  %ldap("ldap:///ou=profiles,dc=example,dc=com?cn?sub?%ldap.filter.safe(%{my-filter})")
 #  ----
 #
 #  === %ldap.filter.unescape(...)
 #
-#  Decode `\HH` hex sequences in an LDAP filter assertion value back to their original
-#  characters.
+#  Decode `\HH` hex sequences in an LDAP filter assertion value back
+#  to their original characters.
 #
 #  .Return: _string_
 #
@@ -1118,8 +1172,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-string := "john\29\28uid=\2a"
-#  reply.Reply-Message := "Unescaped: %ldap.filter.unescape(%{my-string})"
+#  my-string := "john\29\28uid=\2a" reply.Reply-Message := "Unescaped:
+#  %ldap.filter.unescape(%{my-string})"
 #  ----
 #
 #  .Output
@@ -1130,9 +1184,9 @@ ldap {
 #
 #  === %ldap.uri.escape(...)
 #
-#  Escape a string for safe embedding in an LDAP URI.  Special URI characters are
-#  converted to `\HH` hex sequences so that user-supplied values cannot alter the
-#  structure of the URI.
+#  Escape a string for safe embedding in an LDAP URI. Special URI
+#  characters are converted to `\HH` hex sequences so that
+#  user-supplied values cannot alter the structure of the URI.
 #
 #  .Return: _string_
 #
@@ -1140,7 +1194,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  my-string :=
+#  "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  reply.Reply-Message := "Escaped: %ldap.uri.escape(%{my-string})"
 #  ----
 #
@@ -1152,9 +1207,10 @@ ldap {
 #
 #  === %ldap.uri.safe(...)
 #
-#  Mark a string as already safe for use in an LDAP URI.  The value will not be escaped or
-#  modified.  Use this for URI components (host, port, path) that you have already
-#  validated or constructed yourself.
+#  Mark a string as already safe for use in an LDAP URI. The value
+#  will not be escaped or modified. Use this for URI components (host,
+#  port, path) that you have already validated or constructed
+#  yourself.
 #
 #  .Return: _string_
 #
@@ -1162,12 +1218,14 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  my-int :=
+#  "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ----
 #
 #  === %ldap.uri.unescape(...)
 #
-#  Decode `\HH` hex sequences in an LDAP URI string back to their original characters.
+#  Decode `\HH` hex sequences in an LDAP URI string back to their
+#  original characters.
 #
 #  .Return: _string_
 #
@@ -1175,8 +1233,10 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-string := "ldap\3a\2f\2fou\3dprofiles\2cdc\3dexample\2cdc\3dcom\3f\3fsub\3f\28objectClass\3dradiusprofile\29"
-#  reply.Reply-Message := "Unescaped: %ldap.uri.unescape(%{my-string})"
+#  my-string :=
+#  "ldap\3a\2f\2fou\3dprofiles\2cdc\3dexample\2cdc\3dcom\3f\3fsub\3f\28objectClass\3dradiusprofile\29"
+#  reply.Reply-Message := "Unescaped:
+#  %ldap.uri.unescape(%{my-string})"
 #  ----
 #
 #  .Output
@@ -1189,10 +1249,10 @@ ldap {
 #
 #  Add an option to all attribute referenced in an LDAP URI.
 #
-#  This is for the corner case where a URI is provided by a third party system
-#  and needs amending before being used. e.g. a CRL distribution point extracted
-#  from a certificate may need the "binary" option appending to the attribute
-#  being requested.
+#  This is for the corner case where a URI is provided by a third
+#  party system and needs amending before being used. e.g. a CRL
+#  distribution point extracted from a certificate may need the
+#  "binary" option appending to the attribute being requested.
 #
 #  .Return: _string_
 #
@@ -1200,7 +1260,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  my-uri := "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList?base?objectClass=cRLDistributionPoint"
+#  my-uri :=
+#  "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList?base?objectClass=cRLDistributionPoint"
 #  reply.Reply-Message := %ldap.uri.attr_option(my-uri, 'binary')
 #  ----
 #
@@ -1212,13 +1273,14 @@ ldap {
 #
 #  === %ldap.group(...)
 #
-#  Check whether the current user is a member of a the given group.  If the attribute
-#  `control.LDAP-UserDN` exists, that will be used as the "user" object.  If it does
-#  not then the user is first looked up using the filter form the `user { }` section
-#  of the module configuration.
+#  Check whether the current user is a member of a the given group. If
+#  the attribute `control.LDAP-UserDN` exists, that will be used as
+#  the "user" object. If it does not then the user is first looked up
+#  using the filter form the `user { }` section of the module
+#  configuration.
 #
-#  Groups can be specified either as a name or a DN, with a lookup used if necessary
-#  to convert to the required format.
+#  Groups can be specified either as a name or a DN, with a lookup
+#  used if necessary to convert to the required format.
 #
 #  .Return: _bool_
 #
@@ -1234,10 +1296,10 @@ ldap {
 #
 #  === %ldap.profile(...)
 #
-#  Retrieve an LDAP object representing an RADIUS profile and apply the attriubte
-#  updates as configured in the module `update` section.  This can be useful when
-#  additional profiles need to be applied to a subscriber beyond those directly
-#  associated with their LDAP entry.
+#  Retrieve an LDAP object representing an RADIUS profile and apply
+#  the attriubte updates as configured in the module `update` section.
+#  This can be useful when additional profiles need to be applied to a
+#  subscriber beyond those directly associated with their LDAP entry.
 #
 #  The object can be expressed either as an LDAP URI or a DN.
 #

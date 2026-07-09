@@ -16,27 +16,30 @@
 #
 #  Look for "shadow", and follow the instructions there.
 #
-#  NOTE: This password is usually in the `crypt` form, and is incompatible
-#  with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
+#  NOTE: This password is usually in the `crypt` form, and is
+#  incompatible with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
 #
 #  == Group Comparisons
 #
-#  The module also registers a Unix group expansion, where it is possible
-#  to check if the user is a member of a particular Unix group.
+#  The module also registers a Unix group expansion, where it is
+#  possible to check if the user is a member of a particular Unix
+#  group.
 #
 #	```
 #	if (%unix.group(admin)) { ...
 #	```
 #
-#  The expansion returns `true` if the `User-Name` is a membber of the given
-#  group, and `false` otherwise.
+#  The expansion returns `true` if the `User-Name` is a membber of the
+#  given group, and `false` otherwise.
 #
-#  The old `Unix-Group`, `Group`, and `Group-Name` attributes and comparisons
-#  are no longer supported.
+#  The old `Unix-Group`, `Group`, and `Group-Name` attributes and
+#  comparisons are no longer supported.
 #
-#  All of `radutmp`, `radwho`, `radlast`, and `radzap` have been removed.
+#  All of `radutmp`, `radwho`, `radlast`, and `radzap` have been
+#  removed.
 #
-#  You can no longer have the `unix` module process accounting packets.
+#  You can no longer have the `unix` module process accounting
+#  packets.
 #
 
 #

@@ -7,24 +7,27 @@
 #
 #  = SQL-IP-Pool Module
 #
-#  The module `sqlippool` provide configuration for the SQL based IP Pool module.
+#  The module `sqlippool` provide configuration for the SQL based IP
+#  Pool module.
 #
-#  NOTE: The database schemas are available at `sql/ippool/<DB>/schema.sql`.
+#  NOTE: The database schemas are available at
+#  `sql/ippool/<DB>/schema.sql`.
 #
 #  == Configuration Settings
 #
 sqlippool {
 	#
-	#  sql_module_instance:: SQL instance to use (from `mods-available/sql`)
+	#  sql_module_instance:: SQL instance to use (from
+	#  `mods-available/sql`)
 	#
-	#  If you have multiple sql instances, such as `sql sql1 {...}`,
-	#  use the *instance* name here: `sql1`.
+	#  If you have multiple sql instances, such as `sql sql1 {...}`, use
+	#  the *instance* name here: `sql1`.
 	#
 	sql_module_instance = "sql"
 
 	#
-	#  dialect:: This is duplicative of info available in the SQL module, but
-	#  we have to list it here as we do not yet support nested
+	#  dialect:: This is duplicative of info available in the SQL module,
+	#  but we have to list it here as we do not yet support nested
 	#  reference expansions.
 	#
 	dialect = "mysql"
@@ -50,11 +53,13 @@ sqlippool {
 	pool_name = control.IP-Pool.Name
 
 	#
-	#  allocated_address_attr:: List and attribute where the allocated address is written to.
+	#  allocated_address_attr:: List and attribute where the allocated
+	#  address is written to.
 	#
 	#  [NOTE]
 	#  ====
-	#  It MUST be a qualified name of an attribute of a type which contains IP addresses.
+	#  It MUST be a qualified name of an attribute of a type which
+	#  contains IP addresses.
 	#
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
@@ -67,10 +72,10 @@ sqlippool {
 	#  IP address) to be applied, the owner specified in the incoming
 	#  packet must match the owner recorded for the lease.
 	#
-	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
-	#  attribute the "owner" identifier could be a `User-Name` or a
-	#  certificate serial number provided that the number of sessions is
-	#  limited to one per user/serial.
+	#  For purposes such as IP assignment using a RADIUS
+	#  Framed-IP-Address attribute the "owner" identifier could be a
+	#  `User-Name` or a certificate serial number provided that the
+	#  number of sessions is limited to one per user/serial.
 	#
 	#  For RADIUS the owner will likely be specified by:
 	#
@@ -95,20 +100,21 @@ sqlippool {
 	#
 	#  On a hostile network the owner SHOULD include a component that you
 	#  trust, arranged such that the overall value cannot be spoofed by
-	#  manipulation of the user-controlled data (i.e. the mac or identifier)
-	#  provided by the user's device.
+	#  manipulation of the user-controlled data (i.e. the mac or
+	#  identifier) provided by the user's device.
 	#
-	#  For example it might be that the value `Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` is
-	#  considered trusted as it's set by a controlled device at the edge of
-	#  the network.  Calling-Station-Id however, is usually provided by
-	#  the user's device so may be spoofed.
+	#  For example it might be that the value
+	#  `Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` is considered
+	#  trusted as it's set by a controlled device at the edge of the
+	#  network. Calling-Station-Id however, is usually provided by the
+	#  user's device so may be spoofed.
 	#
 	#  In order to prevent an attacker releasing DHCP leases for another
 	#  device on the network, the owner string should be constructed so
 	#  that it contains both the trusted and untrusted attributes, or if
 	#  the trusted attribute is sufficiently stable and unique, only the
-	#  trusted attribute.
-	#  One example would be `%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
+	#  trusted attribute. One example would be
+	#  `%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
 	#
 	owner = "%{Calling-Station-ID}"
 
@@ -119,7 +125,8 @@ sqlippool {
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	#  For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
+	#  For RADIUS the requested_address will almost always be
+	#  `%{Framed-IP-Address}`.
 	#
 	#  For DHCPv4 the requested_address will almost always be
 	#  `%{Requested-IP-Address || Client-IP-Address}`.
@@ -134,11 +141,11 @@ sqlippool {
 	#
 	#  For RADIUS, this device is recorded so that if an Accounting-On or
 	#  Accounting-Off packet is received, then all leases associated with
-	#  the gateway can be released. 'gateway' in this context is synonymous
-	#  with the NAS the user is connected to.
+	#  the gateway can be released. 'gateway' in this context is
+	#  synonymous with the NAS the user is connected to.
 	#
-	#  For DHCPv4, this device is recorded so that we can respond correctly
-	#  to lease queries.
+	#  For DHCPv4, this device is recorded so that we can respond
+	#  correctly to lease queries.
 	#
 	gateway = "%{NAS-Identifier || NAS-IP-Address}"
 

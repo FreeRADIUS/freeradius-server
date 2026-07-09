@@ -7,7 +7,8 @@
 #
 #  = Mac2IP Module
 #
-#  The `mac2ip` module is a simple file to map a MAC address to an IP address.
+#  The `mac2ip` module is a simple file to map a MAC address to an IP
+#  address.
 #
 #  The file is in the format `<mac>,<ip>`.
 #
@@ -18,7 +19,7 @@
 #    02:01:02:03:04:05,192.0.2.102
 #
 #  This lets you perform simple static IP assignments from a flat-text
-#  file.  You will have to define lease times yourself.
+#  file. You will have to define lease times yourself.
 #
 
 #

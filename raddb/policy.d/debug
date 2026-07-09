@@ -26,7 +26,8 @@ debug_reply {
 }
 
 #
-#  Outputs the contents of the session state list in debugging (-X) mode
+#  Outputs the contents of the session state list in debugging (-X)
+#  mode
 #
 debug_session_state {
 	if (%pairs.debug('session-state')) {

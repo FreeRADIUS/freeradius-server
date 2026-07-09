@@ -7,7 +7,8 @@
 #
 #  = Mac2Vlan Module
 #
-#  The `mac2vlan` module is a simple file to map a MAC address to a VLAN.
+#  The `mac2vlan` module is a simple file to map a MAC address to a
+#  VLAN.
 #
 #  The file should be in the format `<mac>,<vlan>`.
 #

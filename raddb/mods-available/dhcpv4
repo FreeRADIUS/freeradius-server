@@ -18,24 +18,24 @@
 #  relay.
 #
 #  Packets MUST also have a `Gateway-IP-Address` option, otherwise
-#  they will be dropped.  This module does not (yet) support receiving
-#  replies from the DHCPv4 server.  Any packets sent to the outgoing
+#  they will be dropped. This module does not (yet) support receiving
+#  replies from the DHCPv4 server. Any packets sent to the outgoing
 #  socket will be discarded.
 #
 dhcpv4 {
 	#
 	#  ipaddr:: The IP address we use for sending packets.
 	#
-	#  This MUST be an IPv4 address.  IPv6 addresses are not
-	#  supported for DHCPv4.
+	#  This MUST be an IPv4 address. IPv6 addresses are not supported for
+	#  DHCPv4.
 	#
 	ipaddr = 127.0.0.1
 
 	#
 	#  port:: The port we use for sending packets.
 	#
-	#  The default DHCPv4 client port is 68.  It should be changed
-	#  from this only for testing.
+	#  The default DHCPv4 client port is 68. It should be changed from
+	#  this only for testing.
 	#
 #	port = 68
 

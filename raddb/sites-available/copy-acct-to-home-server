@@ -33,8 +33,8 @@ server copy-acct-to-home-server {
 		type = detail
 
 		#
-		#  See sites-available/buffered-sql for more details on
-		#  all the options available for the detail reader.
+		#  See sites-available/buffered-sql for more details on all the
+		#  options available for the detail reader.
 		#
 
 		######################################################
@@ -43,94 +43,86 @@ server copy-acct-to-home-server {
 		#
 		#  The detail file reader acts just like a NAS.
 		#
-		#  This means that if accounting fails, the packet
-		#  is re-tried FOREVER.  It is YOUR responsibility
-		#  to write an accounting policy that returns "ok"
-		#  if the packet was processed properly, "fail" on
-		#  a database error, AND "ok" if you want to ignore
-		#  the packet (e.g. no Acct-Status-Type).
+		#  This means that if accounting fails, the packet is re-tried
+		#  FOREVER. It is YOUR responsibility to write an accounting policy
+		#  that returns "ok" if the packet was processed properly, "fail" on
+		#  a database error, AND "ok" if you want to ignore the packet (e.g.
+		#  no Acct-Status-Type).
 		#
-		#  Neither the detail file write OR the detail file
-		#  reader look at the contents of the packets.  They
-		#  just either dump the packet verbatim to the file,
-		#  or read it verbatim from the file and pass it to
-		#  the server.
+		#  Neither the detail file write OR the detail file reader look at
+		#  the contents of the packets. They just either dump the packet
+		#  verbatim to the file, or read it verbatim from the file and pass
+		#  it to the server.
 		#
 		######################################################
 
 
-		#  The location where the detail file is located.
-		#  This should be on local disk, and NOT on an NFS
-		#  mounted location!
+		#  The location where the detail file is located. This should be on
+		#  local disk, and NOT on an NFS mounted location!
 		#
-		#  On most systems, this should support file globbing
-		#  e.g. "${radacctdir}/detail-*:*"
-		#  This lets you write many smaller detail files as in
-		#  the example in radiusd.conf: ".../detail-%Y%m%d:%H"
-		#  Writing many small files is often better than writing
-		#  one large file.  File globbing also means that with
-		#  a common naming scheme for detail files, then you can
-		#  have many detail file writers, and only one reader.
+		#  On most systems, this should support file globbing e.g.
+		#  "${radacctdir}/detail-*:*" This lets you write many smaller
+		#  detail files as in the example in radiusd.conf:
+		#  ".../detail-%Y%m%d:%H" Writing many small files is often better
+		#  than writing one large file. File globbing also means that with a
+		#  common naming scheme for detail files, then you can have many
+		#  detail file writers, and only one reader.
 		#
 		filename = ${radacctdir}/detail
 
 		#
-		#  The server can read accounting packets from the
-		#  detail file much more quickly than those packets
-		#  can be written to a database.  If the database is
-		#  overloaded, then bad things can happen.
+		#  The server can read accounting packets from the detail file much
+		#  more quickly than those packets can be written to a database. If
+		#  the database is overloaded, then bad things can happen.
 		#
-		#  The server will keep track of how long it takes to
-		#  process an entry from the detail file.  It will
-		#  then pause between handling entries.  This pause
-		#  allows databases to "catch up", and gives the
-		#  server time to notice that other packets may have
-		#  arrived.
+		#  The server will keep track of how long it takes to process an
+		#  entry from the detail file. It will then pause between handling
+		#  entries. This pause allows databases to "catch up", and gives the
+		#  server time to notice that other packets may have arrived.
 		#
-		#  The pause is calculated dynamically, to ensure that
-		#  the load due to reading the detail files is limited
-		#  to a small percentage of CPU time.  The
-		#  "load_factor" configuration item is a number
-		#  between 1 and 100.  The server will try to keep the
-		#  percentage of time taken by "detail" file entries
-		#  to "load_factor" percentage of the CPU time.
+		#  The pause is calculated dynamically, to ensure that the load due
+		#  to reading the detail files is limited to a small percentage of
+		#  CPU time. The "load_factor" configuration item is a number
+		#  between 1 and 100. The server will try to keep the percentage of
+		#  time taken by "detail" file entries to "load_factor" percentage
+		#  of the CPU time.
 		#
-		#  If the "load_factor" is set to 100, then the server
-		#  will read packets as fast as it can, usually
-		#  causing databases to go into overload.
+		#  If the "load_factor" is set to 100, then the server will read
+		#  packets as fast as it can, usually causing databases to go into
+		#  overload.
 		#
 		load_factor = 10
 
 		#
-		#  Track progress through the detail file.  When the detail
-		#  file is large, and the server is restarted, it will
-		#  read from the START of the file.
+		#  Track progress through the detail file. When the detail file is
+		#  large, and the server is restarted, it will read from the START
+		#  of the file.
 		#
-		#  Setting "track = yes" means it will skip packets which
-		#  have already been processed.  The default is "no".
+		#  Setting "track = yes" means it will skip packets which have
+		#  already been processed. The default is "no".
 		#
-	#	track = yes
+		#	track = yes
 
 	}
 
 	#
-	#  Pre-accounting.  Decide which accounting type to use.
+	#  Pre-accounting. Decide which accounting type to use.
 	#
 	recv Accounting-Request {
 		#
-		#  Read the 'acct_users' file.  This isn't always
-		#  necessary, and can be deleted if you do not use it.
+		#  Read the 'acct_users' file. This isn't always necessary, and can
+		#  be deleted if you do not use it.
 		files
 	}
 
 	#
-	#  Accounting.  Log the accounting data.
+	#  Accounting. Log the accounting data.
 	#
 	send Accounting-Response {
 		   #
-		   #  Since we're proxying, we don't log anything
-		   #  locally.  Ensure that the accounting section
-		   #  "succeeds" by forcing an "ok" return.
+		   #  Since we're proxying, we don't log anything locally. Ensure
+		   #  that the accounting section "succeeds" by forcing an "ok"
+		   #  return.
 		   ok
 	}
 }

@@ -6,7 +6,8 @@
 #
 #  = Time-based One-Time Passwords (TOTP)
 #
-#  Defined in `RFC6238`, and used in Google Authenticator, among others.
+#  Defined in `RFC6238`, and used in Google Authenticator, among
+#  others.
 #
 #  This module can only be used in the "authenticate" section.
 #
@@ -18,16 +19,18 @@
 #
 #	`control.TOTP.Key`
 #
-#  If `TOTP.Key` exists, then it will be used instead of `TOTP.Secret`.
+#  If `TOTP.Key` exists, then it will be used instead of
+#  `TOTP.Secret`.
 #
 #  The TOTP password entered by the user should be placed into:
 #
 #	`request.TOTP.From-User`
 #
-#  The module will return `ok` if the passwords match, and `fail`
-#  if the passwords do not match.
+#  The module will return `ok` if the passwords match, and `fail` if
+#  the passwords do not match.
 #
-#  NOTE: The crypto algorithms are HmacSHA1, HmacSHA256 and HmacSHA512.
+#  NOTE: The crypto algorithms are HmacSHA1, HmacSHA256 and
+#  HmacSHA512.
 #
 #  NOTE: This module will *NOT* interact with Google. The module is
 #  intended to be used where the local administrator knows the TOTP
@@ -62,12 +65,14 @@ totp {
 	otp_length = 6
 
 	#
-	#  lookback_steps:: How many steps backward in time we look for a matching OTP.
+	#  lookback_steps:: How many steps backward in time we look for a
+	#  matching OTP.
 	#
 	lookback_steps = 1
 
 	#
-	#  lookforward_steps:: How many steps forward in time we look for a matching OTP.
+	#  lookforward_steps:: How many steps forward in time we look for a
+	#  matching OTP.
 	#
 	lookforward_steps = 0
 
@@ -81,9 +86,9 @@ totp {
 	#
 	#  time_offset:: A time offset to use from the current time.
 	#
-	#  Some tokens get severely out of sync with local time.  It is
-	#  possible to offset the definition of "now" for one token by setting
-	#  this to an attribute containing the offset.
+	#  Some tokens get severely out of sync with local time. It is
+	#  possible to offset the definition of "now" for one token by
+	#  setting this to an attribute containing the offset.
 	#
 #	time_offset = 0
 }

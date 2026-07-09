@@ -7,99 +7,107 @@
 #
 #  = IMAP Module
 #
-#  The `imap` module validates a users name and password against an IMAP server.
-#  It should be called from an `authenticate` section.
+#  The `imap` module validates a users name and password against an
+#  IMAP server. It should be called from an `authenticate` section.
 #
-#  The module can optionally perform a tls handshake, enabled with require_cert
+#  The module can optionally perform a tls handshake, enabled with
+#  require_cert
 #
 
 imap {
 	#
-	#  tls { ... }:: Configure the tls related items which control
-	#  how FreeRADIUS connects to an IMAP server.
+	#  tls { ... }:: Configure the tls related items which control how
+	#  FreeRADIUS connects to an IMAP server.
 	#
 	tls {
 		#
 		#  Certificate validation options
 		#
-		#  Specifies how the certificate(s) presented by the
-		#  IMAP server are validated, and which certificates
-		#  (if any) to send to that IMAP server.
+		#  Specifies how the certificate(s) presented by the IMAP server are
+		#  validated, and which certificates (if any) to send to that IMAP
+		#  server.
 		#
-		#  The options here behave the same as the options in
-		#  other `tls` sections in the server.
+		#  The options here behave the same as the options in other `tls`
+		#  sections in the server.
 		#
 
 		#
-		#  certificate_file:: PEM formatted file containing the certificate we present to the IMAP server
+		#  certificate_file:: PEM formatted file containing the certificate
+		#  we present to the IMAP server
 		#
-		#  Specifies a certificate and any intermediary CAs we should send to the IMAP server.
+		#  Specifies a certificate and any intermediary CAs we should send
+		#  to the IMAP server.
 		#
-		#  This file should usually contain the client certificate file first, then any
-		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
-		#  to deepest (signed directly by the root CA).
+		#  This file should usually contain the client certificate file
+		#  first, then any intermediary signing CAs, shallowest (direct
+		#  signee of the certificate_file) to deepest (signed directly by
+		#  the root CA).
 		#
 #		certificate_file     = /path/to/radius.pem
 
 		#
-		#  ca_file:: PEM formatted file containing the chain
-		#  to validate the IMAP server's certificate.
+		#  ca_file:: PEM formatted file containing the chain to validate the
+		#  IMAP server's certificate.
 		#
-		#  Any certificate chain MUST be in order from server
-		#  certificate (first in the file) to intermediary CAs (second) to
-		#  Root CA (last in the file) as per RFC 4346 Section 7.4.2 (see certificate_list)
+		#  Any certificate chain MUST be in order from server certificate
+		#  (first in the file) to intermediary CAs (second) to Root CA (last
+		#  in the file) as per RFC 4346 Section 7.4.2 (see certificate_list)
 		#
-		#  Providing a complete certificate chain here is the
-		#  most common way of validating the certificate
-		#  presented by an IMAP server.
+		#  Providing a complete certificate chain here is the most common
+		#  way of validating the certificate presented by an IMAP server.
 		#
 #		ca_file	             = "${certdir}/cacert.pem"
 
 		#
-		#  ca_issuer_file:: PEM formatted file containing the
-		#  CA that signed the IMAP server's certificate.
+		#  ca_issuer_file:: PEM formatted file containing the CA that signed
+		#  the IMAP server's certificate.
 		#
-		#  Specifies the certificate which directly signed
-		#  the certificate presented by the IMAPs server.
+		#  Specifies the certificate which directly signed the certificate
+		#  presented by the IMAPs server.
 		#
-		#  This configuration option can be used to prevent
-		#  certificates passing validation which were signed
-		#  by other intermediary CAs, or root CAs, in the
-		#  trusted certificate chain.
+		#  This configuration option can be used to prevent certificates
+		#  passing validation which were signed by other intermediary CAs,
+		#  or root CAs, in the trusted certificate chain.
 		#
 #		ca_issuer_file     = "${certdir}/caissuer.pem"
 
 		#
-		#  ca_path:: A directory containing multiple root CA certs named by their hash.
+		#  ca_path:: A directory containing multiple root CA certs named by
+		#  their hash.
 		#
 		#  See the OpenSSL documentation for more details:
 		#  - https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
 		#  - https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
 		#
-		#  This configuration option should only be used when the IMAP server being contacted
-		#  is not known ahead of time (using a URL from an external source), and/or the CA used
-		#  to sign the IMAP server certificate is unknown.
+		#  This configuration option should only be used when the IMAP
+		#  server being contacted is not known ahead of time (using a URL
+		#  from an external source), and/or the CA used to sign the IMAP
+		#  server certificate is unknown.
 		#
-		#  If not set, then whatever libcurl has as its default will be used, which typically
-		#  will be the operating system's set of trusted CAs.  This will be visible in the debug
-		#  output when FreeRADIUS starts.
+		#  If not set, then whatever libcurl has as its default will be
+		#  used, which typically will be the operating system's set of
+		#  trusted CAs. This will be visible in the debug output when
+		#  FreeRADIUS starts.
 		#
 #		ca_path	             = "${certdir}"
 
 		#
-		#  private_key_file:: PEM formatted file containing the private key for the specified `certificate_file`
+		#  private_key_file:: PEM formatted file containing the private key
+		#  for the specified `certificate_file`
 		#
 		#  This item must be specified if `certificate_file` is being used.
 		#
 #		private_key_file     = /path/to/radius.key
 
 		#
-		#  private_key_password:: Password used to decrypt the `private_key_file`.
+		#  private_key_password:: Password used to decrypt the
+		#  `private_key_file`.
 		#
 #		private_key_password = "supersecret"
 
 		#
-		#  random_file:: Source of random data used for various cryptographic functions.
+		#  random_file:: Source of random data used for various
+		#  cryptographic functions.
 		#
 #		random_file          = /dev/urandom
 
@@ -120,8 +128,8 @@ imap {
 #		check_cert = no
 
 		#
-		#  request_cert:: Options for controlling how the
-		#  module requests TLS to the IMAP server.
+		#  request_cert:: Options for controlling how the module requests
+		#  TLS to the IMAP server.
 		#
 		#  May be one of:
 		#
@@ -154,7 +162,8 @@ imap {
 #		check_cert_cn = no
 
 		#
-		#  extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
+		#  extract_cert_attrs:: Extract OIDs from presented certificates as
+		#  OIDs.
 		#
 		#  Default is `no`
 		#
@@ -164,8 +173,9 @@ imap {
 	#
 	#  uri:: URI which will be used for connecting to the IMAP server.
 	#
-	#  The `imap` module uses Curl (https://curl.haxx.se/libcurl/) to implement
-	#  the underlying mail protocols.  The URI should be in the form of:
+	#  The `imap` module uses Curl (https://curl.haxx.se/libcurl/) to
+	#  implement the underlying mail protocols. The URI should be in the
+	#  form of:
 	#
 	#  `SCHEME://IP:PORT/`
 	#
@@ -187,18 +197,18 @@ imap {
 	uri = "imap://192.0.20.1/"
 
 	#
-	#  timeout:: How long the module will wait before giving up on the response
-	#  from the IMAP server.
+	#  timeout:: How long the module will wait before giving up on the
+	#  response from the IMAP server.
 	#
 	timeout = 5s
 
 	#
-	#  connection { .. }:: Configure how connection handles are
-	#  managed per thread.
+	#  connection { .. }:: Configure how connection handles are managed
+	#  per thread.
 	#
 	connection {
 		#
-		#  Reusable connection handles are allocated in blocks.  These
+		#  Reusable connection handles are allocated in blocks. These
 		#  parameters allow for tuning how that is done.
 		#
 		#  Since http requests are performed async, the settings here
@@ -207,29 +217,28 @@ imap {
 		reuse {
 
 			#
-			#  min:: The minimum number of connection handles to
-			#  keep allocated.
+			#  min:: The minimum number of connection handles to keep
+			#  allocated.
 			#
 			min = 10
 
 			#
-			#  max:: The maximum number of reusable connection handles
-			#  to allocate.
+			#  max:: The maximum number of reusable connection handles to
+			#  allocate.
 			#
-			#  Any requests to allocate a connection handle beyond
-			#  this number will cause a temporary handle to be allocated.
-			#  This is less efficient than the block allocation so
-			#  `max` should be set to reflect the number of outstanding
-			#  requests expected at peak load.
+			#  Any requests to allocate a connection handle beyond this number
+			#  will cause a temporary handle to be allocated. This is less
+			#  efficient than the block allocation so `max` should be set to
+			#  reflect the number of outstanding requests expected at peak
+			#  load.
 			max = 100
 
 			#
-			#  cleanup_interval:: How often to free un-used connection
-			#  handles.
+			#  cleanup_interval:: How often to free un-used connection handles.
 			#
-			#  Every `cleanup_interval` a cleanup routine runs which
-			#  will free any blocks of handles which are not in use,
-			#  ensuring that at least `min` handles are kept.
+			#  Every `cleanup_interval` a cleanup routine runs which will free
+			#  any blocks of handles which are not in use, ensuring that at
+			#  least `min` handles are kept.
 			#
 			cleanup_interval = 30s
 

@@ -7,7 +7,8 @@
 #
 #  = REDISWho Module
 #
-#  The `rediswho` module tracks the last set of login sessions for a user.
+#  The `rediswho` module tracks the last set of login sessions for a
+#  user.
 #
 
 #
@@ -17,30 +18,29 @@ rediswho {
 	#
 	#  server::
 	#
-	#  If using Redis cluster, multiple 'bootstrap' servers may be
-	#  listed here (as separate config items). These will be contacted
-	#  in turn until one provides us with a valid map for the cluster.
-	#  Server strings may contain unique ports e.g.:
+	#  If using Redis cluster, multiple 'bootstrap' servers may be listed
+	#  here (as separate config items). These will be contacted in turn
+	#  until one provides us with a valid map for the cluster. Server
+	#  strings may contain unique ports e.g.:
 	#
 	#    server = '127.0.0.1:30001'
 	#    server = '[::1]:30002'
 	#
 	#  NOTE: Instantiation failure behaviour is controlled by
-	#  `pool.start` as with other modules. With clustering
-	#  however, the `pool { ... }` section determines limits for
-	#  each node we access in the cluster, and not the cluster as
-	#  a whole.
+	#  `pool.start` as with other modules. With clustering however, the
+	#  `pool { ... }` section determines limits for each node we access
+	#  in the cluster, and not the cluster as a whole.
 	#
 	server = 127.0.0.1
 
 	#
-	#  database:: Select the Redis logical database having the specified zero-based numeric index.
+	#  database:: Select the Redis logical database having the specified
+	#  zero-based numeric index.
 	#
 #	database = 0
 
 	#
-	#  port:: Port to connect to
-	#  The default port is 6379.
+	#  port:: Port to connect to The default port is 6379.
 	#
 	port = 6379
 
@@ -60,8 +60,8 @@ rediswho {
 	#
 	#  expire_time:: Expiry time in seconds.
 	#
-	#  Any sessions which have not received an update in this time will be
-	#  automatically expired.
+	#  Any sessions which have not received an update in this time will
+	#  be automatically expired.
 	#
 	expire_time = 86400
 
@@ -70,13 +70,15 @@ rediswho {
 	#
 	#  Each subsection contains insert / trim / expire queries.
 	#
-	#  The subsections are named after the contents of the `Acct-Status-Type` attribute.
+	#  The subsections are named after the contents of the
+	#  `Acct-Status-Type` attribute.
 	#
-	#  See `dictionary.rfc2866` for the names of the various Acct-Status-Type values,
-	#  or look at the output of debug mode.
+	#  See `dictionary.rfc2866` for the names of the various
+	#  Acct-Status-Type values, or look at the output of debug mode.
 	#
-	#  This module supports *any* `Acct-Status-Type`.  Just add a subsection
-	#  of the appropriate name, along with insert / trim / expire queries.
+	#  This module supports *any* `Acct-Status-Type`. Just add a
+	#  subsection of the appropriate name, along with insert / trim /
+	#  expire queries.
 	#
 
 	#

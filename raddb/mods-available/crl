@@ -21,10 +21,11 @@ crl {
 	#
 	#  virtual_server:: Name of the virtual server used to fetch CRLs.
 	#
-	#  This virtual server must use the 'crl' namespace and provide
-	#  a `recv CRL-Fetch` section to fetch CRLs.
+	#  This virtual server must use the 'crl' namespace and provide a
+	#  `recv CRL-Fetch` section to fetch CRLs.
 	#
-	#  A suitable example virtual server is provided in sites-available/crl
+	#  A suitable example virtual server is provided in
+	#  sites-available/crl
 	#
 	virtual_server = crl
 
@@ -36,13 +37,12 @@ crl {
 	#  If a given CRL has not already been fetched when a certificate
 	#  requires verification, then it will be fetched.
 	#
-	#  If the CRL distribution points which will be needed are known
-	#  then they can be configured using one or more instance of this
-	#  option.
+	#  If the CRL distribution points which will be needed are known then
+	#  they can be configured using one or more instance of this option.
 	#
 	#  These distribution points will be fetched during server startup.
 	#
-	#  Only base CRL distribution points should be listed here.  Deltas
+	#  Only base CRL distribution points should be listed here. Deltas
 	#  which they refer to will automatically be fetched.
 	#
 ##	url = http://example.com/ca.crl

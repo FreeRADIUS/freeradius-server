@@ -8,53 +8,53 @@
 #  = Always Module
 #
 #  The `always` module simply returns the same result, always, without
-#  doing anything else.  It is here for use in complex policies.
+#  doing anything else. It is here for use in complex policies.
 #
-#  The main configuration item is `rcode`, which sets the return  code that
-#  this  instantiation  of  the  module  will return. The default, if none
-#  specified, is 'fail'.
+#  The main configuration item is `rcode`, which sets the return code
+#  that this instantiation of the module will return. The default, if
+#  none specified, is 'fail'.
 #
 
 #
 #  == Syntax
 #
 ##always <name> {
-	#
-	#  rcode:: Return code.
-	#
-	#  The `rcode` may be one of the following values:
-	#
-	#  [options="header,autowidth"]
-	#  |===
-	#  | Parameter  | Description
-	#  | `reject`   | Reject the user.
-	#  | `fail`     | Simulate or indicate a failure.
-	#  | `ok`       | Simulate or indicate a success.
-	#  | `handled`  | Indicate that the request has been handled,
-	#                 stop processing, and send response if set.
-	#  | `invalid`  | Indicate that the request is invalid.
-	#  | `disallow` | Indicate that the user account has been
-	#                 locked out.
-	#  | `notfound` | Indicate that a user account can't be found.
-	#  | `noop`     | Simulate a no-op.
-	#  | `updated`  | Indicate that the request has been updated.
-	#  |===
-	#
+#
+#  rcode:: Return code.
+#
+#  The `rcode` may be one of the following values:
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Parameter  | Description
+#  | `reject`   | Reject the user.
+#  | `fail`     | Simulate or indicate a failure.
+#  | `ok`       | Simulate or indicate a success.
+#  | `handled`  | Indicate that the request has been handled,
+#                 stop processing, and send response if set.
+#  | `invalid`  | Indicate that the request is invalid.
+#  | `disallow` | Indicate that the user account has been
+#                 locked out.
+#  | `notfound` | Indicate that a user account can't be found.
+#  | `noop`     | Simulate a no-op.
+#  | `updated`  | Indicate that the request has been updated.
+#  |===
+#
 ##	rcode = <value>
 
 	#
 	#  simulcount::
 	#
-	#  If an instance of this module is listed in a `session {}`
-	#  section, this simulates a user having `<integer>` number of sessions.
+	#  If an instance of this module is listed in a `session {}` section,
+	#  this simulates a user having `<integer>` number of sessions.
 	#
 ##	simulcount = <integer>
 
 	#
 	#  mpp::
 	#
-	#  If an instance is listed in a `session {}` section, this
-	#  simulates the user having multilink sessions.
+	#  If an instance is listed in a `session {}` section, this simulates
+	#  the user having multilink sessions.
 	#
 ##	mpp = <integer>
 ##}
@@ -62,8 +62,8 @@
 #
 #  == xlat for peeking and poking the status
 #
-#  An xlat based on the instance name can be called to change the status
-#  returned by the instance.
+#  An xlat based on the instance name can be called to change the
+#  status returned by the instance.
 #
 #  .Example
 #
@@ -74,8 +74,9 @@
 #  ...
 #  ```
 #
-#  The above xlats expand to the current status of the module. To fetch the
-#  current status without affecting it call the xlat with an empty argument:
+#  The above xlats expand to the current status of the module. To
+#  fetch the current status without affecting it call the xlat with an
+#  empty argument:
 #
 #  .Example
 #

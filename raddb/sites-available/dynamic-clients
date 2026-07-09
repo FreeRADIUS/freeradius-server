@@ -39,22 +39,22 @@
 #  To enable dynamic clients in an existing virtual server, copy the
 #  "dynamic_clients" sub-section of the "udp" listener from the below
 #  example. Then copy the "new client", "add client", and "deny
-#  client" sub-sections into the virtual server.  Set `dynamic_clients
+#  client" sub-sections into the virtual server. Set `dynamic_clients
 #  = yes` in the listener, and then the virtual server will be enabled
 #  for dynamic clients.
 #
 #  When clients are added to a listener, they exist ONLY for that
-#  listener.  Dynamic clients can process packets ONLY through the
-#  virtual server in which they are defined.  Unlike v3, you CANNOT
+#  listener. Dynamic clients can process packets ONLY through the
+#  virtual server in which they are defined. Unlike v3, you CANNOT
 #  define a global client, and point it to a different virtual server,
 #
 server dynamic_clients {
 	namespace = radius
 
 	#
-	#  See the "default" virtual server for examples of how to
-	#  configure a "listen" section.  Only the "dynamic_clients"
-	#  changes are documented here.
+	#  See the "default" virtual server for examples of how to configure
+	#  a "listen" section. Only the "dynamic_clients" changes are
+	#  documented here.
 	#
 	listen {
 		type = Access-Request
@@ -66,32 +66,29 @@ server dynamic_clients {
 		#
 		limit {
 			#
-			#  Limit the number of dynamic clients which
-			#  can be defined.
+			#  Limit the number of dynamic clients which can be defined.
 			#
-			#  If there are no dynamic clients, this
-			#  configuration item is ignored.
+			#  If there are no dynamic clients, this configuration item is
+			#  ignored.
 			#
-			#  The special value of "0" means "no limit".
-			#  We do not recommend this.
+			#  The special value of "0" means "no limit". We do not recommend
+			#  this.
 			#
 			max_clients = 256
 
 			#
-			#  Limit the total number of connections which
-			#  used.  Each connection opens a new socket,
-			#  so be aware of system file descriptor
-			#  limitations.
+			#  Limit the total number of connections which used. Each
+			#  connection opens a new socket, so be aware of system file
+			#  descriptor limitations.
 			#
-			#  If the listeners do not use connected
-			#  sockets, then this configuration item is
-			#  ignored.
+			#  If the listeners do not use connected sockets, then this
+			#  configuration item is ignored.
 			#
 			max_connections = 256
 
 			#
-			#  Close a connection if it does not receive
-			#  a packet within this time.
+			#  Close a connection if it does not receive a packet within this
+			#  time.
 			#
 			#  Useful range of values: 5 to 600
 			#
@@ -103,19 +100,17 @@ server dynamic_clients {
 			dynamic_timeout = 600.0
 
 			#
-			#  nak_lifetime:: Time for which blocked
-			#  clients are placed into a NAK cache.
+			#  nak_lifetime:: Time for which blocked clients are placed into a
+			#  NAK cache.
 			#
-			#  If a dynamic client is disallowed, it is
-			#  placed onto a "NAK" list for a period
-			#  of time.  This process helps to prevent
-			#  DoS attacks.  When subsequent packets are
-			#  received from that IP address, they hit the
-			#  "NAK" cache, and are immediately discarded.
+			#  If a dynamic client is disallowed, it is placed onto a "NAK"
+			#  list for a period of time. This process helps to prevent DoS
+			#  attacks. When subsequent packets are received from that IP
+			#  address, they hit the "NAK" cache, and are immediately
+			#  discarded.
 			#
-			#  After `nak_timeout` seconds, the blocked
-			#  entry will be removed, and the IP will be
-			#  allowed to try again to define a dynamic
+			#  After `nak_timeout` seconds, the blocked entry will be removed,
+			#  and the IP will be allowed to try again to define a dynamic
 			#  client.
 			#
 			#  Useful range of values: 1 to 600
@@ -123,25 +118,21 @@ server dynamic_clients {
 			nak_lifetime = 30.0
 
 			#
-			#  cleanup_delay:: The time to wait (in
-			#  seconds) before cleaning up a reply to an
-			#  Access-Request packet.
+			#  cleanup_delay:: The time to wait (in seconds) before cleaning up
+			#  a reply to an Access-Request packet.
 			#
-			#  The reply is normally cached internally for
-			#  a short period of time, after it is sent to
-			#  the NAS.  The reply packet may be lost in
-			#  the network, and the NAS will not see it.
-			#  The NAS will then resend the request, and
-			#  the server will respond quickly with the
+			#  The reply is normally cached internally for a short period of
+			#  time, after it is sent to the NAS. The reply packet may be lost
+			#  in the network, and the NAS will not see it. The NAS will then
+			#  resend the request, and the server will respond quickly with the
 			#  cached reply.
 			#
-			#  If this value is set too low, then
-			#  duplicate requests from the NAS MAY NOT be
-			#  detected, and will instead be handled as
-			#  separate requests.
+			#  If this value is set too low, then duplicate requests from the
+			#  NAS MAY NOT be detected, and will instead be handled as separate
+			#  requests.
 			#
-			#  If this value is set too high, then the
-			#  server will use more memory for no benefit.
+			#  If this value is set too high, then the server will use more
+			#  memory for no benefit.
 			#
 			#  Useful range of values: 2 to 10
 			#
@@ -155,57 +146,44 @@ server dynamic_clients {
 			#
 			#  Whether or not we allow dynamic clients.
 			#
-			#  If set to true, then packets from unknown
-			#  clients are passed through the "new client"
-			#  subsection below.  See that section for
+			#  If set to true, then packets from unknown clients are passed
+			#  through the "new client" subsection below. See that section for
 			#  more information.
 			#
 			dynamic_clients = true
 
 			#
-			#  If dynamic clients are allowed, then limit
-			#  them to only a small set of source
-			#  networks.
+			#  If dynamic clients are allowed, then limit them to only a small
+			#  set of source networks.
 			#
-			#  If dynamic clients are not allowed, then
-			#  this section is ignored.
+			#  If dynamic clients are not allowed, then this section is
+			#  ignored.
 			#
 			networks {
 				#
-				#  Allow packets from these networks
-				#  to define dynamic clients.
+				#  Allow packets from these networks to define dynamic clients.
 				#
-				#  Packets from all other sources will
-				#  be rejected.
+				#  Packets from all other sources will be rejected.
 				#
-				#  Even if a packet is from an allowed
-				#  network, it still must be
-				#  configured by the "new client"
-				#  subsection.
+				#  Even if a packet is from an allowed network, it still must be
+				#  configured by the "new client" subsection.
 				#
-				#  There is no limit to the number of
-				#  networks which can be listed here.
-				#  Networks are put into a patricia
-				#  trie, so lookups are fast and
+				#  There is no limit to the number of networks which can be listed here.
+				#  Networks are put into a patricia trie, so lookups are fast and
 				#  efficient.
 				#
 				allow = 127/8
 				allow = 192.0.2/24
 
 				#
-				#  The default is to deny all networks
-				#  which are not in the "allow" list.
+				#  The default is to deny all networks which are not in the "allow" list.
 				#
-				#  However, it may be useful to allow
-				#  a large range, and then deny a
-				#  subset of IPs in that range.  For
-				#  that situation, use a "deny"
+				#  However, it may be useful to allow a large range, and then deny a
+				#  subset of IPs in that range. For that situation, use a "deny"
 				#
-				#  In this example, 127.0.0.1 can be
-				#  used to define a dynamic client.
-				#  But the (hypothetical) 127.1.0.1
-				#  address cannot be used to define
-				#  a dynamic client.
+				#  In this example, 127.0.0.1 can be used to define a dynamic client. But
+				#  the (hypothetical) 127.1.0.1 address cannot be used to define a dynamic
+				#  client.
 				#
 				deny = 127.1/16
 			}
@@ -213,35 +191,33 @@ server dynamic_clients {
 	}
 
 	#
-	#  When a request is received from an unknown client, it is
-	#  initially passed through this 'new client' section to
-	#  determine whether to add the client or not.
+	#  When a request is received from an unknown client, it is initially
+	#  passed through this 'new client' section to determine whether to
+	#  add the client or not.
 	#
-	#  This section should define the client fields as attributes,
-	#  and return `ok` to add the client.
+	#  This section should define the client fields as attributes, and
+	#  return `ok` to add the client.
 	#
 	#  If this section returns `fail`, then the client is denied.
 	#
 	new client {
 		#
-		#  Put any modules you want here.  SQL, LDAP, "exec",
-		#  Perl, etc.  The only requirements is that the
-		#  attributes to define a new client MUST go into the
-		#  control list.
+		#  Put any modules you want here. SQL, LDAP, "exec", Perl, etc. The
+		#  only requirements is that the attributes to define a new client
+		#  MUST go into the control list.
 		#
-		#  The packet received here is a complete, normal,
-		#  packet.  All attributes are decoded and available.
-		#  However, all attributes that depend on the shared
-		#  secret (e.g. User-Password, etc.) are blank.
+		#  The packet received here is a complete, normal, packet. All
+		#  attributes are decoded and available. However, all attributes
+		#  that depend on the shared secret (e.g. User-Password, etc.) are
+		#  blank.
 		#
 
 		#
-		#  Example 1: Hard-code a client IP.  This example is
+		#  Example 1: Hard-code a client IP. This example is
 		#             useless, but it documents the attributes
 		#             you need.
 		#
-		#  Copy the IP address of the client from
-		#  the request just received
+		#  Copy the IP address of the client from the request just received
 		control += {
 			FreeRADIUS-Client-IP-Address = "%{Net.Src.IP}"
 
@@ -266,8 +242,8 @@ server dynamic_clients {
 	#
 	#  This subsection is called when the client was added.
 	#
-	#  The main purpose of this section is to enable logging when
-	#  a client is added.
+	#  The main purpose of this section is to enable logging when a
+	#  client is added.
 	#
 	#  If this section is empty, you can just delete it entirely.
 	#
@@ -278,8 +254,8 @@ server dynamic_clients {
 	#
 	#  This subsection is called if the client was NOT added.
 	#
-	#  The main purpose of this section is to enable logging when
-	#  a client is denied.
+	#  The main purpose of this section is to enable logging when a
+	#  client is denied.
 	#
 	#  If this section is empty, you can just delete it entirely.
 	#

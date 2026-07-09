@@ -11,10 +11,10 @@
 server vmps {
 	#
 	#  In v4, all "server" sections MUST start with a "namespace"
-	#  parameter.  This tells the server which protocol is being used.
+	#  parameter. This tells the server which protocol is being used.
 	#
-	#  All of the subsequent "listen" sections in this server will
-	#  only accept packets for that protocol.
+	#  All of the subsequent "listen" sections in this server will only
+	#  accept packets for that protocol.
 	#
 	namespace = vmps
 
@@ -44,13 +44,13 @@ server vmps {
 			port = 1589
 
 			#
-			#  Some systems support binding to an interface, in addition
-			#  to the IP address.  This feature isn't strictly necessary,
-			#  but for sites with many IP addresses on one interface,
-			#  it's useful to say "listen on all addresses for eth0".
+			#  Some systems support binding to an interface, in addition to the
+			#  IP address. This feature isn't strictly necessary, but for sites
+			#  with many IP addresses on one interface, it's useful to say
+			#  "listen on all addresses for eth0".
 			#
-			#  If your system does not support this feature, you will
-			#  get an error if you try to use it.
+			#  If your system does not support this feature, you will get an
+			#  error if you try to use it.
 			#
 #			interface = eth0
 		}
@@ -58,8 +58,8 @@ server vmps {
 
 	#
 	#  You can list multiple "client" sections here in order to define
-	#  clients which apply only to this virtual server.  i.e. only for
-	#  the VMPS protocol.
+	#  clients which apply only to this virtual server. i.e. only for the
+	#  VMPS protocol.
 	#
 
 	#
@@ -67,8 +67,8 @@ server vmps {
 	#
 	recv Join-Request {
 		#
-		#  Some requests may not have a MAC address.  Try to
-		#  create one using other attributes.
+		#  Some requests may not have a MAC address. Try to create one using
+		#  other attributes.
 		if (!MAC-Address) {
 			if (Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
 				request.MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
@@ -81,10 +81,10 @@ server vmps {
 		#
 		#  Do a simple mapping of MAC to VLAN.
 		#
-		#  See `mods-available/mac2vlan` for the definition of the "mac2vlan"
-		#  module.
+		#  See `mods-available/mac2vlan` for the definition of the
+		#  "mac2vlan" module.
 		#
-#		mac2vlan
+		#		mac2vlan
 
 		#
 		#  required VMPS reply attributes
@@ -96,8 +96,8 @@ server vmps {
 		reply.VLAN-Name = "please_use_real_vlan_here"
 
 		#
-		#  NOTE: If you have VLAN's in a database, you can `select`
-		#  the VLAN name based on the MAC address.
+		#  NOTE: If you have VLAN's in a database, you can `select` the VLAN
+		#  name based on the MAC address.
 		#
 #		reply.VLAN-Name = %sql("select ... where mac='%{MAC-Address}'")
 	}

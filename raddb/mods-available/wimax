@@ -10,7 +10,8 @@
 #  The `wimax` module implements the WiMAX attributes as defined in
 #  NWG_R1_V1.2.1-Stage-3.pdf
 #
-#  It should be listed in the `recv Access-Request` and `recv Accounting-Request` sections.
+#  It should be listed in the `recv Access-Request` and `recv
+#  Accounting-Request` sections.
 #
 #  NOTE: The module will change the horrible binary version of
 #  `Calling-Station-Id` to the normal format, as specified in RFC
@@ -21,12 +22,11 @@
 #  In the `recv Access-Request section. the `wimax` module fixes up
 #  various non-standard WiMAX issues.
 #
-#  The WiMAX specification says that the `Calling-Station-Id`
-#  is 6 octets of the MAC.  This definition conflicts with RFC
-#  3580, and all common RADIUS practices. Uncommenting the
-#  `wimax` module here allows the module to change the
-#  `Calling-Station-Id` attribute to the normal format as
-#  specified in RFC 3580 Section 3.21.
+#  The WiMAX specification says that the `Calling-Station-Id` is 6
+#  octets of the MAC. This definition conflicts with RFC 3580, and all
+#  common RADIUS practices. Uncommenting the `wimax` module here
+#  allows the module to change the `Calling-Station-Id` attribute to
+#  the normal format as specified in RFC 3580 Section 3.21.
 #
 #	```
 #	recv Access-Request {
@@ -38,10 +38,10 @@
 #
 #  == send Access-Accept
 #
-#  In order to calculate the various WiMAX keys, the module should
-#  be listed in the `send Access-Accept` section.  If EAP authentication
-#  has been used, AND the EAP method derives MSK and EMSK, then
-#  the various WiMAX keys can be calculated.
+#  In order to calculate the various WiMAX keys, the module should be
+#  listed in the `send Access-Accept` section. If EAP authentication
+#  has been used, AND the EAP method derives MSK and EMSK, then the
+#  various WiMAX keys can be calculated.
 #
 #	```
 # 	send Access-Accept {
@@ -97,17 +97,18 @@
 #
 #  MN-NAI:: Mobile node NAI.
 #
-#  You have to create it, and put it into the request or reply as something like:
+#  You have to create it, and put it into the request or reply as
+#  something like:
 #
 #    ```
 #    WiMAX-MN-NAI = User-Name
 #    ```
 #
-#  You will also have to have the appropriate IP address (`v4` or `v6`)
-#  in order to calculate the keys below.
+#  You will also have to have the appropriate IP address (`v4` or
+#  `v6`) in order to calculate the keys below.
 #
-#  Lifetimes are derived from `Session-Timeout`.  It needs to be set
-#  to some useful number.
+#  Lifetimes are derived from `Session-Timeout`. It needs to be set to
+#  some useful number.
 #
 #  NOTE: The hash function below `H()` is `HMAC-SHA1`.
 #
@@ -132,28 +133,30 @@
 #
 #  Both with similar comments to above for `MN-HA-CMIP4`.
 #
-#  In order to tell which one to use (`CMIP4`, `PMIP4`, or `CMIP6`), you have to
-#  set `WiMAX-IP-Technology` in the reply to one of the appropriate values.
+#  In order to tell which one to use (`CMIP4`, `PMIP4`, or `CMIP6`),
+#  you have to set `WiMAX-IP-Technology` in the reply to one of the
+#  appropriate values.
 #
 #    FA-RK = H(MIP-RK, "FA-RK")
 #    MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
 #
-#  Where does the `FA-IP` come from?  No idea...
+#  Where does the `FA-IP` come from? No idea...
 #
-#  The next two keys (`HA-RK` and `FA-HA`) are not generated for every authentication
-#  request, but only on demand.
+#  The next two keys (`HA-RK` and `FA-HA`) are not generated for every
+#  authentication request, but only on demand.
 #
-#  `HA-RK` = 160-bit random number assigned by the AAA server to a specific HA.
+#  `HA-RK` = 160-bit random number assigned by the AAA server to a
+#  specific HA.
 #
 #  `FA-HA` = H(HA-RK, "FA-HA" | HA-IPv4 | FA-CoAv4 | SPI)
 #
 #  where `HA-IPv4` is as above.
 #
-#  and `FA-CoAv4` address of the `FA` as seen by the `HA`
-#  and `SPI` is the relevant `SPI` for the `HA-RK`.
+#  and `FA-CoAv4` address of the `FA` as seen by the `HA` and `SPI` is
+#  the relevant `SPI` for the `HA-RK`.
 #
-#  `DHCP-RK` = 160-bit random number assigned by the AAA server to a specific DHCP server.
-#  `vDHCP-RK` is the same thing.
+#  `DHCP-RK` = 160-bit random number assigned by the AAA server to a
+#  specific DHCP server. `vDHCP-RK` is the same thing.
 #
 
 #
@@ -163,23 +166,23 @@ wimax {
 	#
 	#  delete_mppe_keys::
 	#
-	#  Some WiMAX equipment requires that the `MS-MPPE-*-Key`
-	#  attributes are sent in the Access-Accept, in addition to
-	#  the `WiMAX-MSK` attribute.
+	#  Some WiMAX equipment requires that the `MS-MPPE-*-Key` attributes
+	#  are sent in the Access-Accept, in addition to the `WiMAX-MSK`
+	#  attribute.
 	#
-	#  Other WiMAX equipment request that the `MS-MPPE-*-Key`
-	#  attributes are NOT sent in the `Access-Accept`.
+	#  Other WiMAX equipment request that the `MS-MPPE-*-Key` attributes
+	#  are NOT sent in the `Access-Accept`.
 	#
 	#  By default, the EAP modules sends `MS-MPPE-*-Key` attributes.
 	#
-	#  The default virtual server (`sites-available/default`)
-	#  contains examples of adding the `WiMAX-MSK`.
+	#  The default virtual server (`sites-available/default`) contains
+	#  examples of adding the `WiMAX-MSK`.
 	#
-	#  This configuration option makes the WiMAX module delete
-	#  the `MS-MPPE-*-Key` attributes.
+	#  This configuration option makes the WiMAX module delete the
+	#  `MS-MPPE-*-Key` attributes.
 	#
-	#  If the keys are deleted (by setting this to `yes`), then
-	#  the `WiMAX-MSK` attribute is automatically added to the reply.
+	#  If the keys are deleted (by setting this to `yes`), then the
+	#  `WiMAX-MSK` attribute is automatically added to the reply.
 	#
 	#  The default is to leave them in place.
 	#

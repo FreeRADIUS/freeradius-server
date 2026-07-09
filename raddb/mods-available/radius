@@ -8,50 +8,49 @@
 #  = Radius Module
 #
 #  The `radius` module in v4 implements RADIUS proxying and
-#  replication.  In v3, RADIUS proxying is a special kind of
-#  configuration, with it's own load-balancing, fail-over etc.  That
-#  configuration is now simpler in v4.  The outbound RADIUS proxying
-#  is done by just another module: the `radius` module.
-#  Load-balancing and redundant fail-over are handled by the
-#  `load-balance` and `redundant` keywords.
+#  replication. In v3, RADIUS proxying is a special kind of
+#  configuration, with it's own load-balancing, fail-over etc. That
+#  configuration is now simpler in v4. The outbound RADIUS proxying is
+#  done by just another module: the `radius` module. Load-balancing
+#  and redundant fail-over are handled by the `load-balance` and
+#  `redundant` keywords.
 #
 #  In v4, the `radius` module most clearly maps to a `home_server` in
-#  v4.  The `radius` module typically makes a connection from one
-#  source IP address to a server at one destination IP/port.  It may
+#  v4. The `radius` module typically makes a connection from one
+#  source IP address to a server at one destination IP/port. It may
 #  open multiple source ports, depending on how many packets are being
 #  proxied.
 #
 #  == Recommendations
 #
 #  In most cases, the v3 configuration be moved to v4 without too many
-#  problems.  For each `home_server foo { ... }` in v3, create a v4
-#  module `radius foo { ... } `.  Copy over the IP address, port, and
-#  secret configuration items.  When this step is finished, the bulk
-#  of the basic work is done.
+#  problems. For each `home_server foo { ... }` in v3, create a v4
+#  module `radius foo { ... } `. Copy over the IP address, port, and
+#  secret configuration items. When this step is finished, the bulk of
+#  the basic work is done.
 #
-#  Converting a `home_server_pool foo { ... }` can be done by
-#  creating a module in `mods-enabled`, either `load-balance foo {
-#  ... }`, or `redundant foo { ... }`.  i.e. the v3 module
-#  configuration does not have any `instantiate` section.  You can
-#  just list "virtual" modules directly in the `modules` directory!
+#  Converting a `home_server_pool foo { ... }` can be done by creating
+#  a module in `mods-enabled`, either `load-balance foo { ... }`, or
+#  `redundant foo { ... }`. i.e. the v3 module configuration does not
+#  have any `instantiate` section. You can just list "virtual" modules
+#  directly in the `modules` directory!
 #
 #  The contents of the `load-balance` or `redundant` section will be
 #  the list of home servers which will part of that `load-balance` or
 #  `redundant` pool.
 #
 #  Then, anywhere you want to use a home server, just list it's name
-#  in an `unlang` processing section.  Anywhere you want to list a
-#  home server pool, just list it's name in an `unlang` processing
-#  section.
+#  in an `unlang` processing section. Anywhere you want to list a home
+#  server pool, just list it's name in an `unlang` processing section.
 #
 #  Unlike v3, there is no `Proxy-To-Realm` attribute, or
-#  `Home-Server-Pool`, or `Home-Server-Name`.  Instead, you just
+#  `Home-Server-Pool`, or `Home-Server-Name`. Instead, you just
 #  configure a module (`radius`, or `load-balance`), and then use the
 #  module anywhere you want to proxy packets.
 #
 #  In most cases, you can just set something like `Auth-Type :=
 #  example.com`, and then have a section `authenticate example.com {
-#  ... }`, which contains the `radius` modules which do proxying.  See
+#  ... }`, which contains the `radius` modules which do proxying. See
 #  `sites-available/default` for sample configuration which uses this
 #  pattern.
 #
@@ -59,29 +58,28 @@
 #
 #  The module adds a Proxy-State attribute to all proxied packets.
 #  This `Proxy-State` contains a 32-bit random number, which is unique
-#  to this module.  This unique number helps to detect proxy loops.
+#  to this module. This unique number helps to detect proxy loops.
 #
 #  The reply from home server is appended to the reply list for the
 #  current packet.
 #
 #  WARNING: For security reasons, the module ensures that all proxied
 #  `Access-Request` packets contain a `Message-Authenticator`
-#  attribute.  This behavior is *NOT* configurable, and *CANNOT* be
-#  changed.  This behavior is part of the BlastRADIUS mitigations.
+#  attribute. This behavior is *NOT* configurable, and *CANNOT* be
+#  changed. This behavior is part of the BlastRADIUS mitigations.
 #
-#  Any proxied packet (including `Accounting-Request`) can
-#  receive a `Protocol-Error` response packet.  This packet
-#  is an explicit `NAK` that something went wrong processing
-#  the request.
+#  Any proxied packet (including `Accounting-Request`) can receive a
+#  `Protocol-Error` response packet. This packet is an explicit `NAK`
+#  that something went wrong processing the request.
 #
 #  Unlike v3, the server does not support any "pre-proxy" or
-#  "post-proxy" processing sections.  Similarly, this module does not
-#  support any "proxy" or "proxy-reply" list.  Instead, the current
+#  "post-proxy" processing sections. Similarly, this module does not
+#  support any "proxy" or "proxy-reply" list. Instead, the current
 #  request is proxied as-is, and the proxied reply is added to the
-#  current reply list.  If you want to modify the proxied request
+#  current reply list. If you want to modify the proxied request
 #  and/or proxied reply, then you should use a `subrequest` block to
-#  create a child request.  That child request can then be modified
-#  independently of the parent.  Any reply attributes will have to be
+#  create a child request. That child request can then be modified
+#  independently of the parent. Any reply attributes will have to be
 #  copied back manually to the parent request.
 #
 #  == Configuration Settings
@@ -114,7 +112,7 @@ radius {
 	#  proxy - forward packets which are received from a NAS
 	#	- each packet has a Proxy-State attribute added.
 	#	- it looks for, and stops proxy loops
-	#  	- retransmissions are sent only when the NAS retransmits
+	#  - retransmissions are sent only when the NAS retransmits
 	#	- the module fails if it does not receive a reply
 	#
 	#  client - originate packet, and do retransmissions ourselves
@@ -142,32 +140,31 @@ radius {
 	#	- You CANNOT use the module "in place" as with normal proxying.
 	#	- Proxying is only supported via the function %proxy.sendto.ipaddr(ipaddr, port, secret)
 	#
-	#  The server can still be used to create (i.e. originate)
-	#  packets via this module when `mode = proxy` is set.  The
-	#  module can automatically detect the difference between
-	#  proxied packets and client packets it originates.
-	#  Originated packets are taken from the detail file, or
-	#  result when changing packet type (e.g. Accounting-Request
-	#  to Disconnect-Request), or when the current request is a
-	#  subrequest, and the parent request is from a different
-	#  protocol.
+	#  The server can still be used to create (i.e. originate) packets
+	#  via this module when `mode = proxy` is set. The module can
+	#  automatically detect the difference between proxied packets and
+	#  client packets it originates. Originated packets are taken from
+	#  the detail file, or result when changing packet type (e.g.
+	#  Accounting-Request to Disconnect-Request), or when the current
+	#  request is a subrequest, and the parent request is from a
+	#  different protocol.
 	#
-	#  Note that there is no `mode = unconnected`, where the
-	#  module then both proxies packets, and replicates them.  The
-	#  need to track replies when proxying means that it's
-	#  difficult to both proxy and replicate at the same time.  As
-	#  a result, there are two "unconnected" modes, one for each
-	#  of "proxy" and "replicate".
+	#  Note that there is no `mode = unconnected`, where the module then
+	#  both proxies packets, and replicates them. The need to track
+	#  replies when proxying means that it's difficult to both proxy and
+	#  replicate at the same time. As a result, there are two
+	#  "unconnected" modes, one for each of "proxy" and "replicate".
 	#
 	mode = proxy
 
 	#
-	#  transport:: Transport protocol.  Can be `udp` or `tcp`.
+	#  transport:: Transport protocol. Can be `udp` or `tcp`.
 	#
 	transport = udp
 
 	#
-	#  max_attributes:: Maximum number of attributes to decode in response.
+	#  max_attributes:: Maximum number of attributes to decode in
+	#  response.
 	#
 	#  Default is 255.
 	#
@@ -176,68 +173,66 @@ radius {
 	#
 	#  type:: List of allowed packet types.
 	#
-	#  The module will only send packets types which are listed
-	#  here.  Other types of packets will be ignored.  The main
-	#  purpose of the `type` configuration is to ensure that the
-	#  correct packets are being sent to the home server.  This
-	#  entry serves as a double-check against misconfigurations.
+	#  The module will only send packets types which are listed here.
+	#  Other types of packets will be ignored. The main purpose of the
+	#  `type` configuration is to ensure that the correct packets are
+	#  being sent to the home server. This entry serves as a double-check
+	#  against misconfigurations.
 	#
-	#  In v3, the `home_server` configuration of `auth`, `acct`,
-	#  or `auth+acct` is used to _find_ a home server.  That is,
-	#  when FreeRADIUS has an `Access-Request` packet in v3, it
-	#  proxies it by looking up a matching `home_server`.
+	#  In v3, the `home_server` configuration of `auth`, `acct`, or
+	#  `auth+acct` is used to _find_ a home server. That is, when
+	#  FreeRADIUS has an `Access-Request` packet in v3, it proxies it by
+	#  looking up a matching `home_server`.
 	#
 	#  In v4, proxying is done by listing the `radius` module in a
-	#  processing section, such as `authenticate radius { ... }`,
-	#  or `recv Accounting-Request { ... }`.  So unlike v3, the
-	#  module doesn't have to _find_ a proxy destination for a
-	#  particular kind of packet.  Instead, the administrator
-	#  _configures_ the module to send packets to a destination.
+	#  processing section, such as `authenticate radius { ... }`, or
+	#  `recv Accounting-Request { ... }`. So unlike v3, the module
+	#  doesn't have to _find_ a proxy destination for a particular kind
+	#  of packet. Instead, the administrator _configures_ the module to
+	#  send packets to a destination.
 	#
-	#  As a result, the module doesn't really care about what kind
-	#  of packets it sends.  It has a packet, a destination where
-	#  that packet should be sent, and it sends the packet.
+	#  As a result, the module doesn't really care about what kind of
+	#  packets it sends. It has a packet, a destination where that packet
+	#  should be sent, and it sends the packet.
 	#
 	#  In order to change packet types, see the `subrequest` keyword.
 	#
-	#  NOTE: `Status-Server` is reserved for connection signaling,
-	#  and cannot be proxied.
+	#  NOTE: `Status-Server` is reserved for connection signaling, and
+	#  cannot be proxied.
 	#
-	#  Unlike v3, all packet types are allocated from the same
-	#  8-bit ID space.  This change does not affect the majority
-	#  of RADIUS proxying, which only sends one type of packet.
-	#  This change does not affect the home server which receives
-	#  these packets, as the home server does not track IDs except
-	#  to correlate requests to replies.
+	#  Unlike v3, all packet types are allocated from the same 8-bit ID
+	#  space. This change does not affect the majority of RADIUS
+	#  proxying, which only sends one type of packet. This change does
+	#  not affect the home server which receives these packets, as the
+	#  home server does not track IDs except to correlate requests to
+	#  replies.
 	#
-	#  The only visible difference, then, between v3 and v4 is
-	#  that in some cases, the new `radius` module will use more
-	#  source ports when proxying.
+	#  The only visible difference, then, between v3 and v4 is that in
+	#  some cases, the new `radius` module will use more source ports
+	#  when proxying.
 	#
-	#  This change simplifies the implementation of the RADIUS
-	#  client.
+	#  This change simplifies the implementation of the RADIUS client.
 	#
 	type = Access-Request
 	type = Accounting-Request
 
 	#
-	#  require_message_authenticator::Require Message-Authenticator
-	#  in responses.
+	#  require_message_authenticator::Require Message-Authenticator in
+	#  responses.
 	#
-	#  A server should include Message-Authenticator attribute as
-	#  the first attribute in responses to Access-Request packets.
-	#  This behavior mitigates against the BlastRADIUS attack.
+	#  A server should include Message-Authenticator attribute as the
+	#  first attribute in responses to Access-Request packets. This
+	#  behavior mitigates against the BlastRADIUS attack.
 	#
-	#  However, not all servers follow this security practice.  As
-	#  a result, this module can be configured to either not
-	#  require, or require, Message-Authenticator.
+	#  However, not all servers follow this security practice. As a
+	#  result, this module can be configured to either not require, or
+	#  require, Message-Authenticator.
 	#
-	#  If value is `auto`, then the module will automatically
-	#  detect the existence of Message-Authenticator in response
-	#  packets.  Once the module sees a Message-Authenticator, it
-	#  will automatically change the configuration internally to
-	#  `yes`.  This change prevents security "down-bidding"
-	#  attacks.
+	#  If value is `auto`, then the module will automatically detect the
+	#  existence of Message-Authenticator in response packets. Once the
+	#  module sees a Message-Authenticator, it will automatically change
+	#  the configuration internally to `yes`. This change prevents
+	#  security "down-bidding" attacks.
 	#
 	#  Allowed values: yes, no, auto
 	#
@@ -246,58 +241,54 @@ radius {
 	require_message_authenticator = auto
 
 	#
-	#  response_window:: If we do not receive any replies within
-	#  this time period, then start `zombie_period`
+	#  response_window:: If we do not receive any replies within this
+	#  time period, then start `zombie_period`
 	#
 	response_window = 15
 
 	#
-	#  zombie_period:: If the home server does not reply to
-	#  packets within `response_window`, then `zombie_period`
-	#  starts.
+	#  zombie_period:: If the home server does not reply to packets
+	#  within `response_window`, then `zombie_period` starts.
 	#
-	#  When `zombie_period` starts, a connection is marked
-	#  `zombie`, and then is not used to send new packets.  If
-	#  there are no responses on this connection within
-	#  `zombie_period`, the module either closes the connection
-	#  (no `status_check` subsection), or starts pinging the home
-	#  server (`status_check.type = Status-Server`).
+	#  When `zombie_period` starts, a connection is marked `zombie`, and
+	#  then is not used to send new packets. If there are no responses on
+	#  this connection within `zombie_period`, the module either closes
+	#  the connection (no `status_check` subsection), or starts pinging
+	#  the home server (`status_check.type = Status-Server`).
 	#
 	zombie_period = 10
 
 	#
-	#  revive_interval:: If there are no status checks, mark the
-	#  home server alive after `revive_interval` timeout.
+	#  revive_interval:: If there are no status checks, mark the home
+	#  server alive after `revive_interval` timeout.
 	#
 	#  Some home servers do not support status checks via the
-	#  `Status-Server` packet.  Others may not have a "test" user
-	#  configured that can be used to query the server, to see if
-	#  it is alive.  For those servers, we have NO WAY of knowing
-	#  when it becomes alive again.  Therefore, after the server
-	#  has been marked dead, we wait a period of time, and mark
-	#  it alive again, in the hope that it has come back to
-	#  life.
+	#  `Status-Server` packet. Others may not have a "test" user
+	#  configured that can be used to query the server, to see if it is
+	#  alive. For those servers, we have NO WAY of knowing when it
+	#  becomes alive again. Therefore, after the server has been marked
+	#  dead, we wait a period of time, and mark it alive again, in the
+	#  hope that it has come back to life.
 	#
-	#  If it has NOT come back to life, then the module will wait
-	#  for `zombie_period` before marking it dead again.  During
-	#  the `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because
-	#  the home server is still dead.  There is NOTHING that can
-	#  be done about this, other than to enable the status checks,
-	#  as documented above.
+	#  If it has NOT come back to life, then the module will wait for
+	#  `zombie_period` before marking it dead again. During the
+	#  `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because the home
+	#  server is still dead. There is NOTHING that can be done about
+	#  this, other than to enable the status checks, as documented above.
 	#
-	#  e.g. if `zombie_period` is 40 seconds, and `revive_interval`
-	#  is 300 seconds, the for 40 seconds out of every 340, or about
-	#  10% of the time, all authentications will fail.
+	#  e.g. if `zombie_period` is 40 seconds, and `revive_interval` is
+	#  300 seconds, the for 40 seconds out of every 340, or about 10% of
+	#  the time, all authentications will fail.
 	#
-	#  If the `zombie_period` and `revive_interval` configurations
-	#  are set smaller, than it is possible for up to 50% of
-	#  authentications to fail.
+	#  If the `zombie_period` and `revive_interval` configurations are
+	#  set smaller, than it is possible for up to 50% of authentications
+	#  to fail.
 	#
-	#  As a result, we recommend enabling status checks, and
-	#  we do NOT recommend using `revive_interval`.
+	#  As a result, we recommend enabling status checks, and we do NOT
+	#  recommend using `revive_interval`.
 	#
 	#  The `revive_interval` configuration is used ONLY if the
-	#  `status_check` subsection is not used.  Otherwise,
+	#  `status_check` subsection is not used. Otherwise,
 	#  `revive_interval` is not necessary, and should be deleted.
 	#
 	#  Useful range of values: 10 to 3600
@@ -309,49 +300,42 @@ radius {
 	#
 	#  status_check { ... }:: For "are you alive?" queries.
 	#
-	#  If the home server does not respond to proxied packets, the
-	#  module starts pinging the home server with these packets.
+	#  If the home server does not respond to proxied packets, the module
+	#  starts pinging the home server with these packets.
 	#
-	#  Disable status checks by deleting this section, or by
-	#  commenting it out.
+	#  Disable status checks by deleting this section, or by commenting
+	#  it out.
 	#
 	status_check {
 		#
-		#  type:: You can specify any type of request packet here,
-		#  e.g. 'Access-Request', 'Accounting-Request' or
-		#  'Status-Server'.
+		#  type:: You can specify any type of request packet here, e.g.
+		#  'Access-Request', 'Accounting-Request' or 'Status-Server'.
 		#
-		#  Status-Server is recommended as other packet types
-		#  may be interpreted incorrectly, or may ve proxied
-		#  to a remote server, which defeats the purpose of
-		#  the status checks.
+		#  Status-Server is recommended as other packet types may be
+		#  interpreted incorrectly, or may ve proxied to a remote server,
+		#  which defeats the purpose of the status checks.
 		#
-		#  If you specify another type of packet, it MUST be listed
-		#  as an allowed `type` above.
+		#  If you specify another type of packet, it MUST be listed as an
+		#  allowed `type` above.
 		#
 		type = Status-Server
 
 		#
 		#  The packet contents can be set here.
 		#
-		#  We RECOMMEND that you use packet contents which
-		#  lets the other end easily tell that they are not
-		#  "real" packets from a NAS.
+		#  We RECOMMEND that you use packet contents which lets the other
+		#  end easily tell that they are not "real" packets from a NAS.
 		#
-		#  The example here is for Status-Server.  The
-		#  contents will vary by other packet types.  The
-		#  Message-Authenticator attribute will be added
-		#  automatically, and does not need to be specified
-		#  here.
+		#  The example here is for Status-Server. The contents will vary by
+		#  other packet types. The Message-Authenticator attribute will be
+		#  added automatically, and does not need to be specified here.
 		#
-		#  If the Event-Timestamp attribute is added, it will
-		#  be updated each time the packet is sent.
+		#  If the Event-Timestamp attribute is added, it will be updated
+		#  each time the packet is sent.
 		#
-		#  WARNING: Do NOT do SQL queries, LDAP queries,
-		#  dynamic expansions, etc. in this section.  The
-		#  contents of the packet are created when a
-		#  connection is opened, and are not changeable after
-		#  that.
+		#  WARNING: Do NOT do SQL queries, LDAP queries, dynamic expansions,
+		#  etc. in this section. The contents of the packet are created when
+		#  a connection is opened, and are not changeable after that.
 		#
 		update {
 			User-Name := "test-user"
@@ -369,8 +353,8 @@ radius {
 	#
 	#  === File Output
 	#
-	#  Write raw RADIUS packets (no IP or UDP header) to a file.
-	#  This transport can only be used for `mode = replicate`
+	#  Write raw RADIUS packets (no IP or UDP header) to a file. This
+	#  transport can only be used for `mode = replicate`
 	#
 	file {
 	     filename = ${logdir}/packets.bin
@@ -390,8 +374,8 @@ radius {
 		#
 		#  Destination IP address, port, and secret.
 		#
-		#  Use `ipv4addr = ...` to force IPv4 addresses.
-		#  Use `ipv6addr = ...` to force IPv6 addresses.
+		#  Use `ipv4addr = ...` to force IPv4 addresses. Use `ipv6addr =
+		#  ...` to force IPv6 addresses.
 		#
 		ipaddr = 127.0.0.1
 		port = 1812
@@ -403,7 +387,8 @@ radius {
 #		interface = eth0
 
 		#
-		#  max_packet_size:: Our max packet size. may be different from the parent.
+		#  max_packet_size:: Our max packet size. may be different from the
+		#  parent.
 		#
 #		max_packet_size = 4096
 
@@ -424,29 +409,29 @@ radius {
 	#  The TCP configuration is identical to the `udp` configuration.
 	#
 	tcp {
-		# copy configuration items here
+		#  copy configuration items here
 	}
 
 	#
 	#  == Connection trunking
 	#
-	#  Each worker thread (see radiusd.conf, num_workers), has
-	#  it's own set of connections.  These connections are grouped
-	#  together into a "pool".
+	#  Each worker thread (see radiusd.conf, num_workers), has it's own
+	#  set of connections. These connections are grouped together into a
+	#  "pool".
 	#
-	#  Much of the configuration here is similar to the old
-	#  connection "pool" configuration in v3.  However, there are
-	#  more configuration parameters, and therefore more control
-	#  over the behavior.
+	#  Much of the configuration here is similar to the old connection
+	#  "pool" configuration in v3. However, there are more configuration
+	#  parameters, and therefore more control over the behavior.
 	#
 	pool {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
-		#  If the server cannot create specified number of connections during instantiation
-		#  it will exit.
+		#  If the server cannot create specified number of connections
+		#  during instantiation it will exit.
 		#
-		#  Set to `0` to allow the server to start without the database being available.
+		#  Set to `0` to allow the server to start without the database
+		#  being available.
 		#
 		start = 0
 
@@ -458,68 +443,61 @@ radius {
 		#
 		#  max:: Maximum number of connections.
 		#
-		#  If these connections are all in use and a new one is requested, the request
-		#  will NOT get a connection.
+		#  If these connections are all in use and a new one is requested,
+		#  the request will NOT get a connection.
 		#
 		max = 8
 
 		#
-		#  connecting:: Maximum number of sockets to have in the "connecting" state.
+		#  connecting:: Maximum number of sockets to have in the
+		#  "connecting" state.
 		#
-		#  If a home server goes down, the module will close
-		#  old / broken connections, and try to open new ones.
-		#  In order to avoid flooding the home server with
-		#  connection attempts, set the `connecting` value to
-		#  a small number.
+		#  If a home server goes down, the module will close old / broken
+		#  connections, and try to open new ones. In order to avoid flooding
+		#  the home server with connection attempts, set the `connecting`
+		#  value to a small number.
 		#
 		connecting = 1
 
 		#
 		#  uses:: number of packets which will use the connection.
 		#
-		#  After `uses` packets have been sent the connection
-		#  will be closed, and a new one opened.  For no
-		#  limits, set `uses = 0`.
+		#  After `uses` packets have been sent the connection will be
+		#  closed, and a new one opened. For no limits, set `uses = 0`.
 		#
 		uses = 0
 
 		#
 		#  lifetime:: lifetime of a connection, in seconds.
 		#
-		#  After `lifetime` seconds have passed, no new
-		#  packets will be sent on the connection.  When all
-		#  replies have been received, the connection will be
-		#  closed.
+		#  After `lifetime` seconds have passed, no new packets will be sent
+		#  on the connection. When all replies have been received, the
+		#  connection will be closed.
 		#
 		#  For no limits, set `lifetime = 0`.
 		#
-		#  It is possible to use precise times, such as
-		#  `lifetime = 1.023`, or even qualifiers such as
-		#  `lifetime = 400ms`.
+		#  It is possible to use precise times, such as `lifetime = 1.023`,
+		#  or even qualifiers such as `lifetime = 400ms`.
 		#
 		lifetime = 0
 
 		#
-		#  open_delay:: How long (in seconds) a connection
-		#  must be above `per_connection_target` before a new
-		#  connection is opened.
+		#  open_delay:: How long (in seconds) a connection must be above
+		#  `per_connection_target` before a new connection is opened.
 		#
-		#  Parsing of this field is the same as for
-		#  `lifetime`.
+		#  Parsing of this field is the same as for `lifetime`.
 		#
 		open_delay = 0.2
 
 		#
-		#  close_delay:: How long (in seconds) a connection
-		#  must be below `per_connection_target` before a
-		#  connection is closed.
+		#  close_delay:: How long (in seconds) a connection must be below
+		#  `per_connection_target` before a connection is closed.
 		#
 		close_delay = 1.0
 
 		#
-		#  manage_interval:: How often (in seconds) the
-		#  connections are checked for limits, in order to
-		#  open / close connections.
+		#  manage_interval:: How often (in seconds) the connections are
+		#  checked for limits, in order to open / close connections.
 		#
 		manage_interval = 0.2
 
@@ -528,18 +506,15 @@ radius {
 		#
 		connection {
 			#
-			#  connect_timeout:: How long to wait
-			#  before giving up on a connection which is
-			#  being opened.
+			#  connect_timeout:: How long to wait before giving up on a
+			#  connection which is being opened.
 			#
 			connect_timeout = 3.0
 
 			#
-			#  reconnect_delay:: If opening a connection
-			#  fails, or an open connection fails,
-			#  we wait `reconnect_delay` seconds before
-			#  attempting to open another
-			#  connection.
+			#  reconnect_delay:: If opening a connection fails, or an open
+			#  connection fails, we wait `reconnect_delay` seconds before
+			#  attempting to open another connection.
 			#
 			reconnect_delay = 5
 		}
@@ -549,27 +524,24 @@ radius {
 		#
 		request {
 			#
-			#  per_connection_max:: The maximum number of requests
-			#  which are "live" on a particular connection.
+			#  per_connection_max:: The maximum number of requests which are
+			#  "live" on a particular connection.
 			#
 			per_connection_max = 255
 
 			#
-			#  per_connection_target:: The target number
-			#  of requests which are "live" on a
-			#  particular connection.
+			#  per_connection_target:: The target number of requests which are
+			#  "live" on a particular connection.
 			#
-			#  There can be a balance between overloading
-			#  a connection, and under-utilizing it.  The
-			#  default is to fill each connection before
-			#  opening a new one.
+			#  There can be a balance between overloading a connection, and
+			#  under-utilizing it. The default is to fill each connection
+			#  before opening a new one.
 			#
 			per_connection_target = 255
 
 			#
-			#  free_delay:: How long to wait before
-			#  freeing internal resources associated with
-			#  the connection.
+			#  free_delay:: How long to wait before freeing internal resources
+			#  associated with the connection.
 			#
 			free_delay = 10
 		}
@@ -581,8 +553,8 @@ radius {
 	#
 	#  Each packet can have its own retransmission timers.
 	#
-	#  The sections are named for each packet type. The contents
-	#  are the same for all packet types.
+	#  The sections are named for each packet type. The contents are the
+	#  same for all packet types.
 	#
 
 	#
@@ -590,8 +562,8 @@ radius {
 	#
 	Access-Request {
 		#
-		#  initial_rtx_time::  If there is no response within this time,
-		#  the module will retransmit the packet.
+		#  initial_rtx_time:: If there is no response within this time, the
+		#  module will retransmit the packet.
 		#
 		#  Value should be `1..5`.
 		#
@@ -622,8 +594,8 @@ radius {
 		max_rtx_count = 2
 
 		#
-		#  max_rtx_duration:: The total length of time the module will
-		#  try to retransmit the packet.
+		#  max_rtx_duration:: The total length of time the module will try
+		#  to retransmit the packet.
 		#
 		#  Value should be `5..60`
 		#
@@ -668,8 +640,8 @@ radius {
 	#
 	#  === Status-Server packets
 	#
-	#  The configuration here helps the module determine if a home
-	#  server is alive and responding to requests.
+	#  The configuration here helps the module determine if a home server
+	#  is alive and responding to requests.
 	#
 	#  WARNING: The `Status-Server` packets CANNOT be proxied.
 	#
@@ -685,18 +657,18 @@ radius {
 #  == Replication of Packets
 #
 #  The module supports replication of packets to new destinations at
-#  run time.  In this context, replication means "send the packet, and
-#  do not wait for the response".  This functionality is most useful
+#  run time. In this context, replication means "send the packet, and
+#  do not wait for the response". This functionality is most useful
 #  when copying large amounts of accounting data to multiple
 #  destinations.
 #
-#  The module can then only be used as a dynamic expansion.  That is,
+#  The module can then only be used as a dynamic expansion. That is,
 #  you cannot specify the `replicate` module directly in a processing
 #  section.
 #
 #  === Usage
 #
-#  This module can only be used as a dynamic expansion.  Since the
+#  This module can only be used as a dynamic expansion. Since the
 #  module does not wait for any response, the expansion does not
 #  return any value.
 #
@@ -713,7 +685,7 @@ radius {
 #
 #  This function allows the module to send packets to _any_
 #  destination, where the destination is chosen dynamically at run
-#  time.  The arguments to the function can be take from other
+#  time. The arguments to the function can be take from other
 #  attributes, database queries, etc.
 #
 radius replicate {
@@ -723,8 +695,8 @@ radius replicate {
 	type = Accounting-Request
 
 	#
-	#  We are not opening a socket from our server to their
-	#  server.  We are replicating packets.
+	#  We are not opening a socket from our server to their server. We
+	#  are replicating packets.
 	#
 	mode = unconnected-replicate
 
@@ -745,23 +717,23 @@ radius replicate {
 		src_ipaddr = *
 
 		#
-		#  `src_port` cannot be used.  If it is used here, the
-		#  module will refuse to start.  Instead, the module
-		#  will open a unique source port per thread.
+		#  `src_port` cannot be used. If it is used here, the module will
+		#  refuse to start. Instead, the module will open a unique source
+		#  port per thread.
 		#
-		#  `secret` cannot be used.  If it is used, the value
-		#  will be ignored.
+		#  `secret` cannot be used. If it is used, the value will be
+		#  ignored.
 		#
 	}
 
 	#
 	#  === Other Configuration
 	#
-	#  No other configuration items are supported when using
-	#  `mode = unconnected-replicate`.
+	#  No other configuration items are supported when using `mode =
+	#  unconnected-replicate`.
 	#
-	#  The `pool` configuration is ignored, as is `status-check`,
-	#  along with all per-packet timeouts.
+	#  The `pool` configuration is ignored, as is `status-check`, along
+	#  with all per-packet timeouts.
 	#
 }
 
@@ -773,7 +745,7 @@ radius replicate {
 #	%proxy.sendto.ipaddr(127.0.0.1, 1812, "testing123")
 #
 #  The first part of the function name (e.g. `proxy`) is taken from
-#  the module name.  The rest is fixed as `sendto.ipaddr()`
+#  the module name. The rest is fixed as `sendto.ipaddr()`
 #
 #  The arguments to the function are:
 #
@@ -790,9 +762,9 @@ radius replicate {
 #
 #  The packet name must be a quoted string.
 #
-#  The proxying is done asynchronously.  i.e. the packet is sent, and
-#  the server goes on to do other work.  At some point in the future,
-#  a response is received, the module processes it, and the server
+#  The proxying is done asynchronously. i.e. the packet is sent, and
+#  the server goes on to do other work. At some point in the future, a
+#  response is received, the module processes it, and the server
 #  continues.
 #
 #  The timeouts are controlled as described above.
@@ -822,23 +794,20 @@ radius proxy {
 		#
 		#  src_port_start:: Start of source port range.
 		#
-		#  The outgoing proxy normally uses random source
-		#  ports.  When all of the RADIUS IDs are used for one
-		#  connection, it opens up another random source port.
+		#  The outgoing proxy normally uses random source ports. When all of
+		#  the RADIUS IDs are used for one connection, it opens up another
+		#  random source port.
 		#
-		#  However, it is sometimes useful to restrict the
-		#  range of source ports to known values.  The
-		#  `src_port_start` and `src_port_end` configuration
-		#  flags allow the port range to be controlled.  The
-		#  module will then restrict the source ports it is
-		#  using to be within this range.
+		#  However, it is sometimes useful to restrict the range of source
+		#  ports to known values. The `src_port_start` and `src_port_end`
+		#  configuration flags allow the port range to be controlled. The
+		#  module will then restrict the source ports it is using to be
+		#  within this range.
 		#
-		#  When all ports in this range are used, the module
-		#  will not be able to open any more outgoing
-		#  connections.x
+		#  When all ports in this range are used, the module will not be
+		#  able to open any more outgoing connections.x
 		#
-		#  These two configuration items can only be used for
-		#  UDP sockets.
+		#  These two configuration items can only be used for UDP sockets.
 		#
 		src_port_start = 10000
 
@@ -848,44 +817,43 @@ radius proxy {
 		src_port_end = 11000
 
 		#
-		#  `src_port` cannot be used.  If it is used here, the
-		#  module will refuse to start.  Instead, the module
-		#  will open a unique source port per thread.
+		#  `src_port` cannot be used. If it is used here, the module will
+		#  refuse to start. Instead, the module will open a unique source
+		#  port per thread.
 		#
-		#  `secret` cannot be used.  If it is used, the value
-		#  will be ignored.
+		#  `secret` cannot be used. If it is used, the value will be
+		#  ignored.
 		#
 	}
 
 	#
-	#  Dynamic proxying does *not* support the `status_check`
-	#  section.
+	#  Dynamic proxying does *not* support the `status_check` section.
 	#
 
 	#
 	#  home_server_lifetime:: The lifetime of the home server.
 	#
 	#  When a new dynamic home server is used, the module caches
-	#  information about it.  So long as the home server is still
-	#  being used, it will not expire.  But if it has received all
-	#  expected responses (or timeouts), _and_ it has reached its
-	#  expected lifetime, then the home server will be deleted.
+	#  information about it. So long as the home server is still being
+	#  used, it will not expire. But if it has received all expected
+	#  responses (or timeouts), _and_ it has reached its expected
+	#  lifetime, then the home server will be deleted.
 	#
-	#  This process allows for the secret to change over time.
-	#  However, the secret can only be changed if there are no
-	#  outstanding packets.  Otherwise, changing the secret would
-	#  involve having multiple packets outstanding which have
-	#  different secrets.  That doesn't work, and can't be fixed
-	#  through any code changes on the server.
+	#  This process allows for the secret to change over time. However,
+	#  the secret can only be changed if there are no outstanding
+	#  packets. Otherwise, changing the secret would involve having
+	#  multiple packets outstanding which have different secrets. That
+	#  doesn't work, and can't be fixed through any code changes on the
+	#  server.
 	#
 	#  The solution to that is to switch to using TLS.
 	#
 	home_server_lifetime = 3600
 
 	#
-	#  These are allowed, but are less useful.  If the home server
-	#  doesn't respond, it will often just hit the home server
-	#  lifetime, and be deleted.
+	#  These are allowed, but are less useful. If the home server doesn't
+	#  respond, it will often just hit the home server lifetime, and be
+	#  deleted.
 	#
 	response_window = 15
 	zombie_period = 10
@@ -895,9 +863,8 @@ radius proxy {
 	#
 	#  == Timeouts
 	#
-	#  Timeouts for proxying are controlled in sections named for
-	#  the packet type.  See the examples above for full
-	#  documentation.
+	#  Timeouts for proxying are controlled in sections named for the
+	#  packet type. See the examples above for full documentation.
 	#
 	Access-Request {
 		initial_rtx_time = 2
@@ -915,10 +882,11 @@ radius proxy {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
-		#  If the server cannot create specified number of connections during instantiation
-		#  it will exit.
+		#  If the server cannot create specified number of connections
+		#  during instantiation it will exit.
 		#
-		#  Set to `0` to allow the server to start without the database being available.
+		#  Set to `0` to allow the server to start without the database
+		#  being available.
 		#
 		start = 0
 
@@ -930,68 +898,61 @@ radius proxy {
 		#
 		#  max:: Maximum number of connections.
 		#
-		#  If these connections are all in use and a new one is requested, the request
-		#  will NOT get a connection.
+		#  If these connections are all in use and a new one is requested,
+		#  the request will NOT get a connection.
 		#
 		max = 8
 
 		#
-		#  connecting:: Maximum number of sockets to have in the "connecting" state.
+		#  connecting:: Maximum number of sockets to have in the
+		#  "connecting" state.
 		#
-		#  If a home server goes down, the module will close
-		#  old / broken connections, and try to open new ones.
-		#  In order to avoid flooding the home server with
-		#  connection attempts, set the `connecting` value to
-		#  a small number.
+		#  If a home server goes down, the module will close old / broken
+		#  connections, and try to open new ones. In order to avoid flooding
+		#  the home server with connection attempts, set the `connecting`
+		#  value to a small number.
 		#
 		connecting = 1
 
 		#
 		#  uses:: number of packets which will use the connection.
 		#
-		#  After `uses` packets have been sent the connection
-		#  will be closed, and a new one opened.  For no
-		#  limits, set `uses = 0`.
+		#  After `uses` packets have been sent the connection will be
+		#  closed, and a new one opened. For no limits, set `uses = 0`.
 		#
 		uses = 0
 
 		#
 		#  lifetime:: lifetime of a connection, in seconds.
 		#
-		#  After `lifetime` seconds have passed, no new
-		#  packets will be sent on the connection.  When all
-		#  replies have been received, the connection will be
-		#  closed.
+		#  After `lifetime` seconds have passed, no new packets will be sent
+		#  on the connection. When all replies have been received, the
+		#  connection will be closed.
 		#
 		#  For no limits, set `lifetime = 0`.
 		#
-		#  It is possible to use precise times, such as
-		#  `lifetime = 1.023`, or even qualifiers such as
-		#  `lifetime = 400ms`.
+		#  It is possible to use precise times, such as `lifetime = 1.023`,
+		#  or even qualifiers such as `lifetime = 400ms`.
 		#
 		lifetime = 0
 
 		#
-		#  open_delay:: How long (in seconds) a connection
-		#  must be above `per_connection_target` before a new
-		#  connection is opened.
+		#  open_delay:: How long (in seconds) a connection must be above
+		#  `per_connection_target` before a new connection is opened.
 		#
-		#  Parsing of this field is the same as for
-		#  `lifetime`.
+		#  Parsing of this field is the same as for `lifetime`.
 		#
 		open_delay = 0.2
 
 		#
-		#  close_delay:: How long (in seconds) a connection
-		#  must be below `per_connection_target` before a
-		#  connection is closed.
+		#  close_delay:: How long (in seconds) a connection must be below
+		#  `per_connection_target` before a connection is closed.
 		#
 		close_delay = 1.0
 
 		#
-		#  manage_interval:: How often (in seconds) the
-		#  connections are checked for limits, in order to
-		#  open / close connections.
+		#  manage_interval:: How often (in seconds) the connections are
+		#  checked for limits, in order to open / close connections.
 		#
 		manage_interval = 0.2
 
@@ -1000,18 +961,15 @@ radius proxy {
 		#
 		connection {
 			#
-			#  connect_timeout:: How long to wait
-			#  before giving up on a connection which is
-			#  being opened.
+			#  connect_timeout:: How long to wait before giving up on a
+			#  connection which is being opened.
 			#
 			connect_timeout = 3.0
 
 			#
-			#  reconnect_delay:: If opening a connection
-			#  fails, or an open connection fails,
-			#  we wait `reconnect_delay` seconds before
-			#  attempting to open another
-			#  connection.
+			#  reconnect_delay:: If opening a connection fails, or an open
+			#  connection fails, we wait `reconnect_delay` seconds before
+			#  attempting to open another connection.
 			#
 			reconnect_delay = 5
 		}
@@ -1021,27 +979,24 @@ radius proxy {
 		#
 		request {
 			#
-			#  per_connection_max:: The maximum number of requests
-			#  which are "live" on a particular connection.
+			#  per_connection_max:: The maximum number of requests which are
+			#  "live" on a particular connection.
 			#
 			per_connection_max = 255
 
 			#
-			#  per_connection_target:: The target number
-			#  of requests which are "live" on a
-			#  particular connection.
+			#  per_connection_target:: The target number of requests which are
+			#  "live" on a particular connection.
 			#
-			#  There can be a balance between overloading
-			#  a connection, and under-utilizing it.  The
-			#  default is to fill each connection before
-			#  opening a new one.
+			#  There can be a balance between overloading a connection, and
+			#  under-utilizing it. The default is to fill each connection
+			#  before opening a new one.
 			#
 			per_connection_target = 255
 
 			#
-			#  free_delay:: How long to wait before
-			#  freeing internal resources associated with
-			#  the connection.
+			#  free_delay:: How long to wait before freeing internal resources
+			#  associated with the connection.
 			#
 			free_delay = 10
 		}
@@ -1059,8 +1014,8 @@ radius proxy {
 
 @policy proxy {
 	#
-	#  Create a subrequest which we can edit.  When the subrequest
-	#  section is done,
+	#  Create a subrequest which we can edit. When the subrequest section
+	#  is done,
 	#
 	subrequest {
 		#
@@ -1080,24 +1035,20 @@ radius proxy {
 		#
 		#  This is the "post-proxy" section.
 		#
-		#  Note that the Proxy-State attributes have already
-		#  been deleted from the reply, so you don't need to
-		#  do that here.  Those attributes are not needed by
-		#  anyone for anything, and confuse things if they're
-		#  copied to the original request.  The `radius`
-		#  module therefore deletes them, to make your life
-		#  easier.
+		#  Note that the Proxy-State attributes have already been deleted
+		#  from the reply, so you don't need to do that here. Those
+		#  attributes are not needed by anyone for anything, and confuse
+		#  things if they're copied to the original request. The `radius`
+		#  module therefore deletes them, to make your life easier.
 		#
 
 		#
-		#  Like v3, remove all pre-existing attributes in the
-		#  original reply, and replace them with the reply
-		#  from the home server.
+		#  Like v3, remove all pre-existing attributes in the original
+		#  reply, and replace them with the reply from the home server.
 		#
-		#  It is also possible to copy over some, or none of
-		#  the attributes in the reply from the home server.
-		#  The configuration here is just an example, and can
-		#  be edited.
+		#  It is also possible to copy over some, or none of the attributes
+		#  in the reply from the home server. The configuration here is just
+		#  an example, and can be edited.
 		#
 		parent.reply := reply
 	}

@@ -1,26 +1,26 @@
 #  -*- text -*-
 ######################################################################
 #
-#  This virtual server simplifies the process of sending CoA-Request or
-#  Disconnect-Request packets to a NAS.
+#  This virtual server simplifies the process of sending CoA-Request
+#  or Disconnect-Request packets to a NAS.
 #
 #  This virtual server will receive CoA-Request or Disconnect-Request
-#  packets that contain *minimal* identifying information.  e.g. Just
-#  a User-Name, or maybe just an Acct-Session-Id attribute.  It will
-#  look up that information in a database in order to find the rest of
-#  the session data.  e.g. NAS-IP-Address, NAS-Identifier, NAS-Port,
-#  etc.  That information will be added to the packet, which will then
-#  be sent to the NAS.
+#  packets that contain *minimal* identifying information. e.g. Just a
+#  User-Name, or maybe just an Acct-Session-Id attribute. It will look
+#  up that information in a database in order to find the rest of the
+#  session data. e.g. NAS-IP-Address, NAS-Identifier, NAS-Port, etc.
+#  That information will be added to the packet, which will then be
+#  sent to the NAS.
 #
 #  This process is useful because NASes require the CoA packets to
 #  contain "session identification" attributes in order to to do CoA
-#  or Disconnect.  If the attributes aren't in the packet, then the
-#  NAS will NAK the request.  This NAK happens even if you ask to
+#  or Disconnect. If the attributes aren't in the packet, then the NAS
+#  will NAK the request. This NAK happens even if you ask to
 #  disconnect "User-Name = bob", and there is only one session with a
 #  "bob" active.
 #
 #  Using this virtual server makes the CoA or Disconnect process
-#  easier.  Just tell FreeRADIUS to disconnect "User-Name = bob", and
+#  easier. Just tell FreeRADIUS to disconnect "User-Name = bob", and
 #  FreeRADIUS will take care of adding the "session identification"
 #  attributes.
 #
@@ -35,9 +35,9 @@
 #      filtered as required, with session identification added, to the
 #      corresponding NAS for each session.
 #
-#  This simplifies scripting directly against a set of NAS devices since a
-#  script need only send a single CoA/Disconnect to FreeRADIUS which will
-#  then:
+#  This simplifies scripting directly against a set of NAS devices
+#  since a script need only send a single CoA/Disconnect to FreeRADIUS
+#  which will then:
 #
 #    - Lookup all active sessions belonging to a user, in the case that only a
 #      User-Name attribute is provided in the request
@@ -61,8 +61,8 @@
 #      EOF
 #   ```
 #
-#  In addition to configuring and activating this site, instances of the radius
-#  client module must be created for each NAS, for example:
+#  In addition to configuring and activating this site, instances of
+#  the radius client module must be created for each NAS, for example:
 #
 #      ```
 #      radius radius-originate-coa-192.0.2.1 {
@@ -84,8 +84,8 @@
 #      }
 #      ```
 #
-#  Refer to `mods-enabled/radius` as a detailed reference for configuring
-#  client access to each NAS.
+#  Refer to `mods-enabled/radius` as a detailed reference for
+#  configuring client access to each NAS.
 
 
 server coa {
@@ -124,26 +124,25 @@ server coa {
 		#
 		#  NasIpAddress1#AcctSessionId1|NasIPAddress2#AcctSessionId2|...
 		#
-		#  i.e. each session is separated by '|', and attributes
-		#  within a session are separated by '#'
+		#  i.e. each session is separated by '|', and attributes within a
+		#  session are separated by '#'
 		#
-		#  You will likely have to update the SELECT to add in
-		#  any other "session identification" attributes
-		#  needed by the NAS.  These may include NAS-Port,
-		#  NAS-Identifier, etc.  Only the NAS vendor knows
-		#  what these attributes are unfortunately, so we
-		#  cannot give more detailed advice here.
+		#  You will likely have to update the SELECT to add in any other
+		#  "session identification" attributes needed by the NAS. These may
+		#  include NAS-Port, NAS-Identifier, etc. Only the NAS vendor knows
+		#  what these attributes are unfortunately, so we cannot give more
+		#  detailed advice here.
 		#
 
 		#
 		#  Example MySQL lookup
 		#
-#		control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+		#		control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
 		#  Example PostgreSQL lookup
 		#
-#		control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+		#		control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
 		#  Keep a count of what we send.
@@ -168,8 +167,8 @@ server coa {
 
 					subrequest ::CoA-Request {
 						#
-						#  The subrequest begins empty, so initially copy all attributes
-						#  from the incoming request.
+						#  The subrequest begins empty, so initially copy all attributes from the incoming
+						#  request.
 						#
 						request := parent.request
 
@@ -187,8 +186,7 @@ server coa {
 						#
 						#  Remove attributes which will confuse the NAS
 						#
-						#  The NAS will "helpfully" NAK the packet
-						#  if it contains attributes which are NOT
+						#  The NAS will "helpfully" NAK the packet if it contains attributes which are NOT
 						#  "session identification" attributes.
 						#
 
@@ -206,7 +204,7 @@ server coa {
 						#
 						#  Uncomment if the NAS does not expect User-Name
 						#
-						#request -= User-Name[*]
+						#  request -= User-Name[*]
 
 						#
 						#  Call the radius client module instance for the NAS-IP-Address
@@ -269,7 +267,8 @@ server coa {
 	#
 	recv Disconnect-Request {
 		#
-		#  Populate this section as above, but use "subrequest Disconnect-Request"
+		#  Populate this section as above, but use "subrequest
+		#  Disconnect-Request"
 		#
 	}
 

@@ -7,8 +7,8 @@
 #
 #  = Winbind
 #
-#  The `winbind` module authenticate PAP passwords against Microsoft Active
-#  Directory or Samba, via the winbind API.
+#  The `winbind` module authenticate PAP passwords against Microsoft
+#  Active Directory or Samba, via the winbind API.
 #
 #  This module is for PAP authentication (where plaintext passwords
 #  are sent in the `User-Password` attribute) only. For authenticating
@@ -30,13 +30,14 @@ winbind {
 	#
 	#  domain:: The windows domain.
 	#
-	#  While not required to be set, it is likely that authentication will fail
-	#  if it is not set correctly.
+	#  While not required to be set, it is likely that authentication
+	#  will fail if it is not set correctly.
 	#
-	#  This configuration option, as the username above, is also expanded before use.
+	#  This configuration option, as the username above, is also expanded
+	#  before use.
 	#
-	#  If unset then winbind will be queried for the correct value. If you
-	#  actually want it blank it should be explicitly set here.
+	#  If unset then winbind will be queried for the correct value. If
+	#  you actually want it blank it should be explicitly set here.
 	#
 #	domain = ""
 
@@ -49,17 +50,17 @@ winbind {
 		#
 		#  search_username:: AD username to search for group searches.
 		#
-		#  This should generally not include a realm, so `Stripped-User-Name`
-		#  is likely the best attribute if it exists.
+		#  This should generally not include a realm, so
+		#  `Stripped-User-Name` is likely the best attribute if it exists.
 		#
 		search_username = "%{Stripped-User-Name || User-Name}"
 
 		#
 		#  add_domain:: Include the domain in group searches.
 		#
-		#  When this is enabled, winbind_domain is prepended to the
-		#  username (as `domain\username`) before searching. This is
-		#  generally required.
+		#  When this is enabled, winbind_domain is prepended to the username
+		#  (as `domain\username`) before searching. This is generally
+		#  required.
 		#
 #		add_domain = yes
 	}
@@ -67,25 +68,23 @@ winbind {
 	#
 	#  reuse:: Maintain long-term connections to the windbind server.
 	#
-	#  Reusable connection handles are allocated in blocks.  These
+	#  Reusable connection handles are allocated in blocks. These
 	#  parameters allow for tuning how that is done.
 	#
 	reuse {
 		#
-		#  min:: The minimum number of connection handles to
-		#  keep allocated
+		#  min:: The minimum number of connection handles to keep allocated
 		#
 #		min = 10
 
 		#
-		#  max:: The maximum number of reusable connection
-		#  handles to allocate.
+		#  max:: The maximum number of reusable connection handles to
+		#  allocate.
 		#
 #		max = 100
 
 		#
-		#  cleanup_interval:: How often to free un-used
-		#  connection handles.
+		#  cleanup_interval:: How often to free un-used connection handles.
 		#
 #		cleanup_interval = 30s
 	}

@@ -9,17 +9,18 @@
 #
 #  The module `icmp` is used for sending ICMP Echo Request messages.
 #
-#  This module is useful only for `xlat`.  Use it via the following expansion:
+#  This module is useful only for `xlat`. Use it via the following
+#  expansion:
 #
 #	`%icmp(192.0.2.1)`
 #
-#  The module will "ping" the given IP address.  If that IP address responds
-#  with an ICMP Echo Reply, then the result of the expansion will be `yes`.
-#  If that IP address does not respond within the timeout, then the result
-#  of the expansion will be `no`.
+#  The module will "ping" the given IP address. If that IP address
+#  responds with an ICMP Echo Reply, then the result of the expansion
+#  will be `yes`. If that IP address does not respond within the
+#  timeout, then the result of the expansion will be `no`.
 #
-#  The IP address does not have to be a fixed string.  It can be another
-#  expansion, such as:
+#  The IP address does not have to be a fixed string. It can be
+#  another expansion, such as:
 #
 #	`%icmp:(%{NAS-IP-Address})`
 #
@@ -44,8 +45,8 @@ icmp {
 	#
 	#  By default, packets are sent via the normal routing table.
 	#
-	#  Specifying an interface forces the packets to be sent via
-	#  that particular interface.
+	#  Specifying an interface forces the packets to be sent via that
+	#  particular interface.
 	#
 #	interface = eth0
 
@@ -60,10 +61,9 @@ icmp {
 	#  Default is `1` seconds, which should be plenty for nearly
 	#  anything. Range is `0.1s` to `10s`.
 	#
-	#  WARNING: You are strongly encouraged to NOT increase this
-	#  value.  In fact, you are much better off decreasing it to a
-	#  lower value.  Doing so will improve network stability and
-	#  responsiveness.
+	#  WARNING: You are strongly encouraged to NOT increase this value.
+	#  In fact, you are much better off decreasing it to a lower value.
+	#  Doing so will improve network stability and responsiveness.
 	#
 	timeout = 1s
 }
@@ -71,7 +71,8 @@ icmp {
 #
 #  == Ping for IPv4
 #
-#  Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
+#  Copy of the `icmp` module, as it may be easier to remember `ping`
+#  than `icmp`.
 #
 icmp ping {
 	timeout = 1s

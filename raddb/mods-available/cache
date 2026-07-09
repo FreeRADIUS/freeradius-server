@@ -7,12 +7,13 @@
 #
 #  = Cache Module
 #
-#  The `cache` module is used to cache attributes. The idea is that you can look
-#  up information in a database, and then cache it. Repeated requests for the same
-#  information will then have the cached values added to the request.
+#  The `cache` module is used to cache attributes. The idea is that
+#  you can look up information in a database, and then cache it.
+#  Repeated requests for the same information will then have the
+#  cached values added to the request.
 #
-#  The module can cache a fixed set of attributes per key.
-#  It can be listed in any `recv` or `send` section.
+#  The module can cache a fixed set of attributes per key. It can be
+#  listed in any `recv` or `send` section.
 #
 #  NOTE: If you want to have different things cached for different
 #  sections, you will need to define multiple instances of the module,
@@ -57,8 +58,9 @@ cache {
 #	driver = "rbtree"
 
 	#
-	#  NOTE: Some drivers accept specific options, to set them a config section with the
-	#  the name as the driver should be added to the cache instance.
+	#  NOTE: Some drivers accept specific options, to set them a config
+	#  section with the the name as the driver should be added to the
+	#  cache instance.
 	#
 	#  Driver specific options are:
 	#
@@ -163,26 +165,27 @@ cache {
 	}
 
 	#
-	#  key:: The `key` used to index the cache. It is dynamically expanded at run time.
+	#  key:: The `key` used to index the cache. It is dynamically
+	#  expanded at run time.
 	#
 	key = %{User-Name}
 
 	#
 	#  ttl::
 	#
-	#  The TTL of cache entries, in seconds. Entries older than this
-	#  will be expired.
+	#  The TTL of cache entries, in seconds. Entries older than this will
+	#  be expired.
 	#
 	#  This value should be between `10` and `86400`.
 	#
 	ttl = 10
 
 	#
-	#  NOTE: You can flush the cache via
-	#  `radmin -e "set module config cache epoch 123456789"`
-	#  Where last value is a 32-bit Unix timestamp. Cache entries older
-	#  than this are expired, as new entries added.
-	#  You should never set the "epoch" configuration item in this file.
+	#  NOTE: You can flush the cache via `radmin -e "set module config
+	#  cache epoch 123456789"` Where last value is a 32-bit Unix
+	#  timestamp. Cache entries older than this are expired, as new
+	#  entries added. You should never set the "epoch" configuration item
+	#  in this file.
 
 	#
 	#  add_stats::
@@ -205,57 +208,55 @@ cache {
 	#
 	#  Each key gets the same set of cached attributes.
 	#
-	#  The operation of the `update` section is a little different
-	#  from normal `update` sections.  This is because we need to
-	#  both reference the attributes which we want to store in the
-	#  cache, and also to describe where those attributes are
-	#  written to when the cache entry is read.
+	#  The operation of the `update` section is a little different from
+	#  normal `update` sections. This is because we need to both
+	#  reference the attributes which we want to store in the cache, and
+	#  also to describe where those attributes are written to when the
+	#  cache entry is read.
 	#
-	#  The solution (albeit an imperfect one) is that the cache
-	#  does not store attributes, it stores `update` sections.
-	#  The `update` section given below is used as a template
-	#  for the cache entry.
+	#  The solution (albeit an imperfect one) is that the cache does not
+	#  store attributes, it stores `update` sections. The `update`
+	#  section given below is used as a template for the cache entry.
 	#
-	#  When the cache entry is created, the right-hand side of
-	#  each attribute assignment line is expanded.  The left-hand
-	#  side of the attribute assignment is left alone.
+	#  When the cache entry is created, the right-hand side of each
+	#  attribute assignment line is expanded. The left-hand side of the
+	#  attribute assignment is left alone.
 	#
-	#  Once all of the right-hand side values are expanded, the
-	#  result is an `update` section with left-hand side
-	#  assignments, and right-hand side values.  That `update`
-	#  section is then cached, indexed by the `key`
+	#  Once all of the right-hand side values are expanded, the result is
+	#  an `update` section with left-hand side assignments, and
+	#  right-hand side values. That `update` section is then cached,
+	#  indexed by the `key`
 	#
-	#  When the cache entry is read, it is looked up by the `key`,
-	#  and the cached `update` section is found.  This cache entry
-	#  now has left-hand side assignments, and right-hand side
-	#  values.  It is then applied to the current request.
+	#  When the cache entry is read, it is looked up by the `key`, and
+	#  the cached `update` section is found. This cache entry now has
+	#  left-hand side assignments, and right-hand side values. It is then
+	#  applied to the current request.
 	#
-	#  For example, if the `cache` module is configured with the
-	#  block below:
+	#  For example, if the `cache` module is configured with the block
+	#  below:
 	#
 	#	update {
 	#	       reply.Reply-Message := "Hello %{User-Name}"
 	#	}
 	#
-	#  When the cache entry is created, the module will expand the
-	#  right side of the entry, using the attributes from the
-	#  packet.  In this case, the string could expand to `"Hello bob"`.
+	#  When the cache entry is created, the module will expand the right
+	#  side of the entry, using the attributes from the packet. In this
+	#  case, the string could expand to `"Hello bob"`.
 	#
-	#  Once all of the right-hand values are expanded, the
-	#  resulting cache entry will look like this:
+	#  Once all of the right-hand values are expanded, the resulting
+	#  cache entry will look like this:
 	#
 	#	update {
 	#	       reply.Reply-Message := "Hello bob"
 	#	}
 	#
-	#  When the cache module is read, this `update` section is
-	#  applied just as if it had been specified in a configuration
-	#  file.
+	#  When the cache module is read, this `update` section is applied
+	#  just as if it had been specified in a configuration file.
 	#
-	#  NOTE: Only `request`, `reply`, `control` and
-	#  `session-state` lists are available for the left side of
-	#  cache entries. Attempting to reference other lists will
-	#  raise an error during config validation.
+	#  NOTE: Only `request`, `reply`, `control` and `session-state` lists
+	#  are available for the left side of cache entries. Attempting to
+	#  reference other lists will raise an error during config
+	#  validation.
 	#
 	update {
 		#
@@ -281,7 +282,7 @@ cache {
 	#  represented by attributes in the `control.` list.
 	#
 	#  control.Cache-TTL:: Sets the TTL of an entry to be created, or
-	#   modifies the TTL of an existing entry.
+	#  modifies the TTL of an existing entry.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -299,38 +300,37 @@ cache {
 	#  prevent a new entry from being created, and existing entries from
 	#  being merged. It will also alter the module's return codes.
 	#
-	#   * The module will return `ok` if a cache entry was found.
-	#   * The module will return `notfound` if no cache entry was found.
+	#  * The module will return `ok` if a cache entry was found.
+	#  * The module will return `notfound` if no cache entry was found.
 	#
-	#  NOTE: If this is set to `yes`, no other cache control attributes will
-	#  be honoured, but they will still be cleared.
+	#  NOTE: If this is set to `yes`, no other cache control attributes
+	#  will be honoured, but they will still be cleared.
 	#
 	#  control.Cache-Allow-Insert:: If present and set to `no` will
-	#  prevent a new entry from being created. If not present or set
-	#  to `yes`, and no entry exists, a new one will be created.
-	#  This is evaluated after `Cache-TTL`, so expired entries may be
-	#  recreated.
+	#  prevent a new entry from being created. If not present or set to
+	#  `yes`, and no entry exists, a new one will be created. This is
+	#  evaluated after `Cache-TTL`, so expired entries may be recreated.
 	#
 	#  control.Cache-Allow-Merge:: If present and set to `no` will
-	#  prevent existing entries from being merged. If not present or
-	#  set to `yes`, and an entry exists (and is valid), it will be
-	#  merged with the current request.
-	#  This is evaluated before `Cache-TTL`, so entries being expired
-	#  may first be merged.
+	#  prevent existing entries from being merged. If not present or set
+	#  to `yes`, and an entry exists (and is valid), it will be merged
+	#  with the current request. This is evaluated before `Cache-TTL`, so
+	#  entries being expired may first be merged.
 	#
-	#  control.Cache-Merge-New:: If present and set to `yes` will merge new
-	#  cache entries into the current request. Useful if results of execs or
-	#  expansions are stored directly in the cache.
+	#  control.Cache-Merge-New:: If present and set to `yes` will merge
+	#  new cache entries into the current request. Useful if results of
+	#  execs or expansions are stored directly in the cache.
 	#
 	#
-	#  NOTE: All runtime configuration attributes will be removed from the
-	#  `control.` list after the cache module is called.
+	#  NOTE: All runtime configuration attributes will be removed from
+	#  the `control.` list after the cache module is called.
 	#
 	#  === Methods
 	#
 	#  The cache module also allows handling the cache using the methods.
 	#
-	#  cache.status:: Verify if an entry already exists without load the entries.
+	#  cache.status:: Verify if an entry already exists without load the
+	#  entries.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -340,7 +340,8 @@ cache {
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#
-	#  cache.load:: Load an existing cache entry and merge it into the request.
+	#  cache.load:: Load an existing cache entry and merge it into the
+	#  request.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -350,7 +351,8 @@ cache {
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#
-	#  cache.update:: Perform an upsert against the data store, updating the entry TTL
+	#  cache.update:: Perform an upsert against the data store, updating
+	#  the entry TTL
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -359,8 +361,8 @@ cache {
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#
-	#  cache.store:: Inserts data into the cache if, and only if, it is not already present
-	#  Will not update the entry TTL.
+	#  cache.store:: Inserts data into the cache if, and only if, it is
+	#  not already present Will not update the entry TTL.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -370,8 +372,8 @@ cache {
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#
-	#  cache.clear:: Delete cache entry from the data store without checking if the entry
-	#  already exists.
+	#  cache.clear:: Delete cache entry from the data store without
+	#  checking if the entry already exists.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -391,7 +393,7 @@ cache {
 	#  | `fail`     | if the cache was unavailable.
 	#  |===
 	#
-	#  ### Examples
+	#  === Examples
 	#
 	#  ```
 	#  # Add a cache entry

@@ -7,8 +7,8 @@
 #
 #  = REDIS Module
 #
-#  The `redis` module handles connections to a redis database,
-#  and the `%redis( ...)` dynamic expansion.
+#  The `redis` module handles connections to a redis database, and the
+#  `%redis( ...)` dynamic expansion.
 #
 #  See also https://redis.io/documentation for documentation on the
 #  Redis database.
@@ -17,31 +17,32 @@
 #
 #  == Configuration Settings
 #
-#  This module connects to a Redis database.  Other modules
-#  (e.g. `redis_ippool`) perform task-specific functions using Redis.
+#  This module connects to a Redis database. Other modules (e.g.
+#  `redis_ippool`) perform task-specific functions using Redis.
 #
 redis {
 	#
 	#  server:: The server to connect to.
 	#
-	#  If using Redis cluster, multiple 'bootstrap' servers may be
-	#  listed here (as separate config items). These will be contacted
-	#  in turn until one provides us with a valid map for the cluster.
+	#  If using Redis cluster, multiple 'bootstrap' servers may be listed
+	#  here (as separate config items). These will be contacted in turn
+	#  until one provides us with a valid map for the cluster.
 	#
 	#  Server strings may contain unique ports e.g.:
 	#
 	#    server = '127.0.0.1:30001'
 	#    server = '[::1]:30002'
 	#
-	#  NOTE: Instantiation failure behaviour is controlled by `pool.start`
-	#  as with every other module, but with clustering, the `pool { ... }`
-	#  section determines limits for each node in the cluster, not the
-	#  cluster as a whole.
+	#  NOTE: Instantiation failure behaviour is controlled by
+	#  `pool.start` as with every other module, but with clustering, the
+	#  `pool { ... }` section determines limits for each node in the
+	#  cluster, not the cluster as a whole.
 	#
 	server = 127.0.0.1
 
 	#
-	#  database:: Select the Redis logical database having the specified zero-based numeric index.
+	#  database:: Select the Redis logical database having the specified
+	#  zero-based numeric index.
 	#
 	#  NOTE: Redis only supports logical databases when Redis cluster is
 	#  not in use.
@@ -49,8 +50,7 @@ redis {
 #	database = 0
 
 	#
-	#  port:: Port to connect to
-	#  The default port is 6379.
+	#  port:: Port to connect to The default port is 6379.
 	#
 	port = 6379
 
@@ -64,21 +64,23 @@ redis {
 	#
 	#  use_tls:: Use TLS (requires hiredis 1.0+)
 	#
-	#  TLS parameters can be specified in the optional adjacent tls {} section
+	#  TLS parameters can be specified in the optional adjacent tls {}
+	#  section
 	#
 #	use_tls = no
-#	tls { }
+	#	tls { }
 
 	#
 	#  use_cluster_map:: Use cluster map
 	#
 	#  Build cluster map during initialization.
 	#
-	#  The cluster client can operate, albeit inefficiently, without a cluster map
-	#  by following '-ASK' and '-MOVE' redirects.
+	#  The cluster client can operate, albeit inefficiently, without a
+	#  cluster map by following '-ASK' and '-MOVE' redirects.
 	#
-	#  Disabling cluster map can be required for stunnel-based deployments.
-	#  Alternatively, cluster map is not built during initialization when pool.start == 0
+	#  Disabling cluster map can be required for stunnel-based
+	#  deployments. Alternatively, cluster map is not built during
+	#  initialization when pool.start == 0
 	#
 	#  In addition the cluster map should be disabled when connecting to
 	#  non-clustered Redis servers.
@@ -94,24 +96,28 @@ redis {
 		#
 		#  function <name> { ... }::
 		#
-		#  Every function section listed here will be registered as an expansion with a name
-		#  in the format `<inst>.<name>`.
+		#  Every function section listed here will be registered as an
+		#  expansion with a name in the format `<inst>.<name>`.
 		#
-		#  For example the function below would be callable as `%redis.hello_world(...)`.
+		#  For example the function below would be callable as
+		#  `%redis.hello_world(...)`.
 		#
-		#  expansion functions take the same arguments as the redis `EVALSHA` command,
-		#  i.e. `<numkeys> [<key> [<key> ...]] [<arg> [<arg> ...]]`.
+		#  expansion functions take the same arguments as the redis
+		#  `EVALSHA` command, i.e. `<numkeys> [<key> [<key> ...]] [<arg>
+		#  [<arg> ...]]`.
 		#
-		#  `numkeys` specifies how many of the proceeding arguments should be treated as keys.
+		#  `numkeys` specifies how many of the proceeding arguments should
+		#  be treated as keys.
 		#
-		#  The redis module will use the first key to determine which cluster node the function
-		#  should called on.
+		#  The redis module will use the first key to determine which
+		#  cluster node the function should called on.
 		#
-		#  The redis module pre-calcualtes the SHA1 hash of all lua functions on startup.
-		#  When an expansion function is called, it uses the `EVALSHA` command to attempt to
-		#  call lua function on a remote redis node.  If `EVALSHA` fails with an error indicating
-		#  no script could be found with the calculated SHA1 hash, the lua function will be
-		#  loaded transparently using `SCRIPT LOAD`.
+		#  The redis module pre-calcualtes the SHA1 hash of all lua
+		#  functions on startup. When an expansion function is called, it
+		#  uses the `EVALSHA` command to attempt to call lua function on a
+		#  remote redis node. If `EVALSHA` fails with an error indicating no
+		#  script could be found with the calculated SHA1 hash, the lua
+		#  function will be loaded transparently using `SCRIPT LOAD`.
 		#
 		function hello_world {
 			#
@@ -124,17 +130,16 @@ redis {
 	#
 	#  pool { ... }::
 	#
-	#  Information for the connection pool.  The configuration items below
+	#  Information for the connection pool. The configuration items below
 	#  are the same for all modules which use the new connection pool.
 	#
 	pool {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
-		#  If the server cannot create specified number of
-		#  connections during instantiation it will exit.
-		#  Set to `0` to allow the server to start without the
-		#  external service being available.
+		#  If the server cannot create specified number of connections
+		#  during instantiation it will exit. Set to `0` to allow the server
+		#  to start without the external service being available.
 		#
 		start = 0
 
@@ -146,26 +151,26 @@ redis {
 		#
 		#  max:: Maximum number of connections.
 		#
-		#  If these connections are all in use and a new one
-		#  is requested, the request will NOT get a connection.
+		#  If these connections are all in use and a new one is requested,
+		#  the request will NOT get a connection.
 		#
-		#  Setting `max` to *LESS* than the number of threads means
-		#  that some threads may starve, and you will see errors
-		#  like _No connections available and at max connection limit_.
+		#  Setting `max` to *LESS* than the number of threads means that
+		#  some threads may starve, and you will see errors like _No
+		#  connections available and at max connection limit_.
 		#
-		#  Setting `max` to MORE than the number of threads means
-		#  that there are more connections than necessary.
+		#  Setting `max` to MORE than the number of threads means that there
+		#  are more connections than necessary.
 		#
-		#  If `max` is not specified, then it defaults to the number
-		#  of workers configured.
+		#  If `max` is not specified, then it defaults to the number of
+		#  workers configured.
 		#
 #		max =
 
 		#
 		#  spare:: Spare connections to be left idle.
 		#
-		#  NOTE: Idle connections WILL be closed if `idle_timeout`
-		#  is set.  This should be less than or equal to `max` above.
+		#  NOTE: Idle connections WILL be closed if `idle_timeout` is set.
+		#  This should be less than or equal to `max` above.
 		#
 		spare = 1
 
@@ -177,8 +182,8 @@ redis {
 		uses = 0
 
 		#
-		#  retry_delay:: The number of seconds to wait after the server tries
-		#  to open a connection, and fails.
+		#  retry_delay:: The number of seconds to wait after the server
+		#  tries to open a connection, and fails.
 		#
 		#  During this time, no new connections will be opened.
 		#
@@ -202,7 +207,8 @@ redis {
 		#
 		#  idle_timeout:: The idle timeout (in seconds).
 		#
-		#  A connection which is unused for this length of time will be closed.
+		#  A connection which is unused for this length of time will be
+		#  closed.
 		#
 		#  NOTE: `0` means "infinite".
 		#
@@ -211,22 +217,23 @@ redis {
 		#
 		#  connect_timeout:: Connection timeout (in seconds).
 		#
-		#  The maximum amount of time to wait for a new connection to be established.
+		#  The maximum amount of time to wait for a new connection to be
+		#  established.
 		#
 		connect_timeout = 3.0
 
 		#
 		#  [NOTE]
 		#  ====
-		#  All configuration settings are enforced.  If a connection is closed because of
-		#  `idle_timeout`, `uses`, or `lifetime`, then the total number of connections MAY
-		#  fall below `min`.
+		#  All configuration settings are enforced. If a connection is
+		#  closed because of `idle_timeout`, `uses`, or `lifetime`, then the
+		#  total number of connections MAY fall below `min`.
 		#
-		#  When that happens, it will open a new connection.  It will also log a *WARNING*
-		#  message.
+		#  When that happens, it will open a new connection. It will also
+		#  log a *WARNING* message.
 		#
-		#  The solution is to either lower the "min" connections,
-		#  or increase lifetime/idle_timeout.
+		#  The solution is to either lower the "min" connections, or
+		#  increase lifetime/idle_timeout.
 		#  ====
 		#
 	}

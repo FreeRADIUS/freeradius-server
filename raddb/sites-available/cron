@@ -7,7 +7,8 @@
 #
 #  = The cron Virtual Server
 #
-#  The `cron` virtual server is an example of using `cron` style functionality in FreeRADIUS.
+#  The `cron` virtual server is an example of using `cron` style
+#  functionality in FreeRADIUS.
 #
 #  == The Virtual Server
 #
@@ -22,12 +23,12 @@ server cron {
 	namespace = radius
 
 	#
-	#  You can have a `radius` subsection here.  See the `default`
-	#  virtual server for documentation.
+	#  You can have a `radius` subsection here. See the `default` virtual
+	#  server for documentation.
 	#
 
 	#
-	#  Create a `cron` listener.  Note that leaving off the `cron` name
+	#  Create a `cron` listener. Note that leaving off the `cron` name
 	#  will result in the protocol trying to open a socket!
 	#
 	listen cron {
@@ -60,8 +61,9 @@ server cron {
 			#  * month of year (1-12)
 			#  * day of week (0-6)
 			#
-			#  The allowed values follow the specification given in
-			#  `man 5 crontab`, or https://man7.org/linux/man-pages/man5/crontab.5.html
+			#  The allowed values follow the specification given in `man 5
+			#  crontab`, or
+			#  https://man7.org/linux/man-pages/man5/crontab.5.html
 			#
 			#  Multiple values can be given, separated by comma:
 			#  * 1,2,3
@@ -81,11 +83,9 @@ server cron {
 			#  When the timer hits, the `cron` section processes the attributes
 			#  from this file, as if they had been received from the network.
 			#
-			#  Nothing is done with the reply packet (if
-			#  anything).  The `cron` functionality
-			#  assumes that all of the work necessary for
-			#  `cron` is done inside of the processing
-			#  sections.
+			#  Nothing is done with the reply packet (if anything). The `cron`
+			#  functionality assumes that all of the work necessary for `cron`
+			#  is done inside of the processing sections.
 			#
 			filename = /Users/alandekok/git/wrapper/freeradius-server/user_password
 		}
