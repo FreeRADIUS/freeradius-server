@@ -45,6 +45,7 @@ typedef struct {
 
 typedef struct {
 	CONF_SECTION			*cs;			//!< our configuration
+	proto_dhcpv6_t const		*parent;		//!< parent instance
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
 
@@ -196,7 +197,19 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	packet may be smaller than the parent UDP packet.
 	 */
 	if (fr_dhcpv6_ok(buffer, data_size, inst->max_attributes) <= 0) {
-		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring");
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring message which is not DHCPv6");
+		return 0;
+	}
+
+	/*
+	 *	If there is a Server-ID option configured, then it has to match.
+	 */
+	if (inst->parent->server_id &&
+	    !fr_dhcpv6_verify(buffer, data_size, &(fr_dhcpv6_decode_ctx_t) {
+			    .duid = inst->parent->server_id,
+			    .duid_len = talloc_array_length(inst->parent->server_id),
+		    }, false)) {
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring message which is malformed (%s)", fr_strerror());
 		return 0;
 	}
 
@@ -652,6 +665,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	client->longname = client->shortname = client->secret = talloc_strdup(client, "default");
 	client->nas_type = talloc_strdup(client, "other");
+
+	inst->parent = talloc_get_type_abort_const(mctx->mi->parent->data, proto_dhcpv6_t);
 
 	return 0;
 }

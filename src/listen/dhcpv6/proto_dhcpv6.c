@@ -26,6 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 #include "proto_dhcpv6.h"
 
 extern fr_app_t proto_dhcpv6;
@@ -218,8 +219,9 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
+	proto_dhcpv6_t const   	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const	*address = track->address;
 	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
@@ -281,6 +283,26 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	if (buffer_len < 4) {
 		REDEBUG("Output buffer is too small to hold a DHCPv6 packet.");
 		return -1;
+	}
+
+	/*
+	 *	If there's a servcer ID, then add it to responses where it's needed.
+	 */
+	if (inst->server_id_pair) {
+		fr_pair_t *vp, *copy;
+
+		/*
+		 *	If the admin added it manually, then we assume that the admin knows what they're
+		 *	doing, and added it manually.  The DHCPv6 "process" routines save / restore any
+		 *	existing Server-ID options.  But in some cases, the request doesn't have a Server-ID,
+		 *	but it still has to go into Reply and Advertise.  So we need to double-check those
+		 *	here.
+		 */
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_server_id);
+		if (vp) {
+			MEM(copy = fr_pair_copy(&request->reply_ctx, vp));
+			(void) fr_pair_append(&request->reply_pairs, copy);
+		}
 	}
 
 	memset(buffer, 0, buffer_len);

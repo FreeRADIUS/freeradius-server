@@ -73,6 +73,29 @@ server dhcpv6 {
 		type = Request
 
 		#
+		#  server-id:: The Server-ID option for this listener.
+		#
+		#  If this configuration item is set, this listener
+		#  will discard all packets that do not have a
+		#  matching Server-ID.  The listener will also add
+		#  this Server-ID option to all replies.
+		#
+		#  If this configuration item is not set, then it is
+		#  your responsibility in the policies below to check
+		#  the incoming Server-Id values, and to always add
+		#  the Server-ID option to the replies.
+		#
+		#  The format of the string is just the contents of a
+		#  "Server-Id { ...}"  attribute that would normally
+		#  be passed in an "unlang" statement, e.g.:
+		#
+		#  ```
+		#  server-id = "DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Ethernet = { Address = 00:11:22:33:44:55 }"
+		#  ```
+		#
+#		server-id = "UUID.Value = 0x000102030405060708090a0b0c0d0e0f"
+
+		#
 		#  transport:: The transport protocol.
 		#
 		#  Only `udp` is allowed.
