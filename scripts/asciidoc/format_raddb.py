@@ -19,7 +19,6 @@ Implements the rules described in scripts/asciidoc/format_raddb.md:
   * Inside comments: strip the `raddb/` prefix from configuration
     file references.
   * Convert `# # Title`-style headings to `# = Title`-style headings.
-  * Convert `# .Title` to `# = Title`.
   * Warn if a configuration item has no documentation (a preceding
     comment whose first word is `<name>::`).  Documentation found in
     any input file satisfies the check for that (parent-hierarchy,
@@ -351,20 +350,6 @@ def format_comment_block(block):
             else:
                 equals = "=" * len(hm.group(1))
                 out.append(text_prefix + equals + " " + hm.group(2))
-            continue
-
-        # `# .Title` -> `# = Title`.  Only a single leading dot followed by
-        # non-dot, non-whitespace text counts as a title.  Multiple dots
-        # (e.g. `..foo`, `...`) are prose or AsciiDoc structure, not titles.
-        # A tab in the gap likewise means a commented-out marker, not a
-        # heading.
-        dm = re.match(r"^\.([^.\s].*)$", text)
-        if dm:
-            flush_paragraph()
-            if has_tab_gap or _DOT_TITLE_KEEP_RE.match(dm.group(1)):
-                out.append(line)
-            else:
-                out.append(text_prefix + "= " + dm.group(1))
             continue
 
         # AsciiDoc structure markers - keep on their own line, do not wrap.
