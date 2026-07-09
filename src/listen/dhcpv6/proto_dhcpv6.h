@@ -32,6 +32,10 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
+	char const			*server_id_str;			//!< string value
+	fr_pair_t			*server_id_pair;		//!< value-pair of the server ID
+	uint8_t const			*server_id;			//!< encoded value
+
 	char const			**allowed_types;		//!< names for for 'type = ...'
 	bool				allowed[FR_DHCPV6_CODE_MAX];	//!< indexed by value
 

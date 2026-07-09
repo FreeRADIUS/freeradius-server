@@ -37,8 +37,3 @@ extern HIDDEN fr_dict_attr_t const *attr_relay_link_address;
 extern HIDDEN fr_dict_attr_t const *attr_relay_peer_address;
 extern HIDDEN fr_dict_attr_t const *attr_relay_message;
 extern HIDDEN fr_dict_attr_t const *attr_auth;
-
-/*
- *	A private function that is used only in base.c and encode.c
- */
-void *fr_dhcpv6_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx);
