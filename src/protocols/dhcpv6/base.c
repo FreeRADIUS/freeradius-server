@@ -1008,6 +1008,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 	}
 
 	if (da->type == FR_TYPE_ATTR)  {
+		if (!da->parent->flags.is_root) {
+			fr_strerror_const("Data type 'attribute' can only be used at the dictionary root");
+			return false;
+		}
+
 		da->flags.is_known_width = true;
 		da->flags.length = 2;
 	}

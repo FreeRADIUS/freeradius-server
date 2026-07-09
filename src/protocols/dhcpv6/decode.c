@@ -87,7 +87,10 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		if (data_len < 2) goto raw;
 
-		fr_assert(parent->parent->flags.is_root);
+		/*
+		 *	Run-time checks rather than assertions.
+		 */
+		if (!parent->parent->flags.is_root) return -1;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
