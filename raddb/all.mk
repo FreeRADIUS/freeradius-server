@@ -186,6 +186,21 @@ clean.raddb:
 		$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 #
+#  Format all of the configuration files in the raddb directory.
+#
+#  Check for bad inputs:
+#
+#	git grep --perl-regexp '#\s+\.\w' raddb
+#
+#  Check for bad outputs:
+#
+#	git grep --perl-regexp '::[^:]+::' raddb
+#
+.PHONY: format.raddb
+format.raddb:
+	${Q}./scripts/asciidoc/format_raddb.py -i raddb/
+
+#
 #  A handy target to find out which triggers are where.
 #  Should only be run by SNMP developers.
 #
