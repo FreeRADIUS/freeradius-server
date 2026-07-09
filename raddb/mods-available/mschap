@@ -166,6 +166,7 @@ mschap {
 	winbind {
 		#
 		#  username:: User name for winbind
+		#
 		#  domain:: Domain name for winbind
 		#
 		#  An alternative to using `ntlm_auth` is to connect to the

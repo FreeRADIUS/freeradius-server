@@ -419,7 +419,7 @@ log debug {
 }
 
 #
-#  .ENVIRONMENT VARIABLES
+#  = ENVIRONMENT VARIABLES
 #
 #  You can reference environment variables using an expansion like
 #  `$ENV{PATH}`.  However it is sometimes useful to be able to also set
@@ -482,7 +482,7 @@ ENV {
 }
 
 #
-#  .Templates
+#  = Templates
 #
 #  Template files hold common definitions that can be used in other
 #  server sections.  When a template is referenced, the configuration
@@ -500,7 +500,7 @@ templates {
 }
 
 #
-#  .Security Configuration
+#  = Security Configuration
 #
 #  There may be multiple methods of attacking on the server.  This
 #  section holds the configuration items which minimize the impact
@@ -635,7 +635,7 @@ security {
 }
 
 #
-#  .Clients Configuration
+#  = Clients Configuration
 #
 #  Client configuration is defined in `clients.conf`.
 #
@@ -653,7 +653,7 @@ security {
 $INCLUDE clients.conf
 
 #
-#  .Thread Pool Configuration
+#  = Thread Pool Configuration
 #
 #  In v4, the thread pool does not change size dynamically.  Instead,
 #  there are a small number of threads which read from the network,
@@ -700,7 +700,7 @@ thread pool {
 }
 
 #
-#  .SNMP notifications.
+#  = Triggers and SNMP notifications.
 #
 #  Uncomment the following line to enable snmptraps.  Note that you
 #  MUST also configure the full path to the `snmptrap` command in
@@ -709,7 +709,7 @@ thread pool {
 #$INCLUDE trigger.conf
 
 #
-#  .Global Library Settings
+#  .= Global Library Settings
 #
 #  Each library which has global settings will have its own configuration
 #  file in global.d
@@ -719,7 +719,7 @@ global {
 }
 
 #
-#  .Migration Flags
+#  = Migration Flags
 #
 #  These flags are only for the "alpha" release of v4.  They will be
 #  removed (and made into errors!) in the final release.
@@ -733,7 +733,7 @@ migrate {
 }
 
 #
-#  .Module Configuration
+#  = Module Configuration
 #
 #  The names and configuration of each module is located in this section.
 #
@@ -794,7 +794,7 @@ modules {
 }
 
 #
-#  .Policies
+#  = Policies
 #
 #  Policies are virtual modules.
 #
@@ -811,7 +811,7 @@ policy {
 }
 
 #
-#  .Load virtual servers.
+#  = Load virtual servers.
 #
 #  This next $INCLUDE line loads files in the directory that
 #  match the regular expression: /[a-zA-Z0-9_.]+/

@@ -92,10 +92,8 @@ libdir = @libdir@
 pidfile = ${run_dir}/${name}.pid
 
 #
-#  max_request_time::
-#  cleanup_delay::
-#
 #  Request handling configuration.
+#  See radiusd.conf for documentation.
 #
 max_request_time = 30
 cleanup_delay = 5

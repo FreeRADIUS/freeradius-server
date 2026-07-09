@@ -118,8 +118,9 @@ sql {
 #	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt"
 
 	#
-	#  acct_table1::
-	#  acct_table2::
+	#  acct_table1:: Table for "start" records
+
+	#  acct_table2:: Table for "stop" records
 	#
 	#  If you want both stop and start records logged to the same SQL table, leave this as is.
 	#  If you want them in different tables, put the start table in `acct_table1` and stop
@@ -134,8 +135,9 @@ sql {
 	postauth_table = "radpostauth"
 
 	#
-	#  authcheck_table::
-	#  groupcheck_table::
+	#  authcheck_table:: Authorization check table for users
+	#
+	#  groupcheck_table:: Authorization check table for groups
 	#
 	#  Tables containing `check` items.
 	#
@@ -143,8 +145,9 @@ sql {
 	groupcheck_table = "radgroupcheck"
 
 	#
-	#  authreply_table::
-	#  groupreply_table::
+	#  authreply_table:: Authorization reply table for users
+	#
+	#  groupreply_table:: Authorization reply table for groups
 	#
 	#  Tables containing `reply` items.
 	#
