@@ -50,6 +50,8 @@ extern "C" {
 #define REDIS_ERROR_NO_SCRIPT_STR	"NOSCRIPT"
 #define REDIS_DEFAULT_PORT		6379
 
+#define REDIS_VERSION(_max, _min, _patch) (uint32_t) (_max << 24) | (_min << 16) | _patch
+
 typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
 typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
 
