@@ -199,14 +199,14 @@ $(DOC_RADDB)/mods-available/%.adoc: raddb/mods-available/%
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
-#	${Q}./scripts/asciidoc/wrap.py -i $@
+	${Q}./scripts/asciidoc/wrap.py -i $@
 
 $(DOC_RADDB)/%.adoc: raddb/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -o $@ < $^
-#	${Q}./scripts/asciidoc/wrap.py -i $@
+	${Q}./scripts/asciidoc/wrap.py -i $@
 
 $(DOC_RADDB)/radiusd.conf.adoc: raddb/radiusd.conf.in
 	@echo ADOC $^
