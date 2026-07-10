@@ -31,9 +31,9 @@ result in the protocol trying to open a socket!
 	listen cron {
 ----
 
-type:: What type of packet is being processed.
+type:: What type of packet that is read from `filename`, below.
 
-The `type` should be a valid name for the protocol.
+The `type` should be a valid name for the current `namespace`.
 
 ----
 		type = Access-Request
@@ -83,12 +83,13 @@ Steps can be given for ranges:
 
 ----
 
-filename:: The file which is read, cached, and processed
+filename:: The file which is read, cached, and processed.
 
-When the timer hits, the `cron` section processes the attributes from
-this file, as if they had been received from the network.
+When the timer fires, the `cron` section sends a packet with the the
+contents of the file. The file is read when the server starts, and is
+not re-read again after that.
 
-Nothing is done with the reply packet (if anything). The `cron`
+Any reply packet is discarded, and is not written anywhere. The `cron`
 functionality assumes that all of the work necessary for `cron` is
 done inside of the processing sections.
 
@@ -98,20 +99,23 @@ done inside of the processing sections.
 	}
 
 recv Access-Request {
-	ok
+----
+
+Once a minute touch the "watchdog" file. An external process can then
+monitor this file.
+
+If the watchdog file has not been modified in a few minutes, then the
+server is either blocked, or else it is not running.
+
+----
+	%file.touch("${run_dir}/watchdog")
 }
 
-send Access-Accept {
-	ok
-}
+----
 
-send Access-Reject {
-	ok
-}
+The missing `send` sections default to `noop`.
 
-send Do-Not-Respond {
-	ok
-}
+----
 }
 ----
 
