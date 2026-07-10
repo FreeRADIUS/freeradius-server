@@ -1,61 +1,58 @@
 
-WARNING: This configuration file has not been updated for v4,
-          and therefore WILL NOT WORK.  Please do not use it.
+WARNING: This configuration file has not been updated for v4, and
+therefore WILL NOT WORK.  Please do not use it.
 
-```
+----
 #	This is a sample configuration for robust proxy accounting.
 #	accounting packets are proxied, OR logged locally if all
 #	home servers are down.  When the home servers come back up,
 #	the accounting packets are forwarded.
-```
+----
 
-```
+----
 #	This method enables the server to proxy all packets to the
 #	home servers when they're up, AND to avoid writing to the
 #	detail file in most situations.
-```
+----
 
-```
+----
 #	In most situations, proxying of accounting messages is done
 #	in a "pass-through" fashion.  If the home server does not
 #	respond, then the proxy server does not respond to the NAS.
 #	That means that the NAS must retransmit packets, sometimes
 #	forever.  This example shows how the proxy server can still
 #	respond to the NAS, even if all home servers are down.
-```
+----
 
-```
+----
 #	This configuration could be done MUCH more simply if ALL
 #	packets were written to the detail file.  But that would
 #	involve a lot more disk writes, which may not be a good idea.
-```
+----
 
-```
+----
 #	NOTE: This file is NOT meant to be used as-is.  It needs to be
 #	edited to match your local configuration.
-```
-
-
+----
 
 (1) Define two home servers.
-```
+----
 home_server home1.example.com {
 	type = acct
 	ipaddr = 192.0.2.10
 	port = 1813
 	secret = testing123
 
-```
+----
 Mark this home server alive ONLY when it starts being responsive
-```
+----
 	status_check = request
 	username = "test_user_status_check"
 
-```
-Set the response timeout aggressively low.
-You MAY have to increase this, depending on tests with
-your local installation.
-```
+----
+Set the response timeout aggressively low. You MAY have to increase
+this, depending on tests with your local installation.
+----
 	response_window = 6
 }
 
@@ -65,97 +62,87 @@ home_server home2.example.com {
 	port = 1813
 	secret = testing123
 
-```
+----
 Mark this home server alive ONLY when it starts being responsive
-```
+----
 	status_check = request
 	username = "test_user_status_check"
 
-```
-Set the response timeout aggressively low.
-You MAY have to increase this, depending on tests with
-your local installation.
-```
+----
+Set the response timeout aggressively low. You MAY have to increase
+this, depending on tests with your local installation.
+----
 	response_window = 6
 }
 
-```
+----
 (2) Put all of the servers into a pool.
-```
+----
 home_server_pool acct_pool.example.com {
 	type = load-balance	# other types are OK, too.
 
 	home_server = home1.example.com
 	home_server = home2.example.com
-```
+----
 add more home_server's here.
 
 for pre/post-proxy policies
-```
+----
 	virtual_server = home.example.com
 }
 
-```
-(3) Define a realm for these home servers.
-It should NOT be used as part of normal proxying decisions!
-```
+----
+(3) Define a realm for these home servers. It should NOT be used as
+part of normal proxying decisions!
+----
 realm acct_realm.example.com {
 	acct_pool = acct_pool.example.com
 }
 
-```
-(4) Define a detail file writer.
- See mods-available/detail.example.com
+----
+(4) Define a detail file writer. See mods-available/detail.example.com
 
 (5) Define a virtual server to handle pre/post-proxy re-writing
-```
+----
 server home.example.com {
-```
-Read accounting packets from the detail file(s) for
-the home server.
+----
+Read accounting packets from the detail file(s) for the home server.
 
-Note that you can have only ONE "listen" section reading
-detail files from a particular directory.  That is why the
-destination host name is used as part of the directory name
-below.  Having two "listen" sections reading detail files
-from the same directory WILL cause problems.  The packets
-may be read by one, the other, or both "listen" sections.
-```
+Note that you can have only ONE "listen" section reading detail files
+from a particular directory. That is why the destination host name is
+used as part of the directory name below. Having two "listen" sections
+reading detail files from the same directory WILL cause problems. The
+packets may be read by one, the other, or both "listen" sections.
+----
 	listen {
 		type = detail
 		filename = "${radacctdir}/detail.example.com/detail-*:*"
 		load_factor = 10
 	}
 
-```
-All packets read from the detail file are proxied back to
-the home servers.
+----
+All packets read from the detail file are proxied back to the home
+servers.
 
 The normal pre/post-proxy rules are applied to them, too.
 
-If the home servers are STILL down, then the server stops
-reading the detail file, and queues the packets for a later
-retransmission.  The Post-Proxy-Type "Fail" handler is NOT
-called.
+If the home servers are STILL down, then the server stops reading the
+detail file, and queues the packets for a later retransmission. The
+Post-Proxy-Type "Fail" handler is NOT called.
 
-When the home servers come back up, the packets are forwarded,
-and the detail file processed as normal.
-```
+When the home servers come back up, the packets are forwarded, and the
+detail file processed as normal.
+----
 	recv Accounting-Request {
-```
+----
 You may want accounting policies here...
 
-```
+----
 		control.Proxy-To-Realm := "acct_realm.example.com"
 	}
 
 }
-```
-
-== Default Configuration
-
-```
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

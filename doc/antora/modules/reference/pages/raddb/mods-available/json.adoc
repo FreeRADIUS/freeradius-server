@@ -1,12 +1,9 @@
 
-
-
-
 = JSON Module
 
-The `json` module registers a `map` function to allow mapping fields from
-JSON structures to attributes. It also adds some xlats for processing and
-generating JSON documents.
+The `json` module registers a `map` function to allow mapping fields
+from JSON structures to attributes. It also adds some xlats for
+processing and generating JSON documents.
 
 == JSON 'map' function
 
@@ -31,20 +28,21 @@ Selectors currently implemented are:
 
 [NOTE]
 ====
-  * Automatic casting will occur between JSON and attribute types where possible.
-  * Assignment of JSON objects/arrays to strings is supported, in which case the
-  JSON serialized form of the object/array is used.
-  * If a jpath matches multiple nodes, unless the map includes the `+=` operator
-  * only the first node's value will be used.
-  * If the map uses `+=` then multiple instances of the attribute will be created,
-  each holding a different node value.
+* Automatic casting will occur between JSON and attribute types where
+  possible.
+* Assignment of JSON objects/arrays to strings is supported, in which
+  case the JSON serialized form of the object/array is used.
+* If a jpath matches multiple nodes, unless the map includes the `+=`
+  operator
+* only the first node's value will be used.
+* If the map uses `+=` then multiple instances of the attribute will
+  be created, each holding a different node value.
 ====
-
 
 == Sample
 
-Assuming that the URL http://example.org/api/user/$username replies with
-some JSON content as below.
+Assuming that the URL http://example.org/api/user/$username replies
+with some JSON content as below.
 
 [source, json]
 ----
@@ -59,8 +57,8 @@ some JSON content as below.
 }
 ----
 
-In this case, the `rest` module can be used to get the JSON data and the
-fields can be accessed using 'map' as shown in the example below.
+In this case, the `rest` module can be used to get the JSON data and
+the fields can be accessed using 'map' as shown in the example below.
 
 [source, unlang]
 ----
@@ -70,19 +68,13 @@ map json "%rest(GET http://example.org/api/user/%{User-Name})" {
 }
 ----
 
-
-
 == Configuration Settings
 
+The only options for the JSON module are to control the output format
+of the `json.encode` xlat.
 
-
-The only options for the JSON module are to control the output
-format of the `json.encode` xlat.
-
-
-
-output_mode:: set the format of JSON documenta
-that should be created. This may be one of:
+output_mode:: set the format of JSON documenta that should be created.
+This may be one of:
 
 - object
 - object_simple
@@ -92,52 +84,34 @@ that should be created. This may be one of:
 
 Examples of each format are given below.
 
+=== Formatting options for attribute names
 
+prefix:: Add a colon-delimited prefix to all attribute names in the
+output document. For example, with a prefix of "foo",
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
+will be output as `foo:User-Name`.
 
-### Formatting options for attribute names
-
-
-prefix:: Add a colon-delimited prefix to all
-attribute names in the output document. For example,
-with a prefix of "foo", `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` will be output as
-`foo:User-Name`.
-
-
-
-### Formatting options for attribute values
-
-
+=== Formatting options for attribute values
 
 single_value_as_array:: always put values in an array
 
-Output formats will by default put single values as a
-JSON object (string, integer, etc). More than one
-value will, depending on the output format, be added
-as an array.
+Output formats will by default put single values as a JSON object
+(string, integer, etc). More than one value will, depending on the
+output format, be added as an array.
 
-When this option is enabled, values will always be
-added as an array.
+When this option is enabled, values will always be added as an array.
 
+enum_as_integer:: output the integer value of enumerated attributes
 
-
-enum_as_integer:: output the integer value of
-enumerated attributes
-
-Where an attribute has enum values, the textual
-representation of the value will normally be output.
-Enable this option to force the numeric value
-instead.
-
-
+Where an attribute has enum values, the textual representation of the
+value will normally be output. Enable this option to force the numeric
+value instead.
 
 always_string:: force all values to be strings
 
-Integer values are normally written to the JSON
-document as numbers (i.e. without quotes). Enable
-this option to force all values to be as quoted
-strings.
-
-
+Integer values are normally written to the JSON document as numbers
+(i.e. without quotes). Enable this option to force all values to be as
+quoted strings.
 
 binary_format:: how to encode octets (binary) values
 
@@ -146,13 +120,10 @@ Controls the representation of binary data in JSON output.
 - "base16": base16(hex)-encode the binary data
 - "base64": base64-encode the binary data
 
-
-
-
-
 == Expansions
 
-rlm_json provides the below xlat functions to handle the JSON documents.
+rlm_json provides the below xlat functions to handle the JSON
+documents.
 
 === %json.jpath_validate(...)
 
@@ -166,16 +137,16 @@ NOTE: Validate parser for everything except unions and expressions.
 
 [source,unlang]
 ----
-string payload
-payload := '$.my.json.payload[1]'
-reply.Reply-Message := "Validation of %{payload} is %json.jpath_validate($.my.json.payload[1])"
+string payload payload := '$.my.json.payload[1]'
+reply.Reply-Message := "Validation of %{payload} is
+%json.jpath_validate($.my.json.payload[1])"
 ----
 
 .Output
 
-```
+----
 Validation of $.my.json.payload[1] is 20:$.my.json.payload[1]
-```
+----
 
 === %json.quote(...)
 
@@ -187,79 +158,89 @@ Escapes string for use as a JSON string.
 
 [source,unlang]
 ----
-string path
-path := "caipirinha/gelada"
-reply.Reply-Message := "The string %{path} should be %json.quote(%{path}) to be a valid JSON string."
+string path path := "caipirinha/gelada" reply.Reply-Message := "The
+string %{path} should be %json.quote(%{path}) to be a valid JSON
+string."
 ----
 
 .Output
 
-```
+----
 The string caipirinha/gelada should be caipirinha\\/gelada to be a valid JSON string.
-```
+----
 
 === %json.encode(...)
 
-Generates a JSON document from a given list of attribute templates. The
-format of document generated can be controlled with the 'encode' section in
-the module configuration. Attribute values will automatically be escaped so
-they are JSON-safe.
+Generates a JSON document from a given list of attribute templates.
+The format of document generated can be controlled with the 'encode'
+section in the module configuration. Attribute values will
+automatically be escaped so they are JSON-safe.
 
-NOTE: The name of the xlat is based on the instance name of this module. If
-the module was defined as `json jdoc {...}`, then the xlat name will be
-`jdoc_encode`.
+NOTE: The name of the xlat is based on the instance name of this
+module. If the module was defined as `json jdoc {...}`, then the xlat
+name will be `jdoc_encode`.
 
-The xlat should be passed a list of attributes to encode. Each attribute
-(after template expansion) will be added to a list of attributes to include
-in the JSON document. If any of the attributes given are preceded with a `!`
-then they are removed from the list. Once all attributes have been processed,
-the JSON document will be created using this list.
+The xlat should be passed a list of attributes to encode. Each
+attribute (after template expansion) will be added to a list of
+attributes to include in the JSON document. If any of the attributes
+given are preceded with a `!` then they are removed from the list.
+Once all attributes have been processed, the JSON document will be
+created using this list.
 
-For example, the following will produce a JSON document with two attributes in
-it, `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` and `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]`, from the RADIUS request:
+For example, the following will produce a JSON document with two
+attributes in it,
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
+and
+`link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]`,
+from the RADIUS request:
 
 .Example
 
-```
+----
 %json.encode('User-Name', 'Calling-Station-Id')
-```
+----
 
-The following will include all attributes in the RADIUS request, except for
+The following will include all attributes in the RADIUS request,
+except for
 `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`:
 
 .Example
 
-```
+----
 %json.encode('request[*]', '!User-Password')
-```
+----
 
-In another (contrived) example, all the attributes in the RADIUS request will
-be included in the document, _except_ any attributes in the RADIUS reply.
-`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` will be included from the control list, too, if it exists:
+In another (contrived) example, all the attributes in the RADIUS
+request will be included in the document, _except_ any attributes in
+the RADIUS reply.
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
+will be included from the control list, too, if it exists:
 
 .Example
 
-```
+----
 %json.encode('request[*]', '!reply[*]', 'control.User-Name')
-```
+----
 
 ==== Output format modes
 
-There are a number of output modes, each generating a different format of
-JSON document.
+There are a number of output modes, each generating a different format
+of JSON document.
 
-NOTE: In the JSON document, "type" is the type of the _attribute_, which is
-not necessarily the same as the type of the "value" in the document. See e.g.
-`link:https://freeradius.org/rfc/rfc2865.html#Login-Service[Login-Service]` above, an enumerated value.
+NOTE: In the JSON document, "type" is the type of the _attribute_,
+which is not necessarily the same as the type of the "value" in the
+document. See e.g.
+`link:https://freeradius.org/rfc/rfc2865.html#Login-Service[Login-Service]`
+above, an enumerated value.
 
-The following examples assume the three attributes are being added to the
-JSON document:
+The following examples assume the three attributes are being added to
+the JSON document:
 
-```
+----
 User-Name = bob
 Filter-Id = ab
 Filter-Id += cd
-```
+----
 
 ==== Object output mode examples
 
@@ -293,10 +274,10 @@ These modes output a JSON object.
 
 ==== Array output mode examples
 
-The "array" mode is a list of objects, each containing an attribute. If the
-"single_value_as_array" value option is set then each attribute will only
-appear once in the array, and "value" will be a list of all the values from
-the same attribute.
+The "array" mode is a list of objects, each containing an attribute.
+If the "single_value_as_array" value option is set then each attribute
+will only appear once in the array, and "value" will be a list of all
+the values from the same attribute.
 
 .Output mode "array"
 
@@ -339,11 +320,11 @@ the same attribute.
 ]
 ----
 
-The following output modes either do not include the attribute names or
-values. They are likely to be useful only when the attributes are
-individually specified and _guaranteed to exist_. In this case the attribute
-names in `array_of_names` will have corresponding indexes to the values in
-`array_of_values`.
+The following output modes either do not include the attribute names
+or values. They are likely to be useful only when the attributes are
+individually specified and _guaranteed to exist_. In this case the
+attribute names in `array_of_names` will have corresponding indexes to
+the values in `array_of_values`.
 
 .Output mode "array_of_names"
 
@@ -367,10 +348,9 @@ names in `array_of_names` will have corresponding indexes to the values in
 ]
 ----
 
-
 == Default Configuration
 
-```
+----
 json {
 	encode {
 #		output_mode = object
@@ -385,7 +365,7 @@ json {
 		}
 	}
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

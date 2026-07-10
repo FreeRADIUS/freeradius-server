@@ -1,21 +1,20 @@
 
-```
+----
 #	This is a virtual server that handles DHCPv4 relaying
-```
+----
 
-```
+----
 #	Only one server can listen on a socket, so you cannot
 #	do DHCP relaying && run a DHCP server at the same time.
-```
+----
 
-```
+----
 #	Configure an instance of the dhcpv4 module in order to use
 #	this virtual server - that module provides DHCPv4 client
 #	and relay functionality.
-```
+----
 
-
-```
+----
 server dhcp.eth1 {
 	namespace = dhcpv4
 
@@ -28,12 +27,11 @@ listen {
 
 	transport = udp
 
-```
+----
 
-See sample dhcp virtual server for details of
-these options.
+See sample dhcp virtual server for details of these options.
 
-```
+----
 	udp {
 		ipaddr = *
 		port = 67
@@ -43,43 +41,43 @@ these options.
 	}
 }
 
-```
+----
 
-Packets received on the socket will be processed through one
-of the following sections, named after the DHCP packet type.
-See dictionary.dhcp for the packet types.
+Packets received on the socket will be processed through one of the
+following sections, named after the DHCP packet type. See
+dictionary.dhcp for the packet types.
 
-```
+----
 recv Discover {
-```
+----
 IP Address of the DHCP server
-```
+----
 	control.Net.Dst.IP := 192.0.2.2
 
-```
-IP Address of the DHCP relay (where the reply should go to)
-If requests are coming from an upstream relay, this will
-already be set in the packet
-```
+----
+IP Address of the DHCP relay (where the reply should go to) If
+requests are coming from an upstream relay, this will already be set
+in the packet
+----
 	request.Gateway-IP-Address := 192.0.2.1
 
-```
+----
 Call the dhcpv4 module to do the relay
-```
+----
 	dhcpv4
 
-```
+----
 The DHCP Offer will come from the relay host
-```
+----
 	do_not_respond
 }
 
-```
+----
 
-A repeat of the Discover section to handle Request packets
-This can be repeated for Inform, Release and Decline as required.
+A repeat of the Discover section to handle Request packets This can be
+repeated for Inform, Release and Decline as required.
 
-```
+----
 recv Request {
 	control.Net.Dst.IP := 192.0.2.2
 
@@ -90,12 +88,7 @@ recv Request {
 	do_not_respond
 }
 }
-```
-
-== Default Configuration
-
-```
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

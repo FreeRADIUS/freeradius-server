@@ -1,7 +1,4 @@
 
-
-
-
 = SQL Module
 
 The `sql` module handles configuration for the SQL drivers.
@@ -18,50 +15,44 @@ The database schemas and queries are located in subdirectories:
 Driver specific configuration options are located in `sql` prefix
 config files in:
 
-  mods-config/sql/driver/<driver>
+mods-config/sql/driver/<driver>
 
 Where `<driver>` is cassandra, db2, firebird, freetds, null, mysql
 oracle, postgresql, sqlite and unixodbc.
 
 For authorization queries, the default schema mirrors the
-functionality of the `files` module, including check items and
-reply items.  See the
+functionality of the `files` module, including check items and reply
+items. See the
 xref:reference:raddb/mods-config/files/users.adoc[users] file
 documentation for information on the format of the check items and
 reply items.
 
-
-
 == Configuration Settings
-
 
 dialect:: The dialect of SQL you want to use.
 
 Allowed dialects are:
 
-    * cassandra
-    * firebird
-    * mysql
-    * mssql
-    * oracle
-    * postgresql
-    * sqlite
+* cassandra
+* firebird
+* mysql
+* mssql
+* oracle
+* postgresql
+* sqlite
 
-
-
-driver:: The sub-module to use to execute queries. It
-should usually match the `dialect` above.
+driver:: The sub-module to use to execute queries. It should usually
+match the `dialect` above.
 
 In some cases, the driver is different from the `dialect`.
 
-The null driver can be used with any `dialect`,
-along with the `logfile` directive below.  It will then
-write the SQL queries to a log file.
+The null driver can be used with any `dialect`, along with the
+`logfile` directive below. It will then write the SQL queries to a log
+file.
 
-For MS-SQL, there are multiple driver options, as given in
-the table below.  If the databases require syntax
-  *different* from MS-SQL, please submit bug reports so that
-we can fix them,
+For MS-SQL, there are multiple driver options, as given in the table
+below. If the databases require syntax *different* from MS-SQL, please
+submit bug reports so that we can fix them,
 
 [options="header,autowidth"]
 |===
@@ -72,288 +63,249 @@ we can fix them,
 | unixodbc          | mssql
 |===
 
+Include driver specific configuration file if one exists. These are in
+a separate configuration file in mods-config/sql/driver/<driver>.
 
-
-Include driver specific configuration file if one
-exists. These are in a separate configuration file
-in mods-config/sql/driver/<driver>.
-
-
-
-.Connection info:
-
-
+Connection information
 
 radius_db:: Database table configuration for everything.
 
 WARNING: Except for Oracle database.
 
+If you are using `Oracle` then use this instead.
 
+If you're using `postgresql` this can also be used instead of the
+connection info parameters.
 
-.If you are using `Oracle` then use this instead.
+NOTE: Postgreql doesn't take `tls{}` options in its module config like
+mysql does, if you want to use SSL connections then use this form of
+connection info parameter.
 
+acct_table1:: Table for "start" records
 
+acct_table2:: Table for "stop" records
 
-.If you're using `postgresql` this can also be used instead of the connection info parameters.
-
-
-
-NOTE: Postgreql doesn't take `tls{}` options in its module config like mysql does,
-if you want to use SSL connections then use this form of connection info parameter.
-
-
-
-acct_table1::
-acct_table2::
-
-If you want both stop and start records logged to the same SQL table, leave this as is.
-If you want them in different tables, put the start table in `acct_table1` and stop
-table in `acct_table2`.
-
-
+If you want both stop and start records logged to the same SQL table,
+leave this as is. If you want them in different tables, put the start
+table in `acct_table1` and stop table in `acct_table2`.
 
 postauth_table:: Allow for storing data after authentication.
 
+authcheck_table:: Authorization check table for users
 
-
-authcheck_table::
-groupcheck_table::
+groupcheck_table:: Authorization check table for groups
 
 Tables containing `check` items.
 
+authreply_table:: Authorization reply table for users
 
-
-authreply_table::
-groupreply_table::
+groupreply_table:: Authorization reply table for groups
 
 Tables containing `reply` items.
 
-
-
 usergroup_table:: Table to keep group info.
-
-
 
 read_groups:: Read the groups from the database.
 
-If set to `yes`, we read the group tables unless `Fall-Through = no` in the reply table.
-If set to `no`, we do not read the group tables unless `Fall-Through = yes` in the
-reply table.
+If set to `yes`, we read the group tables unless `Fall-Through = no`
+in the reply table. If set to `no`, we do not read the group tables
+unless `Fall-Through = yes` in the reply table.
 
 Default is `yes`.
-
-
 
 read_profiles:: Read the user profile attributes from the database.
 
-Following `check` and `reply` item handling and, depending on the `read_groups` option
-and `Fall-Through` value, groups processing, the SQL module will treat values of the
-`User-Profile` attributes in the control list as additional groups that the user belongs
-to and repeat the group `check` and `reply` processing.
+Following `check` and `reply` item handling and, depending on the
+`read_groups` option and `Fall-Through` value, groups processing, the
+SQL module will treat values of the `User-Profile` attributes in the
+control list as additional groups that the user belongs to and repeat
+the group `check` and `reply` processing.
 
-If set to `yes`, we process the user profiles unless `Fall-Through = no` in the reply list.
-If set to `no`, we do not process the user profiles unless `Fall-Through = yes` in the reply list.
+If set to `yes`, we process the user profiles unless `Fall-Through
+= no` in the reply list. If set to `no`, we do not process the
+
+user profiles unless `Fall-Through = yes` in the reply list.
 
 Default is `yes`.
 
-
 logfile:: Write SQL queries to a logfile.
 
-This is potentially useful for tracing issues with authorization queries.
-See also `logfile` directives in `mods-config/sql/main/*/queries.conf`.
-You can enable per-section logging by enabling `logfile` there, or global logging by
-enabling `logfile` here.
+This is potentially useful for tracing issues with authorization
+queries. See also `logfile` directives in
+`mods-config/sql/main/*/queries.conf`. You can enable per-section
+logging by enabling `logfile` there, or global logging by enabling
+`logfile` here.
 
 Per-section logging can be disabled by setting "logfile = ''"
 
-
-
-query_timeout:: Set the maximum query duration for `cassandra` and `unixodbc`
-
-
+query_timeout:: Set the maximum query duration for `cassandra` and
+`unixodbc`
 
 pool { ... }::
 
-The connection pool is a set of per-thread parameters for connections to the SQL database.
+The connection pool is a set of per-thread parameters for connections
+to the SQL database.
 
-If the driver supports it, then queries are run asynchronously.  Currently the list of
-drivers this applies to is:
+If the driver supports it, then queries are run asynchronously.
+Currently the list of drivers this applies to is:
 
-     * mysql
-     * postgresql
-     * unixodbc
-     * oracle
-     * cassandra
+* mysql
+* postgresql
+* unixodbc
+* oracle
+* cassandra
 
-Other drivers are synchronous and therefore queries will block packet processing, resulting
-in significantly worse system performance.
-
+Other drivers are synchronous and therefore queries will block packet
+processing, resulting in significantly worse system performance.
 
 start:: Connections to create during module instantiation.
 
-Set to `0` to allow the server to start without immediately
-creating connections to the database.
-
-
+Set to `0` to allow the server to start without immediately creating
+connections to the database.
 
 min:: Minimum number of connections to keep open.
 
-
-
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one
-is requested, the request will NOT get a connection.
+If these connections are all in use and a new one is requested, the
+request will NOT get a connection.
 
-Since the majority of SQL drivers only allow one outstanding
-query per connection, this represents the maximum number of
-simultaneous packets that a thread can process.
+Since the majority of SQL drivers only allow one outstanding query per
+connection, this represents the maximum number of simultaneous packets
+that a thread can process.
 
-Note: The maximum number of connections from FreeRADIUS to
-the database will be this number multiplied by the number of
-worker threads.  Ensure that the database server supports that
-number of connections.
-
-
+NOTE: The maximum number of connections from FreeRADIUS to the
+database will be this number multiplied by the number of worker
+threads. Ensure that the database server supports that number of
+connections.
 
 connecting:: Number of connections which can be starting at once
 
 Used to throttle connection spawning.
 
-
-
 uses:: Number of uses before the connection is closed.
 
 `0` means "infinite".
 
-
-
 lifetime:: The lifetime (in seconds) of the connection.
-
-
 
 open_delay:: Open delay (in seconds).
 
-How long must we be above the target utilisation for connections to be opened.
-
+How long must we be above the target utilisation for connections to be
+opened.
 
 close_delay:: Close delay (in seconds).
 
-How long we must be below the target utilisation for connections to be closed
-
-
+How long we must be below the target utilisation for connections to be
+closed
 
 manage_interval:: How often to manage the connection pool.
 
-
-
 connection { ... }:: Per-connection configuration.
 
+connect_timeout:: How long to wait before giving up on a connection
+which is being opened.
 
-connect_timeout:: How long to wait
-before giving up on a connection which is
-being opened.
-
-
-
-reconnect_delay:: If opening a connection
-fails, or an open connection fails,
-we wait `reconnect_delay` seconds before
-attempting to open another connection.
-
-
+reconnect_delay:: If opening a connection fails, or an open connection
+fails, we wait `reconnect_delay` seconds before attempting to open
+another connection.
 
 request:: Options specific to requests handled by this connection pool
 
-Note:  Due to the one outstanding query per connection limit, the settings
-`per_connection_max` and `per_connection_target` are forcibly set to 1 for
-SQL database connections.
+NOTE: Due to the one outstanding query per connection limit, the
+settings `per_connection_max` and `per_connection_target` are forcibly
+set to 1 for SQL database connections.
 
+free_delay:: How long must a request in the unassigned (free) list not
+have been used for before it's cleaned up and actually freed.
 
+Unassigned requests can be re-used, multiple times, reducing memory
+allocation and freeing overheads.
 
-free_delay:: How long must a request in the unassigned (free) list not have been
-used for before it's cleaned up and actually freed.
+group_attribute:: The group attribute specific to this instance of
+`rlm_sql`.
 
-Unassigned requests can be re-used, multiple times, reducing memory allocation
-and freeing overheads.
+The "group_membership_query" is used to select which groups the user
+is a member of.
 
+The module loops over all groups, and places the group name into the
+"group_attribute".
 
+The group attribute is used in the "authorize_group_check_query" and
+"authorize_group_check_query" to select entries which match that
+particular group.
 
-group_attribute:: The group attribute specific to this instance of `rlm_sql`.
+After all groups in SQL have been run, the module looks for
+`control.User-Profile`, and runs those profiles for
+"authorize_group_check_query" and "authorize_group_check_query". i.e.
+a user profile is essentially a group.
 
-The "group_membership_query" is used to select which groups the user is a member of.
+These group queries can also update `control.User-Profile`, which lets
+you have a group create a "fall through" to a DEFAULT group. However,
+these groups are _not_ cross-checked against each other. So it is
+possible to create loops, which is highly not recommended.
 
-The module loops over all groups, and places the group name into the "group_attribute".
+If caching is enabled, then the module is done looping over groups,
+the module adds the names of groups to the `control` list. The
+"group_attribute" can then be used to check group membership. That
+check will be done internally, and will not result in a database
+lookup. This also means that it is now possible to do group
+comparisons based on regular expressions.
 
-The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
-to select entries which match that particular group.
+It is possible to force a dynamic group lookup via the expansion
+`%sql.group(foo)`. This expansion returns `true` if the user is a
+member of that SQL group, and `false` otherwise.
 
-After all groups in SQL have been run, the module looks for `control.User-Profile`, and runs
-those profiles for "authorize_group_check_query" and "authorize_group_check_query".  i.e. a user
-profile is essentially a group.
+NOTE: The `SQL-Group` attribute is only available after the SQL module
+has been run.
 
-These group queries can also update `control.User-Profile`, which lets you have a group
-create a "fall through" to a DEFAULT group.  However, these groups are _not_ cross-checked against
-each other.  So it is possible to create loops, which is highly not recommended.
-
-If caching is enabled, then the module is done looping over groups, the module adds the names of
-groups to the `control` list.  The "group_attribute" can then be used to check group membership.
-That check will be done internally, and will not result in a database lookup.  This also means that
-it is now possible to do group comparisons based on regular expressions.
-
-It is possible to force a dynamic group lookup via the expansion `%sql.group(foo)`.  This
-expansion returns `true` if the user is a member of that SQL group, and `false` otherwise.
-
-NOTE: The `SQL-Group` attribute is only available after the SQL module has been run.
-
-The name of the group attribute is automatically determined from the module name.  By default, the
-name is `SQL-Group`.  if the module is an instance such as `sql sql1 { ... }`, then the name of the
-group attribute is `SQL1-Group`.
-
-
+The name of the group attribute is automatically determined from the
+module name. By default, the name is `SQL-Group`. if the module is an
+instance such as `sql sql1 { ... }`, then the name of the group
+attribute is `SQL1-Group`.
 
 cache_groups:: whether or not we cache the list of SQL groups
 
-The groups are cached in the `control` list.  So any comparisons must be done as
-`control.SQL-Group = ...`
+The groups are cached in the `control` list. So any comparisons must
+be done as `control.SQL-Group = ...`
 
 Default is `no`.
 
+query_number_attribute:: An attribute to write the successful query
+number to.
 
+When calling the `sql` module in a section such as `accounting` where
+there are a list of queries to try, and success is determined by a
+query modifying one or more records, this option can be used to record
+which query succeeded.
 
-query_number_attribute:: An attribute to write the successful query number to.
+The attribute named here will be populated in the `control` list with
+the number of the query which succeeded.
 
-When calling the `sql` module in a section such as `accounting` where there are a list of queries to
-try, and success is determined by a query modifying one or more records, this option can be used to
-record which query succeeded.
+If, as is the case with the default Interim-Update queries, the first
+query is an `UPDATE` and the second is an `INSERT`, this can be used
+to determine if calling the module resulted in a new record being
+written or an existing one being updated. I.e. if the `UPDATE`
+succeeds, the attribute will be populated with 1, whereas if the
+`INSERT` succeeds, the attribute will be populated with 2.
 
-The attribute named here will be populated in the `control` list with the number of the query
-which succeeded.
+Database-specific queries.
 
-If, as is the case with the default Interim-Update queries, the first query is an `UPDATE` and the
-second is an `INSERT`, this can be used to determine if calling the module resulted in a new record
-being written or an existing one being updated. I.e. if the `UPDATE` succeeds, the attribute will be
-populated with 1, whereas if the `INSERT` succeeds, the attribute will be populated with 2.
-
-
-
-.Read database-specific queries.
-
-Not all drivers ship with `query.conf` or `schema.sql` files. For those which don't,
-please create them and contribute them back to the project.
-
+Not all drivers ship with `query.conf` or `schema.sql` files. For
+those which don't, please create them and contribute them back to the
+project.
 
 == Default Configuration
 
-```
+----
 sql {
 	dialect = "sqlite"
 	driver = "${dialect}"
 	$-INCLUDE ${modconfdir}/sql/driver/${driver}
-#	server = "localhost"
-#	port = 3306
-#	login = "radius"
-#	password = "radpass"
+##	server = "localhost"
+##	port = 3306
+##	login = "radius"
+##	password = "radpass"
 	radius_db = "radius"
 #	radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
 #	radius_db = "dbname=radius host=localhost user=radius password=radpass"
@@ -393,7 +345,7 @@ sql {
 #	query_number_attribute = 'Query-Number'
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

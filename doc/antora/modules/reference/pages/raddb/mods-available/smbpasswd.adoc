@@ -1,22 +1,16 @@
 
-
-
-
 = SMBPasswd Module
 
 An example configuration for using `/etc/smbpasswd`.
-
-
 
 == Configuration Settings
 
 See the `passwd` module for documentation on the configuration items
 for this module.
 
-
 == Default Configuration
 
-```
+----
 passwd smbpasswd {
 	filename = /etc/smbpasswd
 	format = "*User-Name::Password.LM:Password.NT:SMB-Account-CTRL-TEXT::"
@@ -24,7 +18,7 @@ passwd smbpasswd {
 	ignore_nislike = no
 	allow_multiple_keys = no
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

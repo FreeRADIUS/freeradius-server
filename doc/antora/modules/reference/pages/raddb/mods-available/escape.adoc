@@ -1,7 +1,4 @@
 
-
-
-
 = Escape Module
 
 The `escape` module registers two `xlat` functions.
@@ -13,24 +10,20 @@ The `escape` module registers two `xlat` functions.
 | `un<module inst>` | Replaces escape sequences with the original character.
 |===
 
-
-
 == Configuration Settings
-
 
 safe_characters::
 
-Characters that will not be encoded by the `%{escape}` `xlat` function.
-
-
+Characters that will not be encoded by the `%{escape}` `xlat`
+function.
 
 == Default Configuration
 
-```
+----
 escape {
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

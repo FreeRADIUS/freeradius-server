@@ -1,38 +1,32 @@
 
-
-
-
 = SQL Counter Module
 
-The `sqlcounter` module  provides a general framework to allow access
+The `sqlcounter` module provides a general framework to allow access
 based on accumulated usage of a resource, such as total time online in
 a given period, total data transferred in a given period, etc. This is
-very useful in a _Prepaid Service_ situation, where a user has paid for
-a finite amount of usage and should not be allowed to use more than
-that service. Collection, monitoring, and replenishment of prepaid
-services are beyond the scope of this module.
+very useful in a _Prepaid Service_ situation, where a user has paid
+for a finite amount of usage and should not be allowed to use more
+than that service. Collection, monitoring, and replenishment of
+prepaid services are beyond the scope of this module.
 
-Rather than maintaining separate (`link:https://www.gnu.org.ua/software/gdbm/[GDBM]`) databases of accounting info
-for each counter, this module uses the data stored in the `radacct` table
-by the `sql` modules.
+Rather than maintaining separate
+(`link:https://www.gnu.org.ua/software/gdbm/[GDBM]`) databases of
+accounting info for each counter, this module uses the data stored in
+the `radacct` table by the `sql` modules.
 
-NOTE: This module *NEVER* does any database INSERTs or UPDATEs. It is totally
-dependent on the SQL module to process `Accounting` packets.
-
-
+NOTE: This module *NEVER* does any database INSERTs or UPDATEs. It is
+totally dependent on the SQL module to process `Accounting` packets.
 
 == Syntax
 
 Configuration explanation.
 
+sql_module_instance:: Holds the instance of the `sql` module to use
+when querying the SQL database.
 
-sql_module_instance:: Holds the instance of the `sql` module to use when
-querying the SQL database.
-
-NOTE: Normally it is just `sql`. If you define more and one SQL module instance
-(usually for failover situations), you can specify which module has access to
-the Accounting Data (`radacct table`).
-
+NOTE: Normally it is just `sql`. If you define more and one SQL module
+instance (usually for failover situations), you can specify which
+module has access to the Accounting Data (`radacct table`).
 
 reset:: Defines when the counters are all reset to zero.
 
@@ -54,99 +48,88 @@ If the latter is omitted days will be assumed.
 
 In example:
 
-  * `reset` = 10h (reset every 10 hours)
-  * `reset` = 12  (reset every 12 days)
+* `reset` = 10h (reset every 10 hours)
+* `reset` = 12  (reset every 12 days)
 
+key:: Specifies the unique identifier for the counter records (usually
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`).
 
-key:: Specifies the unique identifier for the counter records (usually `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`).
+The `query` parameter specifies the SQL query used to get the current
+Counter value from the database.
 
-The `query` parameter specifies the SQL query used to get the current Counter value
-from the database.
-
-
-reset_period_start_name::  The name of the attribute which is used to store the
-time that the current reset period started.
+reset_period_start_name:: The name of the attribute which is used to
+store the time that the current reset period started.
 
 The default is `control.${.:instance}-Reset-Start`
 
-Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
+Note because we are counting seconds, this attribute is of type
+`uint64`, and not `date`.
 
-reset_period_end_name::  The name of the attribute which is used to store the
-time that the current reset period will end.
+reset_period_end_name:: The name of the attribute which is used to
+store the time that the current reset period will end.
 
 The default is `control.${.:instance}-Reset-End`
 
-Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
+Note because we are counting seconds, this attribute is of type
+`uint64`, and not `date`.
 
-counter_name:: Name of the attribute to add to the `control` list with the current
-value of the counter.
+counter_name:: Name of the attribute to add to the `control` list with
+the current value of the counter.
 
 After the sqlcounter module has run, the counter attribute will exist.
 
+check_name:: Name of the attribute containing the limit to compare the
+counter to.
 
-check_name:: Name of the attribute containing the limit to compare the counter to.
+reply_name:: Name of the attribute to populate with the remaining
+session time. e.g. `reply.Session-Timeout`. If the attribute already
+exists and contains a lower value, then it will not be updated.
 
-reply_name:: Name of the attribute to populate with the remaining session time.
-e.g. `reply.Session-Timeout`.  If the attribute already exists and contains
-a lower value, then it will not be updated.
+reply_message_name:: Name of the attribute into which a message should
+be placed if the limit has been exceeded for the counter.
 
-reply_message_name:: Name of the attribute into which a message should be placed
-if the limit has been exceeded for the counter.
-
-auto_extend:: If set to `yes` and the remaining session time goes past the time for
-the next counter reset, the value in the `reply_name` attribute will be set to
-the time to the next reset plus the value of the `check_name` attribute.
-This is most useful if the limit is a time based one, and, for example,
-`link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]` is the `reply_name` attribute.  If there is sufficient allocation
-left for the session to get to the next counter period, the user will not have
-to re-authenticate before they have used their allocation for the next counter period.
+auto_extend:: If set to `yes` and the remaining session time goes past
+the time for the next counter reset, the value in the `reply_name`
+attribute will be set to the time to the next reset plus the value of
+the `check_name` attribute. This is most useful if the limit is a time
+based one, and, for example,
+`link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]`
+is the `reply_name` attribute. If there is sufficient allocation left
+for the session to get to the next counter period, the user will not
+have to re-authenticate before they have used their allocation for the
+next counter period.
 
 utc:: Use UTC for calculating the period start and end values.
 
-
 == Configuration Settings
-
-
 
 === Daily Counter
 
-
-
-
-
-
 === Monthly Counter
-
-
-
-
-
 
 === No Reset Counter
 
-
-
-
-
-
 === Expire on login
 
-Set an account to expire T seconds after first login. Requires the `Expire-After`
-attribute to be set, in seconds.
+Set an account to expire T seconds after first login. Requires the
+`Expire-After` attribute to be set, in seconds.
 
-NOTE: You may need to edit `dictionary` to add the `Expire-After` attribute.
-
-
-
-
+NOTE: You may need to edit `dictionary` to add the `Expire-After`
+attribute.
 
 == Default Configuration
 
-```
+----
+#	```
 #	sqlcounter <name> {
+#	```
+#	```
 #	sql_module_instance = sql_foo
+#	```
 #	reset = 12h
+#	```
 #	key = "%{Stripped-User-Name || User-Name}"
+#	```
 #	if (control.Daily-Session-Time > 3600) {
 #		 Reply-Message := "You've used up more than one hour today"
 #		 reject
@@ -154,8 +137,8 @@ NOTE: You may need to edit `dictionary` to add the `Expire-After` attribute.
 sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-#	reset_period_start_name = control.${.:instance}-Reset-Start
-#	reset_period_end_name = control.${.:instance}-Reset-End
+##	reset_period_start_name = control.${.:instance}-Reset-Start
+##	reset_period_end_name = control.${.:instance}-Reset-End
 	counter_name = control.Daily-Session-Time
 	check_name = control.Max-Daily-Session
 	reply_name = reply.Session-Timeout
@@ -194,7 +177,7 @@ sqlcounter expire_on_login {
 	reset = never
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

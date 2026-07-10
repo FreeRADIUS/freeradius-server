@@ -1,17 +1,16 @@
 
-
-```
+----
 #	This file gives an example of using Challenge-Response
-```
+----
 
-```
+----
 #	In this example, the user logs in with a password, which has
 #	to be "hello".  The server will send them a challenge
 #	consisting of a random number 0..9.  The user has to respond
 #	with that number.
-```
+----
 
-```
+----
 server challenge {
 	namespace = radius
 
@@ -31,69 +30,60 @@ server challenge {
 
 recv Access-Request {
 
-```
+----
 
-If there's no State attribute, then this is the request from
-the user.
+If there's no State attribute, then this is the request from the user.
 
-```
+----
 	if (!State) {
 		control.Auth-Type := ::Step1
 		control.Password.Cleartext := "hello"
 	}
 	else {
-```
+----
 
-Do authentication for step 2.
-Set the "known good" password to the number
-saved in the session-state list.
+Do authentication for step 2. Set the "known good" password to the
+number saved in the session-state list.
 
-```
+----
 		control.Auth-Type := ::Step2
 		control.Password.Cleartext := session-state.challenge-string
 	}
 }
 
 authenticate step1 {
-```
-If the password doesn't match, the user is rejected
-immediately.
-```
+----
+If the password doesn't match, the user is rejected immediately.
+----
 	pap
 
-```
+----
 
 Set the random number to save.
 
-```
+----
 	session-state.challenge-string := "%str.rand(n)"
 	reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 
-```
+----
 
-Send an Access-Challenge.
-See policy.d/control for the definition
-of "challenge"
+Send an Access-Challenge. See policy.d/control for the definition of
+"challenge"
 
-```
+----
 	challenge
 }
 
 authenticate step2 {
-```
+----
 
 Do PAP authentication with the password.
 
-```
+----
 	pap
 }
 }
-```
-
-== Default Configuration
-
-```
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

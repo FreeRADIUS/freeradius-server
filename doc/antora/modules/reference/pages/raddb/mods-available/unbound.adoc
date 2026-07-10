@@ -1,7 +1,4 @@
 
-
-
-
 = Unbound Module
 
 The `unbound` module performs queries against a DNS service to allow
@@ -9,97 +6,86 @@ FQDNs to be resolved during request processing.
 
 The module is primarily intended for use by other modules through
 internal APIs, and so, instances should be initialized earlier than
-those modules which use them.  Each instance does also provide some
+those modules which use them. Each instance does also provide some
 functions for general use and for troubleshooting.
 
 == Caveats
 
-There is a potential for a FreeRADIUS server using rlm_unbound to either
-fail to terminate cleanly (leaving zombie processes, failing to clean up
-other modules, and hanging after a SIGTERM until a SIGKILL is sent) or
-to fail valgrind checks during termination when run with -m.  Likewise this
-problem will rely on upstream enhancements before it can be fixed, and the
-exact behavior may change in interim releases of libunbound until then.
-
-
+There is a potential for a FreeRADIUS server using rlm_unbound to
+either fail to terminate cleanly (leaving zombie processes, failing to
+clean up other modules, and hanging after a SIGTERM until a SIGKILL is
+sent) or to fail valgrind checks during termination when run with -m.
+Likewise this problem will rely on upstream enhancements before it can
+be fixed, and the exact behavior may change in interim releases of
+libunbound until then.
 
 == Configuration Settings
 
-
 filename:: The libunbound configuration file.
 
-filename = "${confdir}/mods-config/unbound/default.conf"
+timeout:: For unbound queries.
 
-
-timeoit:: For unbound queries.
-
-timeout = 3000
-
-
-resolvconf:: resolv.conf file to instruct unbound to load
-resolvers from.
+resolvconf:: resolv.conf file to instruct unbound to load resolvers
+from.
 
 Defaults to not set.
 
-Without this set, unbound will query the root DNS servers.
-This is NOT RECOMMENDED.  A local caching DNS server will
-substantially improve performance.
-
-resolvconf = "/etc/resolv.conf"
-
+Without this set, unbound will query the root DNS servers. This is NOT
+RECOMMENDED. A local caching DNS server will substantially improve
+performance.
 
 hosts:: hosts file to load data from.
 
 Defaults to not set.
 
-hosts = "/etc/hosts"
-
-
 == Functions for DNS resolution
 
-A function based on the instance name can be used to perform DNS lookups.
-
-%dns(<owner>, <record type>[, <limit>])
+A function based on the instance name can be used to perform DNS
+lookups.
 
 You must quote the parameters, e.g. `'example.com'`.
 
 .Example
 
-```
+----
 %dns('www.example.com', 'A')
 %dns('www.example.com', 'AAAA')
-```
+----
 
 Given an instance `dns` the above function will perform `A` record and
 `AAAA` record lookups on `www.example.com`.
 
 .Example
 
-```
+----
 %dns('1.1.168.192.in-addr.arpa', 'PTR')
-```
+----
 
 The above example will perform reverse DNS lookup on `192.168.1.1`.
 
 .Example
 
-```
+----
 %dns('example.com',' MX', '1')
-```
+----
 
 The above example will perform an `MX` lookup on `example.com`, and
 will return just the first result.
 
-NOTE:: The DNS queries are blocking!  A slow (or unavailable) DNS
-server can completely destroy the performance of FreeRADIUS.
-
+NOTE: The DNS queries are blocking! A slow (or unavailable) DNS server
+can completely destroy the performance of FreeRADIUS.
 
 == Default Configuration
 
-```
+----
 unbound dns {
+#	filename = "${confdir}/mods-config/unbound/default.conf"
+#	timeout = 3000
+#	resolvconf = "/etc/resolv.conf"
+#	hosts = "/etc/hosts"
 }
-```
+#	%dns(<owner>, <record type>[, <limit>])
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

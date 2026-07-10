@@ -1,29 +1,26 @@
 
-
-
-
 = Digest Module
 
-The `digest` module is used for performing authentication against a Cisco SIP server.
+The `digest` module is used for performing authentication against a
+Cisco SIP server.
 
-TIP: Digest authentication is standardized in `https://tools.ietf.org/html/rfc5090[RFC 5090]`. However, most implementations
-do not use that.	Instead, they implement the draft
-as can be seen at `link:https://tools.ietf.org/html/draft-sterman-aaa-sip-01[draft-sterman-aaa-sip-01]` for more details.
-
-
+TIP: Digest authentication is standardized in
+`https://tools.ietf.org/html/rfc5090[RFC 5090]`. However, most
+implementations do not use that. Instead, they implement the draft as
+can be seen at
+`link:https://tools.ietf.org/html/draft-sterman-aaa-sip-01[draft-sterman-aaa-sip-01]`
+for more details.
 
 == Configuration Settings
 
 This module takes no configuration.
 
-
-
 == Default Configuration
 
-```
+----
 digest {
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

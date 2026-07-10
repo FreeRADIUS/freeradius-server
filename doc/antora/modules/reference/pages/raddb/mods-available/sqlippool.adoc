@@ -1,140 +1,122 @@
 
-
-
-
 = SQL-IP-Pool Module
 
-The module `sqlippool` provide configuration for the SQL based IP Pool module.
+The module `sqlippool` provide configuration for the SQL based IP Pool
+module.
 
-NOTE: The database schemas are available at `sql/ippool/<DB>/schema.sql`.
+NOTE: The database schemas are available at
+`sql/ippool/<DB>/schema.sql`.
 
 == Configuration Settings
 
+sql_module_instance:: SQL instance to use (from
+xref:reference:raddb/mods-available/sql.adoc[mods-available/sql])
 
-sql_module_instance:: SQL instance to use (from xref:reference:raddb/mods-available/sql.adoc[mods-available/sql])
-
-If you have multiple sql instances, such as `sql sql1 {...}`,
-use the *instance* name here: `sql1`.
-
-
+If you have multiple sql instances, such as `sql sql1 {...}`, use the
+*instance* name here: `sql1`.
 
 dialect:: This is duplicative of info available in the SQL module, but
-we have to list it here as we do not yet support nested
-reference expansions.
-
-
+we have to list it here as we do not yet support nested reference
+expansions.
 
 ippool_table:: SQL table to use for ippool range and lease info.
 
-
-
 lease_duration:: IP lease duration.
-
-
 
 offer_duration:: DHCP offer duration.
 
+pool_name:: The attribute which contains the pool name.
 
-
-pool_name: The attribute which contains the pool name.
-
-
-
-allocated_address_attr:: List and attribute where the allocated address is written to.
+allocated_address_attr:: List and attribute where the allocated
+address is written to.
 
 [NOTE]
 ====
-It MUST be a qualified name of an attribute of a type which contains IP addresses.
+It MUST be a qualified name of an attribute of a type which contains
+IP addresses.
 
 e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 ====
 
-
 owner:: Expansion which identifies the owner of the lease.
 
-For an operation (i.e. a request to extend a lease, or release an
-IP address) to be applied, the owner specified in the incoming
-packet must match the owner recorded for the lease.
+For an operation (i.e. a request to extend a lease, or release an IP
+address) to be applied, the owner specified in the incoming packet
+must match the owner recorded for the lease.
 
 For purposes such as IP assignment using a RADIUS Framed-IP-Address
-attribute the "owner" identifier could be a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` or a
-certificate serial number provided that the number of sessions is
+attribute the "owner" identifier could be a
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` or
+a certificate serial number provided that the number of sessions is
 limited to one per user/serial.
 
 For RADIUS the owner will likely be specified by:
 
-  * `%{Calling-Station-Id}` which binds the lease to the mac address
-  of the user's device.  For RADIUS this is almost always the better
+* `%{Calling-Station-Id}` which binds the lease to the mac address of
+  the user's device.  For RADIUS this is almost always the better
   option as it can allow the user's device to move between NAS.
 
-  * `%{NAS-Port}` which binds the lease to a given port on the NAS.
-  i.e. any device on that port can modify the lease.  This should only
-  be used when the port is constant for the length of the session
-  (nearly everywhere except 802.11 wireless).
+* `%{NAS-Port}` which binds the lease to a given port on the NAS. i.e.
+  any device on that port can modify the lease.  This should only be
+  used when the port is constant for the length of the session (nearly
+  everywhere except 802.11 wireless).
 
 For DHCPv4 the owner will likely be specified by:
 
-  * `%{Client-Hardware-Address}` which binds the lease to the
-  mac address of the user's device.
+* `%{Client-Hardware-Address}` which binds the lease to the mac
+  address of the user's device.
 
-  * `%{Client-Identifier || Client-Hardware-Address}`
-  which binds the lease to either the custom identifier set by the
-  DHCP client, or if this is absent, the mac address of the user's
-  device.
+* `%{Client-Identifier || Client-Hardware-Address}` which binds the
+  lease to either the custom identifier set by the DHCP client, or if
+  this is absent, the mac address of the user's device.
 
 On a hostile network the owner SHOULD include a component that you
 trust, arranged such that the overall value cannot be spoofed by
 manipulation of the user-controlled data (i.e. the mac or identifier)
 provided by the user's device.
 
-For example it might be that the value `Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` is
-considered trusted as it's set by a controlled device at the edge of
-the network.  Calling-Station-Id however, is usually provided by
-the user's device so may be spoofed.
+For example it might be that the value
+`Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` is considered trusted as
+it's set by a controlled device at the edge of the network.
+Calling-Station-Id however, is usually provided by the user's device
+so may be spoofed.
 
 In order to prevent an attacker releasing DHCP leases for another
-device on the network, the owner string should be constructed so
-that it contains both the trusted and untrusted attributes, or if
-the trusted attribute is sufficiently stable and unique, only the
-trusted attribute.
-One example would be `%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
+device on the network, the owner string should be constructed so that
+it contains both the trusted and untrusted attributes, or if the
+trusted attribute is sufficiently stable and unique, only the trusted
+attribute. One example would be
+`%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
 
-
-     owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}"
-
-
+owner =
+"%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}"
 
 requested_address:: The IP address being renewed or released.
 
-For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
+For RADIUS the requested_address will almost always be
+`%{Framed-IP-Address}`.
 
 For DHCPv4 the requested_address will almost always be
 `%{Requested-IP-Address || Client-IP-Address}`.
-
-
-
 
 gateway:: The device controlling access to the network or relaying
 DHCP packets.
 
 For RADIUS, this device is recorded so that if an Accounting-On or
-Accounting-Off packet is received, then all leases associated with
-the gateway can be released. 'gateway' in this context is synonymous
-with the NAS the user is connected to.
+Accounting-Off packet is received, then all leases associated with the
+gateway can be released. 'gateway' in this context is synonymous with
+the NAS the user is connected to.
 
 For DHCPv4, this device is recorded so that we can respond correctly
 to lease queries.
 
+gateway = "%{Gateway-IP-Address}"
 
-     gateway = "%{Gateway-IP-Address}"
-
-
-.Load the queries from a separate file.
-
+Load the queries from a separate file.
 
 == Default Configuration
 
-```
+----
 sqlippool {
 	sql_module_instance = "sql"
 	dialect = "mysql"
@@ -150,7 +132,7 @@ sqlippool {
 	gateway = "%{NAS-Identifier || NAS-IP-Address}"
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

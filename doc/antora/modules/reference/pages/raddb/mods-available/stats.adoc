@@ -1,7 +1,4 @@
 
-
-
-
 = Stats Module
 
 The `stats` module tracks packet statistics.
@@ -17,20 +14,16 @@ server statistics to the packet.
 See `dictionary.freeradius`, and the `FreeRADIUS-Stats4` attributes,
 for a list of which attributes it adds.
 
-
-
 == Configuration Settings
 
 This module takes no configuration.
 
-
-
 == Default Configuration
 
-```
+----
 stats {
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

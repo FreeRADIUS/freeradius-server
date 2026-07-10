@@ -1,14 +1,11 @@
 
-
-
-
 = Echo Module
 
-The `echo` module an example of the `exec` module configured
-with a `program` configuration item set so it can be called
-as any other module, i.e.
+The `echo` module an example of the `exec` module configured with a
+`program` configuration item set so it can be called as any other
+module, i.e.
 
-    echo
+echo
 
 The sample `program` below is a trivial example and should be replaced
 with something more meaningful.
@@ -35,56 +32,43 @@ instance call as follows:
 
 NOTE: See `doc/configurable_failover` for details.
 
-
-
 == Configuration Settings
 
+program:: The name of the program to execute, and it's arguments.
 
+Dynamic translation is done on this field, so things like the
+following example will work.
 
-program:: The name of the program to execute, and it's
-arguments.
+The example program below has a few important features which should be
+noted:
 
-Dynamic translation is done on this field, so things like
-the following example will work.
+* The string for the program name uses triple quotes. These allow the
+  text inside of the string to contain double-quote characters without
+  needing to escape them.  This doesn't affect the output string, but
+  it does make the configuration easier to read.
 
-The example program below has a few important features
-which should be noted:
+* The argument to "/bin/echo" is a double-quoted string. That is, the
+  attribute name, operator, and value are passed to "echo" as one
+  argument.  If the parameters to the "echo" command were not quoted,
+  then they would be passed as three separate arguments.
 
-  * The string for the program name uses triple quotes.
-  These allow the text inside of the string to contain
-  double-quote characters without needing to escape
-  them.  This doesn't affect the output string, but it
-  does make the configuration easier to read.
+* The attribute value is surrounded by single quotes. These single
+  quotes are inside of the single argument to the "echo" command.
 
-  * The argument to "/bin/echo" is a double-quoted string.
-  That is, the attribute name, operator, and value are
-  passed to "echo" as one argument.  If the parameters to
-  the "echo" command were not quoted, then they would be
-  passed as three separate arguments.
+* If instead the "echo" command was passed three separate arguments,
+  then the attribute value would be printed _without_ the quotes.
+  Because quoting an argument to a command results in the _unquoted_
+  string being passed to the command, as the argument.
 
-  * The attribute value is surrounded by single quotes.
-  These single quotes are inside of the single argument
-  to the "echo" command.
-
-  * If instead the "echo" command was passed three separate
-  arguments, then the attribute value would be printed
-  _without_ the quotes.  Because quoting an argument to
-  a command results in the _unquoted_ string being passed
-  to the command, as the argument.
-
-The summary of all of the above is that when printing
-attributes it's usually easier to run one shell script with
-no arguments.  That shell script can then print the
-attribute names, operators, and values.
+The summary of all of the above is that when printing attributes it's
+usually easier to run one shell script with no arguments. That shell
+script can then print the attribute names, operators, and values.
 
 Any string values should also be quoted.
 
-
-
-
 == Default Configuration
 
-```
+----
 exec echo {
 	wait = yes
 	program = """/bin/echo "Filter-Id := '%{User-Name}'" """
@@ -93,7 +77,7 @@ exec echo {
 	shell_escape = yes
 #	timeout = 10
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
