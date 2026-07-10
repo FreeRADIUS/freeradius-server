@@ -68,7 +68,7 @@ DOC_RADDB	:= doc/antora/modules/reference/pages/raddb
 #
 #  Our "conf to asciidoc" stuff.
 #
-CONF_FILES := $(filter-out %/radiusd.conf %in %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
+CONF_FILES := $(filter-out %/radiusd.conf %radrelay.conf %in %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
 
 BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) $(DOC_RADDB)/mods-available/all_modules.adoc
 
@@ -194,13 +194,28 @@ endif
 #
 #  Conf files get converted to Asciidoc via our own magic script.
 #
-$(DOC_RADDB)/%.adoc: raddb/%
+$(DOC_RADDB)/mods-available/%.adoc: raddb/mods-available/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
+#	${Q}./scripts/asciidoc/wrap.py -i $@
+
+$(DOC_RADDB)/%.adoc: raddb/%
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -o $@ < $^
+#	${Q}./scripts/asciidoc/wrap.py -i $@
 
 $(DOC_RADDB)/radiusd.conf.adoc: raddb/radiusd.conf.in
+	@echo ADOC $^
+	${Q}mkdir -p $(dir $@)
+	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
+	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
+	${Q}perl -p -i -e 's/\@RADIUSD_VERSION_MAJOR@/$(RADIUSD_VERSION_MAJOR)/g;s/\@RADIUSD_VERSION_MINOR@/$(RADIUSD_VERSION_MINOR)/g;s/\@RADIUSD_VERSION@/$(RADIUSD_VERSION)/g;s/\@RADIUSD_DOC_VERSION@/$(RADIUSD_VERSION_MAJOR).$(RADIUSD_VERSION_MINOR)/g' $@
+
+$(DOC_RADDB)/radrelay.conf.adoc: raddb/radrelay.conf.in
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
@@ -212,6 +227,13 @@ $(DOC_RADDB)/radiusd.conf.adoc: raddb/radiusd.conf.in
 #
 .PHONY: doc.raddb
 doc.raddb: $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES))
+
+#
+#  Remove the generated raddb files, so that we can forcibly regenerate them.
+#
+.PHONY: clean.doc.raddb
+clean.doc.raddb:
+	@rm -f $(patsubst raddb/%,$(DOC_RADDB)/%.adoc,$(CONF_FILES))
 
 #
 #  We re-run antora if any of the input files change.  Antora can't do partial updates.
