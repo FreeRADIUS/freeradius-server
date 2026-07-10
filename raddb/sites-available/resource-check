@@ -26,20 +26,20 @@
 #  control module must be configured as an instance of rlm_always in
 #  mods-enabled, for example:
 #
-#    ```
-#    always db_online {
-#        = Default to online
-#        rcode = ok
-#    }
-#    ```
+#  ```
+#  always db_online {
+#      = Default to online
+#      rcode = ok
+#  }
+#  ```
 #
 #  Now trigger the resource checks by sending a server-status request
 #  to this virtual server, as follows:
 #
-#    ```
-#    echo "Message-Authenticator = 0x00" | \
-#      radclient -r 1 -t 3 -q 127.0.0.1:18122 status testing123
-#    ```
+#  ```
+#  $ echo "Message-Authenticator = 0x00" | \
+#    radclient -r 1 -t 3 -q 127.0.0.1:18122 status testing123
+#  ```
 #
 #  The trigger could be invoked by a cron job or if more frequent
 #  checks than once per minute are required a systemd timer might be
@@ -48,9 +48,9 @@
 #  The current status of the control module can be examined at any
 #  time using radmin:
 #
-#    ```
-#    radmin -e 'show module status db_online'
-#    ```
+#  ```
+#  $ radmin -e 'show module status db_online'
+#  ```
 #
 #  For radmin to work requires that the control-socket virtual server
 #  is configured and enabled.
@@ -58,30 +58,30 @@
 #  The controlled virtual server will contain some control flow
 #  decision that uses the control module, for example:
 #
-#    ```
-#    server default {
+#  ```
+#  server default {
 #
-#    ...
+#  ...
 #
-#    recv Access-Request {
+#  recv Access-Request {
 #
-#        = If the database is not healthy then remain silent to trigger
-#        = NAS failover
-#        #
-#        db_online {
-#            fail = 1
-#        }
-#        if (fail) {
-#             do_not_respond
-#        }
+#      = If the database is not healthy then remain silent to trigger
+#      = NAS failover
+#      #
+#      db_online {
+#          fail = 1
+#      }
+#      if (fail) {
+#           do_not_respond
+#      }
 #
-#        sql
+#      sql
 #
-#        pap
-#    }
-#    ...
-#    }
-#    ```
+#      pap
+#  }
+#  ...
+#  }
+#  ```
 #
 #
 #  The configuration for this virtual server follows and should be

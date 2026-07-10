@@ -120,6 +120,4 @@ server virtual.example.com {
 	authenticate pap {
 		pap
 	}
-
-#  etc.
 }

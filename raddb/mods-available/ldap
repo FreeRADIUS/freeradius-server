@@ -88,9 +88,9 @@ ldap {
 	#  string, and adding "memberof" qualifiers. For ActiveDirectory,
 	#  use:
 	#
-	#    ```
-	#    ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
-	#    ```
+	#  ```
+	#  ldapsearch ... '(&(objectClass=user)(sAMAccountName=user)(memberof=CN=group,${base_dn}))'
+	#  ```
 	#
 	#  Where 'user' is the user as above, and 'group' is the group you
 	#  are querying for.
@@ -143,9 +143,9 @@ ldap {
 	#
 	#  Values should be in the format:
 	#
-	#    ```
-	#    <fr attr> <op> <value>
-	#    ```
+	#  ```
+	#  <fr attr> <op> <value>
+	#  ```
 	#
 	#  Where:
 	#
@@ -171,9 +171,9 @@ ldap {
 	#
 	#  Configuration items are in the format:
 	#
-	#    ```
-	#    <fr attr> <op> <ldap attr>
-	#    ```
+	#  ```
+	#  <fr attr> <op> <ldap attr>
+	#  ```
 	#
 	#  Where:
 	#

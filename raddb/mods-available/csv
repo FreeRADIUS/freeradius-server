@@ -16,13 +16,13 @@
 #  The CSV map can be used in a `map` section, as in the following
 #  example.
 #
-#    ```
-#    map csv User-Name {
-#		Attribute-Name := field1
-#		Attribute-Name := field2
-#		...
-#    }
-#    ```
+#  ```
+#  map csv User-Name {
+#  		Attribute-Name := field1
+#  		Attribute-Name := field2
+#  		...
+#  }
+#  ```
 #
 #  The argument to "map" is dynamically expanded. The result is taken
 #  as a string, and is used as the value of the "key". The key is then
@@ -79,13 +79,14 @@ csv {
 	#  `key`".
 	#
 	#  [NOTE]
-	#  =====
-	#  * the header MUST have the same number of fields as are in the CSV file.
-	#  * the field names MUST NOT include whitespace.
-	#  * Fields which are not used should have no name
+	#  ====
+	#  * The header MUST have the same number of fields as are in the CSV file.
+	#  * The field names MUST NOT include whitespace.
+	#  * Fields which are not used should have no name.
 	#
-	#  e.g. *"foo,,bar"* defines 3 fields, where the second is unused.
-	#  =====
+	#  e.g. `foo,,bar` defines 3 fields, where the second is unused.
+	#  ====
+	#
 	fields = "name,size,color,count"
 
 	#
@@ -152,9 +153,9 @@ csv {
 	#
 	#  Configuration items are in the format:
 	#
-	#    ```
-	#    <fr attr> <op> <csv field>
-	#    ```
+	#  ```
+	#  <fr attr> <op> <csv field>
+	#  ```
 	#
 	#  Where:
 	#
@@ -185,18 +186,20 @@ csv {
 	#
 	#  The module also exports a `map` expansion, via the syntax:
 	#
-	#	map cvs <key> { ... }
+	#  ```
+	#  map cvs <key> { ... }
+	#  ```
 	#
 	#  Where `csv` is the name of the module, and `key` is an expansion
 	#  as given the key` field above. For example, the map could look
 	#  like this:
 	#
-	#	```
-	#	map csv User-Name {
-	#		reply.Reply-Message := 'color'
-	#		my-integer := 'count'
-	#	}
-	#	```
+	#  ```
+	#  map csv User-Name {
+	#	reply.Reply-Message := 'color'
+	#	my-integer := 'count'
+	#  }
+	#  ```
 	#
 	#  This map does the same operations as the key / update fields given
 	#  above. The benefit here is that the key can be dynamically

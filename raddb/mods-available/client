@@ -57,11 +57,13 @@
 #  current request.
 #
 #  [source,unlang]
-#  --- map client [<ipaddr>] { // <1>
+#  ----
+#  map client [<ipaddr>] { // <1>
 #       Foo = 'nas_type'       // <2>
 #       Bar := 'shortname'     // <3>
 #       Baz += 'groups'        // <4>
-#  } ---
+#  }
+#  ----
 #
 #  <1> By default `map client { ... }` will operate on the current
 #  client, but alternative

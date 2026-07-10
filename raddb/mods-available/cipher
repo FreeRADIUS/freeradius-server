@@ -32,10 +32,10 @@
 #
 #  e.g:
 #
-#    ```
-#    %base64.encode(%cipher_encrypt(<plaintext>))
-#    %cipher_decrypt(%base64.decode(<ciphertext>))
-#    ```
+#  ```
+#  %base64.encode(%cipher_encrypt(<plaintext>))
+#  %cipher_decrypt(%base64.decode(<ciphertext>))
+#  ```
 #
 #  NOTE: The supported versions are determined _entirely_ by the
 #  version of OpenSSL used, FreeRADIUS simply passes the name of the

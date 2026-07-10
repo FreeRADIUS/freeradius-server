@@ -147,11 +147,11 @@ kafka {
 #  section and the topic is inferred from the section's packet type.
 #  For example:
 #
-#      ```
-#      recv Accounting-Request {
-#          kafka                # publishes to topic "Accounting-Request"
-#      }
-#      ```
+#  ```
+#  recv Accounting-Request {
+#      kafka                # publishes to topic "Accounting-Request"
+#  }
+#  ```
 #
 #  This is tidy when you name topics after packet types; if you don't,
 #  stick with the explicit `kafka.produce.<topic>` form. Either way,
@@ -162,33 +162,33 @@ kafka {
 #  different topics can publish different shapes from one module
 #  instance:
 #
-#      ```
-#      kafka {
-#          server = "localhost:9092"
-#          topic {
-#              radius-accounting {
-#                  request_required_acks = -1
-#                  value = %json.encode(&request.[*])
-#                  key   = &User-Name
-#              }
-#              radius-auth {
-#                  value = %{User-Name}
-#              }
+#  ```
+#  kafka {
+#      server = "localhost:9092"
+#      topic {
+#          radius-accounting {
+#              request_required_acks = -1
+#              value = %json.encode(&request.[*])
+#              key   = &User-Name
+#          }
+#          radius-auth {
+#              value = %{User-Name}
 #          }
 #      }
-#      ```
+#  }
+#  ```
 #
 #  In a virtual server:
 #
-#      ```
-#      recv Accounting-Request {
-#          kafka.produce.radius-accounting
-#      }
+#  ```
+#  recv Accounting-Request {
+#      kafka.produce.radius-accounting
+#  }
 #
-#      recv Access-Request {
-#          kafka.produce.radius-auth
-#      }
-#      ```
+#  recv Access-Request {
+#      kafka.produce.radius-auth
+#  }
+#  ```
 #
 #  `value` is required per topic. `key` is optional; when omitted,
 #  librdkafka picks a partition according to the configured
@@ -201,13 +201,13 @@ kafka {
 #  key and payload). It returns `true` on successful delivery and
 #  `false` on failure:
 #
-#      ```
-#      send Accounting-Response {
-#          if (!%kafka.produce('radius-accounting', %json.encode(&request.[*]))) {
-#              reject
-#          }
+#  ```
+#  send Accounting-Response {
+#      if (!%kafka.produce('radius-accounting', %json.encode(&request.[*]))) {
+#          reject
 #      }
-#      ```
+#  }
+#  ```
 #
 #  As with the method, the topic argument must name a declared topic.
 #
