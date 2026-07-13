@@ -129,6 +129,9 @@ module_instance_t	*module_rlm_dynamic_by_name(module_instance_t const *parent, c
 module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *name);
 
 CONF_SECTION		*module_rlm_virtual_by_name(char const *name);
+
+CONF_SECTION		*module_rlm_virtual_iter_init(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
+CONF_SECTION		*module_rlm_virtual_iter_next(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 /** @} */
 
 /** @name Support functions

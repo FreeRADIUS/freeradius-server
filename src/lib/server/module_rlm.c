@@ -1419,6 +1419,30 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	return 0;
 }
 
+/** Iterate over the virtual modules.
+ *
+ */
+CONF_SECTION *module_rlm_virtual_iter_init(fr_rb_iter_inorder_t *iter)
+{
+	module_rlm_virtual_t *vm;
+
+	vm = fr_rb_iter_init_inorder(module_rlm_virtual_name_tree, iter);
+	if (!vm) return NULL;
+
+	return vm->cs;
+}
+
+CONF_SECTION *module_rlm_virtual_iter_next(fr_rb_iter_inorder_t *iter)
+{
+	module_rlm_virtual_t *vm;
+
+	vm = fr_rb_iter_next_inorder(module_rlm_virtual_name_tree, iter);
+	if (!vm) return NULL;
+
+	return vm->cs;
+}
+
+
 /** Cleanup all global structures
  *
  * Automatically called on exit.
