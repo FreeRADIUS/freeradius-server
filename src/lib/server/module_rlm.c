@@ -51,7 +51,8 @@ typedef struct {
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	char const			*name;		//!< module name
 	CONF_SECTION			*cs;		//!< CONF_SECTION where it is defined
-	bool				all_same;
+	module_instance_t		*mi;		//!< module instance
+	bool				xlat_redundant;	//!< whether we might need it
 } module_rlm_virtual_t;
 
 /** Compare virtual modules by name
@@ -822,7 +823,7 @@ module_instance_t *module_rlm_static_by_name(module_instance_t const *parent, ch
 static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 {
 	char const		*name;
-	bool			all_same;
+	bool			xlat_redundant;
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*mi;
@@ -869,16 +870,16 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	/*
 	 *	Don't bother registering redundant xlats for a simple "group".
 	 */
-	all_same = (strcmp(cf_section_name1(cs), "group") != 0);
+	xlat_redundant = (strcmp(cf_section_name1(cs), "group") != 0);
 
 	/*
-	 *	Ensure that the modules we reference here exist.
+	 *	Do a quick check to see if we _might_ need to load a virtual module.
 	 */
 	while ((sub_ci = cf_item_next(cs, sub_ci))) {
 		char const *attr;
 
 		if (!cf_item_is_pair(sub_ci)) {
-			all_same = false;
+			xlat_redundant = false;
 			continue;
 		}
 
@@ -910,7 +911,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 		 *	%foo() is not a module.
 		 */
 		if (!isalpha((uint8_t) *attr)) {
-			all_same = false;
+			xlat_redundant = false;
 			continue;
 		}
 	} /* loop over things in a virtual module section */
@@ -919,8 +920,9 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	if (!inst) return -1;
 
 	inst->cs = cs;
+	inst->mi = mi;
 	MEM(inst->name = talloc_strdup(inst, name));
-	inst->all_same = all_same;
+	inst->xlat_redundant = xlat_redundant;
 
 	old = fr_rb_find(module_rlm_virtual_name_tree, inst);
 	if (old) {
@@ -1344,14 +1346,48 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	}
 
 	/*
-	 *	Now that all of the xlat things have been registered,
-	 *	register our redundant xlats.  But only when all of
-	 *	the items in such a section are the same.
+	 *	Now that all of the xlat things have been registered, register our redundant xlats.
+	 *
+	 *	Since the checks above in module_rlm_bootstrap_virtual() only checked for CONF_PAIRs, we have
+	 *	to double-check the module instances.  We couldn't do that previously, due to the fact that
+	 *	modules are loaded in alphabetical order.  A virtual module "aaa" may therefore reference a
+	 *	real module "zzz", which would not have yet been loaded.
 	 */
 	for (vm = fr_rb_iter_init_inorder(module_rlm_virtual_name_tree, &iter);
 	     vm;
 	     vm = fr_rb_iter_next_inorder(module_rlm_virtual_name_tree, &iter)) {
-		if (!vm->all_same) continue;
+		CONF_ITEM	*sub_ci = NULL;
+		module_t const	*last = NULL;
+		bool		all_same = true;
+
+		if (!vm->xlat_redundant) continue;
+
+		while ((sub_ci = cf_item_next(vm->cs, sub_ci))) {
+			module_instance_t *mi;
+			CONF_PAIR *cp;
+
+			if (!cf_item_is_pair(sub_ci)) continue;
+
+			cp = cf_item_to_pair(sub_ci);
+			mi = module_rlm_static_by_name(NULL, cf_pair_attr(cp));
+			if (!mi) {
+				cf_log_perr(sub_ci, "Failed resolving module reference '%s' in %s block",
+					    cf_pair_attr(cp), cf_section_name1(cs));
+				return -1;
+			}
+
+			if (!all_same) continue;
+
+			if (!last) {
+				last = mi->exported;
+			} else if (last != mi->exported) {
+				last = NULL;
+				all_same = false;
+				break;
+			}
+		}
+
+		if (!all_same) continue;
 
 		if (xlat_register_redundant(vm->cs) < 0) return -1;
 	}
