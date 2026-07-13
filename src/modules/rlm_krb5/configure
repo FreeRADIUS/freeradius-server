@@ -4637,6 +4637,7 @@ fi
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: cross compiling: not checking" >&5
 printf "%s\n" "$as_me: WARNING: cross compiling: not checking" >&2;}
+			 krb5threadsafe="-DKRB5_IS_THREAD_SAFE"
 else $as_nop
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */

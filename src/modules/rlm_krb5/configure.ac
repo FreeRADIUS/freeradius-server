@@ -143,7 +143,8 @@ if test "$krb5threadsafe" != "no"; then
 	if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
 		AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
 			[krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])],
-			[AC_MSG_WARN(cross compiling: not checking)])
+			[AC_MSG_WARN(cross compiling: not checking)
+			 krb5threadsafe="-DKRB5_IS_THREAD_SAFE"])
 	fi
 else
 	krb5threadsafe=""
