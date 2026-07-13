@@ -1345,7 +1345,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
 	 */
-	global_lib_instantiate();
+	if (global_lib_instantiate() < 0) return -1;
 
 	/*
 	 *	Remember where the modules were stored.

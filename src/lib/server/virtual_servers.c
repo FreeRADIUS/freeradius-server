@@ -2063,7 +2063,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
 	 */
-	global_lib_instantiate();
+	if (global_lib_instantiate() < 0) return -1;
 
 	if (modules_bootstrap(process_modules) < 0) {
 		PERROR("Failed bootstrapping process modules");
