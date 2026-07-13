@@ -26,7 +26,6 @@
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/value.h>
 
