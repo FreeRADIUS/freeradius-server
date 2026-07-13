@@ -699,7 +699,7 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 			va_list copy;
 			va_copy(copy, ap);
 
-			dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
+			dst->func(type, lvl, request, file, line, fmt, copy, dst->uctx);
 
 			va_end(copy);
 		}
