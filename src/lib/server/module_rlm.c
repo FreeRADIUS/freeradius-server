@@ -826,7 +826,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*mi;
-	module_rlm_virtual_t	*inst;
+	module_rlm_virtual_t	*inst, *old;
 
 	name = cf_section_name1(cs);
 
@@ -918,7 +918,20 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	MEM(inst->name = talloc_strdup(inst, name));
 	inst->all_same = all_same;
 
-	if (!fr_cond_assert(fr_rb_insert(module_rlm_virtual_name_tree, inst))) {
+	old = fr_rb_find(module_rlm_virtual_name_tree, inst);
+	if (old) {
+		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
+		      name,
+		      cf_filename(cs),
+		      cf_lineno(cs),
+		      cf_filename(old->cs),
+		      cf_lineno(old->cs));
+		talloc_free(inst);
+		return -1;
+	}
+
+	if (!fr_rb_insert(module_rlm_virtual_name_tree, inst)) {
+		cf_log_perr(cs, "Failed inserting module into internal tracking table");
 		talloc_free(inst);
 		return -1;
 	}
