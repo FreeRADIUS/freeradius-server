@@ -2242,6 +2242,79 @@ int unlang_compile(virtual_server_t const *vs,
 	return 0;
 }
 
+/** Compile an unlang section for a virtual module.
+ *
+ *  This is just a wrapper around unlang_compile_section(), as the unlang_compile_ctx isn't public.
+ *
+ * @param[in] cs		containing the unlang calls to compile.
+ * @param[in] dict		dictionary to use
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int unlang_compile_virtual_module(CONF_SECTION *cs, fr_dict_t const *dict)
+{
+	unlang_t *c;
+	char const *name;
+	unlang_op_t const *op;
+	CONF_DATA const *cd;
+	unlang_compile_ctx_t unlang_ctx;
+
+	/*
+	 *	Get the name, and then the opcode type.
+	 */
+	name = cf_section_name1(cs);
+	op = name_to_op(name);
+	if (!op) {
+		cf_log_err(cs, "Invalid keyword in virtual module");
+		return -1;
+	}
+
+	/*
+	 *	There's no virtual server, just this dictionary.
+	 *
+	 *	@todo - find a way to change the list_def.  We need to do this based on the caller.  But when
+	 *	we're compiling the virtual module, we don't know what context the caller will be using.
+	 */
+	unlang_ctx = (unlang_compile_ctx_t) {
+		.vs = NULL,
+		.section_name1 = NULL,
+		.section_name2 = NULL,
+		.actions = mod_actions_authorize,
+		.rules = &(tmpl_rules_t) {
+			.attr = {
+				.dict_def = dict,
+				.list_def = request_attr_request,
+			},
+			.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
+		},
+	};
+
+	/*
+	 *	Compile it with the appropriate data type.
+	 */
+	c = unlang_compile_section(NULL, &unlang_ctx, cs, op->type);
+	if (!c) return -1;
+
+	if (c == UNLANG_IGNORE) {
+		cf_log_err(cs, "Virtual modules cannot be empty");
+		return -1;
+	}
+
+	/*
+	 *	Don't use the talloc type, which might be unlang_load_balance_t.
+	 */
+	cd = cf_data_add_static(cs, c, unlang_group_t, NULL);
+	if (!cd) {
+		cf_log_perr(cs, "Failed caching compiled virtual module");
+		return -1;
+	}
+
+	fr_assert(cf_data_find(cs, unlang_group_t, NULL) == cd);
+	fr_assert(c = cf_data_value(cd));
+
+	return 0;
+}
 
 /** Check if name is an unlang keyword
  *
