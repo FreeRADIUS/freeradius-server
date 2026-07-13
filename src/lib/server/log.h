@@ -284,7 +284,7 @@ void	log_global_free(void);
 #define EDEBUG2(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
 #define EDEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define EDEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG_ERR, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
-#define EDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_ERRR, _lvl, _fmt, ## __VA_ARGS__)
+#define EDEBUGX(_lvl, _fmt, ...)       	_DEBUG_LOG(L_DBG_ERR, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
