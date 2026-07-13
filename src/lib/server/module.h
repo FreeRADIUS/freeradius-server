@@ -485,7 +485,7 @@ int 			module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf);
 
 char const 		*module_instance_root_prefix_str(module_instance_t const *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-module_instance_t	*module_instance_root(module_instance_t const *child); CC_HINT(warn_unused_result)
+module_instance_t	*module_instance_root(module_instance_t const *child) CC_HINT(warn_unused_result);
 
 module_instance_t	*module_instance_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
 			CC_HINT(nonnull(1,3)) CC_HINT(warn_unused_result);
