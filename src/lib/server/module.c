@@ -1832,36 +1832,36 @@ static int _module_list_free(module_list_t *ml)
 	return 0;
 }
 
-/** Should we bootstrap this module instance?
+/** Should we skip bootstrapping this module instance?
  *
  * @param[in] mi	to check.
  * @return
- *	- true if the module instance should be bootstrapped.
- *	- false if the module instance has already been bootstrapped.
+ *	- true if the module instance has already been bootstrapped (or is masked off) and bootstrapping should be skipped.
+ *	- false if the module instance still needs to be bootstrapped.
  */
 bool module_instance_skip_bootstrap(module_instance_t *mi)
 {
 	return ((mi->state | mi->ml->mask) & MODULE_INSTANCE_BOOTSTRAPPED);
 }
 
-/** Should we instantiate this module instance?
+/** Should we skip instantiating this module instance?
  *
  * @param[in] mi	to check.
  * @return
- *	- true if the module instance should be instantiated.
- *	- false if the module instance has already been instantiated.
+ *	- true if the module instance has already been instantiated (or is masked off) and instantiation should be skipped.
+ *	- false if the module instance still needs to be instantiated.
  */
 bool module_instance_skip_instantiate(module_instance_t *mi)
 {
 	return ((mi->state | mi->ml->mask) & MODULE_INSTANCE_INSTANTIATED);
 }
 
-/** Should we instantiate this module instance in a new thread?
+/** Should we skip thread instantiation for this module instance?
  *
  * @param[in] mi	to check.
  * @return
- *	- true if the module instance should be instantiated in a new thread.
- *	- false if the module instance has already been instantiated in a new thread.
+ *	- true if the module instance should not be thread-instantiated (or is masked off) and thread instantiation should be skipped.
+ *	- false if the module instance still needs to be thread-instantiated.
  */
 bool module_instance_skip_thread_instantiate(module_instance_t *mi)
 {
