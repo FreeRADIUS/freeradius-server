@@ -332,7 +332,7 @@ send_buff:: How big the kernel's send buffer should be.
 
 The TCP configuration is identical to the `udp` configuration.
 
-copy configuration items here
+copy the relevant configuration items here
 
 == Connection trunking
 
@@ -749,8 +749,8 @@ radius {
 #		recv_buff = 1048576
 #		send_buff = 1048576
 	}
-	tcp {
-	}
+##	tcp {
+##	}
 	pool {
 		start = 0
 		min = 1
