@@ -52,6 +52,7 @@ typedef struct {
 	char const			*name;		//!< module name
 	CONF_SECTION			*cs;		//!< CONF_SECTION where it is defined
 	module_instance_t		*mi;		//!< module instance
+	fr_dict_t const			*dict;		//!< dict / namespace we expect to use.
 	bool				xlat_redundant;	//!< whether we might need it
 } module_rlm_virtual_t;
 
@@ -1376,16 +1377,39 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 				return -1;
 			}
 
+			/*
+			 *	Check that the namespaces are compatible.
+			 */
+			if (mi->exported->dict) {
+				fr_dict_t const *dict = *mi->exported->dict;
+
+				if (!vm->dict) {
+					vm->dict = dict;
+
+				} else if (vm->dict != dict) {
+					cf_log_err(cp, "Module %s has namespace %s, while the previous modules in this section have namespace %s",
+						   mi->name, fr_dict_root(dict)->name,
+						   fr_dict_root(vm->dict)->name);
+					cf_log_err(sub_ci, "Cannot have modules for different namespaces in %s %s { ... } section",
+						   cf_section_name1(vm->cs), vm->name);
+					return -1;
+				}
+			}
+
 			if (!all_same) continue;
 
 			if (!last) {
 				last = mi->exported;
 			} else if (last != mi->exported) {
 				last = NULL;
-				all_same = false;
-				break;
 			}
 		}
+
+		/*
+		 *	Associate the dictionary with the CONF_SECTION, so that later compilation code can
+		 *	find it.
+		 */
+		if (vm->dict) cf_data_add(vm->cs, vm->dict, "dict", false);
 
 		if (!all_same) continue;
 
