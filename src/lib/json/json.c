@@ -79,7 +79,6 @@ conf_parser_t const fr_json_format_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#ifndef __APPLE__
 static inline CC_HINT(always_inline)
 void json_object_put_assert(json_object *obj)
 {
@@ -90,13 +89,6 @@ void json_object_put_assert(json_object *obj)
 
 	fr_assert_fail("json_object_put did not free object (returned %d), likely leaking memory", ret);
 }
-#else
-/*
- *	The assertions fail on OSX in CI, so just disable them until
- *	the json-c libraries there get fixed.
- */
-#define json_object_put_assert(_x) (void) json_object_put(_x)
-#endif
 
 /** Convert json object to fr_value_box_t
  *
