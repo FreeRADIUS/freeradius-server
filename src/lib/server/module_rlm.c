@@ -871,45 +871,49 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	 */
 	all_same = (strcmp(cf_section_name1(cs), "group") != 0);
 
-	{
-		module_t const 		*last = NULL;
+	/*
+	 *	Ensure that the modules we reference here exist.
+	 */
+	while ((sub_ci = cf_item_next(cs, sub_ci))) {
+		char const *attr;
+
+		if (!cf_item_is_pair(sub_ci)) {
+			all_same = false;
+			continue;
+		}
+
+		cp = cf_item_to_pair(sub_ci);
+		if (cf_pair_value(cp)) {
+			cf_log_err(sub_ci, "Cannot edit attributes or set return codes in a %s block - use 'group' to separate individual items",
+				   cf_section_name1(cs));
+			return -1;
+		}
+
+		attr = cf_pair_attr(cp);
 
 		/*
-		*	Ensure that the modules we reference here exist.
-		*/
-		while ((sub_ci = cf_item_next(cs, sub_ci))) {
-			if (cf_item_is_pair(sub_ci)) {
-				cp = cf_item_to_pair(sub_ci);
-				if (cf_pair_value(cp)) {
-					cf_log_err(sub_ci, "Cannot set return codes in a %s block", cf_section_name1(cs));
-					return -1;
-				}
+		 *	A conditionally loaded module (e.g. "-foo") means that we silently omit it if
+		 *	it doesn't exist, which changes all of the load-balance and redundant
+		 *	behavior.
+		 *
+		 *	Plus, a conditionally loaded module is almost always going to be of a
+		 *	different type than the other modules.  Which means that any redundant xlats
+		 *	won't work.
+		 */
+		if (*attr == '-') {
+			cf_log_err(sub_ci, "Cannot use conditionally loaded modules in a %s block",
+				   cf_section_name1(cs));
+			return -1;
+		}
 
-				mi = module_rlm_static_by_name(NULL, cf_pair_attr(cp));
-				if (!mi) {
-					cf_log_perr(sub_ci, "Failed resolving module reference '%s' in %s block",
-						    cf_pair_attr(cp), cf_section_name1(cs));
-					return -1;
-				}
-
-				if (all_same) {
-					if (!last) {
-						last = mi->exported;
-					} else if (last != mi->exported) {
-						last = NULL;
-						all_same = false;
-					}
-				}
-			} else {
-				all_same = false;
-			}
-
-			/*
-			*	Don't check subsections for now.  That check
-			*	happens later in the unlang compiler.
-			*/
-		} /* loop over things in a virtual module section */
-	}
+		/*
+		 *	%foo() is not a module.
+		 */
+		if (!isalpha((uint8_t) *attr)) {
+			all_same = false;
+			continue;
+		}
+	} /* loop over things in a virtual module section */
 
 	inst = talloc_zero(cs, module_rlm_virtual_t);
 	if (!inst) return -1;
