@@ -751,6 +751,8 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 	}
 
 by_section:
+	if (!vs) goto section_error;
+
 	/*
 	 *	First look for the section name in the module's
 	 *	bindings.  If that fails, look for the alt
@@ -774,6 +776,7 @@ by_section:
 		if (mmc_out) section_name_dup(ctx, &mmc->asked, section);
 	}
 	if (!mmb) {
+	section_error:
 		fr_strerror_printf("Module \"%s\" has no method for section %s %s { ... }, i.e. %s%s%s",
 				   mmc->mi->name,
 				   section->name1,

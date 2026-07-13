@@ -1945,6 +1945,8 @@ int virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 int virtual_servers_instantiate(void)
 {
 	size_t	i, server_cnt;
+	CONF_SECTION *cs;
+	fr_rb_iter_inorder_t iter;
 
 	/*
 	 *	User didn't specify any "server" sections
@@ -2019,6 +2021,20 @@ int virtual_servers_instantiate(void)
 		}
 
 		(void) virtual_server_warn_unused(server_cs, process->compile_list);
+	}
+
+	/*
+	 *	Iterate over virtual modules to see if we can compile them.
+	 */
+	for (cs = module_rlm_virtual_iter_init(&iter);
+	     cs != NULL;
+	     cs = module_rlm_virtual_iter_next(&iter)) {
+		fr_dict_t const *dict;
+
+		dict = virtual_server_dict_by_cs(cs); /* cheating! */
+		if (!dict) continue;
+
+		if (unlang_compile_virtual_module(cs, dict) < 0) return -1;
 	}
 
 	if (modules_instantiate(process_modules) < 0) {
