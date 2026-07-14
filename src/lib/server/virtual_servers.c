@@ -577,19 +577,19 @@ fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 	return virtual_server_dict_by_cs(vs->server_cs);
 }
 
-/** Return the namespace for the virtual server specified by a config section
+/** Return the namespace for specified CONF_SECTION
  *
- * @param[in] server_cs		to look for namespace in.
+ * @param[in] cs		to look for namespace in.
  * @return
  *	- NULL on error.
  *	- Namespace on success.
  */
-fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
+fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *cs)
 {
 	CONF_DATA const *cd;
 	fr_dict_t *dict;
 
-	cd = cf_data_find(server_cs, fr_dict_t, "dict");
+	cd = cf_data_find(cs, fr_dict_t, "dict");
 	if (!cd) return NULL;
 
 	dict = cf_data_value(cd);
