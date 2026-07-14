@@ -1532,8 +1532,15 @@ int unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
 	if (cs) {
 		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
-			REDEBUG("Failed to find pre-compiled unlang for section %s ... { ... }",
-				cf_section_name1(cs));
+			char const *name2;
+			char const *space = " ";
+
+			name2 = cf_section_name2(cs);
+			if (!name2) name2 = space = "";
+
+			REDEBUG("Cannot interpret section at %s[%d]", cf_filename(cs), cf_lineno(cs));
+			REDEBUG("Failed to find pre-compiled unlang for section %s%s%s%s{ ... }",
+				cf_section_name1(cs), space, name2, space);
 			return -1;
 		}
 	}
