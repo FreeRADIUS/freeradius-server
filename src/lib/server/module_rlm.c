@@ -751,8 +751,6 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 	}
 
 by_section:
-	if (!vs) goto section_error;
-
 	/*
 	 *	First look for the section name in the module's
 	 *	bindings.  If that fails, look for the alt
@@ -762,7 +760,11 @@ by_section:
 	 */
 	mmb = module_binding_find(&mmc->rlm->method_group, section);
 	if (!mmb) {
-		section_name_t const **alt_p = virtual_server_section_methods(vs, section);
+		section_name_t const **alt_p;
+
+		if (!vs) goto section_error;
+
+		alt_p = virtual_server_section_methods(vs, section);
 		if (alt_p) {
 			for (; *alt_p; alt_p++) {
 				mmb = module_binding_find(&mmc->rlm->method_group, *alt_p);
