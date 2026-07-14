@@ -1150,7 +1150,7 @@ static int send_one_packet(rc_request_t *request)
 		    (request->packet->data[RADIUS_HEADER_LENGTH + 1] == 18)) {
 			memmove(request->packet->data + RADIUS_HEADER_LENGTH,
 				request->packet->data + RADIUS_HEADER_LENGTH + 18,
-				request->packet->data_len - 18);
+				request->packet->data_len - RADIUS_HEADER_LENGTH - 18);
 			request->packet->data_len -= 18;
 			fr_nbo_from_uint16(request->packet->data + 2, request->packet->data_len);
 		}
