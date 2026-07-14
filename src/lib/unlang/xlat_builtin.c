@@ -1492,6 +1492,87 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+typedef struct {
+	unlang_result_t	last_result;
+	xlat_exp_head_t	*ex;
+} xlat_module_call_rctx_t;
+
+
+static xlat_arg_parser_t const xlat_func_module_call_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Just serves to push the result up the stack
+ *
+ */
+static xlat_action_t xlat_module_call_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					     xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_module_call_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_module_call_rctx_t);
+	xlat_action_t		xa = XLAT_RESULT_SUCCESS(&rctx->last_result) ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+
+	talloc_free(rctx);
+
+	return xa;
+}
+
+
+/** Calls a named virtual module
+ *
+ * e.g.
+@verbatim
+%module.call("foo")
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_module_call(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*box;
+	CONF_SECTION *cs;
+	xlat_module_call_rctx_t *rctx;
+	fr_dict_t const *dict;
+
+	XLAT_ARGS(args, &box);
+
+	cs = module_rlm_virtual_by_name(box->vb_strvalue);
+	if (!cs) {
+		REDEBUG("Unknown module %pV", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	dict = virtual_server_dict_by_cs(cs);
+	if (!dict) {
+		REDEBUG("Virtual module %pV does not have a known dictionary - ignoring", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!fr_dict_compatible(request->proto_dict, dict)) {
+		REDEBUG("Virtual module %pV has incompatible namespace %s", box, fr_dict_root(dict)->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_module_call_rctx_t));
+
+	/*
+	 *	Push the resumption point BEFORE pushing the module onto
+	 *	the stack.
+	 */
+	(void) unlang_xlat_yield(request, xlat_module_call_resume, NULL, 0, rctx);
+
+	if (unlang_interpret_push_section(&rctx->last_result, request, cs,
+					  FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0) {
+		return XLAT_ACTION_FAIL;
+	}
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+
 static xlat_arg_parser_t const xlat_func_next_time_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4935,6 +5016,7 @@ do { \
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_ARGS("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
+	XLAT_REGISTER_ARGS("module.call", xlat_func_module_call, FR_TYPE_VOID, xlat_func_module_call_arg);
 
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
