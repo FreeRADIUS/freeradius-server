@@ -697,6 +697,10 @@ recv Access-Request {
 	#
 	filter_username
 
+	if (!Proxy-State) {
+		%module.call('foo')
+	}
+
 	#
 	#  Some broken equipment sends passwords with embedded zeros, i.e.
 	#  the debug output will show:

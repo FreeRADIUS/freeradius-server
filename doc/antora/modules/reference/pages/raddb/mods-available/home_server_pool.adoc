@@ -58,6 +58,28 @@ configuration.
 You can add `home2`, `home3`, etc. here. They do not need to be in
 separate files.
 
+== Home Server Pool with Fallback
+
+This example shows how to do load-balancing to a set of home servers,
+with a "default_fallback" policy.
+
+Unlike v3, where a `home_server_pool` was a special case, the code
+below is just normal `unlang`.
+
+The home server pool can be selected dynamically at run time via a
+special module call function:
+
+----
+if (User-Name =~ /@example.com$/) {
+}
+----
+
+... other modules
+
+This policy will be run then the above "load-balance" section fails.
+
+... policy ...
+
 == Default Configuration
 
 ----
@@ -98,6 +120,15 @@ radius home1 {
 		ipaddr = 192.0.2.1
 		port = 1812
 		secret = testing123
+	}
+}
+#	%module.call('pool2')
+redundant pool2 {
+	load-balance "%{Calling-Station-Id}%{User-Name}" {
+		radius1
+		radius2
+	}
+	group {
 	}
 }
 ----

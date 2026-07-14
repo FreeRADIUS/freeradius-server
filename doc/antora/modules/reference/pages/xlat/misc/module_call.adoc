@@ -1,0 +1,46 @@
+= module.call(<string>)
+
+Call a named virtual module.
+
+If you have a virtual module, then you can call it based on a
+dynamically expanded string.  See `mods-available/home_server_pool`
+for a worked example.
+
+.The virtual module in mods-enabled/pool1
+====
+[source,unlang]
+----
+redundant pool1 {
+	load-balance "%{Calling-Station-Id}%{User-Name}" {
+		radius1
+		radius2
+		#  ... other modules
+	}
+
+	#
+	#  This policy will be run then the above "load-balance" section
+	#  fails.
+	#
+	group {
+		#  ... policy ...
+	}
+}
+----
+
+You can then call the module at run-time.
+
+.Calling the virtual module
+====
+[source,unlang]
+----
+if (User-Name =~ /@example.com$) {
+	%module.call('pool1')
+}
+----
+
+The argument to the function is a string, which can be taken from
+anywhere.  e.g. an SQL query, LDAP query, or created dynamically by
+concatenating string values.
+
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
