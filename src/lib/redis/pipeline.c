@@ -911,6 +911,7 @@ char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
 	case FR_REDIS_COMMAND_FMT_ARGV:
 		return cmd->argv[0];
 	}
+	return NULL;
 }
 
 /** Extract the rcode from a command set
