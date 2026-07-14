@@ -51,6 +51,8 @@ fr_dict_attr_autoload_t process_redis_dict_attr[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
+static const uint32_t redis_shards_version = REDIS_VERSION(7, 0, 0);
+
 typedef struct {
 	uint64_t	nothing;
 	CONF_SECTION	*cluster_map_get;
@@ -63,6 +65,8 @@ typedef struct {
 	fr_redis_io_conf_t		io_conf;		//!< Connection config for this node.
 	fr_redis_trunk_t		*trunk;			//!< Trunk connection for this node.
 	bool				in_cluster;		//!< Has the node been found in the latest cluster map.
+	uint32_t			version;		//!< Redis version on this node.
+	uint64_t			current_epoch;		//!< Redis cluster epoch as reported by this node.
 } process_redis_node_t;
 
 /** Coordinator representation of a Redis cluster
@@ -119,6 +123,7 @@ typedef struct {
 	process_redis_sections_t	sections;
 	module_method_t const		*method;
 	trunk_conf_t			trunk_conf;
+	fr_time_delta_t			timeout;
 } process_redis_t;
 
 typedef struct {
@@ -129,17 +134,43 @@ typedef struct {
 
 static const conf_parser_t config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, process_redis_t, trunk_conf, trunk_config) },
+	{ FR_CONF_OFFSET("timeout", process_redis_t, timeout), .dflt = "5s" },
 	CONF_PARSER_TERMINATOR
 };
 
+/** State of cluster map fetching from each node.
+ */
+typedef enum {
+	CLUSTER_MAP_GET_INFO = 0,
+	CLUSTER_MAP_GOT_INFO,
+	CLUSTER_MAP_GET_MAP,
+	CLUSTER_MAP_GOT_MAP,
+	CLUSTER_MAP_GET_FAILED,
+	CLUSTER_MAP_GET_TIMEOUT,
+} map_get_status_t;
+
+/** Resume context for node specific calls
+ */
+typedef struct {
+	process_redis_node_t	*node;			//!< Node being queried.
+	fr_dlist_t		entry;			//!< In list of resume contexts.
+	map_get_status_t	status;			//!< Status of the node calls.
+	bool			cluster_ok;		//!< Does CLUSTER INFO say the cluster is OK.
+	fr_pair_list_t		list;			//!< To populate with parsed reply data.
+	fr_redis_command_set_t	*cmds;			//!< Command set for fetching cluster map.
+	fr_timer_t		*ev;			//!< Timeout event for this node.
+} process_redis_node_rctx_t;
+
 /** Resume context for Redis requests */
 typedef struct {
+	process_redis_t const	*inst;			//!< Module instance.
 	unlang_result_t		result;			//!< Where results are written to
 	int32_t			worker_id;		//!< The worker which sent the data leading to this request.
-	fr_redis_command_set_t	*cmds;			//!< Command set for fetching cluster map.
 	process_redis_cluster_t	*cluster;		//!< Cluster which is being updated.
 	process_redis_node_t	*current_node;		//!< Node currently being queried.
-	fr_pair_list_t		list;			//!< To populate with parsed reply data.
+	fr_dlist_head_t		rctx_list;		//!< List of per-node resume contexts.
+	uint64_t		cluster_epoch;		//!< Largest epoch value returned by any node.
+	fr_event_list_t		*el;			//!< Event list for timeout events.
 } process_redis_rctx_t;
 
 #define FR_REDIS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_REDIS_CODE_MAX))
@@ -492,68 +523,242 @@ static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster
 	return 0;
 }
 
+static void redis_cluster_info_server_results(request_t *request, UNUSED fr_redis_command_t *cmd,
+					      redisReply *reply, void *rctx)
+{
+	process_redis_node_t	*node = talloc_get_type_abort(rctx, process_redis_node_t);
+	char			buffer[20];
+
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+	if (fr_redis_parse_version(buffer, sizeof(buffer), reply) != REDIS_RCODE_SUCCESS) return;
+	node->version = fr_redis_version_num(buffer);
+	RDEBUG3("Cluster node %pV:%d is running Redis version %s", fr_box_ipaddr(node->io_conf.ipaddr),
+		node->io_conf.port, buffer);
+}
+
+static void redis_cluster_info_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
+{
+	process_redis_node_rctx_t	*nrctx = talloc_get_type_abort(rctx, process_redis_node_rctx_t);
+	char	*p, *q;
+
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
+	if (reply->type != REDIS_REPLY_STRING) {
+		RERROR("Bad value type, expected string, got %s",
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+	error:
+		nrctx->status = CLUSTER_MAP_GET_FAILED;
+		return;
+	}
+
+	p = strstr(reply->str, "cluster_state:");
+	if (!p) {
+		RERROR("Response did not contain cluster_state");
+		goto error;
+	}
+
+	p = strchr(p, ':');
+	fr_assert(p);
+	p++;
+
+	q = strstr(p, "\r\n");
+	if (!q) q = p + strlen(p);
+
+	if (strncmp(p, "ok", q - p) == 0) {
+		nrctx->cluster_ok = true;
+		RDEBUG2("Node %pV:%d reports Cluster OK", fr_box_ipaddr(nrctx->node->io_conf.ipaddr),
+			nrctx->node->io_conf.port);
+	} else {
+		RERROR("Node %pV:%d reports Cluster Failed", fr_box_ipaddr(nrctx->node->io_conf.ipaddr),
+			nrctx->node->io_conf.port);
+	}
+
+	p = strstr(reply->str, "cluster_current_epoch");
+	if (!p) {
+		RERROR("Response did not contain cluster_current_epoch");
+		goto error;
+	}
+
+	p = strchr(p, ':');
+	fr_assert(p);
+	p++;
+
+	if (fr_strtoull(&nrctx->node->current_epoch, &q, p) < 0) {
+		RERROR("Failed parsing current_cluster_epoch");
+		goto error;
+	}
+
+	RDEBUG3("Node %pV:%d reported epoch %"PRIu64, fr_box_ipaddr(nrctx->node->io_conf.ipaddr),
+		nrctx->node->io_conf.port, nrctx->node->current_epoch);
+	nrctx->status = CLUSTER_MAP_GOT_INFO;
+	return;
+}
+
 static void redis_cluster_slots_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
 {
-	process_redis_rctx_t	*prctx = talloc_get_type_abort(rctx, process_redis_rctx_t);
-	int			ret;
+	process_redis_node_rctx_t	*nrctx = talloc_get_type_abort(rctx, process_redis_node_rctx_t);
+	int				ret;
 
-	ret = fr_redis_cluster_slots_to_pairs(prctx, request, &prctx->list, reply);
+	if (nrctx->node->version > redis_shards_version) {
+		ret = fr_redis_cluster_shards_to_pairs(nrctx, request, &nrctx->list, reply);
+	} else {
+		ret = fr_redis_cluster_slots_to_pairs(nrctx, request, &nrctx->list, reply);
+	}
 	if (RDEBUG_ENABLED2 && (ret == 0)){
 		RDEBUG2("Cluster map fetched:");
 		RINDENT();
-		fr_pair_list_foreach(&prctx->list, vp) {
+		fr_pair_list_foreach(&nrctx->list, vp) {
 			RDEBUG2("%pP", vp);
 		}
 		REXDENT();
 	}
+	nrctx->status = CLUSTER_MAP_GOT_MAP;
+}
+
+static void redis_cluster_map_get_timeout(UNUSED fr_timer_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	process_redis_node_rctx_t	*nrctx = talloc_get_type_abort(uctx, process_redis_node_rctx_t);
+
+	ERROR("Fetching map from %pV:%d failed", fr_box_ipaddr(nrctx->node->io_conf.ipaddr), nrctx->node->io_conf.port);
+	nrctx->status = CLUSTER_MAP_GET_TIMEOUT;
+	fr_redis_command_set_cancel(nrctx->cmds);
 }
 
 static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
 	process_redis_cluster_t	*cluster = rctx->cluster;
+	process_redis_node_rctx_t	*nrctx;
 
 	cluster->fetching = true;
-	fr_pair_list_init(&rctx->list);
+	fr_dlist_talloc_init(&rctx->rctx_list, process_redis_node_rctx_t, entry);
 
-	MEM(rctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+	fr_dlist_foreach(&cluster->nodes, process_redis_node_t, node) {
+		MEM(nrctx = talloc_zero(rctx, process_redis_node_rctx_t));
+		nrctx->node = node;
+		fr_pair_list_init(&nrctx->list);
 
-	fr_redis_command_literal_add(rctx->cmds, "CLUSTER SLOTS", redis_cluster_slots_results, rctx);
+		MEM(nrctx->cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, nrctx, false));
 
-	while ((rctx->current_node = fr_dlist_next(&cluster->nodes, rctx->current_node))) {
 		RDEBUG2("Fetching cluster map %d from %pV:%d", cluster->cluster_id,
-			fr_box_ipaddr(rctx->current_node->io_conf.ipaddr), rctx->current_node->io_conf.port);
-		if (!rctx->current_node->trunk) {
-			rctx->current_node->trunk = fr_redis_trunk_alloc(cluster->rtcluster,
-									 &rctx->current_node->io_conf,
-									 NULL, NULL, NULL, false);
+			fr_box_ipaddr(node->io_conf.ipaddr), node->io_conf.port);
+		if (!node->trunk) {
+			node->trunk = fr_redis_trunk_alloc(cluster->rtcluster, &node->io_conf, NULL, NULL, NULL, false);
+			fr_redis_command_literal_add(nrctx->cmds, "INFO SERVER", redis_cluster_info_server_results, node);
 		}
 
-		if (redis_command_set_enqueue(rctx->current_node->trunk, rctx->cmds) == FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_YIELD;
-		RWARN("Unable to enqueue request");
+		fr_redis_command_literal_add(nrctx->cmds, "CLUSTER INFO", redis_cluster_info_results, nrctx);
+
+		if (redis_command_set_enqueue(node->trunk, nrctx->cmds) != FR_REDIS_PIPELINE_OK) {
+			RERROR("Unable to enqueue request on node %pV:%d", fr_box_ipaddr(node->io_conf.ipaddr),
+			       node->io_conf.port);
+			talloc_free(nrctx);
+			continue;
+		}
+
+		fr_timer_in(nrctx, rctx->el->tl, &nrctx->ev, rctx->inst->timeout, true,
+			    redis_cluster_map_get_timeout, nrctx);
+		fr_dlist_insert_tail(&rctx->rctx_list, nrctx);
 	}
+
+	if (fr_dlist_num_elements(&rctx->rctx_list) > 0) return UNLANG_ACTION_YIELD;
 
 	RERROR("Unable to query any cluster node");
 	return UNLANG_ACTION_FAIL;
 }
 
-static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
 	process_redis_cluster_t	*cluster = rctx->cluster;
 	fr_pair_t		*vp;
 	process_redis_pending_t	*pending;
 	fr_rb_iter_inorder_t	iter;
+	size_t			completed = 0;
+	fr_pair_list_t		*list = NULL;
 
 	/*
-	 *	If no cluster data was returned, try the next node.
+	 *	The request processing will resume when one or more nodes has
+	 *	replied.
+	 *	Check the current state of the rctx for each node.
 	 */
-	if (fr_pair_list_num_elements(&rctx->list) == 0) {
-		rctx->current_node = fr_dlist_next(&cluster->nodes, rctx->current_node);
-		if (!rctx->current_node) RETURN_UNLANG_FAIL;
-		return unlang_function_push_with_result(p_result, request, redis_cluster_map_get,
-							redis_cluster_map_get_resume, NULL, 0, UNLANG_SUB_FRAME, rctx);
+	fr_dlist_foreach(&rctx->rctx_list, process_redis_node_rctx_t, nrctx) {
+		switch (nrctx->status) {
+		case CLUSTER_MAP_GET_INFO:
+		case CLUSTER_MAP_GET_MAP:
+			break;
+
+		case CLUSTER_MAP_GET_FAILED:
+		case CLUSTER_MAP_GET_TIMEOUT:
+		clean_up:
+			fr_dlist_remove(&rctx->rctx_list, nrctx);
+			talloc_free(nrctx);
+			break;
+
+		case CLUSTER_MAP_GOT_INFO:
+			/*
+			 *	Check epoch returned by node.  Anything lower than
+			 *	the highest value seen so far can be disregarded.
+			 */
+			if (nrctx->node->current_epoch < rctx->cluster_epoch) {
+				RWARN("Node %pV:%d returned lower epoch than other nodes - ignoring",
+				      fr_box_ipaddr(nrctx->node->io_conf.ipaddr), nrctx->node->io_conf.port);
+				goto clean_up;
+			}
+
+			rctx->cluster_epoch = nrctx->node->current_epoch;
+
+			fr_redis_command_set_clear(nrctx->cmds);
+			if (nrctx->node->version > redis_shards_version) {
+				fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SHARDS",
+							     redis_cluster_slots_results, nrctx);
+			} else {
+				fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SLOTS",
+							     redis_cluster_slots_results, nrctx);
+			}
+			nrctx->status = CLUSTER_MAP_GET_MAP;
+			if (redis_command_set_enqueue(nrctx->node->trunk, nrctx->cmds) != FR_REDIS_PIPELINE_OK) {
+				RERROR("Unable to enqueue request on node %pV:%d",
+				       fr_box_ipaddr(nrctx->node->io_conf.ipaddr), nrctx->node->io_conf.port);
+				goto clean_up;
+			}
+			break;
+
+		case CLUSTER_MAP_GOT_MAP:
+			if (fr_pair_list_num_elements(&nrctx->list) == 0) {
+				RWARN("Node %pV:%d didn't return a cluster", fr_box_ipaddr(nrctx->node->io_conf.ipaddr),
+				      nrctx->node->io_conf.port);
+				goto clean_up;
+			}
+			completed++;
+			break;
+		}
 	}
+
+	/*
+	 *	If there are still nodes with outstanding rctx then yield.
+	 */
+	if (completed < fr_dlist_num_elements(&rctx->rctx_list)) {
+		if (unlang_function_repeat_set(request, redis_cluster_map_get_resume) < 0) RETURN_UNLANG_FAIL;
+		return UNLANG_ACTION_YIELD;
+	}
+
+	if (fr_dlist_num_elements(&rctx->rctx_list) < 1) {
+		RERROR("No node returned a cluster map");
+		RETURN_UNLANG_FAIL;
+	}
+
+	/*
+	 *	Find the first node's rctx where the node epoch matches the
+	 *	highest seen value.
+	 */
+	fr_dlist_foreach(&rctx->rctx_list, process_redis_node_rctx_t, nrctx) {
+		if (nrctx->node->current_epoch == rctx->cluster_epoch) {
+			list = &nrctx->list;
+			break;
+		}
+	}
+	if (unlikely(!list)) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Verify the list of nodes, checking the cluster map matches
@@ -561,7 +766,7 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	fr_dlist_foreach(&cluster->nodes, process_redis_node_t, node) {
 		node->in_cluster = false;
 	}
-	fr_pair_list_foreach(&rctx->list, shard) {
+	fr_pair_list_foreach(list, shard) {
 		vp = NULL;
 		while ((vp = fr_pair_find_by_da(&shard->vp_group, vp, attr_redis_node))) {
 			fr_pair_t		*endpoint, *port;
@@ -601,14 +806,14 @@ static unlang_action_t redis_cluster_map_get_resume(UNUSED unlang_result_t *p_re
 	 *	Update the stored cluster definition
 	 */
 	fr_pair_list_free(&cluster->cluster_pairs);
-	fr_pair_list_copy(cluster, &cluster->cluster_pairs, &rctx->list);
+	fr_pair_list_copy(cluster, &cluster->cluster_pairs, list);
 
 	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_cluster_id);
 	vp->vp_uint16 = cluster->cluster_id;
 	cluster->fetching = false;
 	cluster->last_update = fr_time();
 
-	fr_pair_list_copy(request->reply_ctx, &request->reply_pairs, &rctx->list);
+	fr_pair_list_copy(request->reply_ctx, &request->reply_pairs, list);
 
 	fr_pair_prepend_by_da(request->reply_ctx, &vp, &request->reply_pairs, attr_redis_packet_type);
 	vp->vp_uint32 = FR_REDIS_CLUSTER_MAP_UPDATE;
@@ -632,10 +837,12 @@ static void redis_cluster_map_get_cancel(request_t *request, UNUSED fr_signal_t 
 {
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(uctx, process_redis_rctx_t);
 
-	if (!rctx->cmds) return;
-
-	RWARN("Forcibly cancelling CLUSTER SLOTS request");
-	fr_redis_command_set_cancel(rctx->cmds);
+	fr_dlist_foreach(&rctx->rctx_list, process_redis_node_rctx_t, nrctx) {
+		if (!nrctx->cmds) continue;
+		RWARN("Forcibly cancelling cluster map request on %pV:%d",
+		      fr_box_ipaddr(nrctx->node->io_conf.ipaddr), nrctx->node->io_conf.port);
+		fr_redis_command_set_cancel(nrctx->cmds);
+	}
 }
 
 static int _process_redis_cluster_free(process_redis_cluster_t *cluster)
@@ -692,6 +899,8 @@ RECV(cluster_map_bootstrap)
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 	rctx->worker_id = vp->vp_int32;
+	rctx->el = thread->el;
+	rctx->inst = inst;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_bootstrap_node);
 	if (!vp) return UNLANG_ACTION_FAIL;
@@ -806,6 +1015,7 @@ RECV(cluster_map_bootstrap)
 
 RECV(cluster_map_get)
 {
+	process_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
 	process_redis_thread_t	*thread = talloc_get_type_abort(mctx->thread, process_redis_thread_t);
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, process_redis_rctx_t);
 	fr_pair_t		*vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_worker_id);
@@ -813,6 +1023,8 @@ RECV(cluster_map_get)
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 	rctx->worker_id = vp->vp_int32;
+	rctx->el = thread->el;
+	rctx->inst = inst;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_cluster_id);
 	if (!vp) return UNLANG_ACTION_FAIL;
