@@ -1,7 +1,4 @@
 
-
-
-
 = The redis Virtual Server
 
 The `redis` virtual server handles the fetching of Redis cluster maps
@@ -16,12 +13,19 @@ This virtual server has no process sections.
 
 This is the `redis` virtual server.
 
-```
+----
 server redis {
 	namespace = redis
 
 	redis {
-```
+----
+
+timeout:: Timeout when fetching cluster map
+
+----
+#		timeout = 5s
+
+----
 
 pool:: Connection pool settings
 
@@ -31,37 +35,37 @@ with the same options as the rlm_redis module.
 The default values are reasonable for most settings
 thought the connect_timeout / reconnect_delay may
 need to be amended.
-```
+----
 		pool {
 			connection {
-```
+----
 
 connect_timeout:: How long to wait
 before giving up on a connection which is
 being opened.
 
-```
+----
 #				connect_timeout = 3.0
 
-```
+----
 
 reconnect_delay:: If opening a connection
 fails, or an open connection fails,
 we wait `reconnect_delay` seconds before
 attempting to open another connection.
 
-```
+----
 #				reconnect_delay = 5
 			}
 		}
 	}
 }
-```
+----
 
 == Default Configuration
 
-```
-```
+----
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
