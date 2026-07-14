@@ -36,8 +36,9 @@ jobs:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
-    #  id-token lets the profiling leg mint a GitHub OIDC token to authenticate
-    #  uploads to the prof-results store which is validated by its access.lua.
+    #  id-token: write lets the profiling leg mint a GitHub OIDC token, which
+    #  authenticates the prof-results publish. Listing any permission drops
+    #  the unlisted ones, so contents: read is stated to keep checkout working.
     permissions:
       contents: read
       id-token: write
@@ -218,22 +219,14 @@ jobs:
           if-no-files-found: ignore
 
       #
-      #  Push the same prof-results/ tree into the durable prof-results store
-      #  so the browser UI can read it. The script tars the tree and POSTs the
-      #  tarball to the store's ingest endpoint, which numbers the runs,
-      #  updates its indexes, and refreshes its manifest server-side; see the
-      #  script header for the auth and proxy details. A failed publish fails
-      #  the leg.
-      #
-      #  Gated on the artifact step having found files: with if-no-files-found:
-      #  ignore, upload-artifact leaves artifact-id empty when the tree is
-      #  absent/empty, so this step is skipped rather than publishing nothing.
+      #  Publish the same prof-results/ tree to the durable store: the script
+      #  tars the tree and POSTs it, with a GitHub OIDC token, to the given
+      #  URL (see the script header). Skipped when the artifact step found no
+      #  files (empty artifact-id).
       #
       - name: Publish profiling results to the prof-results store
         if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
-        env:
-          PROF_RESULTS_URL: "https://cinfra-ca.inkbridge.io"
-        run: scripts/ci/publish-profiling-results.sh
+        run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
 
       #
       #  If the CI has failed and the branch is ci-debug
