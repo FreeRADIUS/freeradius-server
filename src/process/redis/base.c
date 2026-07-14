@@ -154,6 +154,215 @@ typedef struct {
 
 #include <freeradius-devel/server/process.h>
 
+/** Convert the "slots" array in CLUSTER SHARDS replies into pairs
+ *
+ * @param reply		Redis reply containing the "slots" array.
+ * @param shard_vp	Pair representing shard to build slots pairs under.
+ * @return
+ *	- number of slot ranges found
+ *	- -1 on error
+ */
+static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *shard_vp)
+{
+	fr_pair_t	*slot_vp, *vp;
+	size_t		i;
+
+	/*
+	 *	The "slots" value must be an array with an even number
+	 *	of entries and all integers.
+	 */
+	if (reply->type != REDIS_REPLY_ARRAY) return -1;
+	if (reply->elements == 0) return 0;
+	if ((reply->elements % 2) != 0) return -1;
+	for (i = 0; i < reply->elements; i++) if (reply->element[i]->type != REDIS_REPLY_INTEGER) return -1;
+
+	for (i = 0; i < (reply->elements - 1); i += 2) {
+		MEM(slot_vp = fr_pair_afrom_da(shard_vp, attr_redis_slot));
+		fr_pair_append(&shard_vp->vp_group, slot_vp);
+
+		MEM(vp = fr_pair_afrom_da(slot_vp, attr_redis_slot_start));
+		if (reply->element[i]->type != REDIS_REPLY_INTEGER) return -1;
+		vp->vp_uint16 = (uint16_t) reply->element[i]->integer;
+		fr_pair_append(&slot_vp->vp_group, vp);
+
+		MEM(vp = fr_pair_afrom_da(slot_vp, attr_redis_slot_end));
+		if (reply->element[i + 1]->type != REDIS_REPLY_INTEGER) return -1;
+		vp->vp_uint16 = (uint16_t) reply->element[i + 1]->integer;
+		fr_pair_append(&slot_vp->vp_group, vp);
+	}
+
+	return i / 2;
+}
+
+/** Convert the "nodes" array in CLUSTER SHARDS replies into pairs
+ *
+ * @param reply		Redis reply containing the "nodes" array.
+ * @param shard_vp	Pair representing shard to build ndoes pairs under.
+ * @return
+ *	- number of nodes found
+ *	- -1 on error
+ */
+static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *shard_vp)
+{
+	fr_pair_t	*node_vp, *vp;
+	size_t		i, j;
+	redisReply	*node, *field, *value;
+
+	/*
+	 *	The "nodes" value must be an array of arrays.
+	 */
+	if (reply->type != REDIS_REPLY_ARRAY) return -1;
+	for (i = 0; i < reply->elements; i++) if (reply->element[i]->type != REDIS_REPLY_ARRAY) return -1;
+
+	for (i = 0; i < reply->elements; i++) {
+		node = reply->element[i];
+
+		/*
+		 *	Every other entry must be a string - the field name.
+		 */
+		for (j = 0; j < node->elements; j += 2) if (node->element[j]->type != REDIS_REPLY_STRING) return -1;
+
+		MEM(node_vp = fr_pair_afrom_da(shard_vp, attr_redis_node));
+
+		for (j = 0; j < (node->elements - 1); j +=2) {
+			field = node->element[j];
+			value = node->element[j + 1];
+			if (strcmp(field->str, "endpoint") == 0) {
+				if (value->type != REDIS_REPLY_STRING) return -1;
+				MEM(vp = fr_pair_afrom_da(node_vp, attr_redis_node_endpoint));
+				fr_pair_value_bstrndup(vp, value->str, value->len, true);
+
+			} else if (strcmp(field->str, "port") == 0) {
+				if (value->type != REDIS_REPLY_INTEGER) return -1;
+				MEM(vp = fr_pair_afrom_da(node_vp, attr_redis_node_port));
+				vp->vp_uint16 = (uint16_t) value->integer;
+
+			} else if (strcmp(field->str, "role") == 0) {
+				if (value->type != REDIS_REPLY_STRING) return -1;
+				MEM(vp = fr_pair_afrom_da(node_vp, attr_redis_node_role));
+				vp->vp_uint8 = (strcmp(value->str, "master") == 0) ? 1 : 2;
+
+			} else if (strcmp(field->str, "health") == 0) {
+				if (value->type != REDIS_REPLY_STRING) return -1;
+				if (strcmp(value->str, "failed") == 0) {
+					TALLOC_FREE(node_vp);
+					break;
+				}
+				continue;
+
+			} else {
+				continue;
+			}
+
+			fr_pair_append(&node_vp->vp_group, vp);
+		}
+
+		if (!node_vp) continue;
+
+		fr_pair_append(&shard_vp->vp_group, node_vp);
+	}
+
+	return i;
+}
+
+/** Convert the reply to CLUSTER SHARDS into pairs
+ *
+ * The CLUSTER SHARDS reply is designed as an extensible
+ * structure using arrays containing named fields.
+ * i.e. an element which is the field name, followed by
+ * the value in the next element.
+ *
+ * The fields for node entries are specifically described as
+ * being extensible.
+ *
+ * The CLUSTER SHARDS reply structure
+ @verbatim
+   [0] -> Shard 0
+       [0] -> "slots"
+       [1] -> Array of slot entries in pairs of start / end values.
+           [0] -> key_slot0_start
+           [1] -> key_slot0_end
+	   [2] -> key_slot1_start
+	   [3] -> key_slot1_end
+	   [4 .. n] -> key_slot2_start .. key_slotm_end
+       [2] -> "nodes"
+       [3] -> Array of nodes which cover the slots in the "slots" array.
+           [0] -> Node 0
+	       [0]  -> "id"
+               [1]  -> Node ID
+               [2]  -> "port"
+               [3]  -> (integer) port number
+               [4]  -> "ip"
+               [5]  -> IP address of node
+               [6]  -> "endpoint"
+               [7]  -> Preferred endpoint to connect to node
+               [8]  -> "role"
+               [9]  -> ("master"|"replica")
+               [10] -> "replication-offset"
+               [11] -> (integer) replication offset
+               [12] -> "health"
+               [13] -> ("online"|"failed"|"loading")
+           [1] -> Node 1
+               [0 .. n] -> Entries for Node 1
+   [1] -> Shard 1
+       [...]
+ @endverbatim
+ */
+ static int fr_redis_cluster_shards_to_pairs(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *list, redisReply *reply)
+{
+	size_t		i;
+	fr_pair_t	*shard_vp;
+	int		ret;
+
+	if(reply->type != REDIS_REPLY_ARRAY) return -1;
+
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
+	for (i = 0; i < reply->elements; i++) {
+		size_t		j;
+		redisReply	*shard = reply->element[i];
+
+		if (shard->type != REDIS_REPLY_ARRAY) {
+		error:
+			fr_pair_list_free(list);
+			return -1;
+		}
+		if (shard->elements < 4 || (shard->elements % 2 != 0)) goto error;
+
+		MEM(shard_vp = fr_pair_afrom_da(ctx, attr_redis_shard));
+		fr_pair_append(list, shard_vp);
+
+		for (j = 0; j < (shard->elements - 1); j += 2) {
+			redisReply *field = shard->element[j];
+			if (strcmp(field->str, "slots") == 0) {
+				ret = fr_redis_cluster_shards_slots_to_pairs(shard->element[j + 1], shard_vp);
+				if (ret < 0) goto error;
+
+				/*
+				 *	Failed nodes can be reported with zero slots entries.
+				 *	Remove this shard from the list.
+				 */
+				if (ret == 0) {
+				clean_up:
+					fr_pair_remove(list, shard_vp);
+					talloc_free(shard_vp);
+					break;
+				}
+
+			} else if (strcmp(field->str, "nodes") == 0) {
+				ret = fr_redis_cluster_shards_nodes_to_pairs(shard->element[j + 1], shard_vp);
+				if (ret < 0) goto error;
+				if (ret == 0) goto clean_up;
+
+			} else {
+				continue;
+			}
+		}
+	}
+
+	return 0;
+}
+
 /** Convert the reply to CLUSER SLOTS into pairs
  *
  * The CLUSTER SLOTS reply structure
