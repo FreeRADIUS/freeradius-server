@@ -123,7 +123,7 @@ radius home1 {
 #
 
 #
-#  = Home Server Pool with Fallback
+#  == Home Server Pool with Fallback
 #
 #  This example shows how to do load-balancing to a set of home
 #  servers, with a "default_fallback" policy.
