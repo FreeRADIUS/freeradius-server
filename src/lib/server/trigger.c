@@ -167,6 +167,7 @@ int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigge
 
 	fr_event_list_t		*el;
 	tmpl_rules_t		t_rules;
+	fr_pair_t		*vp;
 
 	/*
 	 *	noop if trigger_init was never called, or if
@@ -288,7 +289,6 @@ cp_found:
 	request->name = talloc_typed_asprintf(request, "trigger-%s", name);
 
 	if (args) {
-		fr_pair_t	*vp;
 
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
@@ -297,13 +297,13 @@ cp_found:
 			talloc_free(request);
 			return -3;
 		}
-
-		/*
-		 *	Add the trigger name to the request data
-		 */
-		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
-		fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 	}
+
+	/*
+	 *	Add the trigger name to the request data
+	 */
+	MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
+	fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->out);
