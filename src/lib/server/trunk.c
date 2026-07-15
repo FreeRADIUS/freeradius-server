@@ -1865,7 +1865,10 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 		 */
 		connection_signals_pause(tconn->pub.conn);
 		while ((treq = fr_dlist_head(&tconn->sent))) {
-			OVER_MAX_CHECK;
+			if (++count > max) {
+				count--;
+				break;
+			}
 			fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_SENT);
 
 			trunk_request_enter_cancel(treq, TRUNK_CANCEL_REASON_MOVE);
