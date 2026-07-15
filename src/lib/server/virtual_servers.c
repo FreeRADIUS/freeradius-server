@@ -1684,11 +1684,13 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 
 		if (slen != len) {
 			cf_log_err(cp, "Unexpected text after value");
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
 		if (fr_dict_enum_add_name(UNCONST(fr_dict_attr_t *, da), attr, &box, false, false) < 0) {
 			cf_log_err(cp, "Failed adding value - %s", fr_strerror());
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
