@@ -1003,12 +1003,12 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 		 *	Ensure that we have a destination address.
 		 */
 		if (cfg->dst_ipaddr.af == AF_UNSPEC) {
-			fr_strerror_const("No destination IP address was specified");
+			fr_strerror_const("Destination IP address must be specified for a connected socket");
 			return -1;
 		}
 
 		if (!cfg->dst_port) {
-			fr_strerror_const("No destination port was specified");
+			fr_strerror_const("Destination port must be specified for a connected socket");
 			return -1;
 		}
 
@@ -1023,7 +1023,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 
 	case FR_BIO_FD_LISTEN:
 		if (!cfg->src_port) {
-			fr_strerror_const("No source port was specified");
+			fr_strerror_const("Source port must be specified for a server socket");
 			return -1;
 		}
 		FALL_THROUGH;
@@ -1038,7 +1038,7 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 		}
 
 		if (cfg->src_ipaddr.af == AF_UNSPEC) {
-			fr_strerror_const("No source IP address was specified");
+			fr_strerror_const("Source IP address must be specified for an unconnected socket");
 			return -1;
 		}
 		break;
@@ -1070,13 +1070,13 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	if (!cfg->path && !cfg->filename) {
 		int protocol;
 
+		if (fr_bio_fd_check_config(cfg) < 0) return -1;
+
 		my->info.socket.af = cfg->src_ipaddr.af;
 		my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
 		my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
 		my->info.socket.inet.src_port = cfg->src_port;
 		my->info.socket.inet.dst_port = cfg->dst_port;
-
-		if (fr_bio_fd_check_config(cfg) < 0) return -1;
 
 		/*
 		 *	Sanitize the IP addresses.
@@ -1102,25 +1102,24 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				my->info.socket.af = my->info.socket.inet.dst_ipaddr.af;
 			}
 
-			/*
-			 *	The source IP has to be the same address family as the destination IP.
-			 */
-			if (my->info.socket.inet.src_ipaddr.af != my->info.socket.inet.dst_ipaddr.af) {
-				fr_strerror_const("Source and destination IP addresses are not from the same IP address family");
-				return -1;
-			}
-
 #ifdef SO_REUSEPORT
 			/*
 			 *	Connected UDP sockets really only matter when writing packets.  They allow the
 			 *	system to use write() instead of sendto().
 			 *
-			 *	However for reading packets, the kernel does NOT check the source IP.
-			 *	Instead, it just delivers any packet with the correct dst IP/port.  Even
+			 *	However for reading packets, POSIX says that the OS does NOT check the source
+			 *	IP.  Instead, it just delivers any packet with the correct dst IP/port.  Even
 			 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
 			 *	to a _random_ socket.
 			 *
 			 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
+			 *
+			 *	However, recent OS (macOS 24.6.0 (Sequoia) and Linux 6.12, and FreeBSD) all
+			 *	support connected UDP sockets, and check the 4-tuple, so that only packets for
+			 *	the connection get delivered to the socket.
+			 *
+			 *	For now, we leave this check alone.  The caller should really be passing in a
+			 *	specific source IP address, and not a wildcard for connected UDP sockets.
 			 */
 			if (cfg->reuse_port && (cfg->socket_type == SOCK_DGRAM) &&
 			    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
@@ -1128,7 +1127,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				return -1;
 			}
 #endif
-
 			break;
 
 		case FR_BIO_FD_UNCONNECTED:
