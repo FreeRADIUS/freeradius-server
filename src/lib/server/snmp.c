@@ -835,6 +835,10 @@ static ssize_t snmp_process_leaf(fr_dcursor_t *out, request_t *request,
 		}
 
 		vp = fr_dcursor_current(cursor);
+		if (!vp) {
+			fr_strerror_const("Invalid OID: No value provided for SET operation");
+			goto error;
+		}
 		ret = map_p->set(map_p, snmp_ctx, &vp->data);
 		if (ret < 0) switch (-(ret)) {
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
