@@ -1,0 +1,84 @@
+#
+#  profile { search_mode } matrix rows tested here
+#  (full option matrix documented in raddb/mods-available/ldap)
+#
+#  Ref | search_mode | scope | sort_by | Result
+#  ----+-------------+-------+---------+----------------------------------------------------
+#  a1  | seq         | base  | unset   | One search per DN, list order, default first
+#  a2  | seq         | base  | unset   | Zero results for a profile search, chain continues
+#  a3  | seq         | base  | unset   | No profiles on the user object, default only
+#
+#  seq with non-base scope (nested profiles) is covered by
+#  auth_nested_profile, auto resolving to seq by auth (main instance).
+#
+Stripped-User-Name := 'profileseq'
+ldap_profile_seq
+if (!updated) {
+	test_fail
+}
+
+#
+#  a1: the default profile first, then the DNs from the user object in
+#  list order.
+#
+#  a2 (mid-chain): cn=missing sits between order1 and order2 in the user
+#  object, the search for it returns zero results, seq skips it and
+#  continues.
+#
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order2') {
+	test_fail
+}
+if !(reply.Filter-Id[3] == 'order3') {
+	test_fail
+}
+if (reply.Filter-Id[4]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  a2: every user profile search returns zero results, only the default
+#  profile applies.
+#
+Stripped-User-Name := 'profilenone'
+ldap_profile_seq
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if (reply.Filter-Id[1]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  a3: the user object has no profile attribute values at all, the
+#  default profile still applies.
+#
+Stripped-User-Name := 'profiledefault'
+ldap_profile_seq
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if (reply.Filter-Id[1]) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

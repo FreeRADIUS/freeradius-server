@@ -1,0 +1,60 @@
+#
+#  profile { search_mode } matrix rows tested here
+#  (full option matrix documented in raddb/mods-available/ldap)
+#
+#  Ref | search_mode | scope | sort_by | Result
+#  ----+-------------+-------+---------+----------------------------------------------------
+#  c1  | auto        | base  | set     | Resolves to bulk, default sorted into the result
+#  c2  | auto        | base  | set     | Default is the only profile found by the search
+#
+
+#
+#  c1: auto resolves to bulk at instantiation.  The default profile is
+#  part of the single search and sorts last (priority 40), proving the
+#  profiles were retrieved in one search and applied in server sort
+#  order rather than default-first list order.
+#
+Stripped-User-Name := 'profileseq'
+ldap_profile_auto
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order3') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order2') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order1') {
+	test_fail
+}
+if !(reply.Filter-Id[3] == 'order0') {
+	test_fail
+}
+if (reply.Filter-Id[4]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  c2: the user object has no profile attribute values, the combined
+#  search finds only the default profile.
+#
+Stripped-User-Name := 'profiledefault'
+ldap_profile_auto
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if (reply.Filter-Id[1]) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

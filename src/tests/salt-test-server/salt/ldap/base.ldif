@@ -162,6 +162,37 @@ cn: child2
 radiusAttribute: reply.Reply-Message := 'Good Day'
 radiusProfilePriority: 2
 
+# Profiles for the search_mode matrix tests.  Priorities run in the
+# opposite direction to the names so bulk (sorted) application order
+# is observably different to seq (list) application order.
+dn: cn=order0,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: order0
+radiusReplyAttribute: Filter-Id += 'order0'
+radiusProfilePriority: 40
+
+dn: cn=order1,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: order1
+radiusReplyAttribute: Filter-Id += 'order1'
+radiusProfilePriority: 30
+
+dn: cn=order2,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: order2
+radiusReplyAttribute: Filter-Id += 'order2'
+radiusProfilePriority: 20
+
+dn: cn=order3,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: order3
+radiusReplyAttribute: Filter-Id += 'order3'
+radiusProfilePriority: 10
+
 dn: uid=adminuser,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 uid: adminuser
@@ -290,6 +321,58 @@ homeDirectory: /home/bobby
 dialupAccess: suspended
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
 radiusProfileSuspendedDN: cn=suspended,ou=profiles,dc=example,dc=com
+
+# User for the search_mode matrix tests, lists profiles in name order
+# (cn=missing does not exist, seq must skip it and continue).
+dn: uid=profileseq,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: profileseq
+sn: Sequential
+cn: Profile Sequential
+displayName: Profile Sequential
+userPassword: password
+uidNumber: 107
+gidNumber: 107
+homeDirectory: /home/profileseq
+dialupAccess: enabled
+radiusProfileDN: cn=order1,ou=profiles,dc=example,dc=com
+radiusProfileDN: cn=missing,ou=profiles,dc=example,dc=com
+radiusProfileDN: cn=order2,ou=profiles,dc=example,dc=com
+radiusProfileDN: cn=order3,ou=profiles,dc=example,dc=com
+
+# User with no profile DNs at all, only the default profile applies.
+dn: uid=profiledefault,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: profiledefault
+sn: Default
+cn: Profile Default
+displayName: Profile Default
+userPassword: password
+uidNumber: 109
+gidNumber: 109
+homeDirectory: /home/profiledefault
+
+# User whose only profile DN does not exist, for the zero result paths.
+dn: uid=profilenone,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: profilenone
+sn: None
+cn: Profile None
+displayName: Profile None
+userPassword: password
+uidNumber: 108
+gidNumber: 108
+homeDirectory: /home/profilenone
+dialupAccess: enabled
+radiusProfileDN: cn=missing,ou=profiles,dc=example,dc=com
 
 dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit
