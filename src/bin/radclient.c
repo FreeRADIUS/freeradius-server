@@ -998,7 +998,7 @@ static int send_one_packet(rc_request_t *request)
 								&request->packet->socket.inet.dst_ipaddr,
 								request->packet->socket.inet.dst_port, false);
 				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
+					fr_perror("Error opening client TCP socket");
 					return -1;
 				}
 			} else {
@@ -1006,7 +1006,7 @@ static int send_one_packet(rc_request_t *request)
 
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
+					fr_perror("Error opening client UDP socket");
 					return -1;
 				}
 
@@ -1532,6 +1532,8 @@ retry:
 	 */
 	reply->socket.inet.dst_ipaddr = client_ipaddr;
 	reply->socket.inet.dst_port = client_port;
+	reply->code = reply->data[0];
+	reply->id = reply->data[1];
 
 	/*
 	 *	TCP sockets don't use recvmsg(), and thus don't get
@@ -2087,14 +2089,14 @@ int main(int argc, char **argv)
 	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
-			ERROR("Failed opening socket");
+			ERROR("Failed opening client TCP socket");
 			return -1;
 		}
 
 	} else {
 		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
 		if (sockfd < 0) {
-			fr_perror("Error opening socket");
+			fr_perror("Error opening client UDP socket");
 			return -1;
 		}
 
