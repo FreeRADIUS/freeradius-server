@@ -838,7 +838,7 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 					       LDAPMessage *result, char const *name);
 
-int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
+int		fr_ldap_trunk_directory_init_async(fr_ldap_thread_trunk_t *ttrunk);
 
 int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 
@@ -871,8 +871,11 @@ int		fr_ldap_map_do(request_t *request, char const *check_attr,
  */
 fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);
 
-connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					        fr_ldap_config_t const *config, char const *log_prefix);
+connection_state_t fr_ldap_connection_init(void **h, connection_t *conn, void *uctx);
+
+connection_state_t fr_ldap_trunk_connection_init(void **h, connection_t *conn, void *uctx);
+
+void		fr_ldap_connection_close(fr_event_list_t *el, void *h, void *uctx);
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
 

@@ -192,7 +192,7 @@ DIAG_ON(unused-macros)
  * @param[in] h		to close.
  * @param[in] uctx	Connection config and handle.
  */
-static void _ldap_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
+void fr_ldap_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	fr_ldap_connection_t *c = talloc_get_type_abort(h, fr_ldap_connection_t);
 
@@ -333,20 +333,22 @@ static void _ldap_connection_close_watch(connection_t *conn, UNUSED connection_s
  *
  * @param[out] h	Underlying file descriptor from libldap handle.
  * @param[in] conn	Being initialised.
- * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
+ * @param[in] config	LDAP connection configuration.
+ * @param[in] directory	Where the properties of the directory being connected to are recorded.
+ *			May be NULL if directory discovery is not being performed.
  * @return
  *	- CONNECTION_STATE_CONNECTING on success.
  *	- CONNECTION_STATE_FAILED on failure.
  */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static connection_state_t _ldap_connection_init(void **h, connection_t *conn, void *uctx)
+static connection_state_t ldap_connection_init(void **h, connection_t *conn,
+					       fr_ldap_config_t const *config, fr_ldap_directory_t *directory)
 {
-	fr_ldap_config_t const	*config = uctx;
 	fr_ldap_connection_t	*c;
 	fr_ldap_state_t		state;
 
 	c = fr_ldap_connection_alloc(conn);
 	c->conn = conn;
+	c->directory = directory;
 	/*
 	 *	Initialise tree for outstanding queries handled by this connection
 	 */
@@ -376,34 +378,38 @@ static connection_state_t _ldap_connection_init(void **h, connection_t *conn, vo
 	return CONNECTION_STATE_CONNECTING;
 }
 
-/** Alloc a self re-establishing connection to an LDAP server
+/** Initialise a standalone LDAP connection
  *
- * @param[in] ctx		to allocate any memory in, and to bind the lifetime of the connection to.
- * @param[in] el		to insert I/O and timer callbacks into.
- * @param[in] config		to use to bind the connection to an LDAP server.
- * @param[in] log_prefix	to prepend to connection state messages.
+ * @param[out] h	Underlying file descriptor from libldap handle.
+ * @param[in] conn	Being initialised.
+ * @param[in] uctx	Connection configuration (a #fr_ldap_config_t).
+ * @return
+ *	- CONNECTION_STATE_CONNECTING on success.
+ *	- CONNECTION_STATE_FAILED on failure.
  */
-connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					        fr_ldap_config_t const *config, char const *log_prefix)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+connection_state_t fr_ldap_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	connection_t *conn;
+	fr_ldap_config_t const	*config = uctx;
 
-	conn = connection_alloc(ctx, el,
-				   &(connection_funcs_t){
-				   	.init = _ldap_connection_init,
-				   	.close = _ldap_connection_close
-				   },
-				   &(connection_conf_t){
-				   	.connection_timeout = config->net_timeout,
-				   	.reconnection_delay = config->reconnection_delay
-				   },
-				   log_prefix, config);
-	if (!conn) {
-		PERROR("Failed allocating state handler for new LDAP connection");
-		return NULL;
-	}
+	return ldap_connection_init(h, conn, config, NULL);
+}
 
-	return conn;
+/** Initialise an LDAP trunk connection
+ *
+ * @param[out] h	Underlying file descriptor from libldap handle.
+ * @param[in] conn	Being initialised.
+ * @param[in] uctx	Trunk the connection belongs to (a #fr_ldap_thread_trunk_t).
+ * @return
+ *	- CONNECTION_STATE_CONNECTING on success.
+ *	- CONNECTION_STATE_FAILED on failure.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+connection_state_t fr_ldap_trunk_connection_init(void **h, connection_t *conn, void *uctx)
+{
+	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+
+	return ldap_connection_init(h, conn, &ttrunk->config, ttrunk->directory);
 }
 
 int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_t timeout)
@@ -545,8 +551,24 @@ static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_e
 						    char const *log_prefix, void *uctx)
 {
 	fr_ldap_thread_trunk_t	*thread_trunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+	connection_t		*conn;
 
-	return fr_ldap_connection_state_alloc(tconn, el, &thread_trunk->config, log_prefix);
+	conn = connection_alloc(tconn, el,
+				&(connection_funcs_t){
+					.init = fr_ldap_trunk_connection_init,
+					.close = fr_ldap_connection_close
+				},
+				&(connection_conf_t){
+					.connection_timeout = thread_trunk->config.net_timeout,
+					.reconnection_delay = thread_trunk->config.reconnection_delay
+				},
+				log_prefix, thread_trunk);
+	if (!conn) {
+		PERROR("Failed allocating state handler for new LDAP trunk connection");
+		return NULL;
+	}
+
+	return conn;
 }
 
 #define POPULATE_LDAP_CONTROLS(_dest, _src) do { \
@@ -919,7 +941,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 						 char const *bind_dn, char const *bind_password,
 						 request_t *request, fr_ldap_config_t const *config)
 {
-	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
+	fr_ldap_thread_trunk_t *found, find = {.uri = uri, .bind_dn = bind_dn};
+	fr_ldap_thread_trunk_t *new;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to \"%s\" bound as \"%s\"", uri,
 		 bind_dn ? bind_dn : "(anonymous)");
@@ -930,58 +953,65 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	/*
 	 *	No existing connection matching the requirement - create a new one
 	 */
-	ROPTIONAL(RDEBUG2, DEBUG2, "No existing connection found - creating new one");
-	found = talloc_zero(thread, fr_ldap_thread_trunk_t);
-	talloc_set_destructor(found, _thread_ldap_trunk_free);
+	ROPTIONAL(RDEBUG2, DEBUG2, "No existing connection new - creating new one");
+	MEM(new = talloc_zero(thread, fr_ldap_thread_trunk_t));
+	talloc_set_destructor(new, _thread_ldap_trunk_free);
 
 	/*
 	 *	Build config for this connection - start with module settings and
 	 *	override server and bind details
 	 */
-	memcpy(&found->config, config, sizeof(fr_ldap_config_t));
-	found->config.server = talloc_strdup(found, uri);
-	found->config.admin_identity = talloc_strdup(found, bind_dn);
-	found->config.admin_password = talloc_strdup(found, bind_password);
+	memcpy(&new->config, config, sizeof(fr_ldap_config_t));
+	new->config.server = talloc_strdup(new, uri);
+	new->config.admin_identity = talloc_strdup(new, bind_dn);
+	new->config.admin_password = talloc_strdup(new, bind_password);
 
-	found->uri = found->config.server;
-	found->bind_dn = found->config.admin_identity;
+	new->uri = new->config.server;
+	new->bind_dn = new->config.admin_identity;
 
-	found->trunk = trunk_alloc(found, thread->el,
-				      &(trunk_io_funcs_t){
-					      .connection_alloc = ldap_trunk_connection_alloc,
-					      .connection_notify = ldap_trunk_connection_notify,
-					      .request_mux = ldap_trunk_request_mux,
-					      .request_demux = ldap_trunk_request_demux,
-					      .request_cancel = ldap_request_cancel,
-					      .request_cancel_mux = ldap_request_cancel_mux,
-					      .request_fail = ldap_request_fail,
-					},
-				      thread->trunk_conf,
-				      "rlm_ldap", found, false, thread->trigger_args);
+	/*
+	 *	Allocated before the trunk so the pointer is valid when
+	 *	connection init callbacks run, populated asynchronously
+	 *	by the rootDSE query enqueued below.
+	 */
+	MEM(new->directory = talloc_zero(new, fr_ldap_directory_t));
 
-	if (!found->trunk) {
+	new->trunk = trunk_alloc(new, thread->el,
+				 &(trunk_io_funcs_t){
+					.connection_alloc = ldap_trunk_connection_alloc,
+					.connection_notify = ldap_trunk_connection_notify,
+					.request_mux = ldap_trunk_request_mux,
+					.request_demux = ldap_trunk_request_demux,
+					.request_cancel = ldap_request_cancel,
+					.request_cancel_mux = ldap_request_cancel_mux,
+					.request_fail = ldap_request_fail,
+				 },
+				 thread->trunk_conf,
+				 "rlm_ldap", new, false, thread->trigger_args);
+
+	if (!new->trunk) {
 	error:
 		ROPTIONAL(REDEBUG, ERROR, "Unable to create LDAP connection");
-		talloc_free(found);
+		talloc_free(new);
 		return NULL;
 	}
 
-	found->t = thread;
+	new->t = thread;
 
 	/*
 	 *  Insert event to close trunk if it becomes idle
 	 */
-	if (!fr_cond_assert_msg(fr_timer_in(found, thread->el->tl, &found->ev, thread->config->idle_timeout,
-					    false, _ldap_trunk_idle_timeout, found) == 0, "cannot insert trunk idle event")) goto error;
+	if (!fr_cond_assert_msg(fr_timer_in(new, thread->el->tl, &new->ev, thread->config->idle_timeout,
+					    false, _ldap_trunk_idle_timeout, new) == 0, "cannot insert trunk idle event")) goto error;
 
 	/*
 	 *	Attempt to discover what type directory we are talking to
 	 */
-	if (fr_ldap_trunk_directory_alloc_async(found, found) < 0) goto error;
+	if (fr_ldap_trunk_directory_init_async(new) < 0) goto error;
 
-	fr_rb_insert(thread->trunks, found);
+	fr_rb_insert(thread->trunks, new);
 
-	return found;
+	return new;
 }
 
 /** Lookup the state of a thread specific LDAP connection trunk for a specific URI / bind DN

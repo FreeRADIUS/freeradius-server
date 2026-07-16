@@ -547,7 +547,16 @@ static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now
 	/*
 	 *	Allocate an outbound LDAP connection
 	 */
-	thread->conn = fr_ldap_connection_state_alloc(thread, thread->el, &inst->handle_config, "ldap_sync");
+	thread->conn = connection_alloc(thread, thread->el,
+					&(connection_funcs_t){
+						.init = fr_ldap_connection_init,
+						.close = fr_ldap_connection_close
+					},
+					&(connection_conf_t){
+						.connection_timeout = inst->handle_config.net_timeout,
+						.reconnection_delay = inst->handle_config.reconnection_delay
+					},
+					"ldap_sync", &inst->handle_config);
 
 	if (!thread->conn) {
 		PERROR("Failed (re)initialising connection, will retry in %pV seconds",

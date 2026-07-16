@@ -251,21 +251,18 @@ static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query
 /** Async extract useful information from the rootDSE of the LDAP server
  *
  * This is called once for each new thread trunk when it first connects.
+ * Results are parsed into ttrunk->directory, which the caller must have allocated.
  *
- * @param[in] ctx	to allocate fr_ldap_directory_t in.
  * @param[in] ttrunk	Thread trunk connection to be queried
  * @return
  *	- 0 on success
  *	< 0 on failure
  */
-int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
+int fr_ldap_trunk_directory_init_async(fr_ldap_thread_trunk_t *ttrunk)
 {
 	fr_ldap_query_t		*query;
 	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
 	trunk_request_t	*treq;
-
-	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
-	if (!ttrunk->directory) return -1;
 
 	treq = trunk_request_alloc(ttrunk->trunk, NULL);
 	if (!treq) return -1;
