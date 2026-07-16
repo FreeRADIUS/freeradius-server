@@ -261,7 +261,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	if (proto == IPPROTO_TCP) {
 		ps->buffer = talloc_array(pl, uint8_t, RADIUS_MAX_PACKET_SIZE);
-		if (ps->buffer) return false;
+		if (!ps->buffer) return false;
 
 		ps->bufsize = RADIUS_MAX_PACKET_SIZE;
 		ps->used = 0;
