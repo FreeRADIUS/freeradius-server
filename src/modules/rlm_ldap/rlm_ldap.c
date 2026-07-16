@@ -91,9 +91,18 @@ static const call_env_parser_t sasl_call_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
+static fr_table_num_sorted_t const profile_search_mode_table[] = {
+	{ L("auto"),	LDAP_PROFILE_SEARCH_MODE_AUTO	},
+	{ L("bulk"),	LDAP_PROFILE_SEARCH_MODE_BULK	},
+	{ L("seq"),	LDAP_PROFILE_SEARCH_MODE_SEQ	}
+};
+static size_t profile_search_mode_table_len = NUM_ELEMENTS(profile_search_mode_table);
+
 static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile.obj_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
+	{ FR_CONF_OFFSET("search_mode", rlm_ldap_t, profile.search_mode), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
 	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile.attr) },
 	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
@@ -1830,113 +1839,80 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 		FALL_THROUGH;
 
-	case LDAP_AUTZ_DEFAULT_PROFILE:
-		/*
-		 *	Apply ONE user profile, or a default user profile.
-		 */
-		if (call_env->default_profile.type == FR_TYPE_STRING) {
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
-						   call_env->default_profile.vb_strvalue,
-						   inst->profile.obj_scope, NULL, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
-				p_result->rcode = RLM_MODULE_FAIL;
-				goto finish;
-
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_POST_DEFAULT_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
-
-			default:
-				break;
-			}
-		}
-		FALL_THROUGH;
-
-	case LDAP_AUTZ_POST_DEFAULT_PROFILE:
-		/*
-		 *	Did we jump back her after applying the default profile?
-		 */
-		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) autz_ctx->rcode = RLM_MODULE_UPDATED;
+	case LDAP_AUTZ_PROFILES:
+	{
+		struct berval	**values = NULL;
+		char const	*profile_attr = NULL;
+		bool		have_default = !fr_box_is_null(&call_env->default_profile);
+		int		count;
 
 		/*
-		 *	Apply a SET of user profiles.
+		 *	Which set of user profiles to apply depends on the
+		 *	user's access state.  The default profile always applies.
 		 */
 		switch (autz_ctx->access_state) {
 		case LDAP_ACCESS_ALLOWED:
-			if (inst->profile.attr) {
-				int count;
-
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile.attr);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile.attr);
-				}
-			}
+			profile_attr = inst->profile.attr;
 			break;
 
 		case LDAP_ACCESS_SUSPENDED:
-			if (inst->profile.attr_suspend) {
-				int count;
-
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr_suspend);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile.attr_suspend);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
-								fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile.attr_suspend);
-				}
-			}
+			profile_attr = inst->profile.attr_suspend;
 			break;
 
 		case LDAP_ACCESS_DISALLOWED:
 			break;
 		}
-
-		FALL_THROUGH;
-
-	case LDAP_AUTZ_USER_PROFILE:
-		/*
-		 *	After each profile has been applied, execution will restart here.
-		 *	Start by clearing the previously used value.
-		 */
-		if (autz_ctx->profile_value) {
-			TALLOC_FREE(autz_ctx->profile_value);
-			autz_ctx->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
+		if (profile_attr) {
+			values = ldap_get_values_len(handle, autz_ctx->entry, profile_attr);
+			count = ldap_count_values_len(values);
+			if (count > 0) {
+				RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, profile_attr);
+			} else {
+				RDEBUG2("No profile(s) found in attribute \"%s\"", profile_attr);
+			}
+		} else {
+			count = 0;
 		}
 
-		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
-			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile.obj_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
-				p_result->rcode = RLM_MODULE_FAIL;
-				goto finish;
+		if (!have_default && (count == 0)) break;
 
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_USER_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
+		/*
+		 *	Build the list of profile DNs to apply, the default
+		 *	profile first, then the profiles from the user object.
+		 */
+		autz_ctx->profile_dn_list = fr_ldap_berval_to_string_list(autz_ctx, values, count, have_default ? 1 : 0);
+		if (have_default) autz_ctx->profile_dn_list[0] = call_env->default_profile.vb_strvalue;
+		if (values) ldap_value_free_len(values);
 
-			default:
-				break;
+		if (!autz_ctx->profile_dn_list[0]) break;
+
+		if (RDEBUG_ENABLED3) {
+			for (char const **dn_p = autz_ctx->profile_dn_list; *dn_p; dn_p++) {
+				RDEBUG3("Will evaluate profile with DN \"%s\"", *dn_p);
 			}
 		}
+
+		REPEAT_MOD_AUTHORIZE_RESUME;
+		ret = rlm_ldap_map_profiles(NULL, &autz_ctx->profiles_applied, inst, request, autz_ctx->ttrunk,
+					    autz_ctx->profile_dn_list, call_env->profile_filter.vb_strvalue,
+					    &autz_ctx->expanded);
+		switch (ret) {
+		case UNLANG_ACTION_FAIL:
+			p_result->rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			autz_ctx->status = LDAP_AUTZ_POST_PROFILES;
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		default:
+			break;
+		}
+	}
+	FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_PROFILES:
+		if (autz_ctx->profiles_applied > 0) autz_ctx->rcode = RLM_MODULE_UPDATED;
 		break;
 	}
 
@@ -1962,7 +1938,6 @@ static void mod_authorize_cancel(module_ctx_t const *mctx, UNUSED request_t *req
 static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
 {
 	talloc_free(autz_ctx->expanded.ctx);
-	if (autz_ctx->profile_values) ldap_value_free_len(autz_ctx->profile_values);
 	return 0;
 }
 
@@ -2766,15 +2741,44 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	SSS_CONTROL_BUILD(user)
 	SSS_CONTROL_BUILD(profile)
 
+	/*
+	 *	Bulk retrieval matches profile objects by their exact DN,
+	 *	so subtree (non-base scope) semantics cannot be preserved.
+	 */
+	switch (inst->profile.search_mode) {
+	case LDAP_PROFILE_SEARCH_MODE_AUTO:
+		if (inst->profile.obj_sort_ctrl && (inst->profile.obj_scope == LDAP_SCOPE_BASE)) {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_BULK;
+		} else {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_SEQ;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_BULK:
+		if (inst->profile.obj_scope != LDAP_SCOPE_BASE) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.scope = base'");
+			return -1;
+		}
+		if (!inst->profile.obj_sort_ctrl) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.sort_by', "
+				   "else profile evaluation order is non-deterministic");
+			return -1;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_SEQ:
+		break;
+	}
+
 	if (inst->handle_config.tls_require_cert_str) {
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
 		inst->handle_config.tls_require_cert = fr_table_value_by_str(fr_ldap_tls_require_cert,
-							      inst->handle_config.tls_require_cert_str, -1);
+									     inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
-				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
+				   "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			return -1;
 		}
 	}

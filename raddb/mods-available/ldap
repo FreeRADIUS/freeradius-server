@@ -581,6 +581,46 @@ ldap {
 #		scope = 'base'
 
 		#
+		#  search_mode:: How profile objects are retrieved from the
+		#  directory.  May be `seq`, `bulk` or `auto`.
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Mode   | Description
+		#  | seq    | One search per profile DN.  Profiles are applied in
+		#             the order they appear: the default profile first,
+		#             then the profiles listed on the user object.  With
+		#             a non-base `scope`, each search also retrieves the
+		#             profile's children (nested profiles).
+		#  | bulk   | A single search retrieves every profile, including
+		#             the default.  Profiles are applied in the order the
+		#             server returns them, so `sort_by` is required to
+		#             make the order deterministic.  Profiles are matched
+		#             by their exact DN (see `dn_attribute`), so `scope`
+		#             must be `base` and nested profiles are not
+		#             retrieved.
+		#  | auto   | `bulk` when `sort_by` is set and `scope` is `base`,
+		#             otherwise `seq`.
+		#  |===
+		#
+		#  How `search_mode`, `scope` and `sort_by` interact:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | search_mode | scope      | sort_by | Result
+		#  | seq         | any        | unset   | One search per DN, applied in list order.
+		#  | seq         | one/sub    | unset   | As above, each search also returns nested profiles, in server order.
+		#  | seq         | one/sub    | set     | As above, nested profiles within each search sorted by the server.
+		#  | bulk        | base       | set     | One search for all DNs, applied in the server's sort order.
+		#  | bulk        | base       | unset   | Configuration error, `bulk` requires `sort_by`.
+		#  | bulk        | one/sub    | -       | Configuration error.
+		#  | auto        | base       | set     | Resolves to `bulk`.
+		#  | auto        | any other combination | | Resolves to `seq`.
+		#  |===
+		#
+#		search_mode = 'auto'
+
+		#
 		#  default:: The default profile. This may be a DN or an attribute
 		#  reference.
 		#

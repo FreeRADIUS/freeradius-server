@@ -17,6 +17,18 @@
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/ldap/base.h>
 
+/** How profile objects are retrieved from the directory
+ *
+ */
+typedef enum {
+	LDAP_PROFILE_SEARCH_MODE_AUTO = 0,		//!< Resolved at instantiation, LDAP_PROFILE_SEARCH_MODE_BULK
+							///< when server side sorting is configured and the search
+							///< scope is base, otherwise LDAP_PROFILE_SEARCH_MODE_SEQ.
+	LDAP_PROFILE_SEARCH_MODE_SEQ,			//!< One search per profile DN, applied in list order.
+	LDAP_PROFILE_SEARCH_MODE_BULK			//!< A single search retrieving every profile object,
+							///< applied in result order.  Requires base scope.
+} ldap_profile_search_mode_t;
+
 typedef struct {
 	/*
 	 *	Options
@@ -109,6 +121,8 @@ typedef struct {
 	 */
 	struct {
 		int		obj_scope;			//!< Search scope.
+		ldap_profile_search_mode_t search_mode;		//!< Whether profiles are retrieved one at a time or
+								///< with a single search.
 		char const	*attr;				//!< Attribute that identifies profiles to apply. May appear
 								//!< in userobj or groupobj.
 		char const	*attr_suspend;			//!< Attribute that identifies profiles to apply when the user's
@@ -185,9 +199,8 @@ typedef enum {
 	LDAP_AUTZ_POST_EDIR,
 #endif
 	LDAP_AUTZ_MAP,
-	LDAP_AUTZ_DEFAULT_PROFILE,
-	LDAP_AUTZ_POST_DEFAULT_PROFILE,
-	LDAP_AUTZ_USER_PROFILE,
+	LDAP_AUTZ_PROFILES,
+	LDAP_AUTZ_POST_PROFILES,
 } ldap_autz_status_t;
 
 /** User's access state
@@ -211,9 +224,9 @@ typedef struct {
 	ldap_autz_call_env_t	*call_env;
 	LDAPMessage		*entry;
 	ldap_autz_status_t	status;
-	struct berval		**profile_values;
-	int			value_idx;
-	char			*profile_value;
+	char const		**profile_dn_list;		//!< List of profile DNs to apply, default profile first,
+							///< then profiles from the user object. NULL terminated.
+	int			profiles_applied;	//!< Number of profile maps applied.
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
 	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
@@ -300,3 +313,8 @@ unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 				     rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded);
+
+unlang_action_t rlm_ldap_map_profiles(fr_ldap_result_code_t *ret, int *applied,
+				      rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				      char const * const *dn_list, char const *filter,
+				      fr_ldap_map_exp_t const *expanded);
