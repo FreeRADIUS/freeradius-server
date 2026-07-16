@@ -2120,7 +2120,7 @@ int main(int argc, char **argv)
 	MEM(packet_list = fr_packet_list_create(1));
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
-		ERROR("Failed adding socket");
+		fr_perror("Failed adding socket");
 		fr_exit_now(1);
 	}
 
