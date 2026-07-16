@@ -229,6 +229,25 @@ jobs:
         run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
 
       #
+      #  Check latest profiling results vs each suite's previous run on the store.
+      #
+      #  cest-analyzer exit codes;
+      #   0 - clean
+      #   1 - latest result performance flagged
+      #   2 - tool error
+      #
+      - name: Check latest profiling results vs previous runs
+        if: ${{ matrix.mode == 'profiling' && success() }}
+        continue-on-error: true
+        run: |
+          curl -fsSL -o cest-analyzer \
+            "https://cinfra-ca.inkbridge.io/profiling/dashboard/bin/cest-analyzer"
+          chmod +x ./cest-analyzer
+          rc=0
+          ./cest-analyzer --latest -d prof-results --filter fr_ --gate 15 || rc=$?
+          echo "cest-analyzer exit code: $rc"
+
+      #
       #  If the CI has failed and the branch is ci-debug
       #  then start a tmate session for interactive debugging.
       #
