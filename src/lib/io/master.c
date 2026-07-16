@@ -590,6 +590,21 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		cs = cf_section_dup(mi, NULL, inst->submodule->conf,
 				    cf_section_name1(inst->submodule->conf),
 				    cf_section_name2(inst->submodule->conf), false);
+
+		/*
+		 *	Clear the "dynamic_clients" flag, so that the child instantiate routines don't check
+		 *	the network allow / deny list when instantiating child connections.
+		 *
+		 *	This is a short-term and minimal hack to get the problem fixed.  A longer term
+		 *	solution would be to update fr_master_io_network() so that it sets caches the trie
+		 *	_and_ the dynamic client flag in connection data structure.  Which then means that the
+		 *	mod_network_get() API could also go away.
+		 *
+		 *	But doing that involves more rearchitecture and code changes, which we're avoiding at
+		 *	this time.
+		 */
+		cf_pair_replace_or_add(cs, "dynamic_clients", "no");
+
 		if (module_instance_conf_parse(mi, cs) < 0) {
 			cf_log_err(inst->server_cs, "Failed parsing module config");
 			goto cleanup;
