@@ -983,11 +983,15 @@ static unlang_action_t ippool_script_enqueue(TALLOC_CTX *ctx, fr_redis_command_s
 
 	MEM(cmds = fr_redis_command_set_alloc(ctx, request, NULL, NULL, NULL, false));
 
-	fr_redis_command_preformatted_add(cmds, cmd, cmd_len, complete, rctx);
+	if (fr_redis_command_preformatted_add(cmds, cmd, cmd_len, complete, rctx) != FR_REDIS_PIPELINE_OK) {
+	error:
+		talloc_free(cmds);
+		return UNLANG_ACTION_FAIL;
+	};
 
 	if (thread->inst->wait_cmd) {
-		fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len,
-						  ippool_wait_check, wait_rctx);
+		if (fr_redis_command_preformatted_add(cmds, thread->inst->wait_cmd, thread->inst->wait_cmd_len,
+						      ippool_wait_check, wait_rctx) != FR_REDIS_PIPELINE_OK) goto error;
 	}
 
 	*out_cmd = fr_redis_async_cmd_start(ctx, request, &ret, thread->rtcluster, key, key_len, cmds, false, NULL);
@@ -1832,7 +1836,8 @@ static unlang_action_t mod_pools_list_next_scan(unlang_result_t *p_result, reque
 	cmd_len = redisFormatCommand(&rctx->cmd_str, "SCAN %s MATCH {*}:"IPPOOL_POOL_KEY" COUNT 20", rctx->cursor);
 	if (cmd_len < 0) RETURN_UNLANG_FAIL;
 
-	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, mod_pools_list_result, rctx);
+	if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, mod_pools_list_result,
+					      rctx) != FR_REDIS_PIPELINE_OK) RETURN_UNLANG_FAIL;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, NULL, 0, rctx->cmds, false, node);
 
@@ -2000,7 +2005,7 @@ static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, 
 
 #define ADD_REDIS_COMMAND(_fmt, ...) cmd_len = redisFormatCommand(&rctx->cmd_str[cmd_no], _fmt, __VA_ARGS__); \
 if (cmd_len < 0) RETURN_UNLANG_FAIL; \
-fr_redis_command_preformatted_add(cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL)
+if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL) != FR_REDIS_PIPELINE_OK) goto error
 
 static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
 						 request_t *request)
@@ -2035,14 +2040,18 @@ static unlang_action_t CC_HINT(nonnull) mod_show(unlang_result_t *p_result, UNUS
 		IPPOOL_SPRINT_IP(ip_buff, &addr->vb_ip, addr->vb_ip.prefix);
 		IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, env->pool_name.vb_strvalue,
 					     env->pool_name.vb_length, ip_buff);
-		if (ret == IPPOOL_RCODE_FAIL) RETURN_UNLANG_FAIL;
+		if (ret == IPPOOL_RCODE_FAIL) {
+		error:
+			talloc_free(rctx);
+			RETURN_UNLANG_FAIL;
+		}
 
 		rctx->lookup[lookup_no++] = addr;
-		fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
+		if (fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL) != FR_REDIS_PIPELINE_OK) goto error;
 		ADD_REDIS_COMMAND("ZSCORE %b %s", key, key_p - key, ip_buff);
 		ADD_REDIS_COMMAND("HMGET %b device gateway range", ip_key, ip_key_p - ip_key);
 
-		fr_redis_command_literal_add(cmds, "EXEC", mod_show_result, rctx);
+		if (fr_redis_command_literal_add(cmds, "EXEC", mod_show_result, rctx) != FR_REDIS_PIPELINE_OK) goto error;
 	}
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, thread->rtcluster,
@@ -2128,7 +2137,11 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, UNU
 
 	now = fr_time();
 
-	fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
+	if (fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL) != FR_REDIS_PIPELINE_OK) {
+	error:
+		talloc_free(rctx);
+		RETURN_UNLANG_FAIL;
+	};
 	ADD_REDIS_COMMAND("ZCARD %b", key, key_p - key);						/* Total */
 	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now));			/* Free */
 	ADD_REDIS_COMMAND("ZCOUNT %b -inf %i", key, key_p - key, fr_time_to_sec(now) + 60);		/* Free in next 60s */
@@ -2146,7 +2159,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(unlang_result_t *p_result, UNU
 			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60));	/* Static renew in 60 mins */
 	ADD_REDIS_COMMAND("ZCOUNT %b " STRINGIFY(IPPOOL_STATIC_BIT) " %"PRIu64,
 			  key, key_p - key, IPPOOL_STATIC_BIT + fr_time_to_sec(now) + (60 * 60 * 24));	/* Static renew in 1 day */
-	fr_redis_command_literal_add(cmds, "EXEC", mod_stats_result, rctx);
+	if (fr_redis_command_literal_add(cmds, "EXEC", mod_stats_result, rctx) != FR_REDIS_PIPELINE_OK) goto error;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, thread->rtcluster,
 					     (uint8_t const *)env->pool_name.vb_strvalue, env->pool_name.vb_length,
@@ -2510,8 +2523,13 @@ static xlat_action_t redis_ippool_add_common(request_t *request, rlm_redis_ippoo
 			uint8_t	ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 			uint8_t	*ip_key_p = ip_key;
 
-			fr_redis_command_literal_add(rctx->cmds, "MULTI", NULL, NULL);
-			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL);
+			if (fr_redis_command_literal_add(rctx->cmds, "MULTI", NULL, NULL) != FR_REDIS_PIPELINE_OK) {
+			error:
+				talloc_free(rctx);
+				return XLAT_ACTION_FAIL;
+			}
+			if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL,
+							      NULL) != FR_REDIS_PIPELINE_OK) goto error;
 
 			IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, pool->vb_strvalue, pool->vb_length, ipaddr);
 			if (ret == IPPOOL_RCODE_FAIL) return XLAT_ACTION_FAIL;
@@ -2519,11 +2537,14 @@ static xlat_action_t redis_ippool_add_common(request_t *request, rlm_redis_ippoo
 						     range->vb_strvalue, range->vb_length);
 			if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL, NULL);
-			fr_redis_command_literal_add(rctx->cmds, "EXEC", redis_xlat_array_results, rctx);
+			if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len, NULL,
+							      NULL) != FR_REDIS_PIPELINE_OK) goto error;
+			if (fr_redis_command_literal_add(rctx->cmds, "EXEC", redis_xlat_array_results,
+							 rctx) != FR_REDIS_PIPELINE_OK) goto error;
 		} else {
-			fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
-							  redis_xlat_common_results, rctx);
+			if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+							      redis_xlat_common_results,
+							      rctx) != FR_REDIS_PIPELINE_OK) goto error;
 		}
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
@@ -2625,8 +2646,11 @@ static xlat_action_t redis_ippool_remove_common(request_t *request, rlm_redis_ip
 					     pool->vb_strvalue, pool->vb_length, ipaddr);
 		if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-		fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
-						  redis_xlat_common_results, rctx);
+		if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+						      redis_xlat_common_results, rctx) != FR_REDIS_PIPELINE_OK) {
+			talloc_free(rctx);
+			return XLAT_ACTION_FAIL;
+		};
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2725,8 +2749,11 @@ static xlat_action_t redis_ippool_release_common(request_t *request, rlm_redis_i
 					     pool->vb_strvalue, pool->vb_length, ipaddr);
 		if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-		fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
-						  redis_xlat_common_results, rctx);
+		if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+						      redis_xlat_common_results, rctx) != FR_REDIS_PIPELINE_OK) {
+			talloc_free(rctx);
+			return XLAT_ACTION_FAIL;
+		}
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2830,8 +2857,11 @@ static xlat_action_t redis_ippool_modify_common(request_t *request, rlm_redis_ip
 					     (uint8_t const *)range->vb_strvalue, range->vb_length);
 		if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-		fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
-						  redis_xlat_common_results, rctx);
+		if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[cmd_no++], cmd_len,
+						      redis_xlat_common_results, rctx) != FR_REDIS_PIPELINE_OK) {
+			talloc_free(rctx);
+			return XLAT_ACTION_FAIL;
+		}
 
 		ipaddr_inc(&curr_addr.vb_ip, step);
 	} while (fr_ipaddr_cmp(&curr_addr.vb_ip, &end->vb_ip) != 1);
@@ -2938,7 +2968,11 @@ static xlat_action_t redis_ippool_assign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 				     range_str, range_len, fr_time_to_sec(fr_time()));
 	if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results, rctx);
+	if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results,
+					      rctx) != FR_REDIS_PIPELINE_OK) {
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
 					     pool->vb_length, rctx->cmds, false, NULL);
@@ -2983,7 +3017,11 @@ static xlat_action_t redis_ippool_unassign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED f
 				     fr_time_to_sec(fr_time()));
 	if (cmd_len < 0) return XLAT_ACTION_FAIL;
 
-	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results, rctx);
+	if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str[0], cmd_len, redis_xlat_common_results,
+					      rctx) != FR_REDIS_PIPELINE_OK) {
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &rcode, t->rtcluster, (uint8_t const *)pool->vb_strvalue,
 					     pool->vb_length, rctx->cmds, false, NULL);
@@ -3016,7 +3054,10 @@ static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_c
 	argv_len[0] = (sizeof("SCRIPT") - 1); \
 	argv_len[1] = (sizeof("LOAD") - 1); \
 	argv_len[2] = (sizeof(_script) - 1); \
-	fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, NULL); \
+	if (fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, NULL) != FR_REDIS_PIPELINE_OK) { \
+		talloc_free(cmds); \
+		return; \
+	} \
 } while (0)
 
 static void lua_script_load(fr_redis_trunk_t *rtrunk, UNUSED void *uctx)

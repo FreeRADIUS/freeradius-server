@@ -440,10 +440,12 @@ static cache_status_t cache_entry_find(UNUSED rlm_cache_entry_t **out, void **rc
 	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "LRANGE %b 0 -1", key->vb_strvalue, key->vb_length);
 	if (cmd_len < 0) {
 		RERROR("Failed formatting redis command");
+	error:
 		talloc_free(rctx);
 		return CACHE_ERROR;
 	}
-	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_find_results, rctx);
+	if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_find_results,
+					      rctx) != FR_REDIS_PIPELINE_OK) goto error;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
 					     key->vb_length, cmds, false, NULL);
@@ -595,18 +597,22 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 
 	if (fr_unix_time_ispos(c->expires)) {
 		RDEBUG3("MULTI");
-		fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL);
+		if (fr_redis_command_literal_add(cmds, "MULTI", NULL, NULL) != FR_REDIS_PIPELINE_OK) {
+		error:
+			talloc_free(rctx);
+			return CACHE_ERROR;
+		};
 	}
 
 	RDEBUG3("DEL \"%pV\"", &c->key);
 	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "DEL %b", (uint8_t const *)c->key.vb_strvalue, c->key.vb_length);
 	if (cmd_len < 0) {
 	format_error:
-		talloc_free(rctx);
 		RERROR("Failed formatting redis command");
-		return CACHE_ERROR;
+		goto error;
 	}
-	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, NULL, NULL);
+	if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, NULL,
+					      NULL) != FR_REDIS_PIPELINE_OK) goto error;
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("argv command");
@@ -620,19 +626,23 @@ static cache_status_t cache_entry_insert(UNUSED void **rctx_out, UNUSED rlm_cach
 	if (cmd_len < 0) goto format_error;
 
 	if (fr_unix_time_ispos(c->expires)) {
-		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, NULL, NULL);
+		if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, NULL,
+						      NULL) != FR_REDIS_PIPELINE_OK) goto error;
 
 		RDEBUG3("EXPIREAT \"%pV\" %" PRIu64, &c->key, fr_unix_time_to_sec(c->expires));
 		cmd_len = redisFormatCommand(&rctx->cmd_str[2], "EXPIREAT %b %" PRIu64,
 					     (uint8_t const *)c->key.vb_strvalue, (size_t)c->key.vb_length,
 					     fr_unix_time_to_sec(c->expires));
 		if (cmd_len < 0) goto format_error;
-		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[2], cmd_len, NULL, NULL);
+		if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[2], cmd_len, NULL,
+						      NULL) != FR_REDIS_PIPELINE_OK) goto error;
 
 		RDEBUG3("EXEC");
-		fr_redis_command_literal_add(cmds, "EXEC", cache_entry_insert_results, rctx);
+		if (fr_redis_command_literal_add(cmds, "EXEC", cache_entry_insert_results,
+						 rctx) != FR_REDIS_PIPELINE_OK) goto error;
 	} else {
-		fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, cache_entry_insert_results, rctx);
+		if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[1], cmd_len, cache_entry_insert_results,
+						      rctx) != FR_REDIS_PIPELINE_OK) goto error;
 	}
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)c->key.vb_strvalue,
@@ -692,10 +702,12 @@ static cache_status_t cache_entry_expire(UNUSED void **rctx_out, UNUSED rlm_cach
 	cmd_len = redisFormatCommand(&rctx->cmd_str[0], "DEL %b", (uint8_t const *)key->vb_strvalue, key->vb_length);
 	if (cmd_len < 0) {
 		RERROR("Failed formatting redis command");
+	error:
 		talloc_free(rctx);
 		return CACHE_ERROR;
 	}
-	fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_expire_results, rctx);
+	if (fr_redis_command_preformatted_add(cmds, rctx->cmd_str[0], cmd_len, cache_entry_expire_results,
+					      rctx) != FR_REDIS_PIPELINE_OK) goto error;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, (uint8_t const *)key->vb_strvalue,
 					     key->vb_length, cmds, false, NULL);

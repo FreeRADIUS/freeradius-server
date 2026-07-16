@@ -306,7 +306,10 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	MEM(cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
 	rctx->cmds = cmds;
-	fr_redis_command_literal_add(cmds, "PING", redis_xlat_ping_check, rctx);
+	if (fr_redis_command_literal_add(cmds, "PING", redis_xlat_ping_check, rctx) != FR_REDIS_PIPELINE_OK) {
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
 
 	rctx->cmd = fr_redis_async_cmd_start(unlang_interpret_frame_talloc_ctx(request), request, &ret,
 					     thread->rtcluster, NULL, 0, cmds, rctx->read_only, NULL);
@@ -854,7 +857,11 @@ static void lua_script_load(fr_redis_trunk_t *rtrunk, void *uctx)
 		argv[2] = func->body;
 		argv_len[2] = talloc_strlen(func->body);
 
-		fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, func);
+		if (fr_redis_command_argv_add(cmds, 3, argv, argv_len,
+					      lua_script_load_results, func) != FR_REDIS_PIPELINE_OK) {
+			talloc_free(cmds);
+			return;
+		};
 	}
 
 	if (redis_command_set_enqueue(rtrunk, cmds) != FR_REDIS_PIPELINE_OK) {

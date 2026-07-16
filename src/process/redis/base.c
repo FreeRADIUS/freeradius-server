@@ -644,10 +644,12 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 			fr_box_ipaddr(node->io_conf.ipaddr), node->io_conf.port);
 		if (!node->trunk) {
 			node->trunk = fr_redis_trunk_alloc(cluster->rtcluster, &node->io_conf, NULL, NULL, NULL, false);
-			fr_redis_command_literal_add(nrctx->cmds, "INFO SERVER", redis_cluster_info_server_results, node);
+			if (fr_redis_command_literal_add(nrctx->cmds, "INFO SERVER", redis_cluster_info_server_results,
+							 node) != FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_FAIL;
 		}
 
-		fr_redis_command_literal_add(nrctx->cmds, "CLUSTER INFO", redis_cluster_info_results, nrctx);
+		if (fr_redis_command_literal_add(nrctx->cmds, "CLUSTER INFO", redis_cluster_info_results,
+						 nrctx) != FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_FAIL;
 
 		if (redis_command_set_enqueue(node->trunk, nrctx->cmds) != FR_REDIS_PIPELINE_OK) {
 			RERROR("Unable to enqueue request on node %pV:%d", fr_box_ipaddr(node->io_conf.ipaddr),
@@ -710,11 +712,13 @@ static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, r
 
 			fr_redis_command_set_clear(nrctx->cmds);
 			if (nrctx->node->version > redis_shards_version) {
-				fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SHARDS",
-							     redis_cluster_slots_results, nrctx);
+				if (fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SHARDS",
+								 redis_cluster_slots_results,
+								 nrctx) != FR_REDIS_PIPELINE_OK) goto clean_up;
 			} else {
-				fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SLOTS",
-							     redis_cluster_slots_results, nrctx);
+				if (fr_redis_command_literal_add(nrctx->cmds, "CLUSTER SLOTS",
+								 redis_cluster_slots_results,
+								 nrctx) != FR_REDIS_PIPELINE_OK) goto clean_up;
 			}
 			nrctx->status = CLUSTER_MAP_GET_MAP;
 			if (redis_command_set_enqueue(nrctx->node->trunk, nrctx->cmds) != FR_REDIS_PIPELINE_OK) {

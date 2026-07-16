@@ -169,7 +169,8 @@ static fr_redis_async_rcode_t rediswho_command(rlm_rediswho_thread_t *thread, re
 		RERROR("Failed formatting redis commmand");
 		return REDIS_ASYNC_RCODE_ERROR;
 	}
-	fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, rediswho_results, rctx);
+	if (fr_redis_command_preformatted_add(rctx->cmds, rctx->cmd_str, cmd_len, rediswho_results,
+					      rctx) != FR_REDIS_PIPELINE_OK) return REDIS_ASYNC_RCODE_ERROR;
 
 	rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster,
 					     (uint8_t const *)key->vb_strvalue, key->vb_length, rctx->cmds, false, NULL);
