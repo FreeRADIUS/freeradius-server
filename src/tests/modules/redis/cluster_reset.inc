@@ -53,20 +53,22 @@ foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if (%redis.remap() == 'success') {
-		#  Hashes to Redis cluster node master 0 (1)
-		if ((%redis('SET', 'b', %{data1}) == 'OK') && \
-		    (%redis('SET', 'c', %{data2}) == 'OK') && \
-		    (%redis('SET', 'd', %{data3}) == 'OK')) {
-			#
-			#  The actual node to keyslot mapping seems to be somewhat random
-			#  so we now need to figure out which slave each of those keys
-			#  ended up on.
-			#
-			if ((%redis("-@%redis.node('b', 1)", 'GET', 'b') == data1) && \
-			    (%redis("-@%redis.node('c', 1)", 'GET', 'c') == data2) && \
-			    (%redis("-@%redis.node('d', 1)", 'GET', 'd') == data3)) {
-				break
+	timeout 1s {
+		if (%redis.remap() == 'success') {
+			#  Hashes to Redis cluster node master 0 (1)
+			if ((%redis('SET', 'b', %{data1}) == 'OK') && \
+			    (%redis('SET', 'c', %{data2}) == 'OK') && \
+			    (%redis('SET', 'd', %{data3}) == 'OK')) {
+				#
+				#  The actual node to keyslot mapping seems to be somewhat random
+				#  so we now need to figure out which slave each of those keys
+				#  ended up on.
+				#
+				if ((%redis("-@%redis.node('b', 1)", 'GET', 'b') == data1) && \
+				    (%redis("-@%redis.node('c', 1)", 'GET', 'c') == data2) && \
+				    (%redis("-@%redis.node('d', 1)", 'GET', 'd') == data3)) {
+					break
+				}
 			}
 		}
 	}
