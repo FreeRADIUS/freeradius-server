@@ -497,6 +497,48 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 	return (sss_end - sss_p);
 }
 
+/** Convert a list of bervals to a NULL terminated list of talloced strings
+ *
+ * A list variant of fr_ldap_berval_to_string.  Where talloc_pooled_object is
+ * available the pointer array and every string are allocated from a single
+ * talloc pool, so building the list costs one malloc.  Zero length values
+ * are skipped.
+ *
+ * @param[in] ctx	to parent the list.
+ * @param[in] values	to copy.
+ * @param[in] count	Number of values.
+ * @param[in] extra	Leading pointer array entries to leave NULL, for the
+ *			caller to fill with strings not copied into the pool.
+ * @return NULL terminated array of \0 terminated strings.
+ */
+char const **fr_ldap_berval_to_string_list(TALLOC_CTX *ctx, struct berval **values, int count, size_t extra)
+{
+	char const	**list;
+	size_t		num = extra;
+	int		i;
+
+#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
+	{
+		size_t strings_size = 0;
+
+		for (i = 0; i < count; i++) {
+			strings_size += values[i]->bv_len + 1;
+		}
+		MEM(list = _talloc_zero_pooled_object(ctx, sizeof(char const *) * (count + extra + 1),
+						      "char const *[]", count, strings_size));
+	}
+#else
+	MEM(list = talloc_zero_array(ctx, char const *, count + extra + 1));
+#endif
+
+	for (i = 0; i < count; i++) {
+		if (values[i]->bv_len == 0) continue;
+		MEM(list[num++] = fr_ldap_berval_to_string(list, values[i]));
+	}
+
+	return list;
+}
+
 /** Convert a berval to a talloced string
  *
  * The ldap_get_values function is deprecated, and ldap_get_values_len
@@ -626,6 +668,48 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
 	for (i = 0; i < p_len; i++) if (part[p_len - 1 - i] != full[f_len - 1 - i]) return -1;
 
 	return f_len - p_len;
+}
+
+/** Build a filter matching a set of objects by DN
+ *
+ * Produces `(|(<dn_attr>=<dn>)...)`, ANDed with filter if one is given.
+ * DN values are escaped.
+ *
+ * @param[in] ctx	to allocate the filter string in.
+ * @param[in] dn_attr	Attribute which matches an object's own DN,
+ *			e.g. entryDN or distinguishedName.
+ * @param[in] filter	Optional filter to AND with the DN set, may be NULL.
+ * @param[in] dn_list	NULL terminated list of DNs to match, no empty strings.
+ * @return The filter string.
+ */
+char *fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
+			       char const * const *dn_list)
+{
+	char			*out;
+	char const * const	*dn_p;
+
+	MEM(out = talloc_typed_strdup(ctx, "(|"));
+	for (dn_p = dn_list; *dn_p; dn_p++) {
+		char	*escaped;
+		size_t	len;
+
+		len = (strlen(*dn_p) * 3) + 1;
+		MEM(escaped = talloc_array(ctx, char, len));
+		fr_ldap_filter_escape_func(NULL, escaped, len, *dn_p, NULL);
+		MEM(out = talloc_asprintf_append_buffer(out, "(%s=%s)", dn_attr, escaped));
+		talloc_free(escaped);
+	}
+	MEM(out = talloc_strdup_append_buffer(out, ")"));
+
+	if (filter && *filter) {
+		char *combined;
+
+		MEM(combined = talloc_typed_asprintf(ctx, "(&%s%s)", filter, out));
+		talloc_free(out);
+		return combined;
+	}
+
+	return out;
 }
 
 /** Combine filters and tokenize to a tmpl

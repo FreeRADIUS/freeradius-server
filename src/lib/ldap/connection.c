@@ -974,7 +974,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	 *	connection init callbacks run, populated asynchronously
 	 *	by the rootDSE query enqueued below.
 	 */
-	MEM(new->directory = talloc_zero(new, fr_ldap_directory_t));
+	new->directory = fr_ldap_directory_alloc(new);
 
 	new->trunk = trunk_alloc(new, thread->el,
 				 &(trunk_io_funcs_t){

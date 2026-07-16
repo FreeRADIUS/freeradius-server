@@ -211,10 +211,12 @@ typedef struct {
 	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
 
 	char const		*dn_attr;		//!< Attribute to match an entry's DN in a search filter.
-							///< RFC 5020 entryDN where supported, distinguishedName
+							///< Defaults to RFC 5020 entryDN, distinguishedName
 							///< on Active Directory and Samba.
 
 	char const		**naming_contexts;	//!< Databases served by this directory.
+	fr_hash_table_t		*naming_contexts_ht;	//!< For resolving DNs to the naming context
+							///< containing them.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -839,6 +841,10 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 			       "namingContexts", \
 			       NULL }
 
+fr_ldap_directory_t *fr_ldap_directory_alloc(TALLOC_CTX *ctx);
+
+char const	*fr_ldap_directory_common_base_find(fr_ldap_directory_t const *directory, char const * const *dn_list);
+
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 					       LDAPMessage *result, char const *name);
 
@@ -954,6 +960,8 @@ size_t		fr_ldap_util_normalise_dn(char *out, char const *in);
 
 char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
+char const	**fr_ldap_berval_to_string_list(TALLOC_CTX *ctx, struct berval **values, int count, size_t extra);
+
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[]);
@@ -971,6 +979,9 @@ void		fr_ldap_entry_dump(LDAPMessage *entry);
 int		fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
 
 int		fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
+
+char		*fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
+					  char const * const *dn_list);
 
 int		fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char const **sub, size_t sublen,
 				       tmpl_t **out) CC_HINT(nonnull());

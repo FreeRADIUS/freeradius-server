@@ -49,6 +49,22 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
+/** Hash a naming context, case insensitively
+ *
+ */
+static uint32_t _naming_context_hash(void const *data)
+{
+	return fr_hash_case_string(data);
+}
+
+/** Compare two naming contexts, case insensitively
+ *
+ */
+static int8_t _naming_context_cmp(void const *one, void const *two)
+{
+	return CMP(strcasecmp(one, two), 0);
+}
+
 int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 				   LDAPMessage *result, char const *name)
 {
@@ -186,12 +202,10 @@ found:
 		break;
 
 	case FR_LDAP_DIRECTORY_EDIRECTORY:
-		directory->dn_attr = "entryDN";
 		directory->cleartext_password = false;
 		break;
 
 	default:
-		directory->dn_attr = "entryDN";
 		directory->cleartext_password = true;
 		break;
 	}
@@ -235,12 +249,83 @@ found:
 
 	num = ldap_count_values_len(values);
 	MEM(directory->naming_contexts = talloc_array(directory, char const *, num));
+	MEM(directory->naming_contexts_ht = fr_hash_table_alloc(directory, _naming_context_hash,
+								_naming_context_cmp, NULL));
 	for (i = 0; i < num; i++) {
 		directory->naming_contexts[i] = fr_ldap_berval_to_string(directory, values[i]);
+		fr_hash_table_insert(directory->naming_contexts_ht, directory->naming_contexts[i]);
 	}
 	ldap_value_free_len(values);
 
 	return 0;
+}
+
+/** Allocate a directory structure with defaults
+ *
+ * dn_attr defaults to the RFC 5020 entryDN attribute, overridden when
+ * parsing the rootDSE detects a directory which doesn't implement entryDN.
+ */
+fr_ldap_directory_t *fr_ldap_directory_alloc(TALLOC_CTX *ctx)
+{
+	fr_ldap_directory_t *directory;
+
+	MEM(directory = talloc_zero(ctx, fr_ldap_directory_t));
+	directory->dn_attr = "entryDN";
+
+	return directory;
+}
+
+/** Find the naming context which contains a set of DNs
+ *
+ * Looks up successively shorter suffixes of each DN in the hash table of
+ * naming contexts (database suffixes) built when the rootDSE was parsed,
+ * and returns the naming context containing every DN.  A search with the
+ * returned base covers all the DNs.
+ *
+ * @param[in] directory	Directory discovery results, providing the naming contexts.
+ * @param[in] dn_list	NULL terminated list of DNs to cover, no empty strings.
+ * @return
+ *	- The matching naming context.
+ *	- NULL if the directory hasn't been discovered yet, or no single
+ *	  naming context contains every DN.
+ */
+char const *fr_ldap_directory_common_base_find(fr_ldap_directory_t const *directory, char const * const *dn_list)
+{
+	char const		*common = NULL;
+	char const * const	*dn_p;
+
+	if (!directory->naming_contexts_ht) return NULL;
+
+	for (dn_p = dn_list; *dn_p; dn_p++) {
+		char const	*context = NULL;
+		char const	*p = *dn_p;
+
+		/*
+		 *	Check successively shorter suffixes of the DN,
+		 *	starting after each RDN separator.
+		 */
+		while (p) {
+			context = fr_hash_table_find(directory->naming_contexts_ht, p);
+			if (context) break;
+
+			p = strchr(p, ',');
+			if (p) p++;
+		}
+		if (!context) return NULL;
+
+		/*
+		 *	Lookups return the stored string, so pointer
+		 *	comparison is enough to check every DN resolved
+		 *	to the same naming context.
+		 */
+		if (!common) {
+			common = context;
+			continue;
+		}
+		if (common != context) return NULL;
+	}
+
+	return common;
 }
 
 /** Parse results of search on rootDSE to gather data on LDAP server
@@ -286,7 +371,7 @@ int fr_ldap_trunk_directory_init_async(fr_ldap_thread_trunk_t *ttrunk)
 	return 0;
 }
 
-/** Async extract useful information from the rootDSE of the LDAP server
+/** Asynchronously extract useful information from the rootDSE of the LDAP server
  *
  * This version is for a single connection rather than a connection trunk
  *
@@ -300,8 +385,7 @@ int fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn)
 	int			msgid;
 	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
 
-	ldap_conn->directory = talloc_zero(ldap_conn, fr_ldap_directory_t);
-	if (!ldap_conn->directory) return -1;
+	ldap_conn->directory = fr_ldap_directory_alloc(ldap_conn);
 
 	if (fr_ldap_search_async(&msgid, NULL, ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
 				 NULL, NULL) != LDAP_PROC_SUCCESS) return -1;

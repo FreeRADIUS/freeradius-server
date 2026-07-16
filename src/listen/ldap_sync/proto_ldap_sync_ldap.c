@@ -1248,7 +1248,6 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 	 *	Allocate the directory structure and send the query
 	 */
 	dir_ctx->msgid = fr_ldap_conn_directory_alloc_async(ldap_conn);
-
 	if (dir_ctx->msgid < 0) {
 		talloc_free(dir_ctx);
 		goto connection_failed;
