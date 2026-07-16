@@ -175,13 +175,23 @@ found:
 	INFO("Directory type: %s", fr_table_str_by_value(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
+	/*
+	 *	Active Directory and Samba don't implement RFC 5020 entryDN,
+	 *	but allow equality matches on distinguishedName instead.
+	 */
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
-	case FR_LDAP_DIRECTORY_EDIRECTORY:
 	case FR_LDAP_DIRECTORY_SAMBA:
+		directory->dn_attr = "distinguishedName";
+		directory->cleartext_password = false;
+		break;
+
+	case FR_LDAP_DIRECTORY_EDIRECTORY:
+		directory->dn_attr = "entryDN";
 		directory->cleartext_password = false;
 		break;
 
 	default:
+		directory->dn_attr = "entryDN";
 		directory->cleartext_password = true;
 		break;
 	}

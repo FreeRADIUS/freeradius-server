@@ -100,6 +100,10 @@ typedef struct {
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
 
+	char const	*dn_attr;			//!< Attribute to match an entry's DN in a search filter.
+							///< If unset, the value detected for the directory
+							///< (fr_ldap_directory_t dn_attr) is used.
+
 	/*
 	 *	Profiles
 	 */

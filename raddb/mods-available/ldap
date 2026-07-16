@@ -163,6 +163,24 @@ ldap {
 #	valuepair_attribute = 'radiusAttribute'
 
 	#
+	#  dn_attribute:: LDAP attribute which matches an object's own
+	#  Distinguished Name (DN) in a search filter.
+	#
+	#  Used when FreeRADIUS needs to fetch several objects it already
+	#  knows by DN (for example a user's list of profiles) in a single
+	#  search, instead of one search per DN.
+	#
+	#  If unset, the value is chosen automatically based on the
+	#  directory server software detected at connection time:
+	#  `distinguishedName` for Active Directory and Samba,
+	#  `entryDN` (RFC 5020) for everything else.
+	#
+	#  Only set this if your directory needs a different attribute,
+	#  or is not detected correctly.
+	#
+#	dn_attribute = 'entryDN'
+
+	#
 	#  === Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
 	#  WARNING: Although this format is almost identical to the `unlang`

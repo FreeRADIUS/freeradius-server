@@ -153,6 +153,8 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET("valuepair_attribute", rlm_ldap_t, valuepair_attr) },
 
+	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, dn_attr) },
+
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	{ FR_CONF_OFFSET("session_tracking", rlm_ldap_t, session_tracking), .dflt = "no" },
 #endif

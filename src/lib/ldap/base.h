@@ -210,6 +210,10 @@ typedef struct {
 
 	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
 
+	char const		*dn_attr;		//!< Attribute to match an entry's DN in a search filter.
+							///< RFC 5020 entryDN where supported, distinguishedName
+							///< on Active Directory and Samba.
+
 	char const		**naming_contexts;	//!< Databases served by this directory.
 } fr_ldap_directory_t;
 
