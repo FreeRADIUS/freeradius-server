@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profiling Result Analysis Utility</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- InkBridge / FreeRADIUS brand fonts for the page header -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="stage">
+    <div class="app">
+      <!-- ===== Header B — InkBridge / FreeRADIUS branded (self-contained) ===== -->
+      <header class="app-head" style="background:#fff; font-family:'Fira Sans',system-ui,-apple-system,sans-serif;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0 14px; border-bottom:1px solid #f0f0f0;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <svg viewBox="0 0 527.68718 533.33331" style="height:32px; width:auto; display:block;" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#192848" d="m 432.46266,234.684 c -9.78667,29.49867 -11.79867,73.69334 -11.79867,105.57867 0,5.88933 -4.76,10.664 -10.62933,10.664 h -45.76 c -6.13734,0 -11.004,-5.14667 -10.58,-11.30134 2.80266,-42.33733 2.80266,-94.11866 -8.99334,-130.24933 -27.29599,-83.71999 -134.41866,-83.71999 -161.71466,0 -11.79733,36.13067 -11.85066,87.912 -8.99333,130.24933 0.42267,6.15467 -4.444,11.30134 -10.58,11.30134 H 117.6552 c -5.92494,0 -10.63334,-4.77467 -10.63334,-10.664 0.0532,-31.88533 -1.95733,-76.08 -11.796396,-105.57867 -19.044266,-57.24666 -80.672398,-61.96933 -92.5223441,0 -4.8739598,25.56134 -2.37395324,62.028 1.35,92.05334 C 31.309866,445.06933 137.232,533.33333 263.84133,533.33333 c 126.62533,0 232.55866,-88.28546 259.79866,-206.63999 3.72,-30.02667 6.216,-66.50667 1.344,-92.00934 -11.848,-61.96933 -73.47867,-57.24666 -92.52133,0 z M 25.117199,147.84134 C 68.817732,60.220008 159.27333,1e-5 263.84133,1e-5 c 104.53599,0 194.96933,60.182665 238.68399,147.76133 -160.716,-56.357332 -314.95599,-56.879999 -477.408121,0.08"></path></svg>
+            <span style="font-size:17px; font-weight:600; color:#192848; letter-spacing:-0.01em; white-space:nowrap;">InkBridge Networks</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-style:italic; font-size:13px; color:#8e8e8e;">We authenticate the Internet</span>
+            <span style="width:1px; height:18px; background:#e1e1e1;"></span>
+            <span style="font-family:'Montserrat',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#192848;">FreeRADIUS</span>
+          </div>
+        </div>
+        <details class="hero" open>
+          <summary class="hero-toggle" title="Show / hide title" aria-label="Show or hide title"><span class="hero-chev"></span></summary>
+          <div class="hero-body" style="padding:18px 0 28px;">
+          <div style="border-left:5px solid #192848; padding-left:22px;">
+            <div style="font-family:'Montserrat',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:#192848; margin-bottom:10px;">CPU Cycle Profiling</div>
+            <h1 style="margin:0; font-weight:500; font-size:42px; line-height:1.05; color:#192848; letter-spacing:-0.015em;">CycleScope</h1>
+            <p style="margin:12px 0 0; font-size:16px; line-height:1.5; color:#5d5d5d; max-width:620px;">CPU Cycle Utilization (CEst) analysis across FreeRADIUS CI builds — track per-commit cycle cost and identify potential issues quickly.</p>
+          </div>
+        </div>
+        </details>
+      </header>
+      <!-- ===== /Header B ===== -->
+
+      <div class="nbar sketch">
+        <div class="nbar-top">
+          <div class="add-bar">
+            <button class="btn btn-sm btn-green" id="add-runs">+ ADD RUNS</button>
+            <div class="viewseg" id="srcseg" title="Where to add runs from">
+              <button data-src="local">LOCAL FILES</button>
+              <input type="text" id="import-filter" class="seg-filter" placeholder="filter local folders"
+                title="Local files only: import only folders whose path contains this. Space-separated terms match ANY (case-insensitive). Empty imports every folder in the pick." />
+              <button class="on" data-src="repo">REPO</button>
+            </div>
+            <button class="btn btn-sm" id="clear-runs" hidden>CLEAR</button>
+          </div>
+          <div class="nbar-meta">
+            <b id="nrun-count">0</b> <span id="nrun-mode">runs loaded</span>
+            <span class="tag" id="nrun-base">—</span>
+          </div>
+        </div>
+        <!-- Hidden directory picker: each pick is one run (one test directory). -->
+        <input id="dir-input" type="file" webkitdirectory multiple hidden />
+        <div class="chips-hint" id="chips-hint" hidden>Ctrl/⌘-click chips to select runs to compare</div>
+        <div class="chips" id="chips"></div>
+        <!-- The fold paths baked into the current matrix, kept under the chips. -->
+        <div class="appliedfold" id="appliedfold" hidden></div>
+        <!-- Multi-run compare action bar: appears when runs are ticked / Ctrl-clicked. -->
+        <div class="cmp-bar" id="cmp-bar" hidden></div>
+        <!-- Progress while a multi-run pick is read from disk and analyzed. Adding
+             one run updates instantly; 10–20 runs take long enough to need feedback.
+             The phase stepper makes clear that reading files is quick and the time
+             is spent in the analysis step. -->
+        <div class="loadphase" id="loadphase" hidden></div>
+        <!-- Fold call-path control, sitting directly above the list of paths it folds. -->
+        <div class="fold-ctl" id="fold-ctl" hidden>
+          <label class="field-lbl inline">fold
+            <input type="text" id="fold" class="pat-inp" placeholder="root/.../target" title="Fold a call path into its caller (folds that frame's self-CEst up). Root-first, slash-separated, target last; comma-separate multiple paths. Needs --separate-callers profiling data. Type the path, then press Enter or click Fold to apply (it re-parses every run)." />
+          </label>
+          <button class="btn btn-sm" id="fold-apply" title="Apply the fold paths — re-parses every run. Or press Enter in the box.">Fold</button>
+        </div>
+        <!-- The call paths being folded, listed full under the Folding pill. -->
+        <div class="foldlist" id="foldlist" hidden></div>
+        <div class="loadbar" id="loadbar" hidden role="status" aria-live="polite">
+          <span class="spin" aria-hidden="true"></span>
+          <span class="loadbar-msg" id="loadbar-msg">Loading…</span>
+          <div class="loadbar-track"><i id="loadbar-fill"></i></div>
+        </div>
+        <p class="empty-hint" id="empty-hint">No runs yet — “Add runs” to load
+          <code>callgrind.out.*</code> files. Pick a leaf test directory for one run, or a parent
+          (a run# or the whole <code>&lt;sha&gt;</code> directory) to load every run beneath it.</p>
+
+        <details class="infobox">
+          <summary><span class="chev">▸</span><span class="ic">i</span> Info</summary>
+          <div class="ibody">
+            <p style="margin:6px 0 0;"><b>CEst</b> (CPU Cycle Estimate) weights each callgrind counter by its approximate cycle cost:</p>
+            <div class="formula2" id="formula">CEst = Ir + 10*(I1mr+D1mr+D1mw) + 100*(ILmr+DLmr+DLmw) + 10*(Bcm+Bim)</div>
+            <p style="margin:8px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.8;">
+              <code>Ir</code> Instruction Fetch &nbsp;·&nbsp;
+              <code>I1mr</code> L1 Instr. Fetch Miss &nbsp;·&nbsp;
+              <code>D1mr</code> L1 Data Read Miss &nbsp;·&nbsp;
+              <code>D1mw</code> L1 Data Write Miss &nbsp;·&nbsp;
+              <code>ILmr</code> LL Instr. Fetch Miss &nbsp;·&nbsp;
+              <code>DLmr</code> LL Data Read Miss &nbsp;·&nbsp;
+              <code>DLmw</code> LL Data Write Miss &nbsp;·&nbsp;
+              <code>Bcm</code> Mispredicted Cond. Branch &nbsp;·&nbsp;
+              <code>Bim</code> Mispredicted Ind. Branch
+            </p>
+            <p style="margin:14px 0 0;"><b>Two ways to read the heatmap</b></p>
+            <ol>
+              <li><b>One run — cost view.</b> Functions are ranked by self-CEst, most expensive on top, and coloured on a heat ramp (worst → cheapest) so you see where the cycles go. Pick the worst-end colour in the legend.</li>
+              <li><b>Two or more runs — change view.</b> Choose one run as the <b>baseline</b> (the first loaded run by default; click <b>set base</b> on any chip to change it). Every cell's Δ is measured against that run, per function:</li>
+            </ol>
+            <div class="formula2">Δ%(fn, run) = ( CEst<sub>fn,run</sub> − CEst<sub>fn,base</sub> ) / CEst<sub>fn,base</sub> × 100</div>
+            <p style="margin:6px 0 0;color:var(--ink-soft);">There is no mean/median baseline: for change-over-time you compare against a real reference run you pick, not a synthetic average. <span id="nrun-info-count" hidden></span></p>
+          </div>
+        </details>
+      </div>
+
+      <div class="ncontrols" id="controls" hidden>
+        <div class="viewseg" id="viewseg">
+          <button class="on" data-view="heat">Heatmap</button>
+          <button data-view="trend">Trends</button>
+          <button data-view="diverge">Divergence</button>
+        </div>
+        <div class="viewseg" id="valseg" style="margin-left:2px;">
+          <button class="on" data-val="delta">Δ % vs base</button>
+          <button data-val="abs">CEst cycles</button>
+          <button data-val="pct">CEst %</button>
+        </div>
+        <label class="field-lbl inline" id="focusrun-lbl" style="display:none">view
+          <select id="focusrun" class="dvg-sel" title="Show the change view across all runs, or one run's own cost heatmap."></select>
+        </label>
+        <label class="field-lbl inline">patterns
+          <input type="text" id="patterns" class="pat-inp" placeholder="all functions" title="space-separated name filters, e.g. memset rbtree" />
+        </label>
+        <label class="field-lbl inline">functions
+          <input type="number" id="topn" placeholder="all" min="1" step="5" class="num-inp"
+            title="Max functions to show, ranked by CEst. Empty = all." />
+        </label>
+        <div class="menu-wrap" style="margin-left:auto;">
+          <button class="btn btn-sm menu-btn" id="menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options" title="More options"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+          <div class="menu" id="menu" hidden>
+            <div id="menu-order">
+              <div class="menu-label">Column order</div>
+              <button class="menu-item" data-order="date">By date</button>
+              <button class="menu-item" data-order="cest">By CEst</button>
+              <button class="menu-item" data-order="load">Load order</button>
+              <div class="menu-sep"></div>
+            </div>
+            <button class="menu-item" id="menu-download">Download JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="nview" id="nview"></div>
+      <div class="nlegend" id="nlegend"></div>
+      <p id="error" class="error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Hosted-store run picker. The selection UI for the prof-results store at
+       cinfra-ca.testdev.inkbridge.io/profiling; data wiring comes with the
+       source-selection work, so for now it shows the table shell + empty state. -->
+  <div class="scrim" id="repo-modal" aria-hidden="true">
+    <div class="modal sketch" role="dialog" aria-modal="true" aria-label="Select runs from the hosted store">
+      <h4>Select runs to compare — <span id="repo-host">cinfra-ca.testdev.inkbridge.io</span></h4>
+      <p class="mp">Hosted prof-results store · tick many · sorted by date</p>
+      <div class="modal-actions">
+        <button class="btn" id="repo-cancel">Cancel</button>
+        <button class="btn btn-primary" id="repo-add" disabled>Add selected</button>
+        <span class="src-mini" id="repo-ticked">0 ticked</span>
+      </div>
+      <div class="search"><span>🔍</span><input id="repo-search" placeholder="filter results (comma = OR, space = AND, e.g. ldap, mysql #656)" disabled /></div>
+      <table class="runs-tbl">
+        <thead><tr>
+          <th><input type="checkbox" id="repo-all" title="Select / clear all shown runs" disabled /></th>
+          <th class="sortable" data-sort="date">date<span class="rarr"></span></th>
+          <th class="sortable" data-sort="sha">sha<span class="rarr"></span></th>
+          <th class="sortable" data-sort="branch">branch<span class="rarr"></span></th>
+          <th class="sortable" data-sort="run">run<span class="rarr"></span></th>
+          <th class="sortable" data-sort="suite">suite<span class="rarr"></span></th>
+          <th class="sortable" data-sort="test">test<span class="rarr"></span></th>
+          <th class="sortable" data-sort="by">by / PR<span class="rarr"></span></th>
+        </tr></thead>
+        <tbody id="repo-rows">
+          <tr><td colspan="8"><div class="runs-empty">
+            Not connected yet. This is the selection UI for the hosted store at
+            <code id="repo-url">cinfra-ca.testdev.inkbridge.io/profiling</code>; live runs appear here once the
+            store is reachable and the source-selection work lands. For now, use
+            <b>Local files</b> to add runs from disk.
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="wasm_exec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

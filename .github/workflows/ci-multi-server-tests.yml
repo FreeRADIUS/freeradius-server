@@ -15,10 +15,11 @@ on:
   #    schedule: nightly full-suite run. Falls back to a local layer
   #    rebuild if the registry has been pruned of any :latest tag.
   #
+  #
   #    workflow_dispatch: manual "Run workflow" button in the Actions
   #    tab. GitHub's UI provides the branch/tag picker natively (the
-  #    "Use workflow from" dropdown), so no input is needed to select
-  #    the ref. The button only appears once this file is present on
+  #    "Use workflow from" dropdown); no input is needed to select the
+  #    ref. Note: the button only appears once this file is present on
   #    the default branch.
   #
   workflow_dispatch:
@@ -34,7 +35,16 @@ on:
 jobs:
   multi-server-tests:
     runs-on: self-hosted
-    if: github.repository_owner == 'FreeRADIUS'
+    #  WIP: also allow the fork owner so the profiling leg runs and publishes to
+    #  the prof-results store from marc-casavant/freeradius-server before the
+    #  profiling work merges upstream. Drop the fork owner on merge to FreeRADIUS.
+    if: github.repository_owner == 'FreeRADIUS' || github.repository_owner == 'marc-casavant'
+
+    #  id-token lets the profiling leg mint a GitHub OIDC token to authenticate
+    #  uploads to the prof-results store (validated by its access.lua).
+    permissions:
+      contents: read
+      id-token: write
 
     strategy:
       fail-fast: false
@@ -209,6 +219,51 @@ jobs:
           name: prof-results-${{ github.sha }}
           path: prof-results/
           if-no-files-found: ignore
+
+      #
+      #  Push the same prof-results/ tree into the durable prof-results store
+      #  (the OpenResty/WebDAV container deployed via cinfra-deploy as the
+      #  cinfra-profiling-server_<env> Portainer stack). The image there is static; this
+      #  only uploads files into its volume, never rebuilds it. Traefik strips
+      #  the /profiling prefix, so the container writes to /data/<rel>.
+      #
+      #  Auth is a GitHub OIDC token scoped to the store URL (PROF_RESULTS_URL),
+      #  which the store's access.lua verifies (signature + repo + optional aud)
+      #  - the same token mechanism build-and-deploy.yml uses for the deploy
+      #  endpoint, so there is no shared upload secret. Tolerant by design: a
+      #  missing tree, unset URL, or undeployed store does not fail the leg.
+      #
+      - name: Publish profiling results to the prof-results store
+        if: ${{ matrix.mode == 'profiling' && always() }}
+        env:
+          PROF_RESULTS_URL: ${{ vars.PROF_RESULTS_URL }}
+        run: |
+          if [ -z "${PROF_RESULTS_URL}" ]; then
+            echo "PROF_RESULTS_URL unset; skipping prof-results publish"
+            exit 0
+          fi
+          [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
+          #  Mint an OIDC token with the store URL as audience (no --noproxy: the
+          #  token endpoint is reached the same way build-and-deploy.yml does).
+          token=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${PROF_RESULTS_URL}" \
+            | jq -r '.value')
+          if [ -z "$token" ] || [ "$token" = null ]; then
+            echo "WARNING: could not obtain OIDC token; skipping prof-results publish"
+            exit 0
+          fi
+          find prof-results -type f ! -name '.DS_Store' | while read -r f; do
+            rel="${f#prof-results/}"   # <branch>/<sha>/<run>/<suite>/<test>/...
+            curl -fsS --noproxy '*' -H "Authorization: Bearer ${token}" \
+              -T "$f" "${PROF_RESULTS_URL}/profiling/${rel}" \
+              || echo "WARNING: failed to upload ${rel}"
+          done
+          #  Refresh the manifest once the run's files are all uploaded, so the
+          #  UI's read path stays in sync with the tree.
+          curl -fsS --noproxy '*' -X POST -H "Authorization: Bearer ${token}" \
+            "${PROF_RESULTS_URL}/profiling/_manifest" \
+            || echo "WARNING: manifest regenerate failed"
 
       #
       #  If the CI has failed and the branch is ci-debug

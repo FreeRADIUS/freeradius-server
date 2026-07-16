@@ -1,0 +1,4 @@
+# Build artifacts
+/cest-analyzer
+/cest-analyzer-*
+*.wasm
