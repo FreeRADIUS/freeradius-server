@@ -451,8 +451,26 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	request_t		*request = cmds->request;
 	fr_redis_command_t	*cmd;
 	fr_redis_command_type_t	type = FR_REDIS_COMMAND_NORMAL;
+	char const		*p = cmd_str, *end;
 
-	if (redis_command_transaction_check(request, &type, cmds, cmd_str) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
+	/*
+	 *	Preformatted Redis commands start *<n>\r\n$<n>\r\n<cmd>.  Verify that is what we have.
+	 */
+	end = p + cmd_len;
+	if (*p++ != '*') {
+	error:
+		ERROR("Incorrect Redis command format");
+		return FR_REDIS_PIPELINE_BAD_CMDS;
+	}
+	while (isdigit(*p) && (p < end)) p++;
+	if (*p++ != '\r') goto error;
+	if (*p++ != '\n') goto error;
+	if (*p++ != '$') goto error;
+	while (isdigit(*p) && (p < end)) p++;
+	if (*p++ != '\r') goto error;
+	if (*p++ != '\n') goto error;
+
+	if (redis_command_transaction_check(request, &type, cmds, p) != FR_REDIS_PIPELINE_OK) return FR_REDIS_PIPELINE_BAD_CMDS;
 
 	MEM(cmd = talloc_zero(cmds, fr_redis_command_t));
 	cmd->cmds = cmds;
