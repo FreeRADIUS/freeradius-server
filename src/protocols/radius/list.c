@@ -706,11 +706,15 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 			int rcode;
 			ps = &pl->sockets[start];
 
+			ps->used = 0;
 			rcode = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
 						   &ps->used, max_attributes, require_message_authenticator);
 			if (rcode <= 0) return rcode;
 
-			fr_assert(ps->used >= RADIUS_HEADER_LENGTH);
+			if (ps->used < RADIUS_HEADER_LENGTH) {
+				fr_strerror_printf("TCP packet too short: %zu", ps->used);
+				return -1;
+			}
 
 			packet = fr_packet_alloc(ctx, false);
 			if (!packet) return -1;
