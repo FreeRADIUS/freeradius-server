@@ -472,7 +472,12 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 	connections = fr_hash_table_num_elements(client->ht);
 	pthread_mutex_unlock(&client->mutex);
 
-	fr_assert(client->use_connected);
+	/*
+	 *	Don't check "use_connected".  Pending dynamic clients get an entry in the connection tracking
+	 *	table before the client is defined, and therefore before "use_connected" is set.  As a result,
+	 *	we can't check the value of "use_connected" until much later.
+	 */
+
 	*((uint32_t *) ctx) += connections;
 
 	return 0;
@@ -481,7 +486,13 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 
 static int _client_free(fr_io_client_t *client)
 {
-	if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+	/*
+	 *	The mutex is initialized whenever the connection tracking table is created, which can happen
+	 *	for pending clients which do not (yet) have "use_connected" set.  Since the mutex creation is
+	 *	conditional on the existence of the connection tracking table, we make the mutex deletion
+	 *	conditional on the existence of the tracking table.
+	 */
+	if (client->ht) (void) pthread_mutex_destroy(&client->mutex);
 
 	TALLOC_FREE(client->pending);
 
