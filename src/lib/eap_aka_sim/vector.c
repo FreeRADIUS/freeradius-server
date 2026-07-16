@@ -690,12 +690,14 @@ static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 
 	/*
 	 *	Fetch (optional) SQN
+	 *
+	 *	SQN is 48 bits.  uint48_to_buff() silently truncates anything
+	 *	wider, so reject it rather than derive AK from a mangled SQN.
 	 */
 	sqn_vp = fr_pair_find_by_da(vps, NULL, attr_sim_sqn);
-	if (sqn_vp && (sqn_vp->vp_length != MILENAGE_SQN_SIZE)) {
-		REDEBUG("control.%s incorrect length.  Expected "
-			STRINGIFY(MILENAGE_SQN_SIZE) " bytes, got %zu bytes",
-			attr_sim_sqn->name, sqn_vp->vp_length);
+	if (sqn_vp && (sqn_vp->vp_uint64 > UINT64_C(0xffffffffffff))) {
+		REDEBUG("control.%s invalid.  Expected a %u-bit value, got %" PRIu64,
+			attr_sim_sqn->name, (unsigned int)(MILENAGE_SQN_SIZE * 8), sqn_vp->vp_uint64);
 		return -1;
 	}
 
