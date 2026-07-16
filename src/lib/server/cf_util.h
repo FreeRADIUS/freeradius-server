@@ -276,7 +276,7 @@ CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char
 
 CONF_PAIR	*cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr);
 
-int		cf_pair_replace_or_add(CONF_SECTION *cs, char *ref, char const *value) CC_HINT(nonnull);
+int		cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value) CC_HINT(nonnull);
 
 unsigned int	cf_pair_count_descendents(CONF_SECTION const *cs);
 
