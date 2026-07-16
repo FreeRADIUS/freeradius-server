@@ -43,14 +43,17 @@ ssize_t fr_tcp_read_packet(int sockfd, uint8_t *buffer, size_t size, size_t *tot
 	end = buffer + size;
 
 	slen = recv(sockfd, start, (size_t) (end - start), 0);
-	if (slen <= 0) return -1;
+	if (slen <= 0) return -1; /* 0 means EOF for non-blocking TCP reads */
 
 	packet_len = *total + slen;
 
 	/*
-	 *	Not enough for a header, die.
+	 *	Not enough for a header, we don't have a packet.
 	 */
-	if (packet_len < 4) return 0;
+	if (packet_len < 4) {
+		*total = packet_len;
+		return 0;
+	}
 
 	hdr_len = fr_nbo_to_uint16(buffer + 2);
 	if ((hdr_len < RADIUS_HEADER_LENGTH) || (hdr_len >  RADIUS_MAX_PACKET_SIZE)) return -1;
@@ -67,5 +70,6 @@ ssize_t fr_tcp_read_packet(int sockfd, uint8_t *buffer, size_t size, size_t *tot
 		return -1;
 	}
 
+	*total = hdr_len;
 	return hdr_len;
 }
