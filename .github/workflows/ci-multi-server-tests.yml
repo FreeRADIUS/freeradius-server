@@ -36,6 +36,13 @@ jobs:
     runs-on: self-hosted
     if: github.repository_owner == 'FreeRADIUS'
 
+    #  id-token: write lets the profiling leg mint a GitHub OIDC token, which
+    #  authenticates the prof-results publish. Listing any permission drops
+    #  the unlisted ones, so contents: read is stated to keep checkout working.
+    permissions:
+      contents: read
+      id-token: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -203,12 +210,42 @@ jobs:
       #  mode. Skipped in service mode (nothing to upload).
       #
       - name: Upload profiling results
+        id: upload-prof-results
         if: ${{ matrix.mode == 'profiling' && always() }}
         uses: actions/upload-artifact@v6
         with:
           name: prof-results-${{ github.sha }}
           path: prof-results/
           if-no-files-found: ignore
+
+      #
+      #  Publish the same prof-results/ tree to the durable store: the script
+      #  tars the tree and POSTs it, with a GitHub OIDC token, to the given
+      #  URL (see the script header). Skipped when the artifact step found no
+      #  files (empty artifact-id).
+      #
+      - name: Publish profiling results to the prof-results store
+        if: ${{ matrix.mode == 'profiling' && always() && steps.upload-prof-results.outputs.artifact-id != '' }}
+        run: scripts/ci/publish-profiling-results.sh "https://cinfra-ca.inkbridge.io/profiling/data"
+
+      #
+      #  Check latest profiling results vs each suite's previous run on the store.
+      #
+      #  cest-analyzer exit codes;
+      #   0 - clean
+      #   1 - latest result performance flagged
+      #   2 - tool error
+      #
+      - name: Check latest profiling results vs previous runs
+        if: ${{ matrix.mode == 'profiling' && success() }}
+        continue-on-error: true
+        run: |
+          curl -fsSL -o cest-analyzer \
+            "https://cinfra-ca.inkbridge.io/profiling/dashboard/bin/cest-analyzer"
+          chmod +x ./cest-analyzer
+          rc=0
+          ./cest-analyzer --latest -d prof-results --filter fr_ --gate 15 || rc=$?
+          echo "cest-analyzer exit code: $rc"
 
       #
       #  If the CI has failed and the branch is ci-debug

@@ -32,15 +32,27 @@ SEND_DURATION=$(( TEST_LOADGEN_NUM_MESSAGES / TEST_LOADGEN_START_PPS ))
 
 # Start freeradius under valgrind with instrumentation off.
 #
-# valgrind writes its own log to --log-file and freeradius stdout/stderr
-# go directly to freeradius.log. Avoiding `| tee` here so $! is the
-# valgrind PID rather than tee's — the fallback kill paths below rely on it.
+# valgrind logs to --log-file; freeradius stdout/stderr go to freeradius.log.
+# No `| tee`: the fallback kill paths below need $! to be the valgrind PID,
+# not tee's.
+#
+# --trace-children=yes    profile exec()'d children too (own callgrind.out.%p)
+# --separate-threads=no   one profile per process, not per thread
+# --separate-callers=6    split a function's costs by up to 6 callers deep
+# --dump-instr=yes        per-instruction counts (assembly-level inspection)
+# --collect-jumps=yes     record jumps for intra-function control flow
+# --cache-sim=yes         cache counters (Dr/Dw + L1/LL misses) for CEst
+# --branch-sim=yes        branch mispredict counters (Bc/Bi) for CEst
+# --keep-debuginfo=yes    keep symbols of dlclose'd code for late dumps
+# --instr-atstart=no      start uninstrumented; enabled below once the server
+#                         is ready, keeping startup out of the profile
 valgrind \
   --tool=callgrind \
   --log-file=/etc/prof-results/valgrind.log \
   --callgrind-out-file=/etc/prof-results/callgrind.out.%p \
   --trace-children=yes \
-  --separate-threads=yes \
+  --separate-threads=no \
+  --separate-callers=6 \
   --dump-instr=yes \
   --collect-jumps=yes \
   --cache-sim=yes \
