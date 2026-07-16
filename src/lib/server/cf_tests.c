@@ -764,6 +764,47 @@ static void test_section_dup_rename(void)
 	talloc_free(dup);
 }
 
+static void test_section_dup_nested_pairs(void)
+{
+	CONF_SECTION	*cs, *sub, *dup, *dup_sub;
+	CONF_PAIR	*cp;
+
+	cs = cf_section_alloc(autofree, NULL, "tcp", NULL);
+	TEST_ASSERT(cs != NULL);
+
+	cf_pair_alloc(cs, "port", "49", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+
+	sub = cf_section_alloc(autofree, cs, "networks", NULL);
+	TEST_ASSERT(sub != NULL);
+
+	cf_pair_alloc(sub, "allow", "0.0.0.0/0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+	cf_pair_alloc(sub, "allow", "192.0.2.0/24", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+
+	dup = cf_section_dup(autofree, NULL, cs, cf_section_name1(cs), cf_section_name2(cs), false);
+	TEST_ASSERT(dup != NULL);
+
+	/* Top-level pair should survive the copy. */
+	cp = cf_pair_find(dup, "port");
+	TEST_ASSERT(cp != NULL);
+	TEST_CHECK(strcmp(cf_pair_value(cp), "49") == 0);
+
+	/* The nested subsection must exist in the copy. */
+	dup_sub = cf_section_find(dup, "networks", NULL);
+	TEST_ASSERT(dup_sub != NULL);
+
+	/* Both pairs inside the nested subsection must be present. */
+	cp = cf_pair_find(dup_sub, "allow");
+	TEST_ASSERT(cp != NULL);
+	TEST_CHECK(strcmp(cf_pair_value(cp), "0.0.0.0/0") == 0);
+
+	cp = cf_pair_find_next(dup_sub, cp, "allow");
+	TEST_ASSERT(cp != NULL);
+	TEST_CHECK(strcmp(cf_pair_value(cp), "192.0.2.0/24") == 0);
+
+	talloc_free(cs);
+	talloc_free(dup);
+}
+
 static void test_pair_dup(void)
 {
 	CONF_SECTION	*cs1, *cs2;
@@ -1224,6 +1265,7 @@ TEST_LIST = {
 	/* Section duplication */
 	{ "test_section_dup_basic",		test_section_dup_basic },
 	{ "test_section_dup_rename",		test_section_dup_rename },
+	{ "test_section_dup_nested_pairs",	test_section_dup_nested_pairs },
 	{ "test_pair_dup",			test_pair_dup },
 
 	/* Metadata */

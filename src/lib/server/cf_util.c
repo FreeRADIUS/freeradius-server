@@ -1105,7 +1105,14 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 
 			dst_child->item.filename = src_child->item.filename;
 			dst_child->item.lineno = src_child->item.lineno;
-			break;
+
+			/*
+			 *	Descend into the child so its children get copied too.
+			 */
+			src = src_child;
+			dst = dst_child;
+			ci = NULL;
+			continue;
 
 		case CONF_ITEM_PAIR:
 			cp = cf_pair_dup(dst, cf_item_to_pair(ci), copy_meta);
