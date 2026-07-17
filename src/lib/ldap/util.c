@@ -497,6 +497,144 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 	return (sss_end - sss_p);
 }
 
+/** Release value iteration state
+ *
+ * Must be called once for every fr_ldap_value_iter_init, whether
+ * iteration completed or not.
+ *
+ * @param[in] iter	to release.
+ */
+void fr_ldap_value_iter_done(fr_ldap_value_iter_t *iter)
+{
+	ber_free(iter->ber, 0);
+	iter->ber = NULL;
+}
+
+/** Return the next value of the iterated attribute
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[in] iter	to advance.
+ * @return
+ *	- The next value.
+ *	- NULL when the values are exhausted, or the entry could not be
+ *	  parsed.
+ */
+struct berval *fr_ldap_value_iter_next(int *err, fr_ldap_value_iter_t *iter)
+{
+	if (iter->end) return NULL;
+
+	if (ber_scanf(iter->ber, "m", &iter->value) == LBER_ERROR) {
+		fr_strerror_const("Malformed search result entry");
+		iter->end = true;
+		if (err) *err = -1;
+		return NULL;
+	}
+
+	if (ber_next_element(iter->ber, &iter->len, iter->last) == LBER_DEFAULT) iter->end = true;
+
+	return &iter->value;
+}
+
+/** Start an in place iteration over an attribute's values in an entry
+ *
+ * The returned values point into the result message the entry belongs
+ * to, nothing is copied, and the values remain valid until the result
+ * message is freed with ldap_msgfree.
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[out] iter	to initialise.  Release with fr_ldap_value_iter_done.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	whose values to iterate.
+ * @param[in] attr	to find.
+ * @return
+ *	- The attribute's first value.
+ *	- NULL if the entry does not contain the attribute, or could not
+ *	  be parsed.
+ */
+struct berval *fr_ldap_value_iter_init(int *err, fr_ldap_value_iter_t *iter, LDAP *handle, LDAPMessage *entry,
+				       char const *attr)
+{
+	struct berval	dn, name;
+	size_t		attr_len = strlen(attr);
+	ber_len_t	remaining;
+
+	*iter = (fr_ldap_value_iter_t){};
+
+	if (ldap_get_dn_ber(handle, entry, &iter->ber, &dn) != LDAP_SUCCESS) {
+	error:
+		fr_strerror_const("Malformed search result entry");
+		iter->end = true;
+		if (err) *err = -1;
+		return NULL;
+	}
+
+	for (;;) {
+		if (ber_get_option(iter->ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
+		if (remaining == 0) break;
+
+		if (ber_scanf(iter->ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
+
+		if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
+			if (ber_scanf(iter->ber, "x") == LBER_ERROR) goto error;
+			continue;
+		}
+
+		if (ber_first_element(iter->ber, &iter->len, &iter->last) != LBER_DEFAULT) iter->found = true;
+		break;
+	}
+	if (!iter->found) {
+		iter->end = true;
+		return NULL;
+	}
+
+	return fr_ldap_value_iter_next(err, iter);
+}
+
+/** Free the ber held by an allocated value iterator
+ *
+ */
+static int _fr_ldap_value_iter_free(fr_ldap_value_iter_t *iter)
+{
+	fr_ldap_value_iter_done(iter);
+
+	return 0;
+}
+
+/** Allocate a value iterator, released when the iterator is freed
+ *
+ * Behaves as fr_ldap_value_iter_init, with the ber memory freed by a
+ * talloc destructor, so the iteration state is released when the
+ * iterator or any of its talloc ancestors are freed.
+ *
+ * @param[out] err	Set to -1 if the entry could not be parsed.
+ *			Untouched otherwise.  May be NULL.
+ * @param[out] out	The allocated iterator.
+ * @param[in] ctx	to allocate the iterator in.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	whose values to iterate.
+ * @param[in] attr	to find.
+ * @return
+ *	- The attribute's first value.
+ *	- NULL if the entry does not contain the attribute, or could not
+ *	  be parsed.
+ */
+struct berval *fr_ldap_value_iter_alloc(int *err, fr_ldap_value_iter_t **out, TALLOC_CTX *ctx,
+					LDAP *handle, LDAPMessage *entry, char const *attr)
+{
+	fr_ldap_value_iter_t	*iter;
+	struct berval		*value;
+
+	MEM(iter = talloc(ctx, fr_ldap_value_iter_t));
+
+	value = fr_ldap_value_iter_init(err, iter, handle, entry, attr);
+	talloc_set_destructor(iter, _fr_ldap_value_iter_free);
+	*out = iter;
+
+	return value;
+}
+
 /** Sum the lengths of an attribute's values across every entry of a result
  *
  * The values are read in place from the result message, no arrays are
@@ -515,47 +653,23 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 int fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result, char const *attr)
 {
 	LDAPMessage	*entry;
-	BerElement	*ber = NULL;
-	size_t		attr_len = strlen(attr);
 
 	*num = 0;
 	*strings_len = 0;
 
 	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
-		struct berval	dn, name, value;
-		ber_len_t	len, remaining;
-		char		*last;
-		ber_tag_t	tag;
+		fr_ldap_value_iter_t	iter;
+		struct berval		*value;
+		int			err = 0;
 
-		if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
-		error:
-			fr_strerror_const("Malformed search result entry");
-			ber_free(ber, 0);
-			return -1;
+		for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+		     value;
+		     value = fr_ldap_value_iter_next(&err, &iter)) {
+			*strings_len += value->bv_len + 1;
+			(*num)++;
 		}
-
-		for (;;) {
-			if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
-			if (remaining == 0) break;
-
-			if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
-
-			if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
-				if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
-				continue;
-			}
-
-			for (tag = ber_first_element(ber, &len, &last);
-			     tag != LBER_DEFAULT;
-			     tag = ber_next_element(ber, &len, last)) {
-				if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
-
-				*strings_len += value.bv_len + 1;
-				(*num)++;
-			}
-		}
-		ber_free(ber, 0);
-		ber = NULL;
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(err < 0)) return -1;
 	}
 
 	return 0;
@@ -584,8 +698,7 @@ talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, 
 {
 	talloc_str_list_t	*list = NULL;
 	LDAPMessage		*entry;
-	BerElement		*ber = NULL;
-	size_t			attr_len, num = 0, strings_len = 0;
+	size_t			num = 0, strings_len = 0;
 
 	if (attr) {
 		if (unlikely(fr_ldap_result_values_len(&num, &strings_len, handle, result, attr) < 0)) return NULL;
@@ -595,43 +708,22 @@ talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, 
 	list->p += extra;
 
 	if (num == 0) return list;
-	attr_len = strlen(attr);
 
 	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
-		struct berval	dn, name, value;
-		ber_len_t	len, remaining;
-		char		*last;
-		ber_tag_t	tag;
+		fr_ldap_value_iter_t	iter;
+		struct berval		*value;
+		int			err = 0;
 
-		if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
-		error:
-			fr_strerror_const("Malformed search result entry");
-			ber_free(ber, 0);
+		for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+		     value;
+		     value = fr_ldap_value_iter_next(&err, &iter)) {
+			MEM(talloc_str_list_append(list, value->bv_val, value->bv_len));
+		}
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(err < 0)) {
 			talloc_free(list);
 			return NULL;
 		}
-
-		for (;;) {
-			if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
-			if (remaining == 0) break;
-
-			if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
-
-			if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
-				if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
-				continue;
-			}
-
-			for (tag = ber_first_element(ber, &len, &last);
-			     tag != LBER_DEFAULT;
-			     tag = ber_next_element(ber, &len, last)) {
-				if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
-
-				MEM(talloc_str_list_append(list, value.bv_val, value.bv_len));
-			}
-		}
-		ber_free(ber, 0);
-		ber = NULL;
 	}
 
 	return list;
@@ -655,43 +747,18 @@ talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, 
  */
 int fr_ldap_entry_value_find(struct berval *out, LDAP *handle, LDAPMessage *entry, char const *attr)
 {
-	BerElement	*ber = NULL;
-	struct berval	dn, name, value;
-	size_t		attr_len = strlen(attr);
-	ber_len_t	len, remaining;
-	char		*last;
-	ber_tag_t	tag;
-	int		num = 0;
+	fr_ldap_value_iter_t	iter;
+	struct berval		*value;
+	int			num = 0, err = 0;
 
-	if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
-	error:
-		fr_strerror_const("Malformed search result entry");
-		ber_free(ber, 0);
-		return -1;
+	for (value = fr_ldap_value_iter_init(&err, &iter, handle, entry, attr);
+	     value;
+	     value = fr_ldap_value_iter_next(&err, &iter)) {
+		if (num == 0) *out = *value;
+		num++;
 	}
-
-	for (;;) {
-		if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
-		if (remaining == 0) break;
-
-		if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
-
-		if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
-			if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
-			continue;
-		}
-
-		for (tag = ber_first_element(ber, &len, &last);
-		     tag != LBER_DEFAULT;
-		     tag = ber_next_element(ber, &len, last)) {
-			if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
-
-			if (num == 0) *out = value;
-			num++;
-		}
-		break;
-	}
-	ber_free(ber, 0);
+	fr_ldap_value_iter_done(&iter);
+	if (unlikely(err < 0)) return -1;
 
 	return num;
 }

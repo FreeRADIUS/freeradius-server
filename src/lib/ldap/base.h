@@ -963,6 +963,32 @@ size_t		fr_ldap_util_normalise_dn(char *out, char const *in);
 
 char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
+/** State of an in place iteration over an attribute's values
+ *
+ * fr_ldap_value_iter_init returns the first value, fr_ldap_value_iter_next
+ * each value after it, NULL ends the iteration.  The caller must always
+ * release the iterator with fr_ldap_value_iter_done, whether iteration
+ * completed or not.
+ */
+typedef struct {
+	BerElement	*ber;			//!< Cursor over the entry.
+	char		*last;			//!< End marker of the value set.
+	ber_len_t	len;			//!< Length of the current element.
+	struct berval	value;			//!< Value the iterator is positioned on.
+	bool		found;			//!< The attribute was found in the entry.
+	bool		end;			//!< All values have been returned.
+} fr_ldap_value_iter_t;
+
+struct berval	*fr_ldap_value_iter_init(int *err, fr_ldap_value_iter_t *iter, LDAP *handle, LDAPMessage *entry,
+					 char const *attr);
+
+struct berval	*fr_ldap_value_iter_alloc(int *err, fr_ldap_value_iter_t **out, TALLOC_CTX *ctx,
+					  LDAP *handle, LDAPMessage *entry, char const *attr);
+
+struct berval	*fr_ldap_value_iter_next(int *err, fr_ldap_value_iter_t *iter);
+
+void		fr_ldap_value_iter_done(fr_ldap_value_iter_t *iter);
+
 int		fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result,
 					  char const *attr);
 

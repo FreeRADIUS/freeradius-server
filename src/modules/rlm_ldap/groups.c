@@ -442,11 +442,13 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	LDAPMessage			*entry = autz_ctx->entry;
 	fr_ldap_thread_trunk_t		*ttrunk = autz_ctx->ttrunk;
 	ldap_group_userobj_ctx_t	*group_ctx;
-	struct berval			**values;
+	fr_ldap_value_iter_t		iter;
+	struct berval			*value;
 	char				**name_p;
 	char				**dn_p;
 	fr_pair_t			*vp;
-	int				is_dn, i, count, name2dn = 0, dn2name = 0;
+	int				is_dn, iter_err = 0, name2dn = 0, dn2name = 0;
+	size_t				count = 0, strings_len = 0;
 	bool				want_profiles = rlm_ldap_profile_attr_select(inst->group.profile_attr,
 										     inst->group.profile_attr_suspend,
 										     autz_ctx->access_state) != NULL;
@@ -457,13 +459,16 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	/*
 	 *	Parse the membership information we got in the initial user query.
 	 */
-	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, attr);
-	if (!values) {
+	if (unlikely(fr_ldap_result_values_len(&count, &strings_len, fr_ldap_handle_thread_local(),
+					       autz_ctx->query->result, attr) < 0)) {
+		RPERROR("Failed parsing user object");
+		RETURN_UNLANG_FAIL;
+	}
+	if (count == 0) {
 		RDEBUG2("No cacheable group memberships found in user object");
 
 		RETURN_UNLANG_OK;
 	}
-	count = ldap_count_values_len(values);
 
 	/*
 	 *	Extended once for the whole batch, only DN valued
@@ -471,12 +476,9 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	 */
 	if (want_profiles) {
 		if (!autz_ctx->group_dn_list) {
-			size_t strings_len = 0;
-
-			for (i = 0; i < count; i++) strings_len += values[i]->bv_len + 1;
-			MEM(autz_ctx->group_dn_list = talloc_str_list_alloc(autz_ctx, (size_t)count, strings_len));
+			MEM(autz_ctx->group_dn_list = talloc_str_list_alloc(autz_ctx, count, strings_len));
 		} else {
-			MEM(talloc_str_list_realloc(autz_ctx->group_dn_list, (size_t)count) == 0);
+			MEM(talloc_str_list_realloc(autz_ctx->group_dn_list, count) == 0);
 		}
 	}
 
@@ -503,8 +505,10 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	 */
 	fr_pair_list_init(&group_ctx->groups);
 
-	for (i = 0; (i < count); i++) {
-		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
+	for (value = fr_ldap_value_iter_init(&iter_err, &iter, fr_ldap_handle_thread_local(), entry, attr);
+	     value;
+	     value = fr_ldap_value_iter_next(&iter_err, &iter)) {
+		is_dn = fr_ldap_util_is_dn(value->bv_val, value->bv_len);
 
 		/*
 		 *	Record group object DNs for the later profile search.
@@ -512,7 +516,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 		 *	profiles on groups referenced by name are not found.
 		 */
 		if (want_profiles && is_dn) {
-			MEM(talloc_str_list_append(autz_ctx->group_dn_list, values[i]->bv_val, values[i]->bv_len));
+			MEM(talloc_str_list_append(autz_ctx->group_dn_list, value->bv_val, value->bv_len));
 		}
 
 		if (inst->group.cacheable_dn) {
@@ -521,7 +525,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 			 */
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->group.cache_da));
-				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
+				fr_pair_value_bstrndup(vp, value->bv_val, value->bv_len, true);
 				fr_pair_append(&group_ctx->groups, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
@@ -531,11 +535,11 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 				if (++name2dn > LDAP_MAX_CACHEABLE) {
 					REDEBUG("Too many groups require name to DN resolution");
 				invalid:
-					ldap_value_free_len(values);
+					fr_ldap_value_iter_done(&iter);
 					talloc_free(group_ctx);
 					RETURN_UNLANG_INVALID;
 				}
-				*name_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
+				*name_p++ = fr_ldap_berval_to_string(group_ctx, value);
 			}
 		}
 
@@ -545,7 +549,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 			 */
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->group.cache_da));
-				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
+				fr_pair_value_bstrndup(vp, value->bv_val, value->bv_len, true);
 				fr_pair_append(&group_ctx->groups, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
@@ -556,12 +560,16 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 					REDEBUG("Too many groups require DN to name resolution");
 					goto invalid;
 				}
-				*dn_p++ = fr_ldap_berval_to_string(group_ctx, values[i]);
+				*dn_p++ = fr_ldap_berval_to_string(group_ctx, value);
 			}
 		}
 	}
-
-	ldap_value_free_len(values);
+	fr_ldap_value_iter_done(&iter);
+	if (unlikely(iter_err < 0)) {
+		RPERROR("Failed parsing user object");
+		talloc_free(group_ctx);
+		RETURN_UNLANG_FAIL;
+	}
 
 	/*
 	 *	We either have group names which need converting to DNs or
