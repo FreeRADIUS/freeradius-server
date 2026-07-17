@@ -497,48 +497,6 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 	return (sss_end - sss_p);
 }
 
-/** Convert a list of bervals to a NULL terminated list of talloced strings
- *
- * A list variant of fr_ldap_berval_to_string.  Where talloc_pooled_object is
- * available the pointer array and every string are allocated from a single
- * talloc pool, so building the list costs one malloc.  Zero length values
- * are skipped.
- *
- * @param[in] ctx	to parent the list.
- * @param[in] values	to copy.
- * @param[in] count	Number of values.
- * @param[in] extra	Leading pointer array entries to leave NULL, for the
- *			caller to fill with strings not copied into the pool.
- * @return NULL terminated array of \0 terminated strings.
- */
-char const **fr_ldap_berval_to_string_list(TALLOC_CTX *ctx, struct berval **values, int count, size_t extra)
-{
-	char const	**list;
-	size_t		num = extra;
-	int		i;
-
-#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
-	{
-		size_t strings_size = 0;
-
-		for (i = 0; i < count; i++) {
-			strings_size += values[i]->bv_len + 1;
-		}
-		MEM(list = _talloc_zero_pooled_object(ctx, sizeof(char const *) * (count + extra + 1),
-						      "char const *[]", count, strings_size));
-	}
-#else
-	MEM(list = talloc_zero_array(ctx, char const *, count + extra + 1));
-#endif
-
-	for (i = 0; i < count; i++) {
-		if (values[i]->bv_len == 0) continue;
-		MEM(list[num++] = fr_ldap_berval_to_string(list, values[i]));
-	}
-
-	return list;
-}
-
 /** Sum the lengths of an attribute's values across every entry of a result
  *
  * The values are read in place from the result message, no arrays are
@@ -612,22 +570,32 @@ int fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LD
  * @param[in] ctx	to allocate the list in.
  * @param[in] handle	the result was received on.
  * @param[in] result	Head of the result message chain.
- * @param[in] attr	whose values to copy.
+ * @param[in] attr	whose values to copy.  May be NULL, in which case
+ *			only the extra slots are allocated.
+ * @param[in] extra	Leading pointer array slots to leave NULL, for the
+ *			caller to fill with strings not copied into the pool.
  * @return
  *	- List of the attribute's values.  Empty if the result holds no
  *	  values for the attribute.
  *	- NULL if an entry could not be parsed.
  */
-talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result, char const *attr)
+talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result,
+						 char const *attr, size_t extra)
 {
 	talloc_str_list_t	*list = NULL;
 	LDAPMessage		*entry;
 	BerElement		*ber = NULL;
-	size_t			attr_len = strlen(attr), num, strings_len;
+	size_t			attr_len, num = 0, strings_len = 0;
 
-	if (unlikely(fr_ldap_result_values_len(&num, &strings_len, handle, result, attr) < 0)) return NULL;
+	if (attr) {
+		if (unlikely(fr_ldap_result_values_len(&num, &strings_len, handle, result, attr) < 0)) return NULL;
+	}
 
-	MEM(list = talloc_str_list_alloc(ctx, num, strings_len));
+	MEM(list = talloc_str_list_alloc(ctx, num + extra, strings_len));
+	list->p += extra;
+
+	if (num == 0) return list;
+	attr_len = strlen(attr);
 
 	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
 		struct berval	dn, name, value;

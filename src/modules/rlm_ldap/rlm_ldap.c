@@ -1985,11 +1985,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 
 	case LDAP_AUTZ_PROFILES:
 	{
-		struct berval	**values = NULL;
-		char const	*profile_attr;
-		char const	**dn_p;
-		bool		have_default = !fr_box_is_null(&call_env->default_profile);
-		int		count, group_count = 0, i;
+		talloc_str_list_t	*list;
+		char const		*profile_attr;
+		char const		**dn_p;
+		bool			have_default = !fr_box_is_null(&call_env->default_profile);
+		size_t			count = 0, strings_len = 0, group_count = 0, i;
 
 		/*
 		 *	Which set of profiles to apply depends on the user's
@@ -1998,20 +1998,22 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		profile_attr = rlm_ldap_profile_attr_select(inst->user.profile_attr, inst->user.profile_attr_suspend,
 							    autz_ctx->access_state);
 		if (profile_attr) {
-			values = ldap_get_values_len(handle, autz_ctx->entry, profile_attr);
-			count = ldap_count_values_len(values);
+			if (unlikely(fr_ldap_result_values_len(&count, &strings_len, handle,
+							       autz_ctx->query->result, profile_attr) < 0)) {
+				RPERROR("Failed parsing user object");
+				p_result->rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
 			if (count > 0) {
-				RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, profile_attr);
+				RDEBUG2("Processing %zu profile(s) found in attribute \"%s\"", count, profile_attr);
 			} else {
 				RDEBUG2("No profile(s) found in attribute \"%s\"", profile_attr);
 			}
-		} else {
-			count = 0;
 		}
 
 		if (autz_ctx->group_profile_dn_list) {
-			group_count = (int)talloc_str_list_num(autz_ctx->group_profile_dn_list);
-			RDEBUG2("Processing %i profile(s) found in group objects", group_count);
+			group_count = talloc_str_list_num(autz_ctx->group_profile_dn_list);
+			RDEBUG2("Processing %zu profile(s) found in group objects", group_count);
 		}
 
 		if (!have_default && (group_count == 0) && (count == 0)) break;
@@ -2021,13 +2023,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		 *	profile first, then the profiles from the group
 		 *	objects, then the profiles from the user object.
 		 */
-		autz_ctx->profile_dn_list = fr_ldap_berval_to_string_list(autz_ctx, values, count,
-									  (have_default ? 1 : 0) + group_count);
-		dn_p = autz_ctx->profile_dn_list;
+		MEM(list = fr_ldap_str_list_afrom_result(autz_ctx, handle, autz_ctx->query->result,
+							 count ? profile_attr : NULL,
+							 (have_default ? 1 : 0) + group_count));
+		dn_p = list->strings;
 		if (have_default) *dn_p++ = call_env->default_profile.vb_strvalue;
 		for (i = 0; i < group_count; i++) *dn_p++ = autz_ctx->group_profile_dn_list->strings[i];
-		if (values) ldap_value_free_len(values);
 
+		autz_ctx->profile_dn_list = list->strings;
 		profile_dn_list_dedupe(autz_ctx->profile_dn_list);
 
 		if (!autz_ctx->profile_dn_list[0]) break;

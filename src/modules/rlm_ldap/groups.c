@@ -817,7 +817,7 @@ static unlang_action_t ldap_group_profile_resume(unlang_result_t *p_result, requ
 
 	fr_assert(!autz_ctx->group_profile_dn_list);
 	autz_ctx->group_profile_dn_list = fr_ldap_str_list_afrom_result(autz_ctx, query->ldap_conn->handle,
-									query->result, group_ctx->profile_attr);
+									query->result, group_ctx->profile_attr, 0);
 	if (unlikely(!autz_ctx->group_profile_dn_list)) {
 		RPERROR("Failed parsing profiles from group objects");
 		rcode = RLM_MODULE_FAIL;
