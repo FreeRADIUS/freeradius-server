@@ -72,6 +72,8 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	LDAPMessage		*entry;
 	struct berval		**values = NULL;
 	struct berval		value;
+	talloc_str_list_t	*list;
+	char const * const	*context_p;
 
 	/*
 	 *	Connections spawned concurrently may each run discovery
@@ -242,18 +244,22 @@ found:
 	/*
 	 *	Extract naming contexts
 	 */
-	values = ldap_get_values_len(handle, entry, "namingContexts");
-	if (!values) return 0;
+	list = fr_ldap_str_list_afrom_result(directory, handle, result, "namingContexts", 0);
+	if (unlikely(!list)) {
+		WARN("Capability check failed: %s", fr_strerror());
+		return 1;
+	}
+	if (talloc_str_list_num(list) == 0) {
+		talloc_free(list);
+		return 0;
+	}
 
-	num = ldap_count_values_len(values);
-	MEM(directory->naming_contexts = talloc_array(directory, char const *, num));
+	directory->naming_contexts = list->strings;
 	MEM(directory->naming_contexts_ht = fr_hash_table_alloc(directory, _naming_context_hash,
 								_naming_context_cmp, NULL));
-	for (i = 0; i < num; i++) {
-		directory->naming_contexts[i] = fr_ldap_berval_to_string(directory, values[i]);
-		fr_hash_table_insert(directory->naming_contexts_ht, directory->naming_contexts[i]);
+	for (context_p = list->strings; context_p < list->p; context_p++) {
+		fr_hash_table_insert(directory->naming_contexts_ht, *context_p);
 	}
-	ldap_value_free_len(values);
 
 	return 0;
 }

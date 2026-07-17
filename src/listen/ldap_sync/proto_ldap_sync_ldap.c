@@ -779,7 +779,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
  */
 static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t const *inst, size_t sync_no,
 				       proto_ldap_sync_ldap_thread_t *thread) {
-	size_t			j, len;
+	size_t			len;
 	sync_config_t		*config = inst->parent->sync_config[sync_no];
 	fr_pair_list_t		pairs;
 	fr_pair_t		*vp;
@@ -798,15 +798,19 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 	/*
 	 *	Assess the namingContext which applies to this sync
 	 */
-	for (j = 0; j < talloc_array_length(ldap_conn->directory->naming_contexts); j++) {
-		len = strlen(ldap_conn->directory->naming_contexts[j]);
-		if (strlen(config->base_dn) < len) continue;
+	if (ldap_conn->directory->naming_contexts) {
+		char const * const	*contexts = ldap_conn->directory->naming_contexts;
+		size_t			j, num = talloc_str_array_len(contexts);
+		size_t			base_dn_len = talloc_strlen(config->base_dn);
 
-		if (strncasecmp(&config->base_dn[strlen(config->base_dn)-len],
-				ldap_conn->directory->naming_contexts[j],
-				strlen(ldap_conn->directory->naming_contexts[j])) == 0) {
-			config->root_dn = ldap_conn->directory->naming_contexts[j];
-			break;
+		for (j = 0; j < num; j++) {
+			len = talloc_strlen(contexts[j]);
+			if (base_dn_len < len) continue;
+
+			if (strncasecmp(&config->base_dn[base_dn_len - len], contexts[j], len) == 0) {
+				config->root_dn = contexts[j];
+				break;
+			}
 		}
 	}
 

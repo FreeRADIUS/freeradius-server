@@ -215,7 +215,8 @@ typedef struct {
 							///< Defaults to RFC 5020 entryDN, distinguishedName
 							///< on Active Directory and Samba.
 
-	char const		**naming_contexts;	//!< Databases served by this directory.
+	char const		**naming_contexts;	//!< NULL terminated array of databases
+							///< served by this directory.
 	fr_hash_table_t		*naming_contexts_ht;	//!< For resolving DNs to the naming context
 							///< containing them.
 
