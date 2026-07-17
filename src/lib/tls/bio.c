@@ -319,6 +319,7 @@ void fr_tls_bio_dbuff_thread_local_clear(void)
 	if (unlikely(!bd->dbuff_in.buff)) return;
 
 	fr_dbuff_free_talloc(&bd->dbuff_in);
+	bd->dbuff_out.buff = NULL;
 }
 
 /** Frees the thread local TALLOC bio and its underlying OpenSSL BIO *
