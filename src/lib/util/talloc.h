@@ -247,6 +247,29 @@ int		talloc_decrease_ref_count(void const *ptr);
 
 void		**talloc_array_null_terminate(void **array);
 
+/** A NULL terminated array of strings with an append cursor
+ *
+ */
+typedef struct {
+	char const	**strings;	//!< NULL terminated array of strings.
+	char const	**p;		//!< Where the next appended string is written.
+	char const	**end;		//!< Final element, reserved for the NULL terminator.
+} talloc_str_list_t;
+
+talloc_str_list_t	*talloc_str_list_alloc(TALLOC_CTX *ctx, size_t num, size_t strings_len);
+
+int			talloc_str_list_realloc(talloc_str_list_t *list, size_t extra);
+
+char const		*talloc_str_list_append(talloc_str_list_t *list, char const *str, size_t len);
+
+/** Return the number of strings in a string list
+ *
+ */
+static inline size_t talloc_str_list_num(talloc_str_list_t const *list)
+{
+	return (size_t)(list->p - list->strings);
+}
+
 /** Free const'd memory
  *
  * @param[in] ptr	to free.
