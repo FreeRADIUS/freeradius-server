@@ -163,13 +163,13 @@ void		virtual_servers_thread_detach(void);
 
 int		virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
 
-int		virtual_servers_instantiate(void) CC_HINT(nonnull);
+int		virtual_servers_instantiate(void);
 
 int		virtual_servers_bootstrap(CONF_SECTION *config) CC_HINT(nonnull);
 
 int		virtual_servers_free(void);
 
-int		virtual_servers_init(void) CC_HINT(nonnull);
+int		virtual_servers_init(void);
 /** @} */
 
 #ifdef __cplusplus
