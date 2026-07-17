@@ -728,10 +728,7 @@ int fr_socket_client_tcp(char const *ifname, fr_ipaddr_t *src_ipaddr,
 
 	if (unlikely(fr_socket_bind(sockfd, ifname, src_ipaddr, NULL) < 0)) goto error;
 
-	if (fr_ipaddr_to_sockaddr(&salocal, &salen, dst_ipaddr, dst_port) < 0) {
-		close(sockfd);
-		return -1;
-	}
+	if (fr_ipaddr_to_sockaddr(&salocal, &salen, dst_ipaddr, dst_port) < 0) goto error;
 
 	/*
 	 *	Although we ignore SIGPIPE, some operating systems
