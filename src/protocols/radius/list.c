@@ -413,7 +413,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	int type;
-	fr_packet_socket_t *ps= NULL;
+	fr_packet_socket_t *ps = NULL;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
@@ -440,6 +440,11 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	if (fr_ipaddr_is_inaddr_any(&request->socket.inet.dst_ipaddr) != 0) {
 		fr_strerror_const("Must specify a dst_ipaddr");
+		return false;
+	}
+
+	if (!pl->num_sockets) {
+		fr_strerror_const("No sockets have been added to the packet list");
 		return false;
 	}
 
