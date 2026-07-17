@@ -212,6 +212,29 @@ cn: order3
 radiusReplyAttribute: Filter-Id += 'order3'
 radiusProfilePriority: 10
 
+# Specialisations of the order profiles, selected with profile { child_rdn }.
+# order2 deliberately has no child, for the missing specialisation paths.
+dn: cn=wifi,cn=order0,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: wifi
+radiusReplyAttribute: Filter-Id += 'order0-wifi'
+radiusProfilePriority: 45
+
+dn: cn=wifi,cn=order1,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: wifi
+radiusReplyAttribute: Filter-Id += 'order1-wifi'
+radiusProfilePriority: 35
+
+dn: cn=wifi,cn=order3,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: wifi
+radiusReplyAttribute: Filter-Id += 'order3-wifi'
+radiusProfilePriority: 5
+
 dn: uid=adminuser,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 uid: adminuser

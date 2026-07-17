@@ -1,0 +1,125 @@
+#
+#  profile { search_mode } matrix rows tested here
+#  (full option matrix documented in raddb/mods-available/ldap)
+#
+#  Ref | search_mode | scope | sort_by | Result
+#  ----+-------------+-------+---------+----------------------------------------------------
+#  e1  | seq         | base  | unset   | child_rdn descends to each profile's child, childless profiles skipped
+#  e2  | bulk        | base  | set     | Child DNs join the single sorted search
+#  e3  | seq         | base  | unset   | Group profile DNs are rewritten like the default and user DNs
+#  e4  | seq         | base  | unset   | child_rdn expanding to nothing leaves the profiles unmodified
+#
+#  The profileseq user references order1, missing, order2 and order3.
+#  cn=wifi children exist under order0, order1 and order3, order2 has
+#  no child.
+#
+
+#
+#  e1: with child_rdn = "cn=%{Connect-Info}" the default and every user
+#  profile are evaluated one level down.  order2's child and the missing
+#  profile's child return zero results and are skipped.
+#
+Stripped-User-Name := 'profileseq'
+Connect-Info := 'wifi'
+ldap_profile_child
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0-wifi') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1-wifi') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order3-wifi') {
+	test_fail
+}
+if (reply.Filter-Id[3]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  e2: the child DNs are retrieved in one search, applied in server sort
+#  order (order3-wifi = 5, order1-wifi = 35).  No default profile on
+#  this instance.
+#
+Stripped-User-Name := 'profileseq'
+Connect-Info := 'wifi'
+ldap_profile_child_bulk
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order3-wifi') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1-wifi') {
+	test_fail
+}
+if (reply.Filter-Id[2]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  e3: the profilegroup user merges default (order0), group (order3,
+#  order1) and user (order1, deduplicated) profile DNs.  child_rdn
+#  rewrites every source, the wifi children apply in the merged order.
+#
+Stripped-User-Name := 'profilegroup'
+Connect-Info := 'wifi'
+ldap_profile_group_child
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0-wifi') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order3-wifi') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order1-wifi') {
+	test_fail
+}
+if (reply.Filter-Id[3]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  e4: with no Connect-Info the child_rdn expands to nothing and the
+#  profiles are evaluated unmodified, order2 included and the wifi
+#  children never searched.
+#
+Stripped-User-Name := 'profileseq'
+request -= Connect-Info[*]
+ldap_profile_child_empty
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order2') {
+	test_fail
+}
+if !(reply.Filter-Id[3] == 'order3') {
+	test_fail
+}
+if (reply.Filter-Id[4]) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

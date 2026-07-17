@@ -173,6 +173,7 @@ typedef struct {
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
+	fr_value_box_t	profile_child_rdn;		//!< RDN of a child object to evaluate below each profile.
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
 
 	map_list_t	*user_map;			//!< Attribute map applied to users and profiles.

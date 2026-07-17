@@ -673,6 +673,18 @@ ldap {
 #		default = 'cn=radprofile,dc=example,dc=org'
 
 		#
+		#  child_rdn:: The RDN of a child object to evaluate below each
+		#  profile, in place of the profile itself.
+		#
+		#  The value is expanded at request time, then joined to the
+		#  front of every profile DN, including the `default` and any
+		#  profiles from group objects.  Use it to select a
+		#  specialisation of each profile, for example a per service
+		#  variant.  Profiles without a matching child are skipped.
+		#
+#		child_rdn = "cn=%{Connect-Info}"
+
+		#
 		#  sort_by:: Server side result sorting.
 		#
 		#  A list of space delimited attributes to order the result set by,

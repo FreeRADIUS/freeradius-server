@@ -277,6 +277,8 @@ static const call_env_method_t authorize_method_env = {
 					 ((call_env_parser_t[]) {
 						{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, default_profile),
 						  LDAP_DN_CALL_ENV_ESCAPE },
+						{ FR_CALL_ENV_OFFSET("child_rdn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, ldap_autz_call_env_t, profile_child_rdn),
+						  LDAP_DN_CALL_ENV_ESCAPE },
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, profile_filter),
 						  .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING,
 						  LDAP_FILTER_CALL_ENV_ESCAPE },
@@ -2028,6 +2030,17 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		dn_p = list->strings;
 		if (have_default) *dn_p++ = call_env->default_profile.vb_strvalue;
 		for (i = 0; i < group_count; i++) *dn_p++ = autz_ctx->group_profile_dn_list->strings[i];
+
+		/*
+		 *	Evaluate the child object below each profile instead
+		 *	of the profile itself.
+		 */
+		if (!fr_box_is_null(&call_env->profile_child_rdn) && (call_env->profile_child_rdn.vb_length > 0)) {
+			for (dn_p = list->strings; *dn_p; dn_p++) {
+				MEM(*dn_p = talloc_asprintf(list, "%s,%s",
+							    call_env->profile_child_rdn.vb_strvalue, *dn_p));
+			}
+		}
 
 		autz_ctx->profile_dn_list = list->strings;
 		profile_dn_list_dedupe(autz_ctx->profile_dn_list);
