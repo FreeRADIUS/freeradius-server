@@ -86,6 +86,7 @@ static uint16_t client_port = 0;
 
 static int sockfd;
 static int last_used_id = -1;
+static int fixed_id = -1;
 
 static int ipproto = IPPROTO_UDP;
 
@@ -989,9 +990,16 @@ static int send_one_packet(rc_request_t *request)
 		 */
 	retry:
 		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
+		request->packet->socket.inet.src_port = 0;
+
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
+
+			if ((fixed_id >0) && (request->packet->id == fixed_id)) {
+				fr_perror("Failed assigning fixed ID %d", fixed_id);
+				return -1;
+			}
 
 			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL, NULL,
@@ -1846,7 +1854,7 @@ int main(int argc, char **argv)
 			if (!isdigit((uint8_t) *optarg)) {
 				usage();
 			}
-			last_used_id = atoi(optarg);
+			fixed_id = last_used_id = atoi(optarg);
 			if ((last_used_id < 0) || (last_used_id > 255)) {
 				usage();
 			}
