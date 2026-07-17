@@ -38,10 +38,11 @@ USES_APPLE_DEPRECATED_API
  */
 int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
 {
-	fr_ldap_result_t	*self = uctx;
+	fr_ldap_value_iter_t	*iter = talloc_get_type_abort(uctx, fr_ldap_value_iter_t);
+	struct berval		*value;
 	fr_pair_list_t		head;
 	fr_pair_t		*vp;
-	int			i;
+	int			err = 0;
 
 	fr_pair_list_init(&head);
 
@@ -59,7 +60,11 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 	 *	attributes.
 	 */
 	if (tmpl_is_list(map->lhs)) {
-		for (i = 0; i < self->count; i++) {
+		/*
+		 *	The caller's iterator init consumed the first value,
+		 *	still available as iter->value.
+		 */
+		for (value = &iter->value; value; value = fr_ldap_value_iter_next(&err, iter)) {
 			map_t	*attr = NULL;
 			char	*attr_str;
 
@@ -86,14 +91,14 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			};
 
 			RDEBUG3("Parsing valuepair string \"%pV\"",
-				fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+				fr_box_strvalue_len(value->bv_val, value->bv_len));
 
 			/*
 			 *	bv_val is NOT \0 terminated, so we need to make it
 			 *	safe (\0 terminate it) before passing it to any
 			 *	functions which take C strings and no lengths.
 			 */
-			attr_str = talloc_bstrndup(NULL, self->values[i]->bv_val, self->values[i]->bv_len);
+			attr_str = talloc_bstrndup(NULL, value->bv_val, value->bv_len);
 			if (!attr_str) {
 				RWDEBUG("Failed making attribute string safe");
 				continue;
@@ -103,7 +108,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 					       attr_str,
 					       &lhs_rules, &rhs_rules) < 0) {
 				RPWDEBUG("Failed parsing \"%pV\" as valuepair, skipping...",
-					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+					 fr_box_strvalue_len(value->bv_val, value->bv_len));
 				talloc_free(attr_str);
 				continue;
 			}
@@ -112,7 +117,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			if (tmpl_is_data_unresolved(attr->lhs)) {
 			    RWDEBUG("Failed parsing left side of \"%pV\", skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+					fr_box_strvalue_len(value->bv_val, value->bv_len));
 				talloc_free(attr);
 				continue;
 			}
@@ -125,7 +130,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				tmpl_request_ref_list_aprint(NULL, &map_request, tmpl_request(map->lhs));
 
 				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+					fr_box_strvalue_len(value->bv_val, value->bv_len),
 					attr_request, map_request);
 
 				talloc_free(attr_request);
@@ -138,7 +143,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			if ((tmpl_list(attr->lhs) != tmpl_list(map->lhs))) {
 				RWDEBUG("valuepair \"%pV\" has conflicting list qualifier (%s vs %s), skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+					fr_box_strvalue_len(value->bv_val, value->bv_len),
 					tmpl_list_name(tmpl_list(attr->lhs), "<INVALID>"),
 					tmpl_list_name(tmpl_list(map->lhs), "<INVALID>"));
 				goto next_pair;
@@ -146,7 +151,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
-					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
+					fr_box_strvalue_len(value->bv_val, value->bv_len));
 				goto next_pair;
 			}
 
@@ -165,15 +170,15 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 	 *	don't try and be clever about changing operators
 	 *	just use whatever was set in the attribute map.
 	 */
-	for (i = 0; i < self->count; i++) {
-		if (!self->values[i]->bv_len) continue;
+	for (value = &iter->value; value; value = fr_ldap_value_iter_next(&err, iter)) {
+		if (!value->bv_len) continue;
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
-		if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
-					   self->values[i]->bv_len, NULL, true) < 0) {
+		if (fr_pair_value_from_str(vp, value->bv_val,
+					   value->bv_len, NULL, true) < 0) {
 			RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
-				 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
+				 fr_box_strvalue_len(value->bv_val, value->bv_len),
 				 tmpl_attr_tail_da(map->lhs)->name);
 
 			talloc_free(vp);
@@ -189,6 +194,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 	}
 
 finish:
+	if (unlikely(err < 0)) return -1;
+
 	fr_pair_list_append(out, &head);
 
 	return 0;
@@ -200,7 +207,7 @@ finish:
  *
  * @see map_to_vp
  */
-static int fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
+int fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, void *uctx)
 {
 	char const		*dn = uctx;
 	fr_pair_t		*vp;
@@ -374,13 +381,13 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
-	fr_ldap_result_t	result;
 	char const		*name;
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
 	if (check_attr) {
-		struct berval	**values;
-		int		count, i;
+		fr_ldap_value_iter_t	iter;
+		struct berval		*check_value;
+		int			iter_err = 0;
 		tmpl_rules_t const parse_rules = {
 			.attr = {
 				.dict_def = request->local_dict,
@@ -392,11 +399,10 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			.at_runtime = true,
 		};
 
-		values = ldap_get_values_len(handle, entry, check_attr);
-		count = ldap_count_values_len(values);
-
-		for (i = 0; i < count; i++) {
-			char			*value = fr_ldap_berval_to_string(request, values[i]);
+		for (check_value = fr_ldap_value_iter_init(&iter_err, &iter, handle, entry, check_attr);
+		     check_value;
+		     check_value = fr_ldap_value_iter_next(&iter_err, &iter)) {
+			char			*value = fr_ldap_berval_to_string(request, check_value);
 			xlat_exp_head_t		*cond_expr = NULL;
 			fr_value_box_list_t	res;
 
@@ -411,7 +417,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			free:
 				talloc_free(cond_expr);
 				talloc_free(value);
-				ldap_value_free_len(values);
+				fr_ldap_value_iter_done(&iter);
 				return applied;
 			}
 
@@ -435,24 +441,31 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			talloc_free(cond_expr);
 			fr_value_box_list_talloc_free(&res);
 		}
-		ldap_value_free_len(values);
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(iter_err < 0)) {
+			RPERROR("Failed parsing entry");
+			return -1;
+		}
 	}
 
 	while ((map = map_list_next(expanded->maps, map))) {
-		int ret;
+		fr_ldap_value_iter_t	*iter;
+		int			ret, iter_err = 0;
 
 		name = expanded->attrs[total++];
 
-		/*
-		 *	Binary safe
-		 */
-		result.values = ldap_get_values_len(handle, entry, name);
-		if (!result.values) {
+		if (!fr_ldap_value_iter_alloc(&iter_err, &iter, request, handle, entry, name)) {
+			talloc_free(iter);
+			if (unlikely(iter_err < 0)) {
+				RPERROR("Failed parsing entry");
+				return -1;
+			}
+
 			/*
 			 *  dn is different - it's not (normally) an LDAP attribute
 			 *  so requires special handling.
 			 */
-			if (strcmp(name, "dn") == 0) {
+			if (strcmp(name, LDAP_VIRTUAL_DN_ATTR) == 0) {
 				char *dn = ldap_get_dn(handle, entry);
 				fr_ldap_util_normalise_dn(dn, dn);
 				ret = map_to_request(request, map, fr_ldap_map_getdn, dn);
@@ -463,31 +476,22 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			}
 
 			RDEBUG3("Attribute \"%s\" not found in LDAP object", name);
-
-			goto next;
+			continue;
 		}
-
-		/*
-		 *	Find out how many values there are for the
-		 *	attribute and extract all of them.
-		 */
-		result.count = ldap_count_values_len(result.values);
 
 		/*
 		 *	If something bad happened, just skip, this is probably
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		ret = map_to_request(request, map, fr_ldap_map_getvalue, &result);
+		ret = map_to_request(request, map, fr_ldap_map_getvalue, iter);
+		talloc_free(iter);
 		if (ret == -1) return -1;	/* Fail */
 
 		/*
 		 *	How many maps we've processed
 		 */
 		applied++;
-
-	next:
-		if (result.values) ldap_value_free_len(result.values);
 	}
 
 
@@ -496,13 +500,13 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 	 *	a radius list, operator and value.
 	 */
 	if (valuepair_attr) {
-		struct berval	**values;
-		int		count, i;
+		fr_ldap_value_iter_t	iter;
+		struct berval		*vp_value;
+		int			iter_err = 0;
 
-		values = ldap_get_values_len(handle, entry, valuepair_attr);
-		count = ldap_count_values_len(values);
-
-		for (i = 0; i < count; i++) {
+		for (vp_value = fr_ldap_value_iter_init(&iter_err, &iter, handle, entry, valuepair_attr);
+		     vp_value;
+		     vp_value = fr_ldap_value_iter_next(&iter_err, &iter)) {
 			map_t	*attr;
 			char		*value;
 
@@ -517,7 +521,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 				.at_runtime = true,
 			};
 
-			value = fr_ldap_berval_to_string(request, values[i]);
+			value = fr_ldap_berval_to_string(request, vp_value);
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
 					       &parse_rules, &parse_rules) < 0) {
@@ -534,7 +538,11 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			talloc_free(attr);
 			talloc_free(value);
 		}
-		ldap_value_free_len(values);
+		fr_ldap_value_iter_done(&iter);
+		if (unlikely(iter_err < 0)) {
+			RPERROR("Failed parsing entry");
+			return -1;
+		}
 	}
 
 	return applied;

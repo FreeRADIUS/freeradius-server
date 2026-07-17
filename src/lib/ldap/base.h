@@ -363,15 +363,6 @@ typedef struct {
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
 
-/** Contains a collection of values
- *
- */
-typedef struct {
-	struct berval		**values;		//!< libldap struct containing bv_val (char *)
-							///< and length bv_len.
-	int			count;			//!< Number of values.
-} fr_ldap_result_t;
-
 /** Result of expanding the RHS of a set of maps
  *
  * Used to store the array of attributes we'll be querying for.
@@ -869,6 +860,9 @@ char const	*fr_ldap_edir_errstr(int code);
  */
 int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				     map_t const *map, void *uctx);
+
+int		fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				  map_t const *map, void *uctx);
 
 int		fr_ldap_map_verify(map_t *map, void *instance);
 

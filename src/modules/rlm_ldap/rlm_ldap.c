@@ -1523,28 +1523,28 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 		for (map = map_list_head(map_ctx->maps), i = 0;
 		     map != NULL;
 		     map = map_list_next(map_ctx->maps, map), i++) {
-			int			ret;
-			fr_ldap_result_t	attr;
+			fr_ldap_value_iter_t	*iter;
+			int			ret, iter_err = 0;
 
-			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded->attrs[i]);
-			if (!attr.values) {
+			if (!fr_ldap_value_iter_alloc(&iter_err, &iter, request, query->ldap_conn->handle, entry,
+						      expanded->attrs[i])) {
+				talloc_free(iter);
+				if (unlikely(iter_err < 0)) {
+					RPERROR("Failed parsing entry");
+					rcode = RLM_MODULE_FAIL;
+					ldap_memfree(dn);
+					goto finish;
+				}
+
 				/*
 				 *	Many LDAP directories don't expose the DN of
 				 *	the object as an attribute, so we need this
 				 *	hack, to allow the user to retrieve it.
 				 */
 				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded->attrs[i]) == 0) {
-					struct berval value;
-					struct berval *values[2] = { &value, NULL };
-
 					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
-					value.bv_val = dn;
-					value.bv_len = strlen(dn);
 
-					attr.values = values;
-					attr.count = 1;
-
-					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
+					ret = map_to_request(request, map, fr_ldap_map_getdn, dn);
 					if (ret == -1) {
 						rcode = RLM_MODULE_FAIL;
 						ldap_memfree(dn);
@@ -1557,10 +1557,9 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 
 				continue;
 			}
-			attr.count = ldap_count_values_len(attr.values);
 
-			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
-			ldap_value_free_len(attr.values);
+			ret = map_to_request(request, map, fr_ldap_map_getvalue, iter);
+			talloc_free(iter);
 			if (ret == -1) {
 				rcode = RLM_MODULE_FAIL;
 				ldap_memfree(dn);
