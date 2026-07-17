@@ -1,0 +1,5 @@
+Sent Access-Request Id 123 from 127.0.0.1:61714 to 127.0.0.1:12760 length 61 
+        User-Name = "bob"
+        User-Password = "hello"
+Received Access-Accept Id 123 from 127.0.0.1:12760 to 127.0.0.1:61714 via (null) length 38 
+(0) src/tests/radclient/auth_tcp.txt response code 2
