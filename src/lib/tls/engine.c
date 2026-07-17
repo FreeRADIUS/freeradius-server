@@ -359,8 +359,8 @@ int fr_tls_engine_init(ENGINE **e_out,
 	 *	This will allow us to create thread-specific
 	 *	dynamic engines later.
 	 */
-	fr_dlist_talloc_init(our_e->pre_ctrls, fr_tls_engine_ctrl_t, entry);
-	fr_dlist_talloc_init(our_e->post_ctrls, fr_tls_engine_ctrl_t, entry);
+	fr_dlist_talloc_init(&our_e->pre_ctrls, fr_tls_engine_ctrl_t, entry);
+	fr_dlist_talloc_init(&our_e->post_ctrls, fr_tls_engine_ctrl_t, entry);
 
 	if (pre_ctrls) {
 		ctrl = NULL;
@@ -370,7 +370,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 				talloc_free(our_e);
 				return -1;
 			}
-			fr_dlist_insert_tail(our_e->pre_ctrls, n);
+			fr_dlist_insert_tail(&our_e->pre_ctrls, n);
 		}
 	}
 
@@ -382,7 +382,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 				talloc_free(our_e);
 				return -1;
 			}
-			fr_dlist_insert_tail(our_e->post_ctrls, n);
+			fr_dlist_insert_tail(&our_e->post_ctrls, n);
 		}
 	}
 
