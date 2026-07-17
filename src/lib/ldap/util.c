@@ -539,6 +539,136 @@ char const **fr_ldap_berval_to_string_list(TALLOC_CTX *ctx, struct berval **valu
 	return list;
 }
 
+/** Sum the lengths of an attribute's values across every entry of a result
+ *
+ * The values are read in place from the result message, no arrays are
+ * allocated and no values are copied.
+ *
+ * @param[out] num		Number of values found.
+ * @param[out] strings_len	Total length of the values, including a NUL
+ *				byte for each.
+ * @param[in] handle		the result was received on.
+ * @param[in] result		Head of the result message chain.
+ * @param[in] attr		whose values to measure.
+ * @return
+ *	- 0 on success.
+ *	- -1 if an entry could not be parsed.
+ */
+int fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result, char const *attr)
+{
+	LDAPMessage	*entry;
+	BerElement	*ber = NULL;
+	size_t		attr_len = strlen(attr);
+
+	*num = 0;
+	*strings_len = 0;
+
+	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
+		struct berval	dn, name, value;
+		ber_len_t	len, remaining;
+		char		*last;
+		ber_tag_t	tag;
+
+		if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
+		error:
+			fr_strerror_const("Malformed search result entry");
+			ber_free(ber, 0);
+			return -1;
+		}
+
+		for (;;) {
+			if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
+			if (remaining == 0) break;
+
+			if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
+
+			if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
+				if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
+				continue;
+			}
+
+			for (tag = ber_first_element(ber, &len, &last);
+			     tag != LBER_DEFAULT;
+			     tag = ber_next_element(ber, &len, last)) {
+				if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
+
+				*strings_len += value.bv_len + 1;
+				(*num)++;
+			}
+		}
+		ber_free(ber, 0);
+		ber = NULL;
+	}
+
+	return 0;
+}
+
+/** Copy an attribute's values from every entry of a result into a string list
+ *
+ * The list, its pointer array and every string come from a single talloc
+ * pool.  The values are read in place from the result message, the only
+ * copies made are the strings in the list.
+ *
+ * @param[in] ctx	to allocate the list in.
+ * @param[in] handle	the result was received on.
+ * @param[in] result	Head of the result message chain.
+ * @param[in] attr	whose values to copy.
+ * @return
+ *	- List of the attribute's values.  Empty if the result holds no
+ *	  values for the attribute.
+ *	- NULL if an entry could not be parsed.
+ */
+talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result, char const *attr)
+{
+	talloc_str_list_t	*list = NULL;
+	LDAPMessage		*entry;
+	BerElement		*ber = NULL;
+	size_t			attr_len = strlen(attr), num, strings_len;
+
+	if (unlikely(fr_ldap_result_values_len(&num, &strings_len, handle, result, attr) < 0)) return NULL;
+
+	MEM(list = talloc_str_list_alloc(ctx, num, strings_len));
+
+	for (entry = ldap_first_entry(handle, result); entry; entry = ldap_next_entry(handle, entry)) {
+		struct berval	dn, name, value;
+		ber_len_t	len, remaining;
+		char		*last;
+		ber_tag_t	tag;
+
+		if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
+		error:
+			fr_strerror_const("Malformed search result entry");
+			ber_free(ber, 0);
+			talloc_free(list);
+			return NULL;
+		}
+
+		for (;;) {
+			if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
+			if (remaining == 0) break;
+
+			if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
+
+			if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
+				if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
+				continue;
+			}
+
+			for (tag = ber_first_element(ber, &len, &last);
+			     tag != LBER_DEFAULT;
+			     tag = ber_next_element(ber, &len, last)) {
+				if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
+
+				MEM(talloc_str_list_append(list, value.bv_val, value.bv_len));
+			}
+		}
+		ber_free(ber, 0);
+		ber = NULL;
+	}
+
+	return list;
+}
+
 /** Convert a berval to a talloced string
  *
  * The ldap_get_values function is deprecated, and ldap_get_values_len

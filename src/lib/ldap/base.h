@@ -965,6 +965,12 @@ char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
 char const	**fr_ldap_berval_to_string_list(TALLOC_CTX *ctx, struct berval **values, int count, size_t extra);
 
+int		fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result,
+					  char const *attr);
+
+talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result,
+						 char const *attr);
+
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[]);
