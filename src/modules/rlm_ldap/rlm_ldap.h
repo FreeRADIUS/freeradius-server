@@ -60,6 +60,10 @@ typedef struct {
 								///< expected.  Controls whether warnings are issued.
 		bool		expect_password_is_set;		//!< Whether an expect password value was provided.
 
+		char const	*profile_attr;			//!< Attribute in the user object naming profiles to apply.
+		char const	*profile_attr_suspend;		//!< Attribute in the user object naming profiles to apply
+								///< when the user's account is suspended.
+
 		char const	*dn_attr_str;			//!< Sets the attribute we use when creating and retrieving
 								//!< cached group memberships.
 
@@ -107,6 +111,10 @@ typedef struct {
 								///< from a user object.
 
 		bool		skip_on_suspend;		//!< Don't process groups if the user is suspended.
+
+		char const	*profile_attr;			//!< Attribute in group objects naming profiles to apply.
+		char const	*profile_attr_suspend;		//!< Attribute in group objects naming profiles to apply
+								///< when the user's account is suspended.
 	} group;
 
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
@@ -123,10 +131,6 @@ typedef struct {
 		int		obj_scope;			//!< Search scope.
 		ldap_profile_search_mode_t search_mode;		//!< Whether profiles are retrieved one at a time or
 								///< with a single search.
-		char const	*attr;				//!< Attribute that identifies profiles to apply. May appear
-								//!< in userobj or groupobj.
-		char const	*attr_suspend;			//!< Attribute that identifies profiles to apply when the user's
-								///< account is suspended. May appear in userobj or groupobj.
 		char const	*obj_sort_by;			//!< List of attributes to sort profiles by
 		LDAPControl	*obj_sort_ctrl;			//!< Server side sort control
 		char const	*check_attr;			//!< LDAP attribute containing check conditions to determine if
@@ -193,6 +197,7 @@ typedef struct {
 typedef enum {
 	LDAP_AUTZ_FIND = 0,
 	LDAP_AUTZ_GROUP,
+	LDAP_AUTZ_GROUP_PROFILES,
 	LDAP_AUTZ_POST_GROUP,
 #ifdef WITH_EDIR
 	LDAP_AUTZ_EDIR_BIND,
@@ -224,13 +229,38 @@ typedef struct {
 	ldap_autz_call_env_t	*call_env;
 	LDAPMessage		*entry;
 	ldap_autz_status_t	status;
-	char const		**profile_dn_list;		//!< List of profile DNs to apply, default profile first,
-							///< then profiles from the user object. NULL terminated.
+	char const		**profile_dn_list;	//!< List of profile DNs to apply, default profile first,
+							///< then group profiles, then profiles from the user
+							///< object.  NULL terminated.
+	talloc_str_list_t	*group_dn_list;		//!< DNs of the group objects the user is a member of.
+	talloc_str_list_t	*group_profile_dn_list;	//!< Profile DNs found in the user's group objects.
 	int			profiles_applied;	//!< Number of profile maps applied.
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
 	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
 } ldap_autz_ctx_t;
+
+/** Return the profile attribute matching the user's access state
+ *
+ * User and group objects have their own profile attribute pairs, the
+ * caller passes the pair for the object type being processed.
+ */
+static inline char const *rlm_ldap_profile_attr_select(char const *attr, char const *attr_suspend,
+						       ldap_access_state_t access_state)
+{
+	switch (access_state) {
+	case LDAP_ACCESS_ALLOWED:
+		return attr;
+
+	case LDAP_ACCESS_SUSPENDED:
+		return attr_suspend;
+
+	case LDAP_ACCESS_DISALLOWED:
+		break;
+	}
+
+	return NULL;
+}
 
 /** State list for xlat evaluation of LDAP group membership
  */
@@ -300,6 +330,8 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 					   char const *attr);
 
 unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
+
+unlang_action_t rlm_ldap_group_profiles(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
 unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx);

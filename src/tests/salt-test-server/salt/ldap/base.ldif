@@ -66,6 +66,25 @@ objectClass: groupOfNames
 objectClass: top
 member: uid=bill,ou=people,dc=example,dc=com
 
+# Group carrying profile DNs, order1 is also on the profilegroup user
+# object to exercise deduplication.
+dn: cn=profilegroup1,ou=groups,dc=example,dc=com
+cn: profilegroup1
+objectClass: groupOfNames
+objectClass: top
+objectClass: radiusprofile
+member: uid=profilegroup,ou=people,dc=example,dc=com
+radiusProfileDN: cn=order3,ou=profiles,dc=example,dc=com
+radiusProfileDN: cn=order1,ou=profiles,dc=example,dc=com
+
+# Group without profile DNs, must be excluded by the profile presence
+# assertion in the group profile search.
+dn: cn=profilegroup2,ou=groups,dc=example,dc=com
+cn: profilegroup2
+objectClass: groupOfNames
+objectClass: top
+member: uid=profilegroup,ou=people,dc=example,dc=com
+
 dn: ou=profiles,dc=example,dc=com
 objectClass: organizationalUnit
 ou: profiles
@@ -373,6 +392,23 @@ gidNumber: 108
 homeDirectory: /home/profilenone
 dialupAccess: enabled
 radiusProfileDN: cn=missing,ou=profiles,dc=example,dc=com
+
+# User whose groups carry profiles, for the group profile paths.
+dn: uid=profilegroup,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: profilegroup
+sn: Group
+cn: Profile Group
+displayName: Profile Group
+userPassword: password
+uidNumber: 110
+gidNumber: 110
+homeDirectory: /home/profilegroup
+dialupAccess: enabled
+radiusProfileDN: cn=order1,ou=profiles,dc=example,dc=com
 
 dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit

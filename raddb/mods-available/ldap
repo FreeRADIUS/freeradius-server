@@ -432,6 +432,24 @@ ldap {
 		#  authentication.
 		#
 #		dn_attribute = 'LDAP-UserDN'
+
+		#
+		#  profile_attribute:: The attribute in the user object
+		#  containing profile DNs to apply in addition to the profile
+		#  `default` below.
+		#
+		#  These are retrieved from the user object, at the same time as
+		#  the attributes from the update section, and are applied if
+		#  authorization is successful.
+		#
+#		profile_attribute = 'radiusProfileDn'
+
+		#
+		#  profile_attribute_suspend:: The attribute in the user object
+		#  containing profile DNs to apply when the user's account is in
+		#  the suspended state.
+		#
+#		profile_attribute_suspend = 'radiusProfileSuspendedDn'
 	}
 
 	#
@@ -557,6 +575,29 @@ ldap {
 		#  Default 'yes'.
 		#
 		skip_on_suspend = 'yes'
+
+		#
+		#  profile_attribute:: The attribute in group objects containing
+		#  profile DNs to apply for members of the group.
+		#
+		#  The profile DNs are gathered with one additional search
+		#  covering all the user's groups.  Groups without the attribute
+		#  are filtered out by the server, so being a member of many
+		#  unrelated groups does not slow authorization down.
+		#
+		#  Profiles from groups apply between the profile `default` and
+		#  the profiles from the user object (`seq`), or sorted with
+		#  everything else (`bulk`).  A profile referenced more than once
+		#  applies once, at its first position.
+		#
+#		profile_attribute = 'radiusProfileDn'
+
+		#
+		#  profile_attribute_suspend:: The attribute in group objects
+		#  containing profile DNs to apply when the user's account is in
+		#  the suspended state.
+		#
+#		profile_attribute_suspend = 'radiusProfileSuspendedDn'
 	}
 
 	#
@@ -589,8 +630,9 @@ ldap {
 		#  | Mode   | Description
 		#  | seq    | One search per profile DN.  Profiles are applied in
 		#             the order they appear: the default profile first,
-		#             then the profiles listed on the user object.  With
-		#             a non-base `scope`, each search also retrieves the
+		#             then profiles from the user's groups, then the
+		#             profiles listed in the user object.  With a
+		#             non-base `scope`, each search also retrieves the
 		#             profile's children (nested profiles).
 		#  | bulk   | A single search retrieves every profile, including
 		#             the default.  Profiles are applied in the order the
@@ -629,27 +671,6 @@ ldap {
 		#  to `control.User-Profile`.
 		#
 #		default = 'cn=radprofile,dc=example,dc=org'
-
-		#
-		#  attribute:: The LDAP attribute containing profile DNs to apply in
-		#  addition to the default profile above.
-		#
-		#  These are retrieved from the user object, at the same time as the
-		#  attributes from the update section, are are applied if
-		#  authorization is successful.
-		#
-#		attribute = 'radiusProfileDn'
-
-		#
-		#  attribute_suspend:: The LDAP attribute containing profile DNs to
-		#  apply in addition to the default profile above, when the user
-		#  account is in the suspended state
-		#
-		#  These are retrieved from the user object, at the same time as the
-		#  attributes from the update section, are are applied if
-		#  authorization is successful.
-		#
-#		attribute_suspend = 'radiusProfileDn'
 
 		#
 		#  sort_by:: Server side result sorting.

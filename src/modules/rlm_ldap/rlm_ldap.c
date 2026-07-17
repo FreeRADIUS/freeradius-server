@@ -103,8 +103,8 @@ static conf_parser_t profile_config[] = {
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("search_mode", rlm_ldap_t, profile.search_mode), .dflt = "auto",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
-	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile.attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
+	{ FR_CONF_DEPRECATED("attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_DEPRECATED("attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
 	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile.obj_sort_by) },
 	{ FR_CONF_OFFSET("fallthrough_attribute", rlm_ldap_t, profile.fallthrough_attr) },
@@ -126,6 +126,8 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
 	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, user.dn_attr_str), .dflt = "LDAP-UserDN" },
 	{ FR_CONF_OFFSET_IS_SET("expect_password", FR_TYPE_BOOL, 0, rlm_ldap_t, user.expect_password) },
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -146,6 +148,8 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
 	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, group.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, group.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1762,6 +1766,29 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	return fr_ldap_bind_auth_async(p_result, request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
+/** Remove duplicate DNs from a NULL terminated list, keeping the first occurrence
+ *
+ * A profile referenced by both a group object and the user object must
+ * only be applied once.
+ */
+static void profile_dn_list_dedupe(char const **dn_list)
+{
+	int i, j, n;
+
+	for (n = 0; dn_list[n]; n++);
+
+	for (i = 1; i < n; i++) {
+		for (j = 0; j < i; j++) {
+			if (strcasecmp(dn_list[i], dn_list[j]) != 0) continue;
+
+			memmove(&dn_list[i], &dn_list[i + 1], (n - i) * sizeof(dn_list[0]));
+			n--;
+			i--;
+			break;
+		}
+	}
+}
+
 #define REPEAT_MOD_AUTHORIZE_RESUME \
 	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) do { \
 		p_result->rcode = RLM_MODULE_FAIL; \
@@ -1839,9 +1866,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 
 		/*
-		 *	Check if we need to cache group memberships
+		 *	Check if we need to cache group memberships,
+		 *	or record group DNs for the group profile search.
 		 */
-		if ((inst->group.cacheable_dn || inst->group.cacheable_name) && (inst->group.userobj_membership_attr)) {
+		if ((inst->group.cacheable_dn || inst->group.cacheable_name ||
+		     rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						  autz_ctx->access_state)) &&
+		    (inst->group.userobj_membership_attr)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_userobj(p_result, request, autz_ctx,
 						       inst->group.userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
@@ -1853,9 +1884,24 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_GROUP:
-		if (inst->group.cacheable_dn || inst->group.cacheable_name) {
+		if (inst->group.cacheable_dn || inst->group.cacheable_name ||
+		    rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_groupobj(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				autz_ctx->status = LDAP_AUTZ_GROUP_PROFILES;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+			if (p_result->rcode != RLM_MODULE_OK) goto finish;
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_GROUP_PROFILES:
+		if (rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state) &&
+		    autz_ctx->group_dn_list && (talloc_str_list_num(autz_ctx->group_dn_list) > 0)) {
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (rlm_ldap_group_profiles(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -1940,26 +1986,17 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	case LDAP_AUTZ_PROFILES:
 	{
 		struct berval	**values = NULL;
-		char const	*profile_attr = NULL;
+		char const	*profile_attr;
+		char const	**dn_p;
 		bool		have_default = !fr_box_is_null(&call_env->default_profile);
-		int		count;
+		int		count, group_count = 0, i;
 
 		/*
-		 *	Which set of user profiles to apply depends on the
-		 *	user's access state.  The default profile always applies.
+		 *	Which set of profiles to apply depends on the user's
+		 *	access state.  The default profile always applies.
 		 */
-		switch (autz_ctx->access_state) {
-		case LDAP_ACCESS_ALLOWED:
-			profile_attr = inst->profile.attr;
-			break;
-
-		case LDAP_ACCESS_SUSPENDED:
-			profile_attr = inst->profile.attr_suspend;
-			break;
-
-		case LDAP_ACCESS_DISALLOWED:
-			break;
-		}
+		profile_attr = rlm_ldap_profile_attr_select(inst->user.profile_attr, inst->user.profile_attr_suspend,
+							    autz_ctx->access_state);
 		if (profile_attr) {
 			values = ldap_get_values_len(handle, autz_ctx->entry, profile_attr);
 			count = ldap_count_values_len(values);
@@ -1972,20 +2009,31 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			count = 0;
 		}
 
-		if (!have_default && (count == 0)) break;
+		if (autz_ctx->group_profile_dn_list) {
+			group_count = (int)talloc_str_list_num(autz_ctx->group_profile_dn_list);
+			RDEBUG2("Processing %i profile(s) found in group objects", group_count);
+		}
+
+		if (!have_default && (group_count == 0) && (count == 0)) break;
 
 		/*
 		 *	Build the list of profile DNs to apply, the default
-		 *	profile first, then the profiles from the user object.
+		 *	profile first, then the profiles from the group
+		 *	objects, then the profiles from the user object.
 		 */
-		autz_ctx->profile_dn_list = fr_ldap_berval_to_string_list(autz_ctx, values, count, have_default ? 1 : 0);
-		if (have_default) autz_ctx->profile_dn_list[0] = call_env->default_profile.vb_strvalue;
+		autz_ctx->profile_dn_list = fr_ldap_berval_to_string_list(autz_ctx, values, count,
+									  (have_default ? 1 : 0) + group_count);
+		dn_p = autz_ctx->profile_dn_list;
+		if (have_default) *dn_p++ = call_env->default_profile.vb_strvalue;
+		for (i = 0; i < group_count; i++) *dn_p++ = autz_ctx->group_profile_dn_list->strings[i];
 		if (values) ldap_value_free_len(values);
+
+		profile_dn_list_dedupe(autz_ctx->profile_dn_list);
 
 		if (!autz_ctx->profile_dn_list[0]) break;
 
 		if (RDEBUG_ENABLED3) {
-			for (char const **dn_p = autz_ctx->profile_dn_list; *dn_p; dn_p++) {
+			for (dn_p = autz_ctx->profile_dn_list; *dn_p; dn_p++) {
 				RDEBUG3("Will evaluate profile with DN \"%s\"", *dn_p);
 			}
 		}
@@ -2077,19 +2125,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		expanded->attrs[expanded->count++] = inst->user.obj_access_attr;
 	}
 
-	if (inst->group.userobj_membership_attr && (inst->group.cacheable_dn || inst->group.cacheable_name)) {
+	if (inst->group.userobj_membership_attr &&
+	    (inst->group.cacheable_dn || inst->group.cacheable_name ||
+	     inst->group.profile_attr || inst->group.profile_attr_suspend)) {
 		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->group.userobj_membership_attr;
 	}
 
-	if (inst->profile.attr) {
+	if (inst->user.profile_attr) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr;
 	}
 
-	if (inst->profile.attr_suspend) {
+	if (inst->user.profile_attr_suspend) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr_suspend;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr_suspend;
 	}
 	expanded->attrs[expanded->count] = NULL;
 

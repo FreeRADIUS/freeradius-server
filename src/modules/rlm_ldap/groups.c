@@ -449,6 +449,9 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	char				**dn_p;
 	fr_pair_t			*vp;
 	int				is_dn, i, count, name2dn = 0, dn2name = 0;
+	bool				want_profiles = rlm_ldap_profile_attr_select(inst->group.profile_attr,
+										     inst->group.profile_attr_suspend,
+										     autz_ctx->access_state) != NULL;
 
 	fr_assert(entry);
 	fr_assert(attr);
@@ -463,6 +466,21 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 		RETURN_UNLANG_OK;
 	}
 	count = ldap_count_values_len(values);
+
+	/*
+	 *	Extended once for the whole batch, only DN valued
+	 *	memberships are appended.
+	 */
+	if (want_profiles) {
+		if (!autz_ctx->group_dn_list) {
+			size_t strings_len = 0;
+
+			for (i = 0; i < count; i++) strings_len += values[i]->bv_len + 1;
+			MEM(autz_ctx->group_dn_list = talloc_str_list_alloc(autz_ctx, (size_t)count, strings_len));
+		} else {
+			MEM(talloc_str_list_realloc(autz_ctx->group_dn_list, (size_t)count) == 0);
+		}
+	}
 
 	/*
 	 *	Set up context for managing group membership attribute resolution.
@@ -489,6 +507,15 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 
 	for (i = 0; (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
+
+		/*
+		 *	Record group object DNs for the later profile search.
+		 *	Name values are only resolved to DNs for caching, so
+		 *	profiles on groups referenced by name are not found.
+		 */
+		if (want_profiles && is_dn) {
+			MEM(talloc_str_list_append(autz_ctx->group_dn_list, values[i]->bv_val, values[i]->bv_len));
+		}
 
 		if (inst->group.cacheable_dn) {
 			/*
@@ -612,6 +639,7 @@ static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_sign
 static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
+	ldap_autz_ctx_t			*autz_ctx = talloc_get_type_abort(group_ctx->uctx, ldap_autz_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 	fr_ldap_query_t			*query = group_ctx->query;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
@@ -619,6 +647,9 @@ static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result,
 	int				ldap_errno;
 	char				*dn;
 	fr_pair_t			*vp;
+	bool				want_profiles = rlm_ldap_profile_attr_select(inst->group.profile_attr,
+										     inst->group.profile_attr_suspend,
+										     autz_ctx->access_state) != NULL;
 
 	switch (query->ret) {
 	case LDAP_SUCCESS:
@@ -643,9 +674,19 @@ static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result,
 		goto finish;
 	}
 
+	if (want_profiles) {
+		size_t entry_cnt = (size_t)ldap_count_entries(query->ldap_conn->handle, query->result);
+
+		if (!autz_ctx->group_dn_list) {
+			MEM(autz_ctx->group_dn_list = talloc_str_list_alloc(autz_ctx, entry_cnt, 0));
+		} else {
+			MEM(talloc_str_list_realloc(autz_ctx->group_dn_list, entry_cnt) == 0);
+		}
+	}
+
 	RDEBUG2("Adding cacheable group object memberships");
 	do {
-		if (inst->group.cacheable_dn) {
+		if (inst->group.cacheable_dn || want_profiles) {
 			dn = ldap_get_dn(query->ldap_conn->handle, entry);
 			if (!dn) {
 				ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
@@ -655,12 +696,18 @@ static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result,
 			}
 			fr_ldap_util_normalise_dn(dn, dn);
 
-			MEM(pair_append_control(&vp, inst->group.cache_da) == 0);
-			fr_pair_value_strdup(vp, dn, false);
+			if (want_profiles) {
+				MEM(talloc_str_list_append(autz_ctx->group_dn_list, dn, strlen(dn)));
+			}
 
-			RINDENT();
-			RDEBUG2("control.%pP", vp);
-			REXDENT();
+			if (inst->group.cacheable_dn) {
+				MEM(pair_append_control(&vp, inst->group.cache_da) == 0);
+				fr_pair_value_strdup(vp, dn, false);
+
+				RINDENT();
+				RDEBUG2("control.%pP", vp);
+				REXDENT();
+			}
 			ldap_memfree(dn);
 		}
 
@@ -713,6 +760,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t
 	group_ctx->inst = inst;
 	group_ctx->ttrunk = autz_ctx->ttrunk;
 	group_ctx->base_dn = &autz_ctx->call_env->group_base;
+	group_ctx->uctx = autz_ctx;
 	fr_value_box_list_init(&group_ctx->expanded_filter);
 
 	if (unlang_function_push_with_result(p_result,
@@ -730,6 +778,118 @@ unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t
 	if (unlang_tmpl_push(group_ctx, NULL, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Context used when searching for profiles in the user's group objects
+ *
+ */
+typedef struct {
+	ldap_autz_ctx_t		*autz_ctx;		//!< Authorization context profile DNs are harvested into.
+	char const		*profile_attr;		//!< Attribute holding profile DNs.
+	char const		*filter;		//!< Filter matching profile bearing group objects.
+	char const		*attrs[2];		//!< For retrieving the profile attribute.
+	fr_ldap_query_t		*query;			//!< Current query retrieving the group objects.
+} ldap_group_profile_ctx_t;
+
+/** Harvest profile DNs from the group objects returned by the profile search
+ *
+ * @param[out] p_result		Result of processing the search response.
+ * @param[in] request		Current request.
+ * @param[in] uctx		Group profile context.
+ * @return One of the RLM_MODULE_* values.
+ */
+static unlang_action_t ldap_group_profile_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+{
+	ldap_group_profile_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_profile_ctx_t);
+	ldap_autz_ctx_t			*autz_ctx = group_ctx->autz_ctx;
+	fr_ldap_query_t			*query = group_ctx->query;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+
+	switch (query->ret) {
+	case LDAP_SUCCESS:
+		break;
+
+	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
+		RDEBUG2("No profiles found in group objects");
+		goto finish;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	fr_assert(!autz_ctx->group_profile_dn_list);
+	autz_ctx->group_profile_dn_list = fr_ldap_str_list_afrom_result(autz_ctx, query->ldap_conn->handle,
+									query->result, group_ctx->profile_attr);
+	if (unlikely(!autz_ctx->group_profile_dn_list)) {
+		RPERROR("Failed parsing profiles from group objects");
+		rcode = RLM_MODULE_FAIL;
+	}
+
+finish:
+	talloc_free(group_ctx);
+
+	RETURN_UNLANG_RCODE(rcode);
+}
+
+/** Search for profile DNs in the group objects the user is a member of
+ *
+ * Retrieves only the groups which carry the profile attribute, using a
+ * single search matching the collected group DNs, with the profile
+ * attribute presence asserted in the filter.
+ *
+ * @param[out] p_result		Result of submitting the search.
+ * @param[in] request		Current request.
+ * @param[in] autz_ctx		Authorization context, provides the group DNs
+ *				and receives the profile DNs.
+ * @return One of the RLM_MODULE_* values.
+ */
+unlang_action_t rlm_ldap_group_profiles(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx)
+{
+	rlm_ldap_t const		*inst = autz_ctx->inst;
+	ldap_group_profile_ctx_t	*group_ctx;
+	char const			*profile_attr = rlm_ldap_profile_attr_select(inst->group.profile_attr,
+										     inst->group.profile_attr_suspend,
+										     autz_ctx->access_state);
+	char const			*dn_attr;
+	char const			*base;
+
+	fr_assert(profile_attr);
+	fr_assert(autz_ctx->group_dn_list);
+
+	base = fr_ldap_directory_common_base_find(autz_ctx->ttrunk->directory, autz_ctx->group_dn_list->strings);
+	if (!base) {
+		RWDEBUG("Skipping group profiles, no naming context contains every group DN");
+		RETURN_UNLANG_OK;
+	}
+
+	dn_attr = inst->dn_attr;
+	if (!dn_attr) dn_attr = autz_ctx->ttrunk->directory->dn_attr;
+
+	MEM(group_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_group_profile_ctx_t));
+	group_ctx->autz_ctx = autz_ctx;
+	group_ctx->profile_attr = profile_attr;
+	group_ctx->attrs[0] = profile_attr;
+	group_ctx->filter = fr_ldap_filter_afrom_dn_list(group_ctx, dn_attr,
+							 talloc_asprintf(group_ctx, "(%s=*)", profile_attr),
+							 autz_ctx->group_dn_list->strings);
+
+	/*
+	 *	No signal callback, the frame pushed by fr_ldap_trunk_search
+	 *	owns cancellation of the query.
+	 */
+	if (unlang_function_push_with_result(p_result, request,
+					     NULL,
+					     ldap_group_profile_resume,
+					     NULL, 0, UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
+		talloc_free(group_ctx);
+		RETURN_UNLANG_FAIL;
+	}
+
+	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, autz_ctx->ttrunk,
+				    base, LDAP_SCOPE_SUB, group_ctx->filter, group_ctx->attrs, NULL, NULL);
 }
 
 /** Process the results of a group object lookup.
