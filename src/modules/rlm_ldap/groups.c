@@ -276,7 +276,7 @@ static unlang_action_t ldap_group_dn2name_resume(unlang_result_t *p_result, requ
 	fr_ldap_query_t			*query = talloc_get_type_abort(group_ctx->query, fr_ldap_query_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
 	LDAPMessage			*entry;
-	struct berval			**values = NULL;
+	struct berval			value;
 	int				ldap_errno;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
 	fr_pair_t			*vp;
@@ -304,15 +304,14 @@ static unlang_action_t ldap_group_dn2name_resume(unlang_result_t *p_result, requ
 		goto finish;
 	}
 
-	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->group.obj_name_attr);
-	if (!values) {
+	if (fr_ldap_entry_value_find(&value, query->ldap_conn->handle, entry, inst->group.obj_name_attr) <= 0) {
 		REDEBUG("No %s attributes found in object", inst->group.obj_name_attr);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
 	MEM(vp = fr_pair_afrom_da(group_ctx->list_ctx, inst->group.cache_da));
-	fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
+	fr_pair_value_bstrndup(vp, value.bv_val, value.bv_len, true);
 	fr_pair_append(&group_ctx->groups, vp);
 	RDEBUG2("Group DN \"%s\" resolves to name \"%pV\"", *group_ctx->dn, &vp->data);
 
@@ -323,7 +322,6 @@ finish:
 	 */
 	group_ctx->dn++;
 
-	if (values) ldap_value_free_len(values);
 	talloc_free(query);
 
 	RETURN_UNLANG_RCODE(rcode);
@@ -712,19 +710,17 @@ static unlang_action_t ldap_cacheable_groupobj_resume(unlang_result_t *p_result,
 		}
 
 		if (inst->group.cacheable_name) {
-			struct berval **values;
+			struct berval value;
 
-			values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->group.obj_name_attr);
-			if (!values) continue;
+			if (fr_ldap_entry_value_find(&value, query->ldap_conn->handle, entry,
+						     inst->group.obj_name_attr) <= 0) continue;
 
 			MEM(pair_append_control(&vp, inst->group.cache_da) == 0);
-			fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
+			fr_pair_value_bstrndup(vp, value.bv_val, value.bv_len, true);
 
 			RINDENT();
 			RDEBUG2("control.%pP", vp);
 			REXDENT();
-
-			ldap_value_free_len(values);
 		}
 	} while ((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
@@ -1116,7 +1112,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 	 */
 	if (group_ctx->query) {
 		char		*buff;
-		struct berval	**values = NULL;
+		struct berval	name_value;
 
 		switch (group_ctx->query->ret) {
 		case LDAP_RESULT_SUCCESS:
@@ -1139,16 +1135,15 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 			RETURN_UNLANG_INVALID;
 		}
 
-		values = ldap_get_values_len(group_ctx->query->ldap_conn->handle, entry, inst->group.obj_name_attr);
-		if (!values) {
+		if (fr_ldap_entry_value_find(&name_value, group_ctx->query->ldap_conn->handle, entry,
+					     inst->group.obj_name_attr) <= 0) {
 			REDEBUG("No %s attributes found in object", inst->group.obj_name_attr);
 			RETURN_UNLANG_INVALID;
 		}
 
-		MEM(buff = talloc_bstrndup(group_ctx, values[0]->bv_val, values[0]->bv_len));
+		MEM(buff = talloc_bstrndup(group_ctx, name_value.bv_val, name_value.bv_len));
 		RDEBUG2("Group DN \"%pV\" resolves to name \"%pV\"", fr_box_strvalue_buffer(group_ctx->lookup_dn),
-			fr_box_strvalue_len(values[0]->bv_val, values[0]->bv_len));
-		ldap_value_free_len(values);
+			fr_box_strvalue_len(name_value.bv_val, name_value.bv_len));
 
 		if (group_ctx->resolving_value) {
 			value_name = buff;

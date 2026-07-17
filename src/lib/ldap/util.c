@@ -669,6 +669,65 @@ talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, 
 	return list;
 }
 
+/** Find an attribute in an entry, returning its first value referenced in place
+ *
+ * The value points into the result message the entry belongs to, nothing
+ * is allocated and nothing needs freeing.  The value remains valid until
+ * the result message is freed with ldap_msgfree.
+ *
+ * @param[out] out	First value of the attribute.  Untouched when the
+ *			attribute is not found.
+ * @param[in] handle	the entry was received on.
+ * @param[in] entry	to search.
+ * @param[in] attr	to find.
+ * @return
+ *	- The number of values the attribute has.
+ *	- 0 if the entry does not contain the attribute.
+ *	- -1 if the entry could not be parsed.
+ */
+int fr_ldap_entry_value_find(struct berval *out, LDAP *handle, LDAPMessage *entry, char const *attr)
+{
+	BerElement	*ber = NULL;
+	struct berval	dn, name, value;
+	size_t		attr_len = strlen(attr);
+	ber_len_t	len, remaining;
+	char		*last;
+	ber_tag_t	tag;
+	int		num = 0;
+
+	if (ldap_get_dn_ber(handle, entry, &ber, &dn) != LDAP_SUCCESS) {
+	error:
+		fr_strerror_const("Malformed search result entry");
+		ber_free(ber, 0);
+		return -1;
+	}
+
+	for (;;) {
+		if (ber_get_option(ber, LBER_OPT_BER_REMAINING_BYTES, &remaining) != LBER_OPT_SUCCESS) goto error;
+		if (remaining == 0) break;
+
+		if (ber_scanf(ber, "{m" /*}*/, &name) == LBER_ERROR) goto error;
+
+		if ((name.bv_len != attr_len) || (strncasecmp(name.bv_val, attr, attr_len) != 0)) {
+			if (ber_scanf(ber, "x") == LBER_ERROR) goto error;
+			continue;
+		}
+
+		for (tag = ber_first_element(ber, &len, &last);
+		     tag != LBER_DEFAULT;
+		     tag = ber_next_element(ber, &len, last)) {
+			if (ber_scanf(ber, "m", &value) == LBER_ERROR) goto error;
+
+			if (num == 0) *out = value;
+			num++;
+		}
+		break;
+	}
+	ber_free(ber, 0);
+
+	return num;
+}
+
 /** Convert a berval to a talloced string
  *
  * The ldap_get_values function is deprecated, and ldap_get_values_len

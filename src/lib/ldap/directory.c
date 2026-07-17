@@ -71,6 +71,7 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	int			entry_cnt, i, num, ldap_errno;
 	LDAPMessage		*entry;
 	struct berval		**values = NULL;
+	struct berval		value;
 
 	/*
 	 *	Connections spawned concurrently may each run discovery
@@ -93,20 +94,14 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	}
 	directory->discovered = true;
 
-	values = ldap_get_values_len(handle, entry, "vendorname");
-	if (values) {
-		directory->vendor_str = fr_ldap_berval_to_string(directory, values[0]);
+	if (fr_ldap_entry_value_find(&value, handle, entry, "vendorname") > 0) {
+		directory->vendor_str = fr_ldap_berval_to_string(directory, &value);
 		INFO("Directory vendor: %s", directory->vendor_str);
-
-		ldap_value_free_len(values);
 	}
 
-	values = ldap_get_values_len(handle, entry, "vendorversion");
-	if (values) {
-		directory->version_str = fr_ldap_berval_to_string(directory, values[0]);
+	if (fr_ldap_entry_value_find(&value, handle, entry, "vendorversion") > 0) {
+		directory->version_str = fr_ldap_berval_to_string(directory, &value);
 		INFO("Directory version: %s", directory->version_str);
-
-		ldap_value_free_len(values);
 	}
 
 	if (directory->vendor_str) {
@@ -158,10 +153,8 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	 *	isGlobalCatalogReady is only present on ActiveDirectory
 	 *	instances. AD doesn't provide vendorname or vendorversion
 	 */
-	values = ldap_get_values_len(handle, entry, "isGlobalCatalogReady");
-	if (values) {
+	if (fr_ldap_entry_value_find(&value, handle, entry, "isGlobalCatalogReady") > 0) {
 		directory->type = FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY;
-		ldap_value_free_len(values);
 		goto found;
 	}
 
@@ -184,14 +177,12 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	/*
 	 *	Oracle Virtual Directory and Oracle Internet Directory
 	 */
-	values = ldap_get_values_len(handle, entry, "orcldirectoryversion");
-	if (values) {
-		if (memmem(values[0]->bv_val, values[0]->bv_len, "OID", 3)) {
+	if (fr_ldap_entry_value_find(&value, handle, entry, "orcldirectoryversion") > 0) {
+		if (memmem(value.bv_val, value.bv_len, "OID", 3)) {
 			directory->type = FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
-		} else if (memmem(values[0]->bv_val, values[0]->bv_len, "OVD", 3)) {
+		} else if (memmem(value.bv_val, value.bv_len, "OVD", 3)) {
 			directory->type = FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY;
 		}
-		ldap_value_free_len(values);
 	}
 
 found:

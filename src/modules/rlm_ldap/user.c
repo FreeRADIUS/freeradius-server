@@ -211,44 +211,38 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
  */
 ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry)
 {
-	ldap_access_state_t ret = LDAP_ACCESS_ALLOWED;
-	struct berval **values = NULL;
+	struct berval value;
 
-	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, inst->user.obj_access_attr);
-	if (values) {
+	if (fr_ldap_entry_value_find(&value, fr_ldap_handle_thread_local(), entry,
+				     inst->user.obj_access_attr) > 0) {
 		size_t negate_value_len = talloc_strlen(inst->user.access_value_negate);
 		if (inst->user.access_positive) {
-			if ((values[0]->bv_len >= negate_value_len) &&
-			    (strncasecmp(values[0]->bv_val, inst->user.access_value_negate, negate_value_len) == 0)) {
+			if ((value.bv_len >= negate_value_len) &&
+			    (strncasecmp(value.bv_val, inst->user.access_value_negate, negate_value_len) == 0)) {
 				REDEBUG("\"%s\" attribute exists but is set to '%s' - user locked out",
 				        inst->user.obj_access_attr, inst->user.access_value_negate);
-				ret = LDAP_ACCESS_DISALLOWED;
-				goto done;
+				return LDAP_ACCESS_DISALLOWED;
 			}
 			/* RLM_MODULE_OK set above... */
-		} else if ((values[0]->bv_len < negate_value_len) ||
-		           (strncasecmp(values[0]->bv_val, inst->user.access_value_negate, negate_value_len) != 0)) {
+		} else if ((value.bv_len < negate_value_len) ||
+		           (strncasecmp(value.bv_val, inst->user.access_value_negate, negate_value_len) != 0)) {
 			REDEBUG("\"%s\" attribute exists - user locked out", inst->user.obj_access_attr);
-			ret = LDAP_ACCESS_DISALLOWED;
-			goto done;
+			return LDAP_ACCESS_DISALLOWED;
 		}
 		{
 			size_t suspend_value_len = talloc_strlen(inst->user.access_value_suspend);
-			if ((values[0]->bv_len == suspend_value_len) &&
-			    (strncasecmp(values[0]->bv_val, inst->user.access_value_suspend, suspend_value_len) == 0)) {
+			if ((value.bv_len == suspend_value_len) &&
+			    (strncasecmp(value.bv_val, inst->user.access_value_suspend, suspend_value_len) == 0)) {
 				RIDEBUG("\"%s\" attribute exists and indicates suspension", inst->user.obj_access_attr);
-				ret = LDAP_ACCESS_SUSPENDED;
-				goto done;
+				return LDAP_ACCESS_SUSPENDED;
 			}
 		}
-	done:
-		ldap_value_free_len(values);
 	} else if (inst->user.access_positive) {
 		REDEBUG("No \"%s\" attribute - user locked out", inst->user.obj_access_attr);
-		ret = LDAP_ACCESS_DISALLOWED;
+		return LDAP_ACCESS_DISALLOWED;
 	}
 
-	return ret;
+	return LDAP_ACCESS_ALLOWED;
 }
 
 /** Verify we got a password from the search

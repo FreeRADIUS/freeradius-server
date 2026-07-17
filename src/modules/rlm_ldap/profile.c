@@ -78,7 +78,7 @@ static void ldap_profile_entry_map(bool *fallthrough, request_t *request, ldap_p
 	}
 
 	if (profile_ctx->inst->profile.fallthrough_attr) {
-		struct berval		**values;
+		struct berval		value_bv;
 		int			count;
 		char			*value;
 		xlat_exp_head_t		*cond_expr = NULL;
@@ -95,14 +95,14 @@ static void ldap_profile_entry_map(bool *fallthrough, request_t *request, ldap_p
 			.at_runtime = true,
 		};
 
-		values = ldap_get_values_len(handle, entry, profile_ctx->inst->profile.fallthrough_attr);
-		count = ldap_count_values_len(values);
-		if (count == 0) goto free_values;
+		count = fr_ldap_entry_value_find(&value_bv, handle, entry,
+						 profile_ctx->inst->profile.fallthrough_attr);
+		if (count <= 0) return;
 		if (count > 1) {
 			RWARN("%s returned more than 1 value.  Only evaluating the first.",
 			      profile_ctx->inst->profile.fallthrough_attr);
 		}
-		value = fr_ldap_berval_to_string(request, values[0]);
+		value = fr_ldap_berval_to_string(request, &value_bv);
 
 		RDEBUG3("Parsing fallthrough condition %s", value);
 		if (xlat_tokenize_expression(request, &cond_expr,
@@ -129,8 +129,6 @@ static void ldap_profile_entry_map(bool *fallthrough, request_t *request, ldap_p
 	free:
 		talloc_free(value);
 		talloc_free(cond_expr);
-	free_values:
-		ldap_value_free_len(values);
 	}
 }
 
