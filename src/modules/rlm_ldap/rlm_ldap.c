@@ -1352,6 +1352,104 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+/** State of an in progress whoami extended operation
+ *
+ */
+typedef struct {
+	fr_ldap_query_t	*query;			//!< Current query performing the whoami operation.
+} ldap_xlat_whoami_ctx_t;
+
+/** Return the authorization identity from the whoami response
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					     request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_xlat_whoami_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_whoami_ctx_t);
+	fr_ldap_query_t		*query = xlat_ctx->query;
+	fr_value_box_t		*vb;
+	struct berval		*authz_id = NULL;
+	char const		*p;
+	size_t			len;
+	int			err;
+
+	if (query->ret != LDAP_RESULT_SUCCESS) {
+		REDEBUG("Whoami extended operation failed");
+		return XLAT_ACTION_FAIL;
+	}
+
+	err = ldap_parse_extended_result(query->ldap_conn->handle, query->result, NULL, &authz_id, false);
+	if (err != LDAP_SUCCESS) {
+		REDEBUG("Failed parsing whoami response: %s", ldap_err2string(err));
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	An empty authzId means the connection is bound anonymously.
+	 */
+	if (!authz_id || (authz_id->bv_len == 0)) {
+		if (authz_id) ber_bvfree(authz_id);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	RFC 4532 returns an authzId (RFC 4513), "dn:<dn>" for
+	 *	distinguished names.  Strip the prefix, "u:<user>" forms
+	 *	are returned unmodified.
+	 */
+	p = authz_id->bv_val;
+	len = authz_id->bv_len;
+	if ((len >= 3) && (memcmp(p, "dn:", 3) == 0)) {
+		p += 3;
+		len -= 3;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_bstrndup(vb, vb, NULL, p, len, false) == 0);
+	fr_dcursor_append(out, vb);
+
+	ber_bvfree(authz_id);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Perform the RFC 4532 whoami extended operation
+ *
+ * Runs on the same connections as the module's queries, so the identity
+ * returned is the one the directory resolved for the admin bind.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx, request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	fr_ldap_config_t const	*handle_config = t->config;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	ldap_xlat_whoami_ctx_t	*xlat_ctx;
+
+	ttrunk = fr_thread_ldap_trunk_get(t, handle_config->server, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (!ttrunk) {
+		REDEBUG("Unable to get LDAP trunk for whoami");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_whoami_ctx_t));
+
+	if (unlang_xlat_yield(request, ldap_whoami_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) {
+	error:
+		talloc_free(xlat_ctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_ldap_trunk_extended(xlat_ctx, &xlat_ctx->query, request, ttrunk,
+				   LDAP_EXOP_WHO_AM_I, NULL, NULL, NULL) != UNLANG_ACTION_PUSHED_CHILD) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
 /*
  *	Verify the result of the map.
  */
@@ -2913,6 +3011,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
+
+	if (unlikely(!module_rlm_xlat_register(mctx->mi->boot, mctx, "whoami", ldap_whoami_xlat,
+					       FR_TYPE_STRING))) return -1;
 
 	map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_DN_SAFE_FOR);
 

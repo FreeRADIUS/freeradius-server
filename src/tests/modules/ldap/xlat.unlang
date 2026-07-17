@@ -218,4 +218,12 @@ if (result_string != 'ldap://localhost:3890/ou=people,dc=example,dc=com?displayN
 	test_fail
 }
 
+#
+#  RFC 4532 whoami returns the DN the directory resolved for the
+#  admin bind on the module's connections.
+#
+if (%ldap.whoami() != 'cn=admin,dc=example,dc=com') {
+	test_fail
+}
+
 test_pass
