@@ -432,7 +432,7 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 
 		/* Get rid of newline at end of password. */
 		for (buf = password; buf < (password + max_password_len); buf++) {
-			if (*buf < ' ') {
+			if ((unsigned char)*buf < ' ') {
 				*buf = '\0';
 				goto found;
 			}
