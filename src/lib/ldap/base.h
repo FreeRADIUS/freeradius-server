@@ -168,6 +168,7 @@ typedef enum {
 	FR_LDAP_STATE_INIT = 0,				//!< Connection uninitialised.
 	FR_LDAP_STATE_START_TLS,			//!< TLS is being negotiated.
 	FR_LDAP_STATE_BIND,				//!< Connection is being bound.
+	FR_LDAP_STATE_DISCOVER,				//!< Directory capabilities are being read from the rootDSE.
 	FR_LDAP_STATE_RUN,				//!< Connection is muxing/demuxing requests.
 	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
 } fr_ldap_state_t;
@@ -217,6 +218,8 @@ typedef struct {
 	char const		**naming_contexts;	//!< Databases served by this directory.
 	fr_hash_table_t		*naming_contexts_ht;	//!< For resolving DNs to the naming context
 							///< containing them.
+
+	bool			discovered;		//!< A rootDSE response has been parsed into these fields.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -848,7 +851,7 @@ char const	*fr_ldap_directory_common_base_find(fr_ldap_directory_t const *direct
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 					       LDAPMessage *result, char const *name);
 
-int		fr_ldap_trunk_directory_init_async(fr_ldap_thread_trunk_t *ttrunk);
+int		fr_ldap_directory_discover_async(fr_ldap_connection_t *c);
 
 int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 

@@ -105,10 +105,28 @@ again:
 		break;
 
 	/*
-	 *	After binding install the mux (write) and
-	 *	demux (read) I/O functions.
+	 *	After binding, read directory capabilities from the
+	 *	rootDSE, so consumers of c->directory never see
+	 *	undiscovered data once the connection is handling
+	 *	requests.  Connections sharing an already discovered
+	 *	directory skip straight to run.
 	 */
 	case FR_LDAP_STATE_BIND:
+		if (c->directory && !c->directory->discovered) {
+			if (fr_ldap_directory_discover_async(c) < 0) {
+				STATE_TRANSITION(FR_LDAP_STATE_ERROR);
+				goto again;
+			}
+			STATE_TRANSITION(FR_LDAP_STATE_DISCOVER);
+			break;
+		}
+		FALL_THROUGH;
+
+	/*
+	 *	After directory discovery install the mux (write) and
+	 *	demux (read) I/O functions.
+	 */
+	case FR_LDAP_STATE_DISCOVER:
 		STATE_TRANSITION(FR_LDAP_STATE_RUN);
 		connection_signal_connected(c->conn);
 		break;

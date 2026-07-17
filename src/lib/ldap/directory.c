@@ -72,6 +72,12 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	LDAPMessage		*entry;
 	struct berval		**values = NULL;
 
+	/*
+	 *	Connections spawned concurrently may each run discovery
+	 *	against a shared directory, only parse the first response.
+	 */
+	if (directory->discovered) return 0;
+
 	entry_cnt = ldap_count_entries(handle, result);
 	if (entry_cnt != 1) {
 		WARN("Capability check failed: Ambiguous result for rootDSE, expected 1 entry, got %i", entry_cnt);
@@ -85,6 +91,7 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 		WARN("Capability check failed: Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		return 1;
 	}
+	directory->discovered = true;
 
 	values = ldap_get_values_len(handle, entry, "vendorname");
 	if (values) {
@@ -328,45 +335,100 @@ char const *fr_ldap_directory_common_base_find(fr_ldap_directory_t const *direct
 	return common;
 }
 
-/** Parse results of search on rootDSE to gather data on LDAP server
+/** State of an in progress rootDSE search on a connection being established
  *
- * @param[in] handle	on which the query was run.
- * @param[in] query	which requested the rootDSE.
- * @param[in] result	head of LDAP results message chain.
- * @param[in] rctx	LDAP directory whose properties are to be populated.
  */
-static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *result, void *rctx)
-{
-	fr_ldap_config_t const	*config = query->ldap_conn->config;
-	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
+typedef struct {
+	fr_ldap_connection_t	*c;			//!< Connection the rootDSE search was sent on.
+	int			msgid;			//!< Of the outstanding rootDSE search.
+} ldap_directory_discover_ctx_t;
 
-	(void)fr_ldap_directory_result_parse(directory, handle, result, config->name);
+/** Error reading from or writing to the file descriptor
+ *
+ * @param[in] el	the event occurred in.
+ * @param[in] fd	the event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] fd_errno	The error that occurred.
+ * @param[in] uctx	discover_ctx containing the connection and message ID.
+ */
+static void _ldap_directory_discover_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,
+					      UNUSED int flags, UNUSED int fd_errno, void *uctx)
+{
+	ldap_directory_discover_ctx_t	*discover_ctx = talloc_get_type_abort(uctx, ldap_directory_discover_ctx_t);
+	fr_ldap_connection_t		*c = discover_ctx->c;
+
+	talloc_free(discover_ctx);
+	fr_ldap_state_error(c);			/* Restart the connection state machine */
 }
 
-/** Async extract useful information from the rootDSE of the LDAP server
+/** Parse a rootDSE response from a server
  *
- * This is called once for each new thread trunk when it first connects.
- * Results are parsed into ttrunk->directory, which the caller must have allocated.
+ * A failure parsing the rootDSE leaves the directory with its defaults, the
+ * connection is still usable, so the state machine advances either way.
  *
- * @param[in] ttrunk	Thread trunk connection to be queried
- * @return
- *	- 0 on success
- *	< 0 on failure
+ * @param[in] el	the event occurred in.
+ * @param[in] fd	the event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] uctx	discover_ctx containing the connection and message ID.
  */
-int fr_ldap_trunk_directory_init_async(fr_ldap_thread_trunk_t *ttrunk)
+static void _ldap_directory_discover_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	fr_ldap_query_t		*query;
-	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
-	trunk_request_t	*treq;
+	ldap_directory_discover_ctx_t	*discover_ctx = talloc_get_type_abort(uctx, ldap_directory_discover_ctx_t);
+	fr_ldap_connection_t		*c = discover_ctx->c;
+	char const			*name = c->config->name;
+	LDAPMessage			*result = NULL;
 
-	treq = trunk_request_alloc(ttrunk->trunk, NULL);
-	if (!treq) return -1;
+	fr_ldap_rcode_t			status;
 
-	query = fr_ldap_search_alloc(treq, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
-	query->parser = ldap_trunk_directory_alloc_read;
-	query->treq = treq;
+	status = fr_ldap_result(&result, NULL, c, discover_ctx->msgid, LDAP_MSG_ALL, "", fr_time_delta_wrap(0));
+	if (status == LDAP_PROC_SUCCESS) {
+		(void)fr_ldap_directory_result_parse(c->directory, c->handle, result, name);
+	} else {
+		PWARN("Directory discovery failed, proceeding without directory capability data");
+	}
+	if (result) ldap_msgfree(result);
 
-	trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
+	fr_ldap_state_next(c);			/* onto the next operation */
+
+	talloc_free(discover_ctx);		/* Also removes fd events */
+}
+
+/** Send a rootDSE search on a connection being established
+ *
+ * Called by the connection state machine after binding, so the directory
+ * capabilities (vendor, naming contexts) are known before the connection
+ * starts serving requests.  Results are parsed into c->directory.
+ *
+ * @param[in] c		LDAP connection to be queried.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_ldap_directory_discover_async(fr_ldap_connection_t *c)
+{
+	static char const		*attrs[] = LDAP_DIRECTORY_ATTRS;
+	ldap_directory_discover_ctx_t	*discover_ctx;
+	int				fd = -1;
+
+	MEM(discover_ctx = talloc_zero(c, ldap_directory_discover_ctx_t));
+	discover_ctx->c = c;
+
+	if (fr_ldap_search_async(&discover_ctx->msgid, NULL, c, "", LDAP_SCOPE_BASE, "(objectclass=*)",
+				 attrs, NULL, NULL) != LDAP_PROC_SUCCESS) {
+	error:
+		talloc_free(discover_ctx);
+		return -1;
+	}
+
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+
+	if (fr_event_fd_insert(discover_ctx, NULL, c->conn->el, fd,
+			       _ldap_directory_discover_io_read,
+			       NULL,
+			       _ldap_directory_discover_io_error,
+			       discover_ctx) < 0) goto error;
+
+	fr_ldap_connection_timeout_reset(c);
 
 	return 0;
 }

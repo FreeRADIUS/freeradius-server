@@ -943,6 +943,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 {
 	fr_ldap_thread_trunk_t *found, find = {.uri = uri, .bind_dn = bind_dn};
 	fr_ldap_thread_trunk_t *new;
+	trunk_conf_t		trunk_conf;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to \"%s\" bound as \"%s\"", uri,
 		 bind_dn ? bind_dn : "(anonymous)");
@@ -971,10 +972,20 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 
 	/*
 	 *	Allocated before the trunk so the pointer is valid when
-	 *	connection init callbacks run, populated asynchronously
-	 *	by the rootDSE query enqueued below.
+	 *	connection init callbacks run, populated by the first
+	 *	connection's discovery state before it starts serving
+	 *	requests.
 	 */
 	new->directory = fr_ldap_directory_alloc(new);
+
+	/*
+	 *	Referral chasing creates trunks and waits for one to
+	 *	transition to active before sending the query, so a trunk
+	 *	must always open a connection, even with no requests
+	 *	enqueued.
+	 */
+	trunk_conf = *thread->trunk_conf;
+	if (trunk_conf.start == 0) trunk_conf.start = 1;
 
 	new->trunk = trunk_alloc(new, thread->el,
 				 &(trunk_io_funcs_t){
@@ -986,7 +997,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					.request_cancel_mux = ldap_request_cancel_mux,
 					.request_fail = ldap_request_fail,
 				 },
-				 thread->trunk_conf,
+				 &trunk_conf,
 				 "rlm_ldap", new, false, thread->trigger_args);
 
 	if (!new->trunk) {
@@ -1003,11 +1014,6 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	 */
 	if (!fr_cond_assert_msg(fr_timer_in(new, thread->el->tl, &new->ev, thread->config->idle_timeout,
 					    false, _ldap_trunk_idle_timeout, new) == 0, "cannot insert trunk idle event")) goto error;
-
-	/*
-	 *	Attempt to discover what type directory we are talking to
-	 */
-	if (fr_ldap_trunk_directory_init_async(new) < 0) goto error;
 
 	fr_rb_insert(thread->trunks, new);
 
