@@ -270,6 +270,17 @@ static inline size_t talloc_str_list_num(talloc_str_list_t const *list)
 	return (size_t)(list->p - list->strings);
 }
 
+/** Return the number of strings a NULL terminated string array was sized for
+ *
+ * Reads the talloc array length of the strings array, excluding the
+ * slot reserved for the NULL terminator.  Slots not yet filled by
+ * talloc_str_list_append are NULL.
+ */
+static inline size_t talloc_str_array_len(char const * const *strings)
+{
+	return talloc_array_length(strings) - 1;
+}
+
 /** Free const'd memory
  *
  * @param[in] ptr	to free.
