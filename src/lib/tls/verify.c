@@ -370,6 +370,11 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 
 	ssl_ctx = SSL_get_SSL_CTX(ssl);
 	store_ctx = X509_STORE_CTX_new();
+	if (unlikely(!store_ctx)) {
+		REDEBUG("Failed allocating X509_STORE_CTX");
+		return 0;
+	}
+
 	chain = SSL_get_peer_cert_chain(ssl);			/* Does not increase ref count */
 	store = SSL_CTX_get_ex_data(ssl_ctx, FR_TLS_EX_CTX_INDEX_VERIFY_STORE);	/* Gets the verification store */
 
@@ -389,7 +394,12 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 	 *	Note: SSL_CTX_get_cert_store() returns the ctx->cert_store, which
 	 *      is not the same as the verification cert store.
 	 */
-	X509_STORE_CTX_init(store_ctx, store, cert, chain);
+	if (unlikely(X509_STORE_CTX_init(store_ctx, store, cert, chain) != 1)) {
+		REDEBUG("Failed initialising X509_STORE_CTX");
+		X509_STORE_CTX_free(store_ctx);
+		return 0;
+	}
+
 	X509_STORE_CTX_set_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), ssl);
 	X509_STORE_CTX_set_verify_cb(store_ctx, fr_tls_verify_cert_cb);
 
