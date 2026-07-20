@@ -119,6 +119,10 @@ struct trunk_request_s {
 							///< Used so that re-queueing doesn't increase trunk
 							///< `sent` count.
 
+	bool			blocking;		//!< The request will block the connection until it is
+							///< completed, so no more requests should be enqueued
+							///< on this connection until the treq is completed.
+
 #ifndef NDEBUG
 	fr_dlist_head_t		log;			//!< State change log.
 #endif
@@ -1079,6 +1083,13 @@ static void trunk_request_remove_from_conn(trunk_request_t *treq)
 		CONN_REORDER(tconn);
 		break;
 
+	case TRUNK_CONN_INACTIVE:
+		/*
+		 *	If the trunk request set the connection inactive, mark it active again.
+		 */
+		if (treq->blocking) trunk_connection_signal_active(tconn);
+		break;
+
 	default:
 		break;
 	}
@@ -1228,6 +1239,12 @@ static void trunk_request_enter_pending(trunk_request_t *treq, trunk_connection_
 	 *      it appears in the state log.
 	 */
 	treq->pub.tconn = tconn;
+
+	/*
+	 *	The request being handled is a blocking one, mark the
+	 *	assigned connection as inactive.
+	 */
+	if (treq->blocking) trunk_connection_signal_inactive(tconn);
 
 	REQUEST_STATE_TRANSITION(TRUNK_REQUEST_STATE_PENDING);
 
@@ -2835,6 +2852,19 @@ trunk_enqueue_t trunk_request_enqueue_on_conn(trunk_request_t **treq_out, trunk_
 	}
 
 	return TRUNK_ENQUEUE_OK;
+}
+
+/** Mark a trunk request as one which will block the connection until it is completed
+ */
+void trunk_request_mark_blocking(trunk_request_t *treq)
+{
+	treq->blocking = true;
+	if (!treq->pub.tconn) return;
+
+	/*
+	 *	Prevent additional requests being enqueued on this connection
+	 */
+	trunk_connection_signal_inactive(treq->pub.tconn);
 }
 
 #ifndef NDEBUG

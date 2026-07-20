@@ -828,6 +828,8 @@ trunk_enqueue_t trunk_request_enqueue_on_conn(trunk_request_t **treq_out, trunk_
 						    request_t *request, void *preq, void *rctx,
 						    bool ignore_limits) CC_HINT(nonnull(2));
 
+void		trunk_request_mark_blocking(trunk_request_t *treq);
+
 #ifndef NDEBUG
 void		trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
 					   trunk_request_t const *treq);
