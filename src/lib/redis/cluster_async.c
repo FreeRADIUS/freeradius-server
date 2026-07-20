@@ -409,6 +409,14 @@ fr_redis_trunk_t *fr_redis_async_cmd_trunk(fr_redis_async_cmd_t *cmd)
 	return cmd->rtrunk;
 }
 
+/** Fetch the cluster node a command was last sent to
+ */
+fr_redis_ct_node_t *fr_redis_async_cmd_node(fr_redis_async_cmd_t *cmd) {
+	if (!cmd->key_slot) return NULL;
+	if (cmd->replica_no == 0) return &cmd->rtcluster->node[cmd->key_slot->master];
+	return &cmd->rtcluster->node[cmd->key_slot->replica[cmd->replica_no - 1]];
+}
+
 /** Re-submit a redis async command set on a different node
  *
  * Using the node returned by a MOVED / ASK response.

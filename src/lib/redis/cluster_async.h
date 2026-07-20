@@ -107,6 +107,8 @@ void				fr_redis_async_cmd_cancel(fr_redis_async_cmd_t *cmd);
 
 fr_redis_trunk_t		*fr_redis_async_cmd_trunk(fr_redis_async_cmd_t *cmd);
 
+fr_redis_ct_node_t		*fr_redis_async_cmd_node(fr_redis_async_cmd_t *cmd);
+
 fr_redis_async_rcode_t		fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd);
 
 fr_redis_async_rcode_t		fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd);
