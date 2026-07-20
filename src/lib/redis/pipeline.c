@@ -152,6 +152,9 @@ struct fr_redis_command_set_s {
 							///< in this command set.
 
 	/** @} */
+
+	bool				blocking;	//!< This command set contains one or more commands
+							///< which block the client (e.g. WAIT)
 };
 
 struct fr_redis_trunk_s {
@@ -330,6 +333,12 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 
 	case 'w':
 		if (tolower(cmd[1]) != 'a') break;
+
+		if (strncasecmp(cmd, "wait", sizeof("wait") - 1) == 0) {
+			cmds->blocking = true;
+			break;
+		}
+
 		if (strncasecmp(cmd, "watch", sizeof("watch") - 1) != 0) break;
 		if (cmds->txn_watch) {
 			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"WATCH\" commands");
@@ -507,6 +516,7 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 	switch (trunk_request_enqueue(&cmds->treq, rtrunk->trunk, cmds->request, cmds, cmds->rctx)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
+		if (cmds->blocking) trunk_request_mark_blocking(cmds->treq);
 		return FR_REDIS_PIPELINE_OK;
 
 	case TRUNK_ENQUEUE_DST_UNAVAILABLE:

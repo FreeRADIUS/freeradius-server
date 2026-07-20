@@ -1398,6 +1398,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_alloc_rctx_t));
 	rctx->env = env;
 	rctx->ret = IPPOOL_RCODE_FAIL;
+	rctx->wait_rctx.wait_num = inst->wait_num;
 	talloc_set_destructor(rctx, _redis_ippool_alloc_ctx_free);
 
 	now = fr_time_to_timeval(fr_time());
@@ -1545,6 +1546,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, mo
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_update_rctx_t));
 	rctx->env = env;
 	rctx->ret = IPPOOL_RCODE_FAIL;
+	rctx->wait_rctx.wait_num = inst->wait_num;
 	talloc_set_destructor(rctx, _redis_ippool_update_rctx_free);
 
 	now = fr_time_to_timeval(fr_time());
@@ -1650,6 +1652,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(unlang_result_t *p_result, m
 			    &env->requested_address, &env->owner, &env->gateway_id, 0);
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), redis_ippool_release_rctx_t));
+	rctx->wait_rctx.wait_num = inst->wait_num;
 	talloc_set_destructor(rctx, _redis_ippool_release_rctx_free);
 
 	now = fr_time_to_timeval(fr_time());
