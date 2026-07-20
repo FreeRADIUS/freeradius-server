@@ -222,6 +222,17 @@ typedef struct {
 	bool				fail;
 } redis_wait_rctx_t;
 
+/** Resume context for loading scripts in response to NOSCRIPT reply.
+ */
+typedef struct {
+	fr_redis_command_set_t		*cmds;		//!< Command set for loading script.
+	fr_redis_async_cmd_t		*cmd;		//!< Async command for loading script.
+	fr_redis_async_cmd_t		*eval_cmd;	//!< Original EVAL async command which returned NOSCRIPT.
+	void				*eval_rctx;	//!< Resume context for original EVAL command.
+	module_method_t			resume;		//!< Resume function for EVAL command.
+	unlang_module_signal_t		cancel;		//!< Cancel function for EVAL command.
+} redis_ippool_load_rctx_t;
+
 /** Resume context for async calls to alloc script
  *
  */
@@ -1287,23 +1298,99 @@ static void redis_ippool_release_results(request_t *request, UNUSED fr_redis_com
 		RETURN_UNLANG_NOOP; \
 	}
 
+static void redis_ippool_load_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	redis_ippool_load_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_load_rctx_t);
+
+	RDEBUG2("Forcibly cancelling Redis script load command");
+
+	fr_redis_async_cmd_cancel(rctx->cmd);
+}
+
+static unlang_action_t CC_HINT(nonnull) redis_ippool_load_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
+								 request_t *request)
+{
+	redis_ippool_load_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_load_rctx_t);
+
+	switch(fr_redis_command_set_rcode(rctx->cmds)) {
+	case REDIS_ASYNC_RCODE_SUCCESS:
+		break;
+
+	default:
+		RERROR("Failed loading Redis lua script");
+		RETURN_UNLANG_FAIL;
+	}
+
+	if (fr_redis_async_cmd_resend(rctx->eval_cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
+
+	return unlang_module_yield(request, rctx->resume, rctx->cancel, ~FR_SIGNAL_CANCEL, rctx->eval_rctx);
+}
+
+static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
+				    redisReply *reply, UNUSED void *rctx)
+{
+	if (reply->type != REDIS_REPLY_STRING) {
+		ERROR("Unexpected reply type after loading function");
+		return;
+	}
+	DEBUG2("Loaded lua function with hash \"%s\" onto node", reply->str);
+}
+
+#define REDIS_IPPOOL_SCRIPT_LOAD(_cmds, _script, _script_len, _ret) do { \
+	char const	**argv; \
+	size_t		*argv_len; \
+	MEM(argv = talloc_array(_cmds, char const *, 3)); \
+	MEM(argv_len = talloc_array(_cmds, size_t, 3)); \
+	argv[0] = "SCRIPT"; \
+	argv[1] = "LOAD"; \
+	argv[2] = _script; \
+	argv_len[0] = (sizeof("SCRIPT") - 1); \
+	argv_len[1] = (sizeof("LOAD") - 1); \
+	argv_len[2] = _script_len; \
+	if (fr_redis_command_argv_add(_cmds, 3, argv, argv_len, lua_script_load_results, NULL) != FR_REDIS_PIPELINE_OK) { \
+		talloc_free(_cmds); \
+		return _ret; \
+	} \
+} while (0)
+
 /** Check the return code from an async redis command
  *
  * Redirecting to another node in response to ASK / MOVED codes.
  */
 static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_redis_command_set_t *cmds,
 						       fr_redis_async_cmd_t *cmd, module_ctx_t const *mctx,
-						       module_method_t resume, unlang_module_signal_t cancel)
+						       module_method_t resume, unlang_module_signal_t cancel,
+						       char const *script, size_t script_len)
 {
 	switch (fr_redis_command_set_rcode(cmds)) {
 	case REDIS_ASYNC_RCODE_NO_SCRIPT:
+	{
+		rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
+		redis_ippool_load_rctx_t	*rctx;
+		fr_redis_command_set_t		*load_cmds;
+		fr_redis_async_rcode_t		ret;
+
 		/*
 		 *	Script loading is done following trunk connection.
-		 *	A NO-SCRIPT response means the command was enqueued before the script load.
-		 *	Re-enqueue the command set and it will run after the script load.
+		 *	A NO-SCRIPT response means the command was enqueued before the script load or
+		 *	the script has been cleared from the node.
 		 */
-		if (fr_redis_async_cmd_resend(cmd) != REDIS_ASYNC_RCODE_SUCCESS) return UNLANG_ACTION_FAIL;
-		return unlang_module_yield(request, resume, cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+		MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), redis_ippool_load_rctx_t));
+		MEM(load_cmds = fr_redis_command_set_alloc(rctx, request, NULL, NULL, NULL, false));
+		REDIS_IPPOOL_SCRIPT_LOAD(load_cmds, script, script_len, UNLANG_ACTION_FAIL);
+		*rctx = (redis_ippool_load_rctx_t) {
+			.cmds = load_cmds,
+			.eval_cmd = cmd,
+			.resume = resume,
+			.cancel = cancel,
+			.eval_rctx = mctx->rctx
+		};
+
+		rctx->cmd = fr_redis_async_cmd_start(rctx, request, &ret, thread->rtcluster, NULL, 0, load_cmds,
+						     false, fr_redis_async_cmd_node(cmd));
+		return unlang_module_yield(request, redis_ippool_load_resume, redis_ippool_load_cancel,
+					   ~FR_SIGNAL_CANCEL, rctx);
+	}
 
 	case REDIS_ASYNC_RCODE_MOVE:
 	{
@@ -1344,7 +1431,8 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc_resume(unlang_result_t *p_resu
 	redis_ippool_alloc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_alloc_rctx_t);
 
 	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_alloc_resume,
-				     mod_alloc_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+				     mod_alloc_cancel, lua_alloc_cmd,
+				     sizeof(lua_alloc_cmd) - 1) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1462,7 +1550,8 @@ static unlang_action_t CC_HINT(nonnull) mod_update_resume(unlang_result_t *p_res
 	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
 
 	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_update_resume,
-				     mod_alloc_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+				     mod_alloc_cancel, lua_update_cmd,
+				     sizeof(lua_update_cmd) - 1) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1599,7 +1688,8 @@ static unlang_action_t CC_HINT(nonnull) mod_release_resume(unlang_result_t *p_re
 	redis_ippool_release_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_release_call_env_t);
 
 	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_release_resume,
-				     mod_release_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+				     mod_release_cancel, lua_release_cmd,
+				     sizeof(lua_release_cmd) -1) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	switch (rctx->ret) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1945,7 +2035,7 @@ static unlang_action_t CC_HINT(nonnull) mod_show_resume(unlang_result_t *p_resul
 	redis_ippool_info_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, redis_ippool_info_rctx_t);
 
 	if (redis_ippool_rcode_check(request, rctx->cmds, rctx->cmd, mctx, mod_show_resume,
-				     mod_info_cancel) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
+				     mod_info_cancel, NULL, 0) == UNLANG_ACTION_YIELD) return UNLANG_ACTION_YIELD;
 
 	if (fr_pair_list_num_elements(&rctx->results) == 0) RETURN_UNLANG_NOTFOUND;
 
@@ -3036,42 +3126,15 @@ static xlat_action_t redis_ippool_unassign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED f
 				 ~FR_SIGNAL_CANCEL, rctx);
 }
 
-static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
-				    redisReply *reply, UNUSED void *rctx)
-{
-	if (reply->type != REDIS_REPLY_STRING) {
-		ERROR("Unexpected reply type after loading function");
-		return;
-	}
-	DEBUG2("Loaded lua function with hash \"%s\" onto node", reply->str);
-}
-
-#define REDIS_IPPOOL_SCRIPT_LOAD(_script) do { \
-	char const	**argv; \
-	size_t		*argv_len; \
-	MEM(argv = talloc_array(cmds, char const *, 3)); \
-	MEM(argv_len = talloc_array(cmds, size_t, 3)); \
-	argv[0] = "SCRIPT"; \
-	argv[1] = "LOAD"; \
-	argv[2] = _script; \
-	argv_len[0] = (sizeof("SCRIPT") - 1); \
-	argv_len[1] = (sizeof("LOAD") - 1); \
-	argv_len[2] = (sizeof(_script) - 1); \
-	if (fr_redis_command_argv_add(cmds, 3, argv, argv_len, lua_script_load_results, NULL) != FR_REDIS_PIPELINE_OK) { \
-		talloc_free(cmds); \
-		return; \
-	} \
-} while (0)
-
 static void lua_script_load(fr_redis_trunk_t *rtrunk, UNUSED void *uctx)
 {
 	fr_redis_command_set_t		*cmds;
 
 	MEM(cmds = fr_redis_command_set_alloc(rtrunk, NULL, NULL, NULL, NULL, true));
 
-	REDIS_IPPOOL_SCRIPT_LOAD(lua_alloc_cmd);
-	REDIS_IPPOOL_SCRIPT_LOAD(lua_update_cmd);
-	REDIS_IPPOOL_SCRIPT_LOAD(lua_release_cmd);
+	REDIS_IPPOOL_SCRIPT_LOAD(cmds, lua_alloc_cmd, sizeof(lua_alloc_cmd) - 1, );
+	REDIS_IPPOOL_SCRIPT_LOAD(cmds, lua_update_cmd, sizeof(lua_update_cmd) -1, );
+	REDIS_IPPOOL_SCRIPT_LOAD(cmds, lua_release_cmd, sizeof(lua_release_cmd)-1, );
 
 	if (redis_command_set_enqueue(rtrunk, cmds) != FR_REDIS_PIPELINE_OK) {
 		ERROR("Failed to enqueue lua function loading");
