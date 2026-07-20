@@ -30,7 +30,7 @@ RCSID("$Id$")
 /** Allocate a child request based on the parent.
  *
  * @param[in] parent		spawning the child request.
- * @param[in] namespace		the child request operates in. If NULL the parent's namespace is used.
+ * @param[in] namespace		the child request operates in.  Must not be NULL.
  * @param[in] detachable	Allow/disallow the child to be detached.
  * @return
  *      - The new child request.
