@@ -2109,12 +2109,12 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &timeout);
 
 	/*
-	 *	No timeout means cancel immediately, so yield allowing
-	 *	the interpreter to run the event we added to cancel
-	 *	the request.
+	 *	No timeout means cancel immediately, so we signal the
+	 *	interpreter to cancel the request directly.
 	 *
-	 *	We call unlang_xlat_yield to keep the interpreter happy
-	 *	as it expects to see a resume function set.
+	 *	The cancellation is processed once this xlat returns
+	 *	(the frames are marked for unwinding), so there's no
+	 *	need to add a timer event or yield here.
 	 */
 	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
