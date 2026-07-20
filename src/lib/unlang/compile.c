@@ -2112,6 +2112,11 @@ check_for_module:
 	} else {
 		char buffer[256];
 
+		if ((size_t) (p - name) >= sizeof(buffer)) {
+			cf_log_err(ci, "Module name '%s' is too long", name);
+			return NULL;
+		}
+
 		strlcpy(buffer, name, sizeof(buffer));
 		buffer[p - name] = '\0';
 
