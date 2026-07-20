@@ -88,9 +88,10 @@ typedef void (*unlang_request_resume_t)(request_t *request, void *uctx);
  */
 typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
 
-/** Signal the owner of the interpreter that a request is now runnable
+/** Check whether a request is already scheduled to run
  *
- * This is called any time a yielded request has been marked runnable.
+ * This is called to determine whether a yielded request has already been
+ * marked runnable / added to the runnable queue.
  */
 typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx);
 
