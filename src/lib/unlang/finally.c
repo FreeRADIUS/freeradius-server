@@ -77,7 +77,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	 *	Ensure the request has at least min_time to continue
 	 *	executing before we cancel it.
 	 */
-	if (request->timeout && fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
+	if (request->timeout && fr_time_delta_lt(fr_timer_remaining(request->timeout), state->min_time)) {
 		if (unlikely(fr_timer_in(unlang_interpret_frame_talloc_ctx(request),
 			     unlang_interpret_event_list(request)->tl, &request->timeout,
 			     state->min_time, false, unlang_timeout_handler, state) < 0)) {
