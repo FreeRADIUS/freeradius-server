@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_dns.c
- * @brief DHCPV6 master protocol handler.
+ * @brief DNS master protocol handler.
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
