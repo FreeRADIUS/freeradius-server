@@ -1,0 +1,27 @@
+# Topology - N/A for profiling test
+
+# Routing - N/A for profiling test
+
+# Load generator configuration
+#
+# Profiling flavor of short_ci (run by test.multi-server.profiling.ci, which
+# forces MODE=profiling): the server runs under valgrind/callgrind, so the
+# load is paced slower than short.ci.test.yml so proto_load doesn't gate and
+# the CEst total stays deterministic. Results publish to the same store leaf
+# as short_ci (all.mk strips the profiling_ prefix from the result path).
+# Backend suite: 25 pps still gated (same-commit CV ~6%), so profiling runs
+# at 15 pps / 400s (~6,000 messages).
+loadgen:
+  start_pps: 15
+  max_pps: 15
+  duration: 400
+  step: 15
+  parallel: 1
+  max_backlog: 1000
+  repeat: "no"
+
+# Test framework
+# Send window is 6000 messages / 15 pps = 400s; the timeouts must cover 400s
+# plus startup and shutdown.
+test_timeout: 480
+test_verify_timeout: 470

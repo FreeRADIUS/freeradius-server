@@ -15,12 +15,17 @@
 #                                     ci:  PROFILING_RESULT_ROOT/<suite>/<test>/<branch>/<commit>/<run-index>
 #                                     dev: PROFILING_RESULT_ROOT/<suite>/<test>  (flat)
 #
+# Profiling tests are their own params files, profiling.<test>.test.yml,
+# with valgrind-paced loadgen keys. Only the profiling targets run them;
+# results publish without the profiling_ prefix (accept/short_ci).
+#
 # Usage:
 #   make -f src/tests/multi-server/all.mk test.multi-server                       # all suites, service image
 #   make -f src/tests/multi-server/all.mk test.multi-server.ci                    # CI subset, service image
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling             # all suites, profiling image
-#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci          # CI subset, profiling image
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling             # profiling.* tests, profiling image
+#   make -f src/tests/multi-server/all.mk test.multi-server.profiling.ci          # profiling.* CI subset, profiling image
 #   make -f src/tests/multi-server/all.mk test.multi-server.accept.short_ci       # single test
+#   make -f src/tests/multi-server/all.mk test.multi-server.accept.profiling_short_ci MODE=profiling   # single profiling test
 #   make -f src/tests/multi-server/all.mk clean.test.multi-server                 # clean logs
 #
 
@@ -189,12 +194,12 @@ test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start
 		FREERADIUS_IMAGE=$(FREERADIUS_PROFILING_IMAGE); \
 		PROFILING=yes; \
 		if [ "$(PROFILING_RESULT_MODE)" = "dev" ]; then \
-			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/${2}"; \
+			PROFILING_RESULT_PATH="$(PROFILING_RESULT_ROOT)/${1}/$(patsubst profiling_%,%,${2})"; \
 		else \
 			RUN_BASE="$(PROFILING_RESULT_ROOT)/$(GIT_BRANCH)/$(GIT_COMMIT)"; \
 			EXISTING=$$$$( find "$$$$RUN_BASE" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ' ); \
 			RUN_INDEX=$$$$((EXISTING + 1)); \
-			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/${2}"; \
+			PROFILING_RESULT_PATH="$$$$RUN_BASE/$$$$RUN_INDEX/${1}/$(patsubst profiling_%,%,${2})"; \
 		fi; \
 		mkdir -p "$$$$PROFILING_RESULT_PATH"; \
 		echo "PROFILING_RESULT_PATH: $$$$PROFILING_RESULT_PATH"; \
@@ -268,6 +273,13 @@ $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(eval $(call TEST_MULTI_SERVER,$s)))
 
 TEST_MULTI_SERVER_ALL_TESTS := $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(TEST_MULTI_SERVER_TESTS.$(s)))
 
+#
+#  Partition: profiling.*.test.yml files (test names profiling_*) run only
+#  under the profiling targets; everything else is a service test.
+#
+TEST_MULTI_SERVER_PROFILING_TESTS := $(foreach t,$(TEST_MULTI_SERVER_ALL_TESTS),$(if $(findstring .profiling_,$t),$t))
+TEST_MULTI_SERVER_SERVICE_TESTS   := $(filter-out $(TEST_MULTI_SERVER_PROFILING_TESTS),$(TEST_MULTI_SERVER_ALL_TESTS))
+
 ######################################################################
 #
 #  Top-level targets
@@ -275,30 +287,39 @@ TEST_MULTI_SERVER_ALL_TESTS := $(foreach s,$(TEST_MULTI_SERVER_SUITES),$(TEST_MU
 ######################################################################
 
 #
-#  All tests
+#  All service tests
 #
 .PHONY: test.multi-server
-test.multi-server: $(TEST_MULTI_SERVER_ALL_TESTS)
+test.multi-server: $(TEST_MULTI_SERVER_SERVICE_TESTS)
 
 #
-#  CI tests only - matches *.ci.test.yml param files
+#  CI subsets - *.ci.test.yml param files (test names ending _ci), split
+#  the same way: service files for the service CI run, profiling.* files
+#  for the profiling CI run.
 #
-TEST_MULTI_SERVER_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_ALL_TESTS))
+TEST_MULTI_SERVER_CI_TESTS           := $(filter %_ci,$(TEST_MULTI_SERVER_SERVICE_TESTS))
+TEST_MULTI_SERVER_PROFILING_CI_TESTS := $(filter %_ci,$(TEST_MULTI_SERVER_PROFILING_TESTS))
 
 .PHONY: test.multi-server.ci
 test.multi-server.ci: $(TEST_MULTI_SERVER_CI_TESTS)
 
 #
-#  Profiling pass: same suites, profiling image, valgrind wrapper. Forces
-#  MODE=profiling via a recursive sub-make so the per-test recipes pick up
-#  the right image / env without needing the operator to set MODE manually.
+#  Profiling pass: the profiling.* tests only, profiling image, valgrind
+#  wrapper. Forces MODE=profiling via a recursive sub-make so the per-test
+#  recipes pick up the right image / env without needing the operator to set
+#  MODE manually. The -tests aggregates exist for the recursive make; call
+#  the outer targets, which build the image first.
 #
+.PHONY: test.multi-server.profiling-tests test.multi-server.profiling-tests.ci
+test.multi-server.profiling-tests: $(TEST_MULTI_SERVER_PROFILING_TESTS)
+test.multi-server.profiling-tests.ci: $(TEST_MULTI_SERVER_PROFILING_CI_TESTS)
+
 .PHONY: test.multi-server.profiling test.multi-server.profiling.ci
 test.multi-server.profiling: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server MODE=profiling
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.profiling-tests MODE=profiling
 
 test.multi-server.profiling.ci: freeradius-prof.image
-	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.ci MODE=profiling
+	$(Q)$(MAKE) -f $(DIR)/all.mk test.multi-server.profiling-tests.ci MODE=profiling
 
 #
 #  Profiling image: build the standard freeradius4-profiling/<image>:<sha>
