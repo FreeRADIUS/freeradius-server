@@ -2,6 +2,7 @@
 #  Call module instance specific redis lua functions
 #
 string dummy_string
+string result_string
 $INCLUDE cluster_reset.inc
 
 if (!(%redis.hello_world(0) == 'hello world')) {
@@ -48,6 +49,26 @@ if %redis.multiline(10) {
 # Re-run a script which uses the key "foo"
 # to check the script is reloaded.
 if (!(%redis.concat_args_keys(1, 'foo', 'hello', 'world') == 'foo,hello,world')) {
+	test_fail
+}
+
+try {
+	timeout 0.1 {
+		result_string = %redis.slow(0)
+	}
+}
+catch timeout {
+	ok
+}
+
+# This test may need removing if the CI Redis runs faster than expected
+if (result_string) {
+	test_fail
+}
+
+# The timeout will have just marked that we should ignore the next
+# result - check that the subsequent one is correct
+if (!(%redis.concat_args_keys(1, 'foo', 'hello') == 'foo,hello')) {
 	test_fail
 }
 
