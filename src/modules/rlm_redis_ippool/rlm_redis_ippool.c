@@ -165,7 +165,7 @@ static conf_parser_t redis_config[] = {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", rlm_redis_ippool_t, wait_num) },
-	{ FR_CONF_OFFSET("wait_timeout", rlm_redis_ippool_t, wait_timeout) },
+	{ FR_CONF_OFFSET("wait_timeout", rlm_redis_ippool_t, wait_timeout), .dflt = "1s" },
 
 	{ FR_CONF_DEPRECATED("ip_address", rlm_redis_ippool_t, NULL) },
 
