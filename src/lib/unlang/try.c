@@ -181,7 +181,7 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 	if (default_catch) {
 		bool set = false;
 
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		for (i = RLM_MODULE_NOT_SET + 1; i < RLM_MODULE_NUMCODES; i++) {
 			if (!catcher[i]) {
 				set = true;
 				break;
