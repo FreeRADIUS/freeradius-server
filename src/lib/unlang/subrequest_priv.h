@@ -64,8 +64,6 @@ static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *su
 unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 					    unlang_stack_frame_t *frame);
 
-int unlang_subrequest_detach_child(request_t *request);
-
 #ifdef __cplusplus
 }
 #endif
