@@ -176,7 +176,12 @@ fr_dlhandle fr_dlopenext(char const *name)
 	 */
 	env = getenv("FR_LIBRARY_PATH");
 	if (env) {
-		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
+		static bool complaint = false;
+
+		if (!complaint) {
+			DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
+			complaint = true;
+		}
 		search_path = env;
 	} else {
 		search_path = radlib_dir;
