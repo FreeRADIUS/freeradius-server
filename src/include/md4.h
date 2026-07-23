@@ -26,10 +26,6 @@ RCSIDH(md4_h, "$Id$")
 
 #include <string.h>
 
-#ifdef WITH_FIPS
-#undef HAVE_OPENSSL_MD4_H
-#endif
-
 #ifdef HAVE_OPENSSL_MD4_H
 #  include <openssl/md4.h>
 #endif
@@ -87,6 +83,10 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md4_destroy(_x)
 #else
 #include <openssl/evp.h>
+#include <openssl/provider.h>
+#include <freeradius-devel/threads.h>
+
+#include <freeradius-devel/openssl3.h>
 
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
@@ -101,11 +101,20 @@ typedef struct FR_MD4_CTX {
 static inline void fr_md4_init(FR_MD4_CTX *ctx)
 {
 	ctx->ctx = EVP_MD_CTX_new();
-//	ctx->md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");
-	ctx->md = EVP_md4();
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		OSSL_FIPS_LIBCTX *fips_libctx = fr_thread_local_init(fips_ossl_libctx, _fips_ossl_libctx_free);
+		if (!fips_libctx) {
+			fips_libctx = _fips_ossl_libctx_create();
+			fr_thread_local_set(fips_ossl_libctx, fips_libctx);
+		}
+		if (!fips_libctx->md4)
+			fips_libctx->md4 = EVP_MD_fetch(fips_libctx->libctx, "MD4", NULL);
+		ctx->md = fips_libctx->md4;
+	} else {
+		ctx->md = EVP_md4();
+	}
 	ctx->len = MD4_DIGEST_LENGTH;
 
-	EVP_MD_CTX_set_flags(ctx->ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 	EVP_DigestInit_ex(ctx->ctx, ctx->md, NULL);
 }
 
@@ -122,7 +131,6 @@ static inline void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 static inline void fr_md4_destroy(FR_MD4_CTX *ctx)
 {
 	EVP_MD_CTX_destroy(ctx->ctx);
-//	EVP_MD_free(ctx->md);
 }
 
 #endif	/* OPENSSL3 */
