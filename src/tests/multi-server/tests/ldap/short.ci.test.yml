@@ -3,6 +3,9 @@
 # Routing - N/A for profiling test
 
 # Load generator configuration
+#
+# Service-mode pacing. The profiling flavor lives in
+# profiling.short.ci.test.yml, paced slower for valgrind/callgrind.
 loadgen:
   start_pps: 100
   max_pps: 100
@@ -13,5 +16,5 @@ loadgen:
   repeat: "no"
 
 # Test framework
-test_timeout: 125
-test_verify_timeout: 120
+test_timeout: 300
+test_verify_timeout: 290
