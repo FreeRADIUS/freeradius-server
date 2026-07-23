@@ -1,0 +1,28 @@
+# Topology - N/A for profiling test
+
+# Routing - N/A for profiling test
+
+# Load generator configuration
+#
+# Extended profiling run (the nightly test.multi-server.profiling, which
+# forces MODE=profiling): the profiling.short.ci pacing with double the send
+# window (15 pps x 800s = 12,000 messages), for a longer look at steady-state
+# cost. The native send window stretches far longer under valgrind, hence
+# "extended". Publishes to the store leaf <suite>/extended (all.mk strips the
+# profiling_ prefix from the result path).
+# Backend suite: 15 pps, the rate profiling.short.ci settled on after 25 pps
+# still gated.
+loadgen:
+  start_pps: 15
+  max_pps: 15
+  duration: 800
+  step: 15
+  parallel: 1
+  max_backlog: 1000
+  repeat: "no"
+
+# Test framework
+# Send window is 12,000 messages / 15 pps = 800s; the timeouts must cover
+# 800s plus startup and shutdown.
+test_timeout: 880
+test_verify_timeout: 870
