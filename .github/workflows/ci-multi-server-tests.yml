@@ -232,16 +232,16 @@ jobs:
 
       #
       #  Check latest profiling results vs each suite's previous run on the
-      #  store, and write a markdown + JSON report for the flagging step below.
+      #  store. The verdict goes to the step log and the `rc` output; the
+      #  human-facing summary is generated server-side at ingest.
       #
       #  cest-analyzer exit codes;
       #   0 - clean
       #   1 - latest result performance flagged
       #   2 - tool error
       #
-      #  continue-on-error keeps a regression (or a tool error) from failing the
-      #  build: the decision is to FLAG regressions (job summary + commit
-      #  comment), not to block CI. The verdict is passed on as the `rc` output.
+      #  continue-on-error: regressions are flagged (commit comment below),
+      #  never block CI.
       #
       - name: Check latest profiling results vs previous runs
         id: cest-gate
@@ -251,39 +251,33 @@ jobs:
           curl -fsSL -o cest-analyzer \
             "https://cinfra-ca.inkbridge.io/profiling/dashboard/bin/cest-analyzer"
           chmod +x ./cest-analyzer
-          #  Gate settings calibrated from the measured noise floor (see
-          #  docs/noise-floor.md in cinfra-profiling-server): 10M size floor
-          #  so run-to-run noise in small functions can't flag, total-CEst
-          #  gating for broad shallow regressions, and a degenerate-reference
-          #  guard so a partial reference run can't emit hundreds of false
-          #  flags.
+          #  Gate settings calibrated from the measured noise floor; see
+          #  docs/noise-floor.md in cinfra-profiling-server for each flag.
           rc=0
           ./cest-analyzer --latest -d prof-results --filter fr_ --gate 15 \
-            --gate-scope both --min-cest 10000000 --max-total-delta 100 \
-            --md cest-report.md --json cest-report.json || rc=$?
+            --gate-scope both --min-cest 10000000 --max-total-delta 100 || rc=$?
           echo "cest-analyzer exit code: $rc"
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       #
-      #  Flag the result: the script writes the regression table to the job
-      #  summary and, on a regression (rc=1), posts a commit comment on this
-      #  commit (this workflow runs on push, so there is no PR context; the flag
-      #  lives on the commit). See scripts/ci/flag-profiling-results.sh. The
-      #  step is continue-on-error and the script treats commenting as advisory,
-      #  so a permissions restriction never fails CI.
+      #  On a regression (rc=1) post a short commit comment linking the
+      #  summary the server generated at ingest (cest-latest.html); a clean
+      #  run (rc=0) resolves a prior flag. Push workflow = no PR, so the flag
+      #  lives on the commit. branch/sha use the same git commands as the
+      #  all.mk publish paths, so the link matches the store layout.
+      #  Commenting is advisory and never fails CI; GH_TOKEN needs the
+      #  contents: write declared above.
       #
-      #  NOTE: commit commenting is intentionally OFF while this is being tested
-      #  on a branch, so no commit comments land on the upstream repo. Without
-      #  GH_TOKEN the script writes the job summary and skips the comment (with a
-      #  warning). To enable commenting, uncomment the env block below; GH_TOKEN
-      #  is the job token, which needs contents: write (declared above).
-      #
-      - name: Flag profiling regression (job summary + commit comment)
+      - name: Flag profiling regression (commit comment)
         if: ${{ matrix.mode == 'profiling' && always() && steps.cest-gate.outputs.rc != '' }}
         continue-on-error: true
-        # env:
-        #   GH_TOKEN: ${{ github.token }}
-        run: scripts/ci/flag-profiling-results.sh "${{ steps.cest-gate.outputs.rc }}" cest-report.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch=$(git rev-parse --abbrev-ref HEAD | tr '/' '_')
+          sha=$(git rev-parse --short HEAD)
+          scripts/ci/flag-profiling-results.sh "${{ steps.cest-gate.outputs.rc }}" \
+            "https://cinfra-ca.inkbridge.io/profiling/data/${branch}/${sha}/cest-latest.html"
 
       #
       #  If the CI has failed and the branch is ci-debug
