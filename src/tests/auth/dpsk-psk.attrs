@@ -11,3 +11,5 @@ Filter-ID = "Pancakes1124"
 # and the response
 Response-Packet-Type == Access-Accept
 Pre-Shared-Key == "Pancakes1124"
+PSK-Identity == "8ab3a0ebd5e5"
+Pairwise-Master-Key == 0x44a4f34b6270fccb7dffa8c9e610e3b80f021c8165bcf53c99c3f818167982ab
