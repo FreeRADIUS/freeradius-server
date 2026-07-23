@@ -1385,10 +1385,15 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	dbg->parent = log;
 
 	/*
+	 *	If we have a filename passed to us, then it over-rides
+	 *	the one in the "log foo { ... }" destination.
+	 */
+	if (file) MEM(dbg->file = talloc_strdup(dbg, file->vb_strvalue));
+
+	/*
 	 *	Open the new filename.
 	 */
 	dbg->dst = L_DST_FILES;
-	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
 	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
 	if (dbg->fd < 0) {
 		REDEBUG("Failed opening %s - %s", dbg->file, fr_syserror(errno));
