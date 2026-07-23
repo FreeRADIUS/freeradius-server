@@ -47,6 +47,7 @@ typedef struct rlm_sqlippool_t {
 	char const	*pool_name;		//!< Name of the attribute in the check VPS for which the value will be used as key
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
 	bool		allow_duplicates;	//!< assign even if it already exists
+	bool		fail_on_errors;		//!< fail on all database query errors
 	char const	*attribute_name;	//!< name of the IP address attribute
 	char const	*req_attribute_name;	//!< name of the requested IP address attribute
 
@@ -114,6 +115,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
 	{ "allow_duplicates", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, allow_duplicates), NULL},
+	{ "fail_on_errors", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, fail_on_errors), NULL},
 	{ "attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, attribute_name), NULL},
 	{ "req_attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, req_attribute_name), NULL},
 
@@ -338,6 +340,16 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	talloc_free(expanded);
 
 	if ((retval != 0) || !*handle) {
+		if (data->fail_on_errors) {
+			/*
+			 *  Free handle on query errors to make sure module returns failure immediately
+			*/
+			if (*handle) {
+				fr_connection_release(data->sql_inst->pool, *handle);
+				*handle = NULL;
+			}
+		}
+
 		REDEBUG("database query error on '%s'", query);
 		return 0;
 	}
