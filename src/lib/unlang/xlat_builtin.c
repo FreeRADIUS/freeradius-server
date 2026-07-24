@@ -4651,11 +4651,13 @@ static xlat_action_t xlat_pair_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 		vp = fr_dcursor_current(cursor);
-		if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
-			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
-			return XLAT_ACTION_FAIL;
+		if (vp) {
+			if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
+				REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
+				return XLAT_ACTION_FAIL;
+			}
+			if (root_da->vb_attr == vp->da) encode_children = true;
 		}
-		if (root_da->vb_attr == vp->da) encode_children = true;
 	}
 
 	/*
