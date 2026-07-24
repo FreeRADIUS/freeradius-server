@@ -1582,6 +1582,8 @@ static void request_finish(REQUEST *request, int action)
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+	if (!vp) vp = fr_pair_find_by_num(request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+	if (!vp) vp = fr_pair_find_by_num(request->reply->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) {
 		if (vp->vp_integer == 256) {
 			RDEBUG2("Not responding to request");
