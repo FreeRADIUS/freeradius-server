@@ -53,7 +53,7 @@ typedef struct {
 
 typedef struct {
 	rlm_cache_redis_t const		*inst;			//!< Module instance.
-	fr_redis_cluster_thread_t	*rtcluster;		//!< Per thread Redis cluster.
+	fr_redis_ct_t			*rtcluster;		//!< Per thread Redis cluster.
 	fr_coord_worker_t		*cw;			//!< Coord-worker for fetching cluster map.
 } rlm_cache_redis_thread_t;
 
@@ -97,7 +97,7 @@ static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pai
 			       module_ctx_t *mctx, UNUSED void *uctx)
 {
 	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
-	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	fr_redis_ct_map_update(t->rtcluster, list);
 	return;
 }
 
@@ -191,7 +191,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
 	rlm_cache_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, inst->tls_conf, mctx->el, &inst->conf, NULL, NULL, false);
+	t->rtcluster = fr_redis_ct_alloc(t, inst->tls_conf, mctx->el, &inst->conf, NULL, NULL, false);
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
 
@@ -214,7 +214,7 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 
 	if ((inst->conf.trunk_conf.start == 0) || (fr_schedule_worker_id() != 0)) return 0;
 
-	return fr_redis_cluster_thread_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
+	return fr_redis_ct_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
 }
 
 static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
@@ -277,8 +277,8 @@ static cache_status_t cache_redis_results(request_t *request, rlm_cache_redis_t 
 		rlm_cache_redis_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data,
 										rlm_cache_redis_thread_t);
 
-		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
-										inst->coord_pair_reg, false);
+		if (inst->conf.use_cluster_map) fr_redis_ct_map_get(thread->rtcluster, thread->cw,
+								    inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 

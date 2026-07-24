@@ -53,7 +53,7 @@ extern "C" {
 #define REDIS_VERSION(_max, _min, _patch) (uint32_t) (_max << 24) | (_min << 16) | _patch
 
 typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
-typedef struct fr_redis_cluster_thread_s fr_redis_cluster_thread_t;
+typedef struct fr_redis_ct_s fr_redis_ct_t;
 
 /** Wrap freeReplyObject so we consistently check for NULL pointers
  *

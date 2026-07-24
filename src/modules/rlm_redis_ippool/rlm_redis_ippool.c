@@ -149,9 +149,9 @@ typedef struct {
 } rlm_redis_ippool_t;
 
 typedef struct {
-	rlm_redis_ippool_t		*inst;		//!< Module instance.
-	fr_redis_cluster_thread_t	*rtcluster;	//!< Per thread Redis cluster.
-	fr_coord_worker_t		*cw;		//!< Coord-worker for fetching cluster map.
+	rlm_redis_ippool_t	*inst;		//!< Module instance.
+	fr_redis_ct_t		*rtcluster;	//!< Per thread Redis cluster.
+	fr_coord_worker_t	*cw;		//!< Coord-worker for fetching cluster map.
 } rlm_redis_ippool_thread_t;
 
 typedef enum {
@@ -1405,8 +1405,8 @@ static inline unlang_action_t redis_ippool_rcode_check(request_t *request, fr_re
 		rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_redis_ippool_t);
 		rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 
-		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
-										inst->coord_pair_reg, false);
+		if (inst->conf.use_cluster_map) fr_redis_ct_map_get(thread->rtcluster, thread->cw,
+								    inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 
@@ -1914,7 +1914,7 @@ static unlang_action_t mod_pools_list_next_scan(unlang_result_t *p_result, reque
 	fr_redis_async_rcode_t	ret;
 
 	do {
-		node = fr_redis_cluster_thread_node_by_addr(thread->rtcluster, &rctx->nodes[rctx->current_node]);
+		node = fr_redis_ct_node_by_addr(thread->rtcluster, &rctx->nodes[rctx->current_node]);
 		if (node) {
 			RDEBUG3("Querying node %d - %pV:%d", rctx->current_node,
 				fr_box_ipaddr(rctx->nodes[rctx->current_node].inet.dst_ipaddr),
@@ -1960,15 +1960,14 @@ static unlang_action_t CC_HINT(nonnull) mod_pools_list_start(unlang_result_t *p_
 	/*
 	 *	Fetch the list of master nodes in the cluster.
 	 */
-	ret = fr_redis_cluster_thread_node_addr_by_role(rctx, &rctx->nodes, &rctx->node_count,
-							thread->rtcluster, true, false);
+	ret = fr_redis_ct_node_addr_by_role(rctx, &rctx->nodes, &rctx->node_count, thread->rtcluster, true, false);
 
 	switch (ret) {
 	case REDIS_ASYNC_RCODE_SUCCESS:
 		break;
 
 	case REDIS_ASYNC_RCODE_BOOTSTRAP:
-		fr_redis_cluster_thread_map_bootstrap(thread->rtcluster, thread->cw, thread->inst->coord_pair_reg);
+		fr_redis_ct_map_bootstrap(thread->rtcluster, thread->cw, thread->inst->coord_pair_reg);
 		fr_redis_ct_request_yield(rctx, thread->rtcluster, request);
 		return unlang_module_yield(request, mod_pools_list_start, NULL, 0, rctx);
 
@@ -2513,8 +2512,8 @@ static xlat_action_t redis_ippool_common_resume(TALLOC_CTX *ctx, fr_dcursor_t *o
 		rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_redis_ippool_t);
 		rlm_redis_ippool_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 
-		if (inst->conf.use_cluster_map) fr_redis_cluster_thread_map_get(thread->rtcluster, thread->cw,
-									        inst->coord_pair_reg, false);
+		if (inst->conf.use_cluster_map) fr_redis_ct_map_get(thread->rtcluster, thread->cw,
+								    inst->coord_pair_reg, false);
 	}
 		FALL_THROUGH;
 
@@ -3161,7 +3160,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_ippool_t);
 
-	t->rtcluster = fr_redis_cluster_thread_alloc(t, inst->tls_conf, mctx->el, &inst->conf, lua_script_load, t, true);
+	t->rtcluster = fr_redis_ct_alloc(t, inst->tls_conf, mctx->el, &inst->conf, lua_script_load, t, true);
 
 	if (!t->rtcluster) return -1;
 	t->inst = inst;
@@ -3185,7 +3184,7 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 
 	if ((inst->conf.trunk_conf.start == 0) || (fr_schedule_worker_id() != 0)) return 0;
 
-	return fr_redis_cluster_thread_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
+	return fr_redis_ct_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
 }
 
 /** Callback for worker receiving Fetch-OK packet from coordinator
@@ -3195,7 +3194,7 @@ static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pai
 			       module_ctx_t *mctx, UNUSED void *uctx)
 {
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
-	fr_redis_cluster_thread_map_update(t->rtcluster, list);
+	fr_redis_ct_map_update(t->rtcluster, list);
 	return;
 }
 

@@ -51,10 +51,10 @@ typedef struct fr_redis_async_cmd_s fr_redis_async_cmd_t;
 #define REDIS_ASYNC_START_RCODE_PROCESS(_rcode, _cluster, _cw, _coord_pair_reg, _error_msg, _error_ret) \
 switch (_rcode) { \
 case REDIS_ASYNC_RCODE_BOOTSTRAP: \
-	fr_redis_cluster_thread_map_bootstrap(_cluster, _cw, _coord_pair_reg); \
+	fr_redis_ct_map_bootstrap(_cluster, _cw, _coord_pair_reg); \
 	break; \
 case REDIS_ASYNC_RCODE_GETMAP: \
-	fr_redis_cluster_thread_map_get(_cluster, _cw, _coord_pair_reg, false); \
+	fr_redis_ct_map_get(_cluster, _cw, _coord_pair_reg, false); \
 	break; \
 case REDIS_ASYNC_RCODE_ERROR: \
 	RPERROR(_error_msg); \
@@ -63,44 +63,40 @@ default: \
 	break; \
 }
 
-fr_redis_ct_key_slot_t const	*fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t *rtcluster, request_t *request,
+fr_redis_ct_key_slot_t const	*fr_redis_ct_slot_by_key(fr_redis_ct_t *rtcluster, request_t *request,
 							 uint8_t const *key, size_t key_len);
 
-fr_redis_ct_node_t const	*fr_redis_ct_master(fr_redis_cluster_thread_t *thread,
-						    fr_redis_ct_key_slot_t const *key_slot);
+fr_redis_ct_node_t const	*fr_redis_ct_master(fr_redis_ct_t *thread, fr_redis_ct_key_slot_t const *key_slot);
 
-fr_redis_ct_node_t const	*fr_redis_ct_replica(fr_redis_cluster_thread_t *thread,
+fr_redis_ct_node_t const	*fr_redis_ct_replica(fr_redis_ct_t *thread,
 						     fr_redis_ct_key_slot_t const *key_slot, uint8_t replica_num);
 
 int				fr_redis_ct_ipaddr(fr_ipaddr_t *out, fr_redis_ct_node_t const *node);
 
 int				fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node);
 
-fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_conf,
-							       fr_event_list_t *el, fr_redis_conf_t *conf,
-							       fr_redis_trunk_active_t active, void *active_uctx,
-							       bool active_oneshot);
+fr_redis_ct_t			*fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_conf, fr_event_list_t *el,
+						   fr_redis_conf_t *conf, fr_redis_trunk_active_t active,
+						   void *active_uctx, bool active_oneshot);
 
-fr_event_list_t			*fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *thread);
+fr_event_list_t			*fr_redis_ct_el(fr_redis_ct_t *rtcluster);
 
-trunk_conf_t const		*fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *thread);
+trunk_conf_t const		*fr_redis_ct_trunk_conf(fr_redis_ct_t *thread);
 
 #ifdef HAVE_REDIS_SSL
-SSL_CTX				*fr_redis_cluster_ssl_ctx(fr_redis_cluster_thread_t *rtcluster);
+SSL_CTX				*fr_redis_ct_ssl_ctx(fr_redis_ct_t *rtcluster);
 #endif
 
-int				fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster,
-								      fr_coord_worker_t *cw,
-								      fr_coord_pair_reg_t *coord_pair_reg);
+int				fr_redis_ct_map_bootstrap(fr_redis_ct_t *rtcluster, fr_coord_worker_t *cw,
+							  fr_coord_pair_reg_t *coord_pair_reg);
 
-fr_redis_async_rcode_t		fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster,
-								fr_coord_worker_t *cw,
-								fr_coord_pair_reg_t *coord_pair_reg, bool force);
+fr_redis_async_rcode_t		fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_worker_t *cw,
+						    fr_coord_pair_reg_t *coord_pair_reg, bool force);
 
-int				fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *thread, fr_pair_list_t const *list);
+int				fr_redis_ct_map_update(fr_redis_ct_t *thread, fr_pair_list_t const *list);
 
 fr_redis_async_cmd_t		*fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,
-							  fr_redis_cluster_thread_t *rtcluster, uint8_t const *key, size_t key_len,
+							  fr_redis_ct_t *rtcluster, uint8_t const *key, size_t key_len,
 							  fr_redis_command_set_t *cmds, bool read_only, fr_redis_ct_node_t *node);
 
 void				fr_redis_async_cmd_cancel(fr_redis_async_cmd_t *cmd);
@@ -113,13 +109,10 @@ fr_redis_async_rcode_t		fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd);
 
 fr_redis_async_rcode_t		fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd);
 
-fr_redis_ct_node_t		*fr_redis_cluster_thread_node_by_addr(fr_redis_cluster_thread_t *rtcluster,
-								      fr_socket_t *addr);
+fr_redis_ct_node_t		*fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_socket_t *addr);
 
-fr_redis_async_rcode_t		fr_redis_cluster_thread_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
-									  uint8_t *count_out,
-									  fr_redis_cluster_thread_t *rtcluster,
-									  bool is_master, bool is_replica);
+fr_redis_async_rcode_t		fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
+							      fr_redis_ct_t *rtcluster, bool is_master, bool is_replica);
 
-void				fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_cluster_thread_t *rtcluster,
+void				fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_ct_t *rtcluster,
 							  request_t *request);

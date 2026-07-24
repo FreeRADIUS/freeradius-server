@@ -79,7 +79,7 @@ typedef struct {
 	fr_dlist_head_t			nodes;			//!< List of current nodes in the cluster
 	fr_rb_node_t			cluster_by_server;	//!< Entry in the tree of clusters by bootstrap server.
 	fr_rb_node_t			cluster_by_id;		//!< Entry in the tree of clusters by ID.
-	fr_redis_cluster_thread_t	*rtcluster;		//!< Cluster used to allocate redis trunk connections
+	fr_redis_ct_t			*rtcluster;		//!< Cluster used to allocate redis trunk connections
 	fr_pair_list_t			cluster_pairs;		//!< Pairs built from the last fetch.
 	bool				fetching;		//!< The map is being fetched.
 	fr_time_t			last_update;		//!< When was the map last updated.
@@ -996,7 +996,7 @@ RECV(cluster_map_bootstrap)
 		tls_conf = (CONF_SECTION *)(uintptr_t)vp->vp_uint64;
 	}
 
-	MEM(cluster->rtcluster = fr_redis_cluster_thread_alloc(cluster, tls_conf, thread->el, conf, NULL, NULL, false));
+	MEM(cluster->rtcluster = fr_redis_ct_alloc(cluster, tls_conf, thread->el, conf, NULL, NULL, false));
 
 	/*
 	 *	Add all the bootstrap nodes to the cluster.

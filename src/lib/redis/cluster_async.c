@@ -58,7 +58,7 @@ typedef enum {
 /** Thread local state for a cluster
  *
  */
-struct fr_redis_cluster_thread_s {
+struct fr_redis_ct_s {
 	uint16_t			cluster_id;	//!< Number assigned to the cluster by coordinator.
 	fr_event_list_t			*el;
 	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
@@ -96,7 +96,7 @@ struct fr_redis_ct_node_s {
 
 	fr_socket_t			addr;		//!< IP address and port
 
-	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this node belongs to
+	fr_redis_ct_t			*rtcluster;	//!< Cluster this node belongs to
 	fr_redis_io_conf_t		ioconf;		//!< Connection config for this node.
 	fr_redis_trunk_t		*trunk;		//!< Trunk connection to this node.
 };
@@ -106,7 +106,7 @@ struct fr_redis_ct_node_s {
  */
 struct fr_redis_async_cmd_s {
 	request_t			*request;	//!< Request this command set relates to.
-	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this command set is running on.
+	fr_redis_ct_t			*rtcluster;	//!< Cluster this command set is running on.
 	fr_redis_trunk_t		*rtrunk;	//!< Trunk the command set is currently running on.
 	fr_redis_command_set_t		*cmds;		//!< Command set to run.
 	uint8_t const			*key;		//!< Key used to identify key slot.
@@ -124,7 +124,7 @@ struct fr_redis_async_cmd_s {
 typedef struct {
 	request_t			*request;	//!< The request waiting for the map.
 	fr_dlist_t			entry;		//!< Entry in the list of pending requests.
-	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster the request is waiting for.
+	fr_redis_ct_t			*rtcluster;	//!< Cluster the request is waiting for.
 } fr_redis_ct_pend_req_t;
 
 #define CONFIGURE_NODE(_node, _addr) \
@@ -181,7 +181,7 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
  * @param[in] key_len length of key.
  * @return key slot for the key.
  */
-fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t *rtcluster, request_t *request,
+fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_ct_t *rtcluster, request_t *request,
 						      uint8_t const *key, size_t key_len)
 {
 	fr_redis_ct_key_slot_t *key_slot;
@@ -217,7 +217,7 @@ fr_redis_ct_key_slot_t const *fr_redis_ct_slot_by_key(fr_redis_cluster_thread_t 
  *      - The current master node.
  *	- NULL if no master node is currently assigned to a particular key slot.
  */
-fr_redis_ct_node_t const *fr_redis_ct_master(fr_redis_cluster_thread_t *rtcluster,
+fr_redis_ct_node_t const *fr_redis_ct_master(fr_redis_ct_t *rtcluster,
 					     fr_redis_ct_key_slot_t const *key_slot)
 {
 	return &rtcluster->node[key_slot->master];
@@ -233,7 +233,7 @@ fr_redis_ct_node_t const *fr_redis_ct_master(fr_redis_cluster_thread_t *rtcluste
  *	- NULL if no replica node is assigned, or is at the specific key slot.
  *
  */
-fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_cluster_thread_t *rtcluster,
+fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_ct_t *rtcluster,
 					      fr_redis_ct_key_slot_t const *key_slot, uint8_t replica_num)
 {
 	if (replica_num >= key_slot->num_replicas) return NULL;	/* No replica available */
@@ -280,7 +280,7 @@ int fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node)
  */
 static fr_redis_async_rcode_t fr_redis_async_cmd_enqueue(fr_redis_async_cmd_t *cmd)
 {
-	fr_redis_cluster_thread_t	*rtcluster = cmd->rtcluster;
+	fr_redis_ct_t	*rtcluster = cmd->rtcluster;
 	fr_redis_pipeline_status_t	ret;
 	bool				dst_unavail = false;
 
@@ -352,7 +352,7 @@ static int _fr_redis_async_cmd_free(fr_redis_async_cmd_t *cmd)
  * @return The async redis command
  */
 fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,
-					       fr_redis_cluster_thread_t *rtcluster, uint8_t const *key, size_t key_len,
+					       fr_redis_ct_t *rtcluster, uint8_t const *key, size_t key_len,
 					       fr_redis_command_set_t *cmds, bool read_only, fr_redis_ct_node_t *node)
 {
 	fr_redis_async_cmd_t		*cmd;
@@ -471,7 +471,7 @@ static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
 }
 
 #ifdef HAVE_REDIS_SSL
-static int _redis_cluster_thread_free(fr_redis_cluster_thread_t *rtcluster)
+static int _redis_cluster_thread_free(fr_redis_ct_t *rtcluster)
 {
 	if (rtcluster->ssl_ctx) SSL_CTX_free(rtcluster->ssl_ctx);
 	return 0;
@@ -484,17 +484,16 @@ static int _redis_cluster_thread_free(fr_redis_cluster_thread_t *rtcluster)
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event_list_t *el,
-							 fr_redis_conf_t *conf, fr_redis_trunk_active_t active,
-							 void *active_uctx, bool active_oneshot)
+fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event_list_t *el, fr_redis_conf_t *conf,
+				 fr_redis_trunk_active_t active, void *active_uctx, bool active_oneshot)
 {
-	fr_redis_cluster_thread_t	*rtcluster;
+	fr_redis_ct_t	*rtcluster;
 	trunk_conf_t			*our_tconf;
 	uint8_t				i;
 	uint32_t			s, num_nodes;
 
-	MEM(rtcluster = talloc_zero(ctx, fr_redis_cluster_thread_t));
-	*rtcluster = (fr_redis_cluster_thread_t) {
+	MEM(rtcluster = talloc_zero(ctx, fr_redis_ct_t));
+	*rtcluster = (fr_redis_ct_t) {
 		.el = el,
 		.conf = conf,
 		.tls_cs = tls_cs,
@@ -602,18 +601,18 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, CONF_S
 	return rtcluster;
 }
 
-fr_event_list_t *fr_redis_cluster_thread_el(fr_redis_cluster_thread_t *rtcluster)
+fr_event_list_t *fr_redis_ct_el(fr_redis_ct_t *rtcluster)
 {
 	return rtcluster->el;
 }
 
-trunk_conf_t const *fr_redis_cluster_thread_trunk_conf(fr_redis_cluster_thread_t *rtcluster)
+trunk_conf_t const *fr_redis_ct_trunk_conf(fr_redis_ct_t *rtcluster)
 {
 	return rtcluster->tconf;
 }
 
 #ifdef HAVE_REDIS_SSL
-SSL_CTX *fr_redis_cluster_ssl_ctx(fr_redis_cluster_thread_t *rtcluster)
+SSL_CTX *fr_redis_ct_ssl_ctx(fr_redis_ct_t *rtcluster)
 {
 	return rtcluster->ssl_ctx;
 }
@@ -627,7 +626,7 @@ SSL_CTX *fr_redis_cluster_ssl_ctx(fr_redis_cluster_thread_t *rtcluster)
  *	- 0 om success
  *	- -1 on error
  */
-int fr_redis_cluster_thread_map_update(fr_redis_cluster_thread_t *rtcluster, fr_pair_list_t const *list)
+int fr_redis_ct_map_update(fr_redis_ct_t *rtcluster, fr_pair_list_t const *list)
 {
 	fr_pair_t	*vp, *shard = NULL, *slot, *start, *end, *node, *role, *node_ip, *node_port;
 	uint16_t	i;
@@ -871,8 +870,7 @@ do { \
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster, fr_coord_worker_t *cw,
-					  fr_coord_pair_reg_t *coord_pair_reg)
+int fr_redis_ct_map_bootstrap(fr_redis_ct_t *rtcluster, fr_coord_worker_t *cw, fr_coord_pair_reg_t *coord_pair_reg)
 {
 	fr_redis_conf_t const	*conf = rtcluster->conf;
 	fr_pair_list_t		list;
@@ -933,8 +931,8 @@ int fr_redis_cluster_thread_map_bootstrap(fr_redis_cluster_thread_t *rtcluster, 
  *
  * To be used when a command returns MOVED
  */
-fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t *rtcluster, fr_coord_worker_t *cw,
-						       fr_coord_pair_reg_t *coord_pair_reg, bool force)
+fr_redis_async_rcode_t fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_worker_t *cw,
+					   fr_coord_pair_reg_t *coord_pair_reg, bool force)
 {
 	fr_pair_list_t		list;
 	fr_pair_t		*vp;
@@ -978,16 +976,15 @@ fr_redis_async_rcode_t fr_redis_cluster_thread_map_get(fr_redis_cluster_thread_t
 	return REDIS_ASYNC_RCODE_SUCCESS;
 }
 
-fr_redis_ct_node_t *fr_redis_cluster_thread_node_by_addr(fr_redis_cluster_thread_t *rtcluster, fr_socket_t *addr)
+fr_redis_ct_node_t *fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_socket_t *addr)
 {
 	fr_redis_ct_node_t find;
 	find.addr = *addr;
 	return fr_rb_find(rtcluster->used_nodes, &find);
 }
 
-fr_redis_async_rcode_t fr_redis_cluster_thread_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
-								 fr_redis_cluster_thread_t *rtcluster, bool is_master,
-								 bool is_replica)
+fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
+						     fr_redis_ct_t *rtcluster, bool is_master, bool is_replica)
 {
 	uint64_t 		in_use = fr_rb_num_elements(rtcluster->used_nodes);
 	fr_rb_iter_inorder_t	iter;
@@ -1046,7 +1043,7 @@ static int _fr_redis_ct_pend_req_free(fr_redis_ct_pend_req_t *pend_req)
 /** Add a request to the list of those waiting for the cluster map
  *
  */
-void fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_cluster_thread_t *rtcluster, request_t *request)
+void fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_ct_t *rtcluster, request_t *request)
 {
 	fr_redis_ct_pend_req_t	*pend_req;
 

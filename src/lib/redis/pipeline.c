@@ -162,7 +162,7 @@ struct fr_redis_trunk_s {
 							///< to the host this trunk is used to communicate with.
 	trunk_t				*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
-	fr_redis_cluster_thread_t	*rtcluster;	//!< Cluster this trunk belongs to.
+	fr_redis_ct_t			*rtcluster;	//!< Cluster this trunk belongs to.
 
 	fr_redis_trunk_active_t		active;		//!< Callback to run when the trunk becomes active.
 	void				*active_uctx;	//!< Uctx to pass to active callback.
@@ -707,7 +707,7 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
 
 	return fr_redis_connection_alloc(tconn, el, conf, rtrunk->io_conf,
 #ifdef HAVE_REDIS_SSL
-					 fr_redis_cluster_ssl_ctx(rtrunk->rtcluster),
+					 fr_redis_ct_ssl_ctx(rtrunk->rtcluster),
 #endif
 					 log_prefix);
 }
@@ -894,7 +894,7 @@ static void _redis_trunk_active(UNUSED trunk_t *trunk, UNUSED trunk_state_t prev
  *	- On success, a new fr_redis_trunk_t which can be used for pipelining commands.
  *	- NULL on failure.
  */
-fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_redis_io_conf_t const *io_conf,
+fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_ct_t *rtcluster, fr_redis_io_conf_t const *io_conf,
 				       fr_pair_list_t *trigger_args, fr_redis_trunk_active_t active,
 				       void *active_uctx, bool active_oneshot)
 {
@@ -916,8 +916,7 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster, fr_
 		.active = active,
 		.active_uctx = active_uctx,
 	};
-	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_cluster_thread_el(rtcluster),
-				    &io_funcs, fr_redis_cluster_thread_trunk_conf(rtcluster),
+	rtrunk->trunk = trunk_alloc(rtrunk, fr_redis_ct_el(rtcluster), &io_funcs, fr_redis_ct_trunk_conf(rtcluster),
 				    io_conf->log_prefix, rtrunk, false, trigger_args);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
