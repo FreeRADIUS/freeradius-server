@@ -220,10 +220,9 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 					fr_dlist_insert_before(&head->dlist, next, child);
 					child->flags.can_purify = false;
 					xlat_flags_merge(&our_flags, &child->flags);
-
-					node = child;
 				}
 				talloc_free(to_free);
+				continue;
 			}
 		}
 			break;
