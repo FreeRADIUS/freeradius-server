@@ -2,7 +2,7 @@
 
 
 
-*Goal:* To configure a server to load-balanceproxied requests across
+*Goal:* To configure a server to load-balance proxied requests across
 multiple home servers.
 
 *Time:* 10-15 minutes
