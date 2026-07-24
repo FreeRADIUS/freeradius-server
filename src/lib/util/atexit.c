@@ -253,6 +253,8 @@ unsigned int fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void con
 	fr_atexit_entry_t 	*e = NULL;
 	unsigned int		count = 0;
 
+	if (!fr_atexit_global) return 0;
+
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
 		fr_atexit_entry_t *disarm;
 
