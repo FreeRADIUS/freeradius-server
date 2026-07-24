@@ -129,10 +129,31 @@ if [ -z "$token" ] || [ "$token" = null ]; then
 	exit 1
 fi
 
+#  The publish carries the commit subject and the branch name as extra HTTP
+#  headers. The store's run picker displays both, and the branch name is what
+#  links the run back to GitHub: the store replaces "/" with "_" in its
+#  directory names, so the header is the only place the real branch name
+#  survives. If either value cannot be determined the script is not running
+#  in its normal CI context, and the publish stops and errors out.
+#  The values travel base64-encoded.
+subject=$(git log -1 --format=%s 2>/dev/null | head -c 200)
+if [ -z "$subject" ]; then
+	echo "ERROR: cannot read the commit subject (git log failed)" >&2
+	exit 1
+fi
+if [ -z "${GITHUB_REF_NAME:-}" ]; then
+	echo "ERROR: GITHUB_REF_NAME is not set; cannot record the branch" >&2
+	exit 1
+fi
+subject_b64=$(printf '%s' "$subject" | base64 | tr -d '\n')
+branch_b64=$(printf '%s' "$GITHUB_REF_NAME" | head -c 200 | base64 | tr -d '\n')
+
 echo "publishing $(du -h "$tarball" | cut -f1 | tr -d ' ') prof-results tarball"
 resp="$tmpdir/response"
 code=$(curl -sS --connect-timeout 10 -o "$resp" -w '%{http_code}' \
 	-X POST -H "Authorization: Bearer $token" \
+	-H "X-Prof-Commit-Subject-B64: $subject_b64" \
+	-H "X-Prof-Branch-Ref-B64: $branch_b64" \
 	--data-binary @"$tarball" \
 	"$url") || code=000
 
