@@ -23,6 +23,117 @@
  *
  * @copyright 2026 Network RADIUS (legal@networkradius.com)
  *
+ * Overview
+ * ========
+ *
+ * Read and understand this http://redis.io/topics/cluster-spec first, else the text below
+ * will not be useful.
+ *
+ * Using the cluster's public API
+ * ------------------------------
+ *
+ *  The cluster requires use of a coordinator to fetch the cluster map.
+ *
+ *  Any module using a Redis cluster should register a coordinator which uses
+ *  the `redis` virtual server.
+ *
+ *  In `mod_coord_attach`, #fr_redis_ct_map_bootstrap can be used to initiate
+ *  the loading of the cluster map.  Typically this should not be called if
+ *  the pool start is set to zero.
+ *  In that case, the first attempt to enqueue a command set will indicate
+ *  that the cluster map need to be bootstrapped.
+ *
+ *  At runtime the function #fr_redis_async_cmd_start is used to enqueue a set of
+ *  commands, and the statis it returns should be checked with the macro
+ *  REDIS_ASYNC_START_RCODE_PROCESS to initiate the cluster bootstrap or get
+ *  an updated map if needed.
+ *
+ *  With calling Redis using it's async API, the majority of results processing has to
+ *  be done in a callback called by hiredis - the `redisReply` structure is freed
+ *  after the callback is called.
+ *
+ *  This callback is associated with the individual commands in a Redis command set
+ *  as they are added to the command set with the fr_redis_command_*_add functions.
+ *
+ * Structures
+ * ----------
+ *
+ *   This code maintains a series structures for efficient lookup and lockless operations.
+ *
+ *   The important ones are:
+ *     - An array of #fr_redis_cluster_node_t.  These are pre-allocated on startup and are
+ *       never added to, or removed from.
+ *     - An #fr_fifo_t.  This contains the queue of nodes that may be re-used.
+ *     - An #fr_rb_tree_t.  This contains a tree of nodes which are active.  The tree is built on IP
+ *       address and port.
+ *
+ *   Each #fr_redis_cluster_node_t contains a master ID, and an array of slave IDs.  The IDs are array
+ *   indexes in the fr_redis_cluster_t.node array.  We use 8bit unsigned integers instead of
+ *   pointers to save space.  Using pointers, the node[] array would need 784K, using IDs
+ *   it uses 112K.  Still not light on memory, but a bit more acceptable.
+ *   Currently the key_slot array is shadowed by key_slot_pending, used to stage new key_slot
+ *   mappings.  This doubles the memory used.  We may want to consider allocating key_slot_pending
+ *   only during re-mappings and freeing it after.
+ *
+ * Mapping/Remapping the cluster
+ * -----------------------------
+ *
+ *   On startup, and during cluster operation, a remap may be performed.  A remap involves
+ *   the following steps:
+ *
+ *     1. Request the cluster map from the coordinator.
+ *     2. The coordinator:
+ *        a. Checks to see when it last fetched the cluster map.  If it was less than 1 second ago,
+ *           replies with the most recently fetched data.
+ *        b. Executes the Redis 'cluster info' on all known nodes to establish which  nodes believe
+ *           they can see a working cluster, from the `cluster_state` response and which nodes have
+ *           the most up to date representation of the cluster, from the `cluster_current_epoch`
+ *           response.
+ *        c. Nodes reporting the cluster is OK are issued the Redis 'cluster slots' or 'cluster shards'
+ *           command depending on the Redis server version.
+ *        d. Validating the result of this command.  We need to do extensive validation to
+ *           avoid SEGV on invalid data, due to the way libhiredis presents the result.
+ *        e. Return the cluster map to the workers.
+ *     4. Determining the intersection between nodes described in the result, and those already
+ *        in our #fr_rb_tree_t.
+ *     5. Creating trunk connections to nodes that were in the result, but not in the tree.
+ *     6. Mapping keyslot ranges to nodes in the key_slot_pending array.
+ *     7. Verifying there are no holes in the ranges (if there are, we roll back and error out).
+ *     8. Applying the new keyslot ranges.
+ *     9. Removing nodes no longer used by the key slots, and adding them back to the free
+ *        nodes queue.
+ *
+ *   #fr_redis_ct_map_get is used to request an updated map from the coordinator and
+ *   #fr_redis_ct_map_update is used to process the message received from the coordinator to update
+ *   the thread local copy of the cluster map.
+ *
+ *   The cluster client can continue to operate, albeit inefficiently, with a stale cluster map
+ *   by following '-ASK' and '-MOVE' redirects.
+ *
+ *   Remaps are limited to one per second.  If any operation sets the remap_needed flag, or
+ *   attempts a remap directly, the remap may be skipped if one occurred recently.
+ *
+ *
+ * Processing '-ASK' and '-MOVE' redirects
+ * ---------------------------------------
+ *
+ *   Resume functions which are run after an async Redis command set has completed should
+ *   fetch the rcode with #fr_redis_command_set_rcode.
+ *   If the rcode indicates MOVE or ASK, then #fr_redis_async_cmd_redirect should be used
+ *   to re-enqueue the command set on the indicated node. In addition, if the response
+ *   was MOVE, then #fr_redis_ct_map_get should be used to initiate a refresh of the cluster map.
+ *
+ *   The data from '-MOVE' responses, is not used to alter the cluster map.  That is only done
+ *   on successful remap.
+ *
+ *
+ * Processing '-TRYAGAIN'
+ * ----------------------
+ *
+ *   If the cluster is in a state of flux, a node may return '-TRYAGAIN' to indicated that we
+ *   should attempt the operation again.  #fr_redis_async_cmd_resend can be used to re-enqueue
+ *   the command set.
+ *
  */
 
 #include <freeradius-devel/util/debug.h>
