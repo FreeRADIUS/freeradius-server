@@ -130,8 +130,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		p[(5*3)+2] = '\0';
 
-		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
-		       vp->vp_strvalue);
+		RDEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
+			vp->vp_strvalue);
 		return RLM_MODULE_OK;
 	}
 

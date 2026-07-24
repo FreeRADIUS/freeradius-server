@@ -523,7 +523,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		}
 
 		if (auth_type) {
-			DEBUG("Not doing PAP as Auth-Type is already set.");
+			RDEBUG("Not doing PAP as Auth-Type is already set.");
 			return RLM_MODULE_NOOP;
 		}
 
