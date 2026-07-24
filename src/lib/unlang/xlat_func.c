@@ -293,7 +293,7 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
  * @note Intended to be called from the module_rlm
  *
  * @param[in] x		to set the mctx for.
- * @param[in] mctx	Is duplicated and about to the lifetime of the xlat.
+ * @param[in] mctx	Is duplicated and bound to the lifetime of the xlat.
  */
 void xlat_mctx_set(xlat_t *x, module_inst_ctx_t const *mctx)
 {
