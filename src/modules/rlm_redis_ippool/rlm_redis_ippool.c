@@ -1021,6 +1021,8 @@ static void redis_ippool_allocate_results(request_t *request, UNUSED fr_redis_co
 	redis_ippool_alloc_rctx_t	*alloc_rctx = talloc_get_type_abort(rctx, redis_ippool_alloc_rctx_t);
 	redis_ippool_alloc_call_env_t	*env = alloc_rctx->env;
 
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -1174,6 +1176,8 @@ static void redis_ippool_update_results(request_t *request, UNUSED fr_redis_comm
 	redis_ippool_update_rctx_t	*update_rctx = talloc_get_type_abort(rctx, redis_ippool_update_rctx_t);
 	redis_ippool_update_call_env_t	*env = update_rctx->env;
 
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -1262,6 +1266,8 @@ static void redis_ippool_release_results(request_t *request, UNUSED fr_redis_com
 {
 	redis_ippool_release_rctx_t	*release_rctx = talloc_get_type_abort(rctx, redis_ippool_release_rctx_t);
 
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -1326,9 +1332,11 @@ static unlang_action_t CC_HINT(nonnull) redis_ippool_load_resume(unlang_result_t
 	return unlang_module_yield(request, rctx->resume, rctx->cancel, ~FR_SIGNAL_CANCEL, rctx->eval_rctx);
 }
 
-static void lua_script_load_results(UNUSED request_t *request, UNUSED fr_redis_command_t *cmd,
+static void lua_script_load_results(request_t *request, UNUSED fr_redis_command_t *cmd,
 				    redisReply *reply, UNUSED void *rctx)
 {
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	if (reply->type != REDIS_REPLY_STRING) {
 		ERROR("Unexpected reply type after loading function");
 		return;
@@ -1791,6 +1799,8 @@ static void mod_pools_list_result(request_t *request, UNUSED fr_redis_command_t 
 	size_t			k, len;
 	char const		*p;
 
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		ERROR("Failed retrieving result, expected array got %s",
 		      fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -2053,6 +2063,8 @@ static void mod_show_result(request_t *request, UNUSED fr_redis_command_t *cmd, 
 	bool				active;
 	char				ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
 	IPPOOL_SPRINT_IP(ip_buff, &show_rctx->lookup[show_rctx->lookup_no]->vb_ip,
 			 show_rctx->lookup[show_rctx->lookup_no]->vb_ip.prefix);
 	show_rctx->lookup_no++;
@@ -2162,6 +2174,8 @@ static void mod_stats_result(request_t *request, UNUSED fr_redis_command_t *cmd,
 	redis_ippool_info_rctx_t	*stats_rctx = talloc_get_type_abort(rctx, redis_ippool_info_rctx_t);
 	fr_pair_t			*stats_vp, *dynamic_vp, *static_vp, *vp;
 	size_t				i;
+
+	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
 
 	if (reply->type != REDIS_REPLY_ARRAY) return;
 	if (reply->elements != 12) return;
