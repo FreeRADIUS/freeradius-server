@@ -47,10 +47,19 @@ if [ -z "$token" ] || [ "$token" = null ]; then
 	exit 1
 fi
 
+#  The commit subject and the real branch ref ride along for the store's run
+#  picker (display + GitHub links; the store path converts / to _ in branch
+#  names, so the original ref is otherwise lost). base64, because HTTP
+#  headers are ASCII and neither value is guaranteed to be.
+subject_b64=$(git log -1 --format=%s 2>/dev/null | head -c 200 | base64 | tr -d '\n')
+branch_b64=$(printf '%s' "${GITHUB_REF_NAME:-}" | head -c 200 | base64 | tr -d '\n')
+
 echo "publishing $(du -h "$tarball" | cut -f1 | tr -d ' ') prof-results tarball"
 resp="$tmpdir/response"
 code=$(curl -sS --connect-timeout 10 -o "$resp" -w '%{http_code}' \
 	-X POST -H "Authorization: Bearer $token" \
+	${subject_b64:+-H "X-Prof-Commit-Subject-B64: $subject_b64"} \
+	${branch_b64:+-H "X-Prof-Branch-Ref-B64: $branch_b64"} \
 	--data-binary @"$tarball" \
 	"$url") || code=000
 
