@@ -1,0 +1,103 @@
+#
+#  Test the per-section 'do_xlat' / 'is_json' defaults, and the
+#  per-attribute overrides in JSON responses.
+#
+#  The /expand endpoint returns:
+#    Tmp-String-3  bare value "%{User-Name}", follows the section default
+#    Tmp-String-4  "%{User-Name}" with "do_xlat":true
+#    Tmp-String-5  "%{User-Name}" with "do_xlat":false
+#    Tmp-String-6  nested JSON, only assigned when 'is_json' is true
+#
+
+#  Section 'do_xlat' unset, the default (yes) applies
+rest_expand
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+#  Bare value, expanded by default
+if (!(&control:Tmp-String-3 == "Bob")) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":true, expanded
+if (!(&control:Tmp-String-4 == "Bob")) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":false, literal
+if (!(&control:Tmp-String-5 == '%{User-Name}')) {
+	test_fail
+}
+
+#  Nested JSON skipped, 'is_json' defaults to no
+if (&control:Tmp-String-6) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-3[*] !* ANY
+	&Tmp-String-4[*] !* ANY
+	&Tmp-String-5[*] !* ANY
+}
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+#  Section 'do_xlat = no'
+rest_expand_no_xlat
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+#  Bare value, literal
+if (!(&control:Tmp-String-3 == '%{User-Name}')) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":true overrides the section default
+if (!(&control:Tmp-String-4 == "Bob")) {
+	test_fail
+}
+
+#  Per-attribute "do_xlat":false, literal
+if (!(&control:Tmp-String-5 == '%{User-Name}')) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-3[*] !* ANY
+	&Tmp-String-4[*] !* ANY
+	&Tmp-String-5[*] !* ANY
+}
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+#  Section 'is_json = yes', nested JSON assigned in string form
+rest_expand_is_json
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-6 =~ /"key"/)) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-3[*] !* ANY
+	&Tmp-String-4[*] !* ANY
+	&Tmp-String-5[*] !* ANY
+	&Tmp-String-6[*] !* ANY
+}
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+test_pass

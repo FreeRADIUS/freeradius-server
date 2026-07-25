@@ -143,3 +143,28 @@ Api.endpoint('GET', '/user/<username>/reflect/',
         return ngx.say(cjson.encode(returnData))
     end
 )
+
+-- Used in the do_xlat / is_json section default tests.  Returns values
+-- containing xlat expansions so the tests can verify whether the
+-- server expanded the values.
+Api.endpoint('GET', '/user/<username>/expand/',
+    function(body, keyData)
+        local returnData = {}
+        -- Bare value, follows the section 'do_xlat' default
+        returnData["control:Tmp-String-3"] = "%{User-Name}"
+        -- Explicit per-attribute flag, overrides the section default
+        returnData["control:Tmp-String-4"] = {
+            do_xlat = true,
+            value = "%{User-Name}"
+        }
+        returnData["control:Tmp-String-5"] = {
+            do_xlat = false,
+            value = "%{User-Name}"
+        }
+        -- Nested JSON, only assigned (in string form) when 'is_json' is true
+        returnData["control:Tmp-String-6"] = {
+            value = { key = "val" }
+        }
+        return ngx.say(cjson.encode(returnData))
+    end
+)

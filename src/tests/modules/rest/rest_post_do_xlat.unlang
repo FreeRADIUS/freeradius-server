@@ -1,0 +1,46 @@
+#
+#  Test the per-section 'do_xlat' default with the POST body decoder.
+#
+#  The /post/expand endpoint returns a urlencoded attribute:
+#    control:Tmp-String-3=%{User-Name}
+#
+
+#  Section 'do_xlat' unset, the default (yes) applies
+rest_post_expand
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-3 == "Bob")) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-3[*] !* ANY
+}
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+#  Section 'do_xlat = no', value assigned literally
+rest_post_expand_no_xlat
+
+if (!(&reply:REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&control:Tmp-String-3 == '%{User-Name}')) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-3[*] !* ANY
+}
+update reply {
+	&REST-HTTP-Status-Code !* ANY
+	&REST-HTTP-Body !* ANY
+}
+
+test_pass
