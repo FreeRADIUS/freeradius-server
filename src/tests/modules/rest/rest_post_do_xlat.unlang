@@ -1,0 +1,34 @@
+#
+#  Test the response post.do_xlat default with the POST body decoder.
+#
+#  The /post/expand endpoint returns a urlencoded attribute:
+#    control.Filter-Id=%{User-Name}
+#
+
+#  No response config, expansion disabled by default
+rest_post_expand
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(control.Filter-Id == '%{User-Name}')) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+
+#  response post { do_xlat = yes }, value expanded
+rest_post_expand_xlat
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(control.Filter-Id == "Bob")) {
+	test_fail
+}
+
+control -= Filter-Id[*]
+
+test_pass
