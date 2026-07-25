@@ -1867,6 +1867,11 @@ static int server_pool_add(realm_config_t *rc,
 				goto error;
 			}
 
+			if (num_home_servers) {
+				ERROR("Home server %s has 'affinity_id' set, but the previous home server(s) for pool %s do not use 'affinity_id'", pool->name);
+				goto error;
+			}
+
 			if (!pool->affinity_group) {
 				pool->affinity_group = rad_malloc(sizeof(home_server_t *) * 256);
 				if (!pool->affinity_group) {
@@ -1883,6 +1888,10 @@ static int server_pool_add(realm_config_t *rc,
 			}
 
 			pool->affinity_group[home->affinity] = home;
+
+		} else if (pool->affinity_group) {
+				ERROR("Home server %s does not have 'affinity_id' set, but the previous home server(s) for pool %s all use 'affinity_id'", pool->name);
+				goto error;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
