@@ -91,6 +91,16 @@ rest {
 	#                   Defaults to false.
 	#    raw_value    - If true, enumerated attribute values are provided as numeric
 	#                   values. Defaults to false.
+	#    do_xlat      - If true, values in responses are xlat expanded before
+	#                   being assigned to attributes.  Sets the default for the
+	#                   per-attribute 'do_xlat' flag in JSON responses, and
+	#                   controls expansion of values in POST responses.
+	#                   Defaults to true when unset, for compatibility with
+	#                   existing configurations.  See the "Response value
+	#                   expansion" note below before enabling it.
+	#    is_json      - Sets the default for the per-attribute 'is_json' flag
+	#                   in JSON responses.  If true, nested JSON data is copied
+	#                   to the attribute in string form.  Defaults to false.
 	#    data         - Send custom freeform data in the HTTP body. Content-type
 	#                   may be specified with 'body'. Will be expanded.
 	#                   Values from expansion will not be escaped, this should be
@@ -164,9 +174,13 @@ rest {
 	#  }
 	#
 	#  The response format adds three optional fields:
-	#  - do_xlat    If true, any values will be xlat expanded. Defaults to true.
+	#  - do_xlat    If true, any values will be xlat expanded. Defaults to the
+	#               'do_xlat' config item of the section which made the request
+	#               (true when the config item is unset).
 	#  - is_json    If true, any nested JSON data will be copied to the attribute
-	#               in string form. Defaults to true.
+	#               in string form. Defaults to the 'is_json' config item of the
+	#               section which made the request (false when the config item
+	#               is unset).
 	#  - op         Controls how the attribute is inserted into the target list.
 	#               Defaults to ':='. To create multiple attributes from multiple
 	#               values, this should be set to '+=', otherwise only the last
@@ -185,6 +199,32 @@ rest {
 	#          "op":"+="
 	#      }
 	#  }
+
+	#
+	#  Response value expansion ('do_xlat')
+	#
+	#  The response returned by the REST API is a policy which is evaluated
+	#  by the server.  When 'do_xlat' is enabled, any xlat expansions in the
+	#  returned values, e.g. "%{User-Name}", are expanded by the server
+	#  before the values are assigned to attributes.
+	#
+	#  As with values interpolated into SQL or LDAP queries, it is the
+	#  responsibility of the REST API to validate or escape any untrusted
+	#  input (e.g. values taken from the incoming request) before echoing
+	#  the input back in the policy the API returns.  If the API does not
+	#  perform validation or escaping, a user could submit a value
+	#  containing an expansion, and the server would execute the expansion.
+	#
+	#  Setting 'do_xlat = no' in a section disables expansion of all values
+	#  in responses to requests made from that section.  In JSON responses
+	#  the per-attribute 'do_xlat' flag overrides the section default, so a
+	#  trusted API can still request expansion of individual values.
+	#
+	#  The 'do_xlat' config item defaults to 'yes' when unset, so existing
+	#  configurations keep their current behaviour.  The example sections
+	#  below all set 'do_xlat = no', so configurations based on this example
+	#  do not expand response values unless expansion is explicitly enabled.
+	#
 
 	#
 	#  Module return codes are determined by HTTP response codes. These vary depending on the
@@ -213,11 +253,15 @@ rest {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authorize"
 		method = 'get'
 		tls = ${..tls}
+
+		#  See the "Response value expansion" note above.
+		do_xlat = no
 	}
 	authenticate {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authenticate"
 		method = 'get'
 		tls = ${..tls}
+		do_xlat = no
 
 		#
 		#  Note that you CANNOT set 'username' or 'password'
@@ -237,26 +281,31 @@ rest {
 		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
 		method = 'post'
 		tls = ${..tls}
+		do_xlat = no
 	}
 	accounting {
 		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
 		method = 'post'
 		tls = ${..tls}
+		do_xlat = no
 	}
 	post-auth {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
 		method = 'post'
 		tls = ${..tls}
+		do_xlat = no
 	}
 	pre-proxy {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=pre-proxy"
 		method = 'post'
 		tls = ${..tls}
+		do_xlat = no
 	}
 	post-proxy {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-proxy"
 		method = 'post'
 		tls = ${..tls}
+		do_xlat = no
 	}
 
 	#  Options for calling rest xlats
