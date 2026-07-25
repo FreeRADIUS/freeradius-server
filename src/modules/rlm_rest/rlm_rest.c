@@ -111,9 +111,32 @@ static const conf_parser_t section_request_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Defaults for the JSON decoder.  "do_xlat" defaults to "no", the
+ *	REST API must opt in to expansion, either here or with the
+ *	per-attribute "do_xlat" flag.  Note that this differs from v3,
+ *	where "do_xlat" defaulted to "yes".
+ */
+static const conf_parser_t section_response_json_config[] = {
+	{ FR_CONF_OFFSET("do_xlat", rlm_rest_section_response_json_t, do_xlat), .dflt = "no" },
+	{ FR_CONF_OFFSET("is_json", rlm_rest_section_response_json_t, is_json), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
+
+/*
+ *	Defaults for the POST decoder.  As above, "do_xlat" defaults to
+ *	"no".
+ */
+static const conf_parser_t section_response_post_config[] = {
+	{ FR_CONF_OFFSET("do_xlat", rlm_rest_section_response_post_t, do_xlat), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const conf_parser_t section_response_config[] = {
 	{ FR_CONF_OFFSET("force_to", rlm_rest_section_response_t, force_to_str) }, \
 	{ FR_CONF_OFFSET_TYPE_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_response_t, max_body_in), .dflt = "16k" },
+	{ FR_CONF_OFFSET_SUBSECTION("json", 0, rlm_rest_section_response_t, json, section_response_json_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("post", 0, rlm_rest_section_response_t, post, section_response_post_config) },
 	CONF_PARSER_TERMINATOR
 };
 
