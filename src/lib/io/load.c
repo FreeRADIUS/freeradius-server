@@ -67,12 +67,15 @@ struct fr_load_s {
 	fr_event_list_t		*el;
 	fr_load_config_t const *config;
 	fr_load_callback_t	callback;
+	fr_load_done_callback_t	done;
 	void			*uctx;
 
 	fr_load_stats_t		stats;			//!< sending statistics
 	fr_time_t		step_start;		//!< when the current step started
 	fr_time_t		step_end;		//!< when the current step will end
 	int			step_received;
+	int			sent_base;		//!< stats.sent when this run started, so that
+							///< max_requests counts per-run, not cumulatively
 
 	uint32_t		pps;
 	fr_time_delta_t		delta;			//!< between packets
@@ -85,7 +88,8 @@ struct fr_load_s {
 };
 
 fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_load_config_t *config,
-				    fr_load_callback_t callback, void *uctx)
+				    fr_load_callback_t callback, fr_load_done_callback_t done,
+				    void *uctx)
 {
 	fr_load_t *l;
 
@@ -99,6 +103,7 @@ fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_loa
 	l->el = el;
 	l->config = config;
 	l->callback = callback;
+	l->done = done;
 	l->uctx = uctx;
 
 	return l;
@@ -126,6 +131,22 @@ static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 	}
 }
 
+/** Stop sending new packets, and wait for outstanding replies.
+ *
+ *  If every reply has already arrived then the test is complete right
+ *  now, so run the "done" callback.  Otherwise completion is signalled
+ *  by fr_load_generator_have_reply() when the last reply comes in.
+ */
+static void load_drain(fr_load_t *l, fr_time_t now)
+{
+	l->state = FR_LOAD_STATE_DRAINING;
+
+	if (l->stats.received >= l->stats.sent) {
+		l->stats.end = now;
+		if (l->done) l->done(l->uctx);
+	}
+}
+
 static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_load_t *l = uctx;
@@ -148,18 +169,26 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		if (l->pps > (UINT32_MAX / l->config->milliseconds)) l->pps = UINT32_MAX / l->config->milliseconds;
+
+		/*
+		 *	The ramp-up has passed max_pps.  If there's no
+		 *	reason to keep sending, stop and drain.
+		 *	Otherwise hold the rate at max_pps, until
+		 *	max_requests packets have been sent (checked
+		 *	below), or forever for "unlimited".
+		 */
+		if (l->config->max_pps && (l->pps > l->config->max_pps)) {
+			if (!l->config->max_requests && !l->config->unlimited) {
+				load_drain(l, now);
+				return;
+			}
+
+			l->pps = l->config->max_pps;
+		}
+
 		l->stats.pps = l->pps;
 		l->stats.skipped = 0;
 		l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
-
-		/*
-		 *	Stop at max PPS, if it's set.  Otherwise
-		 *	continue without limit.
-		 */
-		if (l->config->max_pps && (l->pps > l->config->max_pps)) {
-			l->state = FR_LOAD_STATE_DRAINING;
-			return;
-		}
 	}
 
 	/*
@@ -204,6 +233,21 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	}
 
 	/*
+	 *	Stop after max_requests packets, if it's set.  Packets
+	 *	sent by a previous run of the generator don't count.
+	 */
+	if (l->config->max_requests) {
+		uint32_t sent = (uint32_t) (l->stats.sent - l->sent_base);
+
+		if (sent >= l->config->max_requests) {
+			load_drain(l, now);
+			return;
+		}
+
+		if (count > (l->config->max_requests - sent)) count = l->config->max_requests - sent;
+	}
+
+	/*
 	 *	Skip timers if we're too busy.
 	 */
 	l->next = fr_time_add(l->next, l->delta);
@@ -219,7 +263,7 @@ static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	 *	Set the timer for the next packet.
 	 */
 	if (fr_timer_in(l, tl, &l->ev, delta, false, load_timer, l) < 0) {
-		l->state = FR_LOAD_STATE_DRAINING;
+		load_drain(l, now);
 		return;
 	}
 
@@ -237,6 +281,9 @@ int fr_load_generator_start(fr_load_t *l)
 	l->stats.start = fr_time();
 	l->step_start = l->stats.start;
 	l->step_end = fr_time_add(l->step_start, l->config->duration);
+
+	l->state = FR_LOAD_STATE_SENDING;
+	l->sent_base = l->stats.sent;
 
 	l->pps = l->config->start_pps;
 
@@ -322,10 +369,14 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	/*
 	 *	The send code has decided that the backlog is too
 	 *	high.  New requests are blocked until replies come in.
-	 *	Since we have a reply, send another request.
+	 *	Since we have a reply, send another request.  Unless
+	 *	we've already sent max_requests packets, in which case
+	 *	the timer will notice and start draining.
 	 */
 	if (l->state == FR_LOAD_STATE_GATED) {
-		if (l->stats.skipped > 0) {
+		if ((l->stats.skipped > 0) &&
+		    (!l->config->max_requests ||
+		     ((uint32_t) (l->stats.sent - l->sent_base) < l->config->max_requests))) {
 			l->stats.skipped--;
 			fr_load_generator_send(l, now, 1);
 		}
