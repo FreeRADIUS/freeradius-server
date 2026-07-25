@@ -87,6 +87,10 @@ RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_
     && dnf install -y dnf-utils \
     && dnf config-manager --enable epel-testing
 
+dnl  EPEL mirror lists can only be snapshotted after the epel-release
+dnl  install above puts the repo files in place.
+include(`common.dnf.mirrorlist.epel.m4')dnl
+
 ARG radiusd_uid=95
 ARG radiusd_gid=95
 

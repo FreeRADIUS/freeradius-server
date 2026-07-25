@@ -5,3 +5,11 @@
 #  (minrate) stays on so a stalled in-flight download still gets killed.
 #
 RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  Snapshot the Rocky mirror lists at build time so no later dnf
+#  invocation depends on the mirrors.rockylinux.org redirector (see
+#  the script header for the full story).
+#
+COPY scripts/docker/bin/dnf-mirrorlist-snapshot /usr/local/bin/dnf-mirrorlist-snapshot
+RUN dnf-mirrorlist-snapshot rocky
