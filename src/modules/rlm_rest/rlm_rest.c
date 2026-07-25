@@ -63,6 +63,13 @@ static const CONF_PARSER section_config[] = {
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
 	{ "attr_num", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, attr_num), "no" },
 	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, raw_value), "no" },
+
+	/*
+	 *	Defaults for response decoding.  "do_xlat" MUST default to "yes",
+	 *	existing configurations rely on values being expanded.
+	 */
+	{ "do_xlat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, do_xlat), "yes" },
+	{ "is_json", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, is_json), "no" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 

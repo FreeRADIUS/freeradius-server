@@ -1084,7 +1084,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_sectio
  * @param[in] rawlen Length of data in raw buffer.
  * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
  */
-static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
+static int rest_decode_post(UNUSED rlm_rest_t *instance, rlm_rest_section_t *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -1096,6 +1096,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 	char *name  = NULL;
 	char *value = NULL;
 
+	char const *to_parse = NULL;
 	char *expanded = NULL;
 
 	DICT_ATTR const *da;
@@ -1190,10 +1191,15 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 		RDEBUG3("Value  : \"%s\"", value);
 		REXDENT();
 
-		RDEBUG2("Performing xlat expansion of response value");
+		if (section->do_xlat) {
+			RDEBUG2("Performing xlat expansion of response value");
 
-		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
-			goto skip;
+			if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
+				goto skip;
+			}
+			to_parse = expanded;
+		} else {
+			to_parse = value;
 		}
 
 		vp = fr_pair_afrom_da(ctx, da);
@@ -1204,7 +1210,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
 			goto error;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, -1);
+		ret = fr_pair_value_from_str(vp, to_parse, -1);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -1349,9 +1355,13 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 @endverbatim
  *
  * JSON valuepair flags:
- *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
+ *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to the
+ *			   section "do_xlat" configuration item, which itself
+ *			   defaults to true.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
- *			   VALUE_PAIR in string form. Defaults to true.
+ *			   VALUE_PAIR in string form. Defaults to the section
+ *			   "is_json" configuration item, which itself defaults
+ *			   to false.
  *  - op	(optional) Controls how the attribute is inserted into
  *			   the target list. Defaults to ':=' (T_OP_SET).
  *
@@ -1402,8 +1412,8 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
-			.do_xlat = 1,
-			.is_json = 0
+			.do_xlat = section->do_xlat,
+			.is_json = section->is_json
 		};
 
 		vp_tmpl_t dst;
