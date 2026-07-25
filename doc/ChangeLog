@@ -4,6 +4,15 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  Windows over 10 years ago, and is no longer relevant.
 	* Add example of using socat to test radclient + UDP to the server
 	  over TLS.  See sites-available/tls, and look for "socat".
+	* Add per-section "do_xlat" and "is_json" config items to rlm_rest.
+	  These set the section-wide defaults for the matching per-attribute
+	  flags in JSON responses.  "do_xlat" also controls xlat expansion
+	  of values in POST responses.  "do_xlat" defaults to "yes" when
+	  unset, so existing configurations are unaffected.  The example
+	  mods-available/rest now sets "do_xlat = no" in each section, as
+	  response values should only be expanded where the REST API
+	  validates or escapes untrusted input echoed back in the policy
+	  the API returns.
 
 	Feature improvements
 	* Add $VALUE{filename} which reads a value from one line of a
