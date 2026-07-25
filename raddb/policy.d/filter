@@ -18,6 +18,18 @@ deny_realms {
 filter_username {
 	if (&User-Name) {
 		#
+		#  Prevention of injection attacks if external datastores or APIs fail to sanitise text
+		#
+		#  "%%" is the documented escape sequence for a literal "%".
+		#
+		if (&User-Name =~ /%%\{/) {
+			update request {
+				&Module-Failure-Message += 'Rejected: User-Name may contain an xlat expression'
+			}
+			reject
+		}
+
+		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
 		#if (&User-Name != "%{tolower:%{User-Name}}") {
