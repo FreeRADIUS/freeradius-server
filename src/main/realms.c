@@ -1868,18 +1868,12 @@ static int server_pool_add(realm_config_t *rc,
 			}
 
 			if (!pool->affinity_group) {
-				pool->affinity_group = rad_malloc(sizeof(home_server_t *) * pool->num_home_servers);
+				pool->affinity_group = rad_malloc(sizeof(home_server_t *) * 256);
 				if (!pool->affinity_group) {
 					ERROR("Out of memory");
 					goto error;
 				}
-				memset(pool->affinity_group, 0, sizeof(home_server_t *) * pool->num_home_servers);
-			}
-
-			if (home->affinity >= (uint32_t) pool->num_home_servers) {
-				ERROR("Home server %s has invalid 'affinity' value %u.  It must be less than %u",
-				      home->name, home->affinity, pool->num_home_servers);
-				goto error;
+				memset(pool->affinity_group, 0, sizeof(home_server_t *) * 256);
 			}
 
 			if (pool->affinity_group[home->affinity]) {
