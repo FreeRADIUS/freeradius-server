@@ -23,12 +23,12 @@ echo "TEST_LOADGEN_STEP=$TEST_LOADGEN_STEP"
 echo "TEST_LOADGEN_PARALLEL=$TEST_LOADGEN_PARALLEL"
 echo "TEST_LOADGEN_MAX_BACKLOG=$TEST_LOADGEN_MAX_BACKLOG"
 echo "TEST_LOADGEN_REPEAT=$TEST_LOADGEN_REPEAT"
-echo "TEST_LOADGEN_NUM_MESSAGES=$TEST_LOADGEN_NUM_MESSAGES"
+echo "TEST_LOADGEN_MAX_REQUESTS=$TEST_LOADGEN_MAX_REQUESTS"
 echo ""
 
 # Approximate load-generator send duration; the instrumented run sleeps this
 # long between callgrind_control --instr=on and the graceful shutdown signal.
-SEND_DURATION=$(( TEST_LOADGEN_NUM_MESSAGES / TEST_LOADGEN_START_PPS ))
+SEND_DURATION=$(( TEST_LOADGEN_MAX_REQUESTS / TEST_LOADGEN_START_PPS ))
 
 # Start freeradius under valgrind with instrumentation off.
 #
