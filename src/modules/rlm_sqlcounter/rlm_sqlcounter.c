@@ -30,6 +30,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#define LOG_PREFIX "rlm_sqlcounter"
+
 #define MAX_QUERY_LEN 2048
 
 /*
@@ -134,7 +136,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 		}
 
 		num = atoi(inst->reset);
-		RDEBUG3("rlm_sqlcounter: num=%d, last=%c",num,last);
+		ROPTIONAL(RDEBUG3, DEBUG3, "num=%d, last=%c", num, last);
 	}
 
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
