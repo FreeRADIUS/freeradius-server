@@ -3110,7 +3110,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	 *	lets home_server_ldb() route that request to the same home
 	 *	server (see realms.c).
 	 */
-	if (request->home_pool && request->home_pool->affinity_group &&
+	if (reply && request->home_pool && request->home_pool->affinity_group &&
 	    request->home_server && request->home_server->affinity_assigned &&
 	    (reply->code == PW_CODE_ACCESS_CHALLENGE) &&
 	    ((vp = fr_pair_find_by_num(reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
