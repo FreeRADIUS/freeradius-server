@@ -4186,6 +4186,34 @@ static void trunk_rebalance(trunk_t *trunk)
 	       					      TRUNK_REQUEST_STATE_PENDING, 1, false));
 }
 
+/** Recalculate the trunk's aggregate state from its connection counts
+ *
+ * Derives the global #trunk_state_t from the number of connections in each
+ * connection state, and fires any registered state-change watchers (via
+ * #TRUNK_STATE_TRANSITION) if the aggregate state has changed.
+ *
+ * @param[in] trunk	to update.
+ */
+static void trunk_state_update(trunk_t *trunk)
+{
+	trunk_state_t new_state;
+
+	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
+		new_state = TRUNK_STATE_ACTIVE;
+	} else {
+		/*
+		 *	INIT / CONNECTING / FULL mean connections will become active
+		 *	so the trunk is PENDING
+		 */
+		new_state = trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT |
+							       TRUNK_CONN_CONNECTING |
+							       TRUNK_CONN_FULL) ?
+			     TRUNK_STATE_PENDING : TRUNK_STATE_IDLE;
+	}
+
+	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);
+}
+
 /** Implements the algorithm we use to manage requests per connection levels
  *
  * This is executed periodically using a timer event, and opens/closes
@@ -4232,7 +4260,6 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	uint32_t		average = 0;
 	uint32_t		req_count;
 	uint16_t		conn_count;
-	trunk_state_t		new_state;
 
 	DEBUG4("Managing trunk");
 
@@ -4293,20 +4320,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	/*
 	 *	Update the state of the trunk
 	 */
-	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
-		new_state = TRUNK_STATE_ACTIVE;
-	} else {
-		/*
-		 *	INIT / CONNECTING / FULL mean connections will become active
-		 *	so the trunk is PENDING
-		 */
-		new_state = trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT |
-							       TRUNK_CONN_CONNECTING |
-							       TRUNK_CONN_FULL) ?
-			     TRUNK_STATE_PENDING : TRUNK_STATE_IDLE;
-	}
-
-	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);
+	trunk_state_update(trunk);
 
 	/*
 	 *	A trunk can be signalled to not proactively
