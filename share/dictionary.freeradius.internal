@@ -364,6 +364,8 @@ ATTRIBUTE	EAP-Pwd-Password-Prep			1222	byte
 ATTRIBUTE	TEAP-Type-Machine			1223	integer
 ATTRIBUTE	TEAP-Type-User				1224	integer
 
+ATTRIBUTE	PSK-Password				1225	octets secret
+
 #
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
