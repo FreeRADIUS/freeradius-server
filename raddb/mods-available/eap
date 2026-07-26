@@ -103,6 +103,25 @@ eap {
 	}
 
 
+	#  EAP-PSK
+	#
+	#  This module implements EAP-PSK (RFC 4764).
+	#
+	#  The "known good" password must be in &config:PSK-Password,
+	#  which also must be 16 octets in length.
+	#
+	#  The PSK should be generated from a secure source, e.g. a
+	#  CSPRNG.
+	#
+	psk {
+		#  Server identifier (ID_S)
+		#  This should generally be the host name of the
+		#  RADIUS server.  Or, some information to uniquely
+		#  identify it.
+		#
+	#	identity = "FreeRADIUS"
+	}
+
 	#  EAP-pwd -- secure password-based authentication
 	#
 	#pwd {

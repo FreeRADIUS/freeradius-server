@@ -18,7 +18,7 @@ user2   # comment!
 #  Setting ":=" of reply and control items
 #
 
-bob  Cleartext-Password := "hello"
+bob  Cleartext-Password := "hello", PSK-Password := 0x9f9d51bc70ef21ca5c14f307980a29d8
      Reply-Message := "success"
 
 

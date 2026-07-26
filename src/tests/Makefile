@@ -219,6 +219,13 @@ ifneq "$(EAPOL_TEST)" ""
 EAP_FILES        = eap-md5.conf
 EAP_FILES       += eap-mschapv2.conf
 
+#
+#  This needs OpenSSL for AES, etc.  But it doesn't need TLS.
+#
+ifneq "$(OPENSSL_LIBS)" ""
+EAP_FILES += eap-psk.conf
+endif
+
 EAP_TLS_FILES    = eap-tls.conf
 EAP_TLS_FILES   += eap-ttls-eap-gtc.conf
 EAP_TLS_FILES   += eap-ttls-eap-mschapv2.conf
