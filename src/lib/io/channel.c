@@ -743,6 +743,21 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	to wake up.
 	 */
 	requestor = &ch->end[TO_RESPONDER];
+
+	/*
+	 *	We have told this end to close, so there is nothing left to
+	 *	wake it for: fr_channel_send_request() refuses on an inactive
+	 *	end, so no more data can be queued.  Signalling it anyway
+	 *	writes into the control plane which the responder may have
+	 *	already freed (this has been observed and caused a crash-on-exit).
+	 *
+	 *	Servicing the message is still correct: it was in flight
+	 *	before the close, and we must keep servicing to receive the
+	 *	ack at all.  The load is relaxed because only this thread
+	 *	clears "active" for this end.
+	 */
+	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) return ce;
+
 #if ENABLE_SKIPS
 	if (!requestor->must_signal && (ack == requestor->sequence)) {
 		MPRINT("REQUESTOR SKIPS signal AFTER CE %d num_outstanding %"PRIu64"\n", cs, requestor->stats.outstanding);
