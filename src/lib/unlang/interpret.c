@@ -57,6 +57,11 @@ extern fr_rb_tree_t *unlang_instruction_tree;
 
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
+unlang_thread_t const *unlang_thread_stats(unlang_t const *instruction)
+{
+	return &unlang_thread_array[instruction->number];
+}
+
 /** Create thread-specific data structures for unlang
  *
  */

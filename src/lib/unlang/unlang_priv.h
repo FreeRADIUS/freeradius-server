@@ -360,8 +360,8 @@ typedef struct {
 	fr_timer_t		*ev;				//!< run on expiry
 
 #ifdef WITH_PERF
-	uint64_t		use_count;			//!< how many packets it has processed
-	uint64_t		running;			//!< currently running this instruction
+	uint64_t		uses;				//!< how many packets it has processed
+	uint64_t		active;				//!< currently active in this instruction
 	uint64_t		yielded;			//!< currently yielded
 	fr_time_tracking_t	tracking;			//!< tracking cpu time
 #endif
@@ -380,6 +380,8 @@ void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #define		unlang_frame_perf_resume(_x)
 #define		unlang_frame_perf_cleanup(_x)
 #endif
+
+unlang_thread_t const *unlang_thread_stats(unlang_t const *instruction) CC_HINT(nonnull);
 
 #define debug_braces(_type)    (unlang_ops[_type].flag & UNLANG_OP_FLAG_DEBUG_BRACES)
 
