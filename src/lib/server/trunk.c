@@ -408,7 +408,9 @@ static size_t trunk_request_states_len = NUM_ELEMENTS(trunk_request_states);
 static fr_table_num_ordered_t const trunk_states[] = {
 	{ L("IDLE"),					TRUNK_STATE_IDLE			},
 	{ L("ACTIVE"),					TRUNK_STATE_ACTIVE			},
-	{ L("PENDING"),					TRUNK_STATE_PENDING			}
+	{ L("PENDING"),					TRUNK_STATE_PENDING			},
+	{ L("FULL"),					TRUNK_STATE_FULL			},
+	{ L("FAILED"),					TRUNK_STATE_FAILED			}
 };
 static size_t trunk_states_len = NUM_ELEMENTS(trunk_states);
 
@@ -4199,16 +4201,39 @@ static void trunk_state_update(trunk_t *trunk)
 	trunk_state_t new_state;
 
 	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
-		new_state = TRUNK_STATE_ACTIVE;
-	} else {
 		/*
-		 *	INIT / CONNECTING / FULL mean connections will become active
-		 *	so the trunk is PENDING
+		 *	One or more connections are active and operational.  The trunk is ACTIVE.
 		 */
-		new_state = trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT |
-							       TRUNK_CONN_CONNECTING |
-							       TRUNK_CONN_FULL) ?
-			     TRUNK_STATE_PENDING : TRUNK_STATE_IDLE;
+		new_state = TRUNK_STATE_ACTIVE;
+
+	} else if (trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT | TRUNK_CONN_CONNECTING)) {
+		/*
+		 *	Connections are being opened, but none are usable yet.
+		 *
+		 *	This is checked before FULL.  If a connection is CONNECTING, then the trunk is by
+		 *	definition not full.
+		 */
+		new_state = TRUNK_STATE_PENDING;
+
+	} else if (trunk->conf.max &&
+		   (trunk_connection_count_by_state(trunk, TRUNK_CONN_FULL) == trunk->conf.max)) {
+		/*
+		 *	No active or connecting connections, and every one of the maximum permitted
+		 *	connections is connected and full.  The backend is reachable, but the trunk has no
+		 *	spare capacity, and can accept no more traffic.
+		 */
+		new_state = TRUNK_STATE_FULL;
+
+	} else if (trunk_connection_count_by_state(trunk, TRUNK_CONN_CLOSED)) {
+		/*
+		 *	Connections exist, but they have all failed and are
+		 *	closed / in reconnect backoff.  The backend is
+		 *	currently unreachable.
+		 */
+		new_state = TRUNK_STATE_FAILED;
+
+	} else {
+		new_state = TRUNK_STATE_IDLE;
 	}
 
 	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);

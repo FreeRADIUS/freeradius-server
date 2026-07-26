@@ -60,9 +60,18 @@ typedef enum {
 } trunk_cancel_reason_t;
 
 typedef enum {
-	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections
-	TRUNK_STATE_ACTIVE,				//!< Trunk has active connections
-	TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are active
+	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections.
+	TRUNK_STATE_ACTIVE,				//!< Trunk has at least one active connection which
+							///< can service requests.
+	TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are usable yet;
+							///< connections are being opened (INIT / CONNECTING).
+	TRUNK_STATE_FULL,				//!< Trunk has no active connections, but has one or
+							///< more connected connections which are all full (at
+							///< capacity).  The backend is reachable but has no
+							///< spare request capacity.
+	TRUNK_STATE_FAILED,				//!< Trunk has connections, but they have all failed
+							///< and are closed / in reconnect backoff.  The
+							///< backend is currently unreachable.
 	TRUNK_STATE_MAX
 } trunk_state_t;
 
