@@ -253,6 +253,15 @@ jobs:
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
+    #  This job checks out into freeradius/, so the action lives below that path
+    #  and the collection runs from there.
+    - name: Collect core dumps
+      if: ${{ always() }}
+      uses: ./freeradius/.github/actions/collect-core-dumps
+      with:
+        name: ${{ matrix.env.NAME }}
+        working-directory: freeradius
+
     - name: Upload radius logs on failure
       if: ${{ failure() }}
       uses: actions/upload-artifact@v6

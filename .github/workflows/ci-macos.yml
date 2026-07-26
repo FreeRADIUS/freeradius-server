@@ -208,6 +208,15 @@ jobs:
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
 
+    #  macOS writes cores to /cores rather than next to the crashing process,
+    #  so search that directory as well as the checkout.
+    - name: Collect core dumps
+      if: ${{ always() }}
+      uses: ./.github/actions/collect-core-dumps
+      with:
+        name: ${{ matrix.env.NAME }}
+        roots: ". /cores"
+
     #
     #  If the CI has failed and the branch is ci-debug then we start a tmate
     #  session to provide interactive shell access to the session.

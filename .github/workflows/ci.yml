@@ -212,6 +212,12 @@ jobs:
           smtp_test_server: 127.0.0.1
           smtp_test_server_port: 2525
 
+      - name: Collect core dumps
+        if: ${{ always() }}
+        uses: ./.github/actions/collect-core-dumps
+        with:
+          name: ${{ matrix.os.name }}-${{ matrix.env.NAME }}
+
       - name: Run fuzzer
         uses: ./.github/actions/fuzzer
 
