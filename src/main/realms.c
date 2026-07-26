@@ -1832,7 +1832,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		} else {
 			cf_log_err_cp(cp,
-				   "Invalid value '%'s given for track_home_server", value);
+				   "Invalid value '%s' given for track_home_server", value);
 			goto error;
 		}
 
