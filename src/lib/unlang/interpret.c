@@ -145,8 +145,9 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 
 	t = &unlang_thread_array[instruction->number];
 
-	t->use_count++;
-	t->yielded++;			// everything starts off as yielded
+	t->uses++;
+	t->active++;
+	t->yielded++;
 	now = fr_time();
 
 	fr_time_tracking_start(NULL, &frame->tracking, now);
@@ -162,7 +163,6 @@ void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
 
 	t = &unlang_thread_array[instruction->number];
 	t->yielded++;
-	t->running--;
 
 	fr_time_tracking_yield(&frame->tracking, fr_time());
 }
@@ -177,7 +177,6 @@ void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
 	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
 
 	t = &unlang_thread_array[instruction->number];
-	t->running++;
 	t->yielded--;
 
 	fr_time_tracking_resume(&frame->tracking, fr_time());
@@ -195,11 +194,12 @@ void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 	t = &unlang_thread_array[instruction->number];
 
 	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		fr_assert(t->yielded > 0);
 		t->yielded--;
 		fr_time_tracking_resume(&frame->tracking, fr_time());
-	} else {
-		t->running--;
 	}
+	fr_assert(t->active > 0);
+	t->active--;
 
 	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
 	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
@@ -243,8 +243,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
-	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
+	fr_log(log, L_DBG, file, line, "uses=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
+	       t->uses, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
 	if (!unlang_list_empty(&g->children)) {
 		unlang_list_foreach(&g->children, child) {
