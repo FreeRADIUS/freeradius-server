@@ -5,23 +5,21 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	* Add example of using socat to test radclient + UDP to the server
 	  over TLS.  See sites-available/tls, and look for "socat".
 	* Add per-section "do_xlat" and "is_json" config items to rlm_rest.
-	  These set the section-wide defaults for the matching per-attribute
-	  flags in JSON responses.  "do_xlat" also controls xlat expansion
-	  of values in POST responses.  "do_xlat" defaults to "yes" when
-	  unset, so existing configurations are unaffected.  The example
-	  mods-available/rest now sets "do_xlat = no" in each section, as
-	  response values should only be expanded where the REST API
-	  validates or escapes untrusted input echoed back in the policy
-	  the API returns.
+	  see mods-available/rest for details.
 
 	Feature improvements
+	* Implement "track_home_server" in home_server_pool configuration
+	  See proxy.conf.  The previous (and not working) "affinity_id"
+	  configuration has been removed.
+	* Implement EAP-PSK.  See mods-available/eap for configuration.
+	  The PSK must be in "PSK-Password", and must be 16 octets in length
 	* Add $VALUE{filename} which reads a value from one line of a
 	  file.
 	* Add $FILE{filename} which reads a value from the entire contents
 	  of a file.
 
 	Bug fixes
-	* Skip PSK checks when OpenSSL does not support PSK.
+	* Skip TLS PSK checks when OpenSSL does not support PSK.
 	  Fixes #5874.
 	* Updated to help build with OpenSSL 4.0 alpha.
 
