@@ -3104,19 +3104,22 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	}
 
 	/*
-	 *	If we have affinity, then maybe update State.  But
-	 *	only for Access-Request, and only if there's a State
-	 *	attribute in the reply.
+	 *	If the home server we proxied to has an affinity_id set,
+	 *	prepend it to the State in an Access-Challenge reply.  The
+	 *	client echoes State back in its next Access-Request, which
+	 *	lets home_server_ldb() route that request to the same home
+	 *	server (see realms.c).
 	 */
 	if (request->home_pool && request->home_pool->affinity_group &&
-	    (request->reply->code == PW_CODE_ACCESS_CHALLENGE) &&
-	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
+	    request->home_server && request->home_server->affinity_assigned &&
+	    (reply->code == PW_CODE_ACCESS_CHALLENGE) &&
+	    ((vp = fr_pair_find_by_num(reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
 		uint8_t *src;
 
 		src = talloc_array(vp, uint8_t, vp->vp_length + 1);
 		if (!src) return 0;
 
-		src[0] = request->home_server->affinity;
+		src[0] = request->home_server->affinity_id;
 		memcpy(&src[1], vp->vp_octets, vp->vp_length);
 		fr_pair_value_memsteal(vp, src);
 	}

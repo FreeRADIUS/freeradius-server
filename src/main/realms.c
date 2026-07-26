@@ -44,6 +44,8 @@ bool home_servers_udp = false;
 #ifdef HAVE_REGEX
 typedef struct realm_regex realm_regex_t;
 
+static uint32_t affinity_id = 0;
+
 /** Regular expression associated with a realm
  *
  */
@@ -541,8 +543,6 @@ static CONF_PARSER home_server_config[] = {
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
 
-	{ "affinity_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
-
 	{ "dns_soft_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, dns_soft_fail), NULL },
 
 #ifdef WITH_STATS
@@ -702,8 +702,6 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}
-
-	FR_INTEGER_BOUND_CHECK("affinity_id", home->affinity, <=, 255);
 }
 
 /** Insert a new home server into the various internal lookup trees
@@ -1810,6 +1808,46 @@ static int server_pool_add(realm_config_t *rc,
 
 	}
 
+	/*
+	 *	Do affinity tracking for EAP && State
+	 */
+	cp = cf_pair_find(cs, "track_home_server");
+	if (cp) {
+		bool affinity = false;
+
+		value = cf_pair_value(cp);
+		if (!value) {
+			cf_log_err_cp(cp,
+				   "No value given for track_home_server");
+			goto error;
+		}
+
+		if ((strcasecmp(value, "yes") == 0) ||
+		    (strcasecmp(value, "true") == 0)) {
+			affinity = true;
+
+		} else if ((strcasecmp(value, "no") == 0) ||
+			   (strcasecmp(value, "false") == 0)) {
+			affinity = false;
+
+		} else {
+			cf_log_err_cp(cp,
+				   "Invalid value '%'s given for track_home_server", value);
+			goto error;
+		}
+
+		if (do_print) cf_log_info(cs, "\ttrack_home_server = %s", value);
+
+		if (affinity) {
+			pool->affinity_group = rad_malloc(sizeof(home_server_t *) * 256);
+			if (!pool->affinity_group) {
+				ERROR("Out of memory");
+				goto error;
+			}
+			memset(pool->affinity_group, 0, sizeof(home_server_t *) * 256);
+		}
+	}
+
 	num_home_servers = 0;
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
@@ -1861,37 +1899,26 @@ static int server_pool_add(realm_config_t *rc,
 			}
 		}
 
-		if (home->affinity) {
+		/*
+		 *	Pools can auto-assign affinity IDs.
+		 */
+		if (pool->affinity_group) {
 			if (home->virtual_server) {
 				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);
 				goto error;
 			}
 
-			if (!pool->affinity_group) {
-				if (num_home_servers) {
-					ERROR("Home server %s has 'affinity_id' set, but the previous home server(s) for pool %s do not use 'affinity_id'", home->name, pool->name);
+			if (!home->affinity_assigned) {
+				if (affinity_id >= 256) {
+					ERROR("Too many home servers (> 256) used in pools with affinity=true");
 					goto error;
 				}
 
-				pool->affinity_group = rad_malloc(sizeof(home_server_t *) * 256);
-				if (!pool->affinity_group) {
-					ERROR("Out of memory");
-					goto error;
-				}
-				memset(pool->affinity_group, 0, sizeof(home_server_t *) * 256);
+				home->affinity_assigned = true;
+				home->affinity_id = affinity_id++;
 			}
 
-			if (pool->affinity_group[home->affinity]) {
-				ERROR("Home server %s has invalid 'affinity' value %u.  That value is already used by home server %s",
-				      home->name, home->affinity, pool->affinity_group[home->affinity]->name);
-				goto error;
-			}
-
-			pool->affinity_group[home->affinity] = home;
-
-		} else if (pool->affinity_group) {
-			ERROR("Home server %s does not have 'affinity_id' set, but the previous home server(s) for pool %s all use 'affinity_id'", home->name, pool->name);
-			goto error;
+			pool->affinity_group[home->affinity_id] = home;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
@@ -3260,7 +3287,6 @@ home_server_t *home_server_ldb(char const *realmname,
 	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
 	    ((vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) != NULL) &&
 	    (vp->vp_length > 1) &&
-	    (vp->vp_octets[0] < (uint32_t) pool->num_home_servers) &&
 	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
 		    found = pool->affinity_group[vp->vp_octets[0]];
 

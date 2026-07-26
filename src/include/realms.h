@@ -93,7 +93,8 @@ typedef struct home_server {
 	char const		*ipaddr_str;		//!< the name of the IP address
 	uint16_t		port;
 
-	uint32_t		affinity;		//!< for home server fail-over groups and EAP.
+	uint32_t		affinity_id;		//!< for home server fail-over groups and EAP.
+	bool			affinity_assigned;     	//!< did we assign an affinity_id?
 
 	char const		*type_str;		//!< String representation of type.
 	home_type_t		type;			//!< Auth, Acct, CoA etc.
