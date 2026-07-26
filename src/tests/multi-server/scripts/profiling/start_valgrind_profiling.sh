@@ -116,9 +116,28 @@ echo "INFO: disabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
 printf '%s\n' "$CTRL_OUT"
 
-# Wait for valgrind to finish writing callgrind output
+# Wait for valgrind to finish writing callgrind output. Record how it exited:
+# a run valgrind killed produces truncated callgrind output whose numbers are
+# not comparable with a clean run, so the status has to survive to the publish
+# step, which reads this file and refuses to upload an unclean run. The status
+# is recorded for clean runs too, so an absent file means "the wrapper did not
+# get this far" rather than "the run was fine".
 echo "INFO: waiting for valgrind to exit"
-wait ${VALGRIND_PID} 2>/dev/null || true
+VALGRIND_STATUS=0
+wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
+echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
+
+if [ "${VALGRIND_STATUS}" -ne 0 ]; then
+  #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
+  #  its 8 MB brk segment ceiling presents; valgrind.log names the real reason
+  #  on the line above its backtrace.
+  if [ "${VALGRIND_STATUS}" -gt 128 ]; then
+    echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
+  else
+    echo "ERROR: valgrind exited ${VALGRIND_STATUS}; profiling data may be truncated" >&2
+  fi
+  echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
+fi
 
 # Signal that valgrind has finished writing all profiling data
 echo "INFO: Profiling complete at $(date)"
