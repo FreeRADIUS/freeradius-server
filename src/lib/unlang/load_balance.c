@@ -120,8 +120,6 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_load_balance_t		*gext = NULL;
 
-	uint32_t			count = 0;
-
 #ifdef STATIC_ANALYZER
 	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_FAIL;
 #else
@@ -130,10 +128,11 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 #endif
 
 	gext = unlang_group_to_load_balance(g);
+	fr_assert(gext != NULL);
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
-	if (gext && gext->vpt) {
+	if (gext->vpt) {
 		uint32_t hash, start;
 		ssize_t slen;
 		char buffer[1024];
@@ -173,44 +172,29 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 
 		RDEBUG3("load-balance starting at child %d", (int) start);
 
-		count = 0;
-		unlang_list_foreach(&g->children, child) {
-			if (count == start) {
-				redundant->start = child;
-				break;
-			}
-
-			count++;
-		}
-		fr_assert(redundant->start != NULL);
+		redundant->start = gext->children[start];
 
 	} else {
+		uint32_t one, two;
+		unlang_thread_t const *t1, *t2;
+
 	randomly_choose:
-		count = 1;
-
 		/*
-		 *	Choose a child at random.
-		 *
-		 *	@todo - leverage the "power of 2", as per
-		 *      lib/io/network.c.  This is good enough for
-		 *      most purposes.  However, in order to do this,
-		 *      we need to track active callers across
-		 *      *either* multiple modules in one thread, *or*
-		 *      across multiple threads.
-		 *
-		 *	We don't have thread-specific instance data
-		 *	for this load-balance section.  So for now,
-		 *	just pick a random child.
+		 *	Leverage the "power of two".  See src/lib/io/network.c for more information.
 		 */
-		unlang_list_foreach(&g->children, child) {
-			if ((count * (fr_rand() & 0xffffff)) < (uint32_t) 0x1000000) {
-				redundant->start = child;
-			}
-			count++;
+		one = fr_rand() % unlang_list_num_elements(&g->children);
+		do {
+			two = fr_rand() % unlang_list_num_elements(&g->children);
+		} while (two == one);
+
+		t1 = unlang_thread_stats(gext->children[one]);
+		t2 = unlang_thread_stats(gext->children[two]);
+
+		if (t1->active <= t2->active) {
+			redundant->start = gext->children[one];
+		} else {
+			redundant->start = gext->children[two];
 		}
-
-		fr_assert(redundant->start != NULL);
-
 	}
 
 	fr_assert(redundant->start != NULL);
@@ -235,6 +219,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 						 unlang_type_t type)
 {
 	char const			*name2;
+	int				i;
 	fr_token_t			quote;
 	unlang_t			*c;
 	unlang_group_t			*g;
@@ -282,6 +267,8 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		}
 	}
 
+	gext = unlang_group_to_load_balance(g);
+
 	/*
 	 *	Allow for keyed load-balance / redundant-load-balance sections.
 	 */
@@ -292,7 +279,6 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		 *	Create the template.  All attributes and xlats are
 		 *	defined by now.
 		 */
-		gext = unlang_group_to_load_balance(g);
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
 					 &FR_SBUFF_IN_STR(name2),
 					 quote,
@@ -335,6 +321,16 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		case TMPL_TYPE_EXEC:
 			break;
 		}
+	}
+
+	/*
+	 *	Cache the children, so we can do O(1) lookups.
+	 */
+	MEM(gext->children = talloc_array(gext, unlang_t *, unlang_list_num_elements(&g->children)));
+
+	i = 0;
+	unlang_list_foreach(&g->children, child) {
+		gext->children[i++] = child;
 	}
 
 	return c;
