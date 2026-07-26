@@ -152,7 +152,7 @@ typedef enum {
 	TRUNK_ENQUEUE_NO_CAPACITY = -1,				//!< At maximum number of connections,
 								///< and no connection has capacity.
 	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,			//!< Destination is down.
-	TRUNK_ENQUEUE_FAIL = -3					//!< General failure.
+	TRUNK_ENQUEUE_FAIL = -3					//!< General internal sanity check failure.
 } trunk_enqueue_t;
 
 /** Used for sanity checks and to simplify freeing
