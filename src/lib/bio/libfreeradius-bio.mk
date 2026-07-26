@@ -1,4 +1,5 @@
 TARGET := libfreeradius-bio$(L)
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:=		\
 	base.c		\

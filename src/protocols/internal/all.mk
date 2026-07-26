@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-internal$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= decode.c \
 		   encode.c

@@ -9,6 +9,7 @@ TARGET		:= libfreeradius-util.js
 else
 TARGET		:= libfreeradius-util$(L)
 endif
+TGT_CATEGORY	:= lib-util
 
 SOURCES		:= \
 		   atexit.c \

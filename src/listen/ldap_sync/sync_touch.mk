@@ -8,6 +8,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= sync_touch
   TARGET	:= $(TARGETNAME)$(E)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 TGT_PREREQS	:= libfreeradius-ldap$(L)

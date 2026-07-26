@@ -8,6 +8,7 @@ TARGETNAME	:= rlm_ftp
 TARGET		:= $(TARGETNAME)$(L)
 TGT_PREREQS	+= libfreeradius-curl$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 LOG_ID_LIB	= 62

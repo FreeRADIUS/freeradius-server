@@ -3,6 +3,7 @@ TARGETNAME	:= libfreeradius-tls
 ifneq ($(OPENSSL_LIBS),)
 TARGET		:= $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
 	base.c \

@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-radius-stats$(L)
+TGT_CATEGORY	:= lib-util
 
 SOURCES		:= base.c
 
