@@ -1685,10 +1685,6 @@ static trunk_enqueue_t trunk_request_check_enqueue(trunk_connection_t **tconn_ou
 	 *	Only enforce if we're limiting maximum
 	 *	number of connections, and maximum
 	 *	number of requests per connection.
-	 *
-	 *	The alloc function also checks this
-	 *	which is why this is only done for
-	 *	debug builds.
 	 */
 	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
 		uint64_t	limit;
@@ -4200,6 +4196,12 @@ static void trunk_state_update(trunk_t *trunk)
 {
 	trunk_state_t new_state;
 
+	/*
+	 *	Don't churn the state or fire watchers while the trunk is
+	 *	being torn down.
+	 */
+	if (trunk->freeing) return;
+
 	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
 		/*
 		 *	One or more connections are active and operational.  The trunk is ACTIVE.
@@ -4236,7 +4238,20 @@ static void trunk_state_update(trunk_t *trunk)
 		new_state = TRUNK_STATE_IDLE;
 	}
 
-	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);
+	if (new_state == trunk->pub.state) return;
+
+	/*
+	 *	This can be reached from within a state-change watcher.  A watcher may enqueue a request or
+	 *	reconnect a connection, which changes a connection's state and calls
+	 *	trunk_requests_per_connection() -> trunk_state_update().
+	 *
+	 *	Nested watcher calls are not allowed (see trunk_watch_call()).  If we're already inside one,
+	 *	leave the state unchanged and let the next non-nested update, or the periodic trunk_manage(),
+	 *	reconcile it.
+	 */
+	if (trunk->next_watcher != NULL) return;
+
+	TRUNK_STATE_TRANSITION(new_state);
 }
 
 /** Implements the algorithm we use to manage requests per connection levels
@@ -4683,6 +4698,15 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	uint64_t req_per_conn = 0;
 
 	fr_assert(fr_time_gt(now, fr_time_wrap(0)));
+
+	/*
+	 *	Recompute the trunk's aggregate state (and fire any state
+	 *	watchers) now that a connection's state may have changed.
+	 *	This is the authoritative, prompt trigger for the trunk
+	 *	entering / leaving states such as ACTIVE, FULL and FAILED.
+	 *	trunk_state_update() no-ops if the trunk is being freed.
+	 */
+	trunk_state_update(trunk);
 
 	/*
 	 *	No need to update these as the trunk is being freed
