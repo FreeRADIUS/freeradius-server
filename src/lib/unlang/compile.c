@@ -1595,11 +1595,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
  */
 bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name)
 {
-	CONF_ITEM *ci;
-
-	for (ci=cf_item_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_next(cs, ci)) {
+	cf_item_foreach(cs, ci) {
 		/*
 		 *	If we're a redundant, etc. group, then the
 		 *	intention is to call modules, rather than
@@ -1627,6 +1623,9 @@ bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name)
 			continue;
 		}
 
+		/*
+		 *	Allow a module as a child.
+		 */
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
