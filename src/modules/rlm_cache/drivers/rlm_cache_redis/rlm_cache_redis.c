@@ -132,6 +132,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->mi = mctx->mi;
 	inst->conf.log_prefix = talloc_asprintf(inst, "rlm_cache (%s)", mctx->mi->parent->name);
+	inst->conf.module_name = mctx->mi->parent->module->name;
+	inst->conf.inst_name = mctx->mi->parent->name;
 
 	if (inst->conf.use_tls) {
 		inst->tls_conf = cf_section_find(mctx->mi->conf, "tls", CF_IDENT_ANY);

@@ -210,6 +210,7 @@ struct fr_redis_ct_node_s {
 	fr_redis_ct_t			*rtcluster;	//!< Cluster this node belongs to
 	fr_redis_io_conf_t		ioconf;		//!< Connection config for this node.
 	fr_redis_trunk_t		*trunk;		//!< Trunk connection to this node.
+	fr_pair_list_t			trigger_args;	//!< Pairs to pass to trigger functions.
 };
 
 /** Structure for holding the state of an async redis command set.
@@ -252,8 +253,17 @@ char buff [FR_IPADDR_STRLEN]; \
 	_node->ioconf.log_prefix = talloc_asprintf(rtcluster, "%s %s:%d", rtcluster->conf->log_prefix, \
 						   fr_inet_ntop(buff, sizeof(buff), &_node->addr.inet.dst_ipaddr), \
 						   _node->ioconf.port); \
-	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, NULL, rtcluster->active, rtcluster->active_uctx, \
-					    rtcluster->active_oneshot); \
+	if (rtcluster->conf->trunk_conf.conn_triggers) { \
+		module_trigger_args_build(rtcluster, &_node->trigger_args, NULL, \
+					&(module_trigger_args_t) { \
+						.module = rtcluster->conf->module_name, \
+						.name = rtcluster->conf->inst_name, \
+						.server = buff, \
+						.port = _node->addr.inet.dst_port \
+					}); \
+	} \
+	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, &_node->trigger_args, rtcluster->active, \
+					    rtcluster->active_uctx, rtcluster->active_oneshot); \
 	if (!_node->trunk) goto error; \
 } while (0)
 
@@ -642,6 +652,7 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 	for (i = 1; i <= conf->max_nodes; i++) {
 		rtcluster->node[i].id = i;
 		rtcluster->node[i].rtcluster = rtcluster;
+		fr_pair_list_init(&rtcluster->node[i].trigger_args);
 
 		/* Push them all into the queue */
 		fr_fifo_push(rtcluster->free_nodes, &rtcluster->node[i]);
@@ -759,6 +770,7 @@ do { \
 	talloc_const_free((_node)->ioconf.log_prefix); \
 	(_node)->ioconf.log_prefix = NULL; \
 	TALLOC_FREE((_node)->trunk); \
+	fr_pair_list_free(&(_node)->trigger_args); \
 	fr_rb_delete(rtcluster->used_nodes, _node); \
 	fr_fifo_push(rtcluster->free_nodes, _node); \
 } while (0)

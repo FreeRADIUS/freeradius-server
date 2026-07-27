@@ -937,6 +937,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_redis_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 
 	inst->conf.log_prefix = mctx->mi->name;
+	inst->conf.module_name = mctx->mi->module->name;
+	inst->conf.inst_name = mctx->mi->name;
 
 	if (inst->conf.use_tls) {
 		inst->tls_conf = cf_section_find(mctx->mi->conf, "tls", CF_IDENT_ANY);

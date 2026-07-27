@@ -155,6 +155,8 @@ typedef struct {
 
 	char const		*log_prefix;
 
+	char const		*module_name;	//!< Module name for triggers.
+	char const		*inst_name;	//!< Instance name for triggers.
 
 	trunk_conf_t		trunk_conf;	//!< Configuration for trunk connections.
 } fr_redis_conf_t;

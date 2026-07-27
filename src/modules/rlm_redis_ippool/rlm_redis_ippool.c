@@ -3222,6 +3222,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(subcs);
 
 	inst->conf.log_prefix = mctx->mi->name;
+	inst->conf.module_name = mctx->mi->module->name;
+	inst->conf.inst_name = mctx->mi->name;
 
 	if (inst->conf.use_tls) {
 		inst->tls_conf = cf_section_find(subcs, "tls", CF_IDENT_ANY);
