@@ -99,6 +99,7 @@ fr_dict_attr_t const *attr_tls_certificate_serial;
 fr_dict_attr_t const *attr_tls_certificate_signature;
 fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
 fr_dict_attr_t const *attr_tls_certificate_issuer;
+fr_dict_attr_t const *attr_tls_certificate_serial_number_and_issuer;
 fr_dict_attr_t const *attr_tls_certificate_not_before;
 fr_dict_attr_t const *attr_tls_certificate_not_after;
 fr_dict_attr_t const *attr_tls_certificate_subject;
@@ -156,6 +157,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_certificate_signature, .name = "TLS-Certificate.Signature", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_signature_algorithm, .name = "TLS-Certificate.Signature-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_issuer, .name = "TLS-Certificate.Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_serial_number_and_issuer, .name = "TLS-Certificate.Serial-Number-And-Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_not_before, .name = "TLS-Certificate.Not-Before", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_not_after, .name = "TLS-Certificate.Not-After", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_subject, .name = "TLS-Certificate.Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
