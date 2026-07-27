@@ -1808,7 +1808,12 @@ int fr_network_destroy(fr_network_t *nr)
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
 	/*
-	 *	Close the network sockets
+	 *	Close the network sockets, but leave them allocated.
+	 *
+	 *	Freeing a socket frees its message set, and the workers hold
+	 *	messages allocated from it until they ack the channel close
+	 *	signalled below.  fr_network() frees them after its loop, which
+	 *	already runs until every worker has acked.
 	 */
 	{
 		fr_network_socket_t	**sockets;
@@ -1818,17 +1823,11 @@ int fr_network_destroy(fr_network_t *nr)
 		if (fr_rb_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
 		len = talloc_array_length(sockets);
 
-		/*
-		 *	Freeing a socket frees its message set, and the workers
-		 *	hold messages allocated from it until they ack the
-		 *	channel close signalled further down.
-		 */
 		for (i = 0; i < len; i++) {
 			if (network_socket_close(sockets[i]) < 0) {
 				PWARN("Failed removing event for socket %d", sockets[i]->number);
 				ret = -1;
 			}
-			talloc_free(sockets[i]);
 		}
 
 		talloc_free(sockets);
@@ -1963,7 +1962,30 @@ void fr_network(fr_network_t *nr)
 			fr_event_service(nr->el);
 		}
 	}
-	return;
+
+	/*
+	 *	Free the sockets.  The loop above only exits once every worker
+	 *	has acked, so the messages allocated from the sockets' message
+	 *	sets have all been returned, and fr_network_destroy() left the
+	 *	sockets closed but allocated for exactly this point.  It cannot do
+	 *	this itself, as it returns long before the first ack arrives.  The
+	 *	error exit above lands here too, where no ack is ever coming.
+	 */
+	{
+		fr_network_socket_t	**sockets;
+		size_t			len;
+		size_t			i;
+
+		if (fr_rb_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) {
+			PWARN("Failed enumerating sockets, leaving them to be freed with the network");
+			return;
+		}
+		len = talloc_array_length(sockets);
+
+		for (i = 0; i < len; i++) talloc_free(sockets[i]);
+
+		talloc_free(sockets);
+	}
 }
 
 /** Signal a network thread to exit
