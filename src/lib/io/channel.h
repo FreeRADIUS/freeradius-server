@@ -182,6 +182,8 @@ bool	fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 int	fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
 
 int	fr_channel_signal_responder_close(fr_channel_t *ch) CC_HINT(nonnull);
+unsigned int fr_channel_responder_discard(fr_channel_t *ch) CC_HINT(nonnull);
+
 int	fr_channel_responder_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
 
 void	fr_channel_responder_uctx_add(fr_channel_t *ch, void *ctx) CC_HINT(nonnull);

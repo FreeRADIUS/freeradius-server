@@ -861,6 +861,30 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 	return ret;
 }
 
+/** Discard any requests the requestor queued but we never received
+ *
+ * The messages belong to the requestor's message set, and it cannot reclaim them
+ * until they are marked done.  A responder that closes with requests still in
+ * the queue would strand them there, and with them the memory they were
+ * allocated from.
+ *
+ * @param[in] ch	to discard the queued requests of.
+ * @return the number of requests discarded.
+ */
+unsigned int fr_channel_responder_discard(fr_channel_t *ch)
+{
+	fr_channel_data_t	*cd;
+	fr_atomic_queue_t	*aq = ch->end[TO_RESPONDER].aq;
+	unsigned int		num = 0;
+
+	while (fr_atomic_queue_pop(aq, (void **) &cd)) {
+		fr_message_done(&cd->m);
+		num++;
+	}
+
+	return num;
+}
+
 /** Acknowledge that the channel is closing
  *
  * @param[in] ch	The channel.
