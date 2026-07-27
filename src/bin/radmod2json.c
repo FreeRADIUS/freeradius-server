@@ -139,6 +139,29 @@ static struct json_object *build_conf_parser_rules(conf_parser_t const *rules)
 
 	if (rules) {
 		for (conf_parser_t const *r = rules; r->name1; r++) {
+			/*
+			 *	A CONF_FLAG_REF rule references another
+			 *	conf_parser_t array whose rules are parsed as if
+			 *	they appeared inline in this section.  Splice the
+			 *	referenced rules straight into this array rather
+			 *	than emitting a rule for the reference itself.
+			 *
+			 *	Note that `dflt` and `subcs` share a union, so a
+			 *	REF rule must never reach build_conf_parser_rule():
+			 *	its non-subsection branch would read the `subcs`
+			 *	pointer as a `dflt` string.
+			 */
+			if (r->flags & CONF_FLAG_REF) {
+				struct json_object *ref = build_conf_parser_rules(r->subcs);
+				size_t		    n	= json_object_array_length(ref);
+
+				for (size_t i = 0; i < n; i++) {
+					json_object_array_add(a, json_object_get(json_object_array_get_idx(ref, i)));
+				}
+				json_object_put(ref);
+				continue;
+			}
+
 			json_object_array_add(a, build_conf_parser_rule(r));
 		}
 	}
