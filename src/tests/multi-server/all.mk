@@ -182,7 +182,7 @@ ${4}/start_valgrind_profiling.sh: $$(PROFILING_SCRIPT_SRC)
 render.test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
 
 .PHONY: test.multi-server.${1}.${2}
-test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh
+test.multi-server.${1}.${2}: $$(TEST_MULTI_SERVER_RENDERED.${1}.${2}) ${4}/start_valgrind_profiling.sh $(if $(filter profiling,$(MODE)),freeradius-prof.image,)
 	${Q}mkdir -p "${4}/logs" "${4}/listener"
 	${Q}echo "MULTI-SERVER-TEST test.multi-server.${1}.${2} (MODE=$(MODE))"
 	${Q}if [ "$(MODE)" = "profiling" ]; then \
