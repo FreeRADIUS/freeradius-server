@@ -1,74 +1,274 @@
-= EAP-PEAP: Tunneled authentication
+= EAP-PEAP: Tunneled Authentication
 
-*Goal:* To configure the server to use the EAP-PEAP authentication
-protocol and to send and receive test packets.
+*Goal:* Configure the FreeRADIUS server to authenticate users using EAP-PEAP, then verify it works by sending and receiving test packets.
 
-*Time:* 20-35 minutes.
+*Time:* 20–35 minutes.
 
-*File:*
+*Files:*
 
-- `mods-available/eap`
+- `mods-available/eap` — controls which EAP methods are enabled
+- `mods-config/files/authorize` — the flat file where test users like `bob` are defined
+- `sites-available/inner-tunnel` — the virtual server that handles Phase 2 authentication and looks up the user
+- `eapol_test/peap-mschapv2.conf` — configuration for the test client
+
+== What is EAP-PEAP?
+
+EAP-PEAP protects user credentials by wrapping the login exchange inside an encrypted TLS tunnel. Think of it like sending a letter inside a locked box — even if someone intercepts it, they cannot read what is inside.
 
 *Diagram:*
 
 image::peap_packet.svg[Fig. PEAP Packet]
 
-When started with the `radiusd -X` command, the server automatically creates
-certificates for use with PEAP. In a normal installation, there should
-be little or no action required to enable PEAP.
+** *Phase 1* — The server presents its TLS certificate and a secure encrypted tunnel is created between the client and the server. At this point, only the anonymous identity (e.g. `anonymous@example.org`) is visible on the network. The real username is hidden.
+** *Phase 2* — Inside that tunnel, the client sends the real username and password using EAP-MSCHAPv2. The server then looks up the user in its user database, checks the password, and either accepts or rejects the request.
 
-Start the server, and verify that the `peap` module was loaded and that
-the server is `Ready to process requests`.
+The main advantage over EAP-TLS is that the *client does not need a certificate* — only the server does. This makes deployment much simpler in large environments.
 
-This exercise does not cover how to configure EAP-PEAP on the wireless
-client nor how to set up a wireless access point to perform EAP-PEAP.
-We suggest that you consults the documentation for your
-wireless client software for details on this process.
+== How the User `bob` is Recognised
 
-For the initial testing of EAP-PEAP, we recommend using
-`EAP-MSCHAPv2` on the wireless client as the tunneled authentication
-protocol. You should check that the `mschap` module is configured in the
-`modules` directory. The `mschapv2` module performs EAP-MSCHAPv2
-authentication and is contained in the `eap` section of the
-`eap.conf`. While these authentication methods are similar, they
-are not identical. Both modules need to be configured for EAP-PEAP to
-work.
+Understanding where `bob` gets looked up helps you troubleshoot problems and extend the configuration later.
 
-Test PEAP ``inner tunnel'' authentication via the following command:
+When a PEAP authentication request arrives, FreeRADIUS processes it in two separate stages:
+
+*Stage 1 — Outer request (Phase 1):*
+The server only sees the anonymous identity (e.g. `anonymous@example.org`). This is handled by the default virtual server in `sites-available/default`. No user lookup happens here — the server simply establishes the TLS tunnel and passes control to Stage 2.
+
+*Stage 2 — Inner tunnel request (Phase 2):*
+Once the TLS tunnel is established, the real username `bob` is decrypted from inside the tunnel. This inner request is handled by a separate virtual server defined in `sites-available/inner-tunnel`.
+
+Inside the inner-tunnel virtual server, FreeRADIUS runs through the `authorize` section, which calls the `files` module. The `files` module reads `mods-config/files/authorize` line by line, looking for a matching username. When it finds `bob`, it retrieves the stored password and passes it to the `mschapv2` module for verification.
+
+== Before You Begin
+
+** FreeRADIUS automatically generates the server certificates needed for PEAP when it first starts. You do not need to create them manually.
+** You need both the `mschap` module and the `mschapv2` module enabled. The `mschap` module handles MSCHAP authentication in general, while `mschapv2` specifically handles the EAP-MSCHAPv2 exchange inside the PEAP tunnel. Both are required.
+** Make sure the `inner-tunnel` virtual server is enabled. This is what processes the real username and password inside the tunnel.
+
+== Step 1: Create the Test User
+
+Open `raddb/mods-config/files/authorize` and add the following line:
+
+[source, text]
+----
+bob    Password.Cleartext := "hello"
+----
+
+== Step 2: Verify the `sites-enabled/default`
+
+Verify the following entry added.
+
+[source, text]
+----
+authenticate mschap {
+	mschap
+}
+----
+
+This tells FreeRADIUS that when a request arrives for user `bob` inside the inner tunnel, the expected cleartext password is `hello`. The `files` module reads this file top to bottom and stops at the first match. If you have multiple users, each goes on its own line.
+
+== Step 3: Verify the Inner Tunnel Virtual Server
+
+Open `sites-available/inner-tunnel` and confirm the `authorize` and `authenticate` sections look like this:
+
+[source, text]
+----
+recv Access-Request {
+	mschap
+
+	eap {
+		ok = return
+	}
+	files
+}
+----
+
+The `files` entry in `authorize` is what triggers the lookup of `bob` in `mods-config/files/authorize`. If `files` is missing here, the server will never find the user and authentication will always fail.
+
+Ensure the inner-tunnel site is enabled by checking that the symlink exists:
 
 [source, bash]
---------------------------------------------------------------
-$ radtest -t mschap 127.0.0.1:18120 USER PASSWORD 0 testing123
---------------------------------------------------------------
+----
+$ ls sites-enabled/inner-tunnel
+----
 
-Once the wireless client has been configured to enable EAP-PEAP,
-you should perform a test authentication to the server. If all goes well,
-the server, AP, and wireless client should exchange multiple RADIUS
-`Access-Request` and `Access-Challenge` packets. This process should take
-a few seconds, and you should wait until it is done. If all goes well,
-the final packet from the server should be an `Access-Accept` and should
-contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
+If it does not exist, create it:
 
-Verify that the authentication succeeded by using the `ping` command to
-see if the wireless client now has network access.
+[source, bash]
+----
+$ ln -s ../sites-available/inner-tunnel sites-enabled/inner-tunnel
+----
+
+== Step 4: Configure the Test Client
+
+Open `src/tests/eapol_test/peap-mschapv2.conf` and update it with the following:
+
+[source, text]
+----
+network={
+	ssid="example"
+	key_mgmt=WPA-EAP
+	eap=PEAP
+	identity="bob@example.org"
+	anonymous_identity="anonymous@example.org"
+	password="hello"
+	phase2="auth=MSCHAPV2"
+	phase1="peapver=0"
+}
+----
+
+Notice that both `identity` and `anonymous_identity` are set. The `anonymous_identity` is what gets sent in Phase 1 and is visible on the network. The real `identity` (`bob`) is only sent inside the encrypted tunnel in Phase 2. The server looks up `bob` — not `anonymous@example.org` — when checking the password.
+
+== Step 5: Start the Server
+
+Start FreeRADIUS in debug mode so you can watch every step of the authentication:
+
+[source, text]
+----
+$ radiusd -X
+----
+
+== Step 6: Run the Test
+
+Open a second terminal and run:
+
+[source, bash]
+----
+./eapol_test -c peap-mschapv2.conf -a 127.0.0.1 -p 1812 -s testing123 -n
+----
+
+== What to Expect
+
+The client and server exchange several packets back and forth as they negotiate the TLS tunnel and verify credentials. This is normal and takes a few seconds.
+
+A successful authentication ends with an `Access-Accept` containing these two keys, which are used to encrypt wireless traffic:
+
+** `MS-MPPE-Recv-Key`
+** `MS-MPPE-Send-Key`
+
+If you see `Access-Reject` instead, the most likely causes are:
+
+** `bob` is not in `mods-config/files/authorize`, or the username/password has a typo
+** The `files` module is missing from the `authorize` section of `inner-tunnel`
+** The `mschapv2` module is not listed in the `authenticate` section of `inner-tunnel`
+
+
+== eapol_test output Explained
+
+*Phase 1 — The anonymous identity is sent to start the TLS handshake. Note that `bob` is not visible here:*
+
+[source, text]
+----
+RADIUS message: code=1 (Access-Request) identifier=0 length=148
+   Attribute 1 (User-Name) length=23
+      Value: 'anonymous@example.org'
+----
+
+*The TLS tunnel is being negotiated:*
+
+[source, text]
+----
+EAP-PEAP: Start (server ver=0, own ver=0)
+SSL: SSL_connect:SSLv3/TLS write client hello
+SSL: SSL_connect:SSLv3/TLS read server hello
+TLS: Trusted root certificate(s) loaded
+EAP: Status notification: remote certificate verification (param=success)
+----
+
+*The tunnel is ready. Phase 2 begins and `bob` is sent inside the tunnel:*
+
+[source, text]
+----
+OpenSSL: Handshake finished - resumed=0
+EAP-PEAP: TLS done, proceed to Phase 2
+EAP-PEAP: Phase 2 EAP-MSCHAPv2 Request
+EAP-PEAP: Encrypting Phase 2 data
+EAP-PEAP: Authentication completed successfully
+----
+
+*Final confirmation:*
+
+[source, text]
+----
+MPPE keys OK: 0  mismatch: 0
+SUCCESS
+----
+
+---
+
+== Server Debug Output Explained
+
+*Phase 1 — The server receives the outer request. Only the anonymous identity is visible:*
+
+[source, text]
+----
+Received Access-Request ID 0
+   User-Name = "anonymous@example.org"
+
+eap - Calling submodule eap_peap
+eap.peap - Initiating new TLS session
+Sending Access-Challenge
+----
+
+*The TLS tunnel is established after several handshake rounds:*
+
+[source, text]
+----
+Handshake state - SSL negotiation finished successfully (1)
+Cipher suite: ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2
+----
+
+*Phase 2 — The inner-tunnel virtual server now handles the real username `bob`. This is where the files module looks up `bob` in `mods-config/files/authorize`:*
+
+[source, text]
+----
+eap.peap - Session established. Decoding inner EAP attributes
+eap.peap - Running request through virtual server "inner-tunnel"
+
+  User-Name = "bob"
+  MS-CHAP-Response = 0x...
+  MS-CHAP-Challenge = 0x...
+
+files - Looking for key "bob"
+files - Found entry for "bob"
+files - Password.Cleartext := "hello"
+
+mschap - User authenticated successfully
+----
+
+*The server sends back an Access-Accept with the session keys:*
+
+[source, text]
+----
+Vendor-Specific {
+    Microsoft {
+        MPPE-Recv-Key = 0x13cb974fc....
+        MPPE-Send-Key = 0x7ad0412ba....
+    }
+}
+Packet-Type = ::Access-Accept
+User-Name = "anonymous@example.org"
+----
+
+Notice that the `User-Name` in the Access-Accept is the *anonymous* identity, not `bob`. This is by design — the outer identity is used for the RADIUS session, while the inner identity is only used for the actual credential check inside the tunnel.
+
+Once you see `Access-Accept` on the server and `SUCCESS` on the client, EAP-PEAP is working correctly. You can verify that a real wireless client has network access using `ping`.
 
 == Further Considerations
 
-Different wireless clients may implement different tunneled
-authentication protocols inside of EAP-PEAP. These clients may not be
-compatible with all RADIUS servers. FreeRADIUS has only been tested
-using EAP-MSCHAPv2 as the tunneled authentication protocol. Other
-protocols may require source code changes to work.
+Different wireless clients may implement different tunneled authentication protocols inside EAP-PEAP. Not all of these are compatible with every RADIUS server. FreeRADIUS has only been tested using EAP-MSCHAPv2 as the inner tunneled protocol. If you need to use a different inner protocol, be aware that source code changes to FreeRADIUS may be required to support it.
 
-If there are issues getting EAP-PEAP to work on Windows, the following
-registry setting may be useful
+=== Windows Troubleshooting
 
-------------------------------------------------------------------
+If EAP-PEAP is not working on a Windows client, you can enable detailed tracing logs to help identify the problem. Add the following registry key:
+
+[source, text]
+----
 HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Tracing\RASTLS\EnableTracing
-------------------------------------------------------------------
+----
 
-Set the above key to value ``1''. A file `RASTLS.LOG` will be created
-and will contain the requested tracing information.
+Set the value of that key to `1`. Windows will then create a file called `RASTLS.LOG` containing detailed tracing information about the EAP negotiation. This log is one of the most useful tools for diagnosing Windows-specific PEAP failures, as it shows exactly where the handshake breaks down on the client side.
+
+To read the log, open it in any text editor and look for lines containing `ERROR` or `FAIL`. These will point you directly to the step that is failing, such as a certificate validation error or an unsupported inner method.
 
 == Questions
 
