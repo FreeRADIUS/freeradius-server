@@ -23,10 +23,12 @@
 *.swo
 *.sock
 *.wasm
+\#*
 
 .libs
 .depends
 .pc
+__pycache__
 
 # Version markers
 VERSION_COMMIT
@@ -38,6 +40,7 @@ RELEASE
 *.cproject
 *.kdev4
 *.project
+*.json
 
 # Exuberant ctags
 tags
