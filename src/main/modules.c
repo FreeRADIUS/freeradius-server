@@ -1019,12 +1019,14 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 
 	if (server->subcs[comp]) {
 		if (idx == 0) {
-			RDEBUG("# Executing section %s from file %s",
+			RDEBUG("# Executing section %s from file %s line %d",
 			       section_type_value[comp].section,
-			       cf_section_filename(server->subcs[comp]));
+			       cf_section_filename(server->subcs[comp]),
+			       cf_section_lineno(server->subcs[comp]));
 		} else {
-			RDEBUG("# Executing group from file %s",
-			       cf_section_filename(server->subcs[comp]));
+			RDEBUG("# Executing group from file %s line %d",
+			       cf_section_filename(server->subcs[comp]),
+			       cf_section_lineno(server->subcs[comp]));
 		}
 	}
 	request->component = section_type_value[comp].section;
