@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/section.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/types.h>
@@ -487,6 +488,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_internal_afrom_file(&internal, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
+		fr_perror("radmod2json");
+		exit(EXIT_FAILURE);
+	}
+
+	if (unlang_global_init() < 0) {
 		fr_perror("radmod2json");
 		exit(EXIT_FAILURE);
 	}
