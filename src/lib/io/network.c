@@ -74,9 +74,12 @@ typedef struct {
 	fr_heap_index_t		heap_id;		//!< for the sockets_by_num heap
 
 	fr_event_filter_t	filter;			//!< what type of filter it is
+	fr_event_fd_t		*ef;			//!< the I/O event, if it was inserted.  Parented off
+							///< this socket, so it cannot outlive it.
 
 	bool			dead;			//!< is it dead?
 	bool			blocked;		//!< is it blocked?
+	bool			closed;			//!< the descriptor has been closed.
 
 	unsigned int		outstanding;		//!< number of outstanding packets sent to the worker
 	fr_listen_t		*listen;		//!< I/O ctx and functions.
@@ -147,6 +150,7 @@ struct fr_network_s {
 static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 static int fr_network_pre_event(fr_time_t now, fr_time_delta_t wake, void *uctx);
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s);
+static int network_socket_close(fr_network_socket_t *s);
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx);
 
 static int8_t reply_cmp(void const *one, void const *two)
@@ -862,9 +866,11 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 	s->dead = true;
 
 	/*
-	 *	This FD is no longer part of the event loop.
+	 *	Nothing writes to a dead socket - fr_network_post_event()
+	 *	discards its replies - so the descriptor goes now.  The memory
+	 *	has to wait for the workers to finish with its messages.
 	 */
-	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
+	if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 
 	for (i = 0; i < nr->max_workers; i++) {
 		if (!nr->workers[i]) continue;
@@ -1330,23 +1336,61 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	s->blocked = false;
 }
 
-static int _network_socket_free(fr_network_socket_t *s)
+/** Stop a socket's I/O events and close its descriptor
+ *
+ * Separate from freeing the socket because freeing it also frees s->ms, and
+ * the workers hold messages allocated from that until they ack the channel
+ * close.  The descriptor can go as soon as we are done with it; the memory
+ * cannot.
+ *
+ * Idempotent, so it is safe to call on a socket that is already dead.
+ *
+ * @param[in] s	to close.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the I/O event could not be removed.  The descriptor is closed
+ *	  either way, so this is worth reporting but not worth stopping for.
+ */
+static int network_socket_close(fr_network_socket_t *s)
 {
-	fr_network_t *nr = s->nr;
-	fr_channel_data_t *cd;
+	int ret = 0;
 
-	fr_assert(s->outstanding == 0);
+	if (s->closed) return 0;
+	s->closed = true;
 
-	fr_rb_delete(nr->sockets, s);
-	fr_rb_delete(nr->sockets_by_num, s);
-
-	if (!s->dead) fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
+	/*
+	 *	NULL if the socket never made it into the event loop, which the
+	 *	setup error paths rely on.  This is the only place the event is
+	 *	removed, so the handle cannot have gone stale under us.
+	 */
+	if (s->ef) {
+		ret = fr_event_fd_delete_handle(s->ef);
+		s->ef = NULL;
+	}
 
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen);
 	} else {
 		close(s->listen->fd);
 	}
+
+	return ret;
+}
+
+static int _network_socket_free(fr_network_socket_t *s)
+{
+	fr_network_t *nr = s->nr;
+	fr_channel_data_t *cd;
+
+	/*
+	 *	Closing is a separate step, so that the descriptor can be
+	 *	released while the message set stays alive for the workers.
+	 */
+	fr_assert_msg(s->closed, "socket %d freed without being closed", s->number);
+	fr_assert(s->outstanding == 0);
+
+	fr_rb_delete(nr->sockets, s);
+	fr_rb_delete(nr->sockets_by_num, s);
 
 	if (s->pending) {
 		fr_message_done(&s->pending->m);
@@ -1461,6 +1505,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 				      size, false);
 	if (!s->ms) {
 		PERROR("Failed creating message buffers for network IO");
+		if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 		talloc_free(s);
 		return -1;
 	}
@@ -1468,12 +1513,13 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 	app_io = s->listen->app_io;
 	s->filter = FR_EVENT_FILTER_IO;
 
-	if (fr_event_fd_insert(nr, NULL, nr->el, s->listen->fd,
+	if (fr_event_fd_insert(s, &s->ef, nr->el, s->listen->fd,
 			       fr_network_read,
 			       s->listen->no_write_callback ? NULL : fr_network_write,
 			       fr_network_error,
 			       s) < 0) {
 		PERROR("Failed adding new socket to network event loop");
+		if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 		talloc_free(s);
 		return -1;
 	}
@@ -1549,6 +1595,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				      size, false);
 	if (!s->ms) {
 		PERROR("Failed creating message buffers for directory IO");
+		if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 		talloc_free(s);
 		return;
 	}
@@ -1559,11 +1606,12 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	s->filter = FR_EVENT_FILTER_VNODE;
 
-	if (fr_event_filter_insert(nr, NULL, nr->el, s->listen->fd, s->filter,
+	if (fr_event_filter_insert(s, &s->ef, nr->el, s->listen->fd, s->filter,
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
 		PERROR("Failed adding directory monitor event loop");
+		if (network_socket_close(s) < 0) PWARN("Failed removing event for socket %d", s->number);
 		talloc_free(s);
 		return;
 	}
@@ -1755,6 +1803,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 int fr_network_destroy(fr_network_t *nr)
 {
 	fr_channel_data_t	*cd;
+	int			ret = 0;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
@@ -1769,13 +1818,16 @@ int fr_network_destroy(fr_network_t *nr)
 		if (fr_rb_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
 		len = talloc_array_length(sockets);
 
+		/*
+		 *	Freeing a socket frees its message set, and the workers
+		 *	hold messages allocated from it until they ack the
+		 *	channel close signalled further down.
+		 */
 		for (i = 0; i < len; i++) {
-			/*
-			 *	Force to zero so we don't trigger asserts
-			 *	if packets are being processed and the
-			 *	server exits.
-			 */
-			sockets[i]->outstanding = 0;
+			if (network_socket_close(sockets[i]) < 0) {
+				PWARN("Failed removing event for socket %d", sockets[i]->number);
+				ret = -1;
+			}
 			talloc_free(sockets[i]);
 		}
 
@@ -1829,7 +1881,7 @@ int fr_network_destroy(fr_network_t *nr)
 	nr->exiting = true;
 	fr_event_fd_delete(nr->el, nr->signal_pipe[0], FR_EVENT_FILTER_IO);
 
-	return 0;
+	return ret;
 }
 
 /** Read handler for signal pipe
