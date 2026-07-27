@@ -1,0 +1,5 @@
+#!/bin/sh
+DIR=$(dirname $0)/../..
+PROGRAM=$(basename $0)
+
+exec $DIR/build/make/jlibtool --silent --mode=execute $FR_DEBUGGER $DIR/build/bin/local/$PROGRAM -M $DIR/build/lib/local -D $DIR/share/dictionary $@
