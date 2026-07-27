@@ -113,9 +113,11 @@ static struct json_object *build_conf_parser_rule(conf_parser_t const *r)
 {
 	struct json_object *o	   = json_object_new_object();
 	bool		    is_sub = (r->flags & CONF_FLAG_SUBSECTION) != 0;
+	char const	   *name1  = (r->name1 == CF_IDENT_ANY) ? NULL : r->name1;
+	char const	   *name2  = (r->name2 == CF_IDENT_ANY) ? NULL : r->name2;
 
-	json_object_object_add(o, "name1", r->name1 ? json_object_new_string(r->name1) : NULL);
-	json_object_object_add(o, "name2", r->name2 ? json_object_new_string(r->name2) : NULL);
+	json_object_object_add(o, "name1", name1 ? json_object_new_string(name1) : NULL);
+	json_object_object_add(o, "name2", name2 ? json_object_new_string(name2) : NULL);
 	json_object_object_add(o, "type", json_object_new_string(fr_type_to_enum_str(r->type)));
 	json_object_object_add(o, "flags", build_conf_parser_flags(r->flags));
 	json_object_object_add(o, "func", func_symbol((void const *)r->func));
@@ -488,6 +490,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_internal_afrom_file(&internal, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
+		fr_perror("radmod2json");
+		exit(EXIT_FAILURE);
+	}
+
+	if (request_global_init() < 0) {
 		fr_perror("radmod2json");
 		exit(EXIT_FAILURE);
 	}
