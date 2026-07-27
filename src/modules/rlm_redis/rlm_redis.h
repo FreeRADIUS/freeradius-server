@@ -46,6 +46,7 @@ typedef struct rlm_redis_t {
 	char const		*hostname;
 	uint16_t		port;
 	uint32_t		database;
+	char const		*username;
 	char const		*password;
 	uint16_t		query_timeout;
 	fr_connection_pool_t	*pool;
