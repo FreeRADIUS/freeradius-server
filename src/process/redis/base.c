@@ -67,6 +67,7 @@ typedef struct {
 	bool				in_cluster;		//!< Has the node been found in the latest cluster map.
 	uint32_t			version;		//!< Redis version on this node.
 	uint64_t			current_epoch;		//!< Redis cluster epoch as reported by this node.
+	fr_pair_list_t			trigger_args;		//!< Pair list to pass to trigger.
 } process_redis_node_t;
 
 /** Coordinator representation of a Redis cluster
@@ -124,6 +125,7 @@ typedef struct {
 	module_method_t const		*method;
 	trunk_conf_t			trunk_conf;
 	fr_time_delta_t			timeout;
+	char const			*inst_name;
 } process_redis_t;
 
 typedef struct {
@@ -492,8 +494,8 @@ static int fr_redis_cluster_slots_to_pairs(TALLOC_CTX *ctx, request_t *request, 
 	return 0;
 }
 
-static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster_t *cluster, fr_redis_conf_t *conf,
-					     fr_pair_t *host_vp, fr_pair_t *port_vp)
+static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster_t *cluster, process_redis_t const *inst,
+					  fr_redis_conf_t *conf, fr_pair_t *host_vp, fr_pair_t *port_vp)
 {
 	process_redis_node_t	*node;
 	char buff[FR_IPADDR_STRLEN];
@@ -519,6 +521,16 @@ static int process_redis_cluster_node_add(TALLOC_CTX *ctx, process_redis_cluster
 						   fr_inet_ntop(buff, sizeof(buff), &node->io_conf.ipaddr),
 						   node->io_conf.port);
 	node->in_cluster = true;
+	fr_pair_list_init(&node->trigger_args);
+	if (conf->trunk_conf.conn_triggers) {
+		module_trigger_args_build(node, &node->trigger_args, NULL,
+					&(module_trigger_args_t) {
+						.module = "process_redis",
+						.name = inst->inst_name, \
+						.server = buff, \
+						.port = node->io_conf.port \
+					}); \
+	}
 	fr_dlist_insert_tail(&cluster->nodes, node);
 	return 0;
 }
@@ -643,7 +655,8 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 		RDEBUG2("Fetching cluster map %d from %pV:%d", cluster->cluster_id,
 			fr_box_ipaddr(node->io_conf.ipaddr), node->io_conf.port);
 		if (!node->trunk) {
-			node->trunk = fr_redis_trunk_alloc(cluster->rtcluster, &node->io_conf, NULL, NULL, NULL, false);
+			node->trunk = fr_redis_trunk_alloc(cluster->rtcluster, &node->io_conf, &node->trigger_args,
+							   NULL, NULL, false);
 			if (fr_redis_command_literal_add(nrctx->cmds, "INFO SERVER", redis_cluster_info_server_results,
 							 node) != FR_REDIS_PIPELINE_OK) return UNLANG_ACTION_FAIL;
 		}
@@ -790,7 +803,7 @@ static unlang_action_t redis_cluster_map_get_resume(unlang_result_t *p_result, r
 
 			if (found) continue;
 
-			if (process_redis_cluster_node_add(cluster, cluster, cluster->conf, endpoint, port) < 0) {
+			if (process_redis_cluster_node_add(cluster, cluster, rctx->inst, cluster->conf, endpoint, port) < 0) {
 				RERROR("Failed adding new node to cluster");
 			}
 		}
@@ -1003,7 +1016,7 @@ RECV(cluster_map_bootstrap)
 	 */
 	vp = NULL;
 	while ((vp = fr_pair_find_by_da(&request->request_pairs, vp, attr_redis_bootstrap_node))) {
-		if (process_redis_cluster_node_add(cluster, cluster, conf, vp, port_vp) < 0) {
+		if (process_redis_cluster_node_add(cluster, cluster, inst, conf, vp, port_vp) < 0) {
 			talloc_free(cluster);
 			return UNLANG_ACTION_FAIL;
 		}
@@ -1082,6 +1095,14 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	process_redis_t *inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
+
+	inst->inst_name = mctx->mi->name;
+	return (0);
+}
+
 static int mod_load(void)
 {
 	return redis_dict_init();
@@ -1108,6 +1129,7 @@ fr_process_module_t process_redis = {
 		.name			= "redis",
 		.config			= config,
 		.onload			= mod_load,
+		.instantiate		= mod_instantiate,
 		MODULE_INST(process_redis_t),
 		MODULE_RCTX(process_redis_rctx_t),
 		MODULE_THREAD_INST(process_redis_thread_t),
