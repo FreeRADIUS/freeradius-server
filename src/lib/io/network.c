@@ -638,6 +638,19 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
+	/*
+	 *	The workers have been signalled to close and are tearing their
+	 *	channels down.  Anything queued now is stranded: the worker
+	 *	discards it without a reply, so our outstanding count for the
+	 *	socket never comes back down and the socket can never be freed.
+	 *
+	 *	The listeners are closed before the close is signalled, so a
+	 *	socket read cannot get here.  Assert, so that whatever did shows
+	 *	itself with a backtrace, and drop the packet in release builds.
+	 */
+	if (!fr_cond_assert_msg(!nr->exiting,
+				"Sending packet to worker after signalling the channel close")) return -1;
+
 	if (!nr->num_workers) {
 		RATE_LIMIT_GLOBAL(ERROR, "Failed sending packet to worker - "
 				  "No workers are available");
@@ -1857,6 +1870,12 @@ int fr_network_destroy(fr_network_t *nr)
 	}
 
 	/*
+	 *	Nothing may be queued from here on: a worker that has been
+	 *	signalled discards whatever arrives late, without a reply.
+	 */
+	nr->exiting = true;
+
+	/*
 	 *	Signal the workers that we're closing
 	 *
 	 *	nr->num_workers is decremented every
@@ -1877,7 +1896,6 @@ int fr_network_destroy(fr_network_t *nr)
 
 	(void) fr_event_pre_delete(nr->el, fr_network_pre_event, nr);
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
-	nr->exiting = true;
 	fr_event_fd_delete(nr->el, nr->signal_pipe[0], FR_EVENT_FILTER_IO);
 
 	return ret;
