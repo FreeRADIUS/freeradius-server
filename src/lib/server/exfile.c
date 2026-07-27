@@ -112,7 +112,7 @@ static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, exfile_tr
 				       talloc_strlen(entry->filename), false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, exfile_trigger_names[ex_trigger]);
-	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args) == -1) {
+	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args, NULL) == -1) {
 		ef->trigger_undef[ex_trigger] = true;
 	}
 

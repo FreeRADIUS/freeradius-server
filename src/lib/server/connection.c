@@ -128,7 +128,7 @@ struct connection_s {
 
 #define CONN_TRIGGER(_state) do { \
 	if (conn->triggers) trigger(unlang_interpret_get_thread_default(), \
-		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
+		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args, conn); \
 } while (0)
 
 #define STATE_TRANSITION(_new) \

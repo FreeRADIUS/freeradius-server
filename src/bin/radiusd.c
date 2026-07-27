@@ -953,7 +953,7 @@ do { \
 		}
 	}
 
-	trigger(NULL, NULL, NULL, "server.start", false, NULL);
+	trigger(NULL, NULL, NULL, "server.start", false, NULL, NULL);
 
 	/*
 	 *  Inform the parent (who should still be waiting) that the rest of
@@ -1038,8 +1038,8 @@ do { \
 	 *   Fire signal and stop triggers after ignoring SIGTERM, so handlers are
 	 *   not killed with the rest of the process group, below.
 	 */
-	if (status == 2) trigger(NULL, NULL, NULL, "server.signal.term", true, NULL);
-	trigger(NULL, NULL, NULL, "server.stop", false, NULL);
+	if (status == 2) trigger(NULL, NULL, NULL, "server.signal.term", true, NULL, NULL);
+	trigger(NULL, NULL, NULL, "server.stop", false, NULL, NULL);
 
 	/*
 	 *  Stop the scheduler, this signals the network and worker threads

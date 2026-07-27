@@ -454,7 +454,7 @@ static size_t trunk_connection_events_len = NUM_ELEMENTS(trunk_connection_events
 		if (trigger(unlang_interpret_get_thread_default(), trunk->conf.conn_trigger_cs, \
 			    &trunk->trigger_cp[idx], \
 			    fr_table_str_by_value(trunk_conn_trigger_names, _state, \
-						  "<INVALID>"), true, trunk->trigger_args) == -1) { \
+						  "<INVALID>"), true, trunk->trigger_args, trunk) == -1) { \
 			trunk->trigger_undef[idx] = true; \
 		} \
 	} \
@@ -487,7 +487,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 	if (trunk->conf.req_triggers) { \
 		trigger(unlang_interpret_get_thread_default(), \
 			trunk->conf.req_trigger_cs, NULL, fr_table_str_by_value(trunk_req_trigger_names, _state, \
-							 "<INVALID>"), true, trunk->trigger_args); \
+							 "<INVALID>"), true, trunk->trigger_args, trunk); \
 	} \
 } while (0)
 

@@ -53,6 +53,7 @@ static pthread_mutex_t		*trigger_mutex;
 typedef struct {
 	fr_rb_node_t	node;		//!< Entry in the trigger last fired tree.
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
+	void const	*uctx;		//!< Combined with ci to distinguish trigger calls.  E.g. trunk / connection.
 	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
 
@@ -84,8 +85,11 @@ static void _trigger_last_fired_free(void *data)
 static fr_cmp_ret_t _trigger_last_fired_cmp(void const *one, void const *two)
 {
 	trigger_last_fired_t const *a = one, *b = two;
+	int8_t	ret;
 
-	return CMP(a->ci, b->ci);
+	ret = CMP(a->ci, b->ci);
+	if (ret != 0) return ret;
+	return CMP(a->uctx, b->uctx);
 }
 
 /** Return whether triggers are enabled
@@ -146,6 +150,7 @@ typedef struct {
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
  * @param[in] args		to populate the trigger's request list with.
+ * @param[in] uctx		to distinguish triggers which use the same CONF_ITEM when rate limiting.
  * @return
  *	- 0 on success.
  *	- -1 if the trigger is not defined.
@@ -153,7 +158,7 @@ typedef struct {
  *	- -3 on failure.
  */
 int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
-	    char const *name, bool rate_limit, fr_pair_list_t *args)
+	    char const *name, bool rate_limit, fr_pair_list_t *args, void const *uctx)
 {
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
@@ -252,6 +257,7 @@ cp_found:
 		fr_time_t		now = fr_time();
 
 		find.ci = ci;
+		find.uctx = uctx;
 
 		pthread_mutex_lock(trigger_mutex);
 
@@ -259,6 +265,7 @@ cp_found:
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
+			found->uctx = uctx;
 			/*
 			 *	Initialise last_fired to 2 seconds ago so
 			 *	the trigger fires on the first occurrence
