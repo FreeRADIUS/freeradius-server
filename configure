@@ -8323,7 +8323,7 @@ then :
   printf "%s\n" "#define HAVE_UTMPX_H 1" >>confdefs.h
 
 fi
-ac_fn_c_check_header_compile "$LINENO" "valgind/valgrind.h" "ac_cv_header_valgrind_valgrind_h" "$ac_includes_default"
+ac_fn_c_check_header_compile "$LINENO" "valgrind/valgrind.h" "ac_cv_header_valgrind_valgrind_h" "$ac_includes_default"
 if test "x$ac_cv_header_valgrind_valgrind_h" = xyes
 then :
   printf "%s\n" "#define HAVE_VALGRIND_VALGRIND_H 1" >>confdefs.h
