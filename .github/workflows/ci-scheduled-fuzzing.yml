@@ -272,6 +272,14 @@ jobs:
         make test.fuzzer.$PROTOCOL.merge
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
+    - name: Generate app token to push corpus
+      id: app-token
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ secrets.GH_APP_ID }}
+        private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
     #
     #  We can push the LFS file directly, but we must use the GitHub API to
     #  create the actual commit due to the "signed-commits" branch protection
@@ -301,7 +309,7 @@ jobs:
           python3 scripts/ci/commit_lfs_file_update.py
         fi
       env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        APP_TOKEN: ${{ steps.app-token.outputs.token }}
       if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
 
 
