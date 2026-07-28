@@ -1904,13 +1904,13 @@ static int server_pool_add(realm_config_t *rc,
 		 */
 		if (pool->affinity_group) {
 			if (home->virtual_server) {
-				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);
+				ERROR("Home server %s is a virtual server, and cannot be used with 'track_home_server'", home->name);
 				goto error;
 			}
 
 			if (!home->affinity_assigned) {
 				if (affinity_id >= 256) {
-					ERROR("Too many home servers (> 256) used in pools with affinity=true");
+					ERROR("Too many home servers (> 256) used in pools with track_home_server=true");
 					goto error;
 				}
 
