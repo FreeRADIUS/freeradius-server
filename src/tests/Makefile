@@ -65,6 +65,11 @@ $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	${Q}echo "TLS1_3=$(shell openssl ciphers -s -v 'ECDHE:!COMPLEMENTOFDEFAULT'| grep -q 'TLSv1.3' && echo yes)" >> $@
 	${Q}echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
 	${Q}echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.' && echo yes)" >> $@
+
+#
+#  If OpenSSL is available, include extra rlm_eap config in the test radiusd
+#
+override EAP_CONF_INCLUDE := $$INCLUDE $${testdir}/config/eap-include.conf
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
@@ -165,9 +170,10 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  * set the maximum TLS version to 1.2 or 1.3, depending if 1.3 is available
 #  * always enable TLS 1.3 for the tests, via the super-secret magic flag.
 #  * tell OpenSSL to enable insecure ciphers TLS 1.0 and TLS 1.1
+#  * include extra config for EAP methods disabled in the default raddb
 #
-config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
-	${Q}sed -e 's/eap {/eap eap-test {/' \
+config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel config/eap-include.conf
+	${Q}sed -e 's|eap {|eap eap-test {\n${EAP_CONF_INCLUDE}|' \
 	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
 	     -e 's/enable = no/enable = yes/' \
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
@@ -220,10 +226,11 @@ EAP_FILES        = eap-md5.conf
 EAP_FILES       += eap-mschapv2.conf
 
 #
-#  This needs OpenSSL for AES, etc.  But it doesn't need TLS.
+#  These need OpenSSL for AES, etc, but don't need TLS.
 #
 ifneq "$(OPENSSL_LIBS)" ""
 EAP_FILES += eap-psk.conf
+EAP_FILES += eap-pwd.conf
 endif
 
 EAP_TLS_FILES    = eap-tls.conf
@@ -238,7 +245,6 @@ EAP_TLS_FILES   += peap-gtc.conf
 EAP_TLS_FILES   += peap-mschapv2.conf
 
 #EAP_TLS_FILES   += eap-fast.conf		# disabled in default config
-#EAP_TLS_FILES   += eap-pwd.conf		# disabled in default config
 #EAP_TLS_FILES   += eap-teap-mschapv2.conf	# not configured in eapol_test
 
 EAP_TLS_VERSIONS = 1.1 1.2
