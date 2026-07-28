@@ -1812,7 +1812,7 @@ static int server_pool_add(realm_config_t *rc,
 	 *	Do affinity tracking for EAP && State
 	 */
 	cp = cf_pair_find(cs, "track_home_server");
-	if (cp) {
+	if (cp && server_type == HOME_TYPE_AUTH) {
 		bool affinity = false;
 
 		value = cf_pair_value(cp);
