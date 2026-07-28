@@ -1921,7 +1921,14 @@ static int server_pool_add(realm_config_t *rc,
 			pool->affinity_group[home->affinity_id] = home;
 		}
 
-		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
+		if (do_print) {
+			if (home->affinity_assigned && rad_debug_lvl > 2) {
+				cf_log_info(cs, "\thome_server = %s [affinity_id = %u]", home->name, home->affinity_id);
+			} else {
+				cf_log_info(cs, "\thome_server = %s", home->name);
+			}
+		}
+
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
@@ -3290,7 +3297,12 @@ home_server_t *home_server_ldb(char const *realmname,
 	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
 		    found = pool->affinity_group[vp->vp_octets[0]];
 
-		    if (HOME_SERVER_IS_DEAD(found)) return NULL;
+		    if (HOME_SERVER_IS_DEAD(found)) {
+			RDEBUG3("Found affinity tracking ID '%u' in State but home server is dead; cancelling proxying", vp->vp_octets[0]);
+			return NULL;
+		    } else {
+			RDEBUG3("Found affinity tracking ID '%u' in State; overriding proxy destination", vp->vp_octets[0]);
+		    }
 
 		    /*
 		     *	Get rid of the extra octet that we added on the outbound proxying.

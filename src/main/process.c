@@ -3119,6 +3119,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		src = talloc_array(vp, uint8_t, vp->vp_length + 1);
 		if (!src) return 0;
 
+		RDEBUG3("Adding affinity tracking ID '%u' to reply State attribute", request->home_server->affinity_id);
+
 		src[0] = request->home_server->affinity_id;
 		memcpy(&src[1], vp->vp_octets, vp->vp_length);
 		fr_pair_value_memsteal(vp, src);
