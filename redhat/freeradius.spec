@@ -690,6 +690,7 @@ fi
 %{_libdir}/freeradius/rlm_eap_md5.so
 %{_libdir}/freeradius/rlm_eap_mschapv2.so
 %{_libdir}/freeradius/rlm_eap_peap.so
+%{_libdir}/freeradius/rlm_eap_psk.so
 %{_libdir}/freeradius/rlm_eap_sim.so
 %if 0%{?rhel} >= 8
 %{_libdir}/freeradius/rlm_eap_teap.so
