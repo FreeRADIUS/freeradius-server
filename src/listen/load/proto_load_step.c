@@ -356,6 +356,31 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	return 0;
 }
 
+/** Close a virtual listener
+ *
+ * The fd only exists to bootstrap the listener, so closing it mostly means
+ * removing the timer that drives the load generator.
+ *
+ * @param[in] li the listener
+ * @return
+ *	- 0 on success.
+ *	- -1 if the generator could not be stopped.  The fd is closed either way.
+ */
+static int mod_close(fr_listen_t *li)
+{
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
+	int				ret = 0;
+
+	if (thread->l && (fr_load_generator_stop(thread->l) < 0)) {
+		PERROR("Failed stopping load generator");
+		ret = -1;
+	}
+
+	close(li->fd);
+
+	return ret;
+}
+
 /** Set the event list for a new socket
  *
  * @param[in] li the listener
@@ -506,6 +531,7 @@ fr_app_io_t proto_load_step = {
 	.track_duplicates	= false,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.read			= mod_read,
 	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,
