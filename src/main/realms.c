@@ -3295,20 +3295,20 @@ home_server_t *home_server_ldb(char const *realmname,
 	    ((vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) != NULL) &&
 	    (vp->vp_length > 1) &&
 	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
-		    found = pool->affinity_group[vp->vp_octets[0]];
+		found = pool->affinity_group[vp->vp_octets[0]];
 
-		    if (HOME_SERVER_IS_DEAD(found)) {
+		if (HOME_SERVER_IS_DEAD(found)) {
 			RDEBUG3("Found affinity tracking ID '%u' in State but home server is dead; cancelling proxying", vp->vp_octets[0]);
 			return NULL;
-		    } else {
+		} else {
 			RDEBUG3("Found affinity tracking ID '%u' in State; overriding proxy destination", vp->vp_octets[0]);
-		    }
+		}
 
-		    /*
-		     *	Get rid of the extra octet that we added on the outbound proxying.
-		     */
-		    fr_pair_value_memcpy(vp, vp->vp_octets + 1, vp->vp_length - 1);
-		    return found;
+		/*
+		 *	Get rid of the extra octet that we added on the outbound proxying.
+		 */
+		fr_pair_value_memcpy(vp, vp->vp_octets + 1, vp->vp_length - 1);
+		return found;
 	}
 
 	/*
