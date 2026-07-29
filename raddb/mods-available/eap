@@ -113,14 +113,14 @@ eap {
 	#  The PSK should be generated from a secure source, e.g. a
 	#  CSPRNG.
 	#
-	#psk {
+	psk {
 		#  Server identifier (ID_S)
 		#  This should generally be the host name of the
 		#  RADIUS server.  Or, some information to uniquely
 		#  identify it.
 		#
-	#	identity = "FreeRADIUS"
-	#}
+		identity = "FreeRADIUS"
+	}
 
 	#  EAP-pwd -- secure password-based authentication
 	#
