@@ -269,7 +269,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	}
 	endusershell();
 	if (!shell) {
-		REDEBUG("invalid shell '%s', pwd->pw_shell);
+		REDEBUG("invalid shell '%s'", pwd->pw_shell);
 		return RLM_MODULE_REJECT;
 	}
 #endif
