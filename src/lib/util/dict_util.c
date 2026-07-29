@@ -3506,7 +3506,9 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 {
 	fr_dict_attr_t const *da;
 
+#ifdef WITH_VERIFY_PTR
 	DA_VERIFY(parent);
+#endif
 
 	da = dict_attr_by_name(err, parent, name);
 	if (!da) return NULL;
