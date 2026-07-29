@@ -195,7 +195,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RAUTH("Attribute \"User-Name\" is required for authentication");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -204,7 +204,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Password attribute.
 	 */
 	if (!request->password) {
-		RAUTH("Attribute \"User-Password\" is required for authentication");
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -213,7 +213,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *  and not anything else.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		RAUTH("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->da->name);
+		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 

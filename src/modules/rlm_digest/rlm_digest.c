@@ -214,14 +214,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	passwd = fr_pair_find_by_num(request->config, PW_DIGEST_HA1, 0, TAG_ANY);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
-			RAUTH("Digest-HA1 has invalid length, authentication failed");
+			REDEBUG("Digest-HA1 has invalid length, authentication failed");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
 		passwd = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	}
 	if (!passwd) {
-		RAUTH("Cleartext-Password or Digest-HA1 is required for authentication");
+		REDEBUG("Cleartext-Password or Digest-HA1 is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 

@@ -464,12 +464,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		AUTH("rlm_securid: Attribute \"User-Name\" is required for authentication");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password) {
-		RAUTH("Attribute \"Password\" is required for authentication");
+		REDEBUG("Attribute \"Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -477,7 +477,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Clear-text passwords are the only ones we support.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		RAUTH("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
+		REDEBUG("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 
