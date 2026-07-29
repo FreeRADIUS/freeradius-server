@@ -173,7 +173,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  * include extra config for EAP methods disabled in the default raddb
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel config/eap-include.conf
-	${Q}sed -e 's|eap {|eap eap-test {\n${EAP_CONF_INCLUDE}|' \
+	${Q}sed -e 's|^eap {|eap eap-test {\n${EAP_CONF_INCLUDE}|' \
 	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
 	     -e 's/enable = no/enable = yes/' \
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
