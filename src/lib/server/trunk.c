@@ -4119,10 +4119,21 @@ bool trunk_connection_in_state(trunk_connection_t *tconn, int state)
  */
 static void trunk_connection_close_if_empty(trunk_t *trunk, fr_dlist_head_t *head)
 {
-	trunk_connection_t *tconn = NULL;
+	trunk_connection_t *tconn = NULL, *last = NULL;
 
 	while ((tconn = fr_dlist_next(head, tconn))) {
 		trunk_connection_t *prev;
+
+		/*
+		 *	The watch callback which fires after shutdown removes
+		 *	the connection from the list being inspected, however
+		 *	in single threaded mode, if this requires an event to
+		 *	fire before the connection shutdown is complete then
+		 *	that won't happen within this loop, so if `next` gives
+		 *	the same connection twice, just move on.
+		 */
+		if (last == tconn) continue;
+		last = tconn;
 
 		if (trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) != 0) continue;
 
