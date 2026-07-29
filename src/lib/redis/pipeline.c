@@ -188,7 +188,8 @@ static int _command_set_free_list_free_on_exit(void *arg)
  */
 static int _redis_command_set_free(fr_redis_command_set_t *cmds)
 {
-	if (fr_dlist_num_elements(command_set_free_list) >= 1024) return 0;	/* Keep a buffer of 1024 */
+	if ((fr_dlist_num_elements(command_set_free_list) >= 1024) &&
+	    (likely(!fr_dlist_entry_in_list(&cmds->entry)))) return 0;	/* Keep a buffer of 1024 */
 
 	/*
 	 *	Freed from the free list....
