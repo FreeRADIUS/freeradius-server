@@ -170,7 +170,7 @@ awk -F, \
   -v step="${TEST_LOADGEN_STEP}" \
   -v parallel="${TEST_LOADGEN_PARALLEL}" \
   -v max_backlog="${TEST_LOADGEN_MAX_BACKLOG}" \
-  -v num_messages="${TEST_LOADGEN_NUM_MESSAGES}" \
+  -v max_requests="${TEST_LOADGEN_MAX_REQUESTS}" \
   -v startup_s="${STARTUP_ELAPSED}" \
   -v send_wait_s="${SEND_DURATION}" \
   -v shutdown_s="${SHUTDOWN_ELAPSED}" \
@@ -179,8 +179,8 @@ awk -F, \
    END {
      printf "{\n"
      printf "  \"version\": 1,\n"
-     printf "  \"loadgen\": {\"start_pps\": %d, \"max_pps\": %d, \"duration\": %d, \"step\": %d, \"parallel\": %d, \"max_backlog\": %d, \"num_messages\": %d},\n", \
-            start_pps, max_pps, duration, step, parallel, max_backlog, num_messages
+     printf "  \"loadgen\": {\"start_pps\": %d, \"max_pps\": %d, \"duration\": %d, \"step\": %d, \"parallel\": %d, \"max_backlog\": %d, \"max_requests\": %d},\n", \
+            start_pps, max_pps, duration, step, parallel, max_backlog, max_requests
      if (last != "") {
        split(last, f, ",")
        printf "  \"final\": {\"time\": %s, \"last_packet\": %s, \"rtt\": %s, \"rttvar\": %s, \"pps\": %s, \"pps_accepted\": %s, \"sent\": %s, \"received\": %s, \"backlog\": %s, \"max_backlog\": %s, \"times\": [%s, %s, %s, %s, %s, %s, %s, %s], \"blocked\": %s},\n", \
