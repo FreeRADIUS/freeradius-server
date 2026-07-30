@@ -1,3 +1,28 @@
+# Profiling scripts
+
+## Load-generator stats in the results tree
+
+Each profiling run's result directory carries the load-generator's own
+counters next to the callgrind output (written by
+start_valgrind_profiling.sh at the end of the run):
+
+- `load-stats.csv`: the per-second stats CSV proto_load writes during the
+  run, copied verbatim.
+- `run-stats.json`: one-object summary of the run.
+  - `loadgen`: the TEST_LOADGEN_* configuration (pps, duration,
+    `num_messages` = expected packet count).
+  - `final`: the last CSV row, i.e. cumulative totals at shutdown: `sent`,
+    `received`, `rtt`/`rttvar` (nanoseconds), `times` (response-time
+    buckets: <us, us, 10us, 100us, ms, 10ms, 100ms, s), `backlog`,
+    `max_backlog`, `blocked`. `null` when the CSV was missing or empty.
+  - `phases`: script timings in seconds (`startup_s`, `send_wait_s`,
+    `shutdown_s`) and `shutdown_timed_out`.
+
+`received` vs `loadgen.num_messages` is the direct completeness check for a
+run: a partial run (fewer requests processed) no longer has to be inferred
+from total-CEst outlier ratios (see cinfra-profiling-server
+docs/noise-floor.md).
+
 ## generate_callgrind_report.py
 
 python3 src/tests/multi-server/scripts/profiling/generate_callgrind_report.py \

@@ -90,6 +90,8 @@ sleep ${SEND_DURATION}
 
 # Graceful shutdown (equivalent to Ctrl+C) — keep instrumentation on so shutdown
 # transitions are captured before we stop profiling
+SHUTDOWN_ELAPSED=0
+SHUTDOWN_TIMED_OUT=false
 if [ -z "${FR_PID}" ]; then
   echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind instead"
   kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
@@ -99,12 +101,12 @@ else
 
   # Wait for freeradius to finish its graceful shutdown before stopping instrumentation
   SHUTDOWN_TIMEOUT=60
-  SHUTDOWN_ELAPSED=0
   while kill -0 "${FR_PID}" 2>/dev/null; do
     sleep 1
     SHUTDOWN_ELAPSED=$(( SHUTDOWN_ELAPSED + 1 ))
     if [ ${SHUTDOWN_ELAPSED} -ge ${SHUTDOWN_TIMEOUT} ]; then
       echo "WARNING: freeradius did not exit within ${SHUTDOWN_TIMEOUT}s after SIGINT"
+      SHUTDOWN_TIMED_OUT=true
       break
     fi
   done
@@ -122,6 +124,57 @@ wait ${VALGRIND_PID} 2>/dev/null || true
 
 # Signal that valgrind has finished writing all profiling data
 echo "INFO: Profiling complete at $(date)"
+
+# Publish load-generator stats: the per-second CSV plus run-stats.json
+# (loadgen config, final CSV row totals, script phase timings).
+echo "INFO: publishing load-generator stats"
+LOADGEN_CSV=/etc/freeradius/stats/load-generator-stats.csv
+if [ -s "${LOADGEN_CSV}" ]; then
+  cp "${LOADGEN_CSV}" /etc/prof-results/load-stats.csv
+else
+  echo "WARNING: no load-generator stats CSV at ${LOADGEN_CSV}"
+  LOADGEN_CSV=/dev/null
+fi
+
+# The awk below indexes columns by position: refuse a CSV whose header no
+# longer matches what fr_load_generator_stats_sprint writes.
+LOADGEN_HEADER='"time","last_packet","rtt","rttvar","pps","pps_accepted","sent","received","backlog","max_backlog","<usec","us","10us","100us","ms","10ms","100ms","s","blocked"'
+if [ "${LOADGEN_CSV}" != /dev/null ] && [ "$(head -1 "${LOADGEN_CSV}")" != "${LOADGEN_HEADER}" ]; then
+  echo "WARNING: unexpected load-generator CSV header; run totals left out of run-stats.json"
+  LOADGEN_CSV=/dev/null
+fi
+
+awk -F, \
+  -v start_pps="${TEST_LOADGEN_START_PPS}" \
+  -v max_pps="${TEST_LOADGEN_MAX_PPS}" \
+  -v duration="${TEST_LOADGEN_DURATION}" \
+  -v step="${TEST_LOADGEN_STEP}" \
+  -v parallel="${TEST_LOADGEN_PARALLEL}" \
+  -v max_backlog="${TEST_LOADGEN_MAX_BACKLOG}" \
+  -v num_messages="${TEST_LOADGEN_NUM_MESSAGES}" \
+  -v startup_s="${STARTUP_ELAPSED}" \
+  -v send_wait_s="${SEND_DURATION}" \
+  -v shutdown_s="${SHUTDOWN_ELAPSED}" \
+  -v shutdown_timed_out="${SHUTDOWN_TIMED_OUT}" \
+  'NR > 1 { last = $0 }
+   END {
+     printf "{\n"
+     printf "  \"version\": 1,\n"
+     printf "  \"loadgen\": {\"start_pps\": %d, \"max_pps\": %d, \"duration\": %d, \"step\": %d, \"parallel\": %d, \"max_backlog\": %d, \"num_messages\": %d},\n", \
+            start_pps, max_pps, duration, step, parallel, max_backlog, num_messages
+     if (last != "") {
+       split(last, f, ",")
+       printf "  \"final\": {\"time\": %s, \"last_packet\": %s, \"rtt\": %s, \"rttvar\": %s, \"pps\": %s, \"pps_accepted\": %s, \"sent\": %s, \"received\": %s, \"backlog\": %s, \"max_backlog\": %s, \"times\": [%s, %s, %s, %s, %s, %s, %s, %s], \"blocked\": %s},\n", \
+              f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], \
+              f[11], f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19]
+     } else {
+       printf "  \"final\": null,\n"
+     }
+     printf "  \"phases\": {\"startup_s\": %d, \"send_wait_s\": %d, \"shutdown_s\": %d, \"shutdown_timed_out\": %s}\n", \
+            startup_s, send_wait_s, shutdown_s, shutdown_timed_out
+     printf "}\n"
+   }' "${LOADGEN_CSV}" > /etc/prof-results/run-stats.json \
+  || echo "WARNING: could not write run-stats.json"
 
 echo "INFO: running callgrind_annotate to generate report"
 callgrind_annotate \
