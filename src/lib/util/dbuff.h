@@ -254,7 +254,7 @@ do { \
  *
  * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_DBUFF_BIND_CURRENT_ABS(_dbuff_or_marker) FR_DBUFF_ABS(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_CURRENT)
+#define FR_DBUFF_BIND_CURRENT_ABS(_dbuff_or_marker) _FR_DBUFF(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), FR_DBUFF_ADV_PARENT_CURRENT)
 
 /** Create a new dbuff pointing to the same underlying buffer
  *
