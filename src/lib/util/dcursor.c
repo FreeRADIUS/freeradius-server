@@ -100,7 +100,7 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
 		 */
 		if (a_next == b_next) return a_next;
 	} else {
-		a_next = fr_dcursor_next(a);
+		a_next = a->current;
 	}
 
 	if (!a_next) return NULL;

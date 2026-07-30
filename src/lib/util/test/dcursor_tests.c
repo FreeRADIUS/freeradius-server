@@ -1745,6 +1745,47 @@ static void test_intersect_iterator_disjoint(void)
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == NULL);
 }
 
+/*
+ *	Regression test: when a's first match is preceded in the list by a
+ *	b-only match, the two iterators start out of sync in
+ *	fr_dcursor_intersect_next().  The old code advanced a with
+ *	fr_dcursor_next() before comparing, skipping a's current item, so
+ *	fr_dcursor_intersect_head() missed the first common item (item2 here)
+ *	and jumped straight to the second (item5).
+ */
+static void test_intersect_first_match_out_of_sync(void)
+{
+	fr_dcursor_t		cursor_a, cursor_b;
+
+	test_item_t		item1 = { "bxene", { NULL, NULL } };	/* b only  */
+	test_item_t		item2 = { "axine", { NULL, NULL } };	/* a and b */
+	test_item_t		item3 = { "adorn", { NULL, NULL } };	/* a only  */
+	test_item_t		item4 = { "mxlan", { NULL, NULL } };	/* b only  */
+	test_item_t		item5 = { "axtra", { NULL, NULL } };	/* a and b */
+	test_item_list_t	list;
+	item_filter		filter_a = { 0, 'a' };			/* name[0] == 'a' */
+	item_filter		filter_b = { 1, 'x' };			/* name[1] == 'x' */
+
+	test_list_init(&list);
+	fr_dlist_insert_tail(&list.head, &item1);
+	fr_dlist_insert_tail(&list.head, &item2);
+	fr_dlist_insert_tail(&list.head, &item3);
+	fr_dlist_insert_tail(&list.head, &item4);
+	fr_dlist_insert_tail(&list.head, &item5);
+
+	fr_dcursor_iter_init(&cursor_a, &list.head, iter_name_check, NULL, &filter_a);
+	fr_dcursor_iter_init(&cursor_b, &list.head, iter_name_check, NULL, &filter_b);
+
+	/*
+	 *	a's first match is item2, b's is item1, so the cursors are out
+	 *	of sync.  item2 is the first item matching both filters and must
+	 *	not be skipped.
+	 */
+	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == &item2);
+	TEST_CHECK(fr_dcursor_intersect_next(&cursor_a, &cursor_b) == &item5);
+	TEST_CHECK(fr_dcursor_intersect_next(&cursor_a, &cursor_b) == NULL);
+}
+
 static bool eval_eq(void const *item, void const *uctx)
 {
 	test_item_t const	*t = item;
@@ -1951,6 +1992,7 @@ TEST_LIST = {
 	{ "iterator_b",			test_intersect_iterator_b },
 	{ "iterator_ab",		test_intersect_iterator_ab },
 	{ "iterator_disjoint",		test_intersect_iterator_disjoint },
+	{ "first_match_out_of_sync",	test_intersect_first_match_out_of_sync },
 	/*
 	 * 	Filter
 	 */
