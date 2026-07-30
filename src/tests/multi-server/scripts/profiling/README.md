@@ -11,6 +11,8 @@ start_valgrind_profiling.sh at the end of the run):
 - `run-stats.json`: one-object summary of the run.
   - `loadgen`: the TEST_LOADGEN_* configuration (pps, duration,
     `max_requests` = expected packet count).
+  - `completion`: exact totals from proto_load's completion log line.
+    `logged: false` means the load never completed: the run is partial.
   - `final`: the last CSV row, i.e. cumulative totals at shutdown: `sent`,
     `received`, `rtt`/`rttvar` (nanoseconds), `times` (response-time
     buckets: <us, us, 10us, 100us, ms, 10ms, 100ms, s), `backlog`,
@@ -18,10 +20,12 @@ start_valgrind_profiling.sh at the end of the run):
   - `phases`: script timings in seconds (`startup_s`, `send_wait_s`,
     `shutdown_s`) and `shutdown_timed_out`.
 
-`received` vs `loadgen.max_requests` is the direct completeness check for a
-run: a partial run (fewer requests processed) no longer has to be inferred
-from total-CEst outlier ratios (see cinfra-profiling-server
-docs/noise-floor.md).
+`completion.logged` is the direct completeness check for a run (the log line
+only appears when the generator reached `max_requests`): a partial run no
+longer has to be inferred from total-CEst outlier ratios (see
+cinfra-profiling-server docs/noise-floor.md). `final` totals come from the
+CSV's last row, written on a 1s timer, and can lag the completion totals by
+up to one second of traffic.
 
 ## generate_callgrind_report.py
 

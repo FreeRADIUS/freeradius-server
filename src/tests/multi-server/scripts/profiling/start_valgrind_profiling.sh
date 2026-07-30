@@ -155,6 +155,12 @@ else
   LOADGEN_CSV=/dev/null
 fi
 
+# proto_load logs exact totals at completion; the CSV's final row can lag by
+# up to one second of traffic. An absent line means the load never completed.
+read -r COMPLETED_SENT COMPLETED_RECEIVED <<< "$(sed -n \
+  's/.*Load test for .* complete - sent \([0-9]*\) packets, received \([0-9]*\) replies.*/\1 \2/p' \
+  /etc/prof-results/freeradius.log 2>/dev/null | head -1)"
+
 # The awk below indexes columns by position: refuse a CSV whose header no
 # longer matches what fr_load_generator_stats_sprint writes.
 LOADGEN_HEADER='"time","last_packet","rtt","rttvar","pps","pps_accepted","sent","received","backlog","max_backlog","<usec","us","10us","100us","ms","10ms","100ms","s","blocked"'
@@ -171,6 +177,8 @@ awk -F, \
   -v parallel="${TEST_LOADGEN_PARALLEL}" \
   -v max_backlog="${TEST_LOADGEN_MAX_BACKLOG}" \
   -v max_requests="${TEST_LOADGEN_MAX_REQUESTS}" \
+  -v completed_sent="${COMPLETED_SENT}" \
+  -v completed_received="${COMPLETED_RECEIVED}" \
   -v startup_s="${STARTUP_ELAPSED}" \
   -v send_wait_s="${SEND_DURATION}" \
   -v shutdown_s="${SHUTDOWN_ELAPSED}" \
@@ -181,6 +189,11 @@ awk -F, \
      printf "  \"version\": 1,\n"
      printf "  \"loadgen\": {\"start_pps\": %d, \"max_pps\": %d, \"duration\": %d, \"step\": %d, \"parallel\": %d, \"max_backlog\": %d, \"max_requests\": %d},\n", \
             start_pps, max_pps, duration, step, parallel, max_backlog, max_requests
+     if (completed_sent != "") {
+       printf "  \"completion\": {\"logged\": true, \"sent\": %s, \"received\": %s},\n", completed_sent, completed_received
+     } else {
+       printf "  \"completion\": {\"logged\": false},\n"
+     }
      if (last != "") {
        split(last, f, ",")
        printf "  \"final\": {\"time\": %s, \"last_packet\": %s, \"rtt\": %s, \"rttvar\": %s, \"pps\": %s, \"pps_accepted\": %s, \"sent\": %s, \"received\": %s, \"backlog\": %s, \"max_backlog\": %s, \"times\": [%s, %s, %s, %s, %s, %s, %s, %s], \"blocked\": %s},\n", \
