@@ -1,7 +1,7 @@
 #pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, cursor 2 of the
+ *   it under the terms of the GNU General Public License, version 2 of the
  *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
