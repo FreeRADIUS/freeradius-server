@@ -8,6 +8,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_json
   TARGET        := $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 

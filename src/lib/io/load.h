@@ -68,6 +68,19 @@ RCSIDH(load_h, "$Id$")
  *  "duration" seconds, even if the maximum backlog is currently
  *  reached.  This increase has the effect of also increasing the
  *  maximum backlog.
+ *
+ *  When the ramp-up passes "max_pps", the generator normally stops
+ *  sending, drains outstanding replies, and is done.  Two fields
+ *  modify the end of the run:
+ *
+ *  - "max_requests" - the generator instead holds the rate at
+ *    "max_pps" until it has sent "max_requests" packets in total,
+ *    and only then drains.  The count is also a hard cap; the
+ *    generator never sends more than "max_requests" packets.
+ *
+ *  - "unlimited" - the generator holds the rate at "max_pps"
+ *    forever, and is never done.  Mutually exclusive with
+ *    "max_requests".
  */
 typedef struct {
 	uint32_t       	start_pps;	//!< start PPS
@@ -76,6 +89,8 @@ typedef struct {
 	uint32_t	step;		//!< how much to increase each load test by
 	uint32_t	parallel;	//!< how many packets in parallel to send
 	uint32_t	milliseconds;	//!< how many milliseconds of backlog to top out at
+	uint32_t	max_requests;	//!< hold at max_pps until this many packets are sent, 0 for "no limit"
+	bool		unlimited;	//!< hold at max_pps forever, the generator is never done
 } fr_load_config_t;
 
 typedef struct {
@@ -108,8 +123,19 @@ typedef enum {
 
 typedef int (*fr_load_callback_t)(fr_time_t now, void *uctx);
 
+/** Called when the generator has stopped sending and every reply has arrived.
+ *
+ *  Only invoked when the generator itself detects completion, i.e. when
+ *  the last reply arrived before the generator stopped sending.  When
+ *  the last reply arrives afterwards, completion is instead signalled
+ *  by fr_load_generator_have_reply() returning FR_LOAD_DONE.  Callers
+ *  should funnel both into the same handler.
+ */
+typedef void (*fr_load_done_callback_t)(void *uctx);
+
 fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_load_config_t *config,
-				    fr_load_callback_t callback, void *uctx) CC_HINT(nonnull(2,3,4));
+				    fr_load_callback_t callback, fr_load_done_callback_t done,
+				    void *uctx) CC_HINT(nonnull(2,3,4));
 
 int fr_load_generator_start(fr_load_t *l) CC_HINT(nonnull);
 

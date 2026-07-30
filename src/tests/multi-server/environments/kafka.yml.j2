@@ -111,9 +111,9 @@ services:
       #  `expected_messages`; tests where some loss is expected
       #  (e.g. the reconnect test, where a brief outage can fail a
       #  small fraction of in-flight produces) override with a
-      #  larger `loadgen_num_messages`.
+      #  larger `loadgen_max_requests`.
       #
-      TEST_LOADGEN_NUM_MESSAGES: "{{ loadgen_num_messages | default(expected_messages) }}"
+      TEST_LOADGEN_MAX_REQUESTS: "{{ loadgen_max_requests | default(expected_messages) }}"
     healthcheck:
       test: ["CMD-SHELL", "echo 'Message-Authenticator = 0x00' | radclient localhost:1812 status testing123"]
       interval: 2s

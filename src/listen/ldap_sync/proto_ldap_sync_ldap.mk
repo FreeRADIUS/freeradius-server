@@ -5,6 +5,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= proto_ldap_sync_ldap
   TARGET	:= $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= proto_ldap_sync_ldap.c rfc4533.c persistent_search.c active_directory.c
 

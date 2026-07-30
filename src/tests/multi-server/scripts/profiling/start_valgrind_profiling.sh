@@ -23,12 +23,12 @@ echo "TEST_LOADGEN_STEP=$TEST_LOADGEN_STEP"
 echo "TEST_LOADGEN_PARALLEL=$TEST_LOADGEN_PARALLEL"
 echo "TEST_LOADGEN_MAX_BACKLOG=$TEST_LOADGEN_MAX_BACKLOG"
 echo "TEST_LOADGEN_REPEAT=$TEST_LOADGEN_REPEAT"
-echo "TEST_LOADGEN_NUM_MESSAGES=$TEST_LOADGEN_NUM_MESSAGES"
+echo "TEST_LOADGEN_MAX_REQUESTS=$TEST_LOADGEN_MAX_REQUESTS"
 echo ""
 
 # Approximate load-generator send duration; the instrumented run sleeps this
 # long between callgrind_control --instr=on and the graceful shutdown signal.
-SEND_DURATION=$(( TEST_LOADGEN_NUM_MESSAGES / TEST_LOADGEN_START_PPS ))
+SEND_DURATION=$(( TEST_LOADGEN_MAX_REQUESTS / TEST_LOADGEN_START_PPS ))
 
 # Start freeradius under valgrind with instrumentation off.
 #
@@ -118,9 +118,28 @@ echo "INFO: disabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
 printf '%s\n' "$CTRL_OUT"
 
-# Wait for valgrind to finish writing callgrind output
+# Wait for valgrind to finish writing callgrind output. Record how it exited:
+# a run valgrind killed produces truncated callgrind output whose numbers are
+# not comparable with a clean run, so the status has to survive to the publish
+# step, which reads this file and refuses to upload an unclean run. The status
+# is recorded for clean runs too, so an absent file means "the wrapper did not
+# get this far" rather than "the run was fine".
 echo "INFO: waiting for valgrind to exit"
-wait ${VALGRIND_PID} 2>/dev/null || true
+VALGRIND_STATUS=0
+wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
+echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
+
+if [ "${VALGRIND_STATUS}" -ne 0 ]; then
+  #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
+  #  its 8 MB brk segment ceiling presents; valgrind.log names the real reason
+  #  on the line above its backtrace.
+  if [ "${VALGRIND_STATUS}" -gt 128 ]; then
+    echo "ERROR: valgrind was killed by signal $((VALGRIND_STATUS - 128)); profiling data is truncated" >&2
+  else
+    echo "ERROR: valgrind exited ${VALGRIND_STATUS}; profiling data may be truncated" >&2
+  fi
+  echo "ERROR: see valgrind.log for the reason; these results will not be published" >&2
+fi
 
 # Signal that valgrind has finished writing all profiling data
 echo "INFO: Profiling complete at $(date)"

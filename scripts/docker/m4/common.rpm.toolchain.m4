@@ -19,4 +19,7 @@ RUN dnf install -y \
 
 RUN dnf config-manager --set-enabled crb
 
+dnl  EPEL mirror lists can only be snapshotted after the epel-release
+dnl  install above puts the repo files in place.
+include(`common.dnf.mirrorlist.epel.m4')dnl
 include(`common.rpm.libkqueue.m4')dnl

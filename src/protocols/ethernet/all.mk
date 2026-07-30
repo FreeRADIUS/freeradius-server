@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-ethernet$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= ethernet.c
 

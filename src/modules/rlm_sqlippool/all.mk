@@ -7,6 +7,7 @@ ifneq "${TARGETNAME}" ""
   # Be sure to NOT include the rlm_sql drivers
   SUBMAKEFILES	:=
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c
 

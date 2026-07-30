@@ -139,8 +139,8 @@ server kafka-producer {
 			step         = $ENV{TEST_LOADGEN_STEP}
 			max_backlog  = $ENV{TEST_LOADGEN_MAX_BACKLOG}
 			parallel     = $ENV{TEST_LOADGEN_PARALLEL}
-			num_messages = $ENV{TEST_LOADGEN_NUM_MESSAGES}
-			repeat       = no
+			max_requests = $ENV{TEST_LOADGEN_MAX_REQUESTS}
+			on_complete  = stop
 		}
 	}
 

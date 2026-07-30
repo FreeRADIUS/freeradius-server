@@ -1,6 +1,7 @@
 ifneq "$(OPENSSL_LIBS)" ""
 TARGET := libfreeradius-eap-aka-sim$(L)
 endif
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
 	base.c \

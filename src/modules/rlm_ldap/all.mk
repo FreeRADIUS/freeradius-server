@@ -8,6 +8,7 @@ ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_ldap
   TARGET	:= $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c groups.c user.c profile.c
 

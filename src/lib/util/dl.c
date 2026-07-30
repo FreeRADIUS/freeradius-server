@@ -612,11 +612,18 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 			 *	it simply appends to it.  We don't
 			 *	want endless amounts of duplication,
 			 *	so we tidy it up here.
+			 *
+			 *	The message must be copied (printf, not
+			 *	const): dlerror() hands back a buffer
+			 *	which is reused by the next dl call,
+			 *	including this loop's next dlopen(),
+			 *	and the const variants store only the
+			 *	pointer.
 			 */
 #ifndef __APPLE__
-			fr_strerror_const_push(dlerror_txt);
+			fr_strerror_printf_push("%s", dlerror_txt);
 #else
-			fr_strerror_const(dlerror_txt);
+			fr_strerror_printf("%s", dlerror_txt);
 #endif
 		}
 

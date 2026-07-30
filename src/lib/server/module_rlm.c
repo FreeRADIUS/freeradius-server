@@ -1219,6 +1219,114 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 	return 0;
 }
 
+/** Figure out the dictionary so that we can compile a virtual module.
+ *
+ *  Virtual modules replace the v3 home_server_pool and "fallback" configuration.  However, using the v4
+ *  syntax means putting sections inside of each other.  So we have to walk the entire hierarchy to determine
+ *  what to do.  e.g.:
+ *
+ *	redundant pool1 {
+ *		load-balance "%{Calling-Station-Id}" {
+ *			radius1
+ *			radius2
+ *			...
+ *		}
+ *		group {
+ *			fallback policy
+ *		}
+ *	}
+ *
+ *  @todo - if there is no dictionary, then compile it once for each possible dictionary?
+ *
+ *  @todo - look at the attributes, to determine which dictionary that they belong to?
+ */
+static int virtual_module_determine_dict(module_rlm_virtual_t *vm, CONF_SECTION *cs)
+{
+	cf_item_foreach(cs, ci) {
+		CONF_PAIR *cp;
+		char const *name;
+		fr_dict_t const *dict;
+		module_instance_t *mi;
+
+		if (cf_item_is_data(ci)) continue;
+
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			/*
+			 *	Ignore edit sections.
+			 */
+			if (fr_list_assignment_op[cf_section_name2_quote(subcs)]) continue;
+
+			/*
+			 *	Recurse into keywords
+			 */
+			if (unlang_compile_is_keyword(name)) {
+				if (virtual_module_determine_dict(vm, subcs) < 0) return -1;
+				continue;
+			}
+
+			if ((strcmp(name, "actions") == 0) ||
+			    (strcmp(name, "retry") == 0)) {
+				return 0;
+			}
+
+			goto check_for_module;
+		}
+
+		/*
+		 *	Ignore edit assignments
+		 */
+		cp = cf_item_to_pair(ci);
+		if (cf_pair_value(cp)) continue;
+
+		name = cf_pair_attr(cp);
+
+		/*
+		 *	%debug(4)
+		 */
+		if ((*name == '%') || (*name == '&')) continue;
+
+		/*
+		 *	Ignore 'break', 'return', etc.
+		 */
+		if (unlang_compile_is_keyword(name)) continue;
+
+		if (*name == '-') name++;
+
+	check_for_module:
+		/*
+		 *	Be forgiving about module names.
+		 */
+		mi = module_rlm_static_by_name(NULL, name);
+		if (!mi) continue;
+
+		if (!mi->exported->dict) continue;
+
+		/*
+		 *	Check that the namespaces are compatible.
+		 */
+		dict = *mi->exported->dict;
+
+		if (!vm->dict) {
+			vm->dict = dict;
+
+		} else if (vm->dict != dict) {
+			cf_log_err(ci, "Module %s has namespace %s, while the previous modules in this section have namespace %s",
+				   mi->name, fr_dict_root(dict)->name,
+				   fr_dict_root(vm->dict)->name);
+			cf_log_err(ci, "Cannot have modules for different namespaces in %s %s { ... } section",
+				   cf_section_name1(vm->cs), vm->name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /** Bootstrap modules and virtual modules
  *
  * Parse the module config sections, and load and call each module's init() function.
@@ -1382,25 +1490,6 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 				return -1;
 			}
 
-			/*
-			 *	Check that the namespaces are compatible.
-			 */
-			if (mi->exported->dict) {
-				fr_dict_t const *dict = *mi->exported->dict;
-
-				if (!vm->dict) {
-					vm->dict = dict;
-
-				} else if (vm->dict != dict) {
-					cf_log_err(cp, "Module %s has namespace %s, while the previous modules in this section have namespace %s",
-						   mi->name, fr_dict_root(dict)->name,
-						   fr_dict_root(vm->dict)->name);
-					cf_log_err(sub_ci, "Cannot have modules for different namespaces in %s %s { ... } section",
-						   cf_section_name1(vm->cs), vm->name);
-					return -1;
-				}
-			}
-
 			if (!all_same) continue;
 
 			if (!last) {
@@ -1409,6 +1498,12 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 				last = NULL;
 			}
 		}
+
+		/*
+		 *	See if we can automatically determine the
+		 *	dictionary by walking the unlang tree.
+		 */
+		if (virtual_module_determine_dict(vm, vm->cs) < 0) return -1;
 
 		/*
 		 *	Associate the dictionary with the CONF_SECTION, so that later compilation code can

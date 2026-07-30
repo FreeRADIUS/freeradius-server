@@ -697,7 +697,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
  *	- Number of fr_pair_ts processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+static int rest_decode_post(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			    request_t *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
 	CURL			*candle = randle->candle;
@@ -724,6 +724,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		char			*name  = NULL;
 		char			*value = NULL;
 
+		char const		*to_parse = NULL;
 		char			*expanded = NULL;
 
 		size_t			len;
@@ -789,11 +790,16 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		talloc_free(dst);	/* Free our temporary tmpl */
 
-		RDEBUG2("Performing xlat expansion of response value");
+		if (section->response.post.do_xlat) {
+			RDEBUG2("Performing xlat expansion of response value");
 
-		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
+			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
-		fr_assert(expanded);
+			fr_assert(expanded);
+			to_parse = expanded;
+		} else {
+			to_parse = value;
+		}
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (!vp) {
@@ -806,7 +812,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			return count;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, strlen(expanded), NULL, true);
+		ret = fr_pair_value_from_str(vp, to_parse, strlen(to_parse), NULL, true);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");
@@ -962,9 +968,13 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 @endverbatim
  *
  * JSON valuepair flags:
- *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
+ *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to the
+ *			   "do_xlat" config item in the response "json"
+ *			   subsection, which itself defaults to false.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
- *			   fr_pair_t in string form. Defaults to true.
+ *			   fr_pair_t in string form. Defaults to the "is_json"
+ *			   config item in the response "json" subsection, which
+ *			   itself defaults to false.
  *  - op	(optional) Controls how the attribute is inserted into
  *			   the target list. Defaults to ':=' (T_OP_SET).
  *
@@ -1014,8 +1024,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 			json_flags_t flags = {
 				.op = T_OP_SET,
-				.do_xlat = 1,
-				.is_json = 0
+				.do_xlat = section->response.json.do_xlat,
+				.is_json = section->response.json.is_json
 			};
 
 			request_t		*current = request;

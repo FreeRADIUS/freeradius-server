@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-dns$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= base.c decode.c encode.c
 

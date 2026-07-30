@@ -1,6 +1,7 @@
 ifneq "$(OPENSSL_LIBS)" ""
 TARGET		:= libfreeradius-sim$(L)
 endif
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
 	comp128.c \

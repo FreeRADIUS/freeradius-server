@@ -1210,6 +1210,23 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 		return -1;
 	}
 
+	return fr_event_fd_delete_handle(ef);
+}
+
+/** Remove a file descriptor from the event loop, by handle
+ *
+ * Lets a caller holding the handle from #fr_event_fd_insert remove exactly the
+ * event it inserted, without a lookup and without having to still know the fd
+ * and filter it was inserted with.
+ *
+ * @param[in] ef	to remove, as returned by #fr_event_fd_insert or
+ *			#fr_event_fd_handle.
+ * @return
+ *	- 0 if file descriptor was removed.
+ *	- <0 on error.
+ */
+int fr_event_fd_delete_handle(fr_event_fd_t *ef)
+{
 	/*
 	 *	Free will normally fail if it's
 	 *	a deferred free. There is a special

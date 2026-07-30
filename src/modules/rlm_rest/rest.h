@@ -127,12 +127,31 @@ typedef struct {
 } rlm_rest_section_request_t;
 
 typedef struct {
+	bool				do_xlat;	//!< Section default for the per-attribute "do_xlat"
+							//!< flag in JSON responses.  Defaults to false, the
+							//!< API must opt in to expansion.
+	bool				is_json;	//!< Section default for the per-attribute "is_json"
+							//!< flag in JSON responses.  If true, nested JSON data
+							//!< is copied to the attribute in string form.
+							//!< Defaults to false.
+} rlm_rest_section_response_json_t;
+
+typedef struct {
+	bool				do_xlat;	//!< If true, values in POST responses are xlat
+							//!< expanded before being assigned to attributes.
+							//!< Defaults to false.
+} rlm_rest_section_response_post_t;
+
+typedef struct {
 	char const			*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t		force_to;	//!< Override the Content-Type header in the response
 							//!< to force decoding as a particular type.
 	bool				accept_all;	//!< Accept all content types.
 
 	size_t				max_body_in;	//!< Maximum size of incoming data.
+
+	rlm_rest_section_response_json_t	json;	//!< Configuration for the JSON decoder.
+	rlm_rest_section_response_post_t	post;	//!< Configuration for the POST decoder.
 } rlm_rest_section_response_t;
 
 /*

@@ -90,7 +90,6 @@ struct connection_s {
 	void			*uctx;			//!< User data.
 
 	void			*in_handler;		//!< Connection is currently in a callback.
-	bool			is_closed;		//!< The close callback has previously been called.
 	bool			processing_signals;	//!< Processing deferred signals, don't let the deferred
 							///< signal processor be called multiple times.
 
@@ -683,11 +682,11 @@ static void connection_state_enter_closed(connection_t *conn)
 	 *	the FAILED state.  Eventually the connection is
 	 *	shutdown, and enter_shutdown calls this function.
 	 */
-	if (conn->close && !conn->is_closed) {
+	if (conn->close && !conn->pub.is_closed) {
 		HANDLER_BEGIN(conn, conn->close);
 		DEBUG4("Calling close(el=%p, h=%p, uctx=%p)", conn->pub.el, conn->pub.h, conn->uctx);
 		conn->close(conn->pub.el, conn->pub.h, conn->uctx);
-		conn->is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
+		conn->pub.is_closed = true;		/* Ensure close doesn't get called twice if the connection is freed */
 		HANDLER_END(conn);
 
 		/*
@@ -697,7 +696,7 @@ static void connection_state_enter_closed(connection_t *conn)
 		 */
 		if (conn->pub.state != CONNECTION_STATE_CLOSED) return;
 	} else {
-		conn->is_closed = true;
+		conn->pub.is_closed = true;
 	}
 	WATCH_POST(conn);
 }
@@ -953,7 +952,7 @@ static void connection_state_enter_timeout(connection_t *conn)
  */
 static void connection_state_enter_halted(connection_t *conn)
 {
-	fr_assert(conn->is_closed);
+	fr_assert(conn->pub.is_closed);
 
 	switch (conn->pub.state) {
 	case CONNECTION_STATE_INIT:
@@ -1135,13 +1134,13 @@ static void connection_state_enter_init(connection_t *conn)
 
 	switch (ret) {
 	case CONNECTION_STATE_CONNECTING:
-		conn->is_closed = false;	/* We now have a handle */
+		conn->pub.is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connecting(conn);
 		return;
 
 	case CONNECTION_STATE_CONNECTED:
-		conn->is_closed = false;	/* We now have a handle */
+		conn->pub.is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connected(conn);
 		return;
@@ -1326,7 +1325,7 @@ void connection_signal_shutdown(connection_t *conn)
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
-		fr_assert(conn->is_closed);
+		fr_assert(conn->pub.is_closed);
 
 	FALL_THROUGH;
 	case CONNECTION_STATE_CLOSED:
@@ -1380,8 +1379,8 @@ void connection_signal_halt(connection_t *conn)
 	case CONNECTION_STATE_SHUTDOWN:
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
-		if (!conn->is_closed) connection_state_enter_closed(conn);
-		fr_assert(conn->is_closed);
+		if (!conn->pub.is_closed) connection_state_enter_closed(conn);
+		fr_assert(conn->pub.is_closed);
 		connection_state_enter_halted(conn);
 		break;
 
@@ -1589,7 +1588,8 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.pub = {
 			.id = id,
 			.state = CONNECTION_STATE_HALTED,
-			.el = el
+			.el = el,
+			.is_closed = true		/* Starts closed */
 		},
 		.reconnection_delay = conf->reconnection_delay,
 		.connection_timeout = conf->connection_timeout,
@@ -1598,7 +1598,6 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.close = funcs->close,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
-		.is_closed = true,		/* Starts closed */
 		.triggers = conf->triggers,
 		.trigger_args = conf->trigger_args,
 		.trigger_cs = conf->trigger_cs,

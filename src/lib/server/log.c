@@ -234,19 +234,6 @@ static fr_rb_tree_t	*dst_tree = NULL;
 static fr_rb_tree_t	*filename_tree = NULL;
 static fr_rb_tree_t	*src_tree = NULL;
 
-/** Iterate over the contents of a log list
- *
- * The macro is "safe", in that the current iterator variable can be deleted.
- *
- * The iterators can be nested, so long as the _iter variable names are different.
- *
- * @param[in] _head		to iterate over.
- * @param[in] _iter		Name of iteration variable.
- *				Will be declared in the scope of the loop.
- */
-#define log_dst_foreach(_head, _iter) \
-	for (log_dst_t *JOIN(_next,_iter), *_iter = _head; JOIN(_next,_iter) = (_head)->next, _iter != NULL; _iter = JOIN(_next,_iter))
-
 /** Send a server log message to its destination without evaluating its debug level
  *
  * @param[in] log	destination.

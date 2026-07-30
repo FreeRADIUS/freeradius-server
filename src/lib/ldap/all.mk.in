@@ -3,6 +3,7 @@ TARGETNAME	:= @targetname@
 ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME)$(L)
 endif
+TGT_CATEGORY	:= lib-util
 
 SOURCES		:= base.c bind.c conf.c connection.c control.c directory.c edir.c filter.c map.c referral.c start_tls.c state.c util.c @SASL@
 

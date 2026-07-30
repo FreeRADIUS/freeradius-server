@@ -1,0 +1,80 @@
+name: collect-core-dumps
+
+#
+#  Stage any core dump the job produced and upload it as an artifact.
+#
+#  Most of our suites run with allow_core_dumps = yes, and a core is the only
+#  record of a crash the logs cannot reconstruct. Nothing collected them
+#  before, so they were discarded with the runner.
+#
+#  Call with `if: ${{ always() }}`, for two reasons: a crashing suite has
+#  usually failed by the time this runs, and a crash on shutdown does not
+#  necessarily fail the suite that provoked it (multi-server profiling reported
+#  success on 2026-07-25 while dumping two 1.5G cores).
+#
+#  Whether a core is written at all still depends on the ambient RLIMIT_CORE
+#  and kernel.core_pattern, neither of which CI sets. allow_core_dumps = yes
+#  only restores the limit FreeRADIUS inherited (fr_set_dumpable() in
+#  src/lib/util/debug.c), it does not raise it. So this collects whatever was
+#  produced rather than guaranteeing a core exists.
+#
+
+inputs:
+  name:
+    description: >
+      Artifact name suffix, giving "core-dumps-<name>". Pass whatever
+      distinguishes this matrix leg, since names must be unique within a run.
+    required: true
+  roots:
+    description: >
+      Directories to search, space separated, relative to working-directory.
+      Pass ". /cores" on macOS, which writes cores there.
+    default: "."
+  move:
+    description: >
+      Move cores out of the searched tree rather than copying them, for when
+      the tree is itself uploaded or published. Action inputs are strings, so
+      this is "true"/"false" text however the caller writes it.
+    default: "false"
+  working-directory:
+    description: >
+      Where to run the collection, relative to the workspace root. Use
+      "freeradius" for the jobs that check out into a subdirectory.
+    default: "."
+  retention-days:
+    description: How long to keep the artifact.
+    default: "30"
+
+runs:
+  using: composite
+
+  steps:
+
+    #  collect-core-dumps.sh always exits 0: a leg's result is decided by its
+    #  tests, not by whether core collection found anything.
+    - name: Collect core dumps
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -eu
+        #  Accept either spelling rather than betting on how YAML stringifies a
+        #  bare true/false, and reject anything else instead of silently not
+        #  moving.
+        case "${{ inputs.move }}" in
+        true|True|TRUE)    args="-m" ;;
+        false|False|FALSE) args="" ;;
+        *)
+          echo "collect-core-dumps: move must be true or false, got '${{ inputs.move }}'" >&2
+          exit 1
+          ;;
+        esac
+        #  inputs.roots is deliberately unquoted: it is a space separated list.
+        ./scripts/ci/collect-core-dumps.sh $args ${{ inputs.roots }}
+
+    - name: Upload core dumps
+      uses: actions/upload-artifact@v6
+      with:
+        name: core-dumps-${{ inputs.name }}
+        path: ${{ inputs.working-directory }}/ci-core-dumps/
+        if-no-files-found: ignore
+        retention-days: ${{ inputs.retention-days }}

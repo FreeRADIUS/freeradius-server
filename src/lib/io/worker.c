@@ -243,6 +243,7 @@ static void worker_exit(fr_worker_t *worker)
 static void worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
 	int			i;
+	unsigned int		num;
 	bool			ok, was_sleeping;
 	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
@@ -330,6 +331,18 @@ static void worker_channel_callback(void *ctx, void const *data, size_t data_siz
 
 			fr_assert_msg(fr_dlist_num_elements(&worker->channel[i].dlist) == 0,
 				      "Network added messages to channel after sending FR_CHANNEL_CLOSE");
+
+			/*
+			 *	Should be nothing left: the network is not supposed
+			 *	to enqueue anything once it has signalled the close,
+			 *	which is what the assert above claims.  Hand back
+			 *	whatever we find anyway, so the messages do not
+			 *	strand the ring buffer they came from, and complain,
+			 *	because these produce no reply and so the network
+			 *	never decrements its outstanding count for them.
+			 */
+			num = fr_channel_responder_discard(ch);
+			if (num > 0) PWARN("Discarded %u request(s) still queued at close", num);
 
 			fr_channel_responder_ack_close(ch);
 			fr_assert(ms != NULL);

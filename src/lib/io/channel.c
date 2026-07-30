@@ -743,6 +743,21 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	to wake up.
 	 */
 	requestor = &ch->end[TO_RESPONDER];
+
+	/*
+	 *	We have told this end to close, so there is nothing left to
+	 *	wake it for: fr_channel_send_request() refuses on an inactive
+	 *	end, so no more data can be queued.  Signalling it anyway
+	 *	writes into the control plane which the responder may have
+	 *	already freed (this has been observed and caused a crash-on-exit).
+	 *
+	 *	Servicing the message is still correct: it was in flight
+	 *	before the close, and we must keep servicing to receive the
+	 *	ack at all.  The load is relaxed because only this thread
+	 *	clears "active" for this end.
+	 */
+	if (unlikely(!atomic_load_explicit(&requestor->active, memory_order_relaxed))) return ce;
+
 #if ENABLE_SKIPS
 	if (!requestor->must_signal && (ack == requestor->sequence)) {
 		MPRINT("REQUESTOR SKIPS signal AFTER CE %d num_outstanding %"PRIu64"\n", cs, requestor->stats.outstanding);
@@ -844,6 +859,30 @@ int fr_channel_signal_responder_close(fr_channel_t *ch)
 				      ch->end[TO_RESPONDER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 
 	return ret;
+}
+
+/** Discard any requests the requestor queued but we never received
+ *
+ * The messages belong to the requestor's message set, and it cannot reclaim them
+ * until they are marked done.  A responder that closes with requests still in
+ * the queue would strand them there, and with them the memory they were
+ * allocated from.
+ *
+ * @param[in] ch	to discard the queued requests of.
+ * @return the number of requests discarded.
+ */
+unsigned int fr_channel_responder_discard(fr_channel_t *ch)
+{
+	fr_channel_data_t	*cd;
+	fr_atomic_queue_t	*aq = ch->end[TO_RESPONDER].aq;
+	unsigned int		num = 0;
+
+	while (fr_atomic_queue_pop(aq, (void **) &cd)) {
+		fr_message_done(&cd->m);
+		num++;
+	}
+
+	return num;
 }
 
 /** Acknowledge that the channel is closing

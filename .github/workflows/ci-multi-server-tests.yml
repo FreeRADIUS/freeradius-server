@@ -207,6 +207,16 @@ jobs:
               ;;
           esac
 
+      #  Runs before both uploads below, with move: true so a core leaves
+      #  prof-results/ and rides one artifact instead of inflating the
+      #  prof-results artifact and the store publish as well.
+      - name: Collect core dumps
+        if: ${{ always() }}
+        uses: ./.github/actions/collect-core-dumps
+        with:
+          name: ${{ matrix.mode }}-${{ github.sha }}
+          move: "true"
+
       #
       #  Stash callgrind output as a workflow artifact in profiling
       #  mode. Skipped in service mode (nothing to upload).

@@ -1,0 +1,25 @@
+#
+#  Auto-generated fuzzer files.
+#
+fuzzer_arp.c
+fuzzer_arp.mk
+fuzzer_bfd.c
+fuzzer_bfd.mk
+fuzzer_cbor.c
+fuzzer_cbor.mk
+fuzzer_dhcpv4.c
+fuzzer_dhcpv4.mk
+fuzzer_dhcpv6.c
+fuzzer_dhcpv6.mk
+fuzzer_dns.c
+fuzzer_dns.mk
+fuzzer_radius.c
+fuzzer_radius.mk
+fuzzer_tacacs.c
+fuzzer_tacacs.mk
+fuzzer_tftp.c
+fuzzer_tftp.mk
+fuzzer_util.c
+fuzzer_util.mk
+fuzzer_vmps.c
+fuzzer_vmps.mk

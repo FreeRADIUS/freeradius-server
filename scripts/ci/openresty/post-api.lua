@@ -16,4 +16,13 @@ then
     return false
 end
 
+-- Used in the response post.do_xlat default tests.  Returns a
+-- urlencoded attribute whose value contains an xlat expansion
+-- ("%{User-Name}"), so the tests can verify whether the server
+-- expanded the value.  ngx.print is used as the POST decoder would
+-- include a trailing newline in the value.
+if uriArgs.expand then
+    return ngx.print("control.Filter-Id=%25%7BUser-Name%7D")
+end
+
 ngx.say("Section: ", uriArgs.section, ", User: ", postArgs.user)

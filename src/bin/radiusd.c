@@ -1082,8 +1082,15 @@ do { \
 	 *
 	 *  This _shouldn't_ be needed, but may help with
 	 *  processes created by the exec code or triggers.
+	 *
+	 *  Only do this when we lead the process group, i.e. when
+	 *  we daemonized (setsid), or a supervisor such as systemd
+	 *  or a container runtime gave us our own group.  When run
+	 *  in the foreground from a shell the group belongs to the
+	 *  shell, and signalling it would take out the shell and
+	 *  its terminal along with our children.
 	 */
-	if (config->spawn_workers) {
+	if (config->spawn_workers && (getpgid(0) == radius_pid)) {
 		INFO("All threads have exited, sending SIGTERM to remaining children");
 
 		/*

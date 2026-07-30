@@ -1,0 +1,203 @@
+name: Merge into upstream
+
+##########################################################################################
+#                            FREERADIUS CORE DEVELOPERS ONLY
+##########################################################################################
+#
+#  If the gating CI checks pass on a branch named after the developer, then the branch will
+#  automatically be merged into master.
+#
+#  This allows developers to access the significantly faster self-hosted runners, with
+#  minimal additional work.  It also prevents them inadvertently from introducing changes
+#  that break the CI for everyone else.
+#
+#  Note: Changes will ONLY be merged into master if every gating workflow passes.
+#
+#  Multiple automatic-merge behaviours are supported:
+#  - If the branch name ends in '/merge', then the branch will be merged into master, potentially
+#    creating a merge commit.
+#  - If the branch name ends in '/ff', then master will be fast forwarded to the HEAD commit of
+#    the branch.  This is the default if no suffix is provided.
+#
+##########################################################################################
+#
+#  Merges a developer's branch into master, once every gating CI workflow has
+#  passed for that commit.
+#
+#  This used to be a job at the end of CI, gated with needs: ci. That only
+#  waited for CI itself, because needs: cannot reach jobs in another workflow,
+#  so a red DEB / RPM / sanitizers leg did not stop the merge.
+#
+#  workflow_run fires once per workflow completion, not once when they have all
+#  finished, so this runs once per gating workflow per commit and does nothing
+#  until the last of them lands. Whichever run finds them all green performs
+#  the merge. That avoids a job sitting in a poll loop holding a runner.
+#
+#  Note that workflow_run only ever uses the copy of this file on the default
+#  branch, and runs in the context of the default branch rather than the branch
+#  being merged - hence head_branch / head_sha / actor throughout.
+#
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - CI DEB
+      - CI RPM
+      - CI-Sanitizers
+    types: [completed]
+
+#
+#  Serialise per commit. Two legs finishing at the same moment would otherwise
+#  both see a full set of green runs and both try to push.
+#
+concurrency:
+  group: merge-upstream-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  merge-upstream:
+    #
+    #  workflow_run has no event-level conclusion filter, so the filtering
+    #  happens here. Only a push to the actor's own developer/ branch is
+    #  eligible, which is what the old needs: ci job checked via github.ref.
+    #
+    if: |
+      github.repository_owner == 'FreeRADIUS' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch,
+                 format('developer/{0}', github.event.workflow_run.actor.login))
+
+    runs-on: ubuntu-latest
+    name: "Merge into upstream"
+    timeout-minutes: 15
+
+    #  Listing any permission drops the unlisted ones. The pushes below use the
+    #  app token, not GITHUB_TOKEN, so read access is all this needs.
+    permissions:
+      contents: read
+      actions: read
+
+    env:
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+
+    steps:
+      #
+      #  Nothing is merged until every one of these has a completed, successful
+      #  run for this exact commit. Keep in step with the workflows: list above.
+      #
+      - name: "Check the gating workflows for this commit"
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_WORKFLOWS: "ci.yml ci-deb.yml ci-rpm.yml ci-sanitizers.yml"
+        run: |
+          set -euo pipefail
+
+          ready=yes
+
+          for wf in ${REQUIRED_WORKFLOWS}; do
+            #  Match the commit and the push event, so a nightly schedule run of
+            #  the same workflow is never mistaken for this one.
+            info=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/${wf}/runs?head_sha=${HEAD_SHA}&event=push&per_page=1" \
+              --jq '.workflow_runs[0] // empty | "\(.status) \(.conclusion // "none")"') || info=""
+
+            if [ -z "${info}" ]; then
+              echo "  ${wf}: no run for this commit"
+              ready=no
+              continue
+            fi
+
+            status="${info%% *}"
+            conclusion="${info##* }"
+
+            if [ "${status}" != "completed" ]; then
+              echo "  ${wf}: ${status}"
+              ready=no
+              continue
+            fi
+
+            #  A cancelled leg is not a pass. Concurrency cancels the older run
+            #  when a new commit lands, and that result says nothing about this
+            #  commit.
+            case "${conclusion}" in
+              success|skipped|neutral)
+                echo "  ${wf}: ${conclusion}"
+                ;;
+
+              *)
+                echo "  ${wf}: ${conclusion}"
+                ready=no
+                ;;
+            esac
+          done
+
+          #  Exiting 0 either way: a leg that is still running or has failed is
+          #  not this workflow's problem to report, and failing here would put a
+          #  red run in the Actions tab for every commit that is merely still
+          #  building.
+          echo "ready=${ready}" >> "$GITHUB_OUTPUT"
+          if [ "${ready}" != "yes" ]; then
+            echo "Not merging ${BRANCH} yet"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.gate.outputs.ready == 'yes'
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Generate app token for push
+        id: app-token
+        if: steps.gate.outputs.ready == 'yes'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Set up Git with app token
+        if: steps.gate.outputs.ready == 'yes'
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global user.name "freeradius-server-ci[bot]"
+          git config --global user.email "freeradius-server-ci[bot]@users.noreply.github.com"
+          git config --global commit.gpgSign true
+          git config --global gpg.format ssh
+
+      # First, as this was a shallow checkout, and only the user's branch was fetched, we need
+      # to fetch the rest of the branches, and more history.
+      - name: "Fetch branches"
+        if: steps.gate.outputs.ready == 'yes'
+        run: git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
+
+      #
+      #  Attempt to checkout the master branch, and merge the commit the gating
+      #  workflows actually ran on into it.  Merging the branch ref instead
+      #  would put whatever it points at now onto master, which is not
+      #  necessarily what passed.  A commit that is already on master merges
+      #  and pushes as a no-op, so re-running a leg needs no special handling.
+      #
+      - name: "Merge into upstream dev branch and update local branch"
+        if: steps.gate.outputs.ready == 'yes' && endsWith(github.event.workflow_run.head_branch, '/merge')
+        run: |
+          echo "Merging master into user branch: ${BRANCH}"
+          git checkout --progress --force -B master origin/master
+          git merge --no-commit --no-edit "${HEAD_SHA}"
+
+          echo "Pushing to user branch: ${BRANCH}"
+          git push origin "HEAD:${BRANCH}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master
+
+      - name: "Fast forward upstream"
+        if: steps.gate.outputs.ready == 'yes' && ( endsWith(github.event.workflow_run.head_branch, format('/{0}', github.event.workflow_run.actor.login)) || endsWith(github.event.workflow_run.head_branch, '/ff') )
+        run: |
+          echo "Fast forwarding local copy of master to match developer's branch: ${BRANCH}"
+          git checkout --progress --force -B master origin/master
+          git merge --ff-only "${HEAD_SHA}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master

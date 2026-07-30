@@ -35,6 +35,19 @@ filter_username {
 	}
 	elsif (User-Name) {
 		#
+		#  Prevention of injection attacks if external datastores or APIs fail to sanitise text
+		#
+		#  Matches the "%{" and "%name(" xlat expansion openers.
+		#  "%%" is the documented escape sequence for a literal "%".
+		#
+		if (User-Name =~ /%%([{]|[[:alnum:]._-]+[(])/) {
+			request += {
+				Module-Failure-Message = "User-Name contains expansion sequences"
+			}
+			reject
+		}
+
+		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
 		#  if (User-Name != %str.lower(User-Name)) {

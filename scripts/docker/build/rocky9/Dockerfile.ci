@@ -13,6 +13,14 @@ FROM ${from}
 #  (minrate) stays on so a stalled in-flight download still gets killed.
 #
 RUN printf 'retries=3\ntimeout=15\n' >> /etc/dnf/dnf.conf
+
+#
+#  Snapshot the Rocky mirror lists at build time so no later dnf
+#  invocation depends on the mirrors.rockylinux.org redirector (see
+#  the script header for the full story).
+#
+COPY scripts/docker/bin/dnf-mirrorlist-snapshot /usr/local/bin/dnf-mirrorlist-snapshot
+RUN dnf-mirrorlist-snapshot rocky
 #
 #  Refresh dnf metadata and install the build toolchain shared by the
 #  production, crossbuild, and CI base templates. CRB is enabled because
@@ -34,6 +42,11 @@ RUN dnf install -y \
 
 RUN dnf config-manager --set-enabled crb
 
+#
+#  Snapshot the EPEL mirror lists, which only exist once epel-release
+#  is installed (the script itself arrives via common.dnf.retries.m4).
+#
+RUN dnf-mirrorlist-snapshot epel
 #
 #  Build libkqueue from source as proper RPMs (libkqueue, libkqueue-devel,
 #  libkqueue-debuginfo) so downstream dnf-builddep / Requires steps find
