@@ -549,7 +549,7 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 	escaped = out = talloc_array(vb, char, outmax + 1);
 	if (!escaped) return -1;
 
-	end = escaped + outmax;
+	end = escaped + outmax + 1;
 
 	for (in = vb->vb_strvalue; in < (vb->vb_strvalue + vb->vb_length); in++) {
 		/*
