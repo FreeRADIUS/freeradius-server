@@ -77,8 +77,6 @@ fr_debug_state_t fr_debug_state = DEBUGGER_STATE_UNKNOWN;	//!< Whether we're att
 static struct rlimit init_core_limit;
 #endif
 
-static TALLOC_CTX *talloc_autofree_ctx;
-
 /*
  * On BSD systems, ptrace(PT_DETACH) uses a third argument for
  * resume address, with the magic value (void *)1 to resume where
@@ -1015,7 +1013,7 @@ int fr_log_talloc_report(TALLOC_CTX const *ctx)
 			talloc_report_full(ctx, log);
 		} while ((ctx = talloc_parent(ctx)) &&
 			 (i < TALLOC_REPORT_MAX_DEPTH) &&
-			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
+			 (talloc_parent(ctx) != talloc_autofree_context_global()) &&	/* Stop before we hit the autofree ctx */
 			 (talloc_parent(ctx) != talloc_null_ctx()));  	/* Stop before we hit NULL ctx */
 	}
 
