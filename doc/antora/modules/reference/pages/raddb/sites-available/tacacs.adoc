@@ -303,10 +303,15 @@ form.
 
 LDAP authentication will only work with PAP authentication
 
-authenticate ldap { if (Authentication-Type != PAP) { %log.warn("The
-packet is not PAP.  LDAP authentication is likely to fail!") }
+----
+##	authenticate ldap {
+##		if (Authentication-Type != PAP) {
+##			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
+##		}
+##		ldap
+##	}
 
-ldap }
+----
 
 The automatic state machine will ensure that both User-Name and
 User-Password have been provided by this point making ASCII
@@ -337,8 +342,8 @@ Call an instance of `linelog` to log the authentication success
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_authentication_pass
 ----
+#		log_auth_authentication_pass
 	}
 
 	send Authentication-Fail {
@@ -350,8 +355,8 @@ Call an instance of `linelog` to log the authentication failure
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_authentication_fail
 ----
+#		log_auth_authentication_fail
 	}
 
 ----

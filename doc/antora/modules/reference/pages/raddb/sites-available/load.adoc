@@ -150,7 +150,10 @@ external system checks that every packet arrived.
 
 If unset (or 0), the test ends when the `max_pps` step finishes.
 
-max_requests    = 100000
+----
+#			max_requests	= 100000
+
+----
 
 What to do when the test is complete, i.e. when the packet rate has
 ramped up to `max_pps`, `max_requests` packets (if set) have been
@@ -162,8 +165,8 @@ but the server keeps running. continue - the test never completes.
 The generator keeps sending at `max_pps` forever.  Cannot be combined
 with `max_requests`.
 
-on_complete     = exit
 ----
+#			on_complete	= exit
 		}
 	}
 

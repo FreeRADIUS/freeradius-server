@@ -58,7 +58,10 @@ outer.request.<attribute>
 The following policy in policy.d/eap can be used to copy attributes
 over.
 
-copy_request_to_tunnel
+----
+#	copy_request_to_tunnel
+
+----
 
 Take a User-Name, and perform some checks on it, for spaces and other
 invalid characters. If the User-Name appears invalid, reject the
@@ -99,7 +102,10 @@ Pull crypt'd passwords from /etc/passwd or /etc/shadow, using the
 system API's to get the password. If you want to read /etc/passwd or
 /etc/shadow directly, see the passwd module, above.
 
-unix
+----
+#	unix
+
+----
 
 This module takes care of EAP-MSCHAPv2 authentication.
 
@@ -137,7 +143,11 @@ See "Authorization Queries" in
 
 If you are using /etc/smbpasswd, and are also doing mschap
 authentication, then uncomment this line, and enable the "smbpasswd"
-module. smbpasswd
+module.
+----
+#	smbpasswd
+
+----
 
 The ldap module reads passwords from the LDAP database.
 ----
@@ -145,9 +155,10 @@ The ldap module reads passwords from the LDAP database.
 
 ----
 
-Enforce daily limits on time spent logged in. daily
-
+Enforce daily limits on time spent logged in.
 ----
+#	daily
+
 	expiration
 
 ----
@@ -268,7 +279,11 @@ attribute from https://tools.ietf.org/html/rfc4372[RFC 4372]. If you
 want to use it just uncomment the line below. cui-inner
 
 If you want to have a log of authentication replies, uncomment the
-following line, and enable the 'detail reply_log' module. reply_log
+following line, and enable the 'detail reply_log' module.
+----
+#	reply_log
+
+----
 
 After authenticating the user, do another SQL query.
 
@@ -282,12 +297,18 @@ See "Authentication Logging Queries" in
 Instead of sending the query to the SQL server, write it into a log
 file.
 
-sql_log
+----
+#	sql_log
+
+----
 
 Uncomment the following if you have set 'edir = yes' in the ldap
 module sub-section of the 'modules' section.
 
-ldap
+----
+#	ldap
+
+----
 
 Instead of the "use_tunneled_reply" option in previous versions of the
 server, uncomment the following line to copy reply attributes from the
@@ -295,14 +316,17 @@ inner-tunnel back to the outer session-state. The outer "send
 Access-Accept" section will then copy them from the session-state into
 the reply.
 
-use_tunneled_reply
+----
+#	use_tunneled_reply
+
+----
 
 Call an instance of `linelog` to log the authentication success
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_result
 ----
+#	log_auth_result
 }
 
 ----
@@ -326,9 +350,9 @@ Call an instance of `linelog` to log the authentication failure
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_result
-
 ----
+#	log_auth_result
+
 	attr_filter.access_reject
 
 ----

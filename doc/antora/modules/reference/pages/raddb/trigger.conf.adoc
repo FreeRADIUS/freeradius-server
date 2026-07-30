@@ -139,8 +139,6 @@ In addition to either enabling the triggers here or within the module
 instance, the `triggers` option within the `pool` section needs to be
 set to `yes`.
 
-pool {
-
 Define common arguments to use below:
 
 connection_halted:: A connection has entered the "halted" state.
@@ -180,8 +178,6 @@ requests
 
 connection_draining_to_free:: A connection is draining its outstanding
 requests before feeing.
-
-}
 
 == Creating new triggers
 

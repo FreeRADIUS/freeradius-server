@@ -214,7 +214,60 @@ unspecified, headers will be discarded. Values will be in the format
 | `force_to`     | Force the response to be decoded with this decoder.
 May be 'plain' (creates reply.REST-HTTP-Body), 'post' or 'json'.
 | `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
+| `json { ... }` | Configuration for the JSON decoder.  See below.
+| `post { ... }` | Configuration for the POST decoder.  See below.
 |===
+
+In the `response { json { ... } }` subsection, the following config
+items may be listed:
+
+[options="header,autowidth"]
+|===
+| Option    | Description
+| `do_xlat` | If `true`, values in JSON responses are xlat expanded
+before being assigned to attributes.  Sets the default for the
+per-attribute `do_xlat` flag.  Defaults to `false`.  See the "Response
+value expansion" note below before enabling it.
+| `is_json` | Sets the default for the per-attribute `is_json` flag.
+If `true`, nested JSON data is copied to the attribute in string form.
+Defaults to `false`.
+|===
+
+In the `response { post { ... } }` subsection, the following config
+items may be listed:
+
+[options="header,autowidth"]
+|===
+| Option    | Description
+| `do_xlat` | If `true`, values in POST responses are xlat expanded
+before being assigned to attributes.  Defaults to `false`.  See the
+"Response value expansion" note below before enabling it.
+|===
+
+=== Response value expansion (do_xlat)
+
+The response returned by the REST API is a policy which is evaluated
+by the server.  When `do_xlat` is enabled, any xlat expansions in the
+returned values, e.g. `%{User-Name}`, are expanded by the server
+before the values are assigned to attributes.
+
+As with values interpolated into SQL or LDAP queries, it is the
+responsibility of the REST API to validate or escape any untrusted
+input (e.g. values taken from the incoming request) before echoing the
+input back in the policy the API returns.  If the API does not perform
+validation or escaping, a user could submit a value containing an
+expansion, and the server would execute the expansion.
+
+Expansion is disabled by default, the `do_xlat` config items default
+to `no`.  Only enable expansion where the REST API validates or
+escapes untrusted input, either for a whole decoder with `do_xlat =
+yes`, or for individual values with the per-attribute `do_xlat` flag
+in JSON responses, which overrides the configured default in both
+directions.
+
+NOTE: In v3 expansion was enabled by default.  Configurations migrated
+from v3 which rely on values being expanded must now set `do_xlat =
+yes`, or the per-attribute `do_xlat` flag.
 
 Additional HTTP headers may be specified with
 `control.REST-HTTP-Header`.
@@ -264,9 +317,20 @@ The response format adds three optional fields:
 [options="header,autowidth"]
 |===
 | Fields    | Description
-| `do_xlat` | If `true`, any values will be xlat expanded. Defaults to `true`.
-| `is_json` | If `true`, any nested JSON data will be copied to the attribute
-in string form. Defaults to `true`.
+| `do_xlat` | If `true`, any values will be xlat expanded. Defaults to the
+`do_xlat` config item in the `response { json { ... } }` subsection
+(`false` when the config item is unset).
+| `is_json` | If `true`, JSON data nested inside `value` is not parsed
+further, and is instead assigned to the attribute as a JSON string.
+e.g. `"value": { "errors": [ "a", "b" ] }` sets the attribute to the
+string `{ "errors": [ "a", "b" ] }`, and `"value": [ 1, 2 ]` sets the
+attribute to the string `[ 1, 2 ]` instead of creating one attribute
+per element.  Useful for storing structured data returned by the API
+in a single string attribute, e.g. for later processing with `map json
+<string> { ... }`. If `false`, JSON objects inside `value` are
+skipped, as nested attribute declarations are not yet supported.
+Defaults to the `is_json` config item in the `response { json { ... }
+}` subsection (`false` when the config item is unset).
 | `op`      | Controls how the attribute is inserted into the target list.
 Defaults to `:=`. To create multiple attributes from multiple values,
 this should be set to `+=`, otherwise only the last value will be
@@ -329,6 +393,9 @@ Accounting-Request`.
 | 5xx  | server error | no            | fail
 | xxx  | -            | no            | invalid
 |===
+
+Expansion of values in responses is disabled by default. See the
+"Response value expansion" note above before enabling it.
 
 === Authenticate { ... }
 
@@ -416,6 +483,14 @@ rest {
 			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 			method = 'GET'
 		}
+#		response {
+#			json {
+#				do_xlat = yes
+#			}
+#			post {
+#				do_xlat = yes
+#			}
+#		}
 		tls = ${..tls}
 	}
 	authenticate {

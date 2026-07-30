@@ -117,6 +117,21 @@ with any valid list and request qualifiers.
 If the value is wrapped in double quotes it will be xlat expanded.
 |===
 
+dn_attribute:: LDAP attribute which matches an object's own
+Distinguished Name (DN) in a search filter.
+
+Used when FreeRADIUS needs to fetch several objects it already knows
+by DN (for example a user's list of profiles) in a single search,
+instead of one search per DN.
+
+If unset, the value is chosen automatically based on the directory
+server software detected at connection time: `distinguishedName` for
+Active Directory and Samba, `entryDN`
+(https://tools.ietf.org/html/rfc5020[RFC 5020]) for everything else.
+
+Only set this if your directory needs a different attribute, or is not
+detected correctly.
+
 === Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 
 WARNING: Although this format is almost identical to the `unlang`
@@ -288,6 +303,17 @@ others do not (e.g. mixed IPoE and PPPoE).
 
 dn_attribute:: Where to cache the user's DN for use in authentication.
 
+profile_attribute:: The attribute in the user object containing
+profile DNs to apply in addition to the profile `default` below.
+
+These are retrieved from the user object, at the same time as the
+attributes from the update section, and are applied if authorization
+is successful.
+
+profile_attribute_suspend:: The attribute in the user object
+containing profile DNs to apply when the user's account is in the
+suspended state.
+
 === User membership checking
 
 base_dn:: Where to start searching in the tree for groups.
@@ -372,6 +398,23 @@ Groups are never processed for disabled users.
 
 Default 'yes'.
 
+profile_attribute:: The attribute in group objects containing profile
+DNs to apply for members of the group.
+
+The profile DNs are gathered with one additional search covering all
+the user's groups.  Groups without the attribute are filtered out by
+the server, so being a member of many unrelated groups does not slow
+authorization down.
+
+Profiles from groups apply between the profile `default` and the
+profiles from the user object (`seq`), or sorted with everything else
+(`bulk`).  A profile referenced more than once applies once, at its
+first position.
+
+profile_attribute_suspend:: The attribute in group objects containing
+profile DNs to apply when the user's account is in the suspended
+state.
+
 === User profiles
 
 RADIUS profile objects contain sets of attributes to insert into the
@@ -385,6 +428,41 @@ scope:: Search scope, may be `base`, `one`, `sub` or `children`.
 Should usually be left as "base", to retrieve the specific profile
 specified by 'default' or in the user or group objects.
 
+search_mode:: How profile objects are retrieved from the directory.
+May be `seq`, `bulk` or `auto`.
+
+[options="header,autowidth"]
+|===
+| Mode   | Description
+| seq    | One search per profile DN.  Profiles are applied in
+the order they appear: the default profile first, then profiles from
+the user's groups, then the profiles listed in the user object.  With
+a non-base `scope`, each search also retrieves the profile's children
+(nested profiles).
+| bulk   | A single search retrieves every profile, including
+the default.  Profiles are applied in the order the server returns
+them, so `sort_by` is required to make the order deterministic.
+Profiles are matched by their exact DN (see `dn_attribute`), so
+`scope` must be `base` and nested profiles are not retrieved.
+| auto   | `bulk` when `sort_by` is set and `scope` is `base`,
+otherwise `seq`.
+|===
+
+How `search_mode`, `scope` and `sort_by` interact:
+
+[options="header,autowidth"]
+|===
+| search_mode | scope      | sort_by | Result
+| seq         | any        | unset   | One search per DN, applied in list order.
+| seq         | one/sub    | unset   | As above, each search also returns nested profiles, in server order.
+| seq         | one/sub    | set     | As above, nested profiles within each search sorted by the server.
+| bulk        | base       | set     | One search for all DNs, applied in the server's sort order.
+| bulk        | base       | unset   | Configuration error, `bulk` requires `sort_by`.
+| bulk        | one/sub    | -       | Configuration error.
+| auto        | base       | set     | Resolves to `bulk`.
+| auto        | any other combination | | Resolves to `seq`.
+|===
+
 default:: The default profile. This may be a DN or an attribute
 reference.
 
@@ -392,20 +470,14 @@ NOTE: To get old v2.2.x style behaviour, or to use the `User-Profile`
 attribute to specify the default profile, set this to
 `control.User-Profile`.
 
-attribute:: The LDAP attribute containing profile DNs to apply in
-addition to the default profile above.
+child_rdn:: The RDN of a child object to evaluate below each profile,
+in place of the profile itself.
 
-These are retrieved from the user object, at the same time as the
-attributes from the update section, are are applied if authorization
-is successful.
-
-attribute_suspend:: The LDAP attribute containing profile DNs to apply
-in addition to the default profile above, when the user account is in
-the suspended state
-
-These are retrieved from the user object, at the same time as the
-attributes from the update section, are are applied if authorization
-is successful.
+The value is expanded at request time, then joined to the front of
+every profile DN, including the `default` and any profiles from group
+objects.  Use it to select a specialisation of each profile, for
+example a per service variant.  Profiles without a matching child are
+skipped.
 
 sort_by:: Server side result sorting.
 
@@ -976,6 +1048,7 @@ ldap {
 #		realm = 'example.org'
 	}
 #	valuepair_attribute = 'radiusAttribute'
+#	dn_attribute = 'entryDN'
 	update {
 		control.Password.With-Header	+= 'userPassword'
 ##		control.Password.NT		:= 'ntPassword'
@@ -1008,6 +1081,8 @@ ldap {
 #		access_value_suspend = 'suspended'
 #		expect_password = no
 #		dn_attribute = 'LDAP-UserDN'
+#		profile_attribute = 'radiusProfileDn'
+#		profile_attribute_suspend = 'radiusProfileSuspendedDn'
 	}
 	group {
 		base_dn = "${..base_dn}"
@@ -1022,13 +1097,15 @@ ldap {
 #		allow_dangling_group_ref = 'no'
 		group_attribute = "${..:instance}-Group"
 		skip_on_suspend = 'yes'
+#		profile_attribute = 'radiusProfileDn'
+#		profile_attribute_suspend = 'radiusProfileSuspendedDn'
 	}
 	profile {
 #		filter = '(objectclass=radiusprofile)'
 #		scope = 'base'
+#		search_mode = 'auto'
 #		default = 'cn=radprofile,dc=example,dc=org'
-#		attribute = 'radiusProfileDn'
-#		attribute_suspend = 'radiusProfileDn'
+#		child_rdn = "cn=%{Connect-Info}"
 #		sort_by = 'radiusProfilePriority'
 #		check_attribute = 'radiusProfileCondition'
 #		fallthrough_attribute = 'radiusProfileFallthrough'

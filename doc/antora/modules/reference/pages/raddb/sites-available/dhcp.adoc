@@ -153,8 +153,10 @@ Do a simple mapping of MAC to assigned IP.
 
 See below for the definition of the "mac2ip" module.
 
-mac2ip
+----
+#	mac2ip
 
+----
 If the MAC wasn't found in that list, do something else. You could
 call a Perl, Python, or Java script here.
 
@@ -165,14 +167,18 @@ call a Perl, Python, or Java script here.
 
 ----
 Or, allocate IPs from the DHCP pool in SQL. You may need to set the
-pool name here if you haven't set it elsewhere. control.IP-Pool.Name
-:= "local" sqlippool
+pool name here if you haven't set it elsewhere.
+----
+##	control.IP-Pool.Name := "local"
+##	sqlippool
 
+----
 If Message-Type is not set, returning "ok" or "updated" from this
 section will respond with a Offer message.
 
-Other rcodes will tell the server to not return any response. ok
+Other rcodes will tell the server to not return any response.
 ----
+#	ok
 }
 
 recv Request {
@@ -201,18 +207,21 @@ Do a simple mapping of MAC to assigned IP.
 
 See below for the definition of the "mac2ip" module.
 
-mac2ip
+----
+#	mac2ip
 
+----
 If the MAC wasn't found in that list, do something else. You could
 call a Perl, Python, or Java script here.
 
 if (notfound) { ... }
 
 Or, allocate IPs from the DHCP pool in SQL. You may need to set the
-pool name here if you haven't set it elsewhere. control.IP-Pool.Name
-:= "local" sqlippool
-
+pool name here if you haven't set it elsewhere.
 ----
+##	control.IP-Pool.Name := "local"
+##	sqlippool
+
 	if (ok) {
 		reply.Your-IP-Address := "%{request.Requested-IP-Address || request.Client-IP-Address}"
 	}
@@ -222,8 +231,9 @@ If Message-Type is not set, returning "ok" or "updated" from this
 section will respond with a Ack packet.
 
 "handled" will not return a packet, all other rcodes will send back a
-NAK. ok
+NAK.
 ----
+#	ok
 }
 
 ----

@@ -189,13 +189,9 @@ The solution is to either lower the `min` connections, or increase
 
 unix:: UNIX socket-file as destination
 
-unix {
-
 filename:: Full path to the `unix socket` file.
 
 pool:: The `pool { ... }` of connections.
-
-}
 
 tcp:: TCP-server as a destination
 
@@ -332,8 +328,10 @@ linelog {
 		lifetime = 0
 		idle_timeout = 60
 	}
-#		filename = /path/to/unix.socket
-#		pool = ${..pool}
+	unix {
+		filename = /path/to/unix.socket
+		pool = ${..pool}
+	}
 	tcp {
 		server = "localhost"
 		port = 514

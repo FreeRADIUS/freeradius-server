@@ -41,10 +41,8 @@ We recommend using a strong password.
 
 use_tls:: Use TLS (requires hiredis 1.0+)
 
-TLS parameters can be specified in the optional adjacent tls {}
-section
-
-tls { }
+TLS parameters can be specified in an optional tls {} section.  See
+the `eap` module for documentation on the `tls` section.
 
 use_cluster_map:: Use cluster map
 
@@ -176,6 +174,8 @@ redis {
 	port = 6379
 #	password = thisisreallysecretandhardtoguess
 #	use_tls = no
+##	tls {
+##	}
 #	use_cluster_map = yes
 	lua {
 		function hello_world {

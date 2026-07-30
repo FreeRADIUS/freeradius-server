@@ -94,6 +94,20 @@ WARNING: EAP-MD5 authentication cannot be used for wireless
 connections. It is insecure, and does not provide for dynamic WEP keys
 or WPA enterprise.
 
+=== EAP-PSK
+
+This module implements EAP-PSK
+(https://tools.ietf.org/html/rfc4764[RFC 4764]).
+
+The "known good" password must be in the Password.PSK attribute, which
+also must be 16 octets in length.
+
+The PSK should be generated from a secure source, e.g. a CSPRNG.
+
+identity:: Server identifier (ID_S) This should generally be the host
+name of the RADIUS server.  Or, some information to uniquely identify
+it.
+
 === EAP-PWD (Secure password-based authentication)
 
 In v4, the "known good" password is taken from the
@@ -353,8 +367,6 @@ This is disabled by default, see the warning above.
 If your supplicants propose a mix of different types of ciphers _and_
 have all of the CA keys for each type of certificate, then multiple
 chains can be enabled simultaneously.
-
-chain ecc { }
 
 == Server certificate
 
@@ -781,7 +793,9 @@ This is to secure the SSID used to provide connectivity to the OSU
 
 You can override this configuration item at run-time by setting:
 
+----
 control.EAP-TLS-Require-Client-Cert = Yes/No
+----
 
 include_length:: Whether we include a length field in the TLS header.
 
@@ -844,7 +858,9 @@ require_client_cert:: Whether we require a client certificate.
 require one by setting the following option. You can also override
 this option by setting:
 
+----
 control.EAP-TLS-Require-Client-Cert = Yes
+----
 
 NOTE: The majority of supplicants do not support using a client
 certificate with `EAP-TTLS`, so this option is unlikely to be useful
@@ -927,7 +943,9 @@ Unlike `EAP-TLS`, `PEAP` does not require a client certificate.
 However, you can require one by setting the following option. You can
 also override this option by setting
 
+----
 control.EAP-TLS-Require-Client-Cert = Yes
+----
 
 NOTE: The majority of supplicants do not support using a client
 certificate with `PEAP`, so this option is unlikely to be useful for
@@ -1179,6 +1197,7 @@ eap {
 #	default_eap_type = md5
 	ignore_unknown_eap_types = no
 	type = md5
+#	type = psk
 #	type = pwd
 	type = gtc
 	type = tls
@@ -1189,6 +1208,9 @@ eap {
 ##	type = aka
 ##	type = sim
 	md5 {
+	}
+	psk {
+		identity = "FreeRADIUS"
 	}
 	pwd {
 		group = 19
@@ -1211,10 +1233,12 @@ eap {
 #			verify_mode = "hard"
 			include_root_ca = no
 		}
-#			certificate_file = ${certdir}/ecc/server.pem
-#			ca_file = ${certdir}/ecc/ca.pem
-#			private_key_password = whatever
-#			private_key_file = ${certdir}/ecc/server.key
+##		chain ecc {
+##			certificate_file = ${certdir}/ecc/server.pem
+##			ca_file = ${certdir}/ecc/ca.pem
+##			private_key_password = whatever
+##			private_key_file = ${certdir}/ecc/server.key
+##		}
 		ca_file = ${cadir}/rsa/ca.pem
 #		psk_identity = "test"
 #		psk_hexphrase = "036363823"

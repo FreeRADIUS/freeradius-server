@@ -115,15 +115,24 @@ handled properly, and will keep trying to process it through this
 virtual server!
 
 See "Accounting queries" in
-`mods-config/sql/main/$driver/queries.conf` sql
+`mods-config/sql/main/$driver/queries.conf`
+----
+#	sql
+
+----
 
 Instead of sending the query to the SQL server, write it into a log
 file.
 
-sql_log
+----
+#	sql_log
 
-Cisco VoIP specific bulk accounting pgsql-voip
+----
+Cisco VoIP specific bulk accounting
+----
+#	pgsql-voip
 
+----
 Filter attributes from the accounting response.
 ----
 	attr_filter.accounting_response

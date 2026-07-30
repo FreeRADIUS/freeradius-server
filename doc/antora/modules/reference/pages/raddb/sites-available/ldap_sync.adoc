@@ -277,10 +277,10 @@ Proto.radius.User-Name
 			}
 		}
 
-#		sync {
-#			base_dn = "ou=groups,dc=example,dc=com"
-#			filter = "(objectClass=groupOfNames)"
-#			scope = "sub"
+##		sync {
+##			base_dn = "ou=groups,dc=example,dc=com"
+##			filter = "(objectClass=groupOfNames)"
+##			scope = "sub"
 
 ----
 
@@ -288,7 +288,13 @@ Since there are likely to be multiple members of a given group, the +=
 operator should be used when defining a mapping of LDAP attribute
 "member" to FreeRADIUS attributes.
 
-update { member += "member" } }
+----
+##			update {
+##				member += "member"
+##			}
+##		}
+
+----
 
 If you are querying Active Directory, you are likely to want two
 queries.
@@ -326,19 +332,18 @@ Firstly, one based on a naming context which covers all user objects.
 This will return results when objects are added, modified or restored
 from the Deleted Objects container.
 
-sync {
 ----
-#			base_dn = 'cn=Users,dc=example,dc=com'
-#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
-#			scope = 'sub'
-----
+##		sync {
+##			base_dn = 'cn=Users,dc=example,dc=com'
+##			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
+##			scope = 'sub'
+##			update {
+##				Proto.radius.User-Name = 'sAMAccountName'
+##				user-acct-control = 'userAccountControl'
+##			}
+##		}
 
-update {
 ----
-#				Proto.radius.User-Name = 'sAMAccountName'
-#				user-acct-control = 'userAccountControl'
-----
-} }
 
 Secondly, if you have the Recycle Bin enabled in Active Directory and
 wish to be notified about deleted objects, add a search covering the
@@ -349,21 +354,17 @@ CN of the object are changed. The attribute lastKnownParent identifies
 where the object was deleted from. However, lastKnownParent may not be
 returned when searching the Global Catalog.
 
-sync {
 ----
-#			base_dn = "CN=Deleted Objects,dc=example,dc=com"
-#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
-#			scope = "one"
-----
-
-update {
-----
-#				Proto.radius.User-Name = 'sAMAccountName'
-#				user-acct-control = 'userAccountControl'
-#				last-known-parent = 'lastKnownParent'
-----
-} }
-----
+##		sync {
+##			base_dn = "CN=Deleted Objects,dc=example,dc=com"
+##			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
+##			scope = "one"
+##			update {
+##				Proto.radius.User-Name = 'sAMAccountName'
+##				user-acct-control = 'userAccountControl'
+##				last-known-parent = 'lastKnownParent'
+##			}
+##		}
 	}
 
 ----
@@ -420,12 +421,12 @@ about changes, a cookie which matches that which OpenLDAP expects can
 be mocked up with the following, presuming the ldap module is enabled
 and configured with the same server settings as ldap_sync.
 
-if (!reply.LDAP-Sync.Cookie) { string csn
-
-csn :=
-%str.concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"),
-';') reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}" }
 ----
+##		if (!reply.LDAP-Sync.Cookie) {
+##			string csn
+##			csn := %str.concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
+##			reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
+##		}
 	}
 
 ----

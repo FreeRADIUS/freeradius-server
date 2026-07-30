@@ -214,20 +214,31 @@ The _<type>_ MUST be a leaf type or a `group`. i.e. not `struct`,
 
 The _<name>_ MUST NOT exist in the `namespace` dictionary.
 
-uint32 foo
+----
+#		uint32 foo
+
+----
 
 tlv:: Define a TLV variable using _tlv <name> { ...}_.
 
 The contents of the `tlv` subsection are more variable definitions,
 including child `tlv`s.
 
-tlv bar { uint32 baz string arg }
+----
+##		tlv bar {
+##		    uint32 baz
+##		    string arg
+##		}
+
+----
 
 values:: Define a set of values for attribute _<name>_.
 
 The contents of the `values` section are a list of names and values.
 
-values foo {
+----
+##		values foo {
+----
 
 _<name>_ = _<value>_
 
@@ -236,11 +247,9 @@ The _<name>_ must be unique.
 The _<value>_ is parsed according to the data type of the attribute.
 
 ----
-#			bar = 1
-#			baz = 2
-----
-}
-----
+##			bar = 1
+##			baz = 2
+##		}
 	}
 
 ----
@@ -769,28 +778,41 @@ User-Password = "password\000\000"
 
 This policy will fix the password to just be "password".
 
-filter_password
+----
+#	filter_password
+
+----
 
 If you intend to use CUI and you require that the Operator-Name be set
 for CUI generation and you want to generate CUI also for your local
 clients, then uncomment operator-name below and set the operator-name
 for your clients in clients.conf.
 
-operator-name
+----
+#	operator-name
+
+----
 
 Proxying example
 
 The following example will proxy the request if the username ends in
 example.com.
 
-if (User-Name =~ /@example\.com$/) { control.Auth-Type :=
-"proxy-example.com" }
+----
+##	if (User-Name =~ /@example\.com$/) {
+##		control.Auth-Type := "proxy-example.com"
+##	}
+
+----
 
 If you want to generate CUI for some clients that do not send proper
 CUI requests, then uncomment cui below and set "add_cui = yes" for
 these clients in clients.conf.
 
-cui
+----
+#	cui
+
+----
 
 The `auth_log` module will write all
 `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`
@@ -800,7 +822,10 @@ Uncomment the next bit in order to have a log of authentication
 requests. For more information, see
 xref:reference:raddb/mods-available/detail.log.adoc[mods-available/detail.log].
 
-auth_log
+----
+#	auth_log
+
+----
 
 The `chap` module will set `Auth-Type := ::CHAP` if the packet
 contains a
@@ -869,7 +894,10 @@ The `unix` module will obtain passwords from `/etc/passwd` or
 `/etc/shadow`. It does this via the system API's, which are not
 thread-safe. We do not recommend using the `unix` module.
 
-unix
+----
+#	unix
+
+----
 
 Read what used to be the `users` file. Since v3, this file is located
 in `mods-config/files/authorize`.
@@ -890,7 +918,10 @@ the `users` file.
 If you are using /etc/smbpasswd, and are also doing mschap
 authentication, the uncomment this line, configure the module.
 
-smbpasswd
+----
+#	smbpasswd
+
+----
 
 The `ldap` module reads passwords and other attributes from an LDAP
 database.
@@ -903,7 +934,10 @@ database.
 Enforce daily limits on time spent logged in. This module is a variant
 of the `counter` module.
 
-dailycounter
+----
+#	dailycounter
+
+----
 
 See if the account has expired: check the time in the `Expiration`
 attribute and reject if we are past it. If the account has not
@@ -1166,7 +1200,12 @@ send Access-Accept {
 If you need to have a State attribute, you can add it here. e.g. for
 later CoA-Request with State, and Service-Type = ::Authorize-Only.
 
-if (!reply.State) { reply.State := "0x%str.rand(16h)" }
+----
+##	if (!reply.State) {
+##		reply.State := "0x%str.rand(16h)"
+##	}
+
+----
 
 For EAP-TTLS and PEAP, add any cached attributes to the reply. The
 "session-state" attributes are automatically cached when an
@@ -1194,18 +1233,27 @@ For EAP, ensure that the Access-Accept contains a User-Name attribute.
 
 Get an address from the IP Pool.
 
-sqlippool
+----
+#	sqlippool
+
+----
 
 Create the CUI value and add the attribute to Access-Accept. Uncomment
 the line below if *returning* the CUI to the NAS.
 
-cui
+----
+#	cui
+
+----
 
 If you want to have a log of authentication replies, uncomment the
 following line. This is defined in
 xref:reference:raddb/mods-available/detail.log.adoc[mods-available/detail.log].
 
-reply_log
+----
+#	reply_log
+
+----
 
 After authenticating the user, do another SQL query.
 
@@ -1217,7 +1265,10 @@ After authenticating the user, do another SQL query.
 Uncomment the following if you want to modify the user's object in
 LDAP after a successful login.
 
-ldap
+----
+#	ldap
+
+----
 
 If there is a client certificate (EAP-TLS, and very occasionally PEAP
 and EAP-TTLS), then some attributes are filled out after the
@@ -1250,7 +1301,10 @@ https://tools.ietf.org/html/rfc2865[RFC 2865] behaviour for the Class
 attribute, AND if the NAS supports long Class attributes. Many older
 or cheap NASes only support 16-octet Class attributes.
 
-insert_acct_class
+----
+#	insert_acct_class
+
+----
 
 MacSEC requires the use of `EAP-Key-Name`. However, we don't want to
 send it for all EAP sessions. Therefore, the EAP modules put required
@@ -1271,7 +1325,10 @@ Call an instance of `linelog` to log the authentication success
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_access_accept
+----
+#	log_auth_access_accept
+
+----
 
 Remove
 `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]`
@@ -1328,7 +1385,10 @@ Call an instance of `linelog` to log the authentication failure
 - equivalent to the previous log `auth = yes` option in v3. See
   `mods-enabled/linelog` for message formats and destinations.
 
-log_auth_access_reject
+----
+#	log_auth_access_reject
+
+----
 
 Remove
 `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]`
@@ -1371,7 +1431,10 @@ recv Accounting-Request {
 Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
 into a single 64-bit counter, Acct-[Input|Output]-Octets64.
 
-acct_counters64
+----
+#	acct_counters64
+
+----
 
 Session start times are *implied* in RADIUS. The NAS never sends a
 "start time". Instead, it sends a start packet, *possibly* with an
@@ -1445,8 +1508,8 @@ Ensure that control.IP-Pool.Name is set to determine which pool of IPs
 are used. Set this in `recv Accounting-Request` so it is available for
 all the accounting sections.
 
-sqlippool
 ----
+#	sqlippool
 }
 
 ----
@@ -1481,8 +1544,8 @@ request, and the NAS will retransmit.
 
 Return an address to the IP Pool when we see a stop record.
 
-sqlippool
 ----
+#	sqlippool
 }
 
 ----
@@ -1502,8 +1565,8 @@ Log traffic to an SQL database.
 
 Refresh leases when we see an alive.
 
-sqlippool
 ----
+#	sqlippool
 }
 
 ----
@@ -1523,8 +1586,8 @@ Record that the NAS has booted to an SQL database
 
 Return all addresses related to this NAS to the IP Pool
 
-sqlippool
 ----
+#	sqlippool
 }
 
 ----
@@ -1544,8 +1607,8 @@ Record that the NAS is shutting down to an SQL database
 
 Return all addresses related to this NAS to the IP Pool
 
-sqlippool
 ----
+#	sqlippool
 }
 
 ----
@@ -1587,7 +1650,10 @@ Accounting-Response.
 
 Use it only if your NAS boxes do not support CUI themselves.
 
-cui
+----
+#	cui
+
+----
 
 Create a 'detail'ed log of the packets. Note that accounting requests
 which are proxied are also logged in the detail file.
@@ -1599,11 +1665,17 @@ which are proxied are also logged in the detail file.
 
 Update counters for daily usage calculations.
 
-daily
+----
+#	daily
+
+----
 
 Cisco VoIP specific bulk accounting.
 
-pgsql-voip
+----
+#	pgsql-voip
+
+----
 
 Filter attributes from the accounting response.
 
