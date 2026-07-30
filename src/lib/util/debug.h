@@ -210,7 +210,7 @@ NEVER_RETURNS void	_fr_exit(char const *file, int line, int status, bool now);
 #  include <assert.h>
 #  define fr_assert(_x) assert(_x)
 #  define fr_assert_msg(_x, _msg, ...) assert(_x)
-#  define fr_assert_fail(_msg ...) assert(0)
+#  define fr_assert_fail(_msg, ...) assert(0)
 #endif
 
 /** Exit, producing a log message in debug builds
