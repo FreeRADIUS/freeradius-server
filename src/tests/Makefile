@@ -65,11 +65,6 @@ $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	${Q}echo "TLS1_3=$(shell openssl ciphers -s -v 'ECDHE:!COMPLEMENTOFDEFAULT'| grep -q 'TLSv1.3' && echo yes)" >> $@
 	${Q}echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
 	${Q}echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.' && echo yes)" >> $@
-
-#
-#  If OpenSSL is available, include extra rlm_eap config in the test radiusd
-#
-override EAP_CONF_INCLUDE := $$INCLUDE $${testdir}/config/eap-include.conf
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
@@ -80,6 +75,16 @@ $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 endif
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
+
+#
+#  If OpenSSL3 is available, include extra rlm_eap config in the test radiusd
+#
+ifneq "$(OPENSSL_LIBS)" ""
+ifeq "$(OPENSSL3_OK)" "yes"
+override EAP_CONF_INCLUDE := $$INCLUDE $${testdir}/config/eap-include.conf
+endif
+endif
+
 endif
 
 #
@@ -230,7 +235,9 @@ EAP_FILES       += eap-mschapv2.conf
 #
 ifneq "$(OPENSSL_LIBS)" ""
 EAP_FILES += eap-psk.conf
+ifeq "$(OPENSSL3_OK)" "yes"
 EAP_FILES += eap-pwd.conf
+endif
 endif
 
 EAP_TLS_FILES    = eap-tls.conf
