@@ -284,16 +284,17 @@ static void _redis_io_common(connection_t *conn, fr_redis_handle_t *h, bool read
 	if (!read && !write) {
 		DEBUG4("redis handle %p - De-registering FD %i", h, c->fd);
 
-		if (fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO) < 0) {
+		if (fr_event_fd_delete_handle(h->fd_ev)) {
 			PERROR("redis handle %p - De-registration failed for FD %i", h, c->fd);
 		}
+		h->fd_ev = NULL;
 		return;
 	}
 
 	DEBUG4("redis handle %p - Registered for %s%serror events on FD %i",
 	       h, read ? "read+" : "", write ? "write+" : "", c->fd);
 
-	if (fr_event_fd_insert(h, NULL, el, c->fd,
+	if (fr_event_fd_insert(h, &h->fd_ev, el, c->fd,
 			       read ? _redis_io_service_readable : NULL,
 			       write ? _redis_io_service_writable : NULL,
 			       _redis_io_service_errored,

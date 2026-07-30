@@ -79,6 +79,7 @@ typedef struct {
 	bool			freeing;		//!< Ensure that redisAsyncFree doesn't cause
 							///< a callback loop.
 	fr_timer_t		*timer_ev;		//!< Connection timer.
+	fr_event_fd_t		*fd_ev;			//!< IO event.
 
 
 	redisAsyncContext	*ac;			//!< Async handle for hiredis.
