@@ -22,9 +22,11 @@ Core dumps are excluded; collect-core-dumps.sh keeps those instead. Run from
 the directory holding prof-results/. A missing prof-results/ tree, or one
 holding nothing publishable, is a quiet success.
 
-Fails without publishing when any test's valgrind-exit-status is non-zero,
-because a run valgrind killed has truncated callgrind output whose numbers are
-not comparable with previous runs.
+Tests whose valgrind-exit-status is non-zero are pruned from the publish,
+because a run valgrind killed has truncated callgrind output whose numbers
+are not comparable with previous runs. The remaining tests still publish, and
+the script then exits non-zero anyway so the CI leg records the pruned test
+as a failure instead of passing.
 
   <url>  Where to POST. Its origin becomes the OIDC audience.
   -h     Show this help.
@@ -53,13 +55,14 @@ audience="${url%%://*}://${host_path%%/*}"
 
 [ -d prof-results ] || { echo "no prof-results/ tree; skipping"; exit 0; }
 
-#  Refuse to publish a run valgrind did not finish cleanly. start_valgrind_-
+#  A test valgrind did not finish cleanly cannot be published. start_valgrind_-
 #  profiling.sh drops a valgrind-exit-status file in each test's results dir; a
 #  non-zero status means valgrind was killed, which leaves callgrind output
 #  truncated at whatever point it died. Numbers from a truncated run are not
 #  comparable with a clean one, and publishing them silently poisons the
-#  per-suite history the regression gate compares against. Exits non-zero so
-#  the leg goes red rather than passing with nothing uploaded.
+#  per-suite history the regression gate compares against. Unclean tests are
+#  pruned from the publish below, so one broken test does not withhold the
+#  clean ones; the leg still fails after the clean tests publish.
 unclean=""
 for status_file in $(find prof-results -type f -name valgrind-exit-status | sort); do
 	read -r status <"$status_file" || status="unreadable"
@@ -68,14 +71,6 @@ for status_file in $(find prof-results -type f -name valgrind-exit-status | sort
 	esac
 	unclean="${unclean} ${status_file%/valgrind-exit-status}:${status}"
 done
-if [ -n "$unclean" ]; then
-	echo "ERROR: refusing to publish, valgrind exited uncleanly in:" >&2
-	for entry in $unclean; do
-		echo "         ${entry%:*} (status ${entry##*:})" >&2
-	done
-	echo "ERROR: truncated profiling data is not comparable with previous runs" >&2
-	exit 1
-fi
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -91,6 +86,16 @@ tarball="$tmpdir/prof-results.tar.gz"
 #  not every grep implementation accepts. The slash comes off again when the
 #  tar file list is written.
 find prof-results -type f ! -name '.DS_Store' | sed 's#^prof-results##' | sort >"$all_list"
+
+#  Prune unclean tests. The ::error:: annotation puts each pruned test on the
+#  run page next to the red leg; the workflow artifact still holds the pruned
+#  test's files for diagnosis.
+for entry in $unclean; do
+	dir=${entry%:*}
+	echo "::error::publish-profiling-results: pruning ${dir} (valgrind exit status ${entry##*:}); truncated results are not publishable"
+	awk -v prefix="${dir#prof-results}/" 'index($0, prefix) != 1' "$all_list" >"$all_list.pruned"
+	mv "$all_list.pruned" "$all_list"
+done
 
 #  Drop core dumps. A crash under valgrind dumps the whole address space, so
 #  one core is ~1.5G; two of them turned a 6M publish into 35M of mostly-zero
@@ -113,6 +118,10 @@ if [ -s "$core_list" ]; then
 fi
 
 if ! [ -s "$file_list" ]; then
+	if [ -n "$unclean" ]; then
+		echo "ERROR: every test in prof-results/ was pruned as unclean; nothing published" >&2
+		exit 1
+	fi
 	echo "prof-results/ holds no publishable files; skipping"
 	exit 0
 fi
@@ -146,7 +155,18 @@ code=$(curl -sS --connect-timeout 10 -o "$resp" -w '%{http_code}' \
 	"$url") || code=000
 
 case "$code" in
-	2??) exit 0 ;;
+	2??)
+		#  The clean tests are on the store; now fail the leg for the
+		#  pruned ones so a broken test never reads as a green run.
+		if [ -n "$unclean" ]; then
+			echo "ERROR: published the clean tests, but these were pruned as unclean:" >&2
+			for entry in $unclean; do
+				echo "         ${entry%:*} (valgrind exit status ${entry##*:})" >&2
+			done
+			exit 1
+		fi
+		exit 0
+		;;
 	*)
 		echo "ERROR: publish failed (HTTP $code)" >&2
 		[ -s "$resp" ] && { cat "$resp" >&2; echo >&2; }
