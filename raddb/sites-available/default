@@ -194,7 +194,7 @@ server default {
 		#
 		#  The _<name>_ MUST NOT exist in the `namespace` dictionary.
 		#
-		#		uint32 foo
+#		uint32 foo
 
 		#
 		#  tlv:: Define a TLV variable using _tlv <name> { ...}_.
@@ -202,10 +202,10 @@ server default {
 		#  The contents of the `tlv` subsection are more variable
 		#  definitions, including child `tlv`s.
 		#
-		#		tlv bar {
-		#		    uint32 baz
-		#		    string arg
-		#		}
+##		tlv bar {
+##		    uint32 baz
+##		    string arg
+##		}
 
 		#
 		#  values:: Define a set of values for attribute _<name>_.
@@ -213,18 +213,18 @@ server default {
 		#  The contents of the `values` section are a list of names and
 		#  values.
 		#
-		#		values foo {
-		#
-		#  _<name>_ = _<value>_
-		#
-		#  The _<name>_ must be unique.
-		#
-		#  The _<value>_ is parsed according to the data type of the
-		#  attribute.
-		#
-#			bar = 1
-#			baz = 2
-		#		}
+##		values foo {
+			#
+			#  _<name>_ = _<value>_
+			#
+			#  The _<name>_ must be unique.
+			#
+			#  The _<value>_ is parsed according to the data type of the
+			#  attribute.
+			#
+##			bar = 1
+##			baz = 2
+##		}
 	}
 
 
@@ -705,7 +705,7 @@ recv Access-Request {
 	#
 	#  This policy will fix the password to just be "password".
 	#
-	#	filter_password
+#	filter_password
 
 	#
 	#  If you intend to use CUI and you require that the Operator-Name be
@@ -713,7 +713,7 @@ recv Access-Request {
 	#  local clients, then uncomment operator-name below and set the
 	#  operator-name for your clients in clients.conf.
 	#
-	#	operator-name
+#	operator-name
 
 	#
 	#  Proxying example
@@ -721,16 +721,16 @@ recv Access-Request {
 	#  The following example will proxy the request if the username ends
 	#  in example.com.
 	#
-	#	if (User-Name =~ /@example\.com$/) {
-	#		control.Auth-Type := "proxy-example.com"
-	#	}
+##	if (User-Name =~ /@example\.com$/) {
+##		control.Auth-Type := "proxy-example.com"
+##	}
 
 	#
 	#  If you want to generate CUI for some clients that do not send
 	#  proper CUI requests, then uncomment cui below and set "add_cui =
 	#  yes" for these clients in clients.conf.
 	#
-	#	cui
+#	cui
 
 	#
 	#  The `auth_log` module will write all `Access-Request` packets to a
@@ -739,7 +739,7 @@ recv Access-Request {
 	#  Uncomment the next bit in order to have a log of authentication
 	#  requests. For more information, see `mods-available/detail.log`.
 	#
-	#	auth_log
+#	auth_log
 
 	#
 	#  The `chap` module will set `Auth-Type := ::CHAP` if the packet
@@ -799,7 +799,7 @@ recv Access-Request {
 	#  `/etc/shadow`. It does this via the system API's, which are not
 	#  thread-safe. We do not recommend using the `unix` module.
 	#
-	#	unix
+#	unix
 
 	#
 	#  Read what used to be the `users` file. Since v3, this file is
@@ -817,7 +817,7 @@ recv Access-Request {
 	#  If you are using /etc/smbpasswd, and are also doing mschap
 	#  authentication, the uncomment this line, configure the module.
 	#
-	#	smbpasswd
+#	smbpasswd
 
 	#
 	#  The `ldap` module reads passwords and other attributes from an
@@ -829,7 +829,7 @@ recv Access-Request {
 	#  Enforce daily limits on time spent logged in. This module is a
 	#  variant of the `counter` module.
 	#
-	#	dailycounter
+#	dailycounter
 
 	#
 	#  See if the account has expired: check the time in the `Expiration`
@@ -1078,9 +1078,9 @@ send Access-Accept {
 	#  for later CoA-Request with State, and Service-Type =
 	#  ::Authorize-Only.
 	#
-	#	if (!reply.State) {
-	#		reply.State := "0x%str.rand(16h)"
-	#	}
+##	if (!reply.State) {
+##		reply.State := "0x%str.rand(16h)"
+##	}
 
 	#
 	#  For EAP-TTLS and PEAP, add any cached attributes to the reply. The
@@ -1102,20 +1102,20 @@ send Access-Accept {
 	#
 	#  Get an address from the IP Pool.
 	#
-	#	sqlippool
+#	sqlippool
 
 
 	#
 	#  Create the CUI value and add the attribute to Access-Accept.
 	#  Uncomment the line below if *returning* the CUI to the NAS.
 	#
-	#	cui
+#	cui
 
 	#
 	#  If you want to have a log of authentication replies, uncomment the
 	#  following line. This is defined in `mods-available/detail.log`.
 	#
-	#	reply_log
+#	reply_log
 
 	#
 	#  After authenticating the user, do another SQL query.
@@ -1126,7 +1126,7 @@ send Access-Accept {
 	#  Uncomment the following if you want to modify the user's object in
 	#  LDAP after a successful login.
 	#
-	#	ldap
+#	ldap
 
 	#
 	#  If there is a client certificate (EAP-TLS, and very occasionally
@@ -1158,7 +1158,7 @@ send Access-Accept {
 	#  Class attributes. Many older or cheap NASes only support 16-octet
 	#  Class attributes.
 	#
-	#	insert_acct_class
+#	insert_acct_class
 
 	#
 	#  MacSEC requires the use of `EAP-Key-Name`. However, we don't want
@@ -1178,7 +1178,7 @@ send Access-Accept {
 	#  - equivalent to the previous log `auth = yes` option in v3.
 	#  See `mods-enabled/linelog` for message formats and destinations.
 	#
-	#	log_auth_access_accept
+#	log_auth_access_accept
 
 	#
 	#  Remove `Reply-Message` if the response contains an `EAP-Message`
@@ -1221,7 +1221,7 @@ send Access-Reject {
 	#  - equivalent to the previous log `auth = yes` option in v3.
 	#  See `mods-enabled/linelog` for message formats and destinations.
 	#
-	#	log_auth_access_reject
+#	log_auth_access_reject
 
 	#
 	#  Remove `Reply-Message` if the response contains an `EAP-Message`
@@ -1261,7 +1261,7 @@ recv Accounting-Request {
 	#  Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
 	#  into a single 64-bit counter, Acct-[Input|Output]-Octets64.
 	#
-	#	acct_counters64
+#	acct_counters64
 
 	#
 	#  Session start times are *implied* in RADIUS. The NAS never sends a
@@ -1325,7 +1325,7 @@ accounting Start {
 	#  IPs are used. Set this in `recv Accounting-Request` so it is
 	#  available for all the accounting sections.
 	#
-	#	sqlippool
+#	sqlippool
 }
 
 #
@@ -1353,7 +1353,7 @@ accounting Stop {
 	#
 	#  Return an address to the IP Pool when we see a stop record.
 	#
-	#	sqlippool
+#	sqlippool
 }
 
 #
@@ -1368,7 +1368,7 @@ accounting Interim-Update {
 	#
 	#  Refresh leases when we see an alive.
 	#
-	#	sqlippool
+#	sqlippool
 }
 
 #
@@ -1383,7 +1383,7 @@ accounting Accounting-On {
 	#
 	#  Return all addresses related to this NAS to the IP Pool
 	#
-	#	sqlippool
+#	sqlippool
 }
 
 #
@@ -1398,7 +1398,7 @@ accounting Accounting-Off {
 	#
 	#  Return all addresses related to this NAS to the IP Pool
 	#
-	#	sqlippool
+#	sqlippool
 }
 
 #
@@ -1436,7 +1436,7 @@ send Accounting-Response {
 	#
 	#  Use it only if your NAS boxes do not support CUI themselves.
 	#
-	#	cui
+#	cui
 
 	#
 	#  Create a 'detail'ed log of the packets. Note that accounting
@@ -1447,12 +1447,12 @@ send Accounting-Response {
 	#
 	#  Update counters for daily usage calculations.
 	#
-	#	daily
+#	daily
 
 	#
 	#  Cisco VoIP specific bulk accounting.
 	#
-	#	pgsql-voip
+#	pgsql-voip
 
 	#
 	#  Filter attributes from the accounting response.

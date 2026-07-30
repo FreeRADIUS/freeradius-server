@@ -97,16 +97,16 @@ send Accounting-Response {
 	#
 	#  See "Accounting queries" in
 	#  `mods-config/sql/main/$driver/queries.conf`
-	#	sql
+#	sql
 
 	#
 	#  Instead of sending the query to the SQL server, write it into a
 	#  log file.
 	#
-	#	sql_log
+#	sql_log
 
 	#  Cisco VoIP specific bulk accounting
-	#	pgsql-voip
+#	pgsql-voip
 
 	#  Filter attributes from the accounting response.
 	attr_filter.accounting_response

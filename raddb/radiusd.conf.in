@@ -365,9 +365,9 @@ log {
 	#  instead prints a place-holder value "<<< secret >>>", as
 	#  follows:
 	#
-	#	...
-	#	User-Password = "<<< secret >>>"
-	#	...
+	#  ```
+	#  User-Password = "<<< secret >>>"
+	#  ```
 	#
 	#  Secret values are tracked across string expansions, string
 	#  modifications, concatenations, etc.  i.e. if a

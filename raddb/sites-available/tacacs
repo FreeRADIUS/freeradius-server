@@ -262,13 +262,13 @@ server tacacs {
 	#
 	#  LDAP authentication will only work with PAP authentication
 	#
-	#	authenticate ldap {
-	#		if (Authentication-Type != PAP) {
-	#			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
-	#		}
-	#
-	#		ldap
-	#	}
+##	authenticate ldap {
+##		if (Authentication-Type != PAP) {
+##			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
+##		}
+##
+##		ldap
+##	}
 
 	#
 	#  The automatic state machine will ensure that both User-Name and
@@ -296,7 +296,7 @@ server tacacs {
 		#  - equivalent to the previous log `auth = yes` option in v3.
 		#  See `mods-enabled/linelog` for message formats and destinations.
 		#
-		#		log_auth_authentication_pass
+#		log_auth_authentication_pass
 	}
 
 	send Authentication-Fail {
@@ -307,7 +307,7 @@ server tacacs {
 		#  - equivalent to the previous log `auth = yes` option in v3.
 		#  See `mods-enabled/linelog` for message formats and destinations.
 		#
-		#		log_auth_authentication_fail
+#		log_auth_authentication_fail
 	}
 
 	#

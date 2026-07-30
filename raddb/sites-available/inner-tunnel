@@ -56,7 +56,7 @@ recv Access-Request {
 	#  The following policy in policy.d/eap can be used to copy
 	#  attributes over.
 	#
-	#	copy_request_to_tunnel
+#	copy_request_to_tunnel
 
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and
@@ -92,7 +92,7 @@ recv Access-Request {
 	#  system API's to get the password. If you want to read /etc/passwd
 	#  or /etc/shadow directly, see the passwd module, above.
 	#
-	#	unix
+#	unix
 
 	#
 	#  This module takes care of EAP-MSCHAPv2 authentication.
@@ -126,7 +126,7 @@ recv Access-Request {
 	#  If you are using /etc/smbpasswd, and are also doing mschap
 	#  authentication, then uncomment this line, and enable the
 	#  "smbpasswd" module.
-	#	smbpasswd
+#	smbpasswd
 
 	#
 	#  The ldap module reads passwords from the LDAP database.
@@ -134,7 +134,7 @@ recv Access-Request {
 
 	#
 	#  Enforce daily limits on time spent logged in.
-	#	daily
+#	daily
 
 	expiration
 
@@ -251,7 +251,7 @@ send Access-Accept {
 	#
 	#  If you want to have a log of authentication replies, uncomment the
 	#  following line, and enable the 'detail reply_log' module.
-	#	reply_log
+#	reply_log
 
 	#
 	#  After authenticating the user, do another SQL query.
@@ -264,13 +264,13 @@ send Access-Accept {
 	#  Instead of sending the query to the SQL server, write it into a
 	#  log file.
 	#
-	#	sql_log
+#	sql_log
 
 	#
 	#  Uncomment the following if you have set 'edir = yes' in the ldap
 	#  module sub-section of the 'modules' section.
 	#
-	#	ldap
+#	ldap
 
 	#
 	#  Instead of the "use_tunneled_reply" option in previous versions of
@@ -279,14 +279,14 @@ send Access-Accept {
 	#  "send Access-Accept" section will then copy them from the
 	#  session-state into the reply.
 	#
-	#	use_tunneled_reply
+#	use_tunneled_reply
 
 	#
 	#  Call an instance of `linelog` to log the authentication success
 	#  - equivalent to the previous log `auth = yes` option in v3.
 	#  See `mods-enabled/linelog` for message formats and destinations.
 	#
-	#	log_auth_result
+#	log_auth_result
 }
 
 #
@@ -305,7 +305,7 @@ send Access-Reject {
 	#  - equivalent to the previous log `auth = yes` option in v3.
 	#  See `mods-enabled/linelog` for message formats and destinations.
 	#
-	#	log_auth_result
+#	log_auth_result
 
 	attr_filter.access_reject
 

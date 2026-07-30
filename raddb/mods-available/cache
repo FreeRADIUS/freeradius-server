@@ -235,9 +235,11 @@ cache {
 	#  For example, if the `cache` module is configured with the block
 	#  below:
 	#
-	#	update {
-	#	       reply.Reply-Message := "Hello %{User-Name}"
-	#	}
+	#  ```
+	#  update {
+	#       reply.Reply-Message := "Hello %{User-Name}"
+	#  }
+	#  ```
 	#
 	#  When the cache entry is created, the module will expand the right
 	#  side of the entry, using the attributes from the packet. In this
@@ -246,9 +248,11 @@ cache {
 	#  Once all of the right-hand values are expanded, the resulting
 	#  cache entry will look like this:
 	#
-	#	update {
-	#	       reply.Reply-Message := "Hello bob"
-	#	}
+	#  ```
+	#  update {
+	#       reply.Reply-Message := "Hello bob"
+	#  }
+	#  ```
 	#
 	#  When the cache module is read, this `update` section is applied
 	#  just as if it had been specified in a configuration file.

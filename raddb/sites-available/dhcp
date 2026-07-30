@@ -140,7 +140,7 @@ recv Discover {
 	#
 	#  See below for the definition of the "mac2ip" module.
 	#
-	#	mac2ip
+#	mac2ip
 
 	#  If the MAC wasn't found in that list, do something else. You could
 	#  call a Perl, Python, or Java script here.
@@ -151,14 +151,14 @@ recv Discover {
 
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to set
 	#  the pool name here if you haven't set it elsewhere.
-	#	control.IP-Pool.Name := "local"
-	#	sqlippool
+##	control.IP-Pool.Name := "local"
+##	sqlippool
 
 	#  If Message-Type is not set, returning "ok" or "updated" from this
 	#  section will respond with a Offer message.
 	#
 	#  Other rcodes will tell the server to not return any response.
-	#	ok
+#	ok
 }
 
 recv Request {
@@ -181,7 +181,7 @@ recv Request {
 	#
 	#  See below for the definition of the "mac2ip" module.
 	#
-	#	mac2ip
+#	mac2ip
 
 	#  If the MAC wasn't found in that list, do something else. You could
 	#  call a Perl, Python, or Java script here.
@@ -190,8 +190,8 @@ recv Request {
 
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to set
 	#  the pool name here if you haven't set it elsewhere.
-	#	control.IP-Pool.Name := "local"
-	#	sqlippool
+##	control.IP-Pool.Name := "local"
+##	sqlippool
 
 	if (ok) {
 		reply.Your-IP-Address := "%{request.Requested-IP-Address || request.Client-IP-Address}"
@@ -202,7 +202,7 @@ recv Request {
 	#
 	#  "handled" will not return a packet, all other rcodes will send
 	#  back a NAK.
-	#	ok
+#	ok
 }
 
 #

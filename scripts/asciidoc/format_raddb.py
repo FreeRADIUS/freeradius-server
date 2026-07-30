@@ -325,7 +325,16 @@ def format_comment_block(block):
         # Code line embedded in the comment: tab or 4+ leading spaces.
         if rest.startswith("\t") or rest[:4] == "    ":
             flush_paragraph()
-            out.append(bare_prefix + rest.rstrip())
+            # A single `#` already at column 0 marks a commented-out
+            # configuration line (e.g. `#\tfilter_password`) whose content
+            # after the `#` already carries the correct indentation.  Keep
+            # the line verbatim so the marker is not pushed in to the block
+            # indent; deleting the leading `#` then yields the correctly
+            # indented line.  Only re-indent when the `#` was itself indented.
+            if indent == "":
+                out.append(line)
+            else:
+                out.append(bare_prefix + rest.rstrip())
             continue
 
         text = rest.lstrip()

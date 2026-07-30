@@ -142,7 +142,7 @@ server load {
 			#  If unset (or 0), the test ends when the `max_pps` step
 			#  finishes.
 			#
-		#	max_requests	= 100000
+#			max_requests	= 100000
 
 			#
 			#  What to do when the test is complete, i.e. when the packet
@@ -156,7 +156,7 @@ server load {
 			#             sending at `max_pps` forever.  Cannot be combined
 			#             with `max_requests`.
 			#
-		#	on_complete	= exit
+#			on_complete	= exit
 		}
 	}
 

@@ -276,17 +276,17 @@ linelog {
 	#
 	#  unix:: UNIX socket-file as destination
 	#
-	#	unix {
-	#
-	#  filename:: Full path to the `unix socket` file.
-	#
-#		filename = /path/to/unix.socket
+	unix {
+		#
+		#  filename:: Full path to the `unix socket` file.
+		#
+		filename = /path/to/unix.socket
 
 		#
 		#  pool:: The `pool { ... }` of connections.
 		#
-#		pool = ${..pool}
-		#	}
+		pool = ${..pool}
+	}
 
 	#
 	#  tcp:: TCP-server as a destination

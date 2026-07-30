@@ -101,7 +101,7 @@ server copy-acct-to-home-server {
 		#  Setting "track = yes" means it will skip packets which have
 		#  already been processed. The default is "no".
 		#
-		#	track = yes
+#		track = yes
 
 	}
 

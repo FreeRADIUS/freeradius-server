@@ -135,14 +135,14 @@ server coa {
 		#
 
 		#
-		#  Example MySQL lookup
+		#  Example MySQL lookup:
 		#
-		#		control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
-		#  Example PostgreSQL lookup
+		#  Example PostgreSQL lookup:
 		#
-		#		control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
 		#  Keep a count of what we send.

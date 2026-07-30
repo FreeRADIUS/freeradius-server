@@ -177,11 +177,11 @@ server buffered-sql {
 		#  See `Accounting queries` in
 		#  `mods-config/sql/main/$driver/queries.conf`
 		#
-		#		sql
+#		sql
 
 		#
 		#  Cisco VoIP specific bulk accounting.
 		#
-		#		pgsql-voip
+#		pgsql-voip
 	}
 }

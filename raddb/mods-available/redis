@@ -64,11 +64,15 @@ redis {
 	#
 	#  use_tls:: Use TLS (requires hiredis 1.0+)
 	#
-	#  TLS parameters can be specified in the optional adjacent tls {}
-	#  section
+	#  TLS parameters can be specified in an optional tls {}
+	#  section.  See the `eap` module for documentation on the
+	#  `tls` section.
 	#
 #	use_tls = no
-	#	tls { }
+
+##	tls {
+##
+##	}
 
 	#
 	#  use_cluster_map:: Use cluster map

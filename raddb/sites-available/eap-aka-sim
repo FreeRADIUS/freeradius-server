@@ -132,7 +132,7 @@ server eap-aka-sim {
 		#  `EAP-Success` packet containing `MPPE` keys.
 		#
 #		protected_success = yes
-		#	}
+#	}
 
 	eap-aka {
 		#  request_identity:: Send a AKA-Identity message to request an
@@ -258,7 +258,7 @@ server eap-aka-sim {
 		#  `EAP-Success` packet containing `MPPE` keys.
 		#
 #		protected_success = yes
-		#	}
+#	}
 
 	#
 	#  === `recv Identity-Response { ... }` - Process an EAP-Identity-Response or AKA-Identity value
@@ -416,9 +416,9 @@ server eap-aka-sim {
 	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
 	#  allow the version of EAP-SIM to be negotiated.
 	#
-	#	send Start-Request {
-	#		ok
-	#	}
+##	send Start-Request {
+##		ok
+##	}
 
 	#
 	#  === `send Start-Request { ... }` - Allow specific policies to be applied to SIM start responses
@@ -433,9 +433,9 @@ server eap-aka-sim {
 	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
 	#  allow the version of EAP-SIM to be negotiated.
 	#
-	#	recv Start-Response {
-	#		ok
-	#	}
+##	recv Start-Response {
+##		ok
+##	}
 
 	#
 	#  === `send AKA-Identity-Request { ... }` - Allow specific policies to be applied to AKA identity requests
@@ -450,9 +450,9 @@ server eap-aka-sim {
 	#  EAP-SIM/EAP-AKA, the main difference being, Start messages also
 	#  allow the version of EAP-SIM to be negotiated.
 	#
-	#	send AKA-Identity-Request {
-	#		ok
-	#	}
+##	send AKA-Identity-Request {
+##		ok
+##	}
 
 	#
 	#  === `send Challenge-Request { ... }` - Acquire GSM triplets or UMTS quintuplets for the Challenge-Request
