@@ -15,23 +15,42 @@ Logs a message at a DEBUG level.  This function returns nothing.
 %log.debug("Now processing %interpreter(...filename):%interpreter(...line)")
 ----
 
-The DEBUG messages are printed only when the server has the debug flag set.
+The DEBUG messages are printed only when the server has the debug flag
+set.
 
 == %log.destination(_string_, [_uint32_], [_filename_])
 
-The `%log.destination()` function updates the current request to add a new debug log destination.  The second argument sets the debug level (0..4).  If omitted, the default is `2`.  The special value `0` will remove the named log destination.
+The `%log.destination()` function updates the current request to add a
+new debug log destination.  The second argument sets the debug level
+(0..4).  If omitted, the default is `2`.  The special value `0` will
+remove the named log destination.
 
-If the log destination is the empty string (`''`), then all extra debug log destinations are removed, and only the server default log destination will remain.
+If the log destination is the empty string (`''`), then all extra
+debug log destinations are removed, and only the server default log
+destination will remain.
 
-This function is normally used to _add_ a new log destination.  Any extra debug logging does not change the default log destination.  Normal server log messages will still go to the normal log destination, in addition to being sent to the newly added destination.
+This function is normally used to _add_ a new log destination.  Any
+extra debug logging does not change the default log destination.
+Normal server log messages will still go to the normal log
+destination, in addition to being sent to the newly added destination.
 
-An existing log destination can be set multiple times.  The first time it is set, the log destination is added.  The second and subsequent times it is set, the log level is changed.  The server will not send duplicate messages to the same logging destination.
+An existing log destination can be set multiple times.  The first time
+it is set, the log destination is added.  The second and subsequent
+times it is set, the log level is changed.  The server will not send
+duplicate messages to the same logging destination.
 
-If a filename is specified, then the first argument must be a log section which has `destination = files` or `destination=null`.  If so, that section is used as a template for log configuration.  However, `filename` passed to the function is used instead of any `file` specified in the named log section.
+If a filename is specified, then the first argument must be a log
+section which has `destination = files` or `destination=null`.  If so,
+that section is used as a template for log configuration.  However,
+`filename` passed to the function is used instead of any `file`
+specified in the named log section.
 
-This parameter allows for logging to go to a file which is specific to a particular request.
+This parameter allows for logging to go to a file which is specific to
+a particular request.
 
-When the request finishes, the file is closed.  Multiple requests may use the same file, however there is no inter-request locking, so log messages might be interspersed.
+When the request finishes, the file is closed.  Multiple requests may
+use the same file, however there is no inter-request locking, so log
+messages might be interspersed.
 
 .Log Configuration in radiusd.conf
 ----

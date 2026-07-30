@@ -234,6 +234,19 @@ static fr_rb_tree_t	*dst_tree = NULL;
 static fr_rb_tree_t	*filename_tree = NULL;
 static fr_rb_tree_t	*src_tree = NULL;
 
+/** Iterate over the contents of a log list
+ *
+ * The macro is "safe", in that the current iterator variable can be deleted.
+ *
+ * The iterators can be nested, so long as the _iter variable names are different.
+ *
+ * @param[in] _head		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define log_dst_foreach(_head, _iter) \
+	for (log_dst_t *JOIN(_next,_iter), *_iter = _head; JOIN(_next,_iter) = (_head)->next, _iter != NULL; _iter = JOIN(_next,_iter))
+
 /** Send a server log message to its destination without evaluating its debug level
  *
  * @param[in] log	destination.
@@ -611,12 +624,11 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	log_dst_t	*dst;
 
 	if (!request->log.dst) return;
 
 	va_start(ap, fmt);
-	for (dst = request->log.dst; dst; dst = dst->next) {
+	log_dst_foreach(request->log.dst, dst) {
 		if ((lvl > request->log.lvl) && (lvl > dst->lvl)) continue;
 
 		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
@@ -646,16 +658,15 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		       char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	log_dst_t	*dst_p;
 
 	if (!request->log.dst) return;
 
 	va_start(ap, fmt);
-	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+	log_dst_foreach(request->log.dst, dst) {
 		va_list copy;
 		va_copy(copy, ap);
 
-		dst_p->func(type, lvl, request, file, line, fmt, copy, dst_p->uctx);
+		dst->func(type, lvl, request, file, line, fmt, copy, dst->uctx);
 
 		va_end(copy);
 	}
@@ -693,16 +704,15 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	error = fr_strerror_pop();
 	if (!error) {
 		va_list		ap;
-		log_dst_t	*dst_p;
 
 		if (!fmt) return;	/* NOOP */
 
 		va_start(ap, fmt);
-		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+		log_dst_foreach(request->log.dst, dst) {
 			va_list copy;
 			va_copy(copy, ap);
 
-			dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+			dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
 
 			va_end(copy);
 		}
