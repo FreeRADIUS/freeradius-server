@@ -5,3 +5,6 @@
 
 /* Define if you have <mysql/mysql.h> */
 #undef HAVE_MYSQL_MYSQL_H
+
+/* Define if the client library reports socket lifetime events */
+#undef HAVE_MARIADB_OPT_SOCKET_CALLBACK

@@ -249,6 +249,25 @@ static int sql_mysql_fd_track(rlm_sql_mysql_conn_t *c, fr_event_list_t *el)
 	return 0;
 }
 
+#ifdef HAVE_MARIADB_OPT_SOCKET_CALLBACK
+/** Called by the client library when it is about to close, or has just created, a socket
+ *
+ * The handle is still valid when MARIADB_SOCKET_CLOSING arrives, so this is the one
+ * point at which the event can be removed without racing the number being reused.
+ * Only the closing notification is of interest; the new socket is picked up by
+ * sql_mysql_fd_track() on return from the call that created it.
+ */
+static void _sql_socket_event(void *uctx, my_socket handle, enum enum_mariadb_socket_event event)
+{
+	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
+
+	if (event != MARIADB_SOCKET_CLOSING) return;
+	if (handle != c->client_fd) return;
+
+	sql_mysql_fd_release(c, c->conn->el);
+}
+#endif
+
 /** Callback for I/O events in response to mysql_real_connect_start()
  */
 static void _sql_connect_io_notify(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
@@ -358,6 +377,13 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	DEBUG("Starting connect to MySQL server");
 
 	mysql_init(&c->db);
+
+#ifdef HAVE_MARIADB_OPT_SOCKET_CALLBACK
+	/*
+	 *    Get notifications when the library is going to close a socket.
+	 */
+	mysql_optionsv(&c->db, MARIADB_OPT_SOCKET_CALLBACK, (void *)_sql_socket_event, (void *)c);
+#endif
 
 	/*
 	 *	If any of the TLS options are set, configure TLS
