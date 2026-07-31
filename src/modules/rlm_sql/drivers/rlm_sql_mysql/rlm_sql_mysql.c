@@ -270,9 +270,6 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	rlm_sql_config_t const	*config = &sql->config;
 
 	unsigned long		sql_flags;
-	enum mysql_option	ssl_mysql_opt;
-	unsigned int		ssl_mode = 0;
-	bool			ssl_mode_isset = false;
 
 	MEM(c = talloc_zero(conn, rlm_sql_mysql_conn_t));
 	c->conn = conn;
@@ -294,32 +291,14 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			      inst->tls_ca_file, inst->tls_ca_path, inst->tls_cipher);
 	}
 
-#ifdef MARIADB_BASE_VERSION
 	if (inst->tls_required || inst->tls_check_cert || inst->tls_check_cert_cn) {
-		ssl_mode_isset = true;
+		unsigned int	ssl_mode = true;
 		/**
 		 * For MariaDB, It should be true as can be seen in
 		 * https://github.com/MariaDB/server/blob/mariadb-5.5.68/sql-common/client.c#L4338
 		 */
-		ssl_mode = true;
-		ssl_mysql_opt = MYSQL_OPT_SSL_VERIFY_SERVER_CERT;
+		mysql_options(&(c->db), MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &ssl_mode);
 	}
-#else
-	ssl_mysql_opt = MYSQL_OPT_SSL_MODE;
-	if (inst->tls_required) {
-		ssl_mode = SSL_MODE_REQUIRED;
-		ssl_mode_isset = true;
-	}
-	if (inst->tls_check_cert) {
-		ssl_mode = SSL_MODE_VERIFY_CA;
-		ssl_mode_isset = true;
-	}
-	if (inst->tls_check_cert_cn) {
-		ssl_mode = SSL_MODE_VERIFY_IDENTITY;
-		ssl_mode_isset = true;
-	}
-#endif
-	if (ssl_mode_isset) mysql_options(&(c->db), ssl_mysql_opt, &ssl_mode);
 
 	if (inst->tls_crl_file) mysql_options(&(c->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
 	if (inst->tls_crl_path) mysql_options(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
