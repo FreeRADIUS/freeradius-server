@@ -70,7 +70,8 @@ typedef struct {
 	MYSQL		*sock;			//!< Connection details as returned by connection init functions.
 	MYSQL_RES	*result;		//!< Result from most recent query.
 	connection_t	*conn;			//!< Generic connection structure for this connection.
-	int		fd;			//!< fd for this connection's I/O events.
+	int		fd;			//!< Our fd for this connection's I/O events.
+	int		client_fd;		//!< Socket the client library last reported, for detecting fd changes.
 	fr_sql_query_t	*query_ctx;		//!< Current query running on this connection.
 	int		status;			//!< returned by the most recent non-blocking function call.
 } rlm_sql_mysql_conn_t;
@@ -187,9 +188,70 @@ static int mod_load(void)
 	return 0;
 }
 
+/** Stop tracking our fd for a connection.
+ *
+ * Removes the event and closes our descriptor.  Safe to call repeatedly.
+ */
+static void sql_mysql_fd_release(rlm_sql_mysql_conn_t *c, fr_event_list_t *el)
+{
+	if (c->fd < 0) return;
+
+	if (el) fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
+	close(c->fd);
+	c->fd = -1;
+	c->client_fd = -1;
+}
+
+/** Track the socket actually being used by the client library.
+ *
+ * The client library owns its socket and potentially both closes and replaces
+ * it without telling us during connection setup, meaning events are still
+ * registered on the wrong fd.
+ *
+ * Create a dup() of the fd which gets used in the event list to avoid this
+ * issue.
+ *
+ * Call after each mysql_real_connect_* call to ensure the correct fd is in
+ * the event list.
+ *
+ * @param[in] c		connection to update.
+ * @param[in] el	event list the old event is registered in, may be NULL if
+ *			nothing is registered yet.
+ * @return
+ *	- 0 if the descriptor is unchanged or was updated.
+ *	- -1 on error or if the library closed closed the connection.
+ */
+static int sql_mysql_fd_track(rlm_sql_mysql_conn_t *c, fr_event_list_t *el)
+{
+	char const	*log_prefix = c->conn->name;
+	int		client_fd = mysql_get_socket(&c->db);
+
+	if (client_fd == c->client_fd) return 0;    /* Still the same socket */
+
+	sql_mysql_fd_release(c, el);
+
+	/*
+	 *	The library has finished with the socket entirely, which is what a
+	 *	failed connect leaves behind.
+	 */
+	if (client_fd < 0){
+		ERROR("MySQL error: %s", mysql_error(&c->db));
+ 		return -1;
+	}
+
+	c->fd = dup(client_fd);
+	if (unlikely(c->fd < 0)) {
+		ERROR("Failed duplicating MySQL socket %d: %s", client_fd, fr_syserror(errno));
+		return -1;
+	}
+	c->client_fd = client_fd;
+
+	return 0;
+}
+
 /** Callback for I/O events in response to mysql_real_connect_start()
  */
-static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void _sql_connect_io_notify(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
 	char const		*log_prefix = c->conn->name;
@@ -198,10 +260,24 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	c->status = mysql_real_connect_cont(&c->sock, &c->db, c->status);
 
 	/*
+	 *    The library may have closed the socket we were waiting on and moved
+	 *    to the next address, so re-check before doing anything with it.
+	 */
+	if (unlikely(sql_mysql_fd_track(c, el) < 0)) {
+		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+		return;
+	}
+
+	/*
 	 *	If status is not zero, we're still waiting for something.
 	 *	The event will be fired again when that happens.
 	 */
 	if (c->status != 0) {
+		if (unlikely(c->fd < 0)) {
+			ERROR("MySQL is waiting on a socket it has already closed");
+			connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+			return;
+		}
 		(void) fr_event_fd_insert(c, NULL, c->conn->el, c->fd,
 				          c->status & MYSQL_WAIT_READ ? _sql_connect_io_notify : NULL,
 					  c->status & MYSQL_WAIT_WRITE ? _sql_connect_io_notify : NULL, NULL, c);
@@ -212,8 +288,11 @@ connected:
 	/*
 	 *	Pause any notifications until we're actually ready
 	 *	to operate on the connection.
+	 *
+	 *    Deleting by fd is safe here only because the fd is ours: see
+	 *    sql_mysql_fd_track().
 	 */
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+	if (c->fd >= 0) fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
 
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
@@ -274,6 +353,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	MEM(c = talloc_zero(conn, rlm_sql_mysql_conn_t));
 	c->conn = conn;
 	c->fd = -1;
+	c->client_fd = -1;
 
 	DEBUG("Starting connect to MySQL server");
 
@@ -335,8 +415,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 					     config->sql_db,
 					     config->sql_port, NULL, sql_flags);
 
-	c->fd = mysql_get_socket(&c->db);
-	if (c->fd < 0) {
+	if ((mysql_get_socket(&c->db) < 0) || (sql_mysql_fd_track(c, NULL) < 0)) {
 		ERROR("Could't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("MySQL error: %s", mysql_error(&c->db));
@@ -372,10 +451,11 @@ static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uct
 {
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(h, rlm_sql_mysql_conn_t);
 
-	if (c->fd >= 0) {
-		fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
-		c->fd = -1;
-	}
+	/*
+	 *    Clean up event and our fd before closing.
+	 */
+	sql_mysql_fd_release(c, el);
+
 	mysql_close(&c->db);
 	c->query_ctx = NULL;
 	talloc_free(h);
