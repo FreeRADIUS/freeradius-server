@@ -297,15 +297,15 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		 * For MariaDB, It should be true as can be seen in
 		 * https://github.com/MariaDB/server/blob/mariadb-5.5.68/sql-common/client.c#L4338
 		 */
-		mysql_options(&(c->db), MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &ssl_mode);
+		mysql_optionsv(&(c->db), MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &ssl_mode);
 	}
 
-	if (inst->tls_crl_file) mysql_options(&(c->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
-	if (inst->tls_crl_path) mysql_options(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
+	if (inst->tls_crl_file) mysql_optionsv(&(c->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
+	if (inst->tls_crl_path) mysql_optionsv(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
 
-	mysql_options(&(c->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
+	mysql_optionsv(&(c->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
-	if (inst->character_set) mysql_options(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
+	if (inst->character_set) mysql_optionsv(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
 
 #if MYSQL_VERSION_ID < 80034
 	/*
@@ -326,7 +326,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	sql_flags |= CLIENT_MULTI_STATEMENTS;
 #endif
 
- 	mysql_options(&c->db, MYSQL_OPT_NONBLOCK, 0);
+ 	mysql_optionsv(&c->db, MYSQL_OPT_NONBLOCK, 0);
 
 	c->status = mysql_real_connect_start(&c->sock, &c->db,
 					     config->sql_server,
