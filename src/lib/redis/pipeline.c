@@ -97,7 +97,7 @@ struct fr_redis_command_set_s {
 	fr_redis_async_rcode_t		rcode;		//!< Code from last error returned.
 	bool				autofree;	//!< Should the command set be freed when it is complete
 
-	fr_ipaddr_t			next_node_addr;	//!< IP address of node from MOVED / ASK reply
+	char				*next_node_ip;	//!< IP address of node from MOVED / ASK reply
 	uint16_t			next_node_port; //!< Port of node from MOVED / ASK reply
 
 	/** @name Command state lists
@@ -541,10 +541,12 @@ void fr_redis_command_set_cancel(fr_redis_command_set_t *cmds)
 /** Convert a MOVED / ASK reply into an address and port
  *
  */
-static int redis_addr_from_redirect(fr_ipaddr_t *addr, uint16_t *port, redisReply *redirect)
+static int redis_addr_from_redirect(TALLOC_CTX *ctx, char **addr, uint16_t *port, redisReply *redirect)
 {
 	unsigned long	key;
 	fr_sbuff_t	sbuff;
+	fr_ipaddr_t	ipaddr;
+	char		buff[FR_IPADDR_STRLEN];
 
 	if (!redirect || (redirect->type != REDIS_REPLY_ERROR)) return -1;
 
@@ -570,11 +572,13 @@ static int redis_addr_from_redirect(fr_ipaddr_t *addr, uint16_t *port, redisRepl
 		return -1;
 	}
 
-	if (fr_inet_pton_port(addr, port, fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
+	if (fr_inet_pton_port(&ipaddr, port, fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
 			      AF_UNSPEC, true, true) < 0) {
 		return -1;
 	}
-	fr_assert(addr->af);
+	fr_assert(ipaddr.af);
+
+	*addr = talloc_strdup(ctx, fr_inet_ntop(buff, sizeof(buff), &ipaddr));
 
 	return 0;
 }
@@ -667,7 +671,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 			ROPTIONAL(RWARN, WARN, "Server returned %s", reply->str);
 			cmds->rcode = REDIS_ASYNC_RCODE_ASK;
 		redirect:
-			if (redis_addr_from_redirect(&cmds->next_node_addr, &cmds->next_node_port, reply) < 0) {
+			if (redis_addr_from_redirect(cmds, &cmds->next_node_ip, &cmds->next_node_port, reply) < 0) {
 				cmds->rcode = REDIS_ASYNC_RCODE_ERROR;
 			}
 			cmds->redirected++;
@@ -951,10 +955,10 @@ fr_redis_async_rcode_t fr_redis_command_set_rcode(fr_redis_command_set_t *cmds)
 
 /** Extract the next node address and port from a command set
  */
-void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t *addr)
+void fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_redis_io_conf_t *ioconf)
 {
-	addr->inet.dst_ipaddr = cmds->next_node_addr;
-	addr->inet.dst_port = cmds->next_node_port;
+	ioconf->hostname = cmds->next_node_ip;
+	ioconf->port = cmds->next_node_port;
 }
 
 /** Reset a command set to it's state before enqueuing
@@ -979,7 +983,7 @@ int fr_redis_command_set_reset(fr_redis_command_set_t *cmds)
 		fr_dlist_insert_head(&cmds->pending, cmd);
 	}
 
-	cmds->next_node_addr = (fr_ipaddr_t){};
+	TALLOC_FREE(cmds->next_node_ip);
 	cmds->next_node_port = 0;
 	cmds->treq = NULL;
 
@@ -991,7 +995,7 @@ int fr_redis_command_set_clear(fr_redis_command_set_t *cmds)
 	if (fr_dlist_num_elements(&cmds->pending) > 0) return -1;
 	if (fr_dlist_num_elements(&cmds->sent) > 0) return -1;
 	fr_dlist_clear(&cmds->completed);
-	cmds->next_node_addr = (fr_ipaddr_t){};
+	TALLOC_FREE(cmds->next_node_ip);
 	cmds->next_node_port = 0;
 	cmds->treq = NULL;
 	return 0;

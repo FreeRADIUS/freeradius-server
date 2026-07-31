@@ -97,7 +97,7 @@ fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 
 fr_redis_async_rcode_t		fr_redis_command_set_rcode(fr_redis_command_set_t *cmds);
 
-void				fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_socket_t *addr);
+void				fr_redis_command_set_next_node(fr_redis_command_set_t *cmds, fr_redis_io_conf_t *ioconf);
 
 int				fr_redis_command_set_reset(fr_redis_command_set_t *cmds);
 

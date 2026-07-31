@@ -353,7 +353,7 @@ typedef struct {
 /** Resume context for pool list module method
  */
 typedef struct {
-	fr_socket_t		*nodes;			//!< List of nodes to query.
+	fr_redis_io_conf_t	*nodes;			//!< List of nodes to query.
 	uint8_t			node_count;		//!< How many nodes are in nodes.
 	uint8_t			current_node;		//!< Node number currently being queried.
 	char			cursor[19];		//!< Cursor value returned in last result.
@@ -1916,13 +1916,13 @@ static unlang_action_t mod_pools_list_next_scan(unlang_result_t *p_result, reque
 	do {
 		node = fr_redis_ct_node_by_addr(thread->rtcluster, &rctx->nodes[rctx->current_node]);
 		if (node) {
-			RDEBUG3("Querying node %d - %pV:%d", rctx->current_node,
-				fr_box_ipaddr(rctx->nodes[rctx->current_node].inet.dst_ipaddr),
-				rctx->nodes[rctx->current_node].inet.dst_port);
+			RDEBUG3("Querying node %d - %s:%d", rctx->current_node,
+				rctx->nodes[rctx->current_node].hostname,
+				rctx->nodes[rctx->current_node].port);
 			break;
 		}
-		RWARN("Unable to find node %pV:%d", fr_box_ipaddr(rctx->nodes[rctx->current_node].inet.dst_ipaddr),
-		      rctx->nodes[rctx->current_node].inet.dst_port);
+		RWARN("Unable to find node %s:%d", rctx->nodes[rctx->current_node].hostname,
+		      rctx->nodes[rctx->current_node].port);
 		rctx->current_node++;
 	} while (rctx->current_node < rctx->node_count);
 	if (!node) return UNLANG_ACTION_CALCULATE_RESULT;

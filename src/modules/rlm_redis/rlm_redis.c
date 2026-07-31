@@ -342,7 +342,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_redis_ct_key_slot_t const	*key_slot;
 	fr_redis_ct_node_t const	*node;
-	fr_ipaddr_t			ipaddr;
+	char const			*ipaddr;
 	uint16_t			port;
 
 	unsigned long			idx = 0;
@@ -364,13 +364,14 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
-	if ((fr_redis_ct_ipaddr(&ipaddr, node) < 0) || (fr_redis_ct_port(&port, node) < 0)) {
+	ipaddr = fr_redis_ct_ipaddr(node);
+	if (!ipaddr || (fr_redis_ct_port(&port, node) < 0)) {
 		REDEBUG("Failed retrieving node information");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_asprintf(vb, vb, NULL, false, "%pV:%u", fr_box_ipaddr(ipaddr), port);
+	fr_value_box_asprintf(vb, vb, NULL, false, "%s:%u", ipaddr, port);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -760,18 +761,24 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	Hack to allow querying against a specific node for testing
 	 */
 	if (fr_sbuff_next_if_char(&sbuff, '@')) {
-		fr_socket_t	node_addr;
+		fr_ipaddr_t	node_addr;
+		uint16_t	port;
+		char		buff[FR_IPADDR_STRLEN];
 
 		RDEBUG3("Overriding node selection");
 
-		if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port,
+		if (fr_inet_pton_port(&node_addr, &port,
 				      fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff),
 				      AF_UNSPEC, true, true) < 0) {
 			RPEDEBUG("Failed parsing node address");
 			return XLAT_ACTION_FAIL;
 		}
 
-		node = fr_redis_ct_node_by_addr(thread->rtcluster, &node_addr);
+		fr_inet_ntop(buff, sizeof(buff), &node_addr);
+		node = fr_redis_ct_node_by_addr(thread->rtcluster, &(fr_redis_io_conf_t){
+				.hostname = buff,
+				.port = port
+			});
 		if (!node) {
 			RPEDEBUG("Failed locating cluster node");
 			return XLAT_ACTION_FAIL;

@@ -205,8 +205,6 @@ struct fr_redis_ct_node_s {
 	bool				is_active;	//!< Is this node currently active.
 	bool				is_master;	//!< Is this node currently a master.
 
-	fr_socket_t			addr;		//!< IP address and port
-
 	fr_redis_ct_t			*rtcluster;	//!< Cluster this node belongs to
 	fr_redis_io_conf_t		ioconf;		//!< Connection config for this node.
 	fr_redis_trunk_t		*trunk;		//!< Trunk connection to this node.
@@ -239,27 +237,25 @@ typedef struct {
 	fr_redis_ct_t			*rtcluster;	//!< Cluster the request is waiting for.
 } fr_redis_ct_pend_req_t;
 
-#define CONFIGURE_NODE(_node, _addr) \
+#define CONFIGURE_NODE(_node, _addr, _port) \
 do {  \
-char buff [FR_IPADDR_STRLEN]; \
-	_node->addr = _addr; \
 	_node->ioconf = (fr_redis_io_conf_t) { \
-		.port = _node->addr.inet.dst_port, \
+		.port = _port, \
 		.database = rtcluster->conf->database, \
 		.username = rtcluster->conf->username, \
 		.password = rtcluster->conf->password, \
 		.use_tls = rtcluster->conf->use_tls, \
 	}; \
+	_node->ioconf.hostname = talloc_strdup(rtcluster, _addr); \
 	_node->ioconf.log_prefix = talloc_asprintf(rtcluster, "%s %s:%d", rtcluster->conf->log_prefix, \
-						   fr_inet_ntop(buff, sizeof(buff), &_node->addr.inet.dst_ipaddr), \
-						   _node->ioconf.port); \
+						   _addr, _node->ioconf.port); \
 	if (rtcluster->conf->trunk_conf.conn_triggers) { \
 		module_trigger_args_build(rtcluster, &_node->trigger_args, NULL, \
 					&(module_trigger_args_t) { \
 						.module = rtcluster->conf->module_name, \
 						.name = rtcluster->conf->inst_name, \
-						.server = buff, \
-						.port = _node->addr.inet.dst_port \
+						.server = _addr, \
+						.port = _node->ioconf.port \
 					}); \
 	} \
 	_node->trunk = fr_redis_trunk_alloc(rtcluster, &_node->ioconf, &_node->trigger_args, rtcluster->active, \
@@ -364,19 +360,16 @@ fr_redis_ct_node_t const *fr_redis_ct_replica(fr_redis_ct_t *rtcluster,
 
 /** Return the ipaddr of a particular node
  *
- * @param[out] out	Ipaddr of the node.
  * @param[in] node	to get ip address from.
  * @return
- *	- 0 on success.
- *	- -1 on failure (node is NULL).
+ *	- IP address of node
+ *	- NULL on failure (node is NULL).
  */
-int fr_redis_ct_ipaddr(fr_ipaddr_t *out, fr_redis_ct_node_t const *node)
+char const * fr_redis_ct_ipaddr(fr_redis_ct_node_t const *node)
 {
-	if (!node) return -1;
+	if (!node) return NULL;
 
-	memcpy(out, &node->addr.inet.dst_ipaddr, sizeof(*out));
-
-	return 0;
+	return node->ioconf.hostname;
 }
 
 /** Return the port of a particular node
@@ -391,7 +384,7 @@ int fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node)
 {
 	if (!node) return -1;
 
-	*out = node->addr.inet.dst_port;
+	*out = node->ioconf.port;
 
 	return 0;
 }
@@ -548,7 +541,7 @@ fr_redis_async_rcode_t fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd)
 {
 	fr_redis_ct_node_t	find, *cluster_node;
 
-	fr_redis_command_set_next_node(cmd->cmds, &find.addr);
+	fr_redis_command_set_next_node(cmd->cmds, &find.ioconf);
 
 	cluster_node = fr_rb_find(cmd->rtcluster->used_nodes, &find);
 	if (!cluster_node) {
@@ -585,10 +578,10 @@ static int8_t _cluster_thread_node_cmp(void const *one, void const *two)
 	fr_redis_ct_node_t const *b = two;
 	int ret;
 
-	ret = fr_ipaddr_cmp(&a->addr.inet.dst_ipaddr, &b->addr.inet.dst_ipaddr);
+	ret = strcmp(a->ioconf.hostname, b->ioconf.hostname);
 	if (ret != 0) return ret;
 
-	return CMP(a->addr.inet.dst_port, b->addr.inet.dst_port);
+	return CMP(a->ioconf.port, b->ioconf.port);
 }
 
 #ifdef HAVE_REDIS_SSL
@@ -691,20 +684,23 @@ fr_redis_ct_t *fr_redis_ct_alloc(TALLOC_CTX *ctx, CONF_SECTION *tls_cs, fr_event
 	 */
 	for (s = 0; s < talloc_array_length(conf->hostname); s++) {
 		fr_redis_ct_node_t	*cluster_node;
-		fr_socket_t		addr;
+		fr_ipaddr_t		addr;
+		uint16_t		port;
+		char			buff[FR_IPADDR_STRLEN];
 
 		cluster_node = fr_fifo_pop(rtcluster->free_nodes);
 		if (!cluster_node) {
 			ERROR("Reached maximum connected nodes");
 			goto error;
 		}
-		if (fr_inet_pton_port(&addr.inet.dst_ipaddr, &addr.inet.dst_port,
+		if (fr_inet_pton_port(&addr, &port,
 				      conf->hostname[s], talloc_strlen(conf->hostname[s]), AF_UNSPEC, true, true) < 0) {
 			PERROR("Failed parsing %s", conf->hostname[s]);
 			goto error;
 		}
-		if (addr.inet.dst_port == 0) addr.inet.dst_port = conf->port;
-		CONFIGURE_NODE(cluster_node, addr);
+		if (port == 0) port = conf->port;
+		fr_inet_ntop(buff, sizeof(buff), &addr);
+		CONFIGURE_NODE(cluster_node, buff, port);
 		fr_rb_insert(rtcluster->used_nodes, cluster_node);
 		cluster_node->is_active = true;
 		cluster_node->is_master = true;
@@ -814,10 +810,10 @@ do { \
 
 				node_ip = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_endpoint);
 				if (unlikely(!node_ip)) continue;
-				fr_inet_pton(&find.addr.inet.dst_ipaddr, node_ip->vp_strvalue, node_ip->vp_length, AF_UNSPEC, true, true);
+				find.ioconf.hostname = node_ip->vp_strvalue;
 				node_port = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_port);
 				if (unlikely(!node_port)) continue;
-				find.addr.inet.dst_port = node_port->vp_uint16;
+				find.ioconf.port = node_port->vp_uint16;
 
 				cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
 				break;
@@ -838,7 +834,7 @@ do { \
 				fr_strerror_const("Reached maximum connected nodes");
 				goto error;
 			}
-			CONFIGURE_NODE(cluster_node, find.addr);
+			CONFIGURE_NODE(cluster_node, find.ioconf.hostname, find.ioconf.port);
 			SET_ACTIVE(cluster_node);
 		} else {
 			active[cluster_node->id] = true;
@@ -854,9 +850,11 @@ do { \
 
 			DEBUG3("Replica node %pP", node);
 			node_ip = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_endpoint);
-			fr_inet_pton(&find.addr.inet.dst_ipaddr, node_ip->vp_strvalue, node_ip->vp_length, AF_UNSPEC, true, true);
+			if (unlikely(!node_ip)) continue;
+			find.ioconf.hostname = node_ip->vp_strvalue;
 			node_port = fr_pair_find_by_da(&node->vp_group, NULL, attr_redis_node_port);
-			find.addr.inet.dst_port = node_port->vp_uint16;
+			if (unlikely(!node_port)) continue;
+			find.ioconf.port = node_port->vp_uint16;
 
 			cluster_node = fr_rb_find(rtcluster->used_nodes, &find);
 
@@ -869,7 +867,7 @@ do { \
 			cluster_node = fr_fifo_peek(rtcluster->free_nodes);
 			if (!cluster_node) goto out_of_nodes;
 
-			CONFIGURE_NODE(cluster_node, find.addr);
+			CONFIGURE_NODE(cluster_node, find.ioconf.hostname, find.ioconf.port);
 			tmp_slot.replica[tmp_slot.num_replicas++] = cluster_node->id;
 			SET_ACTIVE(cluster_node);
 		}
@@ -1099,21 +1097,23 @@ fr_redis_async_rcode_t fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_wo
 	return REDIS_ASYNC_RCODE_SUCCESS;
 }
 
-fr_redis_ct_node_t *fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_socket_t *addr)
+fr_redis_ct_node_t *fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_redis_io_conf_t *ioconf)
 {
-	fr_redis_ct_node_t find;
-	find.addr = *addr;
+	fr_redis_ct_node_t	find;
+
+	find.ioconf.hostname = ioconf->hostname;
+	find.ioconf.port = ioconf->port;
 	return fr_rb_find(rtcluster->used_nodes, &find);
 }
 
-fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
+fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_redis_io_conf_t *out[], uint8_t *count_out,
 						     fr_redis_ct_t *rtcluster, bool is_master, bool is_replica)
 {
 	uint64_t 		in_use = fr_rb_num_elements(rtcluster->used_nodes);
 	fr_rb_iter_inorder_t	iter;
 	fr_redis_ct_node_t	*node;
 	uint8_t			count = 0;
-	fr_socket_t		*found;
+	fr_redis_io_conf_t	*found;
 
 	switch (rtcluster->state) {
 	case CLUSTER_INIT:
@@ -1132,7 +1132,7 @@ fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_
 		return REDIS_ASYNC_RCODE_SUCCESS;
 	}
 
-	found = talloc_zero_array(ctx, fr_socket_t, in_use);
+	found = talloc_zero_array(ctx, fr_redis_io_conf_t, in_use);
 	if (!found) {
 		fr_strerror_const("Out of memory");
 		return REDIS_ASYNC_RCODE_ERROR;
@@ -1141,7 +1141,7 @@ fr_redis_async_rcode_t fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_
 	for (node = fr_rb_iter_init_inorder(rtcluster->used_nodes, &iter);
 	     node;
 	     node = fr_rb_iter_next_inorder(rtcluster->used_nodes, &iter)) {
-		if ((is_master && node->is_master) || (is_replica && !node->is_master)) found[count++] = node->addr;
+		if ((is_master && node->is_master) || (is_replica && !node->is_master)) found[count++] = node->ioconf;
 	}
 
 	if (count == 0) {

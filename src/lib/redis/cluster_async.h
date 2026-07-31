@@ -71,7 +71,7 @@ fr_redis_ct_node_t const	*fr_redis_ct_master(fr_redis_ct_t *thread, fr_redis_ct_
 fr_redis_ct_node_t const	*fr_redis_ct_replica(fr_redis_ct_t *thread,
 						     fr_redis_ct_key_slot_t const *key_slot, uint8_t replica_num);
 
-int				fr_redis_ct_ipaddr(fr_ipaddr_t *out, fr_redis_ct_node_t const *node);
+char const			*fr_redis_ct_ipaddr(fr_redis_ct_node_t const *node);
 
 int				fr_redis_ct_port(uint16_t *out, fr_redis_ct_node_t const *node);
 
@@ -109,9 +109,9 @@ fr_redis_async_rcode_t		fr_redis_async_cmd_redirect(fr_redis_async_cmd_t *cmd);
 
 fr_redis_async_rcode_t		fr_redis_async_cmd_resend(fr_redis_async_cmd_t *cmd);
 
-fr_redis_ct_node_t		*fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_socket_t *addr);
+fr_redis_ct_node_t		*fr_redis_ct_node_by_addr(fr_redis_ct_t *rtcluster, fr_redis_io_conf_t *addr);
 
-fr_redis_async_rcode_t		fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[], uint8_t *count_out,
+fr_redis_async_rcode_t		fr_redis_ct_node_addr_by_role(TALLOC_CTX *ctx, fr_redis_io_conf_t *out[], uint8_t *count_out,
 							      fr_redis_ct_t *rtcluster, bool is_master, bool is_replica);
 
 void				fr_redis_ct_request_yield(TALLOC_CTX *ctx, fr_redis_ct_t *rtcluster,

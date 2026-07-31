@@ -48,7 +48,7 @@ extern "C" {
 #endif
 
 typedef struct {
-	char			*hostname;
+	char const		*hostname;
 	uint16_t		port;
 	uint32_t		database;	//!< number on Redis server.
 
