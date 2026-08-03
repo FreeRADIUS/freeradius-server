@@ -370,7 +370,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 
 	ssl_ctx = SSL_get_SSL_CTX(ssl);
 	store_ctx = X509_STORE_CTX_new();
-	if (unlikely(!store_ctx)) {
+	if (unlikely(store_ctx == NULL)) {
 		REDEBUG("Failed allocating X509_STORE_CTX");
 		return 0;
 	}
