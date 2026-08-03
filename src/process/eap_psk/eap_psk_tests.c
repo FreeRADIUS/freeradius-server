@@ -167,23 +167,23 @@ static void test_cmac_rfc4493(void)
 	uint8_t mac[16];
 
 	/* Example 1 - empty message */
-	TEST_CHECK(eap_psk_cmac(mac, key, NULL, 0, NULL, 0, NULL, 0, NULL, 0) == 0);
+	TEST_ASSERT(eap_psk_cmac(mac, key, NULL, 0, NULL, 0, NULL, 0, NULL, 0) == 0);
 	TEST_CHECK(memcmp(mac, expect_m0, sizeof(mac)) == 0);
 
 	/* Example 2 - 16 bytes */
-	TEST_CHECK(eap_psk_cmac(mac, key, msg, 16, NULL, 0, NULL, 0, NULL, 0) == 0);
+	TEST_ASSERT(eap_psk_cmac(mac, key, msg, 16, NULL, 0, NULL, 0, NULL, 0) == 0);
 	TEST_CHECK(memcmp(mac, expect_m16, sizeof(mac)) == 0);
 
 	/* Example 3 - 40 bytes */
-	TEST_CHECK(eap_psk_cmac(mac, key, msg, 40, NULL, 0, NULL, 0, NULL, 0) == 0);
+	TEST_ASSERT(eap_psk_cmac(mac, key, msg, 40, NULL, 0, NULL, 0, NULL, 0) == 0);
 	TEST_CHECK(memcmp(mac, expect_m40, sizeof(mac)) == 0);
 
 	/* Example 3 again, split across segments - must match the one-shot value */
-	TEST_CHECK(eap_psk_cmac(mac, key, msg, 16, msg + 16, 16, msg + 32, 8, NULL, 0) == 0);
+	TEST_ASSERT(eap_psk_cmac(mac, key, msg, 16, msg + 16, 16, msg + 32, 8, NULL, 0) == 0);
 	TEST_CHECK(memcmp(mac, expect_m40, sizeof(mac)) == 0);
 
 	/* Example 4 - 64 bytes */
-	TEST_CHECK(eap_psk_cmac(mac, key, msg, 64, NULL, 0, NULL, 0, NULL, 0) == 0);
+	TEST_ASSERT(eap_psk_cmac(mac, key, msg, 64, NULL, 0, NULL, 0, NULL, 0) == 0);
 	TEST_CHECK(memcmp(mac, expect_m64, sizeof(mac)) == 0);
 }
 
@@ -194,7 +194,7 @@ static void test_derive_ak_kdk(void)
 {
 	uint8_t ak[EAP_PSK_AK_LEN], kdk[EAP_PSK_KDK_LEN];
 
-	TEST_CHECK(eap_psk_derive_ak_kdk(ak, kdk, test_psk) == 0);
+	TEST_ASSERT(eap_psk_derive_ak_kdk(ak, kdk, test_psk) == 0);
 	TEST_CHECK(memcmp(ak, expect_ak, sizeof(ak)) == 0);
 	TEST_CHECK(memcmp(kdk, expect_kdk, sizeof(kdk)) == 0);
 }
@@ -206,7 +206,7 @@ static void test_derive_keys(void)
 {
 	uint8_t tek[EAP_PSK_TEK_LEN], msk[EAP_PSK_MSK_LEN], emsk[EAP_PSK_EMSK_LEN];
 
-	TEST_CHECK(eap_psk_derive_keys(tek, msk, emsk, expect_kdk, test_rand_p) == 0);
+	TEST_ASSERT(eap_psk_derive_keys(tek, msk, emsk, expect_kdk, test_rand_p) == 0);
 	TEST_CHECK(memcmp(tek, expect_tek, sizeof(tek)) == 0);
 	TEST_CHECK(memcmp(msk, expect_msk, sizeof(msk)) == 0);
 	TEST_CHECK(memcmp(emsk, expect_emsk, sizeof(emsk)) == 0);
@@ -219,13 +219,13 @@ static void test_macs(void)
 {
 	uint8_t mac_p[EAP_PSK_MAC_LEN], mac_s[EAP_PSK_MAC_LEN];
 
-	TEST_CHECK(eap_psk_mac_p(mac_p, expect_ak,
+	TEST_ASSERT(eap_psk_mac_p(mac_p, expect_ak,
 				 (uint8_t const *) test_id_p, strlen(test_id_p),
 				 (uint8_t const *) test_id_s, strlen(test_id_s),
 				 test_rand_s, test_rand_p) == 0);
 	TEST_CHECK(memcmp(mac_p, expect_mac_p, sizeof(mac_p)) == 0);
 
-	TEST_CHECK(eap_psk_mac_s(mac_s, expect_ak,
+	TEST_ASSERT(eap_psk_mac_s(mac_s, expect_ak,
 				 (uint8_t const *) test_id_s, strlen(test_id_s),
 				 test_rand_p) == 0);
 	TEST_CHECK(memcmp(mac_s, expect_mac_s, sizeof(mac_s)) == 0);
@@ -242,13 +242,13 @@ static void test_pchannel_encrypt(void)
 	uint8_t tag[EAP_PSK_TAG_LEN];
 
 	test_header(header, 0x01, 59, 0x80);
-	TEST_CHECK(eap_psk_pchannel_encrypt(&cipher, tag, expect_tek, 0,
+	TEST_ASSERT(eap_psk_pchannel_encrypt(&cipher, tag, expect_tek, 0,
 					    header, sizeof(header), &plain, 1) == 0);
 	TEST_CHECK(cipher == expect_msg3_cipher);
 	TEST_CHECK(memcmp(tag, expect_msg3_tag, sizeof(tag)) == 0);
 
 	test_header(header, 0x02, 43, 0xc0);
-	TEST_CHECK(eap_psk_pchannel_encrypt(&cipher, tag, expect_tek, 1,
+	TEST_ASSERT(eap_psk_pchannel_encrypt(&cipher, tag, expect_tek, 1,
 					    header, sizeof(header), &plain, 1) == 0);
 	TEST_CHECK(cipher == expect_msg4_cipher);
 	TEST_CHECK(memcmp(tag, expect_msg4_tag, sizeof(tag)) == 0);
@@ -267,7 +267,7 @@ static void test_pchannel_decrypt(void)
 	test_header(header, 0x02, 43, 0xc0);
 
 	/* The hostap-computed message 4 ciphertext decrypts to R = DONE_SUCCESS */
-	TEST_CHECK(eap_psk_pchannel_decrypt(&plain, expect_tek, 1,
+	TEST_ASSERT(eap_psk_pchannel_decrypt(&plain, expect_tek, 1,
 					    header, sizeof(header),
 					    &expect_msg4_cipher, 1, expect_msg4_tag) == 0);
 	TEST_CHECK(plain == 0x80);
