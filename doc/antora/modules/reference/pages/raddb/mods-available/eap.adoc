@@ -15,12 +15,19 @@ the users then cannot use ANY other authentication method.
 
 == Configuration Settings
 
-require_identity_realm:: Require the EAP Identity provided contains a
-realm.
+require_identity_realm:: Require that the EAP Identity contains a
+realm, as per https://tools.ietf.org/html/rfc7542[RFC 7542].
 
-If `require_identity_realm` is `nai`, the EAP identity provided must
-end with `@<label0>.<label1>[.<labelN>]`, i.e. an '@' followed by at
-least two DNS labels.
+If `require_identity_realm` is `nai`, the EAP identity MUST end with
+`@`, followed by a DNS name. In
+https://tools.ietf.org/html/rfc7542[RFC 7542] syntax,
+
+----
+@<label0>.<label1>[.<labelN>]
+----
+
+So `@foo` does not match, because it is not a valid name in DNS. The
+identity `@example.com` is allowed, as it is a valid name in DNS.
 
 If `require_identity_realm` is `yes`, the EAP identity provided must
 either match the NAI format described above, or a
@@ -29,15 +36,20 @@ This validation mode is intended to be user where Windows machine
 authentication is intermixed with user authentication.
 
 If `require_identity_realm` is `no`, no identity format checks are
-performed. It is NOT recommended to use this value. Future security
-standards will key off the NAI realm to validate the certificate we
-(the EAP server) present. If you do not require an NAI realm be
-present in the EAP identity string, your users will not be able to
-take advantage of this added security when it is enabled by OS and
-device vendors.
+performed. It is NOT RECOMMENDED to use this value. Future security
+standards will key off the NAI realm to validate the certificate that
+FreeRADIUS presents. If you disable the NAI checks, your users will be
+vulnerable to attackers who create fake certificate.
 
-Session tracking has moved to the `session` section of a virtual
+In addition, disabling the realm checks means that the EAP packets
+will not be able to be proxied through a roaming federation such as
+eduroam or OpenRoaming.
+
+The default value is `nai`.
+
+Session tracking has been moved to the `session` section of a virtual
 server.
+
 * timer_expire --> timeout
 * max_sessions --> max
 * dedup_key    --> dedup_key
@@ -54,7 +66,7 @@ If the `control.EAP-Type` attribute is set, then that EAP type takes
 precedence over any configured or inferred EAP-Type.
 
 It is generally recommended to NOT set `default_eap_type`, and instead
-order the `type` configuration items appropriately.
+order the `type` configuration items, below.
 
 ignore_unknown_eap_types::
 
@@ -84,9 +96,9 @@ If the `control.EAP-Type` attribute is set, then that is used to form
 the list of allowed EAP types, with the first instance being the
 default type and others also being allowed.
 
-Setting an EAP type in `control.EAP-Type` which is not allowed below,
-will not have any effect, since this list determines which methods are
-loaded and potentially available.
+If `control.EAP-Type` is set to an EAP type which is not listed below
+, then that setting will be ignored. The list here determines which
+methods are loaded and available.
 
 === EAP-MD5
 
@@ -105,7 +117,7 @@ also must be 16 octets in length.
 The PSK should be generated from a secure source, e.g. a CSPRNG.
 
 identity:: Server identifier (ID_S) This should generally be the host
-name of the RADIUS server.  Or, some information to uniquely identify
+name of the RADIUS server. Or, some information to uniquely identify
 it.
 
 === EAP-PWD (Secure password-based authentication)
@@ -1197,8 +1209,8 @@ eap {
 #	default_eap_type = md5
 	ignore_unknown_eap_types = no
 	type = md5
-#	type = psk
-#	type = pwd
+	type = psk
+	type = pwd
 	type = gtc
 	type = tls
 	type = ttls
