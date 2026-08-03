@@ -1864,16 +1864,13 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 		 *	we're draining requests from it.
 		 */
 		connection_signals_pause(tconn->pub.conn);
-		while ((treq = fr_dlist_head(&tconn->sent))) {
-			if (++count > max) {
-				count--;
-				break;
-			}
+		while ((count < max) && (treq = fr_dlist_head(&tconn->sent))) {
 			fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_SENT);
 
 			trunk_request_enter_cancel(treq, TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
+			count++;
 		}
 		connection_signals_resume(tconn->pub.conn);
 	}
