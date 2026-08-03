@@ -30,7 +30,7 @@ RCSID("$Id$")
 /** Allocate a child request based on the parent.
  *
  * @param[in] parent		spawning the child request.
- * @param[in] namespace		the child request operates in.  Must not be NULL.
+ * @param[in] namespace		the child request operates in. If NULL the parent's namespace is used.
  * @param[in] detachable	Allow/disallow the child to be detached.
  * @return
  *      - The new child request.
@@ -39,6 +39,8 @@ RCSID("$Id$")
 request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
 	request_t		*child;
+
+	if (!namespace) namespace = parent->proto_dict;
 
 	/*
 	 *	A child cannot refer to local variables in the parent context.
