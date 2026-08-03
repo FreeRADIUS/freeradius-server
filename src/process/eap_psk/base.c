@@ -359,7 +359,7 @@ static unlang_action_t resume_recv_identity_response(unlang_result_t *p_result, 
 	 *	that identity probing is not possible; policy may override
 	 *	with reply.Packet-Type := ::Failure.
 	 */
-	known_good = fr_pair_find_by_da(&request->control_pairs, NULL, attr_psk_password);
+	known_good = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_psk_password);
 	if (!known_good) {
 		RDEBUG2("No control.Password.PSK for Identity \"%pV\"",
 			fr_box_strvalue_len((char const *) session->id_p, session->id_p_len));
