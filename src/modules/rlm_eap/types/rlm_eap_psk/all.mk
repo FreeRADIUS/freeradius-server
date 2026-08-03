@@ -1,3 +1,5 @@
+SUBMAKEFILES	:= eap_psk_tests.mk
+
 TARGETNAME	:= rlm_eap_psk
 
 ifneq "$(OPENSSL_LIBS)" ""
