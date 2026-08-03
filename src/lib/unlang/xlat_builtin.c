@@ -421,10 +421,14 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 /*
  *	Limit the %file...() functions to a particular subset of directories.
  */
-static bool xlat_file_allowed(request_t *request, char const *filename, size_t len)
+static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
 {
 	size_t i, num_files;
 
+	/*
+	 *	Note that we do *not* allow SAFE_FOR_ANY here.  We
+	 *	want to have "defense in depth".
+	 */
 	if (!main_config->limit_files) return true;
 
 	num_files = talloc_array_length(main_config->limit_files);
@@ -436,30 +440,30 @@ static bool xlat_file_allowed(request_t *request, char const *filename, size_t l
 		/*
 		 *	The allowed directory is longer than the filename, it's not allowed.
 		 */
-		if (alen > len) continue;
+		if (alen > vb->vb_length) continue;
 
 		/*
 		 *	No leading match, it's not allowed.
 		 */
-		if (memcmp(filename, main_config->limit_files[i], alen) != 0) continue;
+		if (memcmp(vb->vb_strvalue, main_config->limit_files[i], alen) != 0) continue;
 
-		if (alen == len) return true;
+		if (alen == vb->vb_length) return true;
 
 		/*
 		 *	Setting "allow = foo/bar" does NOT mean that
 		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
 		 */
-		if (filename[alen] != '/') break;
+		if (vb->vb_strvalue[vb->vb_length] != '/') break;
 
 		return true;
 	}
 
 fail:
-	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", filename);
+	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", vb->vb_strvalue);
 	return false;
 }
 
-#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, (_vb)->vb_strvalue, (_vb)->vb_length)
+#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, vb)
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,

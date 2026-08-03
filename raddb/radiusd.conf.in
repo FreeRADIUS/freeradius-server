@@ -578,6 +578,10 @@ security {
 	#  Note that you should NOT list ${confdir} here.  The
 	#  configuration files should NEVER be writable by the server.
 	#
+	#  If this section is configured, then these limits are always
+	#  applied, even if the filename comes from the configuration
+	#  files, and would normally be considered "safe".
+	#
 	limit files {
 		allow = ${logdir}
 		allow = ${radacctdir}
