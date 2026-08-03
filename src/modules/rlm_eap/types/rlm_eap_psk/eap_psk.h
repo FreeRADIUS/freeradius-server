@@ -1,8 +1,5 @@
+#pragma once
 /*
- * eap_psk.h
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,13 +13,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ *
+ * @file eap_psk.h
+ * @brief Constants, session state, and crypto declarations for EAP-PSK (RFC 4764)
  *
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
-
-#ifndef _EAP_PSK_H
-#define _EAP_PSK_H
-
 RCSIDH(eap_psk_h, "$Id$")
 
 #include <freeradius-devel/eap/base.h>
@@ -97,30 +97,30 @@ typedef struct {
  *	Key setup and session-key derivation (eap_psk.c).  All return 0 on
  *	success, < 0 on (OpenSSL) failure.
  */
-int	eap_psk_derive_ak_kdk(uint8_t const psk[EAP_PSK_PSK_LEN],
-			      uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN]);
+int	eap_psk_derive_ak_kdk(uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN],
+			      uint8_t const psk[EAP_PSK_PSK_LEN]);
 
-int	eap_psk_derive_keys(uint8_t const kdk[EAP_PSK_KDK_LEN],
-			    uint8_t const rand_p[EAP_PSK_RAND_LEN],
-			    uint8_t tek[EAP_PSK_TEK_LEN],
+int	eap_psk_derive_keys(uint8_t tek[EAP_PSK_TEK_LEN],
 			    uint8_t msk[EAP_PSK_MSK_LEN],
-			    uint8_t emsk[EAP_PSK_EMSK_LEN]);
+			    uint8_t emsk[EAP_PSK_EMSK_LEN],
+			    uint8_t const kdk[EAP_PSK_KDK_LEN],
+			    uint8_t const rand_p[EAP_PSK_RAND_LEN]);
 
 /*
  *	MAC_P = CMAC-AES-128(AK, ID_P || ID_S || RAND_S || RAND_P)
  *	MAC_S = CMAC-AES-128(AK, ID_S || RAND_P)
  */
-int	eap_psk_mac_p(uint8_t const ak[EAP_PSK_AK_LEN],
+int	eap_psk_mac_p(uint8_t mac_p[EAP_PSK_MAC_LEN],
+		      uint8_t const ak[EAP_PSK_AK_LEN],
 		      uint8_t const *id_p, size_t id_p_len,
 		      uint8_t const *id_s, size_t id_s_len,
 		      uint8_t const rand_s[EAP_PSK_RAND_LEN],
-		      uint8_t const rand_p[EAP_PSK_RAND_LEN],
-		      uint8_t mac_p[EAP_PSK_MAC_LEN]);
+		      uint8_t const rand_p[EAP_PSK_RAND_LEN]);
 
-int	eap_psk_mac_s(uint8_t const ak[EAP_PSK_AK_LEN],
+int	eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
+		      uint8_t const ak[EAP_PSK_AK_LEN],
 		      uint8_t const *id_s, size_t id_s_len,
-		      uint8_t const rand_p[EAP_PSK_RAND_LEN],
-		      uint8_t mac_s[EAP_PSK_MAC_LEN]);
+		      uint8_t const rand_p[EAP_PSK_RAND_LEN]);
 
 /*
  *	The protected channel (EAX mode with AES-128, keyed with TEK).  The
@@ -129,15 +129,13 @@ int	eap_psk_mac_s(uint8_t const ak[EAP_PSK_AK_LEN],
  *	_decrypt() verifies the tag before decrypting, and returns < 0 if the
  *	tag is invalid.
  */
-int	eap_psk_pchannel_encrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int	eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN],
+				 uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 				 uint8_t const *header, size_t header_len,
-				 uint8_t const *plain, size_t plain_len,
-				 uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN]);
+				 uint8_t const *plain, size_t plain_len);
 
-int	eap_psk_pchannel_decrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int	eap_psk_pchannel_decrypt(uint8_t *plain,
+				 uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 				 uint8_t const *header, size_t header_len,
 				 uint8_t const *cipher, size_t cipher_len,
-				 uint8_t const tag[EAP_PSK_TAG_LEN],
-				 uint8_t *plain);
-
-#endif /*_EAP_PSK_H*/
+				 uint8_t const tag[EAP_PSK_TAG_LEN]);

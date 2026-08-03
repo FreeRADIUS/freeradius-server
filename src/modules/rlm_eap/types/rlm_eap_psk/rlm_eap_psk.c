@@ -1,8 +1,4 @@
 /*
- * rlm_eap_psk.c    Implements EAP-PSK
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,10 +12,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ *
+ * @file rlm_eap_psk.c
+ * @brief EAP-PSK (RFC 4764) authentication, server side
  *
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
-
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
@@ -126,9 +128,9 @@ static void eap_psk_header(uint8_t header[EAP_PSK_HEADER_LEN],
 
 /*
  *	Initiate the EAP-PSK session by sending the first message:
- *	Flags(T=0) || RAND_S || ID_S.
+ *	Flags(T=0) || RAND_S || ID_S.  RFC 4764 Section 5.1.
  */
-static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_psk_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_psk_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -165,7 +167,7 @@ static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module
 
 /*
  *	Process the peer's second message and, if it passes the PSK
- *	checks, send the third message.
+ *	checks, send the third message.  RFC 4764 Sections 5.2 and 5.3.
  */
 static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *inst,
 				    eap_session_t *eap_session, request_t *request)
@@ -193,12 +195,12 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 	 *	Flags(1) || RAND_S(16) || RAND_P(16) || MAC_P(16) || ID_P(*)
 	 */
 	if (in_len < (size_t) (1 + EAP_PSK_RAND_LEN + EAP_PSK_RAND_LEN + EAP_PSK_MAC_LEN)) {
-		REDEBUG("EAP-PSK second message is too short");
+		REDEBUG("Second message is too short");
 		RETURN_UNLANG_INVALID;
 	}
 
 	if ((in[0] & EAP_PSK_T_MASK) != EAP_PSK_FLAGS_SECOND) {
-		REDEBUG("EAP-PSK second message has the wrong T flag");
+		REDEBUG("Second message has the wrong T flag");
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -212,7 +214,7 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 	 *	The peer must echo the RAND_S we sent.  Constant-time compare.
 	 */
 	if (fr_digest_cmp(rand_s_echo, session->rand_s, EAP_PSK_RAND_LEN) != 0) {
-		REDEBUG("EAP-PSK second message did not echo RAND_S");
+		REDEBUG("Second message did not echo RAND_S");
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -230,6 +232,18 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 		RETURN_UNLANG_FAIL;
 	}
 
+	/*
+	 *	RFC 4764 Section 1.2 - the PSK is exactly 16 octets.  Anything
+	 *	else is a misconfiguration, and must not be silently padded
+	 *	or truncated.
+	 */
+	if (known_good->vp_length != EAP_PSK_PSK_LEN) {
+		REDEBUG("Password.PSK must be exactly %d octets, got %zu octets",
+			EAP_PSK_PSK_LEN, known_good->vp_length);
+		if (ephemeral) TALLOC_FREE(known_good);
+		RETURN_UNLANG_FAIL;
+	}
+
 	memcpy(psk, known_good->vp_octets, EAP_PSK_PSK_LEN);
 
 	if (ephemeral) TALLOC_FREE(known_good);
@@ -239,36 +253,37 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 	/*
 	 *	Key setup, then verify MAC_P before doing anything else.
 	 */
-	if (eap_psk_derive_ak_kdk(psk, ak, kdk) < 0) {
-		REDEBUG("EAP-PSK key setup failed");
+	if (eap_psk_derive_ak_kdk(ak, kdk, psk) < 0) {
+		REDEBUG("Key setup failed");
 		RETURN_UNLANG_FAIL;
 	}
 
-	if (eap_psk_mac_p(ak, id_p, id_p_len,
+	if (eap_psk_mac_p(expected, ak,
+			  id_p, id_p_len,
 			  (uint8_t const *) inst->identity, id_s_len,
-			  session->rand_s, rand_p, expected) < 0) {
-		REDEBUG("EAP-PSK MAC_P computation failed");
+			  session->rand_s, rand_p) < 0) {
+		REDEBUG("MAC_P computation failed");
 		RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_digest_cmp(expected, mac_p, EAP_PSK_MAC_LEN) != 0) {
-		REDEBUG("EAP-PSK MAC_P is incorrect: the peer used the wrong key");
+		REDEBUG("MAC_P is incorrect: the peer used the wrong key");
 		RETURN_UNLANG_REJECT;
 	}
 
-	RDEBUG2("EAP-PSK peer authenticated (MAC_P valid)");
+	RDEBUG2("Peer authenticated (MAC_P valid)");
 
 	/*
 	 *	Derive the session keys and compute MAC_S for the peer.
 	 */
-	if (eap_psk_derive_keys(kdk, rand_p, session->tek, session->msk, session->emsk) < 0) {
-		REDEBUG("EAP-PSK session-key derivation failed");
+	if (eap_psk_derive_keys(session->tek, session->msk, session->emsk, kdk, rand_p) < 0) {
+		REDEBUG("Session-key derivation failed");
 		RETURN_UNLANG_FAIL;
 	}
 
-	if (eap_psk_mac_s(ak, (uint8_t const *) inst->identity, id_s_len,
-			  rand_p, mac_s) < 0) {
-		REDEBUG("EAP-PSK MAC_S computation failed");
+	if (eap_psk_mac_s(mac_s, ak,
+			  (uint8_t const *) inst->identity, id_s_len, rand_p) < 0) {
+		REDEBUG("MAC_S computation failed");
 		RETURN_UNLANG_FAIL;
 	}
 
@@ -303,9 +318,9 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 	*p++ = (uint8_t) (nonce >> 8);
 	*p++ = (uint8_t) (nonce);
 
-	if (eap_psk_pchannel_encrypt(session->tek, nonce, header, sizeof(header),
-				     &plain, 1, &cipher, p) < 0) {
-		REDEBUG("EAP-PSK protected-channel encryption failed");
+	if (eap_psk_pchannel_encrypt(&cipher, p, session->tek, nonce,
+				     header, sizeof(header), &plain, 1) < 0) {
+		REDEBUG("Protected-channel encryption failed");
 		RETURN_UNLANG_FAIL;
 	}
 	p += EAP_PSK_TAG_LEN;
@@ -321,7 +336,8 @@ static unlang_action_t process_msg2(unlang_result_t *p_result, rlm_eap_psk_t *in
 
 /*
  *	Process the peer's fourth message.  On success, deliver the keying
- *	material in MPPE keys, and return an EAP-Success.
+ *	material in MPPE keys, and return an EAP-Success.  RFC 4764
+ *	Sections 5.4 (message format) and 2.1 (MSK export).
  */
 static unlang_action_t process_msg4(unlang_result_t *p_result, UNUSED rlm_eap_psk_t *inst,
 				    eap_session_t *eap_session, request_t *request)
@@ -341,12 +357,12 @@ static unlang_action_t process_msg4(unlang_result_t *p_result, UNUSED rlm_eap_ps
 	 *	Flags(1) || RAND_S(16) || PCHANNEL(21)
 	 */
 	if (in_len < (size_t) (1 + EAP_PSK_RAND_LEN + EAP_PSK_PCHANNEL_LEN)) {
-		REDEBUG("EAP-PSK fourth message is too short");
+		REDEBUG("Fourth message is too short");
 		RETURN_UNLANG_INVALID;
 	}
 
 	if ((in[0] & EAP_PSK_T_MASK) != EAP_PSK_FLAGS_FOURTH) {
-		REDEBUG("EAP-PSK fourth message has the wrong T flag");
+		REDEBUG("Fourth message has the wrong T flag");
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -354,16 +370,17 @@ static unlang_action_t process_msg4(unlang_result_t *p_result, UNUSED rlm_eap_ps
 	pchannel    = rand_s_echo + EAP_PSK_RAND_LEN;
 
 	if (fr_digest_cmp(rand_s_echo, session->rand_s, EAP_PSK_RAND_LEN) != 0) {
-		REDEBUG("EAP-PSK fourth message did not echo RAND_S");
+		REDEBUG("Fourth message did not echo RAND_S");
 		RETURN_UNLANG_INVALID;
 	}
 
 	/*
 	 *	The peer's PCHANNEL nonce for the fourth message is 1.
+	 *	RFC 4764 Section 3.3.
 	 */
 	if ((pchannel[0] != 0) || (pchannel[1] != 0) || (pchannel[2] != 0) ||
 	    (pchannel[3] != (uint8_t) nonce)) {
-		REDEBUG("EAP-PSK fourth message has an unexpected Nonce");
+		REDEBUG("Fourth message has an unexpected Nonce");
 		RETURN_UNLANG_INVALID;
 	}
 
@@ -377,19 +394,19 @@ static unlang_action_t process_msg4(unlang_result_t *p_result, UNUSED rlm_eap_ps
 	eap_psk_header(header, FR_EAP_CODE_RESPONSE, eap_round->response->id,
 		       in_len, in[0], session->rand_s);
 
-	if (eap_psk_pchannel_decrypt(session->tek, nonce, header, sizeof(header),
-				     cipher, 1, tag, &plain) < 0) {
-		REDEBUG("EAP-PSK protected-channel verification failed: mutual authentication failed");
+	if (eap_psk_pchannel_decrypt(&plain, session->tek, nonce,
+				     header, sizeof(header), cipher, 1, tag) < 0) {
+		REDEBUG("Protected-channel verification failed: mutual authentication failed");
 		RETURN_UNLANG_REJECT;
 	}
 
 	r = EAP_PSK_R(plain);
 	if (r != EAP_PSK_R_DONE_SUCCESS) {
-		REDEBUG("EAP-PSK peer reported result %d (not success)", r);
+		REDEBUG("Peer reported result %d (not success)", r);
 		RETURN_UNLANG_REJECT;
 	}
 
-	RDEBUG2("EAP-PSK mutual authentication succeeded");
+	RDEBUG2("Mutual authentication succeeded");
 
 	/*
 	 *	Deliver the keying material.  The MSK is split into the

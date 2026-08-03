@@ -162,7 +162,6 @@ eap {
 		identity = "FreeRADIUS"
 	}
 
-
 	#
 	#  === EAP-PWD (Secure password-based authentication)
 	#

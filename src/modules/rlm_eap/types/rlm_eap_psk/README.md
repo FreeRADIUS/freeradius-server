@@ -8,7 +8,7 @@
 Implements [RFC 4764](https://tools.ietf.org/html/rfc4764) EAP-PSK authentication.  EAP-PSK is a mutual-authentication
 EAP method which is built entirely on AES-128, and uses a 16-byte pre-shared key.
 
-The pre-shared key is taken from the `Password.Cleartext` attribute, which must be exactly 16 bytes long.  The server
+The pre-shared key is taken from the `control.Password.PSK` attribute, which must be exactly 16 bytes long.  The server
 identity (`ID_S`) sent to the peer is configured with the `identity` option (default `FreeRADIUS`).
 
 EAP-PSK performs the four-message AKEP2-style exchange:

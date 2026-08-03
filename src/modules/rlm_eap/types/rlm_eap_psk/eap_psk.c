@@ -44,14 +44,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	A single AES-128 ECB block encryption: out = AES-128(key, in).  Both
  *	buffers are exactly 16 bytes.  Returns 0 on success, < 0 on failure.
  */
-static int aes128_ecb_block(uint8_t const key[16], uint8_t const in[16], uint8_t out[16])
+static int aes128_ecb_block(uint8_t out[16], uint8_t const key[16], uint8_t const in[16])
 {
 	EVP_CIPHER_CTX	*ctx;
 	int		len;
 	int		rcode = -1;
 
-	ctx = EVP_CIPHER_CTX_new();
-	if (!ctx) return -1;
+	MEM(ctx = EVP_CIPHER_CTX_new());
 
 	/*
 	 *	Disable padding so that a single 16-byte input block yields
@@ -76,15 +75,14 @@ done:
  *	integer, which is exactly what EAX (and hence EAP-PSK) requires.
  *	CTR is symmetric, so this is used for both encrypt and decrypt.
  */
-static int aes128_ctr(uint8_t const key[16], uint8_t const ctr[16],
-		      uint8_t const *in, size_t len, uint8_t *out)
+static int aes128_ctr(uint8_t *out, uint8_t const key[16], uint8_t const ctr[16],
+		      uint8_t const *in, size_t len)
 {
 	int		rcode = -1;
 	int		outl;
 	EVP_CIPHER_CTX	*ctx;
 
-	ctx = EVP_CIPHER_CTX_new();
-	if (!ctx) return -1;
+	MEM(ctx = EVP_CIPHER_CTX_new());
 
 	if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, key, ctr) != 1) goto done;
 
@@ -111,38 +109,46 @@ done:
  *
  *	'out' must be large enough for count * 16 bytes.
  */
-static int eap_psk_counter_mode(uint8_t const key[16], uint8_t const input[16],
-				size_t count, uint8_t *out)
+static int eap_psk_counter_mode(uint8_t *out, uint8_t const key[16], uint8_t const input[16],
+				size_t count)
 {
-	size_t	i;
+	size_t		i;
 	uint8_t		hash[16];
 	uint8_t		block[16];
 
-	if (aes128_ecb_block(key, input, hash) < 0) return -1;
+	if (aes128_ecb_block(hash, key, input) < 0) return -1;
 
 	for (i = 1; i <= count; i++) {
 		memcpy(block, hash, sizeof(block));
 		block[15] ^= (uint8_t) i;
 
-		if (aes128_ecb_block(key, block, out + ((i - 1) * 16)) < 0) return -1;
+		if (aes128_ecb_block(out + ((i - 1) * 16), key, block) < 0) return -1;
 	}
 
 	return 0;
 }
 
-/*
- *	Key setup: derive AK (counter 1) and KDK (counter 2) from the PSK,
- *	using a constant all-zero input block.  See RFC 4764 Figure 3.
+/** Key setup: derive AK (counter 1) and KDK (counter 2) from the PSK
+ *
+ * Expands a constant all-zero input block under the PSK using the modified
+ * counter mode.  See RFC 4764 Section 3.1, Figure 3.
+ *
+ * @param[out] ak	the derived authentication key.
+ * @param[out] kdk	the derived key-derivation key.
+ * @param[in] psk	the 16-byte pre-shared key.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-int eap_psk_derive_ak_kdk(uint8_t const psk[EAP_PSK_PSK_LEN],
-			  uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN])
+int eap_psk_derive_ak_kdk(uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN],
+			  uint8_t const psk[EAP_PSK_PSK_LEN])
 {
 	uint8_t	input[16];
 	uint8_t	out[2 * 16];
 
 	memset(input, 0, sizeof(input));
 
-	if (eap_psk_counter_mode(psk, input, 2, out) < 0) return -1;
+	if (eap_psk_counter_mode(out, psk, input, 2) < 0) return -1;
 
 	memcpy(ak, out, EAP_PSK_AK_LEN);
 	memcpy(kdk, out + 16, EAP_PSK_KDK_LEN);
@@ -150,20 +156,29 @@ int eap_psk_derive_ak_kdk(uint8_t const psk[EAP_PSK_PSK_LEN],
 	return 0;
 }
 
-/*
- *	Session-key derivation: expand RAND_P under KDK into nine output
- *	blocks.  Block 1 is the TEK, blocks 2..5 are the MSK, and blocks
- *	6..9 are the EMSK.  See RFC 4764 Figure 7.
+/** Session-key derivation: expand RAND_P under KDK into nine output blocks
+ *
+ * Block 1 is the TEK, blocks 2..5 are the MSK, and blocks 6..9 are the
+ * EMSK.  See RFC 4764 Section 3.2, Figure 7.
+ *
+ * @param[out] tek	the transient EAP key, used for the protected channel.
+ * @param[out] msk	the 64-byte master session key.
+ * @param[out] emsk	the 64-byte extended master session key.
+ * @param[in] kdk	the key-derivation key from eap_psk_derive_ak_kdk().
+ * @param[in] rand_p	the peer's 16-byte nonce.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-int eap_psk_derive_keys(uint8_t const kdk[EAP_PSK_KDK_LEN],
-			uint8_t const rand_p[EAP_PSK_RAND_LEN],
-			uint8_t tek[EAP_PSK_TEK_LEN],
+int eap_psk_derive_keys(uint8_t tek[EAP_PSK_TEK_LEN],
 			uint8_t msk[EAP_PSK_MSK_LEN],
-			uint8_t emsk[EAP_PSK_EMSK_LEN])
+			uint8_t emsk[EAP_PSK_EMSK_LEN],
+			uint8_t const kdk[EAP_PSK_KDK_LEN],
+			uint8_t const rand_p[EAP_PSK_RAND_LEN])
 {
 	uint8_t	out[9 * 16];
 
-	if (eap_psk_counter_mode(kdk, rand_p, 9, out) < 0) return -1;
+	if (eap_psk_counter_mode(out, kdk, rand_p, 9) < 0) return -1;
 
 	memcpy(tek,  out,           EAP_PSK_TEK_LEN);	/* block 1 */
 	memcpy(msk,  out + 1 * 16,  EAP_PSK_MSK_LEN);	/* blocks 2..5 */
@@ -182,19 +197,18 @@ int eap_psk_derive_keys(uint8_t const kdk[EAP_PSK_KDK_LEN],
  *	tree handles deprecated OpenSSL calls.
  */
 DIAG_OFF(deprecated-declarations)
-static int eap_psk_cmac(uint8_t const key[16],
+static int eap_psk_cmac(uint8_t mac[16],
+			uint8_t const key[16],
 			uint8_t const *seg1, size_t len1,
 			uint8_t const *seg2, size_t len2,
 			uint8_t const *seg3, size_t len3,
-			uint8_t const *seg4, size_t len4,
-			uint8_t mac[16])
+			uint8_t const *seg4, size_t len4)
 {
 	int		rcode = -1;
 	size_t		maclen;
 	CMAC_CTX	*ctx;
 
-	ctx = CMAC_CTX_new();
-	if (!ctx) return -1;
+	MEM(ctx = CMAC_CTX_new());
 
 	if (CMAC_Init(ctx, key, 16, EVP_aes_128_cbc(), NULL) != 1) goto done;
 
@@ -214,38 +228,61 @@ done:
 }
 DIAG_ON(deprecated-declarations)
 
-/*
- *	MAC_P = CMAC-AES-128(AK, ID_P || ID_S || RAND_S || RAND_P)
+/** Compute MAC_P = CMAC-AES-128(AK, ID_P || ID_S || RAND_S || RAND_P)
+ *
+ * The peer proves possession of the PSK with MAC_P in the second message.
+ * See RFC 4764 Section 5.2.
+ *
+ * @param[out] mac_p	the computed 16-byte MAC.
+ * @param[in] ak	the authentication key.
+ * @param[in] id_p	the peer's NAI. May not be NULL terminated.
+ * @param[in] id_p_len	length of id_p.
+ * @param[in] id_s	the server's NAI.
+ * @param[in] id_s_len	length of id_s.
+ * @param[in] rand_s	the server's nonce.
+ * @param[in] rand_p	the peer's nonce.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-int eap_psk_mac_p(uint8_t const ak[EAP_PSK_AK_LEN],
+int eap_psk_mac_p(uint8_t mac_p[EAP_PSK_MAC_LEN],
+		  uint8_t const ak[EAP_PSK_AK_LEN],
 		  uint8_t const *id_p, size_t id_p_len,
 		  uint8_t const *id_s, size_t id_s_len,
 		  uint8_t const rand_s[EAP_PSK_RAND_LEN],
-		  uint8_t const rand_p[EAP_PSK_RAND_LEN],
-		  uint8_t mac_p[EAP_PSK_MAC_LEN])
+		  uint8_t const rand_p[EAP_PSK_RAND_LEN])
 {
-	return eap_psk_cmac(ak,
+	return eap_psk_cmac(mac_p, ak,
 			    id_p, id_p_len,
 			    id_s, id_s_len,
 			    rand_s, EAP_PSK_RAND_LEN,
-			    rand_p, EAP_PSK_RAND_LEN,
-			    mac_p);
+			    rand_p, EAP_PSK_RAND_LEN);
 }
 
-/*
- *	MAC_S = CMAC-AES-128(AK, ID_S || RAND_P)
+/** Compute MAC_S = CMAC-AES-128(AK, ID_S || RAND_P)
+ *
+ * The server proves possession of the PSK with MAC_S in the third message.
+ * See RFC 4764 Section 5.3.
+ *
+ * @param[out] mac_s	the computed 16-byte MAC.
+ * @param[in] ak	the authentication key.
+ * @param[in] id_s	the server's NAI.
+ * @param[in] id_s_len	length of id_s.
+ * @param[in] rand_p	the peer's nonce.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-int eap_psk_mac_s(uint8_t const ak[EAP_PSK_AK_LEN],
+int eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
+		  uint8_t const ak[EAP_PSK_AK_LEN],
 		  uint8_t const *id_s, size_t id_s_len,
-		  uint8_t const rand_p[EAP_PSK_RAND_LEN],
-		  uint8_t mac_s[EAP_PSK_MAC_LEN])
+		  uint8_t const rand_p[EAP_PSK_RAND_LEN])
 {
-	return eap_psk_cmac(ak,
+	return eap_psk_cmac(mac_s, ak,
 			    id_s, id_s_len,
 			    rand_p, EAP_PSK_RAND_LEN,
 			    NULL, 0,
-			    NULL, 0,
-			    mac_s);
+			    NULL, 0);
 }
 
 /*
@@ -256,21 +293,20 @@ int eap_psk_mac_s(uint8_t const ak[EAP_PSK_AK_LEN],
  *	where [t]_16 is the integer t encoded as a 16-byte block.  t is only
  *	ever 0, 1 or 2 here, so only the low-order byte is non-zero.
  */
-static int eap_psk_omac(uint8_t const key[16], uint8_t t,
-			uint8_t const *data, size_t data_len,
-			uint8_t out[16])
+static int eap_psk_omac(uint8_t out[16],
+			uint8_t const key[16], uint8_t t,
+			uint8_t const *data, size_t data_len)
 {
 	uint8_t	tweak[16];
 
 	memset(tweak, 0, sizeof(tweak));
 	tweak[15] = t;
 
-	return eap_psk_cmac(key,
+	return eap_psk_cmac(out, key,
 			    tweak, sizeof(tweak),
 			    data, data_len,
 			    NULL, 0,
-			    NULL, 0,
-			    out);
+			    NULL, 0);
 }
 
 /*
@@ -278,7 +314,7 @@ static int eap_psk_omac(uint8_t const key[16], uint8_t t,
  *	N is padded with 96 zero high-order bits, i.e. 12 zero bytes followed
  *	by the 4-byte big-endian counter.
  */
-static void eap_psk_nonce_block(uint32_t nonce, uint8_t block[16])
+static void eap_psk_nonce_block(uint8_t block[16], uint32_t nonce)
 {
 	memset(block, 0, 16);
 	block[12] = (uint8_t) (nonce >> 24);
@@ -287,37 +323,49 @@ static void eap_psk_nonce_block(uint32_t nonce, uint8_t block[16])
 	block[15] = (uint8_t) (nonce);
 }
 
-/*
- *	EAX encrypt.  Computes:
+/** EAX encrypt for the protected channel (RFC 4764 Section 3.3)
  *
- *		N' = OMAC^0(nonce_block)
- *		H' = OMAC^1(header)
- *		C  = CTR_{N'}(plain)
- *		C' = OMAC^2(C)
- *		tag = N' XOR H' XOR C'
+ * Computes:
  *
- *	'cipher' receives plain_len bytes; 'tag' receives 16 bytes.  Either
- *	the plaintext or its length may be zero (EAP-PSK only ever protects a
- *	single byte, but the code does not rely on that).
+ *	N' = OMAC^0(nonce_block)
+ *	H' = OMAC^1(header)
+ *	C  = CTR_{N'}(plain)
+ *	C' = OMAC^2(C)
+ *	tag = N' XOR H' XOR C'
+ *
+ * Either the plaintext or its length may be zero (EAP-PSK only ever
+ * protects a single byte, but the code does not rely on that).
+ *
+ * @param[out] cipher	receives plain_len bytes of ciphertext.
+ * @param[out] tag	receives the 16-byte authentication tag.
+ * @param[in] tek	the transient EAP key.
+ * @param[in] nonce	the 4-byte PCHANNEL counter (0 for the third message).
+ * @param[in] header	the EAX header H to authenticate.
+ * @param[in] header_len	length of header.
+ * @param[in] plain	the plaintext to encrypt.
+ * @param[in] plain_len	length of plain.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-int eap_psk_pchannel_encrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN],
+			     uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 			     uint8_t const *header, size_t header_len,
-			     uint8_t const *plain, size_t plain_len,
-			     uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN])
+			     uint8_t const *plain, size_t plain_len)
 {
 	size_t		i;
 	uint8_t		nonce_block[16];
 	uint8_t		n_omac[16], h_omac[16], c_omac[16];
 
-	eap_psk_nonce_block(nonce, nonce_block);
+	eap_psk_nonce_block(nonce_block, nonce);
 
-	if (eap_psk_omac(tek, 0, nonce_block, sizeof(nonce_block), n_omac) < 0) return -1;
-	if (eap_psk_omac(tek, 1, header, header_len, h_omac) < 0) return -1;
+	if (eap_psk_omac(n_omac, tek, 0, nonce_block, sizeof(nonce_block)) < 0) return -1;
+	if (eap_psk_omac(h_omac, tek, 1, header, header_len) < 0) return -1;
 
 	if ((plain_len > 0) &&
-	    (aes128_ctr(tek, n_omac, plain, plain_len, cipher) < 0)) return -1;
+	    (aes128_ctr(cipher, tek, n_omac, plain, plain_len) < 0)) return -1;
 
-	if (eap_psk_omac(tek, 2, cipher, plain_len, c_omac) < 0) return -1;
+	if (eap_psk_omac(c_omac, tek, 2, cipher, plain_len) < 0) return -1;
 
 	for (i = 0; i < EAP_PSK_TAG_LEN; i++) {
 		tag[i] = n_omac[i] ^ h_omac[i] ^ c_omac[i];
@@ -326,30 +374,40 @@ int eap_psk_pchannel_encrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 	return 0;
 }
 
-/*
- *	EAX decrypt-and-verify.  Recomputes the tag over the received cipher
- *	text and header, and compares it (in constant time) against the
- *	received tag.  Only if the tags match is the cipher text decrypted
- *	into 'plain'.
+/** EAX decrypt-and-verify for the protected channel (RFC 4764 Section 3.3)
  *
- *	Returns 0 if the tag is valid, < 0 on a bad tag or an OpenSSL error.
+ * Recomputes the tag over the received ciphertext and header, and compares
+ * the result (in constant time) against the received tag.  Only if the tags
+ * match is the ciphertext decrypted.
+ *
+ * @param[out] plain	receives cipher_len bytes of plaintext.
+ * @param[in] tek	the transient EAP key.
+ * @param[in] nonce	the 4-byte PCHANNEL counter (1 for the fourth message).
+ * @param[in] header	the EAX header H to authenticate.
+ * @param[in] header_len	length of header.
+ * @param[in] cipher	the ciphertext to verify and decrypt.
+ * @param[in] cipher_len	length of cipher.
+ * @param[in] tag	the received 16-byte authentication tag.
+ * @return
+ *	- 0 if the tag is valid and the plaintext was recovered.
+ *	- -1 on a bad tag or an OpenSSL error.
  */
-int eap_psk_pchannel_decrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int eap_psk_pchannel_decrypt(uint8_t *plain,
+			     uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 			     uint8_t const *header, size_t header_len,
 			     uint8_t const *cipher, size_t cipher_len,
-			     uint8_t const tag[EAP_PSK_TAG_LEN],
-			     uint8_t *plain)
+			     uint8_t const tag[EAP_PSK_TAG_LEN])
 {
 	size_t		i;
 	uint8_t		nonce_block[16];
 	uint8_t		n_omac[16], h_omac[16], c_omac[16];
 	uint8_t		want[16];
 
-	eap_psk_nonce_block(nonce, nonce_block);
+	eap_psk_nonce_block(nonce_block, nonce);
 
-	if (eap_psk_omac(tek, 0, nonce_block, sizeof(nonce_block), n_omac) < 0) return -1;
-	if (eap_psk_omac(tek, 1, header, header_len, h_omac) < 0) return -1;
-	if (eap_psk_omac(tek, 2, cipher, cipher_len, c_omac) < 0) return -1;
+	if (eap_psk_omac(n_omac, tek, 0, nonce_block, sizeof(nonce_block)) < 0) return -1;
+	if (eap_psk_omac(h_omac, tek, 1, header, header_len) < 0) return -1;
+	if (eap_psk_omac(c_omac, tek, 2, cipher, cipher_len) < 0) return -1;
 
 	for (i = 0; i < EAP_PSK_TAG_LEN; i++) {
 		want[i] = n_omac[i] ^ h_omac[i] ^ c_omac[i];
@@ -363,7 +421,7 @@ int eap_psk_pchannel_decrypt(uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
 	if (fr_digest_cmp(want, tag, EAP_PSK_TAG_LEN) != 0) return -1;
 
 	if ((cipher_len > 0) &&
-	    (aes128_ctr(tek, n_omac, cipher, cipher_len, plain) < 0)) return -1;
+	    (aes128_ctr(plain, tek, n_omac, cipher, cipher_len) < 0)) return -1;
 
 	return 0;
 }
