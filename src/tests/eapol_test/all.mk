@@ -146,8 +146,8 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG)):"; \
 		tail -n 40 "$(EAPOL_TEST_LOG)"; \
 		echo "--------------------------------------------------"; \
-		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		tail -n 500 "$(RADIUS_LOG)"; \
 		echo "--------------------------------------------------"; \
 		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) TEST=$(METHOD) TEST_PORT=$(TEST_PORT) $(RADIUSD_BIN) -fxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f"; \
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(TEST_PORT) -s $(SECRET) $(KEY) "; \
