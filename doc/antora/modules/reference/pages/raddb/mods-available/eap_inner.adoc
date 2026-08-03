@@ -32,20 +32,28 @@ the correct one the first time.
 type:: Only EAP types listed below with a 'type = <EAP-Type>' pair
 will be allowed.
 
-== md5 { ... }
+== EAP-MD5
 
 `md5` is OK to use the inner tunnel, as keying material is provided by
 the outer EAP method.
 
-== gtc { ... }
+== EAP-GTC
 
 See the `eap` module for common configuration explanation.
 
-== mschapv2 { ... }
+== EAP-MSCHAPv2
 
 See the `eap` module for common configuration explanation.
 
-CAUTION: No TTLS or PEAP configuration should be listed here.
+=== EAP-PSK
+
+See the `eap` module for common configuration explanation.
+
+=== EAP-PWD (Secure password-based authentication)
+
+See the `eap` module for common configuration explanation.
+
+WARNING: No TTLS or PEAP configuration should be listed here.
 
 == tls-config tls-peer { ... }
 
@@ -74,9 +82,9 @@ explanation.
 check_cert_cn:: See the `eap` module for common configuration
 explanation.
 
-== tls { ... }
+== EAP-TLS
 
-You SHOULD use different certificates than are used for the outer EAP
+We RECOMMEND using different certificates for the inner and outer EAP
 configuration!
 
 You can create the `inner-server.pem` file by doing:
@@ -94,6 +102,8 @@ eap inner-eap {
 	type = md5
 	type = gtc
 	type = mschapv2
+	type = psk
+	type = pwd
 	type = tls
 	md5 {
 	}
@@ -103,6 +113,14 @@ eap inner-eap {
 	}
 	mschapv2 {
 #		send_error = no
+	}
+	psk {
+		identity = "FreeRADIUS"
+	}
+	pwd {
+		group = 19
+		server_id = theserver@example.com
+		fragment_size = 1020
 	}
 	tls-config tls-peer {
 #		auto_chain = yes
