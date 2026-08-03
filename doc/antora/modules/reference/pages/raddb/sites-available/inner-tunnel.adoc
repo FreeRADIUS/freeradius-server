@@ -118,6 +118,21 @@ and/or SQL servers will not be queried for the many packets that go
 back and forth to set up TTLS or PEAP. The load on those servers will
 therefore be reduced.
 
+We RECOMMEND changing the module reference here to `eap_inner`. See
+also
+xref:reference:raddb/mods-available/eap_inner.adoc[mods-available/eap_inner].
+
+That change (and configuring `eap_inner`) will help to narrow down the
+list of allowed EAP methods. For example, you probably want to remove
+`md5` and `mschapv2` from the outer `eap` module, while allowing them
+in `eap_inner`.
+
+The `eap` module is listed here only to make it easier to set up the
+server.
+
+If the reference here is changed to `eap_inner`, you will also have to
+edit the `authenticate eap` section, below.
+
 ----
 	eap {
 		ok = return
@@ -193,7 +208,7 @@ that one authentication method will work, but the others will not.
 The common reasons to set the Auth-Type attribute by hand is to either
 forcibly reject the user, or forcibly accept him.
 
-NB You cannot forcibly accept an EAP authentication!
+NOTE: You cannot forcibly accept an EAP authentication!
 
 PAP authentication, when a back-end database listed in the 'recv
 Access-Request' section supplies a password. The password can be
@@ -245,7 +260,11 @@ authenticate ldap {
 ----
 }
 
-Allow EAP authentication.
+EAP authentication.
+
+The references to `eap` here should be changed to `eap_inner` in a
+production environment.
+
 ----
 authenticate eap {
 	     eap
