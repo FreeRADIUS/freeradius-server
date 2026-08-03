@@ -937,7 +937,7 @@ void fr_bio_fd_name(fr_bio_fd_t *my)
 						    cfg->path);
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			fr_assert(cfg->socket_type == SOCK_STREAM);
 
 			if (cfg->flags == O_RDONLY) {
@@ -1176,7 +1176,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		/*
 		 *	Filenames overload the #fr_socket_t for now.
 		 */
-		my->info.socket.af = AF_FILE_BIO;
+		my->info.socket.af = AF_FR_FILENAME;
 		my->info.socket.type = SOCK_STREAM;
 		my->info.socket.unix.path = cfg->filename;
 
@@ -1280,7 +1280,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			fr_strerror_const("Filenames must use the connected API");
 			goto fail;
 
@@ -1295,7 +1295,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		break;
 
 		/*
-		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FILE_BIO
+		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FR_FILENAME
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
@@ -1319,7 +1319,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
-		case AF_FILE_BIO:
+		case AF_FR_FILENAME:
 			break;
 
 		case AF_INET:
@@ -1389,7 +1389,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 	int fd, flags;
 
-	if (my->info.socket.af != AF_FILE_BIO) {
+	if (my->info.socket.af != AF_FR_FILENAME) {
 		fr_strerror_const("Cannot reopen a non-file BIO");
 		return -1;
 	}
