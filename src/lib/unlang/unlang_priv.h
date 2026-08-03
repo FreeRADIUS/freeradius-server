@@ -458,6 +458,13 @@ struct unlang_stack_frame_s {
 								///< such as being the point where break, return or
 								///< continue stop, or for forced unwinding.
 
+	struct {						//!< reference to a previous frame
+		uint8_t		frame_break;			//!< previous "break" frame
+		uint8_t		frame_continue;			//!< previous "continue" frame
+		uint8_t		frame_return;			//!< previous "return" frame
+		uint8_t		frame_load_balance;		//!< previous "load-balance" frame
+	} prev;
+
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
 #endif
@@ -552,11 +559,42 @@ static inline unsigned int unlang_frame_by_flag(unlang_stack_t *stack, unlang_fr
 static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang_op_flag_t flag)
 {
 	unsigned int	i;
+#ifndef NDEBUG
+	unlang_stack_frame_t	*current = &stack->frame[stack->depth];
+#endif
+
 
 	for (i = stack->depth; i > 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
-		if (unlang_ops[frame->instruction->type].flag & flag) return i;
+		if (unlang_ops[frame->instruction->type].flag & flag) {
+			switch (flag) {
+			default:
+				break;
+
+			case UNLANG_OP_FLAG_BREAK_POINT:
+				fr_assert(frame->prev.frame_break == i);
+				fr_assert(current->prev.frame_break == i);
+				break;
+
+			case UNLANG_OP_FLAG_RETURN_POINT:
+				fr_assert(frame->prev.frame_return == i);
+				fr_assert(current->prev.frame_return == i);
+			break;
+
+			case UNLANG_OP_FLAG_CONTINUE_POINT:
+				fr_assert(frame->prev.frame_continue == i);
+				fr_assert(current->prev.frame_continue == i);
+				break;
+			}
+
+			return i;
+		}
+
+		/*
+		 *	Do not unwind past a top frame.
+		 */
+		if (is_top_frame(frame)) return 0;
 	}
 	return 0;
 }
@@ -686,6 +724,45 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	/*
 	 *	Don't change frame->retry, it may be left over from a previous retry.
 	 */
+
+	/*
+	 *	Normal frames get their "prev" pointers copied from the previous frame, and then get the break
+	 *	/ continue / etc. point update, if the current instruction warrants it.
+	 */
+	if (!is_top_frame(frame)) {
+		/*
+		 *	A sub-frame / xlat can be the first item pushed on a stack.  In that case, stack frame 0 is all zeros.
+		 */
+		fr_assert(stack->depth >= 1);
+		frame->prev = (frame - 1)->prev;
+
+		if (unlang_ops[frame->instruction->type].flag) {
+			/*
+			 *	TBD: A return point should (or should not?) erase any previous frame settings.
+			 */
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT) {
+				frame->prev.frame_return = stack->depth;
+			}
+
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT) {
+				frame->prev.frame_break = stack->depth;
+			}
+
+			if (unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT) {
+				frame->prev.frame_continue = stack->depth;
+			}
+
+			if ((frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) ||
+			    (frame->instruction->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE)) {
+				frame->prev.frame_load_balance = stack->depth;
+			}
+		}
+	} else {
+		/*
+		 *	TBD: Top frames are also return points?
+		 */
+		frame->prev.frame_return = stack->depth;
+	}
 }
 
 /** Cleanup any lingering frame state
