@@ -67,6 +67,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	if (unlang_subrequest_child_push(NULL, child,
 					 tls_session,
 					 true, UNLANG_SUB_FRAME) < 0) {
+	error:
 		request_detach(child);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -80,10 +81,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 				 resume,
 				 NULL,
 				 0, UNLANG_SUB_FRAME,
-				 tls_session) < 0) {
-		request_detach(child);
-		return UNLANG_ACTION_FAIL;
-	}
+				 tls_session) < 0) goto error;
 
 	/*
 	 *	Now the child and parent stacks are both
@@ -91,10 +89,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t r
 	 *	call into the subrequest to run the section
 	 *	specified by Packet-Type.
 	 */
-	if (unlang_call_push(NULL, child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
-		request_detach(child);
-		return UNLANG_ACTION_FAIL;
-	}
+	if (unlang_call_push(NULL, child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
