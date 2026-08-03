@@ -1761,7 +1761,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		fr_token_t	quote;
 		size_t		len;
 
-		arg_t_rules.literals_safe_for = arg->safe_for;
+		if (arg_t_rules.literals_safe_for != FR_VALUE_BOX_SAFE_FOR_ANY) arg_t_rules.literals_safe_for = arg->safe_for;
 
 		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
