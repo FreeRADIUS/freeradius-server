@@ -238,7 +238,7 @@ static void test_pchannel_encrypt(void)
 {
 	uint8_t header[EAP_PSK_HEADER_LEN];
 	uint8_t plain = 0x80;	/* R = DONE_SUCCESS, E = 0 */
-	uint8_t cipher;
+	uint8_t cipher = 0;
 	uint8_t tag[EAP_PSK_TAG_LEN];
 
 	test_header(header, 0x01, 59, 0x80);
@@ -260,7 +260,7 @@ static void test_pchannel_encrypt(void)
 static void test_pchannel_decrypt(void)
 {
 	uint8_t header[EAP_PSK_HEADER_LEN];
-	uint8_t plain;
+	uint8_t plain = 0;
 	uint8_t bad_tag[EAP_PSK_TAG_LEN];
 	uint8_t bad_cipher;
 
