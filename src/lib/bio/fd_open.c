@@ -1178,7 +1178,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		 */
 		my->info.socket.af = AF_FR_FILENAME;
 		my->info.socket.type = SOCK_STREAM;
-		my->info.socket.unix.path = cfg->filename;
+		my->info.socket.file.path = cfg->filename;
 
 		/*
 		 *	Allow hacks for stdout and stderr

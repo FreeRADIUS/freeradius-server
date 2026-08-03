@@ -71,6 +71,14 @@ typedef struct {
 		struct {
 			char const	*path;		//!< Unix socket path.
 		} unix;
+
+		struct {
+			char const	*path;		//!< Filename
+		} file;
+
+		struct {
+			char const	*server;       	//!< Virtual server filename
+		} virtual;
 	};
 	int af;			//!< AF_INET, AF_INET6, or AF_UNIX
 	int type;		//!< SOCK_STREAM, SOCK_DGRAM, etc.
