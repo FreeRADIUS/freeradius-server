@@ -558,18 +558,19 @@ static inline unsigned int unlang_frame_by_flag(unlang_stack_t *stack, unlang_fr
  */
 static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang_op_flag_t flag)
 {
-	unsigned int	i;
+	unlang_stack_frame_t *frame;
+
 #ifndef NDEBUG
 	unlang_stack_frame_t	*current = &stack->frame[stack->depth];
-#endif
-
+	unsigned int	i;
 
 	for (i = stack->depth; i > 0; i--) {
-		unlang_stack_frame_t *frame = &stack->frame[i];
+		frame = &stack->frame[i];
 
 		if (unlang_ops[frame->instruction->type].flag & flag) {
 			switch (flag) {
 			default:
+				fr_assert(0);
 				break;
 
 			case UNLANG_OP_FLAG_BREAK_POINT:
@@ -596,6 +597,27 @@ static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang
 		 */
 		if (is_top_frame(frame)) return 0;
 	}
+#else
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	No asserts in NDEBUG mode.  Just return the frame, and stop looping up the stack.
+	 */
+	switch (flag) {
+	default:
+		break;
+
+	case UNLANG_OP_FLAG_BREAK_POINT:
+		return frame->prev.frame_break;
+
+	case UNLANG_OP_FLAG_RETURN_POINT:
+		return frame->prev.frame_return;
+
+	case UNLANG_OP_FLAG_CONTINUE_POINT:
+		return frame->prev.frame_continue;
+	}
+#endif
+
 	return 0;
 }
 
