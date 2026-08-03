@@ -47,7 +47,7 @@ eap inner-eap {
 	type = md5
 	type = gtc
 	type = mschapv2
-	type = psk
+#	type = psk
 	type = pwd
 	type = tls
 
@@ -84,9 +84,12 @@ eap inner-eap {
 	#
 	#  See the `eap` module for common configuration explanation.
 	#
-	psk {
-		identity = "FreeRADIUS"
-	}
+	#  To enable EAP-PSK, enable the "eap-psk" virtual server, then
+	#  uncomment this section and the "type = psk" entry above.
+	#
+#	psk {
+#		virtual_server = eap-psk
+#	}
 
 
 	#

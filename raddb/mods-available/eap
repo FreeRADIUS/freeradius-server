@@ -124,7 +124,7 @@ eap {
 	#  determines which methods are loaded and available.
 	#
 	type = md5
-	type = psk
+#	type = psk
 	type = pwd
 	type = gtc
 	type = tls
@@ -154,12 +154,15 @@ eap {
 	#  virtual server.  See sites-available/eap-psk for a worked
 	#  example, including how the key is set.
 	#
-	psk {
+	#  To enable EAP-PSK, enable the "eap-psk" virtual server, then
+	#  uncomment this section and the "type = psk" entry above.
+	#
+#	psk {
 		#  virtual_server:: The "eap-psk" virtual server which looks
 		#  up the pre-shared key for a peer identity.
 		#
-		virtual_server = eap-psk
-	}
+#		virtual_server = eap-psk
+#	}
 
 	#
 	#  === EAP-PWD (Secure password-based authentication)
