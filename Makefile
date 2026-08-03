@@ -103,6 +103,7 @@ PROTOCOLS    := \
 	dhcpv6 \
 	dns \
 	eap/aka-sim \
+	eap/psk \
 	ethernet \
 	freeradius \
 	ldap \

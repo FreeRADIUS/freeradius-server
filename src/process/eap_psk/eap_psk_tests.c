@@ -36,7 +36,7 @@
  */
 #include <freeradius-devel/util/test/acutest.h>
 
-#include "eap_psk.c"
+#include "crypto.c"
 
 /*
  *	Fixed inputs for the hostap cross-check vectors.  If any of these

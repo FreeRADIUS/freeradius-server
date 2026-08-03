@@ -1,4 +1,4 @@
 type = psk
 psk {
-	identity = "FreeRADIUS"
+	virtual_server = "eap-psk"
 }

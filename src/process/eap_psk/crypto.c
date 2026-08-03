@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file eap_psk.c
+ * @file eap_psk/crypto.c
  * @brief The cryptographic primitives of EAP-PSK (RFC 4764).
  *
  * EAP-PSK is built entirely on AES-128.  This file implements, using the
@@ -38,13 +38,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
 
-#include "eap_psk.h"
+#include "crypto.h"
 
-/*
- *	A single AES-128 ECB block encryption: out = AES-128(key, in).  Both
- *	buffers are exactly 16 bytes.  Returns 0 on success, < 0 on failure.
+/** A single AES-128 ECB block encryption: out = AES-128(key, in)
+ *
+ * @param[out] out	the encrypted 16-byte block.
+ * @param[in] key	the 16-byte AES key.
+ * @param[in] in	the 16-byte block to encrypt.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-static int aes128_ecb_block(uint8_t out[16], uint8_t const key[16], uint8_t const in[16])
+static int aes128_ecb_block(uint8_t out[static 16], uint8_t const key[static 16], uint8_t const in[static 16])
 {
 	EVP_CIPHER_CTX	*ctx;
 	int		len;
@@ -69,13 +74,23 @@ done:
 	return rcode;
 }
 
-/*
- *	AES-128 in counter mode.  OpenSSL uses the 16-byte IV as the initial
- *	counter block and increments the whole 128-bit value as a big-endian
- *	integer, which is exactly what EAX (and hence EAP-PSK) requires.
- *	CTR is symmetric, so this is used for both encrypt and decrypt.
+/** AES-128 in counter mode
+ *
+ * OpenSSL uses the 16-byte IV as the initial counter block and increments
+ * the whole 128-bit value as a big-endian integer, which is exactly what
+ * EAX (and hence EAP-PSK) requires.  CTR is symmetric, so the function
+ * serves both encryption and decryption.
+ *
+ * @param[out] out	receives len bytes.
+ * @param[in] key	the 16-byte AES key.
+ * @param[in] ctr	the initial 16-byte counter block.
+ * @param[in] in	the data to encrypt or decrypt.
+ * @param[in] len	length of in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-static int aes128_ctr(uint8_t *out, uint8_t const key[16], uint8_t const ctr[16],
+static int aes128_ctr(uint8_t *out, uint8_t const key[static 16], uint8_t const ctr[static 16],
 		      uint8_t const *in, size_t len)
 {
 	int		rcode = -1;
@@ -96,20 +111,26 @@ done:
 	return rcode;
 }
 
-/*
- *	The "modified counter mode" of RFC 4764 section 3.1 / 3.2.  It is a
- *	length-increasing function that expands one 16-byte input block into
- *	'count' output blocks:
+/** The "modified counter mode" of RFC 4764 Sections 3.1 and 3.2
  *
- *		hash    = AES-128(key, input)
- *		out_i   = AES-128(key, hash XOR c_i)	for i = 1 .. count
+ * A length-increasing function that expands one 16-byte input block into
+ * 'count' output blocks:
  *
- *	where c_i is the integer i encoded as a 16-byte block.  Since i is
- *	always small (<= 9) only the low-order byte is ever non-zero.
+ *	hash    = AES-128(key, input)
+ *	out_i   = AES-128(key, hash XOR c_i)	for i = 1 .. count
  *
- *	'out' must be large enough for count * 16 bytes.
+ * where c_i is the integer i encoded as a 16-byte block.  Since i is
+ * always small (<= 9) only the low-order byte is ever non-zero.
+ *
+ * @param[out] out	receives count * 16 bytes.
+ * @param[in] key	the 16-byte AES key.
+ * @param[in] input	the 16-byte block to expand.
+ * @param[in] count	how many output blocks to produce.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-static int eap_psk_counter_mode(uint8_t *out, uint8_t const key[16], uint8_t const input[16],
+static int eap_psk_counter_mode(uint8_t *out, uint8_t const key[static 16], uint8_t const input[static 16],
 				size_t count)
 {
 	size_t		i;
@@ -140,8 +161,8 @@ static int eap_psk_counter_mode(uint8_t *out, uint8_t const key[16], uint8_t con
  *	- 0 on success.
  *	- -1 on OpenSSL failure.
  */
-int eap_psk_derive_ak_kdk(uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN],
-			  uint8_t const psk[EAP_PSK_PSK_LEN])
+int eap_psk_derive_ak_kdk(uint8_t ak[static EAP_PSK_AK_LEN], uint8_t kdk[static EAP_PSK_KDK_LEN],
+			  uint8_t const psk[static EAP_PSK_PSK_LEN])
 {
 	uint8_t	input[16];
 	uint8_t	out[2 * 16];
@@ -170,11 +191,11 @@ int eap_psk_derive_ak_kdk(uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LE
  *	- 0 on success.
  *	- -1 on OpenSSL failure.
  */
-int eap_psk_derive_keys(uint8_t tek[EAP_PSK_TEK_LEN],
-			uint8_t msk[EAP_PSK_MSK_LEN],
-			uint8_t emsk[EAP_PSK_EMSK_LEN],
-			uint8_t const kdk[EAP_PSK_KDK_LEN],
-			uint8_t const rand_p[EAP_PSK_RAND_LEN])
+int eap_psk_derive_keys(uint8_t tek[static EAP_PSK_TEK_LEN],
+			uint8_t msk[static EAP_PSK_MSK_LEN],
+			uint8_t emsk[static EAP_PSK_EMSK_LEN],
+			uint8_t const kdk[static EAP_PSK_KDK_LEN],
+			uint8_t const rand_p[static EAP_PSK_RAND_LEN])
 {
 	uint8_t	out[9 * 16];
 
@@ -187,18 +208,32 @@ int eap_psk_derive_keys(uint8_t tek[EAP_PSK_TEK_LEN],
 	return 0;
 }
 
-/*
- *	AES-128 CMAC over one or more concatenated buffers.  A NULL buffer is
- *	skipped, so callers can pass a fixed set of segments.
+/** AES-128 CMAC over one or more concatenated buffers
  *
- *	The low-level CMAC API is used because it is portable across
- *	OpenSSL 1.1 and 3.x; OpenSSL 3.0 deprecates it in favour of EVP_MAC,
- *	so the deprecation warning is suppressed the same way the rest of the
- *	tree handles deprecated OpenSSL calls.
+ * A NULL buffer is skipped, so callers can pass a fixed set of segments.
+ *
+ * The low-level CMAC API is used because it is portable across
+ * OpenSSL 1.1 and 3.x; OpenSSL 3.0 deprecates it in favour of EVP_MAC,
+ * so the deprecation warning is suppressed the same way the rest of the
+ * tree handles deprecated OpenSSL calls.
+ *
+ * @param[out] mac	the computed 16-byte CMAC.
+ * @param[in] key	the 16-byte AES key.
+ * @param[in] seg1	first data segment. May be NULL.
+ * @param[in] len1	length of seg1.
+ * @param[in] seg2	second data segment. May be NULL.
+ * @param[in] len2	length of seg2.
+ * @param[in] seg3	third data segment. May be NULL.
+ * @param[in] len3	length of seg3.
+ * @param[in] seg4	fourth data segment. May be NULL.
+ * @param[in] len4	length of seg4.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
 DIAG_OFF(deprecated-declarations)
-static int eap_psk_cmac(uint8_t mac[16],
-			uint8_t const key[16],
+static int eap_psk_cmac(uint8_t mac[static 16],
+			uint8_t const key[static 16],
 			uint8_t const *seg1, size_t len1,
 			uint8_t const *seg2, size_t len2,
 			uint8_t const *seg3, size_t len3,
@@ -245,12 +280,12 @@ DIAG_ON(deprecated-declarations)
  *	- 0 on success.
  *	- -1 on OpenSSL failure.
  */
-int eap_psk_mac_p(uint8_t mac_p[EAP_PSK_MAC_LEN],
-		  uint8_t const ak[EAP_PSK_AK_LEN],
+int eap_psk_mac_p(uint8_t mac_p[static EAP_PSK_MAC_LEN],
+		  uint8_t const ak[static EAP_PSK_AK_LEN],
 		  uint8_t const *id_p, size_t id_p_len,
 		  uint8_t const *id_s, size_t id_s_len,
-		  uint8_t const rand_s[EAP_PSK_RAND_LEN],
-		  uint8_t const rand_p[EAP_PSK_RAND_LEN])
+		  uint8_t const rand_s[static EAP_PSK_RAND_LEN],
+		  uint8_t const rand_p[static EAP_PSK_RAND_LEN])
 {
 	return eap_psk_cmac(mac_p, ak,
 			    id_p, id_p_len,
@@ -273,10 +308,10 @@ int eap_psk_mac_p(uint8_t mac_p[EAP_PSK_MAC_LEN],
  *	- 0 on success.
  *	- -1 on OpenSSL failure.
  */
-int eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
-		  uint8_t const ak[EAP_PSK_AK_LEN],
+int eap_psk_mac_s(uint8_t mac_s[static EAP_PSK_MAC_LEN],
+		  uint8_t const ak[static EAP_PSK_AK_LEN],
 		  uint8_t const *id_s, size_t id_s_len,
-		  uint8_t const rand_p[EAP_PSK_RAND_LEN])
+		  uint8_t const rand_p[static EAP_PSK_RAND_LEN])
 {
 	return eap_psk_cmac(mac_s, ak,
 			    id_s, id_s_len,
@@ -285,16 +320,22 @@ int eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
 			    NULL, 0);
 }
 
-/*
- *	The tweaked OMAC used by EAX:
+/** The tweaked OMAC used by EAX: OMAC^t(M) = CMAC(K, [t]_16 || M)
  *
- *		OMAC^t(M) = CMAC(K, [t]_16 || M)
+ * [t]_16 is the integer t encoded as a 16-byte block.  t is only ever
+ * 0, 1 or 2 here, so only the low-order byte is non-zero.
  *
- *	where [t]_16 is the integer t encoded as a 16-byte block.  t is only
- *	ever 0, 1 or 2 here, so only the low-order byte is non-zero.
+ * @param[out] out	the computed 16-byte OMAC.
+ * @param[in] key	the 16-byte AES key.
+ * @param[in] t	the OMAC tweak.
+ * @param[in] data	the data to authenticate.
+ * @param[in] data_len	length of data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on OpenSSL failure.
  */
-static int eap_psk_omac(uint8_t out[16],
-			uint8_t const key[16], uint8_t t,
+static int eap_psk_omac(uint8_t out[static 16],
+			uint8_t const key[static 16], uint8_t t,
 			uint8_t const *data, size_t data_len)
 {
 	uint8_t	tweak[16];
@@ -309,12 +350,15 @@ static int eap_psk_omac(uint8_t out[16],
 			    NULL, 0);
 }
 
-/*
- *	Build the 16-byte EAX nonce block from the 4-byte EAP-PSK Nonce N.
- *	N is padded with 96 zero high-order bits, i.e. 12 zero bytes followed
- *	by the 4-byte big-endian counter.
+/** Build the 16-byte EAX nonce block from the 4-byte EAP-PSK Nonce N
+ *
+ * N is padded with 96 zero high-order bits, i.e. 12 zero bytes followed
+ * by the 4-byte big-endian counter (RFC 4764 Section 3.3).
+ *
+ * @param[out] block	the 16-byte nonce block.
+ * @param[in] nonce	the PCHANNEL counter.
  */
-static void eap_psk_nonce_block(uint8_t block[16], uint32_t nonce)
+static void eap_psk_nonce_block(uint8_t block[static 16], uint32_t nonce)
 {
 	memset(block, 0, 16);
 	block[12] = (uint8_t) (nonce >> 24);
@@ -348,8 +392,8 @@ static void eap_psk_nonce_block(uint8_t block[16], uint32_t nonce)
  *	- 0 on success.
  *	- -1 on OpenSSL failure.
  */
-int eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN],
-			     uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[static EAP_PSK_TAG_LEN],
+			     uint8_t const tek[static EAP_PSK_TEK_LEN], uint32_t nonce,
 			     uint8_t const *header, size_t header_len,
 			     uint8_t const *plain, size_t plain_len)
 {
@@ -393,10 +437,10 @@ int eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN],
  *	- -1 on a bad tag or an OpenSSL error.
  */
 int eap_psk_pchannel_decrypt(uint8_t *plain,
-			     uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+			     uint8_t const tek[static EAP_PSK_TEK_LEN], uint32_t nonce,
 			     uint8_t const *header, size_t header_len,
 			     uint8_t const *cipher, size_t cipher_len,
-			     uint8_t const tag[EAP_PSK_TAG_LEN])
+			     uint8_t const tag[static EAP_PSK_TAG_LEN])
 {
 	size_t		i;
 	uint8_t		nonce_block[16];

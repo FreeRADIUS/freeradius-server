@@ -999,6 +999,7 @@ fi
 %{_libdir}/freeradius/process_dns.so
 %{_libdir}/freeradius/process_eap_aka.so
 %{_libdir}/freeradius/process_eap_aka_prime.so
+%{_libdir}/freeradius/process_eap_psk.so
 %{_libdir}/freeradius/process_eap_sim.so
 %{_libdir}/freeradius/process_radius.so
 %{_libdir}/freeradius/process_tacacs.so

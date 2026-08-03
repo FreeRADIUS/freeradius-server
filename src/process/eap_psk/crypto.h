@@ -18,12 +18,12 @@
 /**
  * $Id$
  *
- * @file eap_psk.h
+ * @file eap_psk/crypto.h
  * @brief Constants, session state, and crypto declarations for EAP-PSK (RFC 4764)
  *
  * @copyright 2026 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(eap_psk_h, "$Id$")
+RCSIDH(eap_psk_crypto_h, "$Id$")
 
 #include <freeradius-devel/eap/base.h>
 
@@ -77,50 +77,69 @@ RCSIDH(eap_psk_h, "$Id$")
  */
 #define EAP_PSK_HEADER_LEN	(4 + 1 + 1 + EAP_PSK_RAND_LEN)
 
+/*
+ *	RFC 4764 Section 5.2 bounds ID_P (an NAI) at 966 bytes.
+ */
+#define EAP_PSK_MAX_ID_P_LEN	966
+
 typedef enum {
-	EAP_PSK_STATE_INIT = 0,		/* first message sent, expecting the second */
-	EAP_PSK_STATE_MSG3_SENT		/* third message sent, expecting the fourth */
+	EAP_PSK_STATE_INIT = 0,				/* nothing sent yet */
+	EAP_PSK_STATE_IDENTITY_REQUEST_SENT,		/* first message sent, expecting the second */
+	EAP_PSK_STATE_RESULT_INDICATION_SENT,		/* third message sent, expecting the fourth */
+	EAP_PSK_STATE_DONE,				/* mutual authentication complete */
+	EAP_PSK_STATE_FAILED				/* authentication failed */
 } eap_psk_state_t;
 
 /*
- *	Kept in eap_session->opaque across the two round trips.
+ *	Kept in eap_session->opaque for the whole conversation.  Allocated
+ *	and written by the eap_psk process module; the rlm_eap_psk submodule
+ *	only reads 'state' to derive the next Packet-Type.
  */
 typedef struct {
 	eap_psk_state_t	state;
+	unlang_result_t	section_result;			//!< Result of the last policy section.
+
+	char		*id_s;				//!< ID_S actually sent in the first message.
+	uint8_t		*id_p;				//!< ID_P the peer asserted in the second message.
+	size_t		id_p_len;
+
 	uint8_t		rand_s[EAP_PSK_RAND_LEN];
+	uint8_t		rand_p[EAP_PSK_RAND_LEN];
+	uint8_t		mac_p[EAP_PSK_MAC_LEN];		//!< As received, verified once the PSK is known.
+
 	uint8_t		tek[EAP_PSK_TEK_LEN];		/* valid once the second message is processed */
 	uint8_t		msk[EAP_PSK_MSK_LEN];
 	uint8_t		emsk[EAP_PSK_EMSK_LEN];
 } eap_psk_session_t;
 
 /*
- *	Key setup and session-key derivation (eap_psk.c).  All return 0 on
+ *	Key setup and session-key derivation (crypto.c).  All return 0 on
  *	success, < 0 on (OpenSSL) failure.
  */
-int	eap_psk_derive_ak_kdk(uint8_t ak[EAP_PSK_AK_LEN], uint8_t kdk[EAP_PSK_KDK_LEN],
-			      uint8_t const psk[EAP_PSK_PSK_LEN]);
+int	eap_psk_derive_ak_kdk(uint8_t ak[static EAP_PSK_AK_LEN], uint8_t kdk[static EAP_PSK_KDK_LEN],
+			      uint8_t const psk[static EAP_PSK_PSK_LEN]);
 
-int	eap_psk_derive_keys(uint8_t tek[EAP_PSK_TEK_LEN],
-			    uint8_t msk[EAP_PSK_MSK_LEN],
-			    uint8_t emsk[EAP_PSK_EMSK_LEN],
-			    uint8_t const kdk[EAP_PSK_KDK_LEN],
-			    uint8_t const rand_p[EAP_PSK_RAND_LEN]);
+int	eap_psk_derive_keys(uint8_t tek[static EAP_PSK_TEK_LEN],
+			    uint8_t msk[static EAP_PSK_MSK_LEN],
+			    uint8_t emsk[static EAP_PSK_EMSK_LEN],
+			    uint8_t const kdk[static EAP_PSK_KDK_LEN],
+			    uint8_t const rand_p[static EAP_PSK_RAND_LEN]);
 
 /*
  *	MAC_P = CMAC-AES-128(AK, ID_P || ID_S || RAND_S || RAND_P)
  *	MAC_S = CMAC-AES-128(AK, ID_S || RAND_P)
  */
-int	eap_psk_mac_p(uint8_t mac_p[EAP_PSK_MAC_LEN],
-		      uint8_t const ak[EAP_PSK_AK_LEN],
+int	eap_psk_mac_p(uint8_t mac_p[static EAP_PSK_MAC_LEN],
+		      uint8_t const ak[static EAP_PSK_AK_LEN],
 		      uint8_t const *id_p, size_t id_p_len,
 		      uint8_t const *id_s, size_t id_s_len,
-		      uint8_t const rand_s[EAP_PSK_RAND_LEN],
-		      uint8_t const rand_p[EAP_PSK_RAND_LEN]);
+		      uint8_t const rand_s[static EAP_PSK_RAND_LEN],
+		      uint8_t const rand_p[static EAP_PSK_RAND_LEN]);
 
-int	eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
-		      uint8_t const ak[EAP_PSK_AK_LEN],
+int	eap_psk_mac_s(uint8_t mac_s[static EAP_PSK_MAC_LEN],
+		      uint8_t const ak[static EAP_PSK_AK_LEN],
 		      uint8_t const *id_s, size_t id_s_len,
-		      uint8_t const rand_p[EAP_PSK_RAND_LEN]);
+		      uint8_t const rand_p[static EAP_PSK_RAND_LEN]);
 
 /*
  *	The protected channel (EAX mode with AES-128, keyed with TEK).  The
@@ -129,13 +148,13 @@ int	eap_psk_mac_s(uint8_t mac_s[EAP_PSK_MAC_LEN],
  *	_decrypt() verifies the tag before decrypting, and returns < 0 if the
  *	tag is invalid.
  */
-int	eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[EAP_PSK_TAG_LEN],
-				 uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+int	eap_psk_pchannel_encrypt(uint8_t *cipher, uint8_t tag[static EAP_PSK_TAG_LEN],
+				 uint8_t const tek[static EAP_PSK_TEK_LEN], uint32_t nonce,
 				 uint8_t const *header, size_t header_len,
 				 uint8_t const *plain, size_t plain_len);
 
 int	eap_psk_pchannel_decrypt(uint8_t *plain,
-				 uint8_t const tek[EAP_PSK_TEK_LEN], uint32_t nonce,
+				 uint8_t const tek[static EAP_PSK_TEK_LEN], uint32_t nonce,
 				 uint8_t const *header, size_t header_len,
 				 uint8_t const *cipher, size_t cipher_len,
-				 uint8_t const tag[EAP_PSK_TAG_LEN]);
+				 uint8_t const tag[static EAP_PSK_TAG_LEN]);

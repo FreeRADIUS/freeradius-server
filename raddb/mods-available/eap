@@ -149,17 +149,16 @@ eap {
 	#
 	#  This module implements EAP-PSK (RFC 4764).
 	#
-	#  The "known good" password must be in the Password.PSK attribute,
-	#  which also must be 16 octets in length.
-	#
-	#  The PSK should be generated from a secure source, e.g. a CSPRNG.
+	#  The peer asserts an identity during authentication, and the
+	#  pre-shared key for that identity is looked up by an "eap-psk"
+	#  virtual server.  See sites-available/eap-psk for a worked
+	#  example, including how the key is set.
 	#
 	psk {
-		#  identity:: Server identifier (ID_S) This should generally be the
-		#  host name of the RADIUS server. Or, some information to uniquely
-		#  identify it.
+		#  virtual_server:: The "eap-psk" virtual server which looks
+		#  up the pre-shared key for a peer identity.
 		#
-		identity = "FreeRADIUS"
+		virtual_server = eap-psk
 	}
 
 	#
