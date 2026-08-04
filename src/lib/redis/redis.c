@@ -725,7 +725,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
  */
 fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *reply)
 {
-	char	*p, *q;
+	fr_sbuff_t	sbuff;
 
 	if (reply->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
@@ -735,24 +735,18 @@ fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 		return REDIS_RCODE_ERROR;
 	}
 
-	p = strstr(reply->str, "redis_version:");
-	if (!p) {
+	fr_sbuff_init_in(&sbuff, reply->str, reply->len);
+
+	if (!fr_sbuff_adv_to_str_literal(&sbuff, SIZE_MAX, "redis_version:")) {
 		fr_strerror_const("Response did not contain version string");
 		goto error;
 	}
+	fr_sbuff_advance(&sbuff, sizeof("redis_version:") -1);
 
-	p = strchr(p, ':');
-	fr_assert(p);
-	p++;
-
-	q = strstr(p, "\r\n");
-	if (!q) q = p + strlen(p);
-
-	if ((size_t)(q - p) >= out_len) {
-		fr_strerror_printf("Version string %zu bytes, expected < %zu bytes", q - p, out_len);
+	if (fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, out_len), &sbuff, SIZE_MAX, &FR_SBUFF_TERMS(L("\r\n")), NULL) == 0) {
+		fr_strerror_printf("Failed extracting version string");
 		goto error;
 	}
-	strlcpy(out, p, (q - p) + 1);
 
 	return REDIS_RCODE_SUCCESS;
 }
