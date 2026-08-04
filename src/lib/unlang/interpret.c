@@ -2359,6 +2359,8 @@ char const *unlang_interpret_virtual_server(request_t *request)
 	for (our_request = request; our_request; our_request = our_request->parent) {
 		CONF_SECTION *cs;
 
+		if (our_request->packet->socket.af == AF_FR_VIRTUAL_SERVER) return our_request->packet->socket.virtual.server;
+
 		cs = unlang_call_current(our_request);
 		if (!cs) continue;
 

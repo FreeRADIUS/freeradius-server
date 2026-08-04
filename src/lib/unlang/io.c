@@ -39,6 +39,7 @@ RCSID("$Id$")
 request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
 	request_t		*child;
+	CONF_SECTION		*cs;
 
 	if (!namespace) namespace = parent->proto_dict;
 
@@ -78,6 +79,13 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
 	COPY_FIELD(recv_time);
 	fr_assert(request_is_internal(child));
+
+	cs = unlang_call_current(parent);
+	if (cs) {
+		child->packet->socket.af = AF_FR_VIRTUAL_SERVER;
+		child->packet->socket.virtual.server = cf_section_name2(cs);
+		child->reply->socket = child->packet->socket;
+	}
 
 	REQUEST_VERIFY(child);
 
