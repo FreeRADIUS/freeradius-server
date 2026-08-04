@@ -272,57 +272,6 @@ static const virtual_server_compile_t compile_list[] = {
 	COMPILE_TERMINATOR
 };
 
-/*
- *	Debug the packet if requested.
- */
-static void dhcpv6_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
-{
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-	char if_name[IFNAMSIZ];
-#endif
-	char const *module;
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	/*
-	 *	Looks better without module prefix
-	 */
-	module = request->module;
-	request->module = NULL;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		    "%s%s%s"
-#endif
-		    "",
-		    received ? "Received" : "Sending",
-		    fr_dhcpv6_packet_names[packet->code],
-		    packet->id,
-		    packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
-		    fr_box_ipaddr(packet->socket.inet.src_ipaddr),
-		    packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
-		    packet->socket.inet.src_port,
-		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
-		    fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
-		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
-		    packet->socket.inet.dst_port
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		    , packet->socket.inet.ifindex ? "via " : "",
-		    packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-		    packet->socket.inet.ifindex ? " " : ""
-#endif
-		    );
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-
-	request->module = module;
-}
-
 /** Keep a copy of header fields to prevent them being tampered with
  *
  */
@@ -614,8 +563,6 @@ RESUME(send_to_client)
 	if (unlikely(restore_field_list(request, &fields->client_id) < 0)) goto fail;
 	if (unlikely(restore_field_list(request, &fields->server_id) < 0)) goto fail;
 
-	dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
-
 	return CALL_RESUME(send_generic);
 }
 
@@ -711,8 +658,6 @@ RESUME(send_to_relay)
 	if (unlikely(restore_field(request, &fields->peer_address) < 0)) goto fail;
 	if (fields->interface_id && unlikely(restore_field(request, &fields->interface_id) < 0)) goto fail;
 
-	dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
-
 	return CALL_RESUME(send_generic);
 }
 
@@ -738,8 +683,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
-
-	dhcpv6_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);

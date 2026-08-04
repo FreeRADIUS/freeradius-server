@@ -165,25 +165,6 @@ static fr_process_state_t const process_state[] = {
 	},
 };
 
-/*
- *	Debug the packet if requested.
- */
-static void arp_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
-{
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
-		    received ? "Received" : "Sending",
-		    fr_arp_packet_codes[packet->code]);
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
-
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
@@ -203,8 +184,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
-
-	arp_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
 }

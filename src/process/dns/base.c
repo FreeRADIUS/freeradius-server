@@ -218,28 +218,6 @@ static const virtual_server_compile_t compile_list[] = {
 	COMPILE_TERMINATOR
 };
 
-/*
- *	Debug the packet if requested.
- */
-static void dns_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
-{
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	if ((packet->code & 0x0f) >= FR_DNS_CODE_MAX) return;
-
-	if (!fr_dns_packet_names[packet->code & 0x0f]) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
-		    received ? "Received" : "Sending",
-		    fr_dns_packet_names[packet->code & 0x0f]);
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
 
 /** Keep a copy of header fields to prevent them being tampered with
  *
@@ -451,12 +429,6 @@ RESUME(send_response)
 	dns_fields_restore(request, talloc_get_type_abort(mctx->rctx, process_rctx_t));
 
 	/*
-	 *	Do this last, so we show everything
-	 *	we'll be sending back.
-	 */
-	dns_packet_debug(request, request->reply, &request->reply_pairs, false);
-
-	/*
 	 *	Hack.  This is because this stupid framework uses
 	 *	packet_type values to represent request and response
 	 *	packet types, and DNS uses the same values for
@@ -490,8 +462,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
-
-	dns_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
 }

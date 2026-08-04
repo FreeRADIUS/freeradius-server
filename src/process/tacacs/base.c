@@ -1047,9 +1047,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	// @todo - debug stuff!
-//	tacacs_packet_debug(request, request->packet, &request->request_pairs, true);
-
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);
 	}
