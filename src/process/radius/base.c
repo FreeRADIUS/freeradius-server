@@ -29,7 +29,6 @@
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
 
 #include <freeradius-devel/unlang/module.h>
@@ -166,48 +165,6 @@ static const conf_parser_t config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
-
-/*
- *	Debug the packet if requested.
- */
-static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
-{
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-	char if_name[IFNAMSIZ];
-#endif
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s ID %d from %s%pV%s:%i to %s%pV%s:%i "
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       "%s%s%s"
-#endif
-		       "",
-		       received ? "Received" : "Sending",
-		       fr_radius_packet_name[packet->code],
-		       packet->id,
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
-		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.src_port,
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
-		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->socket.inet.dst_port
-#ifdef WITH_IFINDEX_NAME_RESOLUTION
-		       , packet->socket.inet.ifindex ? "via " : "",
-		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
-		       packet->socket.inet.ifindex ? " " : ""
-#endif
-		       );
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
 
 /** Keep a copy of some attributes to keep them from being tampered with
  *
@@ -761,7 +718,7 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		RETURN_UNLANG_FAIL;
 	}
 
-	radius_packet_debug(request, request->packet, &request->request_pairs, true);
+	LOG_PACKET_DEBUG(request, request->packet, &request->request_pairs, fr_radius_packet_name, true, (request->packet->id >= 0));
 
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);

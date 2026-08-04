@@ -27,7 +27,6 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/util/file.h>

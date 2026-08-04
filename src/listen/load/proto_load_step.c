@@ -24,7 +24,6 @@
  */
 #include <netdb.h>
 #include <fcntl.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>

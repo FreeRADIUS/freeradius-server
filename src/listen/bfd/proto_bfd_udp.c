@@ -22,7 +22,6 @@
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/bfd/bfd.h>

@@ -23,7 +23,6 @@
  * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/io/application.h>

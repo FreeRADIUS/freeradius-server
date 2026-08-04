@@ -46,7 +46,6 @@
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/types.h>
 #include <freeradius-devel/server/process_types.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/module.h>

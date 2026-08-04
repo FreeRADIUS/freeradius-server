@@ -24,7 +24,6 @@
 #define LOG_PREFIX "process_ldap_sync"
 
 #include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/ldap/sync.h>
 

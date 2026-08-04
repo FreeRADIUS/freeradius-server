@@ -25,7 +25,6 @@
 #include <freeradius-devel/crl/crl.h>
 #include <freeradius-devel/io/coord_pair.h>
 #include <freeradius-devel/server/main_config.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/utils.h>
 #include <freeradius-devel/unlang/interpret.h>

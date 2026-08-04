@@ -21,7 +21,6 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/bfd/bfd.h>
 #include "bfd/session.h"

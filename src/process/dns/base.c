@@ -22,7 +22,6 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>

@@ -27,7 +27,6 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/internal/internal.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/unlang/call.h>

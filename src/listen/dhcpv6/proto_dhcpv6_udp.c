@@ -23,7 +23,6 @@
  */
 #define LOG_PREFIX "proto_dhcpv6_udp"
 
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>

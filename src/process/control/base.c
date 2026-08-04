@@ -21,7 +21,6 @@
  *
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/process_types.h>
 #include <freeradius-devel/util/debug.h>
 
