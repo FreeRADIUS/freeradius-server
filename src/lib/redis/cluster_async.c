@@ -906,24 +906,6 @@ do { \
 		}
 	}
 
-	/*
-	 *	Check for holes in the pending_addr key_slot array
-	 *
-	 *	The cluster specification says that upon
-	 *	detecting a 'NULL' key_slot we should
-	 *	check again to see if the cluster error has
-	 *	been resolved, but seeing as we're in the
-	 *	middle of updating the cluster from very
-	 *	recent output of 'cluster slots' it's best to
-	 *	error out.
-	 */
-	for (i = 0; i < KEY_SLOTS; i++) {
-		if (key_slot_pending[i].master == 0) {
-			fr_strerror_printf("Cluster is misconfigured, no node assigned for key %d", i);
-			goto error;
-		}
-	}
-
 	memcpy(&rtcluster->key_slot, &key_slot_pending, sizeof(rtcluster->key_slot));
 
 	/*

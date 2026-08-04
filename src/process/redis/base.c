@@ -191,14 +191,16 @@ typedef struct {
  *
  * @param reply		Redis reply containing the "slots" array.
  * @param shard_vp	Pair representing shard to build slots pairs under.
+ * @param slots_covered	Array recording which slots have been covered.
  * @return
  *	- number of slot ranges found
  *	- -1 on error
  */
-static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *shard_vp)
+static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *shard_vp, bool slots_covered[KEY_SLOTS])
 {
 	fr_pair_t	*slot_vp, *vp;
 	size_t		i;
+	uint16_t	s;
 
 	/*
 	 *	The "slots" value must be an array with an even number
@@ -224,6 +226,8 @@ static int fr_redis_cluster_shards_slots_to_pairs(redisReply *reply, fr_pair_t *
 		vp->vp_uint16 = (uint16_t) reply->element[i + 1]->integer;
 		if (reply->element[i + 1]->integer >= KEY_SLOTS) return -1;
 		fr_pair_append(&slot_vp->vp_group, vp);
+
+		for(s = reply->element[i]->integer; s <= reply->element[i + 1]->integer; s++) slots_covered[s] = true;
 	}
 
 	return i / 2;
@@ -348,10 +352,14 @@ static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *
 	size_t		i;
 	fr_pair_t	*shard_vp;
 	int		ret;
+	bool		slots_covered[KEY_SLOTS];
+	uint16_t	s;
 
 	if(reply->type != REDIS_REPLY_ARRAY) return -1;
 
 	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
+	memset(slots_covered, 0, sizeof(slots_covered));
 
 	for (i = 0; i < reply->elements; i++) {
 		size_t		j;
@@ -370,7 +378,8 @@ static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *
 		for (j = 0; j < (shard->elements - 1); j += 2) {
 			redisReply *field = shard->element[j];
 			if (strcmp(field->str, "slots") == 0) {
-				ret = fr_redis_cluster_shards_slots_to_pairs(shard->element[j + 1], shard_vp);
+				ret = fr_redis_cluster_shards_slots_to_pairs(shard->element[j + 1], shard_vp,
+									     slots_covered);
 				if (ret < 0) goto error;
 
 				/*
@@ -394,6 +403,8 @@ static int fr_redis_cluster_shards_nodes_to_pairs(redisReply *reply, fr_pair_t *
 			}
 		}
 	}
+
+	for (s = 0; s < KEY_SLOTS; s++) if (!slots_covered[s]) goto error;
 
 	return 0;
 }
@@ -433,10 +444,14 @@ static int fr_redis_cluster_slots_to_pairs(TALLOC_CTX *ctx, request_t *request, 
 {
 	size_t		i;
 	fr_pair_t	*shard_vp, *slot_vp, *node_vp, *vp;
+	bool		slots_covered[KEY_SLOTS];
+	uint16_t	s;
 
 	if(reply->type != REDIS_REPLY_ARRAY) return -1;
 
 	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
+
+	memset(slots_covered, 0, sizeof(slots_covered));
 
 	/*
 	 *	A map consists of an array with the following indexes:
@@ -459,6 +474,7 @@ static int fr_redis_cluster_slots_to_pairs(TALLOC_CTX *ctx, request_t *request, 
 		if (map->element[0]->type != REDIS_REPLY_INTEGER) {
 		error:
 			talloc_free(shard_vp);
+		list_free:
 			fr_pair_list_free(list);
 			return -1;
 		}
@@ -492,8 +508,12 @@ static int fr_redis_cluster_slots_to_pairs(TALLOC_CTX *ctx, request_t *request, 
 			fr_pair_append(&node_vp->vp_group, vp);
 		}
 
+		for (s = map->element[0]->integer; s <= map->element[1]->integer; s++) slots_covered[s] = true;
+
 		fr_pair_append(list, shard_vp);
 	}
+
+	for (s = 0; s < KEY_SLOTS; s++) if (!slots_covered[s]) goto list_free;
 
 	return 0;
 }
