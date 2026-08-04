@@ -1011,3 +1011,84 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 
 	return sockfd;
 }
+
+/** Print an #fr_socket_t to a string.
+ *
+ */
+ssize_t fr_socket_to_str(char *out, size_t outlen, fr_socket_t const *sock, bool received)
+{
+	ssize_t slen;
+	static char const *sense[2] = { "to", "from" };
+	char *src_ip, src_ip_buffer[FR_IPADDR_STRLEN];
+	char *dst_ip, dst_ip_buffer[FR_IPADDR_STRLEN];
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	char if_name[IFNAMSIZ];
+#endif
+
+	switch (sock->af) {
+	case AF_INET:
+	case AF_INET6:
+		src_ip = fr_inet_ntop(src_ip_buffer, sizeof(src_ip_buffer), &sock->inet.src_ipaddr);
+		if (!src_ip) return 0;
+
+		dst_ip = fr_inet_ntop(dst_ip_buffer, sizeof(dst_ip_buffer), &sock->inet.dst_ipaddr);
+		if (!dst_ip) return 0;
+
+		slen = snprintf(out, outlen, "%s %s%s%s:%u %s %s%s%s:%u",
+				sense[received],
+				sock->af == AF_INET6 ? "[" : "",
+				src_ip,
+				sock->af == AF_INET6 ? "]" : "",
+				sock->inet.src_port,
+
+				sense[!received],
+				sock->af == AF_INET6 ? "[" : "",
+				dst_ip,
+				sock->af == AF_INET6 ? "]" : "",
+				sock->inet.dst_port);
+
+#ifndef WITH_IFINDEX_NAME_RESOLUTION
+		break;
+#else
+
+		/*
+		 *	Catch errors.
+		 */
+		if (slen <= 0) return slen;
+		if ((size_t) slen > outlen) return -slen;
+
+		/*
+		 *	No ifindex, we don't need to do anything else.
+		 */
+		if (!sock->inet.ifindex) return slen;
+
+		out += slen;
+		outlen -= slen;
+
+		slen = snprintf(out, outlen, " via %s",
+				fr_ifname_from_ifindex(if_name, sock->inet.ifindex));
+#endif
+		break;
+
+	case AF_LOCAL:
+		slen = snprintf(out, outlen, "%s unix path %s", sense[received], sock->unix.path);
+		break;
+
+	case AF_FR_FILENAME:
+		slen = snprintf(out, outlen, "%s filename %s", sense[received], sock->file.path);
+		break;
+
+	case AF_FR_VIRTUAL_SERVER:
+		slen = snprintf(out, outlen, "%s virtual server %s", sense[received], sock->virtual.server);
+		break;
+
+	default:
+		fr_strerror_printf("Invalid address family %d", sock->af);
+		return -1;
+	}
+
+	if (slen <= 0) return slen;
+	if ((size_t) slen > outlen) return -slen;
+
+	return slen;
+}

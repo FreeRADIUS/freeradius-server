@@ -104,6 +104,11 @@ extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 #define AF_FR_FILENAME (INT_MIN)
 
 /*
+ *	A virtual server.
+ */
+#define AF_FR_VIRTUAL_SERVER (INT_MIN + 1)
+
+/*
  *	Utility functions
  */
 int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr);
