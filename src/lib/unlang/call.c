@@ -36,6 +36,7 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_call_t			*gext = unlang_group_to_call(g);
 	fr_pair_t			*packet_type_vp = NULL;
+	unlang_frame_state_call_t	*state = frame->state;
 
 	switch (pair_update_reply(&packet_type_vp, gext->attr_packet_type)) {
 	case 0:
@@ -46,8 +47,11 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 		break;	/* Don't change */
 
 	default:
+		request->module = state->module;
 		RETURN_UNLANG_FAIL;
 	}
+
+	request->module = state->module;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -156,6 +160,8 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 	char const			*name;
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*attr_packet_type;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_call_t	*state;
 
 	/*
 	 *	Temporary hack until packet->code is removed
@@ -205,6 +211,11 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 		talloc_free(c);
 		return UNLANG_ACTION_FAIL;
 	}
+
+	frame = &stack->frame[stack->depth];
+	state = frame->state;
+	state->module = request->module;
+	request->module = NULL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -340,5 +351,8 @@ void unlang_call_init(void)
 
 			.unlang_size	= sizeof(unlang_call_t),
 			.unlang_name	= "unlang_call_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_call_t),
+			.frame_state_type = "unlang_frame_state_call_t",
 		});
 }
