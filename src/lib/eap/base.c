@@ -389,7 +389,7 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 	fr_assert(request->parent);
 	fr_assert(virtual_server);
 
-	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(virtual_server_cs(virtual_server)));
+	RIDEBUG("Running virtual_server = %s", cf_section_name2(virtual_server_cs(virtual_server)));
 
 	/*
 	 *	Re-present the previously stored child's session state if there is one

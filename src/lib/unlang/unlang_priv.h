@@ -139,6 +139,7 @@ struct unlang_s {
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
 	bool			closed;		//!< whether or not this section is closed to new statements
+	bool			add_filename;	//!< add the filename when printing in debug mode
 	CONF_ITEM		*ci;		//!< used to generate this item
 	unsigned int		number;		//!< unique node number
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.

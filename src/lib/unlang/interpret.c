@@ -1125,7 +1125,11 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 */
 		if (!is_repeatable(frame)) {
 			if (has_debug_braces(frame)) {
-				RDEBUG2("%s {", instruction->debug_name);
+				if (unlikely(instruction->add_filename)) {
+					RDEBUG2("%s { # from file %s", instruction->debug_name, cf_filename(instruction->ci));
+				} else {
+					RDEBUG2("%s {", instruction->debug_name);
+				}
 				RINDENT();
 			}
 		/*

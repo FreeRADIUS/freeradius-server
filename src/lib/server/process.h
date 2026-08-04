@@ -253,8 +253,6 @@ RECV(generic)
 		RETURN_UNLANG_FAIL;
 	}
 
-
-	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, state->default_rcode, state->resume,
 					      NULL, 0, mctx->rctx);
@@ -361,9 +359,7 @@ SEND_NO_RESULT(generic)
 		MEM(0);
 	}
 
-	if (cs) {
-		RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
-	} else {
+	if (!cs) {
 		char const *name;
 
 		name = fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
@@ -514,7 +510,6 @@ RESUME(new_client)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client_done,
 					      NULL, 0, mctx->rctx);
@@ -532,7 +527,6 @@ static inline unlang_action_t new_client(UNUSED unlang_result_t *p_result, modul
 	fr_assert(inst->sections.new_client != NULL);
 	cs = inst->sections.new_client;
 
-	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_FAIL, resume_new_client,
 					      NULL, 0, mctx->rctx);

@@ -541,7 +541,6 @@ RESUME(auth_start)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);

@@ -193,6 +193,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 				.debug_name = name,
 				.ci = CF_TO_ITEM(server_cs),
 				.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
+				.add_filename = true,
 			},
 
 			.cs = server_cs,

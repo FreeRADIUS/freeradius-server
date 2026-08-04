@@ -2241,6 +2241,7 @@ int unlang_compile(virtual_server_t const *vs,
 	 */
 	cf_data_add(cs, c, NULL, false);
 	cf_item_mark_parsed(cs);
+	c->add_filename = true;
 	if (instruction) *instruction = c;
 
 	return 0;

@@ -367,7 +367,6 @@ RESUME(access_request)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
@@ -717,8 +716,6 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
-
-	LOG_PACKET_DEBUG(request, request->packet, &request->request_pairs, fr_radius_packet_name, true, (request->packet->id >= 0));
 
 	if (unlikely(request_is_dynamic_client(request))) {
 		return new_client(p_result, mctx, request);
