@@ -2285,7 +2285,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		*	server associated with them unless they go call {}.
 		*
 		*	But we're not being pendantic, so go back up the request
-		*	list ooking for a call frame.
+		*	list looking for a call frame.
 		*
 		*	Unfortunately for detached subrequests we still won't find
 		*	the actual virtual server...
