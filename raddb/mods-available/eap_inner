@@ -87,9 +87,9 @@ eap inner-eap {
 	#  To enable EAP-PSK, enable the "eap-psk" virtual server, then
 	#  uncomment this section and the "type = psk" entry above.
 	#
-#	psk {
-#		virtual_server = eap-psk
-#	}
+##	psk {
+##		virtual_server = eap-psk
+##	}
 
 
 	#

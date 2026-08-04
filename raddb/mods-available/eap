@@ -58,7 +58,7 @@ eap {
 	#
 	#  The default value is `nai`.
 	#
-#	require_identity_realm = nai
+	require_identity_realm = no
 
 	#
 	#  Session tracking has been moved to the `session` section of a
@@ -157,12 +157,12 @@ eap {
 	#  To enable EAP-PSK, enable the "eap-psk" virtual server, then
 	#  uncomment this section and the "type = psk" entry above.
 	#
-#	psk {
+##	psk {
 		#  virtual_server:: The "eap-psk" virtual server which looks
 		#  up the pre-shared key for a peer identity.
 		#
-#		virtual_server = eap-psk
-#	}
+##		virtual_server = eap-psk
+##	}
 
 	#
 	#  === EAP-PWD (Secure password-based authentication)
@@ -536,8 +536,8 @@ eap {
 		#  passphrase must be a hex value, and can be up to 256 hex
 		#  characters.
 		#
-#		psk_identity = "test"
-#		psk_hexphrase = "036363823"
+##		psk_identity = "test"
+##		psk_hexphrase = "036363823"
 
 		#
 		#  WARNING: Dynamic queries for the `PSK`. If `TLS-PSK` is used, and
