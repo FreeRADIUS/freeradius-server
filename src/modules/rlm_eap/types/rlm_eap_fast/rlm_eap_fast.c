@@ -638,8 +638,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	 */
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Got tunneled Access-Accept");
-
 		rcode = RLM_MODULE_OK;
 
 		/*
@@ -682,13 +680,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		RDEBUG2("Got tunneled Access-Challenge");
-
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */

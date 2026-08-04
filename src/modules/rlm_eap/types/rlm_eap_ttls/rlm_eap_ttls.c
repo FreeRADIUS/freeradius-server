@@ -653,8 +653,6 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 	 */
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Got tunneled Access-Accept");
-
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
@@ -678,7 +676,6 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 		return eap_ttls_success(p_result, request, eap_session);
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		REDEBUG("Got tunneled Access-Reject");
 		eap_tls_fail(request, eap_session);
 		RETURN_UNLANG_REJECT;
 
@@ -689,8 +686,6 @@ static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t con
 	 *	a Reply-Message to the client.
 	 */
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		RDEBUG2("Got tunneled Access-Challenge");
-
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.

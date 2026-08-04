@@ -380,20 +380,16 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		if (eap_peap_success(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
-		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		if (eap_peap_failure(request, eap_session, tls_session) < 0) RETURN_UNLANG_FAIL;
 		RETURN_UNLANG_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		RDEBUG2("Got tunneled Access-Challenge");
-
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
 		 *	of the tunnel.  Any Reply-Message in the
@@ -413,7 +409,7 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 		RETURN_UNLANG_HANDLED;
 
 	default:
-		RDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		REDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		RETURN_UNLANG_REJECT;
 	}
 }
