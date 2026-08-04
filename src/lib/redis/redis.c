@@ -750,36 +750,6 @@ fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 	return REDIS_RCODE_SUCCESS;
 }
 
-/** Get the version of Redis running on the remote server
- *
- * This can be useful for some modules, as it allows adaptive behaviour, or early termination.
- *
- * @param[out] out Where to write the version string.
- * @param[in] out_len Length of the version string buffer.
- * @param[in] conn Used to query the version string.
- * @return
- *	- #REDIS_RCODE_SUCCESS on success.
- *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
- *	- REDIS_RCODE_* on other errors;
- */
-fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn)
-{
-	redisReply		*reply;
-	fr_redis_rcode_t	status;
-
-	fr_assert(out_len > 0);
-	out[0] = '\0';
-
-	reply = redisCommand(conn->handle, "INFO SERVER");
-	status = fr_redis_command_status(conn, reply);
-	if (status != REDIS_RCODE_SUCCESS) return status;
-
-	status = fr_redis_parse_version(out, out_len, reply);
-	fr_redis_reply_free(&reply);
-
-	return status;
-}
-
 /** Convert version string into a 32bit unsigned integer for comparisons
  *
  * @param[in] version string to parse.
