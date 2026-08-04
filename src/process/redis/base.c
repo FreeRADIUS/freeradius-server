@@ -166,13 +166,13 @@ typedef struct {
 /** Resume context for Redis requests */
 typedef struct {
 	process_redis_t const	*inst;			//!< Module instance.
+	process_redis_thread_t	*thread;		//!< Thread instance.
 	unlang_result_t		result;			//!< Where results are written to
 	int32_t			worker_id;		//!< The worker which sent the data leading to this request.
 	process_redis_cluster_t	*cluster;		//!< Cluster which is being updated.
 	process_redis_node_t	*current_node;		//!< Node currently being queried.
 	fr_dlist_head_t		rctx_list;		//!< List of per-node resume contexts.
 	uint64_t		cluster_epoch;		//!< Largest epoch value returned by any node.
-	fr_event_list_t		*el;			//!< Event list for timeout events.
 } process_redis_rctx_t;
 
 #define FR_REDIS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_REDIS_CODE_MAX))
@@ -689,7 +689,7 @@ static unlang_action_t redis_cluster_map_get(UNUSED unlang_result_t *p_result, r
 			continue;
 		}
 
-		fr_timer_in(nrctx, rctx->el->tl, &nrctx->ev, rctx->inst->timeout, true,
+		fr_timer_in(nrctx, rctx->thread->el->tl, &nrctx->ev, rctx->inst->timeout, true,
 			    redis_cluster_map_get_timeout, nrctx);
 		fr_dlist_insert_tail(&rctx->rctx_list, nrctx);
 	}
@@ -923,9 +923,9 @@ static unlang_action_t process_redis_return_existing(request_t *request, process
 
 RECV(cluster_map_bootstrap)
 {
-	process_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
-	process_redis_thread_t	*thread = talloc_get_type_abort(mctx->thread, process_redis_thread_t);
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, process_redis_rctx_t);
+	process_redis_t const	*inst = rctx->inst;
+	process_redis_thread_t	*thread = rctx->thread;
 	fr_pair_t		*vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_worker_id);
 	fr_pair_t		*port_vp;
 	process_redis_cluster_t	find, *cluster;
@@ -934,8 +934,6 @@ RECV(cluster_map_bootstrap)
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 	rctx->worker_id = vp->vp_int32;
-	rctx->el = thread->el;
-	rctx->inst = inst;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_bootstrap_node);
 	if (!vp) return UNLANG_ACTION_FAIL;
@@ -1050,22 +1048,18 @@ RECV(cluster_map_bootstrap)
 
 RECV(cluster_map_get)
 {
-	process_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
-	process_redis_thread_t	*thread = talloc_get_type_abort(mctx->thread, process_redis_thread_t);
 	process_redis_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, process_redis_rctx_t);
 	fr_pair_t		*vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_worker_id);
 	process_redis_cluster_t	find;
 
 	if (!vp) return UNLANG_ACTION_FAIL;
 	rctx->worker_id = vp->vp_int32;
-	rctx->el = thread->el;
-	rctx->inst = inst;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_cluster_id);
 	if (!vp) return UNLANG_ACTION_FAIL;
 
 	find.cluster_id = vp->vp_uint16;
-	rctx->cluster = fr_rb_find(&thread->cluster_by_id, &find);
+	rctx->cluster = fr_rb_find(&rctx->thread->cluster_by_id, &find);
 	if (!rctx->cluster) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -1083,6 +1077,9 @@ RECV(cluster_map_get)
 static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
+	process_redis_t		*inst = talloc_get_type_abort(mctx->mi->data, process_redis_t);
+	process_redis_thread_t	*thread = talloc_get_type_abort(mctx->thread, process_redis_thread_t);
+	process_redis_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, process_redis_rctx_t);
 
 	PROCESS_TRACE;
 
@@ -1099,6 +1096,9 @@ static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_UNLANG_FAIL;
 	}
+
+	rctx->inst = inst;
+	rctx->thread = thread;
 
 	return state->recv(p_result, mctx, request);
 }
