@@ -128,15 +128,6 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 		goto error;
 	}
 
-	/*
-	 *	Need to add reply.Packet-Type if it
-	 *	wasn't set by the virtual server...
-	 *
-	 *	AGAIN packet->code NEEDS TO DIE.
-	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
-	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
-	 *	DIE DIE DIE.
-	 */
 	if (unlang_list_empty(&g->children)) {
 		frame_repeat(frame, unlang_call_resume);
 	} else {
