@@ -230,6 +230,7 @@
 **** xref:raddb/mods-available/always.adoc[Always]
 **** xref:raddb/mods-available/attr_filter.adoc[Attr_filter]
 **** xref:raddb/mods-available/idn.adoc[IDN]
+**** xref:raddb/mods-available/interval.adoc[Interval]
 **** xref:raddb/mods-available/sometimes.adoc[Sometimes]
 
 *** xref:raddb/mods-available/doc/protocol.adoc[Protocols]
