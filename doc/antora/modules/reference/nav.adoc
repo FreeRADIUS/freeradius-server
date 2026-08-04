@@ -276,6 +276,7 @@
 **** xref:raddb/sites-available/decoupled-accounting.adoc[Decoupled Accounting]
 **** xref:raddb/sites-available/detail.adoc[Detail]
 **** xref:raddb/sites-available/inner-tunnel.adoc[EAP Inner Tunnel]
+**** xref:raddb/sites-available/eap-psk.adoc[EAP-PSK]
 **** xref:raddb/sites-available/virtual.example.com.adoc[Internal Proxying]
 **** xref:raddb/sites-available/originate-coa.adoc[Originate CoA-Request]
 ***** xref:raddb/sites-available/robust-proxy-accounting.adoc[Robust Proxy Accounting]
