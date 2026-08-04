@@ -145,7 +145,7 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Push a call frame onto the stack
+/** Push a virtual server #CONF_SECTION as a call frame onto the stack
  *
  * This should be used instead of virtual_server_push in the majority of the code
  */
@@ -177,7 +177,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 	 *	stack.  The only sane way to do it is to attach it to
 	 *	the frame state.
 	 */
-	name = cf_section_name2(server_cs);
+	name = talloc_asprintf(request, "server %s", cf_section_name2(server_cs));
 	MEM(c = talloc(stack, unlang_call_t));	/* Free at the same time as the state */
 	*c = (unlang_call_t){
 		.group = {
