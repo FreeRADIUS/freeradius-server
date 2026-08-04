@@ -23,11 +23,10 @@
  * @copyright 2016 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
 #include "proto_arp.h"
