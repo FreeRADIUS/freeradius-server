@@ -55,28 +55,6 @@ extern "C" {
 typedef struct fr_redis_cluster_node_s fr_redis_cluster_node_t;
 typedef struct fr_redis_ct_s fr_redis_ct_t;
 
-/** Wrap freeReplyObject so we consistently check for NULL pointers
- *
- * Older versions such as 0.10 (which ship with Ubuntu <= 14.10)
- * don't check for NULL pointer before attempting to free, so we
- * get a NULL pointer dereference in some cases.
- *
- * Rather than go back through the many calls to freeReplyObject
- * and attempt to determine code paths that may result in it being
- * called on a NULL pointer, we use this to always check.
- */
-static inline void fr_redis_reply_free(redisReply **reply)
-{
-	if (*reply) freeReplyObject(*reply);
-	*reply = NULL;
-}
-
-static inline void fr_redis_pipeline_free(redisReply *reply[], size_t num)
-{
-	size_t i;
-	for (i = 0; i < num; i++) fr_redis_reply_free(&(reply[i]));
-}
-
 extern fr_table_num_sorted_t const redis_reply_types[];
 extern size_t redis_reply_types_len;
 extern fr_table_num_sorted_t const redis_rcodes[];
