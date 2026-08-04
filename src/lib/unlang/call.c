@@ -51,6 +51,8 @@ static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, requ
 		RETURN_UNLANG_FAIL;
 	}
 
+	LOG_PACKET_DEBUG(request, request->reply, &request->reply_pairs, gext->attr_packet_type, false, (request->reply->id >= 0));
+
 	request->module = state->module;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -136,6 +138,8 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 	frame->prev.frame_call = stack->depth;
 
 	if (virtual_server_push(NULL, request, virtual_server_from_cs(gext->server_cs), UNLANG_SUB_FRAME) < 0) goto error;
+
+	LOG_PACKET_DEBUG(request, request->packet, &request->request_pairs, gext->attr_packet_type, true, (request->packet->id >= 0));
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
