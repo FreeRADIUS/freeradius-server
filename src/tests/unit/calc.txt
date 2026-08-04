@@ -7,7 +7,7 @@
 #  integers
 #
 calc uint8 255 + uint8 255 -> uint8
-match Invalid cast from uint64 to uint8.  510 outside value range 0-255
+match ERROR: Invalid cast from uint64 to uint8.  510 outside value range 0-255
 
 calc uint8 127 + uint8 127 -> uint8
 match 254
@@ -30,10 +30,10 @@ calc int8 0x7f & uint8 0x40 -> uint8
 match 64
 
 calc uint8 5 - uint8 16 -> uint8
-match Value underflows 'uint8' when calculating result.
+match ERROR: Value underflows 'uint8' when calculating result.
 
 calc uint32 5 - uint32 16 -> uint32
-match Value underflows 'uint32' when calculating result.
+match ERROR: Value underflows 'uint32' when calculating result.
 
 #
 #  Intermediate values are too large for destination, but the
@@ -48,7 +48,7 @@ match yes
 
 # this can't
 calc string "stuff" < uint32 2 -> bool
-match Failed parsing string as type 'uint32'
+match ERROR: Failed parsing string as type 'uint32'
 
 ######################################################################
 #
@@ -138,7 +138,7 @@ calc ipv4addr 192.168.2.1 & uint32 0xffff0000 -> null
 match 192.168.0.0/16
 
 calc ipv4addr 192.168.2.1 & uint32 0xffff0080 -> ipv4prefix
-match Invalid network mask '0xffff0080'
+match ERROR: Invalid network mask '0xffff0080'
 
 calc ipv6addr 2001:DB8::1 & octets 0xffff0000000000000000000000000000
 match 2001::/16
@@ -174,7 +174,7 @@ calc combo-prefix 127/8 > combo-ip 192.168.0.1 -> bool
 match no
 
 calc combo-prefix 127/8 > ipv6addr 2001:DB8::1 -> bool
-match Cannot compare IPv4 with IPv6 address
+match ERROR: Cannot compare IPv4 with IPv6 address
 
 calc combo-prefix 127/8 + uint8 1 -> ipaddr
 match 127.0.0.1
@@ -203,7 +203,7 @@ calc float32 11.0 % float32 2.0 -> float32
 match 1.000000
 
 calc float32 11.0 % float32 0.0 -> float32
-match Cannot divide by zero.
+match ERROR: Cannot divide by zero.
 
 ######################################################################
 #
@@ -228,10 +228,10 @@ match 1212
 #  0 * 0 = 9
 #
 calc string "" * uint16 2
-match 
+match ERROR: 
 
 calc string "12" * uint16 0
-match 
+match ERROR: 
 
 calc octets 0xabcd * uint32 4
 match 0xabcdabcdabcdabcd

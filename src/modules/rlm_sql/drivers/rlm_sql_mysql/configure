@@ -3882,6 +3882,47 @@ fail="$fail mysql.h"
 	fi
 fi
 
+CPPFLAGS="$SMART_CPPFLAGS"
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for MARIADB_OPT_SOCKET_CALLBACK" >&5
+printf %s "checking for MARIADB_OPT_SOCKET_CALLBACK... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		#ifdef HAVE_MYSQL_MYSQL_H
+        	#include <mysql/mysql.h>
+        	#else
+        	#include <mysql.h>
+        	#endif
+
+int
+main (void)
+{
+
+		if (MARIADB_OPT_SOCKET_CALLBACK) return 0;
+		return 1;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+
+printf "%s\n" "#define HAVE_MARIADB_OPT_SOCKET_CALLBACK 1" >>confdefs.h
+
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else case e in #(
+  e)
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+	 ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
 
 	targetname=rlm_sql_mysql
 else

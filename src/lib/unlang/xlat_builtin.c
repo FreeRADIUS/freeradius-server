@@ -30,6 +30,7 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 #include <freeradius-devel/io/test_point.h>
@@ -417,6 +418,53 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 };
 
 
+/*
+ *	Limit the %file...() functions to a particular subset of directories.
+ */
+static bool xlat_file_allowed(request_t *request, fr_value_box_t const *vb)
+{
+	size_t i, num_files;
+
+	/*
+	 *	Note that we do *not* allow SAFE_FOR_ANY here.  We
+	 *	want to have "defense in depth".
+	 */
+	if (!main_config->limit_files) return true;
+
+	num_files = talloc_array_length(main_config->limit_files);
+	if (!num_files) goto fail;
+
+	for (i = 0; i < num_files; i++) {
+		size_t alen = talloc_array_length(main_config->limit_files[i]);
+
+		/*
+		 *	The allowed directory is longer than the filename, it's not allowed.
+		 */
+		if (alen > vb->vb_length) continue;
+
+		/*
+		 *	No leading match, it's not allowed.
+		 */
+		if (memcmp(vb->vb_strvalue, main_config->limit_files[i], alen) != 0) continue;
+
+		if (alen == vb->vb_length) return true;
+
+		/*
+		 *	Setting "allow = foo/bar" does NOT mean that
+		 *	we allow "foo/bard".  It MUST be "foo/bar/bad"
+		 */
+		if (vb->vb_strvalue[vb->vb_length] != '/') break;
+
+		return true;
+	}
+
+fail:
+	REDEBUG("Failed accessing file %s - it is outside of 'limit files { ... }'", vb->vb_strvalue);
+	return false;
+}
+
+#define XLAT_FILE_ALLOWED(_vb) xlat_file_allowed(request, vb)
+
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   UNUSED request_t *request, fr_value_box_list_t *args)
@@ -428,6 +476,8 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -451,6 +501,8 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -508,6 +560,8 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	if (stat(filename, &buf) < 0) {
 		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
 		return XLAT_ACTION_FAIL;
@@ -537,6 +591,8 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &vb, &num);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -725,6 +781,8 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
 		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
@@ -776,6 +834,8 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
@@ -797,6 +857,8 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -824,6 +886,8 @@ static xlat_action_t xlat_func_file_mkdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
 
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
+
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
 
@@ -844,6 +908,8 @@ static xlat_action_t xlat_func_file_rmdir(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	XLAT_ARGS(args, &vb);
 	fr_assert(vb->type == FR_TYPE_STRING);
 	dirname = vb->vb_strvalue;
+
+	if (!XLAT_FILE_ALLOWED(vb)) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -1323,10 +1389,15 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	dbg->parent = log;
 
 	/*
+	 *	If we have a filename passed to us, then it over-rides
+	 *	the one in the "log foo { ... }" destination.
+	 */
+	if (file) MEM(dbg->file = talloc_strdup(dbg, file->vb_strvalue));
+
+	/*
 	 *	Open the new filename.
 	 */
 	dbg->dst = L_DST_FILES;
-	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
 	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
 	if (dbg->fd < 0) {
 		REDEBUG("Failed opening %s - %s", dbg->file, fr_syserror(errno));
@@ -1427,6 +1498,87 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
+}
+
+
+typedef struct {
+	unlang_result_t	last_result;
+	xlat_exp_head_t	*ex;
+} xlat_module_call_rctx_t;
+
+
+static xlat_arg_parser_t const xlat_func_module_call_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Just serves to push the result up the stack
+ *
+ */
+static xlat_action_t xlat_module_call_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					     xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_module_call_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_module_call_rctx_t);
+	xlat_action_t		xa = XLAT_RESULT_SUCCESS(&rctx->last_result) ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+
+	talloc_free(rctx);
+
+	return xa;
+}
+
+
+/** Calls a named virtual module
+ *
+ * e.g.
+@verbatim
+%module.call("foo")
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_module_call(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*box;
+	CONF_SECTION *cs;
+	xlat_module_call_rctx_t *rctx;
+	fr_dict_t const *dict;
+
+	XLAT_ARGS(args, &box);
+
+	cs = module_rlm_virtual_by_name(box->vb_strvalue);
+	if (!cs) {
+		REDEBUG("Unknown module %pV", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	dict = virtual_server_dict_by_cs(cs);
+	if (!dict) {
+		REDEBUG("Virtual module %pV does not have a known dictionary - ignoring", box);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!fr_dict_compatible(request->proto_dict, dict)) {
+		REDEBUG("Virtual module %pV has incompatible namespace %s", box, fr_dict_root(dict)->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_module_call_rctx_t));
+
+	/*
+	 *	Push the resumption point BEFORE pushing the module onto
+	 *	the stack.
+	 */
+	(void) unlang_xlat_yield(request, xlat_module_call_resume, NULL, 0, rctx);
+
+	if (unlang_interpret_push_section(&rctx->last_result, request, cs,
+					  FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0) {
+		return XLAT_ACTION_FAIL;
+	}
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 
@@ -4873,6 +5025,7 @@ do { \
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_ARGS("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
+	XLAT_REGISTER_ARGS("module.call", xlat_func_module_call, FR_TYPE_VOID, xlat_func_module_call_arg);
 
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);

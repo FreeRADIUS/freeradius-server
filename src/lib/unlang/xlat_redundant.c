@@ -561,7 +561,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		if ((fr_sbuff_in_bstrcpy_buffer(name, cf_section_name2(cs)) <= 0) ||
 		     (fr_sbuff_in_char(name, '.') <= 0)) {
 			cf_log_perr(cs, "Name too long");
-			return -1;
+			goto error;
 		}
 
 		fr_sbuff_marker(&name_start, name);
@@ -648,7 +648,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 				cf_log_err(cs, "Registering expansion for %s section failed",
 					   fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
 				talloc_free(xr);
-				return -1;
+				goto error;
 			}
 			talloc_steal(xlat, xr);	/* redundant xlat should own its own config */
 

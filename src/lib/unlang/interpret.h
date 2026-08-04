@@ -88,9 +88,10 @@ typedef void (*unlang_request_resume_t)(request_t *request, void *uctx);
  */
 typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
 
-/** Signal the owner of the interpreter that a request is now runnable
+/** Check whether a request is already scheduled to run
  *
- * This is called any time a yielded request has been marked runnable.
+ * This is called to determine whether a yielded request has already been
+ * marked runnable / added to the runnable queue.
  */
 typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx);
 
@@ -225,6 +226,8 @@ unlang_result_t		*unlang_interpret_result(request_t *request);
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 
 unlang_t const		*unlang_interpret_instruction(request_t *request);
+
+char const		*unlang_interpret_virtual_server(request_t *request);
 
 int			unlang_interpret_force_result(unlang_t const *instruction, unlang_result_t *p_result,
 						      fr_timer_list_t *tl, fr_time_delta_t expire) CC_HINT(nonnull(1));

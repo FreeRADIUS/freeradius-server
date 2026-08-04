@@ -16,11 +16,11 @@
 #  automatically derived from the section in which they are called.
 #
 #  If `lua` is called in `recv Access-Request`, firstly a function
-#  `recv_access_request` will be looked for.  If that does not exist, then
-#  a function `recv` will be looked for.
+#  `recv_access_request` will be looked for. If that does not exist,
+#  then a function `recv` will be looked for.
 #
-#  This can be overridden by setting `func_recv_access_request` or `func_recv`
-#  to point to a different function name.
+#  This can be overridden by setting `func_recv_access_request` or
+#  `func_recv` to point to a different function name.
 #
 
 #

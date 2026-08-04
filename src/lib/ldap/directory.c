@@ -49,12 +49,37 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
+/** Hash a naming context, case insensitively
+ *
+ */
+static uint32_t _naming_context_hash(void const *data)
+{
+	return fr_hash_case_string(data);
+}
+
+/** Compare two naming contexts, case insensitively
+ *
+ */
+static int8_t _naming_context_cmp(void const *one, void const *two)
+{
+	return CMP(strcasecmp(one, two), 0);
+}
+
 int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 				   LDAPMessage *result, char const *name)
 {
 	int			entry_cnt, i, num, ldap_errno;
 	LDAPMessage		*entry;
 	struct berval		**values = NULL;
+	struct berval		value;
+	talloc_str_list_t	*list;
+	char const * const	*context_p;
+
+	/*
+	 *	Connections spawned concurrently may each run discovery
+	 *	against a shared directory, only parse the first response.
+	 */
+	if (directory->discovered) return 0;
 
 	entry_cnt = ldap_count_entries(handle, result);
 	if (entry_cnt != 1) {
@@ -69,21 +94,16 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 		WARN("Capability check failed: Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		return 1;
 	}
+	directory->discovered = true;
 
-	values = ldap_get_values_len(handle, entry, "vendorname");
-	if (values) {
-		directory->vendor_str = fr_ldap_berval_to_string(directory, values[0]);
+	if (fr_ldap_entry_value_find(&value, handle, entry, "vendorname") > 0) {
+		directory->vendor_str = fr_ldap_berval_to_string(directory, &value);
 		INFO("Directory vendor: %s", directory->vendor_str);
-
-		ldap_value_free_len(values);
 	}
 
-	values = ldap_get_values_len(handle, entry, "vendorversion");
-	if (values) {
-		directory->version_str = fr_ldap_berval_to_string(directory, values[0]);
+	if (fr_ldap_entry_value_find(&value, handle, entry, "vendorversion") > 0) {
+		directory->version_str = fr_ldap_berval_to_string(directory, &value);
 		INFO("Directory version: %s", directory->version_str);
-
-		ldap_value_free_len(values);
 	}
 
 	if (directory->vendor_str) {
@@ -135,10 +155,8 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	 *	isGlobalCatalogReady is only present on ActiveDirectory
 	 *	instances. AD doesn't provide vendorname or vendorversion
 	 */
-	values = ldap_get_values_len(handle, entry, "isGlobalCatalogReady");
-	if (values) {
+	if (fr_ldap_entry_value_find(&value, handle, entry, "isGlobalCatalogReady") > 0) {
 		directory->type = FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY;
-		ldap_value_free_len(values);
 		goto found;
 	}
 
@@ -161,23 +179,29 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	/*
 	 *	Oracle Virtual Directory and Oracle Internet Directory
 	 */
-	values = ldap_get_values_len(handle, entry, "orcldirectoryversion");
-	if (values) {
-		if (memmem(values[0]->bv_val, values[0]->bv_len, "OID", 3)) {
+	if (fr_ldap_entry_value_find(&value, handle, entry, "orcldirectoryversion") > 0) {
+		if (memmem(value.bv_val, value.bv_len, "OID", 3)) {
 			directory->type = FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
-		} else if (memmem(values[0]->bv_val, values[0]->bv_len, "OVD", 3)) {
+		} else if (memmem(value.bv_val, value.bv_len, "OVD", 3)) {
 			directory->type = FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY;
 		}
-		ldap_value_free_len(values);
 	}
 
 found:
 	INFO("Directory type: %s", fr_table_str_by_value(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
+	/*
+	 *	Active Directory and Samba don't implement RFC 5020 entryDN,
+	 *	but allow equality matches on distinguishedName instead.
+	 */
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
-	case FR_LDAP_DIRECTORY_EDIRECTORY:
 	case FR_LDAP_DIRECTORY_SAMBA:
+		directory->dn_attr = "distinguishedName";
+		directory->cleartext_password = false;
+		break;
+
+	case FR_LDAP_DIRECTORY_EDIRECTORY:
 		directory->cleartext_password = false;
 		break;
 
@@ -220,66 +244,193 @@ found:
 	/*
 	 *	Extract naming contexts
 	 */
-	values = ldap_get_values_len(handle, entry, "namingContexts");
-	if (!values) return 0;
-
-	num = ldap_count_values_len(values);
-	directory->naming_contexts = talloc_array(directory, char const *, num);
-	for (i = 0; i < num; i++) {
-		directory->naming_contexts[i] = fr_ldap_berval_to_string(directory, values[i]);
+	list = fr_ldap_str_list_afrom_result(directory, handle, result, "namingContexts", 0);
+	if (unlikely(!list)) {
+		WARN("Capability check failed: %s", fr_strerror());
+		return 1;
 	}
-	ldap_value_free_len(values);
+	if (talloc_str_list_num(list) == 0) {
+		talloc_free(list);
+		return 0;
+	}
+
+	directory->naming_contexts = list->strings;
+	MEM(directory->naming_contexts_ht = fr_hash_table_alloc(directory, _naming_context_hash,
+								_naming_context_cmp, NULL));
+	for (context_p = list->strings; context_p < list->p; context_p++) {
+		fr_hash_table_insert(directory->naming_contexts_ht, *context_p);
+	}
 
 	return 0;
 }
 
-/** Parse results of search on rootDSE to gather data on LDAP server
+/** Allocate a directory structure with defaults
  *
- * @param[in] handle	on which the query was run.
- * @param[in] query	which requested the rootDSE.
- * @param[in] result	head of LDAP results message chain.
- * @param[in] rctx	LDAP directory whose properties are to be populated.
+ * dn_attr defaults to the RFC 5020 entryDN attribute, overridden when
+ * parsing the rootDSE detects a directory which doesn't implement entryDN.
  */
-static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *result, void *rctx)
+fr_ldap_directory_t *fr_ldap_directory_alloc(TALLOC_CTX *ctx)
 {
-	fr_ldap_config_t const	*config = query->ldap_conn->config;
-	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
+	fr_ldap_directory_t *directory;
 
-	(void)fr_ldap_directory_result_parse(directory, handle, result, config->name);
+	MEM(directory = talloc_zero(ctx, fr_ldap_directory_t));
+	directory->dn_attr = "entryDN";
+
+	return directory;
 }
 
-/** Async extract useful information from the rootDSE of the LDAP server
+/** Find the naming context which contains a set of DNs
  *
- * This is called once for each new thread trunk when it first connects.
+ * Looks up successively shorter suffixes of each DN in the hash table of
+ * naming contexts (database suffixes) built when the rootDSE was parsed,
+ * and returns the naming context containing every DN.  A search with the
+ * returned base covers all the DNs.
  *
- * @param[in] ctx	to allocate fr_ldap_directory_t in.
- * @param[in] ttrunk	Thread trunk connection to be queried
+ * @param[in] directory	Directory discovery results, providing the naming contexts.
+ * @param[in] dn_list	NULL terminated list of DNs to cover, no empty strings.
  * @return
- *	- 0 on success
- *	< 0 on failure
+ *	- The matching naming context.
+ *	- NULL if the directory hasn't been discovered yet, or no single
+ *	  naming context contains every DN.
  */
-int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
+char const *fr_ldap_directory_common_base_find(fr_ldap_directory_t const *directory, char const * const *dn_list)
 {
-	fr_ldap_query_t		*query;
-	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
-	trunk_request_t	*treq;
+	char const		*common = NULL;
+	char const * const	*dn_p;
 
-	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
-	if (!ttrunk->directory) return -1;
+	if (!directory->naming_contexts_ht) return NULL;
 
-	treq = trunk_request_alloc(ttrunk->trunk, NULL);
-	if (!treq) return -1;
+	for (dn_p = dn_list; *dn_p; dn_p++) {
+		char const	*context = NULL;
+		char const	*p = *dn_p;
 
-	query = fr_ldap_search_alloc(treq, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
-	query->parser = ldap_trunk_directory_alloc_read;
-	query->treq = treq;
+		/*
+		 *	Check successively shorter suffixes of the DN,
+		 *	starting after each RDN separator.
+		 */
+		while (p) {
+			context = fr_hash_table_find(directory->naming_contexts_ht, p);
+			if (context) break;
 
-	trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
+			p = strchr(p, ',');
+			if (p) p++;
+		}
+		if (!context) return NULL;
+
+		/*
+		 *	Lookups return the stored string, so pointer
+		 *	comparison is enough to check every DN resolved
+		 *	to the same naming context.
+		 */
+		if (!common) {
+			common = context;
+			continue;
+		}
+		if (common != context) return NULL;
+	}
+
+	return common;
+}
+
+/** State of an in progress rootDSE search on a connection being established
+ *
+ */
+typedef struct {
+	fr_ldap_connection_t	*c;			//!< Connection the rootDSE search was sent on.
+	int			msgid;			//!< Of the outstanding rootDSE search.
+} ldap_directory_discover_ctx_t;
+
+/** Error reading from or writing to the file descriptor
+ *
+ * @param[in] el	the event occurred in.
+ * @param[in] fd	the event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] fd_errno	The error that occurred.
+ * @param[in] uctx	discover_ctx containing the connection and message ID.
+ */
+static void _ldap_directory_discover_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,
+					      UNUSED int flags, UNUSED int fd_errno, void *uctx)
+{
+	ldap_directory_discover_ctx_t	*discover_ctx = talloc_get_type_abort(uctx, ldap_directory_discover_ctx_t);
+	fr_ldap_connection_t		*c = discover_ctx->c;
+
+	talloc_free(discover_ctx);
+	fr_ldap_state_error(c);			/* Restart the connection state machine */
+}
+
+/** Parse a rootDSE response from a server
+ *
+ * A failure parsing the rootDSE leaves the directory with its defaults, the
+ * connection is still usable, so the state machine advances either way.
+ *
+ * @param[in] el	the event occurred in.
+ * @param[in] fd	the event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] uctx	discover_ctx containing the connection and message ID.
+ */
+static void _ldap_directory_discover_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	ldap_directory_discover_ctx_t	*discover_ctx = talloc_get_type_abort(uctx, ldap_directory_discover_ctx_t);
+	fr_ldap_connection_t		*c = discover_ctx->c;
+	char const			*name = c->config->name;
+	LDAPMessage			*result = NULL;
+
+	fr_ldap_rcode_t			status;
+
+	status = fr_ldap_result(&result, NULL, c, discover_ctx->msgid, LDAP_MSG_ALL, "", fr_time_delta_wrap(0));
+	if (status == LDAP_PROC_SUCCESS) {
+		(void)fr_ldap_directory_result_parse(c->directory, c->handle, result, name);
+	} else {
+		PWARN("Directory discovery failed, proceeding without directory capability data");
+	}
+	if (result) ldap_msgfree(result);
+
+	fr_ldap_state_next(c);			/* onto the next operation */
+
+	talloc_free(discover_ctx);		/* Also removes fd events */
+}
+
+/** Send a rootDSE search on a connection being established
+ *
+ * Called by the connection state machine after binding, so the directory
+ * capabilities (vendor, naming contexts) are known before the connection
+ * starts serving requests.  Results are parsed into c->directory.
+ *
+ * @param[in] c		LDAP connection to be queried.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_ldap_directory_discover_async(fr_ldap_connection_t *c)
+{
+	static char const		*attrs[] = LDAP_DIRECTORY_ATTRS;
+	ldap_directory_discover_ctx_t	*discover_ctx;
+	int				fd = -1;
+
+	MEM(discover_ctx = talloc_zero(c, ldap_directory_discover_ctx_t));
+	discover_ctx->c = c;
+
+	if (fr_ldap_search_async(&discover_ctx->msgid, NULL, c, "", LDAP_SCOPE_BASE, "(objectclass=*)",
+				 attrs, NULL, NULL) != LDAP_PROC_SUCCESS) {
+	error:
+		talloc_free(discover_ctx);
+		return -1;
+	}
+
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+
+	if (fr_event_fd_insert(discover_ctx, NULL, c->conn->el, fd,
+			       _ldap_directory_discover_io_read,
+			       NULL,
+			       _ldap_directory_discover_io_error,
+			       discover_ctx) < 0) goto error;
+
+	fr_ldap_connection_timeout_reset(c);
 
 	return 0;
 }
 
-/** Async extract useful information from the rootDSE of the LDAP server
+/** Asynchronously extract useful information from the rootDSE of the LDAP server
  *
  * This version is for a single connection rather than a connection trunk
  *
@@ -293,8 +444,7 @@ int fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn)
 	int			msgid;
 	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
 
-	ldap_conn->directory = talloc_zero(ldap_conn, fr_ldap_directory_t);
-	if (!ldap_conn->directory) return -1;
+	ldap_conn->directory = fr_ldap_directory_alloc(ldap_conn);
 
 	if (fr_ldap_search_async(&msgid, NULL, ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
 				 NULL, NULL) != LDAP_PROC_SUCCESS) return -1;

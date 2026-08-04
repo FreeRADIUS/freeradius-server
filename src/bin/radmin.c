@@ -343,7 +343,10 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		/*
 		 *	Skip blank lines.
 		 */
-		if (argc == context) continue;
+		if (argc == context) {
+			radmin_free(line);
+			continue;
+		}
 
 		/*
 		 *	It's a partial command.  Add it to the context
@@ -1120,7 +1123,7 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 	my_stderr = fdopen(std_fd[2], "w");
 	if (!my_stderr) {
 		fclose(my_stdin);
-		fclose(my_stdout);	
+		fclose(my_stdout);
 		my_stdin = NULL;
 		my_stdout = NULL;
 		PERROR("Failed initializing radmin stderr");

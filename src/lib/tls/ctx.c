@@ -880,27 +880,6 @@ post_ca:
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
 	/*
-	 *	Check the certificates for revocation, but not if we're doing PSK.
-	 */
-	if (conf->verify.check_crl && verify_store) {
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-		X509_STORE_set_flags(verify_store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#ifdef X509_V_FLAG_USE_DELTAS
-		/*
-		 *	If set, delta CRLs (if present) are used to
-		 *	determine certificate status. If not set
-		 *	deltas are ignored.
-		 *
-		 *	So it's safe to always set this flag.
-		 */
-		X509_STORE_set_flags(verify_store, X509_V_FLAG_USE_DELTAS);
-#endif
-#else
-		WARN(LOG_PREFIX ": Ignoring 'check_crl = yes' as the OpenSSL libraries do not support the relevant flags");
-#endif
-	}
-
-	/*
 	 *	SSL_ctx_set_verify is now called in the session
 	 *	alloc functions so they can set custom behaviour
 	 *	depending on the code area the SSL * will be used

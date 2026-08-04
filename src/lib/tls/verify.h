@@ -18,12 +18,12 @@
 /**
  * $Id$
  *
- * @file lib/tls/validate.h
+ * @file lib/tls/verify.h
  * @brief Structures for session-resumption management.
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(validate_h, "$Id$")
+RCSIDH(verify_h, "$Id$")
 
 #include "openssl_user_macros.h"
 

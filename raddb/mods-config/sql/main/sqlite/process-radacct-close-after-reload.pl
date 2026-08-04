@@ -21,7 +21,7 @@
 #
 #      ./process-radacct-close-after-reload.pl <sqlite_db_file>
 #
-#  Note: This script walks radacct in strides of v_batch_size. It will
+#  NOTE: This script walks radacct in strides of v_batch_size. It will
 #  typically skip closed and ongoing sessions at a rate significantly faster
 #  than 10,000 rows per second and process batched updates faster than 5000
 #  orphaned sessions per second. If this isn't fast enough then you should

@@ -12,6 +12,7 @@ ifneq "$(TARGETNAME)" ""
 TARGETNAME	:= radjson2conf
 TARGET		:= $(TARGETNAME)$(E)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= radjson2conf.c
 

@@ -175,9 +175,9 @@ uint8_t const fr_base32_hex_alphabet_decode[SBUFF_CHAR_CLASS] = {
 	F128(87, UINT8_MAX), F32(215, UINT8_MAX), F8(247, UINT8_MAX)
 };
 
-/** Base 64 encode binary data
+/** Base 32 encode binary data
  *
- * base32 encode in bytes to base32, writing to out.
+ * base32 encode in bytes, writing to out.
  *
  * @param[out] out		Where to write base32 string.
  * @param[in] in		Data to encode.

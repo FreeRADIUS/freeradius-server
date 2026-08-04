@@ -23,10 +23,12 @@
 *.swo
 *.sock
 *.wasm
+\#*
 
 .libs
 .depends
 .pc
+__pycache__
 
 # Version markers
 VERSION_COMMIT
@@ -38,6 +40,7 @@ RELEASE
 *.cproject
 *.kdev4
 *.project
+*.json
 
 # Exuberant ctags
 tags
@@ -101,3 +104,6 @@ build-2f*
 
 # Profiling results
 prof-results/
+
+# Core dumps staged for upload by scripts/ci/collect-core-dumps.sh
+ci-core-dumps/

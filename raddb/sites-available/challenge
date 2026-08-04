@@ -1,5 +1,4 @@
-#  -*- text -*-
-#  $Id$
+#  -*- text -*- $Id$
 
 #######################################################################
 
@@ -31,8 +30,8 @@ server challenge {
 recv Access-Request {
 
 	#
-	#  If there's no State attribute, then this is the request from
-	#  the user.
+	#  If there's no State attribute, then this is the request from the
+	#  user.
 	#
 	if (!State) {
 		control.Auth-Type := ::Step1
@@ -40,9 +39,8 @@ recv Access-Request {
 	}
 	else {
 		#
-		#  Do authentication for step 2.
-		#  Set the "known good" password to the number
-		#  saved in the session-state list.
+		#  Do authentication for step 2. Set the "known good" password to
+		#  the number saved in the session-state list.
 		#
 		control.Auth-Type := ::Step2
 		control.Password.Cleartext := session-state.challenge-string
@@ -51,8 +49,7 @@ recv Access-Request {
 
 
 authenticate step1 {
-	#  If the password doesn't match, the user is rejected
-	#  immediately.
+	#  If the password doesn't match, the user is rejected immediately.
 	pap
 
 	#
@@ -62,8 +59,7 @@ authenticate step1 {
 	reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 
 	#
-	#  Send an Access-Challenge.
-	#  See policy.d/control for the definition
+	#  Send an Access-Challenge. See policy.d/control for the definition
 	#  of "challenge"
 	#
 	challenge

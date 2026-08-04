@@ -856,7 +856,13 @@ int fr_aka_sim_crypto_umts_kdf_1(fr_aka_sim_keys_t *keys)
 	uint8_t *p = s;
 	size_t	s_len;
 
-	if (ck_ik_prime_derive(keys) < 0) return -1;
+	/*
+	 *	Normally we derive CK'/IK' from CK/IK here.  If they were supplied
+	 *	pre-transformed (e.g. fetched from a 3GPP HSS over SWx, which
+	 *	performs the transform itself per TS 33.402 Annex A), skip the
+	 *	local derivation and use the values as-is.
+	 */
+	if (!keys->ck_ik_prime_provided && (ck_ik_prime_derive(keys) < 0)) return -1;
 
 	if (!fr_cond_assert(keys->vector_type == AKA_SIM_VECTOR_UMTS)) return -1;
 
@@ -1653,6 +1659,37 @@ static void test_eap_aka_kdf_1_umts(void)
 	TEST_CHECK(memcmp(&rfc5448_vector0_out.emsk, keys.emsk, sizeof(keys.emsk)) == 0);
 }
 
+static void test_eap_aka_kdf_1_umts_external_prime(void)
+{
+	fr_aka_sim_keys_t	keys;
+	int		ret;
+
+	/*
+	 *	CK'/IK' supplied directly (as a 3GPP HSS does over SWx) rather
+	 *	than derived locally.  Corrupt the raw CK/IK: if the local
+	 *	derivation were (wrongly) still run, the resulting keys would
+	 *	not match the RFC 5448 expected output.  With ck_ik_prime_provided
+	 *	set, the derivation is skipped and the supplied CK'/IK' are used.
+	 */
+	memcpy(&keys, &rfc5448_vector0_in, sizeof(keys));
+	memset(keys.umts.vector.ck, 0xff, sizeof(keys.umts.vector.ck));
+	memset(keys.umts.vector.ik, 0xff, sizeof(keys.umts.vector.ik));
+
+	memcpy(keys.ck_prime, rfc5448_vector0_out.ck_prime, sizeof(keys.ck_prime));
+	memcpy(keys.ik_prime, rfc5448_vector0_out.ik_prime, sizeof(keys.ik_prime));
+	keys.ck_ik_prime_provided = true;
+
+	ret = fr_aka_sim_crypto_umts_kdf_1(&keys);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(memcmp(&rfc5448_vector0_out.k_encr, keys.k_encr, sizeof(keys.k_encr)) == 0);
+	TEST_CHECK(rfc5448_vector0_out.k_aut_len == keys.k_aut_len);
+	TEST_CHECK(memcmp(&rfc5448_vector0_out.k_aut, keys.k_aut, keys.k_aut_len) == 0);
+	TEST_CHECK(memcmp(&rfc5448_vector0_out.k_re, keys.k_re, sizeof(keys.k_re)) == 0);
+	TEST_CHECK(memcmp(&rfc5448_vector0_out.msk, keys.msk, sizeof(keys.msk)) == 0);
+	TEST_CHECK(memcmp(&rfc5448_vector0_out.emsk, keys.emsk, sizeof(keys.emsk)) == 0);
+}
+
 static void test_eap_aka_derive_ck_ik(void)
 {
 
@@ -1771,6 +1808,7 @@ TEST_LIST = {
 	 *	EAP-AKA'
 	 */
 	{ "test_eap_aka_kdf_1_umts",		test_eap_aka_kdf_1_umts		},
+	{ "test_eap_aka_kdf_1_umts_external_prime",	test_eap_aka_kdf_1_umts_external_prime	},
 	{ "test_eap_aka_derive_ck_ik",		test_eap_aka_derive_ck_ik	},
 	{ "test_eap_aka_kdf_1_reauth",		test_eap_aka_kdf_1_reauth	},
 

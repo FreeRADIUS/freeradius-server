@@ -1817,6 +1817,149 @@ static void test_connection_levels_alternating_edges(void)
 	talloc_free(ctx);
 }
 
+/*
+ *	Test the global trunk state transitions: PENDING -> ACTIVE -> FAILED.
+ */
+static void test_trunk_state_pending_active_failed(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	int			events;
+	trunk_conf_t		conf = {
+					.start = 2,
+					.min = 2,
+					.conn_conf = &(connection_conf_t){
+						/*
+						 *	Long, so failed connections stay CLOSED
+						 *	while we check the FAILED state.
+						 */
+						.reconnection_delay = fr_time_delta_from_sec(10)
+					}
+				};
+	trunk_io_funcs_t	io_funcs = {
+					.connection_alloc = test_setup_socket_pair_connection_alloc,
+					.request_prioritise = fr_pointer_cmp,
+				};
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	trunk = trunk_alloc(ctx, el, &io_funcs, &conf, "test_socket_pair", NULL, false, NULL);
+	TEST_CHECK(trunk != NULL);
+	if (!trunk) return;
+
+	/*
+	 *	start = 2 spawns two connections which are connecting.  No
+	 *	active connections yet, so the trunk is PENDING.
+	 */
+	TEST_CASE("PENDING - connections are connecting");
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_CONNECTING) == 2);
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_PENDING);
+
+	/*
+	 *	Let the connections open.  The trunk becomes ACTIVE.
+	 */
+	events = fr_event_corral(el, test_time_base, true);
+	TEST_CHECK(events == 2);		/* Two I/O write events, no timers */
+	fr_event_service(el);
+
+	TEST_CASE("ACTIVE - connections are active");
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 2);
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_ACTIVE);
+
+	/*
+	 *	Fail all connections.  With a long reconnection_delay they stay
+	 *	CLOSED, so the trunk becomes FAILED.
+	 */
+	TEST_CASE("FAILED - all connections closed / in reconnect backoff");
+	trunk_reconnect(trunk, TRUNK_CONN_ACTIVE, CONNECTION_FAILED);
+
+	(void) fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_CLOSED) == 2);
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 0);
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_FAILED);
+
+	talloc_free(trunk);
+	talloc_free(ctx);
+}
+
+/*
+ *	Test the global trunk FULL state: no active connections, but the
+ *	maximum permitted connections are all connected and full.
+ */
+static void test_trunk_state_full(void)
+{
+	TALLOC_CTX		*ctx = talloc_init_const("test");
+	trunk_t			*trunk;
+	fr_event_list_t		*el;
+	trunk_conf_t		conf = {
+					.start = 0,		/* No connections on start */
+					.min = 0,
+					.max = 1,
+					.max_req_per_conn = 1,
+					.target_req_per_conn = 1,
+					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
+				};
+	test_proto_request_t	*preq_a;
+	trunk_request_t		*treq_a = NULL;
+	int			next_prio = 0;
+
+	DEBUG_LVL_SET;
+
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	fr_timer_list_set_time_func(el->tl, test_time);
+
+	/* Need to provide a timer starting value above zero */
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
+
+	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+
+	/*
+	 *	No connections at all -> IDLE.
+	 */
+	TEST_CASE("IDLE - no connections");
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_IDLE);
+
+	/*
+	 *	Enqueue a request.  It enters the backlog and spawns a connection.
+	 */
+	ALLOC_REQ(a);
+	TEST_CHECK(trunk_request_enqueue(&treq_a, trunk, NULL, preq_a, NULL) == TRUNK_ENQUEUE_IN_BACKLOG);
+
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	/*
+	 *	The connection spawned by the backlog is connecting -> PENDING.
+	 */
+	TEST_CASE("PENDING - connection connecting");
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_CONNECTING) == 1);
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_PENDING);
+
+	/*
+	 *	Open the connection.  The backlogged request is assigned to it,
+	 *	which fills it (max_req_per_conn == 1).  With max == 1 and that
+	 *	one connection full (and none active or connecting), the trunk
+	 *	is FULL.
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
+	TEST_CASE("FULL - the maximum number of connections are all full");
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_FULL) == 1);
+	TEST_CHECK(trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE) == 0);
+	TEST_CHECK(trunk->pub.state == TRUNK_STATE_FULL);
+
+	talloc_free(trunk);
+	talloc_free(ctx);
+}
+
 #undef fr_time	/* Need to the real time */
 static void test_enqueue_and_io_speed(void)
 {
@@ -1963,6 +2106,12 @@ TEST_LIST = {
 	{ "Spawn - Test connection start on enqueue",	test_connection_start_on_enqueue },
 	{ "Spawn - Connection levels max",		test_connection_levels_max },
 	{ "Spawn - Connection levels alternating edges",test_connection_levels_alternating_edges },
+
+	/*
+	 *	Trunk state transitions
+	 */
+	{ "State - Pending, active, failed",		test_trunk_state_pending_active_failed },
+	{ "State - Full",				test_trunk_state_full },
 
 	/*
 	 *	Performance tests

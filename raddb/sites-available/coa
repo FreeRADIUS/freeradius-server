@@ -1,7 +1,8 @@
 #  -*- text -*-
 ######################################################################
 #
-#  Sample virtual server for receiving a CoA or Disconnect-Request packet.
+#  Sample virtual server for receiving a CoA or Disconnect-Request
+#  packet.
 #
 server coa {
 	namespace = radius

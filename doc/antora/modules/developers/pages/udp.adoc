@@ -19,9 +19,11 @@ and split them evenly across all sockets.  Even better, the kernel
 hashes src/dst ip/port, so packets to/from the same IP/port all go to
 the same socket.  Which helps a lot with RADIUS de-dup issues.
 
-Cloudfare has some notes:  https://blog.cloudflare.com/how-to-achieve-low-latency/
+Cloudfare has some notes:
+https://blog.cloudflare.com/how-to-achieve-low-latency/
 
-Turn server has some notes: https://github.com/coturn/coturn/wiki/TURN-Performance-and-Load-Balance
+Turn server has some notes:
+https://github.com/coturn/coturn/wiki/TURN-Performance-and-Load-Balance
 
 This kind of scaling is likely the preferred method.
 
@@ -39,7 +41,8 @@ the src/dst ip/port, binds to it, and opens a new socket using
 New packets for that connection will go to the connected socket, and
 not to the wildcard one.  There may be a few packets for that
 connection already in the wildcard packet queue, and the wildcard
-handler has to take care of manually sending them over to the new connection.
+handler has to take care of manually sending them over to the new
+connection.
 
 In short, we can emulate (mostly) TCP connections via UDP.
 

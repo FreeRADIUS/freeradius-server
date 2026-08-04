@@ -14,15 +14,15 @@
 server proxy-inner-tunnel {
 
 #
-#  This example is very simple.  All inner tunnel requests get
-#  proxied to another RADIUS server.
+#  This example is very simple. All inner tunnel requests get proxied
+#  to another RADIUS server.
 #
 recv Access-Request {
 	#
 	#  Do other things here, as necessary.
 	#
-	#  e.g. run the "realms" module, to decide how to proxy
-	#  the inner tunnel request.
+	#  e.g. run the "realms" module, to decide how to proxy the inner
+	#  tunnel request.
 	#
 
 	#  You should update this to be one of your realms.
@@ -31,9 +31,9 @@ recv Access-Request {
 
 authenticate eap {
 	#
-	#  This is necessary so that the inner tunnel EAP-MSCHAPv2
-	#  method can be called.  That method takes care of turning
-	#  EAP-MSCHAPv2 into plain MS-CHAPv2, if necessary.
+	#  This is necessary so that the inner tunnel EAP-MSCHAPv2 method can
+	#  be called. That method takes care of turning EAP-MSCHAPv2 into
+	#  plain MS-CHAPv2, if necessary.
 	eap
 }
 

@@ -999,6 +999,7 @@ fi
 %{_libdir}/freeradius/process_dns.so
 %{_libdir}/freeradius/process_eap_aka.so
 %{_libdir}/freeradius/process_eap_aka_prime.so
+%{_libdir}/freeradius/process_eap_psk.so
 %{_libdir}/freeradius/process_eap_sim.so
 %{_libdir}/freeradius/process_radius.so
 %{_libdir}/freeradius/process_tacacs.so
@@ -1060,6 +1061,7 @@ fi
 %{_libdir}/freeradius/rlm_eap_mschapv2.so
 %{_libdir}/freeradius/rlm_eap_peap.so
 %{_libdir}/freeradius/rlm_eap_pwd.so
+%{_libdir}/freeradius/rlm_eap_psk.so
 %{_libdir}/freeradius/rlm_eap_sim.so
 %{_libdir}/freeradius/rlm_eap_tls.so
 %{_libdir}/freeradius/rlm_eap_ttls.so

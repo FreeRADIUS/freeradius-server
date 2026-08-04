@@ -310,6 +310,7 @@ pid_t radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) goto error;
+		return -1;
 	}
 
 	/*
@@ -458,7 +459,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
  *
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
- * @param[in] request Current request (may be NULL).
+ * @param[in] request Current request. Must not be NULL.
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
  *	part is xlat'ed.
  * @param[in] input_pairs list of value pairs - these will be available in the environment of the

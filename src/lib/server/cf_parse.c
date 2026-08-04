@@ -447,6 +447,10 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 		}
 
 		p++;
+		if (*p == '\0') {
+			*q++ = '\\';
+			continue;
+		}
 		switch (*p) {
 		case 'r':
 			*q++ = '\r';
@@ -549,6 +553,12 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 	required = fr_rule_required(rule);
 	deprecated = fr_rule_deprecated(rule);
+
+	cp = cf_pair_find(cs, rule->name1);
+	if (cp && cp->item.parsed) {
+		return 0;
+	}
+	cp = NULL;
 
 	/*
 	 *	If the item is multi-valued we allocate an array
@@ -1642,7 +1652,14 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 
 			subcs = cf_section_find(cs, name1, name2);
 			if (!subcs) {
-				cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				if ((rule->flags & CONF_FLAG_OK_MISSING) != 0) return 0;
+
+				if (!name2 || (name2 == CF_IDENT_ANY)) {
+					cf_log_err(cs, "Failed finding '%s' subsection", name1);
+				} else {
+					cf_log_err(cs, "Failed finding '%s %s' subsection", name1, name2);
+				}
+
 				cf_item_debug(cs);
 				return -1;
 			}

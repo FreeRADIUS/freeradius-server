@@ -1,12 +1,13 @@
 = Configure Modules
 
 The configuration files in
-xref:reference:raddb/mods-available/index.adoc[mods-available/] file describe
-the configuration parameters accepted by each module, and what they
-do.  This document explains how to perform generic testing with any
-module.
+xref:reference:raddb/mods-available/index.adoc[mods-available/] file
+describe the configuration parameters accepted by each module, and
+what they do.  This document explains how to perform generic testing
+with any module.
 
-The default server configuration should be tested via the following command:
+The default server configuration should be tested via the following
+command:
 
 [source,shell]
 ----
@@ -70,9 +71,11 @@ Configuration appears to be OK
 ----
 
 Note that this test checks only that the configuration files can be
-parsed.  It does not check that the module will correctly process packets.
+parsed.  It does not check that the module will correctly process
+packets.
 
-When the configuration is correct, FreeRADIUS can then be started in debugging mode:
+When the configuration is correct, FreeRADIUS can then be started in
+debugging mode:
 
 [source,shell]
 ----
@@ -102,11 +105,11 @@ debug output will contain error messages clearly describing what went
 wrong.  These error message *must* be read in order to gain insight as
 to the source of the problem.
 
-Otherwise, look for messages containing `ERROR` or `WARNING`, or
-the module name.  While the server can produce a large volume of
-messages, most of those can be ignored when debugging a particular
-problem.  Simply search for a few key strings based on the files you
-changed, and the solution to the problem should be clear.
+Otherwise, look for messages containing `ERROR` or `WARNING`, or the
+module name.  While the server can produce a large volume of messages,
+most of those can be ignored when debugging a particular problem.
+Simply search for a few key strings based on the files you changed,
+and the solution to the problem should be clear.
 
 We recommend running the `radiusd -XC` test was performed before
 making any module changes for other reasons.  If previous

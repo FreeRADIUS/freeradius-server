@@ -71,6 +71,14 @@ typedef struct {
 		struct {
 			char const	*path;		//!< Unix socket path.
 		} unix;
+
+		struct {
+			char const	*path;		//!< Filename
+		} file;
+
+		struct {
+			char const	*server;       	//!< Virtual server filename
+		} virtual;
 	};
 	int af;			//!< AF_INET, AF_INET6, or AF_UNIX
 	int type;		//!< SOCK_STREAM, SOCK_DGRAM, etc.
@@ -301,6 +309,9 @@ int		fr_socket_server_udp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const 
 int		fr_socket_server_tcp(fr_ipaddr_t const *ipaddr, uint16_t *port, char const *port_name, bool async);
 
 int		fr_socket_bind(int sockfd, char const *ifname, fr_ipaddr_t *src_ipaddr, uint16_t *src_port);
+
+ssize_t		fr_socket_to_str(char *out, size_t outlen, fr_socket_t const *sock, bool received) CC_HINT(nonnull);
+
 
 #ifdef __cplusplus
 }

@@ -27,7 +27,8 @@ Key resources for developers include:
   user-list].
 
 The server can be built from source by following the
-xref:howto:installation/source.adoc[install from source] documentation.
+xref:howto:installation/source.adoc[install from source]
+documentation.
 
 The rest of this document has various resources for developers.
 
@@ -76,14 +77,15 @@ Review the steps to push or update a release.
 == xref:buffers.adoc[Buffer Management]
 
 FreeRADIUS provides APIs to handle xref:dbuff.adoc[Data] and
-xref:sbuff.adoc[String] buffers enabling developers to streamline their coding and processes.
+xref:sbuff.adoc[String] buffers enabling developers to streamline
+their coding and processes.
 
 == More Information
 
 The two most important RADIUS RFC's and drafts are
 http://www.freeradius.org/rfc/rfc2865.html[RFC2865] and
-http://www.freeradius.org/rfc/rfc2866.html[RFC2866]. These are
-the new RFCs, which replace the old ones,
+http://www.freeradius.org/rfc/rfc2866.html[RFC2866]. These are the new
+RFCs, which replace the old ones,
 http://www.freeradius.org/rfc/rfc2138.txt[RFC2138] and
 http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
 

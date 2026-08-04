@@ -583,7 +583,7 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 		MEM(namespace = talloc_strdup(parent, name2));
 		q = namespace;
 
-		while (fr_dict_attr_allowed_chars[(unsigned int) *q]) {
+		while (fr_dict_attr_allowed_chars[(uint8_t) *q]) {
 			q++;
 		}
 		*q = '\0';

@@ -43,7 +43,9 @@ RCSID("$Id$")
  */
 unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request)
 {
-	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", cf_section_name2(unlang_call_current(request)));
+	char const *server = unlang_interpret_virtual_server(request);
+
+	RDEBUG("Virtual server %s received request NOT IMPLEMENTED", server);
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 	/*
@@ -168,11 +170,11 @@ unlang_action_t rad_virtual_server(unlang_result_t *p_result, request_t *request
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
-	RDEBUG("server %s {", cf_section_name2(unlang_call_current(request)));
+	RDEBUG("server %s {", server);
 	request->async->process(&final,
 				MODULE_CTX(module_rlm_by_data(request->async->process_inst), NULL, NULL, NULL),
 				request);
-	RDEBUG("} # server %s", cf_section_name2(unlang_call_current(request)));
+	RDEBUG("} # server %s", server);
 
 	fr_cond_assert(final == RLM_MODULE_OK);
 

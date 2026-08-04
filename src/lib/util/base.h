@@ -67,7 +67,6 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/time.h>

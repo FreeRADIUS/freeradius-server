@@ -161,6 +161,7 @@ ssize_t udp_recv(int sockfd, int flags,
 	*socket_out = (fr_socket_t){
 		.fd = sockfd,
 		.type = SOCK_DGRAM,
+		.af = AF_UNSPEC,
 	};
 
 	/*
@@ -205,5 +206,6 @@ done:
 	 */
 	if (when && fr_time_eq(*when, fr_time_wrap(0))) *when = fr_time();
 
+	socket_out->af = socket_out->inet.dst_ipaddr.af;
 	return slen;
 }

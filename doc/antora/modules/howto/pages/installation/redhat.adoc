@@ -1,10 +1,12 @@
 = Redhat and Rocky
 
-There are minimal requirements to building on Redhat (RHEL), including Rocky or Alma versions.
+There are minimal requirements to building on Redhat (RHEL), including
+Rocky or Alma versions.
 
 [NOTE]
 ====
-Centos Stream is now a rolling release, feeder distribution for RHEL and no longer supported.
+Centos Stream is now a rolling release, feeder distribution for RHEL
+and no longer supported.
 ====
 
 == Dependencies
@@ -17,9 +19,13 @@ yum -y install libtalloc-devel
 
 === libkqueue
 
-> libkqueue required for >= v4.0.x, you can skip this step for v3.0.x and below.
+> libkqueue required for >= v4.0.x, you can skip this step for v3.0.x
+and below.
 
-Unfortunately neither RHEL nor Centos provide an RPM for libkqueue.  The instructions below will produce a libkqueue RPM, which can then be installed for building from source, or distributed with the FreeRADIUS RPMs when building packages.
+Unfortunately neither RHEL nor Centos provide an RPM for libkqueue.
+The instructions below will produce a libkqueue RPM, which can then be
+installed for building from source, or distributed with the FreeRADIUS
+RPMs when building packages.
 
 Building the libkqueue RPM requires these packages:
 
@@ -31,13 +37,16 @@ include::partial$libkqueue-rpm.adoc
 
 === Upgrade GCC (>= v4.0.x and master branch only)
 
-> GCC upgrade only required for versions >= v4.0.x you can skip this step for v3.0.x and below.
+> GCC upgrade only required for versions >= v4.0.x you can skip this
+step for v3.0.x and below.
 
 RHE7 ships with GCC 4.8.5 but FreeRADIUS v4 requires GCC >= 4.9.0.
 
-The ``devtoolset-3`` series of packages provides a later version of GCC.
+The ``devtoolset-3`` series of packages provides a later version of
+GCC.
 
- https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/[devtoolset-3 repository][Follow these instructions] to enable the toolset.
+https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/[devtoolset-3
+repository][Follow these instructions] to enable the toolset.
 
 To install:
 
@@ -51,9 +60,11 @@ and then to get to a shell with the correct environment:
 scl enable devtoolset-3 bash
 ----
 
-Or can set ``CC=/opt/rh/devtoolset-3/root/usr/bin/gcc`` in your environment, which works just as well.
+Or can set ``CC=/opt/rh/devtoolset-3/root/usr/bin/gcc`` in your
+environment, which works just as well.
 
-If you're building on older versions of RedHat then you'll need to compile GCC from source.
+If you're building on older versions of RedHat then you'll need to
+compile GCC from source.
 
 == Get the source
 
@@ -61,7 +72,8 @@ include::partial$get_the_source.adoc[]
 
 == Build from source and install
 
-If you're using unstable code or encountering issues with the install, use `configure --enable-developer` option.
+If you're using unstable code or encountering issues with the install,
+use `configure --enable-developer` option.
 
 ----
 ./configure

@@ -29,18 +29,17 @@ version number is even or odd:
   e.g. 4.0, 4.0.1, 4.2, etc.
 
 ** "point" releases (4.0.1, 4.0.2) are 100% compatible within a stable
-    release.  Note that "4.0.1" is a stable release because the minor
-    number "0" is even, even though the "point" number "1" is odd.
+   release.  Note that "4.0.1" is a stable release because the minor
+   number "0" is even, even though the "point" number "1" is odd.
 
 * minor numbers which are odd are _experimental_ or _feature_
   releases.  e.g. 4.1, 4.1.1, 4.3, etc.
 
 ** "point" releases (4.1.1, 4.1.2) _are likely to be incompatible_
-    with stable releases.  "point" releases _may be incompatible_ with
-    other point releases, even within the same major/minor sequence.
-+
-    e.g. A 4.1.1 release _may_ have functionality and behaviour changed
-    from the 4.1.0 release.
+   with stable releases.  "point" releases _may be incompatible_ with
+   other point releases, even within the same major/minor sequence. +
+   e.g. A 4.1.1 release _may_ have functionality and behaviour changed
+   from the 4.1.0 release.
 
 === Stable Versions
 
@@ -127,10 +126,12 @@ team has to be careful with their time.
 
 == Rationale
 
-The above release process is necessary to balance a number of different goals:
+The above release process is necessary to balance a number of
+different goals:
 
 * the need to never break existing production deployments,
-* the need to add new features, and to fix existing but broken features,
+* the need to add new features, and to fix existing but broken
+  features,
 * the need to manage multiple releases with a small team.
 
 The use of a "stable" version means that people can be sure that any
@@ -175,41 +176,44 @@ A PR must be raised in order to move commits into a stable branch from
 the experimental branch, and that PR must pass all CI checks, and be
 reviewed by at least one other core developer.
 
-IMPORTANT: Breaking changes are only permitted IF they are added behind
-a feature flag that preserves the previous behaviour by default.
+IMPORTANT: Breaking changes are only permitted IF they are added
+behind a feature flag that preserves the previous behaviour by
+default.
 
 === Changes to experimental branches
 
 Minor changes to experimental branches are permitted.  Other work may
-need peer review.  Developers must self-classify change sets to determine
-if peer review is needed.
+need peer review.  Developers must self-classify change sets to
+determine if peer review is needed.
 
 The main criteria for requiring peer review are:
 - Will the change break backwards compatibility (this is fine, but
   needs to be understood and documented).
-- Is it a code area with many untested paths, or poorly structured code
-  that's hard to reason about.
-- Is the code likely to have widespread impacts on the rest of the code
-  base, will it be difficult to change later, will it have widespread
-  negative impacts if it's not architected correctly.
+- Is it a code area with many untested paths, or poorly structured
+  code that's hard to reason about.
+- Is the code likely to have widespread impacts on the rest of the
+  code base, will it be difficult to change later, will it have
+  widespread negative impacts if it's not architected correctly.
 
 .Examples of peer reviewed changes
 - Major refactoring over 1000 +/- changes LoC
-- Changes to parsing that would break compatibility with previous syntax.
-- Changes to the behaviour of keywords that are not backwards compatible.
+- Changes to parsing that would break compatibility with previous
+  syntax.
+- Changes to the behaviour of keywords that are not backwards
+  compatible.
 - Any alterations to state machines i.e. new states, and changes to
   pre/post conditions.
 - Changes to async I/O code other than trivial fixes.  Code paths here
-  are notoriously undertested and need careful to review to ensure there
-  are no unintended consequences.
+  are notoriously undertested and need careful to review to ensure
+  there are no unintended consequences.
 - Conversions of existing modules to async I/O.
 
 ==== Breaking changes
+
 Breaking changes must be documented in the release notes `RELEASE.md`.
 Changes to syntax should include an example of the previous syntax and
-new syntax.  Changes to behaviour should include a description of those
-changes.
-
+new syntax.  Changes to behaviour should include a description of
+those changes.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

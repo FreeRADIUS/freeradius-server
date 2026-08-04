@@ -91,11 +91,20 @@ static const call_env_parser_t sasl_call_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
+static fr_table_num_sorted_t const profile_search_mode_table[] = {
+	{ L("auto"),	LDAP_PROFILE_SEARCH_MODE_AUTO	},
+	{ L("bulk"),	LDAP_PROFILE_SEARCH_MODE_BULK	},
+	{ L("seq"),	LDAP_PROFILE_SEARCH_MODE_SEQ	}
+};
+static size_t profile_search_mode_table_len = NUM_ELEMENTS(profile_search_mode_table);
+
 static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile.obj_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile.attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
+	{ FR_CONF_OFFSET("search_mode", rlm_ldap_t, profile.search_mode), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = profile_search_mode_table, .len = &profile_search_mode_table_len } },
+	{ FR_CONF_DEPRECATED("attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_DEPRECATED("attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
 	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile.obj_sort_by) },
 	{ FR_CONF_OFFSET("fallthrough_attribute", rlm_ldap_t, profile.fallthrough_attr) },
@@ -117,6 +126,8 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
 	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, user.dn_attr_str), .dflt = "LDAP-UserDN" },
 	{ FR_CONF_OFFSET_IS_SET("expect_password", FR_TYPE_BOOL, 0, rlm_ldap_t, user.expect_password) },
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, user.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, user.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -137,6 +148,8 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
 	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
+	{ FR_CONF_OFFSET("profile_attribute", rlm_ldap_t, group.profile_attr) },
+	{ FR_CONF_OFFSET("profile_attribute_suspend", rlm_ldap_t, group.profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -152,6 +165,8 @@ static const conf_parser_t module_config[] = {
 	FR_LDAP_COMMON_CONF(rlm_ldap_t),
 
 	{ FR_CONF_OFFSET("valuepair_attribute", rlm_ldap_t, valuepair_attr) },
+
+	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, dn_attr) },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	{ FR_CONF_OFFSET("session_tracking", rlm_ldap_t, session_tracking), .dflt = "no" },
@@ -261,6 +276,8 @@ static const call_env_method_t authorize_method_env = {
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
 						{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, default_profile),
+						  LDAP_DN_CALL_ENV_ESCAPE },
+						{ FR_CALL_ENV_OFFSET("child_rdn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, ldap_autz_call_env_t, profile_child_rdn),
 						  LDAP_DN_CALL_ENV_ESCAPE },
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, profile_filter),
 						  .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING,
@@ -1341,6 +1358,104 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+/** State of an in progress whoami extended operation
+ *
+ */
+typedef struct {
+	fr_ldap_query_t	*query;			//!< Current query performing the whoami operation.
+} ldap_xlat_whoami_ctx_t;
+
+/** Return the authorization identity from the whoami response
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					     request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	ldap_xlat_whoami_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_whoami_ctx_t);
+	fr_ldap_query_t		*query = xlat_ctx->query;
+	fr_value_box_t		*vb;
+	struct berval		*authz_id = NULL;
+	char const		*p;
+	size_t			len;
+	int			err;
+
+	if (query->ret != LDAP_RESULT_SUCCESS) {
+		REDEBUG("Whoami extended operation failed");
+		return XLAT_ACTION_FAIL;
+	}
+
+	err = ldap_parse_extended_result(query->ldap_conn->handle, query->result, NULL, &authz_id, false);
+	if (err != LDAP_SUCCESS) {
+		REDEBUG("Failed parsing whoami response: %s", ldap_err2string(err));
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	An empty authzId means the connection is bound anonymously.
+	 */
+	if (!authz_id || (authz_id->bv_len == 0)) {
+		if (authz_id) ber_bvfree(authz_id);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	RFC 4532 returns an authzId (RFC 4513), "dn:<dn>" for
+	 *	distinguished names.  Strip the prefix, "u:<user>" forms
+	 *	are returned unmodified.
+	 */
+	p = authz_id->bv_val;
+	len = authz_id->bv_len;
+	if ((len >= 3) && (memcmp(p, "dn:", 3) == 0)) {
+		p += 3;
+		len -= 3;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_bstrndup(vb, vb, NULL, p, len, false) == 0);
+	fr_dcursor_append(out, vb);
+
+	ber_bvfree(authz_id);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Perform the RFC 4532 whoami extended operation
+ *
+ * Runs on the same connections as the module's queries, so the identity
+ * returned is the one the directory resolved for the admin bind.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_whoami_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx, request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
+	fr_ldap_config_t const	*handle_config = t->config;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	ldap_xlat_whoami_ctx_t	*xlat_ctx;
+
+	ttrunk = fr_thread_ldap_trunk_get(t, handle_config->server, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (!ttrunk) {
+		REDEBUG("Unable to get LDAP trunk for whoami");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_whoami_ctx_t));
+
+	if (unlang_xlat_yield(request, ldap_whoami_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) {
+	error:
+		talloc_free(xlat_ctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_ldap_trunk_extended(xlat_ctx, &xlat_ctx->query, request, ttrunk,
+				   LDAP_EXOP_WHO_AM_I, NULL, NULL, NULL) != UNLANG_ACTION_PUSHED_CHILD) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
 /*
  *	Verify the result of the map.
  */
@@ -1410,28 +1525,28 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 		for (map = map_list_head(map_ctx->maps), i = 0;
 		     map != NULL;
 		     map = map_list_next(map_ctx->maps, map), i++) {
-			int			ret;
-			fr_ldap_result_t	attr;
+			fr_ldap_value_iter_t	*iter;
+			int			ret, iter_err = 0;
 
-			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded->attrs[i]);
-			if (!attr.values) {
+			if (!fr_ldap_value_iter_alloc(&iter_err, &iter, request, query->ldap_conn->handle, entry,
+						      expanded->attrs[i])) {
+				talloc_free(iter);
+				if (unlikely(iter_err < 0)) {
+					RPERROR("Failed parsing entry");
+					rcode = RLM_MODULE_FAIL;
+					ldap_memfree(dn);
+					goto finish;
+				}
+
 				/*
 				 *	Many LDAP directories don't expose the DN of
 				 *	the object as an attribute, so we need this
 				 *	hack, to allow the user to retrieve it.
 				 */
 				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded->attrs[i]) == 0) {
-					struct berval value;
-					struct berval *values[2] = { &value, NULL };
-
 					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
-					value.bv_val = dn;
-					value.bv_len = strlen(dn);
 
-					attr.values = values;
-					attr.count = 1;
-
-					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
+					ret = map_to_request(request, map, fr_ldap_map_getdn, dn);
 					if (ret == -1) {
 						rcode = RLM_MODULE_FAIL;
 						ldap_memfree(dn);
@@ -1444,10 +1559,9 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const
 
 				continue;
 			}
-			attr.count = ldap_count_values_len(attr.values);
 
-			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
-			ldap_value_free_len(attr.values);
+			ret = map_to_request(request, map, fr_ldap_map_getvalue, iter);
+			talloc_free(iter);
 			if (ret == -1) {
 				rcode = RLM_MODULE_FAIL;
 				ldap_memfree(dn);
@@ -1653,6 +1767,29 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	return fr_ldap_bind_auth_async(p_result, request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
+/** Remove duplicate DNs from a NULL terminated list, keeping the first occurrence
+ *
+ * A profile referenced by both a group object and the user object must
+ * only be applied once.
+ */
+static void profile_dn_list_dedupe(char const **dn_list)
+{
+	int i, j, n;
+
+	for (n = 0; dn_list[n]; n++);
+
+	for (i = 1; i < n; i++) {
+		for (j = 0; j < i; j++) {
+			if (strcasecmp(dn_list[i], dn_list[j]) != 0) continue;
+
+			memmove(&dn_list[i], &dn_list[i + 1], (n - i) * sizeof(dn_list[0]));
+			n--;
+			i--;
+			break;
+		}
+	}
+}
+
 #define REPEAT_MOD_AUTHORIZE_RESUME \
 	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) do { \
 		p_result->rcode = RLM_MODULE_FAIL; \
@@ -1730,9 +1867,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 
 		/*
-		 *	Check if we need to cache group memberships
+		 *	Check if we need to cache group memberships,
+		 *	or record group DNs for the group profile search.
 		 */
-		if ((inst->group.cacheable_dn || inst->group.cacheable_name) && (inst->group.userobj_membership_attr)) {
+		if ((inst->group.cacheable_dn || inst->group.cacheable_name ||
+		     rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						  autz_ctx->access_state)) &&
+		    (inst->group.userobj_membership_attr)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_userobj(p_result, request, autz_ctx,
 						       inst->group.userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
@@ -1744,9 +1885,24 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_GROUP:
-		if (inst->group.cacheable_dn || inst->group.cacheable_name) {
+		if (inst->group.cacheable_dn || inst->group.cacheable_name ||
+		    rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_groupobj(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+				autz_ctx->status = LDAP_AUTZ_GROUP_PROFILES;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+			if (p_result->rcode != RLM_MODULE_OK) goto finish;
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_GROUP_PROFILES:
+		if (rlm_ldap_profile_attr_select(inst->group.profile_attr, inst->group.profile_attr_suspend,
+						 autz_ctx->access_state) &&
+		    autz_ctx->group_dn_list && (talloc_str_list_num(autz_ctx->group_dn_list) > 0)) {
+			REPEAT_MOD_AUTHORIZE_RESUME;
+			if (rlm_ldap_group_profiles(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -1828,113 +1984,96 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 		FALL_THROUGH;
 
-	case LDAP_AUTZ_DEFAULT_PROFILE:
+	case LDAP_AUTZ_PROFILES:
+	{
+		talloc_str_list_t	*list;
+		char const		*profile_attr;
+		char const		**dn_p;
+		bool			have_default = !fr_box_is_null(&call_env->default_profile);
+		size_t			count = 0, strings_len = 0, group_count = 0, i;
+
 		/*
-		 *	Apply ONE user profile, or a default user profile.
+		 *	Which set of profiles to apply depends on the user's
+		 *	access state.  The default profile always applies.
 		 */
-		if (call_env->default_profile.type == FR_TYPE_STRING) {
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
-						   call_env->default_profile.vb_strvalue,
-						   inst->profile.obj_scope, NULL, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
+		profile_attr = rlm_ldap_profile_attr_select(inst->user.profile_attr, inst->user.profile_attr_suspend,
+							    autz_ctx->access_state);
+		if (profile_attr) {
+			if (unlikely(fr_ldap_result_values_len(&count, &strings_len, handle,
+							       autz_ctx->query->result, profile_attr) < 0)) {
+				RPERROR("Failed parsing user object");
 				p_result->rcode = RLM_MODULE_FAIL;
 				goto finish;
-
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_POST_DEFAULT_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
-
-			default:
-				break;
+			}
+			if (count > 0) {
+				RDEBUG2("Processing %zu profile(s) found in attribute \"%s\"", count, profile_attr);
+			} else {
+				RDEBUG2("No profile(s) found in attribute \"%s\"", profile_attr);
 			}
 		}
-		FALL_THROUGH;
 
-	case LDAP_AUTZ_POST_DEFAULT_PROFILE:
-		/*
-		 *	Did we jump back her after applying the default profile?
-		 */
-		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) autz_ctx->rcode = RLM_MODULE_UPDATED;
+		if (autz_ctx->group_profile_dn_list) {
+			group_count = talloc_str_list_num(autz_ctx->group_profile_dn_list);
+			RDEBUG2("Processing %zu profile(s) found in group objects", group_count);
+		}
+
+		if (!have_default && (group_count == 0) && (count == 0)) break;
 
 		/*
-		 *	Apply a SET of user profiles.
+		 *	Build the list of profile DNs to apply, the default
+		 *	profile first, then the profiles from the group
+		 *	objects, then the profiles from the user object.
 		 */
-		switch (autz_ctx->access_state) {
-		case LDAP_ACCESS_ALLOWED:
-			if (inst->profile.attr) {
-				int count;
+		MEM(list = fr_ldap_str_list_afrom_result(autz_ctx, handle, autz_ctx->query->result,
+							 count ? profile_attr : NULL,
+							 (have_default ? 1 : 0) + group_count));
+		dn_p = list->strings;
+		if (have_default) *dn_p++ = call_env->default_profile.vb_strvalue;
+		for (i = 0; i < group_count; i++) *dn_p++ = autz_ctx->group_profile_dn_list->strings[i];
 
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile.attr);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile.attr);
-				}
-			}
-			break;
-
-		case LDAP_ACCESS_SUSPENDED:
-			if (inst->profile.attr_suspend) {
-				int count;
-
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr_suspend);
-				count = ldap_count_values_len(autz_ctx->profile_values);
-				if (count > 0) {
-					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile.attr_suspend);
-					if (RDEBUG_ENABLED3) {
-						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-							RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
-								fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-						}
-					}
-				} else {
-					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile.attr_suspend);
-				}
-			}
-			break;
-
-		case LDAP_ACCESS_DISALLOWED:
-			break;
-		}
-
-		FALL_THROUGH;
-
-	case LDAP_AUTZ_USER_PROFILE:
 		/*
-		 *	After each profile has been applied, execution will restart here.
-		 *	Start by clearing the previously used value.
+		 *	Evaluate the child object below each profile instead
+		 *	of the profile itself.
 		 */
-		if (autz_ctx->profile_value) {
-			TALLOC_FREE(autz_ctx->profile_value);
-			autz_ctx->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
-		}
-
-		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
-			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
-			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile.obj_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
-			switch (ret) {
-			case UNLANG_ACTION_FAIL:
-				p_result->rcode = RLM_MODULE_FAIL;
-				goto finish;
-
-			case UNLANG_ACTION_PUSHED_CHILD:
-				autz_ctx->status = LDAP_AUTZ_USER_PROFILE;
-				return UNLANG_ACTION_PUSHED_CHILD;
-
-			default:
-				break;
+		if (!fr_box_is_null(&call_env->profile_child_rdn) && (call_env->profile_child_rdn.vb_length > 0)) {
+			for (dn_p = list->strings; *dn_p; dn_p++) {
+				MEM(*dn_p = talloc_asprintf(list, "%s,%s",
+							    call_env->profile_child_rdn.vb_strvalue, *dn_p));
 			}
 		}
+
+		autz_ctx->profile_dn_list = list->strings;
+		profile_dn_list_dedupe(autz_ctx->profile_dn_list);
+
+		if (!autz_ctx->profile_dn_list[0]) break;
+
+		if (RDEBUG_ENABLED3) {
+			for (dn_p = autz_ctx->profile_dn_list; *dn_p; dn_p++) {
+				RDEBUG3("Will evaluate profile with DN \"%s\"", *dn_p);
+			}
+		}
+
+		REPEAT_MOD_AUTHORIZE_RESUME;
+		ret = rlm_ldap_map_profiles(NULL, &autz_ctx->profiles_applied, inst, request, autz_ctx->ttrunk,
+					    autz_ctx->profile_dn_list, call_env->profile_filter.vb_strvalue,
+					    &autz_ctx->expanded);
+		switch (ret) {
+		case UNLANG_ACTION_FAIL:
+			p_result->rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case UNLANG_ACTION_PUSHED_CHILD:
+			autz_ctx->status = LDAP_AUTZ_POST_PROFILES;
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		default:
+			break;
+		}
+	}
+	FALL_THROUGH;
+
+	case LDAP_AUTZ_POST_PROFILES:
+		if (autz_ctx->profiles_applied > 0) autz_ctx->rcode = RLM_MODULE_UPDATED;
 		break;
 	}
 
@@ -1960,7 +2099,6 @@ static void mod_authorize_cancel(module_ctx_t const *mctx, UNUSED request_t *req
 static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
 {
 	talloc_free(autz_ctx->expanded.ctx);
-	if (autz_ctx->profile_values) ldap_value_free_len(autz_ctx->profile_values);
 	return 0;
 }
 
@@ -2002,19 +2140,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		expanded->attrs[expanded->count++] = inst->user.obj_access_attr;
 	}
 
-	if (inst->group.userobj_membership_attr && (inst->group.cacheable_dn || inst->group.cacheable_name)) {
+	if (inst->group.userobj_membership_attr &&
+	    (inst->group.cacheable_dn || inst->group.cacheable_name ||
+	     inst->group.profile_attr || inst->group.profile_attr_suspend)) {
 		CHECK_EXPANDED_SPACE(expanded);
 		expanded->attrs[expanded->count++] = inst->group.userobj_membership_attr;
 	}
 
-	if (inst->profile.attr) {
+	if (inst->user.profile_attr) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr;
 	}
 
-	if (inst->profile.attr_suspend) {
+	if (inst->user.profile_attr_suspend) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile.attr_suspend;
+		expanded->attrs[expanded->count++] = inst->user.profile_attr_suspend;
 	}
 	expanded->attrs[expanded->count] = NULL;
 
@@ -2764,15 +2904,44 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	SSS_CONTROL_BUILD(user)
 	SSS_CONTROL_BUILD(profile)
 
+	/*
+	 *	Bulk retrieval matches profile objects by their exact DN,
+	 *	so subtree (non-base scope) semantics cannot be preserved.
+	 */
+	switch (inst->profile.search_mode) {
+	case LDAP_PROFILE_SEARCH_MODE_AUTO:
+		if (inst->profile.obj_sort_ctrl && (inst->profile.obj_scope == LDAP_SCOPE_BASE)) {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_BULK;
+		} else {
+			inst->profile.search_mode = LDAP_PROFILE_SEARCH_MODE_SEQ;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_BULK:
+		if (inst->profile.obj_scope != LDAP_SCOPE_BASE) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.scope = base'");
+			return -1;
+		}
+		if (!inst->profile.obj_sort_ctrl) {
+			cf_log_err(conf, "'profile.search_mode = bulk' requires 'profile.sort_by', "
+				   "else profile evaluation order is non-deterministic");
+			return -1;
+		}
+		break;
+
+	case LDAP_PROFILE_SEARCH_MODE_SEQ:
+		break;
+	}
+
 	if (inst->handle_config.tls_require_cert_str) {
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
 		inst->handle_config.tls_require_cert = fr_table_value_by_str(fr_ldap_tls_require_cert,
-							      inst->handle_config.tls_require_cert_str, -1);
+									     inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
-				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
+				   "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			return -1;
 		}
 	}
@@ -2907,6 +3076,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
+
+	if (unlikely(!module_rlm_xlat_register(mctx->mi->boot, mctx, "whoami", ldap_whoami_xlat,
+					       FR_TYPE_STRING))) return -1;
 
 	map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_DN_SAFE_FOR);
 

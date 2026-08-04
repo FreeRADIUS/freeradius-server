@@ -1,0 +1,137 @@
+#  -*- text -*-
+######################################################################
+#
+#  = Virtual Server for EAP-PSK (RFC4764)
+#
+#  An example virtual server for EAP-PSK (RFC 4764).
+#
+#  EAP-PSK is a mutual-authentication EAP method built on a 16-octet
+#  pre-shared key. The peer asserts an identity during authentication,
+#  and this virtual server looks up the key for that identity.
+#
+#  Keys should be generated from a secure random source, e.g.
+#
+#  ```
+#  dd if=/dev/urandom bs=16 count=1 | xxd -p
+#  ```
+#
+#  To use this server, enable it, and reference it from the psk
+#  section of mods-available/eap:
+#
+#  ```
+#  psk {
+#	virtual_server = eap-psk
+#  }
+#  ```
+#
+######################################################################
+
+#
+#  == The Virtual Server
+#
+server eap-psk {
+	#
+	#  namespace:: The protocol namespace (i.e. dictionary) to use.
+	#
+	namespace = eap-psk
+
+	#
+	#  == EAP-PSK Configuration
+	#
+	eap-psk {
+		#  identity:: The default server identity (ID_S) sent to the peer.
+		#
+		#  This should generally be the host name of the RADIUS server, or
+		#  some other information which uniquely identifies it.
+		#
+		#  This identity can be over-ridden in the `send Identity-Request`
+		#  section, below.
+		#
+		identity = "FreeRADIUS"
+	}
+
+	#  == Packet Processing sections
+	#
+	#  The sections below are called when an EAP-PSK authentication has
+	#  been received.
+
+	#
+	#  === Send EAP Identity-Request
+	#
+	#  This section runs before the first message is sent. To override
+	#  the configured server identity for this session, set:
+	#
+	#  ```
+	#  reply.Server-Identity := "aaa1.example.com"
+	#  ```
+	#
+	send Identity-Request {
+	}
+
+	#
+	#  === Receive Identity-Response
+	#
+	#  This section runs when the peer sends its identity. The section
+	#  should look up the pre-shared key for that identity, and add the
+	#  key as `control.Password.PSK`. The key must be exactly 16 octets.
+	#
+	#  If no key is added, the message is silently discarded, so probing
+	#  for valid identities is not possible. To send an explicit failure
+	#  instead, set:
+	#
+	#  ```
+	#  reply.Packet-Type := ::Failure
+	#  ```
+	#
+	recv Identity-Response {
+		#
+		#  Keys are usually stored in a file or database, keyed by the peer
+		#  identity, e.g.
+		#
+		#  ```
+		#  control.Password.PSK := %sql("SELECT psk FROM psk_keys WHERE identity = '%{Identity}'")
+		#  ```
+		#
+		if (Identity == "bob@example.org") {
+			control.Password.PSK := 0x000102030405060708090a0b0c0d0e0f
+			ok
+
+		} else {
+			notfound
+		}
+	}
+
+	#
+	#  === Send a Result Indication
+	#
+	#  This section runs before the third EAP-PSK message. That message
+	#  proves that the server holds the same key, and tells the peer that
+	#  authentication has succeeded.
+	#
+	send Result-Indication {
+	}
+
+	#
+	#  === Receive a Result Acknowledgement
+	#
+	#  This section runs when the peer confirms mutual authentication.
+	#
+	recv Result-Acknowledgement {
+	}
+
+	#
+	#  === Send Success
+	#
+	#  This section runs when an EAP Success is returned.
+	#
+	send Success {
+	}
+
+	#
+	#  === Send Failure
+	#
+	#  This section runs when an EAP Failure is returned.
+	#
+	send Failure {
+	}
+}

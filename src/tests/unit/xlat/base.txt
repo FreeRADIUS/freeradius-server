@@ -71,16 +71,16 @@ xlat %{32}
 match %{32}
 
 xlat %{33}
-match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
+match ERROR: ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 xlat %{3a}
-match ERROR offset 2: Unexpected text after attribute reference
+match ERROR: ERROR offset 2: Unexpected text after attribute reference
 
 #xlat %{-3}
 #match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat %{3
-match ERROR offset 3: Missing closing brace '}'
+match ERROR: ERROR offset 3: Missing closing brace '}'
 
 #
 #  Tests for xlat expansion
@@ -89,7 +89,7 @@ xlat %{Tunnel-Password}
 match %{Tunnel-Password}
 
 xlat %test_no_args('foo')
-match ERROR offset 14: Too many arguments, expected 0, got 1
+match ERROR: ERROR offset 14: Too many arguments, expected 0, got 1
 
 xlat %test('bar')
 match %test('bar')
@@ -102,7 +102,7 @@ xlat %test(%{User-Name})
 match %test(%{User-Name})
 
 xlat %test()
-match ERROR offset 6: Missing required arg 1
+match ERROR: ERROR offset 6: Missing required arg 1
 
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
@@ -156,10 +156,10 @@ xlat %length()
 match %length()
 
 xlat %length(
-match ERROR offset 8: Missing closing brace ')'
+match ERROR: ERROR offset 8: Missing closing brace ')'
 
 xlat %length(1 + 2
-match ERROR offset 13: Missing ')' after argument 1
+match ERROR: ERROR offset 13: Missing ')' after argument 1
 
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
@@ -174,65 +174,65 @@ match \"foo %test('foo')\"
 #  Alternations
 #
 xlat %{%{foo} || %{bar}}
-match ERROR offset 4: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 4: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{%{User-Name} || %{bar}}
-match ERROR offset 20: Attribute 'bar' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 20: Attribute 'bar' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Empty and malformed expansions
 #
 xlat %{
-match ERROR offset 2: Missing closing brace '}'
+match ERROR: ERROR offset 2: Missing closing brace '}'
 
 xlat %{}
-match ERROR offset 2: Empty expressions are invalid
+match ERROR: ERROR offset 2: Empty expressions are invalid
 
 xlat %{:}
-match ERROR offset 2: Unexpected input ':' when trying to read an attribute name
+match ERROR: ERROR offset 2: Unexpected input ':' when trying to read an attribute name
 
 xlat %{:bar}
-match ERROR offset 2: Unexpected input ':' when trying to read an attribute name
+match ERROR: ERROR offset 2: Unexpected input ':' when trying to read an attribute name
 
 xlat %foo(' bar')
-match ERROR offset 1: Unresolved expansion functions are not allowed here
+match ERROR: ERROR offset 1: Unresolved expansion functions are not allowed here
 
 xlat %{[}
-match ERROR offset 2: Missing attribute name
+match ERROR: ERROR offset 2: Missing attribute name
 
 xlat %{[baz}
-match ERROR offset 2: Missing attribute name
+match ERROR: ERROR offset 2: Missing attribute name
 
 xlat %{ }
-match ERROR offset 3: Unexpected input '}' when trying to read an attribute name
+match ERROR: ERROR offset 3: Unexpected input '}' when trying to read an attribute name
 
 xlat %{\t}
-match ERROR offset 2: Unexpected input '\' when trying to read an attribute name
+match ERROR: ERROR offset 2: Unexpected input '\' when trying to read an attribute name
 
 xlat %{\n}
-match ERROR offset 2: Unexpected input '\' when trying to read an attribute name
+match ERROR: ERROR offset 2: Unexpected input '\' when trying to read an attribute name
 
 xlat %{foo }
-match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{foo bar}
-match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR: ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %test(
-match ERROR offset 6: Missing closing brace ')'
+match ERROR: ERROR offset 6: Missing closing brace ')'
 
 xlat %test(%{User-Name)
-match ERROR offset 17: Missing closing brace '}'
+match ERROR: ERROR offset 17: Missing closing brace '}'
 
 xlat %test(%{User-Name}
-match ERROR offset 18: Missing ')' after argument 1
+match ERROR: ERROR offset 18: Missing ')' after argument 1
 
 xlat %{myfirstxlat
-match ERROR offset 13: Missing closing brace '}'
+match ERROR: ERROR offset 13: Missing closing brace '}'
 
 # Issue seen in the wild that caused an SEGV during pass2
 xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
-match ERROR offset 48: Missing closing brace '}'
+match ERROR: ERROR offset 48: Missing closing brace '}'
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -265,7 +265,7 @@ match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name} %{Filter-Id}" }
 #  to xlat_tokenize_expansion()
 #
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 44: Unexpected text after attribute reference
+match ERROR: ERROR offset 44: Unexpected text after attribute reference
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Filter-Id}:1234 world
@@ -324,7 +324,7 @@ xlat %debug( 5)
 match %debug(5)
 
 xlat %debug("foo")
-match ERROR offset 7: Invalid argument 1 - Failed parsing string as type 'int8'
+match ERROR: ERROR offset 7: Invalid argument 1 - Failed parsing string as type 'int8'
 
 #
 #  This is correct.
@@ -339,7 +339,7 @@ match %str.rpad(User-Name, 5, 'x')
 #  so the "offset" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
 xlat %str.rpad(User-Name, 'foo', 'x')
-match ERROR offset 21: Invalid argument 2 - Failed parsing string as type 'uint64'
+match ERROR: ERROR offset 21: Invalid argument 2 - Failed parsing string as type 'uint64'
 
 #
 #  Argument quoting

@@ -9,8 +9,8 @@
 #
 #  More examples of doing detail logs.
 #
-#  NOTE: For a full explanation of the configuration options,
-#  please see the `detail` module.
+#  NOTE: For a full explanation of the configuration options, please
+#  see the `detail` module.
 #
 
 #
@@ -32,7 +32,8 @@ detail auth_log {
 	permissions = 0600
 
 	#
-	#  suppress { ... }:: This will stop passwords being written to the log.
+	#  suppress { ... }:: This will stop passwords being written to the
+	#  log.
 	#
 	suppress {
 		User-Password
@@ -42,8 +43,8 @@ detail auth_log {
 #
 #  === Access-Accept
 #
-#  This module logs authentication reply packets sent to a NAS.
-#  Both `Access-Accept` and `Access-Reject` packets are logged.
+#  This module logs authentication reply packets sent to a NAS. Both
+#  `Access-Accept` and `Access-Reject` packets are logged.
 #
 #  NOTE: You will also need to un-comment the 'reply_log' line in the
 #  `send Access-Accept` section of `sites-enabled/default`.

@@ -17,20 +17,21 @@
 #  automatically derived from the section in which they are called.
 #
 #  If `mruby` is called in `recv Access-Request`, firstly a method
-#  `recv_access_request` will be looked for.  If that does not exist, then
-#  a method `recv` will be looked for.
+#  `recv_access_request` will be looked for. If that does not exist,
+#  then a method `recv` will be looked for.
 #
-#  This can be overridden by setting `func_recv_access_request` or `func_recv`
-#  to point to a different method name.
+#  This can be overridden by setting `func_recv_access_request` or
+#  `func_recv` to point to a different method name.
 #
 #  Each method called during a packet processing section is passed an
 #  object which represents the packet.
 #
-#  The object contains 4 methods `request`, `reply`, `control` and `session_state`
-#  which allow access to the pairs in those FreeRADIUS pair lists.
+#  The object contains 4 methods `request`, `reply`, `control` and
+#  `session_state` which allow access to the pairs in those FreeRADIUS
+#  pair lists.
 #
-#  Nested attributes are accessed by using chained methods.  Each leaf attribute
-#  has the following methods
+#  Nested attributes are accessed by using chained methods. Each leaf
+#  attribute has the following methods
 #
 #  [options="header,autowidth"]
 #  |===
@@ -41,8 +42,9 @@
 #  | del(n)    | Delete an attribute                | Optional number specifying the attribute instance.
 #  |===
 #
-#  Where a specific instance of a nested attribute parent is required, the
-#  method can be passed an argument to specify the instance number.
+#  Where a specific instance of a nested attribute parent is required,
+#  the method can be passed an argument to specify the instance
+#  number.
 #
 #  For example, if the Ruby method is defined `def self.recv(p)`, then
 #  attributes in the request can be accessed using syntax of the form:
@@ -55,30 +57,34 @@
 #  | p.requestbaa(2).baz.get      | request.baa[2].baz
 #  |===
 #
-#  Where attribute names contain `-` this should be replaced by `_`, e.g.
-#  `request.User-Name` becomes `p.request.user_name`
+#  Where attribute names contain `-` this should be replaced by `_`,
+#  e.g. `request.User-Name` becomes `p.request.user_name`
 #
 #  The interface between FreeRADIUS and Ruby is mosty string.
 #
-#  Attributes of type `string` are copied to Ruby as-is.
-#  They are not escaped or interpreted.
+#  Attributes of type `string` are copied to Ruby as-is. They are not
+#  escaped or interpreted.
 #
-#  Attributes of type `octets` are copied to Ruby as-is.
-#  They are not escaped or interpreted.
+#  Attributes of type `octets` are copied to Ruby as-is. They are not
+#  escaped or interpreted.
 #
 #  Numeric attributes are passed as the appropriate Ruby numeric type.
 #
-#  All other attributes are printed, and passed to Ruby as a string value.
+#  All other attributes are printed, and passed to Ruby as a string
+#  value.
 #
-#  IP addresses are sent as strings, e.g. "192.0.2.25", and not as a 4-byte
-#  binary value.  The same applies to other attribute data types.
+#  IP addresses are sent as strings, e.g. "192.0.2.25", and not as a
+#  4-byte binary value. The same applies to other attribute data
+#  types.
 #
-#  Attributes can be set by using the `set` method of the leaf attributes E.g.
+#  Attributes can be set by using the `set` method of the leaf
+#  attributes E.g.
 #
 #  `p.reply.foo.set('baa')`
 #
-#  The return codes from Ruby methods are passed directly to the server.
-#  A set of predefined constants are provided to use as return values:
+#  The return codes from Ruby methods are passed directly to the
+#  server. A set of predefined constants are provided to use as return
+#  values:
 #
 #  [options="header,autowidth"]
 #  |===

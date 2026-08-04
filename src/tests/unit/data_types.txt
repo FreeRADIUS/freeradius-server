@@ -31,7 +31,7 @@ value time_delta 2.4
 match 2.4
 
 value time_delta yes
-match Failed parsing time_delta: Invalid text, input should be a number
+match ERROR: Failed parsing time_delta: Invalid text, input should be a number
 
 value time_delta .3s
 match 0.3
@@ -109,19 +109,19 @@ match -86400
 #  uint8
 #
 value uint8 256
-match integer overflow
+match ERROR: integer overflow
 
 value uint8 -128
-match integer underflow
+match ERROR: integer underflow
 
 value int8 128
-match integer overflow
+match ERROR: integer overflow
 
 value int8 -128
 match -128
 
 value int8 -130
-match integer underflow
+match ERROR: integer underflow
 
 #
 #  Empty input is invalid for IP address types.
@@ -130,25 +130,25 @@ match integer underflow
 #  consumes zero characters and returns "Empty input is invalid".
 #
 value ipaddr
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value ipaddr !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value ipv4prefix !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value ipv6addr !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value ipv6prefix !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value combo-ip !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 value combo-prefix !
-match Empty input is invalid
+match ERROR: Empty input is invalid
 
 #
 #  Non-numeric input is invalid for integer types
@@ -156,43 +156,43 @@ match Empty input is invalid
 
 # Note end of string immediately after "uint32"
 value uint32
-match empty input is invalid
+match ERROR: empty input is invalid
 
 value uint8 !
-match Failed parsing string as type 'uint8'
+match ERROR: Failed parsing string as type 'uint8'
 
 value uint16 !
-match Failed parsing string as type 'uint16'
+match ERROR: Failed parsing string as type 'uint16'
 
 value uint32 !
-match Failed parsing string as type 'uint32'
+match ERROR: Failed parsing string as type 'uint32'
 
 value uint64 !
-match Failed parsing string as type 'uint64'
+match ERROR: Failed parsing string as type 'uint64'
 
 value int8 !
-match Failed parsing string as type 'int8'
+match ERROR: Failed parsing string as type 'int8'
 
 value int16 !
-match Failed parsing string as type 'int16'
+match ERROR: Failed parsing string as type 'int16'
 
 value int32 !
-match Failed parsing string as type 'int32'
+match ERROR: Failed parsing string as type 'int32'
 
 value int64 !
-match Failed parsing string as type 'int64'
+match ERROR: Failed parsing string as type 'int64'
 
 value float32 !
-match Failed parsing string as type 'float32'
+match ERROR: Failed parsing string as type 'float32'
 
 value float64 !
-match Failed parsing string as type 'float64'
+match ERROR: Failed parsing string as type 'float64'
 
 #
 #  Non-boolean input is invalid
 #
 value bool !
-match Invalid boolean value.  Accepted values are "yes", "no", "true", "false" or any unquoted integer
+match ERROR: Invalid boolean value.  Accepted values are "yes", "no", "true", "false" or any unquoted integer
 
 value date Jan  1 1970 12:00:00 UTC
 match 1970-01-01T12:00:00Z
@@ -302,25 +302,25 @@ match _foo.com
 #  Error cases
 #
 encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
-match Label is larger than 63 characters
+match ERROR: Label is larger than 63 characters
 
 # same as above, but first element
 encode-dns-label it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
-match Label is larger than 63 characters
+match ERROR: Label is larger than 63 characters
 
 # same as above, but last element
 encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234
-match Label is larger than 63 characters
+match ERROR: Label is larger than 63 characters
 
 encode-dns-label .foo.com
-match Empty labels are invalid
+match ERROR: Empty labels are invalid
 
 encode-dns-label www..foo.com
-match Double dots '..' are forbidden
+match ERROR: Double dots '..' are forbidden
 
 #  underscore as non-first character is illegal
 encode-dns-label www_foo.com
-match Invalid character 0x5f in label
+match ERROR: Invalid character 0x5f in label
 
 count
 match 164

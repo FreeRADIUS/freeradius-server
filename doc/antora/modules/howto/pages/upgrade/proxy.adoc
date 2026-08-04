@@ -1,7 +1,7 @@
 = Proxying
 
-The proxy feature has undergone massive changes. The `proxy.conf` file no
-longer exists, and everything in it has been removed. e.g. `realm`,
+The proxy feature has undergone massive changes. The `proxy.conf` file
+no longer exists, and everything in it has been removed. e.g. `realm`,
 `home_server`, `home_server_pool` no longer exist. The old proxying
 functionality was welded into the server core, which made many useful
 features impossible to configure.
@@ -23,8 +23,8 @@ request will be proxied when processing reaches the module.
 For ease of management, we recommend naming the modules for the host
 name of the home server.
 
-It is often simplest to do proxying via an `authenticate proxy { ... }`
-section, though that section can have any name. e.g. setting
+It is often simplest to do proxying via an `authenticate proxy { ...
+}` section, though that section can have any name. e.g. setting
 `Auth-Type := proxy` will call the `authenticate proxy` section, and
 is similar to the previous setting `Proxy-To-Realm`.
 
@@ -43,8 +43,7 @@ multiple destinations.
 == home_server
 
 The `home_server` configuration has been replaced with the `radius`
-module. See `mods-available/radius` for examples and
-documentation.
+module. See `mods-available/radius` for examples and documentation.
 
 == home_server_pool
 
@@ -67,8 +66,8 @@ redundant {
 
 [NOTE]
 ====
-Of course, you will have to use the names of the `radius`
-modules in your configuration, and not `home_server_1`, etc.
+Of course, you will have to use the names of the `radius` modules in
+your configuration, and not `home_server_1`, etc.
 ====
 
 * `type = load-balance` - replaced with `unlang`
@@ -116,8 +115,8 @@ load-balance "%{Load-Balance-Key}" {
 ----
 
 While the `Load-Balance-Key` was a special attribute in v3, it has no
-special meaning in v4. You can use any attribute or string expansion as
-part of the `load-balance` key.
+special meaning in v4. You can use any attribute or string expansion
+as part of the `load-balance` key.
 
 === Limitations in v3
 

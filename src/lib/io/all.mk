@@ -1,4 +1,5 @@
 TARGET	:= libfreeradius-io$(L)
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
 	app_io.c \

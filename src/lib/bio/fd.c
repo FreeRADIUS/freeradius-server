@@ -818,7 +818,7 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
 	int rcode;
 
-	if (my->info.socket.af == AF_FILE_BIO) return fr_bio_fd_init_file(my);
+	if (my->info.socket.af == AF_FR_FILENAME) return fr_bio_fd_init_file(my);
 
 	/*
 	 *	The source IP can be unspecified.  It will get updated after we call connect().
@@ -1231,7 +1231,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	 *	The caller may just call us without caring about what the underlying BIO is.  In which case we
 	 *	need to be safe.
 	 */
-	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_LISTEN)) {
+	if ((my->info.socket.af == AF_FR_FILENAME) || (my->info.type == FR_BIO_FD_LISTEN)) {
 		fr_bio_fd_set_open(my);
 		goto connected;
 	}

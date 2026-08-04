@@ -626,7 +626,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	stats->interval.reused = ((long double) stats->interval.reused_total) / conf->stats.interval;
 	stats->interval.lost = ((long double) stats->interval.lost_total) / conf->stats.interval;
 
-	for (i = 1; i < RS_RETRANSMIT_MAX; i++) {
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
 		stats->interval.rt[i] = ((long double) stats->interval.rt_total[i]) / conf->stats.interval;
 	}
 }
@@ -1178,7 +1178,7 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 			TALLOC_FREE(request->capture_p->data);
 
 			/* Reset the pointer to the start of the circular buffer */
-			if (request->capture_p++ >=
+			if (++request->capture_p >=
 					(request->capture +
 					 NUM_ELEMENTS(request->capture))) {
 				request->capture_p = request->capture;

@@ -142,7 +142,7 @@ _Generic((_ct), \
 						(_t == FR_TYPE_IPV6_ADDR) || \
 						(_t == FR_TYPE_IPV6_PREFIX) || \
 						(_t == FR_TYPE_COMBO_IP_PREFIX) || \
-						(_t == FR_TYPE_COMBO_IP_ADDR)) || \
+						(_t == FR_TYPE_COMBO_IP_ADDR)) && \
 						!((_f) & CONF_FLAG_MULTI), _p, (_mismatch_fripaddr) 0), \
 	fr_ipaddr_t **	: __builtin_choose_expr(((_t == FR_TYPE_IPV4_ADDR) || \
 						(_t == FR_TYPE_IPV4_PREFIX) || \

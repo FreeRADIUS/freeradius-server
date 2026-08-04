@@ -409,7 +409,7 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 			break;
 
 		case XLAT_TMPL:
-			node->vpt = tmpl_copy(node, p->vpt);
+			if (unlikely((node->vpt = tmpl_copy(node, p->vpt)) == NULL)) goto error;
 			break;
 
 #ifdef HAVE_REGEX

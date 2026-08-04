@@ -1,4 +1,5 @@
 TARGET		:= libfreeradius-server$(L)
+TGT_CATEGORY	:= lib-util
 
 SOURCES	:= \
 	auth.c \

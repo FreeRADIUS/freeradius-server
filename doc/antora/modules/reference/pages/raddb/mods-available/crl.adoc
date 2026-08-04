@@ -1,7 +1,4 @@
 
-
-
-
 = CRL Module
 
 The `crl` module provides CRL checking of TLS certificates.
@@ -10,51 +7,42 @@ Its primary use case is within the `verify certificate` processing
 section of the `tls-session` virtual server when verifying client
 certificates during EAP-TLS.
 
-
-
 == Configuration Settings
-
 
 virtual_server:: Name of the virtual server used to fetch CRLs.
 
-This virtual server must use the 'crl' namespace and provide
-a `recv CRL-Fetch` section to fetch CRLs.
+This virtual server must use the 'crl' namespace and provide a `recv
+CRL-Fetch` section to fetch CRLs.
 
 A suitable example virtual server is provided in sites-available/crl
-
-
 
 url:: URL to fetch CRL data from when the server starts.
 
 The CRL used during certificate verification is determined by the
-X509v3 CRL Distribution Points extension within the certificate.
-If a given CRL has not already been fetched when a certificate
-requires verification, then it will be fetched.
+X509v3 CRL Distribution Points extension within the certificate. If a
+given CRL has not already been fetched when a certificate requires
+verification, then it will be fetched.
 
-If the CRL distribution points which will be needed are known
-then they can be configured using one or more instance of this
-option.
+If the CRL distribution points which will be needed are known then
+they can be configured using one or more instance of this option.
 
 These distribution points will be fetched during server startup.
 
-Only base CRL distribution points should be listed here.  Deltas
-which they refer to will automatically be fetched.
-
-
+Only base CRL distribution points should be listed here. Deltas which
+they refer to will automatically be fetched.
 
 retry_delay:: How long to wait before retrying a fetch failure.
 
-
 == Default Configuration
 
-```
+----
 crl {
 	virtual_server = crl
-#	url = http://example.com/ca.crl
-#	url = ldap://ldap.example.com/cn=example%20CA,dc=example,dc=com?certificateRevocationList;binary
+##	url = http://example.com/ca.crl
+##	url = ldap://ldap.example.com/cn=example%20CA,dc=example,dc=com?certificateRevocationList;binary
 #	retry_delay = 30s
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

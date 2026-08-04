@@ -37,7 +37,7 @@ RCSID("$Id$")
 #  include <freeradius-devel/tls/version.h>
 #endif
 
-#include <json-c/json.h>
+#include <freeradius-devel/json/base.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

@@ -1,28 +1,18 @@
 
-
-
-
 = Brotli compressor/decompressor
 
 The `brotli` module registers xlat functions for compressing and
 decompressing data using the Brotli algorithm.
 
-
-
 == Configuration Settings
 
-
-
 === An example configuration
-
 
 mode:: The compression mode to use.
 
 The mode can be one of `generic`, `text` or `font`.
 
 The default mode is `generic`.
-
-
 
 quality:: The compression quality to use.
 
@@ -32,15 +22,11 @@ Quality can be between `0` and `11`.
 
 The default quality is `11`.
 
-
-
 window_bits:: The compression window size.
 
 The window size can be between 10 and 24.
 
 The default window size is `22`.
-
-
 
 block_bits:: The maximum input block size.
 
@@ -48,23 +34,18 @@ The block size can be between 16 and 24.
 
 The default block size is `24`.
 
-
-
 max_size:: Maximum size of the decompressed data.
 
 The default is usually sufficient for most use cases.
 
 The default size is `10M`.
 
-
-
-large_window:: Allow window sizes outside of the range permitted by https://tools.ietf.org/html/rfc7932[RFC 7932]
+large_window:: Allow window sizes outside of the range permitted by
+https://tools.ietf.org/html/rfc7932[RFC 7932]
 
 Changes the behaviour of both the compressor and decompressor.
 
 The default is `no`.
-
-
 
 == Expansions
 
@@ -85,9 +66,9 @@ Ingests uncomprssed data and returns the compressed data.
 
 .Output
 
-```
+----
 \0332\000\210\304&G(ɋ\031]\372l\265`\003\016\330\023L\002\332\375\344\b^\241\003\177YԜ浣D\254\223\230\002
-```
+----
 
 === %<inst>.decompress(...)
 
@@ -104,13 +85,13 @@ Ingests compressed data and emits the uncompressed data.
 
 .Output
 
-```
+----
 "cn=subscriber12345,ou=subscribers,dc=example,dc=com"
-```
+----
 
 == Default Configuration
 
-```
+----
 brotli {
 	compress {
 #		mode = 'generic'
@@ -123,7 +104,7 @@ brotli {
 	}
 #	large_window = no
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

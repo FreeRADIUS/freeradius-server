@@ -50,9 +50,11 @@ static void unlang_limit_signal(UNUSED request_t *request, unlang_stack_frame_t 
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 
-	if (action == FR_SIGNAL_CANCEL) {
-		state->thread->active_callers--;
-	}
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	if (!state->thread) return;
+
+	state->thread->active_callers--;
 }
 
 static unlang_action_t unlang_limit_resume_done(UNUSED unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)

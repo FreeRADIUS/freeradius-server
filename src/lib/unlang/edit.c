@@ -783,7 +783,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		fr_pair_t *vp;
 
 		if (!current->parent->lhs.vp) {
-			if (edit_create_lhs_vp(request, request, current->parent) < 0) return -1;
+			if (edit_create_lhs_vp(request, request, current->parent) < 0) goto fail;
 		}
 
 		while (box) {
@@ -795,13 +795,13 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 */
 			if (pair_append_by_tmpl_parent(current->parent->lhs.vp, &vp, list, current->lhs.vpt, true) < 0) {
 				RPEDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
-				return -1;
+				goto fail;
 			}
 
 			vp->op = map->op;
 			PAIR_ALLOCED(vp);
 
-			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) return -1;
+			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 
 			if (single) break;
 

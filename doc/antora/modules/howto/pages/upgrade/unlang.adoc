@@ -1,36 +1,51 @@
 = Unlang Syntax
 
-Many new xref:reference:unlang/index.adoc[unlang] keywords have been added.
+Many new xref:reference:unlang/index.adoc[unlang] keywords have been
+added.
 
 Data type casts have changed from `<ipaddr> ...` to `(ipaddr) ...`
 
 [#ampersand]
 == "&" is Deprecated
 
-In FreeRADIUS v4, the ampersand (&) is no longer used in configuration files. It doesn't reference specific attributes or define virtual attributes anymore. New features replace the "&" and allow for a more structured configuration.
+In FreeRADIUS v4, the ampersand (&) is no longer used in configuration
+files. It doesn't reference specific attributes or define virtual
+attributes anymore. New features replace the "&" and allow for a more
+structured configuration.
 
-The main reasons for removing the "&" are to improve clarity and structure. In v3, attribute names were in a flat list, which could lead to naming conflicts. FreeRADIUS v4 introduces hierarchical attributes, making the old syntax unnecessary.
+The main reasons for removing the "&" are to improve clarity and
+structure. In v3, attribute names were in a flat list, which could
+lead to naming conflicts. FreeRADIUS v4 introduces hierarchical
+attributes, making the old syntax unnecessary.
 
-The developers moved the functionality of the "&" into Unlang and other parts of the configuration.
+The developers moved the functionality of the "&" into Unlang and
+other parts of the configuration.
 
 === Attribute Aliases
 
-Old v3 attribute names are available through "alias" dictionaries for compatibility. However, using the new v4 hierarchical names is recommended.
+Old v3 attribute names are available through "alias" dictionaries for
+compatibility. However, using the new v4 hierarchical names is
+recommended.
 
 === Virtual Modules
 
-The deprecated instantiate section sometimes used the & syntax for dynamic expansion. Now, FreeRADIUS lists virtual modules in the mods-available/ and mods-enabled/ directories.
+The deprecated instantiate section sometimes used the & syntax for
+dynamic expansion. Now, FreeRADIUS lists virtual modules in the
+mods-available/ and mods-enabled/ directories.
 
 === Unlang Policy Language
 
-The configuration language (Unlang) is now more consise and robust. You now edit attributes with specific statements in processing sections. The old-style `update` sections are deprecated.
+The configuration language (Unlang) is now more consise and robust.
+You now edit attributes with specific statements in processing
+sections. The old-style `update` sections are deprecated.
 
 == Keyword Changes
 
 [#foreach]
 === `foreach`
 
-The xref:reference:unlang/foreach.adoc[foreach] keyword has changed syntax.
+The xref:reference:unlang/foreach.adoc[foreach] keyword has changed
+syntax.
 
 Instead of
 
@@ -40,8 +55,8 @@ foreach &reply.Filter-Id {
 }
 ----
 
-You can define a xref:reference:unlang/local.adoc[local variable] using
-the following syntax:
+You can define a xref:reference:unlang/local.adoc[local variable]
+using the following syntax:
 
 ----
 foreach thing (reply.Filter-Id[*]) {
@@ -55,8 +70,8 @@ The result is much simpler and clearer.
 === `update`
 
 The `update` sections are deprecated.  The new way to
-xref:reference:unlang/edit.adoc[edit] is much simpler.
-See the xref:reference:unlang/update.adoc[update] documentation for a
+xref:reference:unlang/edit.adoc[edit] is much simpler. See the
+xref:reference:unlang/update.adoc[update] documentation for a
 description of what has changed, and how to use the attribute new
 xref:reference:unlang/edit.adoc[edit] functionality.
 
@@ -90,10 +105,9 @@ for further guidance.
 
 === Autz-Type has been removed
 
-The `Autz-Type` sections have been removed, and are not supported.
-The `Autz-Type` attribute has also been removed.  Its functionality
-can be replaced with a xref:reference:unlang/switch.adoc[switch]
-statement.
+The `Autz-Type` sections have been removed, and are not supported. The
+`Autz-Type` attribute has also been removed.  Its functionality can be
+replaced with a xref:reference:unlang/switch.adoc[switch] statement.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

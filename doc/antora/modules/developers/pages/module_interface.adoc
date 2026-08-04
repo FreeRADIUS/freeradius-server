@@ -5,9 +5,10 @@ RLM Module Interface (for developers).
 == Overview
 
 FreeRADIUS is an authentication server. It does RADIUS authorization,
-authentication, and accounting. It does NOT do database management, user
-configuration updates, or email. All of those functions may be more
-easily (and correctly) performed in programs outside of the server.
+authentication, and accounting. It does NOT do database management,
+user configuration updates, or email. All of those functions may be
+more easily (and correctly) performed in programs outside of the
+server.
 
 The only functionality performed by the server is:
 
@@ -15,38 +16,38 @@ The only functionality performed by the server is:
 * process the request
 * look up information one or more databases
 * store information in one or more databases (proxying can be viewed
-this way)
+  this way)
 * respond to the request
 
-There is no room, or need, for timers, listening on sockets, or anything
-else in the server. Adding those functions to the server means that it
-will become more complex, more unstable, more insecure, and more
-difficult to maintain.
+There is no room, or need, for timers, listening on sockets, or
+anything else in the server. Adding those functions to the server
+means that it will become more complex, more unstable, more insecure,
+and more difficult to maintain.
 
 == Intent of the modules
 
-The intent of modules is that they do small, simple, well-defined things
-when RADIUS packets are received. If the module does things when RADIUS
-packets are NOT received, then it has no business being in the server.
-Similarly, the module infrastructure is NOT intended to allow servers,
-applications, timed events, or anything other than handling incoming
-RADIUS packets.
+The intent of modules is that they do small, simple, well-defined
+things when RADIUS packets are received. If the module does things
+when RADIUS packets are NOT received, then it has no business being in
+the server. Similarly, the module infrastructure is NOT intended to
+allow servers, applications, timed events, or anything other than
+handling incoming RADIUS packets.
 
 Modules perform an action when RADIUS packets are received. Modules
-which do more (creating threads, forking programs) will NOT be added to
-the server, and the server core will NOT be modified to enable these
-kinds of modules. Those functions more properly belong in a separate
-application.
+which do more (creating threads, forking programs) will NOT be added
+to the server, and the server core will NOT be modified to enable
+these kinds of modules. Those functions more properly belong in a
+separate application.
 
-Modules ARE permitted to open sockets to other network programs, and to
-send and receive data on those sockets. Modules are NOT permitted to
-open sockets, and to listen for requests. Only the server core has that
-functionality, and it only listens for RADIUS requests.
+Modules ARE permitted to open sockets to other network programs, and
+to send and receive data on those sockets. Modules are NOT permitted
+to open sockets, and to listen for requests. Only the server core has
+that functionality, and it only listens for RADIUS requests.
 
 == Module outline
 
-The fundamental concepts of the rlm interface are module, instance, and
-component.
+The fundamental concepts of the rlm interface are module, instance,
+and component.
 
 A module is a chunk of code that knows how to deal with a particular
 kind of database, or perhaps a collection of similar databases.
@@ -57,13 +58,13 @@ Examples:
 |===
 | Module   | Description
 | rlm_sql  | Contains code for talking to MySQL or Postgres, and for
-             mapping RADIUS records onto SQL tables.
+mapping RADIUS records onto SQL tables.
 | rlm_unix | Contains code for making radiusd fit in well on unix-like
-             systems, including getpw* authentication
+systems, including getpw* authentication
 |===
 
-An instance specifies the actual location of a collection data that can
-be used by a module. Examples:
+An instance specifies the actual location of a collection data that
+can be used by a module. Examples:
 
 * the MySQL database on bigserver.theisp.com.example
 
@@ -74,8 +75,8 @@ putting function pointers in its `module_dl_t rlm_*` structure.
 == Module configuration
 
 The administrator requests the creation of a module instance by adding
-it inside the `modules { ... }` block in radiusd.conf. The instance definition
-looks like this::
+it inside the `modules { ... }` block in radiusd.conf. The instance
+definition looks like this::
 
 ```
 module_name [instance_name] {
@@ -86,8 +87,8 @@ module_name [instance_name] {
 }
 ```
 
-module_name:: The name used to load the module. To see the names of the
-available modules, look for the `rlm_*.so` files in
+module_name:: The name used to load the module. To see the names of
+the available modules, look for the `rlm_*.so` files in
 `$installprefix/lib`.  The module_name is that, minus the `rlm_`
 prefix and the `.so` suffix.
 
@@ -96,10 +97,10 @@ the same module. If you are only loading a module once, you can leave
 out the instance_name and it will be assumed to be the same as the
 module_name.
 
-The parameters inside the module block are passed without interpretation
-to the module and generally point to the exact location of a database or
-enable optional features of the module. Each module should document what
-parameters it accepts and what they do.
+The parameters inside the module block are passed without
+interpretation to the module and generally point to the exact location
+of a database or enable optional features of the module. Each module
+should document what parameters it accepts and what they do.
 
 For each `Access-Request` that comes to the server, the `recv
 Access-Request { ... }` section is called. Then one of the
@@ -116,8 +117,8 @@ Accounting-Response { ... }` section is called.
 
 == The lifetime of a module
 
-When the server is starting up, or reinitializing itself as a result of
-a SIGHUP, it reads the `modules{}` section. Each configured module
+When the server is starting up, or reinitializing itself as a result
+of a SIGHUP, it reads the `modules{}` section. Each configured module
 will be loaded and its `init()` method will be called::
 
 [source,c]
@@ -141,13 +142,14 @@ int instantiate(CONF_SECTION *cs, void **instance)
 
 The `instantiate()` function should look up options in the config
 section, and open whatever files or network connections are necessary
-for the module to do its job. It also should create a structure holding
-all of the persistent variables that are particular to this instance
-(open file descriptors, configured pathnames, etc.) and store a pointer
-to it in `*instance`. That `void *` becomes a handle (some would
-call it a `cookie`) representing this instance. The instance handle is
-passed as a parameter in all subsequent calls to the module's methods,
-so they can determine which database they are supposed to act on.
+for the module to do its job. It also should create a structure
+holding all of the persistent variables that are particular to this
+instance (open file descriptors, configured pathnames, etc.) and store
+a pointer to it in `*instance`. That `void *` becomes a handle (some
+would call it a `cookie`) representing this instance. The instance
+handle is passed as a parameter in all subsequent calls to the
+module's methods, so they can determine which database they are
+supposed to act on.
 
 The `authorize()`, `authenticate()`, `preaccounting()`, and
 `accounting()` functions are all called the same way:
@@ -160,9 +162,9 @@ int preaccounting(void *instance, request_t *request)
 int accounting(void *instance, request_t *request)
 ----
 
-they each receive the instance handle and the request, and are expected
-to act on the request using the database pointed to by the instance
-handle (which was set by the `instantiate()` function).
+they each receive the instance handle and the request, and are
+expected to act on the request using the database pointed to by the
+instance handle (which was set by the `instantiate()` function).
 
 When the server is being shut down (as the first part of `SIGHUP` for
 example) `detach()` is called for each module instance.

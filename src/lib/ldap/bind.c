@@ -332,6 +332,12 @@ unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *re
 	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
 	trunk_enqueue_t		ret;
 
+	if (!password || (password[0] == '\0')) {
+		REDEBUG("Refusing to bind as \"%s\" with an empty password - this would be an unauthenticated bind",
+			bind_dn ? bind_dn : "");
+		RETURN_UNLANG_INVALID;
+	}
+
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
 		RETURN_UNLANG_FAIL;

@@ -14,9 +14,9 @@ importance of RADIUS RFC compliance centers on four key areas:
   servers (NAS) like Wi-Fi access points, VPN gateways, and switches
   from different manufacturers (e.g., Cisco, Aruba, Fortinet).
 
-* Consistent behaviour: RFCs provide documented, predictable behaviour,
-  reducing unexpected issues when integrating new equipment into an
-  existing infrastructure.
+* Consistent behaviour: RFCs provide documented, predictable
+  behaviour, reducing unexpected issues when integrating new equipment
+  into an existing infrastructure.
 
 * Standardized Attributes: Standards like
   https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] and

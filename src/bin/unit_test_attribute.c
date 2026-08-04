@@ -420,6 +420,9 @@ static inline size_t strerror_concat(char *out, size_t outlen)
 	char *p = out;
 	char const *err;
 
+	strcpy(out, "ERROR: ");
+	p += 7;
+
 	while ((p < end) && (err = fr_strerror_pop())) {
 		if (*fr_strerror_peek()) {
 			p += snprintf(p, end - p, "%s: ", err);
@@ -592,15 +595,17 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 
 		if (!*p) break;
 
-		c1 = memchr(hextab, tolower((uint8_t) *p++), sizeof(hextab));
+		c1 = memchr(hextab, tolower((uint8_t) *p), sizeof(hextab) - 1);
 		if (!c1) {
 		bad_input:
 			fr_strerror_printf("Invalid hex data starting at \"%s\"", p);
 			return -(p - in);
 		}
+		p++;
 
-		c2 = memchr(hextab, tolower((uint8_t)*p++), sizeof(hextab));
+		c2 = memchr(hextab, tolower((uint8_t) *p), sizeof(hextab) - 1);
 		if (!c2) goto bad_input;
+		p++;
 
 		*out_p++ = ((c1 - hextab) << 4) + (c2 - hextab);
 	}
@@ -1830,7 +1835,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 */
 	while (to_dec < to_dec_end) {
 		slen = tp->func(head, &head->vp_group, cc->tmpl_rules.attr.namespace,
-				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);	
+				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 
 		cc->last_ret = slen;
 		if (slen <= 0) {

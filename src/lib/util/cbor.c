@@ -343,13 +343,12 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 *	tag=IPv6 + address + optional (prefix + scope)
 		 */
 	case FR_TYPE_IPV6_ADDR:
-		if (vb->vb_ip.scope_id != 0) {
-			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 3));
-
-		}
-
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return_slen;
+
+		if (vb->vb_ip.scope_id != 0) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 3));
+		}
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ipv6addr, 16);
 		if (slen <= 0) return_slen;

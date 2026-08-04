@@ -81,25 +81,42 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 	if (data_len < FR_TFTP_HDR_LEN) {
 		fr_strerror_printf("TFTP packet is too small. (%zu < %d)", data_len, FR_TFTP_HDR_LEN);
-	error:
 		return -1;
 	}
 
 	p = data;
 	end = (data + data_len);
 
-	/* Opcode */
+	/*
+	 *	Two bytes of Opcode
+	 */
 	opcode = fr_nbo_to_uint16(p);
+	if (!opcode || (opcode > 5)) {
+		fr_strerror_printf("Invalid TFTP opcode %#04x", opcode);
+		return -1;
+	}
+
 	vp = fr_pair_afrom_da(ctx, attr_tftp_opcode);
-	if (!vp) goto error;
+	if (!vp) return -1;
 
 	vp->vp_uint16 = opcode;
 	fr_pair_append(out, vp);
 	p += 2;
 
+	/*
+	 *	Parse the data.
+	 */
 	switch (opcode) {
 	case FR_OPCODE_VALUE_READ_REQUEST:
 	case FR_OPCODE_VALUE_WRITE_REQUEST:
+		/*
+		 *	Read / write requests end with a NUL byte.
+		 */
+		if (*(end - 1) != '\0') {
+			fr_strerror_const("trailing NUL character is missing");
+			return -1;
+		}
+
 		/*
 		 *   2 bytes     string    1 byte     string   1 byte   string    1 byte   string   1 byte
 		 *  +------------------------------------------------------------------------------------+
@@ -108,62 +125,80 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 *  Figure 5-1: RRQ/WRQ packet
 		 */
 
-		/* first of all, here we should have always a '\0' */
-		if (*(end - 1) != '\0') goto error_malformed;
-
-		/* first character should be alpha numeric */
-		if (!isalnum(p[0])) {
-			fr_strerror_printf("Invalid Filename");
-			goto error;
-		}
-
-		/* <filename> */
+		/*
+		 *	Find the end of the filename.
+		 */
 		q = memchr(p, '\0', (end - p));
-		if (!(q && q[0] == '\0')) {
-		error_malformed:
-			fr_strerror_printf("Packet contains malformed attribute");
+		if (!q || (q == (end - 1))) {
+		missing_mode:
+			fr_strerror_const("'mode' field is missing");
 			return -1;
 		}
 
+		/*
+		 *	Sanity check the filename
+		 */
+		for (q = p; *q != '\0'; q++) {
+			if (*q < ' ') {
+				fr_strerror_const("Invalid control character in filename");
+				return -1;
+			}
+		}
+
 		vp = fr_pair_afrom_da(ctx, attr_tftp_filename);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
-		fr_pair_value_bstrndup(vp, (char const *)p, (q - p), true);
+		fr_pair_value_bstrndup(vp, (const char *) p, (q - p), true);
 		fr_pair_append(out, vp);
-		p += (q - p) + 1 /* \0 */;
+		p = q + 1;
 
-		/* <mode> */
+		if (p == end) goto missing_mode;
+
+		/*
+		 *	ascii + NUL
+		 *	octet + NUL
+		 *	netascii + NUL
+		 */
 		q = memchr(p, '\0', (end - p));
-		if (!(q && q[0] == '\0')) goto error_malformed;
+		if (!q) goto missing_mode;
 
 		vp = fr_pair_afrom_da(ctx, attr_tftp_mode);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
 		/* (netascii || ascii || octet) + \0 */
 		if ((q - p) == 5 && !memcmp(p, "octet", 5)) {
-			p += 5;
+			p += 6;
 			vp->vp_uint8 = FR_MODE_VALUE_OCTET;
+
 		} else if ((q - p) == 5 && !memcmp(p, "ascii", 5)) {
-			p += 5;
+			p += 6;
 			vp->vp_uint8 = FR_MODE_VALUE_ASCII;
+
 		} else if ((q - p) == 8 && !memcmp(p, "netascii", 8)) {
-			p += 8;
+			p += 9;
 			vp->vp_uint8 = FR_MODE_VALUE_ASCII;
+
 		} else {
-			fr_strerror_printf("Invalid Mode");
-			goto error;
+			fr_strerror_printf("Invalid mode '%.*s'", (int) (q - p), p);
+			talloc_free(vp);
+			return -1;
 		}
 
 		fr_pair_append(out, vp);
-		p += 1 /* \0 */;
-
 		if (p >= end) goto done;
 
 		/*
-		 *  Once here, the next 'blksize' is optional.
-		 *  At least: | blksize | \0 | #blksize | \0 |
+		 * 	"blksize" is optional.
+		 *
+		 *	If it exists, then it's at least
+		 *
+		 *	blksize | \0 | #blksize | \0 |
 		 */
-		if ((end - p) < 10) goto error_malformed;
+		if ((end - p) < 10) {
+		invalid_option:
+			fr_strerror_const("Invalid TFTP option");
+			return -1;
+		}
 
 		if (!memcmp(p, "blksize\0", 8)) {
 			char *p_end = NULL;
@@ -171,18 +206,19 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 			p += 8;
 
-			if (p >= end || (end - p) < 1 || (end - p) > 6) goto error_malformed;
+			if ((p >= end) || ((end - p) < 1) || ((end - p) > 6)) goto invalid_option;
 
 			vp = fr_pair_afrom_da(ctx, attr_tftp_block_size);
-			if (!vp) goto error;
+			if (!vp) return -1;
 
 			blksize = strtol((const char *)p, &p_end, 10);
 
-			if ((p == (const uint8_t *)p_end) ||
+			if (((p == (const uint8_t *)p_end)) ||
 			    (blksize < FR_TFTP_BLOCK_MIN_SIZE) ||
 			    (blksize > FR_TFTP_BLOCK_MAX_SIZE)) {
 				fr_strerror_printf("Invalid Block-Size %ld value", blksize);
-				goto error;
+				talloc_free(vp);
+				return -1;
 			}
 
 			vp->vp_uint16 = (uint16_t)blksize;
@@ -202,7 +238,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 */
 
 		vp = fr_pair_afrom_da(ctx, attr_tftp_block);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
 		vp->vp_uint16 = fr_nbo_to_uint16(p);
 
@@ -219,16 +255,18 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 */
 		if (opcode != FR_OPCODE_VALUE_DATA) goto done;
 
-		if ((p + 2) > end) goto error_malformed;
+		if ((p + 2) > end) {
+			fr_strerror_const("Malformed Acknowledgment packet");
+			return -1;
+		}
 
 		p += 2;
 
 		vp = fr_pair_afrom_da(ctx, attr_tftp_data);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
 		fr_pair_value_memdup(vp, p, (end - p), true);
 		fr_pair_append(out, vp);
-
 		break;
 
 	case FR_OPCODE_VALUE_ERROR:
@@ -241,30 +279,42 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		 *  Figure 5-4: ERROR packet
 		 */
 
-		if ((p + 2) >= end) goto error_malformed;
+		/*
+		 *	Error packets end with a NUL byte.
+		 */
+		if (*(end - 1) != '\0') {
+			fr_strerror_const("trailing NUL character is missing");
+			return -1;
+		}
+
+		if ((p + 2) >= end) {
+			fr_strerror_const("Malformed Error packet");
+			return -1;
+		}
 
 		vp = fr_pair_afrom_da(ctx, attr_tftp_error_code);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
 		vp->vp_uint16 = fr_nbo_to_uint16(p);
-
 		fr_pair_append(out, vp);
 
 		p  += 2; /* <ErrorCode> */
 		q   = memchr(p, '\0', (end - p));
-		if (!q || q[0] != '\0') goto error_malformed;
+		if (!q || q[0] != '\0') {
+			fr_strerror_const("Missing Error-Code");
+			return -1;
+		}
 
 		vp = fr_pair_afrom_da(ctx, attr_tftp_error_message);
-		if (!vp) goto error;
+		if (!vp) return -1;
 
 		fr_pair_value_bstrndup(vp, (char const *)p, (q - p), true);
 		fr_pair_append(out, vp);
-
 		break;
 
 	default:
 		fr_strerror_printf("Invalid TFTP opcode %#04x", opcode);
-		goto error;
+		return -1;
 	}
 
 done:

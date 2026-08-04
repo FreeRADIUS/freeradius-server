@@ -230,8 +230,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 			break;
 		}
 
-		DEBUG4("%d event(s) pending%s",
-		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
+		DEBUG4("%d event(s) pending", num_events);
 
 		/*
 		 *	This function ends up pushing a

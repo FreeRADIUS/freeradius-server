@@ -349,7 +349,6 @@ int fr_dbuff_reset_talloc(fr_dbuff_t *dbuff)
 					   talloc_array_length(dbuff->buff), tctx->init);
 			return -1;
 		}
-		dbuff->buff = new_buff;
 		fr_dbuff_update(dbuff, new_buff, tctx->init);
 	}
 

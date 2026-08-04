@@ -90,7 +90,6 @@ typedef enum {
 	REQUEST_STOP_PROCESSING,	//!< Request has been signalled to stop
 	REQUEST_DONE,			//!< Request has completed
 } request_master_state_t;
-#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
 typedef enum request_state_t {
 	REQUEST_INIT = 0,

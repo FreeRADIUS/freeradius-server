@@ -19,31 +19,31 @@ fuzzer-out der
 proto-dictionary-root Test-Boolean
 
 decode-pair 01
-match Truncated header while trying to decode Test-Boolean
+match ERROR: Truncated header while trying to decode Test-Boolean
 
 #
 #  Multi-byte tags are not supported - tag byte 0x1f has lower 5 bits all set
 #
 decode-pair 1f 01 ff
-match Multi-byte tags are not supported: Failed decoding Test-Boolean header
+match ERROR: Multi-byte tags are not supported: Failed decoding Test-Boolean header
 
 #
 #  Invalid tag 0 - tag number 0 is reserved/invalid in UNIVERSAL class
 #
 decode-pair 00 01 05
-match Invalid tag 0: Failed decoding Test-Boolean header
+match ERROR: Invalid tag 0: Failed decoding Test-Boolean header
 
 #
 #  Tag mismatch - got INTEGER (0x02) when expecting BOOLEAN (0x01)
 #
 decode-pair 02 01 05
-match Failed decoding Test-Boolean - got tag 'integer', expected 'boolean'
+match ERROR: Failed decoding Test-Boolean - got tag 'integer', expected 'boolean'
 
 #
 #  Constructed flag mismatch - BOOLEAN is primitive but 0x21 = constructed BOOLEAN
 #
 decode-pair 21 01 ff
-match Constructed flag mismatch for tag 1: Failed decoding Test-Boolean header
+match ERROR: Constructed flag mismatch for tag 1: Failed decoding Test-Boolean header
 
 #
 #  Primitive with indefinite form length - INTEGER (0x02) with 0x80 length byte
@@ -52,7 +52,7 @@ match Constructed flag mismatch for tag 1: Failed decoding Test-Boolean header
 proto-dictionary-root Test-Integer
 
 decode-pair 02 80 02 01 05 00 00
-match Indefinite-length form is forbidden in DER: Failed decoding Test-Integer header
+match ERROR: Indefinite-length form is forbidden in DER: Failed decoding Test-Integer header
 
 #
 #  ----  NULL errors  ----
@@ -64,13 +64,13 @@ match Indefinite-length form is forbidden in DER: Failed decoding Test-Integer h
 proto-dictionary-root Test-NULL
 
 decode-pair 05 01 00
-match Null has non-zero length
+match ERROR: Null has non-zero length
 
 #
 #  NULL with length 2
 #
 decode-pair 05 02 00 00
-match Null has non-zero length
+match ERROR: Null has non-zero length
 
 #
 #  ----  Bitstring errors  ----
@@ -82,13 +82,13 @@ match Null has non-zero length
 proto-dictionary-root Test-Bitstring
 
 decode-pair 03 02 08 aa
-match Invalid number of unused bits in 'bitstring'
+match ERROR: Invalid number of unused bits in 'bitstring'
 
 #
 #  Unused bits but no data bytes - claims 3 unused bits but only 1 byte (the count itself)
 #
 decode-pair 03 01 03
-match Insufficient data for 'bitstring'. Missing data bytes
+match ERROR: Insufficient data for 'bitstring'. Missing data bytes
 
 #
 #  ----  UTC Time errors  ----
@@ -100,13 +100,13 @@ match Insufficient data for 'bitstring'. Missing data bytes
 proto-dictionary-root Test-Date
 
 decode-pair 17 0D 32 34 30 31 30 31 30 30 00 30 30 30 5A
-match UTC time contains null byte
+match ERROR: UTC time contains null byte
 
 #
 #  Invalid UTC time format - month 13 is invalid: "241301000000Z"
 #
 decode-pair 17 0D 32 34 31 33 30 31 30 30 30 30 30 30 5A
-match Invalid UTC time format
+match ERROR: Invalid UTC time format
 
 #
 #  ----  Generalized Time errors  ----
@@ -119,13 +119,13 @@ match Invalid UTC time format
 proto-dictionary-root Test-Generalized-Time
 
 decode-pair 18 0F 32 30 32 34 30 31 30 31 30 30 30 30 30 30 58
-match Incorrect format for generalized time. Missing timezone
+match ERROR: Incorrect format for generalized time. Missing timezone
 
 #
 #  Invalid generalized time format - month 13: "20241301000000Z"
 #
 decode-pair 18 0F 32 30 32 34 31 33 30 31 30 30 30 30 30 30 5A
-match Invalid generalized time format (strptime)
+match ERROR: Invalid generalized time format (strptime)
 
 #
 #  ----  String character validation errors  ----
@@ -137,13 +137,13 @@ match Invalid generalized time format (strptime)
 proto-dictionary-root Test-String-Visible
 
 decode-pair 1a 01 01
-match Invalid character in a string (1)
+match ERROR: Invalid character in a string (1)
 
 #
 #  VisibleString with DEL character (0x7f) - also outside 0x20-0x7E
 #
 decode-pair 1a 01 7f
-match Invalid character in a string (127)
+match ERROR: Invalid character in a string (127)
 
 #
 #  ----  Boolean value errors  ----
@@ -155,25 +155,25 @@ match Invalid character in a string (127)
 proto-dictionary-root Test-Boolean
 
 decode-pair 01 03 ff ff ff
-match Boolean has incorrect length (3). Must be 1.
+match ERROR: Boolean has incorrect length (3). Must be 1.
 
 #
 #  Boolean with zero length
 #
 decode-pair 01 00
-match Boolean has incorrect length (0). Must be 1.
+match ERROR: Boolean has incorrect length (0). Must be 1.
 
 #
 #  Boolean with non-DER value 0x01 (must be exactly 0x00 or 0xff)
 #
 decode-pair 01 01 01
-match Boolean is not correctly DER encoded (0x00 or 0xff).
+match ERROR: Boolean is not correctly DER encoded (0x00 or 0xff).
 
 #
 #  Boolean with non-DER value 0x7f
 #
 decode-pair 01 01 7f
-match Boolean is not correctly DER encoded (0x00 or 0xff).
+match ERROR: Boolean is not correctly DER encoded (0x00 or 0xff).
 
 #
 #  ----  Integer DER encoding errors  ----
@@ -185,19 +185,19 @@ match Boolean is not correctly DER encoded (0x00 or 0xff).
 proto-dictionary-root Test-Integer
 
 decode-pair 02 09 01 02 03 04 05 06 07 08 09
-match Integer too large (9)
+match ERROR: Integer too large (9)
 
 #
 #  Non-DER integer: unnecessary leading zero (0x00 0x01 should be just 0x01)
 #
 decode-pair 02 02 00 01
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match ERROR: Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
 
 #
 #  Non-DER integer: unnecessary sign extension (0xff 0xfe should be just 0xfe)
 #
 decode-pair 02 02 ff fe
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match ERROR: Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
 
 #
 #  ----  OID errors  ----
@@ -210,7 +210,7 @@ match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s
 proto-dictionary-root Test-Oid
 
 decode-pair 06 02 2b 88
-match OID subidentifier is truncated
+match ERROR: OID subidentifier is truncated
 
 #
 #  ----  PrintableString character validation  ----
@@ -222,13 +222,13 @@ match OID subidentifier is truncated
 proto-dictionary-root Test-String-Printable
 
 decode-pair 13 01 40
-match Invalid character in a string (64)
+match ERROR: Invalid character in a string (64)
 
 #
 #  PrintableString with '*' (0x2a=42) - not in allowed character set
 #
 decode-pair 13 01 2a
-match Invalid character in a string (42)
+match ERROR: Invalid character in a string (42)
 
 #
 #  ----  Length field errors  ----
@@ -240,13 +240,13 @@ match Invalid character in a string (42)
 proto-dictionary-root Test-Boolean
 
 decode-pair 01 89 01 02 03 04 05 06 07 08 09
-match Length field too large (9): Failed decoding Test-Boolean header
+match ERROR: Length field too large (9): Failed decoding Test-Boolean header
 
 #
 #  Insufficient data for declared length - header says 4 bytes but only 3 available
 #
 decode-pair 01 04 ff ff ff
-match Insufficient data for length field (4): Failed decoding Test-Boolean header
+match ERROR: Insufficient data for length field (4): Failed decoding Test-Boolean header
 
 count
 match 72

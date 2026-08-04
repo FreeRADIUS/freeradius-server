@@ -869,6 +869,98 @@ void **talloc_array_null_terminate(void **array)
 	return new;
 }
 
+/** Allocate a list to hold num strings of strings_len total length
+ *
+ * Where talloc_pooled_object is available and strings_len is not zero,
+ * the list, the pointer array and the appended strings are all drawn
+ * from a single talloc pool, so building the list costs one malloc.
+ *
+ * @param[in] ctx		to allocate the list in.
+ * @param[in] num		How many strings the list is expected to hold.
+ * @param[in] strings_len	Total length of the strings which will be
+ *				appended, including their NUL bytes.  May be
+ *				zero if the total is not known, in which case
+ *				no pool is used.
+ * @return
+ *	- A new string list.
+ *	- NULL on allocation failure.
+ */
+talloc_str_list_t *talloc_str_list_alloc(TALLOC_CTX *ctx, size_t num, size_t strings_len)
+{
+	talloc_str_list_t *list;
+
+	if (strings_len > 0) {
+		list = talloc_zero_pooled_object(ctx, talloc_str_list_t, num + 1,
+						 (sizeof(char const *) * (num + 1)) + strings_len);
+	} else {
+		list = talloc_zero(ctx, talloc_str_list_t);
+	}
+	if (unlikely(!list)) return NULL;
+
+	list->strings = talloc_zero_array(list, char const *, num + 1);
+	if (unlikely(!list->strings)) {
+		talloc_free(list);
+		return NULL;
+	}
+	list->p = list->strings;
+	list->end = list->strings + num;
+
+	return list;
+}
+
+/** Extend a string list to hold additional strings
+ *
+ * Grows the pointer array once for a batch of talloc_str_list_append
+ * calls.  The list itself never moves, only the array inside it.
+ *
+ * @param[in] list	to extend.
+ * @param[in] extra	How many additional strings the list must be able
+ *			to hold.
+ * @return
+ *	- 0 on success.
+ *	- -1 on allocation failure, the list is not modified.
+ */
+int talloc_str_list_realloc(talloc_str_list_t *list, size_t extra)
+{
+	char const	**strings;
+	size_t		num = talloc_str_list_num(list);
+
+	if ((size_t)(list->end - list->p) >= extra) return 0;
+
+	strings = talloc_realloc(list, list->strings, char const *, num + extra + 1);
+	if (unlikely(!strings)) return -1;
+	memset(&strings[num], 0, sizeof(char const *) * (extra + 1));
+
+	list->strings = strings;
+	list->p = strings + num;
+	list->end = strings + num + extra;
+
+	return 0;
+}
+
+/** Append a copy of a string to a string list
+ *
+ * The list must have room for the new string, extend it with
+ * talloc_str_list_realloc before a batch of appends.  The copy is
+ * parented by the list.
+ *
+ * @param[in] list	to append to.
+ * @param[in] str	to copy into the list.
+ * @param[in] len	Length of str.
+ * @return
+ *	- The copy written into the list.
+ *	- NULL on allocation failure.
+ */
+char const *talloc_str_list_append(talloc_str_list_t *list, char const *str, size_t len)
+{
+	fr_assert(list->p < list->end);
+
+	*list->p = talloc_bstrndup(list, str, len);
+	if (unlikely(!*list->p)) return NULL;
+
+	return *(list->p++);
+}
+
 /** Callback to free the autofree ctx on global exit
  *
  */

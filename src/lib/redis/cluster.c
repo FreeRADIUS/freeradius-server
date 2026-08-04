@@ -789,7 +789,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	if (node->type != REDIS_REPLY_ARRAY) {
 		fr_strerror_printf("Cluster map %i node %i is wrong type, expected array got %s",
 				   map_idx, node_idx,
-				   fr_table_str_by_value(redis_reply_types, node->element[1]->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, node->type, "<UNKNOWN>"));
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 

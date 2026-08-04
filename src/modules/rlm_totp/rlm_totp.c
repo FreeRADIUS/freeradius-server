@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_totp.c
- * @brief Execute commands and parse the results.
+ * @brief Time-based One-Time Password (TOTP), in RFC 6238.
  *
  * @copyright 2021  The FreeRADIUS server project
  * @copyright 2021  Network RADIUS SAS (legal@networkradius.com)

@@ -210,7 +210,7 @@ bool		fr_atexit_thread_is_exiting(void);
 /*
  *	Don't emit a _Thread_local_storage qualifier
  */
-#  define __Thread_local
+#  define _Thread_local
 #  define fr_atexit_global_once(_init, _free, _uctx) \
 do { \
 	static bool _init_done = false; \

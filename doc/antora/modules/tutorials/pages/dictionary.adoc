@@ -49,7 +49,7 @@ Renaming an attribute in a dictionary file does not change anything on
 the network. Clients and NAS devices never see dictionary names.
 
 The `share/` dictionaries are defined by the FreeRADIUS team, and are
-updated with every release.  This means that theu are overwritten on
+updated with every release.  This means that they are overwritten on
 every package update or upgrade.  If you need to define your own
 dictionary entries, they must go into `raddb/dictionary` or into
 `raddb/dictionary.d/`.
@@ -70,12 +70,12 @@ FreeRADIUS is updated.
 
 == Hierarchical Names (v4 change from v3)
 
-In v3, attribute names were global.  Vendor-specific attributes were
-generally named with a vendor prefix, e.g. `Cisco-AVPair`.
-
-In v4, names are hierarchical.  The same `Cisco-AVPair`attribute is
-now `Vendor-Specific.Cisco.AVPair`.  The full path makes the protocol
-structure explicit and removes name conflicts across vendors.
+In v4, attribute names are hierarchical.  A v3 flat name like
+`Cisco-AVPair` is now `Vendor-Specific.Cisco.AVPair`, where the full
+path makes the protocol structure explicit and removes name conflicts
+across vendors.  The
+xref:reference:dictionary/index.adoc[dictionary reference] describes
+hierarchical names in full.
 
 Old v3-style flat names are still available through alias
 dictionaries.  See `raddb/dictionary` for the `$INCLUDE` directives
@@ -83,16 +83,16 @@ that enable v3 compatibility names.
 
 == DEFINE versus ATTRIBUTE
 
-[options="header,autowidth"]
-|===
-| Keyword       | Number required | Goes on the wire | Use for
-| `ATTRIBUTE`   | Yes             | Yes              | Protocol attributes that NAS devices send/receive.
-| `DEFINE`      | No              | No               | Internal server-side variables (policies, caching, etc.).
-|===
+This tutorial uses two keywords to define attributes:
 
-Use `DEFINE` for attributes that exist only inside the server. Use
-`ATTRIBUTE` (inside a vendor block) for attributes that must appear in
-real RADIUS packets.
+* xref:reference:dictionary/define.adoc[DEFINE] for attributes that
+  exist only inside the server (policies, caching, etc.). They need no
+  number and never go into a packet.
+* xref:reference:dictionary/attribute.adoc[ATTRIBUTE], inside a vendor
+  block, for attributes that must appear in real RADIUS packets. They
+  require a number.
+
+See the reference pages for the full syntax of each keyword.
 
 == Step 1: Local Attributes with DEFINE
 
@@ -134,7 +134,6 @@ following content:
 
 [source]
 ----
-# -*- text -*-
 #
 # dictionary.test - Example vendor-specific dictionary for the tutorial
 #
@@ -159,35 +158,19 @@ file includes all files in the `dictionary.d/` directory.
 
 === Dictionary syntax reference
 
-The following tables outline the type of keywords, data types, and
-related syntax and formats used in this tutorial.
+The dictionary file created above relies on the following keywords,
+each documented in full on the dictionary reference pages:
 
-.v4 Keywords
-[options="header,autowidth"]
-|===
-| Keyword       | Syntax                         | Description
-| `VENDOR`      | `VENDOR <name> <pen>`          | Declares the vendor name and PEN.
-| `BEGIN-VENDOR`| `BEGIN-VENDOR <name>`          | Opens the vendor namespace.
-| `ATTRIBUTE`   | `ATTRIBUTE <name> <number> <type>` | Defines a VSA.
-| `VALUE`       | `VALUE <attr> <name> <integer>`| Names an enumerated value.
-| `END-VENDOR`  | `END-VENDOR <name>`            | Closes the vendor namespace.
-|===
+* xref:reference:dictionary/vendor.adoc[VENDOR] declares the vendor name and PEN.
+* xref:reference:dictionary/begin-vendor.adoc[BEGIN-VENDOR] opens the vendor namespace.
+* xref:reference:dictionary/attribute.adoc[ATTRIBUTE] defines a VSA.
+* xref:reference:dictionary/value.adoc[VALUE] names an enumerated value.
+* xref:reference:dictionary/end-vendor.adoc[END-VENDOR] closes the vendor namespace.
 
-.v4 Data types
-[options="header,autowidth"]
-|===
-| v4 type   | Description                           | Value
-| `date`    | Unix timestamp displayed as a date    | `2026-06-01T09:00:00`
-| `string`  | UTF-8 string                          | `"Alice"`
-| `ipaddr`  | IPv4 address                          | `192.0.2.1`
-| `uint32`  | 32-bit unsigned integer (with optional `VALUE` names) | `Salad`
-|===
-
-[NOTE]
-====
-The v3 data type name `integer` is still accepted, and is treated as
-an alias for `uint32`.
-====
+The `date`, `string`, `ipaddr`, and `uint32` types used above are
+described, along with all other types, on the
+xref:reference:type/index.adoc[data types] reference page.  The v3
+type name `integer` is still accepted as an alias for `uint32`.
 
 === Verify that server will load the changed dictionary
 

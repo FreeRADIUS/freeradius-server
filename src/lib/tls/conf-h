@@ -123,10 +123,6 @@ typedef struct {
 	fr_tls_verify_mode_t attribute_mode;		//!< What set of certificates we're going to convert to
 							///< pairs for verification.
 
-	bool		check_crl;			//!< Check certificate revocation lists.
-	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
-	bool		allow_not_yet_valid_crl;	//!< Don't error out if CRL is not-yet-valid.
-
 	bool		der_decode;			//!< Should certificates be passed to the DER decoder.
 } fr_tls_verify_conf_t;
 

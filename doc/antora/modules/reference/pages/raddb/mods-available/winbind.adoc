@@ -1,83 +1,60 @@
 
+= Winbind
 
+The `winbind` module authenticate PAP passwords against Microsoft
+Active Directory or Samba, via the winbind API.
 
-
-= WinModule
-
-The `winbind` module authenticate PAP passwords against Microsoft Active
-Directory or Samba, via the winbind API.
-
-This module is for PAP authentication (where plaintext passwords
-are sent in the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute) only. For authenticating
-`mschap` requests against AD/Samba see the options available in the
-`rlm_mschap` module.
+This module is for PAP authentication (where plaintext passwords are
+sent in the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+attribute) only. For authenticating `mschap` requests against AD/Samba
+see the options available in the `rlm_mschap` module.
 
 NOTE: Samba version 4.2.1 or higher is required to use this module.
 
-
-
 == Configuration Settings
-
 
 username:: The username to pass to `winbind` for authentication.
 
-
-
 domain:: The windows domain.
 
-While not required to be set, it is likely that authentication will fail
-if it is not set correctly.
+While not required to be set, it is likely that authentication will
+fail if it is not set correctly.
 
-This configuration option, as the username above, is also expanded before use.
+This configuration option, as the username above, is also expanded
+before use.
 
 If unset then winbind will be queried for the correct value. If you
 actually want it blank it should be explicitly set here.
-
-
 
 group { ... }:: Group membership checking.
 
 Groups can be checked via the expansion `%winbind.group(<name>)`
 
-
 search_username:: AD username to search for group searches.
 
-This should generally not include a realm, so `Stripped-User-Name`
-is likely the best attribute if it exists.
-
-
+This should generally not include a realm, so `Stripped-User-Name` is
+likely the best attribute if it exists.
 
 add_domain:: Include the domain in group searches.
 
-When this is enabled, winbind_domain is prepended to the
-username (as `domain\username`) before searching. This is
-generally required.
+When this is enabled, winbind_domain is prepended to the username (as
+`domain\username`) before searching. This is generally required.
 
+reuse:: Maintain long-term connections to the windbind server.
 
+Reusable connection handles are allocated in blocks. These parameters
+allow for tuning how that is done.
 
-.Reusable Handles
+min:: The minimum number of connection handles to keep allocated
 
-Reusable connection handles are allocated in blocks.  These
-parameters allow for tuning how that is done.
+max:: The maximum number of reusable connection handles to allocate.
 
-
-min:: The minimum number of connection handles to
-keep allocated
-
-
-
-max:: The maximum number of reusable connection
-handles to allocate.
-
-
-
-cleanup_interval:: How often to free un-used
-connection handles.
-
+cleanup_interval:: How often to free un-used connection handles.
 
 == Default Configuration
 
-```
+----
 winbind {
 	username = "%{Stripped-User-Name || User-Name}"
 #	domain = ""
@@ -91,7 +68,7 @@ winbind {
 #		cleanup_interval = 30s
 	}
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

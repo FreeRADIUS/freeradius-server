@@ -163,6 +163,19 @@ static int _tls_bio_talloc_gets_cb(BIO *bio, char *buf, int size)
 	return (int)to_copy;
 }
 
+/** Detach both dbuffs from the shared backing buffer
+ *
+ * The in/out dbuffs are bound to the same talloc buffer, so when the buffer
+ * is freed, or ownership is handed to a caller, both dbuffs must forget the
+ * buffer together.  A stale sibling pointer double-frees in the destructor,
+ * or trips the "BIO not finalised" assert on reuse.
+ */
+static inline CC_HINT(always_inline) void tls_bio_dbuff_detach(fr_tls_bio_dbuff_t *bd)
+{
+	bd->dbuff_in.buff = NULL;
+	bd->dbuff_out.buff = NULL;
+}
+
 /** Finalise a talloc aggregation buffer, returning the underlying talloc array holding the data
  *
  * @return
@@ -179,8 +192,7 @@ uint8_t *fr_tls_bio_dbuff_finalise(fr_tls_bio_dbuff_t *bd)
 	fr_dbuff_trim_talloc(&bd->dbuff_in, SIZE_MAX);
 
 	buff = bd->dbuff_in.buff;
-	bd->dbuff_in.buff = NULL;
-	bd->dbuff_out.buff = NULL;
+	tls_bio_dbuff_detach(bd);
 	return buff;
 }
 
@@ -201,8 +213,7 @@ char *fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd)
 	fr_dbuff_trim_talloc(&bd->dbuff_in, SIZE_MAX);
 
 	buff = bd->dbuff_in.buff;
-	bd->dbuff_in.buff = NULL;
-	bd->dbuff_out.buff = NULL;
+	tls_bio_dbuff_detach(bd);
 	talloc_set_type(buff, char);
 
 	return (char *)buff;
@@ -319,6 +330,7 @@ void fr_tls_bio_dbuff_thread_local_clear(void)
 	if (unlikely(!bd->dbuff_in.buff)) return;
 
 	fr_dbuff_free_talloc(&bd->dbuff_in);
+	tls_bio_dbuff_detach(bd);
 }
 
 /** Frees the thread local TALLOC bio and its underlying OpenSSL BIO *

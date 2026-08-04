@@ -4,16 +4,20 @@ Each worker thread runs a scheduler.  Which does the following:
 
 * check the resumable queue for "too old" packets.
 ** once per second, and then check check all packets older than 1s.
-** ideally printing out where the request is blocked (module, instance, name)
+** ideally printing out where the request is blocked (module,
+   instance, name)
 ** See yield / resume, below
 * service the event list
 ** FD events first
 ** followed by timer events
 ** so that we read packets from sockets before they time out...
 * service the incoming queue from network threads
-** add packets to the "decode" list, which is run at a higher priority than other requests.
-** the idea here is to quickly clean up the messages between network threads and worker threads
-** push decoded packets onto the "runnable" priority heap, which is ordered by time.
+** add packets to the "decode" list, which is run at a higher priority
+   than other requests.
+** the idea here is to quickly clean up the messages between network
+   threads and worker threads
+** push decoded packets onto the "runnable" priority heap, which is
+   ordered by time.
 * grab a request from the "runnable" heap.
 * check `fr_status_continue()`
 ** if socket is closed, drop the request
@@ -23,8 +27,7 @@ Each worker thread runs a scheduler.  Which does the following:
 
 ## Signaling
 
-See the channel page for more details. And
-signaling page.
+See the channel page for more details. And signaling page.
 
 The main problem we have with network / worker threads is signaling.
 If the packets are widely spaced, the network thread can signal the
@@ -102,27 +105,27 @@ The `modules.c` code creates the first few layers of each TLV.
 
 The `modules` header file defines a few macros:
 
-  DEFINE_YIELD_POINT(name)
-  USE_YEILD_POINT(inst, name)
-  CACHE_DA_YIELD_POINT(name)
-  CREATE_DA_YIELD_POINT(inst, name)
+DEFINE_YIELD_POINT(name) USE_YEILD_POINT(inst, name)
+CACHE_DA_YIELD_POINT(name) CREATE_DA_YIELD_POINT(inst, name)
 
 Which (in turn):
 
-* defines a named yield point, and updates various other internal macros to be used by `CACHE_DA` and `CREATE_DA`
+* defines a named yield point, and updates various other internal
+  macros to be used by `CACHE_DA` and `CREATE_DA`
 
 * uses the pre-defined `da` inside of an `unlang_yield()` call.  The
   `da` should be cached inside of the module instance struct, so that
   we don't have to do dictionary lookups at run time.
 
-* creates a `fr_dict_attr_t const *da_yield_point_NAME;` inside of the module instance structure.
+* creates a `fr_dict_attr_t const *da_yield_point_NAME;` inside of the
+  module instance structure.
 
 * in the module `bootstrap()` function, creates all of the relevant
   `da`s and caches them in the module instance.
 
 We should then also have a `module_stats` module, which looks at the
-per-request stats, and auto-creates the bins for each yield point.
-And probably also aggregates the stats up the TLV tree.
+per-request stats, and auto-creates the bins for each yield point. And
+probably also aggregates the stats up the TLV tree.
 
 Then, once per 1K requests, or every second (whatever is shorter),
 grabs a mutex lock, and aggregates the binned data to global counters.

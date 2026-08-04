@@ -2,14 +2,12 @@
 ** xref:getstarted.adoc[Getting Started]
 *** xref:debugging/radiusd_X.adoc[Debugging]
 **** xref:debugging/startup.adoc[Startup Text]
-**** xref:debugging/processing.adoc[Process Packets]
+**** xref:debugging/processing.adoc[Processing Packets]
 *** xref:gethelp.adoc[Get Help]
 ** xref:bestpractices.adoc[Best Practices]
 *** xref:troubleshooting:eap_certificates.adoc[EAP Certificates]
 *** xref:troubleshooting:network/security.adoc[Network Security]
 ** xref:faq.adoc[Frequently Asked Question (FAQ)]
-
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

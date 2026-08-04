@@ -261,7 +261,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	if (proto == IPPROTO_TCP) {
 		ps->buffer = talloc_array(pl, uint8_t, RADIUS_MAX_PACKET_SIZE);
-		if (ps->buffer) return false;
+		if (!ps->buffer) return false;
 
 		ps->bufsize = RADIUS_MAX_PACKET_SIZE;
 		ps->used = 0;
@@ -413,7 +413,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	int type;
-	fr_packet_socket_t *ps= NULL;
+	fr_packet_socket_t *ps = NULL;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
@@ -440,6 +440,11 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 	if (fr_ipaddr_is_inaddr_any(&request->socket.inet.dst_ipaddr) != 0) {
 		fr_strerror_const("Must specify a dst_ipaddr");
+		return false;
+	}
+
+	if (!pl->num_sockets) {
+		fr_strerror_const("No sockets have been added to the packet list");
 		return false;
 	}
 
@@ -706,11 +711,15 @@ int fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, TALLOC_CTX *ctx, fr_p
 			int rcode;
 			ps = &pl->sockets[start];
 
+			ps->used = 0;
 			rcode = fr_tcp_read_packet(ps->socket.fd, ps->buffer, ps->bufsize,
 						   &ps->used, max_attributes, require_message_authenticator);
 			if (rcode <= 0) return rcode;
 
-			fr_assert(ps->used >= RADIUS_HEADER_LENGTH);
+			if (ps->used < RADIUS_HEADER_LENGTH) {
+				fr_strerror_printf("TCP packet too short: %zu", ps->used);
+				return -1;
+			}
 
 			packet = fr_packet_alloc(ctx, false);
 			if (!packet) return -1;

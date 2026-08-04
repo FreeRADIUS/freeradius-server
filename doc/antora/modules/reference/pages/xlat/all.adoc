@@ -22,6 +22,7 @@
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items.
 | xref:xlat/misc/length.adoc[length]	            | Get the length of data.
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute. regular expression search on string, using pattern.
+| xref:xlat/misc/module_call.adoc[module.call]      | Call a virtual module
 | xref:xlat/misc/rand.adoc[rand]	            | Generate random integers.
 |===
 

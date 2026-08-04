@@ -20,6 +20,7 @@ TARGETNAME	:= rlm_rest
 TARGET		:= $(TARGETNAME)$(L)
 TGT_PREREQS	+= libfreeradius-curl$(L)
 endif
+TGT_CATEGORY	:=
 
 SOURCES		:= $(TARGETNAME).c rest.c io.c
 LOG_ID_LIB	= 44

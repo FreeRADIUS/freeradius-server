@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-radius-bio$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= client.c \
 		   client_udp.c \

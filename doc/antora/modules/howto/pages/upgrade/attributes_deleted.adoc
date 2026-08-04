@@ -1,6 +1,7 @@
 = Deleted Functionality
 
-Many "virtual" or "fake" attributes and configuration items have been removed or renamed in FreeRADIUS v4.
+Many "virtual" or "fake" attributes and configuration items have been
+removed or renamed in FreeRADIUS v4.
 
 [cols=",",options="header",]
 |===
@@ -20,8 +21,6 @@ Many "virtual" or "fake" attributes and configuration items have been removed or
 | `Post-Auth-Type Reject`               | `send Access-Reject`
 | `Post-Auth-Type Challenge`            | `send Access-Challenge`
 |===
-
-
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

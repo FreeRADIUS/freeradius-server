@@ -19,25 +19,25 @@ ftp {
 	#
 	#  max_resp_size:: Maximum accepted response size
 	#
-	#  If the server returns responses larger than this
-	#  they will be discarded.
+	#  If the server returns responses larger than this they will be
+	#  discarded.
 #	max_resp_size = 16k
 
 	#
 	#  binary:: Should the response be treated as binary data
 	#
-	#  If this is `yes` then the output data will be octets.
-	#  If it is `no` then the output data will be a string.
+	#  If this is `yes` then the output data will be octets. If it is
+	#  `no` then the output data will be a string.
 #	binary = no
 
 	#
-	#  connection { ... }::  Configure how connection handles are
-	#  managed per thread.
+	#  connection { ... }:: Configure how connection handles are managed
+	#  per thread.
 	#
 	connection {
 
 		#
-		#  Reusable connection handles are allocated in blocks.  These
+		#  Reusable connection handles are allocated in blocks. These
 		#  parameters allow for tuning how that is done.
 		#
 		#  Since ftp requests are performed async, the settings here
@@ -46,29 +46,28 @@ ftp {
 		reuse {
 
 			#
-			#  min:: The minimum number of connection handles to
-			#  keep allocated.
+			#  min:: The minimum number of connection handles to keep
+			#  allocated.
 			#
 			min = 10
 
 			#
-			#  max:: The maximum number of reusable connection handles
-			#  to allocate.
+			#  max:: The maximum number of reusable connection handles to
+			#  allocate.
 			#
-			#  Any requests to allocate a connection handle beyond
-			#  this number will cause a temporary handle to be allocated.
-			#  This is less efficient than the block allocation so
-			#  `max` should be set to reflect the number of outstanding
-			#  requests expected at peak load.
+			#  Any requests to allocate a connection handle beyond this number
+			#  will cause a temporary handle to be allocated. This is less
+			#  efficient than the block allocation so `max` should be set to
+			#  reflect the number of outstanding requests expected at peak
+			#  load.
 			max = 100
 
 			#
-			#  cleanup_interval:: How often to free un-used connection
-			#  handles.
+			#  cleanup_interval:: How often to free un-used connection handles.
 			#
-			#  Every `cleanup_interval` a cleanup routine runs which
-			#  will free any blocks of handles which are not in use,
-			#  ensuring that at least `min` handles are kept.
+			#  Every `cleanup_interval` a cleanup routine runs which will free
+			#  any blocks of handles which are not in use, ensuring that at
+			#  least `min` handles are kept.
 			#
 			cleanup_interval = 30s
 
@@ -77,7 +76,8 @@ ftp {
 		#
 		#  connect_timeout:: Connection timeout (in seconds).
 		#
-		#  The maximum amount of time to wait for a new connection to be established.
+		#  The maximum amount of time to wait for a new connection to be
+		#  established.
 		#
 		connect_timeout = 3.0
 	}

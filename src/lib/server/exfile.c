@@ -374,7 +374,7 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 		 *	and re-open the file.
 		 */
 		if (stat(ef->entries[i].filename, &st) < 0) {
-			goto reopen;
+			goto close_reopen;
 		}
 
 		if ((st.st_dev != ef->entries[i].st_dev) ||
@@ -406,7 +406,6 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 reopen_reset:
 	ef->entries[i].fd = -1;
 
-reopen:
 	ef->entries[i].fd = exfile_open_mkdir(filename, permissions, flags);
 	if (ef->entries[i].fd < 0) goto error;
 

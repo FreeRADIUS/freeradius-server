@@ -36,7 +36,7 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 	unlang_group_t		*switch_g;
 	unlang_switch_t		*switch_gext;
 
-	fr_value_box_t const	*box = NULL;
+	fr_value_box_t const	*box = NULL, *to_free = NULL;
 
 	fr_pair_t		*vp;
 
@@ -90,6 +90,8 @@ static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t
 			RDEBUG("Switch failed expanding %s - %s", switch_gext->vpt->name, fr_strerror());
 			goto find_null_case;
 		}
+		to_free = box;
+
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -120,8 +122,10 @@ do_null_case:
 			RWDEBUG("Failed to find 'default' target when expansion of %s returning no value",
 				switch_gext->vpt->name);
 		}
+		talloc_const_free(to_free);
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
+	talloc_const_free(to_free);
 
 	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		RETURN_UNLANG_ACTION_FATAL;
@@ -215,12 +219,11 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		 *	Bare word strings are attribute references
 		 */
 		if (tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt)) {
-		fail_attr:
 			cf_log_err(cs, "arguments to 'case' statements MUST NOT be attribute references.");
 			goto fail;
 		}
 
-		if (!tmpl_is_data(vpt) || tmpl_is_data_unresolved(vpt)) {
+		if (!tmpl_is_data(vpt)) {
 			cf_log_err(cs, "arguments to 'case' statements MUST be static data.");
 		fail:
 			talloc_free(vpt);
@@ -232,7 +235,8 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		 *	strings".
 		 */
 		if ((quote == T_BARE_WORD) && (tmpl_value_type(vpt) == FR_TYPE_STRING)) {
-			goto fail_attr;
+			cf_log_err(cs, "String arguments to 'case' statements MUST be quoted.");
+			goto fail;
 		}
 
 	} /* else it's a default 'case' statement */
@@ -387,12 +391,16 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 	if (tmpl_is_xlat(gext->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(gext->vpt);
 
-		if (xlat->flags.constant || xlat->flags.pure) {
+		fr_assert(xlat != NULL);
+
+		/*
+		 *	Pure xlats are allowed, e.g. for %tolower(User-Name).
+		 */
+		if (xlat->flags.constant) {
 			cf_log_err(cs, "Cannot use constant data for 'switch' statement");
 			goto error;
 		}
 	}
-
 
 	if (tmpl_needs_resolving(gext->vpt)) {
 		cf_log_err(cs, "Cannot resolve key for 'switch' statement");
@@ -409,11 +417,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		fr_assert(type != FR_TYPE_NULL);
 		fr_assert(fr_type_is_leaf(type));
 
-	do_cast:
-		if (tmpl_cast_set(gext->vpt, type) < 0) {
-			cf_log_perr(cs, "Failed setting cast type");
-			goto error;
-		}
+		goto do_cast;
 
 	} else {
 		/*
@@ -423,7 +427,12 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		type = tmpl_data_type(gext->vpt);
 		if ((type == FR_TYPE_NULL) || (type == FR_TYPE_VOID)) {
 			type = FR_TYPE_STRING;
-			goto do_cast;
+		}
+
+	do_cast:
+		if (tmpl_cast_set(gext->vpt, type) < 0) {
+			cf_log_perr(cs, "Failed setting cast type");
+			goto error;
 		}
 	}
 

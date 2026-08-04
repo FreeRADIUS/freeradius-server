@@ -7,7 +7,8 @@ developing, will determine which documents you need to review.
 .RADIUS
 include::partial$dict_dhcpv4.adoc[]
 
-NOTE: More authentication methods are supported, and this list has to be updated.
+NOTE: More authentication methods are supported, and this list has to
+be updated.
 
 .Authentication Methods
 [options=header, cols="20,~", autowidth]
@@ -72,7 +73,6 @@ NOTE: More SNMP MIBS are supported, and this list has to be updated.
 |https://datatracker.ietf.org/doc/html/rfc6929[RFC 6929] | Remote Authentication Dial In User Service (RADIUS) Protocol Extensions
 
 |https://datatracker.ietf.org/doc/html/rfc8044[RFC 8044] | Data Types in RADIUS
-
 
 |====
 

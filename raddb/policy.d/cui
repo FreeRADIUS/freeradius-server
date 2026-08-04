@@ -1,38 +1,35 @@
 #
-#  The following policies are for the Chargeable-User-Identity
-#  (CUI) configuration.
+#  The following policies are for the Chargeable-User-Identity (CUI)
+#  configuration.
 #
-#  The policies below can be called as just 'cui' (not
-#  cui.authorize etc..)  from the various config sections.
+#  The policies below can be called as just 'cui' (not cui.authorize
+#  etc..) from the various config sections.
 #
 
 #
-#  cui_hash_key definition
-#  This key serves the purpose of protecting CUI values against
-#  dictionary attacks, therefore should be chosen as a "random"
-#  string and kept secret.
+#  cui_hash_key definition This key serves the purpose of protecting
+#  CUI values against dictionary attacks, therefore should be chosen
+#  as a "random" string and kept secret.
 #
 cui_hash_key = "changeme"
 
 #
-# cui_require_operator_name switch
-# If this is set to nonzero value then CUI will only be added
-# when a non-empty Operator-Name value is present in the request
+#  cui_require_operator_name switch If this is set to nonzero value
+#  then CUI will only be added when a non-empty Operator-Name value is
+#  present in the request
 #
 cui_require_operator_name = "no"
 
 #
 #  The client indicates it can do CUI by sending a CUI attribute
-#  containing one zero byte.
-#  A non-empty value in Operator-Name can be an additional requirement.
-#  Normally CUI support is turned on only for such requests.
-#  CUI support can be used for local clients which do not
-#  supports CUI themselves, the server can simulate a CUI request
-#  adding the missing NUL CUI value and the Operator-Name attribute.
-#  Clients which are supposed to get this treatment should
-#  be marked by add_cui flag in clients.conf
-#  We assume that local clients are marked in the client.conf with
-#  add_cui flag, e.g.
+#  containing one zero byte. A non-empty value in Operator-Name can be
+#  an additional requirement. Normally CUI support is turned on only
+#  for such requests. CUI support can be used for local clients which
+#  do not supports CUI themselves, the server can simulate a CUI
+#  request adding the missing NUL CUI value and the Operator-Name
+#  attribute. Clients which are supposed to get this treatment should
+#  be marked by add_cui flag in clients.conf We assume that local
+#  clients are marked in the client.conf with add_cui flag, e.g.
 #  client xxxx {
 #    ...
 #    add_cui = yes
@@ -46,9 +43,8 @@ cui.authorize {
 
 
 #
-#  Add a CUI attribute based on the User-Name, and a secret key
-#  known only to this server.
-#  For EAP-TTLS and EAP-PEAP methods
+#  Add a CUI attribute based on the User-Name, and a secret key known
+#  only to this server. For EAP-TTLS and EAP-PEAP methods
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
@@ -58,15 +54,15 @@ cui.post-auth {
 	}
 
 	#
-	#  The section below will store a CUI for the User in the DB and remove the
-	#  User-Name attribute from the reply if a CUI is present.
+	#  The section below will store a CUI for the User in the DB and
+	#  remove the User-Name attribute from the reply if a CUI is present.
 	#
-	#  You need to configure the cuisql module and your database for this to work.
-	#  If your NAS can do CUI based accounting themselves or you do not care about
-	#  accounting, comment out the 'cuisql' line below.
+	#  You need to configure the cuisql module and your database for this
+	#  to work. If your NAS can do CUI based accounting themselves or you
+	#  do not care about accounting, comment out the 'cuisql' line below.
 	#
 	if (reply.Chargeable-User-Identity) {
-		# Force User-Name to be the User-Name from the request
+		#  Force User-Name to be the User-Name from the request
 		reply.User-Name := request.User-Name
 
 		cuisql
@@ -75,7 +71,7 @@ cui.post-auth {
 
 
 cui-inner.post-auth {
-	if (outer.request.Chargeable-User-Identity && \
+	if (outer.request.Chargeable-User-Identity &&
 	    (outer.request.Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
 		reply.Chargeable-User-Identity := %sha1("${policy.cui_hash_key}%str.lower(%{User-Name}%{outer.request.Operator-Name || ''})")
 	}
@@ -89,16 +85,14 @@ cui-inner.post-auth {
 #
 cui.accounting {
 	#
-	#  If the CUI isn't in the packet, see if we can find it
-	#  in the DB.
+	#  If the CUI isn't in the packet, see if we can find it in the DB.
 	#
 	if (!Chargeable-User-Identity) {
 		request.Chargeable-User-Identity := %cuisql("SELECT cui FROM cui WHERE clientipaddress = '%{Net.Src.IP}' AND callingstationid = '%{Calling-Station-Id}'AND username = '%{User-Name}'")
 	}
 
 	#
-	#  If it exists now, then write out when we last saw
-	#  this CUI.
+	#  If it exists now, then write out when we last saw this CUI.
 	#
 	if (Chargeable-User-Identity && (Chargeable-User-Identity != '')) {
 		cuisql

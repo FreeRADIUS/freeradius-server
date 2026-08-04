@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+#  Snapshot dnf mirror lists at image build time.
+#
+#  The mirrors.rockylinux.org / mirrors.fedoraproject.org redirectors
+#  occasionally answer with an empty mirror set, which dnf reports as
+#  "No URLs in mirrorlist" and treats as fatal rather than retryable.
+#  Fetching the mirror list once here, and pointing each enabled repo
+#  at the local snapshot with mirrorlist=file://, takes the redirectors
+#  out of the loop for every later dnf invocation.
+#
+#  Each snapshot leads with the origin CDN, so the fetched mirrors only
+#  see traffic when the origin fails. Minor-versioned path segments in
+#  fetched entries (.../10.2/...) are rewritten to the major-version
+#  symlink form so a snapshot survives point releases, which delete old
+#  minor trees from the mirrors. If the redirector fetch fails or
+#  returns nothing, the snapshot degrades to the origin entry alone,
+#  equivalent to pinning the origin as a single baseurl.
+#
+#  librepo handles file:// mirrorlists explicitly (lr_is_local_path,
+#  lr_prepend_url_protocol) and tries the mirrors in file order.
+#
+#  Usage: dnf-mirrorlist-snapshot rocky|epel
+#
+#    rocky - snapshot the repos the builds enable (baseos, appstream,
+#            crb, extras); disabled repos keep their remote mirrorlist
+#            lines and are never fetched.
+#    epel  - snapshot epel and epel-testing; run after epel-release is
+#            installed. Also disables the EL9-only epel-cisco-openh264
+#            repo, which is metalink-only and unused by our builds.
+
+set -e
+
+arch="$(uname -m)"
+relver="$(. /etc/os-release; echo "${VERSION_ID%%.*}")"
+
+list_dir=/etc/dnf/mirrorlists
+repo_dir=/etc/yum.repos.d
+
+#
+#  snapshot <list-name> <section> <line-key> <mirrorlist-url> <origin-url> <repo-file>...
+#
+#  Writes <list-dir>/<list-name> (origin first, fetched mirrors after,
+#  origin host de-duplicated), then rewrites the <line-key>= line of
+#  the [<section>] block in the given repo files to point at the
+#  snapshot.
+#
+snapshot() {
+	name="$1"; sect="$2"; key="$3"; mlurl="$4"; origin="$5"; shift 5
+
+	list="${list_dir}/${name}"
+	origin_host="$(printf '%s' "${origin}" | cut -d/ -f3)"
+
+	{
+		echo "${origin}"
+		curl -sf --retry 3 --retry-delay 5 "${mlurl}" \
+		    | grep '^http' \
+		    | sed -e "s|/${relver}\.[0-9]*/|/${relver}/|" \
+		          -e "\\|//${origin_host}/|d" \
+		    || true
+	} > "${list}"
+
+	sed -i "/^\[${sect}\]/,/^\[/ s|^${key}=.*|mirrorlist=file://${list}|" "$@"
+}
+
+mkdir -p "${list_dir}"
+
+case "$1" in
+rocky)
+	for pair in baseos:BaseOS appstream:AppStream crb:CRB extras:extras; do
+		sect="${pair%%:*}"; repo="${pair##*:}"
+		snapshot "rocky-${sect}" "${sect}" mirrorlist \
+		    "https://mirrors.rockylinux.org/mirrorlist?arch=${arch}&repo=${repo}-${relver}" \
+		    "http://dl.rockylinux.org/pub/rocky/${relver}/${repo}/${arch}/os/" \
+		    "${repo_dir}"/rocky*.repo
+	done
+	;;
+
+epel)
+	snapshot epel epel metalink \
+	    "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-${relver}&arch=${arch}" \
+	    "https://dl.fedoraproject.org/pub/epel/${relver}/Everything/${arch}/" \
+	    "${repo_dir}/epel.repo"
+
+	snapshot epel-testing epel-testing metalink \
+	    "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-testing-${relver}&arch=${arch}" \
+	    "https://dl.fedoraproject.org/pub/epel/testing/${relver}/Everything/${arch}/" \
+	    "${repo_dir}/epel-testing.repo"
+
+	if [ -e "${repo_dir}/epel-cisco-openh264.repo" ]; then
+		sed -i 's|^enabled=1|enabled=0|' "${repo_dir}/epel-cisco-openh264.repo"
+	fi
+	;;
+
+*)
+	echo "Usage: $0 rocky|epel" >&2
+	exit 1
+	;;
+esac

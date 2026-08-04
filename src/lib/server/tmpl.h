@@ -1009,8 +1009,8 @@ typedef enum {
 	TMPL_ATTR_ERROR_LIST_MISSING,			//!< List qualifier is required, but missing.
 	TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED,		//!< Attribute specified as OID, could not be
 							///< found in the dictionaries, and is disallowed
-							///< because 'disallow_internal' in tmpl_rules_t
-							///< is trie.
+							///< because 'allow_unknown' in tmpl_rules_t
+							///< is false.
 	TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED,		//!< Attribute couldn't be found in the dictionaries.
 	TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED,	//!< Attribute must be qualified to be used here.
 	TMPL_ATTR_ERROR_INVALID_NAME,			//!< Attribute ref length is zero, or longer than

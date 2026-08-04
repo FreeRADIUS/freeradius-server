@@ -1146,7 +1146,7 @@ static inline ssize_t _fr_dbuff_advance_extend(uint8_t **pos_p, fr_dbuff_t *dbuf
  *      - <0	the number of bytes we'd need to complete the advance.
  */
 #define fr_dbuff_advance_extend(_dbuff_or_marker, _len)  \
-	_fr_dbuff_advance(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), \
+	_fr_dbuff_advance_extend(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), \
 			  (_Generic((_len), \
 			  	unsigned char : (size_t)(_len), \
 			 	unsigned short : (size_t)(_len), \

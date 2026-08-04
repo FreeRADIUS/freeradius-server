@@ -86,6 +86,7 @@ static uint16_t client_port = 0;
 
 static int sockfd;
 static int last_used_id = -1;
+static int fixed_id = -1;
 
 static int ipproto = IPPROTO_UDP;
 
@@ -433,13 +434,13 @@ static int coa_init(rc_request_t *parent,
 
 		if (*coa_filter_done && !*coa_reply_done) {
 			REDEBUG("Differing number of replies/filters in %s:%s "
-				"(too many replies))", reply_filename, filter_filename);
+				"(too many replies)", reply_filename, filter_filename);
 			goto error;
 		}
 
 		if (!*coa_filter_done && *coa_reply_done) {
 			REDEBUG("Differing number of replies/filters in %s:%s "
-				"(too many filters))", reply_filename, filter_filename);
+				"(too many filters)", reply_filename, filter_filename);
 			goto error;
 		}
 
@@ -613,6 +614,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			vp = fr_pair_find_by_da(&request->filter, NULL, attr_packet_type);
 			if (vp) {
+				if (!FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+					REDEBUG("Invalid filter code %u in %s:%s", vp->vp_uint32,
+						files->packets, files->filters);
+					goto error;
+				}
+
 				request->filter_code = vp->vp_uint32;
 				fr_pair_delete(&request->filter, vp);
 			}
@@ -983,16 +990,23 @@ static int send_one_packet(rc_request_t *request)
 		 */
 	retry:
 		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
+		request->packet->socket.inet.src_port = 0;
+
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
+
+			if ((fixed_id >0) && (request->packet->id == fixed_id)) {
+				fr_perror("Failed assigning fixed ID %d", fixed_id);
+				return -1;
+			}
 
 			if (ipproto == IPPROTO_TCP) {
 				mysockfd = fr_socket_client_tcp(NULL, NULL,
 								&request->packet->socket.inet.dst_ipaddr,
 								request->packet->socket.inet.dst_port, false);
 				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
+					fr_perror("Error opening client TCP socket");
 					return -1;
 				}
 			} else {
@@ -1000,7 +1014,7 @@ static int send_one_packet(rc_request_t *request)
 
 				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
 				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
+					fr_perror("Error opening client UDP socket");
 					return -1;
 				}
 
@@ -1144,7 +1158,7 @@ static int send_one_packet(rc_request_t *request)
 		    (request->packet->data[RADIUS_HEADER_LENGTH + 1] == 18)) {
 			memmove(request->packet->data + RADIUS_HEADER_LENGTH,
 				request->packet->data + RADIUS_HEADER_LENGTH + 18,
-				request->packet->data_len - 18);
+				request->packet->data_len - RADIUS_HEADER_LENGTH - 18);
 			request->packet->data_len -= 18;
 			fr_nbo_from_uint16(request->packet->data + 2, request->packet->data_len);
 		}
@@ -1526,6 +1540,8 @@ retry:
 	 */
 	reply->socket.inet.dst_ipaddr = client_ipaddr;
 	reply->socket.inet.dst_port = client_port;
+	reply->code = reply->data[0];
+	reply->id = reply->data[1];
 
 	/*
 	 *	TCP sockets don't use recvmsg(), and thus don't get
@@ -1838,7 +1854,7 @@ int main(int argc, char **argv)
 			if (!isdigit((uint8_t) *optarg)) {
 				usage();
 			}
-			last_used_id = atoi(optarg);
+			fixed_id = last_used_id = atoi(optarg);
 			if ((last_used_id < 0) || (last_used_id > 255)) {
 				usage();
 			}
@@ -2081,14 +2097,14 @@ int main(int argc, char **argv)
 	if (ipproto == IPPROTO_TCP) {
 		sockfd = fr_socket_client_tcp(NULL, NULL, &server_ipaddr, server_port, false);
 		if (sockfd < 0) {
-			ERROR("Failed opening socket");
+			ERROR("Failed opening client TCP socket");
 			return -1;
 		}
 
 	} else {
 		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
 		if (sockfd < 0) {
-			fr_perror("Error opening socket");
+			fr_perror("Error opening client UDP socket");
 			return -1;
 		}
 
@@ -2114,7 +2130,7 @@ int main(int argc, char **argv)
 	MEM(packet_list = fr_packet_list_create(1));
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
-		ERROR("Failed adding socket");
+		fr_perror("Failed adding socket");
 		fr_exit_now(1);
 	}
 

@@ -13,10 +13,9 @@ forbid_eap {
 #
 permit_only_eap {
 	if (!EAP-Message) {
-		#  We MAY be inside of a TTLS tunnel.
-		#  PEAP and EAP-FAST require EAP inside of
-		#  the tunnel, so this check is OK.
-		#  If so, then there MUST be an outer EAP message.
+		#  We MAY be inside of a TTLS tunnel. PEAP and EAP-FAST require EAP
+		#  inside of the tunnel, so this check is OK. If so, then there MUST
+		#  be an outer EAP message.
 		if (!outer.request || !outer.request.EAP-Message) {
 			reject
 		}
@@ -59,19 +58,19 @@ copy_request_to_tunnel {
 #
 use_tunneled_reply {
 	#
-	#  These attributes are for the inner-tunnel only,
-	#  and MUST NOT be copied to the outer reply.
+	#  These attributes are for the inner-tunnel only, and MUST NOT be
+	#  copied to the outer reply.
 	#
 	reply -= User-Name[*]
 
 	#
 	#  Copy the remaining inner reply attributes to the outer
-	#  session-state list.  This list is preserved across multiple
+	#  session-state list. This list is preserved across multiple
 	#  Access-Request / Access-Challenge exchanges.
 	#
-	#  When the final Access-Accept is ready to be sent, The
-	#  'send Access-Accept' policy in sites-available/default will
-	#  copy the outer session-state list to the final reply.
+	#  When the final Access-Accept is ready to be sent, The 'send
+	#  Access-Accept' policy in sites-available/default will copy the
+	#  outer session-state list to the final reply.
 	#
 	outer.session-state += reply
 }

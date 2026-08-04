@@ -101,7 +101,7 @@ $(OUTPUT)/%: $(DIR)/% $(PROCESS_DICT) $(TEST_BIN_DIR)/unit_test_module $(DIR)/un
 	$(Q)if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		cat $@.log; \
 		echo "# $@.log"; \
-		echo $(CMD); \
+		echo OUTPUT=$(dir $@) $(CMD); \
 		exit 1; \
 	fi
 

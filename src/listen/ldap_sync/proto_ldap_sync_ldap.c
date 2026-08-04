@@ -547,7 +547,16 @@ static void proto_ldap_connection_init(fr_timer_list_t *tl, UNUSED fr_time_t now
 	/*
 	 *	Allocate an outbound LDAP connection
 	 */
-	thread->conn = fr_ldap_connection_state_alloc(thread, thread->el, &inst->handle_config, "ldap_sync");
+	thread->conn = connection_alloc(thread, thread->el,
+					&(connection_funcs_t){
+						.init = fr_ldap_connection_init,
+						.close = fr_ldap_connection_close
+					},
+					&(connection_conf_t){
+						.connection_timeout = inst->handle_config.net_timeout,
+						.reconnection_delay = inst->handle_config.reconnection_delay
+					},
+					"ldap_sync", &inst->handle_config);
 
 	if (!thread->conn) {
 		PERROR("Failed (re)initialising connection, will retry in %pV seconds",
@@ -770,7 +779,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
  */
 static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t const *inst, size_t sync_no,
 				       proto_ldap_sync_ldap_thread_t *thread) {
-	size_t			j, len;
+	size_t			len;
 	sync_config_t		*config = inst->parent->sync_config[sync_no];
 	fr_pair_list_t		pairs;
 	fr_pair_t		*vp;
@@ -789,15 +798,19 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 	/*
 	 *	Assess the namingContext which applies to this sync
 	 */
-	for (j = 0; j < talloc_array_length(ldap_conn->directory->naming_contexts); j++) {
-		len = strlen(ldap_conn->directory->naming_contexts[j]);
-		if (strlen(config->base_dn) < len) continue;
+	if (ldap_conn->directory->naming_contexts) {
+		char const * const	*contexts = ldap_conn->directory->naming_contexts;
+		size_t			j, num = talloc_str_array_len(contexts);
+		size_t			base_dn_len = talloc_strlen(config->base_dn);
 
-		if (strncasecmp(&config->base_dn[strlen(config->base_dn)-len],
-				ldap_conn->directory->naming_contexts[j],
-				strlen(ldap_conn->directory->naming_contexts[j])) == 0) {
-			config->root_dn = ldap_conn->directory->naming_contexts[j];
-			break;
+		for (j = 0; j < num; j++) {
+			len = talloc_strlen(contexts[j]);
+			if (base_dn_len < len) continue;
+
+			if (strncasecmp(&config->base_dn[base_dn_len - len], contexts[j], len) == 0) {
+				config->root_dn = contexts[j];
+				break;
+			}
 		}
 	}
 
@@ -1239,7 +1252,6 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 	 *	Allocate the directory structure and send the query
 	 */
 	dir_ctx->msgid = fr_ldap_conn_directory_alloc_async(ldap_conn);
-
 	if (dir_ctx->msgid < 0) {
 		talloc_free(dir_ctx);
 		goto connection_failed;

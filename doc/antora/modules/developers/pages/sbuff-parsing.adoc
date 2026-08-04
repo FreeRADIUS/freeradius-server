@@ -2,39 +2,47 @@
 
 ## Introduction
 
-The aim of parsing is to convert a token stream into some internal format we can operate on easily.
-The style of parsing used in FreeRADIUS is almost exclusively recursive descent parsing.
+The aim of parsing is to convert a token stream into some internal
+format we can operate on easily. The style of parsing used in
+FreeRADIUS is almost exclusively recursive descent parsing.
 
-In recursive descent parsing functions are used to encapsulate grammar used for parsing a given token
-(or sequence of tokens).  Each time we navigate to a deeper level in a syntax tree we call a parsing
-function which represents the grammar for that level.  Whenever we find a terminal for that
-grammar (or an obvious syntax error) we return up the call stack to allow the caller to determine
-what to do.
+In recursive descent parsing functions are used to encapsulate grammar
+used for parsing a given token (or sequence of tokens).  Each time we
+navigate to a deeper level in a syntax tree we call a parsing function
+which represents the grammar for that level.  Whenever we find a
+terminal for that grammar (or an obvious syntax error) we return up
+the call stack to allow the caller to determine what to do.
 
-Unfortunately, because we're working in C some conventions must be applied by the developer in order
-to make parsing functions broadly compatible and callable from each other.
+Unfortunately, because we're working in C some conventions must be
+applied by the developer in order to make parsing functions broadly
+compatible and callable from each other.
 
-This document sets out standard function prototypes and conversions to ensure interoperability.
+This document sets out standard function prototypes and conversions to
+ensure interoperability.
 
 ## Public functions
 
-Unlike private parse functions public functions can be called anywhere from within the FreeRADIUS
-code base.  Public functions **MUST** conform to the set of conventions below.
+Unlike private parse functions public functions can be called anywhere
+from within the FreeRADIUS code base.  Public functions **MUST**
+conform to the set of conventions below.
 
-- On success the number of bytes must be returned.  If consuming no bytes is valid, `0` should
-  be returned.
-- On success the input `fr_sbuff_t` must be advanced by the number of bytes consumed.
+- On success the number of bytes must be returned.  If consuming no
+  bytes is valid, `0` should be returned.
+- On success the input `fr_sbuff_t` must be advanced by the number of
+  bytes consumed.
 - On error the input `fr_sbuff_t` **MUST NOT** be advanced.
-- On error a negative integer representing the error location must be returned.
-  This negative integer is indexed from 1 (not 0).
-  For example a return value of `-5` with an input string `the lazy brown fox` indicates the error
-  occurred at `l`.
-- On success or error, any sbuff markers added to the input `fr_sbuff_t` must be released.
-- The return type of the function should be `fr_slen_t`, this indicates that the function conforms
-  to the above conventions.
+- On error a negative integer representing the error location must be
+  returned. This negative integer is indexed from 1 (not 0). For
+  example a return value of `-5` with an input string `the lazy brown
+  fox` indicates the error occurred at `l`.
+- On success or error, any sbuff markers added to the input
+  `fr_sbuff_t` must be released.
+- The return type of the function should be `fr_slen_t`, this
+  indicates that the function conforms to the above conventions.
 
-The easiest way to ensure these conventions are met is to initialise a new `fr_sbuff_t` from the
-input `fr_sbuff_t` as soon as the function is entered.
+The easiest way to ensure these conventions are met is to initialise a
+new `fr_sbuff_t` from the input `fr_sbuff_t` as soon as the function
+is entered.
 
 [source,c]
 ----
@@ -72,9 +80,10 @@ fr_slen_t my_parse_function(fr_sbuff_t *in)
 
 ## Private functions
 
-Private functions (static functions in the same source file) don't have the same requirements.
-There's no reason for these functions to return the number of parsed bytes, and they can return `0`
-for success, or `-1` for failure like other functions in the server.
+Private functions (static functions in the same source file) don't
+have the same requirements. There's no reason for these functions to
+return the number of parsed bytes, and they can return `0` for
+success, or `-1` for failure like other functions in the server.
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

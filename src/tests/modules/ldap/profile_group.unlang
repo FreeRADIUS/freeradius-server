@@ -1,0 +1,131 @@
+#
+#  profile { search_mode } matrix rows tested here
+#  (full option matrix documented in raddb/mods-available/ldap)
+#
+#  Ref | search_mode | scope | sort_by | Result
+#  ----+-------------+-------+---------+----------------------------------------------------
+#  d1  | seq         | base  | unset   | Group profiles apply between the default and user profiles
+#  d2  | bulk        | base  | set     | Group profile DNs join the single sorted search
+#  d3  | auto        | base  | set     | group { } without profile_attribute, groups contribute nothing
+#  d4  | seq         | base  | unset   | user { } without profile_attribute, group profiles still apply
+#  d5  | seq         | base  | unset   | user { } without profile_attribute, user references ignored
+#
+#  The profilegroup user is a member of two groups.  cn=profilegroup1
+#  carries radiusProfileDN order3 and order1, cn=profilegroup2 carries
+#  no profiles and must be excluded by the profile presence assertion.
+#  The user object also references order1, deduplication applies each
+#  profile once.
+#
+
+#
+#  d1: application order is default (order0), then group profiles in
+#  group value order (order3, order1), then user profiles.  The user's
+#  order1 is a duplicate of the group's and applies only once, at the
+#  group position.
+#
+Stripped-User-Name := 'profilegroup'
+ldap_profile_seq
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order0') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order3') {
+	test_fail
+}
+if !(reply.Filter-Id[2] == 'order1') {
+	test_fail
+}
+if (reply.Filter-Id[3]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  d2: the deduplicated group and user profile DNs {order3, order1} are
+#  retrieved in one search, applied in server sort order
+#  (radiusProfilePriority ascending: order3 = 10, order1 = 30).
+#  No default profile on this instance.
+#
+Stripped-User-Name := 'profilegroup'
+ldap_profile_bulk
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order3') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1') {
+	test_fail
+}
+if (reply.Filter-Id[2]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  d3: the instance has a group section but no group profile_attribute,
+#  so the user's groups contribute nothing.  Only the default (order0)
+#  and the user's own reference (order1) apply, in server sort order
+#  (order1 = 30, order0 = 40).
+#
+Stripped-User-Name := 'profilegroup'
+ldap_profile_auto
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order1') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order0') {
+	test_fail
+}
+if (reply.Filter-Id[2]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  d4: the instance has no user profile_attribute, group profiles still
+#  apply in group value order.  No default profile on this instance.
+#
+Stripped-User-Name := 'profilegroup'
+ldap_profile_group_only
+if (!updated) {
+	test_fail
+}
+
+if !(reply.Filter-Id[0] == 'order3') {
+	test_fail
+}
+if !(reply.Filter-Id[1] == 'order1') {
+	test_fail
+}
+if (reply.Filter-Id[2]) {
+	test_fail
+}
+
+reply := {}
+
+#
+#  d5: the profileseq user references four profiles in the user object
+#  and is in no groups.  With no user profile_attribute the references
+#  are ignored and no profiles apply.
+#
+Stripped-User-Name := 'profileseq'
+ldap_profile_group_only
+
+if (reply.Filter-Id) {
+	test_fail
+}
+
+reply := {}
+
+test_pass

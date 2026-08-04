@@ -109,7 +109,7 @@ DIAG_ON(attributes)
  *
  * @param[in] _flags to evaluate
  */
-#define call_env_subsection_flags(_flags)	(((_flags) & (CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_FORCE_QUOTE | CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_PARSE_MISSING)) == 0)
+#define call_env_subsection_flags(_flags)	(((_flags) & (CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_FORCE_QUOTE | CALL_ENV_FLAG_ATTRIBUTE)) == 0)
 
 #define call_env_required(_flags)		((_flags) & CALL_ENV_FLAG_REQUIRED)
 

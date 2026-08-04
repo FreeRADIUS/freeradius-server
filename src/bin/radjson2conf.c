@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <json-c/json.h>
+#include <freeradius-devel/json/base.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>

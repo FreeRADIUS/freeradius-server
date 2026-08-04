@@ -24,7 +24,8 @@ escape {
 	#
 	#  safe_characters::
 	#
-	#  Characters that will not be encoded by the `%{escape}` `xlat` function.
+	#  Characters that will not be encoded by the `%{escape}` `xlat`
+	#  function.
 	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }

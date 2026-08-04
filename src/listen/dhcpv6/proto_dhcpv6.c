@@ -26,6 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 #include "proto_dhcpv6.h"
 
 extern fr_app_t proto_dhcpv6;
@@ -86,8 +87,11 @@ static conf_parser_t const proto_dhcpv6_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv6_t, io.submodule),
 	  .func = transport_parse },
 
+	{ FR_CONF_OFFSET("server-id", proto_dhcpv6_t, server_id_str), },
+
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+
 
 	CONF_PARSER_TERMINATOR
 };
@@ -102,11 +106,13 @@ fr_dict_autoload_t proto_dhcpv6_dict[] = {
 
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_client_id;
+static fr_dict_attr_t const *attr_server_id;
 
 extern fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
 	{ .out = &attr_client_id, .name = "Client-Id", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
+	{ .out = &attr_server_id, .name = "Server-Id", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -213,8 +219,9 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
+	proto_dhcpv6_t const   	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const	*address = track->address;
 	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
@@ -276,6 +283,26 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	if (buffer_len < 4) {
 		REDEBUG("Output buffer is too small to hold a DHCPv6 packet.");
 		return -1;
+	}
+
+	/*
+	 *	If there's a servcer ID, then add it to responses where it's needed.
+	 */
+	if (inst->server_id_pair) {
+		fr_pair_t *vp, *copy;
+
+		/*
+		 *	If the admin added it manually, then we assume that the admin knows what they're
+		 *	doing, and added it manually.  The DHCPv6 "process" routines save / restore any
+		 *	existing Server-ID options.  But in some cases, the request doesn't have a Server-ID,
+		 *	but it still has to go into Reply and Advertise.  So we need to double-check those
+		 *	here.
+		 */
+		vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_server_id);
+		if (vp) {
+			MEM(copy = fr_pair_copy(&request->reply_ctx, vp));
+			(void) fr_pair_append(&request->reply_pairs, copy);
+		}
 	}
 
 	memset(buffer, 0, buffer_len);
@@ -419,6 +446,49 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
+
+	/*
+	 *	Parse the server-id configuration item.
+	 */
+	if (inst->server_id_str) {
+		fr_pair_t *vp;
+		ssize_t slen;
+		fr_pair_parse_t	root, relative;
+		fr_dcursor_t cursor;
+		uint8_t buffer[256];
+
+		MEM(vp = fr_pair_afrom_da(inst, attr_server_id));
+
+		root = (fr_pair_parse_t) {
+			.ctx = inst,
+			.da = attr_server_id,
+			.list = &vp->vp_group,
+			.dict = dict_dhcpv6,
+			.internal = fr_dict_internal(),
+			.allow_compare = false,
+			.allow_exec = false
+		};
+		relative = (fr_pair_parse_t) { };
+
+		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(inst->server_id_str, strlen(inst->server_id_str)));
+		if (slen <= 0) {
+			cf_log_perr(mctx->mi->conf, "Failed parsing 'server-id' configuration");
+			return -1;
+		}
+
+		inst->server_id_pair = vp;
+
+		fr_pair_dcursor_iter_init(&cursor, &vp->vp_group, fr_dhcpv6_next_encodable, dict_dhcpv6);
+
+		slen = fr_dhcpv6_encode_option(&FR_DBUFF_TMP(buffer, sizeof(buffer)), &cursor,
+					       &(fr_dhcpv6_encode_ctx_t) { .root = fr_dict_root(dict_dhcpv6) });
+		if (slen < 0) {
+			cf_log_perr(mctx->mi->conf, "Failed encoding 'server-id' option");
+			return -1;
+		}
+
+		MEM(inst->server_id = talloc_memdup(inst, buffer, slen));
+	}
 
 	/*
 	 *	Instantiate the transport module before calling the

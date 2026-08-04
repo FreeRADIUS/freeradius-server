@@ -1,125 +1,119 @@
 
-
-
-
 = The crl Virtual Server
 
 The `crl` virtual server handles the fetching of CRL data
 
-It is called from the rlm_crl module when a CRL required to verify
-a certificate is not already available and also by timer events
-used to refresh CRLs.
+It is called from the rlm_crl module when a CRL required to verify a
+certificate is not already available and also by timer events used to
+refresh CRLs.
 
 == The Virtual Server
 
 This is the `crl` virtual server.
 
-```
+----
 server crl {
 	namespace = crl
 
 	crl {
-```
+----
 
 force_refresh:: Maximum time between refreshing CRLs
 
-If the `nextUpdate` attribute of a CRL is closer than this
-interval then that will be used as the point that the CRL
-is refreshed.
+If the `nextUpdate` attribute of a CRL is closer than this interval
+then that will be used as the point that the CRL is refreshed.
 
-```
+----
 #	        force_refresh = 7d
 
-```
+----
 
 force_delta_refresh:: Maximum time between refreshing delta CRLs
 
 This overrides `force_refresh` for delta CRLs.
 
-```
+----
 #		force_delta_refresh = 1d
 
-```
+----
 
-early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
+early_refresh:: Time before `nextUpdate` which the CRL will be
+refreshed
 
-```
+----
 		early_refresh = 1h
 
-```
+----
 
 retry_delay:: Time between retries of failed CRL refreshes.
 
-```
+----
 #		retry_delay = 30s
 
-```
+----
 
 ca_file:: File containing trusted CA, used to sign CRLs
 
 This can reference the setting in the `eap` module.
 
-```
+----
 #		ca_file = ${modules.eap.tls-config[tls-common].ca_file}
 		ca_file = ${cadir}/rsa/ca.pem
 
-```
+----
 
 ca_path:: Directory containing trusted CAs, used to sign CRLs
 
-```
+----
 #		ca_path = ${modules.eap.tls-config[tls-common].ca_path}
 		ca_path = ${cadir}
 
-```
+----
 
 allow_expired:: Should an expired CRL be accepted.
 
-The nextUpdate value extracted from a CRL will be compared
-to the current time, and if this option is `no` (the default)
-then, if that time is in the past, the CRL will not be
-accepted.
-```
-#		allow_expired: yes
+The nextUpdate value extracted from a CRL will be compared to the
+current time, and if this option is `no` (the default) then, if that
+time is in the past, the CRL will not be accepted.
+----
+#		allow_expired = yes
 
-```
+----
 
 allow_not_yet_valid:: Should a not yet valid expired CRL be accepted.
 
-The lastUpdate value extracted from a CRL will be compared
-to the current time, and if this option is `no` (the default)
-then, if that time is in the future, the CRL will not be
-accepted.
-```
-#		allow_not_yet_valid: yes
+The lastUpdate value extracted from a CRL will be compared to the
+current time, and if this option is `no` (the default) then, if that
+time is in the future, the CRL will not be accepted.
+----
+#		allow_not_yet_valid = yes
 	}
 
-```
+----
 
 This section will be run to fetch CRL data
 
-One or more instances of attribute CDP-URL will contain the
-urls from which the CRL can be fetched.
+One or more instances of attribute CDP-URL will contain the urls from
+which the CRL can be fetched.
 
-https://tools.ietf.org/html/rfc5280[RFC 5280] details the use of HTTP, LDAP or FTP in CRL distribution
-points.
+https://tools.ietf.org/html/rfc5280[RFC 5280] details the use of HTTP,
+LDAP or FTP in CRL distribution points.
 
-This policy allows for all three potential methods of fetching
-CRLs, and requires the `rest`, `ldap` and `ftp` modules to be
-configured and enabled.
+This policy allows for all three potential methods of fetching CRLs,
+and requires the `rest`, `ldap` and `ftp` modules to be configured and
+enabled.
 
 If it is known that only HTTP will be used, then this can be
-simplified, and only the `rest` module needs configuring and
-enabling.
+simplified, and only the `rest` module needs configuring and enabling.
 
-The policy will also try each of the URIs in turn, returning when
-one returns data.
+The policy will also try each of the URIs in turn, returning when one
+returns data.
 
-CRL data needs to be placed in `reply.CRL-Data` and the section
-should return 'ok', 'updated' or 'noop' to indicate successful
-fetching of data.
+CRL data needs to be placed in `reply.CRL-Data` and the section should
+return 'ok', 'updated' or 'noop' to indicate successful fetching of
+data.
 
-```
+----
 	recv Start-Fetch {
 		foreach url CDP-URL {
 			if (url =~ /^http/) {
@@ -130,52 +124,46 @@ fetching of data.
 				reply.CRL-Data = %ftp.get(%uri.safe("%{CRL.CDP-URL}"))
 			}
 
-```
+----
 
 If CRL data has been found then return
 
-```
+----
 			if (reply.CRL-Data) {
 				ok
 				return
 			}
 		}
 
-```
+----
 
 No data was found, so fail the request
 
-```
+----
 		reject
 	}
 
-```
+----
 
-This section is called after successful fetching and validating
-of a CRL and can be used for logging purposes.
+This section is called after successful fetching and validating of a
+CRL and can be used for logging purposes.
 
-```
+----
 	send Fetch-OK {
 		ok
 	}
 
-```
+----
 
-This section is called after either unsuccessful fetching of a CRL
-or the fetched data not validating and can be used for logging
-purposes.
+This section is called after either unsuccessful fetching of a CRL or
+the fetched data not validating and can be used for logging purposes.
 
-```
+----
 	send Fetch-Fail {
 		ok
 	}
 }
-```
-
-== Default Configuration
-
-```
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

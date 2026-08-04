@@ -18,7 +18,7 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2006-2007 (j@w1.fi)
  */
-#include <stddef.h>
+#include <stdint.h>
 
 /*
  *	Inputs

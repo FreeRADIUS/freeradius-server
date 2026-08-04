@@ -1,28 +1,29 @@
 
-
-
-
 = CHAP
 
-This module authenticates requests containing a `link:https://freeradius.org/rfc/rfc2865.html#CHAP-Password[CHAP-Password]` attribute.
+This module authenticates requests containing a
+`link:https://freeradius.org/rfc/rfc2865.html#CHAP-Password[CHAP-Password]`
+attribute.
 
-CHAP authentication requires access to the Password.Cleartext for the user.
+NOTE: You should never send CHAP-Password in RADIUS/UDP packets. CHAP
+is secure ONLY when used inside of TTLS.
 
-Standard Unix system authentication or passwords encrypted via `crypt()`
-are not compatible with CHAP.
+CHAP authentication requires access to the Password.Cleartext for the
+user.
+
+Standard Unix system authentication or passwords encrypted via
+`crypt()` are not compatible with CHAP.
 
 == Configuration Settings
 
 This module takes no configuration.
 
-
-
 == Default Configuration
 
-```
+----
 chap {
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

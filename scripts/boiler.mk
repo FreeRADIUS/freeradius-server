@@ -320,6 +320,18 @@ define CANONICAL_PATH
 $(patsubst ${top_srcdir}/%,%,$(patsubst ${CURDIR}/%,%,$(abspath ${1})))
 endef
 
+# CATEGORY_TARGETS - Expand to every target declared so far whose
+# TGT_CATEGORY matches one of the given categories.  Category names
+# are project-defined labels; a makefile fragment opts in by setting
+# TGT_CATEGORY next to TARGET.  Note "so far": in a := assignment the
+# result depends on makefile parse order, just like filtering ALL_TGTS
+# directly.
+#
+#   USE WITH: $(call CATEGORY_TARGETS,lib-protocol lib-util)
+define CATEGORY_TARGETS
+$(strip $(foreach x,${ALL_TGTS},$(if $(filter ${1},$($(x)_CATEGORY)),$(x))))
+endef
+
 # COMPILE_C_CMDS - Commands for compiling C source code.
 ifeq "$(CPPCHECK)" ""
 define COMPILE_C_CMDS
@@ -388,6 +400,7 @@ define INCLUDE_SUBMAKEFILE
     TGT_INSTALLDIR := ..
     TGT_CHECK_HEADERS :=
     TGT_CHECK_LIBS :=
+    TGT_CATEGORY :=
     TEST :=
 
     SOURCES :=
@@ -432,6 +445,7 @@ define INCLUDE_SUBMAKEFILE
         $$(eval $$(call ADD_LIBTOOL_SUFFIX))
 
         ALL_TGTS += $${TGT}
+        $${TGT}_CATEGORY := $$(strip $${TGT_CATEGORY})
         $${TGT}_LDFLAGS := $${TGT_LDFLAGS}
         $${TGT}_LDLIBS := $${TGT_LDLIBS}
         $${TGT}_LINKER := $${TGT_LINKER}

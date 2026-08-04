@@ -2740,10 +2740,9 @@ int fr_command_complete(fr_cmd_t *head, char const *text, int start,
 		if (cmd->intermediate) {
 			fr_assert(cmd->child != NULL);
 			word = p;
-			cmd = cmd->child;
-
 			info->argv[info->argc] = cmd->name;
 			info->argc++;
+			cmd = cmd->child;
 			continue;
 		}
 

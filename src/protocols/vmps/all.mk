@@ -4,6 +4,7 @@
 # Version:      $Id$
 #
 TARGET		:= libfreeradius-vmps$(L)
+TGT_CATEGORY	:= lib-protocol
 
 SOURCES		:= vmps.c base.c
 

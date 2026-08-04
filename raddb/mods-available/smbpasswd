@@ -13,8 +13,8 @@
 #
 #  == Configuration Settings
 #
-#  See the `passwd` module for documentation on the configuration items
-#  for this module.
+#  See the `passwd` module for documentation on the configuration
+#  items for this module.
 #
 passwd smbpasswd {
 	filename = /etc/smbpasswd

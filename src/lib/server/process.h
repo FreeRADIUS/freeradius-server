@@ -154,10 +154,12 @@ do { \
 
 #define UPDATE_STATE(_x) state = &process_state_ ## _x [request->_x->code]
 
-#define RECV(_x) static inline unlang_action_t recv_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static inline unlang_action_t send_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define RESUME(_x) static inline unlang_action_t resume_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define PROCESS_ARGS unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request
+
+#define RECV(_x) static inline unlang_action_t recv_ ## _x(PROCESS_ARGS)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(PROCESS_ARGS)
+#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED PROCESS_ARGS)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(PROCESS_ARGS)
 #define RESUME_FLAG(_x, _p_result_flag, _mctx_flag) static inline unlang_action_t resume_ ## _x(_p_result_flag unlang_result_t *p_result, _mctx_flag module_ctx_t const *mctx, request_t *request)
 
 /** Returns the current rcode then resets it for the next module call

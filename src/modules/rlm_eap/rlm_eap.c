@@ -168,6 +168,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	case FR_EAP_METHOD_TLS:
 	case FR_EAP_METHOD_TTLS:
 	case FR_EAP_METHOD_PEAP:
+	case FR_EAP_METHOD_PSK:
 	case FR_EAP_METHOD_PWD:
 	case FR_EAP_METHOD_AKA_PRIME:
 	case FR_EAP_METHOD_AKA:

@@ -60,7 +60,7 @@ match raw.User-Name = 0xabcdef
 #  long as the attribute is "raw.1", and not "raw.User-Name".
 #
 pair raw.User-Name = (ipaddr) 192.168.0.1
-match Cannot create raw attribute User-Name which changes data type from string to ipaddr
+match ERROR: Cannot create raw attribute User-Name which changes data type from string to ipaddr
 
 #
 #  This is OK, due to the underlying IP address parser.
@@ -90,7 +90,7 @@ match Tmp-Group-0 = { User-Name = "bob" }
 #  Internal TLV cannot contain a protocol attribute.
 #
 pair Tmp-TLV-0 = { User-Name = "bob" }
-match Internal attribute 'Tmp-TLV-0' of data type 'tlv' cannot contain protocol attributes
+match ERROR: Internal attribute 'Tmp-TLV-0' of data type 'tlv' cannot contain protocol attributes
 
 #
 #  Protocol TLV can contain an internal attribute
@@ -166,13 +166,13 @@ match Vendor-Specific = { Cisco = { AVPair < "foo", AVPair > "bar" } }
 #  Comparison operators apply only to leaf.
 #
 pair-compare Vendor-Specific < { Cisco == { AVPair == "foo" } }
-match Structural attribute 'Vendor-Specific' must use '=' or '==' for comparisons
+match ERROR: Structural attribute 'Vendor-Specific' must use '=' or '==' for comparisons
 
 #
 #  Invalid operator - comparison operators are not allowed when doing assignments.
 #
 pair Vendor-Specific.Cisco.AVPair == "foo", Vendor-Specific.Cisco.AVPair == "bar"
-match Invalid character '=' after operator '='
+match ERROR: Invalid character '=' after operator '='
 
 #
 #  Flat inputs nest at a higher level, too
@@ -187,31 +187,31 @@ match Vendor-Specific = { Cisco = { AVPair = "foo" }, HP = { Privilege-Level = 1
 ######################################################################
 
 pair .User-Name = "bob"
-match The '.Attribute' syntax cannot be used at the root of a dictionary
+match ERROR: The '.Attribute' syntax cannot be used at the root of a dictionary
 
 pair Tmp-Group-0 = { .User-Name = "bob" }
-match The '.Attribute' syntax cannot be used with parent Tmp-Group-0 of data type 'group'
+match ERROR: The '.Attribute' syntax cannot be used with parent Tmp-Group-0 of data type 'group'
 
 pair Vendor-Specific = { Cisco = { .AVPair += "foo" } }
-match The '.Attribute' syntax cannot be used along with the '+=' operator
+match ERROR: The '.Attribute' syntax cannot be used along with the '+=' operator
 
 #
 #  Invalid data types
 #
 pair NAS-Port = 192.168.0.1
-match Unexpected text '.168.0.1 ...' after value
+match ERROR: Unexpected text '.168.0.1 ...' after value
 
 pair NAS-Port = 192.168.0.1, NAS-Port = 2
-match Unexpected text '.168.0.1, NAS-Port = ...' after value
+match ERROR: Unexpected text '.168.0.1, NAS-Port = ...' after value
 
 pair NAS-Port = abcdef
-match Failed parsing string as type 'uint32'
+match ERROR: Failed parsing string as type 'uint32'
 
 pair Extended-Attribute-1 = 0xabcdef
-match Group list for Extended-Attribute-1 MUST start with '{'
+match ERROR: Group list for Extended-Attribute-1 MUST start with '{'
 
 pair Extended-Attribute-1.Framed-IP-Address.Tmp-String-0 := "hello"
-match Unknown attribute "Framed-IP-Address.Tmp-String-0" for parent "Extended-Attribute-1"
+match ERROR: Unknown attribute "Framed-IP-Address.Tmp-String-0" for parent "Extended-Attribute-1"
 
 #
 #  Attributes as values
@@ -232,10 +232,10 @@ match Test-Attr = ::Vendor-Specific.12345.1.1
 #  Groups do not cause the leaf attributes to be looked up in the root.
 #
 pair Tmp-Group-0 = { Extended-Attribute-1.User-Name = "foo" }
-match Unknown attribute "User-Name" for parent "Extended-Attribute-1"
+match ERROR: Unknown attribute "User-Name" for parent "Extended-Attribute-1"
 
 pair Extended-Attribute-1.User-Name = "foo"
-match Unknown attribute "User-Name" for parent "Extended-Attribute-1"
+match ERROR: Unknown attribute "User-Name" for parent "Extended-Attribute-1"
 
 #
 #  Ensure that the alias points to the right place
@@ -247,10 +247,10 @@ pair Extended-Attribute-4.Vendor-Specific.FreeRADIUS.Long-Name = 1
 match Extended-Attribute-4 = { Vendor-Specific = { FreeRADIUS = { Long-Name = 1 } } }
 
 pair Tmp-Group-0 = { Extended-Attribute-4.Long-Name = 1 }
-match Unknown attribute "Long-Name" for parent "Extended-Attribute-4"
+match ERROR: Unknown attribute "Long-Name" for parent "Extended-Attribute-4"
 
 pair Tmp-Group-0 = { Extended-Attribute-1.Vendor-Specific.FreeRADIUS.Long-Name = 1 }
-match Unknown attribute "Long-Name" for parent "FreeRADIUS"
+match ERROR: Unknown attribute "Long-Name" for parent "FreeRADIUS"
 
 #
 #  Flat attributes are allowed in certain situations.
@@ -269,7 +269,7 @@ match Tmp-Flat-Group.Vendor-Specific.Cisco.AVPair = "foo"
 #  Note that this shortening happens ONLY when the 'group' is marked as "allow_flat".
 #
 pair Tmp-Flat-Group = { Extended-Attribute-1.Vendor-Specific.FreeRADIUS.Long-Name = 1 }
-match Unknown attribute "Long-Name" for parent "FreeRADIUS"
+match ERROR: Unknown attribute "Long-Name" for parent "FreeRADIUS"
 
 pair Tmp-Flat-Group.Long-Name = 1
 match Tmp-Flat-Group.Long-Name = 1

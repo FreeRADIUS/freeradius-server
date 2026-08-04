@@ -653,6 +653,31 @@ use_time:
 	fr_network_listen_read(thread->nr, thread->parent);
 }
 
+/** Close a virtual listener
+ *
+ * The fd only exists to bootstrap the listener, so closing it mostly means
+ * removing the timer that runs the jobs.
+ *
+ * @param[in] li the listener
+ * @return
+ *	- 0 on success.
+ *	- -1 if the timer could not be deleted.  The fd is closed either way.
+ */
+static int mod_close(fr_listen_t *li)
+{
+	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
+	int				ret = 0;
+
+	if (thread->ev && (fr_timer_delete(&thread->ev) < 0)) {
+		PERROR("Failed deleting cron timer");
+		ret = -1;
+	}
+
+	close(li->fd);
+
+	return ret;
+}
+
 /** Set the event list for a new socket
  *
  * @param[in] li the listener
@@ -748,6 +773,7 @@ fr_app_io_t proto_cron_crontab = {
 	.track_duplicates	= false,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.read			= mod_read,
 	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,

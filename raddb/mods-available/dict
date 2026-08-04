@@ -7,7 +7,8 @@
 #
 #  = Dict Module
 #
-#  The `dict` module registers expansions which query the dictionaries.
+#  The `dict` module registers expansions which query the
+#  dictionaries.
 
 #
 #  == Expansions
@@ -16,7 +17,8 @@
 #
 #  === %dict.attr(_<string>_)
 #
-#  Takes an attribute name, and returns the canonicalized name of the attribute.
+#  Takes an attribute name, and returns the canonicalized name of the
+#  attribute.
 #
 #  If the attribute does not exist, nothing is returned.
 #
@@ -37,15 +39,16 @@
 #
 #  If the attribute does not exist, nothing is returned.
 #
-#  Note that only the _final_ attribute number is returned.  For example, the OID
-#  for `Vendor-Specific.Cisco.AVPair` is `26.9.1`.  This function will return
-#  `1`, and not the full OID.
+#  Note that only the _final_ attribute number is returned. For
+#  example, the OID for `Vendor-Specific.Cisco.AVPair` is `26.9.1`.
+#  This function will return `1`, and not the full OID.
 #
 #  .Return: _uint32_
 #
 #  === %dict.attr.type(_<string>_)
 #
-#  Takes an attribute name, and returns the data type of the attribute.
+#  Takes an attribute name, and returns the data type of the
+#  attribute.
 #
 #  If the attribute does not exist, nothing is returned.
 #
@@ -53,7 +56,8 @@
 #
 #  === %dict.vendor(_<string>_)
 #
-#  Takes an vendor name, and returns the canonicalized name of the vendor.
+#  Takes an vendor name, and returns the canonicalized name of the
+#  vendor.
 #
 #  If the vendor does not exist, nothing is returned.
 #
@@ -61,7 +65,8 @@
 #
 #  === %dict.vendor.by.num(_<uint32>_)
 #
-#  Takes an vendor number, and returns the canonicalized name of the vendor.
+#  Takes an vendor number, and returns the canonicalized name of the
+#  vendor.
 #
 #  If the vendor does not exist, nothing is returned.
 #

@@ -35,14 +35,20 @@ up, log in and you're good to go.
 
 == Authorize your Local Machine
 
-You need to configure your local machine to communicate with GitHub. We recommend using GitHub personal access tokens for authentication, rather than traditional SSH keys. Personal access tokens are a more secure and flexible way to manage access to your GitHub account.
+You need to configure your local machine to communicate with GitHub.
+We recommend using GitHub personal access tokens for authentication,
+rather than traditional SSH keys. Personal access tokens are a more
+secure and flexible way to manage access to your GitHub account.
 
-For more guidance, refer to https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens[GitHub
+For more guidance, refer to
+https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens[GitHub
 Tokens].
 
 === Authorization via SSH
 
-Authorization via SSH is possible, but we don't recommend it. The following outlines the basic steps to complete if you want to use SSH keys.
+Authorization via SSH is possible, but we don't recommend it. The
+following outlines the basic steps to complete if you want to use SSH
+keys.
 
 *Generate a keypair*
 
@@ -60,9 +66,13 @@ Use the following to output your public key block to the terminal:
 cat ~/.ssh/id_rsa.pub
 ----
 
-* Copy the key (making sure you don't accidentally get bits of command prompts).
-* On the GitHub site go to https://github.com/account/ssh[Account Settings->SSH Public Keys], then click the *Add another public key* link.
-* Enter a Title for the key (this is arbitrary, just enter your machine's hostname or any other value you want).
+* Copy the key (making sure you don't accidentally get bits of command
+  prompts).
+* On the GitHub site go to https://github.com/account/ssh[Account
+  Settings->SSH Public Keys], then click the *Add another public key*
+  link.
+* Enter a Title for the key (this is arbitrary, just enter your
+  machine's hostname or any other value you want).
 * Paste your public key into the Key field.
 * Click *Add key*.
 
@@ -75,7 +85,8 @@ to configure your local git client to insert the correct information
 into commit meta-data. This will mean that your commits are linked to
 you and your GitHub account.
 
-To correct the default commit user.name and user.email, enter the following commands:
+To correct the default commit user.name and user.email, enter the
+following commands:
 ----
 git config --global user.name "<Your real name>"
 git config --global user.email "<Email you used to signup with GitHub>"
@@ -83,23 +94,36 @@ git config --global user.email "<Email you used to signup with GitHub>"
 
 == Fork the FreeRADIUS Server
 
-In order to contribute code you must first fork the server. Forking is the process of creating your own copy of the FreeRADIUS repository on GitHub, which you can *clone*, and then *push* your modifications to.
+In order to contribute code you must first fork the server. Forking is
+the process of creating your own copy of the FreeRADIUS repository on
+GitHub, which you can *clone*, and then *push* your modifications to.
 
 *To fork the FreeRADIUS server*:
 
 * Login to https://github.com[GitHub].
-* Navigate to the https://github.com/FreeRADIUS/freeradius-server[project site].
+* Navigate to the
+  https://github.com/FreeRADIUS/freeradius-server[project site].
 * Click the 'Fork' button.
 
-You'll see the current URL change to ``/<your github username>/freeradius-server`` this means you're now browsing your own copy of the FreeRADIUS source code. From this point on changes to the *upstream* repository won't be reflected in your fork, unless you explicitly pull from the *upstream* repository using the local clone of your fork, and push back to GitHub.
+You'll see the current URL change to ``/<your github
+username>/freeradius-server`` this means you're now browsing your own
+copy of the FreeRADIUS source code. From this point on changes to the
+*upstream* repository won't be reflected in your fork, unless you
+explicitly pull from the *upstream* repository using the local clone
+of your fork, and push back to GitHub.
 
 == Use your Shiny New Fork
 
-GitHub doesn't allow you to login to their servers with an interactive prompt. Instead you must use one of the protocols Git supports (SSH, HTTP, or Git (native protocol)) to modify the contents of your fork, and in order to do that you must first *clone* it (create a copy of it on your local machine).
+GitHub doesn't allow you to login to their servers with an interactive
+prompt. Instead you must use one of the protocols Git supports (SSH,
+HTTP, or Git (native protocol)) to modify the contents of your fork,
+and in order to do that you must first *clone* it (create a copy of it
+on your local machine).
 
 === Clone your fork
 
-* To clone your fork create a directory to house your repositories and navigate to it:
+* To clone your fork create a directory to house your repositories and
+  navigate to it:
 ----
 mkdir ~/repositories/
 cd ~/repositories
@@ -111,7 +135,8 @@ git clone git@github.com:<your github username>/freeradius-server.git
 cd freeradius-server
 ----
 
-* Add the original FreeRADIUS repository as a remote branch (you need this to pull new commits from the project repository):
+* Add the original FreeRADIUS repository as a remote branch (you need
+  this to pull new commits from the project repository):
 ----
 git remote add upstream git://github.com/FreeRADIUS/freeradius-server.git
 git fetch upstream
@@ -119,11 +144,14 @@ git fetch upstream
 
 === Make modifications
 
-Before you start hacking away you must create a new branch. This branch will serve to group your commits together so that they can be merged back to the project repository later.
+Before you start hacking away you must create a new branch. This
+branch will serve to group your commits together so that they can be
+merged back to the project repository later.
 
 *Branching*
 
-* Think of a descriptive name for your branch, something like 'rlm_foo_segfault_issues'
+* Think of a descriptive name for your branch, something like
+  'rlm_foo_segfault_issues'
 * Navigate to your local git repo:
 ----
 cd ~/repositories/freeradius-server
@@ -146,14 +174,18 @@ git checkout <my new branch>
 
 *Commits and pushing changes*
 
-* Hack away at the server code or apply a pre-existing patch or set of diffs
-* Tell Git which files you want to include in the commit using ``git add <path>``. If you add subdirectories, all files and directories in that subdirectory will also be added.
+* Hack away at the server code or apply a pre-existing patch or set of
+  diffs
+* Tell Git which files you want to include in the commit using ``git
+  add <path>``. If you add subdirectories, all files and directories
+  in that subdirectory will also be added.
 * Commit your changes:
 ----
 git commit --message '<description of changes>'
 ----
 
-* Pull from upstream to make sure there are no conflicts, and to merge the latest commits from the project repository:
+* Pull from upstream to make sure there are no conflicts, and to merge
+  the latest commits from the project repository:
 ----
 git pull --rebase upstream <development branch>
 ----
@@ -163,34 +195,53 @@ git pull --rebase upstream <development branch>
 git push
 ----
 
-See the xref:devbranch.adoc[Development Branch] page for more information and details about the current development branches.
+See the xref:devbranch.adoc[Development Branch] page for more
+information and details about the current development branches.
 
 *Rebasing*
 
-Another rather unique feature of Git is the concept of rebasing. Rebase allows you to rewind the state of your repository to an earlier revision, then re-apply ranges of commits.
+Another rather unique feature of Git is the concept of rebasing.
+Rebase allows you to rewind the state of your repository to an earlier
+revision, then re-apply ranges of commits.
 
-In the section above the `git pull --rebase` command is used, heres what that command actually does
+In the section above the `git pull --rebase` command is used, heres
+what that command actually does
 
-* It finds the point of divergence between your branch and the upstream branch you're pulling from
-* rewinds your branch to this point (as if you'd checked out that specific revision)
-* gets a list of commits from this point of divergence to the HEAD on the upstream branch
+* It finds the point of divergence between your branch and the
+  upstream branch you're pulling from
+* rewinds your branch to this point (as if you'd checked out that
+  specific revision)
+* gets a list of commits from this point of divergence to the HEAD on
+  the upstream branch
 * applies those commits to your branch
 * re-applies all your commits from the point of divergence
 
-So long as as there were no *merge conflicts* your branch should now contain the latest version of the source from the upstream branch and your additional modifications.
+So long as as there were no *merge conflicts* your branch should now
+contain the latest version of the source from the upstream branch and
+your additional modifications.
 
 === Generate a Pull Request
 
-The reason why the FreeRADIUS core developers love GitHub is because of *pull requests*. Once you've committed a set of modifications to your fork, you can generate a *pull request* to let the core developers know you have code to merge.
+The reason why the FreeRADIUS core developers love GitHub is because
+of *pull requests*. Once you've committed a set of modifications to
+your fork, you can generate a *pull request* to let the core
+developers know you have code to merge.
 
-Go to your fork on GitHub `https://github.com/<your github username>/freeradius-server`. Next, Click the 'Pull request' button. For more guidance, see xref:gitpr.adoc#Open a Pull Request[Open a Pull Request]
+Go to your fork on GitHub `https://github.com/<your github
+username>/freeradius-server`. Next, Click the 'Pull request' button.
+For more guidance, see xref:gitpr.adoc#Open a Pull Request[Open a Pull
+Request]
 
 *Signing commits*
 
-The FreeRAIDUS project now requires all contributions to be signed. Refer to the following pages for instructions on how to enable this:
+The FreeRAIDUS project now requires all contributions to be signed.
+Refer to the following pages for instructions on how to enable this:
 
-* https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work[Git Tools Signing]
-* https://help.github.com/en/github/authenticating-to-github/signing-commits[Sign Commits]
+* https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work[Git Tools
+  Signing]
+*
+  https://help.github.com/en/github/authenticating-to-github/signing-commits[Sign
+  Commits]
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

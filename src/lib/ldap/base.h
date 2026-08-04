@@ -168,6 +168,7 @@ typedef enum {
 	FR_LDAP_STATE_INIT = 0,				//!< Connection uninitialised.
 	FR_LDAP_STATE_START_TLS,			//!< TLS is being negotiated.
 	FR_LDAP_STATE_BIND,				//!< Connection is being bound.
+	FR_LDAP_STATE_DISCOVER,				//!< Directory capabilities are being read from the rootDSE.
 	FR_LDAP_STATE_RUN,				//!< Connection is muxing/demuxing requests.
 	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
 } fr_ldap_state_t;
@@ -210,7 +211,16 @@ typedef struct {
 
 	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
 
-	char const		**naming_contexts;	//!< Databases served by this directory.
+	char const		*dn_attr;		//!< Attribute to match an entry's DN in a search filter.
+							///< Defaults to RFC 5020 entryDN, distinguishedName
+							///< on Active Directory and Samba.
+
+	char const		**naming_contexts;	//!< NULL terminated array of databases
+							///< served by this directory.
+	fr_hash_table_t		*naming_contexts_ht;	//!< For resolving DNs to the naming context
+							///< containing them.
+
+	bool			discovered;		//!< A rootDSE response has been parsed into these fields.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -353,15 +363,6 @@ typedef struct {
 
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
-
-/** Contains a collection of values
- *
- */
-typedef struct {
-	struct berval		**values;		//!< libldap struct containing bv_val (char *)
-							///< and length bv_len.
-	int			count;			//!< Number of values.
-} fr_ldap_result_t;
 
 /** Result of expanding the RHS of a set of maps
  *
@@ -682,7 +683,7 @@ static inline int fr_ldap_berval_strncasecmp(struct berval *value, char const *s
 	if (strlen != value->bv_len) return CMP(strlen, value->bv_len);
 
 	for (i = 0; i < strlen; i++) {
-		if (tolower(value->bv_val[i]) != tolower(str[i])) return CMP(value->bv_val[i], str[i]);
+		if (tolower((uint8_t)value->bv_val[i]) != tolower((uint8_t)str[i])) return CMP(value->bv_val[i], str[i]);
 	}
 
 	return 0;
@@ -835,10 +836,14 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 			       "namingContexts", \
 			       NULL }
 
+fr_ldap_directory_t *fr_ldap_directory_alloc(TALLOC_CTX *ctx);
+
+char const	*fr_ldap_directory_common_base_find(fr_ldap_directory_t const *directory, char const * const *dn_list);
+
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 					       LDAPMessage *result, char const *name);
 
-int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
+int		fr_ldap_directory_discover_async(fr_ldap_connection_t *c);
 
 int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 
@@ -857,6 +862,9 @@ char const	*fr_ldap_edir_errstr(int code);
 int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				     map_t const *map, void *uctx);
 
+int		fr_ldap_map_getdn(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				  map_t const *map, void *uctx);
+
 int		fr_ldap_map_verify(map_t *map, void *instance);
 
 int		fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request,
@@ -871,8 +879,11 @@ int		fr_ldap_map_do(request_t *request, char const *check_attr,
  */
 fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);
 
-connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					        fr_ldap_config_t const *config, char const *log_prefix);
+connection_state_t fr_ldap_connection_init(void **h, connection_t *conn, void *uctx);
+
+connection_state_t fr_ldap_trunk_connection_init(void **h, connection_t *conn, void *uctx);
+
+void		fr_ldap_connection_close(fr_event_list_t *el, void *h, void *uctx);
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
 
@@ -947,6 +958,40 @@ size_t		fr_ldap_util_normalise_dn(char *out, char const *in);
 
 char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
+/** State of an in place iteration over an attribute's values
+ *
+ * fr_ldap_value_iter_init returns the first value, fr_ldap_value_iter_next
+ * each value after it, NULL ends the iteration.  The caller must always
+ * release the iterator with fr_ldap_value_iter_done, whether iteration
+ * completed or not.
+ */
+typedef struct {
+	BerElement	*ber;			//!< Cursor over the entry.
+	char		*last;			//!< End marker of the value set.
+	ber_len_t	len;			//!< Length of the current element.
+	struct berval	value;			//!< Value the iterator is positioned on.
+	bool		found;			//!< The attribute was found in the entry.
+	bool		end;			//!< All values have been returned.
+} fr_ldap_value_iter_t;
+
+struct berval	*fr_ldap_value_iter_init(int *err, fr_ldap_value_iter_t *iter, LDAP *handle, LDAPMessage *entry,
+					 char const *attr);
+
+struct berval	*fr_ldap_value_iter_alloc(int *err, fr_ldap_value_iter_t **out, TALLOC_CTX *ctx,
+					  LDAP *handle, LDAPMessage *entry, char const *attr);
+
+struct berval	*fr_ldap_value_iter_next(int *err, fr_ldap_value_iter_t *iter);
+
+void		fr_ldap_value_iter_done(fr_ldap_value_iter_t *iter);
+
+int		fr_ldap_result_values_len(size_t *num, size_t *strings_len, LDAP *handle, LDAPMessage *result,
+					  char const *attr);
+
+int		fr_ldap_entry_value_find(struct berval *out, LDAP *handle, LDAPMessage *entry, char const *attr);
+
+talloc_str_list_t *fr_ldap_str_list_afrom_result(TALLOC_CTX *ctx, LDAP *handle, LDAPMessage *result,
+						 char const *attr, size_t extra);
+
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[]);
@@ -964,6 +1009,9 @@ void		fr_ldap_entry_dump(LDAPMessage *entry);
 int		fr_ldap_dn_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
 
 int		fr_ldap_filter_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
+
+char		*fr_ldap_filter_afrom_dn_list(TALLOC_CTX *ctx, char const *dn_attr, char const *filter,
+					  char const * const *dn_list);
 
 int		fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char const **sub, size_t sublen,
 				       tmpl_t **out) CC_HINT(nonnull());

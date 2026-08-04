@@ -1,52 +1,36 @@
 
-
-
-
 = Kerberos Module
 
 The `krb5` module enables the use of Kerberos 5 for authentication.
 
-NOTE: This default config presumes you have the MIT Kerberos 5 distribution.
+NOTE: This default config presumes you have the MIT Kerberos 5
+distribution.
 
 == Configuration Settings
 
 krb5 { ... }::
 
-
 keytab:: Containing the key used by rlm_krb5.
 
-
-
 service_principal:: Principal that is used by rlm_krb5.
-
-
 
 username:: The username (principal) to authenticate as
 
 If this is just a user name, then the default Kerberos realm will
 automatically be added.
 
-
 password:: The password to use in user authentication
 
+reuse:: Reusable Handles
 
-.Reusable Handles
-
-Reusable krb5 handles are allocated in blocks.  These
-parameters allow for tuning how that is done.
-
+Reusable krb5 handles are allocated in blocks. These parameters allow
+for tuning how that is done.
 
 min:: The minimum number of handles to keep allocated
 
-
-
 max:: The maximum number of reusable handles to allocate.
 
-
-
 cleanup_interval:: How often to free un-used handles.
-
-
 
 == Sample
 
@@ -63,21 +47,19 @@ service_principal = radius/some.host.com
 }
 ----
 
-Make sure the keytab is readable by the user that is used to run `radiusd` and
-that your authorization configuration really uses `krb5` to do the
-authentication. You will need to add the following to the `authenticate`
-section of your `radiusd.conf` file:
+Make sure the keytab is readable by the user that is used to run
+`radiusd` and that your authorization configuration really uses `krb5`
+to do the authentication. You will need to add the following to the
+`authenticate` section of your `radiusd.conf` file:
 
 [source, unlang]
-Auth-Type Kerberos {
-krb5
-}
 ----
-
+Auth-Type Kerberos { krb5 }
+----
 
 == Default Configuration
 
-```
+----
 krb5 {
 	keytab = /path/to/keytab
 	service_principal = name_of_principle
@@ -89,7 +71,7 @@ krb5 {
 #		cleanup_interval = 30s
 	}
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

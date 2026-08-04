@@ -1105,7 +1105,14 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 
 			dst_child->item.filename = src_child->item.filename;
 			dst_child->item.lineno = src_child->item.lineno;
-			break;
+
+			/*
+			 *	Descend into the child so its children get copied too.
+			 */
+			src = src_child;
+			dst = dst_child;
+			ci = NULL;
+			continue;
 
 		case CONF_ITEM_PAIR:
 			cp = cf_pair_dup(dst, cf_item_to_pair(ci), copy_meta);
@@ -2586,13 +2593,12 @@ void _cf_canonicalize_error(CONF_ITEM *ci, ssize_t slen, char const *msg, char c
  *	Create or find a CONF_PAIR, including parents.
  *
  *	This is only used by the command-line argument '-S foo.bar=baz'
- *
- *	This function mangles "name" in place.
  */
-int cf_pair_replace_or_add(CONF_SECTION *cs, char *ref, char const *value)
+int cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value)
 {
 	char *name2;
 	CONF_PAIR *cp;
+	char buffer[256];
 
 	while (*ref) {
 		char *p;
@@ -2601,15 +2607,25 @@ int cf_pair_replace_or_add(CONF_SECTION *cs, char *ref, char const *value)
 		p = strchr(ref, '.');
 		if (!p) break;
 
-		*(p++) = '\0';
+		p++;
 		if (*p == '[') {
+			size_t len;
+
 			name2 = p + 1;
 			p = strchr(name2, ']'); /* doesn't support nesting, too bad */
 			if (!p) {
 				fr_strerror_printf("Missing ']' after %s", name2);
 				return -1;
 			}
-			*(p++) = '\0';
+
+			len = (size_t) (p - name2);
+			if (len >= sizeof(buffer)) {
+				fr_strerror_printf("Reference in '[...]' is too long after %s", name2);
+				return -1;
+			}
+			memcpy(buffer, name2, len);
+			buffer[len] = '\0';
+			name2 = buffer;
 
 		} else {
 			name2 = NULL;

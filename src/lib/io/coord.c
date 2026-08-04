@@ -732,8 +732,7 @@ int fr_coord_to_worker_send(fr_coord_t *coord, int32_t worker_id, uint32_t cb_id
 		.worker = worker_id
 	};
 
-	cd = (fr_coord_data_t *)fr_message_and_data_commit(coord->coord_send_ms[thread_id], (fr_message_t *)cd,
-						 fr_dbuff_used(dbuff));
+	cd = (fr_coord_data_t *)fr_message_and_data_alloc(coord->coord_send_ms[thread_id], fr_dbuff_used(dbuff));
 	if (!cd) return -1;
 
 	memcpy(cd->m.data, fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff));

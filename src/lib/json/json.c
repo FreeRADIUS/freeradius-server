@@ -79,6 +79,14 @@ conf_parser_t const fr_json_format_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	json-c >= 0.19 returns 0 for freed scalars and empty containers,
+ *	so the return value can't identify leaks.
+ *	Fix proposed upstream: https://github.com/json-c/json-c/pull/945
+ */
+#if JSON_C_VERSION_NUM >= 0x1300 /* 0.19.0 */
+#define json_object_put_assert(_obj) json_object_put(_obj)
+#else
 static inline CC_HINT(always_inline)
 void json_object_put_assert(json_object *obj)
 {
@@ -89,6 +97,7 @@ void json_object_put_assert(json_object *obj)
 
 	fr_assert_fail("json_object_put did not free object (returned %d), likely leaking memory", ret);
 }
+#endif
 
 /** Convert json object to fr_value_box_t
  *

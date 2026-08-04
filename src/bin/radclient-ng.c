@@ -612,18 +612,24 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			if (filters_done && !packets_done) {
 				REDEBUG("Differing number of packets/filters in %s:%s "
-				        "(too many requests))", files->packets, files->filters);
+				        "(too many requests)", files->packets, files->filters);
 				goto error;
 			}
 
 			if (!filters_done && packets_done) {
 				REDEBUG("Differing number of packets/filters in %s:%s "
-				        "(too many filters))", files->packets, files->filters);
+				        "(too many filters)", files->packets, files->filters);
 				goto error;
 			}
 
 			vp = fr_pair_find_by_da(&request->filter, NULL, attr_packet_type);
 			if (vp) {
+				if (!FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+					REDEBUG("Invalid filter code %u in %s:%s", vp->vp_uint32,
+						files->packets, files->filters);
+					goto error;
+				}
+
 				request->filter_code = vp->vp_uint32;
 				fr_pair_delete(&request->filter, vp);
 			}

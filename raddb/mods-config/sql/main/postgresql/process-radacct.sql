@@ -205,7 +205,7 @@ LEFT OUTER JOIN nasreload n USING (nasipaddress);
 --
 --      CALL fr_radacct_close_after_reload();
 --
---  Note: This SP requires PostgreSQL >= 11 which was the first version to
+--  NOTE: This SP requires PostgreSQL >= 11 which was the first version to
 --  introduce PROCEDUREs which permit transaction control. This allows COMMIT
 --  to be called to incrementally apply successive batch updates prior to the
 --  end of the procedure. Prior to version 11 there exists only FUNCTIONs that
@@ -213,7 +213,7 @@ LEFT OUTER JOIN nasreload n USING (nasipaddress);
 --  doing so you are really no better off than performing a single,
 --  long-running bulk update.
 --
---  Note: This SP walks radacct in strides of v_batch_size. It will typically
+--  NOTE: This SP walks radacct in strides of v_batch_size. It will typically
 --  skip closed and ongoing sessions at a rate significantly faster than
 --  500,000 rows per second and process batched updates faster than 25,000
 --  orphaned sessions per second. If this isn't fast enough then you should

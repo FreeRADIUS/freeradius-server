@@ -51,7 +51,7 @@ typedef struct cf_comment CONF_COMMENT;	//!< #CONF_ITEM holding a literal `# ...
 #include <freeradius-devel/util/log.h>
 
 #define FR_TIMEVAL_TO_MS(_x) (((_x)->tv_usec / 1000) + ((_x)->tv_sec * (uint64_t)1000))
-#define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_usec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))
+#define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_nsec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))
 
 /** Auto cast from the input type to CONF_ITEM (which is the base type)
  *
@@ -276,7 +276,7 @@ CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char
 
 CONF_PAIR	*cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr);
 
-int		cf_pair_replace_or_add(CONF_SECTION *cs, char *ref, char const *value) CC_HINT(nonnull);
+int		cf_pair_replace_or_add(CONF_SECTION *cs, char const *ref, char const *value) CC_HINT(nonnull);
 
 unsigned int	cf_pair_count_descendents(CONF_SECTION const *cs);
 

@@ -120,6 +120,8 @@ static fr_dict_attr_t const *attr_lm;
 static fr_dict_attr_t const *attr_nt;
 static fr_dict_attr_t const *attr_ns_mta_md5;
 
+static fr_dict_attr_t const *attr_psk;
+
 static fr_dict_attr_t const *attr_user;
 
 extern fr_dict_autoload_t password_dict[];
@@ -171,6 +173,8 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_lm, .name = "Password.LM", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_nt, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ns_mta_md5, .name = "Password.NS-MTA-MD5", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_psk, .name = "Password.PSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
@@ -420,8 +424,14 @@ static password_info_t password_info[] = {
 						.type = PASSWORD_HASH_SALTED,
 						.da = &attr_ssha3_512,
 						.min_hash_len = SHA512_DIGEST_LENGTH
-					}
+					},
 #endif
+
+	[FR_PSK]			= {
+						.type = PASSWORD_HASH,
+						.da = &attr_psk,
+						.min_hash_len = 16
+					},
 };
 
 #define MIN_LEN(_info) ((_info)->type == PASSWORD_HASH_SALTED ? ((_info)->min_hash_len + 1) : (_info)->min_hash_len)

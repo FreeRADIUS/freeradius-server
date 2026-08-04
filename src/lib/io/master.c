@@ -472,7 +472,12 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 	connections = fr_hash_table_num_elements(client->ht);
 	pthread_mutex_unlock(&client->mutex);
 
-	fr_assert(client->use_connected);
+	/*
+	 *	Don't check "use_connected".  Pending dynamic clients get an entry in the connection tracking
+	 *	table before the client is defined, and therefore before "use_connected" is set.  As a result,
+	 *	we can't check the value of "use_connected" until much later.
+	 */
+
 	*((uint32_t *) ctx) += connections;
 
 	return 0;
@@ -481,7 +486,13 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 
 static int _client_free(fr_io_client_t *client)
 {
-	if (client->use_connected) (void) pthread_mutex_destroy(&client->mutex);
+	/*
+	 *	The mutex is initialized whenever the connection tracking table is created, which can happen
+	 *	for pending clients which do not (yet) have "use_connected" set.  Since the mutex creation is
+	 *	conditional on the existence of the connection tracking table, we make the mutex deletion
+	 *	conditional on the existence of the tracking table.
+	 */
+	if (client->ht) (void) pthread_mutex_destroy(&client->mutex);
 
 	TALLOC_FREE(client->pending);
 
@@ -579,6 +590,21 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		cs = cf_section_dup(mi, NULL, inst->submodule->conf,
 				    cf_section_name1(inst->submodule->conf),
 				    cf_section_name2(inst->submodule->conf), false);
+
+		/*
+		 *	Clear the "dynamic_clients" flag, so that the child instantiate routines don't check
+		 *	the network allow / deny list when instantiating child connections.
+		 *
+		 *	This is a short-term and minimal hack to get the problem fixed.  A longer term
+		 *	solution would be to update fr_master_io_network() so that it sets caches the trie
+		 *	_and_ the dynamic client flag in connection data structure.  Which then means that the
+		 *	mod_network_get() API could also go away.
+		 *
+		 *	But doing that involves more rearchitecture and code changes, which we're avoiding at
+		 *	this time.
+		 */
+		cf_pair_replace_or_add(cs, "dynamic_clients", "no");
+
 		if (module_instance_conf_parse(mi, cs) < 0) {
 			cf_log_err(inst->server_cs, "Failed parsing module config");
 			goto cleanup;

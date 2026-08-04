@@ -1,19 +1,18 @@
 [#v4attributes]
 = Attributes
 
-Much of the information in this section is also in the
-`dictionary` file
+Much of the information in this section is also in the `dictionary`
+file
 
 All of the attributes have been renamed from v3.  This change was
 necessary in order to support new functionality in v4.  The
 unfortunate side effect of this change is that all of the names in
 SQL, LDAP, and the `files` module are incompatible with v4.
 
-We recognize that is is difficult to change every entry in a
-database, especially when there's no clear mapping between the
-"old" and "new" names.  This renaming is made more complex because
-the "new" names need to be grouped and arranged in ways that the
-old ones were not.
+We recognize that is is difficult to change every entry in a database,
+especially when there's no clear mapping between the "old" and "new"
+names.  This renaming is made more complex because the "new" names
+need to be grouped and arranged in ways that the old ones were not.
 
 The "old" names were all in flat lists, so that `User-Name` appeared
 next to `Cisco-AVPAir`.  This organization was simple enough to work
@@ -28,11 +27,11 @@ now named `Vendor-Specific.Cisco.AVPair`.
 This renaming process continues for many thousands of vendor-specific
 attributes.
 
-Happily, it is possible to (mostly) use the old names with v4.
-There are limitations, but it will mostly work.  The main reason
-for enabling the old names is to try out v4 with a database which is
-also used by v3.  This lets you test that v4 works, without going
-through a complex "upgrade everything" process.
+Happily, it is possible to (mostly) use the old names with v4. There
+are limitations, but it will mostly work.  The main reason for
+enabling the old names is to try out v4 with a database which is also
+used by v3.  This lets you test that v4 works, without going through a
+complex "upgrade everything" process.
 
 The old v3 names are in "alias" dictionaries, in the
 `${dictdir}/alias/` directory.  To find out where this directory is on
@@ -40,9 +39,9 @@ your local system, run "radiusd -h" or "radclient -h".  Then look for
 the "-D" command-line option, and it will tell you where the
 dictionary files are located.
 
-The v3 names are in a file named `${dictdir}/radius/alias/VENDOR.txt` where
-`VENDOR` is the name of the vendor, which is taken from the `VENDOR`
-definition in the v3 dictionaries.
+The v3 names are in a file named `${dictdir}/radius/alias/VENDOR.txt`
+where `VENDOR` is the name of the vendor, which is taken from the
+`VENDOR` definition in the v3 dictionaries.
 
 You will need to add a `$INCLUDE` line for each vendor-specific
 dictionary which is used by your local system.  The default v4
@@ -53,24 +52,25 @@ there are situations where the aliases do not behave correctly.
 We recognize that this process is a bit of work.  However, we wish to
 encourage everyone using v4 to upgrade to using the new v4 features.
 Our experience shows that if we automatically enable "compatibility
-features", then those compatibility features will be used for a decade,
-and no one will upgrade to use the new features.  So we need to find a
-balance between upgrades and ongoing support.  Easy upgrades will mean
-complex ongoing support.  Complex upgrades make ongoing support
-easier, but also make it less likely that people will upgrade.
+features", then those compatibility features will be used for a
+decade, and no one will upgrade to use the new features.  So we need
+to find a balance between upgrades and ongoing support.  Easy upgrades
+will mean complex ongoing support.  Complex upgrades make ongoing
+support easier, but also make it less likely that people will upgrade.
 
 == Attribute References
 
 Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 
 As of v3, the preferred format for `unknown` attributes is
-`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would
-still parse (but not generate) attributes of the form
+`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would still
+parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed in
 version 4. The server would never produce such names, and allowing
 them as input made attribute parsing significantly more complex.
 
 === List references
+
 The old-style `request:` and `reply:` syntax for lists has been
 deprecated.  Please use `request` and `reply` instead.
 

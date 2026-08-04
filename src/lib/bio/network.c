@@ -57,7 +57,7 @@ static ssize_t fr_bio_network_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 		fr_strerror_const("Cannot perform network filtering");
 		return fr_bio_error(GENERIC);
 	}
-	
+
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
@@ -238,7 +238,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		/*
 		 *	A "deny" can only be within a previous "allow".
 		 */
-		value = fr_trie_lookup_by_key(trie, &deny[i].addr, deny[i].prefix);		
+		value = fr_trie_lookup_by_key(trie, &deny[i].addr, deny[i].prefix);
 		if (!value) {
 			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is not "
 					   "contained within a previous 'allow'", i + 1, fr_box_ipaddr(deny[i]));
@@ -249,7 +249,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 *	A "deny" cannot be within a previous "deny".
 		 */
 		if (value == FR_BIO_NETWORK_DENY) {
-			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is overlaps "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' overlaps "
 					   "with another 'deny' rule", i + 1, fr_box_ipaddr(deny[i]));
 			goto fail;
 		}

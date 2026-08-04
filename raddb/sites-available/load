@@ -17,8 +17,8 @@ server load {
 	#
 	listen load {
 		#
-		#  The main module is the proto module, even though we're
-		#  operating in the RADIUS namespace.
+		#  The main module is the proto module, even though we're operating
+		#  in the RADIUS namespace.
 		#
 		handler = load
 
@@ -37,16 +37,16 @@ server load {
 		#
 		step {
 			#
-			#  Filename with input packet.  This is in the
-			#  same format as used by `radclient`.
+			#  Filename with input packet. This is in the same format as used
+			#  by `radclient`.
 			#
 			filename = ${confdir}/load.txt
 
 			#
 			#  Where the statistics file goes, in CSV format.
 			#
-			#  One line will be written to the file for each
-			#  second of the load generation run.
+			#  One line will be written to the file for each second of the load
+			#  generation run.
 			#
 			#  Each line will contain the following columns:
 			#  - time - since the test started running
@@ -93,9 +93,12 @@ server load {
 			#
 			#  How many packet/s to end up at.
 			#
-			#  When the load generator reaches this rate,
-			#  it prints the final statistics, and makes
-			#  the server exit.
+			#  When the load generator reaches this rate, it finishes the
+			#  current step and stops sending.  Once all outstanding replies
+			#  have arrived, the test is complete.  See `on_complete` below
+			#  for what happens next, and `max_requests` for keeping the
+			#  test running at this rate until a set number of packets have
+			#  been sent.
 			#
 			max_pps		= 2000
 
@@ -110,23 +113,50 @@ server load {
 			step		= 200
 
 			#
-			#  We don't want to overload the server.  If
-			#  the server cannot process packets quickly
-			#  enough, we will get a backlog of
-			#  unprocessed packets.  If the backlog gets
-			#  too high, then the load generator will
-			#  temporarily stop sending packets.  Once the
+			#  We don't want to overload the server. If the server cannot
+			#  process packets quickly enough, we will get a backlog of
+			#  unprocessed packets. If the backlog gets too high, then the load
+			#  generator will temporarily stop sending packets. Once the
 			#  backlog is low enough, it will continue.
 			#
 			max_backlog	= 1000
 
 			#
-			#  How many packets to send immediately in
-			#  parallel, without waiting for a response.
-			#  When a reply is received, a new request may
-			#  be sent.
+			#  How many packets to send immediately in parallel, without
+			#  waiting for a response. When a reply is received, a new request
+			#  may be sent.
 			#
 			parallel	= 25
+
+			#
+			#  How many packets to send in total.
+			#
+			#  When set, reaching `max_pps` no longer ends the test.  The
+			#  generator instead keeps sending at `max_pps` until it has
+			#  sent this many packets.  It will never send more than this
+			#  many packets.
+			#
+			#  Useful when the test needs a predictable packet count, e.g.
+			#  when an external system checks that every packet arrived.
+			#
+			#  If unset (or 0), the test ends when the `max_pps` step
+			#  finishes.
+			#
+#			max_requests	= 100000
+
+			#
+			#  What to do when the test is complete, i.e. when the packet
+			#  rate has ramped up to `max_pps`, `max_requests` packets (if
+			#  set) have been sent, and all replies have arrived.
+			#
+			#  exit     - the server exits.  This is the default.
+			#  repeat   - the test runs again, starting back at `start_pps`.
+			#  stop     - the test stops, but the server keeps running.
+			#  continue - the test never completes.  The generator keeps
+			#             sending at `max_pps` forever.  Cannot be combined
+			#             with `max_requests`.
+			#
+#			on_complete	= exit
 		}
 	}
 

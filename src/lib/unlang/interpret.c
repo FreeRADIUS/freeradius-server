@@ -57,6 +57,11 @@ extern fr_rb_tree_t *unlang_instruction_tree;
 
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
+unlang_thread_t const *unlang_thread_stats(unlang_t const *instruction)
+{
+	return &unlang_thread_array[instruction->number];
+}
+
 /** Create thread-specific data structures for unlang
  *
  */
@@ -145,8 +150,9 @@ void unlang_frame_perf_init(unlang_stack_frame_t *frame)
 
 	t = &unlang_thread_array[instruction->number];
 
-	t->use_count++;
-	t->yielded++;			// everything starts off as yielded
+	t->uses++;
+	t->active++;
+	t->yielded++;
 	now = fr_time();
 
 	fr_time_tracking_start(NULL, &frame->tracking, now);
@@ -162,7 +168,6 @@ void unlang_frame_perf_yield(unlang_stack_frame_t *frame)
 
 	t = &unlang_thread_array[instruction->number];
 	t->yielded++;
-	t->running--;
 
 	fr_time_tracking_yield(&frame->tracking, fr_time());
 }
@@ -177,7 +182,6 @@ void unlang_frame_perf_resume(unlang_stack_frame_t *frame)
 	if (frame->tracking.state != FR_TIME_TRACKING_YIELDED) return;
 
 	t = &unlang_thread_array[instruction->number];
-	t->running++;
 	t->yielded--;
 
 	fr_time_tracking_resume(&frame->tracking, fr_time());
@@ -195,11 +199,12 @@ void unlang_frame_perf_cleanup(unlang_stack_frame_t *frame)
 	t = &unlang_thread_array[instruction->number];
 
 	if (frame->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		fr_assert(t->yielded > 0);
 		t->yielded--;
 		fr_time_tracking_resume(&frame->tracking, fr_time());
-	} else {
-		t->running--;
 	}
+	fr_assert(t->active > 0);
+	t->active--;
 
 	fr_time_tracking_end(NULL, &frame->tracking, fr_time());
 	t->tracking.running_total = fr_time_delta_add(t->tracking.running_total, frame->tracking.running_total);
@@ -243,8 +248,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
-	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
+	fr_log(log, L_DBG, file, line, "uses=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
+	       t->uses, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
 	if (!unlang_list_empty(&g->children)) {
 		unlang_list_foreach(&g->children, child) {
@@ -1532,8 +1537,15 @@ int unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
 	if (cs) {
 		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
-			REDEBUG("Failed to find pre-compiled unlang for section %s ... { ... }",
-				cf_section_name1(cs));
+			char const *name2;
+			char const *space = " ";
+
+			name2 = cf_section_name2(cs);
+			if (!name2) name2 = space = "";
+
+			REDEBUG("Cannot interpret section at %s[%d]", cf_filename(cs), cf_lineno(cs));
+			REDEBUG("Failed to find pre-compiled unlang for section %s%s%s%s{ ... }",
+				cf_section_name1(cs), space, name2, space);
 			return -1;
 		}
 	}
@@ -2097,12 +2109,12 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	XLAT_ARGS(args, &timeout);
 
 	/*
-	 *	No timeout means cancel immediately, so yield allowing
-	 *	the interpreter to run the event we added to cancel
-	 *	the request.
+	 *	No timeout means cancel immediately, so we signal the
+	 *	interpreter to cancel the request directly.
 	 *
-	 *	We call unlang_xlat_yield to keep the interpreter happy
-	 *	as it expects to see a resume function set.
+	 *	The cancellation is processed once this xlat returns
+	 *	(the frames are marked for unwinding), so there's no
+	 *	need to add a timer event or yield here.
 	 */
 	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
@@ -2265,25 +2277,12 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The virtual server handling the request
 	 */
 	if (strcmp(fmt, "server") == 0) {
-		request_t *our_request;
-		CONF_SECTION *server = NULL;
+		char const *server;
 
-		/*
-		*	If we're being pedantic subrequests don't have a virtual
-		*	server associated with them unless they go call {}.
-		*
-		*	But we're not being pendantic, so go back up the request
-		*	list ooking for a call frame.
-		*
-		*	Unfortunately for detached subrequests we still won't find
-		*	the actual virtual server...
-		*/
-		for (our_request = request; our_request && server == NULL; our_request = our_request->parent) {
-			server = unlang_call_current(our_request);
-		}
+		server = unlang_interpret_virtual_server(request);
 		if (server == NULL) goto finish;
 
-		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(server), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, server, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -2335,6 +2334,42 @@ finish:
 
 	return XLAT_ACTION_DONE;
 }
+
+/** Return the current virtual server for this request
+ *
+ * @param[in] request	To return virtual server for.
+ * @return
+ *	- The name of a virtual server on success
+ *	- NULL on failure.
+ */
+char const *unlang_interpret_virtual_server(request_t *request)
+{
+	request_t *our_request;
+
+	/*
+	 *	If we're being pedantic subrequests don't have a virtual
+	 *	server associated with them unless they go call {}.
+	 *
+	 *	But we're not being pendantic, so go back up the request
+	 *	list looking for a call frame.
+	 *
+	 *	Unfortunately for detached subrequests we still won't find
+	 *	the actual virtual server...
+	 */
+	for (our_request = request; our_request; our_request = our_request->parent) {
+		CONF_SECTION *cs;
+
+		if (our_request->packet->socket.af == AF_FR_VIRTUAL_SERVER) return our_request->packet->socket.virtual.server;
+
+		cs = unlang_call_current(our_request);
+		if (!cs) continue;
+
+		return cf_section_name2(cs);
+	}
+
+	return NULL;
+}
+
 
 /** Initialize a unlang compiler / interpret.
  *

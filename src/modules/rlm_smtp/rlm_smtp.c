@@ -295,11 +295,9 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, fr_value_box
 		return -1;
 	}
 
-	if (!fr_value_box_is_safe_for(vb, (fr_value_box_safe_for_t) rad_filename_box_make_safe)) {
-		if (rad_filename_box_make_safe(vb, NULL) < 0) {
-			RPEDEBUG2("Failed escaping path");
-			return -1;
-		}
+	if (rad_filename_box_make_safe(vb, NULL) < 0) {
+		RPEDEBUG2("Failed escaping path");
+		return -1;
 	}
 
 	if (fr_sbuff_in_bstrncpy(path_buffer, vb->vb_strvalue, vb->vb_length) < 0) {

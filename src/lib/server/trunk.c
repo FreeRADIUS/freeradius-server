@@ -76,8 +76,8 @@ static fr_time_t test_time(void)
 typedef struct {
 	fr_dlist_head_t			*log_head;	//!< To allow the log entry to remove itself on free.
 	fr_dlist_t			entry;		//!< Entry in the linked list.
-	trunk_request_state_t	from;		//!< What state we transitioned from.
-	trunk_request_state_t	to;		//!< What state we transitioned to.
+	trunk_request_state_t		from;		//!< What state we transitioned from.
+	trunk_request_state_t		to;		//!< What state we transitioned to.
 
 	trunk_connection_t		*tconn;		//!< The request was associated with.
 							///< Pointer may now be invalid, do no de-reference.
@@ -152,15 +152,15 @@ struct trunk_connection_s {
  	 */
 	fr_heap_t		*pending;		//!< Requests waiting to be sent.
 
-	trunk_request_t	*partial;		//!< Partially written request.
+	trunk_request_t		*partial;		//!< Partially written request.
 
 	fr_dlist_head_t		sent;			//!< Sent request.
 
-	fr_dlist_head_t		reapable;			//!< Idle request.
+	fr_dlist_head_t		reapable;		//!< Idle request.
 
 	fr_dlist_head_t		cancel;			//!< Requests in the cancel state.
 
-	trunk_request_t	*cancel_partial;	//!< Partially written cancellation request.
+	trunk_request_t		*cancel_partial;	//!< Partially written cancellation request.
 
 	fr_dlist_head_t		cancel_sent;		//!< Sent cancellation request.
 	/** @} */
@@ -184,7 +184,7 @@ struct trunk_connection_s {
  */
 typedef struct trunk_watch_entry_s {
 	fr_dlist_t		entry;			//!< List entry.
-	trunk_watch_t	func;			//!< Function to call when a trunk enters
+	trunk_watch_t		func;			//!< Function to call when a trunk enters
 							///< the state this list belongs to
 	bool			oneshot;		//!< Remove the function after it's called once.
 	bool			enabled;		//!< Whether the watch entry is enabled.
@@ -408,7 +408,9 @@ static size_t trunk_request_states_len = NUM_ELEMENTS(trunk_request_states);
 static fr_table_num_ordered_t const trunk_states[] = {
 	{ L("IDLE"),					TRUNK_STATE_IDLE			},
 	{ L("ACTIVE"),					TRUNK_STATE_ACTIVE			},
-	{ L("PENDING"),					TRUNK_STATE_PENDING			}
+	{ L("PENDING"),					TRUNK_STATE_PENDING			},
+	{ L("FULL"),					TRUNK_STATE_FULL			},
+	{ L("FAILED"),					TRUNK_STATE_FAILED			}
 };
 static size_t trunk_states_len = NUM_ELEMENTS(trunk_states);
 
@@ -1136,7 +1138,7 @@ static void trunk_request_enter_unassigned(trunk_request_t *treq)
 static void trunk_request_enter_backlog(trunk_request_t *treq, bool new)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_INIT:
@@ -1299,7 +1301,7 @@ static void trunk_request_enter_partial(trunk_request_t *treq)
 static void trunk_request_enter_sent(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1356,7 +1358,7 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 static void trunk_request_enter_reapable(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1419,7 +1421,7 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reason_t reason)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1470,7 +1472,7 @@ static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reaso
 static void trunk_request_enter_cancel_partial(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	fr_assert(trunk->funcs.request_cancel_mux);
@@ -1505,7 +1507,7 @@ static void trunk_request_enter_cancel_partial(trunk_request_t *treq)
 static void trunk_request_enter_cancel_sent(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	fr_assert(trunk->funcs.request_cancel_mux);
@@ -1550,7 +1552,7 @@ static void trunk_request_enter_cancel_sent(trunk_request_t *treq)
 static void trunk_request_enter_cancel_complete(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 	if (!fr_cond_assert(!treq->pub.request)) return;	/* Only a valid state for request_t * which have been cancelled */
@@ -1581,7 +1583,7 @@ static void trunk_request_enter_cancel_complete(trunk_request_t *treq)
 static void trunk_request_enter_complete(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 
 	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
 
@@ -1611,7 +1613,7 @@ static void trunk_request_enter_complete(trunk_request_t *treq)
  */
 static void trunk_request_enter_failed(trunk_request_t *treq)
 {
-	trunk_connection_t		*tconn = treq->pub.tconn;
+	trunk_connection_t	*tconn = treq->pub.tconn;
 	trunk_t			*trunk = treq->pub.trunk;
 	trunk_request_state_t	prev = treq->pub.state;
 
@@ -1683,10 +1685,6 @@ static trunk_enqueue_t trunk_request_check_enqueue(trunk_connection_t **tconn_ou
 	 *	Only enforce if we're limiting maximum
 	 *	number of connections, and maximum
 	 *	number of requests per connection.
-	 *
-	 *	The alloc function also checks this
-	 *	which is why this is only done for
-	 *	debug builds.
 	 */
 	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
 		uint64_t	limit;
@@ -1725,9 +1723,9 @@ static trunk_enqueue_t trunk_request_check_enqueue(trunk_connection_t **tconn_ou
  */
 static trunk_enqueue_t trunk_request_enqueue_existing(trunk_request_t *treq)
 {
-	trunk_t		*trunk = treq->pub.trunk;
+	trunk_t			*trunk = treq->pub.trunk;
 	trunk_connection_t	*tconn = NULL;
-	trunk_enqueue_t	ret;
+	trunk_enqueue_t		ret;
 
 	/*
 	 *	Must *NOT* still be assigned to another connection
@@ -1784,7 +1782,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 						  int states, uint64_t max)
 {
 	trunk_request_t	*treq;
-	uint64_t		count = 0;
+	uint64_t	count = 0;
 
 	if (max == 0) max = UINT64_MAX;
 
@@ -1866,13 +1864,13 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 		 *	we're draining requests from it.
 		 */
 		connection_signals_pause(tconn->pub.conn);
-		while ((treq = fr_dlist_head(&tconn->sent))) {
-			OVER_MAX_CHECK;
+		while ((count < max) && (treq = fr_dlist_head(&tconn->sent))) {
 			fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_SENT);
 
 			trunk_request_enter_cancel(treq, TRUNK_CANCEL_REASON_MOVE);
 			trunk_request_enter_unassigned(treq);
 			fr_dlist_insert_tail(out, treq);
+			count++;
 		}
 		connection_signals_resume(tconn->pub.conn);
 	}
@@ -1894,9 +1892,9 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 static uint64_t trunk_connection_requests_requeue_priv(trunk_connection_t *tconn, int states, uint64_t max, bool fail_bound)
 {
 	trunk_t			*trunk = tconn->pub.trunk;
-	fr_dlist_head_t			to_process;
+	fr_dlist_head_t		to_process;
 	trunk_request_t		*treq = NULL;
-	uint64_t			moved = 0;
+	uint64_t		moved = 0;
 
 	if (max == 0) max = UINT64_MAX;
 
@@ -2640,8 +2638,8 @@ trunk_enqueue_t trunk_request_enqueue(trunk_request_t **treq_out, trunk_t *trunk
 					    request_t *request, void *preq, void *rctx)
 {
 	trunk_connection_t	*tconn = NULL;
-	trunk_request_t	*treq;
-	trunk_enqueue_t	ret;
+	trunk_request_t		*treq;
+	trunk_enqueue_t		ret;
 
 	if (!fr_cond_assert_msg(!IN_HANDLER(trunk),
 				"%s cannot be called within a handler", __FUNCTION__)) return TRUNK_ENQUEUE_FAIL;
@@ -2973,7 +2971,7 @@ static inline void trunk_connection_auto_full(trunk_connection_t *tconn)
  */
 static inline bool trunk_connection_is_full(trunk_connection_t *tconn)
 {
-	trunk_t	*trunk = tconn->pub.trunk;
+	trunk_t		*trunk = tconn->pub.trunk;
 	uint32_t	count;
 
 	/*
@@ -3037,7 +3035,7 @@ static inline void trunk_connection_writable(trunk_connection_t *tconn)
  */
 static void trunk_connection_event_update(trunk_connection_t *tconn)
 {
-	trunk_t			*trunk = tconn->pub.trunk;
+	trunk_t				*trunk = tconn->pub.trunk;
 	trunk_connection_event_t	events = TRUNK_CONN_EVENT_NONE;
 
 	switch (tconn->pub.state) {
@@ -3301,7 +3299,7 @@ static void trunk_connection_enter_draining_to_free(trunk_connection_t *tconn)
 static void trunk_connection_enter_active(trunk_connection_t *tconn)
 {
 	trunk_t		*trunk = tconn->pub.trunk;
-	int			ret;
+	int		ret;
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_FULL:
@@ -3456,7 +3454,12 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
 	switch (tconn->pub.state) {
-	case TRUNK_CONN_DRAINING_TO_FREE:	/* Do Nothing */
+	case TRUNK_CONN_DRAINING_TO_FREE:
+		/*
+		 *	Shutdown from draining-to-free means no outstanding requests.
+		 *	Now signal to halt.
+		 */
+		connection_signal_halt(conn);
 		return;
 
 	case TRUNK_CONN_ACTIVE:		/* Transition to draining-to-free */
@@ -3506,7 +3509,7 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 					   void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 
 	/*
 	 *	If a connection was just connected, it should only
@@ -3531,6 +3534,13 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 	 *	draining too.
 	 */
 	trunk->pub.last_connected = fr_time();
+
+	/*
+	 *	Set last_write_success so that idle timeout checks will run
+	 *	from when the connection has connected if they fire before
+	 *	any requests are written, rather than from server start time.
+	 */
+	tconn->pub.last_write_success = fr_time();
 
 	/*
 	 *	Insert a timer to reconnect the
@@ -3565,7 +3575,7 @@ static void _trunk_connection_on_closed(UNUSED connection_t *conn,
 					void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 	bool			need_requeue = false;
 
 	switch (tconn->pub.state) {
@@ -3688,7 +3698,7 @@ static void _trunk_connection_on_halted(UNUSED connection_t *conn,
 					void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_t		*trunk = tconn->pub.trunk;
+	trunk_t			*trunk = tconn->pub.trunk;
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_INIT:
@@ -4174,6 +4184,76 @@ static void trunk_rebalance(trunk_t *trunk)
 	       					      TRUNK_REQUEST_STATE_PENDING, 1, false));
 }
 
+/** Recalculate the trunk's aggregate state from its connection counts
+ *
+ * Derives the global #trunk_state_t from the number of connections in each
+ * connection state, and fires any registered state-change watchers (via
+ * #TRUNK_STATE_TRANSITION) if the aggregate state has changed.
+ *
+ * @param[in] trunk	to update.
+ */
+static void trunk_state_update(trunk_t *trunk)
+{
+	trunk_state_t new_state;
+
+	/*
+	 *	Don't churn the state or fire watchers while the trunk is
+	 *	being torn down.
+	 */
+	if (trunk->freeing) return;
+
+	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
+		/*
+		 *	One or more connections are active and operational.  The trunk is ACTIVE.
+		 */
+		new_state = TRUNK_STATE_ACTIVE;
+
+	} else if (trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT | TRUNK_CONN_CONNECTING)) {
+		/*
+		 *	Connections are being opened, but none are usable yet.
+		 *
+		 *	This is checked before FULL.  If a connection is CONNECTING, then the trunk is by
+		 *	definition not full.
+		 */
+		new_state = TRUNK_STATE_PENDING;
+
+	} else if (trunk->conf.max &&
+		   (trunk_connection_count_by_state(trunk, TRUNK_CONN_FULL) == trunk->conf.max)) {
+		/*
+		 *	No active or connecting connections, and every one of the maximum permitted
+		 *	connections is connected and full.  The backend is reachable, but the trunk has no
+		 *	spare capacity, and can accept no more traffic.
+		 */
+		new_state = TRUNK_STATE_FULL;
+
+	} else if (trunk_connection_count_by_state(trunk, TRUNK_CONN_CLOSED)) {
+		/*
+		 *	Connections exist, but they have all failed and are
+		 *	closed / in reconnect backoff.  The backend is
+		 *	currently unreachable.
+		 */
+		new_state = TRUNK_STATE_FAILED;
+
+	} else {
+		new_state = TRUNK_STATE_IDLE;
+	}
+
+	if (new_state == trunk->pub.state) return;
+
+	/*
+	 *	This can be reached from within a state-change watcher.  A watcher may enqueue a request or
+	 *	reconnect a connection, which changes a connection's state and calls
+	 *	trunk_requests_per_connection() -> trunk_state_update().
+	 *
+	 *	Nested watcher calls are not allowed (see trunk_watch_call()).  If we're already inside one,
+	 *	leave the state unchanged and let the next non-nested update, or the periodic trunk_manage(),
+	 *	reconcile it.
+	 */
+	if (trunk->next_watcher != NULL) return;
+
+	TRUNK_STATE_TRANSITION(new_state);
+}
+
 /** Implements the algorithm we use to manage requests per connection levels
  *
  * This is executed periodically using a timer event, and opens/closes
@@ -4216,11 +4296,10 @@ static void trunk_rebalance(trunk_t *trunk)
 static void trunk_manage(trunk_t *trunk, fr_time_t now)
 {
 	trunk_connection_t	*tconn = NULL;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	uint32_t		average = 0;
 	uint32_t		req_count;
 	uint16_t		conn_count;
-	trunk_state_t	new_state;
 
 	DEBUG4("Managing trunk");
 
@@ -4232,9 +4311,10 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 			fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
 
 	/*
-	 *	If we have idle connections, then close them.
+	 *	If we have idle connections, then close them, maintaining "min" connections.
 	 */
-	if (fr_time_delta_ispos(trunk->conf.idle_timeout)) {
+	if (fr_time_delta_ispos(trunk->conf.idle_timeout) &&
+	    (fr_minmax_heap_num_elements(trunk->active) > trunk->conf.min)) {
 		fr_minmax_heap_iter_t	iter;
 		fr_time_t idle_cutoff = fr_time_sub(now, trunk->conf.idle_timeout);
 
@@ -4280,20 +4360,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	/*
 	 *	Update the state of the trunk
 	 */
-	if (trunk_connection_count_by_state(trunk, TRUNK_CONN_ACTIVE)) {
-		new_state = TRUNK_STATE_ACTIVE;
-	} else {
-		/*
-		 *	INIT / CONNECTING / FULL mean connections will become active
-		 *	so the trunk is PENDING
-		 */
-		new_state = trunk_connection_count_by_state(trunk, TRUNK_CONN_INIT |
-							       TRUNK_CONN_CONNECTING |
-							       TRUNK_CONN_FULL) ?
-			     TRUNK_STATE_PENDING : TRUNK_STATE_IDLE;
-	}
-
-	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);
+	trunk_state_update(trunk);
 
 	/*
 	 *	A trunk can be signalled to not proactively
@@ -4631,6 +4698,15 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	uint64_t req_per_conn = 0;
 
 	fr_assert(fr_time_gt(now, fr_time_wrap(0)));
+
+	/*
+	 *	Recompute the trunk's aggregate state (and fire any state
+	 *	watchers) now that a connection's state may have changed.
+	 *	This is the authoritative, prompt trigger for the trunk
+	 *	entering / leaving states such as ACTIVE, FULL and FAILED.
+	 *	trunk_state_update() no-ops if the trunk is being freed.
+	 */
+	trunk_state_update(trunk);
 
 	/*
 	 *	No need to update these as the trunk is being freed

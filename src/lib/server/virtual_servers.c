@@ -577,19 +577,19 @@ fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 	return virtual_server_dict_by_cs(vs->server_cs);
 }
 
-/** Return the namespace for the virtual server specified by a config section
+/** Return the namespace for specified CONF_SECTION
  *
- * @param[in] server_cs		to look for namespace in.
+ * @param[in] cs		to look for namespace in.
  * @return
  *	- NULL on error.
  *	- Namespace on success.
  */
-fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs)
+fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *cs)
 {
 	CONF_DATA const *cd;
 	fr_dict_t *dict;
 
-	cd = cf_data_find(server_cs, fr_dict_t, "dict");
+	cd = cf_data_find(cs, fr_dict_t, "dict");
 	if (!cd) return NULL;
 
 	dict = cf_data_value(cd);
@@ -1684,11 +1684,13 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 
 		if (slen != len) {
 			cf_log_err(cp, "Unexpected text after value");
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
 		if (fr_dict_enum_add_name(UNCONST(fr_dict_attr_t *, da), attr, &box, false, false) < 0) {
 			cf_log_err(cp, "Failed adding value - %s", fr_strerror());
+			fr_value_box_clear(&box);
 			return -1;
 		}
 
@@ -1945,6 +1947,8 @@ int virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 int virtual_servers_instantiate(void)
 {
 	size_t	i, server_cnt;
+	CONF_SECTION *cs;
+	fr_rb_iter_inorder_t iter;
 
 	/*
 	 *	User didn't specify any "server" sections
@@ -2021,6 +2025,20 @@ int virtual_servers_instantiate(void)
 		(void) virtual_server_warn_unused(server_cs, process->compile_list);
 	}
 
+	/*
+	 *	Iterate over virtual modules to see if we can compile them.
+	 */
+	for (cs = module_rlm_virtual_iter_init(&iter);
+	     cs != NULL;
+	     cs = module_rlm_virtual_iter_next(&iter)) {
+		fr_dict_t const *dict;
+
+		dict = virtual_server_dict_by_cs(cs); /* cheating! */
+		if (!dict) continue;
+
+		if (unlang_compile_virtual_module(cs, dict) < 0) return -1;
+	}
+
 	if (modules_instantiate(process_modules) < 0) {
 		PERROR("Failed instantiating process modules");
 		return -1;
@@ -2047,7 +2065,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
 	 */
-	global_lib_instantiate();
+	if (global_lib_instantiate() < 0) return -1;
 
 	if (modules_bootstrap(process_modules) < 0) {
 		PERROR("Failed bootstrapping process modules");

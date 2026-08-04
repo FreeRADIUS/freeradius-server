@@ -391,7 +391,10 @@ static void coord_pair_request_start(fr_coord_pair_t *coord_pair, request_t *req
 		goto error;
 	}
 
-	coord_pair_request_time_tracking_start(coord_pair, request, now);
+	if (unlikely(coord_pair_request_time_tracking_start(coord_pair, request, now) < 0)) {
+		RERROR("Failed to start request time tracking");
+		goto error;
+	}
 }
 
 static void _coord_pair_request_internal_init(request_t *request, void *uctx)

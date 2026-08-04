@@ -1,5 +1,5 @@
 #
-# Handles the Expiration attribute
+#  Handles the Expiration attribute
 #
 expiration {
 	if (control.Expiration) {

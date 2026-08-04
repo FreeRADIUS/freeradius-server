@@ -95,6 +95,7 @@
 **** xref:xlat/misc/config.adoc[Server Configuration]
 **** xref:xlat/misc/length.adoc[length]
 **** xref:xlat/misc/misc.adoc[Miscellaneous]
+**** xref:xlat/misc/module_call.adoc[Call a virtual module]
 **** xref:xlat/misc/rand.adoc[rand]
 
 *** xref:xlat/pairs/index.adoc[Pairs]
@@ -217,11 +218,12 @@
 **** xref:raddb/mods-available/mruby.adoc[Ruby]
 
 *** xref:raddb/mods-available/doc/logging.adoc[Logging]
+**** xref:raddb/mods-available/detail.adoc[Detail]
+***** xref:raddb/mods-available/detail.example.com.adoc[Detail Sample]
+***** xref:raddb/mods-available/detail.log.adoc[Detail Log Sample]
+**** xref:raddb/mods-available/kafka.adoc[Kafka]
 **** xref:raddb/mods-available/linelog.adoc[Linelog]
 **** xref:raddb/mods-available/logtee.adoc[Logtee]
-**** xref:raddb/mods-available/detail.adoc[Detail]
-***** xref:raddb/mods-available/detail.example.com.adoc[Example]
-***** xref:raddb/mods-available/detail.log.adoc[Log Example]
 
 
 *** xref:raddb/mods-available/doc/policy.adoc[Policy]
@@ -275,6 +277,7 @@
 **** xref:raddb/sites-available/decoupled-accounting.adoc[Decoupled Accounting]
 **** xref:raddb/sites-available/detail.adoc[Detail]
 **** xref:raddb/sites-available/inner-tunnel.adoc[EAP Inner Tunnel]
+**** xref:raddb/sites-available/eap-psk.adoc[EAP-PSK]
 **** xref:raddb/sites-available/virtual.example.com.adoc[Internal Proxying]
 **** xref:raddb/sites-available/originate-coa.adoc[Originate CoA-Request]
 ***** xref:raddb/sites-available/robust-proxy-accounting.adoc[Robust Proxy Accounting]

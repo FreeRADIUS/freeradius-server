@@ -1,49 +1,46 @@
 
-
-
-
 = Unix Module
 
-The `unix` module calls the system `getpwnam()` functions to get
-the `known good` password for the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`.
+The `unix` module calls the system `getpwnam()` functions to get the
+`known good` password for the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`.
 
-If the passwords are in /etc/shadow, you will need to set the
-`group` configuration in `radiusd.conf` so that the server can read
+If the passwords are in /etc/shadow, you will need to set the `group`
+configuration in `radiusd.conf` so that the server can read
 /etc/shadow.
 
 Look for "shadow", and follow the instructions there.
 
-NOTE: This password is usually in the `crypt` form, and is incompatible
-with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
+NOTE: This password is usually in the `crypt` form, and is
+incompatible with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
 
 == Group Comparisons
 
 The module also registers a Unix group expansion, where it is possible
 to check if the user is a member of a particular Unix group.
 
-  if (%unix.group(admin)) { ...
+The expansion returns `true` if the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` is
+a membber of the given group, and `false` otherwise.
 
-The expansion returns `true` if the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` is a membber of the given
-group, and `false` otherwise.
-
-The old `Unix-Group`, `Group`, and `Group-Name` attributes and comparisons
-are no longer supported.
+The old `Unix-Group`, `Group`, and `Group-Name` attributes and
+comparisons are no longer supported.
 
 All of `radutmp`, `radwho`, `radlast`, and `radzap` have been removed.
 
 You can no longer have the `unix` module process accounting packets.
 
-
-
 == Configuration Settings
-
 
 == Default Configuration
 
-```
+----
+#	```
+#	if (%unix.group(admin)) { ...
+#	```
 unix {
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

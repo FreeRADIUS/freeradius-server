@@ -1,29 +1,22 @@
 
-
-
-
 = Logtee Module
 
-The `logtee` module writes the log messages to a socket or to a
-file.  Each instance of the module can send log messages to one,
-and only one, destination.
+The `logtee` module writes the log messages to a socket or to a file.
+Each instance of the module can send log messages to one, and only
+one, destination.
+
+You should probably use the `linelog` message instead of this one.
 
 NOTE: Multiple `logtee`s modules may be used for any given request.
-The `logtee` modules will not affect normal logging output.
-i.e. This logging is *in addition* to any other logging that is
-done by the server.
-
-
+The `logtee` modules will not affect normal logging output. i.e. This
+logging is *in addition* to any other logging that is done by the
+server.
 
 == Configuration Settings
 
+delimiter:: Custom line delimiters.
 
-delimiter::  Custom line delimiters.
-
-Defaults to `\n` (newline) but may be any UTF8 multi-character
-string.
-
-
+Defaults to `\n` (newline) but may be any UTF8 multi-character string.
 
 format:: The default format string.
 
@@ -37,26 +30,22 @@ Additional expansions are available:
 | `%{Log-Type}`	  | Error, Warn, Info, Debug etc...
 |===
 
-NOTE: Format could contain markup (JSON for example), but it's up
-to the user to call the appropriate escaping function.
-
-
+NOTE: Format could contain markup (JSON for example), but it's up to
+the user to call the appropriate escaping function.
 
 buffer_depth::
 
 The number of log messages we buffer before discarding.
 
-The module writes log messages to a ring buffer between
-processing requests and checking whether the output socket is
-writable, so this should be not set to < `1000`.
+The module writes log messages to a ring buffer between processing
+requests and checking whether the output socket is writable, so this
+should be not set to < `1000`.
 
-If an error occurs (connection failed, out of disk space
-etc...) the ring buffer will be used to temporarily buffer
-log data until the error is cleared.
+If an error occurs (connection failed, out of disk space etc...) the
+ring buffer will be used to temporarily buffer log data until the
+error is cleared.
 
 This limit is applied per worker thread.
-
-
 
 destination:: What should be done with log messages.
 
@@ -71,78 +60,55 @@ May be one of:
 | unix   | Write to a UNIX socket.
 |===
 
-NOTE: Syslog output via `syslog()` is not explicitly supported,
-but you may use one of the other transports to talk directly to
-a syslog daemon.
+NOTE: Syslog output via `syslog()` is not explicitly supported, but
+you may use one of the other transports to talk directly to a syslog
+daemon.
 
+connection_timeout:: How long we wait for a connection or file to
+open.
 
-
-connection_timeout:: How long we wait for a connection or file to open.
-
-If a connection takes longer than this to open, the module returns `fail`.
-
-
+If a connection takes longer than this to open, the module returns
+`fail`.
 
 reconnection_delay::
 
-How long to wait after a connection or file has become
-unusable, to try and re-open the connection or file.
+How long to wait after a connection or file has become unusable, to
+try and re-open the connection or file.
 
-
-
-.File as the destination for log output
-
+file:: Configuration for 'file' destination
 
 filename:: The file where the logs will go.
 
-
-
 permissions:: The Unix-style permissions on the log file.
 
-Depending on format string, the log file may contain secret or
-private information about users.  Keep the file permissions as
-restrictive as possible.
-
-
+Depending on format string, the log file may contain secret or private
+information about users. Keep the file permissions as restrictive as
+possible.
 
 group:: The Unix group which owns the log file.
 
-The user that freeradius runs as must be in the specified
-group, otherwise it will not be possible to set the group.
+The user that freeradius runs as must be in the specified group,
+otherwise it will not be possible to set the group.
 
-
-
-.UNIX socket-file as the destination for log outputx
-
+unix:: configuration for Unix sockets
 
 filename:: Full path to the `unix socket` file.
 
-
-
-.TCP-server as the destination for log output
-
+tcp: configuration for TCP sockets
 
 server:: Server to connect to.
 
-
-
 port:: Port to connect to.
 
-
-
-.UDP-server as the destination for log output
-
+udp: configuration for UDP sockets
 
 server:: Server to connect to.
 
-
-
 port:: Port to connect to.
-
 
 == Default Configuration
 
-```
+----
 logtee {
 #	delimiter = "\n"
 	format = "%{Log-Type} - %{Log-Level} - %{Log-Message}"
@@ -167,7 +133,7 @@ logtee {
 		port = 514
 	}
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

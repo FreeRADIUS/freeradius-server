@@ -1,9 +1,9 @@
 #  A policy to set options required in all DHCP replies
 dhcp_common {
 	#
-	#  The contents here are invented.  Change them!
-	#  Lease time is referencing the lease time set in the
-	#  named module instance configuration
+	#  The contents here are invented. Change them! Lease time is
+	#  referencing the lease time set in the named module instance
+	#  configuration
 	#
 
 	reply += {

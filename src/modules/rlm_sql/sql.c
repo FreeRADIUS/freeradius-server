@@ -124,7 +124,20 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
 	char const	*driver = inst->driver_submodule->name;
 	sql_log_entry_t	log[20];
 	size_t		num, i;
-	TALLOC_CTX	*log_ctx = talloc_new(NULL);
+	TALLOC_CTX	*log_ctx;
+
+	/*
+	 *	Every driver reads the errors off the connection handle, which the
+	 *	trunk frees when it closes the connection.  A query that failed
+	 *	because its connection died is resumed after that has happened,
+	 *	so there is nothing left to ask the driver for.
+	 */
+	if (!query_ctx->tconn || query_ctx->tconn->conn->is_closed) {
+		ROPTIONAL(RERROR, ERROR, "%s: Connection closed", driver);
+		return;
+	}
+
+	log_ctx = talloc_new(NULL);
 
 	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx);
 	if (num == 0) {

@@ -49,6 +49,7 @@ static fr_ldap_config_t ldap_global_handle_config = {
 
 fr_table_num_sorted_t const fr_ldap_connection_states[] = {
 	{ L("bind"),		FR_LDAP_STATE_BIND	},
+	{ L("discover"),	FR_LDAP_STATE_DISCOVER	},
 	{ L("error"),		FR_LDAP_STATE_ERROR	},
 	{ L("init"),		FR_LDAP_STATE_INIT	},
 	{ L("run"),		FR_LDAP_STATE_RUN	},

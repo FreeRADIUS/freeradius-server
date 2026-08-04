@@ -95,6 +95,20 @@ extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 
 /*
+ *	We want to be able to have a separate "filename" socket, which
+ *	is not a unix socket.
+ *
+ *	On some systems, AF_FILE is equivalent to AF_LOCAL.  So we use
+ *	FILENAME, and use a "_FR_" qualifier. too.
+ */
+#define AF_FR_FILENAME (INT_MIN)
+
+/*
+ *	A virtual server.
+ */
+#define AF_FR_VIRTUAL_SERVER (INT_MIN + 1)
+
+/*
  *	Utility functions
  */
 int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr);

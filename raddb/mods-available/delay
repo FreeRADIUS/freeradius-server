@@ -14,8 +14,8 @@
 #  Instead of having a specific "reject delay" configuration, it is
 #  instead possible to have a policy that delays the response.
 #
-#  TIP: The module can also be used to introduce artificial jitter into
-#  responses by adding random delays.
+#  TIP: The module can also be used to introduce artificial jitter
+#  into responses by adding random delays.
 #
 #  == xlat for delays
 #
@@ -23,7 +23,9 @@
 #
 #  %delay(...)
 #
-#  This function takes a time-delta argument (or data which is converted to a time-delta), and will delay the given number of seconds.
+#  This function takes a time-delta argument (or data which is
+#  converted to a time-delta), and will delay the given number of
+#  seconds.
 #
 #  .Example
 #
@@ -47,24 +49,22 @@ delay {
 	delay = 1.0s
 
 	#
-	#  force_reschedule:: Whether the request should be rescheduled even if no
-	#  delay is needed.
+	#  force_reschedule:: Whether the request should be rescheduled even
+	#  if no delay is needed.
 	#
-	#  Rescheduling the request pauses it momentarily, and
-	#  introduces a small delay.  It allows for processing of
-	#  other requests ahead of this one.  The result is a small
-	#  amount of "jitter" in responses, which can help avoid some
-	#  deterministic timings in the network.
+	#  Rescheduling the request pauses it momentarily, and introduces a
+	#  small delay. It allows for processing of other requests ahead of
+	#  this one. The result is a small amount of "jitter" in responses,
+	#  which can help avoid some deterministic timings in the network.
 	#
 #	force_reschedule = no
 
 	#
-	#  relative:: Whether delay should be calculated relative to when
-	#  the request was received.
+	#  relative:: Whether delay should be calculated relative to when the
+	#  request was received.
 	#
-	#  This configuration can be useful for rate limiting, as most
-	#  NAS will only allow a limited number of requests to be in
-	#  flight.
+	#  This configuration can be useful for rate limiting, as most NAS
+	#  will only allow a limited number of requests to be in flight.
 	#
 	#  The default is `no`, which means that.
 	#
@@ -72,18 +72,18 @@ delay {
 
 	#
 	#  rcode:: Which rcode the delay module should return when it resumes
-	#  this can be useful for detecting whether a `timeout { ... }` section
-	#  expired, whilst the delay module was waiting.
+	#  this can be useful for detecting whether a `timeout { ... }`
+	#  section expired, whilst the delay module was waiting.
 	#
 	#  The default is `notset`, which means that the delay module will be
 	#  transparent and not alter the section rcode.
 	#
 	#  [NOTE]
 	#  ====
-	#  The default section `rcode` in many places is `fail`.  Care should be
-	#  taken to set the `rcode` for the section a delay module appears in, if
-	#  this configuration item is not set, and no other modules are present
-	#  in the section.
+	#  The default section `rcode` in many places is `fail`. Care should
+	#  be taken to set the `rcode` for the section a delay module appears
+	#  in, if this configuration item is not set, and no other modules
+	#  are present in the section.
 	#  ====
 	#
 #	rcode = 'notset'
@@ -93,18 +93,18 @@ delay {
 #  === Delaying Access-Reject packets
 #
 #  The `delay_reject` module should be used in a `send Access-Reject`
-#  section, as the last module in that section. When `delay_reject`
-#  is used there, the reject will be delayed for either
-#  FreeRADIUS-Response-Delay seconds, or if that attribute does
-#  not exist, then one second.
+#  section, as the last module in that section. When `delay_reject` is
+#  used there, the reject will be delayed for either
+#  FreeRADIUS-Response-Delay seconds, or if that attribute does not
+#  exist, then one second.
 #
 #  While the response is delayed, the server will continue processing
-#  other requests.  It will simply set a timer to wake up and send the
+#  other requests. It will simply set a timer to wake up and send the
 #  response after the delay.
 #
-#  NOTE: We set `relative = yes` here.  That setting ensures that
-#  if the server takes more than one second to process the request,
-#  then the `delay_reject` module will not add *additional* delays.
+#  NOTE: We set `relative = yes` here. That setting ensures that if
+#  the server takes more than one second to process the request, then
+#  the `delay_reject` module will not add *additional* delays.
 #  Instead, this module will ensure that the `Access-Reject` is sent
 #  no earlier than one second after the `Access-Request` had been
 #  received.

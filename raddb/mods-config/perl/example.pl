@@ -159,7 +159,7 @@ sub send {
 # presented as the expansion of the xlat.  This is due to change
 # in the future.
 #
-# Note: Hashes for the attribute lists are not available in
+# NOTE: Hashes for the attribute lists are not available in
 #       xlat evaluation and neither will setting them result
 #       in attributes being created.
 sub xlat {

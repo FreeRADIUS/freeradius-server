@@ -1,20 +1,20 @@
 
-
-
-
 = PAP Module
 
-The `pap` module accepts a large number of formats for the _known good_ (reference)
-password, such as crypt hashes, md5 hashes, and etc.
-The module takes the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` and performs the necessary transformations of the
-user submitted password to match the copy of the password the server has retrieved.
+The `pap` module accepts a large number of formats for the _known
+good_ (reference) password, such as crypt hashes, md5 hashes, and etc.
+The module takes the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+and performs the necessary transformations of the user submitted
+password to match the copy of the password the server has retrieved.
 
-For instructions on creating the various types of passwords,
-see http://www.openldap.org/faq/data/cache/347.html
+For instructions on creating the various types of passwords, see
+http://www.openldap.org/faq/data/cache/347.html
 
-The module looks for the `Password.With-Header` control attribute to find
-the *"known good" password*. The attribute value comprises the header followed
-immediately by the password data. The header is given by the following table.
+The module looks for the `Password.With-Header` control attribute to
+find the *"known good" password*. The attribute value comprises the
+header followed immediately by the password data. The header is given
+by the following table.
 
 [options="header,autowidth"]
 |===
@@ -51,51 +51,53 @@ immediately by the password data. The header is given by the following table.
 | {X- orclntv} | Password.NT         | Windows NT hashed passwords.
 |===
 
-The module tries to be flexible when handling the various password for mats.
-It will automatically handle Base-64 encoded data, hex strings, and binary data,
-and convert them to a format that the server can  use.
+The module tries to be flexible when handling the various password for
+mats. It will automatically handle Base-64 encoded data, hex strings,
+and binary data, and convert them to a format that the server can use.
 
-If there is no `Password.With-Header` attribute, the module looks for one
-of the `Password.Cleartext`, `Password.NT`, `Password.Crypt`, etc. attributes
-as listed in the above table. These attributes should contain the relevant
-format password directly, without the header prefix.
+If there is no `Password.With-Header` attribute, the module looks for
+one of the `Password.Cleartext`, `Password.NT`, `Password.Crypt`, etc.
+attributes as listed in the above table. These attributes should
+contain the relevant format password directly, without the header
+prefix.
 
-Only one control attribute should be set, otherwise the behaviour is undefined
-as to which one is used for authentication.
+Only one control attribute should be set, otherwise the behaviour is
+undefined as to which one is used for authentication.
 
-NOTE: It is important to understand the difference between the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
-and `Password.Cleartext` attributes. The `Password.Cleartext` attribute is
-the  *"known  good"* password for the user. Simply supplying the `Password.Cleartext`
-to the server will result in most authentication methods working. The `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
-attribute is the password as typed in by the user on their private machine.
-The two are not the  same, and should be treated very differently. That is, you should
-generally not use the `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute anywhere in the RADIUS configuration.
+NOTE: It is important to understand the difference between the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+and `Password.Cleartext` attributes. The `Password.Cleartext`
+attribute is the *"known good"* password for the user. Simply
+supplying the `Password.Cleartext` to the server will result in most
+authentication methods working. The
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+attribute is the password as typed in by the user on their private
+machine. The two are not the same, and should be treated very
+differently. That is, you should generally not use the
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`
+attribute anywhere in the RADIUS configuration.
 
 == Configuration Settings
-
 
 normalise::
 
 By default the server will use heuristics to try and automatically
-handle base64 or hex encoded passwords. This behaviour can be
-stopped by setting the following to `no`.
+handle base64 or hex encoded passwords. This behaviour can be stopped
+by setting the following to `no`.
 
 The default is `yes`
-
-
 
 password_attribute:: Which attribute in the request should be used as
 the user's password when performing PAP authentication.
 
-
 == Default Configuration
 
-```
+----
 pap {
 #	normalise = no
 #	password_attribute = User-Password
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

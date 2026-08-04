@@ -1,39 +1,31 @@
 
-
-
-
 = Yubikey Module
 
-The `yubikey` module decrypts and validates Yubikey static and
-dynamic One-Time Password (OTP) tokens.
+The `yubikey` module decrypts and validates Yubikey static and dynamic
+One-Time Password (OTP) tokens.
 
 For more information about Yubikey, please see:
 
-
-
-
 == Configuration Settings
 
-
-id_length:: The length (number of ASCII bytes) of the Public-ID portion
-of the OTP string.
+id_length:: The length (number of ASCII bytes) of the Public-ID
+portion of the OTP string.
 
 Yubikey defaults to a 6 byte ID (2 * 6 = 12)
 
+split:: If true, the authorize method of `rlm_yubikey` will attempt to
+split the value of
+`link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`,
+into the user's password, and the OTP token.
 
-
-split:: If true, the authorize method of `rlm_yubikey` will attempt to split the
-value of `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]`, into the user's password, and the OTP token.
-
-NOTE: If enabled and successful, the value of `request.User-Password` will be
-truncated and `request.Vendor-Specific.Yubicon.Yubikey-OTP` will be added.
-
-
+NOTE: If enabled and successful, the value of `request.User-Password`
+will be truncated and `request.Vendor-Specific.Yubicon.Yubikey-OTP`
+will be added.
 
 decrypt:: Whether tokens will be decrypted and processed locally.
 
-In the `recv Access-Request` section, this module should be placed before the
-persistent storage module.
+In the `recv Access-Request` section, this module should be placed
+before the persistent storage module.
 
 The following authenticate section should be added:
 
@@ -44,32 +36,33 @@ authenticate yubikey {
 }
 ----
 
-If two factor authentication (password concatenated with OTP) is required, split
-configuration should be set to yes and the pap module should be uncommented.
+If two factor authentication (password concatenated with OTP) is
+required, split configuration should be set to yes and the pap module
+should be uncommented.
 
-Each account will need a password added (either using attribute `Password.Cleartext`,
-`SSHA-Password`, etc.).
+Each account will need a password added (either using attribute
+`Password.Cleartext`, `SSHA-Password`, etc.).
 
-The module itself does not provide persistent storage as
-this would duplicate functionality already in the server.
+The module itself does not provide persistent storage as this would
+duplicate functionality already in the server.
 
-Yubikey authentication needs two attributes retrieved from persistent storage:
+Yubikey authentication needs two attributes retrieved from persistent
+storage:
 
 [options="header,autowidth"]
 |===
 | Attributes                                         | Description
 | `control.Vendor-Specific.Yubicon.Yubikey-Key`     | The AES key used to decrypt the OTP data.
-                                                       The `Yubikey-Public-Id` and/or User-Name
-                                                       attributes may be used to retrieve the key.
-                                                       The value is a `16-byte` binary blob.
+The `Yubikey-Public-Id` and/or User-Name attributes may be used to
+retrieve the key. The value is a `16-byte` binary blob.
 | `control.Vendor-Specific.Yubicon.Yubikey-Counter` | This is compared with the counter in the OTP
-                                                       data and used to prevent replay attacks.
-                                                       This attribute will also be available in
-                                                       the request list after successful decryption.
+data and used to prevent replay attacks. This attribute will also be
+available in the request list after successful decryption.
 |===
 
-NOTE: `Vendor-Specific.Yubicon.Yubikey-Counter` isn't strictly required, but the server will generate
-warnings if it's not present when `yubikey.authenticate` is called.
+NOTE: `Vendor-Specific.Yubicon.Yubikey-Counter` isn't strictly
+required, but the server will generate warnings if it's not present
+when `yubikey.authenticate` is called.
 
 These attributes are available after `authorization`:
 
@@ -77,7 +70,7 @@ These attributes are available after `authorization`:
 |===
 | Attributes                                           | Description
 | `request.Vendor-Specific.Yubicon.Yubikey-Public-ID` | The public portion of the OTP string.
-                                                         The value is a `id_len` modhex string.
+The value is a `id_len` modhex string.
 |===
 
 and additionally if 'split' is set:
@@ -94,36 +87,30 @@ These attributes are available after authentication (if successful):
 |===
 | Attributes                                            | Description
 | `request.Vendor-Specific.Yubicon.Yubikey-Private-ID` | The encrypted ID included in OTP data,
-                                                          should be verified for increased security.
-                                                          The value is a `6-byte` binary blob.
+should be verified for increased security. The value is a `6-byte`
+binary blob.
 | `request.Vendor-Specific.Yubicon.Yubikey-Counter`    | The last counter value (should be recorded).
-                                                          The value is a concatenation of the 16-bit
-                                                          session count & `8-bit` use count which form a
-                                                          `24-bit` monotonically strictly increasing
-                                                          integer (until the individual count ceilings
-                                                          are hit)
+The value is a concatenation of the 16-bit session count & `8-bit` use
+count which form a `24-bit` monotonically strictly increasing integer
+(until the individual count ceilings are hit)
 | `request.Vendor-Specific.Yubicon.Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
-                                                          The value is a 24-bit increasing `integer @ 8 Hz`
-                                                          with rollover which is randomly initialized each session.
+The value is a 24-bit increasing `integer @ 8 Hz` with rollover which
+is randomly initialized each session.
 | `request.Vendor-Specific.Yubicon.Yubikey-Random`     | Randomly generated value from the token.
-                                                          The value is a 16-bit integer.
+The value is a 16-bit integer.
 |===
 
-
-
-validate:: Validation mode - Tokens will be validated against a Yubicloud server.
-
-
+validate:: Validation mode - Tokens will be validated against a
+Yubicloud server.
 
 validation { ... }::
 
 Settings for validation mode.
 
-
 servers { ... }::
 
-URL of validation server, multiple URL config items may be used
-to list multiple servers.
+URL of validation server, multiple URL config items may be used to
+list multiple servers.
 
 [options="header,autowidth"]
 |===
@@ -135,70 +122,51 @@ to list multiple servers.
 NOTE: If no URLs are listed, will default to the default URLs in the
 ykclient library, which point to the yubico validation servers.
 
-
-
 client_id:: API Client ID.
 
 Must be set to your client id for the validation server.
-
-
 
 api_key:: API Secret key (Base64 encoded).
 
 Must be set to your API key for the validation server.
 
-
-
 pool { ... }:: Connection pool parameters.
-
 
 start:: Connections to create during module instantiation.
 
-If the server cannot create specified number of
-connections during instantiation it will exit.
-Set to `0` to allow the server to start without the
-external service being available.
-
-
+If the server cannot create specified number of connections during
+instantiation it will exit. Set to `0` to allow the server to start
+without the external service being available.
 
 min:: Minimum number of connections to keep open.
 
-
-
 max:: Maximum number of connections.
 
-If these connections are all in use and a new one
-is requested, the request will NOT get a connection.
+If these connections are all in use and a new one is requested, the
+request will NOT get a connection.
 
-Setting `max` to *LESS* than the number of threads means
-that some threads may starve, and you will see errors
-like _No connections available and at max connection limit_.
+Setting `max` to *LESS* than the number of threads means that some
+threads may starve, and you will see errors like _No connections
+available and at max connection limit_.
 
-Setting `max` to MORE than the number of threads means
-that there are more connections than necessary.
+Setting `max` to MORE than the number of threads means that there are
+more connections than necessary.
 
-If `max` is not specified, then it defaults to the number
-of workers configured.
-
+If `max` is not specified, then it defaults to the number of workers
+configured.
 
 uses:: Number of uses before the connection is closed.
 
 NOTE: A setting of 0 means infinite (no limit).
 
-
-
-retry_delay:: The number of seconds to wait after the server tries
-to open a connection, and fails.
+retry_delay:: The number of seconds to wait after the server tries to
+open a connection, and fails.
 
 During this time, no new connections will be opened.
-
-
 
 lifetime:: The lifetime (in seconds) of the connection.
 
 NOTE: A setting of 0 means infinite (no limit).
-
-
 
 idle_timeout:: The idle timeout (in seconds).
 
@@ -206,31 +174,28 @@ A connection which is unused for this length of time will be closed.
 
 NOTE: A setting of 0 means infinite (no timeout).
 
-
-
 spread:: Enable LRU (Least Recently Used).
 
-The `yubico` library uses `curl` multi-handles. If the multi-handle is reused
-before all requests are completed the connections are re-established.
+The `yubico` library uses `curl` multi-handles. If the multi-handle is
+reused before all requests are completed the connections are
+re-established.
 
-The cost of re-establishing the connections is greater than the benefit of
-maintaining a small pool of connections or optimising for link latency.
-
-
+The cost of re-establishing the connections is greater than the
+benefit of maintaining a small pool of connections or optimising for
+link latency.
 
 [NOTE]
 ====
-All configuration settings are enforced.  If a connection is closed because of
-`idle_timeout`, `uses`, or `lifetime`, then the total
+All configuration settings are enforced. If a connection is closed
+because of `idle_timeout`, `uses`, or `lifetime`, then the total
 number of connections MAY fall below `min`.
 
-When that happens, it will open a new connection. It will also log a *WARNING* message.
+When that happens, it will open a new connection. It will also log a
+*WARNING* message.
 
-The solution is to either lower the "min" connections, or
-increase lifetime/idle_timeout.
+The solution is to either lower the "min" connections, or increase
+lifetime/idle_timeout.
 ====
-
-
 
 == Expansions
 
@@ -251,14 +216,13 @@ Convert Yubikey modhex to standard hex.
 
 .Output
 
-```
+----
 TODO
-```
-
+----
 
 == Default Configuration
 
-```
+----
 #	https://www.yubico.com/
 yubikey {
 #	id_length = 12
@@ -284,7 +248,7 @@ yubikey {
 		}
 	}
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

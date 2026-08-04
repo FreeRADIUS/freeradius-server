@@ -370,7 +370,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;

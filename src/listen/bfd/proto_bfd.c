@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_bfd.c
- * @brief RADIUS master protocol handler.
+ * @brief BFD master protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)

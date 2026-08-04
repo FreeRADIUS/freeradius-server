@@ -1,7 +1,4 @@
 
-
-
-
 = IDN Module
 
 The `idn` (Internationalised domain names) encoding for DNS aka IDNA
@@ -9,39 +6,33 @@ standardized in https://tools.ietf.org/html/rfc3490[RFC 3490].
 
 [NOTE]
 ====
-The expansion string: `%idn(example.com)` results in an ASCII
-punycode version of the domain name.  That version can then be used
-for name comparisons.  Using an `i18n` version of the name is *NOT
-RECOMMENDED*, as that version is not canonical.
+The expansion string: `%idn(example.com)` results in an ASCII punycode
+version of the domain name. That version can then be used for name
+comparisons. Using an `i18n` version of the name is *NOT RECOMMENDED*,
+as that version is not canonical.
 
 i.e. the `same` domain name can be represented in many, many,
-different ways.  Only the `idn` version has *one* representation.
+different ways. Only the `idn` version has *one* representation.
 ====
 
-
-
 == Configuration Settings
-
 
 allow_unassigned::
 
 Allow use of unassigned Unicode code points.
 
-
-
 use_std3_ascii_rules::
 
 Prohibit underscores and other invalid characters in domain names.
 
-
 == Default Configuration
 
-```
+----
 idn {
 	allow_unassigned = no
 	use_std3_ascii_rules = yes
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

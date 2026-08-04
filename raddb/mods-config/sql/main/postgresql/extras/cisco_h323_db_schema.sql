@@ -125,7 +125,7 @@ create UNIQUE index stoptelephonycombo on stoptelephony (AcctTime, nasipaddress,
 -- This table should list the IP addresses, names and locations of all your gateways
 -- This can be used to make more useful reports.
 --
--- Note: This table should be removed in favour of using the "nas" table.
+-- NOTE: This table should be removed in favour of using the "nas" table.
 --
 CREATE TABLE gateways (
 	gw_ip		INET NOT NULL,

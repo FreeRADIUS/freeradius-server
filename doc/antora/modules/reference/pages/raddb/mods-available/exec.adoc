@@ -1,7 +1,4 @@
 
-
-
-
 = Exec Module
 
 The module `exec` is used for executing external programs.
@@ -9,69 +6,65 @@ The module `exec` is used for executing external programs.
 == Don't use this module.
 
 We provide this module for the _extremely rare_ case when it is
-useful.  The main utility of the module is for testing, and for
-doing some unusual things which aren't possible via any other
-method.
+useful. The main utility of the module is for testing, and for doing
+some unusual things which aren't possible via any other method.
 
 It can be appealing to just ignore `unlang`, and run `%exec()`
-everywhere.  This kind of configuration can be written quickly,
-means that you don't need to spend any time understanding the
-server configuration.  This process is generally more effort than
-it is worth.
+everywhere. This kind of configuration can be written quickly, means
+that you don't need to spend any time understanding the server
+configuration. This process is generally more effort than it is worth.
 
-The biggest problem with `exec` is that it is slow.  Very, very,
-very, slow.  We have tested the server at 80K Access-Requests per
-second (to OpenLDAP) on low-end hardware.  This is fast enough to
-run a major ISP.
+The biggest problem with `exec` is that it is slow. Very, very, very,
+slow. We have tested the server at 80K Access-Requests per second (to
+OpenLDAP) on low-end hardware. This is fast enough to run a major ISP.
 
 In contrast, when each Access-Request causes an `exec` script to be
-run, the rate of access-Request can drop by a factor of 100 or
-more.  It is not unusual for the server to max out at a few hundred
+run, the rate of access-Request can drop by a factor of 100 or more.
+It is not unusual for the server to max out at a few hundred
 authentications per second when running multiple scripts per packet.
 
-The server has sufficient functionality that it is essentially
-never necessary to `exec` and external script.  Please use the
-built-in functionality of the server; it is hundreds of times
-faster than running a script, and it is designed to process
-packets.  An external script is worse, by nearly all possible
-standards of measurement.
+The server has sufficient functionality that it is essentially never
+necessary to `exec` and external script. Please use the built-in
+functionality of the server; it is hundreds of times faster than
+running a script, and it is designed to process packets. An external
+script is worse, by nearly all possible standards of measurement.
 
 == %exec() function
 
-This module also provides a dynamic expansion function.  You can
-then run a script like this:
+This module also provides a dynamic expansion function. You can then
+run a script like this:
 
-  Attribute-Name = %exec('/path/to/program', 'args', ...)
+Attribute-Name = %exec('/path/to/program', 'args', ...)
 
 The output of `exec` is parsed and assigned to the attribute.
 
 Depending on the module configuration, the output of `%exec()` can
-even be pairs, such as `User-Name = foo`.  Those pairs can be
-assigned to a list.  If the program fails, it will output nothing.
+even be pairs, such as `User-Name = foo`. Those pairs can be assigned
+to a list. If the program fails, it will output nothing.
 
 Note that when the assignment is to a list, the `exec` call _must_ be
 inside of a double-quoted string.
 
-  &request += "%exec(/path/to/program,args, ...)"
+&request += "%exec(/path/to/program,args, ...)"
 
 The value of the attribute will be replaced with the output of the
 program which is executed.
 
 The attributes from the list referenced in the `input_pairs`
-configuration item will be placed into environment variables of the executed
-program.
+configuration item will be placed into environment variables of the
+executed program.
 
-Alternatively, by setting the `program` item of the module configuration,
-the module can be called as a module rather than as an xlat function.
-See the `echo` module for an example of this.
+Alternatively, by setting the `program` item of the module
+configuration, the module can be called as a module rather than as an
+xlat function. See the `echo` module for an example of this.
 
-In this scenario, if the configuration item `output_pairs` is set,
-and the `wait` configuration item is set to "yes", the output of
-executing the program will be parsed for attribute pairs which
-will be added to the list referenced in `output_pairs`.
+In this scenario, if the configuration item `output_pairs` is set, and
+the `wait` configuration item is set to "yes", the output of executing
+the program will be parsed for attribute pairs which will be added to
+the list referenced in `output_pairs`.
 
-When called as a module, the return value of the program run determines
-the result of the exec instance call as follows:
+When called as a module, the return value of the program run
+determines the result of the exec instance call as follows:
 
 [options="header,autowidth"]
 |===
@@ -90,74 +83,58 @@ the result of the exec instance call as follows:
 | > 9  | fail      | the module failed.
 |===
 
-
-
 == Configuration Settings
-
 
 wait:: Wait for the program to finish.
 
-If we do NOT wait, then the program is "fire and
-forget", and any output attributes from it are ignored.
+If we do NOT wait, then the program is "fire and forget", and any
+output attributes from it are ignored.
 
-If we are looking for the program to output
-attributes, and want to add those attributes to the
-request, then we MUST wait for the program to
-finish, and therefore set `wait=yes`
+If we are looking for the program to output attributes, and want to
+add those attributes to the request, then we MUST wait for the program
+to finish, and therefore set `wait=yes`
 
+program:: The name of the program to execute, and it's arguments, when
+called as a module.
 
+The string is dynamically expanded, so it can contain attribute
+references, etc. However, quoting of programs and arguments is
+complex. The program name and arguments are parsed by the server as a
+single string. But that string is parsed by the shell into multiple
+arguments, which are then passed to the program.
 
-program:: The name of the program to execute, and it's
-arguments, when called as a module.
+We recommend not using the `exec` module, and instead using the
+`%exec(...)` function. That function will generally be easier to use
+and understand.
 
-The string is dynamically expanded, so it can contain
-attribute references, etc.  However, quoting of programs
-and arguments is complex.  The program name and arguments
-are parsed by the server as a single string.  But that
-string is parsed by the shell into multiple arguments,
-which are then passed to the program.
+Where this module is used, the `program` string below should use
+triple quotes. These allow the text inside of the string to contain
+double-quote characters without needing to escape them. This doesn't
+affect the output string, but it does make the configuration easier to
+read.
 
-We recommend not using the `exec` module, and instead using
-the `%exec(...)` function.  That function will generally be
-easier to use and understand.
+If the program is expected to take quoted strings as arguments, then
+the quotes have to be done carefully. See the `echo` module for more
+information, and for a worked example/
 
-Where this module is used, the `program` string below
-should use triple quotes.  These allow the text inside of
-the string to contain double-quote characters without
-needing to escape them.  This doesn't affect the output
-string, but it does make the configuration easier to read.
+The summary of all of the above is that it's usually easier to run one
+shell script with no arguments. That shell script can then print the
+attribute names, operators, and values.
 
-If the program is expected to take quoted strings as
-arguments, then the quotes have to be done carefully.  See
-the `echo` module for more information, and for a worked
-example/
+input_pairs:: The attributes which are placed into the environment
+variables for the program.
 
-The summary of all of the above is that it's usually easier
-to run one shell script with no arguments.  That shell
-script can then print the attribute names, operators, and
-values.
+The `input_pairs` can be any "group" style attribute. Usually it is
+the top-level list such as `request`, `reply`, etc.
 
-
-
-input_pairs:: The attributes which are placed into the
-environment variables for the program.
-
-The `input_pairs` can be any "group" style attribute.
-Usually it is the top-level list such as `request`,
-`reply`, etc.
-
-
-
-output_pairs::: Where to place the output attributes (if any) from
-the executed program.
+output_pairs::: Where to place the output attributes (if any) from the
+executed program.
 
 The values allowed are the same as for the `input_pairs`.
 
-This configuration item is used only when the `program`
-configuration item is set, and when `wait = yes` is also
-set.  Otherwise it is ignored.
-
-
+This configuration item is used only when the `program` configuration
+item is set, and when `wait = yes` is also set. Otherwise it is
+ignored.
 
 shell_escape:: Escape the environment variables.
 
@@ -167,40 +144,35 @@ double-quotes.
 
 That is to say:
 
-  User-Name=BobUser => USER_NAME="BobUser"
+User-Name=BobUser => USER_NAME="BobUser"
 
 Note that this escaping only applies to environmental variables
-created from the request list.  For environmental variables inherited
+created from the request list. For environmental variables inherited
 from the main radiusd process no escaping is applied.
 
-
-
-env_inherit:: Pass the server environment variables to the called program
+env_inherit:: Pass the server environment variables to the called
+program
 
 For security, the server environment variables are not passed to the
-program being executed.  Setting this flag to `yes` will pass the
+program being executed. Setting this flag to `yes` will pass the
 server environment variables to the program.
 
 Any `input_pairs` will be merged with these environmental variables.
 
 The default is `no`.
 
-
-
 timeout:: Set a time wait for the program to finish.
 
-Default is `10` seconds, which should be plenty for nearly
-anything. Range is `1` to `30` seconds.
+Default is `10` seconds, which should be plenty for nearly anything.
+Range is `1` to `30` seconds.
 
-WARNING: You are strongly encouraged to NOT increase this
-value.  In fact, you are much better off decreasing it to a
-lower value.  Doing so will improve network stability and
-responsiveness.
-
+WARNING: You are strongly encouraged to NOT increase this value. In
+fact, you are much better off decreasing it to a lower value. Doing so
+will improve network stability and responsiveness.
 
 == Default Configuration
 
-```
+----
 exec {
 	wait = yes
 #	program = """/bin/true "%{User-Name}" """
@@ -210,7 +182,7 @@ exec {
 	env_inherit = no
 	timeout = 10
 }
-```
+----
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -3,8 +3,9 @@
 PORT=30000
 NODES=6
 REPLICAS=1
+TLS=0
 
-while getopts 'a:p:n:r:' opt; do
+while getopts 'a:p:n:r:t' opt; do
     case "$opt" in
     a)
 	PASSWORD="$OPTARG"
@@ -18,6 +19,9 @@ while getopts 'a:p:n:r:' opt; do
     r)
         REPLICAS="$OPTARG"
         ;;
+    t)
+	TLS=1
+	;;
     esac
 done
 shift $((OPTIND - 1))
@@ -58,6 +62,24 @@ if [ ! -e "${TMP_REDIS_DIR}/create-cluster" ]; then
     echo "PORT=$PORT" >> "${TMP_REDIS_DIR}/config.sh"
     echo "NODES=$NODES" >> "${TMP_REDIS_DIR}/config.sh"
     echo "REPLICAS=$REPLICAS" >> "${TMP_REDIS_DIR}/config.sh"
+
+    if [ "$TLS" -eq 1 ]; then
+        echo "TLS_OPTIONS=\"--tls-cert-file ${TMP_REDIS_DIR}/tests/tls/redis.crt --tls-key-file ${TMP_REDIS_DIR}/tests/tls/redis.key --tls-ca-cert-file ${TMP_REDIS_DIR}/tests/tls/ca.crt --tls-cluster yes\"" >> "${TMP_REDIS_DIR}/config.sh"
+        echo "TLS_CLIENT_OPTIONS=\"--tls --cert ${TMP_REDIS_DIR}/tests/tls/redis.crt --key ${TMP_REDIS_DIR}/tests/tls/redis.key --cacert ${TMP_REDIS_DIR}/tests/tls/ca.crt\"" >> "${TMP_REDIS_DIR}/config.sh"
+
+        sed -ie "s#--port#--port 0 --tls-port#" "${TMP_REDIS_DIR}/create-cluster"
+        sed -ie "s#redis-cli#redis-cli \${TLS_CLIENT_OPTIONS}#" "${TMP_REDIS_DIR}/create-cluster"
+    fi
+
+    sed -ie "s#\${ADDITIONAL_OPTIONS}#\${ADDITIONAL_OPTIONS} \${AUTH_OPTIONS} \${TLS_OPTIONS}#" "${TMP_REDIS_DIR}/create-cluster"
+fi
+
+if [ "$TLS" -eq 1 ]; then
+    if [ ! -e "${TMP_REDIS_DIR}/tests/tls " ]; then
+        curl https://raw.githubusercontent.com/antirez/redis/unstable/utils/gen-test-certs.sh > "${TMP_REDIS_DIR}/gen-test-certs.sh"
+        chmod +x "${TMP_REDIS_DIR}/gen-test-certs.sh"
+        gen-test-certs.sh
+    fi
 fi
 
 # Fix hardcoded paths in the test script
@@ -71,16 +93,17 @@ if [ "${REDIS_MAJOR_VERSION}" -lt 7 ]; then
     sed -ie "s#appendonlydir-\*#appendonly\*.aof#" "${TMP_REDIS_DIR}/create-cluster"
 fi
 
-sed -ie "s#\${ADDITIONAL_OPTIONS}#\${ADDITIONAL_OPTIONS} \${AUTH_OPTIONS}#" "${TMP_REDIS_DIR}/create-cluster"
-
 # Ensure all nodes are accessible before creating cluster
 if [ "$1" == "create" ]; then
+	if [ "$TLS" -eq 1 ]; then
+	    source ${TMP_REDIS_DIR}/config.sh
+	fi
         waits=0
         STARTPORT=$((PORT+1))
         ENDPORT=$((STARTPORT+NODES))
         for node in {$STARTPORT..$ENDPORT}; do
                 while [ $waits -lt 10 ]; do
-                        redis-cli -p $node quit > /dev/null && break
+                        redis-cli ${TLS_CLIENT_OPTIONS} -p $node quit > /dev/null && break
                         sleep 0.5
                         waits=$((waits + 1))
                 done

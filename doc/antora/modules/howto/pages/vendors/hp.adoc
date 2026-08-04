@@ -1,52 +1,70 @@
-_The content on this page refers to HP ProCurve switches only, not switching products from companies acquired by HP (3Com, H3C, Aruba)._
+_The content on this page refers to HP ProCurve switches only, not
+switching products from companies acquired by HP (3Com, H3C, Aruba)._
 
 ## Port authentication mechanisms
 
 ### Web-Based
 
-The switch provides a local captive portal for credential entry. When the user submits their credentials, a hash of the password is then written to the CHAP-Password attribute.
+The switch provides a local captive portal for credential entry. When
+the user submits their credentials, a hash of the password is then
+written to the CHAP-Password attribute.
 
 ### Mac-Based
 
-When the switch receives a ethernet frame from a client which has not yet been authenticated, it copies the value of the ethernet SRC address field into the User-Name attribute of an Access-Request packet. The RADIUS server can then check the User-Name against a list of authorised Mac-Addresses.
+When the switch receives a ethernet frame from a client which has not
+yet been authenticated, it copies the value of the ethernet SRC
+address field into the User-Name attribute of an Access-Request
+packet. The RADIUS server can then check the User-Name against a list
+of authorised Mac-Addresses.
 
-Note: A hashed version of the SRC address is also inserted into the CHAP-Password attribute of Access-Request packets.**
+Note: A hashed version of the SRC address is also inserted into the
+CHAP-Password attribute of Access-Request packets.**
 
-In normal operation the switch will attempt to authenticate the client every _quiet-period_ (a configurable period measured in seconds). That is, when the client connects and either: The RADIUS server returns an Access-Reject, or the RADIUS server is Unreachable, the switch will retry authentication after _quiet-period_ seconds.
+In normal operation the switch will attempt to authenticate the client
+every _quiet-period_ (a configurable period measured in seconds). That
+is, when the client connects and either: The RADIUS server returns an
+Access-Reject, or the RADIUS server is Unreachable, the switch will
+retry authentication after _quiet-period_ seconds.
 
 #### Beware using guest VLANs with mac-based authentication and dynamic VLAN assignment
 
-The quiet-period timer will not fire if an _unauth-vid_ is configured and the client transitions into the 'guest' state. The ASG manual for some products suggests that if the client falls into the 'guest' state because of RADIUS server timeout then they will be re-authenticated, but this was not implemented in software!
-Beware using the _unauth-vid_ where switches rely on RADIUS servers for VLAN assignment. A RADIUS server failure or power outage could place all clients into the 'guest' state where they will not be able to recover without manual intervention.
+The quiet-period timer will not fire if an _unauth-vid_ is configured
+and the client transitions into the 'guest' state. The ASG manual for
+some products suggests that if the client falls into the 'guest' state
+because of RADIUS server timeout then they will be re-authenticated,
+but this was not implemented in software! Beware using the
+_unauth-vid_ where switches rely on RADIUS servers for VLAN
+assignment. A RADIUS server failure or power outage could place all
+clients into the 'guest' state where they will not be able to recover
+without manual intervention.
 
 ### 802.1X
 
-The switch port acts as an 802.1X(http://http://en.wikipedia.org/wiki/IEEE_802.1X) authenticator, encapsulating/de-encapsulating EAP-Messages as required , and forwarding them between the supplicant and RADIUS server.
+The switch port acts as an
+802.1X(http://http://en.wikipedia.org/wiki/IEEE_802.1X) authenticator,
+encapsulating/de-encapsulating EAP-Messages as required , and
+forwarding them between the supplicant and RADIUS server.
 
-When a supplicant connects, the switch will send an EAP Identity-Request packet to the suppliant, to prompt an authentication attempt. Alternatively the supplicant can initiate authentication by sending an EAP Start packet to the switch.
+When a supplicant connects, the switch will send an EAP
+Identity-Request packet to the suppliant, to prompt an authentication
+attempt. Alternatively the supplicant can initiate authentication by
+sending an EAP Start packet to the switch.
 
-As the switch is only acting as a pass-through, any EAP Method may be used, so long as the final EAP-Message is an EAP-Success or EAP-Failure.
+As the switch is only acting as a pass-through, any EAP Method may be
+used, so long as the final EAP-Message is an EAP-Success or
+EAP-Failure.
 
 Example Packet (Access-Request):
 
-```text
-Framed-MTU = 1480
-NAS-IP-Address = 192.168.0.1
-NAS-Identifier = "hp-e-its-dev8021X-sw1"
-User-Name = "user"
-Service-Type = Framed-User
-Framed-Protocol = PPP
-NAS-Port = 2
-NAS-Port-Type = Ethernet
-NAS-Port-Id = "2"
-Called-Station-Id = "00-14-38-fb-94-3e"
-Calling-Station-Id = "00-18-8b-1f-ea-c3"
-Connect-Info = "CONNECT Ethernet 100Mbps Full duplex"
-Tunnel-Type:0 = VLAN
-Tunnel-Medium-Type:0 = IEEE-802
-Tunnel-Private-Group-Id:0 = "700"
-EAP-Message = 0x0201000a0175736572
-Message-Authenticator = 0x5128a826dfedf51040215eb6fef398df
+```text Framed-MTU = 1480 NAS-IP-Address = 192.168.0.1 NAS-Identifier
+= "hp-e-its-dev8021X-sw1" User-Name = "user" Service-Type =
+Framed-User Framed-Protocol = PPP NAS-Port = 2 NAS-Port-Type =
+Ethernet NAS-Port-Id = "2" Called-Station-Id = "00-14-38-fb-94-3e"
+Calling-Station-Id = "00-18-8b-1f-ea-c3" Connect-Info = "CONNECT
+Ethernet 100Mbps Full duplex" Tunnel-Type:0 = VLAN
+Tunnel-Medium-Type:0 = IEEE-802 Tunnel-Private-Group-Id:0 = "700"
+EAP-Message = 0x0201000a0175736572 Message-Authenticator =
+0x5128a826dfedf51040215eb6fef398df
 ```
 
 #### Port-Based Mode
@@ -91,13 +109,12 @@ Switches running K and W code may include one or more instances of the HP-Capabi
 
 #### Encoding - Vendor specific attributes
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+```text 0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |    Version    |      Type     |           Vendor-Id
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     Vendor-Id (cont)           |  Vendor-Type  |
+Vendor-Id (cont)           |  Vendor-Type  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -142,10 +159,8 @@ On session termination, the ports VLAN membership will revert back to it's stati
 Example for single untagged VLAN, MAC-based:
 
 ```
-"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62"
-    Tunnel-Type = VLAN,
-    Tunnel-Medium-Type = IEEE-802,
-    Tunnel-Private-Group-ID = 664
+"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62" Tunnel-Type =
+VLAN, Tunnel-Medium-Type = IEEE-802, Tunnel-Private-Group-ID = 664
 ```
 
 This entry will assign the port to the single untagged VLAN of ID 664.
@@ -179,8 +194,8 @@ Supporting this attribute (i.e. allowing promiscuous ingress) would break the Pr
 Example for single tagged VLAN, MAC-based:
 
 ```
-"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62"
-    Egress-VLANID = `%{expr: 0x31000000 + 451}`
+"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62" Egress-VLANID =
+`%{expr: 0x31000000 + 451}`
 ```
 
 This entry will assign the port to the single tagged VLAN of ID 451. With use of an [expr](https://freeradius.org/radiusd/man/rlm_expr.html), it is possible to use integer addition to show the composition of the bit string, with the leading `0x31` for tagged VLAN, the `0x000` padding and the VLAN ID.
@@ -188,14 +203,11 @@ This entry will assign the port to the single tagged VLAN of ID 451. With use of
 Example for single untagged and multiple tagged VLANs, MAC-based:
 
 ```
-"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62"
-    Tunnel-Type = VLAN,
-    Tunnel-Medium-Type = IEEE-802,
-    Tunnel-Private-Group-ID = 664,
-    Egress-VLANID += `%{expr: 0x31000000 + 451}`,
-    Egress-VLANID += `%{expr: 0x31000000 + 452}`,
-    Egress-VLANID += `%{expr: 0x31000000 + 453}`,
-    Egress-VLANID += `%{expr: 0x31000000 + 454}`
+"b0b867cf9b62" Cleartext-Password := "b0b867cf9b62" Tunnel-Type =
+VLAN, Tunnel-Medium-Type = IEEE-802, Tunnel-Private-Group-ID = 664,
+Egress-VLANID += `%{expr: 0x31000000 + 451}`, Egress-VLANID +=
+`%{expr: 0x31000000 + 452}`, Egress-VLANID += `%{expr: 0x31000000 +
+453}`, Egress-VLANID += `%{expr: 0x31000000 + 454}`
 
 ```
 
@@ -266,29 +278,43 @@ exit
 
 #### Default edge port GVRP settings are insecure, and may allow circumvention of network policy.
 
-The default setting for the interface _unknown-vlan_ option is _learn_, this allows GVRP enabled clients to gain access to additional tagged VLANs once the port is in an open state. This is often undesirable from a security standpoint, so the _unknown-vlan_ option should be set to _disable_ on all port-access authenticated edge ports.
+The default setting for the interface _unknown-vlan_ option is
+_learn_, this allows GVRP enabled clients to gain access to additional
+tagged VLANs once the port is in an open state. This is often
+undesirable from a security standpoint, so the _unknown-vlan_ option
+should be set to _disable_ on all port-access authenticated edge
+ports.
 
-Note: If a GVRP VLAN is no longer advertised to the switch, all clients assigned that VLAN will be forced to re-authenticate.
+Note: If a GVRP VLAN is no longer advertised to the switch, all
+clients assigned that VLAN will be forced to re-authenticate.
 
 ## Administrative interface authentication
 
-On most HP Procurve switches there are two levels of authorised access, _'Operator'_ access and _'Manager'_ access.
+On most HP Procurve switches there are two levels of authorised
+access, _'Operator'_ access and _'Manager'_ access.
 
-* _Operator_ access allows the user to view most of the vital stats of the switch (using the show commands), but will not allow them to make any potentially dangerous changes (such as modify the configuration).
+* _Operator_ access allows the user to view most of the vital stats of
+  the switch (using the show commands), but will not allow them to
+  make any potentially dangerous changes (such as modify the
+  configuration).
 
-* _Manager (enabled)_ access allows the user to perform any supported operation.
+* _Manager (enabled)_ access allows the user to perform any supported
+  operation.
 
-When a user attempts to authenticate, the users password is encrypted (using a shared secret between the NAS and RADIUS server) and sent in an access request packet as the _User-Password_ attribute. The username is sent as the _User-Name_ attribute, along with a desired _Service-Type_. Most ProCurve switches only support PAP for authentication on their management interfaces, though as of K.13.51, PEAP-MSCHAPv2 is supported as an authentication method for management on K branch switches.
+When a user attempts to authenticate, the users password is encrypted
+(using a shared secret between the NAS and RADIUS server) and sent in
+an access request packet as the _User-Password_ attribute. The
+username is sent as the _User-Name_ attribute, along with a desired
+_Service-Type_. Most ProCurve switches only support PAP for
+authentication on their management interfaces, though as of K.13.51,
+PEAP-MSCHAPv2 is supported as an authentication method for management
+on K branch switches.
 
 _Example (PAP Login)_:
 
-```text
-User-Name = "user"
-User-Password = "pasphrase"
-NAS-IP-Address = 192.168.0.1
-NAS-Identifier = "hp-e-its-dev8021X-sw1"
-NAS-Port-Type = Virtual
-Service-Type = NAS-Prompt-User
+```text User-Name = "user" User-Password = "pasphrase" NAS-IP-Address
+= 192.168.0.1 NAS-Identifier = "hp-e-its-dev8021X-sw1" NAS-Port-Type =
+Virtual Service-Type = NAS-Prompt-User
 ```
 
 _Example (PAP Enable)_:
@@ -302,10 +328,16 @@ NAS-Port-Type = Virtual
 Service-Type = Administrative-User
 ```
 
-Typically the request _Service-Type_ will be _NAS-Prompt-User_, however if the user either demotes themselves by exiting the administrative session, and tries to escalate themselves to manager; or logs in as an operator and tries to escalate to manager; the switch will send _Administrative-User_ as the requested _Service-Type_.
+Typically the request _Service-Type_ will be _NAS-Prompt-User_,
+however if the user either demotes themselves by exiting the
+administrative session, and tries to escalate themselves to manager;
+or logs in as an operator and tries to escalate to manager; the switch
+will send _Administrative-User_ as the requested _Service-Type_.
 
-The RADIUS server will then authenticate the user and respond with either an Access-Accept or Access-Reject packet.
-For authentication to succeed, Access-Accept packets must also contain a Service-Type attribute corresponding to the desired privilege level.
+The RADIUS server will then authenticate the user and respond with
+either an Access-Accept or Access-Reject packet. For authentication to
+succeed, Access-Accept packets must also contain a Service-Type
+attribute corresponding to the desired privilege level.
 
 |===
 |Access Level           |     RADIUS Attribute         |Times Used|Description                                                                                                                  |Value String       | Value
@@ -318,15 +350,16 @@ For authentication to succeed, Access-Accept packets must also contain a Service
 
 ### Privilege-Mode
 
-With all newer (>2600) ProCurve switches, the switch can be instructed to respect the Service-Type sent back from the RADIUS server. In older models an administrator would first authenticate to gain access to the switch, and then again when enabling administrative commands.
+With all newer (>2600) ProCurve switches, the switch can be instructed
+to respect the Service-Type sent back from the RADIUS server. In older
+models an administrator would first authenticate to gain access to the
+switch, and then again when enabling administrative commands.
 
-_Note: The privilege-mode feature is not included in the 2500/6108 series._
+_Note: The privilege-mode feature is not included in the 2500/6108
+series._
 #### Enable privilege-mode
 
-```text
-conf
-   aaa authentication login privilege-mode
-exit
+```text conf aaa authentication login privilege-mode exit
 ```
 
 ### Accounting command logging
@@ -354,10 +387,7 @@ Acct-Delay-Time = 0
 
 #### Enable command logging
 
-```text
-conf
-   aaa accounting commands stop-only radius
-exit
+```text conf aaa accounting commands stop-only radius exit
 ```
 
 ## RFC 3576 Change of Authorization & Disconnect Message
@@ -438,17 +468,17 @@ exit
 
 #### Add dedicated CoA originator
 
-```text
-conf
-radius-server host <auth_server_ip> key <auth_key>
-radius-server host <coa_originator_ip> key <coa_key>
-radius-server host <coa_originator_ip> dyn-authorization
-aaa server-group radius 'rad_auth' host <auth_server_ip>
+```text conf radius-server host <auth_server_ip> key <auth_key>
+radius-server host <coa_originator_ip> key <coa_key> radius-server
+host <coa_originator_ip> dyn-authorization aaa server-group radius
+'rad_auth' host <auth_server_ip>
 
 aaa authentication port-access eap-radius server-group 'rad_auth'
 # repeat for other authentication methods
+
 aaa accounting network start-stop radius 'rad_auth'
 # repeat for other accounting methods
+
 exit
 ```
 
@@ -462,15 +492,12 @@ exit
 
 ### Radclient DM example
 
-```text
-echo "NAS-IP-Address = 172.0.0.1,\
-User-Name = 'example_user',\
-NAS-Port = 1,\
-Calling-Station-Id = '00-10-00-10-00-10'" | radclient 172.0.0.1:3799 40 testing123
+```text echo "NAS-IP-Address = 172.0.0.1,\ User-Name =
+'example_user',\ NAS-Port = 1,\ Calling-Station-Id =
+'00-10-00-10-00-10'" | radclient 172.0.0.1:3799 40 testing123
 
-Received response ID 114, code 41, length = 32
-    Event-Timestamp = "Sep  2 2018 10:26:40 PDT"
-    Acct-Terminate-Cause = Admin-Reset
+Received response ID 114, code 41, length = 32 Event-Timestamp = "Sep
+2 2018 10:26:40 PDT" Acct-Terminate-Cause = Admin-Reset
 ```
 
 ### Radclient CoA example
@@ -494,13 +521,14 @@ Received response ID 193, code 44, length = 26
 You must have manager access on the target switch and have entered
 configuration mode to run the following commands.
 
-Most ProCurve wired switches >= 2600 series will support all or a subset of these commands.
+Most ProCurve wired switches >= 2600 series will support all or a
+subset of these commands.
 
 ### Add servers
 
-```text
-radius-server host <radius_server_ip1> auth-port 1812 acct-port 1813
-radius-server host <radius_server_ip2> auth-port 1812 acct-port 1813
+```text radius-server host <radius_server_ip1> auth-port 1812
+acct-port 1813 radius-server host <radius_server_ip2> auth-port 1812
+acct-port 1813
 ```
 
 ### Set Server Parameters
@@ -511,9 +539,8 @@ radius-server key <radius_shared_secret>
 
 ### Set general port-access Parameters
 
-```text
-aaa authentication port-access eap-radius
-aaa port-access gvrp-vlans
+```text aaa authentication port-access eap-radius aaa port-access
+gvrp-vlans
 ```
 
 _Note: Enabling the use of GVRP vlans is optional._
@@ -530,16 +557,15 @@ aaa authentication login privilege-mode
 
 ### Enabling 802.1X/MAC dual authentication on selected ports (single client)
 
-```text
-aaa port-access authenticator <port range>
-aaa port-access authenticator <port range> logoff-period 862400
-aaa port-access authenticator <port range> quiet-period 30
-aaa port-access authenticator <port range> client-limit 1
-aaa port-access authenticator active
-aaa port-access mac-based <port range>
-aaa port-access mac-based <port range> logoff-period 862400
-aaa port-access mac-based <port range> quiet-period 30
+```text aaa port-access authenticator <port range> aaa port-access
+authenticator <port range> logoff-period 862400 aaa port-access
+authenticator <port range> quiet-period 30 aaa port-access
+authenticator <port range> client-limit 1 aaa port-access
+authenticator active aaa port-access mac-based <port range> aaa
+port-access mac-based <port range> logoff-period 862400 aaa
+port-access mac-based <port range> quiet-period 30
 # This improves compatibility with devices that use WOL
+
 aaa port-access <port range> controlled-direction in
 ```
 
@@ -553,14 +579,36 @@ aaa accounting update periodic 15
 ```
 
 ### Hints and tips
-* If dual authentication is used with different logoff-period timer values, timer behaviour is unpredictable.
-In older versions of K series firmware, and all other branches, the logoff-period timer for both 802.1X and WMA was implemented using a single H/W timer. If different values were used for the logoff-period timers in 802.1X and WMA, the timer would reflect the value set by the last authenticator to be initialised. For predictable behaviour it is highly recommended that the same value be used for both, if either of the authenticator logoff-period timers are changed from their default of 300 seconds.
 
-* The use of port-based 802.1X and WMA concurrently is not recommended, not well supported, and not allowed in recent versions of K branch software. It is recommended to set a 802.1X client limit of 1 or more when using concurrent authentication. This puts the port into client-based 802.1X mode.
+* If dual authentication is used with different logoff-period timer
+  values, timer behaviour is unpredictable. In older versions of K
+  series firmware, and all other branches, the logoff-period timer for
+  both 802.1X and WMA was implemented using a single H/W timer. If
+  different values were used for the logoff-period timers in 802.1X
+  and WMA, the timer would reflect the value set by the last
+  authenticator to be initialised. For predictable behaviour it is
+  highly recommended that the same value be used for both, if either
+  of the authenticator logoff-period timers are changed from their
+  default of 300 seconds.
 
-* The default logoff-period is too low for embedded devices such as printers that may 'sleep' for long periods; if the value is not increased devices that enter a sleep/power-saving mode may become unreachable. It's recommended that devices using Mac-Auth also run a DHCP client, to ensure that they periodically wake up and send packets to the authenticating switch, thus keeping their session alive.
+* The use of port-based 802.1X and WMA concurrently is not
+  recommended, not well supported, and not allowed in recent versions
+  of K branch software. It is recommended to set a 802.1X client limit
+  of 1 or more when using concurrent authentication. This puts the
+  port into client-based 802.1X mode.
 
-* For security reasons it's better to implement dual authentication with 802.1X and Mac-Auth instead of configuring an unauth-vid. This allows the RADIUS server ultimate control over whether data from a device is allowed to ingress onto the network.
+* The default logoff-period is too low for embedded devices such as
+  printers that may 'sleep' for long periods; if the value is not
+  increased devices that enter a sleep/power-saving mode may become
+  unreachable. It's recommended that devices using Mac-Auth also run a
+  DHCP client, to ensure that they periodically wake up and send
+  packets to the authenticating switch, thus keeping their session
+  alive.
+
+* For security reasons it's better to implement dual authentication
+  with 802.1X and Mac-Auth instead of configuring an unauth-vid. This
+  allows the RADIUS server ultimate control over whether data from a
+  device is allowed to ingress onto the network.
 
 ##Known Issues
 
@@ -568,7 +616,8 @@ Many, always update to the latest firmware.
 
 ##See Also
 
-* HP Radius Attributes(https://github.com/freeradius/freeradius-server/blob/master/share/dictionary.hp)
+* HP Radius
+  Attributes(https://github.com/freeradius/freeradius-server/blob/master/share/dictionary.hp)
 * Cisco
 * Linksys
 * Mac-Auth

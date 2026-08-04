@@ -1,28 +1,52 @@
 ## Why?
 
-On UDP buffer exhaustion FreeRADIUS has no idea that packets are being dropped as it's not informed, it only knows then it's dropped packets due to the packet queue being full (or timeouts). There's no way around this other than by having an external process snooping on the traffic.
+On UDP buffer exhaustion FreeRADIUS has no idea that packets are being
+dropped as it's not informed, it only knows then it's dropped packets
+due to the packet queue being full (or timeouts). There's no way
+around this other than by having an external process snooping on the
+traffic.
 
-radsniff should also work fine with other RADIUS servers. So where vendors have failed to provide sufficient instrumentation in their products, you can use radsniff to monitor their product's reliability and performance.
+radsniff should also work fine with other RADIUS servers. So where
+vendors have failed to provide sufficient instrumentation in their
+products, you can use radsniff to monitor their product's reliability
+and performance.
 
 ## What packet rate can radsniff deal with?
 
-That is entirely dependent on your machine. But on a modern intel i7 processor it seems to be able to handle between 25k-30k PPS before libpcap starts reporting packet loss. This should be fine for the majority of installations, it's very unlikely that a real world FreeRADIUS installation (which will usually involve coupling FreeRADIUS with a directory or database component) would be able to handle 30k PPS anyway.
+That is entirely dependent on your machine. But on a modern intel i7
+processor it seems to be able to handle between 25k-30k PPS before
+libpcap starts reporting packet loss. This should be fine for the
+majority of installations, it's very unlikely that a real world
+FreeRADIUS installation (which will usually involve coupling
+FreeRADIUS with a directory or database component) would be able to
+handle 30k PPS anyway.
 
-When libpcap starts reporting loss, radsniff will mute itself, that is stop writing stats out to the collectd socket, and stop writing stats to stdout. The time it's muted for will be double the timeout period (``radsniff -h | grep timeout``).
+When libpcap starts reporting loss, radsniff will mute itself, that is
+stop writing stats out to the collectd socket, and stop writing stats
+to stdout. The time it's muted for will be double the timeout period
+(``radsniff -h | grep timeout``).
 
 ## Building radsniff
 
-Currently only the version of radsniff in the master (3.1.x) and v3.0.x branches support statistics, which means you'll probably need to build the server from source.
+Currently only the version of radsniff in the master (3.1.x) and
+v3.0.x branches support statistics, which means you'll probably need
+to build the server from source.
 
-Static builds work on those branches, meaning you can build radsniff as a standalone binary and not have issues with libfreeradius conflicts if you're running a stable version of the FreeRADIUS server on the same host.
+Static builds work on those branches, meaning you can build radsniff
+as a standalone binary and not have issues with libfreeradius
+conflicts if you're running a stable version of the FreeRADIUS server
+on the same host.
 
 ### Dependencies
 
-radsniff depends on libpcap and libcollectclient. If libpcap isn't available then radsniff will not be built. If libcollectdclient isn't available radsniff will be build but without support for writing statistics out to a collectd socket.
+radsniff depends on libpcap and libcollectclient. If libpcap isn't
+available then radsniff will not be built. If libcollectdclient isn't
+available radsniff will be build but without support for writing
+statistics out to a collectd socket.
 
-On Debian/Ubuntu systems you can use apt to pull in the required packages:
-```bash
-sudo apt-get install libpcap-dev libcollectdclient-dev
+On Debian/Ubuntu systems you can use apt to pull in the required
+packages: ```bash sudo apt-get install libpcap-dev
+libcollectdclient-dev
 ```
 
 There may be packages available for other systems, else you'll need to build the libraries from source, satisfying their dependencies manually.
@@ -37,15 +61,12 @@ Note: It's also helpful to specify ``--prefix=DIR`` where DIR is your existing F
 ./configure --with-shared=no
 ```
 
-The key lines of output you need to look for are:
-```bash
-checking for pcap_open_live in -lpcap... yes
-checking for pcap_fopen_offline in -lpcap... yes
-checking for pcap_dump_fopen in -lpcap... yes
-checking for lcc_connect in -lcollectdclient... yes
+The key lines of output you need to look for are: ```bash checking for
+pcap_open_live in -lpcap... yes checking for pcap_fopen_offline in
+-lpcap... yes checking for pcap_dump_fopen in -lpcap... yes checking
+for lcc_connect in -lcollectdclient... yes
 ...
-checking for pcap.h... yes
-checking for collectd/client.h... yes
+checking for pcap.h... yes checking for collectd/client.h... yes
 ```
 
 If you've installed either of the libraries in non-standard locations, you can specify the various paths with ``--with-pcap-include-dir=DIR``, ``--with-pcap-lib-dir=DIR``, ``--with-collectdclient-include-dir=DIR`` and ``--with-collectdclient-lib-dir=DIR``.
@@ -55,25 +76,43 @@ The new build framework in 3.x has sufficient levels of awesome, to autocreate m
 ```bash
 make radsniff
 ```
-and it'll just build libfreeradius, the radsniff binary, and not the entire server.
+and it'll just build libfreeradius, the radsniff binary, and not the
+entire server.
 
-Unfortunately there's no specific install target for radsniff, so for now it's best to copy the binary directly from ``./build/bin/radsniff`` to wherever you want it ``/usr/local/bin/`` for example...
+Unfortunately there's no specific install target for radsniff, so for
+now it's best to copy the binary directly from
+``./build/bin/radsniff`` to wherever you want it ``/usr/local/bin/``
+for example...
 
 ### Running Manually
 
-3.1.x radsniff has two main modes of operation, packet decode and output, and statistics generation. By default radsniff will decode packets, but not output any statistics.
+3.1.x radsniff has two main modes of operation, packet decode and
+output, and statistics generation. By default radsniff will decode
+packets, but not output any statistics.
 
-There two arguments required to switch radsniff to stats mode and get it to write those stats to collect:
-* ``-W`` - To turn on statistics the ``-W <period>`` flag is used. For integrating with collectd ``<period>`` should match your collectd interval (which is by default 10 seconds).
-* ``-O`` - To direct stats to a collectd instance ``-O <server>``, is used. ``<server>`` can be an IP address, FQDN, or UNIX Socket. For this guide we'll need be using a UNIX socket ``/var/run/collectd-sock`` (the collectd default).
+There two arguments required to switch radsniff to stats mode and get
+it to write those stats to collect:
+* ``-W`` - To turn on statistics the ``-W <period>`` flag is used. For
+  integrating with collectd ``<period>`` should match your collectd
+  interval (which is by default 10 seconds).
+* ``-O`` - To direct stats to a collectd instance ``-O <server>``, is
+  used. ``<server>`` can be an IP address, FQDN, or UNIX Socket. For
+  this guide we'll need be using a UNIX socket
+  ``/var/run/collectd-sock`` (the collectd default).
 
-You may also (optionally) pass one or more ``-i <interface>`` arguments to specify interfaces to listen on. If no ``-i`` flags are passed radsniff will listen on all interfaces it can, opening separate PCAP sessions for each interface.
+You may also (optionally) pass one or more ``-i <interface>``
+arguments to specify interfaces to listen on. If no ``-i`` flags are
+passed radsniff will listen on all interfaces it can, opening separate
+PCAP sessions for each interface.
 
-You may also (optionally) pass ``-P <pidfile>`` to make radsniff daemonize and write out a pid file. This is primarily for use in init scripts.
+You may also (optionally) pass ``-P <pidfile>`` to make radsniff
+daemonize and write out a pid file. This is primarily for use in init
+scripts.
 
-An example invocation for manually running radsniff as stats daemon would be something like:
-```bash
-radsniff -q -i eth0 -P /var/run/freeradius/radsniff.pid -W 10 -O /var/run/collectd-sock > /var/log/radsniff.log 2>&1
+An example invocation for manually running radsniff as stats daemon
+would be something like: ```bash radsniff -q -i eth0 -P
+/var/run/freeradius/radsniff.pid -W 10 -O /var/run/collectd-sock >
+/var/log/radsniff.log 2>&1
 ```
 
 #### Via init script
@@ -86,9 +125,9 @@ sudo cp scripts/radsniff.init /etc/init.d/
 sudo update-rc.d radsniff defaults
 ```
 
-By default the init script will pass the following arguments to radsniff:
-```bash
--P "$PIDFILE"-N "$PROG" -q -W 10 -O /var/run/collectd-unixsock
+By default the init script will pass the following arguments to
+radsniff: ```bash -P "$PIDFILE"-N "$PROG" -q -W 10 -O
+/var/run/collectd-unixsock
 ```
 
 ``-P`` and ``-N`` cannot be changed (without editing the init script), but the other arguments can be overridden by creating ``/etc/default/radsniff`` and adding ``RADSNIFF_OPTIONS=<your options>``.
@@ -106,21 +145,24 @@ Nothing special is required other than enabling the unix socket plugin. To do th
 </Plugin>
 ```
 
-You'll also need to add the type definitions from [here](https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/collectd/radsniff_types.db) then restart collectd.
+You'll also need to add the type definitions from
+[here](https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/collectd/radsniff_types.db)
+then restart collectd.
 
 ### rrdtool graph definitions
 
 #### Counters
 
-```text
--l 0 --vertical-label "PPS"
-DEF:received=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:received:AVERAGE
-DEF:linked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:linked:AVERAGE
-DEF:unlinked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:unlinked:AVERAGE
-DEF:reused=/var/lib/collectd/rrd/<host>/<instance>exchanged/radius_count-<packet type>.rrd:reused:AVERAGE
-AREA:received#DD44CC:received
-AREA:linked#66BBCC:linked
-STACK:unlinked#7FFF00:unlinked
+```text -l 0 --vertical-label "PPS"
+DEF:received=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet
+type>.rrd:received:AVERAGE
+DEF:linked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet
+type>.rrd:linked:AVERAGE
+DEF:unlinked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet
+type>.rrd:unlinked:AVERAGE
+DEF:reused=/var/lib/collectd/rrd/<host>/<instance>exchanged/radius_count-<packet
+type>.rrd:reused:AVERAGE AREA:received#DD44CC:received
+AREA:linked#66BBCC:linked STACK:unlinked#7FFF00:unlinked
 STACK:reused#FF8C00:reused
 ```
 
@@ -142,22 +184,23 @@ LINE:trend86400#946A00:avg_day
 
 #### RTX
 
-```text
--l 0  --vertical-label "Requests completed per second"
-DEF:none=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:none:AVERAGE
-DEF:1=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:1:AVERAGE
-DEF:2=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:2:AVERAGE
-DEF:3=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:3:AVERAGE
-DEF:4=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:4:AVERAGE
-DEF:more=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:more:AVERAGE
-DEF:lost=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:lost:AVERAGE
-AREA:none#2AD400:none
-STACK:1#4DB000:1
-STACK:2#718D00:2
-STACK:3#946A00:3
-STACK:4#B84600:4
-STACK:more#DB2300:more
-STACK:lost#FF0000:lost
+```text -l 0  --vertical-label "Requests completed per second"
+DEF:none=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:none:AVERAGE
+DEF:1=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:1:AVERAGE
+DEF:2=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:2:AVERAGE
+DEF:3=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:3:AVERAGE
+DEF:4=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:4:AVERAGE
+DEF:more=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:more:AVERAGE
+DEF:lost=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet
+type>.rrd:lost:AVERAGE AREA:none#2AD400:none STACK:1#4DB000:1
+STACK:2#718D00:2 STACK:3#946A00:3 STACK:4#B84600:4
+STACK:more#DB2300:more STACK:lost#FF0000:lost
 ```
 
 ## munin
@@ -194,23 +237,41 @@ DELIM
 
 Then restart munin-node.
 
-To monitor multiple packet types create additional symlinks to the radsniff plugin, and alter ``env.pkt_type``. If running multiple instances of radsniff you should also set ``env.instance`` to the ``<instance name>`` used above.
+To monitor multiple packet types create additional symlinks to the
+radsniff plugin, and alter ``env.pkt_type``. If running multiple
+instances of radsniff you should also set ``env.instance`` to the
+``<instance name>`` used above.
 
-If collectd is aggregating stats from multiple hosts you'll also need to set ``env.host``.
+If collectd is aggregating stats from multiple hosts you'll also need
+to set ``env.host``.
 
 ### Caveats
 
-Firstly the resolution is very different between collectd (10 seconds) and munin (300 seconds). This means most of the stats you see in munin are AVERAGED from 5mins worth of collectd stats.
+Firstly the resolution is very different between collectd (10 seconds)
+and munin (300 seconds). This means most of the stats you see in munin
+are AVERAGED from 5mins worth of collectd stats.
 
-If a spike in packet loss or retransmissions occurs you may see a deceptively small spike on the munin graph. This is because that spike is averaged out over munin's polling interval. To get the actual number of packets lost, multiply the value from the graph by 300. Though if you have sustained packet loss or retransmissions it should should show up fine in munin.
+If a spike in packet loss or retransmissions occurs you may see a
+deceptively small spike on the munin graph. This is because that spike
+is averaged out over munin's polling interval. To get the actual
+number of packets lost, multiply the value from the graph by 300.
+Though if you have sustained packet loss or retransmissions it should
+should show up fine in munin.
 
-Although the majority of GAUGE values are created using the AVERAGE consolidation function, the 'low' latency and 'high' latency use MIN and MAX respectively. It seemed more useful to know the extremes during the polling interval, especially when using the values to trigger warnings when latency gets close to the point where the NAS will start timing out requests.
+Although the majority of GAUGE values are created using the AVERAGE
+consolidation function, the 'low' latency and 'high' latency use MIN
+and MAX respectively. It seemed more useful to know the extremes
+during the polling interval, especially when using the values to
+trigger warnings when latency gets close to the point where the NAS
+will start timing out requests.
 
 ## Example graphs
 
-![Accounting Request counters](radsniff_accounting_counters-day.png "Accounting Request counters")
-![Accounting Request latency](radsniff_accounting_latency-day.png "Accounting Request latency")
-![Accounting Request RTC](radsniff_accounting_rtx-day.png "Accounting RTX")
+![Accounting Request counters](radsniff_accounting_counters-day.png
+"Accounting Request counters") ![Accounting Request
+latency](radsniff_accounting_latency-day.png "Accounting Request
+latency") ![Accounting Request RTC](radsniff_accounting_rtx-day.png
+"Accounting RTX")
 
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

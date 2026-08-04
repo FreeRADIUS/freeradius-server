@@ -103,6 +103,7 @@ PROTOCOLS    := \
 	dhcpv6 \
 	dns \
 	eap/aka-sim \
+	eap/psk \
 	ethernet \
 	freeradius \
 	ldap \
@@ -193,6 +194,19 @@ build/autoconf.mk: src/include/autoconf.h
   #  Load the huge boilermake framework.
   #
   include scripts/boiler.mk
+
+  #
+  #  Print every categorised build target, one per line, as
+  #  "<category> <name>".  Categories are lib-protocol and lib-util,
+  #  declared via TGT_CATEGORY next to each TARGET in the makefile
+  #  fragments.  Useful for keeping the packaging
+  #  manifests honest, e.g.
+  #
+  #    make library.list | awk '$$1 == "lib-protocol" { print $$2 }'
+  #
+  .PHONY: library.list
+  library.list:
+	${Q}printf '%s\n' $(foreach x,$(sort ${ALL_TGTS}),$(if $($(x)_CATEGORY),"$($(x)_CATEGORY) $(basename $(notdir $(x)))"))
 endif
 
 #
