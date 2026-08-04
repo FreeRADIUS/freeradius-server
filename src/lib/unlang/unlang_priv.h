@@ -463,6 +463,7 @@ struct unlang_stack_frame_s {
 		uint8_t		frame_continue;			//!< previous "continue" frame
 		uint8_t		frame_return;			//!< previous "return" frame
 		uint8_t		frame_load_balance;		//!< previous "load-balance" frame
+		uint8_t		frame_call;			//!< previous "call" frame
 	} prev;
 
 #ifdef WITH_PERF

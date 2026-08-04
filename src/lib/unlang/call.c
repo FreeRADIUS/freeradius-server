@@ -70,8 +70,9 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 {
 	unlang_group_t			*g;
 	unlang_call_t			*gext;
-	fr_dict_enum_value_t const		*type_enum;
+	fr_dict_enum_value_t const	*type_enum;
 	fr_pair_t			*packet_type_vp = NULL;
+	unlang_stack_t			*stack = request->stack;
 
 	/*
 	 *	Do not check for children here.
@@ -137,6 +138,7 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 	} else {
 		frame_repeat(frame, unlang_call_children);
 	}
+	frame->prev.frame_call = stack->depth;
 
 	if (virtual_server_push(NULL, request, virtual_server_from_cs(gext->server_cs), UNLANG_SUB_FRAME) < 0) goto error;
 
@@ -217,6 +219,9 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 CONF_SECTION *unlang_call_current(request_t *request)
 {
 	unlang_stack_t	*stack = request->stack;
+	unlang_stack_frame_t *frame;
+
+#ifndef NDEBUG
 	unsigned int	depth;
 
 	/*
@@ -224,7 +229,7 @@ CONF_SECTION *unlang_call_current(request_t *request)
 	 *	looking for modules.
 	 */
 	for (depth = stack_depth_current(request); depth > 0; depth--) {
-		unlang_stack_frame_t	*frame = &stack->frame[depth];
+		frame = &stack->frame[depth];
 
 		/*
 		 *	Look at the module frames,
@@ -233,9 +238,19 @@ CONF_SECTION *unlang_call_current(request_t *request)
 		 */
 		if (frame->instruction->type != UNLANG_TYPE_CALL) continue;
 
+		fr_assert(stack->frame[stack->depth].prev.frame_call == depth);
+
 		return unlang_group_to_call(unlang_generic_to_group(frame->instruction))->server_cs;
 	}
+
 	return NULL;
+#else
+	frame = &stack->frame[stack->depth];
+	if (!frame->prev.frame_call) return NULL;
+
+	frame = &stack->frame[frame->prev.frame_call];
+	return unlang_group_to_call(unlang_generic_to_group(frame->instruction))->server_cs;
+#endif
 }
 
 static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
