@@ -199,13 +199,6 @@ fr_redis_rcode_t	fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 
 uint32_t		fr_redis_version_num(char const *version);
 
-/*
- *	Process response from pipelined command.
- */
-fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
-						 redisReply *out[], size_t out_len,
-						 fr_redis_conn_t *conn) CC_HINT(nonnull);
-
 #ifdef __cplusplus
 }
 #endif
