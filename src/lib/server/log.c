@@ -841,6 +841,56 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 	REXDENT();
 }
 
+/** Print a packet which we received or sent
+ *
+ * @param[in] request	to read logging params from.
+ * @param[in] packet	the packet in question
+ * @param[in] list	to print.
+ * @param[in] type_da	of Packet-Type
+ * @param[in] received	is this packet being received or being sent
+ * @param[in] id	do we log IDs, too
+ */
+void log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, fr_dict_attr_t const *type_da, bool received, bool id)
+{
+	ssize_t slen;
+	fr_dict_enum_value_t const *enumv;
+	char const *name;
+	char name_buffer[32];
+	char id_buffer[32];
+	char buffer[256];
+
+	if (!RDEBUG_ENABLED) return;
+
+	slen = fr_socket_to_str(buffer, sizeof(buffer), &packet->socket, received);
+	if (slen <= 0) buffer[0] = '\0';
+
+	if (id) {
+		(void) snprintf(id_buffer, sizeof(id_buffer), " ID %u", packet->id);
+	} else {
+		id_buffer[0] = '\0';
+	}
+
+	enumv = fr_dict_enum_by_value(type_da, fr_box_uint32((uint32_t) packet->code));
+	if (enumv) {
+		name = enumv->name;
+	} else {
+		(void) snprintf(name_buffer, sizeof(name_buffer), "%u", packet->code);
+		name = name_buffer;
+	}
+
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s%s %s",
+		    received ? "Received" : "Sending",
+		    name,
+		    id_buffer,
+		    buffer);
+
+	if (received || request->parent) {
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	}
+}
+
 /** Print a list of protocol fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).

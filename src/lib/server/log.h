@@ -46,7 +46,7 @@ typedef struct rindent_s {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/packet.h>
 
 /** Logging callback to write log messages to a destination
  *
@@ -126,6 +126,11 @@ void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 void	log_request_pair(fr_log_lvl_t lvl, request_t *request,
 			 fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix) CC_HINT(nonnull(2));
+
+void	log_request_packet(request_t *request, fr_packet_t *packet, fr_pair_list_t *list,
+			   fr_dict_attr_t const *type_da, bool received, bool id) CC_HINT(nonnull);
+
+#define LOG_PACKET_DEBUG(_request, ...) if (RDEBUG_ENABLED) log_request_packet(_request, ## __VA_ARGS__)
 
 void	log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			      fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
