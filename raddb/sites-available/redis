@@ -29,6 +29,11 @@ server redis {
 #		timeout = 5s
 
 		#
+		#  retry_interval:: Time between retrying a failed map fetch
+		#
+#		retry_interval = 30s
+
+		#
 		#  pool:: Connection pool settings
 		#
 		#  The `redis` virtual server uses pool configuration
