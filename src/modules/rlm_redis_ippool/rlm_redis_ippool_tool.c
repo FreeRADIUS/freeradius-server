@@ -278,29 +278,6 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	}
 }
 
-/** Run the redis_ippool.pools.list module method to fetch the list of pools across the cluster.
- */
-static int redis_ippool_get_pools(request_t *request, module_instance_t *mi, module_method_t method, fr_event_list_t *el)
-{
-	rlm_rcode_t	rcode;
-
-	/*
-	 *	Make sure the control list is empty before pools.list populates it.
-	 */
-	fr_pair_list_free(&request->control_pairs);
-
-	if (unlang_module_push(NULL, request, mi, method, UNLANG_TOP_FRAME) < 0) return -1;
-
-	rcode = unlang_interpret_synchronous(el, request);
-	switch (rcode) {
-	case RLM_MODULE_USER_SECTION_REJECT:
-		return -1;
-
-	default:
-		return 0;
-	}
-}
-
 /** Run the redis_ippool.stats module method to fetch pool statistics
  */
 static int redis_ippool_get_stats(request_t *request, fr_value_box_t *pool_name,
@@ -682,6 +659,15 @@ static int xlat_unassign_lease(TALLOC_CTX *ctx, fr_value_box_list_t *list, reque
 	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, xlat_len), el);
 }
 
+/** Run the redis_ippool.pools.list xlat to fetch the list of pools across the cluster.
+ */
+static int redis_ippool_get_pools(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, fr_event_list_t *el)
+{
+	char	xlat[] = "%redis_ippool.pools.list()";
+
+	return run_xlat(ctx, list, request, &FR_SBUFF_IN(xlat, sizeof(xlat) - 1), el);
+}
+
 static request_t *request_from_internal(TALLOC_CTX *ctx)
 {
 	request_t *request;
@@ -769,7 +755,6 @@ int main(int argc, char *argv[])
 
 	virtual_server_t const		*vs;
 	module_instance_t		*mi;
-	module_method_call_t		pools_list;
 	CONF_SECTION			*pool_stats, *pool_show;	// Process sections used to call module methods
 
 	fr_value_box_list_init(&vb_list);
@@ -1036,10 +1021,6 @@ do { \
 	vs = virtual_server_find("default");
 	mi = module_rlm_static_by_name(NULL, "redis_ippool");
 	if (!mi) EXIT_WITH_FAILURE;
-	if (module_rlm_by_name_and_method(autofree, &pools_list, NULL,
-					  &(section_name_t){.name1 = "pools", .name2 = "list"},
-					  &FR_SBUFF_IN_STR("redis_ippool.pools.list"),
-					  &(tmpl_rules_t){}) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *	The module methods for these functions use call_env - which
@@ -1092,26 +1073,25 @@ do { \
 	}
 
 	if (print_stats) {
-		fr_pair_list_t	pools;
-		fr_pair_t	*parent, *stats, *st, *dyn;
+		fr_value_box_list_t	pools;
+		fr_pair_t	*stats, *st, *dyn;
 		fr_pair_t	*total, *static_total, *static_free, *dyn_free;
 		fr_pair_t	*exp1m, *exp30m, *exp1h, *exp1d;
 
-		fr_pair_list_init(&pools);
+		fr_value_box_list_init(&pools);
 		if (pool_arg) {
-			fr_pair_t	*vp;
-			MEM(vp = fr_pair_afrom_da_nested(autofree, &pools, attr_ippool_name));
-			fr_value_box_bstrndup(vp, &vp->data, NULL, (char *)pool_arg, talloc_array_length(pool_arg), false);
+			fr_value_box_t	*vb;
+			MEM(vb = fr_value_box_alloc(autofree, FR_TYPE_STRING, NULL));
+			fr_value_box_bstrndup(vb, vb, NULL, (char *)pool_arg, talloc_array_length(pool_arg), false);
+			fr_value_box_list_insert_tail(&pools, vb);
 		} else {
-			if (redis_ippool_get_pools(request, mi, pools_list.mmb.method, el) < 0) EXIT_WITH_FAILURE;
-			fr_pair_list_append(&pools, &request->control_pairs);
+			if (redis_ippool_get_pools(autofree, &pools, request, el) < 0) EXIT_WITH_FAILURE;
 		}
 
-		parent = fr_pair_find_by_da(&pools, NULL, attr_ippool);
-		fr_pair_list_foreach(&parent->vp_group, vp) {
-			if (redis_ippool_get_stats(request, &vp->data, pool_stats, el) < 0) EXIT_WITH_FAILURE;
+		fr_value_box_list_foreach(&pools, vb) {
+			if (redis_ippool_get_stats(request, vb, pool_stats, el) < 0) EXIT_WITH_FAILURE;
 
-			INFO("pool                : %pV", &vp->data);
+			INFO("pool                : %pV", vb);
 			stats = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_ippool_stats);
 			if (!stats) EXIT_WITH_FAILURE;
 
@@ -1175,18 +1155,17 @@ do { \
 			INFO("static renew 1h-1d  : %" PRIu64, exp1d->vp_uint64 - exp1h->vp_uint64);
 			INFO("--");
 		}
-		fr_pair_list_free(&pools);
+		fr_value_box_list_talloc_free(&pools);
 	}
 
 	if (list_pools) {
-		fr_pair_t	*parent;
+		fr_value_box_list_t	pools;
 
-		if (redis_ippool_get_pools(request, mi, pools_list.mmb.method, el) < 0) EXIT_WITH_FAILURE;
-		parent = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ippool);
-		if (parent) {
-			fr_pair_list_foreach(&parent->vp_group, vp) INFO("%pV", &vp->data);
-			INFO("--");
-		}
+		fr_value_box_list_init(&pools);
+		if (redis_ippool_get_pools(autofree, &pools, request, el) < 0) EXIT_WITH_FAILURE;
+		fr_value_box_list_foreach(&pools, vb) INFO("%pV", vb);
+		INFO("--");
+		fr_value_box_list_talloc_free(&pools);
 	}
 
 	/*
