@@ -1883,7 +1883,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
 	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
-	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(unlang_call_current(request)));
+	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", unlang_interpret_virtual_server(request));
 	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
 	/*
