@@ -20,8 +20,8 @@ of mods-available/eap:
 ----
 psk {
 ----
-#       virtual_server = eap-psk
 ----
+     virtual_server = eap-psk
 }
 ----
 
