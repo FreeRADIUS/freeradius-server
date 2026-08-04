@@ -731,7 +731,6 @@ fr_redis_rcode_t fr_redis_parse_version(char *out, size_t out_len, redisReply *r
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
 				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
-		fr_redis_reply_free(&reply);
 		return REDIS_RCODE_ERROR;
 	}
 
