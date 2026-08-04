@@ -551,7 +551,7 @@ static void redis_cluster_info_server_results(request_t *request, UNUSED fr_redi
 static void redis_cluster_info_results(request_t *request, UNUSED fr_redis_command_t *cmd, redisReply *reply, void *rctx)
 {
 	process_redis_node_rctx_t	*nrctx = talloc_get_type_abort(rctx, process_redis_node_rctx_t);
-	char	*p, *q;
+	fr_sbuff_t			sbuff;
 
 	fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0, REDIS_RCODE_SUCCESS);
 
@@ -563,37 +563,33 @@ static void redis_cluster_info_results(request_t *request, UNUSED fr_redis_comma
 		return;
 	}
 
-	p = strstr(reply->str, "cluster_state:");
-	if (!p) {
+	fr_sbuff_init_in(&sbuff, reply->str, reply->len);
+	if (!fr_sbuff_adv_to_str_literal(&sbuff, SIZE_MAX, "cluster_state:")) {
 		RERROR("Response did not contain cluster_state");
 		goto error;
 	}
+	fr_sbuff_advance(&sbuff, sizeof("cluster_state:") - 1);
 
-	p = strchr(p, ':');
-	fr_assert(p);
-	p++;
-
-	q = strstr(p, "\r\n");
-	if (!q) q = p + strlen(p);
-
-	if (strncmp(p, "ok", q - p) == 0) {
+	if (fr_sbuff_adv_past_str_literal(&sbuff, "ok\r\n")) {
 		nrctx->cluster_ok = true;
 		RDEBUG2("Node %s:%d reports Cluster OK", nrctx->node->io_conf.hostname, nrctx->node->io_conf.port);
 	} else {
 		RERROR("Node %s:%d reports Cluster Failed", nrctx->node->io_conf.hostname, nrctx->node->io_conf.port);
 	}
 
-	p = strstr(reply->str, "cluster_current_epoch");
-	if (!p) {
+	/*
+	 *	The sequence of entries in the CLUSTER INFO results is not guaranteed,
+	 *	so we start the search from the beginning again.
+	 */
+	fr_sbuff_set_to_start(&sbuff);
+
+	if (!fr_sbuff_adv_to_str_literal(&sbuff, SIZE_MAX, "cluster_current_epoch:")) {
 		RERROR("Response did not contain cluster_current_epoch");
 		goto error;
 	}
+	fr_sbuff_advance(&sbuff, sizeof("cluster_current_epoch:") -1);
 
-	p = strchr(p, ':');
-	fr_assert(p);
-	p++;
-
-	if (fr_strtoull(&nrctx->node->current_epoch, &q, p) < 0) {
+	if (fr_sbuff_out_uint64(NULL, &nrctx->node->current_epoch, &sbuff, false) < 0) {
 		RERROR("Failed parsing current_cluster_epoch");
 		goto error;
 	}
