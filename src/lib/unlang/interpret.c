@@ -2277,25 +2277,12 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The virtual server handling the request
 	 */
 	if (strcmp(fmt, "server") == 0) {
-		request_t *our_request;
-		CONF_SECTION *server = NULL;
+		char const *server;
 
-		/*
-		*	If we're being pedantic subrequests don't have a virtual
-		*	server associated with them unless they go call {}.
-		*
-		*	But we're not being pendantic, so go back up the request
-		*	list looking for a call frame.
-		*
-		*	Unfortunately for detached subrequests we still won't find
-		*	the actual virtual server...
-		*/
-		for (our_request = request; our_request && server == NULL; our_request = our_request->parent) {
-			server = unlang_call_current(our_request);
-		}
+		server = unlang_interpret_virtual_server(request);
 		if (server == NULL) goto finish;
 
-		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(server), false) < 0) goto error;
+		if (fr_value_box_strdup(vb, vb, NULL, server, false) < 0) goto error;
 
 		goto finish;
 	}
@@ -2347,6 +2334,40 @@ finish:
 
 	return XLAT_ACTION_DONE;
 }
+
+/** Return the current virtual server for this request
+ *
+ * @param[in] request	To return virtual server for.
+ * @return
+ *	- The name of a virtual server on success
+ *	- NULL on failure.
+ */
+char const *unlang_interpret_virtual_server(request_t *request)
+{
+	request_t *our_request;
+
+	/*
+	 *	If we're being pedantic subrequests don't have a virtual
+	 *	server associated with them unless they go call {}.
+	 *
+	 *	But we're not being pendantic, so go back up the request
+	 *	list looking for a call frame.
+	 *
+	 *	Unfortunately for detached subrequests we still won't find
+	 *	the actual virtual server...
+	 */
+	for (our_request = request; our_request; our_request = our_request->parent) {
+		CONF_SECTION *cs;
+
+		cs = unlang_call_current(our_request);
+		if (!cs) continue;
+
+		return cf_section_name2(cs);
+	}
+
+	return NULL;
+}
+
 
 /** Initialize a unlang compiler / interpret.
  *

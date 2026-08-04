@@ -227,6 +227,8 @@ TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 
 unlang_t const		*unlang_interpret_instruction(request_t *request);
 
+char const		*unlang_interpret_virtual_server(request_t *request);
+
 int			unlang_interpret_force_result(unlang_t const *instruction, unlang_result_t *p_result,
 						      fr_timer_list_t *tl, fr_time_delta_t expire) CC_HINT(nonnull(1));
 
