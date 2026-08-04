@@ -932,8 +932,7 @@ RECV(cluster_map_bootstrap)
 	fr_redis_conf_t		*conf;
 	CONF_SECTION		*tls_conf = NULL;
 
-	if (!vp) return UNLANG_ACTION_FAIL;
-	rctx->worker_id = vp->vp_int32;
+	rctx->worker_id = vp ? vp->vp_int32 : 0;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_bootstrap_node);
 	if (!vp) return UNLANG_ACTION_FAIL;
@@ -1052,8 +1051,7 @@ RECV(cluster_map_get)
 	fr_pair_t		*vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_worker_id);
 	process_redis_cluster_t	find;
 
-	if (!vp) return UNLANG_ACTION_FAIL;
-	rctx->worker_id = vp->vp_int32;
+	rctx->worker_id = vp ? vp->vp_int32 : 0;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_redis_cluster_id);
 	if (!vp) return UNLANG_ACTION_FAIL;
