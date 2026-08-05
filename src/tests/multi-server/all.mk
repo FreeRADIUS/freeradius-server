@@ -146,6 +146,7 @@ $(OUTPUT)/${1}/${2}/$(notdir $(patsubst %.j2,%,${4})): ${4} ${3} $(TEST_MULTI_SE
 	    --output-path "$$@" \
 	    --process-volumes \
 	    --volume-src "$(DIR)/configs" \
+	    --define project="${1}-${2}-$(MODE)" \
 	    >> "$$(@D)/config_builder.log" 2>&1
 endef
 
