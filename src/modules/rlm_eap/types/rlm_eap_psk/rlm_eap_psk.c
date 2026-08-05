@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/protocol/eap/psk/freeradius.h>
 
 #include "crypto.h"
@@ -173,7 +174,7 @@ yield:
 	 */
 	(void)unlang_module_yield(request, mod_encode, NULL, 0, NULL);
 
-	if (virtual_server_push(NULL, request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_call_push(NULL, request, virtual_server_cs(inst->virtual_server), UNLANG_SUB_FRAME) < 0) {
 		unlang_interpet_frame_discard(request);
 		RETURN_UNLANG_FAIL;
 	}
