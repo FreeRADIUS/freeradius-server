@@ -134,7 +134,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 
 		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
 		if (slen < 0) {
-			RERROR("%s", fr_strerror());
+			RERROR("Failed processing regex: %s", fr_strerror());
 
 			goto regex_error;
 		}
