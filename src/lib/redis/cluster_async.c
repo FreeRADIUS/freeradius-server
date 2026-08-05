@@ -163,7 +163,8 @@ struct fr_redis_ct_key_slot_s {
 typedef enum {
 	CLUSTER_INIT = 0,				//!< Cluster has been initialised.
 	CLUSTER_MAP_FETCHING,				//!< The cluster map is currently being fetched.
-	CLUSTER_READY					//!< The cluster is available to handle requests.
+	CLUSTER_READY,					//!< The cluster is available to handle requests.
+	CLUSTER_FAIL,					//!< The coordinator reported a failed cluster map update.
 } fr_redis_ct_state_t;
 
 /** Thread local state for a cluster
@@ -959,6 +960,17 @@ do { \
 		talloc_free(pend_req);
 	}
 
+	return 0;
+}
+
+/** Process a cluster map fail message from the coordinator.
+ *
+ * @param rtcluster	Cluster to update
+ * @param list		pairs sent by a coordinator
+ */
+int fr_redis_ct_map_fail(fr_redis_ct_t *rtcluster, UNUSED fr_pair_list_t const *list)
+{
+	rtcluster->state = CLUSTER_FAIL;
 	return 0;
 }
 

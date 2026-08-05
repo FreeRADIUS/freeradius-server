@@ -75,6 +75,14 @@ static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pai
 	fr_redis_ct_map_update(t->rtcluster, list); \
 	return; \
 } \
+static void cluster_map_fail(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg, \
+			    fr_pair_list_t const *list, UNUSED fr_time_t now, \
+			    module_ctx_t *mctx, UNUSED void *uctx) \
+{ \
+	_thread_type	*t = talloc_get_type_abort(mctx->thread, _thread_type); \
+	fr_redis_ct_map_fail(t->rtcluster, list); \
+	return; \
+} \
 static fr_coord_cb_reg_t coord_callbacks[] = { \
 	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID), \
 	FR_COORD_CALLBACK_TERMINATOR \
@@ -85,6 +93,7 @@ static fr_coord_worker_cb_reg_t worker_callbacks[] = { \
 }; \
 static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = { \
 	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update }, \
+	{ .packet_type = FR_REDIS_CLUSTER_MAP_FAIL, .callback = cluster_map_fail }, \
 	FR_COORD_CALLBACK_TERMINATOR \
 }
 
@@ -119,6 +128,8 @@ fr_redis_async_rcode_t		fr_redis_ct_map_get(fr_redis_ct_t *rtcluster, fr_coord_w
 						    fr_coord_pair_reg_t *coord_pair_reg, bool force);
 
 int				fr_redis_ct_map_update(fr_redis_ct_t *thread, fr_pair_list_t const *list);
+
+int				fr_redis_ct_map_fail(fr_redis_ct_t *rtcluster, fr_pair_list_t const *list);
 
 fr_redis_async_cmd_t		*fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *request, fr_redis_async_rcode_t *rcode,
 							  fr_redis_ct_t *rtcluster, uint8_t const *key, size_t key_len,

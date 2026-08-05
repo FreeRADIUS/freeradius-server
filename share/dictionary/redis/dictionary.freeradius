@@ -13,6 +13,7 @@ ATTRIBUTE	Packet-Type				1	uint32
 VALUE	Packet-Type			Cluster-Map-Bootstrap	1
 VALUE	Packet-Type			Cluster-Map-Get		2
 VALUE	Packet-Type			Cluster-Map-Update	3
+VALUE	Packet-Type			Cluster-Map-Fail	4
 VALUE	Packet-Type			Do-Not-Respond		255
 
 ATTRIBUTE	Log-Prefix				2	string
