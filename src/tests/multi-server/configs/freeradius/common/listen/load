@@ -24,6 +24,6 @@ listen load {
 			max_backlog = $ENV{TEST_LOADGEN_MAX_BACKLOG}
 			parallel = $ENV{TEST_LOADGEN_PARALLEL}
 			max_requests = $ENV{TEST_LOADGEN_MAX_REQUESTS}
-			on_complete = stop
+			on_complete = exit
 		}
 	}
