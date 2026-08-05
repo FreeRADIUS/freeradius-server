@@ -500,6 +500,14 @@ fr_redis_async_cmd_t *fr_redis_async_cmd_start(TALLOC_CTX *ctx, request_t *reque
 		*rcode = REDIS_ASYNC_RCODE_SUCCESS;
 		break;
 
+	case CLUSTER_FAIL:
+		/*
+		 *	The coordinator reported a failed cluster.
+		 */
+		*rcode = REDIS_ASYNC_RCODE_FAIL;
+		talloc_free(cmd);
+		return NULL;
+
 	default:
 		*rcode = fr_redis_async_cmd_enqueue(cmd);
 		break;

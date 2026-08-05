@@ -56,6 +56,7 @@ case REDIS_ASYNC_RCODE_BOOTSTRAP: \
 case REDIS_ASYNC_RCODE_GETMAP: \
 	fr_redis_ct_map_get(_cluster, _cw, _coord_pair_reg, false); \
 	break; \
+case REDIS_ASYNC_RCODE_FAIL: \
 case REDIS_ASYNC_RCODE_ERROR: \
 	RPERROR(_error_msg); \
 	return _error_ret; \
