@@ -1588,6 +1588,12 @@ validate:
 		goto error;
 	}
 
+	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
+		RERROR("Cannot add client %s: Client IP and src address are different IP version",
+		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		goto error;
+	}
+
 	/*
 	 *	It can't be set to "auto".  Too bad.
 	 */
@@ -1595,13 +1601,6 @@ validate:
 
 	if (!client_add_dynamic(clients, request->client, c)) {
 		return NULL;
-	}
-
-	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
-		RERROR("Cannot add client %s: Client IP and src address are different IP version",
-		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
-
-		goto error;
 	}
 
 	return c;
