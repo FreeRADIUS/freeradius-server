@@ -154,10 +154,6 @@ typedef struct {
 	fr_coord_worker_t	*cw;		//!< Coord-worker for fetching cluster map.
 } rlm_redis_ippool_thread_t;
 
-typedef enum {
-	REDIS_COORD_PAIR_CALLBACK_ID = 0,
-} rlm_redis_coord_t;
-
 static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
@@ -3193,31 +3189,7 @@ static int mod_coord_attach(module_thread_inst_ctx_t const *mctx)
 	return fr_redis_ct_map_bootstrap(t->rtcluster, t->cw, inst->coord_pair_reg);
 }
 
-/** Callback for worker receiving Fetch-OK packet from coordinator
- */
-static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
-			       fr_pair_list_t const *list, UNUSED fr_time_t now,
-			       module_ctx_t *mctx, UNUSED void *uctx)
-{
-	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_redis_ippool_thread_t);
-	fr_redis_ct_map_update(t->rtcluster, list);
-	return;
-}
-
-static fr_coord_cb_reg_t coord_callbacks[] = {
-	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
-	FR_COORD_CALLBACK_TERMINATOR
-};
-
-static fr_coord_worker_cb_reg_t worker_callbacks[] = {
-	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
-	FR_COORD_CALLBACK_TERMINATOR
-};
-
-static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
-	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
-	FR_COORD_CALLBACK_TERMINATOR
-};
+REDIS_ASYNC_COORD_CALLBACKS(rlm_redis_ippool_thread_t);
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {

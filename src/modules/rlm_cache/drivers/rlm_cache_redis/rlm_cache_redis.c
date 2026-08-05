@@ -86,35 +86,7 @@ fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-typedef enum {
-	REDIS_COORD_PAIR_CALLBACK_ID = 0,
-} rlm_redis_coord_t;
-
-/** Callback for worker receiving Fetch-OK packet from coordinator
- */
-static void cluster_map_update(UNUSED fr_coord_worker_t *cw, UNUSED fr_coord_pair_reg_t *coord_pair_reg,
-			       fr_pair_list_t const *list, UNUSED fr_time_t now,
-			       module_ctx_t *mctx, UNUSED void *uctx)
-{
-	rlm_cache_redis_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_cache_redis_thread_t);
-	fr_redis_ct_map_update(t->rtcluster, list);
-	return;
-}
-
-static fr_coord_cb_reg_t coord_callbacks[] = {
-	FR_COORD_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
-	FR_COORD_CALLBACK_TERMINATOR
-};
-
-static fr_coord_worker_cb_reg_t worker_callbacks[] = {
-	FR_COORD_WORKER_PAIR_CALLBACK(REDIS_COORD_PAIR_CALLBACK_ID),
-	FR_COORD_CALLBACK_TERMINATOR
-};
-
-static fr_coord_worker_pair_cb_reg_t worker_pair_callbacks[] = {
-	{ .packet_type = FR_REDIS_CLUSTER_MAP_UPDATE, .callback = cluster_map_update },
-	FR_COORD_CALLBACK_TERMINATOR
-};
+REDIS_ASYNC_COORD_CALLBACKS(rlm_cache_redis_thread_t);
 
 /** Create a new rlm_cache_redis instance
  *
