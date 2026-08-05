@@ -3391,7 +3391,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		break;
 
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		RERROR("(TLS) Failed with err in certificate 'no after' field..");
+		RERROR("(TLS) Failed with err in certificate 'not after' field.");
 		break;
 
 #if 0
