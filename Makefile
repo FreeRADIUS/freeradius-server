@@ -109,6 +109,7 @@ PROTOCOLS    := \
 	freeradius \
 	ldap \
 	radius \
+	redis \
 	snmp \
 	tacacs \
 	vmps \
