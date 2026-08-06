@@ -2708,8 +2708,8 @@ static xlat_action_t redis_ippool_addresses_add_xlat(UNUSED TALLOC_CTX *ctx, UNU
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 	fr_value_box_t			*pool, *start, *end, *prefix_in, *range;
-	uint8_t				prefix;
-	size_t				num_addr, step;
+	uint8_t				prefix = 0;
+	size_t				num_addr = 1, step = 1;
 
 	XLAT_ARGS(in, &pool, &start, &end, &prefix_in, &range);
 
@@ -2811,8 +2811,8 @@ static xlat_action_t redis_ippool_addresses_remove_xlat(UNUSED TALLOC_CTX *ctx, 
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 	fr_value_box_t			*pool, *start, *end, *prefix_in;
-	uint8_t				prefix;
-	size_t				num_addr, step;
+	uint8_t				prefix = 0;
+	size_t				num_addr = 1, step = 1;
 
 	XLAT_ARGS(in, &pool, &start, &end, &prefix_in);
 
@@ -2914,8 +2914,8 @@ static xlat_action_t redis_ippool_addresses_release_xlat(UNUSED TALLOC_CTX *ctx,
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 	fr_value_box_t			*pool, *start, *end, *prefix_in;
-	uint8_t				prefix;
-	size_t				num_addr, step;
+	uint8_t				prefix = 0;
+	size_t				num_addr = 1, step = 1;
 
 	XLAT_ARGS(in, &pool, &start, &end, &prefix_in);
 
@@ -3024,8 +3024,8 @@ static xlat_action_t redis_ippool_addresses_modify_xlat(UNUSED TALLOC_CTX *ctx, 
 	rlm_redis_ippool_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_redis_ippool_t);
 	rlm_redis_ippool_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_redis_ippool_thread_t);
 	fr_value_box_t			*pool, *start, *end, *range, *prefix_in;
-	uint8_t				prefix;
-	size_t				num_addr, step;
+	uint8_t				prefix = 0;
+	size_t				num_addr = 1, step = 1;
 
 	XLAT_ARGS(in, &pool, &start, &end, &range, &prefix_in);
 
