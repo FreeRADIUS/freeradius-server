@@ -298,7 +298,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 		 *	1 between txn starts and txn ends.
 		 */
 		if ((cmds->txn_end < cmds->txn_start) && ((cmds->txn_start - cmds->txn_end) > 1)) {
-			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"MULTI\" commands");
+			ROPTIONAL(REDEBUG, ERROR, "Too many consecutive \"MULTI\" commands");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
 		/*
@@ -325,7 +325,7 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 		if (strncasecmp(cmd, "discard", sizeof("discard") - 1) != 0) break;
 	txn_end:
 		if (cmds->txn_start <= cmds->txn_end) {
-			ROPTIONAL(ERROR, REDEBUG, "Transaction not started, missing \"MULTI\" command");
+			ROPTIONAL(REDEBUG, ERROR, "Transaction not started, missing \"MULTI\" command");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
 		*type = FR_REDIS_COMMAND_TRANSACTION_END;
@@ -342,11 +342,11 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
 
 		if (strncasecmp(cmd, "watch", sizeof("watch") - 1) != 0) break;
 		if (cmds->txn_watch) {
-			ROPTIONAL(ERROR, REDEBUG, "Too many consecutive \"WATCH\" commands");
+			ROPTIONAL(REDEBUG, ERROR, "Too many consecutive \"WATCH\" commands");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
 		if (cmds->txn_start > cmds->txn_end) {
-			ROPTIONAL(ERROR, REDEBUG, "\"WATCH\" can only be used before \"MULTI\"");
+			ROPTIONAL(REDEBUG, ERROR, "\"WATCH\" can only be used before \"MULTI\"");
 			return FR_REDIS_PIPELINE_BAD_CMDS;
 		}
 		FALL_THROUGH;
@@ -765,7 +765,7 @@ static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *
 			}
 
 			if (unlikely(ret != REDIS_OK)) {
-				ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
+				ROPTIONAL(REDEBUG, ERROR, "Unexpected error queueing REDIS command");
 
 				while ((cmd = fr_dlist_head(&cmds->sent))) {
 					fr_redis_connection_ignore_response(h, cmd->sqn);
