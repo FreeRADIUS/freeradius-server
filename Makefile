@@ -97,6 +97,7 @@ export PROJECT_NAME := freeradius
 #
 PROTOCOLS    := \
 	arp \
+	crl \
 	bfd \
 	der \
 	dhcpv4 \
