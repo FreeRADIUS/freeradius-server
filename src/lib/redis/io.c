@@ -160,7 +160,7 @@ static void _redis_auth_result(struct redisAsyncContext *ac, void *data, UNUSED 
 /** Called by hiredis to indicate the connection is live
  *
  */
-static void _redis_connected(redisAsyncContext *ac, UNUSED int status)
+static void _redis_connected_nc(redisAsyncContext *ac, UNUSED int status)
 {
 	connection_t			*conn = talloc_get_type_abort(ac->data, connection_t);
 	redis_conn_uctx_t		*conn_uctx = connection_uctx_get(conn);
@@ -216,6 +216,19 @@ static void _redis_connected(redisAsyncContext *ac, UNUSED int status)
 
 	connection_signal_connected(conn);
 }
+
+#ifndef HAVE_REDIS_CALLBACKNC
+/*
+ *	Hiredis prior to 1.1.0 only has the callback with const context
+ *	We need it un-const so we can update the connection status.
+ */
+static void _redis_connected(redisAsyncContext const *ac, int status)
+{
+	redisAsyncContext	*our_ac = UNCONST(redisAsyncContext *, ac);
+
+	_redis_connected_nc(our_ac, status);
+}
+#endif
 
 /** Redis FD became readable
  *
@@ -532,7 +545,11 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 	 *      machine, to let it handle
 	 *	reconnecting.
 	 */
-	ret = redisAsyncSetConnectCallbackNC(h->ac, _redis_connected);
+#ifdef HAVE_REDIS_CALLBACKNC
+	ret = redisAsyncSetConnectCallbackNC(h->ac, _redis_connected_nc);
+#else
+	ret = redisAsyncSetConnectCallback(h->ac, _redis_connected);
+#endif
 	if (ret != REDIS_OK) {
 		ERROR("Failed setting connected callback: Error %i", ret);
 		goto error;

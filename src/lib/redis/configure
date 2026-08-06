@@ -4099,7 +4099,7 @@ then :
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
- { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
@@ -4135,7 +4135,7 @@ printf "%s\n" "yes" >&6; }
 		   break
 
 else $as_nop
- { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
@@ -4156,6 +4156,146 @@ fi
     then
 
 printf "%s\n" "#define HAVE_REDIS_TIMEOUT 1" >>confdefs.h
+
+    fi
+
+    smart_try_dir="$redis_lib_dir"
+
+
+sm_lib_safe=`echo "hiredis" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "redisAsyncSetConnectCallbackNC" | sed 'y%./+-%__p_%'`
+
+if test "x" = "x"; then
+  sm_pkg="${sm_lib_safe}"
+else
+  sm_pkg=""
+fi
+
+old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
+smart_lib=
+smart_ldflags=
+smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/lib /opt/homebrew/opt/${sm_pkg}/lib"
+
+if test "x$smart_try_dir" != "x"; then
+for try in $smart_try_dir; do
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisAsyncSetConnectCallbackNC in -lhiredis in $try" >&5
+printf %s "checking for redisAsyncSetConnectCallbackNC in -lhiredis in $try... " >&6; }
+  LIBS="-lhiredis $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisAsyncSetConnectCallbackNC();
+int
+main (void)
+{
+redisAsyncSetConnectCallbackNC()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+		   smart_lib="-lhiredis"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+		   break
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" = "x"; then
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisAsyncSetConnectCallbackNC in -lhiredis" >&5
+printf %s "checking for redisAsyncSetConnectCallbackNC in -lhiredis... " >&6; }
+LIBS="-lhiredis $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisAsyncSetConnectCallbackNC();
+int
+main (void)
+{
+redisAsyncSetConnectCallbackNC()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+	           smart_lib="-lhiredis"
+	           smart_ld_found=""
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+for try in $smart_lib_dir; do
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for redisAsyncSetConnectCallbackNC in -lhiredis in $try" >&5
+printf %s "checking for redisAsyncSetConnectCallbackNC in -lhiredis in $try... " >&6; }
+  LIBS="-lhiredis $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char redisAsyncSetConnectCallbackNC();
+int
+main (void)
+{
+redisAsyncSetConnectCallbackNC()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+		   smart_lib="-lhiredis"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   smart_ld_found="$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+		   break
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" != "x"; then
+eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+LIBS="$smart_ldflags $smart_lib $old_LIBS"
+SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+SMART_LD_FOUND="$smart_ld_found"
+fi
+
+    if test "x$ac_cv_lib_hiredis_redisAsyncSetConnectCallbackNC" == "xyes"
+    then
+
+printf "%s\n" "#define HAVE_REDIS_CALLBACKNC 1" >>confdefs.h
 
     fi
 
