@@ -443,7 +443,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	fr_type_t		return_type = FR_TYPE_NULL;
 
 	CONF_ITEM		*ci = NULL;
-	int			children = 0, i;
+	int			children = 0;
 	fr_rb_tree_t		*mrx_tree;		/* Temporary tree for ordering xlats */
 
 	name1 = cf_section_name1(cs);
@@ -497,9 +497,9 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 *	pointing to the same xlat.
 	 */
 	MEM(mrx_tree = fr_rb_talloc_alloc(NULL, module_rlm_xlat_t, module_qualified_xlat_cmp, NULL));
-	for (ci = cf_item_next(cs, NULL), i = 0;
+	for (ci = cf_item_next(cs, NULL);
 	     ci;
-	     ci = cf_item_next(cs, ci), i++) {
+	     ci = cf_item_next(cs, ci)) {
 		module_instance_t		*mi;
 		module_rlm_instance_t		*mri;
 		char const			*name;
