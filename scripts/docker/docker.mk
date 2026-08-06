@@ -137,16 +137,16 @@ endef
 define DOCKER_CLEAN
 .PHONY: docker.${2}.${1}.clean
 docker.${2}.${1}.clean:
-	$${Q}if docker image rm $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) >/dev/null 2>&1; then \
+	$${Q}if docker image rm `docker image ls --format "{{.Repository}}:{{.Tag}}" $(DOCKER_IMAGE_PREFIX)-${2}/${1}` >/dev/null 2>&1; then \
 		rm -f $(DOCKER_STATE)/stamp-image.${1}.${2} $(DOCKER_STATE)/build.${1}.${2}; \
-		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA)"; \
+		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1}"; \
 	else \
-		if docker image inspect $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) >/dev/null 2>&1; then \
-			echo "FAIL clean $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA): image still present (in use?)"; \
+		if docker image inspect $(DOCKER_IMAGE_PREFIX)-${2}/${1} >/dev/null 2>&1; then \
+			echo "FAIL clean $(DOCKER_IMAGE_PREFIX)-${2}/${1}: image still present (in use?)"; \
 			exit 1; \
 		fi; \
 		rm -f $(DOCKER_STATE)/stamp-image.${1}.${2} $(DOCKER_STATE)/build.${1}.${2}; \
-		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1}:$(GIT_SHA) (no image, stamp only)"; \
+		echo "CLEAN $(DOCKER_IMAGE_PREFIX)-${2}/${1} (no image, stamp only)"; \
 	fi
 endef
 
