@@ -1372,6 +1372,7 @@ fi
 %{_libdir}/freeradius/rlm_rediswho.so
 %{_libdir}/freeradius/rlm_cache_redis.so
 %{_libdir}/freeradius/rlm_redis_ippool.so
+%{_libdir}/freeradius/process_redis.so
 %doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
 
 %files rest
