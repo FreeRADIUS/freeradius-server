@@ -6,6 +6,9 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  over TLS.  See sites-available/tls, and look for "socat".
 	* Add per-section "do_xlat" and "is_json" config items to rlm_rest.
 	  see mods-available/rest for details.
+	* Add notes on the security of CHAP-Password and MS-CHAP-*
+	  If you send these attributes over RADIUS/UDP, then any observer
+	  can crack those passwords in milliseconds on a laptop.
 
 	Feature improvements
 	* Implement "track_home_server" in home_server_pool configuration
@@ -17,6 +20,8 @@ FreeRADIUS 3.2.11 Wed 03 Jun 2026 12:00:00 UTC urgency=low
 	  file.
 	* Add $FILE{filename} which reads a value from the entire contents
 	  of a file.
+	* Update DPSK module to read VLANs from the CSV file, and to export
+	  &reply:Pairwise-Master-Key
 
 	Bug fixes
 	* Skip TLS PSK checks when OpenSSL does not support PSK.
