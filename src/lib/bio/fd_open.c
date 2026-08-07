@@ -478,7 +478,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	}
 
 	if (fchmod(fd, perm) < 0) {
-		fr_strerror_printf("Failed changing permission for directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed changing permission for socket %s: %s", dir, fr_syserror(errno));
 	close_fd:
 		close(fd);
 		goto close_parent;
@@ -490,7 +490,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownership for directory %s: %s", dir, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownership for socket %s: %s", dir, fr_syserror(errno));
 		goto close_fd;
 	}
 
