@@ -642,7 +642,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(my->info.socket.fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownershipt for domain directory %s: %s", cfg->path, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownership for domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
 
