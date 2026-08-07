@@ -331,6 +331,37 @@ static int dpsk_add_reply_vlan(REQUEST *request, uint32_t vlan_id)
 	return 0;
 }
 
+static int dpsk_add_reply_psk(REQUEST *request, char const *psk_identity, char const *psk, size_t psk_len)
+{
+	VALUE_PAIR *vp;
+
+	if (!psk || !psk_identity) return 0;
+
+	vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0);
+	if (!vp) return -1;
+	fr_pair_value_bstrncpy(vp, psk, psk_len);
+	fr_pair_add(&request->reply->vps, vp);
+
+	vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0);
+	if (!vp) return -1;
+	fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
+	fr_pair_add(&request->reply->vps, vp);
+
+	return 0;
+}
+
+static int dpsk_add_reply_pmk(REQUEST *request, uint8_t const *pmk, size_t pmk_len)
+{
+	VALUE_PAIR *vp;
+
+	vp = fr_pair_afrom_num(request->reply, PW_PAIRWISE_MASTER_KEY, 0);
+	if (!vp) return -1;
+	fr_pair_value_memcpy(vp, pmk, pmk_len);
+	fr_pair_add(&request->reply->vps, vp);
+
+	return 0;
+}
+
 /*
  *	Verify the DPSK information.
  */
@@ -882,16 +913,6 @@ make_digest:
 		fr_dlist_entry_unlink(&entry->dlist);
 		fr_dlist_insert_tail(&inst->head, &entry->dlist);
 		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
-
-		/*
-		 *	Add the PSK to the reply items, if it was cached.
-		 */
-		if (entry->psk) {
-			MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
-			fr_pair_value_bstrncpy(vp, entry->psk, entry->psk_len);
-
-			fr_pair_add(&request->reply->vps, vp);
-		}
 	}
 
 update_attributes:
@@ -901,28 +922,26 @@ update_attributes:
 	}
 
 	/*
-	 *	We found a cache entry, or an external PSK.  Don't
-	 *	create new attributes.
+	 *	Always add the various attributes to the reply.
 	 */
-	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
-
-	fr_assert(psk != NULL);
-	fr_assert(psk_identity != NULL);
+	RDEBUG("Creating &reply:Pairwise-Master-Key");
+	if (dpsk_add_reply_pmk(request, pmk, sizeof(pmk)) < 0) return RLM_MODULE_FAIL;
 
 	/*
 	 *	Create the attributes which the caller can then save
 	 *	in the database.
 	 */
-	RDEBUG("Creating &reply:PSK-Identity and &reply:Pre-Shared-Key");
-	MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
-	fr_pair_value_bstrncpy(vp, psk, psk_len);
-	fr_pair_add(&request->reply->vps, vp);
+	if (psk && psk_identity) {
+		RDEBUG("Creating &reply:PSK-Identity and &reply:Pre-Shared-Key");
+		if (dpsk_add_reply_psk(request, psk_identity, psk, psk_len) < 0) return RLM_MODULE_FAIL;
+	}
 
-	MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
-	fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
-	fr_pair_add(&request->reply->vps, vp);
+	if (have_vlan) {
+		RDEBUG("Creating VLAN reply attributes for VLAN %u", vlan_id);
+		if (dpsk_add_reply_vlan(request, vlan_id) < 0) return RLM_MODULE_FAIL;
+	}
 
-	return RLM_MODULE_UPDATED;
+	return rcode;
 }
 
 /*

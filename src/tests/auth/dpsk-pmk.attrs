@@ -8,3 +8,4 @@ Class = 0xd6175aed517504c40b8831d7ce7b7d1fe24c65ce0f92c2816ca14ba7acb47b13
 
 # and the response
 Response-Packet-Type == Access-Accept
+Pairwise-Master-Key == 0xd6175aed517504c40b8831d7ce7b7d1fe24c65ce0f92c2816ca14ba7acb47b13
