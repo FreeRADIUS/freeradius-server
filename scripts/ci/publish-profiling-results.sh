@@ -141,7 +141,7 @@ if [ -z "$subject" ]; then
 	echo "ERROR: cannot read the commit subject (git log failed)" >&2
 	exit 1
 fi
-if [ -z "${GITHUB_REF_NAME:-}" ]; then
+if [ -z "${GITHUB_REF_NAME}" ]; then
 	echo "ERROR: GITHUB_REF_NAME is not set; cannot record the branch" >&2
 	exit 1
 fi
