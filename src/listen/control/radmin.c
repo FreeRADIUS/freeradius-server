@@ -718,7 +718,7 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 	*server_p = server;	/* need this for error messages */
 
 	/*	listen {} */
-	cs = cf_section_find(subcs, "listen", NULL);
+	cs = cf_section_find(subcs, "listen", CF_IDENT_ANY);
 	if (!cs) {
 		fprintf(stderr, "%s: Failed parsing 'listen{}' section in 'server %s {...}'\n", progname, server);
 		return -1;
@@ -732,7 +732,7 @@ static int check_server(CONF_SECTION *subcs, uid_t uid, gid_t gid, char const **
 	if (!value) return 0;
 
 	/*	<transport> { ... } */
-	subcs = cf_section_find(cs, value, NULL);
+	subcs = cf_section_find(cs, value, CF_IDENT_ANY);
 	if (!subcs) {
 		fprintf(stderr, "%s: Failed parsing the '%s {}' section in 'server %s {...}'\n",
 			progname, value, server);
