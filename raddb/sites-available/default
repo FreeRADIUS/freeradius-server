@@ -388,7 +388,17 @@ authorize {
 	#  the dpsk module.
 	#
 #	rewrite_called_station_id
+
+	#
+	#  Run the DPSK module.  If it returns "ok", then you can
+	#  look up the DPSK attributes in a database.
+	#
 #	dpsk
+#	if (ok) {
+#		... Use &Called-Station-MAC as a key in a database lookup
+#		... set &control:PSK-Identity
+#		... set &control:Pre-Shared-Key
+#	}
 
 	#
 	#  The WiMAX specification says that the Calling-Station-Id
@@ -601,7 +611,23 @@ authenticate {
 		pap
 	}
 
-#	dpsk
+	#
+	#  Authenticate DPSK / PPSK / ISPK / etc.
+	#
+	#  If the module found the Pre-Shared-Key in the CSV file,
+	#  then it returns "updated".  This lets you key off of the
+	#  return code, and write the information to a database.
+	#
+	#  This process will increase the speed of DPSK checks.
+	#
+#	Auth-Type dpsk {
+#		dpsk
+#		if (updated) {
+#			... use &Called-Station-MAC as a key
+#			... save &reply:PSK-Identity in a databae
+#			... save &reply:Pre-Shared-Key in a database
+#		}
+#	}
 
 	#
 	#  Most people want CHAP authentication
