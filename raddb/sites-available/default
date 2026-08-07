@@ -362,6 +362,12 @@ authorize {
 	#  the MS-CHAP-Challenge attribute, and add 'Auth-Type := MS-CHAP'
 	#  to the request, which will cause the server to then use
 	#  the mschap module for authentication.
+	#
+	#  NOTE: Only use MS-CHAP inside of PEAP, TTLS, EAP-FAST, TEAP, or a
+	#  RADIUS/TLS tunnel.  If you send MS-CHAP over ANY network via
+	#  RADIUS/UDP, then anyone who can see the RADIUS traffic can crack
+	#  MS-CHAP in milliseconds.
+	#
 	mschap
 
 	#

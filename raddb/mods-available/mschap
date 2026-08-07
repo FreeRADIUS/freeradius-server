@@ -8,6 +8,11 @@
 #  This module supports MS-CHAP and MS-CHAPv2 authentication.
 #  It also enforces the SMB-Account-Ctrl attribute.
 #
+#  NOTE: Only use MS-CHAP inside of PEAP, TTLS, EAP-FAST, TEAP, or a
+#  RADIUS/TLS tunnel.  If you send MS-CHAP over ANY network via
+#  RADIUS/UDP, then anyone who can see the RADIUS traffic can crack
+#  MS-CHAP in milliseconds.
+#
 mschap {
 	#
 	#  If you are using /etc/smbpasswd, see the 'passwd'
