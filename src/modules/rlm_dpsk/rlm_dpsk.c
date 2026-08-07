@@ -26,6 +26,8 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/dlist.h>
+#include <freeradius-devel/rfc2868.h>
+#include <freeradius-devel/rfc3580.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <openssl/ssl.h>
@@ -47,6 +49,7 @@ RCSID("$Id$")
 #define PW_RUCKUS_DPSK_ANONCE	(PW_RUCKUS_DPSK_PARAMS | (3 << 8))
 #define PW_RUCKUS_DPSK_EAPOL_KEY_FRAME	(PW_RUCKUS_DPSK_PARAMS | (4 << 8))
 
+#define VLAN_ID_MAX	(4094)
 
 /*
   Header:		02030075
@@ -109,6 +112,8 @@ typedef struct {
 
 	char			*psk;
 	size_t			psk_len;
+	uint32_t		vlan_id;
+	bool			have_vlan;
 	time_t			expires;
 
 	fr_dlist_t		dlist;
@@ -283,6 +288,49 @@ static int generate_pmk(REQUEST *request, uint8_t *buffer, size_t buflen, VALUE_
 	return 0;
 }
 
+static int dpsk_parse_vlan_id(uint32_t *out, char const *value)
+{
+	char *end = NULL;
+	unsigned long parsed;
+
+	if (!value || !*value) return 0;
+
+	errno = 0;
+	parsed = strtoul(value, &end, 10);
+	if ((errno != 0) || (end == value) || !end || (*end != '\0')) return -1;
+	if ((parsed == 0) || (parsed > VLAN_ID_MAX)) return -1;
+
+	*out = (uint32_t) parsed;
+	return 1;
+}
+
+static int dpsk_add_reply_vlan(REQUEST *request, uint32_t vlan_id)
+{
+	VALUE_PAIR *vp;
+	char buffer[16];
+	int len;
+
+	vp = fr_pair_afrom_num(request->reply, PW_TUNNEL_TYPE, 0);
+	if (!vp) return -1;
+	vp->vp_integer = PW_TUNNEL_TYPE_VLAN;
+	fr_pair_add(&request->reply->vps, vp);
+
+	vp = fr_pair_afrom_num(request->reply, PW_TUNNEL_MEDIUM_TYPE, 0);
+	if (!vp) return -1;
+	vp->vp_integer = PW_TUNNEL_MEDIUM_TYPE_IEEE_802;
+	fr_pair_add(&request->reply->vps, vp);
+
+	len = snprintf(buffer, sizeof(buffer), "%u", vlan_id);
+	if ((len <= 0) || ((size_t) len >= sizeof(buffer))) return -1;
+
+	vp = fr_pair_afrom_num(request->reply, PW_TUNNEL_PRIVATE_GROUP_ID, 0);
+	if (!vp) return -1;
+	fr_pair_value_bstrncpy(vp, buffer, len);
+	fr_pair_add(&request->reply->vps, vp);
+
+	return 0;
+}
+
 /*
  *	Verify the DPSK information.
  */
@@ -311,6 +359,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	char token_identity[256];
 	char token_psk[256];
 	char filename_buffer[1024];
+	uint32_t vlan_id = 0;
+	bool have_vlan = false;
 
 	/*
 	 *	Search for the information in a bunch of attributes.
@@ -449,6 +499,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			psk_identity = entry->identity;
 			psk = entry->psk;
 			psk_len = entry->psk_len;
+			have_vlan = entry->have_vlan;
+			vlan_id = entry->vlan_id;
 			goto make_digest;
 		}
 	}
@@ -519,6 +571,7 @@ stage2:
 		FR_TOKEN token;
 		char const *q;
 		char token_mac[256];
+		char token_vlan[64];
 		char buffer[1024];
 
 		if (inst->dynamic) {
@@ -547,6 +600,11 @@ stage2:
 		}
 
 stage2a:
+		have_vlan = false;
+		vlan_id = 0;
+		token_mac[0] = '\0';
+		token_vlan[0] = '\0';
+
 		q = fgets(buffer, sizeof(buffer), fp);
 		if (!q) {
 			RDEBUG("Failed to find matching PSK or MAC in %s", filename);
@@ -554,6 +612,8 @@ stage2a:
 			fclose(fp);
 			return RLM_MODULE_FAIL;
 		}
+
+		lineno++;
 
 		/*
 		 *	Split the line on commas, paying attention to double quotes.
@@ -577,11 +637,12 @@ stage2a:
 		}
 
 		/*
-		 *	The MAC is optional.  If there is a MAC, we
-		 *	loop over the file until we find a matching
-		 *	one.
+		 *	The MAC and VLAN are optional.  If there is a MAC, we
+		 *	loop over the file until we find a matching one.
 		 */
 		if (*q == ',') {
+			int vlan_rcode;
+
 			q++;
 
 			token = getstring(&q, token_mac, sizeof(token_mac), true);
@@ -590,25 +651,45 @@ stage2a:
 				goto fail_file;
 			}
 
-			/*
-			 *	See if the MAC matches.  If not, skip
-			 *	this entry.  That's a basic negative cache.
-			 */
-			if ((strlen(token_mac) != 12) ||
-			    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 12)) {
-				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail_file;
+			if (token_mac[0] != '\0') {
+				/*
+				 *	See if the MAC matches.  If not, skip
+				 *	this entry.  That's a basic negative cache.
+				 */
+				if ((strlen(token_mac) != 12) ||
+				    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 6)) {
+					RDEBUG("%s[%d] Failed parsing MAC (expected 12 hex characters)", filename, lineno);
+					goto fail_file;
+				}
+
+				/*
+				 *	The MAC doesn't match, don't even bother trying to generate the PMK.
+				 */
+				if (memcmp(s_mac, token_mac, 6) != 0) {
+					goto stage2a;
+				}
+
+				RDEBUG3("Found matching MAC");
+				stage = 3;
 			}
 
-			/*
-			 *	The MAC doesn't match, don't even bother trying to generate the PMK.
-			 */
-			if (memcmp(s_mac, token_mac, 6) != 0) {
-				goto stage2a;
-			}
+			if (*q == ',') {
+				q++;
 
-			RDEBUG3("Found matching MAC");
-			stage = 3;
+				token = getstring(&q, token_vlan, sizeof(token_vlan), true);
+				if (token == T_INVALID) {
+					RDEBUG("%s[%d] Failed parsing VLAN", filename, lineno);
+					goto fail_file;
+				}
+
+				vlan_rcode = dpsk_parse_vlan_id(&vlan_id, token_vlan);
+				if (vlan_rcode < 0) {
+					RDEBUG("%s[%d] Failed parsing VLAN (expected 1..%u)", filename, lineno, VLAN_ID_MAX);
+					goto fail_file;
+				}
+
+				have_vlan = (vlan_rcode > 0);
+			}
 		}
 
 		/*
@@ -660,6 +741,8 @@ make_digest:
 		psk_identity = NULL;
 		psk = NULL;
 		psk_len = 0;
+		have_vlan = false;
+		vlan_id = 0;
 
 		/*
 		 *	Found a cached entry, but it didn't match.  Go
@@ -775,6 +858,8 @@ make_digest:
 
 			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
 			entry->psk_len = psk_len;
+			entry->have_vlan = have_vlan;
+			entry->vlan_id = vlan_id;
 
 			entry->identity_len = strlen(psk_identity);
 			MEM(entry->identity = talloc_memdup(entry, psk_identity, entry->identity_len));
@@ -791,6 +876,8 @@ make_digest:
 
 	update_entry:
 		PTHREAD_MUTEX_LOCK(&inst->mutex);
+		have_vlan = entry->have_vlan;
+		vlan_id = entry->vlan_id;
 		entry->expires = request->timestamp + inst->cache_lifetime;
 		fr_dlist_entry_unlink(&entry->dlist);
 		fr_dlist_insert_tail(&inst->head, &entry->dlist);
@@ -808,6 +895,11 @@ make_digest:
 	}
 
 update_attributes:
+	if (have_vlan) {
+		RDEBUG("Creating VLAN reply attributes for VLAN %u", vlan_id);
+		if (dpsk_add_reply_vlan(request, vlan_id) < 0) return RLM_MODULE_FAIL;
+	}
+
 	/*
 	 *	We found a cache entry, or an external PSK.  Don't
 	 *	create new attributes.
