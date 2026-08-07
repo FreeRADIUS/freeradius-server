@@ -6,6 +6,11 @@
 #
 #  To authenticate requests containing a CHAP-Password attribute.
 #
+#  NOTE: Only use CHAP inside of TTLS, or a RADIUS/TLS tunnel.
+#  If you send CHAP-Password over ANY network via RADIUS/UDP,
+#  then anyone who can see the RADIUS traffic can crack CHAP
+#  in milliseconds.
+#
 chap {
 	# no configuration
 }
