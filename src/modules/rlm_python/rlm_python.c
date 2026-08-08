@@ -1893,10 +1893,10 @@ static int libpython_init(void)
 {
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
-					   &(fr_log_perror_format_t){ \
+					   (&(fr_log_perror_format_t){ \
 					   	.first_prefix = "rlm_python - ", \
 					   	.subsq_prefix = "rlm_python - ", \
-					   }, \
+					   }), \
 					   _fmt,  ## __VA_ARGS__)
 	PyConfig	config;
 	PyStatus	status;

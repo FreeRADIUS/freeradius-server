@@ -153,19 +153,46 @@ int	fr_log_init_legacy(fr_log_t *log, bool daemonize);
 
 void	fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 
-void	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
+/** @name Send a log message to a destination, capturing substitution argument names
+ *
+ * The fr_log/fr_log_perror wrapper macros capture the source text of each
+ * fmt substitution argument with VA_STRINGIFY, and pass the strings to the
+ * underlying function as arg_names, a NULL terminated array parallel to the
+ * substitution arguments.  The fr_vlog/fr_vlog_perror wrappers pass NULL,
+ * as the expressions behind a va_list are not visible at the macro site.
+ *
+ * @{
+ */
+#define	fr_vlog(_log, _lvl, _file, _line, _fmt, _ap) \
+		_fr_vlog(_log, _lvl, _file, _line, NULL, _fmt, _ap)
+void	_fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line,
+		 char const * const arg_names[], char const *fmt, va_list ap)
+	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (1,3));
 
-void	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
-	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
+#define	fr_log(_log, _lvl, _file, _line, _fmt, ...) \
+		_fr_log(_log, _lvl, _file, _line, \
+			(char const * const []){ VA_STRINGIFY(__VA_ARGS__), NULL }, \
+			_fmt, ##__VA_ARGS__)
+void	_fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line,
+		char const * const arg_names[], char const *fmt, ...)
+	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1,3));
 
-void	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
-		       char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (1));
+#define	fr_vlog_perror(_log, _type, _file, _line, _rules, _fmt, _ap) \
+		_fr_vlog_perror(_log, _type, _file, _line, _rules, NULL, _fmt, _ap)
+void	_fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
+			char const *file, int line, fr_log_perror_format_t const *rules,
+			char const * const arg_names[], char const *fmt, va_list ap)
+	CC_HINT(format (printf, 7, 0)) CC_HINT(nonnull (1));
 
-void	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
-		      char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, ...)
-	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1));
+#define	fr_log_perror(_log, _type, _file, _line, _rules, _fmt, ...) \
+		_fr_log_perror(_log, _type, _file, _line, _rules, \
+			       (char const * const []){ VA_STRINGIFY(__VA_ARGS__), NULL }, \
+			       _fmt, ##__VA_ARGS__)
+void	_fr_log_perror(fr_log_t const *log, fr_log_type_t type,
+		       char const *file, int line, fr_log_perror_format_t const *rules,
+		       char const * const arg_names[], char const *fmt, ...)
+	CC_HINT(format (printf, 7, 8)) CC_HINT(nonnull (1));
+/** @} */
 
 void	fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 		      char const *str, size_t str_len,

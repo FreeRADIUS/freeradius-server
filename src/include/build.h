@@ -274,6 +274,54 @@ do { \
  */
 #define VA_NARG(...)    _VA_NARG(__VA_ARGS__, VA_RSEQ_N())
 
+/** Expansion table for VA_STRINGIFY, one entry per supported argument count
+ */
+#define _VA_STR_1(_a)		#_a
+#define _VA_STR_2(_a, ...)	#_a, _VA_STR_1(__VA_ARGS__)
+#define _VA_STR_3(_a, ...)	#_a, _VA_STR_2(__VA_ARGS__)
+#define _VA_STR_4(_a, ...)	#_a, _VA_STR_3(__VA_ARGS__)
+#define _VA_STR_5(_a, ...)	#_a, _VA_STR_4(__VA_ARGS__)
+#define _VA_STR_6(_a, ...)	#_a, _VA_STR_5(__VA_ARGS__)
+#define _VA_STR_7(_a, ...)	#_a, _VA_STR_6(__VA_ARGS__)
+#define _VA_STR_8(_a, ...)	#_a, _VA_STR_7(__VA_ARGS__)
+#define _VA_STR_9(_a, ...)	#_a, _VA_STR_8(__VA_ARGS__)
+#define _VA_STR_10(_a, ...)	#_a, _VA_STR_9(__VA_ARGS__)
+#define _VA_STR_11(_a, ...)	#_a, _VA_STR_10(__VA_ARGS__)
+#define _VA_STR_12(_a, ...)	#_a, _VA_STR_11(__VA_ARGS__)
+#define _VA_STR_13(_a, ...)	#_a, _VA_STR_12(__VA_ARGS__)
+#define _VA_STR_14(_a, ...)	#_a, _VA_STR_13(__VA_ARGS__)
+#define _VA_STR_15(_a, ...)	#_a, _VA_STR_14(__VA_ARGS__)
+#define _VA_STR_16(_a, ...)	#_a, _VA_STR_15(__VA_ARGS__)
+#define _VA_STR_17(_a, ...)	#_a, _VA_STR_16(__VA_ARGS__)
+#define _VA_STR_18(_a, ...)	#_a, _VA_STR_17(__VA_ARGS__)
+#define _VA_STR_19(_a, ...)	#_a, _VA_STR_18(__VA_ARGS__)
+#define _VA_STR_20(_a, ...)	#_a, _VA_STR_19(__VA_ARGS__)
+#define _VA_STR_21(_a, ...)	#_a, _VA_STR_20(__VA_ARGS__)
+#define _VA_STR_22(_a, ...)	#_a, _VA_STR_21(__VA_ARGS__)
+#define _VA_STR_23(_a, ...)	#_a, _VA_STR_22(__VA_ARGS__)
+#define _VA_STR_24(_a, ...)	#_a, _VA_STR_23(__VA_ARGS__)
+#define _VA_STR_25(_a, ...)	#_a, _VA_STR_24(__VA_ARGS__)
+#define _VA_STR_26(_a, ...)	#_a, _VA_STR_25(__VA_ARGS__)
+#define _VA_STR_27(_a, ...)	#_a, _VA_STR_26(__VA_ARGS__)
+#define _VA_STR_28(_a, ...)	#_a, _VA_STR_27(__VA_ARGS__)
+#define _VA_STR_29(_a, ...)	#_a, _VA_STR_28(__VA_ARGS__)
+#define _VA_STR_30(_a, ...)	#_a, _VA_STR_29(__VA_ARGS__)
+#define _VA_STR_31(_a, ...)	#_a, _VA_STR_30(__VA_ARGS__)
+#define _VA_STR_32(_a, ...)	#_a, _VA_STR_31(__VA_ARGS__)
+
+#define _VA_STRINGIFY_N(_n, ...)	_VA_STRINGIFY_I(_n, __VA_ARGS__)
+#define _VA_STRINGIFY_I(_n, ...)	_VA_STR_ ## _n(__VA_ARGS__)
+
+/** Produce a comma separated list of string literals, one per variadic argument
+ *
+ * Each argument becomes the source text the caller wrote, so
+ * VA_STRINGIFY(request->reply, len + 1) expands to "request->reply", "len + 1".
+ * Argument counting reuses the VA_NARG table.  Expansion is limited to 32 arguments.
+ *
+ * @param[in] ...	Variadic arguments to stringify.
+ */
+#define VA_STRINGIFY(...)	_VA_STRINGIFY_N(VA_NARG(__VA_ARGS__), __VA_ARGS__)
+
 
 /** Pass caller information to the function
  *

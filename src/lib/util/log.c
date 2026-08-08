@@ -374,10 +374,12 @@ TALLOC_CTX *fr_log_pool_init(void)
  * @param[in] type	of log message.
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
+void _fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+	      UNUSED char const * const arg_names[], char const *fmt, va_list ap)
 {
 	int		colourise = log->colourise;
 	char		*buffer;
@@ -606,14 +608,16 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 
 /** Send a server log message to its destination
  *
- * @param log	destination.
- * @param type	of log message.
- * @param file	where the log message originated
- * @param line	where the log message originated
- * @param fmt	with printf style substitution tokens.
- * @param ...	Substitution arguments.
+ * @param log		destination.
+ * @param type		of log message.
+ * @param file		where the log message originated
+ * @param line		where the log message originated
+ * @param arg_names	source text of each substitution argument, or NULL.
+ * @param fmt		with printf style substitution tokens.
+ * @param ...		Substitution arguments.
  */
-void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+void _fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+	     char const * const arg_names[], char const *fmt, ...)
 {
 	va_list ap;
 
@@ -623,7 +627,7 @@ void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return;
 
 	va_start(ap, fmt);
-	fr_vlog(log, type, file, line, fmt, ap);
+	_fr_vlog(log, type, file, line, arg_names, fmt, ap);
 	va_end(ap);
 }
 
@@ -641,11 +645,13 @@ void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] f_rules	for printing multiline errors.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		    fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
+void _fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		     fr_log_perror_format_t const *f_rules,
+		     UNUSED char const * const arg_names[], char const *fmt, va_list ap)
 {
 	char const				*error;
 	static fr_log_perror_format_t		default_f_rules;
@@ -736,16 +742,18 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] rules	for printing multiline errors.
+ * @param[in] arg_names	source text of each substitution argument, or NULL.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		   fr_log_perror_format_t const *rules, char const *fmt, ...)
+void _fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		    fr_log_perror_format_t const *rules,
+		    char const * const arg_names[], char const *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
-	fr_vlog_perror(log, type, file, line, rules, fmt, ap);
+	_fr_vlog_perror(log, type, file, line, rules, arg_names, fmt, ap);
 	va_end(ap);
 }
 
