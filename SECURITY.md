@@ -83,7 +83,7 @@ security@freeradius.org.  The key is also available on PGP key servers
 (for aland@freeradius.org), and on the FreeRADIUS web site at
 https://www.freeradius.org/pgp/aland@freeradius.org
 
-
+```
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.0.6 (GNU/Linux)
 Comment: For info see http://www.gnupg.org
@@ -97,3 +97,4 @@ ogxzDIdJZtB2zDRKaRbNeYrcz0LnC5sxZqMco0NkI7P2ifE42aWXauSuYaYA9uG6
 kP+CFjprorK0Cc6NUL47nWxB5x5zkix85MUjkMbOFyrZrUKKcHAeWfjzMf0Vkg==
 =VwDM
 -----END PGP PUBLIC KEY BLOCK-----
+```
