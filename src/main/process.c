@@ -3948,6 +3948,43 @@ static int request_will_proxy(REQUEST *request)
 		return 0;
 	}
 
+	/*
+	 *	If we're proxying Access-Request to a pool, AND we
+	 *	managed to restore session-state that was associated
+	 *	with the proxied request, THEN look in the list to see
+	 *	if we can bypass any and all load balancing.
+	 */
+	if (main_config.hoist_state && pool && !pool->affinity_group &&
+	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    fr_state_get_proxied_vps(request)) {
+		vp = fr_pair_find_by_num(request->state, PW_HOME_SERVER_NAME, 0, TAG_ANY);
+		if (!vp) goto do_pool;
+
+		/*
+		 *	If we're load balancing and NOT using
+		 *	affinity, then we're a proxy.  Which then
+		 *	means that if the chosen home server is down,
+		 *	the packets can be load balanced to another
+		 *	destination.
+		 */
+		home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH);
+		if (!home) home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH_ACCT);
+		if (!home) {
+			RDEBUG("Proxy removing &session-state:Home-Server-Name = \"%s\" - the home server is unknown", vp->vp_strvalue);
+			fr_pair_delete(&request->state, vp);
+			goto do_pool;
+		}
+
+		if (!HOME_SERVER_IS_DEAD(home)) {
+			RDEBUG("Proxy found &session-state:Home-Server-Name = \"%s\"", vp->vp_strvalue);
+			goto do_home;
+		}
+
+		RDEBUG("Proxy removing &session-state:Home-Server-Name = \"%s\" - the home server is dead", vp->vp_strvalue);
+		fr_pair_delete(&request->state, vp);
+	}
+
+do_pool:
 	request->home_pool = pool;
 
 	home = home_server_ldb(realmname, pool, request);

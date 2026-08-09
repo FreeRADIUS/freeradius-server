@@ -1287,5 +1287,37 @@ post-proxy {
 		#
 #		acct_response
 #	}
+
+
+	#
+	#  On the first proxied EAP packet, remember where it was
+	#  proxied to.  Subsequent EAP packets will retain the
+	#  Home-Server-Name attribute.
+	#
+	#  This updated tracking is similar to the `track_home_server`
+	#  setting in proxy.conf, but is implemented in a different
+	#  manner.  You should not enable both this policy below, and
+	#  the `track_home_server` at the same time.  If both are
+	#  enabled, then the &session-state:Home-Server-Name attribute
+	#  is ignored.
+	#
+	#  Changing the Home-Server-Name in a later EAP is possible,
+	#  but will likely cause authentication to fail.
+	#
+	#  Due to internal implementation issues, the configuration
+	#  below will ONLY work if the main configuration file has
+	#  the following configuration set in the `unlang` section:
+	#
+	#	improved_state_tracking = yes
+	#
+	#  This limitation is necessary because we cannot change the
+	#  server behavior in a stable release.  Any changed behavior
+	#  is controlled by a new configuration flag.
+	#
+#	if (proxy-reply:State && !&session-state:Home-Server-Name) {
+#		update session-state {
+#			Home-Server-Name := "%{home_server:instance}"
+#		}
+#	}
 }
 }

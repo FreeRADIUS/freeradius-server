@@ -401,8 +401,10 @@ static void fr_state_cleanup(state_entry_t *head)
 	}
 }
 
-static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR *vp)
+static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR *vp, bool proxied)
 {
+	if (proxied) goto do_proxy;
+
 	/*
 	 *	Assume our own State first.  This is where the state
 	 *	is the correct size, AND we're not proxying it to an
@@ -419,6 +421,8 @@ static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR 
 	} else {
 		FR_MD5_CTX ctx;
 
+
+	do_proxy:
 		/*
 		 *	We don't control the external State attribute.
 		 *	As a result, different home servers _may_
@@ -524,7 +528,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 	 *	one we created above.
 	 */
 	if (vp) {
-		state_entry_calc(request, entry, vp);
+		state_entry_calc(request, entry, vp, false);
 
 	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
@@ -561,7 +565,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 /*
  *	Find the entry, based on the State attribute.
  */
-static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const char *server, RADIUS_PACKET *packet)
+static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const char *server, RADIUS_PACKET *packet, bool proxied)
 {
 	VALUE_PAIR *vp;
 	state_entry_t *entry, my_entry;
@@ -570,7 +574,7 @@ static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const c
 	if (!vp) return NULL;
 
 	my_entry.ours = false;
-	state_entry_calc(request, &my_entry, vp);
+	state_entry_calc(request, &my_entry, vp, proxied);
 
 	/*	Make unique for different virtual servers handling same request
 	 */
@@ -598,7 +602,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(request, state, request->server, original);
+	entry = fr_state_find(request, state, request->server, original, (request->proxy != NULL));
 	if (entry) state_entry_free(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
@@ -625,7 +629,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	rad_assert(request->state == NULL);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(request, state, request->server, packet);
+	entry = fr_state_find(request, state, request->server, packet, false);
 
 	/*
 	 *	This has to be done in a mutex lock, because talloc
@@ -657,6 +661,72 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 
 	VERIFY_REQUEST(request);
 	return;
+}
+
+
+/*
+ *	Get the VPS associated with a proxied packet
+ *
+ *	We can only do this after we have decided to proxy the packet,
+ *	because the User-Name is mixed into the saved entry->state.
+ */
+bool fr_state_get_proxied_vps(REQUEST *request)
+{
+	state_entry_t *entry;
+	fr_state_t *state = &global_state;
+	TALLOC_CTX *old_ctx = NULL;
+
+	fr_assert(!request->home_server);
+	fr_assert(!request->proxy);
+
+	/*
+	 *	No State, don't do anything.
+	 */
+	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
+		RDEBUG3("session-state: No State attribute for server %s", request->server);
+		return false;
+	}
+
+	rad_assert(request->state == NULL);
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
+	entry = fr_state_find(request, state, request->server, request->packet, true);
+
+	/*
+	 *	This has to be done in a mutex lock, because talloc
+	 *	isn't thread-safe.
+	 */
+	if (entry) {
+		RDEBUG2("session-state: Restoring attributes (proxy) for server %s", request->server);
+
+		fr_assert(request->state_ctx);
+
+		fr_pair_add(&request->state, fr_pair_list_copy(request->state_ctx, entry->vps));
+
+		old_ctx = entry->ctx;
+
+		rdebug_pair_list(L_DBG_LVL_2, request, entry->vps, "&session-state:");
+
+		entry->ctx = NULL;
+		entry->vps = NULL;
+
+
+	} else {
+		RDEBUG2("session-state: No cached attributes (proxy) for server %s", request->server);
+	}
+
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	VERIFY_REQUEST(request);
+
+	if (!old_ctx) return false;
+
+	/*
+	 *	Free this outside of the mutex for less contention.
+	 */
+	talloc_free(old_ctx);
+
+	return true;
 }
 
 
@@ -707,7 +777,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	cleanup_list = fr_state_cleanup_find(state);
 
 	if (original) {
-		old = fr_state_find(request, state, request->server, original);
+		old = fr_state_find(request, state, request->server, original, (request->proxy != NULL));
 	} else {
 		old = NULL;
 	}
