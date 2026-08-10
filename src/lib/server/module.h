@@ -377,8 +377,8 @@ struct module_thread_instance_s {
 
 	module_instance_t		*mi;		//!< As opposed to the thread local inst.
 
-	uint64_t			total_calls;	//! total number of times we've been called
-	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
+	uint64_t			total_calls;	//!< total number of times we've been called
+	uint64_t			active_callers; //!< number of active callers.  i.e. number of current yields
 };
 
 /** Callback to retrieve thread-local data for a module
