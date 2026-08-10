@@ -1559,7 +1559,7 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 			return 0;
 		}
 
-		fr_assert(len <= freespace);
+		fr_assert((size_t) len <= freespace);
 
 		p += len;
 		*opt_len += len;
