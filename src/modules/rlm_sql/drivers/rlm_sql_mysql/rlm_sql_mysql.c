@@ -1138,8 +1138,15 @@ static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reas
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
-	if (!query_ctx->treq) return;
 	if (reason != TRUNK_CANCEL_REASON_SIGNAL) return;
+
+	/*
+	 *	Prevent any further queries being enqueued on the trunk connection
+	 *	since the cancellation mux will close the connection.
+	 */
+	if (query_ctx->tconn) trunk_connection_signal_inactive(query_ctx->tconn);
+
+	if (!query_ctx->treq) return;
 	if (sql_conn->query_ctx == query_ctx) sql_conn->query_ctx = NULL;
 }
 
