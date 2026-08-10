@@ -119,6 +119,7 @@ test.fuzzer.${1}.merge: $$(TEST_BIN_DIR)/fuzzer_${1} | src/tests/fuzzer-corpus/$
 	$${Q}[ -e "src/tests/fuzzer-corpus/${1}_new" ] || mkdir "src/tests/fuzzer-corpus/${1}_new"
 	$${Q}$$(TEST_BIN_NO_TIMEOUT)/fuzzer_${1} \
 		-max_len=512 $$(FUZZER_ARGUMENTS) \
+		$$(FUZZER_${1}_ARGS) \
 		-merge=1 \
 		"src/tests/fuzzer-corpus/${1}_new" "src/tests/fuzzer-corpus/${1}"
 	$${Q}[ ! -e "src/tests/fuzzer-corpus/${1}.tar" ] || rm "src/tests/fuzzer-corpus/${1}.tar"
