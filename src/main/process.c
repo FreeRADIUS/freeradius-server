@@ -625,7 +625,6 @@ void request_free(REQUEST *request)
 }
 
 
-#ifdef WITH_PROXY
 #ifdef WITH_TLS
 void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
@@ -654,7 +653,11 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 		sock->write_handler = write_handler;
 
 	} else {
-		rcode = fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener);
+		/*
+		 *	update_read = false: proxy sockets manage their
+		 *	read side via proxy_list, so leave reads alone.
+		 */
+		rcode = fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener, false);
 		if (rcode < 0) {
 			ERROR("Fatal error freezing proxy socket: %s", fr_strerror());
 			fr_exit(1);
@@ -688,7 +691,11 @@ void proxy_listener_thaw(rad_listen_t *listener)
 	/*
 	 *	@todo - we really shouldn't be doing this from the child thread.
 	 */
-	rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener);
+	/*
+	 *	update_read = false: proxy sockets manage their read side
+	 *	via proxy_list, so leave reads alone.
+	 */
+	rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener, false);
 	if (rcode < 0) {
 		ERROR("Fatal error thawing proxy socket: %s", fr_strerror());
 		fr_exit(1);
@@ -701,6 +708,7 @@ void proxy_listener_thaw(rad_listen_t *listener)
 }
 #endif	/* WITH_TLS */
 
+#ifdef WITH_PROXY
 /*
  *	Noop functions for the NULL proxy listener.
  */
@@ -6338,7 +6346,13 @@ static void event_new_fd(void *ctx)
 			sock = this->data;
 			if (!sock->write_handler) return;
 
-			if (fr_event_fd_write_handler(el, 0, this->fd, sock->write_handler, this)) {
+			/*
+			 *	Keep reads in sync with the write handler for
+			 *	non-proxy (client) listeners; proxy sockets
+			 *	manage reads via proxy_list.
+			 */
+			if (fr_event_fd_write_handler(el, 0, this->fd, sock->write_handler, this,
+						      (this->type != RAD_LISTEN_PROXY))) {
 				sock->write_handler = NULL;
 				return;
 			}

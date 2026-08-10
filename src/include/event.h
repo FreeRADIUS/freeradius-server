@@ -57,8 +57,16 @@ bool fr_event_fd_full(fr_event_list_t *el);
 
 int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 			 fr_event_fd_handler_t handler, void *ctx);
+/*
+ *	Set or clear the write handler for an already-inserted FD.
+ *
+ *	If update_read is true, the read handler is kept in sync with the write
+ *	handler: supplying a write_handler pauses reads, and passing a NULL
+ *	write_handler resumes reads.  If update_read is false, the read handler
+ *	is left unchanged.
+ */
 int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
-			      fr_event_fd_handler_t write_handler, void *ctx);
+			      fr_event_fd_handler_t write_handler, void *ctx, bool update_read);
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd);
 int fr_event_loop(fr_event_list_t *el);
 void fr_event_loop_exit(fr_event_list_t *el, int code);

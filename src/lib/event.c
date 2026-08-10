@@ -45,6 +45,8 @@ typedef struct fr_event_fd_t {
 	fr_event_fd_handler_t	handler;
 	fr_event_fd_handler_t	write_handler;
 	void			*ctx;
+
+	bool			read_paused;	/* read events suppressed; slot + write side stay live */
 } fr_event_fd_t;
 
 
@@ -470,12 +472,13 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	ef->handler = handler;
 	ef->write_handler = NULL; /* new, so not set */
 	ef->ctx = ctx;
+	ef->read_paused = false;  /* reads are delivered by default */
 
 	return 1;
 }
 
 int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
-			      fr_event_fd_handler_t write_handler, void *ctx)
+			      fr_event_fd_handler_t write_handler, void *ctx, bool update_read)
 {
 	int i;
 
@@ -486,31 +489,52 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 #ifdef HAVE_KQUEUE
 	for (i = 0; i < fr_ev_max_fds; i++) {
 		int j;
-		struct kevent evset;
+		struct kevent evset[2];
+		int nev = 0;
+		fr_event_fd_t *ef;
 
 		j = (i + fd) & (fr_ev_max_fds - 1);
+		ef = &el->readers[j];
 
-		if (el->readers[j].fd != fd) continue;
+		if (ef->fd != fd) continue;
 
-		fr_assert(ctx == el->readers[j].ctx);
+		fr_assert(ctx == ef->ctx);
 
 		/*
-		 *	Tell us when the socket is ready for writing
+		 *	Tell us when the socket is ready for writing.  Only
+		 *	touch the write filter when the handler actually changes.
 		 */
 		if (write_handler) {
-			if (el->readers[j].write_handler == write_handler) return 1;
-
-			el->readers[j].write_handler = write_handler;
-
-			EV_SET(&evset, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, &el->readers[j]);
+			if (ef->write_handler != write_handler) {
+				ef->write_handler = write_handler;
+				EV_SET(&evset[nev++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
+			}
 		} else {
-			if (!el->readers[j].write_handler) return 1;
-
-			el->readers[j].write_handler = NULL;
-
-			EV_SET(&evset, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+			if (ef->write_handler) {
+				ef->write_handler = NULL;
+				EV_SET(&evset[nev++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+			}
 		}
-		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+
+		/*
+		 *	Keep the read side in sync with the write side: a
+		 *	pending write pauses reads, no pending write resumes
+		 *	them.  The read knote stays registered (EV_DISABLE /
+		 *	EV_ENABLE), so we never re-add it.
+		 */
+		if (update_read) {
+			if (write_handler && !ef->read_paused) {
+				ef->read_paused = true;
+				EV_SET(&evset[nev++], fd, EVFILT_READ, EV_DISABLE, 0, 0, ef);
+			} else if (!write_handler && ef->read_paused) {
+				ef->read_paused = false;
+				EV_SET(&evset[nev++], fd, EVFILT_READ, EV_ENABLE, 0, 0, ef);
+			}
+		}
+
+		if (nev == 0) return 1;		/* nothing changed */
+
+		if (kevent(el->kq, evset, nev, NULL, 0, NULL) < 0) {
 			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
 			return -1;
 		}
@@ -521,15 +545,30 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 #else
 
 	for (i = 0; i < el->max_readers; i++) {
-		if (el->readers[i].fd != fd) continue;
+		fr_event_fd_t *ef = &el->readers[i];
 
-		fr_assert(ctx == el->readers[i].ctx);
-		el->readers[i].write_handler = write_handler;
+		if (ef->fd != fd) continue;
+
+		fr_assert(ctx == ef->ctx);
+		ef->write_handler = write_handler;
 
 		if (write_handler) {
 			FD_SET(fd, &el->write_fds); /* fd MUST already be in the set of readers! */
 		}  else {
 			FD_CLR(fd, &el->write_fds);
+		}
+
+		/*
+		 *	Keep the read side in sync with the write side.
+		 */
+		if (update_read) {
+			if (write_handler) {
+				FD_CLR(fd, &el->read_fds);
+				ef->read_paused = true;
+			} else {
+				FD_SET(fd, &el->read_fds);
+				ef->read_paused = false;
+			}
 		}
 		return 1;
 	}
@@ -589,6 +628,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		el->readers[j].handler = NULL;
 		el->readers[j].write_handler = NULL;
 		el->readers[j].ctx = NULL;
+		el->readers[j].read_paused = false;
 		el->num_readers--;
 
 		return 1;
@@ -601,6 +641,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 			el->readers[i].handler = NULL;
 			el->readers[i].write_handler = NULL;
 			el->readers[i].ctx = NULL;
+			el->readers[i].read_paused = false;
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
