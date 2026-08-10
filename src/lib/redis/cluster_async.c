@@ -420,6 +420,11 @@ again:
 
 	switch (ret) {
 	case FR_REDIS_PIPELINE_OK:
+		/*
+		 *	If one or more nodes reported failed to enqueue with
+		 *	destination unavailable, tell the caller that the cluster
+		 *	map should be updated.
+		 */
 		return dst_unavail ? REDIS_ASYNC_RCODE_GETMAP : REDIS_ASYNC_RCODE_SUCCESS;
 
 	case FR_REDIS_PIPELINE_DST_UNAVAILABLE:
