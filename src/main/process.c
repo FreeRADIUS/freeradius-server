@@ -3860,7 +3860,7 @@ static int request_will_proxy(REQUEST *request)
 		 *	fail-over, you should have proxied to a pool.
 		 *	Sucks to be you.
 		 */
-		REDEBUG("Cannot proxy to home server %s - it is marked as 'dead'", vp->vp_strvalue);
+		REDEBUG("Cannot proxy to home server %s - it is marked as 'dead'", home->name);
 		return 0;
 
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_NAME, 0, TAG_ANY)) != NULL) {
