@@ -3860,7 +3860,7 @@ static int request_will_proxy(REQUEST *request)
 		 *	fail-over, you should have proxied to a pool.
 		 *	Sucks to be you.
 		 */
-
+		REDEBUG("Cannot proxy to home server %s - it is marked as 'dead'", vp->vp_strvalue);
 		return 0;
 
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_NAME, 0, TAG_ANY)) != NULL) {
@@ -3906,19 +3906,7 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-		/*
-		 *	The home server is alive (or may be alive).
-		 *	Send the packet to the IP.
-		 */
-		if (!HOME_SERVER_IS_DEAD(home)) goto do_home;
-
-		/*
-		 *	The home server is dead.  If you wanted
-		 *	fail-over, you should have proxied to a pool.
-		 *	Sucks to be you.
-		 */
-
-		return 0;
+		goto found_home;
 
 #ifdef WITH_COA_TUNNEL
 	} else if (((request->packet->code == PW_CODE_COA_REQUEST) ||
