@@ -1155,7 +1155,7 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	 */
 	if ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		trunk_request_signal_cancel_complete(treq);
-		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_EXPIRED);
 	}
 }
 
