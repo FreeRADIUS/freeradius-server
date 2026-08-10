@@ -53,6 +53,7 @@ typedef struct state_entry_t {
 
 struct fr_state_t {
 	rbtree_t *tree;
+	time_t		cleanup;		//!< time we last cleaned up the list
 
 	state_entry_t *head, *tail;
 
@@ -303,6 +304,21 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 	state_entry_t *entry, *next;
 	state_entry_t *head = NULL, **tail = &head;
 
+	/*
+	 *	We've already cleaned the list this second, so there's
+	 *	no need to do it again.
+	 *
+	 *	But if the list is more than 1/2 full, we still clean
+	 *	it up.
+	 */
+	if ((state->cleanup == now) &&
+	    (rbtree_num_elements(state->tree) <= main_config.max_requests)) {
+		return NULL;
+	}
+
+	/*
+	 *	Walk over all entries in the state tree, which are ordered by time.
+	 */
 	for (entry = state->head; entry != NULL; entry = next) {
 		next = entry->next;
 
@@ -316,10 +332,10 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 		}
 
 		/*
-		 *	Not yet time to clean it up.
+		 *	Not yet time to clean it up, stop processing the list.
 		 */
 		if (entry->cleanup > now) {
-			continue;
+			break;
 		}
 
 		/*
@@ -341,6 +357,7 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 		tail = &entry->next;
 	}
 
+	state->cleanup = now;
 	return head;
 }
 
