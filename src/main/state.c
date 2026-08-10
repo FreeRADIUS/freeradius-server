@@ -49,9 +49,6 @@ typedef struct state_entry_t {
 	unsigned int	request_number;
 	RADCLIENT	*request_client;
 	main_config_t	*request_root;
-
-	void 		*opaque;
-	void 		(*free_opaque)(void *opaque);
 } state_entry_t;
 
 struct fr_state_t {
@@ -158,10 +155,6 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	if (!state || !state->tree) return;
 
 	state_entry_unlink(state, entry);
-
-	if (entry->opaque) {
-		entry->free_opaque(entry->opaque);
-	}
 
 #ifdef WITH_VERIFY_PTR
 	(void) talloc_get_type_abort(entry, state_entry_t);
@@ -317,7 +310,7 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 		 *	Unused.  We can delete it, even if now isn't
 		 *	the time to clean it up.
 		 */
-		if (!entry->ctx && !entry->opaque) {
+		if (!entry->ctx) {
 			state_entry_free(state, entry);
 			continue;
 		}
@@ -383,10 +376,6 @@ static void fr_state_cleanup(state_entry_t *head)
 			rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 			request_inject(request);
-		}
-
-		if (entry->opaque) {
-			entry->free_opaque(entry->opaque);
 		}
 
 		if (entry->ctx) talloc_free(entry->ctx);
@@ -498,7 +487,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
-		if (!old->opaque) state_entry_free(state, old);
+		state_entry_free(state, old);
 
 	} else if (!vp) {
 		/*
