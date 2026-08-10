@@ -140,7 +140,7 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 		 *	until such time as it becomes writable.
 		 */
 		if (errno == EWOULDBLOCK) {
-			proxy_listener_freeze(listener, tls_write_available);
+			tls_listener_freeze(listener, tls_write_available);
 			return 0;
 		}
 #endif
@@ -182,6 +182,8 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 	 *	Try to connect once the socket has become writeable.
 	 */
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
+	listener->blocked = false;
+
 	if (!sock->ssn->connected) {
 		int rcode;
 
@@ -193,6 +195,7 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 		}
 
 		if (!sock->ssn->connected) {
+			listener->blocked = true;
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return;
 		}
@@ -205,10 +208,11 @@ static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void 
 	}
 
 	thaw = (sock->ssn->dirty_out.used == 0);
+	listener->blocked = true;
 
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (thaw) proxy_listener_thaw(listener);
+	if (thaw) tls_listener_thaw(listener);
 }
 
 
@@ -1134,12 +1138,12 @@ static int try_connect(rad_listen_t *this)
 			return -1;
 
 		case SSL_ERROR_WANT_READ:
-			if (this->blocked) proxy_listener_thaw(this);
+			if (this->blocked) tls_listener_thaw(this);
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
 
 		case SSL_ERROR_WANT_WRITE:
-			if (!this->blocked) proxy_listener_freeze(this, tls_write_available);
+			if (!this->blocked) tls_listener_freeze(this, tls_write_available);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}

@@ -78,9 +78,11 @@ bool radius_event_fd_full(void);
 
 #ifdef WITH_PROXY
 int request_proxy_reply(RADIUS_PACKET *packet);
+#endif
 
-void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler);
-void proxy_listener_thaw(rad_listen_t *listener);
+#ifdef WITH_TLS
+void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler);
+void tls_listener_thaw(rad_listen_t *listener);
 #endif
 
 #ifdef __cplusplus

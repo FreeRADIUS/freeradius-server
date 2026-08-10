@@ -626,9 +626,32 @@ void request_free(REQUEST *request)
 
 
 #ifdef WITH_TLS
-void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
+void tls_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_handler)
 {
 	int rcode = 1;
+
+	if (listener->type != RAD_LISTEN_PROXY) {
+		if (listener->blocked) return;
+
+		if (listener->status == RAD_LISTEN_STATUS_INIT) {
+			listen_socket_t *sock = listener->data;
+
+			sock->write_handler = write_handler;
+		} else {
+			/*
+			 *	update_read = true: installing the write
+			 *	handler also pauses reads on this socket.
+			 */
+			rcode = fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener, true);
+			if (rcode < 0) {
+				ERROR("Fatal error freezing TLS socket: %s", fr_strerror());
+				fr_exit(1);
+			}
+		}
+
+		listener->blocked = true;
+		return;
+	}
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (listener->blocked) {
@@ -670,9 +693,29 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 
-void proxy_listener_thaw(rad_listen_t *listener)
+void tls_listener_thaw(rad_listen_t *listener)
 {
 	int rcode;
+
+	if (listener->type != RAD_LISTEN_PROXY) {
+		ASSERT_MASTER;
+
+		if (!listener->blocked) return;
+
+		/*
+		 *	Remove the write handler, as we can now write to
+		 *	the socket.  update_read = true: clearing the write
+		 *	handler also resumes reads on this socket.
+		 */
+		rcode = fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener, true);
+		if (rcode < 0) {
+			ERROR("Fatal error thawing TLS socket: %s", fr_strerror());
+			fr_exit(1);
+		}
+
+		listener->blocked = false;
+		return;
+	}
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (!listener->blocked) {
