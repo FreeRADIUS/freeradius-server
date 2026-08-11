@@ -2925,6 +2925,17 @@ check_for_eol:
 		}
 
 		/*
+		 *	These keywords are NOT allowed to have an argument.
+		 */
+		if ((strcmp(buff[1], "default") == 0) ||
+		    (strcmp(buff[1], "group") == 0) ||
+		    (strcmp(buff[1], "transaction") == 0) ||
+		    (strcmp(buff[1], "try") == 0) ||
+		    (strcmp(buff[1], "redundant") == 0)) {
+			return parse_error(stack, ptr, "Expected '{' after keyword");
+		}
+
+		/*
 		 *	It's not a string, bare word, or attribute reference.  It must be an operator.
 		 */
 		if (!((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
