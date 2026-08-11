@@ -60,6 +60,8 @@ static inline unlang_group_t *unlang_load_balance_to_group(unlang_load_balance_t
 	return (unlang_group_t *)load_balance;
 }
 
+int	unlang_load_balance_persist(request_t *request) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif

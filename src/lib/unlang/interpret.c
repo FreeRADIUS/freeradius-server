@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include "interpret_priv.h"
 #include "unlang_priv.h"
 #include "module_priv.h"
+#include "load_balance_priv.h"
 
 /*
  *	Start of thread-local variables and functions.
@@ -2232,6 +2233,15 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (strcmp(fmt, "depth") == 0) {
 		fr_value_box_int32(vb, NULL, depth, false);
+		goto finish;
+	}
+
+	/*
+	 *	Persist the current load-balancer choice.
+	 */
+	if (strcmp(fmt, "load_balance.persist") == 0) {
+		fr_value_box_bool(vb, NULL,
+				  unlang_load_balance_persist(request) == 0, false);
 		goto finish;
 	}
 

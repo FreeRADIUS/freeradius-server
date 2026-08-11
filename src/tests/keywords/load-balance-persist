@@ -1,0 +1,38 @@
+#
+# PRE: if foreach
+#
+#  Load-Balance blocks.
+#
+#  Should distribute load between the modules.
+#
+uint32 count1
+uint32 count2
+
+count1 := 0
+count2 := 0
+
+#
+#  Loop a bunch of times to see if we persist the first selection
+#
+foreach i (%range(50)) {
+	load-balance {
+		group {
+			count1 += 1
+			%interpreter('load_balance.persist')
+		}
+		group {
+			count2 += 1
+			%interpreter('load_balance.persist')
+		}
+	}
+}
+
+if ((count1 == 0) && (count2 == 50)) {
+	success
+
+} elsif ((count1 == 50) && (count2 == 0)) {
+	success
+
+} else {
+	test_fail
+}

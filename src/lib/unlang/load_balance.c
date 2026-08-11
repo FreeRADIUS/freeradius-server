@@ -23,11 +23,38 @@
  * @copyright 2006-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rand.h>
 
 #include "unlang_priv.h"
 #include "load_balance_priv.h"
+
+/**  Persist the current load-balance selection
+ *
+ *  If the frame is UNLANG_TYPE_LOAD_BALANCE or
+ *  UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, then remember which child was
+ *  chosen, and choose that again the next time around.
+ */
+int unlang_load_balance_persist(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_frame_state_redundant_t	*redundant;
+	unlang_t		*child;
+
+	if (!frame->prev.frame_load_balance) return 0;
+
+	fr_assert(frame->prev.frame_load_balance < stack->depth);
+
+	frame = &stack->frame[frame->prev.frame_load_balance];
+	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+
+	child = redundant->child;
+	if (!child) child = redundant->start;
+
+	return request_data_add_const(request, frame->instruction, 0, child, true);
+}
 
 #define unlang_redundant_load_balance unlang_load_balance
 
@@ -132,6 +159,9 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
+	redundant->start = request_data_get(request, frame->instruction, 0);
+	if (redundant->start) goto selected_child;
+
 	if (gext->vpt) {
 		uint32_t hash, start;
 		ssize_t slen;
@@ -175,7 +205,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		redundant->start = gext->children[start];
 
 	} else {
-		uint32_t one, two;
+		uint32_t start, one, two;
 		unlang_thread_t const *t1, *t2;
 
 	randomly_choose:
@@ -191,12 +221,16 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		t2 = unlang_thread_stats(gext->children[two]);
 
 		if (t1->active <= t2->active) {
-			redundant->start = gext->children[one];
+			start = one;
 		} else {
-			redundant->start = gext->children[two];
+			start = two;
 		}
+
+		RDEBUG3("load-balance starting at child %d", (int) start);
+		redundant->start = gext->children[start];
 	}
 
+selected_child:
 	fr_assert(redundant->start != NULL);
 
 	/*
