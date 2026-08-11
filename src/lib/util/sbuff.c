@@ -565,11 +565,6 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 
 	if (!term) return false;			/* If there's no terminals, we don't need to search */
 
-	end = term->len - 1;
-
-	term_idx = idx[(uint8_t)*p];			/* Fast path */
-	if (!term_idx) return false;
-
 	if (p > in->end) return false; /* paranoia */
 
 	/*
@@ -580,13 +575,20 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	remaining = (size_t)(in->end - p);
 
 	/*
-	 *	Special case for EOFlike states
+	 *	Special case for EOFlike states.
+	 *
+	 *	This MUST be checked before dereferencing "*p" below.  When the buffer is fully consumed, we
+	 *	have "p == in->end".  A dereference of "*p" is one byte past the end of the buffer, and would result in an overflow.
 	 */
 	if (remaining == 0) {
 		if (!fr_sbuff_is_extendable(in) && (idx['\0'] != 0)) return true;
 		return false;
 	}
 
+	term_idx = idx[(uint8_t)*p];			/* Fast path */
+	if (!term_idx) return false;
+
+	end = term->len - 1;
 	mid = term_idx - 1;				/* Inform the mid point from the index */
 
 	while (start <= end) {

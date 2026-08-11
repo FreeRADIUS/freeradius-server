@@ -789,6 +789,44 @@ static void test_terminal_search_past_visible_end(void)
 	TEST_CHECK_STRCMP(out, "abc}");
 }
 
+/*
+ *	Regression: fr_sbuff_terminal_search() did the fast-path "idx[*p]"
+ *	dereference before checking whether the buffer was fully consumed.
+ *	When "p == in->end" (nothing left) "*p" is one byte past the usable
+ *	buffer.  For a non-NUL-terminated sbuff whose end sits on an
+ *	allocation boundary that is a 1-byte over-read, which ASAN reports as
+ *	a heap-buffer-overflow.
+ *
+ *	A heap buffer sized exactly to its contents (no trailing '\0') is used
+ *	so the byte past "end" lands in an ASAN redzone.
+ */
+static void test_terminal_search_at_end_no_overrun(void)
+{
+	size_t const		len = 4;
+	char			*buff = malloc(len);	/* exactly len bytes, no NUL */
+	fr_sbuff_t		sbuff;
+	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
+					L(","),
+					L("}"),
+				);
+
+	TEST_CHECK(buff != NULL);
+	if (!buff) return;
+	memcpy(buff, "abcd", len);
+
+	fr_sbuff_init_in(&sbuff, buff, len);
+	fr_sbuff_advance(&sbuff, len);		/* Consume everything: in->p == in->end */
+
+	/*
+	 *	Must not read *p (one byte past the buffer).  The sbuff is not
+	 *	extendable and '\0' is not a terminal, so this is simply "not a
+	 *	terminal".
+	 */
+	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt) == false);
+
+	free(buff);
+}
+
 static void test_terminal_merge(void)
 {
 	size_t i;
@@ -1635,6 +1673,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
 	{ "fr_sbuff_terminal_eof",		test_eof_terminal },
 	{ "terminal search past visible end",	test_terminal_search_past_visible_end },
+	{ "terminal search at end no overrun",	test_terminal_search_at_end_no_overrun },
 	{ "terminal merge",			test_terminal_merge },
 
 	/*
