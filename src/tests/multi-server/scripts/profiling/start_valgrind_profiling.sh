@@ -88,44 +88,72 @@ echo "Freeradius PID: ${FR_PID}"
 # Wait for approximate send duration
 sleep ${SEND_DURATION}
 
+# Dump the load-phase profile while the server is still healthy. The dump
+# lands in callgrind.out.<pid>.1 and resets the counters, so the termination
+# dump holds only the shutdown phase and the parts sum to the old single-dump
+# totals. If shutdown hangs, the data is already safe on disk.
+echo "INFO: dumping load-phase profile before shutdown"
+DUMP_OK=0
+if callgrind_control --dump > /dev/null 2>&1; then
+  DUMP_OK=1
+else
+  echo "WARNING: pre-shutdown dump failed; a shutdown hang will lose this run"
+fi
+
 # Graceful shutdown (equivalent to Ctrl+C) — keep instrumentation on so shutdown
-# transitions are captured before we stop profiling
+# transitions are captured (in the post-dump part) before we stop profiling
 if [ -z "${FR_PID}" ]; then
   echo "WARNING: could not determine freeradius PID from callgrind_control output, sending SIGINT to valgrind instead"
-  kill -SIGINT ${VALGRIND_PID} 2>/dev/null || true
-else
-  echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
-  kill -SIGINT ${FR_PID}
-
-  # Wait for freeradius to finish its graceful shutdown before stopping instrumentation
-  SHUTDOWN_TIMEOUT=60
-  SHUTDOWN_ELAPSED=0
-  while kill -0 "${FR_PID}" 2>/dev/null; do
-    sleep 1
-    SHUTDOWN_ELAPSED=$(( SHUTDOWN_ELAPSED + 1 ))
-    if [ ${SHUTDOWN_ELAPSED} -ge ${SHUTDOWN_TIMEOUT} ]; then
-      echo "WARNING: freeradius did not exit within ${SHUTDOWN_TIMEOUT}s after SIGINT"
-      break
-    fi
-  done
-  echo "INFO: freeradius exited after ${SHUTDOWN_ELAPSED}s"
+  FR_PID=${VALGRIND_PID}
 fi
+echo "INFO: killing freeradius process ${FR_PID} with SIGINT for graceful shutdown"
+kill -SIGINT ${FR_PID}
+
+# Wait for graceful shutdown; SIGKILL a hung one. The dump above already
+# holds the data, and hanging until the framework timeout would leave no
+# exit status at all. 20s is 10x the longest clean shutdown observed;
+# observed hangs never resolve, and a short wait preserves verify-timeout
+# budget for callgrind_annotate below.
+SHUTDOWN_TIMEOUT=20
+SHUTDOWN_ELAPSED=0
+SHUTDOWN_HUNG=0
+while kill -0 "${FR_PID}" 2>/dev/null; do
+  sleep 1
+  SHUTDOWN_ELAPSED=$(( SHUTDOWN_ELAPSED + 1 ))
+  if [ ${SHUTDOWN_ELAPSED} -ge ${SHUTDOWN_TIMEOUT} ]; then
+    SHUTDOWN_HUNG=1
+    echo "WARNING: freeradius did not exit within ${SHUTDOWN_TIMEOUT}s after SIGINT; sending SIGKILL"
+    kill -SIGKILL ${VALGRIND_PID} 2>/dev/null || true
+    break
+  fi
+done
+echo "INFO: freeradius exited after ${SHUTDOWN_ELAPSED}s"
 
 # Stop instrumentation after graceful shutdown so all shutdown transitions are captured
 echo "INFO: disabling callgrind instrumentation"
 CTRL_OUT=$(callgrind_control --instr=off 2>/dev/null || true)
 printf '%s\n' "$CTRL_OUT"
 
-# Wait for valgrind to finish writing callgrind output. Record how it exited:
-# a run valgrind killed produces truncated callgrind output whose numbers are
-# not comparable with a clean run, so the status has to survive to the publish
-# step, which reads this file and refuses to upload an unclean run. The status
-# is recorded for clean runs too, so an absent file means "the wrapper did not
-# get this far" rather than "the run was fine".
+# Record whether the profiling data is trustworthy in valgrind-exit-status:
+# the publish step refuses to upload a non-zero run, and an absent file means
+# "the wrapper did not get this far". One exception: a shutdown hang ended by
+# our own SIGKILL above still has complete load-phase data, so the status
+# stays 0 and the hang is recorded in shutdown-status instead ("clean" /
+# "timeout-sigkill", written on every run).
 echo "INFO: waiting for valgrind to exit"
 VALGRIND_STATUS=0
 wait ${VALGRIND_PID} 2>/dev/null || VALGRIND_STATUS=$?
+
+SHUTDOWN_OUTCOME=clean
+if [ "${VALGRIND_STATUS}" -ne 0 ] && [ "${SHUTDOWN_HUNG}" -eq 1 ] && [ "${DUMP_OK}" -eq 1 ]; then
+  SHUTDOWN_OUTCOME=timeout-sigkill
+  echo "WARNING: shutdown hang ended by SIGKILL; load-phase data was dumped beforehand and is intact"
+  VALGRIND_STATUS=0
+  # No termination dump happened; remove the empty base callgrind.out stub.
+  find /etc/prof-results -name "callgrind.out.*" -size 0c -delete
+fi
 echo "${VALGRIND_STATUS}" > /etc/prof-results/valgrind-exit-status
+echo "${SHUTDOWN_OUTCOME}" > /etc/prof-results/shutdown-status
 
 if [ "${VALGRIND_STATUS}" -ne 0 ]; then
   #  Over 128 means a signal. 139 is SIGSEGV, which is how valgrind exiting on
@@ -142,10 +170,19 @@ fi
 # Signal that valgrind has finished writing all profiling data
 echo "INFO: Profiling complete at $(date)"
 
+# One report section per data file: callgrind_annotate reads profile data
+# only from its FIRST argument (the old multi-file call reported just
+# whichever file sorted first). stderr stays inline so failures are visible.
 echo "INFO: running callgrind_annotate to generate report"
-callgrind_annotate \
-  $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort) \
-  > /etc/prof-results/callgrind_report.txt
+{
+  for f in $(find /etc/prof-results -name "callgrind.out.*" -size +0c | sort); do
+    echo "================================================================"
+    echo "==== ${f}"
+    echo "================================================================"
+    callgrind_annotate "${f}" 2>&1 || true
+    echo ""
+  done
+} > /etc/prof-results/callgrind_report.txt
 
 # Restore stdout/stderr
 exec > /dev/null 2>&1
