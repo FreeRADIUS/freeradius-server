@@ -2,7 +2,7 @@
 
 
 .File Handling Functions
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*				            | *Description*
 | xref:reference:xlat/file/escape.adoc[escape]	    | Returns an escaped or safe version of the input string.
@@ -16,7 +16,7 @@
 == Miscellaneous Functions
 
 .Miscellaneous Functions
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*				            | *Description*
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items.
@@ -29,7 +29,7 @@
 == Pair Manipulation
 
 .Pair Manipulation
-[options="headers, autowidth]
+[options="header, autowidth"]
 |===
 | *Function*					| *Description*
 | xref:xlat/interpreter.adoc#debug_xlat[debug]  | Print attributes to the debug output.

@@ -21,7 +21,7 @@ RADIUS server use may be difficult.
 Basic RADIUS attribute types are defined in http://tools.ietf.org/html/rfc2865[RFC 2865]. Since the original implementation and standardisation, additional attribute types have been also defined.
 
 .RADIUS Attribute Types
-[options="headers, autowidth"]
+[options="header, autowidth"]
 |===
 | *Type*                | *Format*                       | *Description*
 | integer               | Value between 0 - 4294967295   | Unsigned 32-bit integer.
