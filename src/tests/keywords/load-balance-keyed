@@ -1,0 +1,30 @@
+#
+#  PRE: load-balance
+#
+
+uint32 count1
+uint32 count2
+
+count1 := 0
+count2 := 0
+
+#
+#  Loop a bunch of times, selecting random ones.
+#
+foreach i (%range(50)) {
+	load-balance %rand(65536) {
+		group {
+			count1 += 1
+		}
+		group {
+			count2 += 1
+		}
+	}
+}
+
+if ((count1 == 0) || (count2 == 2)) {
+	test_fail
+
+} else {
+	success
+}

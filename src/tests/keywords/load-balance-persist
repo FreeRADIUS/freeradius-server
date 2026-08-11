@@ -1,5 +1,5 @@
 #
-# PRE: if foreach
+# PRE: load-balance-keyed
 #
 #  Load-Balance blocks.
 #
@@ -15,7 +15,14 @@ count2 := 0
 #  Loop a bunch of times to see if we persist the first selection
 #
 foreach i (%range(50)) {
-	load-balance {
+	#
+	#  The first time, select a random entry.
+	#
+	#  After that, the debug output should show that the %rand()
+	#  function is not called, because the initial selection is
+	#  persisted.
+	#
+	load-balance %rand(65536) {
 		group {
 			count1 += 1
 			%interpreter('load_balance.persist')

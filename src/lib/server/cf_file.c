@@ -2917,9 +2917,15 @@ check_for_eol:
 		/*
 		 *	'case ::foo' is allowed.  For generality, we just expect that the second argument to
 		 *	'case' is not an operator.
+		 *
+		 *	These keywords must have a second name. Or at least, if the character after the
+		 *	keyword isn't a '{', then they must have a second name, which is the argument to the
+		 *	keyword.
 		 */
 		if ((strcmp(buff[1], "case") == 0) ||
 		    (strcmp(buff[1], "limit") == 0) ||
+		    (strcmp(buff[1], "load-balance") == 0) ||
+		    (strcmp(buff[1], "redundant-load-balance") == 0) ||
 		    (strcmp(buff[1], "timeout") == 0)) {
 			break;
 		}
