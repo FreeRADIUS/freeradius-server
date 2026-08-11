@@ -665,6 +665,8 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 		 */
 		fr_assert((size_t) slen <= reply->m.rb_size);
 		(void) fr_message_and_data_commit(ms, &reply->m, slen);
+	} else {
+		(void) fr_message_and_data_commit(ms, &reply->m, 0);
 	}
 
 	/*
