@@ -12,35 +12,32 @@ The `load-balance` section is similar to the `redundant` section
 except that only one statement in the subsection is ever called.
 
 In general, the
-xref:unlang/redundant-load-balance.adoc[redundant-load-balance] statement is
-more useful than this one.
+xref:unlang/redundant-load-balance.adoc[redundant-load-balance]
+statement is more useful than this one.
 
 <name>:: The instance name of the `load-balance` section.  This name
 is only used when the `load-balance` keyword is used inside of a
 xref:unlang/load-balance.adoc#virtual_modules[virtual module].  In
-other situations, it is not permitted.
-+
-The name must be a fixed string.
+other situations, it is not permitted. + The name must be a fixed
+string.
 
-<key>:: An attribute reference or expansion which will be hashed in
-order to select the statement to execute.  Fixed strings or data are
-not permitted, as that would cause load-balancing to always select the
-same statement.
-+
-The hash will be used to pick a particular statement within the
+<key>:: An attribute reference or expansion which will be used to
+select the statement to execute.  Fixed strings or data are not
+permitted, as that would cause load-balancing to always select the
+same statement. + If the data is of type `uint8`, then the value is
+used to directly pick a child.  This process allows you to force the
+selection of a particular child. + Otherwise, the data is hashed, and
+the hash is used to pick a particular statement within the
 `load-balance` section.  This "keyed" load-balance can be used to
-deterministically shard requests across multiple modules.
-+
-When the `<key>` field is omitted, or the key is not found, the
-a random statement is chosen instead.
+deterministically shard requests across multiple modules. + When the
+`<key>` field is omitted, or the key is not found, the a random
+statement is chosen instead.
 
 [ statements ]:: One or more `unlang` commands.  Only one of the
-statements is executed.
-+
-
-The statements should all be different.  Attribute assignments should
-be placed inside of a xref:unlang/group.adoc[group] section, otherwise
-an error will be generated.
+statements is executed. + The statements should all be different.
+Attribute assignments should be placed inside of a
+xref:unlang/group.adoc[group] section, otherwise an error will be
+generated.
 
 .Examples
 
@@ -57,8 +54,8 @@ load-balance User-Name {
 
 It can be useful to use the same `load-balance` section in multiple
 places.  Instead of copying the same text multiple times, a
-`load-balance` section can be defined as a module in the `mods-enabled/`
-directory.
+`load-balance` section can be defined as a module in the
+`mods-enabled/` directory.
 
 For example, the following text can be placed into the file
 `mods-enabled/sql_all`.  Once it is there, it can be used as a module

@@ -29,6 +29,7 @@
 
 #include "unlang_priv.h"
 #include "load_balance_priv.h"
+#include "xlat_priv.h"
 
 /**  Persist the current load-balance selection
  *
@@ -163,12 +164,15 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	if (redundant->start) goto selected_child;
 
 	if (gext->vpt) {
-		uint32_t hash, start;
+		uint32_t start;
+		size_t num;
 		ssize_t slen;
-		char buffer[1024];
+		fr_value_box_t *box, *to_free = NULL;
+
+		num = unlang_list_num_elements(&g->children);
 
 		/*
-		 *	Hash the attribute value to select the statement which will be used.
+		 *	Use the attribute value to select the statement which will be used.
 		 */
 		if (tmpl_is_attr(gext->vpt)) {
 			fr_pair_t *vp;
@@ -180,25 +184,26 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 			}
 
 			fr_assert(fr_type_is_leaf(vp->vp_type));
-
-			start = fr_value_box_hash(&vp->data) % unlang_list_num_elements(&g->children);
+			box = &vp->data;
 
 		} else {
-			uint8_t *octets = NULL;
-
-			/*
-			 *	Get the raw data, and then hash the data.
-			 */
-			slen = tmpl_expand(&octets, buffer, sizeof(buffer), request, gext->vpt);
+			slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
+						 request, gext->vpt);
 			if (slen <= 0) {
 				REDEBUG("Failed expanding %s - choosing random statement", gext->vpt->name);
 				goto randomly_choose;
 			}
 
-			hash = fr_hash(octets, slen);
-
-			start = hash % unlang_list_num_elements(&g->children);
+			to_free = box;
 		}
+
+
+		if ((box->type == FR_TYPE_UINT8) && (box->vb_uint8 <= num)) {
+			start = box->vb_uint8;
+		} else {
+			start = fr_value_box_hash(box) % num;
+		}
+		talloc_free(to_free);
 
 		RDEBUG3("load-balance starting at child %d", (int) start);
 
@@ -308,6 +313,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	 */
 	if (name2) {
 		ssize_t slen;
+		xlat_exp_head_t const *xlat;
 
 		/*
 		 *	Create the template.  All attributes and xlats are
@@ -320,6 +326,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 					 &t_rules);
 		if (!gext->vpt) {
 			cf_canonicalize_error(cs, slen, "Failed parsing argument", name2);
+		error:
 			talloc_free(g);
 			return NULL;
 		}
@@ -330,15 +337,13 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		 *	Fixup the templates
 		 */
 		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-			talloc_free(g);
-			return NULL;
+			goto error;
 		}
 
 		switch (gext->vpt->type) {
 		default:
 			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
-			talloc_free(g);
-			return NULL;
+			goto error;
 
 			/*
 			 *	Allow only these ones.
@@ -346,13 +351,22 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		case TMPL_TYPE_ATTR:
 			if (!fr_type_is_leaf(tmpl_attr_tail_da(gext->vpt)->type)) {
 				cf_log_err(cs, "Invalid attribute reference in '%s': load-balancing can only be done on 'leaf' data types", name2);
-				talloc_free(g);
-				return NULL;
+				goto error;
 			}
 			break;
 
+			/*
+			 *	Allow xlat, but disallow exec.  If the admin really wants exec, then they can
+			 *	use `%exec(...)`
+			 */
 		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_EXEC:
+			xlat = tmpl_xlat(gext->vpt);
+			fr_assert(xlat != NULL);
+
+			if (xlat->flags.constant) {
+				cf_log_err(cs, "Cannot use constant data for 'load-balance' statement");
+				goto error;
+			}
 			break;
 		}
 	}
