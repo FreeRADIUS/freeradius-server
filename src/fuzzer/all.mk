@@ -78,6 +78,14 @@ $(foreach X,${FUZZER_PROTOCOLS},$(eval $(call FUZZ_PROTOCOL,${X})))
 $(eval $(call FUZZ_PROTOCOL,util))
 
 #
+#  Add an order-only prereq to ensure src/freeradius-devel/fuzzer dir exists
+#  for all non-protocol targets which don't get included in the above call.
+#
+$(foreach X,${FUZZER_NON_PROTOCOL_TARGETS},$(eval \
+src/fuzzer/fuzzer_${X}.c: | src/freeradius-devel/fuzzer \
+))
+
+#
 #  test.fuzzer.X / .merge rules for the standalone targets. Mirrors
 #  the per-protocol shape in fuzzer.mk; per-target extra args come
 #  from $(FUZZER_<name>_ARGS) so util can request -D and the others
